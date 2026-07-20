@@ -1,0 +1,27 @@
+.shell {
+  display: grid;
+  grid-template-areas: 'left center assistant';
+  grid-template-columns:
+    var(--shell-left-width)
+    minmax(var(--shell-center-min-width), 1fr)
+    var(--shell-assistant-collapsed-width);
+}
+
+.shellAssistantVisible {
+  grid-template-columns:
+    var(--shell-left-width)
+    minmax(var(--shell-center-min-width), 1fr)
+    var(--shell-assistant-visible-width);
+}
+
+.left {
+  grid-area: left;
+}
+
+.center {
+  grid-area: center;
+}
+
+.assistant {
+  grid-area: assistant;
+}

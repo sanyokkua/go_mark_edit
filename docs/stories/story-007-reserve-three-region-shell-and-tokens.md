@@ -1,7 +1,7 @@
 ---
 id: STORY-007
 title: Reserve the three-region app shell and token-only style skeleton
-status: ready
+status: done
 spec_clauses:
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
   - 02_Architecture/03_FRONTEND_REACT.md#structure

@@ -3,7 +3,7 @@ import { Provider } from 'react-redux';
 import { dismissNotification } from './logic/store/notificationsSlice';
 import { store, useAppDispatch, useAppSelector } from './logic/store';
 import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
-import BlankAppRoot from './ui/widgets/BlankAppRoot';
+import AppShell from './ui/widgets/AppShell';
 
 const AppContents: React.FC = (): React.JSX.Element => {
   const dispatch = useAppDispatch();
@@ -11,7 +11,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
 
   return (
     <ToastProvider>
-      <BlankAppRoot />
+      <AppShell assistantVisible={false} />
       {notifications.map((notification) => (
         <NotificationToast
           key={notification.id}

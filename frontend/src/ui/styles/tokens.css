@@ -1,0 +1,6 @@
+:root {
+  --shell-left-width: 16rem;
+  --shell-center-min-width: 0;
+  --shell-assistant-collapsed-width: 0;
+  --shell-assistant-visible-width: 20rem;
+}

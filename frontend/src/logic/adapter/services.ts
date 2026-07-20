@@ -25,7 +25,9 @@ export interface SettingsAdapter {
   updateMarkdown: (settings: MarkdownSettings) => Promise<void>;
 }
 
-export function createSettingsAdapter(bindings: SettingsBindings): SettingsAdapter {
+export function createSettingsAdapter(
+  bindings: SettingsBindings,
+): SettingsAdapter {
   const getSettings = guardArity(
     'SettingsHandler.GetSettings',
     bindings.getSettings,

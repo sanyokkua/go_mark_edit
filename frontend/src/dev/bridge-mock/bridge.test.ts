@@ -87,12 +87,14 @@ it('STORY-006-AC-4 serves adapter success and validation errors through the dev 
   });
 
   const adapter = createSettingsAdapter({
-    getSettings: mockSettings.GetSettings as unknown as SettingsBindings['getSettings'],
+    getSettings:
+      mockSettings.GetSettings as unknown as SettingsBindings['getSettings'],
     updateAppearance:
       mockSettings.UpdateAppearance as unknown as SettingsBindings['updateAppearance'],
     updateContentPrivacy:
       mockSettings.UpdateContentPrivacy as unknown as SettingsBindings['updateContentPrivacy'],
-    updateMarkdown: mockSettings.UpdateMarkdown as unknown as SettingsBindings['updateMarkdown'],
+    updateMarkdown:
+      mockSettings.UpdateMarkdown as unknown as SettingsBindings['updateMarkdown'],
   });
 
   await expect(adapter.getSettings()).resolves.toMatchObject({

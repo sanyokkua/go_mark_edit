@@ -6,6 +6,7 @@ export default {
   testEnvironment: 'jsdom',
   testMatch: ['<rootDir>/src/**/*.test.ts?(x)'],
   moduleNameMapper: {
+    '^.+\\.module\\.css$': '<rootDir>/src/test/styleMock.ts',
     '^wailsjs/(.*)$': '<rootDir>/wailsjs/$1',
   },
   transform: {

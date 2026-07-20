@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-20T17:21:14.275Z",
+  "generated_at": "2026-07-20T18:36:01.237Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -30,7 +30,7 @@
         },
         "STORY-001-AC-2": {
           "tests": [
-            "frontend/src/App.test.tsx:5"
+            "frontend/src/App.test.tsx:9"
           ]
         },
         "STORY-001-AC-3": {
@@ -236,7 +236,7 @@
         },
         "STORY-006-AC-3": {
           "tests": [
-            "frontend/src/logic/adapter/index.test.ts:109",
+            "frontend/src/logic/adapter/index.test.ts:120",
             "frontend/src/logic/utils/parseError.test.ts:3",
             "frontend/src/ui/primitives/Toast.test.tsx:9"
           ]
@@ -250,7 +250,7 @@
     },
     "STORY-007": {
       "title": "Reserve the three-region app shell and token-only style skeleton",
-      "status": "ready",
+      "status": "done",
       "phase": "00",
       "spec_clauses": [
         "00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage",
@@ -264,13 +264,22 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-007-AC-1": {
-          "tests": []
+          "tests": [
+            "frontend/src/App.test.tsx:20",
+            "frontend/src/App.test.tsx:21"
+          ]
         },
         "STORY-007-AC-2": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/styles/tokens.test.ts:12",
+            "frontend/src/ui/styles/tokens.test.ts:13"
+          ]
         },
         "STORY-007-AC-3": {
-          "tests": []
+          "tests": [
+            "frontend/src/App.test.tsx:52",
+            "frontend/src/App.test.tsx:53"
+          ]
         }
       }
     },

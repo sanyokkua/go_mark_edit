@@ -65,7 +65,9 @@ it('STORY-006-AC-1 guards and unwraps every settings call', async () => {
       defaultOpenMode: 'view',
     }),
   ).resolves.toBeUndefined();
-  await expect(adapter.updateContentPrivacy({ remotePolicy: 'block' })).resolves.toBeUndefined();
+  await expect(
+    adapter.updateContentPrivacy({ remotePolicy: 'block' }),
+  ).resolves.toBeUndefined();
   await expect(
     adapter.updateMarkdown({
       standard: 'commonmark',
@@ -83,7 +85,9 @@ it('STORY-006-AC-1 guards and unwraps every settings call', async () => {
       undefined,
       [],
     ) as Promise<void>,
-  ).rejects.toThrow('SettingsHandler.UpdateAppearance expects 1 argument(s), received 0.');
+  ).rejects.toThrow(
+    'SettingsHandler.UpdateAppearance expects 1 argument(s), received 0.',
+  );
   await expect(
     Reflect.apply(
       guardArity(
@@ -102,8 +106,15 @@ it('STORY-006-AC-1 guards and unwraps every settings call', async () => {
       undefined,
       [],
     ) as Promise<void>,
-  ).rejects.toThrow('SettingsHandler.UpdateMarkdown expects 1 argument(s), received 0.');
-  expect(calls).toEqual(['get', 'appearance:dark', 'privacy:block', 'markdown:commonmark']);
+  ).rejects.toThrow(
+    'SettingsHandler.UpdateMarkdown expects 1 argument(s), received 0.',
+  );
+  expect(calls).toEqual([
+    'get',
+    'appearance:dark',
+    'privacy:block',
+    'markdown:commonmark',
+  ]);
 });
 
 it('STORY-006-AC-3 notifies exactly once before throwing the same wire error', () => {
