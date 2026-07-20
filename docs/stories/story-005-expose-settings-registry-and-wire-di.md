@@ -1,0 +1,79 @@
+---
+id: STORY-005
+title: Expose the typed settings registry and wire the two-phase application root
+status: ready
+spec_clauses:
+  - 02_Architecture/02_BACKEND_GO.md#layering
+  - 02_Architecture/02_BACKEND_GO.md#di-two-phase
+  - 02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
+  - 01_Product/11_SETTINGS.md#persistence
+  - 01_Product/11_SETTINGS.md#appearance-group
+  - 01_Product/11_SETTINGS.md#markdown-group
+  - 01_Product/11_SETTINGS.md#content-privacy-group
+  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+modules:
+  - internal/settings/
+  - internal/db/
+  - internal/apperr/
+  - internal/application/
+acceptance_criteria:
+  - STORY-005-AC-1
+  - STORY-005-AC-2
+  - STORY-005-AC-3
+  - STORY-005-AC-4
+edge_cases: []
+depends_on:
+  - STORY-004
+adrs:
+  - ADR-0004
+  - ADR-0006
+phase: 00
+owner: coder
+estimate: L
+---
+
+# STORY-005 — Expose the typed settings registry and wire the two-phase application root
+
+## Goal
+Make the first complete backend vertical prove the envelope, repository layering, growable settings registry, and post-DB wiring model.
+
+## In scope
+- Settings Handler/Service/Repository, grouped typed defaults, and `ApplicationContextHolder` construction plus post-open repository injection.
+
+## Out of scope
+- Settings UI and theme values, owned by Phase 08; AI groups and providers, owned by Stage 3.
+
+## Spec inputs
+- `02_Architecture/02_BACKEND_GO.md#di-two-phase` — construct with nil repositories and inject them in `Init(ctx)`.
+- `01_Product/11_SETTINGS.md#persistence` — use generic typed KV persistence.
+- `00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — establish F4 without a schema rewrite.
+
+## Design constraints
+- Enforce Handler → Service → Repository; handlers take no context, return `apperr.*Result`, and recover panics.
+- Keep the backend authoritative; frontend use arrives only through STORY-006 adapters. Persist scalar settings by grouped keys, not new tables.
+
+## Acceptance criteria
+### STORY-005-AC-1
+The settings Handler, Service, and Repository return concrete `apperr` results at the bridge, accept no handler context, recover panics, and own repository interfaces in the settings package.
+
+### STORY-005-AC-2
+Grouped typed defaults persist through generic KV for Appearance (Material/Auto), Markdown (GFM), and Content privacy (Ask), without a schema change for later scalar keys.
+
+### STORY-005-AC-3
+Invalid or missing scalar values resolve to their documented defaults rather than preventing startup.
+
+### STORY-005-AC-4
+`ApplicationContextHolder` constructs settings with nil persistence, injects the real SQLite repository in `Init(ctx)` after database open, binds the handler, and regenerates bindings.
+
+## Test plan
+Each named test begins with its matching `Proves: STORY-005-AC-N` tag.
+
+- STORY-005-AC-1 — unit — `internal/settings/handler_test.go` — `TestSettingsHandlerReturnsRecoveredResultEnvelope`.
+- STORY-005-AC-2 — integration — `internal/settings/repository_sqlite_test.go` — `TestTypedGroupedDefaultsRoundTripThroughKV`.
+- STORY-005-AC-3 — unit — `internal/settings/service_test.go` — `TestInvalidOrMissingSettingFallsBackToDefault`.
+- STORY-005-AC-4 — integration — `internal/application/application_test.go` — `TestApplicationContextInitializesSettingsInTwoPhases`.
+
+## Definition of done
+- [ ] Every AC has a tagged proving test and bound signatures have regenerated bindings.
+- [ ] Repository wiring exists only in the composition root.
+- [ ] Traceability is regenerated and validated before `done`.
