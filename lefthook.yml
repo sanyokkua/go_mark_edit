@@ -1,0 +1,26 @@
+# Local safety net only. CI owns the authoritative staged quality gate.
+pre-commit:
+  parallel: true
+  commands:
+    go-fmt:
+      glob: "*.go"
+      run: gofmt -w {staged_files}
+      stage_fixed: true
+    frontend-format:
+      root: frontend/
+      glob: ["*.ts", "*.tsx", "*.css"]
+      run: npx prettier --write {staged_files}
+      stage_fixed: true
+
+# Ordering is load-bearing: bindings -> frontend build/checks -> Go compilation/tests.
+pre-push:
+  commands:
+    01-bindings:
+      priority: 1
+      run: sh scripts/hooks/pre-push-bindings.sh
+    02-frontend:
+      priority: 2
+      run: sh scripts/hooks/pre-push-frontend.sh
+    03-go:
+      priority: 3
+      run: sh scripts/hooks/pre-push-go.sh

@@ -79,10 +79,14 @@ func TestOpenRetriesBriefLockContention(t *testing.T) {
 		t.Fatalf("open lock holder: %v", err)
 	}
 	t.Cleanup(func() {
-		_ = blocker.Close()
+		if err := blocker.Close(); err != nil {
+			t.Errorf("close lock holder: %v", err)
+		}
 	})
 	if _, err := blocker.ExecContext(ctx, "CREATE TABLE lock_holder (id INTEGER PRIMARY KEY)"); err != nil {
-		blocker.Close()
+		if closeErr := blocker.Close(); closeErr != nil {
+			t.Errorf("close lock holder after setup failure: %v", closeErr)
+		}
 		t.Fatalf("create database before lock: %v", err)
 	}
 	if _, err := blocker.ExecContext(ctx, "BEGIN EXCLUSIVE"); err != nil {
@@ -108,7 +112,9 @@ func TestOpenRetriesBriefLockContention(t *testing.T) {
 	select {
 	case result := <-opened:
 		if result.database != nil {
-			_ = result.database.Close()
+			if closeErr := result.database.Close(); closeErr != nil {
+				t.Errorf("close unexpectedly opened database: %v", closeErr)
+			}
 		}
 		t.Fatalf("open completed while an exclusive lock was held: %v", result.err)
 	case <-time.After(100 * time.Millisecond):
@@ -189,7 +195,9 @@ func TestOpenRejectsCorruptOrUnsupportedSchemaSafely(t *testing.T) {
 		if err := seed.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
 			Key: "editor.autosave", Value: "false", Type: "bool",
 		}); err != nil {
-			seed.Close()
+			if closeErr := seed.Close(); closeErr != nil {
+				t.Errorf("close seed database after upsert failure: %v", closeErr)
+			}
 			t.Fatalf("seed existing setting: %v", err)
 		}
 		if err := seed.Close(); err != nil {
@@ -201,7 +209,9 @@ func TestOpenRejectsCorruptOrUnsupportedSchemaSafely(t *testing.T) {
 			t.Fatalf("open raw database: %v", err)
 		}
 		if _, err := raw.ExecContext(ctx, "INSERT INTO goose_db_version (version_id, is_applied) VALUES (?, ?)", 999, true); err != nil {
-			raw.Close()
+			if closeErr := raw.Close(); closeErr != nil {
+				t.Errorf("close raw database after schema write failure: %v", closeErr)
+			}
 			t.Fatalf("record newer schema version: %v", err)
 		}
 		if err := raw.Close(); err != nil {
@@ -210,7 +220,9 @@ func TestOpenRejectsCorruptOrUnsupportedSchemaSafely(t *testing.T) {
 
 		database, err := Open(ctx, path)
 		if database != nil {
-			_ = database.Close()
+			if closeErr := database.Close(); closeErr != nil {
+				t.Errorf("close unsupported-schema database: %v", closeErr)
+			}
 			t.Fatal("newer schema unexpectedly opened")
 		}
 		if !errors.Is(err, ErrUnsupportedSchema) {
@@ -284,7 +296,9 @@ func openRecognizedCorruptPrimary(t *testing.T, ctx context.Context, path string
 	if err := database.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
 		Key: "appearance.mode", Value: "dark", Type: "string",
 	}); err != nil {
-		database.Close()
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close replacement database after write failure: %v", closeErr)
+		}
 		t.Fatalf("write through replacement database: %v", err)
 	}
 	if err := database.Close(); err != nil {

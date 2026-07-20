@@ -5,6 +5,8 @@ const storyDirectory = 'docs/stories';
 const specificationDirectory = 'specification';
 const sourceExtensions = new Set(['.go', '.js', '.jsx', '.ts', '.tsx']);
 const skippedDirectories = new Set(['.git', 'build', 'dist', 'node_modules']);
+const provingTagPattern = /^\s*\/\/\s*Proves:\s*(STORY-\d{3}-AC-\d+)\s*$/;
+const jestAcceptanceCriterionPattern = /^\s*(?:it|test)\s*\(\s*['\"](STORY-\d{3}-AC-\d+)\b/;
 
 function extension(path) {
   return path.slice(path.lastIndexOf('.'));
@@ -87,17 +89,17 @@ export async function collectProvingTests(root) {
     return name.endsWith('_test.go') || /\.test\.[jt]sx?$/.test(name);
   });
   const provingTests = new Map();
-  const acPattern = /\bSTORY-\d{3}-AC-\d+\b/g;
-
   for (const filename of files.sort()) {
     const contents = await readFile(filename, 'utf8');
     for (const [lineIndex, line] of contents.split(/\r?\n/).entries()) {
-      for (const acceptanceCriterion of line.matchAll(acPattern)) {
-        const location = `${relative(root, filename)}:${lineIndex + 1}`;
-        const tests = provingTests.get(acceptanceCriterion[0]) ?? [];
-        tests.push(location);
-        provingTests.set(acceptanceCriterion[0], tests);
+      const acceptanceCriterion = provingTagPattern.exec(line)?.[1] ?? jestAcceptanceCriterionPattern.exec(line)?.[1];
+      if (acceptanceCriterion === undefined) {
+        continue;
       }
+      const location = `${relative(root, filename)}:${lineIndex + 1}`;
+      const tests = provingTests.get(acceptanceCriterion) ?? [];
+      tests.push(location);
+      provingTests.set(acceptanceCriterion, tests);
     }
   }
 
@@ -252,4 +254,14 @@ export async function validateTraceInputs(root, stories, provingTests) {
 export function normalizeGeneratedAt(record) {
   const { generated_at: _generatedAt, ...stableRecord } = record;
   return stableRecord;
+}
+
+export function resolveTraceRoot(arguments_, defaultRoot) {
+  if (arguments_.length === 0) {
+    return defaultRoot;
+  }
+  if (arguments_.length === 2 && arguments_[0] === '--root') {
+    return resolve(arguments_[1]);
+  }
+  throw new Error('usage: node scripts/trace.mjs [--root <repository-root>]');
 }

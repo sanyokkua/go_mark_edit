@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+set -eu
+
+go vet ./...
+go test -race ./...
+just trace-check

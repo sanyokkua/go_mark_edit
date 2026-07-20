@@ -5,10 +5,11 @@ import {
   buildTraceRecord,
   normalizeGeneratedAt,
   renderTraceRecord,
+  resolveTraceRoot,
   validateTraceInputs,
 } from './trace-common.mjs';
 
-const root = resolve(import.meta.dirname, '..');
+const root = resolveTraceRoot(process.argv.slice(2), resolve(import.meta.dirname, '..'));
 const tracePath = resolve(root, 'docs/traceability.yaml');
 const { record, stories, provingTests } = await buildTraceRecord(root);
 const validationErrors = await validateTraceInputs(root, stories, provingTests);
@@ -21,7 +22,7 @@ try {
     validationErrors.push('docs/traceability.yaml is stale; run just trace');
   }
 } catch {
-  validationErrors.push('docs/traceability.yaml is not generated JSON-compatible YAML');
+  validationErrors.push('docs/traceability.yaml is stale; run just trace');
 }
 
 if (validationErrors.length > 0) {

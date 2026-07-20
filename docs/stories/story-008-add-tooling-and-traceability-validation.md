@@ -1,7 +1,7 @@
 ---
 id: STORY-008
 title: Add quality tooling and traceability validation for the initial backlog
-status: ready
+status: done
 spec_clauses:
   - 04_Build_and_Release/03_CI_AND_HOOKS.md#1-justfile-command-taxonomy
   - 04_Build_and_Release/03_CI_AND_HOOKS.md#2-git-hooks-lefthook
@@ -66,6 +66,6 @@ Each named test begins with its matching `Proves: STORY-008-AC-N` tag.
 - STORY-008-AC-4 — architecture — `internal/application/traceability_test.go` — `TestFrozenInitialADRsAreReferencedWithoutDuplication`.
 
 ## Definition of done
-- [ ] Every AC has a tagged proving test and CI runs the intended check set.
-- [ ] The trace record is generated, never hand-edited, and passes `just trace-check`.
-- [ ] Initial ADR files remain unchanged under the frozen specification.
+- [x] Every AC has a tagged proving test and CI runs the intended check set.
+- [x] The trace record is generated, never hand-edited, and passes `just trace-check`.
+- [x] Initial ADR files remain unchanged under the frozen specification.

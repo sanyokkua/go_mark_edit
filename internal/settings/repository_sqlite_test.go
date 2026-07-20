@@ -332,15 +332,21 @@ func TestTypedGroupedDefaultsRoundTripThroughKV(t *testing.T) {
 		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAllow},
 	}
 	if err := repository.UpdateAppearance(ctx, want.Appearance); err != nil {
-		database.Close()
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after appearance failure: %v", closeErr)
+		}
 		t.Fatalf("update appearance: %v", err)
 	}
 	if err := repository.UpdateMarkdown(ctx, want.Markdown); err != nil {
-		database.Close()
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after markdown failure: %v", closeErr)
+		}
 		t.Fatalf("update markdown: %v", err)
 	}
 	if err := repository.UpdateContentPrivacy(ctx, want.ContentPrivacy); err != nil {
-		database.Close()
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after content privacy failure: %v", closeErr)
+		}
 		t.Fatalf("update content privacy: %v", err)
 	}
 	for key, value := range map[string]string{
@@ -351,18 +357,24 @@ func TestTypedGroupedDefaultsRoundTripThroughKV(t *testing.T) {
 	} {
 		stored, getErr := database.Queries.GetSetting(ctx, key)
 		if getErr != nil {
-			database.Close()
+			if closeErr := database.Close(); closeErr != nil {
+				t.Errorf("close settings database after read failure: %v", closeErr)
+			}
 			t.Fatalf("read typed dotted key %q: %v", key, getErr)
 		}
 		if stored.Value != value || stored.Type != settingTypeString {
-			database.Close()
+			if closeErr := database.Close(); closeErr != nil {
+				t.Errorf("close settings database after assertion failure: %v", closeErr)
+			}
 			t.Fatalf("stored %q = %+v, want value %q and type %q", key, stored, value, settingTypeString)
 		}
 	}
 	if err := database.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
 		Key: "future.editor.tabSize", Value: "4", Type: "int",
 	}); err != nil {
-		database.Close()
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after future scalar failure: %v", closeErr)
+		}
 		t.Fatalf("persist future scalar without migration: %v", err)
 	}
 	if err := database.Close(); err != nil {

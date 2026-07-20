@@ -21,6 +21,6 @@ authors them **per phase** from that phase's suggested-task list
 | STORY-005 | Expose the typed settings registry and wire the two-phase application root | 00 | draft | coder | L |
 | STORY-006 | Build the frontend adapter projection-store toast and bridge mock foundations | 00 | done | coder | L |
 | STORY-007 | Reserve the three-region app shell and token-only style skeleton | 00 | done | coder | M |
-| STORY-008 | Add quality tooling and traceability validation for the initial backlog | 00 | draft | coder | M |
+| STORY-008 | Add quality tooling and traceability validation for the initial backlog | 00 | done | coder | M |
 
 Add a row per story as it is authored, and keep this board in sync with `../traceability.yaml`.
