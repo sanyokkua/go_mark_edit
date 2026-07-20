@@ -5,14 +5,16 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
 )
 
 // Proves: STORY-001-AC-1
-// The application serves the built React root through Wails without bindings or an instance lock.
+// The application serves the built React root through Wails without bound handlers or an instance lock.
 func TestWailsAppEmbedsFrontendAndBootsBlankView(t *testing.T) {
 	holder := application.NewApplicationContextHolder()
 	appOptions := newAppOptions(holder)
@@ -43,12 +45,34 @@ func TestWailsAppEmbedsFrontendAndBootsBlankView(t *testing.T) {
 	if appOptions.SingleInstanceLock != nil {
 		t.Fatal("expected multiple Wails instances to be allowed")
 	}
-	if len(appOptions.Bind) != 0 || len(appOptions.EnumBind) != 0 {
-		t.Fatal("expected the blank shell to expose no Wails bindings")
+	if len(appOptions.Bind) != 0 {
+		t.Fatal("expected the blank shell to expose no bound handlers")
 	}
 }
 
 type startupContextKey struct{}
+
+// Proves: STORY-002-AC-1
+// Wails receives every ErrorCode/TypeScript-name pair through EnumBind.
+func TestAppOptionsEnumBindIncludesAllErrorCodes(t *testing.T) {
+	t.Parallel()
+
+	appOptions := newAppOptions(application.NewApplicationContextHolder())
+	if len(appOptions.EnumBind) != 1 {
+		t.Fatalf("EnumBind has %d entries, want exactly the ErrorCode catalog", len(appOptions.EnumBind))
+	}
+
+	got, ok := appOptions.EnumBind[0].([]struct {
+		Value  apperr.ErrorCode
+		TSName string
+	})
+	if !ok {
+		t.Fatalf("EnumBind[0] type = %T, want apperr ErrorCode catalog", appOptions.EnumBind[0])
+	}
+	if !reflect.DeepEqual(got, apperr.AllErrorCodes) {
+		t.Fatalf("EnumBind ErrorCode catalog = %#v, want %#v", got, apperr.AllErrorCodes)
+	}
+}
 
 // Proves: STORY-001-AC-3
 // The application module stays Go 1.25, Wails v2, pure-Go, and does not opt a build into CGO.

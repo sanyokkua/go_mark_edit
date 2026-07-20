@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -30,5 +31,6 @@ func newAppOptions(applicationContext *application.ApplicationContextHolder) *op
 			Assets: assets,
 		},
 		OnStartup: applicationContext.SetContext,
+		EnumBind:  []interface{}{apperr.AllErrorCodes},
 	}
 }

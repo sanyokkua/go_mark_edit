@@ -1,7 +1,7 @@
 ---
 id: STORY-002
 title: Implement the apperr envelope and Wails-bindable result contracts
-status: ready
+status: done
 spec_clauses:
   - 02_Architecture/06_ERROR_HANDLING.md#error-codes
   - 02_Architecture/06_ERROR_HANDLING.md#wire

@@ -2,7 +2,10 @@ module github.com/sanyokkua/go_mark_edit
 
 go 1.25
 
-require github.com/wailsapp/wails/v2 v2.12.0
+require (
+	github.com/rs/zerolog v1.34.0
+	github.com/wailsapp/wails/v2 v2.12.0
+)
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect

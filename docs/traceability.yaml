@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-20T11:37:50.476Z",
+  "generated_at": "2026-07-20T12:21:00.513Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -25,7 +25,7 @@
       "acceptance_criteria": {
         "STORY-001-AC-1": {
           "tests": [
-            "main_test.go:14"
+            "main_test.go:16"
           ]
         },
         "STORY-001-AC-2": {
@@ -35,14 +35,14 @@
         },
         "STORY-001-AC-3": {
           "tests": [
-            "main_test.go:53"
+            "main_test.go:77"
           ]
         }
       }
     },
     "STORY-002": {
       "title": "Implement the apperr envelope and Wails-bindable result contracts",
-      "status": "ready",
+      "status": "done",
       "phase": "00",
       "spec_clauses": [
         "02_Architecture/06_ERROR_HANDLING.md#error-codes",
@@ -57,13 +57,21 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-002-AC-1": {
-          "tests": []
+          "tests": [
+            "internal/apperr/results_test.go:114",
+            "internal/apperr/results_test.go:9",
+            "main_test.go:55"
+          ]
         },
         "STORY-002-AC-2": {
-          "tests": []
+          "tests": [
+            "internal/apperr/wire_test.go:15"
+          ]
         },
         "STORY-002-AC-3": {
-          "tests": []
+          "tests": [
+            "internal/apperr/architecture_test.go:13"
+          ]
         }
       }
     },
