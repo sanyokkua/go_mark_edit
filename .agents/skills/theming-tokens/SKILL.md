@@ -47,7 +47,7 @@ anywhere.
   `mockups/gomarkedit-mockup.html`.
 - Design decisions: `DD-28` (exactly 3 themes, no custom), `DD-29` (Auto/Light/Dark, unified editor+
   preview), `DD-30` (token layer, one layout, reading-mode chrome); `ADR-0005`.
-- Governing rules: `.Codex/rules/ts-theming-tokens.md`, `.Codex/rules/ts-react-frontend.md`.
+- Governing rules: `.claude/rules/ts-theming-tokens.md`, `.claude/rules/ts-react-frontend.md`.
 - Modules (from `01_MODULE_INVENTORY.md`): `frontend/src/ui/styles/` (`tokens.css`, `base.css`, print
   stylesheet — normative tokens, never renamed), `frontend/src/logic/theme/` (`theme/index.ts`).
 
@@ -111,7 +111,7 @@ anywhere.
 - A theme is incomplete until **both** its Light and Dark scopes are authored — accent/radius/font/
   blur stay fixed across the pair; only surfaces/text invert.
 - Fonts must be bundled locally, never fetched from a CDN/Google Fonts `<link>` (offline invariant,
-  DD-32) — see `.Codex/rules/offline-and-privacy.md`.
+  DD-32) — see `.claude/rules/offline-and-privacy.md`.
 - Full symptom/cause/fix table and the EC-THEME-1..3 index live in `references/troubleshooting.md` —
   don't re-derive them from scratch.
 
@@ -122,4 +122,4 @@ anywhere.
 - `specification/02_Architecture/03_FRONTEND_REACT.md`
 - `mockups/gomarkedit-mockup.html`
 - `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md`
-- `.Codex/rules/ts-theming-tokens.md`, `.Codex/rules/ts-react-frontend.md`
+- `.claude/rules/ts-theming-tokens.md`, `.claude/rules/ts-react-frontend.md`

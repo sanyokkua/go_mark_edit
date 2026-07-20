@@ -16,9 +16,9 @@ non-trivial decision must trace to a spec clause. If the spec is silent or ambig
 ## AI config locations
 
 - `AGENTS.md` — this file.
-- `.Codex/rules/*.md` — path-scoped coding rules (loaded when matching files are touched).
-- `.Codex/skills/*/SKILL.md` — task playbooks (invoke by trigger).
-- `.Codex/agents/*.md` — the agent pipeline (investigator → architect → coder → tester → reviewer → docs).
+- `.claude/rules/*.md` — shared path-scoped coding rules; Codex must read every rule whose glob matches files it will touch.
+- `.agents/skills/*/SKILL.md` — Codex task playbooks (invoke by trigger).
+- `.codex/agents/*.toml` — Codex custom-agent definitions (investigator → architect → coder → tester → reviewer → docs).
 - **`specification/`** — the **frozen, read-only** source of truth: requirements, architecture, phases,
   the initial ADRs (`specification/08_Decisions/`), the process formats, and the UI mockups
   (`specification/mockups/`). Never edited during implementation. Start at `specification/INDEX.md`.
@@ -82,19 +82,20 @@ just trace-check  # validate traceability (gate)
 just check        # fmt-check + lint + typecheck + test + arch checks
 ```
 
-## Slash commands (the two-stage workflow)
+## Planning workflows (the two-stage workflow)
 
-Two custom commands (`.Codex/commands/`) bootstrap the whole process. Both run **read-only in planning
-mode** — they gather full context, delegate mapping to the `investigator` subagent, produce a plan, and
-call `ExitPlanMode` to request approval. Nothing is created/changed until you approve.
+Two Codex skills (`.agents/skills/plan-phase-stories-creation/` and
+`.agents/skills/plan-user-story-implementation/`) bootstrap the whole process. Both run **read-only** —
+they gather full context, delegate mapping to the `investigator` subagent, produce a plan, and request
+explicit user approval. Nothing is created or changed until approval.
 
-- **`/plan-phase-stories-creation <PHASE_NN>`** — for starting a new phase. Reads the phase, the process
+- **`plan-phase-stories-creation <PHASE_NN>`** — for starting a new phase. Reads the phase, the process
   formats, and the spec clauses it touches; maps the current codebase (what's implemented/tested/config/
   docs/done-stories/traceability); then **plans the real story set** (the phase's suggested tasks are a
   backlog, not truth — it refines them to what's actually relevant), with ids, cited clauses, modules, ACs,
   edge cases, test plan, and the traceability delta. Approve → the `architect` authors the story files into
   `docs/stories/`.
-- **`/plan-user-story-implementation <STORY-NNN>`** — for building a story. Reads the story + every cited
+- **`plan-user-story-implementation <STORY-NNN>`** — for building a story. Reads the story + every cited
   clause/DD/ADR + applicable rules/skills; investigates the codebase and prior stories/commits; collects
   edge cases; then **plans the implementation + test + traceability + DoD**, one session's worth. Approve →
   the `coder` implements and the `tester` writes the AC tests and runs `just trace`/`trace-check`.
@@ -127,7 +128,7 @@ via that pipeline; local/dev builds always report version `dev`.
 ## Orchestration discipline
 
 The top-level session orchestrates; delegate a story's implementation, an investigation, or a review to
-one agent (see `.Codex/agents/`). Don't loop dozens of edits in the main session when one `coder`
+one agent (see `.codex/agents/`). Don't loop dozens of edits in the main session when one `coder`
 delegation is cleaner. Keep parallel subagents to ≤8. Ask each for a concise structured summary.
 
 ## Quality gates — do not bypass
@@ -150,9 +151,10 @@ delegation is cleaner. Keep parallel subagents to ≤8. Ask each for a concise s
 
 ## Self-discovery
 
-Before assuming a convention doesn't exist: check `.Codex/skills/`, the relevant `.Codex/rules/*.md`
+Before assuming a convention doesn't exist: check `.agents/skills/`, the relevant `.claude/rules/*.md`
 (by glob), and `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` for the module
-you're in. The spec itself (`specification/`) and the `.Codex/` rules/skills/agents are the
+you're in. The spec itself (`specification/`), shared `.claude/rules/`, Codex `.agents/skills/`, and
+`.codex/agents/` are the
 authoritative source for every structural, envelope, DI, theming, and CI convention.
 
 ## Rules Reference

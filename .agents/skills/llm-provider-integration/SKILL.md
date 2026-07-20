@@ -55,7 +55,7 @@ framework, no per-kind client class.
 - `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` — the only valid module paths
   (`internal/llm/providers/`, `internal/llm/verify/`, `internal/settings/`, `internal/gate/`,
   `internal/apperr/`).
-- Rules: `.Codex/rules/llm-integration.md`, `offline-and-privacy.md`, `go-error-envelope.md`.
+- Rules: `.claude/rules/llm-integration.md`, `offline-and-privacy.md`, `go-error-envelope.md`.
 
 ## Workflow (load references progressively)
 
@@ -135,4 +135,4 @@ framework, no per-kind client class.
 - `specification/08_Decisions/0007-llm-provider-abstraction.md`, `0011-network-policy-llm-exception.md`
 - `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` (`internal/llm/providers/`,
   `internal/llm/verify/`, `internal/settings/`, `internal/gate/`, `internal/apperr/`)
-- Rules: `.Codex/rules/llm-integration.md`, `offline-and-privacy.md`, `go-error-envelope.md`
+- Rules: `.claude/rules/llm-integration.md`, `offline-and-privacy.md`, `go-error-envelope.md`

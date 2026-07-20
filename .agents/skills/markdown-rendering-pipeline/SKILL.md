@@ -54,8 +54,8 @@ at all.
 - Design decisions: `DD-14` (standard→plugin set), `DD-16` (Format/Compact), `DD-17` (Lint),
   `DD-18` (canonical style + on-save), `DD-19` (react-markdown pipeline + Mermaid override),
   `DD-20` (debounce), `DD-22` (remote-content policy), `DD-32` (offline/bundled), `ADR-0003`.
-- Governing rules: `.Codex/rules/ts-markdown-pipeline.md`, `.Codex/rules/offline-and-privacy.md`,
-  `.Codex/rules/ts-react-frontend.md`.
+- Governing rules: `.claude/rules/ts-markdown-pipeline.md`, `.claude/rules/offline-and-privacy.md`,
+  `.claude/rules/ts-react-frontend.md`.
 - Modules (from `01_MODULE_INVENTORY.md`, the only valid module source): `frontend/src/logic/markdown/`
   (`renderer.ts`), `frontend/src/logic/format/` (`format.ts`), `frontend/src/logic/lint/` (`lint.ts`),
   `frontend/src/ui/components/` (`MarkdownView`, `MermaidBlock`, `CodeEditor`).
@@ -138,4 +138,4 @@ bugs map to one of a small, known set of causes.
 - `specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md`
 - `specification/02_Architecture/03_FRONTEND_REACT.md`
 - `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md`
-- `.Codex/rules/ts-markdown-pipeline.md`, `.Codex/rules/offline-and-privacy.md`
+- `.claude/rules/ts-markdown-pipeline.md`, `.claude/rules/offline-and-privacy.md`

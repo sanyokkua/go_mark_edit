@@ -5,7 +5,7 @@ Wails v2 (Go + React/TypeScript). This repository is seeded from a binding speci
 
 - **Start here:** [`specification/INDEX.md`](specification/INDEX.md) — the read-only source of truth
   (requirements, architecture, phases, initial decisions, UI mockups).
-- **Agent operating instructions:** [`CLAUDE.md`](CLAUDE.md).
+- **Agent operating instructions:** [`AGENTS.md`](AGENTS.md) for Codex; [`CLAUDE.md`](CLAUDE.md) for Claude.
 - **Working area (mutable):** [`docs/`](docs/) — generated stories (`docs/stories/`), decisions made
   during implementation (`docs/adr/`), and the progress record (`docs/traceability.yaml`).
 

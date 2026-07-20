@@ -27,7 +27,7 @@ related-skills:
   - project-documentation: optional — for full written documentation (that skill is self-contained)
   - create-mermaid-diagrams: optional — to draw a structure/architecture diagram of what was found
 install:
-  defaultLocation: .Codex/skills/project-navigator/
+  defaultLocation: .agents/skills/project-navigator/
   supportsProject: true
   supportsGlobal: true
 ---

@@ -118,7 +118,7 @@ exactly three shapes (all standard envelopes):
 The visible Monaco buffer is a **working copy**: edits debounce-push to Go via the `UpdateBuffer`
 command and are flushed on blur / tab switch / close / save (DD-64). The backend **never echoes buffer
 text back into the focused editor** — it emits only derived state (dirty, counts). See
-`.Codex/rules/go-backend-architecture.md` and `ts-redux-adapter.md`, and
+`.claude/rules/go-backend-architecture.md` and `ts-redux-adapter.md`, and
 `specification/02_Architecture/02_BACKEND_GO.md#application-model`.
 
 ### No `context.Context` parameter in bound methods

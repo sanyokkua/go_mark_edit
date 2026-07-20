@@ -33,7 +33,7 @@ related-skills:
   - create-mermaid-diagrams: optional — deeper diagram support (diagram rules are embedded here in references/mermaid-rules.md)
   - story-and-traceability-workflow: optional — when documentation work should be tracked as a story or cite spec clauses
 install:
-  defaultLocation: .Codex/skills/project-documentation/
+  defaultLocation: .agents/skills/project-documentation/
   supportsProject: true
   supportsGlobal: true
 ---
