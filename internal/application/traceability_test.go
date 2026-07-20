@@ -1,6 +1,7 @@
 package application
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -9,6 +10,27 @@ import (
 	"strings"
 	"testing"
 )
+
+// Proves: STORY-010-AC-1
+// The committed trace record passes the real repository checker without the checker modifying it.
+func TestTraceRecordIsFreshAndCommitted(t *testing.T) {
+	repositoryRoot := storyEightRepositoryRoot(t)
+	tracePath := filepath.Join(repositoryRoot, "docs", "traceability.yaml")
+	before, err := os.ReadFile(tracePath)
+	if err != nil {
+		t.Fatalf("read committed trace record: %v", err)
+	}
+
+	runTraceCLI(t, "scripts/trace-check.mjs", repositoryRoot)
+
+	after, err := os.ReadFile(tracePath)
+	if err != nil {
+		t.Fatalf("re-read committed trace record: %v", err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("trace-check modified docs/traceability.yaml")
+	}
+}
 
 // Proves: STORY-008-AC-3
 // The trace CLI maps each story direction and collects only explicit Proves tags or AC-first Jest test names.

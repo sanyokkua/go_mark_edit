@@ -28,12 +28,21 @@ fmt:
     gofmt -w .
     npm --prefix frontend run format
 
-fmt-check:
+go-format-check:
     test -z "$(gofmt -l .)"
+
+frontend-format-check:
     npm --prefix frontend run format:check
 
+fmt-check:
+    just go-format-check
+    just frontend-format-check
+
+go-lint:
+    golangci-lint run . ./internal/...
+
 lint:
-    golangci-lint run ./...
+    just go-lint
     just frontend-lint
 
 frontend-lint:
@@ -61,7 +70,7 @@ verify-ui:
 # --- drift, security, and traceability ---------------------------------------
 gen-check:
     wails generate module
-    git diff --exit-code frontend/wailsjs/
+    git diff --exit-code -- frontend/wailsjs/
 
 sqlc-check:
     sqlc diff
@@ -77,9 +86,10 @@ trace-check:
 
 # Phase-00 staged local/CI mirror. Full drift and security gates join later phases.
 check:
-    just gen
+    just gen-check
     just frontend-build
-    just frontend-lint
+    just fmt-check
+    just lint
     just typecheck
     just frontend-test
     just go-vet

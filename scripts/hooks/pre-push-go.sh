@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 set -eu
 
-go vet ./...
-go test -race ./...
+just go-format-check
+just go-lint
+just go-vet
+just go-test
 just trace-check

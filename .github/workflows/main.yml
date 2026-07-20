@@ -21,15 +21,19 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
       - name: Install frontend dependencies
         run: npm --prefix frontend ci
       - name: Generate bindings
-        run: just gen
+        run: just gen-check
       - name: Build frontend assets
         run: just frontend-build
-      - name: Frontend lint
-        run: just frontend-lint
+      - name: Format check
+        run: just fmt-check
+      - name: Lint
+        run: just lint
       - name: Frontend typecheck
         run: just typecheck
       - name: Frontend tests

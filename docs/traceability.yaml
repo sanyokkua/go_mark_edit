@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-20T19:06:46.003Z",
+  "generated_at": "2026-07-20T20:53:06.545Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -152,7 +152,7 @@
         },
         "STORY-004-AC-4": {
           "tests": [
-            "internal/db/database_test.go:149"
+            "internal/db/database_test.go:155"
           ]
         }
       }
@@ -191,7 +191,7 @@
         },
         "STORY-005-AC-3": {
           "tests": [
-            "internal/settings/repository_sqlite_test.go:391",
+            "internal/settings/repository_sqlite_test.go:403",
             "internal/settings/service_test.go:10"
           ]
         },
@@ -300,23 +300,23 @@
       "acceptance_criteria": {
         "STORY-008-AC-1": {
           "tests": [
-            "internal/application/toolchain_test.go:10"
+            "internal/application/toolchain_test.go:11"
           ]
         },
         "STORY-008-AC-2": {
           "tests": [
-            "internal/application/toolchain_test.go:40"
+            "internal/application/toolchain_test.go:41"
           ]
         },
         "STORY-008-AC-3": {
           "tests": [
-            "internal/application/traceability_test.go:13",
-            "internal/application/traceability_test.go:38"
+            "internal/application/traceability_test.go:35",
+            "internal/application/traceability_test.go:60"
           ]
         },
         "STORY-008-AC-4": {
           "tests": [
-            "internal/application/traceability_test.go:105"
+            "internal/application/traceability_test.go:127"
           ]
         }
       }
@@ -382,6 +382,45 @@
         "STORY-009-AC-6": {
           "tests": [
             "main_test.go:19"
+          ]
+        }
+      }
+    },
+    "STORY-010": {
+      "title": "Restore Phase-00 toolchain integrity",
+      "status": "done",
+      "phase": "00",
+      "spec_clauses": [
+        "07_Phases/PHASE_00_SCAFFOLD.md#phase-exit-checklist",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#1-justfile-command-taxonomy",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#3-ordering-why-frontend-builds-before-go",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#6-traceability-gate",
+        "06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands",
+        "06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#per-story"
+      ],
+      "modules": [
+        "internal/application/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-010-AC-1": {
+          "tests": [
+            "internal/application/traceability_test.go:14"
+          ]
+        },
+        "STORY-010-AC-2": {
+          "tests": [
+            "internal/application/toolchain_test.go:92"
+          ]
+        },
+        "STORY-010-AC-3": {
+          "tests": [
+            "internal/application/toolchain_test.go:154"
+          ]
+        },
+        "STORY-010-AC-4": {
+          "tests": [
+            "internal/application/toolchain_test.go:172"
           ]
         }
       }
@@ -558,7 +597,8 @@
     },
     "04_Build_and_Release/03_CI_AND_HOOKS.md#1-justfile-command-taxonomy": {
       "stories": [
-        "STORY-008"
+        "STORY-008",
+        "STORY-010"
       ]
     },
     "04_Build_and_Release/03_CI_AND_HOOKS.md#2-git-hooks-lefthook": {
@@ -568,7 +608,8 @@
     },
     "06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands": {
       "stories": [
-        "STORY-008"
+        "STORY-008",
+        "STORY-010"
       ]
     },
     "06_Process_and_Traceability/04_ADR_FORMAT.md#template-copy-docsadrtemplatemd": {
@@ -620,6 +661,26 @@
       "stories": [
         "STORY-009"
       ]
+    },
+    "07_Phases/PHASE_00_SCAFFOLD.md#phase-exit-checklist": {
+      "stories": [
+        "STORY-010"
+      ]
+    },
+    "04_Build_and_Release/03_CI_AND_HOOKS.md#3-ordering-why-frontend-builds-before-go": {
+      "stories": [
+        "STORY-010"
+      ]
+    },
+    "04_Build_and_Release/03_CI_AND_HOOKS.md#6-traceability-gate": {
+      "stories": [
+        "STORY-010"
+      ]
+    },
+    "06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#per-story": {
+      "stories": [
+        "STORY-010"
+      ]
     }
   },
   "edge_cases": {
@@ -628,7 +689,7 @@
         "STORY-004"
       ],
       "tests": [
-        "internal/db/database_test.go:149",
+        "internal/db/database_test.go:155",
         "internal/db/database_test.go:18",
         "internal/db/database_test.go:70",
         "internal/db/migrations_test.go:13"
@@ -640,7 +701,7 @@
         "STORY-009"
       ],
       "tests": [
-        "internal/db/database_test.go:149",
+        "internal/db/database_test.go:155",
         "internal/db/database_test.go:18",
         "internal/db/database_test.go:70",
         "internal/db/migrations_test.go:13",
@@ -673,7 +734,8 @@
         "STORY-003",
         "STORY-005",
         "STORY-008",
-        "STORY-009"
+        "STORY-009",
+        "STORY-010"
       ]
     },
     "ui/styles/": {
