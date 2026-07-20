@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-20T15:32:29.909Z",
+  "generated_at": "2026-07-20T16:23:11.756Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -25,7 +25,7 @@
       "acceptance_criteria": {
         "STORY-001-AC-1": {
           "tests": [
-            "main_test.go:17"
+            "main_test.go:74"
           ]
         },
         "STORY-001-AC-2": {
@@ -35,7 +35,7 @@
         },
         "STORY-001-AC-3": {
           "tests": [
-            "main_test.go:79"
+            "main_test.go:136"
           ]
         }
       }
@@ -60,7 +60,7 @@
           "tests": [
             "internal/apperr/results_test.go:114",
             "internal/apperr/results_test.go:9",
-            "main_test.go:57"
+            "main_test.go:114"
           ]
         },
         "STORY-002-AC-2": {
@@ -181,17 +181,17 @@
       "acceptance_criteria": {
         "STORY-005-AC-1": {
           "tests": [
-            "internal/settings/handler_test.go:11"
+            "internal/settings/handler_test.go:79"
           ]
         },
         "STORY-005-AC-2": {
           "tests": [
-            "internal/settings/repository_sqlite_test.go:13"
+            "internal/settings/repository_sqlite_test.go:315"
           ]
         },
         "STORY-005-AC-3": {
           "tests": [
-            "internal/settings/repository_sqlite_test.go:89",
+            "internal/settings/repository_sqlite_test.go:391",
             "internal/settings/service_test.go:10"
           ]
         },
@@ -292,6 +292,71 @@
           "tests": []
         }
       }
+    },
+    "STORY-009": {
+      "title": "Complete Stage-1 settings and fail startup safely",
+      "status": "done",
+      "phase": "00",
+      "spec_clauses": [
+        "01_Product/11_SETTINGS.md#appearance-group",
+        "01_Product/11_SETTINGS.md#markdown-group",
+        "01_Product/11_SETTINGS.md#content-privacy-group",
+        "01_Product/11_SETTINGS.md#persistence",
+        "01_Product/11_SETTINGS.md#defaults",
+        "01_Product/11_SETTINGS.md#edge-cases",
+        "01_Product/10_THEMING.md#no-custom-themes",
+        "01_Product/10_THEMING.md#edge-cases",
+        "01_Product/04_MARKDOWN_STANDARDS.md#standard-setting",
+        "01_Product/06_FORMAT_AND_LINT.md#on-save",
+        "01_Product/06_FORMAT_AND_LINT.md#canonical-style",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema",
+        "02_Architecture/02_BACKEND_GO.md#layering",
+        "02_Architecture/02_BACKEND_GO.md#error-envelope",
+        "02_Architecture/02_BACKEND_GO.md#di-two-phase",
+        "02_Architecture/04_WAILS_INTEGRATION.md#lifecycle",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open"
+      ],
+      "modules": [
+        "internal/settings/",
+        "internal/apperr/",
+        "internal/application/"
+      ],
+      "edge_cases": [
+        "EC-THEME-3",
+        "EC-SET-2"
+      ],
+      "acceptance_criteria": {
+        "STORY-009-AC-1": {
+          "tests": [
+            "internal/settings/repository_sqlite_test.go:14"
+          ]
+        },
+        "STORY-009-AC-2": {
+          "tests": [
+            "internal/settings/repository_sqlite_test.go:53"
+          ]
+        },
+        "STORY-009-AC-3": {
+          "tests": [
+            "internal/settings/handler_test.go:11"
+          ]
+        },
+        "STORY-009-AC-4": {
+          "tests": [
+            "internal/settings/repository_sqlite_test.go:120"
+          ]
+        },
+        "STORY-009-AC-5": {
+          "tests": [
+            "internal/settings/repository_sqlite_test.go:245"
+          ]
+        },
+        "STORY-009-AC-6": {
+          "tests": [
+            "main_test.go:19"
+          ]
+        }
+      }
     }
   },
   "clauses": {
@@ -343,7 +408,8 @@
     },
     "02_Architecture/02_BACKEND_GO.md#error-envelope": {
       "stories": [
-        "STORY-002"
+        "STORY-002",
+        "STORY-009"
       ]
     },
     "02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind": {
@@ -371,7 +437,8 @@
     "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema": {
       "stories": [
         "STORY-004",
-        "STORY-005"
+        "STORY-005",
+        "STORY-009"
       ]
     },
     "02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations": {
@@ -391,32 +458,38 @@
     },
     "02_Architecture/02_BACKEND_GO.md#layering": {
       "stories": [
-        "STORY-005"
+        "STORY-005",
+        "STORY-009"
       ]
     },
     "02_Architecture/02_BACKEND_GO.md#di-two-phase": {
       "stories": [
-        "STORY-005"
+        "STORY-005",
+        "STORY-009"
       ]
     },
     "01_Product/11_SETTINGS.md#persistence": {
       "stories": [
-        "STORY-005"
+        "STORY-005",
+        "STORY-009"
       ]
     },
     "01_Product/11_SETTINGS.md#appearance-group": {
       "stories": [
-        "STORY-005"
+        "STORY-005",
+        "STORY-009"
       ]
     },
     "01_Product/11_SETTINGS.md#markdown-group": {
       "stories": [
-        "STORY-005"
+        "STORY-005",
+        "STORY-009"
       ]
     },
     "01_Product/11_SETTINGS.md#content-privacy-group": {
       "stories": [
-        "STORY-005"
+        "STORY-005",
+        "STORY-009"
       ]
     },
     "02_Architecture/03_FRONTEND_REACT.md#structure": {
@@ -474,6 +547,51 @@
       "stories": [
         "STORY-008"
       ]
+    },
+    "01_Product/11_SETTINGS.md#defaults": {
+      "stories": [
+        "STORY-009"
+      ]
+    },
+    "01_Product/11_SETTINGS.md#edge-cases": {
+      "stories": [
+        "STORY-009"
+      ]
+    },
+    "01_Product/10_THEMING.md#no-custom-themes": {
+      "stories": [
+        "STORY-009"
+      ]
+    },
+    "01_Product/10_THEMING.md#edge-cases": {
+      "stories": [
+        "STORY-009"
+      ]
+    },
+    "01_Product/04_MARKDOWN_STANDARDS.md#standard-setting": {
+      "stories": [
+        "STORY-009"
+      ]
+    },
+    "01_Product/06_FORMAT_AND_LINT.md#on-save": {
+      "stories": [
+        "STORY-009"
+      ]
+    },
+    "01_Product/06_FORMAT_AND_LINT.md#canonical-style": {
+      "stories": [
+        "STORY-009"
+      ]
+    },
+    "02_Architecture/04_WAILS_INTEGRATION.md#lifecycle": {
+      "stories": [
+        "STORY-009"
+      ]
+    },
+    "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open": {
+      "stories": [
+        "STORY-009"
+      ]
     }
   },
   "edge_cases": {
@@ -490,13 +608,33 @@
     },
     "EC-SET-2": {
       "stories": [
-        "STORY-004"
+        "STORY-004",
+        "STORY-009"
       ],
       "tests": [
         "internal/db/database_test.go:149",
         "internal/db/database_test.go:18",
         "internal/db/database_test.go:70",
-        "internal/db/migrations_test.go:13"
+        "internal/db/migrations_test.go:13",
+        "internal/settings/handler_test.go:11",
+        "internal/settings/repository_sqlite_test.go:120",
+        "internal/settings/repository_sqlite_test.go:14",
+        "internal/settings/repository_sqlite_test.go:245",
+        "internal/settings/repository_sqlite_test.go:53",
+        "main_test.go:19"
+      ]
+    },
+    "EC-THEME-3": {
+      "stories": [
+        "STORY-009"
+      ],
+      "tests": [
+        "internal/settings/handler_test.go:11",
+        "internal/settings/repository_sqlite_test.go:120",
+        "internal/settings/repository_sqlite_test.go:14",
+        "internal/settings/repository_sqlite_test.go:245",
+        "internal/settings/repository_sqlite_test.go:53",
+        "main_test.go:19"
       ]
     }
   },
@@ -506,7 +644,8 @@
         "STORY-001",
         "STORY-003",
         "STORY-005",
-        "STORY-008"
+        "STORY-008",
+        "STORY-009"
       ]
     },
     "ui/styles/": {
@@ -524,7 +663,8 @@
     "internal/apperr/": {
       "stories": [
         "STORY-002",
-        "STORY-005"
+        "STORY-005",
+        "STORY-009"
       ]
     },
     "internal/bootstrap/": {
@@ -556,7 +696,8 @@
     },
     "internal/settings/": {
       "stories": [
-        "STORY-005"
+        "STORY-005",
+        "STORY-009"
       ]
     },
     "logic/adapter/": {

@@ -1,7 +1,7 @@
 ---
 id: STORY-009
 title: Complete Stage-1 settings and fail startup safely
-status: ready
+status: done
 spec_clauses:
   - 01_Product/11_SETTINGS.md#appearance-group
   - 01_Product/11_SETTINGS.md#markdown-group

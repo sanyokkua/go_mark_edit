@@ -1,14 +1,20 @@
 package apperr
 
-// AppearanceSettings contains the persisted theme and color-mode settings.
+// AppearanceSettings contains the persisted appearance settings.
 type AppearanceSettings struct {
-	Theme string `json:"theme"`
-	Mode  string `json:"mode"`
+	Theme           string `json:"theme"`
+	Mode            string `json:"mode"`
+	DefaultOpenMode string `json:"defaultOpenMode"`
 }
 
-// MarkdownSettings contains the persisted Markdown-rendering settings.
+// MarkdownSettings contains the persisted Markdown and canonical-style settings.
 type MarkdownSettings struct {
-	Standard string `json:"standard"`
+	Standard       string `json:"standard"`
+	FormatOnSave   bool   `json:"formatOnSave"`
+	LintOnSave     bool   `json:"lintOnSave"`
+	BulletMarker   string `json:"bulletMarker"`
+	EmphasisMarker string `json:"emphasisMarker"`
+	HeadingStyle   string `json:"headingStyle"`
 }
 
 // ContentPrivacySettings contains the persisted remote-content policy.

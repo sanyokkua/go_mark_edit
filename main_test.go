@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,7 +13,63 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// Proves: STORY-009-AC-6
+// Startup init failure shows an error dialog and exits non-zero even if the dialog itself fails (EC-SET-2 hard startup error).
+func TestStartupInitFailureShowsDialogAndReturnsNonZero(t *testing.T) {
+	previousMessageDialog := messageDialog
+	previousExitProcess := exitProcess
+	t.Cleanup(func() {
+		messageDialog = previousMessageDialog
+		exitProcess = previousExitProcess
+	})
+
+	var (
+		dialogContext context.Context
+		dialogOptions runtime.MessageDialogOptions
+		dialogCalls   int
+		exitStatuses  []int
+	)
+	messageDialog = func(ctx context.Context, options runtime.MessageDialogOptions) (string, error) {
+		dialogContext = ctx
+		dialogOptions = options
+		dialogCalls++
+		return "", errors.New("dialog unavailable")
+	}
+	exitProcess = func(status int) {
+		exitStatuses = append(exitStatuses, status)
+	}
+
+	paths := &failingStartupFileUtils{}
+	holder := application.NewApplicationContextHolder(paths, nil)
+	appOptions := newAppOptions(holder)
+	startupContext := context.WithValue(context.Background(), startupContextKey{}, "failed startup")
+	appOptions.OnStartup(startupContext)
+
+	if paths.databasePathCalls != 1 {
+		t.Fatalf("database path calls = %d, want one failed Init attempt", paths.databasePathCalls)
+	}
+	if holder.Context() != startupContext {
+		t.Fatal("OnStartup did not retain the Wails lifecycle context")
+	}
+	if holder.DB != nil {
+		t.Fatal("failed Init retained an opened database")
+	}
+	if dialogCalls != 1 || dialogContext != startupContext {
+		t.Fatalf("startup dialog calls = %d with context %v, want one call with startup context", dialogCalls, dialogContext)
+	}
+	if dialogOptions.Type != runtime.ErrorDialog {
+		t.Fatalf("startup dialog type = %v, want %v", dialogOptions.Type, runtime.ErrorDialog)
+	}
+	if dialogOptions.Title == "" || dialogOptions.Message == "" {
+		t.Fatalf("startup dialog options = %+v, want non-empty user-facing title and message", dialogOptions)
+	}
+	if len(exitStatuses) != 1 || exitStatuses[0] == 0 {
+		t.Fatalf("exit statuses = %v, want exactly one non-zero status", exitStatuses)
+	}
+}
 
 // Proves: STORY-001-AC-1
 // The application serves the built React root through Wails with its settings
@@ -159,3 +216,22 @@ func (utils testFileUtils) GetAppDatabaseFilePath() (string, error) {
 }
 
 var _ file.FileUtilsServiceAPI = testFileUtils{}
+
+type failingStartupFileUtils struct {
+	databasePathCalls int
+}
+
+func (utils *failingStartupFileUtils) GetAppConfigDir() (string, error) {
+	return "", errors.New("config directory unavailable")
+}
+
+func (utils *failingStartupFileUtils) GetAppLogsDir() (string, error) {
+	return "", errors.New("logs directory unavailable")
+}
+
+func (utils *failingStartupFileUtils) GetAppDatabaseFilePath() (string, error) {
+	utils.databasePathCalls++
+	return "", errors.New("settings database unavailable")
+}
+
+var _ file.FileUtilsServiceAPI = (*failingStartupFileUtils)(nil)

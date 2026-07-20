@@ -8,6 +8,74 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 )
 
+// Proves: STORY-009-AC-3
+// Unsupported Appearance and Markdown enum/style members return validation envelopes without writing any part of their group.
+func TestSettingsHandlerRejectsUnsupportedGroupUpdatesWithoutWriting(t *testing.T) {
+	original := apperr.Settings{
+		Appearance: apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeLight, DefaultOpenMode: OpenModeViewer},
+		Markdown: apperr.MarkdownSettings{
+			Standard:       MarkdownMinimal,
+			FormatOnSave:   true,
+			LintOnSave:     false,
+			BulletMarker:   BulletMarkerAsterisk,
+			EmphasisMarker: EmphasisMarkerAsterisk,
+			HeadingStyle:   HeadingStyleSetext,
+		},
+		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAllow},
+	}
+
+	t.Run("appearance enum values", func(t *testing.T) {
+		testCases := []struct {
+			name  string
+			input apperr.AppearanceSettings
+		}{
+			{name: "theme", input: apperr.AppearanceSettings{Theme: "vaporwave", Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode}},
+			{name: "mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: "midnight", DefaultOpenMode: original.Appearance.DefaultOpenMode}},
+			{name: "default open mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: "split"}},
+		}
+		for _, testCase := range testCases {
+			t.Run(testCase.name, func(t *testing.T) {
+				repository := fakeSettingsRepository{appearance: original.Appearance, markdown: original.Markdown, contentPrivacy: original.ContentPrivacy}
+				handler := NewSettingsHandler(NewSettingsService(&repository), nil, nil)
+
+				result := handler.UpdateAppearance(testCase.input)
+				if result.Error == nil || result.Error.Code != apperr.CodeValidation {
+					t.Fatalf("invalid appearance envelope = %+v, want validation error", result)
+				}
+				if repository.appearance != original.Appearance || repository.appearanceUpdates != 0 {
+					t.Fatalf("appearance after rejected update = %+v with %d writes, want %+v and zero writes", repository.appearance, repository.appearanceUpdates, original.Appearance)
+				}
+			})
+		}
+	})
+
+	t.Run("markdown enum and style values", func(t *testing.T) {
+		testCases := []struct {
+			name  string
+			input apperr.MarkdownSettings
+		}{
+			{name: "standard", input: apperr.MarkdownSettings{Standard: "plain-text", FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: original.Markdown.BulletMarker, EmphasisMarker: original.Markdown.EmphasisMarker, HeadingStyle: original.Markdown.HeadingStyle}},
+			{name: "bullet marker", input: apperr.MarkdownSettings{Standard: original.Markdown.Standard, FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: "•", EmphasisMarker: original.Markdown.EmphasisMarker, HeadingStyle: original.Markdown.HeadingStyle}},
+			{name: "emphasis marker", input: apperr.MarkdownSettings{Standard: original.Markdown.Standard, FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: original.Markdown.BulletMarker, EmphasisMarker: "~", HeadingStyle: original.Markdown.HeadingStyle}},
+			{name: "heading style", input: apperr.MarkdownSettings{Standard: original.Markdown.Standard, FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: original.Markdown.BulletMarker, EmphasisMarker: original.Markdown.EmphasisMarker, HeadingStyle: "underlined"}},
+		}
+		for _, testCase := range testCases {
+			t.Run(testCase.name, func(t *testing.T) {
+				repository := fakeSettingsRepository{appearance: original.Appearance, markdown: original.Markdown, contentPrivacy: original.ContentPrivacy}
+				handler := NewSettingsHandler(NewSettingsService(&repository), nil, nil)
+
+				result := handler.UpdateMarkdown(testCase.input)
+				if result.Error == nil || result.Error.Code != apperr.CodeValidation {
+					t.Fatalf("invalid markdown envelope = %+v, want validation error", result)
+				}
+				if repository.markdown != original.Markdown || repository.markdownUpdates != 0 {
+					t.Fatalf("markdown after rejected update = %+v with %d writes, want %+v and zero writes", repository.markdown, repository.markdownUpdates, original.Markdown)
+				}
+			})
+		}
+	})
+}
+
 // Proves: STORY-005-AC-1
 // The Wails surface returns only concrete envelopes, has no context argument, and recovers repository panics without partial data.
 func TestSettingsHandlerReturnsRecoveredResultEnvelope(t *testing.T) {

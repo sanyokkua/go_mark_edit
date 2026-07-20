@@ -14,6 +14,7 @@ export namespace apperr {
 	export class AppearanceSettings {
 	    theme: string;
 	    mode: string;
+	    defaultOpenMode: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppearanceSettings(source);
@@ -23,6 +24,7 @@ export namespace apperr {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.theme = source["theme"];
 	        this.mode = source["mode"];
+	        this.defaultOpenMode = source["defaultOpenMode"];
 	    }
 	}
 	export class ContentPrivacySettings {
@@ -39,6 +41,11 @@ export namespace apperr {
 	}
 	export class MarkdownSettings {
 	    standard: string;
+	    formatOnSave: boolean;
+	    lintOnSave: boolean;
+	    bulletMarker: string;
+	    emphasisMarker: string;
+	    headingStyle: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new MarkdownSettings(source);
@@ -47,6 +54,11 @@ export namespace apperr {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.standard = source["standard"];
+	        this.formatOnSave = source["formatOnSave"];
+	        this.lintOnSave = source["lintOnSave"];
+	        this.bulletMarker = source["bulletMarker"];
+	        this.emphasisMarker = source["emphasisMarker"];
+	        this.headingStyle = source["headingStyle"];
 	    }
 	}
 	export class Settings {

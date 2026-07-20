@@ -126,12 +126,25 @@ func normalizeAppearance(appearance apperr.AppearanceSettings) apperr.Appearance
 	if !isMode(appearance.Mode) {
 		appearance.Mode = defaults.Mode
 	}
+	if !isOpenMode(appearance.DefaultOpenMode) {
+		appearance.DefaultOpenMode = defaults.DefaultOpenMode
+	}
 	return appearance
 }
 
 func normalizeMarkdown(markdown apperr.MarkdownSettings) apperr.MarkdownSettings {
+	defaults := DefaultSettings().Markdown
 	if !isMarkdownStandard(markdown.Standard) {
-		markdown.Standard = DefaultSettings().Markdown.Standard
+		markdown.Standard = defaults.Standard
+	}
+	if !isBulletMarker(markdown.BulletMarker) {
+		markdown.BulletMarker = defaults.BulletMarker
+	}
+	if !isEmphasisMarker(markdown.EmphasisMarker) {
+		markdown.EmphasisMarker = defaults.EmphasisMarker
+	}
+	if !isHeadingStyle(markdown.HeadingStyle) {
+		markdown.HeadingStyle = defaults.HeadingStyle
 	}
 	return markdown
 }
@@ -150,12 +163,24 @@ func validateAppearance(appearance apperr.AppearanceSettings) error {
 	if !isMode(appearance.Mode) {
 		return apperr.Validation("appearance.mode", "auto, light, or dark", appearance.Mode)
 	}
+	if !isOpenMode(appearance.DefaultOpenMode) {
+		return apperr.Validation("view.defaultOpenMode", "editor or viewer", appearance.DefaultOpenMode)
+	}
 	return nil
 }
 
 func validateMarkdown(markdown apperr.MarkdownSettings) error {
 	if !isMarkdownStandard(markdown.Standard) {
 		return apperr.Validation("markdown.standard", "minimal, gfm, or full", markdown.Standard)
+	}
+	if !isBulletMarker(markdown.BulletMarker) {
+		return apperr.Validation("format.bulletMarker", "-, *, or +", markdown.BulletMarker)
+	}
+	if !isEmphasisMarker(markdown.EmphasisMarker) {
+		return apperr.Validation("format.emphasisMarker", "_ or *", markdown.EmphasisMarker)
+	}
+	if !isHeadingStyle(markdown.HeadingStyle) {
+		return apperr.Validation("format.headingStyle", "atx or setext", markdown.HeadingStyle)
 	}
 	return nil
 }
@@ -175,8 +200,24 @@ func isMode(value string) bool {
 	return value == ModeAuto || value == ModeLight || value == ModeDark
 }
 
+func isOpenMode(value string) bool {
+	return value == OpenModeEditor || value == OpenModeViewer
+}
+
 func isMarkdownStandard(value string) bool {
 	return value == MarkdownMinimal || value == MarkdownGFM || value == MarkdownFull
+}
+
+func isBulletMarker(value string) bool {
+	return value == BulletMarkerDash || value == BulletMarkerAsterisk || value == BulletMarkerPlus
+}
+
+func isEmphasisMarker(value string) bool {
+	return value == EmphasisMarkerUnderscore || value == EmphasisMarkerAsterisk
+}
+
+func isHeadingStyle(value string) bool {
+	return value == HeadingStyleATX || value == HeadingStyleSetext
 }
 
 func isRemotePolicy(value string) bool {

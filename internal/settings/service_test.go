@@ -18,14 +18,19 @@ func TestInvalidOrMissingSettingFallsBackToDefault(t *testing.T) {
 		repository fakeSettingsRepository
 	}{
 		{
-			name:       "missing scalar values",
-			repository: fakeSettingsRepository{},
+			name: "missing string scalar values with documented bools",
+			repository: fakeSettingsRepository{
+				markdown: apperr.MarkdownSettings{
+					FormatOnSave: defaults.Markdown.FormatOnSave,
+					LintOnSave:   defaults.Markdown.LintOnSave,
+				},
+			},
 		},
 		{
 			name: "malformed scalar values",
 			repository: fakeSettingsRepository{
 				appearance:     apperr.AppearanceSettings{Theme: "neon", Mode: "midnight"},
-				markdown:       apperr.MarkdownSettings{Standard: "commonmark-plus"},
+				markdown:       apperr.MarkdownSettings{Standard: "commonmark-plus", FormatOnSave: defaults.Markdown.FormatOnSave, LintOnSave: defaults.Markdown.LintOnSave},
 				contentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: "sometimes"},
 			},
 		},
@@ -47,10 +52,12 @@ func TestInvalidOrMissingSettingFallsBackToDefault(t *testing.T) {
 }
 
 type fakeSettingsRepository struct {
-	appearance     apperr.AppearanceSettings
-	markdown       apperr.MarkdownSettings
-	contentPrivacy apperr.ContentPrivacySettings
-	panicOperation string
+	appearance        apperr.AppearanceSettings
+	markdown          apperr.MarkdownSettings
+	contentPrivacy    apperr.ContentPrivacySettings
+	panicOperation    string
+	appearanceUpdates int
+	markdownUpdates   int
 }
 
 func (repository *fakeSettingsRepository) GetAppearance(context.Context) (apperr.AppearanceSettings, error) {
@@ -78,6 +85,7 @@ func (repository *fakeSettingsRepository) UpdateAppearance(_ context.Context, ap
 	if repository.panicOperation == "update appearance" {
 		panic("update appearance")
 	}
+	repository.appearanceUpdates++
 	repository.appearance = appearance
 	return nil
 }
@@ -86,6 +94,7 @@ func (repository *fakeSettingsRepository) UpdateMarkdown(_ context.Context, mark
 	if repository.panicOperation == "update markdown" {
 		panic("update markdown")
 	}
+	repository.markdownUpdates++
 	repository.markdown = markdown
 	return nil
 }

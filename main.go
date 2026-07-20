@@ -13,10 +13,16 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+var (
+	messageDialog = runtime.MessageDialog
+	exitProcess   = os.Exit
+)
 
 func main() {
 	bootstrapLogger := bootstrap.NewLogger()
@@ -58,8 +64,12 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		},
 		OnStartup: func(ctx context.Context) {
 			applicationContext.SetContext(ctx)
-			if err := applicationContext.Init(ctx); err != nil && appLogger != nil {
-				appLogger.Error(err.Error())
+			if err := applicationContext.Init(ctx); err != nil {
+				if appLogger != nil {
+					appLogger.Error(err.Error())
+				}
+				showStartupFailure(ctx)
+				return
 			}
 		},
 		OnShutdown: func(_ context.Context) {
@@ -72,4 +82,13 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		EnumBind: []interface{}{apperr.AllErrorCodes},
 		Logger:   appLogger,
 	}
+}
+
+func showStartupFailure(ctx context.Context) {
+	_, _ = messageDialog(ctx, runtime.MessageDialogOptions{
+		Type:    runtime.ErrorDialog,
+		Title:   "GoMarkEdit could not start",
+		Message: "GoMarkEdit could not initialize its local settings. Please try again.",
+	})
+	exitProcess(1)
 }
