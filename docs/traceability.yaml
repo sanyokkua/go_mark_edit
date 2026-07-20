@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-20T16:23:11.756Z",
+  "generated_at": "2026-07-20T17:21:14.275Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -204,7 +204,7 @@
     },
     "STORY-006": {
       "title": "Build the frontend adapter projection-store toast and bridge mock foundations",
-      "status": "ready",
+      "status": "done",
       "phase": "00",
       "spec_clauses": [
         "02_Architecture/03_FRONTEND_REACT.md#structure",
@@ -225,16 +225,26 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-006-AC-1": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/index.test.ts:36"
+          ]
         },
         "STORY-006-AC-2": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/store/store.test.ts:11"
+          ]
         },
         "STORY-006-AC-3": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/index.test.ts:109",
+            "frontend/src/logic/utils/parseError.test.ts:3",
+            "frontend/src/ui/primitives/Toast.test.tsx:9"
+          ]
         },
         "STORY-006-AC-4": {
-          "tests": []
+          "tests": [
+            "frontend/src/dev/bridge-mock/bridge.test.ts:69"
+          ]
         }
       }
     },

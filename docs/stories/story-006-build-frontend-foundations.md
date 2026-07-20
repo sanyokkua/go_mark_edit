@@ -1,7 +1,7 @@
 ---
 id: STORY-006
 title: Build the frontend adapter projection-store toast and bridge mock foundations
-status: ready
+status: done
 spec_clauses:
   - 02_Architecture/03_FRONTEND_REACT.md#structure
   - 02_Architecture/03_FRONTEND_REACT.md#adapter-layer
@@ -42,8 +42,13 @@ Give the webview one typed, mockable command boundary and one consistent user-fe
 - Documents, tabs, canonical content, and appmodel state, which begin in Phase 01.
 
 ## Spec inputs
-- `02_Architecture/03_FRONTEND_REACT.md#adapter-layer` — adapter is the only Wails binding importer.
-- `02_Architecture/06_ERROR_HANDLING.md#toasts` — unwrap is the single automatic error-feedback choke point.
+- `02_Architecture/03_FRONTEND_REACT.md#structure` — frontend source separates adapter, projection-store, utility, Toast primitive, and dev bridge-mock responsibilities; only `logic/adapter/` may import `wailsjs/`.
+- `02_Architecture/03_FRONTEND_REACT.md#adapter-layer` — typed adapter singletons wrap bindings with `guardArity`, await Result envelopes, and return through `unwrap`.
+- `02_Architecture/03_FRONTEND_REACT.md#bridge-mock` — plain `npm run dev` redirects Wails handler/runtime imports to plausible Result-envelope mocks, while Wails mode and production retain the real bridge.
+- `02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow` — UI commands flow through Redux and the adapter to Wails/Go, then `unwrap` returns data or dispatches an error notification before rejection.
+- `02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries` — the frontend calls adapter singletons rather than `wailsjs/`; the adapter owns envelope unwrapping and arity guarding.
+- `02_Architecture/06_ERROR_HANDLING.md#frontend-parseerror` — `parseError` turns every rejected value into a stable typed `WireError` for store and UI handling.
+- `02_Architecture/06_ERROR_HANDLING.md#toasts` — `unwrap` is the single automatic error-feedback choke point, dispatching `notifyError` before throwing the envelope error.
 
 ## Design constraints
 - Redux is a disposable backend projection and never holds canonical document content.
@@ -69,6 +74,7 @@ Each named test begins with its matching `Proves: STORY-006-AC-N` tag.
 - STORY-006-AC-2 — unit — `frontend/src/logic/store/store.test.ts` — `it('STORY-006-AC-2 creates projection-only notification state')`.
 - STORY-006-AC-3 — unit — `frontend/src/logic/utils/parseError.test.ts` — `it('STORY-006-AC-3 normalizes adapter failures')`.
 - STORY-006-AC-3 — unit — `frontend/src/logic/adapter/index.test.ts` — `it('STORY-006-AC-3 notifies once before throwing')`.
+- STORY-006-AC-3 — Jest RTL — `frontend/src/ui/primitives/Toast.test.tsx` — `it('STORY-006-AC-3 presents an accessible error toast and dismisses it after five seconds')`.
 - STORY-006-AC-4 — integration — `frontend/src/dev/bridge-mock/bridge.test.ts` — `it('STORY-006-AC-4 serves the app without Go')`.
 
 ## Definition of done

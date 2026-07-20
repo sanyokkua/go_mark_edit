@@ -15,6 +15,7 @@ fmt:
 
 lint:
     go vet ./...
+    npm --prefix frontend run lint
 
 typecheck:
     npm --prefix frontend run typecheck

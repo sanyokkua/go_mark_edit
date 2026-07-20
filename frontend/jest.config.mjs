@@ -5,6 +5,9 @@ export default {
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   testEnvironment: 'jsdom',
   testMatch: ['<rootDir>/src/**/*.test.ts?(x)'],
+  moduleNameMapper: {
+    '^wailsjs/(.*)$': '<rootDir>/wailsjs/$1',
+  },
   transform: {
     '^.+\\.tsx?$': [
       'ts-jest',
