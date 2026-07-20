@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-20T13:00:15.051Z",
+  "generated_at": "2026-07-20T14:47:07.771Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -118,7 +118,7 @@
     },
     "STORY-004": {
       "title": "Open the multi-instance-safe SQLite store and generated query layer",
-      "status": "ready",
+      "status": "done",
       "phase": "00",
       "spec_clauses": [
         "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema",
@@ -136,16 +136,24 @@
       ],
       "acceptance_criteria": {
         "STORY-004-AC-1": {
-          "tests": []
+          "tests": [
+            "internal/db/database_test.go:18"
+          ]
         },
         "STORY-004-AC-2": {
-          "tests": []
+          "tests": [
+            "internal/db/migrations_test.go:13"
+          ]
         },
         "STORY-004-AC-3": {
-          "tests": []
+          "tests": [
+            "internal/db/database_test.go:70"
+          ]
         },
         "STORY-004-AC-4": {
-          "tests": []
+          "tests": [
+            "internal/db/database_test.go:149"
+          ]
         }
       }
     },
@@ -464,13 +472,23 @@
       "stories": [
         "STORY-004"
       ],
-      "tests": []
+      "tests": [
+        "internal/db/database_test.go:149",
+        "internal/db/database_test.go:18",
+        "internal/db/database_test.go:70",
+        "internal/db/migrations_test.go:13"
+      ]
     },
     "EC-SET-2": {
       "stories": [
         "STORY-004"
       ],
-      "tests": []
+      "tests": [
+        "internal/db/database_test.go:149",
+        "internal/db/database_test.go:18",
+        "internal/db/database_test.go:70",
+        "internal/db/migrations_test.go:13"
+      ]
     }
   },
   "modules": {

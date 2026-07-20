@@ -1,7 +1,7 @@
 ---
 id: STORY-004
 title: Open the multi-instance-safe SQLite store and generated query layer
-status: ready
+status: done
 spec_clauses:
   - 02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
   - 02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations
