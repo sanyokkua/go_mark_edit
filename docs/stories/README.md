@@ -14,7 +14,7 @@ authors them **per phase** from that phase's suggested-task list
 
 | Story | Title | Phase | Status | Owner | Est |
 |---|---|---|---|---|---|
-| STORY-001 | Scaffold the Wails v2 app and embedded React frontend so a blank window boots | 00 | draft | coder | M |
+| STORY-001 | Scaffold the Wails v2 app and embedded React frontend so a blank window boots | 00 | done | coder | M |
 | STORY-002 | Implement the apperr envelope and Wails-bindable result contracts | 00 | draft | coder | M |
 | STORY-003 | Establish bootstrap logging paths and the generic single-flight gate | 00 | draft | coder | L |
 | STORY-004 | Open the multi-instance-safe SQLite store and generated query layer | 00 | draft | coder | M |

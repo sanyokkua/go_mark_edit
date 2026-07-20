@@ -1,9 +1,542 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
-# This seed shows the shape; it is empty until stories land and `just trace` runs.
-generated_at: '2026-07-10T00:00:00Z'
-generator_version: 1
-stories: {}
-clauses: {}
-edge_cases: {}
-modules: {}
+{
+  "generated_at": "2026-07-20T11:37:50.476Z",
+  "generator_version": 1,
+  "stories": {
+    "STORY-001": {
+      "title": "Scaffold the Wails v2 app and embedded React frontend so a blank window boots",
+      "status": "done",
+      "phase": "00",
+      "spec_clauses": [
+        "02_Architecture/01_SYSTEM_ARCHITECTURE.md#process-model",
+        "02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries",
+        "02_Architecture/04_WAILS_INTEGRATION.md#embed",
+        "00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework",
+        "05_Dependencies/01_GO_DEPENDENCIES.md#1-runtime-dependencies",
+        "05_Dependencies/01_GO_DEPENDENCIES.md#5-go-version"
+      ],
+      "modules": [
+        "internal/application/",
+        "ui/styles/",
+        "ui/widgets/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-001-AC-1": {
+          "tests": [
+            "main_test.go:14"
+          ]
+        },
+        "STORY-001-AC-2": {
+          "tests": [
+            "frontend/src/App.test.tsx:5"
+          ]
+        },
+        "STORY-001-AC-3": {
+          "tests": [
+            "main_test.go:53"
+          ]
+        }
+      }
+    },
+    "STORY-002": {
+      "title": "Implement the apperr envelope and Wails-bindable result contracts",
+      "status": "ready",
+      "phase": "00",
+      "spec_clauses": [
+        "02_Architecture/06_ERROR_HANDLING.md#error-codes",
+        "02_Architecture/06_ERROR_HANDLING.md#wire",
+        "02_Architecture/06_ERROR_HANDLING.md#result-envelopes",
+        "02_Architecture/02_BACKEND_GO.md#error-envelope",
+        "02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind"
+      ],
+      "modules": [
+        "internal/apperr/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-002-AC-1": {
+          "tests": []
+        },
+        "STORY-002-AC-2": {
+          "tests": []
+        },
+        "STORY-002-AC-3": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-003": {
+      "title": "Establish bootstrap logging paths and the generic single-flight gate",
+      "status": "ready",
+      "phase": "00",
+      "spec_clauses": [
+        "02_Architecture/02_BACKEND_GO.md#packages",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage",
+        "00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations"
+      ],
+      "modules": [
+        "internal/bootstrap/",
+        "internal/logging/",
+        "internal/file/",
+        "internal/gate/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-003-AC-1": {
+          "tests": []
+        },
+        "STORY-003-AC-2": {
+          "tests": []
+        },
+        "STORY-003-AC-3": {
+          "tests": []
+        },
+        "STORY-003-AC-4": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-004": {
+      "title": "Open the multi-instance-safe SQLite store and generated query layer",
+      "status": "ready",
+      "phase": "00",
+      "spec_clauses": [
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db",
+        "00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state"
+      ],
+      "modules": [
+        "internal/db/",
+        "internal/file/"
+      ],
+      "edge_cases": [
+        "EC-SET-1",
+        "EC-SET-2"
+      ],
+      "acceptance_criteria": {
+        "STORY-004-AC-1": {
+          "tests": []
+        },
+        "STORY-004-AC-2": {
+          "tests": []
+        },
+        "STORY-004-AC-3": {
+          "tests": []
+        },
+        "STORY-004-AC-4": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-005": {
+      "title": "Expose the typed settings registry and wire the two-phase application root",
+      "status": "ready",
+      "phase": "00",
+      "spec_clauses": [
+        "02_Architecture/02_BACKEND_GO.md#layering",
+        "02_Architecture/02_BACKEND_GO.md#di-two-phase",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema",
+        "01_Product/11_SETTINGS.md#persistence",
+        "01_Product/11_SETTINGS.md#appearance-group",
+        "01_Product/11_SETTINGS.md#markdown-group",
+        "01_Product/11_SETTINGS.md#content-privacy-group",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage"
+      ],
+      "modules": [
+        "internal/settings/",
+        "internal/db/",
+        "internal/apperr/",
+        "internal/application/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-005-AC-1": {
+          "tests": []
+        },
+        "STORY-005-AC-2": {
+          "tests": []
+        },
+        "STORY-005-AC-3": {
+          "tests": []
+        },
+        "STORY-005-AC-4": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-006": {
+      "title": "Build the frontend adapter projection-store toast and bridge mock foundations",
+      "status": "ready",
+      "phase": "00",
+      "spec_clauses": [
+        "02_Architecture/03_FRONTEND_REACT.md#structure",
+        "02_Architecture/03_FRONTEND_REACT.md#adapter-layer",
+        "02_Architecture/03_FRONTEND_REACT.md#bridge-mock",
+        "02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow",
+        "02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries",
+        "02_Architecture/06_ERROR_HANDLING.md#frontend-parseerror",
+        "02_Architecture/06_ERROR_HANDLING.md#toasts"
+      ],
+      "modules": [
+        "logic/adapter/",
+        "logic/store/",
+        "logic/utils/",
+        "dev/bridge-mock/",
+        "ui/primitives/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-006-AC-1": {
+          "tests": []
+        },
+        "STORY-006-AC-2": {
+          "tests": []
+        },
+        "STORY-006-AC-3": {
+          "tests": []
+        },
+        "STORY-006-AC-4": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-007": {
+      "title": "Reserve the three-region app shell and token-only style skeleton",
+      "status": "ready",
+      "phase": "00",
+      "spec_clauses": [
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage",
+        "02_Architecture/03_FRONTEND_REACT.md#structure",
+        "00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux"
+      ],
+      "modules": [
+        "ui/widgets/",
+        "ui/styles/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-007-AC-1": {
+          "tests": []
+        },
+        "STORY-007-AC-2": {
+          "tests": []
+        },
+        "STORY-007-AC-3": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-008": {
+      "title": "Add quality tooling and traceability validation for the initial backlog",
+      "status": "ready",
+      "phase": "00",
+      "spec_clauses": [
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#1-justfile-command-taxonomy",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#2-git-hooks-lefthook",
+        "06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands",
+        "06_Process_and_Traceability/04_ADR_FORMAT.md#template-copy-docsadrtemplatemd"
+      ],
+      "modules": [
+        "internal/application/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-008-AC-1": {
+          "tests": []
+        },
+        "STORY-008-AC-2": {
+          "tests": []
+        },
+        "STORY-008-AC-3": {
+          "tests": []
+        },
+        "STORY-008-AC-4": {
+          "tests": []
+        }
+      }
+    }
+  },
+  "clauses": {
+    "02_Architecture/01_SYSTEM_ARCHITECTURE.md#process-model": {
+      "stories": [
+        "STORY-001"
+      ]
+    },
+    "02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries": {
+      "stories": [
+        "STORY-001",
+        "STORY-006"
+      ]
+    },
+    "02_Architecture/04_WAILS_INTEGRATION.md#embed": {
+      "stories": [
+        "STORY-001"
+      ]
+    },
+    "00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework": {
+      "stories": [
+        "STORY-001"
+      ]
+    },
+    "05_Dependencies/01_GO_DEPENDENCIES.md#1-runtime-dependencies": {
+      "stories": [
+        "STORY-001"
+      ]
+    },
+    "05_Dependencies/01_GO_DEPENDENCIES.md#5-go-version": {
+      "stories": [
+        "STORY-001"
+      ]
+    },
+    "02_Architecture/06_ERROR_HANDLING.md#error-codes": {
+      "stories": [
+        "STORY-002"
+      ]
+    },
+    "02_Architecture/06_ERROR_HANDLING.md#wire": {
+      "stories": [
+        "STORY-002"
+      ]
+    },
+    "02_Architecture/06_ERROR_HANDLING.md#result-envelopes": {
+      "stories": [
+        "STORY-002"
+      ]
+    },
+    "02_Architecture/02_BACKEND_GO.md#error-envelope": {
+      "stories": [
+        "STORY-002"
+      ]
+    },
+    "02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind": {
+      "stories": [
+        "STORY-002"
+      ]
+    },
+    "02_Architecture/02_BACKEND_GO.md#packages": {
+      "stories": [
+        "STORY-003"
+      ]
+    },
+    "00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage": {
+      "stories": [
+        "STORY-003",
+        "STORY-005",
+        "STORY-007"
+      ]
+    },
+    "00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations": {
+      "stories": [
+        "STORY-003"
+      ]
+    },
+    "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema": {
+      "stories": [
+        "STORY-004",
+        "STORY-005"
+      ]
+    },
+    "02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations": {
+      "stories": [
+        "STORY-004"
+      ]
+    },
+    "02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db": {
+      "stories": [
+        "STORY-004"
+      ]
+    },
+    "00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state": {
+      "stories": [
+        "STORY-004"
+      ]
+    },
+    "02_Architecture/02_BACKEND_GO.md#layering": {
+      "stories": [
+        "STORY-005"
+      ]
+    },
+    "02_Architecture/02_BACKEND_GO.md#di-two-phase": {
+      "stories": [
+        "STORY-005"
+      ]
+    },
+    "01_Product/11_SETTINGS.md#persistence": {
+      "stories": [
+        "STORY-005"
+      ]
+    },
+    "01_Product/11_SETTINGS.md#appearance-group": {
+      "stories": [
+        "STORY-005"
+      ]
+    },
+    "01_Product/11_SETTINGS.md#markdown-group": {
+      "stories": [
+        "STORY-005"
+      ]
+    },
+    "01_Product/11_SETTINGS.md#content-privacy-group": {
+      "stories": [
+        "STORY-005"
+      ]
+    },
+    "02_Architecture/03_FRONTEND_REACT.md#structure": {
+      "stories": [
+        "STORY-006",
+        "STORY-007"
+      ]
+    },
+    "02_Architecture/03_FRONTEND_REACT.md#adapter-layer": {
+      "stories": [
+        "STORY-006"
+      ]
+    },
+    "02_Architecture/03_FRONTEND_REACT.md#bridge-mock": {
+      "stories": [
+        "STORY-006"
+      ]
+    },
+    "02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow": {
+      "stories": [
+        "STORY-006"
+      ]
+    },
+    "02_Architecture/06_ERROR_HANDLING.md#frontend-parseerror": {
+      "stories": [
+        "STORY-006"
+      ]
+    },
+    "02_Architecture/06_ERROR_HANDLING.md#toasts": {
+      "stories": [
+        "STORY-006"
+      ]
+    },
+    "00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux": {
+      "stories": [
+        "STORY-007"
+      ]
+    },
+    "04_Build_and_Release/03_CI_AND_HOOKS.md#1-justfile-command-taxonomy": {
+      "stories": [
+        "STORY-008"
+      ]
+    },
+    "04_Build_and_Release/03_CI_AND_HOOKS.md#2-git-hooks-lefthook": {
+      "stories": [
+        "STORY-008"
+      ]
+    },
+    "06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands": {
+      "stories": [
+        "STORY-008"
+      ]
+    },
+    "06_Process_and_Traceability/04_ADR_FORMAT.md#template-copy-docsadrtemplatemd": {
+      "stories": [
+        "STORY-008"
+      ]
+    }
+  },
+  "edge_cases": {
+    "EC-SET-1": {
+      "stories": [
+        "STORY-004"
+      ],
+      "tests": []
+    },
+    "EC-SET-2": {
+      "stories": [
+        "STORY-004"
+      ],
+      "tests": []
+    }
+  },
+  "modules": {
+    "internal/application/": {
+      "stories": [
+        "STORY-001",
+        "STORY-005",
+        "STORY-008"
+      ]
+    },
+    "ui/styles/": {
+      "stories": [
+        "STORY-001",
+        "STORY-007"
+      ]
+    },
+    "ui/widgets/": {
+      "stories": [
+        "STORY-001",
+        "STORY-007"
+      ]
+    },
+    "internal/apperr/": {
+      "stories": [
+        "STORY-002",
+        "STORY-005"
+      ]
+    },
+    "internal/bootstrap/": {
+      "stories": [
+        "STORY-003"
+      ]
+    },
+    "internal/logging/": {
+      "stories": [
+        "STORY-003"
+      ]
+    },
+    "internal/file/": {
+      "stories": [
+        "STORY-003",
+        "STORY-004"
+      ]
+    },
+    "internal/gate/": {
+      "stories": [
+        "STORY-003"
+      ]
+    },
+    "internal/db/": {
+      "stories": [
+        "STORY-004",
+        "STORY-005"
+      ]
+    },
+    "internal/settings/": {
+      "stories": [
+        "STORY-005"
+      ]
+    },
+    "logic/adapter/": {
+      "stories": [
+        "STORY-006"
+      ]
+    },
+    "logic/store/": {
+      "stories": [
+        "STORY-006"
+      ]
+    },
+    "logic/utils/": {
+      "stories": [
+        "STORY-006"
+      ]
+    },
+    "dev/bridge-mock/": {
+      "stories": [
+        "STORY-006"
+      ]
+    },
+    "ui/primitives/": {
+      "stories": [
+        "STORY-006"
+      ]
+    }
+  }
+}

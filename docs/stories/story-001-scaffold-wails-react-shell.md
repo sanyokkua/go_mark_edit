@@ -1,7 +1,7 @@
 ---
 id: STORY-001
 title: Scaffold the Wails v2 app and embedded React frontend so a blank window boots
-status: ready
+status: done
 spec_clauses:
   - 02_Architecture/01_SYSTEM_ARCHITECTURE.md#process-model
   - 02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries
@@ -63,6 +63,6 @@ Each named test begins with its matching `Proves: STORY-001-AC-N` tag.
 - STORY-001-AC-3 — architecture — `main_test.go` — `TestBuildConfigurationRemainsCGOFree`.
 
 ## Definition of done
-- [ ] Every test begins with its required `Proves: STORY-001-AC-N` tag.
-- [ ] Go and frontend checks pass; `just gen` is run for bound signatures.
-- [ ] `just trace` and `just trace-check` pass before status becomes `done`.
+- [x] Every test begins with its required `Proves: STORY-001-AC-N` tag.
+- [x] Go and frontend checks pass; `just gen` is run for bound signatures.
+- [x] `just trace` and `just trace-check` pass before status becomes `done`.
