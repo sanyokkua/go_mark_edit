@@ -38,7 +38,7 @@ func main() {
 		}
 	}()
 
-	applicationContext := application.NewApplicationContextHolder()
+	applicationContext := application.NewApplicationContextHolder(fileUtils, appLogger)
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
 		bootstrapLogger.Error().Err(err).Msg("run application")
 	}
@@ -56,12 +56,19 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		OnStartup: applicationContext.SetContext,
+		OnStartup: func(ctx context.Context) {
+			applicationContext.SetContext(ctx)
+			if err := applicationContext.Init(ctx); err != nil && appLogger != nil {
+				appLogger.Error(err.Error())
+			}
+		},
 		OnShutdown: func(_ context.Context) {
+			_ = applicationContext.Close()
 			if appLogger != nil {
 				_ = appLogger.Close()
 			}
 		},
+		Bind:     []interface{}{applicationContext.SettingsHandler},
 		EnumBind: []interface{}{apperr.AllErrorCodes},
 		Logger:   appLogger,
 	}

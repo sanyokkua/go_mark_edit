@@ -11,12 +11,14 @@ import (
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
+	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
 // Proves: STORY-001-AC-1
-// The application serves the built React root through Wails without bound handlers or an instance lock.
+// The application serves the built React root through Wails with its settings
+// handler bound and without an instance lock.
 func TestWailsAppEmbedsFrontendAndBootsBlankView(t *testing.T) {
-	holder := application.NewApplicationContextHolder()
+	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
 	appOptions := newAppOptions(holder)
 
 	if appOptions.AssetServer == nil || appOptions.AssetServer.Assets == nil {
@@ -45,8 +47,8 @@ func TestWailsAppEmbedsFrontendAndBootsBlankView(t *testing.T) {
 	if appOptions.SingleInstanceLock != nil {
 		t.Fatal("expected multiple Wails instances to be allowed")
 	}
-	if len(appOptions.Bind) != 0 {
-		t.Fatal("expected the blank shell to expose no bound handlers")
+	if len(appOptions.Bind) != 1 || appOptions.Bind[0] != holder.SettingsHandler {
+		t.Fatal("expected the settings handler to be bound")
 	}
 }
 
@@ -57,7 +59,7 @@ type startupContextKey struct{}
 func TestAppOptionsEnumBindIncludesAllErrorCodes(t *testing.T) {
 	t.Parallel()
 
-	appOptions := newAppOptions(application.NewApplicationContextHolder())
+	appOptions := newAppOptions(application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil))
 	if len(appOptions.EnumBind) != 1 {
 		t.Fatalf("EnumBind has %d entries, want exactly the ErrorCode catalog", len(appOptions.EnumBind))
 	}
@@ -139,3 +141,21 @@ type cgoImportError struct {
 func (err *cgoImportError) Error() string {
 	return "application source imports C: " + err.path
 }
+
+type testFileUtils struct {
+	databasePath string
+}
+
+func (utils testFileUtils) GetAppConfigDir() (string, error) {
+	return filepath.Dir(utils.databasePath), nil
+}
+
+func (utils testFileUtils) GetAppLogsDir() (string, error) {
+	return filepath.Join(filepath.Dir(utils.databasePath), "logs"), nil
+}
+
+func (utils testFileUtils) GetAppDatabaseFilePath() (string, error) {
+	return utils.databasePath, nil
+}
+
+var _ file.FileUtilsServiceAPI = testFileUtils{}

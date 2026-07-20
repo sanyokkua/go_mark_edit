@@ -1,7 +1,7 @@
 ---
 id: STORY-005
 title: Expose the typed settings registry and wire the two-phase application root
-status: ready
+status: done
 spec_clauses:
   - 02_Architecture/02_BACKEND_GO.md#layering
   - 02_Architecture/02_BACKEND_GO.md#di-two-phase

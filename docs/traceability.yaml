@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-20T14:47:07.771Z",
+  "generated_at": "2026-07-20T15:32:29.909Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -25,7 +25,7 @@
       "acceptance_criteria": {
         "STORY-001-AC-1": {
           "tests": [
-            "main_test.go:16"
+            "main_test.go:17"
           ]
         },
         "STORY-001-AC-2": {
@@ -35,7 +35,7 @@
         },
         "STORY-001-AC-3": {
           "tests": [
-            "main_test.go:77"
+            "main_test.go:79"
           ]
         }
       }
@@ -60,7 +60,7 @@
           "tests": [
             "internal/apperr/results_test.go:114",
             "internal/apperr/results_test.go:9",
-            "main_test.go:55"
+            "main_test.go:57"
           ]
         },
         "STORY-002-AC-2": {
@@ -159,7 +159,7 @@
     },
     "STORY-005": {
       "title": "Expose the typed settings registry and wire the two-phase application root",
-      "status": "ready",
+      "status": "done",
       "phase": "00",
       "spec_clauses": [
         "02_Architecture/02_BACKEND_GO.md#layering",
@@ -180,16 +180,25 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-005-AC-1": {
-          "tests": []
+          "tests": [
+            "internal/settings/handler_test.go:11"
+          ]
         },
         "STORY-005-AC-2": {
-          "tests": []
+          "tests": [
+            "internal/settings/repository_sqlite_test.go:13"
+          ]
         },
         "STORY-005-AC-3": {
-          "tests": []
+          "tests": [
+            "internal/settings/repository_sqlite_test.go:89",
+            "internal/settings/service_test.go:10"
+          ]
         },
         "STORY-005-AC-4": {
-          "tests": []
+          "tests": [
+            "internal/application/application_test.go:17"
+          ]
         }
       }
     },
