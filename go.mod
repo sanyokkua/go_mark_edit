@@ -5,6 +5,7 @@ go 1.25
 require (
 	github.com/rs/zerolog v1.34.0
 	github.com/wailsapp/wails/v2 v2.12.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (

@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-20T12:21:00.513Z",
+  "generated_at": "2026-07-20T13:00:15.051Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -77,7 +77,7 @@
     },
     "STORY-003": {
       "title": "Establish bootstrap logging paths and the generic single-flight gate",
-      "status": "ready",
+      "status": "done",
       "phase": "00",
       "spec_clauses": [
         "02_Architecture/02_BACKEND_GO.md#packages",
@@ -88,21 +88,31 @@
         "internal/bootstrap/",
         "internal/logging/",
         "internal/file/",
-        "internal/gate/"
+        "internal/gate/",
+        "internal/application/"
       ],
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-003-AC-1": {
-          "tests": []
+          "tests": [
+            "internal/bootstrap/bootstrap_test.go:9",
+            "internal/logging/logger_test.go:12"
+          ]
         },
         "STORY-003-AC-2": {
-          "tests": []
+          "tests": [
+            "internal/file/paths_test.go:9"
+          ]
         },
         "STORY-003-AC-3": {
-          "tests": []
+          "tests": [
+            "internal/gate/gate_test.go:5"
+          ]
         },
         "STORY-003-AC-4": {
-          "tests": []
+          "tests": [
+            "internal/application/architecture_test.go:14"
+          ]
         }
       }
     },
@@ -467,6 +477,7 @@
     "internal/application/": {
       "stories": [
         "STORY-001",
+        "STORY-003",
         "STORY-005",
         "STORY-008"
       ]

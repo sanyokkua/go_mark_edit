@@ -1,7 +1,7 @@
 ---
 id: STORY-003
 title: Establish bootstrap logging paths and the generic single-flight gate
-status: ready
+status: done
 spec_clauses:
   - 02_Architecture/02_BACKEND_GO.md#packages
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
@@ -11,6 +11,7 @@ modules:
   - internal/logging/
   - internal/file/
   - internal/gate/
+  - internal/application/
 acceptance_criteria:
   - STORY-003-AC-1
   - STORY-003-AC-2
@@ -44,7 +45,8 @@ Supply the local-only process primitives needed before database initialization a
 
 ## Design constraints
 - No socket, telemetry, auto-update, or single-instance lock may be introduced.
-- The gate is generic and returns the standard busy envelope rather than making assumptions about an operation type.
+- The gate is generic: a concurrent acquisition is rejected with `false`; a future handler maps that
+  rejection to `apperr.Busy()`.
 
 ## Acceptance criteria
 ### STORY-003-AC-1
@@ -54,7 +56,8 @@ Bootstrap logging is available before database initialization, and configured lo
 Development and production resolve distinct config and log paths named `GoMarkEdit-Dev` and `GoMarkEdit`.
 
 ### STORY-003-AC-3
-The generic gate admits one long operation and returns the standard busy result to a concurrent caller.
+The generic gate admits one long operation and rejects a concurrent caller with `false`; a future
+handler maps that rejection to the standard busy result.
 
 ### STORY-003-AC-4
 No scaffold service creates a single-instance lock or makes an outbound network call.
@@ -65,7 +68,7 @@ Each named test begins with its matching `Proves: STORY-003-AC-N` tag.
 - STORY-003-AC-1 — unit — `internal/bootstrap/bootstrap_test.go` — `TestBootstrapLoggerIsAvailableBeforeDatabaseOpen`.
 - STORY-003-AC-1 — integration — `internal/logging/logger_test.go` — `TestConfiguredLoggerWritesLocalRotatingSink`.
 - STORY-003-AC-2 — unit — `internal/file/paths_test.go` — `TestResolvePathsSeparatesDevelopmentFromProduction`.
-- STORY-003-AC-3 — unit — `internal/gate/gate_test.go` — `TestGateRejectsConcurrentAcquisitionAsBusy`.
+- STORY-003-AC-3 — unit — `internal/gate/gate_test.go` — `TestGateRejectsConcurrentAcquisition`.
 - STORY-003-AC-4 — architecture — `internal/application/architecture_test.go` — `TestScaffoldHasNoSingleInstanceOrNetworkPath`.
 
 ## Definition of done

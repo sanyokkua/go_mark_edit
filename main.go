@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"embed"
-	"fmt"
 	"os"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
+	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
+	"github.com/sanyokkua/go_mark_edit/internal/file"
+	"github.com/sanyokkua/go_mark_edit/internal/logging"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -16,13 +19,36 @@ import (
 var assets embed.FS
 
 func main() {
+	bootstrapLogger := bootstrap.NewLogger()
+	fileUtils := file.NewFileUtilsService(bootstrap.IsDevBuild())
+	logDirectory, err := fileUtils.GetAppLogsDir()
+	if err != nil {
+		bootstrapLogger.Error().Err(err).Msg("resolve log directory")
+		os.Exit(1)
+	}
+
+	appLogger, err := logging.NewLogger(logDirectory, bootstrap.IsDevBuild())
+	if err != nil {
+		bootstrapLogger.Error().Err(err).Msg("configure local logger")
+		os.Exit(1)
+	}
+	defer func() {
+		if closeErr := appLogger.Close(); closeErr != nil {
+			bootstrapLogger.Error().Err(closeErr).Msg("close local logger")
+		}
+	}()
+
 	applicationContext := application.NewApplicationContextHolder()
-	if err := wails.Run(newAppOptions(applicationContext)); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
+		bootstrapLogger.Error().Err(err).Msg("run application")
 	}
 }
 
 func newAppOptions(applicationContext *application.ApplicationContextHolder) *options.App {
+	return newAppOptionsWithLogger(applicationContext, nil)
+}
+
+func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger) *options.App {
 	return &options.App{
 		Title:  "GoMarkEdit",
 		Width:  1024,
@@ -31,6 +57,12 @@ func newAppOptions(applicationContext *application.ApplicationContextHolder) *op
 			Assets: assets,
 		},
 		OnStartup: applicationContext.SetContext,
-		EnumBind:  []interface{}{apperr.AllErrorCodes},
+		OnShutdown: func(_ context.Context) {
+			if appLogger != nil {
+				_ = appLogger.Close()
+			}
+		},
+		EnumBind: []interface{}{apperr.AllErrorCodes},
+		Logger:   appLogger,
 	}
 }
