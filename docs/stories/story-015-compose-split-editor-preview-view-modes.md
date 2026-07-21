@@ -1,7 +1,7 @@
 ---
 id: STORY-015
 title: Compose the split editor and preview with backend-owned view modes
-status: ready
+status: done
 spec_clauses:
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle

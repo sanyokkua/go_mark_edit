@@ -1,0 +1,34 @@
+.segmented {
+  display: inline-flex;
+  gap: var(--segmented-gap);
+  padding: var(--segmented-padding);
+  border: var(--segmented-border-width) solid var(--segmented-border-color);
+  border-radius: var(--segmented-radius);
+}
+
+.option,
+.optionSelected {
+  border: 0;
+  border-radius: var(--segmented-option-radius);
+  padding: var(--segmented-option-padding-block)
+    var(--segmented-option-padding-inline);
+  background: var(--segmented-option-background);
+  color: var(--segmented-option-color);
+  cursor: pointer;
+  font: inherit;
+  line-height: var(--segmented-line-height);
+}
+
+.optionSelected {
+  font-weight: var(--segmented-selected-font-weight);
+  outline: var(--segmented-selected-outline-width) solid
+    var(--segmented-outline-color);
+  outline-offset: var(--segmented-selected-outline-offset);
+}
+
+.option:focus-visible,
+.optionSelected:focus-visible {
+  outline: var(--segmented-focus-outline-width) solid
+    var(--segmented-outline-color);
+  outline-offset: var(--segmented-focus-outline-offset);
+}

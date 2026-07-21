@@ -1,7 +1,7 @@
 ---
 id: STORY-016
 title: Add the core editor status bar
-status: draft
+status: ready
 spec_clauses:
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
   - 01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings

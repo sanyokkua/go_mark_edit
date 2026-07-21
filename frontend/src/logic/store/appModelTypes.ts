@@ -3,6 +3,10 @@ export interface ActiveBuffer {
   content: string;
 }
 
+export const viewArrangements = ['editor', 'split', 'preview'] as const;
+
+export type ViewArrangement = (typeof viewArrangements)[number];
+
 export interface CursorPosition {
   line: number;
   column: number;

@@ -1,7 +1,43 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Provider } from 'react-redux';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IRange, ISelection } from 'monaco-editor';
+
+const mockSetDocView = jest.fn(async (): Promise<void> => undefined);
+let mockStatePatchListener:
+  | ((patch: import('../../logic/store/appModelTypes').AppStatePatch) => void)
+  | undefined;
+
+jest.mock('../../logic/adapter', () => ({
+  appModelAdapter: {
+    flushBuffer: jest.fn(async (): Promise<void> => undefined),
+    flushDocView: jest.fn(async (): Promise<void> => undefined),
+    getState: jest.fn(),
+    setDocView: mockSetDocView,
+    setUILayout: jest.fn(async (): Promise<void> => undefined),
+    subscribeAcceptedBuffers: jest.fn((): (() => void) => jest.fn()),
+    subscribeStatePatches: jest.fn(
+      (
+        listener: (
+          patch: import('../../logic/store/appModelTypes').AppStatePatch,
+        ) => void,
+      ): (() => void) => {
+        mockStatePatchListener = listener;
+        return (): void => {
+          mockStatePatchListener = undefined;
+        };
+      },
+    ),
+    updateBuffer: jest.fn(async (): Promise<void> => undefined),
+    updateDocView: jest.fn(async (): Promise<void> => undefined),
+  },
+}));
 
 interface MockMonacoRuntime {
   editor: editor.IStandaloneCodeEditor;
@@ -87,6 +123,15 @@ import {
   hydrateProjection,
   resetProjection,
 } from '../../logic/store/appModelProjectionActions';
+import {
+  bootstrapAppModelProjection,
+  disposeAppModelProjection,
+} from '../../logic/store/appModelProjection';
+import type {
+  AppModelState,
+  DocumentMetadata,
+} from '../../logic/store/appModelTypes';
+import { appModelAdapter } from '../../logic/adapter';
 import { store } from '../../logic/store';
 import { EditorSessionContext } from './editorSession';
 import EditorView from './EditorView';
@@ -98,6 +143,7 @@ beforeEach((): void => {
 
 afterEach((): void => {
   jest.useRealTimers();
+  disposeAppModelProjection();
   store.dispatch(resetProjection());
 });
 
@@ -174,4 +220,204 @@ it('STORY-019-AC-3 preserves Monaco state on metadata patches', async () => {
   expect(editor.selectionEnd).toBe(3);
   expect(mockRuntime.model.setValue).not.toHaveBeenCalled();
   expect(JSON.stringify(store.getState())).not.toContain('Local user edit');
+});
+
+it('STORY-015-AC-2 round trips view mode through the backend patch', async () => {
+  const initialDocument: DocumentMetadata = {
+    documentId: 'document-1',
+    title: 'Untitled',
+    path: '',
+    dirty: false,
+    encoding: 'utf-8',
+    lineEnding: 'lf',
+    wordCount: 1,
+    view: {
+      arrangement: 'editor',
+      editorVisible: true,
+      previewVisible: false,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 0 },
+    },
+  };
+  const initialState: AppModelState = {
+    snapshot: {
+      revision: 1,
+      documents: { [initialDocument.documentId]: initialDocument },
+      activeDocumentId: initialDocument.documentId,
+      ui: {},
+    },
+    activeBuffer: {
+      documentId: initialDocument.documentId,
+      content: '# Backend-owned preview',
+    },
+  };
+  const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
+  mockedAdapter.getState.mockResolvedValue(initialState);
+  mockSetDocView.mockClear();
+
+  await bootstrapAppModelProjection(appModelAdapter);
+
+  render(
+    <Provider store={store}>
+      <EditorSessionContext.Provider value={initialState.activeBuffer}>
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+
+  expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Preview pane')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('radio', { name: 'Preview' }));
+
+  await Promise.resolve();
+  expect(mockSetDocView).toHaveBeenCalledWith('document-1', {
+    editorVisible: false,
+    previewVisible: true,
+    cursor: { line: 1, column: 1 },
+    selection: {
+      start: { line: 1, column: 1 },
+      end: { line: 1, column: 1 },
+    },
+    scroll: { editor: 0, preview: 0 },
+  });
+  expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Preview pane')).not.toBeInTheDocument();
+
+  act((): void => {
+    mockStatePatchListener?.({
+      revision: 2,
+      documents: {
+        upsert: {
+          'document-1': {
+            ...initialDocument,
+            view: {
+              ...initialDocument.view,
+              arrangement: 'preview',
+              editorVisible: false,
+              previewVisible: true,
+            },
+          },
+        },
+      },
+    });
+  });
+
+  expect(screen.queryByLabelText('Editor pane')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+  expect(
+    screen.getByRole('heading', { name: 'Backend-owned preview' }),
+  ).toBeInTheDocument();
+});
+
+it('STORY-015-AC-5 keeps keyboard selection and focus backend-controlled', async () => {
+  const initialDocument: DocumentMetadata = {
+    documentId: 'document-1',
+    title: 'Untitled',
+    path: '',
+    dirty: false,
+    encoding: 'utf-8',
+    lineEnding: 'lf',
+    wordCount: 1,
+    view: {
+      arrangement: 'editor',
+      editorVisible: true,
+      previewVisible: false,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 0 },
+    },
+  };
+  const initialState: AppModelState = {
+    snapshot: {
+      revision: 1,
+      documents: { [initialDocument.documentId]: initialDocument },
+      activeDocumentId: initialDocument.documentId,
+      ui: {},
+    },
+    activeBuffer: {
+      documentId: initialDocument.documentId,
+      content: '# Backend-owned preview',
+    },
+  };
+  const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
+  mockedAdapter.getState.mockResolvedValue(initialState);
+  mockSetDocView.mockClear();
+
+  await bootstrapAppModelProjection(appModelAdapter);
+
+  render(
+    <Provider store={store}>
+      <EditorSessionContext.Provider value={initialState.activeBuffer}>
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+
+  const editor = screen.getByRole('radio', { name: 'Editor' });
+  editor.focus();
+
+  fireEvent.keyDown(editor, { key: 'End' });
+  await waitFor((): void => {
+    expect(mockSetDocView).toHaveBeenCalledTimes(1);
+  });
+  expect(mockSetDocView).toHaveBeenLastCalledWith(
+    'document-1',
+    expect.objectContaining({ editorVisible: false, previewVisible: true }),
+  );
+  expect(editor).toBeChecked();
+  expect(editor).toHaveFocus();
+
+  act((): void => {
+    mockStatePatchListener?.({
+      revision: 2,
+      documents: {
+        upsert: {
+          'document-1': {
+            ...initialDocument,
+            view: {
+              ...initialDocument.view,
+              arrangement: 'preview',
+              editorVisible: false,
+              previewVisible: true,
+            },
+          },
+        },
+      },
+    });
+  });
+
+  const preview = screen.getByRole('radio', { name: 'Preview' });
+  expect(preview).toBeChecked();
+  expect(preview).toHaveFocus();
+
+  fireEvent.keyDown(preview, { key: 'Home' });
+  await waitFor((): void => {
+    expect(mockSetDocView).toHaveBeenCalledTimes(2);
+  });
+  expect(mockSetDocView).toHaveBeenLastCalledWith(
+    'document-1',
+    expect.objectContaining({ editorVisible: true, previewVisible: false }),
+  );
+  expect(preview).toBeChecked();
+  expect(preview).toHaveFocus();
+
+  mockSetDocView.mockRejectedValueOnce(new Error('backend rejected command'));
+  fireEvent.keyDown(preview, { key: 'ArrowLeft' });
+  await waitFor((): void => {
+    expect(mockSetDocView).toHaveBeenCalledTimes(3);
+  });
+  expect(mockSetDocView).toHaveBeenLastCalledWith(
+    'document-1',
+    expect.objectContaining({ editorVisible: true, previewVisible: true }),
+  );
+  expect(preview).toBeChecked();
+  expect(preview).toHaveFocus();
 });
