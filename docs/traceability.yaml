@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-21T10:05:53.867Z",
+  "generated_at": "2026-07-21T11:02:55.769Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -600,7 +600,7 @@
     },
     "STORY-014": {
       "title": "Build the base GFM Markdown preview",
-      "status": "ready",
+      "status": "done",
       "phase": "01",
       "spec_clauses": [
         "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering",
@@ -625,22 +625,34 @@
       ],
       "acceptance_criteria": {
         "STORY-014-AC-1": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/markdown/renderer.test.ts:43"
+          ]
         },
         "STORY-014-AC-2": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/components/MarkdownView.test.tsx:11"
+          ]
         },
         "STORY-014-AC-3": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/components/MarkdownView.test.tsx:47"
+          ]
         },
         "STORY-014-AC-4": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/components/MarkdownView.test.tsx:80"
+          ]
         },
         "STORY-014-AC-5": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/components/MarkdownView.test.tsx:104"
+          ]
         },
         "STORY-014-AC-6": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/markdown/renderer.test.ts:56"
+          ]
         }
       }
     },
@@ -1322,19 +1334,40 @@
       "stories": [
         "STORY-014"
       ],
-      "tests": []
+      "tests": [
+        "frontend/src/logic/markdown/renderer.test.ts:43",
+        "frontend/src/logic/markdown/renderer.test.ts:56",
+        "frontend/src/ui/components/MarkdownView.test.tsx:104",
+        "frontend/src/ui/components/MarkdownView.test.tsx:11",
+        "frontend/src/ui/components/MarkdownView.test.tsx:47",
+        "frontend/src/ui/components/MarkdownView.test.tsx:80"
+      ]
     },
     "EC-RENDER-6": {
       "stories": [
         "STORY-014"
       ],
-      "tests": []
+      "tests": [
+        "frontend/src/logic/markdown/renderer.test.ts:43",
+        "frontend/src/logic/markdown/renderer.test.ts:56",
+        "frontend/src/ui/components/MarkdownView.test.tsx:104",
+        "frontend/src/ui/components/MarkdownView.test.tsx:11",
+        "frontend/src/ui/components/MarkdownView.test.tsx:47",
+        "frontend/src/ui/components/MarkdownView.test.tsx:80"
+      ]
     },
     "EC-RENDER-7": {
       "stories": [
         "STORY-014"
       ],
-      "tests": []
+      "tests": [
+        "frontend/src/logic/markdown/renderer.test.ts:43",
+        "frontend/src/logic/markdown/renderer.test.ts:56",
+        "frontend/src/ui/components/MarkdownView.test.tsx:104",
+        "frontend/src/ui/components/MarkdownView.test.tsx:11",
+        "frontend/src/ui/components/MarkdownView.test.tsx:47",
+        "frontend/src/ui/components/MarkdownView.test.tsx:80"
+      ]
     },
     "EC-RENDER-4": {
       "stories": [

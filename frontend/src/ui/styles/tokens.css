@@ -1,6 +1,18 @@
 :root {
   --editor-font-size: 14px;
   --editor-min-height: 14rem;
+  --preview-block-spacing: 1rem;
+  --preview-code-block-padding: 0.75rem;
+  --preview-code-font-family: ui-monospace, 'SFMono-Regular', monospace;
+  --preview-code-inline-padding: 0.25rem;
+  --preview-font-family: inherit;
+  --preview-font-size: 1rem;
+  --preview-heading-line-height: 1.25;
+  --preview-inline-spacing: 0.5rem;
+  --preview-line-height: 1.5;
+  --preview-list-indent: 1.5rem;
+  --preview-table-border-width: 1px;
+  --preview-table-cell-padding: 0.5rem;
   --shell-left-width: 16rem;
   --shell-center-min-width: 0;
   --shell-assistant-collapsed-width: 0;

@@ -1,6 +1,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "allowJs": true,
+    "esModuleInterop": true,
+    "module": "CommonJS",
+    "outDir": "./node_modules/.cache/ts-jest",
     "types": ["jest", "@testing-library/jest-dom"]
   }
 }

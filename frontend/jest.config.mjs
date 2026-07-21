@@ -1,7 +1,6 @@
 /** @type {import('jest').Config} */
 export default {
   clearMocks: true,
-  extensionsToTreatAsEsm: ['.ts', '.tsx'],
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   testEnvironment: 'jsdom',
   testMatch: ['<rootDir>/src/**/*.test.ts?(x)'],
@@ -9,12 +8,12 @@ export default {
     '^.+\\.module\\.css$': '<rootDir>/src/test/styleMock.ts',
     '^wailsjs/(.*)$': '<rootDir>/wailsjs/$1',
   },
+  transformIgnorePatterns: [],
   transform: {
-    '^.+\\.tsx?$': [
+    '^.+\\.[tj]sx?$': [
       'ts-jest',
       {
         tsconfig: '<rootDir>/tsconfig.test.json',
-        useESM: true,
       },
     ],
   },

@@ -1,7 +1,7 @@
 ---
 id: STORY-014
 title: Build the base GFM Markdown preview
-status: ready
+status: done
 spec_clauses:
   - 01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering
   - 01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline
