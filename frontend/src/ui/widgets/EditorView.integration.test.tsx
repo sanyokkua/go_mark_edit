@@ -40,6 +40,8 @@ jest.mock('../../logic/adapter', () => ({
 }));
 
 interface MockMonacoRuntime {
+  cursorPositionListener:
+    ((event: editor.ICursorPositionChangedEvent) => void) | undefined;
   editor: editor.IStandaloneCodeEditor;
   model: {
     getFullModelRange: jest.Mock<IRange, []>;
@@ -52,6 +54,7 @@ interface MockMonacoRuntime {
 const mockRuntime = {} as MockMonacoRuntime;
 
 function resetMockMonaco(): void {
+  mockRuntime.cursorPositionListener = undefined;
   mockRuntime.selection = {
     selectionStartLineNumber: 1,
     selectionStartColumn: 1,
@@ -72,7 +75,13 @@ function resetMockMonaco(): void {
     getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
     getSelection: jest.fn(() => mockRuntime.selection),
     onDidBlurEditorText: jest.fn(() => ({ dispose: jest.fn() })),
-    onDidChangeCursorPosition: jest.fn(() => ({ dispose: jest.fn() })),
+    onDidChangeCursorPosition: jest.fn(
+      (listener: (event: editor.ICursorPositionChangedEvent) => void) => {
+        mockRuntime.cursorPositionListener = listener;
+
+        return { dispose: jest.fn() };
+      },
+    ),
     onDidChangeCursorSelection: jest.fn(() => ({ dispose: jest.fn() })),
     pushUndoStop: jest.fn(),
   } as unknown as editor.IStandaloneCodeEditor;
@@ -145,6 +154,165 @@ afterEach((): void => {
   jest.useRealTimers();
   disposeAppModelProjection();
   store.dispatch(resetProjection());
+});
+
+function statusDocument(
+  overrides: Partial<DocumentMetadata> = {},
+): DocumentMetadata {
+  const view = overrides.view ?? {
+    arrangement: 'split',
+    editorVisible: true,
+    previewVisible: true,
+    cursor: { line: 1, column: 1 },
+    selection: {
+      start: { line: 1, column: 1 },
+      end: { line: 1, column: 1 },
+    },
+    scroll: { editor: 0, preview: 0 },
+  };
+
+  return {
+    documentId: 'document-1',
+    title: 'Untitled',
+    path: '',
+    dirty: false,
+    encoding: 'utf-8',
+    lineEnding: 'lf',
+    wordCount: 0,
+    ...overrides,
+    view,
+  };
+}
+
+async function renderStatusEditor(
+  document: DocumentMetadata,
+  content: string,
+): Promise<void> {
+  const initialState: AppModelState = {
+    snapshot: {
+      revision: 1,
+      documents: { [document.documentId]: document },
+      activeDocumentId: document.documentId,
+      ui: {},
+    },
+    activeBuffer: { documentId: document.documentId, content },
+  };
+  const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
+
+  mockedAdapter.getState.mockResolvedValue(initialState);
+  await bootstrapAppModelProjection(appModelAdapter);
+
+  render(
+    <Provider store={store}>
+      <EditorSessionContext.Provider value={initialState.activeBuffer}>
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+}
+
+// Proves: STORY-016-AC-2
+it('STORY-016-AC-2 displays live one-based cursor position without Redux truth', async () => {
+  const workingCopy = 'Monaco-only working copy';
+  await renderStatusEditor(statusDocument(), workingCopy);
+
+  const status = await screen.findByRole('contentinfo', {
+    name: 'Document status',
+  });
+  expect(status).toHaveTextContent('Ln 1, Col 1');
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+  expect(mockRuntime.cursorPositionListener).toEqual(expect.any(Function));
+
+  act((): void => {
+    mockRuntime.cursorPositionListener?.({
+      position: { lineNumber: 7, column: 11 },
+    } as editor.ICursorPositionChangedEvent);
+  });
+
+  await waitFor((): void => {
+    expect(status).toHaveTextContent('Ln 7, Col 11');
+  });
+  expect(store.getState().documents.byId['document-1'].view.cursor).toEqual({
+    line: 1,
+    column: 1,
+  });
+  expect(JSON.stringify(store.getState())).not.toContain(workingCopy);
+});
+
+// Proves: STORY-016-AC-3
+it('STORY-016-AC-3 renders higher-revision backend word count without Monaco or store content', async () => {
+  const workingCopy = 'one Monaco word';
+  const document = statusDocument({ wordCount: 0 });
+  await renderStatusEditor(document, workingCopy);
+
+  const status = await screen.findByRole('contentinfo', {
+    name: 'Document status',
+  });
+  expect(status).toHaveTextContent('0 words');
+
+  act((): void => {
+    mockStatePatchListener?.({
+      revision: 2,
+      documents: {
+        upsert: {
+          [document.documentId]: { ...document, wordCount: 1024 },
+        },
+      },
+    });
+  });
+
+  expect(status).toHaveTextContent('1,024 words');
+  expect(JSON.stringify(store.getState())).not.toContain(workingCopy);
+  expect(mockRuntime.model.getFullModelRange).not.toHaveBeenCalled();
+});
+
+// Proves: STORY-016-AC-4
+it('STORY-016-AC-4 reflects a backend Preview-only view patch in the status bar', async () => {
+  const document = statusDocument();
+  await renderStatusEditor(document, '# Backend preview');
+
+  const status = await screen.findByRole('contentinfo', {
+    name: 'Document status',
+  });
+  expect(status).toHaveTextContent('Split');
+
+  act((): void => {
+    mockStatePatchListener?.({
+      revision: 2,
+      documents: {
+        upsert: {
+          [document.documentId]: {
+            ...document,
+            view: {
+              ...document.view,
+              arrangement: 'preview',
+              editorVisible: false,
+              previewVisible: true,
+            },
+          },
+        },
+      },
+    });
+  });
+
+  expect(status).toHaveTextContent('Preview');
+  expect(screen.queryByLabelText('Editor pane')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+});
+
+// Proves: STORY-016-AC-5
+it('STORY-016-AC-5 formats Phase-01 canonical wire metadata labels', async () => {
+  await renderStatusEditor(
+    statusDocument({ encoding: 'utf-8', lineEnding: 'lf' }),
+    'Untitled buffer',
+  );
+
+  const status = await screen.findByRole('contentinfo', {
+    name: 'Document status',
+  });
+
+  expect(status).toHaveTextContent('UTF-8');
+  expect(status).toHaveTextContent('LF');
 });
 
 it('STORY-019-AC-3 preserves Monaco state on metadata patches', async () => {

@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-21T12:32:13.151Z",
+  "generated_at": "2026-07-21T13:22:07.053Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -685,7 +685,7 @@
         },
         "STORY-015-AC-2": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:225"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:393"
           ]
         },
         "STORY-015-AC-3": {
@@ -701,7 +701,7 @@
         "STORY-015-AC-5": {
           "tests": [
             "frontend/src/ui/primitives/Segmented.test.tsx:26",
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:317"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:485"
           ]
         },
         "STORY-015-AC-6": {
@@ -713,43 +713,74 @@
     },
     "STORY-016": {
       "title": "Add the core editor status bar",
-      "status": "draft",
+      "status": "done",
       "phase": "01",
       "spec_clauses": [
+        "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n",
         "01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode",
         "01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings",
+        "01_Product/13_I18N.md#i18n-layer",
+        "01_Product/13_I18N.md#string-catalog",
+        "01_Product/13_I18N.md#adding-a-locale",
+        "01_Product/13_I18N.md#formatting",
         "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations",
         "00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership",
         "07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope"
       ],
       "modules": [
+        "i18n/",
         "ui/components/",
         "ui/widgets/",
         "logic/store/",
         "ui/styles/"
       ],
-      "edge_cases": [],
+      "edge_cases": [
+        "EC-I18N-1",
+        "EC-I18N-2"
+      ],
       "acceptance_criteria": {
         "STORY-016-AC-1": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/components/StatusBar.test.tsx:5",
+            "frontend/src/ui/components/StatusBar.test.tsx:6"
+          ]
         },
         "STORY-016-AC-2": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:214",
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:215"
+          ]
         },
         "STORY-016-AC-3": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:242",
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:243"
+          ]
         },
         "STORY-016-AC-4": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:269",
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:270"
+          ]
         },
         "STORY-016-AC-5": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:303",
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:304"
+          ]
+        },
+        "STORY-016-AC-6": {
+          "tests": [
+            "frontend/src/i18n/catalog.test.ts:3",
+            "frontend/src/i18n/catalog.test.ts:4"
+          ]
         }
       }
     },
     "STORY-017": {
       "title": "Drive live preview from backend-accepted debounced snapshots",
-      "status": "draft",
+      "status": "ready",
       "phase": "01",
       "spec_clauses": [
         "01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce",
@@ -857,7 +888,7 @@
         },
         "STORY-019-AC-3": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:150"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:318"
           ]
         },
         "STORY-019-AC-4": {
@@ -956,7 +987,8 @@
     },
     "00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations": {
       "stories": [
-        "STORY-003"
+        "STORY-003",
+        "STORY-016"
       ]
     },
     "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema": {
@@ -1277,7 +1309,32 @@
         "STORY-018"
       ]
     },
+    "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n": {
+      "stories": [
+        "STORY-016"
+      ]
+    },
     "01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings": {
+      "stories": [
+        "STORY-016"
+      ]
+    },
+    "01_Product/13_I18N.md#i18n-layer": {
+      "stories": [
+        "STORY-016"
+      ]
+    },
+    "01_Product/13_I18N.md#string-catalog": {
+      "stories": [
+        "STORY-016"
+      ]
+    },
+    "01_Product/13_I18N.md#adding-a-locale": {
+      "stories": [
+        "STORY-016"
+      ]
+    },
+    "01_Product/13_I18N.md#formatting": {
       "stories": [
         "STORY-016"
       ]
@@ -1396,6 +1453,44 @@
         "frontend/src/ui/components/MarkdownView.test.tsx:80"
       ]
     },
+    "EC-I18N-1": {
+      "stories": [
+        "STORY-016"
+      ],
+      "tests": [
+        "frontend/src/i18n/catalog.test.ts:3",
+        "frontend/src/i18n/catalog.test.ts:4",
+        "frontend/src/ui/components/StatusBar.test.tsx:5",
+        "frontend/src/ui/components/StatusBar.test.tsx:6",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:214",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:215",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:242",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:243",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:269",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:270",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:303",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:304"
+      ]
+    },
+    "EC-I18N-2": {
+      "stories": [
+        "STORY-016"
+      ],
+      "tests": [
+        "frontend/src/i18n/catalog.test.ts:3",
+        "frontend/src/i18n/catalog.test.ts:4",
+        "frontend/src/ui/components/StatusBar.test.tsx:5",
+        "frontend/src/ui/components/StatusBar.test.tsx:6",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:214",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:215",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:242",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:243",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:269",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:270",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:303",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:304"
+      ]
+    },
     "EC-RENDER-4": {
       "stories": [
         "STORY-017"
@@ -1414,7 +1509,7 @@
         "frontend/src/logic/hooks/useDocumentCommands.test.ts:7",
         "frontend/src/logic/hooks/useSyncedBuffer.test.ts:19",
         "frontend/src/ui/components/CodeEditor.test.tsx:342",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:150"
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:318"
       ]
     }
   },
@@ -1546,6 +1641,11 @@
     "logic/markdown/": {
       "stories": [
         "STORY-014"
+      ]
+    },
+    "i18n/": {
+      "stories": [
+        "STORY-016"
       ]
     },
     "logic/hooks/": {

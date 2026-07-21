@@ -1,14 +1,21 @@
 ---
 id: STORY-016
 title: Add the core editor status bar
-status: ready
+status: done
 spec_clauses:
+  - 01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
   - 01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings
+  - 01_Product/13_I18N.md#i18n-layer
+  - 01_Product/13_I18N.md#string-catalog
+  - 01_Product/13_I18N.md#adding-a-locale
+  - 01_Product/13_I18N.md#formatting
   - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - 00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
   - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope
 modules:
+  - i18n/
   - ui/components/
   - ui/widgets/
   - logic/store/
@@ -19,7 +26,10 @@ acceptance_criteria:
   - STORY-016-AC-3
   - STORY-016-AC-4
   - STORY-016-AC-5
-edge_cases: []
+  - STORY-016-AC-6
+edge_cases:
+  - EC-I18N-1
+  - EC-I18N-2
 depends_on:
   - STORY-015
   - STORY-019
@@ -39,6 +49,7 @@ Show users the active cursor location and backend-derived document metadata in t
 - Add a presentational `StatusBar` for one-based cursor position, backend-derived word count, encoding, line ending, and current arrangement.
 - Feed cursor position from ephemeral Monaco events and all document/view metadata from the reconciled Redux projection.
 - Compose the status bar into `EditorView`; format canonical `utf-8`/`lf` wire values as `UTF-8`/`LF` labels.
+- Add the dependency-free, bundled i18n seam needed by the new status-bar strings: an eager Vite locale-resource discovery path, English fallback, named interpolation, locale-aware number formatting, and typed `t()`/`setLocale()`/`availableLocales` exports.
 
 ## Out of scope
 - Autosave, lint counts, file warnings, binary/non-UTF-8 warnings, and save state, owned by later phases.
@@ -47,11 +58,15 @@ Show users the active cursor location and backend-derived document metadata in t
 - Reading mode, which hides the status bar and is owned by Phase 04.
 - Markdown-standard status labeling, owned by Phase 04; Phase 01 need not show a `GFM` label in the status bar.
 - Restorable cursor/selection synchronization, owned by STORY-019; this story consumes its immediate ephemeral cursor signal and backend patch provenance.
+- Migrating pre-existing UI literals globally or exposing the Settings Language UI, both owned by the later i18n/settings stories.
 
 ## Spec inputs
 - `01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — include the status bar in editor chrome and use the specified Split, UTF-8/LF, and source-editor defaults.
 - `01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings` — display encoding and line ending explicitly; Phase 01 uses the untitled UTF-8/LF defaults before file I/O exists.
+- `01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n` and `01_Product/13_I18N.md#i18n-layer` — status-bar strings pass through a lightweight, offline i18n layer with English shipped.
+- `01_Product/13_I18N.md#string-catalog`, `#adding-a-locale`, and `#formatting` — resource-file-only locale discovery, stable namespaced keys, named placeholders, and locale-aware word-count formatting.
 - `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — keep cursor position as ephemeral active-view scaffolding and read document counts/view state from the backend projection.
+- `00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations` — DD-35 requires i18n readiness; DD-32 keeps locale resources bundled with no runtime fetch.
 - `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62 through DD-64 so counts and arrangement come from backend-derived metadata rather than Monaco content.
 - `07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope` — defer Markdown-standard selection/badge presentation to the Phase-04 rendering expansion.
 
@@ -59,6 +74,8 @@ Show users the active cursor location and backend-derived document metadata in t
 - Word count and view arrangement come only from reconciled backend metadata; neither `StatusBar` nor a selector reads Monaco content or stores document text in Redux (DD-62, DD-63, DD-64; ADR-0014).
 - Cursor line/column are one-based ephemeral active-editor state supplied by STORY-019 and update immediately without becoming authoritative application state; restorable cursor/selection still synchronizes through backend-owned `DocView`.
 - `StatusBar` remains presentational, typed, and independent of generated bindings; only `logic/adapter/` may import `wailsjs/`.
+- `frontend/src/i18n/` is dependency-free and uses Vite eager glob discovery for bundled JSON; missing active-locale values fall back to `en`, then the key, never a blank label. Jest maps component imports to a test-only English shim because Jest does not evaluate Vite's `import.meta.glob` transform.
+- Status-bar labels use stable i18n keys and named interpolation; `formatNumber()` owns locale-sensitive word-count formatting. The language-picker UI and migration of existing literals remain deferred.
 - `StatusBar` unit tests prove typed prop rendering only. Cursor wiring and backend-patch provenance are proven in a store-connected `EditorView` integration.
 - Canonical backend wire values remain `utf-8` and `lf`; the UI alone formats `UTF-8` and `LF` labels.
 - Backend commands retain Handler → Service → Repository layering and concrete `apperr.*Result` envelopes.
@@ -82,6 +99,9 @@ A reconciled backend view patch updates the arrangement label through the store-
 ### STORY-016-AC-5
 Before Phase 02 file I/O, canonical `utf-8`/`lf` wire values are formatted by the UI as the explicit `UTF-8`/`LF` untitled labels.
 
+### STORY-016-AC-6
+`StatusBar` resolves cursor, word-count, encoding, line-ending, and arrangement labels through the typed i18n seam, including named interpolation and locale-aware number formatting.
+
 ## Test plan
 Each Jest test name begins with its matching `STORY-016-AC-N` id.
 
@@ -90,12 +110,17 @@ Each Jest test name begins with its matching `STORY-016-AC-N` id.
 - STORY-016-AC-3 — integration — `frontend/src/ui/widgets/EditorView.integration.test.tsx` — `it('STORY-016-AC-3 renders backend-derived word count')`.
 - STORY-016-AC-4 — integration — `frontend/src/ui/widgets/EditorView.integration.test.tsx` — `it('STORY-016-AC-4 reflects backend view arrangement')`.
 - STORY-016-AC-5 — integration — `frontend/src/ui/widgets/EditorView.integration.test.tsx` — `it('STORY-016-AC-5 formats Phase-01 wire metadata labels')`.
+- STORY-016-AC-6 — unit — `frontend/src/i18n/catalog.test.ts` — `it('STORY-016-AC-6 interpolates status labels and formats word counts by active locale')`.
+- EC-I18N-1 — unit — `frontend/src/i18n/catalog.test.ts` — `it('EC-I18N-1 falls back to English and then the key without a blank label')`.
+- EC-I18N-2 — unit — `frontend/src/i18n/catalog.test.ts` — `it('EC-I18N-2 discovers a dropped-in locale resource without component changes')`.
 
 ## Definition of done
 - [ ] Every acceptance criterion has a passing test whose Jest name begins with its `STORY-016-AC-N` id.
-- [ ] Every edge case in `edge_cases:` has a passing test; this story declares none.
-- [ ] StatusBar unit tests prove props only; store-connected EditorView tests prove live cursor wiring and backend-derived word/view/encoding/line-ending provenance without document content in Redux.
+- [ ] Every edge case in `edge_cases:` has a passing test.
+- [ ] StatusBar unit tests prove props only; catalog tests prove i18n interpolation, fallback, formatting, and resource discovery; store-connected EditorView tests prove live cursor wiring and backend-derived word/view/encoding/line-ending provenance without document content in Redux.
 - [ ] UI formatting maps canonical `utf-8`/`lf` to `UTF-8`/`LF`, and Markdown-standard labeling remains deferred to Phase 04.
+- [ ] The dependency-free i18n seam eagerly discovers bundled locale JSON, exposes typed `t()`/`setLocale()`/`availableLocales`, interpolates named values, formats numbers by locale, and falls back to English/the key without a blank label.
+- [ ] StatusBar's own labels route through `t()`; global literal migration and Language settings UI remain deferred.
 - [ ] Frontend `prettier --check`, ESLint, `tsc --noEmit`, and Jest pass; backend quality gates pass if backend/generated files are touched.
 - [ ] Generated bindings remain current with no unexpected drift.
 - [ ] Handler → Service → Repository layering, Result envelopes, backend authority, adapter-only Wails imports, and token-only theming remain intact.

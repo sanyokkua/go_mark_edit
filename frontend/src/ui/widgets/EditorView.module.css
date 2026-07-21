@@ -1,6 +1,6 @@
 .editorView {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: var(--editor-view-gap);
   min-width: 0;
   min-height: 0;

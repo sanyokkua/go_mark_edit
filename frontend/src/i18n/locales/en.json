@@ -1,0 +1,10 @@
+{
+  "status.ariaLabel": "Document status",
+  "status.cursor": "Ln {line}, Col {column}",
+  "status.words": "{count} words",
+  "status.encoding.utf-8": "UTF-8",
+  "status.lineEnding.lf": "LF",
+  "status.arrangement.editor": "Editor",
+  "status.arrangement.split": "Split",
+  "status.arrangement.preview": "Preview"
+}

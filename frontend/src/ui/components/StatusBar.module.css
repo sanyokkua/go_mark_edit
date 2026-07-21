@@ -1,0 +1,15 @@
+.statusBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--status-bar-gap);
+  min-height: var(--status-bar-min-height);
+  padding-inline: var(--status-bar-padding-inline);
+  border-top: var(--status-bar-border-width) solid
+    var(--status-bar-border-color);
+  font-size: var(--status-bar-font-size);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}

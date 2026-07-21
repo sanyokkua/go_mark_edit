@@ -1,6 +1,8 @@
-import { useCallback, useContext, useRef } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import CodeEditor, { type CodeEditorHandle } from '../components/CodeEditor';
+import type { EditorPosition } from '../components/CodeEditor';
+import StatusBar from '../components/StatusBar';
 import ViewModeToggle from '../components/ViewModeToggle';
 import { useDocumentCommands } from '../../logic/hooks/useDocumentCommands';
 import { useSyncedBuffer } from '../../logic/hooks/useSyncedBuffer';
@@ -31,16 +33,22 @@ function fallbackView(): DocumentView {
 
 interface ActiveEditorProps {
   activeBuffer: ActiveBuffer;
+  onLiveCursorChange: (cursor: EditorPosition) => void;
   view: DocumentView;
 }
 
 const ActiveEditor: React.FC<ActiveEditorProps> = ({
   activeBuffer,
+  onLiveCursorChange,
   view,
 }: ActiveEditorProps): React.JSX.Element => {
   const editorRef = useRef<CodeEditorHandle | null>(null);
   const documentCommands = useDocumentCommands(editorRef);
   const synchronizedBuffer = useSyncedBuffer(activeBuffer.documentId, view);
+
+  useEffect((): void => {
+    onLiveCursorChange(synchronizedBuffer.liveCursor);
+  }, [onLiveCursorChange, synchronizedBuffer.liveCursor]);
 
   return (
     <DocumentCommandContext.Provider value={documentCommands}>
@@ -70,6 +78,10 @@ function arrangementFor(view: DocumentView): ViewArrangement {
 const EditorView: React.FC = (): React.JSX.Element | null => {
   const dispatch = useAppDispatch();
   const activeBuffer = useContext(EditorSessionContext);
+  const [liveCursor, setLiveCursor] = useState<EditorPosition>({
+    lineNumber: 1,
+    column: 1,
+  });
   const activeDocument = useAppSelector((state) => {
     if (activeBuffer === null) {
       return undefined;
@@ -82,6 +94,9 @@ const EditorView: React.FC = (): React.JSX.Element | null => {
     },
     [dispatch],
   );
+  const onLiveCursorChange = useCallback((cursor: EditorPosition): void => {
+    setLiveCursor(cursor);
+  }, []);
 
   if (activeBuffer === null) {
     return null;
@@ -92,6 +107,7 @@ const EditorView: React.FC = (): React.JSX.Element | null => {
   const title = activeDocument?.title ?? 'Untitled';
   const encoding = activeDocument?.encoding.toUpperCase() ?? 'UTF-8';
   const lineEnding = activeDocument?.lineEnding.toUpperCase() ?? 'LF';
+  const wordCount = activeDocument?.wordCount ?? 0;
 
   return (
     <section aria-label="Editor view" className={styles.editorView}>
@@ -107,7 +123,11 @@ const EditorView: React.FC = (): React.JSX.Element | null => {
                 {encoding} · {lineEnding}
               </span>
             </header>
-            <ActiveEditor activeBuffer={activeBuffer} view={view} />
+            <ActiveEditor
+              activeBuffer={activeBuffer}
+              view={view}
+              onLiveCursorChange={onLiveCursorChange}
+            />
           </section>
         ) : null}
         {view.previewVisible ? (
@@ -122,6 +142,13 @@ const EditorView: React.FC = (): React.JSX.Element | null => {
           </section>
         ) : null}
       </div>
+      <StatusBar
+        arrangement={arrangement}
+        cursor={liveCursor}
+        encoding={encoding}
+        lineEnding={lineEnding}
+        wordCount={wordCount}
+      />
     </section>
   );
 };
