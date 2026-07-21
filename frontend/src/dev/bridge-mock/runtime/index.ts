@@ -1,6 +1,54 @@
 type EventCallback = (...data: unknown[]) => void;
 
 const listeners = new Map<string, Set<EventCallback>>();
+const statePatchMirror: unknown[] = [];
+
+declare global {
+  interface Window {
+    readonly __GME_STATE_PATCHES__?: readonly unknown[];
+  }
+}
+
+function cloneForBrowserMirror(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return Object.freeze(value.map(cloneForBrowserMirror));
+  }
+
+  if (isRecord(value)) {
+    return Object.freeze(
+      Object.fromEntries(
+        Object.entries(value).map(([key, child]) => [
+          key,
+          cloneForBrowserMirror(child),
+        ]),
+      ),
+    );
+  }
+
+  return value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function installStatePatchMirror(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (Object.getOwnPropertyDescriptor(window, '__GME_STATE_PATCHES__')) {
+    return;
+  }
+
+  Object.defineProperty(window, '__GME_STATE_PATCHES__', {
+    configurable: false,
+    enumerable: false,
+    get: (): readonly unknown[] => Object.freeze([...statePatchMirror]),
+  });
+}
+
+installStatePatchMirror();
 
 export function EventsOn(
   eventName: string,
@@ -43,6 +91,9 @@ export function EventsOnce(
 }
 
 export function EventsEmit(eventName: string, ...data: unknown[]): void {
+  if (eventName === 'state:patch') {
+    statePatchMirror.push(cloneForBrowserMirror(data[0]));
+  }
   listeners.get(eventName)?.forEach((callback) => callback(...data));
 }
 

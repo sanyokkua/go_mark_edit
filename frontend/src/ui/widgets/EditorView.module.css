@@ -1,15 +1,18 @@
 .editorView {
+  box-sizing: border-box;
   display: grid;
+  height: 100%;
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: var(--editor-view-gap);
   min-width: 0;
   min-height: 0;
-  padding: var(--editor-view-padding);
+  padding: var(--editor-view-padding) var(--editor-view-padding) 0;
 }
 
 .toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: var(--editor-view-gap);
   min-width: 0;
 }
 

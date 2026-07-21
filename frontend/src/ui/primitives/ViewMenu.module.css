@@ -1,0 +1,40 @@
+.trigger,
+.content,
+.item {
+  border: var(--segmented-border-width) solid var(--segmented-border-color);
+  border-radius: var(--segmented-option-radius);
+  background: var(--segmented-option-background);
+  color: var(--segmented-option-color);
+  font: inherit;
+}
+
+.trigger {
+  padding: var(--segmented-option-padding-block)
+    var(--segmented-option-padding-inline);
+  cursor: pointer;
+}
+
+.content {
+  display: grid;
+  gap: var(--segmented-gap);
+  padding: var(--segmented-padding);
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--segmented-option-padding-inline);
+  padding: var(--segmented-option-padding-block)
+    var(--segmented-option-padding-inline);
+  cursor: pointer;
+}
+
+.item[data-highlighted] {
+  outline: var(--segmented-focus-outline-width) solid
+    var(--segmented-outline-color);
+  outline-offset: var(--segmented-focus-outline-offset);
+}
+
+.item[data-disabled] {
+  cursor: not-allowed;
+}

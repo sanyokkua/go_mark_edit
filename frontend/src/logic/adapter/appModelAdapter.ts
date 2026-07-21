@@ -262,6 +262,12 @@ export function createAppModelAdapter(
       };
     },
     async setDocView(documentId: string, view: DocViewInput): Promise<void> {
+      const record = viewRecord(documentId);
+      if (record.timer !== undefined) {
+        clearTimeout(record.timer);
+        record.timer = undefined;
+      }
+      record.pending = undefined;
       return unwrapPromise(setDocView(documentId, view));
     },
     async updateDocView(documentId: string, view: DocViewInput): Promise<void> {

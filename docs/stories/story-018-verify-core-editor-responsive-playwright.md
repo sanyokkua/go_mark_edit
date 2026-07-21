@@ -1,7 +1,7 @@
 ---
 id: STORY-018
 title: Verify the core editor responsively with Playwright
-status: ready
+status: done
 spec_clauses:
   - 07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
@@ -11,6 +11,7 @@ spec_clauses:
   - mockups/README.md#role-in-the-spec
 modules:
   - ui/components/
+  - ui/primitives/
   - ui/widgets/
   - dev/bridge-mock/
 acceptance_criteria:
@@ -43,6 +44,7 @@ Prove the complete Phase-01 editor flow at phone, tablet, and desktop widths so 
 - Add the committed approved/cropped baseline at `frontend/e2e/core-editor.test.ts-snapshots/core-editor-split-1280.png` against `specification/mockups/gomarkedit-mockup.html`.
 - Gitignore ephemeral `frontend/playwright-report/` and `frontend/test-results/` output while retaining the committed screenshot baseline.
 - Exercise keyboard and pointer interaction through the frontend-only bridge mock while preserving the collapsed assistant slot.
+- Add synchronized View-menu pane toggles through the existing app-model command seam.
 
 ## Out of scope
 - Application runtime networking or external browser assets; Playwright is test tooling only and the shipped application remains fully bundled/offline.
@@ -63,6 +65,7 @@ Prove the complete Phase-01 editor flow at phone, tablet, and desktop widths so 
 - The application remains backend-authoritative: test fixtures model command → accepted mutation → patch, and preview source stays ephemeral (DD-62, DD-63, DD-64; ADR-0014).
 - Only `logic/adapter/` may import Wails bindings/runtime; backend Handler → Service → Repository layering and concrete `apperr.*Result` envelopes remain intact.
 - UI assertions use accessible roles/names where possible, require keyboard and pointer operation, and preserve the F1 collapsed right-assistant region.
+- The keyboard-operable view arrangement radiogroup and View menu render the same command-derived state through Show Editor/Show Preview toggles, never allowing both panes to be hidden.
 - Screenshot structure follows `specification/mockups/gomarkedit-mockup.html`; all application styling remains CSS-Module/token-only with no hardcoded colors (DD-28 through DD-30).
 - Monaco, renderer assets, and the application under test remain locally bundled with no runtime CDN, fetch, telemetry, or other network call (ADR-0002, ADR-0003).
 - End-to-end timing assertions are eventual with a documented CI tolerance; exact 200 ms scheduling is proven only by STORY-019's controlled-clock unit test.
@@ -80,7 +83,7 @@ Typing `# Hello` eventually updates the backend mock, dirty/word metadata, statu
 The committed 1280 px cropped split-view screenshot matches an explicitly approved Phase-01 baseline, and independent assertions verify the canonical mockup's structural regions, panes, toggle, and status bar; the test run cannot self-approve baseline changes.
 
 ### STORY-018-AC-4
-Keyboard and pointer interaction switch Editor/Split/Preview with exactly the expected panes visible and the assistant region still collapsed.
+The keyboard-operable view arrangement radiogroup and synchronized View-menu pointer toggles switch Editor/Split/Preview with exactly the expected panes visible, never hide both panes, and keep the assistant region collapsed.
 
 ## Test plan
 Each Playwright test name begins with its matching `STORY-018-AC-N` id.
@@ -88,7 +91,7 @@ Each Playwright test name begins with its matching `STORY-018-AC-N` id.
 - STORY-018-AC-1 — e2e-smoke — `frontend/e2e/core-editor.test.ts` — `test('STORY-018-AC-1 verifies responsive editor dimensions')`.
 - STORY-018-AC-2 — e2e-smoke — `frontend/e2e/core-editor.test.ts` — `test('STORY-018-AC-2 verifies the live editor preview flow')`.
 - STORY-018-AC-3 — e2e-smoke — `frontend/e2e/core-editor.test.ts` — `test('STORY-018-AC-3 matches the approved split-view reference')`.
-- STORY-018-AC-4 — e2e-smoke — `frontend/e2e/core-editor.test.ts` — `test('STORY-018-AC-4 verifies view-mode interaction')`.
+- STORY-018-AC-4 — e2e-smoke — `frontend/e2e/core-editor.test.ts` — `test('STORY-018-AC-4 verifies radiogroup and View-menu interaction')`.
 
 ## Definition of done
 - [ ] Every acceptance criterion has a passing Playwright test whose name begins with its `STORY-018-AC-N` id.
@@ -96,6 +99,7 @@ Each Playwright test name begins with its matching `STORY-018-AC-N` id.
 - [ ] Package/lock, `testMatch`, `verify:ui`, mock fixtures, screenshot path, and gitignored ephemeral Playwright output are configured as specified; Jest remains src-only.
 - [ ] `just verify-ui` runs the bridge-mock app at 375/768/1280 px with no overflow, collapsed editor, or console error and uses eventual CI-tolerant flow assertions rather than pretending to prove the exact timer.
 - [ ] The 1280 px crop/baseline is explicitly human-approved, cannot be self-updated by the test, and is paired with independent structural assertions plus keyboard/pointer checks.
+- [ ] The keyboard-operable radiogroup and View-menu toggles issue app-model view commands, reconcile only through `state:patch`, and cannot hide both panes.
 - [ ] Manual real-bridge checks in `wails dev` confirm typing updates preview after backend acknowledgement and view modes/status work without bridge-mock-only assumptions.
 - [ ] `just check` and `just verify-ui` pass; frontend `prettier --check`, ESLint, `tsc --noEmit`, Jest, and Playwright pass; backend quality gates pass as part of `just check`.
 - [ ] Generated bindings remain current with no unexpected drift.

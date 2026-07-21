@@ -4,6 +4,7 @@ import CodeEditor, { type CodeEditorHandle } from '../components/CodeEditor';
 import type { EditorPosition } from '../components/CodeEditor';
 import StatusBar from '../components/StatusBar';
 import ViewModeToggle from '../components/ViewModeToggle';
+import ViewMenu from '../primitives/ViewMenu';
 import { appModelAdapter } from '../../logic/adapter';
 import { useDocumentCommands } from '../../logic/hooks/useDocumentCommands';
 import {
@@ -15,7 +16,11 @@ import {
   useSyncedBuffer,
 } from '../../logic/hooks/useSyncedBuffer';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
-import { setViewArrangement } from '../../logic/store/docViewCommands';
+import {
+  setEditorPaneVisible,
+  setPreviewPaneVisible,
+  setViewArrangement,
+} from '../../logic/store/docViewCommands';
 import type {
   ActiveBuffer,
   DocumentView,
@@ -147,6 +152,18 @@ const EditorView: React.FC<EditorViewProps> = ({
     },
     [dispatch],
   );
+  const onEditorVisibilityChange = useCallback(
+    (visible: boolean): void => {
+      void dispatch(setEditorPaneVisible(visible));
+    },
+    [dispatch],
+  );
+  const onPreviewVisibilityChange = useCallback(
+    (visible: boolean): void => {
+      void dispatch(setPreviewPaneVisible(visible));
+    },
+    [dispatch],
+  );
   const onLiveCursorChange = useCallback((cursor: EditorPosition): void => {
     setLiveCursor(cursor);
   }, []);
@@ -165,6 +182,12 @@ const EditorView: React.FC<EditorViewProps> = ({
   return (
     <section aria-label="Editor view" className={styles.editorView}>
       <header aria-label="Document toolbar" className={styles.toolbar}>
+        <ViewMenu
+          editorVisible={view.editorVisible}
+          previewVisible={view.previewVisible}
+          onEditorVisibilityChange={onEditorVisibilityChange}
+          onPreviewVisibilityChange={onPreviewVisibilityChange}
+        />
         <ViewModeToggle value={arrangement} onChange={onArrangementChange} />
       </header>
       <div className={styles.panes}>

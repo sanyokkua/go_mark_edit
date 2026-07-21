@@ -22,6 +22,10 @@ function bridgeMockPlugin(): Plugin {
         return path.resolve(rootDir, 'src/dev/bridge-mock/runtime/index.ts');
       }
 
+      if (id === 'wailsjs/go/models') {
+        return path.resolve(rootDir, 'wailsjs/go/models.ts');
+      }
+
       return undefined;
     },
   };
@@ -33,9 +37,11 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), ...(isMockMode ? [bridgeMockPlugin()] : [])],
     resolve: {
-      alias: {
-        wailsjs: path.resolve(rootDir, 'wailsjs'),
-      },
+      alias: isMockMode
+        ? {}
+        : {
+            wailsjs: path.resolve(rootDir, 'wailsjs'),
+          },
     },
     worker: {
       format: 'es',

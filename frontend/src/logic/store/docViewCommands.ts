@@ -26,6 +26,32 @@ function docViewInputForArrangement(
   };
 }
 
+function docViewInputForPaneVisibility(
+  view: DocumentView,
+  editorVisible: boolean,
+  previewVisible: boolean,
+): DocViewInput {
+  return {
+    editorVisible,
+    previewVisible,
+    cursor: { ...view.cursor },
+    selection: {
+      start: { ...view.selection.start },
+      end: { ...view.selection.end },
+    },
+    scroll: { ...view.scroll },
+  };
+}
+
+function missingDocument(): WireError {
+  return {
+    code: 'not_found',
+    title: 'Document not found',
+    message: 'The active document is no longer available.',
+    retryable: false,
+  };
+}
+
 export const setViewArrangement = createAsyncThunk<
   void,
   ViewArrangement,
@@ -36,18 +62,73 @@ export const setViewArrangement = createAsyncThunk<
   const document = state.documents.byId[documentId];
 
   if (document === undefined) {
-    return thunkApi.rejectWithValue({
-      code: 'not_found',
-      title: 'Document not found',
-      message: 'The active document is no longer available.',
-      retryable: false,
-    });
+    return thunkApi.rejectWithValue(missingDocument());
   }
 
   try {
     await appModelAdapter.setDocView(
       documentId,
       docViewInputForArrangement(document.view, arrangement),
+    );
+  } catch (error) {
+    return thunkApi.rejectWithValue(parseError(error));
+  }
+});
+
+export const setEditorPaneVisible = createAsyncThunk<
+  void,
+  boolean,
+  { state: RootState; rejectValue: WireError }
+>('documents/setEditorPaneVisible', async (editorVisible, thunkApi) => {
+  const state = thunkApi.getState();
+  const documentId = state.documents.activeDocumentId;
+  const document = state.documents.byId[documentId];
+
+  if (document === undefined) {
+    return thunkApi.rejectWithValue(missingDocument());
+  }
+  if (!editorVisible && !document.view.previewVisible) {
+    return;
+  }
+
+  try {
+    await appModelAdapter.setDocView(
+      documentId,
+      docViewInputForPaneVisibility(
+        document.view,
+        editorVisible,
+        document.view.previewVisible,
+      ),
+    );
+  } catch (error) {
+    return thunkApi.rejectWithValue(parseError(error));
+  }
+});
+
+export const setPreviewPaneVisible = createAsyncThunk<
+  void,
+  boolean,
+  { state: RootState; rejectValue: WireError }
+>('documents/setPreviewPaneVisible', async (previewVisible, thunkApi) => {
+  const state = thunkApi.getState();
+  const documentId = state.documents.activeDocumentId;
+  const document = state.documents.byId[documentId];
+
+  if (document === undefined) {
+    return thunkApi.rejectWithValue(missingDocument());
+  }
+  if (!previewVisible && !document.view.editorVisible) {
+    return;
+  }
+
+  try {
+    await appModelAdapter.setDocView(
+      documentId,
+      docViewInputForPaneVisibility(
+        document.view,
+        document.view.editorVisible,
+        previewVisible,
+      ),
     );
   } catch (error) {
     return thunkApi.rejectWithValue(parseError(error));

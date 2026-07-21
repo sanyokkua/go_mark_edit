@@ -1,5 +1,6 @@
 .shell {
   display: grid;
+  height: 100%;
   grid-template-areas: 'left center assistant';
   grid-template-columns:
     var(--shell-left-width)

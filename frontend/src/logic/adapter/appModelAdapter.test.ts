@@ -1,8 +1,13 @@
 import { store } from '../store';
 import { dismissNotification } from '../store/notificationsSlice';
-import type { AppModelState, AppStatePatch } from '../store/appModelTypes';
+import type {
+  AppModelState,
+  AppStatePatch,
+  DocViewInput,
+} from '../store/appModelTypes';
 import type { WireError } from '../utils/parseError';
 import {
+  BUFFER_SYNC_MS,
   createAppModelAdapter,
   type AppModelBindings,
   type AppModelRuntime,
@@ -55,6 +60,49 @@ it('STORY-019-AC-1 coalesces edits in the adapter-owned timer', async () => {
 
   expect(updateBuffer).toHaveBeenCalledTimes(1);
   expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest');
+});
+
+// Proves: STORY-018-AC-4
+it('STORY-018-AC-4 keeps a newer view command from being overwritten by stale cursor synchronization', async () => {
+  jest.useFakeTimers();
+  const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
+    async (documentId: string, view: DocViewInput): Promise<VoidResult> => {
+      void documentId;
+      void view;
+      return {};
+    },
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (): Promise<VoidResult> => ({}),
+      setDocView,
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const staleCursorView: DocViewInput = {
+    editorVisible: true,
+    previewVisible: false,
+    cursor: { line: 4, column: 2 },
+    selection: {
+      start: { line: 4, column: 1 },
+      end: { line: 4, column: 2 },
+    },
+    scroll: { editor: 0, preview: 0 },
+  };
+  const previewView: DocViewInput = {
+    ...staleCursorView,
+    editorVisible: false,
+    previewVisible: true,
+  };
+
+  await adapter.updateDocView('document-1', staleCursorView);
+  await adapter.setDocView('document-1', previewView);
+  await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+
+  expect(setDocView).toHaveBeenCalledTimes(1);
+  expect(setDocView).toHaveBeenCalledWith('document-1', previewView);
 });
 
 it('STORY-012-AC-4 wraps app-model commands without optimistic state', async () => {

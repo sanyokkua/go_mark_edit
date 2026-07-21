@@ -6,5 +6,9 @@
   "status.lineEnding.lf": "LF",
   "status.arrangement.editor": "Editor",
   "status.arrangement.split": "Split",
-  "status.arrangement.preview": "Preview"
+  "status.arrangement.preview": "Preview",
+  "view.menu.trigger": "View",
+  "view.menu.label": "View options",
+  "view.menu.showEditor": "Show Editor",
+  "view.menu.showPreview": "Show Preview"
 }

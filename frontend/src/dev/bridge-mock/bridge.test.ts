@@ -50,6 +50,23 @@ console.log(JSON.stringify({
 }));
 `;
 
+const viteTransformProbe = `
+import path from 'node:path';
+import { createServer } from 'vite';
+
+const server = await createServer({
+  configFile: path.resolve(process.cwd(), 'vite.config.ts'),
+  mode: 'development',
+});
+
+try {
+  const transformed = await server.transformRequest('/src/logic/adapter/index.ts');
+  console.log(JSON.stringify(transformed?.code ?? null));
+} finally {
+  await server.close();
+}
+`;
+
 async function inspectBridgeMock(mode: string): Promise<BridgeMockResolution> {
   const { stdout } = await execFileAsync(
     process.execPath,
@@ -58,6 +75,21 @@ async function inspectBridgeMock(mode: string): Promise<BridgeMockResolution> {
   );
 
   return JSON.parse(stdout.trim()) as BridgeMockResolution;
+}
+
+async function transformAdapterInMockMode(): Promise<string> {
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    ['--input-type=module', '--eval', viteTransformProbe],
+    { cwd: process.cwd(), encoding: 'utf8' },
+  );
+  const transformed = JSON.parse(stdout.trim()) as string | null;
+
+  if (transformed === null) {
+    throw new Error('Vite did not transform the app-model adapter.');
+  }
+
+  return transformed;
 }
 
 afterEach((): void => {
@@ -118,4 +150,15 @@ it('STORY-006-AC-4 serves adapter success and validation errors through the dev 
     message: 'The mock rejected this setting value.',
     retryable: false,
   });
+});
+
+it('STORY-018-AC-1 routes app-model adapter imports through the bridge mock in Vite development mode', async () => {
+  const transformed = await transformAdapterInMockMode();
+
+  expect(transformed).toContain(
+    '/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts',
+  );
+  expect(transformed).toContain('/src/dev/bridge-mock/runtime/index.ts');
+  expect(transformed).not.toContain('/wailsjs/go/appmodel/AppModelHandler.js');
+  expect(transformed).not.toContain('/wailsjs/runtime/runtime.js');
 });
