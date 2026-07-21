@@ -1,7 +1,7 @@
 ---
 id: STORY-012
 title: Project backend application state into the frontend
-status: ready
+status: done
 spec_clauses:
   - 02_Architecture/03_FRONTEND_REACT.md#adapter-layer
   - 02_Architecture/03_FRONTEND_REACT.md#store

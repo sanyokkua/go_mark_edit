@@ -19,13 +19,20 @@ it('STORY-006-AC-2 creates projection-only notification state', () => {
   store.dispatch(notifyError(error));
 
   const state = store.getState();
-  expect(Object.keys(state)).toEqual(['notifications']);
+  expect(Object.keys(state).sort()).toEqual([
+    'documents',
+    'notifications',
+    'ui',
+  ]);
   expect(state.notifications.items).toEqual([
     expect.objectContaining({
       id: expect.any(Number),
       error,
     }),
   ]);
-  expect(state).not.toHaveProperty('documents');
+  expect(state.documents).toMatchObject({ byId: {} });
+  expect(state.ui).toBeDefined();
   expect(state).not.toHaveProperty('content');
+  expect(state).not.toHaveProperty('documents.content');
+  expect(state).not.toHaveProperty('ui.content');
 });

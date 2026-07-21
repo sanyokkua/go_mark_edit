@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-21T08:33:34.465Z",
+  "generated_at": "2026-07-21T09:25:37.153Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -30,7 +30,7 @@
         },
         "STORY-001-AC-2": {
           "tests": [
-            "frontend/src/App.test.tsx:9"
+            "frontend/src/App.test.tsx:94"
           ]
         },
         "STORY-001-AC-3": {
@@ -265,8 +265,8 @@
       "acceptance_criteria": {
         "STORY-007-AC-1": {
           "tests": [
-            "frontend/src/App.test.tsx:20",
-            "frontend/src/App.test.tsx:21"
+            "frontend/src/App.test.tsx:105",
+            "frontend/src/App.test.tsx:106"
           ]
         },
         "STORY-007-AC-2": {
@@ -277,8 +277,8 @@
         },
         "STORY-007-AC-3": {
           "tests": [
-            "frontend/src/App.test.tsx:52",
-            "frontend/src/App.test.tsx:53"
+            "frontend/src/App.test.tsx:137",
+            "frontend/src/App.test.tsx:138"
           ]
         }
       }
@@ -488,7 +488,7 @@
     },
     "STORY-012": {
       "title": "Project backend application state into the frontend",
-      "status": "draft",
+      "status": "done",
       "phase": "01",
       "spec_clauses": [
         "02_Architecture/03_FRONTEND_REACT.md#adapter-layer",
@@ -507,28 +507,44 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-012-AC-1": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/store/appModelProjection.test.ts:76"
+          ]
         },
         "STORY-012-AC-2": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/store/appModelProjection.test.ts:106"
+          ]
         },
         "STORY-012-AC-3": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/store/appModelProjection.test.ts:130"
+          ]
         },
         "STORY-012-AC-4": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:27"
+          ]
         },
         "STORY-012-AC-5": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:124"
+          ]
         },
         "STORY-012-AC-6": {
-          "tests": []
+          "tests": [
+            "frontend/src/dev/bridge-mock/appModel.test.ts:9"
+          ]
         },
         "STORY-012-AC-7": {
-          "tests": []
+          "tests": [
+            "frontend/src/App.test.tsx:158"
+          ]
         },
         "STORY-012-AC-8": {
-          "tests": []
+          "tests": [
+            "frontend/src/App.test.tsx:183"
+          ]
         }
       }
     },
