@@ -49,6 +49,7 @@ export const appModelAdapter = createAppModelAdapter(
 export { guardArity } from './bridgeGuard';
 export { unwrap, unwrapPromise } from './envelope';
 export {
+  BUFFER_SYNC_MS,
   createAppModelAdapter,
   type AppModelAdapter,
   type AppModelBindings,

@@ -3,6 +3,7 @@ import {
   disposeAppModelProjection,
 } from './appModelProjection';
 import type {
+  ActiveBuffer,
   AppModelState,
   AppStatePatch,
   DocumentMetadata,
@@ -54,7 +55,14 @@ function createAdapter(
   return {
     getState,
     updateBuffer: jest.fn<Promise<void>, [string, string]>(),
+    flushBuffer: jest.fn<Promise<void>, [string]>(),
+    subscribeAcceptedBuffers: jest.fn<
+      () => void,
+      [(buffer: ActiveBuffer) => void]
+    >(),
     setDocView: jest.fn(),
+    updateDocView: jest.fn(),
+    flushDocView: jest.fn<Promise<void>, [string]>(),
     setUILayout: jest.fn(),
     subscribeStatePatches(callback): () => void {
       onPatch = callback;

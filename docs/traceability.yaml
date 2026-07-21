@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-21T11:02:55.769Z",
+  "generated_at": "2026-07-21T11:58:41.995Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -508,27 +508,27 @@
       "acceptance_criteria": {
         "STORY-012-AC-1": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:76"
+            "frontend/src/logic/store/appModelProjection.test.ts:84"
           ]
         },
         "STORY-012-AC-2": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:106"
+            "frontend/src/logic/store/appModelProjection.test.ts:114"
           ]
         },
         "STORY-012-AC-3": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:130"
+            "frontend/src/logic/store/appModelProjection.test.ts:138"
           ]
         },
         "STORY-012-AC-4": {
           "tests": [
-            "frontend/src/logic/adapter/appModelAdapter.test.ts:27"
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:60"
           ]
         },
         "STORY-012-AC-5": {
           "tests": [
-            "frontend/src/logic/adapter/appModelAdapter.test.ts:124"
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:160"
           ]
         },
         "STORY-012-AC-6": {
@@ -568,7 +568,7 @@
       "acceptance_criteria": {
         "STORY-013-AC-1": {
           "tests": [
-            "frontend/src/ui/components/CodeEditor.test.tsx:129"
+            "frontend/src/ui/components/CodeEditor.test.tsx:130"
           ]
         },
         "STORY-013-AC-2": {
@@ -578,22 +578,22 @@
         },
         "STORY-013-AC-3": {
           "tests": [
-            "frontend/src/ui/components/CodeEditor.test.tsx:158"
+            "frontend/src/ui/components/CodeEditor.test.tsx:159"
           ]
         },
         "STORY-013-AC-4": {
           "tests": [
-            "frontend/src/ui/components/CodeEditor.test.tsx:179"
+            "frontend/src/ui/components/CodeEditor.test.tsx:180"
           ]
         },
         "STORY-013-AC-5": {
           "tests": [
-            "frontend/src/ui/components/CodeEditor.test.tsx:215"
+            "frontend/src/ui/components/CodeEditor.test.tsx:216"
           ]
         },
         "STORY-013-AC-6": {
           "tests": [
-            "frontend/src/ui/components/CodeEditor.test.tsx:256"
+            "frontend/src/ui/components/CodeEditor.test.tsx:257"
           ]
         }
       }
@@ -658,7 +658,7 @@
     },
     "STORY-015": {
       "title": "Compose the split editor and preview with backend-owned view modes",
-      "status": "draft",
+      "status": "ready",
       "phase": "01",
       "spec_clauses": [
         "01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view",
@@ -809,7 +809,7 @@
     },
     "STORY-019": {
       "title": "Synchronize the active buffer and establish the editable document-command seam",
-      "status": "draft",
+      "status": "done",
       "phase": "01",
       "spec_clauses": [
         "01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode",
@@ -832,22 +832,36 @@
       ],
       "acceptance_criteria": {
         "STORY-019-AC-1": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:30",
+            "frontend/src/logic/adapter/useSyncedBuffer.test.ts:48"
+          ]
         },
         "STORY-019-AC-2": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/useSyncedBuffer.test.ts:87"
+          ]
         },
         "STORY-019-AC-3": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:104"
+          ]
         },
         "STORY-019-AC-4": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/hooks/useSyncedBuffer.test.ts:19"
+          ]
         },
         "STORY-019-AC-5": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/hooks/useDocumentCommands.test.ts:7",
+            "frontend/src/ui/components/CodeEditor.test.tsx:342"
+          ]
         },
         "STORY-019-AC-6": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/useSyncedBuffer.test.ts:147"
+          ]
         }
       }
     }
@@ -1379,7 +1393,16 @@
       "stories": [
         "STORY-019"
       ],
-      "tests": []
+      "tests": [
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:30",
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:147",
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:48",
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:87",
+        "frontend/src/logic/hooks/useDocumentCommands.test.ts:7",
+        "frontend/src/logic/hooks/useSyncedBuffer.test.ts:19",
+        "frontend/src/ui/components/CodeEditor.test.tsx:342",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:104"
+      ]
     }
   },
   "modules": {

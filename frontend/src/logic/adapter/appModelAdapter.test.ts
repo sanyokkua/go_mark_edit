@@ -8,6 +8,8 @@ import {
   type AppModelRuntime,
 } from './appModelAdapter';
 
+type VoidResult = { error?: WireError };
+
 const state: AppModelState = {
   snapshot: {
     revision: 1,
@@ -19,9 +21,40 @@ const state: AppModelState = {
 };
 
 afterEach((): void => {
+  jest.useRealTimers();
   for (const notification of store.getState().notifications.items) {
     store.dispatch(dismissNotification(notification.id));
   }
+});
+
+it('STORY-019-AC-1 coalesces edits in the adapter-owned timer', async () => {
+  jest.useFakeTimers();
+  const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
+    async (documentId: string, content: string): Promise<VoidResult> => {
+      void documentId;
+      void content;
+      return {};
+    },
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer,
+      setDocView: async (): Promise<VoidResult> => ({}),
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+
+  void adapter.updateBuffer('document-1', 'first');
+  void adapter.updateBuffer('document-1', 'latest');
+
+  expect(updateBuffer).not.toHaveBeenCalled();
+
+  await jest.advanceTimersByTimeAsync(200);
+
+  expect(updateBuffer).toHaveBeenCalledTimes(1);
+  expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest');
 });
 
 it('STORY-012-AC-4 wraps app-model commands without optimistic state', async () => {
@@ -57,6 +90,7 @@ it('STORY-012-AC-4 wraps app-model commands without optimistic state', async () 
   await expect(
     adapter.updateBuffer('document-1', 'draft'),
   ).resolves.toBeUndefined();
+  await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
   await expect(
     adapter.setDocView('document-1', {
       editorVisible: true,
@@ -82,17 +116,19 @@ it('STORY-012-AC-4 wraps app-model commands without optimistic state', async () 
   expect(store.getState()).toBe(beforeCommand);
   expect(eventsOn).not.toHaveBeenCalled();
 
+  const mismatchedAdapter = createAppModelAdapter(
+    {
+      ...bindings,
+      updateBuffer: ((documentId: string) => {
+        calls.push(`mismatched-buffer:${documentId}`);
+        return Promise.resolve({ error: undefined });
+      }) as unknown as AppModelBindings['updateBuffer'],
+    },
+    runtime,
+  );
+  await mismatchedAdapter.updateBuffer('document-1', 'draft');
   await expect(
-    createAppModelAdapter(
-      {
-        ...bindings,
-        updateBuffer: ((documentId: string) => {
-          calls.push(`mismatched-buffer:${documentId}`);
-          return Promise.resolve({ error: undefined });
-        }) as unknown as AppModelBindings['updateBuffer'],
-      },
-      runtime,
-    ).updateBuffer('document-1', 'draft'),
+    mismatchedAdapter.flushBuffer('document-1'),
   ).rejects.toMatchObject({
     code: 'internal',
     message: 'AppModelHandler.UpdateBuffer expects 1 argument(s), received 2.',

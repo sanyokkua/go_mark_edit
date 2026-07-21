@@ -32,7 +32,7 @@ authors them **per phase** from that phase's suggested-task list
 | STORY-016 | Add the core editor status bar | 01 | draft | coder | L |
 | STORY-017 | Drive live preview from backend-accepted debounced snapshots | 01 | draft | coder | M |
 | STORY-018 | Verify the core editor responsively with Playwright | 01 | draft | coder | M |
-| STORY-019 | Synchronize the active buffer and establish the editable document-command seam | 01 | draft | coder | L |
+| STORY-019 | Synchronize the active buffer and establish the editable document-command seam | 01 | done | coder | L |
 
 Add a row per story as it is authored, and keep this board in sync with `../traceability.yaml`.
 

@@ -1,5 +1,7 @@
 import styles from './AppShell.module.css';
 
+import EditorView from './EditorView';
+
 interface AppShellProps {
   assistantVisible: boolean;
 }
@@ -14,7 +16,9 @@ const AppShell: React.FC<AppShellProps> = ({
   return (
     <div className={shellClassName}>
       <aside aria-label="File explorer" className={styles.left} />
-      <main aria-label="Document area" className={styles.center} />
+      <main aria-label="Document area" className={styles.center}>
+        <EditorView />
+      </main>
       <aside
         aria-label="Assistant"
         className={styles.assistant}

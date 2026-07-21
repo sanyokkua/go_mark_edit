@@ -1,7 +1,7 @@
 ---
 id: STORY-019
 title: Synchronize the active buffer and establish the editable document-command seam
-status: draft
+status: done
 spec_clauses:
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
   - 02_Architecture/03_FRONTEND_REACT.md#state-ownership

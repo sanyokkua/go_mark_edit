@@ -10,6 +10,7 @@ import CodeEditor, {
   type EditorPosition,
   type EditorSelection,
 } from './CodeEditor';
+import { createDocumentCommands } from '../../logic/hooks/useDocumentCommands';
 
 interface MockModel {
   getFullModelRange: jest.Mock<IRange, []>;
@@ -336,4 +337,55 @@ it('STORY-013-AC-6 keeps the editor component presentational', async () => {
   expect(source).not.toMatch(
     /from\s+['"][^'"]*(?:logic\/adapter|redux|wailsjs)[^'"]*['"]/,
   );
+});
+
+it('STORY-019-AC-5 routes the editable command seam through Monaco and UpdateBuffer', async () => {
+  const ref = { current: null as CodeEditorHandle | null };
+  const updateBuffer = jest.fn<void, [string, string]>();
+  render(
+    <CodeEditor
+      ref={ref}
+      documentId="document-1"
+      initialValue="before"
+      onChange={(content: string): void => {
+        updateBuffer('document-1', content);
+      }}
+    />,
+  );
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+  const commands = createDocumentCommands(ref);
+  (mockRuntime.editor.executeEdits as jest.Mock).mockImplementation(
+    (_source: string, edits: Array<{ text: string }>): void => {
+      mockRuntime.props?.onChange?.(
+        edits[0].text,
+        {} as Parameters<NonNullable<EditorProps['onChange']>>[1],
+      );
+    },
+  );
+
+  commands.replaceRange(
+    {
+      start: { lineNumber: 1, column: 1 },
+      end: { lineNumber: 1, column: 7 },
+    },
+    'range replacement',
+  );
+  commands.replaceAll('whole replacement');
+
+  expect(mockRuntime.editor.executeEdits).toHaveBeenCalledTimes(2);
+  expect(mockRuntime.editor.pushUndoStop).toHaveBeenCalledTimes(4);
+  expect(updateBuffer).toHaveBeenNthCalledWith(
+    1,
+    'document-1',
+    'range replacement',
+  );
+  expect(updateBuffer).toHaveBeenNthCalledWith(
+    2,
+    'document-1',
+    'whole replacement',
+  );
+  expect(commands.getSelection()).toEqual({
+    start: { lineNumber: 1, column: 1 },
+    end: { lineNumber: 1, column: 1 },
+  });
 });
