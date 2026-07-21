@@ -39,7 +39,7 @@ fmt-check:
     just frontend-format-check
 
 go-lint:
-    golangci-lint run . ./internal/...
+    golangci-lint run ./...
 
 lint:
     just go-lint

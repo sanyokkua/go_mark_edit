@@ -45,3 +45,104 @@ type SettingsResult struct {
 	Data  *Settings  `json:"data,omitempty"`
 	Error *WireError `json:"error,omitempty"`
 }
+
+// CursorPosition is a one-based document position.
+type CursorPosition struct {
+	Line   int `json:"line"`
+	Column int `json:"column"`
+}
+
+// SelectionRange is an inclusive document range with one-based endpoints.
+type SelectionRange struct {
+	Start CursorPosition `json:"start"`
+	End   CursorPosition `json:"end"`
+}
+
+// ScrollOffsets contains restorable editor and preview offsets.
+type ScrollOffsets struct {
+	Editor  int `json:"editor"`
+	Preview int `json:"preview"`
+}
+
+// DocView is metadata for a document's panes and restorable editor state.
+type DocView struct {
+	Arrangement    string         `json:"arrangement"`
+	EditorVisible  bool           `json:"editorVisible"`
+	PreviewVisible bool           `json:"previewVisible"`
+	Cursor         CursorPosition `json:"cursor"`
+	Selection      SelectionRange `json:"selection"`
+	Scroll         ScrollOffsets  `json:"scroll"`
+}
+
+// DocViewInput is the command payload used to update a document's view.
+type DocViewInput struct {
+	EditorVisible  bool           `json:"editorVisible"`
+	PreviewVisible bool           `json:"previewVisible"`
+	Cursor         CursorPosition `json:"cursor"`
+	Selection      SelectionRange `json:"selection"`
+	Scroll         ScrollOffsets  `json:"scroll"`
+}
+
+// UILayout is a mergeable application-level layout payload. Pointer fields
+// preserve an intentional false or zero when commands and patches cross Wails.
+type UILayout struct {
+	SidebarVisible     *bool   `json:"sidebarVisible,omitempty"`
+	SidebarWidth       *int    `json:"sidebarWidth,omitempty"`
+	ViewArrangement    *string `json:"viewArrangement,omitempty"`
+	EditorPaneVisible  *bool   `json:"editorPaneVisible,omitempty"`
+	PreviewPaneVisible *bool   `json:"previewPaneVisible,omitempty"`
+	AssistantVisible   *bool   `json:"assistantVisible,omitempty"`
+	AssistantWidth     *int    `json:"assistantWidth,omitempty"`
+}
+
+// DocumentMetadata is the content-free projection of one open document.
+type DocumentMetadata struct {
+	DocumentID string  `json:"documentId"`
+	Title      string  `json:"title"`
+	Path       string  `json:"path"`
+	Dirty      bool    `json:"dirty"`
+	Encoding   string  `json:"encoding"`
+	LineEnding string  `json:"lineEnding"`
+	WordCount  int     `json:"wordCount"`
+	View       DocView `json:"view"`
+}
+
+// AppStateSnapshot is the metadata-only frontend projection of the live model.
+type AppStateSnapshot struct {
+	Revision         uint64                      `json:"revision"`
+	Documents        map[string]DocumentMetadata `json:"documents"`
+	ActiveDocumentID string                      `json:"activeDocumentId"`
+	UI               UILayout                    `json:"ui"`
+}
+
+// ActiveBuffer carries the canonical content only during explicit state hydration.
+type ActiveBuffer struct {
+	DocumentID string `json:"documentId"`
+	Content    string `json:"content"`
+}
+
+// AppState combines a content-free snapshot with the active canonical buffer.
+type AppState struct {
+	Snapshot     AppStateSnapshot `json:"snapshot"`
+	ActiveBuffer ActiveBuffer     `json:"activeBuffer"`
+}
+
+// DocumentsPatch replaces upserted metadata entries and removes named ids.
+type DocumentsPatch struct {
+	Upsert map[string]DocumentMetadata `json:"upsert,omitempty"`
+	Remove []string                    `json:"remove,omitempty"`
+}
+
+// AppStatePatch is a content-free, revisioned incremental projection update.
+type AppStatePatch struct {
+	Revision         uint64          `json:"revision"`
+	Documents        *DocumentsPatch `json:"documents,omitempty"`
+	ActiveDocumentID *string         `json:"activeDocumentId,omitempty"`
+	UI               *UILayout       `json:"ui,omitempty"`
+}
+
+// StateResult is the envelope for an application-model hydration query.
+type StateResult struct {
+	Data  *AppState  `json:"data,omitempty"`
+	Error *WireError `json:"error,omitempty"`
+}

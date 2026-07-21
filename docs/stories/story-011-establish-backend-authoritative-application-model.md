@@ -1,7 +1,7 @@
 ---
 id: STORY-011
 title: Establish the backend-authoritative in-memory application model
-status: ready
+status: done
 spec_clauses:
   - 02_Architecture/02_BACKEND_GO.md#application-model
   - 02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model
@@ -78,7 +78,7 @@ Give the first in-memory document one stable backend-owned identity and canonica
 ## Acceptance criteria
 
 ### STORY-011-AC-1
-`GetState` returns one backend-minted stable-ID, clean untitled document whose metadata-only `AppStateSnapshot` uses `utf-8`/`lf` wire values and Split view, plus a separate `ActiveBuffer` containing that document id and empty canonical content.
+`GetState` returns one backend-minted stable-ID, clean untitled document with an empty metadata path whose metadata-only `AppStateSnapshot` uses `utf-8`/`lf` wire values and Split view, plus a separate `ActiveBuffer` containing that document id and empty canonical content.
 
 ### STORY-011-AC-2
 `UpdateBuffer` routes through the package-owned F3 document-command seam, changes canonical Go content exposed by the stable F2 accessor, derives dirty state, and counts non-empty Unicode whitespace-delimited tokens. Returning to the empty baseline clears dirty.

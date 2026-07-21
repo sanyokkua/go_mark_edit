@@ -78,7 +78,7 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 				_ = appLogger.Close()
 			}
 		},
-		Bind:     []interface{}{applicationContext.SettingsHandler},
+		Bind:     []interface{}{applicationContext.AppModelHandler, applicationContext.SettingsHandler},
 		EnumBind: []interface{}{apperr.AllErrorCodes},
 		Logger:   appLogger,
 	}

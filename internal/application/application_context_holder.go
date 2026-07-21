@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
@@ -26,18 +27,23 @@ type ApplicationContextHolder struct {
 
 	SettingsService *settings.SettingsService
 	SettingsHandler *settings.SettingsHandler
+	AppModelService *appmodel.AppModelService
+	AppModelHandler *appmodel.AppModelHandler
 }
 
 // NewApplicationContextHolder constructs the phase-one dependency graph with
 // nil persistence. Init injects its concrete SQLite repository after startup.
 func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger *logging.Logger) *ApplicationContextHolder {
 	settingsService := settings.NewSettingsService(nil)
+	appModelService := appmodel.NewAppModelService(appmodel.RuntimeStatePatchEmitter{})
 	holder := &ApplicationContextHolder{
 		fileService:     fileService,
 		appLogger:       appLogger,
 		SettingsService: settingsService,
+		AppModelService: appModelService,
 	}
 	holder.SettingsHandler = settings.NewSettingsHandler(settingsService, appLogger, holder.Context)
+	holder.AppModelHandler = appmodel.NewAppModelHandler(appModelService, appLogger, holder.Context)
 	return holder
 }
 

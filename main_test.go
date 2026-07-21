@@ -104,8 +104,79 @@ func TestWailsAppEmbedsFrontendAndBootsBlankView(t *testing.T) {
 	if appOptions.SingleInstanceLock != nil {
 		t.Fatal("expected multiple Wails instances to be allowed")
 	}
-	if len(appOptions.Bind) != 1 || appOptions.Bind[0] != holder.SettingsHandler {
-		t.Fatal("expected the settings handler to be bound")
+	settingsBound := false
+	for _, candidate := range appOptions.Bind {
+		if candidate == holder.SettingsHandler {
+			settingsBound = true
+			break
+		}
+	}
+	if !settingsBound {
+		t.Fatal("expected the settings handler to remain bound")
+	}
+}
+
+// Proves: STORY-011-AC-7
+// The composition root binds the app-model handler and Wails generates its exact query and command surface.
+func TestAppModelHandlerIsBoundAndGenerated(t *testing.T) {
+	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
+	appOptions := newAppOptions(holder)
+
+	bound := false
+	for _, candidate := range appOptions.Bind {
+		if candidate == holder.AppModelHandler {
+			bound = true
+			break
+		}
+	}
+	if !bound {
+		t.Fatal("expected the app-model handler in the Wails Bind list")
+	}
+
+	bindings, err := os.ReadFile(filepath.Join("frontend", "wailsjs", "go", "appmodel", "AppModelHandler.d.ts"))
+	if err != nil {
+		t.Fatalf("read generated app-model bindings: %v", err)
+	}
+	for _, signature := range []string{
+		"export function GetState():Promise<apperr.StateResult>;",
+		"export function UpdateBuffer(arg1:string,arg2:string):Promise<apperr.VoidResult>;",
+		"export function SetDocView(arg1:string,arg2:apperr.DocViewInput):Promise<apperr.VoidResult>;",
+		"export function SetUILayout(arg1:apperr.UILayout):Promise<apperr.VoidResult>;",
+	} {
+		if !strings.Contains(string(bindings), signature) {
+			t.Errorf("generated app-model bindings omit exact signature %q", signature)
+		}
+	}
+
+	models, err := os.ReadFile(filepath.Join("frontend", "wailsjs", "go", "models.ts"))
+	if err != nil {
+		t.Fatalf("read generated Wails DTO models: %v", err)
+	}
+	for _, field := range []string{
+		"export class StateResult {",
+		"data?: AppState;",
+		"error?: WireError;",
+		"export class AppState {",
+		"snapshot: AppStateSnapshot;",
+		"activeBuffer: ActiveBuffer;",
+		"export class ActiveBuffer {",
+		"documentId: string;",
+		"content: string;",
+		"export class AppStateSnapshot {",
+		"documents: Record<string, DocumentMetadata>;",
+		"path: string;",
+		"activeDocumentId: string;",
+		"export class DocViewInput {",
+		"editorVisible: boolean;",
+		"previewVisible: boolean;",
+		"scroll: ScrollOffsets;",
+		"export class UILayout {",
+		"sidebarVisible?: boolean;",
+		"sidebarWidth?: number;",
+	} {
+		if !strings.Contains(string(models), field) {
+			t.Errorf("generated Wails DTO models omit %q", field)
+		}
 	}
 }
 

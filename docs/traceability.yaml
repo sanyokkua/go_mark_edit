@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-20T22:02:40.666Z",
+  "generated_at": "2026-07-21T08:33:34.465Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -35,7 +35,7 @@
         },
         "STORY-001-AC-3": {
           "tests": [
-            "main_test.go:136"
+            "main_test.go:207"
           ]
         }
       }
@@ -58,9 +58,9 @@
       "acceptance_criteria": {
         "STORY-002-AC-1": {
           "tests": [
-            "internal/apperr/results_test.go:114",
+            "internal/apperr/results_test.go:122",
             "internal/apperr/results_test.go:9",
-            "main_test.go:114"
+            "main_test.go:185"
           ]
         },
         "STORY-002-AC-2": {
@@ -427,7 +427,7 @@
     },
     "STORY-011": {
       "title": "Establish the backend-authoritative in-memory application model",
-      "status": "ready",
+      "status": "done",
       "phase": "01",
       "spec_clauses": [
         "02_Architecture/02_BACKEND_GO.md#application-model",
@@ -446,25 +446,43 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-011-AC-1": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/service_test.go:16"
+          ]
         },
         "STORY-011-AC-2": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/service_test.go:303"
+          ]
         },
         "STORY-011-AC-3": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/runtime_emitter_test.go:10",
+            "internal/appmodel/service_test.go:351",
+            "internal/appmodel/service_test.go:401",
+            "internal/appmodel/service_test.go:523",
+            "internal/appmodel/service_test.go:71"
+          ]
         },
         "STORY-011-AC-4": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/service_test.go:161"
+          ]
         },
         "STORY-011-AC-5": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/service_test.go:260"
+          ]
         },
         "STORY-011-AC-6": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/handler_test.go:11"
+          ]
         },
         "STORY-011-AC-7": {
-          "tests": []
+          "tests": [
+            "main_test.go:119"
+          ]
         }
       }
     },

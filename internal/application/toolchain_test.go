@@ -170,15 +170,15 @@ func TestJustCheckRunsPhaseZeroGateSetInRequiredOrder(t *testing.T) {
 }
 
 // Proves: STORY-010-AC-4
-// Go lint is isolated from frontend dependencies while ordered pre-push hooks call focused shared gates.
+// Go lint uses a valid Go-package pattern independently of frontend Node dependencies while ordered pre-push hooks call focused shared gates.
 func TestJustLintScopesGoToRootAndInternalWithoutFrontendResolution(t *testing.T) {
 	repositoryRoot := storyEightRepositoryRoot(t)
 	justfile := readToolchainFile(t, repositoryRoot, "justfile")
 	assertExactCommands(t, "go-lint", justRecipeCommands(t, justfile, "go-lint"), []string{
-		"golangci-lint run . ./internal/...",
+		"golangci-lint run ./...",
 	})
-	if strings.Contains(justfile, "golangci-lint run ./...") {
-		t.Error("justfile retains unscoped golangci-lint run ./... invocation")
+	if strings.Contains(justfile, "golangci-lint run . ./internal/...") {
+		t.Error("justfile retains invalid root-package go-lint invocation")
 	}
 	assertExactCommands(t, "lint", justRecipeCommands(t, justfile, "lint"), []string{
 		"just go-lint",

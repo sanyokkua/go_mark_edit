@@ -75,7 +75,7 @@ func TestApplicationContextInitializesSettingsInTwoPhases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read main binding source: %v", err)
 		}
-		if !strings.Contains(string(mainSource), "Bind:     []interface{}{applicationContext.SettingsHandler}") {
+		if !strings.Contains(string(mainSource), "applicationContext.SettingsHandler") {
 			t.Fatal("main does not bind the settings handler")
 		}
 
