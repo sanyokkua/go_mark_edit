@@ -4,8 +4,16 @@ import CodeEditor, { type CodeEditorHandle } from '../components/CodeEditor';
 import type { EditorPosition } from '../components/CodeEditor';
 import StatusBar from '../components/StatusBar';
 import ViewModeToggle from '../components/ViewModeToggle';
+import { appModelAdapter } from '../../logic/adapter';
 import { useDocumentCommands } from '../../logic/hooks/useDocumentCommands';
-import { useSyncedBuffer } from '../../logic/hooks/useSyncedBuffer';
+import {
+  type LivePreviewAdapter,
+  useLivePreview,
+} from '../../logic/hooks/useLivePreview';
+import {
+  type EditorSynchronizationAdapter,
+  useSyncedBuffer,
+} from '../../logic/hooks/useSyncedBuffer';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { setViewArrangement } from '../../logic/store/docViewCommands';
 import type {
@@ -32,19 +40,32 @@ function fallbackView(): DocumentView {
 }
 
 interface ActiveEditorProps {
+  adapter: EditorSynchronizationAdapter;
   activeBuffer: ActiveBuffer;
   onLiveCursorChange: (cursor: EditorPosition) => void;
   view: DocumentView;
 }
 
+export interface EditorViewProps {
+  adapter?: EditorViewAdapter;
+}
+
+export interface EditorViewAdapter
+  extends EditorSynchronizationAdapter, LivePreviewAdapter {}
+
 const ActiveEditor: React.FC<ActiveEditorProps> = ({
+  adapter,
   activeBuffer,
   onLiveCursorChange,
   view,
 }: ActiveEditorProps): React.JSX.Element => {
   const editorRef = useRef<CodeEditorHandle | null>(null);
   const documentCommands = useDocumentCommands(editorRef);
-  const synchronizedBuffer = useSyncedBuffer(activeBuffer.documentId, view);
+  const synchronizedBuffer = useSyncedBuffer(
+    activeBuffer.documentId,
+    view,
+    adapter,
+  );
 
   useEffect((): void => {
     onLiveCursorChange(synchronizedBuffer.liveCursor);
@@ -65,6 +86,36 @@ const ActiveEditor: React.FC<ActiveEditorProps> = ({
   );
 };
 
+interface LivePreviewProps {
+  activeBuffer: ActiveBuffer;
+  adapter: LivePreviewAdapter;
+  visible: boolean;
+}
+
+const LivePreview: React.FC<LivePreviewProps> = ({
+  activeBuffer,
+  adapter,
+  visible,
+}: LivePreviewProps): React.JSX.Element | null => {
+  const source = useLivePreview(activeBuffer, adapter);
+
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <section aria-label="Preview pane" className={styles.pane}>
+      <header className={styles.paneHeader}>
+        <span>● Preview · live</span>
+        <span className={styles.paneMeta}>GFM</span>
+      </header>
+      <div className={styles.previewContent}>
+        <PreviewView source={source} />
+      </div>
+    </section>
+  );
+};
+
 function arrangementFor(view: DocumentView): ViewArrangement {
   if (view.editorVisible && view.previewVisible) {
     return 'split';
@@ -75,7 +126,9 @@ function arrangementFor(view: DocumentView): ViewArrangement {
   return 'editor';
 }
 
-const EditorView: React.FC = (): React.JSX.Element | null => {
+const EditorView: React.FC<EditorViewProps> = ({
+  adapter = appModelAdapter,
+}: EditorViewProps): React.JSX.Element | null => {
   const dispatch = useAppDispatch();
   const activeBuffer = useContext(EditorSessionContext);
   const [liveCursor, setLiveCursor] = useState<EditorPosition>({
@@ -124,23 +177,19 @@ const EditorView: React.FC = (): React.JSX.Element | null => {
               </span>
             </header>
             <ActiveEditor
+              adapter={adapter}
               activeBuffer={activeBuffer}
               view={view}
               onLiveCursorChange={onLiveCursorChange}
             />
           </section>
         ) : null}
-        {view.previewVisible ? (
-          <section aria-label="Preview pane" className={styles.pane}>
-            <header className={styles.paneHeader}>
-              <span>● Preview · live</span>
-              <span className={styles.paneMeta}>GFM</span>
-            </header>
-            <div className={styles.previewContent}>
-              <PreviewView source={activeBuffer.content} />
-            </div>
-          </section>
-        ) : null}
+        <LivePreview
+          key={activeBuffer.documentId}
+          activeBuffer={activeBuffer}
+          adapter={adapter}
+          visible={view.previewVisible}
+        />
       </div>
       <StatusBar
         arrangement={arrangement}

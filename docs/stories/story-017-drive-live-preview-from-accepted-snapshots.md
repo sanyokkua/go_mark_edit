@@ -1,7 +1,7 @@
 ---
 id: STORY-017
 title: Drive live preview from backend-accepted debounced snapshots
-status: ready
+status: done
 spec_clauses:
   - 01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce
   - 02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#preview-debounce

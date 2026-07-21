@@ -9,6 +9,14 @@ import { Provider } from 'react-redux';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IRange, ISelection } from 'monaco-editor';
 
+import {
+  BUFFER_SYNC_MS,
+  createAppModelAdapter,
+  type AcceptedBuffer,
+  type AppModelRuntime,
+} from '../../logic/adapter/appModelAdapter';
+import type { WireError } from '../../logic/utils/parseError';
+
 const mockSetDocView = jest.fn(async (): Promise<void> => undefined);
 let mockStatePatchListener:
   | ((patch: import('../../logic/store/appModelTypes').AppStatePatch) => void)
@@ -143,7 +151,23 @@ import type {
 import { appModelAdapter } from '../../logic/adapter';
 import { store } from '../../logic/store';
 import { EditorSessionContext } from './editorSession';
-import EditorView from './EditorView';
+import EditorView, { type EditorViewAdapter } from './EditorView';
+
+type VoidResult = { error?: WireError };
+
+interface Deferred<T> {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+}
+
+function deferred<T>(): Deferred<T> {
+  let resolve: ((value: T) => void) | undefined;
+  const promise = new Promise<T>((complete): void => {
+    resolve = complete;
+  });
+
+  return { promise, resolve: resolve as (value: T) => void };
+}
 
 beforeEach((): void => {
   jest.useFakeTimers();
@@ -206,6 +230,31 @@ async function renderStatusEditor(
     <Provider store={store}>
       <EditorSessionContext.Provider value={initialState.activeBuffer}>
         <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+}
+
+function renderLivePreviewEditor(
+  content: string,
+  adapter: EditorViewAdapter,
+): ReturnType<typeof render> {
+  const document = statusDocument();
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: { [document.documentId]: document },
+      activeDocumentId: document.documentId,
+      ui: {},
+    }),
+  );
+
+  return render(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: document.documentId, content }}
+      >
+        <EditorView adapter={adapter} />
       </EditorSessionContext.Provider>
     </Provider>,
   );
@@ -313,6 +362,125 @@ it('STORY-016-AC-5 formats Phase-01 canonical wire metadata labels', async () =>
 
   expect(status).toHaveTextContent('UTF-8');
   expect(status).toHaveTextContent('LF');
+});
+
+it('STORY-017-AC-4 keeps preview text outside Redux', () => {
+  let acceptedListener: ((buffer: AcceptedBuffer) => void) | undefined;
+  const unsubscribe = jest.fn();
+  const adapter: EditorViewAdapter = {
+    flushBuffer: async (): Promise<void> => undefined,
+    flushDocView: async (): Promise<void> => undefined,
+    subscribeAcceptedBuffers(
+      listener: (buffer: AcceptedBuffer) => void,
+    ): () => void {
+      acceptedListener = listener;
+      return unsubscribe;
+    },
+    updateBuffer: async (): Promise<void> => undefined,
+    updateDocView: async (): Promise<void> => undefined,
+  };
+  const bootstrapPreview = '# Bootstrap preview remains ephemeral';
+  const rendered = renderLivePreviewEditor(bootstrapPreview, adapter);
+
+  expect(
+    screen.getByRole('heading', {
+      name: 'Bootstrap preview remains ephemeral',
+    }),
+  ).toBeInTheDocument();
+  expect(JSON.stringify(store.getState())).not.toContain(bootstrapPreview);
+
+  const contentFreePatch = { revision: 2, ui: { sidebarVisible: true } };
+  act((): void => {
+    store.dispatch(applyStatePatch(contentFreePatch));
+    acceptedListener?.({
+      documentId: 'other-document',
+      content: '# Ignored preview callback',
+      generation: 1,
+    });
+  });
+
+  expect(JSON.stringify(contentFreePatch)).not.toContain(bootstrapPreview);
+  expect(JSON.stringify(store.getState())).not.toContain(bootstrapPreview);
+  expect(
+    screen.getByRole('heading', {
+      name: 'Bootstrap preview remains ephemeral',
+    }),
+  ).toBeInTheDocument();
+
+  rendered.unmount();
+  expect(unsubscribe).toHaveBeenCalledTimes(1);
+  expect((): void => {
+    act((): void => {
+      acceptedListener?.({
+        documentId: 'document-1',
+        content: '# Ignored after cleanup',
+        generation: 2,
+      });
+    });
+  }).not.toThrow();
+  expect(JSON.stringify(store.getState())).not.toContain(
+    'Ignored after cleanup',
+  );
+});
+
+it('STORY-017-AC-5 renders accepted GFM within the debounce target', async () => {
+  const acknowledgement = deferred<VoidResult>();
+  const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
+    (documentId: string, content: string): Promise<VoidResult> => {
+      void documentId;
+      void content;
+      return acknowledgement.promise;
+    },
+  );
+  const runtime: AppModelRuntime = {
+    eventsOn: (): (() => void) => (): void => undefined,
+  };
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({
+        data: {
+          snapshot: {
+            revision: 1,
+            documents: {},
+            activeDocumentId: '',
+            ui: {},
+          },
+          activeBuffer: { documentId: '', content: '' },
+        },
+      }),
+      updateBuffer,
+      setDocView: async (): Promise<VoidResult> => ({}),
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    runtime,
+  );
+  renderLivePreviewEditor('# Bootstrap preview', adapter);
+  const editor = screen.getByRole('textbox', { name: 'Markdown source' });
+  const gfmTable = '| Name | Status |\n| --- | --- |\n| Preview | Accepted |';
+
+  const typingStoppedAt = Date.now();
+  fireEvent.change(editor, { target: { value: gfmTable } });
+
+  await act(async (): Promise<void> => {
+    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS - 1);
+  });
+  expect(updateBuffer).not.toHaveBeenCalled();
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+  await act(async (): Promise<void> => {
+    await jest.advanceTimersByTimeAsync(1);
+  });
+  expect(updateBuffer).toHaveBeenCalledWith('document-1', gfmTable);
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  expect(Date.now() - typingStoppedAt).toBe(BUFFER_SYNC_MS);
+
+  await act(async (): Promise<void> => {
+    acknowledgement.resolve({});
+    await jest.advanceTimersByTimeAsync(0);
+  });
+
+  expect(screen.getByRole('table')).toBeInTheDocument();
+  expect(screen.getByRole('cell', { name: 'Accepted' })).toBeInTheDocument();
 });
 
 it('STORY-019-AC-3 preserves Monaco state on metadata patches', async () => {

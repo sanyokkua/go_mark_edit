@@ -1,7 +1,6 @@
 import { guardArity } from './bridgeGuard';
 import { unwrapPromise } from './envelope';
 import type {
-  ActiveBuffer,
   AppModelState,
   AppStatePatch,
   DocViewInput,
@@ -33,12 +32,18 @@ export interface AppModelRuntime {
   ) => () => void;
 }
 
+export interface AcceptedBuffer {
+  content: string;
+  documentId: string;
+  generation: number;
+}
+
 export interface AppModelAdapter {
   getState: () => Promise<AppModelState>;
   updateBuffer: (documentId: string, content: string) => Promise<void>;
   flushBuffer: (documentId: string) => Promise<void>;
   subscribeAcceptedBuffers: (
-    listener: (buffer: ActiveBuffer) => void,
+    listener: (buffer: AcceptedBuffer) => void,
   ) => () => void;
   setDocView: (documentId: string, view: DocViewInput) => Promise<void>;
   updateDocView: (documentId: string, view: DocViewInput) => Promise<void>;
@@ -96,7 +101,7 @@ export function createAppModelAdapter(
     bindings.setUILayout,
   );
   let disposeStatePatches: (() => void) | undefined;
-  const acceptedBufferListeners = new Set<(buffer: ActiveBuffer) => void>();
+  const acceptedBufferListeners = new Set<(buffer: AcceptedBuffer) => void>();
   const bufferRecords = new Map<string, BufferRecord>();
   const viewRecords = new Map<string, ViewRecord>();
 
@@ -141,9 +146,16 @@ export function createAppModelAdapter(
       updateBuffer(documentId, snapshot.content),
     )
       .then((): void => {
+        if (snapshot.generation <= record.acceptedGeneration) {
+          return;
+        }
         record.acceptedGeneration = snapshot.generation;
         for (const listener of acceptedBufferListeners) {
-          listener({ documentId, content: snapshot.content });
+          listener({
+            documentId,
+            content: snapshot.content,
+            generation: snapshot.generation,
+          });
         }
       })
       .catch((error: unknown): never => {
@@ -242,7 +254,7 @@ export function createAppModelAdapter(
       }
     },
     subscribeAcceptedBuffers(
-      listener: (buffer: ActiveBuffer) => void,
+      listener: (buffer: AcceptedBuffer) => void,
     ): () => void {
       acceptedBufferListeners.add(listener);
       return (): void => {

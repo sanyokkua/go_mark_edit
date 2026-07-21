@@ -1,7 +1,7 @@
 ---
 id: STORY-018
 title: Verify the core editor responsively with Playwright
-status: draft
+status: ready
 spec_clauses:
   - 07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view

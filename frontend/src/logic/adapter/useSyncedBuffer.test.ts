@@ -136,12 +136,56 @@ it('STORY-019-AC-2 flushes the latest buffer with ordered acknowledgement', asyn
   expect(accepted).toHaveBeenNthCalledWith(1, {
     documentId: 'document-1',
     content: 'first',
+    generation: 1,
   });
   expect(accepted).toHaveBeenNthCalledWith(2, {
     documentId: 'document-1',
     content: 'latest',
+    generation: 2,
   });
   unsubscribe();
+});
+
+it('STORY-017-AC-1 publishes the identical accepted buffer generation', async () => {
+  jest.useFakeTimers();
+  const acknowledgement = deferred<VoidResult>();
+  const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
+    (documentId: string, content: string): Promise<VoidResult> => {
+      void documentId;
+      void content;
+      return acknowledgement.promise;
+    },
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer,
+      setDocView: async (): Promise<VoidResult> => ({}),
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    runtime,
+  );
+  const accepted = jest.fn();
+  adapter.subscribeAcceptedBuffers(accepted);
+
+  await adapter.updateBuffer('document-1', 'first keystroke');
+  await adapter.updateBuffer('document-1', 'accepted snapshot');
+
+  await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+
+  expect(updateBuffer).toHaveBeenCalledTimes(1);
+  expect(updateBuffer).toHaveBeenCalledWith('document-1', 'accepted snapshot');
+  expect(accepted).not.toHaveBeenCalled();
+
+  acknowledgement.resolve({});
+  await jest.advanceTimersByTimeAsync(0);
+
+  expect(accepted).toHaveBeenCalledTimes(1);
+  expect(accepted).toHaveBeenCalledWith({
+    documentId: 'document-1',
+    content: 'accepted snapshot',
+    generation: 2,
+  });
 });
 
 it('STORY-019-AC-6 retains the working copy after synchronization failure', async () => {

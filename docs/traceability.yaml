@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-21T13:22:07.053Z",
+  "generated_at": "2026-07-21T13:55:10.268Z",
   "generator_version": 1,
   "stories": {
     "STORY-001": {
@@ -508,17 +508,17 @@
       "acceptance_criteria": {
         "STORY-012-AC-1": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:84"
+            "frontend/src/logic/store/appModelProjection.test.ts:83"
           ]
         },
         "STORY-012-AC-2": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:114"
+            "frontend/src/logic/store/appModelProjection.test.ts:113"
           ]
         },
         "STORY-012-AC-3": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:138"
+            "frontend/src/logic/store/appModelProjection.test.ts:137"
           ]
         },
         "STORY-012-AC-4": {
@@ -685,7 +685,7 @@
         },
         "STORY-015-AC-2": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:393"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:561"
           ]
         },
         "STORY-015-AC-3": {
@@ -701,7 +701,7 @@
         "STORY-015-AC-5": {
           "tests": [
             "frontend/src/ui/primitives/Segmented.test.tsx:26",
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:485"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:653"
           ]
         },
         "STORY-015-AC-6": {
@@ -748,26 +748,26 @@
         },
         "STORY-016-AC-2": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:214",
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:215"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:263",
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:264"
           ]
         },
         "STORY-016-AC-3": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:242",
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:243"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:291",
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:292"
           ]
         },
         "STORY-016-AC-4": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:269",
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:270"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:318",
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:319"
           ]
         },
         "STORY-016-AC-5": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:303",
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:304"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:352",
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:353"
           ]
         },
         "STORY-016-AC-6": {
@@ -780,7 +780,7 @@
     },
     "STORY-017": {
       "title": "Drive live preview from backend-accepted debounced snapshots",
-      "status": "ready",
+      "status": "done",
       "phase": "01",
       "spec_clauses": [
         "01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce",
@@ -799,22 +799,34 @@
       ],
       "acceptance_criteria": {
         "STORY-017-AC-1": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/useSyncedBuffer.test.ts:149"
+          ]
         },
         "STORY-017-AC-2": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/hooks/useLivePreview.test.ts:53"
+          ]
         },
         "STORY-017-AC-3": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/hooks/useLivePreview.test.ts:94"
+          ]
         },
         "STORY-017-AC-4": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:367"
+          ]
         },
         "STORY-017-AC-5": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:426"
+          ]
         },
         "STORY-017-AC-6": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/hooks/useLivePreview.test.ts:140"
+          ]
         }
       }
     },
@@ -888,7 +900,7 @@
         },
         "STORY-019-AC-3": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:318"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:486"
           ]
         },
         "STORY-019-AC-4": {
@@ -904,7 +916,7 @@
         },
         "STORY-019-AC-6": {
           "tests": [
-            "frontend/src/logic/adapter/useSyncedBuffer.test.ts:147"
+            "frontend/src/logic/adapter/useSyncedBuffer.test.ts:191"
           ]
         }
       }
@@ -1462,14 +1474,14 @@
         "frontend/src/i18n/catalog.test.ts:4",
         "frontend/src/ui/components/StatusBar.test.tsx:5",
         "frontend/src/ui/components/StatusBar.test.tsx:6",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:214",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:215",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:242",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:243",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:269",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:270",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:303",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:304"
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:263",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:264",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:291",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:292",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:318",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:319",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:352",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:353"
       ]
     },
     "EC-I18N-2": {
@@ -1481,21 +1493,28 @@
         "frontend/src/i18n/catalog.test.ts:4",
         "frontend/src/ui/components/StatusBar.test.tsx:5",
         "frontend/src/ui/components/StatusBar.test.tsx:6",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:214",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:215",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:242",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:243",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:269",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:270",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:303",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:304"
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:263",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:264",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:291",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:292",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:318",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:319",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:352",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:353"
       ]
     },
     "EC-RENDER-4": {
       "stories": [
         "STORY-017"
       ],
-      "tests": []
+      "tests": [
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:149",
+        "frontend/src/logic/hooks/useLivePreview.test.ts:140",
+        "frontend/src/logic/hooks/useLivePreview.test.ts:53",
+        "frontend/src/logic/hooks/useLivePreview.test.ts:94",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:367",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:426"
+      ]
     },
     "EC-DOCS-12": {
       "stories": [
@@ -1503,13 +1522,13 @@
       ],
       "tests": [
         "frontend/src/logic/adapter/appModelAdapter.test.ts:30",
-        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:147",
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:191",
         "frontend/src/logic/adapter/useSyncedBuffer.test.ts:48",
         "frontend/src/logic/adapter/useSyncedBuffer.test.ts:87",
         "frontend/src/logic/hooks/useDocumentCommands.test.ts:7",
         "frontend/src/logic/hooks/useSyncedBuffer.test.ts:19",
         "frontend/src/ui/components/CodeEditor.test.tsx:342",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:318"
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:486"
       ]
     }
   },
