@@ -1,4 +1,6 @@
 :root {
+  --editor-font-size: 14px;
+  --editor-min-height: 14rem;
   --shell-left-width: 16rem;
   --shell-center-min-width: 0;
   --shell-assistant-collapsed-width: 0;

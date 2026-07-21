@@ -1,7 +1,7 @@
 ---
 id: STORY-013
 title: Integrate Monaco as the presentational Markdown editor
-status: ready
+status: done
 spec_clauses:
   - 01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode

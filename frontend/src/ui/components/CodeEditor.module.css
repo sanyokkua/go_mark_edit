@@ -1,0 +1,8 @@
+.editor {
+  min-height: var(--editor-min-height);
+  height: 100%;
+}
+
+.loading {
+  min-height: var(--editor-min-height);
+}

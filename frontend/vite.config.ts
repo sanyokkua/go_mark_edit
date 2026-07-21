@@ -37,5 +37,8 @@ export default defineConfig(({ mode }) => {
         wailsjs: path.resolve(rootDir, 'wailsjs'),
       },
     },
+    worker: {
+      format: 'es',
+    },
   };
 });
