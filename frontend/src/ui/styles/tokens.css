@@ -37,6 +37,14 @@
   --status-bar-gap: 0.75rem;
   --status-bar-min-height: 1.75rem;
   --status-bar-padding-inline: 0.75rem;
+  --startup-failure-action-padding-block: 0.5rem;
+  --startup-failure-action-padding-inline: 0.75rem;
+  --startup-failure-border-color: currentColor;
+  --startup-failure-border-width: 1px;
+  --startup-failure-gap: 0.75rem;
+  --startup-failure-max-width: 28rem;
+  --startup-failure-padding: 1rem;
+  --startup-failure-radius: 0.5rem;
   --segmented-border-width: 1px;
   --segmented-border-color: currentColor;
   --segmented-focus-outline-offset: 0.125rem;

@@ -48,8 +48,11 @@ function appState(revision: number): AppModelState {
 
 function createAdapter(
   getState: () => Promise<AppModelState>,
-): AppModelAdapter & { emitPatch: (patch: AppStatePatch) => void } {
-  let onPatch: ((patch: AppStatePatch) => void) | undefined;
+): AppModelAdapter & {
+  emitPatch: (patch: AppStatePatch) => void;
+  emitRetainedPatch: (attempt: number, patch: AppStatePatch) => void;
+} {
+  const patchListeners: Array<(patch: AppStatePatch) => void> = [];
 
   return {
     getState,
@@ -64,13 +67,14 @@ function createAdapter(
     flushDocView: jest.fn<Promise<void>, [string]>(),
     setUILayout: jest.fn(),
     subscribeStatePatches(callback): () => void {
-      onPatch = callback;
-      return (): void => {
-        onPatch = undefined;
-      };
+      patchListeners.push(callback);
+      return jest.fn();
     },
     emitPatch(patch: AppStatePatch): void {
-      onPatch?.(patch);
+      patchListeners.at(-1)?.(patch);
+    },
+    emitRetainedPatch(attempt: number, patch: AppStatePatch): void {
+      patchListeners[attempt]?.(patch);
     },
   };
 }
@@ -197,4 +201,78 @@ it('STORY-012-AC-3 reconciles revisioned content-free state patches', async () =
     layout: { sidebarVisible: false, assistantVisible: true },
   });
   expect(JSON.stringify(projection)).not.toContain('Canonical content');
+});
+
+it('STORY-027-AC-2 isolates stale listeners queued patches and partial projection', async () => {
+  let rejectFirst: ((error: Error) => void) | undefined;
+  const failedAttempt = createAdapter(
+    () =>
+      new Promise<AppModelState>((_resolve, reject): void => {
+        rejectFirst = reject;
+      }),
+  );
+
+  const first = bootstrapAppModelProjection(failedAttempt);
+  failedAttempt.emitPatch({
+    revision: 99,
+    documents: { upsert: { [documentMetadata.documentId]: documentMetadata } },
+    ui: { assistantVisible: true },
+  });
+  rejectFirst?.(new Error('first snapshot failed'));
+
+  await expect(first).resolves.toEqual({ status: 'failed' });
+  expect(store.getState().documents).toEqual({
+    revision: -1,
+    byId: {},
+    activeDocumentId: '',
+  });
+  expect(store.getState().ui).toEqual({ revision: -1, layout: {} });
+
+  let resolveRetry: ((state: AppModelState) => void) | undefined;
+  const retryAttempt = createAdapter(
+    () =>
+      new Promise<AppModelState>((resolve): void => {
+        resolveRetry = resolve;
+      }),
+  );
+  const retry = bootstrapAppModelProjection(retryAttempt);
+
+  failedAttempt.emitRetainedPatch(0, {
+    revision: 100,
+    documents: { upsert: { [documentMetadata.documentId]: documentMetadata } },
+    ui: { sidebarVisible: false },
+  });
+  resolveRetry?.(appState(6));
+
+  await expect(retry).resolves.toMatchObject({ status: 'ready' });
+  expect(store.getState().documents.revision).toBe(6);
+  expect(store.getState().ui).toEqual({
+    revision: 6,
+    layout: { sidebarVisible: true },
+  });
+});
+
+it('STORY-027-AC-3 supports a fresh retry after each repeated failed attempt', async () => {
+  const firstFailure = createAdapter(async (): Promise<AppModelState> => {
+    throw new Error('first failure');
+  });
+  const secondFailure = createAdapter(async (): Promise<AppModelState> => {
+    throw new Error('second failure');
+  });
+  const success = createAdapter(async (): Promise<AppModelState> =>
+    appState(7),
+  );
+
+  const first = bootstrapAppModelProjection(firstFailure);
+  expect(bootstrapAppModelProjection(firstFailure)).toBe(first);
+  await expect(first).resolves.toEqual({ status: 'failed' });
+
+  const second = bootstrapAppModelProjection(secondFailure);
+  expect(bootstrapAppModelProjection(secondFailure)).toBe(second);
+  await expect(second).resolves.toEqual({ status: 'failed' });
+
+  await expect(bootstrapAppModelProjection(success)).resolves.toEqual({
+    status: 'ready',
+    activeBuffer: appState(7).activeBuffer,
+  });
 });

@@ -10,5 +10,7 @@
   "view.menu.trigger": "View",
   "view.menu.label": "View options",
   "view.menu.showEditor": "Show Editor",
-  "view.menu.showPreview": "Show Preview"
+  "view.menu.showPreview": "Show Preview",
+  "startup.failure.message": "The application could not start. Try again.",
+  "startup.retry": "Retry"
 }

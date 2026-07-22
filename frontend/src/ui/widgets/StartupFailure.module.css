@@ -1,0 +1,30 @@
+.failure {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  padding: var(--startup-failure-padding);
+}
+
+.panel {
+  display: grid;
+  gap: var(--startup-failure-gap);
+  max-width: var(--startup-failure-max-width);
+  padding: var(--startup-failure-padding);
+  border: var(--startup-failure-border-width) solid
+    var(--startup-failure-border-color);
+  border-radius: var(--startup-failure-radius);
+}
+
+.message {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  gap: var(--startup-failure-gap);
+}
+
+.retry {
+  padding: var(--startup-failure-action-padding-block)
+    var(--startup-failure-action-padding-inline);
+}

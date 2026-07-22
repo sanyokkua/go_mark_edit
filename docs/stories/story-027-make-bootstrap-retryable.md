@@ -1,7 +1,7 @@
 ---
 id: STORY-027
 title: Make failed frontend bootstrap retryable
-status: ready
+status: done
 spec_clauses:
   - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
   - 02_Architecture/03_FRONTEND_REACT.md#store

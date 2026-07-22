@@ -11,10 +11,14 @@ import { store } from './index';
 export type AppModelBootstrapResult =
   { status: 'ready'; activeBuffer: ActiveBuffer } | { status: 'failed' };
 
+interface BootstrapAttempt {
+  disposeStatePatches?: () => void;
+  isHydrated: boolean;
+  queuedPatches: AppStatePatch[];
+}
+
 let bootstrapPromise: Promise<AppModelBootstrapResult> | undefined;
-let disposeStatePatches: (() => void) | undefined;
-let isHydrated = false;
-let queuedPatches: AppStatePatch[] = [];
+let activeAttempt: BootstrapAttempt | undefined;
 
 export function bootstrapAppModelProjection(
   appModelAdapter: AppModelAdapter,
@@ -26,43 +30,61 @@ export function bootstrapAppModelProjection(
 }
 
 export function disposeAppModelProjection(): void {
-  disposeStatePatches?.();
-  disposeStatePatches = undefined;
-  bootstrapPromise = undefined;
-  isHydrated = false;
-  queuedPatches = [];
-  store.dispatch(resetProjection());
+  if (activeAttempt !== undefined) {
+    resetAttempt(activeAttempt);
+  }
 }
 
 async function initializeProjection(
   appModelAdapter: AppModelAdapter,
 ): Promise<AppModelBootstrapResult> {
-  disposeStatePatches = appModelAdapter.subscribeStatePatches(
-    (patch: AppStatePatch): void => {
-      if (!isHydrated) {
-        queuedPatches.push(patch);
-        return;
-      }
-      store.dispatch(applyStatePatch(patch));
-    },
-  );
+  const attempt: BootstrapAttempt = {
+    isHydrated: false,
+    queuedPatches: [],
+  };
+  activeAttempt = attempt;
 
   try {
+    attempt.disposeStatePatches = appModelAdapter.subscribeStatePatches(
+      (patch: AppStatePatch): void => {
+        if (activeAttempt !== attempt) {
+          return;
+        }
+        if (!attempt.isHydrated) {
+          attempt.queuedPatches.push(patch);
+          return;
+        }
+        store.dispatch(applyStatePatch(patch));
+      },
+    );
     const state = await appModelAdapter.getState();
+    if (activeAttempt !== attempt) {
+      return { status: 'failed' };
+    }
     store.dispatch(hydrateProjection(state.snapshot));
-    isHydrated = true;
-    for (const patch of queuedPatches) {
+    attempt.isHydrated = true;
+    for (const patch of attempt.queuedPatches) {
       store.dispatch(applyStatePatch(patch));
     }
-    queuedPatches = [];
+    attempt.queuedPatches = [];
 
     return { status: 'ready', activeBuffer: state.activeBuffer };
   } catch {
-    disposeStatePatches?.();
-    disposeStatePatches = undefined;
-    isHydrated = false;
-    queuedPatches = [];
-    store.dispatch(resetProjection());
+    resetAttempt(attempt);
     return { status: 'failed' };
   }
+}
+
+function resetAttempt(attempt: BootstrapAttempt): void {
+  if (activeAttempt !== attempt) {
+    return;
+  }
+
+  activeAttempt = undefined;
+  bootstrapPromise = undefined;
+  attempt.disposeStatePatches?.();
+  attempt.disposeStatePatches = undefined;
+  attempt.isHydrated = false;
+  attempt.queuedPatches = [];
+  store.dispatch(resetProjection());
 }

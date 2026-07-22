@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { StrictMode } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 
 jest.mock('./ui/widgets/AppShell', () => {
   const React = jest.requireActual<typeof import('react')>('react');
@@ -76,6 +82,38 @@ jest.mock('./logic/adapter', () => ({
   },
 }));
 
+jest.mock('./ui/widgets/StartupFailure', () => {
+  const React = jest.requireActual<typeof import('react')>('react');
+  const ActualStartupFailure = jest.requireActual<
+    typeof import('./ui/widgets/StartupFailure')
+  >('./ui/widgets/StartupFailure').default;
+
+  const StartupFailure = (props: {
+    isRetrying: boolean;
+    onRetry: () => void;
+  }): React.JSX.Element => {
+    const harness = globalThis as typeof globalThis & {
+      story027DoubleRetryHarness?: boolean;
+    };
+    if (harness.story027DoubleRetryHarness) {
+      return React.createElement(
+        'button',
+        {
+          type: 'button',
+          onClick: (): void => {
+            props.onRetry();
+            props.onRetry();
+          },
+        },
+        'Retry twice',
+      );
+    }
+    return React.createElement(ActualStartupFailure, props);
+  };
+
+  return { __esModule: true, default: StartupFailure };
+});
+
 import App from './App';
 import {
   bootstrapAppModelProjection,
@@ -87,9 +125,47 @@ import type { WireError } from './logic/utils/parseError';
 import {
   createAppModelAdapter,
   type AppModelBindings,
+  type AppModelAdapter,
   type AppModelRuntime,
 } from './logic/adapter/appModelAdapter';
+import { appModelAdapter } from './logic/adapter';
+import type { AppModelState } from './logic/store/appModelTypes';
 import AppShell from './ui/widgets/AppShell';
+
+const mockedAppModelAdapter = appModelAdapter as jest.Mocked<AppModelAdapter>;
+
+function bootstrapState(content: string, revision: number): AppModelState {
+  return {
+    snapshot: {
+      revision,
+      documents: {
+        'document-1': {
+          documentId: 'document-1',
+          title: 'One',
+          path: '/documents/one.md',
+          dirty: false,
+          encoding: 'utf-8',
+          lineEnding: 'lf',
+          wordCount: 1,
+          view: {
+            arrangement: 'split',
+            editorVisible: true,
+            previewVisible: true,
+            cursor: { line: 1, column: 1 },
+            selection: {
+              start: { line: 1, column: 1 },
+              end: { line: 1, column: 1 },
+            },
+            scroll: { editor: 0, preview: 0 },
+          },
+        },
+      },
+      activeDocumentId: 'document-1',
+      ui: { sidebarVisible: true },
+    },
+    activeBuffer: { documentId: 'document-1', content },
+  };
+}
 
 it('STORY-001-AC-2 renders the blank application root', () => {
   render(<App />);
@@ -238,4 +314,121 @@ it('STORY-012-AC-8 keeps bootstrap safe when GetState fails', async () => {
   for (const notification of store.getState().notifications.items) {
     store.dispatch(dismissNotification(notification.id));
   }
+});
+
+it('STORY-027-AC-1 retries the production failure UI and hands off the active buffer', async () => {
+  disposeAppModelProjection();
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  const firstDisposer = jest.fn();
+  const retryDisposer = jest.fn();
+  mockedAppModelAdapter.getState
+    .mockRejectedValueOnce(new Error('startup unavailable'))
+    .mockResolvedValueOnce(bootstrapState('retry buffer', 27));
+  mockedAppModelAdapter.subscribeStatePatches
+    .mockReturnValueOnce(firstDisposer)
+    .mockReturnValueOnce(retryDisposer);
+
+  render(<App />);
+
+  expect(
+    await screen.findByRole('status', {
+      name: 'The application could not start. Try again.',
+    }),
+  ).toBeInTheDocument();
+  const retry = screen.getByRole('button', { name: 'Retry' });
+  fireEvent.click(retry);
+
+  expect(
+    await screen.findByRole('status', { name: 'Active editor buffer' }),
+  ).toHaveTextContent('retry buffer');
+  expect(
+    screen.queryByRole('button', { name: 'Retry' }),
+  ).not.toBeInTheDocument();
+  expect(mockedAppModelAdapter.getState).toHaveBeenCalledTimes(2);
+  expect(mockedAppModelAdapter.subscribeStatePatches).toHaveBeenCalledTimes(2);
+  expect(firstDisposer).toHaveBeenCalledTimes(1);
+  expect(retryDisposer).not.toHaveBeenCalled();
+});
+
+it('STORY-027-AC-3 keeps StrictMode retries single-flight repeatable and active-buffer exact', async () => {
+  disposeAppModelProjection();
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  let rejectRepeatedRetry: ((reason?: unknown) => void) | undefined;
+  mockedAppModelAdapter.getState
+    .mockRejectedValueOnce(new Error('initial failure'))
+    .mockImplementationOnce(
+      () =>
+        new Promise<AppModelState>((_resolve, reject): void => {
+          rejectRepeatedRetry = reject;
+        }),
+    )
+    .mockResolvedValueOnce(bootstrapState('one successful handoff', 28));
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  const harness = globalThis as typeof globalThis & {
+    story027DoubleRetryHarness?: boolean;
+  };
+  harness.story027DoubleRetryHarness = true;
+
+  render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry twice' }));
+  await waitFor((): void => {
+    expect(mockedAppModelAdapter.getState).toHaveBeenCalledTimes(2);
+    expect(mockedAppModelAdapter.subscribeStatePatches).toHaveBeenCalledTimes(
+      2,
+    );
+  });
+
+  harness.story027DoubleRetryHarness = false;
+  rejectRepeatedRetry?.(new Error('retry failure'));
+  const secondRetry = await screen.findByRole('button', { name: 'Retry' });
+  fireEvent.click(secondRetry);
+
+  expect(
+    await screen.findByRole('status', { name: 'Active editor buffer' }),
+  ).toHaveTextContent('one successful handoff');
+  expect(mockedAppModelAdapter.getState).toHaveBeenCalledTimes(3);
+  expect(mockedAppModelAdapter.subscribeStatePatches).toHaveBeenCalledTimes(3);
+  expect(
+    screen.getAllByRole('status', { name: 'Active editor buffer' }),
+  ).toHaveLength(1);
+});
+
+it('STORY-027-AC-4 renders an accessible localized token-only startup failure surface', async () => {
+  disposeAppModelProjection();
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockRejectedValueOnce(
+    new Error('unavailable'),
+  );
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+
+  render(<App />);
+
+  expect(
+    await screen.findByRole('status', {
+      name: 'The application could not start. Try again.',
+    }),
+  ).toHaveAttribute('aria-busy', 'false');
+  expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+  const failureSource = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/StartupFailure.tsx'),
+    'utf8',
+  );
+  const failureStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/StartupFailure.module.css'),
+    'utf8',
+  );
+  expect(failureSource).toContain("t('startup.failure.message')");
+  expect(failureSource).toContain("t('startup.retry')");
+  expect(failureStyles).toMatch(/var\(--startup-failure-/);
+  expect(failureStyles).not.toMatch(/#[0-9a-f]{3,8}\b|\brgb\(|\bhsl\(/i);
 });

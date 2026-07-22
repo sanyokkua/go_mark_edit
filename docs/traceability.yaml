@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-22T20:00:00.964Z",
+  "generated_at": "2026-07-22T20:31:59.183Z",
   "generator_version": 2,
   "stories": {
     "STORY-001": {
@@ -33,7 +33,7 @@
         },
         "STORY-001-AC-2": {
           "tests": [
-            "frontend/src/App.test.tsx:94"
+            "frontend/src/App.test.tsx:170"
           ]
         },
         "STORY-001-AC-3": {
@@ -291,7 +291,7 @@
       "acceptance_criteria": {
         "STORY-007-AC-1": {
           "tests": [
-            "frontend/src/App.test.tsx:106"
+            "frontend/src/App.test.tsx:182"
           ]
         },
         "STORY-007-AC-2": {
@@ -301,7 +301,7 @@
         },
         "STORY-007-AC-3": {
           "tests": [
-            "frontend/src/App.test.tsx:138"
+            "frontend/src/App.test.tsx:214"
           ]
         }
       }
@@ -551,17 +551,17 @@
       "acceptance_criteria": {
         "STORY-012-AC-1": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:83"
+            "frontend/src/logic/store/appModelProjection.test.ts:87"
           ]
         },
         "STORY-012-AC-2": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:113"
+            "frontend/src/logic/store/appModelProjection.test.ts:117"
           ]
         },
         "STORY-012-AC-3": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:137"
+            "frontend/src/logic/store/appModelProjection.test.ts:141"
           ]
         },
         "STORY-012-AC-4": {
@@ -581,12 +581,12 @@
         },
         "STORY-012-AC-7": {
           "tests": [
-            "frontend/src/App.test.tsx:158"
+            "frontend/src/App.test.tsx:234"
           ]
         },
         "STORY-012-AC-8": {
           "tests": [
-            "frontend/src/App.test.tsx:183"
+            "frontend/src/App.test.tsx:259"
           ]
         }
       }
@@ -1370,7 +1370,7 @@
     },
     "STORY-027": {
       "title": "Make failed frontend bootstrap retryable",
-      "status": "ready",
+      "status": "done",
       "phase": "01",
       "phase_requirements": [
         "PH01-R02",
@@ -1390,16 +1390,25 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-027-AC-1": {
-          "tests": []
+          "tests": [
+            "frontend/src/App.test.tsx:319"
+          ]
         },
         "STORY-027-AC-2": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/store/appModelProjection.test.ts:206"
+          ]
         },
         "STORY-027-AC-3": {
-          "tests": []
+          "tests": [
+            "frontend/src/App.test.tsx:354",
+            "frontend/src/logic/store/appModelProjection.test.ts:255"
+          ]
         },
         "STORY-027-AC-4": {
-          "tests": []
+          "tests": [
+            "frontend/src/App.test.tsx:403"
+          ]
         }
       }
     },
@@ -1637,7 +1646,7 @@
         }
       },
       "tests": [
-        "frontend/src/App.test.tsx:94",
+        "frontend/src/App.test.tsx:170",
         "main_test.go:210",
         "main_test.go:78"
       ]
@@ -1817,8 +1826,8 @@
         }
       },
       "tests": [
-        "frontend/src/App.test.tsx:106",
-        "frontend/src/App.test.tsx:138",
+        "frontend/src/App.test.tsx:182",
+        "frontend/src/App.test.tsx:214",
         "frontend/src/ui/styles/tokens.test.ts:13",
         "internal/application/architecture_test.go:16"
       ]
@@ -2034,14 +2043,19 @@
         }
       },
       "tests": [
-        "frontend/src/App.test.tsx:158",
-        "frontend/src/App.test.tsx:183",
+        "frontend/src/App.test.tsx:234",
+        "frontend/src/App.test.tsx:259",
+        "frontend/src/App.test.tsx:319",
+        "frontend/src/App.test.tsx:354",
+        "frontend/src/App.test.tsx:403",
         "frontend/src/dev/bridge-mock/appModel.test.ts:9",
         "frontend/src/logic/adapter/appModelAdapter.test.ts:399",
         "frontend/src/logic/adapter/appModelAdapter.test.ts:499",
-        "frontend/src/logic/store/appModelProjection.test.ts:113",
-        "frontend/src/logic/store/appModelProjection.test.ts:137",
-        "frontend/src/logic/store/appModelProjection.test.ts:83",
+        "frontend/src/logic/store/appModelProjection.test.ts:117",
+        "frontend/src/logic/store/appModelProjection.test.ts:141",
+        "frontend/src/logic/store/appModelProjection.test.ts:206",
+        "frontend/src/logic/store/appModelProjection.test.ts:255",
+        "frontend/src/logic/store/appModelProjection.test.ts:87",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:528"
       ]
     },
@@ -2167,10 +2181,10 @@
         }
       },
       "tests": [
-        "frontend/src/App.test.tsx:158",
+        "frontend/src/App.test.tsx:234",
         "frontend/src/logic/adapter/useSyncedBuffer.test.ts:191",
-        "frontend/src/logic/store/appModelProjection.test.ts:137",
-        "frontend/src/logic/store/appModelProjection.test.ts:83",
+        "frontend/src/logic/store/appModelProjection.test.ts:141",
+        "frontend/src/logic/store/appModelProjection.test.ts:87",
         "frontend/src/ui/components/CodeEditor.test.tsx:218",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:648",
         "internal/appmodel/runtime_emitter_test.go:12",
@@ -2642,6 +2656,7 @@
         }
       },
       "tests": [
+        "frontend/src/App.test.tsx:403",
         "frontend/src/i18n/catalog.test.ts:4"
       ]
     },
