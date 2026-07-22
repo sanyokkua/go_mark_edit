@@ -24,7 +24,7 @@ mutable **`../docs/`** working area:
 |---|---|
 | Requirements, architecture, non-functional, build, dependencies | — |
 | **Initial** architecture decisions (`08_Decisions/`, ADR-0001…0012) | **New** decisions made while implementing (`../docs/adr/`, ADR-0013+) |
-| Process **formats** — story format, traceability schema, ADR format, DoD, AC patterns, module inventory (`06_Process_and_Traceability/`) | The **instances** — generated stories (`../docs/stories/`), the progress record (`../docs/traceability.yaml`) |
+| Process **formats** — phase/story formats, traceability schema, ADR format, DoD, AC patterns, module inventory (`06_Process_and_Traceability/`) | The **instances** — generated stories (`../docs/stories/`), phase evidence (`../docs/phase-evidence/`), the progress record (`../docs/traceability.yaml`) |
 | Phases + suggested tasks (`07_Phases/`) | The actual stories generated per phase (`../docs/stories/`) |
 | UI mockups (`mockups/`) | — |
 
@@ -53,8 +53,8 @@ specification/
   04_Build_and_Release/        build matrix, packaging + file associations, CI + git hooks,
                                versioning + icon + release pipeline (DD-65..67)
   05_Dependencies/             Go deps, frontend deps, dependency policy
-  06_Process_and_Traceability/ module inventory + the process FORMATS (story, traceability, ADR, AC, DoD)
-  07_Phases/                   roadmap + one file per phase (goal, scope, suggested tasks, exit checklist)
+  06_Process_and_Traceability/ module inventory + the process FORMATS (phase, story, traceability, ADR, AC, DoD)
+  07_Phases/                   roadmap + one file per phase (requirements, transitions, contracts, work packages, evidence)
   08_Decisions/                the initial architecture decision records (ADR-0001…0012) + index
   assets/icon/                 canonical app-icon source + deterministic processing pipeline (DD-66)
   mockups/                     the single UI reference — gomarkedit-mockup.html (all themes/states)
@@ -67,8 +67,9 @@ Implementation proceeds in **three stages** — **Viewer → Editor → LLM Assi
 open for the next (constraints **F1–F9**). Stages group **phases** (`07_Phases/`); each phase lists its
 **suggested tasks/stories** (a backlog), not finished stories.
 
-Actual work units — **stories** — are **generated during implementation** into `../docs/stories/`, one
-per session, in the fixed format (`06_Process_and_Traceability/02_STORY_FORMAT.md`):
+Each phase first defines permanent requirements and evidence in the fixed phase format
+(`06_Process_and_Traceability/07_PHASE_FORMAT.md`). Actual work units — **stories** — are then generated
+into `../docs/stories/`, one per session, in the story format (`02_STORY_FORMAT.md`):
 
 1. **Investigate** the phase (read spec vs. current code).
 2. **Author** the phase's stories into `../docs/stories/` from its suggested-task list.
@@ -77,6 +78,7 @@ per session, in the fixed format (`06_Process_and_Traceability/02_STORY_FORMAT.m
 5. **Regenerate + validate traceability** (`06_Process_and_Traceability/03_TRACEABILITY.md` →
    `../docs/traceability.yaml`).
 6. A story is **done** only when every AC has a passing test and traceability validates with zero orphans.
+7. A phase is complete only when `just phase-complete-check NN` resolves every phase requirement and exit item.
 
 ## Reading order for a new agent
 

@@ -7,6 +7,8 @@ spec_clauses:
   - 02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations
   - 02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db
   - 00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state
+phase_requirements:
+  - PH00-R04
 modules:
   - internal/db/
   - internal/file/
@@ -49,15 +51,19 @@ Create the shared, pure-Go persistence base that settings can use safely from in
 
 ## Acceptance criteria
 ### STORY-004-AC-1
+**Satisfies:** PH00-R04
 A `modernc.org/sqlite` database opens with WAL, `busy_timeout`, a single-writer pool, and no flock.
 
 ### STORY-004-AC-2
+**Satisfies:** PH00-R04
 Additive goose migrations run before sqlc-backed settings queries become available.
 
 ### STORY-004-AC-3
+**Satisfies:** PH00-R04
 A briefly locked database retries safely without data loss. (EC-SET-1)
 
 ### STORY-004-AC-4
+**Satisfies:** PH00-R04
 A corrupt or newer-than-supported schema follows the specified safe-default or hard-startup-error path. (EC-SET-2)
 
 ## Test plan

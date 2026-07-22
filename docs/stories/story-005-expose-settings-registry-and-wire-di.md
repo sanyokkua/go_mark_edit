@@ -11,6 +11,10 @@ spec_clauses:
   - 01_Product/11_SETTINGS.md#markdown-group
   - 01_Product/11_SETTINGS.md#content-privacy-group
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+phase_requirements:
+  - PH00-R02
+  - PH00-R03
+  - PH00-R05
 modules:
   - internal/settings/
   - internal/db/
@@ -54,15 +58,19 @@ Make the first complete backend vertical prove the envelope, repository layering
 
 ## Acceptance criteria
 ### STORY-005-AC-1
+**Satisfies:** PH00-R02, PH00-R05
 The settings Handler, Service, and Repository return concrete `apperr` results at the bridge, accept no handler context, recover panics, and own repository interfaces in the settings package.
 
 ### STORY-005-AC-2
+**Satisfies:** PH00-R05
 Grouped typed defaults persist through generic KV for Appearance (Material/Auto), Markdown (GFM), and Content privacy (Ask), without a schema change for later scalar keys.
 
 ### STORY-005-AC-3
+**Satisfies:** PH00-R05
 Invalid or missing scalar values resolve to their documented defaults rather than preventing startup.
 
 ### STORY-005-AC-4
+**Satisfies:** PH00-R03, PH00-R05
 `ApplicationContextHolder` constructs settings with nil persistence, injects the real SQLite repository in `Init(ctx)` after database open, binds the handler, and regenerates bindings.
 
 ## Test plan

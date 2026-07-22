@@ -20,6 +20,9 @@ Frontend unit/component tests use **Jest + React Testing Library**.
   it('STORY-031-AC-1 renders a GFM table in the preview', () => { ... });
   ```
 
+- Put every proved `EC-AREA-N` id in the actual Jest test name. An incidental id in a fixture, assertion,
+  or body comment is not exact edge-case evidence.
+
 - Test **behaviour**, from the user's vantage point. Query by **accessible roles/labels/text**
   (`getByRole`, `getByLabelText`, `findByText`), not by class name, test id, or DOM structure.
 - Mock the **adapter layer** (`logic/adapter`) -- never `wailsjs/` -- so tests exercise the same seam the
@@ -35,6 +38,7 @@ Frontend unit/component tests use **Jest + React Testing Library**.
 ## Authoring checklist
 
 - [ ] Test name/comment carries `Proves: STORY-NNN-AC-N`.
+- [ ] Any edge-case proof names its `EC-AREA-N` in the actual test title.
 - [ ] Queries are accessibility-first (`getByRole`/`getByLabelText`/text).
 - [ ] Backend seam mocked at `logic/adapter`, not `wailsjs/`.
 - [ ] Async handled with `findBy*`/`waitFor`; every AC has a proving test.

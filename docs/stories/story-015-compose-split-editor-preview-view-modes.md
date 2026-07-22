@@ -10,6 +10,8 @@ spec_clauses:
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
   - mockups/README.md#role-in-the-spec
+phase_requirements:
+  - PH01-R08
 modules:
   - ui/primitives/
   - ui/components/
@@ -77,21 +79,27 @@ Let users switch the active document among source-only, side-by-side, and render
 ## Acceptance criteria
 
 ### STORY-015-AC-1
+**Satisfies:** PH01-R08
 Split mode applies the tokenized responsive auto-fit/equal-pane CSS contract in the existing center region, including the narrow stacking rule, while preserving the left and collapsed assistant slots; measured viewport overflow is owned by STORY-018.
 
 ### STORY-015-AC-2
+**Satisfies:** PH01-R08
 Selecting Editor, Split, or Preview dispatches `SetDocView`; an `EditorView`/store integration proves the mock backend patch is reconciled before rendered panes change.
 
 ### STORY-015-AC-3
+**Satisfies:** PH01-R08
 Editor shows source only, Split shows both panes, and Preview shows rendered content with chrome.
 
 ### STORY-015-AC-4
+**Satisfies:** PH01-R08
 The segmented arrangement and shared `SetDocView` invariant cannot hide both panes; View-menu UI is deferred to Phase 08.
 
 ### STORY-015-AC-5
+**Satisfies:** PH01-R08
 The segmented primitive exposes one selected option; Arrow keys move selection, Home/End select the first/last option, and focus remains on the selected segment.
 
 ### STORY-015-AC-6
+**Satisfies:** PH01-R08
 Pane headers and the segmented control match the editor-split mockup structure using token-only CSS Modules.
 
 ## Test plan

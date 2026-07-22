@@ -43,7 +43,8 @@ Track your work with `TodoWrite`. Read and internalise:
    this phase belongs to and the **forward-compatibility constraints F1–F9** it must honour.
 3. The **phase file** `specification/07_Phases/PHASE_<NN>_*.md` (resolve `$ARGUMENTS` to it) and
    `specification/07_Phases/00_ROADMAP.md` (phase deps, stage roll-up).
-4. The process **formats** (obey them exactly): `specification/06_Process_and_Traceability/02_STORY_FORMAT.md`,
+4. The process **formats** (obey them exactly): `specification/06_Process_and_Traceability/07_PHASE_FORMAT.md`,
+   `02_STORY_FORMAT.md`,
    `05_ACCEPTANCE_CRITERIA_PATTERNS.md`, `03_TRACEABILITY.md`, `06_DEFINITION_OF_DONE.md`,
    `01_MODULE_INVENTORY.md`, `04_ADR_FORMAT.md`.
 5. `specification/00_Foundation/05_SPEC_INDEX.md` (canonical clause anchors) and
@@ -71,9 +72,26 @@ Ask the subagent for a summary (what exists, what's missing, evidence paths) —
 
 Reconcile the phase's suggested tasks with the investigator's findings and the spec:
 
+- Build the complete permanent `PHNN-RNN` inventory from the phase requirement ledger and every cited
+  product, architecture, non-functional, DD, ADR, implementation-stage, and cross-phase source. Do not
+  trust the suggested work packages as complete.
+- Build an **inverse coverage matrix** before choosing stories: every phase requirement, transition,
+  producer/consumer contract, edge case, F1–F9 seam, and exit-evidence row must map to at least one
+  proposed story AC and a proving test or durable runtime/human artifact. Reject the plan if any row is
+  orphaned.
+- Perform a **temporal/adversarial hazard** pass over: pending work at blur/hide/switch/close/save;
+  mount/unmount and resource lifetime; stale or out-of-order async completion; multiple writers to the
+  same backend command; failure/retry/cancellation/rollback; and consumer availability across view modes
+  and ownership boundaries.
+- Define producer/consumer contracts with the exact interface, ownership, lifetime, and ordering. A seam
+  is not covered merely because its symbol exists: an intended **external consumer** must be able to use
+  it through the public boundary in every required mode.
+
 - Produce the **actual, relevant** set of stories to author for this phase (drop what's done, split what's
-  too big per the S/M/L sizing rules, merge trivial overlaps, add anything the phase requires that the
+  too big per the S/M sizing rules, merge trivial overlaps, add anything the phase requires that the
   backlog missed).
+- **Reject L stories** as implementation-ready. An L item is a non-ready epic and must be split into
+  independently reviewable S/M stories with explicit capability dependencies.
 - Assign **globally-unique, monotonic** `STORY-NNN` ids starting **after the current highest id** (see
   grounding context). Never reuse/renumber existing ids.
 - Order by dependency; keep the graph **acyclic**; put **backend stories before the UI stories** that
@@ -84,12 +102,13 @@ Reconcile the phase's suggested tasks with the investigator's findings and the s
 For **each** proposed story, specify everything needed to author the file later — do not write the file:
 
 - Front-matter draft: `id`, `title` (imperative, no trailing period), `status: draft`, `spec_clauses`
-  (≥1, each a **resolved** `<file>#<anchor>`), `modules` (≥1, **real** paths from the inventory),
+  (≥1, each a **resolved** `<file>#<anchor>`), `phase_requirements` (≥1, each a real `PHNN-RNN`),
+  `modules` (≥1, **real** paths from the inventory),
   `acceptance_criteria` ids, `edge_cases` (EC-AREA-N from the clauses), `depends_on` (acyclic),
   `adrs` (only `accepted`), `phase`, `owner: coder`, `estimate` (S/M/L).
 - **Acceptance criteria**, each written out using a pattern from `05_ACCEPTANCE_CRITERIA_PATTERNS.md`
-  (P1 behaviour / P2 state / P3 contract / P4 rendering / P5 guard / P6 visual). Each AC must be
-  independently testable and DoD-satisfiable.
+  (P1 behaviour / P2 state / P3 contract / P4 rendering / P5 guard / P6 visual). Each AC must include
+  an exact `**Satisfies:** PHNN-RNN[, ...]` mapping and be independently testable and DoD-satisfiable.
 - **Test plan**: for every AC and every edge case — tier (unit / integration / e2e-smoke / architecture),
   concrete test file path, test function name, and the `Proves: STORY-NNN-AC-N` tag it will carry.
 - **Traceability**: the exact `traceability.yaml` entries this story will add (clause→story→AC→test→module)
@@ -101,6 +120,14 @@ For **each** proposed story, specify everything needed to author the file later 
   offline; the DD-NN and ADR-NNNN ids; the F1–F9 seam if relevant).
 - Note any **new ADR** required (spec gap) → to be authored in `docs/adr/` (ADR-0013+) before the story is
   `ready`.
+- Include a **low-context implementation packet** for each story: current paths and symbols; owner and
+  resource lifetime; input/output contract; ordered event flow; failure semantics; dependencies and
+  intended consumers; negative constraints; and explicit out-of-scope behavior. A low-end implementation
+  model must not need to rediscover an ownership boundary or infer sequencing.
+
+After drafting, dispatch an independent skeptical review. Ask it to construct a
+**passing-but-incomplete** implementation for each story and identify which requirement, transition,
+contract, edge case, seam, or exit item could still pass the proposed tests. Refine until it cannot do so.
 
 ## Step 5 — Present the plan (then stop)
 
@@ -110,13 +137,15 @@ Output a single structured plan containing:
 2. **Story set** — a table (id · title · est · modules · cited clauses · depends_on) with the dependency
    order, and a short rationale for every deviation from the suggested backlog (added/dropped/split/merged).
 3. **Per-story briefs** — the Step-4 drafts.
-4. **Traceability delta** — clauses/edge-cases this phase will newly cover; any that remain uncovered.
+4. **Traceability delta and inverse coverage matrix** — every phase requirement, transition, contract,
+   edge case, seam, and exit-evidence row mapped to stories, ACs, tests/artifacts; none may remain uncovered.
 5. **Open questions / spec gaps** — explicit stop-and-ask items and any proposed ADRs.
 6. **Next actions** — e.g. "author these story files into `docs/stories/` via the `architect` subagent,
    update `docs/stories/README.md`, then `just trace` + `just trace-check`."
 
-**Guardrails before you present:** every `spec_clauses` anchor resolves; every `modules` path is in the
-inventory; ids are monotonic and unique; `depends_on` is acyclic; each AC is testable and DoD-ready; no
-spec edit is proposed (only new `docs/adr/` ADRs for gaps).
+**Guardrails before you present:** every `spec_clauses` anchor and `phase_requirements` id resolves; every
+`modules` path is in the inventory; ids are monotonic and unique; `depends_on` is acyclic; each AC has an
+exact `Satisfies:` mapping and a strong proving test; the inverse coverage matrix has no orphan; no L story
+is ready; no spec edit is proposed (only new `docs/adr/` ADRs for gaps).
 
 Finish by calling **`ExitPlanMode`** with this plan to request approval. Create nothing until approved.

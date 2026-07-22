@@ -483,8 +483,7 @@ it('STORY-017-AC-5 renders accepted GFM within the debounce target', async () =>
   expect(screen.getByRole('cell', { name: 'Accepted' })).toBeInTheDocument();
 });
 
-it('STORY-019-AC-3 preserves Monaco state on metadata patches', async () => {
-  // Proves: EC-DOCS-12
+it('STORY-019-AC-3 (EC-DOCS-12) preserves Monaco state on metadata patches', async () => {
   store.dispatch(
     hydrateProjection({
       revision: 1,

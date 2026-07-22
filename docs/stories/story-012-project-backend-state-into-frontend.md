@@ -9,6 +9,9 @@ spec_clauses:
   - 02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow
   - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+phase_requirements:
+  - PH01-R02
+  - PH01-R05
 modules:
   - logic/adapter/
   - logic/store/
@@ -75,27 +78,35 @@ Hydrate and continuously reconcile a disposable frontend view of the backend app
 ## Acceptance criteria
 
 ### STORY-012-AC-1
+**Satisfies:** PH01-R02, PH01-R05
 App-model hydration returns the active buffer separately while Redux stores only document metadata and UI state.
 
 ### STORY-012-AC-2
+**Satisfies:** PH01-R02
 Process-scoped initialization caches one Promise, calls `GetState` once, and hydrates `documents` and `ui` exactly once even when React StrictMode mounts the application twice.
 
 ### STORY-012-AC-3
+**Satisfies:** PH01-R02, PH01-R05
 A newer revisioned `state:patch` updates dirty/count/view/UI fields without adding content to any slice, while duplicate or stale revisions are ignored.
 
 ### STORY-012-AC-4
+**Satisfies:** PH01-R02
 `appModelAdapter` exposes guarded, unwrapped query/command methods; commands do not optimistically mutate projection state.
 
 ### STORY-012-AC-5
+**Satisfies:** PH01-R02
 Event initialization installs one adapter-owned listener before reconciliation begins, and its disposer prevents duplicate or leaked subscriptions across repeated bootstrap consumers.
 
 ### STORY-012-AC-6
+**Satisfies:** PH01-R02
 The frontend-only bridge mock mirrors `StateResult`, command envelopes, and runtime patch events.
 
 ### STORY-012-AC-7
+**Satisfies:** PH01-R02, PH01-R05
 The actual application bootstrap hands the separate hydration `ActiveBuffer` to ephemeral root/editor-session state while Redux contains only document metadata and UI state.
 
 ### STORY-012-AC-8
+**Satisfies:** PH01-R02
 **Given** `GetState` rejects or returns an error envelope, **when** application bootstrap runs, **then** the normal toast path reports the error, Redux remains a safe empty projection, and no state-patch listener leaks.
 
 ## Test plan

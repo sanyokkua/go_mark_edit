@@ -19,6 +19,9 @@ convention), `02_STORY_FORMAT.md` (Definition of done). Tests live alongside the
   func TestSavePreservesCRLF(t *testing.T) { ... }
   ```
 
+- For an edge case, add `// Evidence: EC-AREA-N` in the same leading comment block. Mentioning an EC id
+  in test-body data or an assertion string does not count as exact evidence.
+
 - Prefer **table-driven** subtests (`tt := range cases` / `t.Run(tt.name, ...)`).
 - Always run with the race detector: `go test -race ./...` (this is the `just test` gate).
 - Test through **fakes/stubs that satisfy the package's own interface** (e.g. a fake

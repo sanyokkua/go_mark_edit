@@ -9,6 +9,9 @@ spec_clauses:
   - 03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
   - 00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+phase_requirements:
+  - PH01-R03
+  - PH01-R05
 modules:
   - ui/components/
   - ui/styles/
@@ -69,21 +72,27 @@ Provide a responsive, locally bundled Monaco Markdown component with typed edito
 ## Acceptance criteria
 
 ### STORY-013-AC-1
+**Satisfies:** PH01-R03
 `CodeEditor` configures the Markdown contribution with line numbers on, word wrap off, and tokenized 14 px font/minimum-height defaults; responsive rendered geometry is proven by STORY-018.
 
 ### STORY-013-AC-2
+**Satisfies:** PH01-R03
 Monaco and its configured Markdown worker path are lazy-loaded from local bundled modules, and a production artifact/static scan finds no CDN, remote runtime URL, or fetch loader.
 
 ### STORY-013-AC-3
+**Satisfies:** PH01-R03
 Typing changes the Monaco model and invokes the typed change callback immediately without waiting for an adapter, Redux, debounce, or backend response.
 
 ### STORY-013-AC-4
+**Satisfies:** PH01-R03
 The hydration value/model seeds Monaco only when a new document identity mounts; ordinary rerenders for the same identity do not recreate or overwrite the model.
 
 ### STORY-013-AC-5
+**Satisfies:** PH01-R05
 Rerendering `CodeEditor` with changed non-content metadata never calls Monaco `setValue` and preserves cursor and selection; state-patch integration itself remains STORY-019.
 
 ### STORY-013-AC-6
+**Satisfies:** PH01-R03
 `CodeEditor` exposes typed change, blur, cursor-position, selection, `getSelection`, `replaceRange`, and `replaceAll` seams without importing the adapter or Redux.
 
 ## Test plan

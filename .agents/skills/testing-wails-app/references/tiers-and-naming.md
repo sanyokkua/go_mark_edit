@@ -14,7 +14,8 @@ and the chain), `05_ACCEPTANCE_CRITERIA_PATTERNS.md` (P1–P6 patterns), `01_MOD
 - **Playwright** — put the AC id first in the `test(...)` title.
 
 Each `edge_cases:` id (`EC-RENDER-*`, `EC-FMT-*`, `EC-THEME-*`, `EC-DOCS-*`, `EC-ASSET-*`, …) must map
-to at least one named test too.
+to at least one explicit test node too: add a leading `// Evidence: EC-AREA-N` line to Go tests, or put
+the EC id in the Jest/Playwright test name. An incidental id in a body, fixture, or assertion is not proof.
 
 ## Pick the tier from the story's Test plan
 

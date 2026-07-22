@@ -38,12 +38,18 @@ the AC tests to `tester`, and finish with `spec-conformance-reviewer`.
 
 ## Non-negotiable checks
 
-- Resolve the target story and confirm it is `ready`; every dependency must be `done`.
+- Resolve the target story and confirm it is `ready`; every dependency must be `done`; every
+  `phase_requirements` id and AC `Satisfies:` mapping must resolve.
 - Keep `specification/` frozen and read-only. Surface ambiguity rather than inferring behaviour.
 - Read every cited specification clause, decision, ADR, matching shared rule, and applicable Codex skill
   before planning a change.
 - Delegate the required read-only repository and prior-work map to `investigator`.
 - Preserve the Handler → Service → Repository, result-envelope, two-phase DI, backend-authoritative
   model, adapter-only Wails import, token-only theming, offline, and forward-compatibility constraints.
+- Inspect every reader, writer, lifecycle boundary, sibling consumer, and competing async path. Express
+  stateful ACs as ordered event sequences and require the canonical adversarial tests and final
+  user-visible postconditions.
 - Map every acceptance criterion and edge case to an exact proving test, `Proves:` tag, traceability
-  result, and definition-of-done check. Do not plan unapproved scope or a second story.
+  result, and durable runtime/human evidence where required. Accept only S/M implementation stories;
+  reject stories larger than M. Do not plan
+  unapproved scope or a second story.

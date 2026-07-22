@@ -36,9 +36,12 @@ Target story: **$ARGUMENTS**
 Track your work with `TodoWrite`.
 
 1. Resolve `$ARGUMENTS` to the story file `docs/stories/story-<NNN>-*.md` and read it **in full**:
-   front-matter (`spec_clauses`, `modules`, `acceptance_criteria`, `edge_cases`, `depends_on`, `adrs`,
+   front-matter (`spec_clauses`, `phase_requirements`, `modules`, `acceptance_criteria`, `edge_cases`, `depends_on`, `adrs`,
    `phase`, `estimate`) and body (Goal, In/Out of scope, Spec inputs, Design constraints, ACs, Test plan,
    DoD). Confirm `status` is `ready` and every `depends_on` story is `done` (else flag it).
+   Resolve every `phase_requirements` id in the owning phase ledger and confirm every AC has a matching
+   `**Satisfies:**` marker; the union of AC mappings must equal the front-matter list. Re-derive the story
+   from those phase outcomes instead of trusting the AC wording.
 2. `CLAUDE.md` — non-negotiable architecture constraints.
 3. **Every** clause in `spec_clauses` — resolve each `<file>#<anchor>` and read it; also read the parent
    `01_Product/*` or `02_Architecture/*` doc for surrounding context, plus `00_Foundation/04_DESIGN_DECISIONS.md`
@@ -66,12 +69,19 @@ Launch the **`investigator`** subagent (read-only) via `Task` to report, with ev
 - Concrete **edge cases** to cover: the story's `edge_cases` (EC-AREA-N), plus additional realistic ones
   discovered in the code (error paths, per-OS webview differences, encoding/BOM/CRLF, large files,
   concurrency/gate, offline/allowlist, multi-instance) — mapped to the ACs they belong to.
+- Every **reader**, **writer**, lifecycle boundary, sibling consumer, and competing asynchronous path
+  relevant to the phase requirements. Report ownership, resource lifetime, command/event ordering, and
+  where stale work can cross a boundary.
 
 Ask for a structured summary, not a transcript.
 
 ## Step 3 — Build the implementation plan
 
 Produce a concrete, ordered plan a `coder` can execute in one session:
+
+- Convert each stateful AC into an explicit event sequence: before-state → trigger → ordered operations →
+  after-state → failure result. The sequence must state what is flushed, retained, disposed, retried,
+  rolled back, or ignored at every lifecycle boundary.
 
 - **Files** — for each: create or modify, the exact path (must be a real module from the inventory or a new
   one that the story adds to the inventory), and the change in 1–3 sentences (interfaces/signatures, not
@@ -89,12 +99,20 @@ Produce a concrete, ordered plan a `coder` can execute in one session:
   action.
 - **Bindings**: note if a bound Go signature changes → `wails generate module` will be run (no drift).
 - **Sequencing** so the tree stays buildable; identify anything that must land before the UI part.
+- Return the story for refinement rather than implementing when its ACs cannot prove the cited phase
+  requirement. Reject implementation when the story **exceeds M**; split the backlog item first.
 
 ## Step 4 — Build the test & traceability plan
 
 - For **every acceptance criterion** and **every edge case**: the test tier (unit / integration /
   e2e-smoke / architecture), the exact test file path and function name, and the first-line
   **`Proves: STORY-NNN-AC-N`** tag (Go comment or Jest name) required by `03_TRACEABILITY.md`.
+- Require adversarial tests whenever applicable: **mutate-before-transition**, deferred completion ordering,
+  remount/session identity, retry after failure, and **sibling consumption** through the public seam.
+- Reject a proposed test that proves only symbol existence, source text, a precondition-free happy path,
+  or command invocation without the **final user-visible postcondition**.
+- Plan durable evidence for real-Wails and human-approved checks: exact command or artifact path, evidence
+  owner, and approval identity. Unavailable blocking evidence prevents completion; it is not waived.
 - The **`docs/traceability.yaml`** delta (`just trace` will regenerate it) and confirmation `just trace-check`
   will pass with **zero orphans** — no AC without a proving test, no cited clause/module unresolved.
 - The exact **Definition-of-Done checklist** for this story (`gofmt`/`vet`/`golangci-lint`/`go test -race`;
@@ -112,10 +130,12 @@ Output a single structured plan:
 5. **Traceability & DoD** — the `traceability.yaml` delta and the DoD checklist.
 6. **Risks / open questions / spec gaps** — explicit stop-and-ask items; any ADR needed.
 7. **Execution handoff** — who does what (`coder` implements; `tester` writes the AC tests + runs
-   `just trace`/`trace-check`; `debugger` if failures; `spec-conformance-reviewer` before `done`).
+   `just trace`/`trace-check`; `debugger` if failures; an independent `spec-conformance-reviewer`
+   re-derives the phase requirements and final postconditions before `done`).
 
-**Guardrails before you present:** every AC has a proving test; every edge case is covered; every module
-path exists in the inventory; no `wailsjs/` import outside the adapter; no network/telemetry added; no spec
-edit planned; the story fits one session (else recommend a split).
+**Guardrails before you present:** every phase requirement resolves; every AC has a matching `Satisfies:`
+mapping and a proving test that reaches the final postcondition; every edge case is covered exactly; every
+module path exists in the inventory; no `wailsjs/` import outside the adapter; no network/telemetry added;
+no spec edit planned; the story is S/M and fits one session (otherwise return it for refinement).
 
 Finish by calling **`ExitPlanMode`** with this plan to request approval. Write no code until approved.

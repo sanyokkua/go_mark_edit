@@ -9,6 +9,12 @@ spec_clauses:
   - 03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets
   - 03_NonFunctional/05_ACCESSIBILITY.md#2-keyboard-operability
   - mockups/README.md#role-in-the-spec
+phase_requirements:
+  - PH01-R03
+  - PH01-R08
+  - PH01-R11
+  - PH01-R12
+  - PH01-R13
 modules:
   - ui/components/
   - ui/primitives/
@@ -74,15 +80,19 @@ Prove the complete Phase-01 editor flow at phone, tablet, and desktop widths so 
 ## Acceptance criteria
 
 ### STORY-018-AC-1
+**Satisfies:** PH01-R08
 `just verify-ui` launches the bridge-mock app at 375, 768, and 1280 px with Monaco taller than 200 px, no horizontal overflow, and no console errors.
 
 ### STORY-018-AC-2
+**Satisfies:** PH01-R03, PH01-R11, PH01-R12, PH01-R13
 Typing `# Hello` eventually updates the backend mock, dirty/word metadata, status bar, and visible preview within the documented end-to-end tolerance; exact 200 ms scheduling remains a controlled-clock STORY-019 proof.
 
 ### STORY-018-AC-3
+**Satisfies:** PH01-R08, PH01-R11, PH01-R13
 The committed 1280 px cropped split-view screenshot matches an explicitly approved Phase-01 baseline, and independent assertions verify the canonical mockup's structural regions, panes, toggle, and status bar; the test run cannot self-approve baseline changes.
 
 ### STORY-018-AC-4
+**Satisfies:** PH01-R08
 The keyboard-operable view arrangement radiogroup and synchronized View-menu pointer toggles switch Editor/Split/Preview with exactly the expected panes visible, never hide both panes, and keep the assistant region collapsed.
 
 ## Test plan

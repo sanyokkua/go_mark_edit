@@ -79,6 +79,8 @@ just test         # go test -race ./...  +  jest
 just verify-ui    # Playwright responsive + smoke tests
 just trace        # regenerate docs/traceability.yaml
 just trace-check  # validate traceability (gate)
+just phase-check  # validate every phase document structurally
+just phase-complete-check NN # prove one claimed-complete phase
 just check        # fmt-check + lint + typecheck + test + arch checks
 ```
 
@@ -89,24 +91,27 @@ Two Codex skills (`.agents/skills/plan-phase-stories-creation/` and
 they gather full context, delegate mapping to the `investigator` subagent, produce a plan, and request
 explicit user approval. Nothing is created or changed until approval.
 
-- **`plan-phase-stories-creation <PHASE_NN>`** — for starting a new phase. Reads the phase, the process
-  formats, and the spec clauses it touches; maps the current codebase (what's implemented/tested/config/
-  docs/done-stories/traceability); then **plans the real story set** (the phase's suggested tasks are a
-  backlog, not truth — it refines them to what's actually relevant), with ids, cited clauses, modules, ACs,
-  edge cases, test plan, and the traceability delta. Approve → the `architect` authors the story files into
-  `docs/stories/`.
+- **`plan-phase-stories-creation <PHASE_NN>`** — for starting a new phase. Reads the phase, its permanent
+  `PHNN-RNN` ledger, process formats, and complete cited source set; maps the current codebase; performs
+  inverse-coverage, temporal/adversarial, and producer/consumer passes; then plans the real S/M story set
+  from non-normative work packages with low-context implementation packets and skeptical review. Approve →
+  the `architect` assigns current global ids and authors the story files into `docs/stories/`.
 - **`plan-user-story-implementation <STORY-NNN>`** — for building a story. Reads the story + every cited
-  clause/DD/ADR + applicable rules/skills; investigates the codebase and prior stories/commits; collects
-  edge cases; then **plans the implementation + test + traceability + DoD**, one session's worth. Approve →
+  phase requirement/clause/DD/ADR + applicable rules/skills; investigates every reader, writer, lifecycle
+  boundary, sibling consumer, and competing async path; turns stateful ACs into ordered event sequences;
+  then plans strong adversarial tests, durable evidence, traceability, and DoD, one S/M session's worth. Approve →
   the `coder` implements and the `tester` writes the AC tests and runs `just trace`/`trace-check`.
 
 ## How work is tracked
 
-Phases (`specification/07_Phases/`) list a **suggested-task backlog**; the `architect` **generates** the
+Phases (`specification/07_Phases/`) define normative permanent requirements, transitions, contracts, edge
+ownership, and exit evidence plus **non-normative phase-local work packages**. The `architect` generates
 actual stories into `docs/stories/story-NNN-*.md` per phase, in the fixed format
 (`specification/06_Process_and_Traceability/02_STORY_FORMAT.md`). **One story per coding session.** A
 story is `done` only when every AC has a passing test naming the story id and `just trace-check` passes
-with zero orphans. `done` is immutable — a spec change spawns a new story (+ a new ADR in `docs/adr/` if
+with zero orphans. Every story names `phase_requirements`; every AC has a matching `Satisfies:` marker.
+Implementation-ready stories are S/M; L is a non-ready epic that must be split. A phase is complete only
+when `just phase-complete-check NN` passes. `done` is immutable — a spec change spawns a new story (+ a new ADR in `docs/adr/` if
 significant), never an edit to the frozen spec.
 
 ## Implementation stages
@@ -153,7 +158,8 @@ delegation is cleaner. Keep parallel subagents to ≤8. Ask each for a concise s
 
 Before assuming a convention doesn't exist: check `.agents/skills/`, the relevant `.claude/rules/*.md`
 (by glob), and `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` for the module
-you're in. The spec itself (`specification/`), shared `.claude/rules/`, Codex `.agents/skills/`, and
+you're in. The spec itself (`specification/`), especially
+`06_Process_and_Traceability/07_PHASE_FORMAT.md`, shared `.claude/rules/`, Codex `.agents/skills/`, and
 `.codex/agents/` are the
 authoritative source for every structural, envelope, DI, theming, and CI convention.
 
@@ -212,3 +218,42 @@ authoritative source for every structural, envelope, DI, theming, and CI convent
 
 When compacting, preserve: the current phase/story, modified file paths, outstanding lint/type failures
 by file, current test failure names, and any ADR decisions made and why.
+
+## Communication
+
+Communicate for the reader, not for the specification.
+
+When asking questions, explaining decisions, reporting progress, or describing issues:
+
+* Use plain, concrete language instead of internal terminology or abstractions.
+* Describe the actual behavior, scenario, or problem, not the document structure that defines it.
+* Never assume the reader will look up requirement IDs, acceptance criteria, phases, tickets, or other references.
+* If you refer to a requirement, restate its relevant meaning in the current message. References are for traceability only, never as the primary explanation.
+* Provide enough context for the reader to understand and answer without opening other documents.
+* Prefer concrete examples over abstract descriptions whenever they improve clarity.
+* Explain *what* is happening, *why* it matters, and *what decision or action* is needed.
+* Recommend a reasonable default when appropriate instead of delegating every decision to the reader.
+
+**Rule of thumb:** Every message should be understandable on its own. If the reader must navigate project documentation to understand your question, explanation, or recommendation, rewrite it.
+
+Use simple and concrete wording
+Use direct, plain language.
+Prefer short sentences.
+Avoid unnecessary technical abstractions.
+Explain technical terms when they are required.
+Describe the actual behavior, screen, file, operation, or decision involved.
+Do not assume the user remembers the internal structure of the specification.
+
+**Bad:**
+
+> How should AC-TR-14 interact with the fallback behavior defined in REQ-LLM-08?
+
+**Good:**
+
+> When the selected local LLM stops responding during book translation, should the app:
+> 
+> 1) retry the same request,
+> 2) switch automatically to another configured provider, or
+> 3) stop the translation and ask the user what to do?
+> 
+> The current specification says failed requests should be retried, but it does not define whether automatic provider switching is allowed.

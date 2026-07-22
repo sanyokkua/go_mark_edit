@@ -28,6 +28,9 @@ status: draft                          # draft | ready | in-progress | done | su
 spec_clauses:                          # >=1 entry; each resolves to a real spec heading anchor
   - 01_Product/09_ASSETS_AND_SECURITY.md#relative-path-resolution
   - 00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets
+phase_requirements:                    # >=1; permanent requirements from the owning phase ledger
+  - PH09-R01
+  - PH09-R03
 modules:                               # >=1 entry; each a path from 01_MODULE_INVENTORY.md
   - internal/assets/
   - logic/markdown/
@@ -54,6 +57,7 @@ Field rules (all required unless marked optional):
 - `status` — one of the five enum values (see lifecycle).
 - `spec_clauses` — ≥1; each `<spec-file>#<anchor>` must resolve to a real heading in
   `specification/`. The `coder` reads **every** cited clause before writing code.
+- `phase_requirements` — ≥1; each `PHNN-RNN` exists in the owning phase's requirement ledger.
 - `modules` — ≥1; each must exist in `01_MODULE_INVENTORY.md`.
 - `acceptance_criteria` — ≥1; each `STORY-NNN-AC-N`, each written out in the body.
 - `edge_cases` — optional; each `EC-[A-Z]+-\d+` cited from a spec clause.
@@ -90,6 +94,8 @@ Field rules (all required unless marked optional):
 independently verifiable and identified STORY-NNN-AC-N.]
 
 ### STORY-NNN-AC-1
+[**Satisfies:** PHNN-RNN[, PHNN-RNN]]
+
 [criterion text]
 
 ### STORY-NNN-AC-2
@@ -102,6 +108,7 @@ the test function name. Each edge case in `edge_cases:` maps to a named test her
 ## Definition of done
 - [ ] Every acceptance criterion has a passing test that names this story id (see 03_TRACEABILITY.md).
 - [ ] Every edge case in `edge_cases:` has a passing test.
+- [ ] Edge proof is explicit on its test node (`// Evidence: EC-AREA-N` in Go or EC id in the JS test name).
 - [ ] Backend: `gofmt`/`go vet`/`golangci-lint`/`go test -race` pass for touched packages.
 - [ ] Frontend: `prettier --check`/`eslint`/`tsc --noEmit`/`jest` pass for touched files.
 - [ ] Bindings regenerated if a bound signature changed (`wails generate module`, no drift).
@@ -114,15 +121,15 @@ the test function name. Each edge case in `edge_cases:` maps to a named test her
 
 - **S** — 1 module, 1–3 ACs, no new public API.
 - **M** — ≤3 modules, ≤6 ACs, may add 1 public API symbol.
-- **L** — ≤5 modules, ≤10 ACs, may add a sub-feature package.
-- Larger than L → split into a parent story + `depends_on` children. A UI story `depends_on` the
+- **L** — a non-ready epic only; split it before implementation.
+- Every implementation-ready story is S/M. Split an L epic into `depends_on` children. A UI story `depends_on` the
   backend story that supplies its bound methods (never crosses the Go/TS boundary un-verifiably).
 
 ## Lifecycle
 
 ```
 [*] --> draft
-draft --> ready:        front-matter validates; every depends_on is done; every clause resolves
+draft --> ready:        front-matter validates; phase requirements resolve; every depends_on is done; every clause resolves; estimate is S or M
 ready --> in-progress:  the coder picks up the story
 in-progress --> done:   every AC test passes; traceability validates with no orphans
 in-progress --> ready:  blocked; returned to the backlog

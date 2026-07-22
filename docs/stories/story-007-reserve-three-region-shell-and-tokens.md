@@ -6,6 +6,8 @@ spec_clauses:
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
   - 02_Architecture/03_FRONTEND_REACT.md#structure
   - 00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux
+phase_requirements:
+  - PH00-R07
 modules:
   - ui/widgets/
   - ui/styles/
@@ -44,12 +46,15 @@ Establish the stable Stage 1 layout and style seam so the future assistant sideb
 
 ## Acceptance criteria
 ### STORY-007-AC-1
+**Satisfies:** PH00-R07
 The app shell has left, center, and right layout regions; the empty right region is collapsed but can be shown without restructuring the shell.
 
 ### STORY-007-AC-2
+**Satisfies:** PH00-R07
 The shell reads only reserved CSS custom properties from `tokens.css`, with no component-local color literal.
 
 ### STORY-007-AC-3
+**Satisfies:** PH00-R07
 The reserved assistant region contains no assistant, provider, or network behaviour.
 
 ## Test plan

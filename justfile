@@ -84,6 +84,12 @@ trace:
 trace-check:
     node scripts/trace-check.mjs
 
+phase-check:
+    node scripts/phase-check.mjs
+
+phase-complete-check phase:
+    node scripts/phase-complete-check.mjs {{phase}}
+
 # Phase-00 staged local/CI mirror. Full drift and security gates join later phases.
 check:
     just gen-check
@@ -94,6 +100,7 @@ check:
     just frontend-test
     just go-vet
     just go-test
+    just phase-check
     just trace-check
 
 frontend-build:

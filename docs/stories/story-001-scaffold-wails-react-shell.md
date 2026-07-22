@@ -9,6 +9,8 @@ spec_clauses:
   - 00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework
   - 05_Dependencies/01_GO_DEPENDENCIES.md#1-runtime-dependencies
   - 05_Dependencies/01_GO_DEPENDENCIES.md#5-go-version
+phase_requirements:
+  - PH00-R01
 modules:
   - internal/application/
   - ui/styles/
@@ -47,12 +49,15 @@ Provide a real, empty desktop application that later Phase 00 verticals can comp
 
 ## Acceptance criteria
 ### STORY-001-AC-1
+**Satisfies:** PH00-R01
 The CGO-free Wails v2 application embeds `frontend/dist`, uses the composition-root seam, and boots a blank native window.
 
 ### STORY-001-AC-2
+**Satisfies:** PH00-R01
 The embedded React/Vite output renders an empty application root with no Markdown, document, or file behaviour.
 
 ### STORY-001-AC-3
+**Satisfies:** PH00-R01
 A production build does not enable CGO or substitute a runtime dependency outside the approved set.
 
 ## Test plan

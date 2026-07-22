@@ -6,6 +6,10 @@ spec_clauses:
   - 02_Architecture/02_BACKEND_GO.md#packages
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
   - 00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
+phase_requirements:
+  - PH00-R03
+  - PH00-R07
+  - PH00-R11
 modules:
   - internal/bootstrap/
   - internal/logging/
@@ -50,16 +54,20 @@ Supply the local-only process primitives needed before database initialization a
 
 ## Acceptance criteria
 ### STORY-003-AC-1
+**Satisfies:** PH00-R03
 Bootstrap logging is available before database initialization, and configured logging writes only to a local rotating sink.
 
 ### STORY-003-AC-2
+**Satisfies:** PH00-R03
 Development and production resolve distinct config and log paths named `GoMarkEdit-Dev` and `GoMarkEdit`.
 
 ### STORY-003-AC-3
+**Satisfies:** PH00-R11
 The generic gate admits one long operation and rejects a concurrent caller with `false`; a future
 handler maps that rejection to the standard busy result.
 
 ### STORY-003-AC-4
+**Satisfies:** PH00-R07, PH00-R11
 No scaffold service creates a single-instance lock or makes an outbound network call.
 
 ## Test plan

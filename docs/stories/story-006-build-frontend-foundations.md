@@ -10,6 +10,9 @@ spec_clauses:
   - 02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries
   - 02_Architecture/06_ERROR_HANDLING.md#frontend-parseerror
   - 02_Architecture/06_ERROR_HANDLING.md#toasts
+phase_requirements:
+  - PH00-R06
+  - PH00-R08
 modules:
   - logic/adapter/
   - logic/store/
@@ -56,15 +59,19 @@ Give the webview one typed, mockable command boundary and one consistent user-fe
 
 ## Acceptance criteria
 ### STORY-006-AC-1
+**Satisfies:** PH00-R06
 Only `logic/adapter` imports generated Wails bindings, and wrappers use arity guards plus unwrap for concrete settings results.
 
 ### STORY-006-AC-2
+**Satisfies:** PH00-R06
 The Redux root supplies typed notification state and is a disposable UI projection rather than a document-content authority.
 
 ### STORY-006-AC-3
+**Satisfies:** PH00-R06
 `parseError` normalizes unknown failures, and `unwrap` emits one notification before throwing the typed wire error.
 
 ### STORY-006-AC-4
+**Satisfies:** PH00-R06, PH00-R08
 `npm run dev` uses the bridge mock rather than a Go backend and exercises the same success and error adapter surface.
 
 ## Test plan

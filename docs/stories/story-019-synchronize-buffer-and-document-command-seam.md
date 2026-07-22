@@ -10,6 +10,10 @@ spec_clauses:
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
   - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+phase_requirements:
+  - PH01-R03
+  - PH01-R05
+  - PH01-R13
 modules:
   - logic/adapter/
   - logic/hooks/
@@ -78,21 +82,27 @@ Synchronize the responsive Monaco working copy with the backend's canonical docu
 ## Acceptance criteria
 
 ### STORY-019-AC-1
+**Satisfies:** PH01-R03
 A burst of edits changes Monaco immediately but the adapter-owned shared 200 ms timer sends exactly one `UpdateBuffer` containing the latest text for that document.
 
 ### STORY-019-AC-2
+**Satisfies:** PH01-R03
 Blur or a future switch/close/save calls awaitable `flushBuffer`, which cancels the pending timer, orders against an in-flight generation, sends the latest unsent text exactly once, and resolves only after acknowledgement.
 
 ### STORY-019-AC-3
+**Satisfies:** PH01-R05
 A metadata-only `state:patch` reconciled through the connected editor widget never calls Monaco `setValue` or changes its cursor/selection. (satisfies EC-DOCS-12)
 
 ### STORY-019-AC-4
+**Satisfies:** PH01-R13
 Live cursor movement updates the status-facing one-based position immediately, while cursor/selection/restorable view data is synchronized through `SetDocView` without making the ephemeral display a second authority.
 
 ### STORY-019-AC-5
+**Satisfies:** PH01-R03
 The stable F3/F7 document-command interface exposes `getSelection`, `replaceRange`, and `replaceAll`; each programmatic replacement is one Monaco undo edit and routes the resulting text through `UpdateBuffer`, with no outside component reaching into Monaco.
 
 ### STORY-019-AC-6
+**Satisfies:** PH01-R03, PH01-R05
 If `UpdateBuffer` or `SetDocView` fails, the normal envelope/toast path reports the error, the local working copy and latest pending generation are retained, and Redux gains no content.
 
 ## Test plan

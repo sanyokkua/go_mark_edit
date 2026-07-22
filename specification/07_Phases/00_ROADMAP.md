@@ -1,15 +1,16 @@
 **Status:** Accepted
 **Owner:** architect
 **Audience:** architect, coder
-**Last Updated:** 2026-07-10
+**Last Updated:** 2026-07-21
 **Cross-references:** all `PHASE_NN_*.md`, `06_Process_and_Traceability/*`
 
 # Roadmap
 
-Implementation proceeds in ordered phases. Each phase file lists the stories to author (id, title,
-size, cited clauses, target modules, dependencies) and a **Phase exit checklist**. Author stories for
-a phase only after the previous phase's blocking stories are `done`. Phases may overlap where their
-stories are independent, but the numeric order encodes the safe default sequence.
+Implementation proceeds through capability-dependent phases. Each phase file defines permanent requirements,
+transitions, producer/consumer contracts, edge ownership, non-normative phase-local work packages, and exact
+exit evidence. Architects assign global story ids only after investigating the current repository. Start a
+consumer only after its producer contract is available; numeric order remains the safe default where the
+explicit dependency graph is silent.
 
 Cross-cutting binding inputs: `03_NonFunctional/*`, `04_Build_and_Release/*`, and `05_Dependencies/*`
 are binding gates consulted in **every** phase plan (per
@@ -38,11 +39,13 @@ which every phase's edge-case list is drawn.
 
 ## Slicing guidance
 
-- A phase file lists stories at **S/M/L** granularity; the `architect` writes each as a real story
-  file in `../docs/stories/` in the fixed format before the `coder` starts.
+- A phase file lists phase-local work packages. The architect refines them into globally numbered **S/M**
+  stories in `../docs/stories/`; an L item is a non-ready epic that must be split before implementation.
 - Prefer **backend story before the UI story** that consumes it (the UI story `depends_on` it).
 - Keep phase 00 stories small and verifiable — they unblock everything else.
 - Each phase's stories cite `01_Product/*` clauses and the relevant `DD-NN`/`ADR-NNNN`.
+- `just phase-check` validates the roadmap's phase documents structurally; `just phase-complete-check NN`
+  proves one claimed-complete phase from done stories and durable exit evidence.
 
 ## Stages
 
@@ -62,6 +65,10 @@ consumes Phase 10's verify gates and packaging metadata and completes the v1 rel
 
 Stage-1/2 stories must honour the forward-compatibility constraints **F1–F9** in the stages doc so the
 assistant drops in without rework.
+
+The accepted stage mapping and phase dependency graph are not fully chronological: Stage-1 PH03 depends on
+PH02, which is assigned to Stage 2. This unresolved planning conflict is recorded as PH01-X01 and must not be
+silently resolved by treating the stage labels as either sequential releases or mere capability labels.
 
 ## Milestones
 

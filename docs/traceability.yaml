@@ -1,13 +1,16 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-21T16:24:34.794Z",
-  "generator_version": 1,
+  "generated_at": "2026-07-21T21:36:45.708Z",
+  "generator_version": 2,
   "stories": {
     "STORY-001": {
       "title": "Scaffold the Wails v2 app and embedded React frontend so a blank window boots",
       "status": "done",
       "phase": "00",
+      "phase_requirements": [
+        "PH00-R01"
+      ],
       "spec_clauses": [
         "02_Architecture/01_SYSTEM_ARCHITECTURE.md#process-model",
         "02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries",
@@ -25,7 +28,7 @@
       "acceptance_criteria": {
         "STORY-001-AC-1": {
           "tests": [
-            "main_test.go:74"
+            "main_test.go:78"
           ]
         },
         "STORY-001-AC-2": {
@@ -35,7 +38,7 @@
         },
         "STORY-001-AC-3": {
           "tests": [
-            "main_test.go:207"
+            "main_test.go:210"
           ]
         }
       }
@@ -44,6 +47,9 @@
       "title": "Implement the apperr envelope and Wails-bindable result contracts",
       "status": "done",
       "phase": "00",
+      "phase_requirements": [
+        "PH00-R02"
+      ],
       "spec_clauses": [
         "02_Architecture/06_ERROR_HANDLING.md#error-codes",
         "02_Architecture/06_ERROR_HANDLING.md#wire",
@@ -58,19 +64,19 @@
       "acceptance_criteria": {
         "STORY-002-AC-1": {
           "tests": [
-            "internal/apperr/results_test.go:122",
-            "internal/apperr/results_test.go:9",
-            "main_test.go:185"
+            "internal/apperr/results_test.go:11",
+            "internal/apperr/results_test.go:124",
+            "main_test.go:188"
           ]
         },
         "STORY-002-AC-2": {
           "tests": [
-            "internal/apperr/wire_test.go:15"
+            "internal/apperr/wire_test.go:17"
           ]
         },
         "STORY-002-AC-3": {
           "tests": [
-            "internal/apperr/architecture_test.go:13"
+            "internal/apperr/architecture_test.go:15"
           ]
         }
       }
@@ -79,6 +85,11 @@
       "title": "Establish bootstrap logging paths and the generic single-flight gate",
       "status": "done",
       "phase": "00",
+      "phase_requirements": [
+        "PH00-R03",
+        "PH00-R07",
+        "PH00-R11"
+      ],
       "spec_clauses": [
         "02_Architecture/02_BACKEND_GO.md#packages",
         "00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage",
@@ -95,23 +106,23 @@
       "acceptance_criteria": {
         "STORY-003-AC-1": {
           "tests": [
-            "internal/bootstrap/bootstrap_test.go:9",
-            "internal/logging/logger_test.go:12"
+            "internal/bootstrap/bootstrap_test.go:11",
+            "internal/logging/logger_test.go:14"
           ]
         },
         "STORY-003-AC-2": {
           "tests": [
-            "internal/file/paths_test.go:9"
+            "internal/file/paths_test.go:11"
           ]
         },
         "STORY-003-AC-3": {
           "tests": [
-            "internal/gate/gate_test.go:5"
+            "internal/gate/gate_test.go:7"
           ]
         },
         "STORY-003-AC-4": {
           "tests": [
-            "internal/application/architecture_test.go:14"
+            "internal/application/architecture_test.go:16"
           ]
         }
       }
@@ -120,6 +131,9 @@
       "title": "Open the multi-instance-safe SQLite store and generated query layer",
       "status": "done",
       "phase": "00",
+      "phase_requirements": [
+        "PH00-R04"
+      ],
       "spec_clauses": [
         "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema",
         "02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations",
@@ -137,22 +151,22 @@
       "acceptance_criteria": {
         "STORY-004-AC-1": {
           "tests": [
-            "internal/db/database_test.go:18"
+            "internal/db/database_test.go:20"
           ]
         },
         "STORY-004-AC-2": {
           "tests": [
-            "internal/db/migrations_test.go:13"
+            "internal/db/migrations_test.go:15"
           ]
         },
         "STORY-004-AC-3": {
           "tests": [
-            "internal/db/database_test.go:70"
+            "internal/db/database_test.go:73"
           ]
         },
         "STORY-004-AC-4": {
           "tests": [
-            "internal/db/database_test.go:155"
+            "internal/db/database_test.go:159"
           ]
         }
       }
@@ -161,6 +175,11 @@
       "title": "Expose the typed settings registry and wire the two-phase application root",
       "status": "done",
       "phase": "00",
+      "phase_requirements": [
+        "PH00-R02",
+        "PH00-R03",
+        "PH00-R05"
+      ],
       "spec_clauses": [
         "02_Architecture/02_BACKEND_GO.md#layering",
         "02_Architecture/02_BACKEND_GO.md#di-two-phase",
@@ -181,23 +200,23 @@
       "acceptance_criteria": {
         "STORY-005-AC-1": {
           "tests": [
-            "internal/settings/handler_test.go:79"
+            "internal/settings/handler_test.go:81"
           ]
         },
         "STORY-005-AC-2": {
           "tests": [
-            "internal/settings/repository_sqlite_test.go:315"
+            "internal/settings/repository_sqlite_test.go:318"
           ]
         },
         "STORY-005-AC-3": {
           "tests": [
-            "internal/settings/repository_sqlite_test.go:403",
-            "internal/settings/service_test.go:10"
+            "internal/settings/repository_sqlite_test.go:406",
+            "internal/settings/service_test.go:12"
           ]
         },
         "STORY-005-AC-4": {
           "tests": [
-            "internal/application/application_test.go:17"
+            "internal/application/application_test.go:19"
           ]
         }
       }
@@ -206,6 +225,10 @@
       "title": "Build the frontend adapter projection-store toast and bridge mock foundations",
       "status": "done",
       "phase": "00",
+      "phase_requirements": [
+        "PH00-R06",
+        "PH00-R08"
+      ],
       "spec_clauses": [
         "02_Architecture/03_FRONTEND_REACT.md#structure",
         "02_Architecture/03_FRONTEND_REACT.md#adapter-layer",
@@ -252,6 +275,9 @@
       "title": "Reserve the three-region app shell and token-only style skeleton",
       "status": "done",
       "phase": "00",
+      "phase_requirements": [
+        "PH00-R07"
+      ],
       "spec_clauses": [
         "00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage",
         "02_Architecture/03_FRONTEND_REACT.md#structure",
@@ -265,19 +291,16 @@
       "acceptance_criteria": {
         "STORY-007-AC-1": {
           "tests": [
-            "frontend/src/App.test.tsx:105",
             "frontend/src/App.test.tsx:106"
           ]
         },
         "STORY-007-AC-2": {
           "tests": [
-            "frontend/src/ui/styles/tokens.test.ts:12",
             "frontend/src/ui/styles/tokens.test.ts:13"
           ]
         },
         "STORY-007-AC-3": {
           "tests": [
-            "frontend/src/App.test.tsx:137",
             "frontend/src/App.test.tsx:138"
           ]
         }
@@ -287,6 +310,10 @@
       "title": "Add quality tooling and traceability validation for the initial backlog",
       "status": "done",
       "phase": "00",
+      "phase_requirements": [
+        "PH00-R09",
+        "PH00-R10"
+      ],
       "spec_clauses": [
         "04_Build_and_Release/03_CI_AND_HOOKS.md#1-justfile-command-taxonomy",
         "04_Build_and_Release/03_CI_AND_HOOKS.md#2-git-hooks-lefthook",
@@ -300,23 +327,23 @@
       "acceptance_criteria": {
         "STORY-008-AC-1": {
           "tests": [
-            "internal/application/toolchain_test.go:11"
+            "internal/application/toolchain_test.go:13"
           ]
         },
         "STORY-008-AC-2": {
           "tests": [
-            "internal/application/toolchain_test.go:41"
+            "internal/application/toolchain_test.go:68"
           ]
         },
         "STORY-008-AC-3": {
           "tests": [
-            "internal/application/traceability_test.go:35",
-            "internal/application/traceability_test.go:60"
+            "internal/application/traceability_test.go:37",
+            "internal/application/traceability_test.go:62"
           ]
         },
         "STORY-008-AC-4": {
           "tests": [
-            "internal/application/traceability_test.go:127"
+            "internal/application/traceability_test.go:249"
           ]
         }
       }
@@ -325,6 +352,10 @@
       "title": "Complete Stage-1 settings and fail startup safely",
       "status": "done",
       "phase": "00",
+      "phase_requirements": [
+        "PH00-R03",
+        "PH00-R05"
+      ],
       "spec_clauses": [
         "01_Product/11_SETTINGS.md#appearance-group",
         "01_Product/11_SETTINGS.md#markdown-group",
@@ -356,32 +387,32 @@
       "acceptance_criteria": {
         "STORY-009-AC-1": {
           "tests": [
-            "internal/settings/repository_sqlite_test.go:14"
+            "internal/settings/repository_sqlite_test.go:16"
           ]
         },
         "STORY-009-AC-2": {
           "tests": [
-            "internal/settings/repository_sqlite_test.go:53"
+            "internal/settings/repository_sqlite_test.go:55"
           ]
         },
         "STORY-009-AC-3": {
           "tests": [
-            "internal/settings/handler_test.go:11"
+            "internal/settings/handler_test.go:13"
           ]
         },
         "STORY-009-AC-4": {
           "tests": [
-            "internal/settings/repository_sqlite_test.go:120"
+            "internal/settings/repository_sqlite_test.go:123"
           ]
         },
         "STORY-009-AC-5": {
           "tests": [
-            "internal/settings/repository_sqlite_test.go:245"
+            "internal/settings/repository_sqlite_test.go:248"
           ]
         },
         "STORY-009-AC-6": {
           "tests": [
-            "main_test.go:19"
+            "main_test.go:22"
           ]
         }
       }
@@ -390,6 +421,10 @@
       "title": "Restore Phase-00 toolchain integrity",
       "status": "done",
       "phase": "00",
+      "phase_requirements": [
+        "PH00-R09",
+        "PH00-R10"
+      ],
       "spec_clauses": [
         "07_Phases/PHASE_00_SCAFFOLD.md#phase-exit-checklist",
         "04_Build_and_Release/03_CI_AND_HOOKS.md#1-justfile-command-taxonomy",
@@ -405,22 +440,22 @@
       "acceptance_criteria": {
         "STORY-010-AC-1": {
           "tests": [
-            "internal/application/traceability_test.go:14"
+            "internal/application/traceability_test.go:16"
           ]
         },
         "STORY-010-AC-2": {
           "tests": [
-            "internal/application/toolchain_test.go:92"
+            "internal/application/toolchain_test.go:119"
           ]
         },
         "STORY-010-AC-3": {
           "tests": [
-            "internal/application/toolchain_test.go:154"
+            "internal/application/toolchain_test.go:181"
           ]
         },
         "STORY-010-AC-4": {
           "tests": [
-            "internal/application/toolchain_test.go:172"
+            "internal/application/toolchain_test.go:209"
           ]
         }
       }
@@ -429,6 +464,10 @@
       "title": "Establish the backend-authoritative in-memory application model",
       "status": "done",
       "phase": "01",
+      "phase_requirements": [
+        "PH01-R01",
+        "PH01-R05"
+      ],
       "spec_clauses": [
         "02_Architecture/02_BACKEND_GO.md#application-model",
         "02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model",
@@ -447,41 +486,41 @@
       "acceptance_criteria": {
         "STORY-011-AC-1": {
           "tests": [
-            "internal/appmodel/service_test.go:16"
+            "internal/appmodel/service_test.go:18"
           ]
         },
         "STORY-011-AC-2": {
           "tests": [
-            "internal/appmodel/service_test.go:303"
+            "internal/appmodel/service_test.go:305"
           ]
         },
         "STORY-011-AC-3": {
           "tests": [
-            "internal/appmodel/runtime_emitter_test.go:10",
-            "internal/appmodel/service_test.go:351",
-            "internal/appmodel/service_test.go:401",
-            "internal/appmodel/service_test.go:523",
-            "internal/appmodel/service_test.go:71"
+            "internal/appmodel/runtime_emitter_test.go:12",
+            "internal/appmodel/service_test.go:353",
+            "internal/appmodel/service_test.go:403",
+            "internal/appmodel/service_test.go:525",
+            "internal/appmodel/service_test.go:73"
           ]
         },
         "STORY-011-AC-4": {
           "tests": [
-            "internal/appmodel/service_test.go:161"
+            "internal/appmodel/service_test.go:163"
           ]
         },
         "STORY-011-AC-5": {
           "tests": [
-            "internal/appmodel/service_test.go:260"
+            "internal/appmodel/service_test.go:262"
           ]
         },
         "STORY-011-AC-6": {
           "tests": [
-            "internal/appmodel/handler_test.go:11"
+            "internal/appmodel/handler_test.go:13"
           ]
         },
         "STORY-011-AC-7": {
           "tests": [
-            "main_test.go:119"
+            "main_test.go:122"
           ]
         }
       }
@@ -490,6 +529,10 @@
       "title": "Project backend application state into the frontend",
       "status": "done",
       "phase": "01",
+      "phase_requirements": [
+        "PH01-R02",
+        "PH01-R05"
+      ],
       "spec_clauses": [
         "02_Architecture/03_FRONTEND_REACT.md#adapter-layer",
         "02_Architecture/03_FRONTEND_REACT.md#store",
@@ -552,6 +595,10 @@
       "title": "Integrate Monaco as the presentational Markdown editor",
       "status": "done",
       "phase": "01",
+      "phase_requirements": [
+        "PH01-R03",
+        "PH01-R05"
+      ],
       "spec_clauses": [
         "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor",
         "01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode",
@@ -602,6 +649,9 @@
       "title": "Build the base GFM Markdown preview",
       "status": "done",
       "phase": "01",
+      "phase_requirements": [
+        "PH01-R11"
+      ],
       "spec_clauses": [
         "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering",
         "01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline",
@@ -660,6 +710,9 @@
       "title": "Compose the split editor and preview with backend-owned view modes",
       "status": "done",
       "phase": "01",
+      "phase_requirements": [
+        "PH01-R08"
+      ],
       "spec_clauses": [
         "01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view",
         "01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle",
@@ -685,7 +738,7 @@
         },
         "STORY-015-AC-2": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:561"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:560"
           ]
         },
         "STORY-015-AC-3": {
@@ -701,7 +754,7 @@
         "STORY-015-AC-5": {
           "tests": [
             "frontend/src/ui/primitives/Segmented.test.tsx:26",
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:653"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:652"
           ]
         },
         "STORY-015-AC-6": {
@@ -715,6 +768,10 @@
       "title": "Add the core editor status bar",
       "status": "done",
       "phase": "01",
+      "phase_requirements": [
+        "PH01-R13",
+        "PH01-R16"
+      ],
       "spec_clauses": [
         "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n",
         "01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode",
@@ -742,37 +799,31 @@
       "acceptance_criteria": {
         "STORY-016-AC-1": {
           "tests": [
-            "frontend/src/ui/components/StatusBar.test.tsx:5",
             "frontend/src/ui/components/StatusBar.test.tsx:6"
           ]
         },
         "STORY-016-AC-2": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:263",
             "frontend/src/ui/widgets/EditorView.integration.test.tsx:264"
           ]
         },
         "STORY-016-AC-3": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:291",
             "frontend/src/ui/widgets/EditorView.integration.test.tsx:292"
           ]
         },
         "STORY-016-AC-4": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:318",
             "frontend/src/ui/widgets/EditorView.integration.test.tsx:319"
           ]
         },
         "STORY-016-AC-5": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:352",
             "frontend/src/ui/widgets/EditorView.integration.test.tsx:353"
           ]
         },
         "STORY-016-AC-6": {
           "tests": [
-            "frontend/src/i18n/catalog.test.ts:3",
             "frontend/src/i18n/catalog.test.ts:4"
           ]
         }
@@ -782,6 +833,11 @@
       "title": "Drive live preview from backend-accepted debounced snapshots",
       "status": "done",
       "phase": "01",
+      "phase_requirements": [
+        "PH01-R02",
+        "PH01-R03",
+        "PH01-R12"
+      ],
       "spec_clauses": [
         "01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce",
         "02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#preview-debounce",
@@ -834,6 +890,13 @@
       "title": "Verify the core editor responsively with Playwright",
       "status": "done",
       "phase": "01",
+      "phase_requirements": [
+        "PH01-R03",
+        "PH01-R08",
+        "PH01-R11",
+        "PH01-R12",
+        "PH01-R13"
+      ],
       "spec_clauses": [
         "07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist",
         "01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view",
@@ -852,28 +915,23 @@
       "acceptance_criteria": {
         "STORY-018-AC-1": {
           "tests": [
-            "frontend/e2e/core-editor.test.ts:120",
             "frontend/e2e/core-editor.test.ts:121",
             "frontend/src/dev/bridge-mock/bridge.test.ts:155"
           ]
         },
         "STORY-018-AC-2": {
           "tests": [
-            "frontend/e2e/core-editor.test.ts:152",
             "frontend/e2e/core-editor.test.ts:153"
           ]
         },
         "STORY-018-AC-3": {
           "tests": [
-            "frontend/e2e/core-editor.test.ts:253",
             "frontend/e2e/core-editor.test.ts:254"
           ]
         },
         "STORY-018-AC-4": {
           "tests": [
-            "frontend/e2e/core-editor.test.ts:334",
             "frontend/e2e/core-editor.test.ts:335",
-            "frontend/src/logic/adapter/appModelAdapter.test.ts:65",
             "frontend/src/logic/adapter/appModelAdapter.test.ts:66"
           ]
         }
@@ -883,6 +941,11 @@
       "title": "Synchronize the active buffer and establish the editable document-command seam",
       "status": "done",
       "phase": "01",
+      "phase_requirements": [
+        "PH01-R03",
+        "PH01-R05",
+        "PH01-R13"
+      ],
       "spec_clauses": [
         "01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode",
         "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
@@ -936,6 +999,2333 @@
           ]
         }
       }
+    },
+    "STORY-020": {
+      "title": "Validate story lifecycle and exact edge-case trace evidence",
+      "status": "done",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R14"
+      ],
+      "spec_clauses": [
+        "06_Process_and_Traceability/02_STORY_FORMAT.md#front-matter-schema-copy-exactly",
+        "06_Process_and_Traceability/02_STORY_FORMAT.md#lifecycle",
+        "06_Process_and_Traceability/03_TRACEABILITY.md#the-chain",
+        "06_Process_and_Traceability/03_TRACEABILITY.md#traceabilityyaml-schema",
+        "06_Process_and_Traceability/03_TRACEABILITY.md#how-a-test-declares-the-ac-it-proves",
+        "06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands",
+        "06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#per-story",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#edge-cases",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist"
+      ],
+      "modules": [
+        "internal/application/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-020-AC-1": {
+          "tests": [
+            "internal/application/traceability_test.go:132"
+          ]
+        },
+        "STORY-020-AC-2": {
+          "tests": [
+            "internal/application/traceability_test.go:176"
+          ]
+        },
+        "STORY-020-AC-3": {
+          "tests": [
+            "internal/application/traceability_test.go:189"
+          ]
+        },
+        "STORY-020-AC-4": {
+          "tests": [
+            "internal/application/traceability_test.go:215"
+          ]
+        },
+        "STORY-020-AC-5": {
+          "tests": [
+            "internal/application/traceability_test.go:232"
+          ]
+        }
+      }
+    },
+    "STORY-021": {
+      "title": "Serialize per-document view commands by latest intent",
+      "status": "ready",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R07"
+      ],
+      "spec_clauses": [
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state",
+        "02_Architecture/03_FRONTEND_REACT.md#adapter-layer",
+        "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness",
+        "00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#scope"
+      ],
+      "modules": [
+        "logic/adapter/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-021-AC-1": {
+          "tests": []
+        },
+        "STORY-021-AC-2": {
+          "tests": []
+        },
+        "STORY-021-AC-3": {
+          "tests": []
+        },
+        "STORY-021-AC-4": {
+          "tests": []
+        },
+        "STORY-021-AC-5": {
+          "tests": []
+        },
+        "STORY-021-AC-6": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-022": {
+      "title": "Preserve the active Monaco session across view arrangements",
+      "status": "draft",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R04",
+        "PH01-R06"
+      ],
+      "spec_clauses": [
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#edge-cases",
+        "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "02_Architecture/03_FRONTEND_REACT.md#components",
+        "00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist"
+      ],
+      "modules": [
+        "logic/store/",
+        "ui/components/",
+        "ui/widgets/"
+      ],
+      "edge_cases": [
+        "EC-DOCS-12"
+      ],
+      "acceptance_criteria": {
+        "STORY-022-AC-1": {
+          "tests": []
+        },
+        "STORY-022-AC-2": {
+          "tests": []
+        },
+        "STORY-022-AC-3": {
+          "tests": []
+        },
+        "STORY-022-AC-4": {
+          "tests": []
+        },
+        "STORY-022-AC-5": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-023": {
+      "title": "Expose document commands through a stable editor-session boundary",
+      "status": "draft",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R09",
+        "PH01-R10"
+      ],
+      "spec_clauses": [
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode",
+        "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "02_Architecture/03_FRONTEND_REACT.md#components",
+        "02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage",
+        "00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#scope"
+      ],
+      "modules": [
+        "logic/hooks/",
+        "ui/components/",
+        "ui/widgets/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-023-AC-1": {
+          "tests": []
+        },
+        "STORY-023-AC-2": {
+          "tests": []
+        },
+        "STORY-023-AC-3": {
+          "tests": []
+        },
+        "STORY-023-AC-4": {
+          "tests": []
+        },
+        "STORY-023-AC-5": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-024": {
+      "title": "Enforce phase planning completeness",
+      "status": "done",
+      "phase": "00",
+      "phase_requirements": [
+        "PH00-R12"
+      ],
+      "spec_clauses": [
+        "06_Process_and_Traceability/02_STORY_FORMAT.md#front-matter-schema-copy-exactly",
+        "06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands",
+        "06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#phase-level-exit-criteria",
+        "07_Phases/PHASE_00_SCAFFOLD.md#phase-exit-checklist"
+      ],
+      "modules": [
+        "internal/application/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-024-AC-1": {
+          "tests": [
+            "internal/application/phase_validation_test.go:123"
+          ]
+        },
+        "STORY-024-AC-2": {
+          "tests": [
+            "internal/application/phase_validation_test.go:101",
+            "internal/application/phase_validation_test.go:15"
+          ]
+        },
+        "STORY-024-AC-3": {
+          "tests": [
+            "internal/application/phase_validation_test.go:350"
+          ]
+        },
+        "STORY-024-AC-4": {
+          "tests": [
+            "internal/application/toolchain_test.go:43"
+          ]
+        },
+        "STORY-024-AC-5": {
+          "tests": [
+            "internal/application/phase_validation_test.go:496"
+          ]
+        },
+        "STORY-024-AC-6": {
+          "tests": [
+            "internal/application/phase_validation_test.go:528"
+          ]
+        }
+      }
+    }
+  },
+  "phase_requirements": {
+    "PH00-R01": {
+      "phase": "00",
+      "source_clauses": [
+        "02_Architecture/01_SYSTEM_ARCHITECTURE.md#process-model",
+        "02_Architecture/04_WAILS_INTEGRATION.md#embed"
+      ],
+      "stories": {
+        "STORY-001": {
+          "acceptance_criteria": [
+            "STORY-001-AC-1",
+            "STORY-001-AC-2",
+            "STORY-001-AC-3"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/src/App.test.tsx:94",
+        "main_test.go:210",
+        "main_test.go:78"
+      ]
+    },
+    "PH00-R02": {
+      "phase": "00",
+      "source_clauses": [
+        "02_Architecture/02_BACKEND_GO.md#error-envelope",
+        "02_Architecture/06_ERROR_HANDLING.md#result-envelopes",
+        "02_Architecture/06_ERROR_HANDLING.md#wire"
+      ],
+      "stories": {
+        "STORY-002": {
+          "acceptance_criteria": [
+            "STORY-002-AC-1",
+            "STORY-002-AC-2",
+            "STORY-002-AC-3"
+          ]
+        },
+        "STORY-005": {
+          "acceptance_criteria": [
+            "STORY-005-AC-1"
+          ]
+        }
+      },
+      "tests": [
+        "internal/apperr/architecture_test.go:15",
+        "internal/apperr/results_test.go:11",
+        "internal/apperr/results_test.go:124",
+        "internal/apperr/wire_test.go:17",
+        "internal/settings/handler_test.go:81",
+        "main_test.go:188"
+      ]
+    },
+    "PH00-R03": {
+      "phase": "00",
+      "source_clauses": [
+        "02_Architecture/02_BACKEND_GO.md#di-two-phase",
+        "02_Architecture/02_BACKEND_GO.md#packages",
+        "02_Architecture/04_WAILS_INTEGRATION.md#lifecycle"
+      ],
+      "stories": {
+        "STORY-003": {
+          "acceptance_criteria": [
+            "STORY-003-AC-1",
+            "STORY-003-AC-2"
+          ]
+        },
+        "STORY-005": {
+          "acceptance_criteria": [
+            "STORY-005-AC-4"
+          ]
+        },
+        "STORY-009": {
+          "acceptance_criteria": [
+            "STORY-009-AC-6"
+          ]
+        }
+      },
+      "tests": [
+        "internal/application/application_test.go:19",
+        "internal/bootstrap/bootstrap_test.go:11",
+        "internal/file/paths_test.go:11",
+        "internal/logging/logger_test.go:14",
+        "main_test.go:22"
+      ]
+    },
+    "PH00-R04": {
+      "phase": "00",
+      "source_clauses": [
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db"
+      ],
+      "stories": {
+        "STORY-004": {
+          "acceptance_criteria": [
+            "STORY-004-AC-1",
+            "STORY-004-AC-2",
+            "STORY-004-AC-3",
+            "STORY-004-AC-4"
+          ]
+        }
+      },
+      "tests": [
+        "internal/db/database_test.go:159",
+        "internal/db/database_test.go:20",
+        "internal/db/database_test.go:73",
+        "internal/db/migrations_test.go:15"
+      ]
+    },
+    "PH00-R05": {
+      "phase": "00",
+      "source_clauses": [
+        "02_Architecture/02_BACKEND_GO.md#layering",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema",
+        "01_Product/11_SETTINGS.md#persistence",
+        "01_Product/10_THEMING.md#edge-cases"
+      ],
+      "stories": {
+        "STORY-005": {
+          "acceptance_criteria": [
+            "STORY-005-AC-1",
+            "STORY-005-AC-2",
+            "STORY-005-AC-3",
+            "STORY-005-AC-4"
+          ]
+        },
+        "STORY-009": {
+          "acceptance_criteria": [
+            "STORY-009-AC-1",
+            "STORY-009-AC-2",
+            "STORY-009-AC-3",
+            "STORY-009-AC-4",
+            "STORY-009-AC-5"
+          ]
+        }
+      },
+      "tests": [
+        "internal/application/application_test.go:19",
+        "internal/settings/handler_test.go:13",
+        "internal/settings/handler_test.go:81",
+        "internal/settings/repository_sqlite_test.go:123",
+        "internal/settings/repository_sqlite_test.go:16",
+        "internal/settings/repository_sqlite_test.go:248",
+        "internal/settings/repository_sqlite_test.go:318",
+        "internal/settings/repository_sqlite_test.go:406",
+        "internal/settings/repository_sqlite_test.go:55",
+        "internal/settings/service_test.go:12"
+      ]
+    },
+    "PH00-R06": {
+      "phase": "00",
+      "source_clauses": [
+        "02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow",
+        "02_Architecture/03_FRONTEND_REACT.md#adapter-layer",
+        "02_Architecture/06_ERROR_HANDLING.md#frontend-parseerror",
+        "02_Architecture/06_ERROR_HANDLING.md#toasts"
+      ],
+      "stories": {
+        "STORY-006": {
+          "acceptance_criteria": [
+            "STORY-006-AC-1",
+            "STORY-006-AC-2",
+            "STORY-006-AC-3",
+            "STORY-006-AC-4"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/src/dev/bridge-mock/bridge.test.ts:101",
+        "frontend/src/logic/adapter/index.test.ts:120",
+        "frontend/src/logic/adapter/index.test.ts:36",
+        "frontend/src/logic/store/store.test.ts:11",
+        "frontend/src/logic/utils/parseError.test.ts:3",
+        "frontend/src/ui/primitives/Toast.test.tsx:9"
+      ]
+    },
+    "PH00-R07": {
+      "phase": "00",
+      "source_clauses": [
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open",
+        "02_Architecture/03_FRONTEND_REACT.md#structure"
+      ],
+      "stories": {
+        "STORY-003": {
+          "acceptance_criteria": [
+            "STORY-003-AC-4"
+          ]
+        },
+        "STORY-007": {
+          "acceptance_criteria": [
+            "STORY-007-AC-1",
+            "STORY-007-AC-2",
+            "STORY-007-AC-3"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/src/App.test.tsx:106",
+        "frontend/src/App.test.tsx:138",
+        "frontend/src/ui/styles/tokens.test.ts:13",
+        "internal/application/architecture_test.go:16"
+      ]
+    },
+    "PH00-R08": {
+      "phase": "00",
+      "source_clauses": [
+        "02_Architecture/03_FRONTEND_REACT.md#bridge-mock",
+        "02_Architecture/04_WAILS_INTEGRATION.md#lifecycle"
+      ],
+      "stories": {
+        "STORY-006": {
+          "acceptance_criteria": [
+            "STORY-006-AC-4"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/src/dev/bridge-mock/bridge.test.ts:101"
+      ]
+    },
+    "PH00-R09": {
+      "phase": "00",
+      "source_clauses": [
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#1-justfile-command-taxonomy",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#4-ci-gate-set",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#6-traceability-gate"
+      ],
+      "stories": {
+        "STORY-008": {
+          "acceptance_criteria": [
+            "STORY-008-AC-1",
+            "STORY-008-AC-2",
+            "STORY-008-AC-3"
+          ]
+        },
+        "STORY-010": {
+          "acceptance_criteria": [
+            "STORY-010-AC-1",
+            "STORY-010-AC-2",
+            "STORY-010-AC-3",
+            "STORY-010-AC-4"
+          ]
+        }
+      },
+      "tests": [
+        "internal/application/toolchain_test.go:119",
+        "internal/application/toolchain_test.go:13",
+        "internal/application/toolchain_test.go:181",
+        "internal/application/toolchain_test.go:209",
+        "internal/application/toolchain_test.go:68",
+        "internal/application/traceability_test.go:16",
+        "internal/application/traceability_test.go:37",
+        "internal/application/traceability_test.go:62"
+      ]
+    },
+    "PH00-R10": {
+      "phase": "00",
+      "source_clauses": [
+        "06_Process_and_Traceability/04_ADR_FORMAT.md#template-copy-docsadrtemplatemd",
+        "06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands"
+      ],
+      "stories": {
+        "STORY-008": {
+          "acceptance_criteria": [
+            "STORY-008-AC-3",
+            "STORY-008-AC-4"
+          ]
+        },
+        "STORY-010": {
+          "acceptance_criteria": [
+            "STORY-010-AC-1"
+          ]
+        }
+      },
+      "tests": [
+        "internal/application/traceability_test.go:16",
+        "internal/application/traceability_test.go:249",
+        "internal/application/traceability_test.go:37",
+        "internal/application/traceability_test.go:62"
+      ]
+    },
+    "PH00-R11": {
+      "phase": "00",
+      "source_clauses": [
+        "02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#gate",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open"
+      ],
+      "stories": {
+        "STORY-003": {
+          "acceptance_criteria": [
+            "STORY-003-AC-3",
+            "STORY-003-AC-4"
+          ]
+        }
+      },
+      "tests": [
+        "internal/application/architecture_test.go:16",
+        "internal/gate/gate_test.go:7"
+      ]
+    },
+    "PH00-R12": {
+      "phase": "00",
+      "source_clauses": [
+        "06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands",
+        "06_Process_and_Traceability/07_PHASE_FORMAT.md#completion-semantics"
+      ],
+      "stories": {
+        "STORY-024": {
+          "acceptance_criteria": [
+            "STORY-024-AC-1",
+            "STORY-024-AC-2",
+            "STORY-024-AC-3",
+            "STORY-024-AC-4",
+            "STORY-024-AC-5",
+            "STORY-024-AC-6"
+          ]
+        }
+      },
+      "tests": [
+        "internal/application/phase_validation_test.go:101",
+        "internal/application/phase_validation_test.go:123",
+        "internal/application/phase_validation_test.go:15",
+        "internal/application/phase_validation_test.go:350",
+        "internal/application/phase_validation_test.go:496",
+        "internal/application/phase_validation_test.go:528",
+        "internal/application/toolchain_test.go:43"
+      ]
+    },
+    "PH01-R01": {
+      "phase": "01",
+      "source_clauses": [
+        "02_Architecture/02_BACKEND_GO.md#application-model",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model"
+      ],
+      "stories": {
+        "STORY-011": {
+          "acceptance_criteria": [
+            "STORY-011-AC-1",
+            "STORY-011-AC-2",
+            "STORY-011-AC-3",
+            "STORY-011-AC-4",
+            "STORY-011-AC-5",
+            "STORY-011-AC-6",
+            "STORY-011-AC-7"
+          ]
+        }
+      },
+      "tests": [
+        "internal/appmodel/handler_test.go:13",
+        "internal/appmodel/runtime_emitter_test.go:12",
+        "internal/appmodel/service_test.go:163",
+        "internal/appmodel/service_test.go:18",
+        "internal/appmodel/service_test.go:262",
+        "internal/appmodel/service_test.go:305",
+        "internal/appmodel/service_test.go:353",
+        "internal/appmodel/service_test.go:403",
+        "internal/appmodel/service_test.go:525",
+        "internal/appmodel/service_test.go:73",
+        "main_test.go:122"
+      ]
+    },
+    "PH01-R02": {
+      "phase": "01",
+      "source_clauses": [
+        "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "02_Architecture/03_FRONTEND_REACT.md#store"
+      ],
+      "stories": {
+        "STORY-012": {
+          "acceptance_criteria": [
+            "STORY-012-AC-1",
+            "STORY-012-AC-2",
+            "STORY-012-AC-3",
+            "STORY-012-AC-4",
+            "STORY-012-AC-5",
+            "STORY-012-AC-6",
+            "STORY-012-AC-7",
+            "STORY-012-AC-8"
+          ]
+        },
+        "STORY-017": {
+          "acceptance_criteria": [
+            "STORY-017-AC-4"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/src/App.test.tsx:158",
+        "frontend/src/App.test.tsx:183",
+        "frontend/src/dev/bridge-mock/appModel.test.ts:9",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:108",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:208",
+        "frontend/src/logic/store/appModelProjection.test.ts:113",
+        "frontend/src/logic/store/appModelProjection.test.ts:137",
+        "frontend/src/logic/store/appModelProjection.test.ts:83",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:367"
+      ]
+    },
+    "PH01-R03": {
+      "phase": "01",
+      "source_clauses": [
+        "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness"
+      ],
+      "stories": {
+        "STORY-013": {
+          "acceptance_criteria": [
+            "STORY-013-AC-1",
+            "STORY-013-AC-2",
+            "STORY-013-AC-3",
+            "STORY-013-AC-4",
+            "STORY-013-AC-6"
+          ]
+        },
+        "STORY-017": {
+          "acceptance_criteria": [
+            "STORY-017-AC-1"
+          ]
+        },
+        "STORY-018": {
+          "acceptance_criteria": [
+            "STORY-018-AC-2"
+          ]
+        },
+        "STORY-019": {
+          "acceptance_criteria": [
+            "STORY-019-AC-1",
+            "STORY-019-AC-2",
+            "STORY-019-AC-5",
+            "STORY-019-AC-6"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/e2e/core-editor.test.ts:153",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:35",
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:149",
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:191",
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:48",
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:87",
+        "frontend/src/logic/hooks/useDocumentCommands.test.ts:7",
+        "frontend/src/ui/components/CodeEditor.bundle.test.ts:7",
+        "frontend/src/ui/components/CodeEditor.test.tsx:130",
+        "frontend/src/ui/components/CodeEditor.test.tsx:159",
+        "frontend/src/ui/components/CodeEditor.test.tsx:180",
+        "frontend/src/ui/components/CodeEditor.test.tsx:257",
+        "frontend/src/ui/components/CodeEditor.test.tsx:342"
+      ]
+    },
+    "PH01-R04": {
+      "phase": "01",
+      "source_clauses": [
+        "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view"
+      ],
+      "stories": {
+        "STORY-022": {
+          "acceptance_criteria": [
+            "STORY-022-AC-1"
+          ]
+        }
+      },
+      "tests": []
+    },
+    "PH01-R05": {
+      "phase": "01",
+      "source_clauses": [
+        "02_Architecture/02_BACKEND_GO.md#application-model",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#edge-cases"
+      ],
+      "stories": {
+        "STORY-011": {
+          "acceptance_criteria": [
+            "STORY-011-AC-3"
+          ]
+        },
+        "STORY-012": {
+          "acceptance_criteria": [
+            "STORY-012-AC-1",
+            "STORY-012-AC-3",
+            "STORY-012-AC-7"
+          ]
+        },
+        "STORY-013": {
+          "acceptance_criteria": [
+            "STORY-013-AC-5"
+          ]
+        },
+        "STORY-019": {
+          "acceptance_criteria": [
+            "STORY-019-AC-3",
+            "STORY-019-AC-6"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/src/App.test.tsx:158",
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:191",
+        "frontend/src/logic/store/appModelProjection.test.ts:137",
+        "frontend/src/logic/store/appModelProjection.test.ts:83",
+        "frontend/src/ui/components/CodeEditor.test.tsx:216",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:486",
+        "internal/appmodel/runtime_emitter_test.go:12",
+        "internal/appmodel/service_test.go:353",
+        "internal/appmodel/service_test.go:403",
+        "internal/appmodel/service_test.go:525",
+        "internal/appmodel/service_test.go:73"
+      ]
+    },
+    "PH01-R06": {
+      "phase": "01",
+      "source_clauses": [
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state"
+      ],
+      "stories": {
+        "STORY-022": {
+          "acceptance_criteria": [
+            "STORY-022-AC-2",
+            "STORY-022-AC-3",
+            "STORY-022-AC-4",
+            "STORY-022-AC-5"
+          ]
+        }
+      },
+      "tests": []
+    },
+    "PH01-R07": {
+      "phase": "01",
+      "source_clauses": [
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state"
+      ],
+      "stories": {
+        "STORY-021": {
+          "acceptance_criteria": [
+            "STORY-021-AC-1",
+            "STORY-021-AC-2",
+            "STORY-021-AC-3",
+            "STORY-021-AC-4",
+            "STORY-021-AC-5",
+            "STORY-021-AC-6"
+          ]
+        }
+      },
+      "tests": []
+    },
+    "PH01-R08": {
+      "phase": "01",
+      "source_clauses": [
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle"
+      ],
+      "stories": {
+        "STORY-015": {
+          "acceptance_criteria": [
+            "STORY-015-AC-1",
+            "STORY-015-AC-2",
+            "STORY-015-AC-3",
+            "STORY-015-AC-4",
+            "STORY-015-AC-5",
+            "STORY-015-AC-6"
+          ]
+        },
+        "STORY-018": {
+          "acceptance_criteria": [
+            "STORY-018-AC-1",
+            "STORY-018-AC-3",
+            "STORY-018-AC-4"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/e2e/core-editor.test.ts:121",
+        "frontend/e2e/core-editor.test.ts:254",
+        "frontend/e2e/core-editor.test.ts:335",
+        "frontend/src/dev/bridge-mock/bridge.test.ts:155",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:66",
+        "frontend/src/ui/primitives/Segmented.test.tsx:26",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:560",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:652",
+        "frontend/src/ui/widgets/EditorView.test.tsx:124",
+        "frontend/src/ui/widgets/EditorView.test.tsx:159",
+        "frontend/src/ui/widgets/EditorView.test.tsx:189",
+        "frontend/src/ui/widgets/EditorView.test.tsx:217"
+      ]
+    },
+    "PH01-R09": {
+      "phase": "01",
+      "source_clauses": [
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open"
+      ],
+      "stories": {
+        "STORY-023": {
+          "acceptance_criteria": [
+            "STORY-023-AC-1",
+            "STORY-023-AC-2",
+            "STORY-023-AC-3",
+            "STORY-023-AC-4",
+            "STORY-023-AC-5"
+          ]
+        }
+      },
+      "tests": []
+    },
+    "PH01-R10": {
+      "phase": "01",
+      "source_clauses": [
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open"
+      ],
+      "stories": {
+        "STORY-023": {
+          "acceptance_criteria": [
+            "STORY-023-AC-1",
+            "STORY-023-AC-2"
+          ]
+        }
+      },
+      "tests": []
+    },
+    "PH01-R11": {
+      "phase": "01",
+      "source_clauses": [
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline",
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features",
+        "02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline"
+      ],
+      "stories": {
+        "STORY-014": {
+          "acceptance_criteria": [
+            "STORY-014-AC-1",
+            "STORY-014-AC-2",
+            "STORY-014-AC-3",
+            "STORY-014-AC-4",
+            "STORY-014-AC-5",
+            "STORY-014-AC-6"
+          ]
+        },
+        "STORY-018": {
+          "acceptance_criteria": [
+            "STORY-018-AC-2",
+            "STORY-018-AC-3"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/e2e/core-editor.test.ts:153",
+        "frontend/e2e/core-editor.test.ts:254",
+        "frontend/src/logic/markdown/renderer.test.ts:43",
+        "frontend/src/logic/markdown/renderer.test.ts:56",
+        "frontend/src/ui/components/MarkdownView.test.tsx:104",
+        "frontend/src/ui/components/MarkdownView.test.tsx:11",
+        "frontend/src/ui/components/MarkdownView.test.tsx:47",
+        "frontend/src/ui/components/MarkdownView.test.tsx:80"
+      ]
+    },
+    "PH01-R12": {
+      "phase": "01",
+      "source_clauses": [
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce",
+        "03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets",
+        "03_NonFunctional/02_PERFORMANCE.md#4-large-file-handling"
+      ],
+      "stories": {
+        "STORY-017": {
+          "acceptance_criteria": [
+            "STORY-017-AC-1",
+            "STORY-017-AC-2",
+            "STORY-017-AC-3",
+            "STORY-017-AC-4",
+            "STORY-017-AC-5",
+            "STORY-017-AC-6"
+          ]
+        },
+        "STORY-018": {
+          "acceptance_criteria": [
+            "STORY-018-AC-2"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/e2e/core-editor.test.ts:153",
+        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:149",
+        "frontend/src/logic/hooks/useLivePreview.test.ts:140",
+        "frontend/src/logic/hooks/useLivePreview.test.ts:53",
+        "frontend/src/logic/hooks/useLivePreview.test.ts:94",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:367",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:426"
+      ]
+    },
+    "PH01-R13": {
+      "phase": "01",
+      "source_clauses": [
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings"
+      ],
+      "stories": {
+        "STORY-016": {
+          "acceptance_criteria": [
+            "STORY-016-AC-1",
+            "STORY-016-AC-2",
+            "STORY-016-AC-3",
+            "STORY-016-AC-4",
+            "STORY-016-AC-5"
+          ]
+        },
+        "STORY-018": {
+          "acceptance_criteria": [
+            "STORY-018-AC-2",
+            "STORY-018-AC-3"
+          ]
+        },
+        "STORY-019": {
+          "acceptance_criteria": [
+            "STORY-019-AC-4"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/e2e/core-editor.test.ts:153",
+        "frontend/e2e/core-editor.test.ts:254",
+        "frontend/src/logic/hooks/useSyncedBuffer.test.ts:19",
+        "frontend/src/ui/components/StatusBar.test.tsx:6",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:264",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:292",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:319",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:353"
+      ]
+    },
+    "PH01-R14": {
+      "phase": "01",
+      "source_clauses": [
+        "06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands",
+        "06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#per-story"
+      ],
+      "stories": {
+        "STORY-020": {
+          "acceptance_criteria": [
+            "STORY-020-AC-1",
+            "STORY-020-AC-2",
+            "STORY-020-AC-3",
+            "STORY-020-AC-4",
+            "STORY-020-AC-5"
+          ]
+        }
+      },
+      "tests": [
+        "internal/application/traceability_test.go:132",
+        "internal/application/traceability_test.go:176",
+        "internal/application/traceability_test.go:189",
+        "internal/application/traceability_test.go:215",
+        "internal/application/traceability_test.go:232"
+      ]
+    },
+    "PH01-R15": {
+      "phase": "01",
+      "source_clauses": [
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#2-stage--phase-mapping",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#5-stage-exit-criteria",
+        "07_Phases/00_ROADMAP.md#stages"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH01-R16": {
+      "phase": "01",
+      "source_clauses": [
+        "01_Product/13_I18N.md#i18n-layer",
+        "01_Product/13_I18N.md#adding-a-locale",
+        "01_Product/13_I18N.md#edge-cases"
+      ],
+      "stories": {
+        "STORY-016": {
+          "acceptance_criteria": [
+            "STORY-016-AC-6"
+          ]
+        }
+      },
+      "tests": [
+        "frontend/src/i18n/catalog.test.ts:4"
+      ]
+    },
+    "PH02-R01": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#new-open-save",
+        "02_Architecture/04_WAILS_INTEGRATION.md#dialogs-runtime"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R02": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#new-open-save",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#save-as",
+        "02_Architecture/02_BACKEND_GO.md#file-io"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R03": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R04": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R05": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#tabs",
+        "02_Architecture/02_BACKEND_GO.md#application-model"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R06": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#tabs"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R07": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#dirty-state",
+        "02_Architecture/04_WAILS_INTEGRATION.md#lifecycle"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R08": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#autosave",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#file-first"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R09": {
+      "phase": "02",
+      "source_clauses": [
+        "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#new-open-save"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R10": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#documents--files-docs",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#new-open-save"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R11": {
+      "phase": "02",
+      "source_clauses": [
+        "07_Phases/00_ROADMAP.md#roadmap",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#dirty-state",
+        "02_Architecture/04_WAILS_INTEGRATION.md#lifecycle"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R12": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#default-open-mode"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH02-R13": {
+      "phase": "02",
+      "source_clauses": [
+        "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#documents--files-docs",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#edge-cases"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH03-R01": {
+      "phase": "03",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#open-folder",
+        "02_Architecture/02_BACKEND_GO.md#application-model"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH03-R02": {
+      "phase": "03",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#open-folder",
+        "03_NonFunctional/02_PERFORMANCE.md#4-large-file-handling"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH03-R03": {
+      "phase": "03",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#tree-filter"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH03-R04": {
+      "phase": "03",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#open-folder",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#default-open-mode"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH03-R05": {
+      "phase": "03",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#recent",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#recent"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH03-R06": {
+      "phase": "03",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#reopen-last",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#file-first"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH03-R07": {
+      "phase": "03",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#multi-instance",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH03-R08": {
+      "phase": "03",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#drag-and-drop-open",
+        "02_Architecture/04_WAILS_INTEGRATION.md#file-drop"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH03-R09": {
+      "phase": "03",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#drag-and-drop-open"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH03-R10": {
+      "phase": "03",
+      "source_clauses": [
+        "01_Product/03_FILES_TABS_WORKSPACE.md#drag-and-drop-open",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#dirty-state",
+        "07_Phases/PHASE_02_FILE_IO_TABS.md#open-specification-conflicts"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH04-R01": {
+      "phase": "04",
+      "source_clauses": [
+        "01_Product/04_MARKDOWN_STANDARDS.md#standard-levels",
+        "01_Product/04_MARKDOWN_STANDARDS.md#standard-setting",
+        "01_Product/04_MARKDOWN_STANDARDS.md#plugin-mapping"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH04-R02": {
+      "phase": "04",
+      "source_clauses": [
+        "01_Product/04_MARKDOWN_STANDARDS.md#minimal-commonmark",
+        "01_Product/04_MARKDOWN_STANDARDS.md#gfm",
+        "01_Product/04_MARKDOWN_STANDARDS.md#full-extensions"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH04-R03": {
+      "phase": "04",
+      "source_clauses": [
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#math-katex",
+        "03_NonFunctional/04_OFFLINE.md#2-bundled-assets"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH04-R04": {
+      "phase": "04",
+      "source_clauses": [
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#code-highlighting",
+        "01_Product/04_MARKDOWN_STANDARDS.md#plugin-mapping"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH04-R05": {
+      "phase": "04",
+      "source_clauses": [
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#mermaid",
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#components-override"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH04-R06": {
+      "phase": "04",
+      "source_clauses": [
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce",
+        "02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#preview-debounce",
+        "03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets",
+        "03_NonFunctional/02_PERFORMANCE.md#4-large-file-handling"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH04-R07": {
+      "phase": "04",
+      "source_clauses": [
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#viewer-reading-mode",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state",
+        "01_Product/10_THEMING.md#reading-mode-chrome",
+        "03_NonFunctional/05_ACCESSIBILITY.md#3-focus-management"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH04-R08": {
+      "phase": "04",
+      "source_clauses": [
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline",
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization",
+        "03_NonFunctional/04_OFFLINE.md#2-bundled-assets",
+        "03_NonFunctional/04_OFFLINE.md#3-no-cdn-at-runtime"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH05-R01": {
+      "phase": "05",
+      "source_clauses": [
+        "01_Product/06_FORMAT_AND_LINT.md#format",
+        "01_Product/06_FORMAT_AND_LINT.md#canonical-style",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH05-R02": {
+      "phase": "05",
+      "source_clauses": [
+        "01_Product/06_FORMAT_AND_LINT.md#compact",
+        "01_Product/06_FORMAT_AND_LINT.md#canonical-style"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH05-R03": {
+      "phase": "05",
+      "source_clauses": [
+        "01_Product/06_FORMAT_AND_LINT.md#lint",
+        "01_Product/06_FORMAT_AND_LINT.md#lint-rules",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH05-R04": {
+      "phase": "05",
+      "source_clauses": [
+        "01_Product/06_FORMAT_AND_LINT.md#problems-surface",
+        "03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH05-R05": {
+      "phase": "05",
+      "source_clauses": [
+        "01_Product/06_FORMAT_AND_LINT.md#format",
+        "01_Product/06_FORMAT_AND_LINT.md#compact",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH05-R06": {
+      "phase": "05",
+      "source_clauses": [
+        "01_Product/06_FORMAT_AND_LINT.md#on-save",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#autosave"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH05-R07": {
+      "phase": "05",
+      "source_clauses": [
+        "01_Product/06_FORMAT_AND_LINT.md#format",
+        "02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#gate",
+        "02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#events-progress"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH05-R08": {
+      "phase": "05",
+      "source_clauses": [
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH05-R09": {
+      "phase": "05",
+      "source_clauses": [
+        "01_Product/12_KEYBOARD_SHORTCUTS.md#format-shortcuts",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH06-R01": {
+      "phase": "06",
+      "source_clauses": [
+        "01_Product/07_PDF_EXPORT.md#export-flow",
+        "01_Product/07_PDF_EXPORT.md#print-scope"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH06-R02": {
+      "phase": "06",
+      "source_clauses": [
+        "02_Architecture/02_BACKEND_GO.md#long-ops-gate",
+        "02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#gate",
+        "02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#events-progress"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH06-R03": {
+      "phase": "06",
+      "source_clauses": [
+        "01_Product/07_PDF_EXPORT.md#print-scope"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH06-R04": {
+      "phase": "06",
+      "source_clauses": [
+        "01_Product/07_PDF_EXPORT.md#styled-vs-clean",
+        "01_Product/11_SETTINGS.md#export-group",
+        "01_Product/11_SETTINGS.md#defaults",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH06-R05": {
+      "phase": "06",
+      "source_clauses": [
+        "01_Product/07_PDF_EXPORT.md#export-flow",
+        "01_Product/07_PDF_EXPORT.md#limitations"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH06-R06": {
+      "phase": "06",
+      "source_clauses": [
+        "01_Product/07_PDF_EXPORT.md#print-scope",
+        "03_NonFunctional/04_OFFLINE.md#1-the-requirement",
+        "03_NonFunctional/04_OFFLINE.md#4-document-referenced-remote-assets"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH06-R07": {
+      "phase": "06",
+      "source_clauses": [
+        "01_Product/07_PDF_EXPORT.md#limitations"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH07-R01": {
+      "phase": "07",
+      "source_clauses": [
+        "01_Product/08_FILE_ASSOCIATIONS.md#declared-extensions",
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#1-declaration-source-wailsjson-fileassociations",
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#6-extension-set-consistency"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH07-R02": {
+      "phase": "07",
+      "source_clauses": [
+        "01_Product/08_FILE_ASSOCIATIONS.md#onfileopen",
+        "02_Architecture/04_WAILS_INTEGRATION.md#file-associations"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH07-R03": {
+      "phase": "07",
+      "source_clauses": [
+        "01_Product/08_FILE_ASSOCIATIONS.md#onfileopen",
+        "02_Architecture/04_WAILS_INTEGRATION.md#lifecycle",
+        "02_Architecture/04_WAILS_INTEGRATION.md#file-associations"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH07-R04": {
+      "phase": "07",
+      "source_clauses": [
+        "01_Product/08_FILE_ASSOCIATIONS.md#open-in-default-mode",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#default-open-mode",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema",
+        "07_Phases/PHASE_02_FILE_IO_TABS.md#open-specification-conflicts"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH07-R05": {
+      "phase": "07",
+      "source_clauses": [
+        "01_Product/08_FILE_ASSOCIATIONS.md#multi-instance-routing",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#multi-instance",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#tabs"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH07-R06": {
+      "phase": "07",
+      "source_clauses": [
+        "01_Product/08_FILE_ASSOCIATIONS.md#set-as-default",
+        "01_Product/08_FILE_ASSOCIATIONS.md#macos",
+        "01_Product/08_FILE_ASSOCIATIONS.md#windows",
+        "01_Product/08_FILE_ASSOCIATIONS.md#linux"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH07-R07": {
+      "phase": "07",
+      "source_clauses": [
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#3-macos-cfbundledocumenttypes--infoplist",
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#4-windows-nsis-installer--progid",
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#5-linux-desktop--mime--nfpm"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH07-R08": {
+      "phase": "07",
+      "source_clauses": [
+        "01_Product/08_FILE_ASSOCIATIONS.md#open-in-default-mode",
+        "01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings",
+        "07_Phases/PHASE_02_FILE_IO_TABS.md#open-specification-conflicts"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH08-R01": {
+      "phase": "08",
+      "source_clauses": [
+        "01_Product/10_THEMING.md#themes",
+        "01_Product/10_THEMING.md#token-model",
+        "01_Product/10_THEMING.md#canonical-theme-tokens"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH08-R02": {
+      "phase": "08",
+      "source_clauses": [
+        "01_Product/10_THEMING.md#appearance-auto-light-dark",
+        "01_Product/10_THEMING.md#no-custom-themes",
+        "01_Product/11_SETTINGS.md#defaults"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH08-R03": {
+      "phase": "08",
+      "source_clauses": [
+        "01_Product/11_SETTINGS.md#settings-surface",
+        "01_Product/11_SETTINGS.md#appearance-group",
+        "01_Product/11_SETTINGS.md#editor-group",
+        "01_Product/11_SETTINGS.md#markdown-group",
+        "01_Product/11_SETTINGS.md#export-group",
+        "01_Product/11_SETTINGS.md#content-privacy-group",
+        "01_Product/11_SETTINGS.md#language-group",
+        "01_Product/11_SETTINGS.md#defaults"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH08-R04": {
+      "phase": "08",
+      "source_clauses": [
+        "01_Product/11_SETTINGS.md#persistence",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH08-R05": {
+      "phase": "08",
+      "source_clauses": [
+        "01_Product/11_SETTINGS.md#settings-surface",
+        "03_NonFunctional/05_ACCESSIBILITY.md#2-keyboard-operability",
+        "03_NonFunctional/05_ACCESSIBILITY.md#3-focus-management",
+        "03_NonFunctional/05_ACCESSIBILITY.md#4-radix-a11y-baseline"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH08-R06": {
+      "phase": "08",
+      "source_clauses": [
+        "01_Product/12_KEYBOARD_SHORTCUTS.md#shortcut-registry",
+        "01_Product/12_KEYBOARD_SHORTCUTS.md#platform-mapping",
+        "01_Product/12_KEYBOARD_SHORTCUTS.md#edge-cases"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH08-R07": {
+      "phase": "08",
+      "source_clauses": [
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#window-state",
+        "02_Architecture/02_BACKEND_GO.md#application-model",
+        "01_Product/11_SETTINGS.md#persistence"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH08-R08": {
+      "phase": "08",
+      "source_clauses": [
+        "01_Product/12_KEYBOARD_SHORTCUTS.md#format-shortcuts",
+        "01_Product/12_KEYBOARD_SHORTCUTS.md#file-shortcuts",
+        "01_Product/12_KEYBOARD_SHORTCUTS.md#view-shortcuts"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH08-R09": {
+      "phase": "08",
+      "source_clauses": [
+        "01_Product/11_SETTINGS.md#settings-surface",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#4-what-each-stage-explicitly-does-not-build"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH08-R10": {
+      "phase": "08",
+      "source_clauses": [
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#window-state",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#default-open-mode"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH09-R01": {
+      "phase": "09",
+      "source_clauses": [
+        "01_Product/09_ASSETS_AND_SECURITY.md#relative-path-resolution",
+        "02_Architecture/04_WAILS_INTEGRATION.md#assetserver-handler"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH09-R02": {
+      "phase": "09",
+      "source_clauses": [
+        "01_Product/09_ASSETS_AND_SECURITY.md#allowlist",
+        "01_Product/09_ASSETS_AND_SECURITY.md#path-traversal",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#2-asset-allowlist-and-traversal"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH09-R03": {
+      "phase": "09",
+      "source_clauses": [
+        "01_Product/09_ASSETS_AND_SECURITY.md#relative-path-resolution",
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#components-override"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH09-R04": {
+      "phase": "09",
+      "source_clauses": [
+        "01_Product/09_ASSETS_AND_SECURITY.md#remote-content-policy",
+        "01_Product/09_ASSETS_AND_SECURITY.md#banner",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#3-remote-content-policy",
+        "03_NonFunctional/04_OFFLINE.md#4-document-referenced-remote-assets"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH09-R05": {
+      "phase": "09",
+      "source_clauses": [
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization",
+        "01_Product/09_ASSETS_AND_SECURITY.md#csp",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#4-webview-csp"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH09-R06": {
+      "phase": "09",
+      "source_clauses": [
+        "03_NonFunctional/04_OFFLINE.md#1-the-requirement",
+        "03_NonFunctional/04_OFFLINE.md#2-bundled-assets",
+        "03_NonFunctional/04_OFFLINE.md#3-no-cdn-at-runtime",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#1-offline-invariant",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#5-no-telemetry",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#6-local-logs-only"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH09-R07": {
+      "phase": "09",
+      "source_clauses": [
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#9-llm-data-flow-and-privacy",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH09-R08": {
+      "phase": "09",
+      "source_clauses": [
+        "01_Product/09_ASSETS_AND_SECURITY.md#allowlist",
+        "01_Product/09_ASSETS_AND_SECURITY.md#relative-path-resolution",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#2-asset-allowlist-and-traversal",
+        "01_Product/11_SETTINGS.md#content-privacy-group"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH10-R01": {
+      "phase": "10",
+      "source_clauses": [
+        "01_Product/13_I18N.md#i18n-layer",
+        "01_Product/13_I18N.md#string-catalog",
+        "01_Product/13_I18N.md#edge-cases"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH10-R02": {
+      "phase": "10",
+      "source_clauses": [
+        "01_Product/13_I18N.md#i18n-layer",
+        "01_Product/13_I18N.md#formatting"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH10-R03": {
+      "phase": "10",
+      "source_clauses": [
+        "01_Product/13_I18N.md#adding-a-locale",
+        "01_Product/13_I18N.md#edge-cases",
+        "03_NonFunctional/05_ACCESSIBILITY.md#2-keyboard-operability"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH10-R04": {
+      "phase": "10",
+      "source_clauses": [
+        "04_Build_and_Release/01_BUILD_MATRIX.md#1-supported-os-baseline",
+        "04_Build_and_Release/01_BUILD_MATRIX.md#2-artifact-matrix",
+        "04_Build_and_Release/01_BUILD_MATRIX.md#3-per-os-build-prerequisites",
+        "04_Build_and_Release/01_BUILD_MATRIX.md#5-why-each-os-builds-on-its-own-runner"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH10-R05": {
+      "phase": "10",
+      "source_clauses": [
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#1-declaration-source-wailsjson-fileassociations",
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#3-macos-cfbundledocumenttypes--infoplist",
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#4-windows-nsis-installer--progid",
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#5-linux-desktop--mime--nfpm",
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#6-extension-set-consistency"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH10-R06": {
+      "phase": "10",
+      "source_clauses": [
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#2-git-hooks-lefthook",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#3-ordering-why-frontend-builds-before-go",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#4-ci-gate-set",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#5-github-actions-build--release-matrix",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#6-traceability-gate"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH10-R07": {
+      "phase": "10",
+      "source_clauses": [
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#4-ci-gate-set",
+        "01_Product/10_THEMING.md#token-model",
+        "01_Product/13_I18N.md#edge-cases"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH10-R08": {
+      "phase": "10",
+      "source_clauses": [
+        "03_NonFunctional/04_OFFLINE.md#5-verification-approach",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#5-no-telemetry",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#6-local-logs-only",
+        "03_NonFunctional/02_PERFORMANCE.md#1-startup-budget",
+        "03_NonFunctional/02_PERFORMANCE.md#5-bundle-size-monaco"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH10-R09": {
+      "phase": "10",
+      "source_clauses": [
+        "04_Build_and_Release/01_BUILD_MATRIX.md#8-signing-notarization-and-install-caveats",
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#3-release-workflow"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH10-R10": {
+      "phase": "10",
+      "source_clauses": [
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#2-stage--phase-mapping",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#5-stage-exit-criteria",
+        "07_Phases/00_ROADMAP.md#stages"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R01": {
+      "phase": "11",
+      "source_clauses": [
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#provider-kinds",
+        "02_Architecture/08_LLM_INTEGRATION.md#provider-abstraction",
+        "08_Decisions/0007-llm-provider-abstraction.md#decision-outcome"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R02": {
+      "phase": "11",
+      "source_clauses": [
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#provider-config",
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#auth-env-var",
+        "02_Architecture/08_LLM_INTEGRATION.md#resolved-config--secret-handling",
+        "02_Architecture/08_LLM_INTEGRATION.md#persistence"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R03": {
+      "phase": "11",
+      "source_clauses": [
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#model-discovery",
+        "02_Architecture/08_LLM_INTEGRATION.md#model-discovery"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R04": {
+      "phase": "11",
+      "source_clauses": [
+        "02_Architecture/08_LLM_INTEGRATION.md#retry--error-mapping-owned-by-the-service",
+        "02_Architecture/08_LLM_INTEGRATION.md#error-codes"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R05": {
+      "phase": "11",
+      "source_clauses": [
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#verification",
+        "02_Architecture/08_LLM_INTEGRATION.md#gate-and-cancellation",
+        "08_Decisions/0007-llm-provider-abstraction.md#decision-outcome"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R06": {
+      "phase": "11",
+      "source_clauses": [
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#persistence",
+        "02_Architecture/08_LLM_INTEGRATION.md#persistence"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R07": {
+      "phase": "11",
+      "source_clauses": [
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#token-estimation",
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#safety-margin",
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#reply-reserve",
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#fit-meter",
+        "02_Architecture/08_LLM_INTEGRATION.md#tokenizer"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R08": {
+      "phase": "11",
+      "source_clauses": [
+        "02_Architecture/08_LLM_INTEGRATION.md#overview",
+        "02_Architecture/02_BACKEND_GO.md#error-envelope",
+        "02_Architecture/03_FRONTEND_REACT.md#adapter-layer"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R09": {
+      "phase": "11",
+      "source_clauses": [
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#provider-config",
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#auth-env-var",
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#inference-params",
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#defaults-local",
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#verification"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R10": {
+      "phase": "11",
+      "source_clauses": [
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#safety-margin",
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#reply-reserve",
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#over-context-strategy",
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#history-strategy",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#limits",
+        "02_Architecture/08_LLM_INTEGRATION.md#agent-loop"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R11": {
+      "phase": "11",
+      "source_clauses": [
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#defaults-local",
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#privacy-and-network",
+        "03_NonFunctional/04_OFFLINE.md#6-network-policy-revision-stage-3-llm"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH11-R12": {
+      "phase": "11",
+      "source_clauses": [
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#privacy-and-network",
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#persistence",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#9-llm-data-flow-and-privacy"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R01": {
+      "phase": "12",
+      "source_clauses": [
+        "01_Product/15_ACTIONS_LIBRARY.md#action-model",
+        "01_Product/15_ACTIONS_LIBRARY.md#proofread",
+        "01_Product/15_ACTIONS_LIBRARY.md#reformat-targets",
+        "01_Product/15_ACTIONS_LIBRARY.md#other-actions",
+        "01_Product/15_ACTIONS_LIBRARY.md#custom-instruction",
+        "01_Product/15_ACTIONS_LIBRARY.md#extensibility"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R02": {
+      "phase": "12",
+      "source_clauses": [
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#assistant-sidebar",
+        "08_Decisions/0010-assistant-sidebar-apply-edit.md#decision-outcome"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R03": {
+      "phase": "12",
+      "source_clauses": [
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#scope-selection-vs-document",
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#fit-meter"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R04": {
+      "phase": "12",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#tools",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#edit-proposals",
+        "02_Architecture/08_LLM_INTEGRATION.md#tool-registry"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R05": {
+      "phase": "12",
+      "source_clauses": [
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#modes-actions-chat",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#agentic-loop",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#limits",
+        "02_Architecture/08_LLM_INTEGRATION.md#agent-loop",
+        "02_Architecture/08_LLM_INTEGRATION.md#gate-and-cancellation"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R06": {
+      "phase": "12",
+      "source_clauses": [
+        "02_Architecture/08_LLM_INTEGRATION.md#events",
+        "02_Architecture/08_LLM_INTEGRATION.md#overview"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R07": {
+      "phase": "12",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#edit-proposals",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#apply-and-diff",
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#modes-actions-chat"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R08": {
+      "phase": "12",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#apply-and-diff",
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#scope-selection-vs-document",
+        "02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R09": {
+      "phase": "12",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#apply-and-diff"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R10": {
+      "phase": "12",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#apply-and-diff",
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#forward-compat"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH12-R11": {
+      "phase": "12",
+      "source_clauses": [
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#provider-config",
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#privacy-and-network"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH13-R01": {
+      "phase": "13",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#agentic-loop",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#limits",
+        "02_Architecture/08_LLM_INTEGRATION.md#agent-loop",
+        "08_Decisions/0008-agentic-tool-call-loop.md#decision-outcome"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH13-R02": {
+      "phase": "13",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#tools",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#tool-scope",
+        "02_Architecture/08_LLM_INTEGRATION.md#tool-registry"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH13-R03": {
+      "phase": "13",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#tool-scope",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#9-llm-data-flow-and-privacy",
+        "01_Product/09_ASSETS_AND_SECURITY.md#allowlist",
+        "01_Product/09_ASSETS_AND_SECURITY.md#path-traversal"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH13-R04": {
+      "phase": "13",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#chat",
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#modes-actions-chat",
+        "02_Architecture/08_LLM_INTEGRATION.md#persistence"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH13-R05": {
+      "phase": "13",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#streaming",
+        "02_Architecture/08_LLM_INTEGRATION.md#streaming"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH13-R06": {
+      "phase": "13",
+      "source_clauses": [
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#cancellation",
+        "02_Architecture/08_LLM_INTEGRATION.md#gate-and-cancellation"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH13-R07": {
+      "phase": "13",
+      "source_clauses": [
+        "02_Architecture/08_LLM_INTEGRATION.md#events",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#chat"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH13-R08": {
+      "phase": "13",
+      "source_clauses": [
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#assistant-sidebar",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#chat",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#tools"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH13-R09": {
+      "phase": "13",
+      "source_clauses": [
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#privacy-and-network",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#9-llm-data-flow-and-privacy",
+        "08_Decisions/0011-network-policy-llm-exception.md#decision-outcome"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH14-R01": {
+      "phase": "14",
+      "source_clauses": [
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#context-budget",
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#reply-reserve",
+        "02_Architecture/08_LLM_INTEGRATION.md#context-budgeter",
+        "08_Decisions/0009-tokenizer-context-budget.md#decision-outcome"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH14-R02": {
+      "phase": "14",
+      "source_clauses": [
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#fit-meter",
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#over-context-strategy"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH14-R03": {
+      "phase": "14",
+      "source_clauses": [
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#over-context-strategy",
+        "02_Architecture/08_LLM_INTEGRATION.md#tokenizer"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH14-R04": {
+      "phase": "14",
+      "source_clauses": [
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#over-context-strategy",
+        "02_Architecture/08_LLM_INTEGRATION.md#error-codes"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH14-R05": {
+      "phase": "14",
+      "source_clauses": [
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#history-strategy",
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#context-budget"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH14-R06": {
+      "phase": "14",
+      "source_clauses": [
+        "01_Product/18_TOKENIZER_AND_CONTEXT.md#history-strategy",
+        "02_Architecture/08_LLM_INTEGRATION.md#context-budgeter",
+        "08_Decisions/0009-tokenizer-context-budget.md#decision-outcome"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH14-R08": {
+      "phase": "14",
+      "source_clauses": [
+        "01_Product/17_PROVIDERS_MODELS_SETTINGS.md#inference-params",
+        "01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md#limits",
+        "02_Architecture/08_LLM_INTEGRATION.md#error-codes"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH14-R09": {
+      "phase": "14",
+      "source_clauses": [
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#5-stage-exit-criteria",
+        "01_Product/14_LLM_ASSISTANT_OVERVIEW.md#forward-compat",
+        "03_NonFunctional/03_SECURITY_AND_PRIVACY.md#9-llm-data-flow-and-privacy"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R01": {
+      "phase": "15",
+      "source_clauses": [
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#1-version-injection",
+        "04_Build_and_Release/01_BUILD_MATRIX.md#6-wails-build-flags",
+        "00_Foundation/04_DESIGN_DECISIONS.md#15-versioning-app-icon--cicd"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R02": {
+      "phase": "15",
+      "source_clauses": [
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#1-version-injection",
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#3-release-workflow"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R03": {
+      "phase": "15",
+      "source_clauses": [
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#2-app-icon-pipeline",
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#2-app-icon-requirements",
+        "assets/icon/README.md#producing-the-build-icon"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R04": {
+      "phase": "15",
+      "source_clauses": [
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#3-release-workflow",
+        "04_Build_and_Release/01_BUILD_MATRIX.md#2-artifact-matrix",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#5-github-actions-build--release-matrix"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R05": {
+      "phase": "15",
+      "source_clauses": [
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#3-release-workflow",
+        "04_Build_and_Release/03_CI_AND_HOOKS.md#4-ci-gate-set",
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#4-cidev-isolation-from-production-data",
+        "assets/icon/README.md#producing-the-build-icon"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R06": {
+      "phase": "15",
+      "source_clauses": [
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#3-release-workflow",
+        "04_Build_and_Release/01_BUILD_MATRIX.md#2-artifact-matrix",
+        "04_Build_and_Release/01_BUILD_MATRIX.md#8-signing-notarization-and-install-caveats"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R07": {
+      "phase": "15",
+      "source_clauses": [
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#3-release-workflow",
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#5-edge-cases-rel"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R08": {
+      "phase": "15",
+      "source_clauses": [
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#4-cidev-isolation-from-production-data",
+        "00_Foundation/04_DESIGN_DECISIONS.md#15-versioning-app-icon--cicd"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R09": {
+      "phase": "15",
+      "source_clauses": [
+        "04_Build_and_Release/01_BUILD_MATRIX.md#8-signing-notarization-and-install-caveats",
+        "00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R10": {
+      "phase": "15",
+      "source_clauses": [
+        "04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#1-declaration-source-wailsjson-fileassociations",
+        "04_Build_and_Release/01_BUILD_MATRIX.md#2-artifact-matrix",
+        "04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#3-release-workflow"
+      ],
+      "stories": {},
+      "tests": []
+    },
+    "PH15-R11": {
+      "phase": "15",
+      "source_clauses": [
+        "07_Phases/00_ROADMAP.md#milestones",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#2-stage--phase-mapping",
+        "07_Phases/PHASE_10_I18N_PACKAGING.md#phase-exit-evidence"
+      ],
+      "stories": {},
+      "tests": []
     }
   },
   "clauses": {
@@ -1010,7 +3400,8 @@
         "STORY-007",
         "STORY-011",
         "STORY-015",
-        "STORY-019"
+        "STORY-019",
+        "STORY-023"
       ]
     },
     "00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations": {
@@ -1087,7 +3478,8 @@
       "stories": [
         "STORY-006",
         "STORY-012",
-        "STORY-019"
+        "STORY-019",
+        "STORY-021"
       ]
     },
     "02_Architecture/03_FRONTEND_REACT.md#bridge-mock": {
@@ -1130,7 +3522,9 @@
     "06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands": {
       "stories": [
         "STORY-008",
-        "STORY-010"
+        "STORY-010",
+        "STORY-020",
+        "STORY-024"
       ]
     },
     "06_Process_and_Traceability/04_ADR_FORMAT.md#template-copy-docsadrtemplatemd": {
@@ -1185,7 +3579,8 @@
     },
     "07_Phases/PHASE_00_SCAFFOLD.md#phase-exit-checklist": {
       "stories": [
-        "STORY-010"
+        "STORY-010",
+        "STORY-024"
       ]
     },
     "04_Build_and_Release/03_CI_AND_HOOKS.md#3-ordering-why-frontend-builds-before-go": {
@@ -1200,7 +3595,8 @@
     },
     "06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#per-story": {
       "stories": [
-        "STORY-010"
+        "STORY-010",
+        "STORY-020"
       ]
     },
     "02_Architecture/02_BACKEND_GO.md#application-model": {
@@ -1219,7 +3615,10 @@
         "STORY-012",
         "STORY-016",
         "STORY-017",
-        "STORY-019"
+        "STORY-019",
+        "STORY-021",
+        "STORY-022",
+        "STORY-023"
       ]
     },
     "07_Phases/PHASE_01_CORE_EDITOR.md#scope": {
@@ -1229,7 +3628,9 @@
         "STORY-013",
         "STORY-014",
         "STORY-015",
-        "STORY-019"
+        "STORY-019",
+        "STORY-021",
+        "STORY-023"
       ]
     },
     "02_Architecture/03_FRONTEND_REACT.md#store": {
@@ -1242,7 +3643,10 @@
         "STORY-012",
         "STORY-015",
         "STORY-016",
-        "STORY-019"
+        "STORY-019",
+        "STORY-021",
+        "STORY-022",
+        "STORY-023"
       ]
     },
     "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor": {
@@ -1254,19 +3658,24 @@
       "stories": [
         "STORY-013",
         "STORY-016",
-        "STORY-019"
+        "STORY-019",
+        "STORY-022",
+        "STORY-023"
       ]
     },
     "02_Architecture/03_FRONTEND_REACT.md#components": {
       "stories": [
-        "STORY-013"
+        "STORY-013",
+        "STORY-022",
+        "STORY-023"
       ]
     },
     "03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness": {
       "stories": [
         "STORY-013",
         "STORY-018",
-        "STORY-019"
+        "STORY-019",
+        "STORY-021"
       ]
     },
     "00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour": {
@@ -1318,17 +3727,22 @@
     "01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view": {
       "stories": [
         "STORY-015",
-        "STORY-018"
+        "STORY-018",
+        "STORY-022"
       ]
     },
     "01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle": {
       "stories": [
-        "STORY-015"
+        "STORY-015",
+        "STORY-021",
+        "STORY-022"
       ]
     },
     "01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state": {
       "stories": [
-        "STORY-015"
+        "STORY-015",
+        "STORY-021",
+        "STORY-022"
       ]
     },
     "mockups/README.md#role-in-the-spec": {
@@ -1390,12 +3804,60 @@
     },
     "07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist": {
       "stories": [
-        "STORY-018"
+        "STORY-018",
+        "STORY-020",
+        "STORY-022"
       ]
     },
     "03_NonFunctional/05_ACCESSIBILITY.md#2-keyboard-operability": {
       "stories": [
         "STORY-018"
+      ]
+    },
+    "06_Process_and_Traceability/02_STORY_FORMAT.md#front-matter-schema-copy-exactly": {
+      "stories": [
+        "STORY-020",
+        "STORY-024"
+      ]
+    },
+    "06_Process_and_Traceability/02_STORY_FORMAT.md#lifecycle": {
+      "stories": [
+        "STORY-020"
+      ]
+    },
+    "06_Process_and_Traceability/03_TRACEABILITY.md#the-chain": {
+      "stories": [
+        "STORY-020"
+      ]
+    },
+    "06_Process_and_Traceability/03_TRACEABILITY.md#traceabilityyaml-schema": {
+      "stories": [
+        "STORY-020"
+      ]
+    },
+    "06_Process_and_Traceability/03_TRACEABILITY.md#how-a-test-declares-the-ac-it-proves": {
+      "stories": [
+        "STORY-020"
+      ]
+    },
+    "07_Phases/PHASE_01_CORE_EDITOR.md#edge-cases": {
+      "stories": [
+        "STORY-020"
+      ]
+    },
+    "01_Product/02_EDITOR_AND_VIEWER_MODES.md#edge-cases": {
+      "stories": [
+        "STORY-022"
+      ]
+    },
+    "02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams": {
+      "stories": [
+        "STORY-023"
+      ]
+    },
+    "06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#phase-level-exit-criteria": {
+      "stories": [
+        "STORY-024"
       ]
     }
   },
@@ -1405,10 +3867,7 @@
         "STORY-004"
       ],
       "tests": [
-        "internal/db/database_test.go:155",
-        "internal/db/database_test.go:18",
-        "internal/db/database_test.go:70",
-        "internal/db/migrations_test.go:13"
+        "internal/db/database_test.go:73"
       ]
     },
     "EC-SET-2": {
@@ -1417,16 +3876,9 @@
         "STORY-009"
       ],
       "tests": [
-        "internal/db/database_test.go:155",
-        "internal/db/database_test.go:18",
-        "internal/db/database_test.go:70",
-        "internal/db/migrations_test.go:13",
-        "internal/settings/handler_test.go:11",
-        "internal/settings/repository_sqlite_test.go:120",
-        "internal/settings/repository_sqlite_test.go:14",
-        "internal/settings/repository_sqlite_test.go:245",
-        "internal/settings/repository_sqlite_test.go:53",
-        "main_test.go:19"
+        "internal/db/database_test.go:159",
+        "internal/settings/repository_sqlite_test.go:123",
+        "main_test.go:22"
       ]
     },
     "EC-THEME-3": {
@@ -1434,12 +3886,7 @@
         "STORY-009"
       ],
       "tests": [
-        "internal/settings/handler_test.go:11",
-        "internal/settings/repository_sqlite_test.go:120",
-        "internal/settings/repository_sqlite_test.go:14",
-        "internal/settings/repository_sqlite_test.go:245",
-        "internal/settings/repository_sqlite_test.go:53",
-        "main_test.go:19"
+        "internal/settings/repository_sqlite_test.go:123"
       ]
     },
     "EC-RENDER-5": {
@@ -1447,11 +3894,6 @@
         "STORY-014"
       ],
       "tests": [
-        "frontend/src/logic/markdown/renderer.test.ts:43",
-        "frontend/src/logic/markdown/renderer.test.ts:56",
-        "frontend/src/ui/components/MarkdownView.test.tsx:104",
-        "frontend/src/ui/components/MarkdownView.test.tsx:11",
-        "frontend/src/ui/components/MarkdownView.test.tsx:47",
         "frontend/src/ui/components/MarkdownView.test.tsx:80"
       ]
     },
@@ -1460,12 +3902,7 @@
         "STORY-014"
       ],
       "tests": [
-        "frontend/src/logic/markdown/renderer.test.ts:43",
-        "frontend/src/logic/markdown/renderer.test.ts:56",
-        "frontend/src/ui/components/MarkdownView.test.tsx:104",
-        "frontend/src/ui/components/MarkdownView.test.tsx:11",
-        "frontend/src/ui/components/MarkdownView.test.tsx:47",
-        "frontend/src/ui/components/MarkdownView.test.tsx:80"
+        "frontend/src/ui/components/MarkdownView.test.tsx:47"
       ]
     },
     "EC-RENDER-7": {
@@ -1473,12 +3910,7 @@
         "STORY-014"
       ],
       "tests": [
-        "frontend/src/logic/markdown/renderer.test.ts:43",
-        "frontend/src/logic/markdown/renderer.test.ts:56",
-        "frontend/src/ui/components/MarkdownView.test.tsx:104",
-        "frontend/src/ui/components/MarkdownView.test.tsx:11",
-        "frontend/src/ui/components/MarkdownView.test.tsx:47",
-        "frontend/src/ui/components/MarkdownView.test.tsx:80"
+        "frontend/src/ui/components/MarkdownView.test.tsx:104"
       ]
     },
     "EC-I18N-1": {
@@ -1486,18 +3918,7 @@
         "STORY-016"
       ],
       "tests": [
-        "frontend/src/i18n/catalog.test.ts:3",
-        "frontend/src/i18n/catalog.test.ts:4",
-        "frontend/src/ui/components/StatusBar.test.tsx:5",
-        "frontend/src/ui/components/StatusBar.test.tsx:6",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:263",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:264",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:291",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:292",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:318",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:319",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:352",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:353"
+        "frontend/src/i18n/catalog.test.ts:39"
       ]
     },
     "EC-I18N-2": {
@@ -1505,18 +3926,7 @@
         "STORY-016"
       ],
       "tests": [
-        "frontend/src/i18n/catalog.test.ts:3",
-        "frontend/src/i18n/catalog.test.ts:4",
-        "frontend/src/ui/components/StatusBar.test.tsx:5",
-        "frontend/src/ui/components/StatusBar.test.tsx:6",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:263",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:264",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:291",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:292",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:318",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:319",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:352",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:353"
+        "frontend/src/i18n/catalog.test.ts:62"
       ]
     },
     "EC-RENDER-4": {
@@ -1524,26 +3934,15 @@
         "STORY-017"
       ],
       "tests": [
-        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:149",
-        "frontend/src/logic/hooks/useLivePreview.test.ts:140",
-        "frontend/src/logic/hooks/useLivePreview.test.ts:53",
-        "frontend/src/logic/hooks/useLivePreview.test.ts:94",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:367",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:426"
+        "frontend/src/logic/hooks/useLivePreview.test.ts:94"
       ]
     },
     "EC-DOCS-12": {
       "stories": [
-        "STORY-019"
+        "STORY-019",
+        "STORY-022"
       ],
       "tests": [
-        "frontend/src/logic/adapter/appModelAdapter.test.ts:35",
-        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:191",
-        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:48",
-        "frontend/src/logic/adapter/useSyncedBuffer.test.ts:87",
-        "frontend/src/logic/hooks/useDocumentCommands.test.ts:7",
-        "frontend/src/logic/hooks/useSyncedBuffer.test.ts:19",
-        "frontend/src/ui/components/CodeEditor.test.tsx:342",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:486"
       ]
     }
@@ -1557,7 +3956,9 @@
         "STORY-008",
         "STORY-009",
         "STORY-010",
-        "STORY-011"
+        "STORY-011",
+        "STORY-020",
+        "STORY-024"
       ]
     },
     "ui/styles/": {
@@ -1579,7 +3980,9 @@
         "STORY-016",
         "STORY-017",
         "STORY-018",
-        "STORY-019"
+        "STORY-019",
+        "STORY-022",
+        "STORY-023"
       ]
     },
     "internal/apperr/": {
@@ -1628,7 +4031,8 @@
         "STORY-006",
         "STORY-012",
         "STORY-017",
-        "STORY-019"
+        "STORY-019",
+        "STORY-021"
       ]
     },
     "logic/store/": {
@@ -1637,7 +4041,8 @@
         "STORY-012",
         "STORY-015",
         "STORY-016",
-        "STORY-019"
+        "STORY-019",
+        "STORY-022"
       ]
     },
     "logic/utils/": {
@@ -1671,7 +4076,9 @@
         "STORY-015",
         "STORY-016",
         "STORY-018",
-        "STORY-019"
+        "STORY-019",
+        "STORY-022",
+        "STORY-023"
       ]
     },
     "logic/markdown/": {
@@ -1687,7 +4094,8 @@
     "logic/hooks/": {
       "stories": [
         "STORY-017",
-        "STORY-019"
+        "STORY-019",
+        "STORY-023"
       ]
     }
   }

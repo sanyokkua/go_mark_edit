@@ -17,7 +17,8 @@ import (
 )
 
 // Proves: STORY-009-AC-6
-// Startup init failure shows an error dialog and exits non-zero even if the dialog itself fails (EC-SET-2 hard startup error).
+// Evidence: EC-SET-2
+// Startup init failure shows an error dialog and exits non-zero even if the dialog itself fails.
 func TestStartupInitFailureShowsDialogAndReturnsNonZero(t *testing.T) {
 	previousMessageDialog := messageDialog
 	previousExitProcess := exitProcess

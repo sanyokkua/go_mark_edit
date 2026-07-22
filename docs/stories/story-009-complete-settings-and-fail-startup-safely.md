@@ -20,6 +20,9 @@ spec_clauses:
   - 02_Architecture/02_BACKEND_GO.md#di-two-phase
   - 02_Architecture/04_WAILS_INTEGRATION.md#lifecycle
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
+phase_requirements:
+  - PH00-R03
+  - PH00-R05
 modules:
   - internal/settings/
   - internal/apperr/
@@ -95,21 +98,27 @@ Finish the Stage-1 settings contract so every required Appearance and Markdown p
 ## Acceptance criteria
 
 ### STORY-009-AC-1
+**Satisfies:** PH00-R05
 **Given** an empty settings KV store, **when** the complete typed registry is read, **then** Appearance is exactly Theme `material`, Color mode `auto`, Default open mode `editor`; Markdown is exactly Standard `gfm`, Format on save `false`, Lint on save `true`, Bullet marker `-`, Emphasis marker `_`, Heading style `atx`; and Content privacy remains Remote policy `ask`.
 
 ### STORY-009-AC-2
+**Satisfies:** PH00-R05
 **Given** a valid non-default value for every Appearance and Markdown member, **when** a caller updates both groups and reads them back, **then** every value round-trips through its stable dotted KV key with `string` metadata for enum/style values and `bool` metadata for toggles, while the unchanged Content privacy value remains `ask`.
 
 ### STORY-009-AC-3
+**Satisfies:** PH00-R05
 An Appearance or Markdown group update containing any unsupported enum/style value is rejected through the settings handler with an `apperr` envelope whose error code is `CodeValidation`, and no member of that group is written or changed.
 
 ### STORY-009-AC-4
+**Satisfies:** PH00-R05
 **Given** table-driven persisted settings containing, per scalar, a missing row, malformed bool encoding, mismatched type metadata, or an unsupported enum/style value, **when** the registry is read, **then** each affected scalar falls back to its documented default while valid sibling scalars are preserved. This satisfies EC-THEME-3 and the safe-default branch of EC-SET-2.
 
 ### STORY-009-AC-5
+**Satisfies:** PH00-R05
 **Given** the existing settings database, **when** a representative future typed scalar/group is registered and round-tripped through the generic KV accessors, **then** it requires no schema migration and does not change the existing Appearance, Markdown, or Content privacy values. This proves the F4 growth seam.
 
 ### STORY-009-AC-6
+**Satisfies:** PH00-R03
 **Given** `ApplicationContextHolder.Init(ctx)` returns an unrecoverable startup error, **when** the Wails startup callback runs, **then** it invokes `runtime.MessageDialog` as an error dialog, terminates through the execution seam with a non-zero status, and performs no post-init action or settings call against an unopened database/nil repository. This satisfies the hard-startup-error branch of EC-SET-2.
 
 ## Test plan

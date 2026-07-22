@@ -68,7 +68,8 @@ func TestOpenConfiguresCGOFreeWALDatabase(t *testing.T) {
 }
 
 // Proves: STORY-004-AC-3
-// A briefly locked database waits for the busy timeout path, then opens a usable migrated store (EC-SET-1).
+// Evidence: EC-SET-1
+// A briefly locked database waits for the busy timeout path, then opens a usable migrated store.
 func TestOpenRetriesBriefLockContention(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -153,7 +154,8 @@ func TestOpenRetriesBriefLockContention(t *testing.T) {
 }
 
 // Proves: STORY-004-AC-4
-// Corrupt files are preserved before a clean store opens, while a newer schema remains an unchanged hard error (EC-SET-2).
+// Evidence: EC-SET-2
+// Corrupt files are preserved before a clean store opens, while a newer schema remains an unchanged hard error.
 func TestOpenRejectsCorruptOrUnsupportedSchemaSafely(t *testing.T) {
 	t.Run("EC-SET-2 corrupt primary and sidecar artifacts are preserved together with collision-safe recovery", func(t *testing.T) {
 		ctx := context.Background()

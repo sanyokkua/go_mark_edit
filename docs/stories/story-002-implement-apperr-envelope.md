@@ -8,6 +8,8 @@ spec_clauses:
   - 02_Architecture/06_ERROR_HANDLING.md#result-envelopes
   - 02_Architecture/02_BACKEND_GO.md#error-envelope
   - 02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind
+phase_requirements:
+  - PH00-R02
 modules:
   - internal/apperr/
 acceptance_criteria:
@@ -44,12 +46,15 @@ Give every later Wails-bound vertical one safe, consistent error and result cont
 
 ## Acceptance criteria
 ### STORY-002-AC-1
+**Satisfies:** PH00-R02
 Every defined ErrorCode and Result envelope is serializable and suitable for Wails `EnumBind`.
 
 ### STORY-002-AC-2
+**Satisfies:** PH00-R02
 `ToWire` preserves a classified safe code and message while never serializing the underlying cause.
 
 ### STORY-002-AC-3
+**Satisfies:** PH00-R02
 `internal/apperr` imports no other internal package.
 
 ## Test plan

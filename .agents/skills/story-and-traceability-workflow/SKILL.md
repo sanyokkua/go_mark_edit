@@ -23,8 +23,8 @@ related-skills:
 # Story Format and Traceability Workflow
 
 Work is tracked as **stories**: one Markdown file per story, one story per coding session.
-Traceability links, in both directions, the chain **spec clause → story → acceptance criterion →
-test → module**, recorded in the generated `docs/traceability.yaml` and validated by `just
+Traceability links, in both directions, the chain **spec clause → phase requirement → story → acceptance
+criterion → test → module**, recorded in the generated `docs/traceability.yaml` and validated by `just
 trace-check` before any story is `done`. This skill is the crisp playbook; the full schema, body
 order, lifecycle, sizing, and the trace-check failure catalog live in the references.
 
@@ -47,13 +47,15 @@ order, lifecycle, sizing, and the trace-check failure catalog live in the refere
    `scripts/check-story-frontmatter.sh docs/stories/` lists existing ids/status/phase at a glance.
 2. **Author the front-matter** by copying `assets/story-template.md`. Verify every `spec_clauses`
    anchor resolves to a real heading and every `modules:` path exists in `01_MODULE_INVENTORY.md`. The
-   field-by-field rules are in `references/front-matter-and-body.md`.
+   field-by-field rules are in `references/front-matter-and-body.md`. Resolve every `phase_requirements`
+   id in the owning phase ledger.
 3. **Write the body in the fixed section order** — Goal, In scope, Out of scope, Spec inputs, Design
    constraints, Acceptance criteria (each `### STORY-NNN-AC-N`, phrased per
    `05_ACCEPTANCE_CRITERIA_PATTERNS.md`), Test plan, Definition of done. Worked example in
    `references/front-matter-and-body.md`.
-4. **Set `status: ready`** only once every `depends_on` is `done`, the graph is acyclic, and the
-   front-matter validates. Lifecycle transitions and the S/M/L sizing bounds are in
+4. **Set `status: ready`** only once every `depends_on` is `done`, the graph is acyclic, each AC has an
+   exact `Satisfies:` mapping whose union matches `phase_requirements`, the estimate is S/M, and the
+   front-matter validates. Lifecycle transitions and sizing bounds are in
    `references/lifecycle-and-sizing.md`.
 5. **Implement + land tests**, each naming its AC on the first line (`// Proves: STORY-NNN-AC-N` or
    `it('STORY-NNN-AC-N …')`) — see the `testing-wails-app` skill.
@@ -77,10 +79,12 @@ order, lifecycle, sizing, and the trace-check failure catalog live in the refere
 - [ ] Every `spec_clauses` entry resolves to a real file + heading anchor.
 - [ ] Every `modules` entry exists in `01_MODULE_INVENTORY.md`.
 - [ ] Every AC in front-matter is written out in the body, phrased per `05_ACCEPTANCE_CRITERIA_PATTERNS.md`.
+- [ ] Every `phase_requirements` id resolves; each AC has `Satisfies:` and their union matches frontmatter.
 - [ ] Body sections present in the fixed order; Design constraints name the binding rules (layering, envelope, adapter-only, token-only, offline, `DD-NN`/`ADR-NNNN`).
 - [ ] Each AC and each `EC-` id has a Test-plan entry and a proving test that names it on its first line.
 - [ ] `depends_on` acyclic and all `done`; cited ADRs are `accepted`.
 - [ ] Size tier honored (see sizing bounds).
+- [ ] A ready story is S/M; an L epic has been split before implementation.
 - [ ] After landing tests: `just trace` regenerated; `just trace-check` clean before `done`.
 
 ## Gotchas

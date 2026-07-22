@@ -1,16 +1,18 @@
 # `just trace` / `just trace-check` reference
 
-Authority: `specification/06_Process_and_Traceability/03_TRACEABILITY.md` (the generated record +
-validation). The record lives at `docs/traceability.yaml` and carries a header:
+Authority: `specification/06_Process_and_Traceability/03_TRACEABILITY.md` (the generated
+phase-requirement chain and validation). The record lives at `docs/traceability.yaml` and carries a header:
 `# traceability.yaml — GENERATED. Do not edit by hand. Regenerate with just trace.`
 
-## The two commands
+## The commands
 
 - **`just trace`** — regenerates `docs/traceability.yaml` from `docs/stories/*.md` and the collected
   test names (`Proves:` tags). Run it after landing tests. **Never hand-edit the file.**
 - **`just trace-check`** — validates the record; this is the gate that must pass before a story is
   `done`. In CI the record may be regenerated and compared — either way `just trace-check` must be
   clean.
+- **`just phase-check`** — validates all phase documents structurally.
+- **`just phase-complete-check NN`** — proves one claimed-complete phase from done-story and exit evidence.
 
 ## `just trace-check` failure → meaning
 
@@ -23,6 +25,10 @@ validation). The record lives at `docs/traceability.yaml` and carries a header:
 | AC proven | a `done` story has an AC with an empty `tests` list |
 | No orphan test | a test's `Proves:` names an AC that no story defines |
 | Edge-case covered | an `EC-` id appears in no story or has no test |
+| Phase requirement resolves | `phase_requirements` names no requirement in the owning phase |
+| AC mapping agrees | the AC `Satisfies:` union differs from frontmatter |
+| Lifecycle agrees | board/frontmatter/trace status differs or a ready dependency is unfinished |
+| Implementation size | an L story is ready or in progress instead of split into S/M work |
 | Acyclic deps | the `depends_on` graph has a cycle |
 | Record fresh | re-running the generator would differ from the committed file |
 
@@ -38,3 +44,5 @@ validation). The record lives at `docs/traceability.yaml` and carries a header:
   add the module to the inventory in the same story if it is genuinely new).
 - **Acyclic deps** — remove the cycle in `depends_on`; a UI story depends on its backend story, not the
   reverse.
+- **Edge-case covered** — declare exact evidence on the test node: a leading `// Evidence: EC-AREA-N`
+  line for Go, or the EC id in the Jest/Playwright test name. Incidental body text does not count.

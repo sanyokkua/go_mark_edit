@@ -10,6 +10,9 @@ spec_clauses:
   - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+phase_requirements:
+  - PH01-R01
+  - PH01-R05
 modules:
   - internal/appmodel/
   - internal/apperr/
@@ -78,24 +81,31 @@ Give the first in-memory document one stable backend-owned identity and canonica
 ## Acceptance criteria
 
 ### STORY-011-AC-1
+**Satisfies:** PH01-R01
 `GetState` returns one backend-minted stable-ID, clean untitled document with an empty metadata path whose metadata-only `AppStateSnapshot` uses `utf-8`/`lf` wire values and Split view, plus a separate `ActiveBuffer` containing that document id and empty canonical content.
 
 ### STORY-011-AC-2
+**Satisfies:** PH01-R01
 `UpdateBuffer` routes through the package-owned F3 document-command seam, changes canonical Go content exposed by the stable F2 accessor, derives dirty state, and counts non-empty Unicode whitespace-delimited tokens. Returning to the empty baseline clears dirty.
 
 ### STORY-011-AC-3
+**Satisfies:** PH01-R01, PH01-R05
 Every successful `UpdateBuffer`, `SetDocView`, and `SetUILayout` emits exactly one `state:patch` with a monotonic revision and explicit keyed section semantics; the patch contains derived changes but no content or active-buffer field, and a failed command emits none.
 
 ### STORY-011-AC-4
+**Satisfies:** PH01-R01
 `SetDocView(documentId, view)` stores validated one-based cursor/selection and editor/preview scroll offsets, derives Editor/Split/Preview arrangement from `editorVisible` and `previewVisible`, and rejects both panes hidden, invalid ranges, or negative offsets without mutation or patch emission.
 
 ### STORY-011-AC-5
+**Satisfies:** PH01-R01
 `SetUILayout` updates and emits the in-memory application layout without writing persistence; durable layout remains Phase 08.
 
 ### STORY-011-AC-6
+**Satisfies:** PH01-R01
 `GetState()` returns `apperr.StateResult`; `UpdateBuffer(documentId, content)`, `SetDocView(documentId, view)`, and `SetUILayout(layout)` return `apperr.VoidResult`; all take no context parameter and convert service panics to `CodeInternal` without emitting a patch.
 
 ### STORY-011-AC-7
+**Satisfies:** PH01-R01
 The handler is wired in the composition root, Wails-bound, and represented by regenerated TypeScript bindings.
 
 ## Test plan

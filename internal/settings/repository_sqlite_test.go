@@ -118,7 +118,8 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 }
 
 // Proves: STORY-009-AC-4
-// Per-scalar missing, invalid, and wrong-type persisted rows fall back independently while valid siblings remain intact (EC-THEME-3; EC-SET-2 safe default).
+// Evidence: EC-THEME-3, EC-SET-2
+// Per-scalar missing, invalid, and wrong-type persisted rows fall back independently while valid siblings remain intact.
 func TestStoredSettingsFallbackMatrix(t *testing.T) {
 	valid := apperr.Settings{
 		Appearance: apperr.AppearanceSettings{Theme: ThemeLiquidGlass, Mode: ModeDark, DefaultOpenMode: OpenModeViewer},

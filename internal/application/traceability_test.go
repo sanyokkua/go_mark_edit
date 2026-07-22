@@ -47,7 +47,7 @@ func TestTraceGeneratorBuildsExpectedMaps(t *testing.T) {
 	if story.Title == "" {
 		t.Fatal("generated trace omits STORY-101")
 	}
-	assertTraceTests(t, story.AcceptanceCriteria["STORY-101-AC-1"].Tests, "internal/application/example_test.go:3")
+	assertTraceTests(t, story.AcceptanceCriteria["STORY-101-AC-1"].Tests, "internal/application/example_test.go:4")
 	assertTraceTests(t, story.AcceptanceCriteria["STORY-101-AC-2"].Tests, "frontend/src/example.test.ts:1")
 	if got := trace.Clauses["fixture.md#valid-clause"].Stories; len(got) != 1 || got[0] != "STORY-101" {
 		t.Fatalf("clause map = %#v, want STORY-101", got)
@@ -75,6 +75,7 @@ func TestTraceCheckRejectsInvalidFixturesAndAcceptsEmptyBacklog(t *testing.T) {
 			name: "invalid clause",
 			configure: func(t *testing.T, root string) {
 				writeTraceFixture(t, root, "docs/stories/story-102-invalid.md", traceFixtureStory("STORY-102", "ready", []string{"STORY-102-AC-1"}, nil)+"\n")
+				writeTraceFixtureBoard(t, root, map[string]string{"STORY-102": "ready"})
 				storyPath := filepath.Join(root, "docs/stories/story-102-invalid.md")
 				contents, err := os.ReadFile(storyPath)
 				if err != nil {
@@ -98,6 +99,7 @@ func TestTraceCheckRejectsInvalidFixturesAndAcceptsEmptyBacklog(t *testing.T) {
 			configure: func(t *testing.T, root string) {
 				writeTraceFixture(t, root, "docs/stories/story-103-first.md", traceFixtureStory("STORY-103", "ready", []string{"STORY-103-AC-1"}, []string{"STORY-104"}))
 				writeTraceFixture(t, root, "docs/stories/story-104-second.md", traceFixtureStory("STORY-104", "ready", []string{"STORY-104-AC-1"}, []string{"STORY-103"}))
+				writeTraceFixtureBoard(t, root, map[string]string{"STORY-103": "ready", "STORY-104": "ready"})
 			},
 			want: "cyclic story dependency",
 		},
@@ -105,6 +107,7 @@ func TestTraceCheckRejectsInvalidFixturesAndAcceptsEmptyBacklog(t *testing.T) {
 			name: "stale record",
 			configure: func(t *testing.T, root string) {
 				writeTraceFixture(t, root, "docs/stories/story-105-fresh.md", traceFixtureStory("STORY-105", "ready", []string{"STORY-105-AC-1"}, nil))
+				writeTraceFixtureBoard(t, root, map[string]string{"STORY-105": "ready"})
 			},
 			want: "traceability.yaml is stale",
 		},
@@ -121,6 +124,123 @@ func TestTraceCheckRejectsInvalidFixturesAndAcceptsEmptyBacklog(t *testing.T) {
 				t.Fatalf("trace-check output = %q, want %q", output, testCase.want)
 			}
 		})
+	}
+}
+
+// Proves: STORY-020-AC-1
+// The trace checker identifies lifecycle disagreement among front matter, the board, and generated trace.
+func TestTraceCheckerRejectsStoryStatusDisagreement(t *testing.T) {
+	t.Run("board disagrees with front matter", func(t *testing.T) {
+		fixtureRoot := newTraceFixture(t)
+		writeTraceFixture(t, fixtureRoot, "docs/stories/story-106-status.md", traceFixtureStory("STORY-106", "done", []string{"STORY-106-AC-1"}, nil))
+		writeTraceFixture(t, fixtureRoot, "internal/application/status_test.go", "package application\n\n// Proves: STORY-106-AC-1\nfunc TestStatus(t *testing.T) {}\n")
+		writeTraceFixtureBoard(t, fixtureRoot, map[string]string{"STORY-106": "ready"})
+		runTraceCLI(t, "scripts/trace.mjs", fixtureRoot)
+
+		output := runTraceCLIFailure(t, "scripts/trace-check.mjs", fixtureRoot)
+		for _, want := range []string{"STORY-106", "front matter", "status board"} {
+			if !strings.Contains(output, want) {
+				t.Fatalf("trace-check output = %q, want %q", output, want)
+			}
+		}
+	})
+
+	t.Run("generated trace disagrees with front matter", func(t *testing.T) {
+		fixtureRoot := newTraceFixture(t)
+		writeTraceFixture(t, fixtureRoot, "docs/stories/story-107-status.md", traceFixtureStory("STORY-107", "done", []string{"STORY-107-AC-1"}, nil))
+		writeTraceFixture(t, fixtureRoot, "internal/application/status_test.go", "package application\n\n// Proves: STORY-107-AC-1\nfunc TestStatus(t *testing.T) {}\n")
+		writeTraceFixtureBoard(t, fixtureRoot, map[string]string{"STORY-107": "done"})
+		runTraceCLI(t, "scripts/trace.mjs", fixtureRoot)
+
+		tracePath := filepath.Join(fixtureRoot, "docs", "traceability.yaml")
+		contents, err := os.ReadFile(tracePath)
+		if err != nil {
+			t.Fatalf("read trace fixture: %v", err)
+		}
+		changed := strings.Replace(string(contents), `"status": "done"`, `"status": "ready"`, 1)
+		if err := os.WriteFile(tracePath, []byte(changed), 0o600); err != nil {
+			t.Fatalf("write stale trace fixture: %v", err)
+		}
+
+		output := runTraceCLIFailure(t, "scripts/trace-check.mjs", fixtureRoot)
+		for _, want := range []string{"STORY-107", "front matter", "generated trace"} {
+			if !strings.Contains(output, want) {
+				t.Fatalf("trace-check output = %q, want %q", output, want)
+			}
+		}
+	})
+}
+
+// Proves: STORY-020-AC-2
+// A leading Proves comment and an AC-first Jest name identify one physical test node.
+func TestTraceGeneratorDeduplicatesCommentAndNameEvidence(t *testing.T) {
+	fixtureRoot := newTraceFixture(t)
+	writeTraceFixture(t, fixtureRoot, "docs/stories/story-108-deduplicate.md", traceFixtureStory("STORY-108", "done", []string{"STORY-108-AC-1"}, nil))
+	writeTraceFixture(t, fixtureRoot, "frontend/src/deduplicate.test.ts", "// Proves: STORY-108-AC-1\nit('STORY-108-AC-1 proves one node', () => {});\n")
+	writeTraceFixtureBoard(t, fixtureRoot, map[string]string{"STORY-108": "done"})
+
+	runTraceCLI(t, "scripts/trace.mjs", fixtureRoot)
+	trace := readTraceRecord(t, fixtureRoot)
+	assertTraceTests(t, trace.Stories["STORY-108"].AcceptanceCriteria["STORY-108-AC-1"].Tests, "frontend/src/deduplicate.test.ts:2")
+}
+
+// Proves: STORY-020-AC-3
+// Exact edge-case evidence maps only the physical test node that names the edge case.
+func TestTraceGeneratorMapsOnlyExplicitEdgeCaseEvidence(t *testing.T) {
+	t.Run("identifier in Jest test name", func(t *testing.T) {
+		fixtureRoot := newTraceFixture(t)
+		writeTraceFixture(t, fixtureRoot, "docs/stories/story-109-edge.md", traceFixtureStoryWithEdges("STORY-109", "done", []string{"STORY-109-AC-1", "STORY-109-AC-2"}, []string{"EC-FIXTURE-1"}, nil))
+		writeTraceFixture(t, fixtureRoot, "frontend/src/edge.test.ts", "it('STORY-109-AC-1 covers the ordinary path', () => {});\nit('STORY-109-AC-2 (EC-FIXTURE-1) covers the edge', () => {});\n")
+		writeTraceFixtureBoard(t, fixtureRoot, map[string]string{"STORY-109": "done"})
+
+		runTraceCLI(t, "scripts/trace.mjs", fixtureRoot)
+		trace := readTraceRecord(t, fixtureRoot)
+		assertTraceTests(t, trace.EdgeCases["EC-FIXTURE-1"].Tests, "frontend/src/edge.test.ts:2")
+	})
+
+	t.Run("leading Evidence marker", func(t *testing.T) {
+		fixtureRoot := newTraceFixture(t)
+		writeTraceFixture(t, fixtureRoot, "docs/stories/story-109-edge.md", traceFixtureStoryWithEdges("STORY-109", "done", []string{"STORY-109-AC-1"}, []string{"EC-FIXTURE-1"}, nil))
+		writeTraceFixture(t, fixtureRoot, "internal/application/edge_test.go", "package application\n\n// Proves: STORY-109-AC-1\n// Evidence: EC-FIXTURE-1\nfunc TestExplicitEdgeEvidence(t *testing.T) {}\n")
+		writeTraceFixtureBoard(t, fixtureRoot, map[string]string{"STORY-109": "done"})
+
+		runTraceCLI(t, "scripts/trace.mjs", fixtureRoot)
+		trace := readTraceRecord(t, fixtureRoot)
+		assertTraceTests(t, trace.EdgeCases["EC-FIXTURE-1"].Tests, "internal/application/edge_test.go:5")
+	})
+}
+
+// Proves: STORY-020-AC-4
+// A done story cannot borrow unrelated AC evidence for a declared edge case.
+func TestTraceCheckerRejectsDoneStoryWithoutExactEdgeCaseEvidence(t *testing.T) {
+	fixtureRoot := newTraceFixture(t)
+	writeTraceFixture(t, fixtureRoot, "docs/stories/story-110-edge.md", traceFixtureStoryWithEdges("STORY-110", "done", []string{"STORY-110-AC-1"}, []string{"EC-FIXTURE-2"}, nil))
+	writeTraceFixture(t, fixtureRoot, "frontend/src/edge.test.ts", "it('STORY-110-AC-1 covers only the ordinary path', () => {\n  const incidentalDiagnostic = 'EC-FIXTURE-2 is not exercised here';\n  expect(incidentalDiagnostic).toContain('EC-FIXTURE-2');\n});\n")
+	writeTraceFixtureBoard(t, fixtureRoot, map[string]string{"STORY-110": "done"})
+	runTraceCLI(t, "scripts/trace.mjs", fixtureRoot)
+
+	output := runTraceCLIFailure(t, "scripts/trace-check.mjs", fixtureRoot)
+	for _, want := range []string{"STORY-110", "EC-FIXTURE-2", "exact proving test"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("trace-check output = %q, want %q", output, want)
+		}
+	}
+}
+
+// Proves: STORY-020-AC-5
+// Ready lifecycle validation rejects an otherwise synchronized story with an unfinished dependency.
+func TestTraceCheckerRejectsReadyStoryWithIncompleteDependency(t *testing.T) {
+	fixtureRoot := newTraceFixture(t)
+	writeTraceFixture(t, fixtureRoot, "docs/stories/story-111-dependency.md", traceFixtureStory("STORY-111", "draft", []string{"STORY-111-AC-1"}, nil))
+	writeTraceFixture(t, fixtureRoot, "docs/stories/story-112-ready.md", traceFixtureStory("STORY-112", "ready", []string{"STORY-112-AC-1"}, []string{"STORY-111"}))
+	writeTraceFixtureBoard(t, fixtureRoot, map[string]string{"STORY-111": "draft", "STORY-112": "ready"})
+	runTraceCLI(t, "scripts/trace.mjs", fixtureRoot)
+
+	output := runTraceCLIFailure(t, "scripts/trace-check.mjs", fixtureRoot)
+	for _, want := range []string{"STORY-112", "STORY-111", "not done"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("trace-check output = %q, want %q", output, want)
+		}
 	}
 }
 
@@ -156,9 +276,10 @@ func TestFrozenInitialADRsAreReferencedWithoutDuplication(t *testing.T) {
 }
 
 type traceRecord struct {
-	Stories map[string]traceStory `json:"stories"`
-	Clauses map[string]traceIndex `json:"clauses"`
-	Modules map[string]traceIndex `json:"modules"`
+	Stories   map[string]traceStory     `json:"stories"`
+	Clauses   map[string]traceIndex     `json:"clauses"`
+	EdgeCases map[string]traceEdgeIndex `json:"edge_cases"`
+	Modules   map[string]traceIndex     `json:"modules"`
 }
 
 type traceStory struct {
@@ -172,6 +293,11 @@ type traceAcceptanceEntry struct {
 
 type traceIndex struct {
 	Stories []string `json:"stories"`
+}
+
+type traceEdgeIndex struct {
+	Stories []string `json:"stories"`
+	Tests   []string `json:"tests"`
 }
 
 func storyEightRepositoryRoot(t *testing.T) string {
@@ -189,21 +315,33 @@ func newTraceFixture(t *testing.T) string {
 
 	root := t.TempDir()
 	writeTraceFixture(t, root, "docs/stories/.keep", "")
+	writeTraceFixtureBoard(t, root, nil)
 	writeTraceFixture(t, root, "specification/fixture.md", "# Valid clause\n")
 	writeTraceFixture(t, root, "specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md", "| Module | Description |\n| --- | --- |\n| `internal/application/` | fixture |\n")
 	return root
 }
 
 func traceFixtureStory(id, status string, acceptanceCriteria, dependencies []string) string {
+	return traceFixtureStoryWithEdges(id, status, acceptanceCriteria, nil, dependencies)
+}
+
+func traceFixtureStoryWithEdges(id, status string, acceptanceCriteria, edgeCases, dependencies []string) string {
 	criteria := ""
 	for _, criterion := range acceptanceCriteria {
 		criteria += "  - " + criterion + "\n"
 	}
-	dependsOn := "depends_on: []"
+	dependsOn := "depends_on: []\n"
 	if len(dependencies) > 0 {
 		dependsOn = "depends_on:\n"
 		for _, dependency := range dependencies {
 			dependsOn += "  - " + dependency + "\n"
+		}
+	}
+	edges := "edge_cases: []\n"
+	if len(edgeCases) > 0 {
+		edges = "edge_cases:\n"
+		for _, edgeCase := range edgeCases {
+			edges += "  - " + edgeCase + "\n"
 		}
 	}
 	return "---\n" +
@@ -213,9 +351,19 @@ func traceFixtureStory(id, status string, acceptanceCriteria, dependencies []str
 		"spec_clauses:\n  - fixture.md#valid-clause\n" +
 		"modules:\n  - internal/application/\n" +
 		"acceptance_criteria:\n" + criteria +
-		"edge_cases: []\n" +
+		edges +
 		dependsOn +
 		"adrs: []\nphase: 00\nowner: coder\nestimate: S\n---\n"
+}
+
+func writeTraceFixtureBoard(t *testing.T, root string, statuses map[string]string) {
+	t.Helper()
+
+	contents := "# Stories\n\n## Index (status board)\n\n| Story | Title | Phase | Status | Owner | Est |\n|---|---|---|---|---|---|\n"
+	for storyID, status := range statuses {
+		contents += "| " + storyID + " | Fixture story | 00 | " + status + " | coder | S |\n"
+	}
+	writeTraceFixture(t, root, "docs/stories/README.md", contents)
 }
 
 func writeTraceFixture(t *testing.T, root, relativePath, contents string) {

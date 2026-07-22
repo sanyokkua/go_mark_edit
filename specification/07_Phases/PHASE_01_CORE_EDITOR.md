@@ -1,100 +1,149 @@
 **Status:** Accepted
 **Owner:** architect
-**Audience:** architect, coder, tester
-**Last Updated:** 2026-07-10
-**Cross-references:** `00_ROADMAP.md`, `../01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `../01_Product/05_RENDERING_AND_EXTENSIONS.md`, `../02_Architecture/02_BACKEND_GO.md`, `../02_Architecture/03_FRONTEND_REACT.md`, `../02_Architecture/05_STATE_AND_PERSISTENCE.md`, `../03_NonFunctional/02_PERFORMANCE.md`, `../00_Foundation/04_DESIGN_DECISIONS.md`, `../06_Process_and_Traceability/01_MODULE_INVENTORY.md`, `../06_Process_and_Traceability/06_DEFINITION_OF_DONE.md`
+**Audience:** architect, coder, tester, reviewer
+**Last Updated:** 2026-07-21
+**Cross-references:** `00_ROADMAP.md`, `../01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `../01_Product/05_RENDERING_AND_EXTENSIONS.md`, `../02_Architecture/02_BACKEND_GO.md`, `../02_Architecture/03_FRONTEND_REACT.md`, `../02_Architecture/05_STATE_AND_PERSISTENCE.md`, `../03_NonFunctional/02_PERFORMANCE.md`, `../00_Foundation/06_IMPLEMENTATION_STAGES.md`, `../06_Process_and_Traceability/07_PHASE_FORMAT.md`
 
 # Phase 01 — Core Editor + Preview
 
 ## Goal
 
-Deliver the editing heart of GoMarkEdit against a single in-memory document **owned by the Go backend**:
-`internal/appmodel` holds the authoritative document (canonical content + dirty) and the UI/layout state
-(DD-62), a Monaco source editor with syntax highlighting whose visible buffer debounce-syncs to that
-model (DD-64), a live rendered preview (base CommonMark/GFM), a split view, a view-mode toggle
-(editor / split / preview), and a status bar. The Redux `documents`/`ui` slices are a **projection** of the
-backend model — hydrated via `GetState` and reconciled by `state:patch` (DD-63). After this phase a user
-can type Markdown and watch it render — still **no file I/O**: `internal/appmodel` holds one in-memory new
-document (opening clean, DD-11), and open/save arrives in Phase 02.
-Refines: `../01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor`,
-`../01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-viewer`, and (base rendering pipeline)
-`../01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering`.
+Deliver one backend-owned in-memory Markdown document with a responsive Monaco working copy, a safe debounced CommonMark/GFM preview, Editor/Split/Preview arrangements, and status information. The Redux store remains a content-free projection. File persistence arrives in PH02.
 
-## Depends on
+## Phase metadata
 
-- Phase 00 (app shell, adapter/store scaffolding, tokens.css skeleton, bridge-mock; the two-phase DI root
-  and settings KV store that `internal/appmodel` builds on).
+| Phase | Kind | Stage / milestone | Depends on | Completion scope |
+|---|---|---|---|---|
+| PH01 | sequential | Stage 1 / M1 preview; Stage 2 / M2 editing | PH00 | once per implemented revision |
 
 ## Scope
 
-- `internal/appmodel` Handler/Service — the **authoritative in-memory application model** (DD-62): owns one
-  in-memory new document (canonical content, dirty, per-document view state) and the UI/layout state,
-  exposes the `GetState` query + commands (`UpdateBuffer`, `SetDocView`, `SetUILayout`), and emits a
-  `state:patch` event on every mutation (`../02_Architecture/02_BACKEND_GO.md#application-model`).
-- `documents`/`ui` Redux slices as a **projection** of `internal/appmodel` (DD-63): hydrated once via
-  `GetState`, reconciled by `state:patch`. The `documents` slice holds document **metadata** (dirty flag,
-  counts, view state) for rendering — the canonical content lives in `internal/appmodel`, not the slice.
-- `CodeEditor` Monaco component (Markdown language, word-wrap/line-number toggles); its visible buffer is a
-  working copy that **debounce-pushes** edits to the backend via `UpdateBuffer` and flushes on blur/switch
-  (DD-64).
-- `MarkdownView` base rendering pipeline (react-markdown + remark-gfm) — CommonMark/GFM only.
-- `EditorView` / `PreviewView` widgets and the split-view layout.
-- View-mode toggle (segmented control: editor / split / preview).
-- Status bar showing cursor position, word count, and a placeholder encoding/line-ending field.
-- Preview debounce against the targets in `../03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets`
-  (editor responsiveness budget: `../03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness`).
+- `internal/appmodel` owns one new document's stable identity, canonical content, dirty/count metadata, document view, and application UI layout.
+- The adapter hydrates from `GetState`, subscribes before the bootstrap race window, applies revisioned content-free patches, and sends commands back to the model.
+- Monaco owns the immediately responsive visible working copy and one active editor session; changes debounce to `UpdateBuffer` and flush at lifecycle boundaries.
+- Base CommonMark/GFM rendering is sanitized, local, debounced, and derived from accepted backend content.
+- Editor, Split, and Preview arrangements, responsive pane layout, toggle synchronization, and a status bar are usable and accessible.
+- F2, F3, and F7 establish a stable active-document command boundary consumable outside the editor widget.
 
 ## Out of scope
 
-- Math/Mermaid/highlight/standard selector — Phase 04.
-- File open/save, tabs, autosave — Phase 02.
-- Backend file read/write and tab/workspace ownership inside `internal/appmodel` — Phase 02+ (this phase's
-  model is a single in-memory new document; it composes `internal/docs`/`internal/workspace` later).
-- Reading (Viewer) full-chrome-hidden mode — Phase 04 (`ReaderView`); this phase only toggles preview.
-- Format/lint, theming values — Phases 05 / 08.
+- File open/save, multiple tabs, autosave, and inactive-document editor models (PH02).
+- Reading mode and extended rendering such as math, Mermaid, and highlighting (PH04).
+- Format/lint behavior (PH05), production theme values (PH08), and all Stage-3 assistant behavior.
 
-## Suggested stories / tasks
+## Requirement ledger
 
-> Planned backlog for this phase. The `architect` generates the actual story files into `../docs/stories/` during implementation (one story per session), assigning the ids shown.
+| ID | Required outcome | Source clauses | Constraints | Work package |
+|---|---|---|---|---|
+| PH01-R01 | `internal/appmodel` is the mutex-guarded authority for the single document and UI state and exposes Result-wrapped query/command/event shapes. | `02_Architecture/02_BACKEND_GO.md#application-model`; `02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model` | DD-62; backend envelope; one owner | PH01-W01 |
+| PH01-R02 | The frontend projection hydrates without losing patches, rejects stale revisions, and never becomes an independent authority. | `02_Architecture/03_FRONTEND_REACT.md#state-ownership`; `02_Architecture/03_FRONTEND_REACT.md#store` | DD-63; subscribe before snapshot; StrictMode safe | PH01-W02 |
+| PH01-R03 | Typing updates Monaco immediately and coalesces buffer synchronization without bridge traffic on each keystroke. | `02_Architecture/03_FRONTEND_REACT.md#state-ownership`; `03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness` | DD-64; adapter-owned debounce | PH01-W03 |
+| PH01-R04 | Pending buffer work flushes before blur or switch/close boundaries, and pending buffer plus view work flushes before hiding the editor. | `02_Architecture/03_FRONTEND_REACT.md#state-ownership`; `01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view` | DD-64; ordered acknowledgement; save/autosave ordering belongs PH02 | PH01-W03 |
+| PH01-R05 | Backend patches carry derived metadata and revision but never echo focused editor content or disturb cursor and selection. | `02_Architecture/02_BACKEND_GO.md#application-model`; `01_Product/02_EDITOR_AND_VIEWER_MODES.md#edge-cases` | DD-64; EC-DOCS-12; content-free projection | PH01-W02 |
+| PH01-R06 | The active Monaco session and model survive Editor, Split, and Preview visibility changes with exact text, cursor, selection, undo history, and usable geometry. | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view`; `01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` | resource lifetime follows active document, not pane visibility | PH01-W04 |
+| PH01-R07 | Per-document view updates preserve latest user intent across debounce, explicit arrangement commands, flushes, failures, and out-of-order completions. | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle`; `01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` | DD-62; DD-63; serialized per-document command stream | PH01-W05 |
+| PH01-R08 | Editor, Split, and Preview arrangements remain synchronized across segmented and menu controls and retain at least one visible pane. | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view`; `01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` | accessible controls; responsive layout | PH01-W05 |
+| PH01-R09 | The active document has a stable command seam exposing content, selection, replace-range, and replace-all without sibling consumers reaching into Monaco. | `00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open`; `00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open` | F2; F3; F7; one Monaco undo edit per replacement | PH01-W06 |
+| PH01-R10 | A non-editor sibling can consume the active-document command seam in Editor, Split, and Preview arrangements for the active session. | `00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open`; `00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open` | F3; F7; public session boundary | PH01-W06 |
+| PH01-R11 | Base CommonMark/GFM content renders sanitized and offline from accepted backend content. | `01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline`; `01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features`; `02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline` | DD-20; DD-32; no runtime CDN or execution | PH01-W07 |
+| PH01-R12 | Preview generation is debounced, stale completions cannot replace newer output, and very large input may pause without rolling back accepted content. | `01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce`; `03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets`; `03_NonFunctional/02_PERFORMANCE.md#4-large-file-handling` | DD-20; bounded work; latest generation wins | PH01-W07 |
+| PH01-R13 | The status bar reports cursor, counts, arrangement, and placeholder encoding/line-ending state from the proper owner. | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode`; `01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings` | cursor is ephemeral editor state; counts are backend derived | PH01-W08 |
+| PH01-R14 | Story lifecycle status agrees across board/frontmatter/trace, proving tests are collected once, and every declared edge case has exact named evidence. | `06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands`; `06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#per-story` | STORY-020 ownership; exact EC ids; no duplicate test nodes; ready dependencies done | PH01-W09 |
+| PH01-R15 | Phase completion does not conflate PH01's Stage-1 preview checkpoint with its Stage-2 editing checkpoint until the accepted chronology is defined. | `00_Foundation/06_IMPLEMENTATION_STAGES.md#2-stage--phase-mapping`; `00_Foundation/06_IMPLEMENTATION_STAGES.md#5-stage-exit-criteria`; `07_Phases/00_ROADMAP.md#stages` | blocked by PH01-X01; no premature phase/stage completion claim | PH01-W10 |
+| PH01-R16 | Core user-facing status strings resolve through the bundled i18n catalog, missing keys fall back to English then key, and adding a locale requires only a bundled resource file. | `01_Product/13_I18N.md#i18n-layer`; `01_Product/13_I18N.md#adding-a-locale`; `01_Product/13_I18N.md#edge-cases` | DD-32; DD-35; EC-I18N-1; EC-I18N-2; no runtime fetch | PH01-W11 |
 
+## State and transition model
 
-| Story id | Title | Est(S/M/L) | Modules | Spec clauses | depends_on |
+| ID | Trigger | Preconditions | Ordered behavior | Result | Failure / preservation | Requirements |
+|---|---|---|---|---|---|---|
+| PH01-T01 | Application bootstrap | Event bridge and appmodel are available | Subscribe to patches; request snapshot; hydrate by revision; replay or accept only newer patches; release bootstrap state | Projection exactly matches the newest backend revision | Remove failed subscription state; retry starts clean and stale patches remain rejected | PH01-R01, PH01-R02 |
+| PH01-T02 | User types | Active Monaco session exists | Update Monaco immediately; replace pending buffer intent; after debounce call `UpdateBuffer`; apply derived patch | Canonical content and dirty/count metadata converge without cursor movement | Retain newest unsent buffer and use the existing error surface | PH01-R03, PH01-R05 |
+| PH01-T03 | Editor pane is about to hide | Active session may have pending buffer or view intent | Flush buffer; flush view queue; await acknowledgement; hide pane without disposing the session/model | Preview-only shows accepted content and the editor session remains recoverable | Keep editor/session visible and report failure when required acknowledgement fails | PH01-R04, PH01-R06, PH01-R07 |
+| PH01-T04 | User selects Editor, Split, or Preview | Active document exists | Enqueue explicit arrangement after prior view intent; backend commits; patch reconciles controls; update pane visibility | Latest explicit arrangement is active in both control surfaces | Older completions cannot overwrite it; newest failed intent remains retryable | PH01-R07, PH01-R08 |
+| PH01-T05 | Preview debounce expires | A newer accepted backend buffer revision exists | Start generation tagged with revision; sanitize result; publish only if still newest | Preview represents newest accepted generation | Discard stale or failed output; never roll back canonical content | PH01-R11, PH01-R12 |
+| PH01-T06 | Sibling invokes a document command | Active document session exists in any arrangement | Resolve active session; read selection or apply one replacement; route edit into normal buffer queue | Consumer receives stable command semantics without Monaco access | Return a defined unavailable/error result if no active session; preserve editor state | PH01-R09, PH01-R10 |
+| PH01-T07 | Editor arrangement becomes visible again | Same active session was hidden | Reveal existing session; restore layout; focus only when requested | Exact working text, cursor, selection, undo stack, and geometry remain usable | Never reseed from bootstrap content or create a competing model | PH01-R06 |
+
+## Cross-phase contracts
+
+| ID | Producer | Consumer | Interface / invariant | Availability / lifetime | Ordering / concurrency | Source | Requirements |
+|---|---|---|---|---|---|---|---|
+| PH01-C01 | PH01 `internal/appmodel` | PH02-PH14 | Stable document identity, canonical content accessor, command/event model | Document lifetime in the process | All mutations hold the model lock and emit revisioned patches | `02_Architecture/02_BACKEND_GO.md#application-model` | PH01-R01, PH01-R05 |
+| PH01-C02 | PH01 adapter | PH02 file and tab lifecycle | `flushBuffer` acknowledges blur/switch/close boundaries; `flushDocView` additionally joins hide/switch view boundaries | Active session lifetime | Buffer and view queues preserve latest intent; PH02 defines save/autosave ordering | `02_Architecture/03_FRONTEND_REACT.md#state-ownership` | PH01-R03, PH01-R04, PH01-R07 |
+| PH01-C03 | PH01 editor session | PH05 formatting and PH12-PH14 assistant consumers | Stable content, selection, replace-range, and replace-all API | Available for active document in Editor, Split, and Preview | Replacements are one undo edit and enter normal buffer synchronization | `00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open` | PH01-R09, PH01-R10 |
+| PH01-C04 | PH01 Markdown pipeline | PH04 renderer extensions and PH09 asset policy | Sanitized base pipeline with no unsolicited network | Document view lifetime | Tagged generations publish only when current | `02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline` | PH01-R11, PH01-R12 |
+| PH01-C05 | PH01 projected state | PH02 tabs and PH03 workspace | Redux contains document/UI metadata but no canonical content | Disposable webview lifetime | Hydrate before reconcile; ignore stale revisions | `02_Architecture/03_FRONTEND_REACT.md#state-ownership` | PH01-R02, PH01-R05 |
+| PH01-C06 | PH01 UI composition | PH08 themes and PH11 assistant | Token-only responsive center document region within the reserved three-region shell | Application lifetime | Visibility changes do not own document session lifetime | `00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open` | PH01-R06, PH01-R08 |
+
+## Edge and failure cases
+
+| Edge case | Role | Source clause | Requirements | Expected behavior | Evidence |
 |---|---|---|---|---|---|
-| STORY-099 | Introduce `internal/appmodel` as the authoritative in-memory application model with the `GetState` query, mutating commands, and `state:patch` events | L | `internal/appmodel/`, `internal/apperr/`, `internal/application/` | `02_Architecture/02_BACKEND_GO.md#application-model`, `02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model`, `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` | STORY-005 |
-| STORY-009 | Add the documents/ui Redux slices as a projection of the backend model (metadata + view state, no canonical content) | M | `logic/store/`, `logic/utils/` | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state`, `02_Architecture/03_FRONTEND_REACT.md#state-ownership`, `02_Architecture/03_FRONTEND_REACT.md#store` | STORY-006, STORY-099 |
-| STORY-100 | Wire the projection to `internal/appmodel` — hydrate via `GetState`, reconcile via `state:patch`, and debounce-sync the Monaco buffer through `UpdateBuffer`/`flushBuffer` | M | `logic/adapter/`, `logic/store/`, `ui/components/` | `02_Architecture/03_FRONTEND_REACT.md#state-ownership`, `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` | STORY-099, STORY-010 |
-| STORY-010 | Build the Monaco CodeEditor component with Markdown highlighting and word-wrap/line-number toggles | M | `ui/components/`, `logic/store/` | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode`, `00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour`, `02_Architecture/03_FRONTEND_REACT.md#components`, `03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness` | STORY-009 |
-| STORY-011 | Build the base MarkdownView rendering pipeline for CommonMark/GFM | M | `logic/markdown/`, `ui/components/` | `01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline`, `01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features`, `02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline`, `02_Architecture/03_FRONTEND_REACT.md#components` | STORY-009 |
-| STORY-012 | Compose the EditorView/PreviewView split-view layout | M | `ui/widgets/`, `ui/components/` | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view` | STORY-010 |
-| STORY-013 | Add the view-mode toggle (editor / split / preview) segmented control | S | `ui/components/`, `logic/store/` | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` | STORY-012 |
-| STORY-014 | Add the status bar showing cursor position, word count, and encoding/line-ending fields | M | `ui/components/`, `logic/store/` | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode`, `01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings` | STORY-012 |
-| STORY-015 | Debounce the live preview so typing does not re-render on every keystroke | S | `logic/markdown/`, `logic/hooks/` | `01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce`, `00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets`, `03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets` | STORY-011 |
+| EC-DOCS-12 | primary | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#edge-cases` | PH01-R03, PH01-R05, PH01-R06 | Content-free patches and arrangement transitions preserve the focused session's text, cursor, and selection. | `frontend/src/ui/widgets/EditorView.integration.test.tsx::STORY-019-AC-3 preserves Monaco state on metadata patches (EC-DOCS-12)` |
+| EC-RENDER-4 | precursor | `01_Product/02_EDITOR_AND_VIEWER_MODES.md#edge-cases` | PH01-R12 | Preview-only and split use the same bounded accepted-snapshot behavior; configurable pause/manual refresh completes later. | `frontend/src/logic/hooks/useLivePreview.test.ts::STORY-017-AC-3 bounds large-document preview work (EC-RENDER-4)` |
+| EC-RENDER-5 | primary | `01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases` | PH01-R11 | Raw HTML and dangerous URLs never execute. | `frontend/src/ui/components/MarkdownView.test.tsx::STORY-014-AC-4 disables raw HTML and dangerous URLs (EC-RENDER-5)` |
+| EC-RENDER-6 | precursor | `01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases` | PH01-R11 | Base preview leaves higher-tier syntax literal and non-executing; PH04 owns complete standard-level feature gating. | `frontend/src/ui/components/MarkdownView.test.tsx::STORY-014-AC-3 leaves higher-tier syntax and Mermaid safe (EC-RENDER-6)` |
+| EC-RENDER-7 | primary | `01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases` | PH01-R11 | Local/remote image input remains non-fetching readable fallback until PH09. | `frontend/src/ui/components/MarkdownView.test.tsx::STORY-014-AC-5 blocks document-supplied resource requests (EC-RENDER-7)` |
+| EC-I18N-1 | precursor | `01_Product/13_I18N.md#edge-cases` | PH01-R16 | Missing status-bar translation falls back to English and then the key, never blank. | `frontend/src/i18n/catalog.test.ts::falls back to English and then the key without a blank label (EC-I18N-1)` |
+| EC-I18N-2 | precursor | `01_Product/13_I18N.md#edge-cases` | PH01-R16 | A dropped-in locale resource is discovered without component changes. | `frontend/src/i18n/catalog.test.ts::discovers a dropped-in locale resource without component changes (EC-I18N-2)` |
 
-> Story ids 099/100 are appended (globally monotonic) because the backend-authoritative application
-> model (DD-62..64, ADR-0014) was introduced after the initial phase numbering; they belong to Phase 01
-> but sit after the Stage-3 range in id order.
+### Edge cases
 
-## Edge cases
+Compatibility anchor for completed Phase 01 story citations; the normative ownership and evidence are in the ledger above.
 
-- **EC-RENDER-4** — Extremely large document → preview debounces / pauses live updates (STORY-015).
-- **EC-RENDER-6** — A feature above the active standard renders literally (base pipeline is GFM only; math renders literally here until Phase 04) (STORY-011).
-- **EC-DOCS-12** — A `state:patch` emitted after a buffer edit updates derived views (dirty, counts) but the backend **never echoes buffer text back into the focused editor**, so the cursor/selection is preserved (DD-64) (STORY-100).
+## Non-normative work packages
 
-## Phase exit checklist
+| ID | Capability | Size | Modules | Artifacts | Requirements | Depends on |
+|---|---|---|---|---|---|---|
+| PH01-W01 | Establish the authoritative in-memory application model. | M | `internal/appmodel/`; `internal/apperr/`; `internal/application/` | generated bindings | PH01-R01 | PH00-C01; PH00-C02 |
+| PH01-W02 | Hydrate and reconcile the content-free revisioned projection. | M | `logic/adapter/`; `logic/store/`; `logic/utils/` | none | PH01-R02, PH01-R05 | PH01-W01 query/event contract; PH00-C03 |
+| PH01-W03 | Synchronize the active Monaco buffer across lifecycle boundaries. | M | `logic/adapter/`; `logic/hooks/`; `ui/components/` | none | PH01-R03, PH01-R04 | PH01-W01 command contract; PH01-W02 revision contract |
+| PH01-W04 | Preserve the active editor session across pane arrangements. | M | `logic/store/`; `ui/components/`; `ui/widgets/` | responsive Playwright baseline | PH01-R06 | PH01-W03 flush contract |
+| PH01-W05 | Serialize and project per-document view intent. | M | `logic/adapter/`; `logic/store/`; `ui/components/` | none | PH01-R07, PH01-R08 | PH01-W02 projection |
+| PH01-W06 | Expose the stable active-document command boundary. | M | `logic/hooks/`; `ui/components/`; `ui/widgets/` | static boundary rule | PH01-R09, PH01-R10 | PH01-W04 session lifetime; PH01-W03 buffer queue |
+| PH01-W07 | Render safe debounced CommonMark/GFM preview generations. | M | `logic/markdown/`; `logic/hooks/`; `ui/components/` | bundled dependencies | PH01-R11, PH01-R12 | PH01-W02 accepted revision contract |
+| PH01-W08 | Project cursor, counts, arrangement, and encoding placeholders in the status bar. | S | `logic/store/`; `ui/components/` | none | PH01-R13 | PH01-W02 projection; PH01-W04 session |
+| PH01-W09 | Validate lifecycle and exact trace evidence. | M | `internal/application/` | `scripts/`; `docs/traceability.yaml`; story board | PH01-R14 | PH00-C06 trace contract |
+| PH01-W10 | Define separate PH01 stage-checkpoint completion semantics after user direction. | S | `internal/application/` | phase evidence; trace completion rule | PH01-R15 | PH01-X01 resolution |
+| PH01-W11 | Establish the bundled i18n catalog fallback and drop-in locale seam for core UI strings. | S | `i18n/`; `ui/components/` | `frontend/src/i18n/locales/en.json`; locale resource fixtures | PH01-R16 | PH00-C04; PH00-C06 |
 
-Automated:
+## Phase exit evidence
 
-- [ ] `AppModelHandler.GetState` returns a serializable snapshot, and each command emits a `state:patch` the projection applies (unit test, STORY-099/100).
-- [ ] Typing debounce-pushes the buffer to `internal/appmodel` via `UpdateBuffer`, which marks the document dirty and reflects it in the `documents` projection via `state:patch` (unit test).
-- [ ] A `state:patch` never moves the focused editor's cursor/selection (EC-DOCS-12).
-- [ ] A GFM document (table, task list, strikethrough) renders the expected DOM selectors with no console errors (jsdom test, P4).
-- [ ] The view-mode toggle switches editor / split / preview and persists per-document view state.
-- [ ] Preview re-render is debounced (does not fire on every keystroke) — verified by a timer/spy test.
-- [ ] `just check` green; `verify:ui` screenshot of split view exists.
+| ID | Requirements | Tier | Proof / artifact | Platform / scope | Owner | Freshness | Blocking |
+|---|---|---|---|---|---|---|---|
+| PH01-E01 | PH01-R01, PH01-R02, PH01-R05 | automated | `go test -race ./internal/appmodel`; `npm --prefix frontend test -- appModelProjection.test.ts` | all | tester | current HEAD | yes |
+| PH01-E02 | PH01-R03, PH01-R04, PH01-R06, PH01-R07 | automated | `npm --prefix frontend test -- appModelAdapter.test.ts EditorView.integration.test.tsx`; `just verify-ui` | 375, 768, 1280 px | tester | current HEAD | yes |
+| PH01-E03 | PH01-R08, PH01-R13 | automated | `npm --prefix frontend test -- EditorView.integration.test.tsx`; `just verify-ui` | 375, 768, 1280 px | tester | current HEAD | yes |
+| PH01-E04 | PH01-R09, PH01-R10 | automated | `npm --prefix frontend test -- useDocumentCommands.test.ts`; `just check` | all arrangements and import boundaries | tester | current HEAD | yes |
+| PH01-E05 | PH01-R11, PH01-R12 | automated | `npm --prefix frontend test -- renderer.test.ts useLivePreview.test.ts MarkdownView.test.tsx` | all | tester | current HEAD | yes |
+| PH01-E06 | PH01-R01, PH01-R03, PH01-R04, PH01-R06, PH01-R07, PH01-R08, PH01-R11, PH01-R13 | real-runtime | `docs/phase-evidence/PH01-wails-runtime.md` | native Wails dev on macOS, Windows, Linux | tester | current HEAD and platform matrix | yes |
+| PH01-E07 | PH01-R08, PH01-R13 | human | `docs/phase-evidence/PH01-visual-approval.md` | frozen 1280 px mockup and responsive widths | product owner | current release candidate | yes |
+| PH01-E08 | PH01-R11 | real-runtime | `docs/phase-evidence/PH01-network-trace.md` | Stage 1 and Stage 2 runtime | security reviewer | current release candidate | yes |
+| PH01-E09 | PH01-R14 | automated | `just trace-check` and traceability fixture tests | all | tester | current HEAD | yes |
+| PH01-E10 | PH01-R15 | automated | `just phase-complete-check 01` after PH01-X01 resolution and checkpoint-specific evidence | phase and stage claims | reviewer | resolution revision | yes |
+| PH01-E11 | PH01-R16 | automated | `npm --prefix frontend test -- catalog.test.ts` | bundled locale resources and exact EC-I18N-1/2 tests | tester | current HEAD | yes |
 
-Manual:
+### Phase exit checklist
 
-- [ ] In `wails dev`, typing Markdown updates a live preview within the debounce window.
-- [ ] The Monaco editor mounts with a height > 200px (no collapsed-editor regression) at 375 / 768 / 1280 px.
+Compatibility anchor for completed Phase 01 story citations; the normative blocking evidence is the table above.
 
-DoD reference: `06_Process_and_Traceability/06_DEFINITION_OF_DONE.md`. Phase 01 spans stages: its render/preview stories are Stage 1 (Milestone **M1**); its editing stories are Stage 2 (Milestone **M2**).
+## Open specification conflicts
+
+| ID | Conflicting or missing sources | Required decision | Blocked requirements |
+|---|---|---|---|
+| PH01-X01 | `00_Foundation/06_IMPLEMENTATION_STAGES.md#2-stage--phase-mapping`; `00_Foundation/06_IMPLEMENTATION_STAGES.md#4-what-each-stage-explicitly-does-not-build`; `07_Phases/00_ROADMAP.md#stages` assign PH01 partly to Stage 1 and partly to Stage 2 while sequential phase completion precedes PH02. | Define whether PH01 is completed once after both parts or has separately claimable stage checkpoints. | PH01-R15 |
+
+## Current remediation mapping
+
+This factual mapping records the audit backlog; it does not reserve future story ids in the work-package ledger.
+
+| Phase requirements | Current story | State |
+|---|---|---|
+| PH01-R14 | STORY-020 — Validate story lifecycle and edge-case trace evidence | done |
+| PH01-R07 | STORY-021 — Serialize per-document view commands by latest intent | incomplete |
+| PH01-R04, PH01-R06 | STORY-022 — Preserve the active Monaco session across view arrangements | incomplete |
+| PH01-R09, PH01-R10 | STORY-023 — Expose document commands through the stable editor-session boundary | incomplete |
+
+## Clarification revision
+
+2026-07-21 — Reconstructed Phase 01 around ownership, ordered lifecycle transitions, adversarial async behavior, stable consumer seams, bundled i18n fallback/discovery, and durable exit proof. Made the audited Monaco lifetime, flush-before-hide, latest-intent, and F3/F7 obligations explicit and recorded the unresolved stage-completion chronology without choosing behavior.

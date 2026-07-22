@@ -12,6 +12,8 @@ title: <imperative sentence, no trailing period>
 status: draft            # draft | ready | in-progress | done | superseded
 spec_clauses:
   - <spec-file>#<anchor>
+phase_requirements:
+  - PHNN-RNN
 modules:
   - <module path from 06_Process_and_Traceability/01_MODULE_INVENTORY.md>
 acceptance_criteria:
@@ -21,7 +23,7 @@ depends_on: []           # story ids; graph must be acyclic and all done before 
 adrs: []                 # accepted ADR ids only
 phase: NN                # two-digit phase 00-10
 owner: coder             # arch | coder | tester
-estimate: S              # S | M | L
+estimate: S              # S/M when ready; L is a non-ready epic that must be split
 ---
 
 # STORY-NNN — <title>
@@ -44,6 +46,8 @@ estimate: S              # S | M | L
 
 ## Acceptance criteria
 ### STORY-NNN-AC-1
+**Satisfies:** PHNN-RNN
+
 <criterion, verifiable; phrase per 05_ACCEPTANCE_CRITERIA_PATTERNS.md>
 
 ## Test plan

@@ -24,26 +24,30 @@ authors them **per phase** from that phase's suggested-task list
 | STORY-008 | Add quality tooling and traceability validation for the initial backlog | 00 | done | coder | M |
 | STORY-009 | Complete Stage-1 settings and fail startup safely | 00 | done | coder | M |
 | STORY-010 | Restore Phase-00 toolchain integrity | 00 | done | coder | M |
-| STORY-011 | Establish the backend-authoritative in-memory application model | 01 | ready | coder | L |
-| STORY-012 | Project backend application state into the frontend | 01 | draft | coder | L |
-| STORY-013 | Integrate Monaco as the presentational Markdown editor | 01 | draft | coder | M |
-| STORY-014 | Build the base GFM Markdown preview | 01 | ready | coder | M |
-| STORY-015 | Compose the split editor and preview with backend-owned view modes | 01 | draft | coder | L |
-| STORY-016 | Add the core editor status bar | 01 | draft | coder | L |
-| STORY-017 | Drive live preview from backend-accepted debounced snapshots | 01 | draft | coder | M |
-| STORY-018 | Verify the core editor responsively with Playwright | 01 | draft | coder | M |
+| STORY-011 | Establish the backend-authoritative in-memory application model | 01 | done | coder | L |
+| STORY-012 | Project backend application state into the frontend | 01 | done | coder | L |
+| STORY-013 | Integrate Monaco as the presentational Markdown editor | 01 | done | coder | M |
+| STORY-014 | Build the base GFM Markdown preview | 01 | done | coder | M |
+| STORY-015 | Compose the split editor and preview with backend-owned view modes | 01 | done | coder | L |
+| STORY-016 | Add the core editor status bar | 01 | done | coder | L |
+| STORY-017 | Drive live preview from backend-accepted debounced snapshots | 01 | done | coder | M |
+| STORY-018 | Verify the core editor responsively with Playwright | 01 | done | coder | M |
 | STORY-019 | Synchronize the active buffer and establish the editable document-command seam | 01 | done | coder | L |
+| STORY-020 | Validate story lifecycle and exact edge-case trace evidence | 01 | done | coder | M |
+| STORY-021 | Serialize per-document view commands by latest intent | 01 | ready | coder | M |
+| STORY-022 | Preserve the active Monaco session across view arrangements | 01 | draft | coder | M |
+| STORY-023 | Expose document commands through a stable editor-session boundary | 01 | draft | coder | M |
+| STORY-024 | Enforce phase planning completeness | 00 | done | coder | M |
 
 Add a row per story as it is authored, and keep this board in sync with `../traceability.yaml`.
 
-## Phase 01 readiness sequence
+## Phase 01 remediation readiness sequence
 
 Promote a draft to `ready` only after every `depends_on` story is `done` and the front matter, clause anchors, module paths, and dependency graph validate.
 
-- STORY-011 and STORY-014 are ready now because STORY-010 is done.
-- After STORY-011 is done, promote STORY-012.
-- After STORY-012 is done, promote STORY-013.
-- After STORY-012 and STORY-013 are done, promote STORY-019.
-- After STORY-014 and STORY-019 are done, promote STORY-015.
-- After STORY-015 and STORY-019 are done, promote STORY-016 and STORY-017.
-- After STORY-016 and STORY-017 are done, promote STORY-018.
+- STORY-011 through STORY-019 are done and immutable.
+- STORY-020 is done after exact edge-case evidence and lifecycle validation passed independent review.
+- STORY-021 is ready as the next Phase-01 remediation dependency; STORY-019 and STORY-020 are done.
+- After STORY-021 is done, promote STORY-022.
+- After STORY-022 is done, promote STORY-023.
+- STORY-024 is done after the phase-planning migration, independent conformance review, and native/bridge-mock Phase-00 runtime evidence passed.

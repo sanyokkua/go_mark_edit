@@ -7,6 +7,9 @@ spec_clauses:
   - 04_Build_and_Release/03_CI_AND_HOOKS.md#2-git-hooks-lefthook
   - 06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands
   - 06_Process_and_Traceability/04_ADR_FORMAT.md#template-copy-docsadrtemplatemd
+phase_requirements:
+  - PH00-R09
+  - PH00-R10
 modules:
   - internal/application/
 acceptance_criteria:
@@ -45,15 +48,19 @@ Make the foundation reproducible and ensure future stories can prove their requi
 
 ## Acceptance criteria
 ### STORY-008-AC-1
+**Satisfies:** PH00-R09
 `justfile` exposes the specified setup, dev, build, generation, formatting, lint, typecheck, test, verification, drift, security, trace, and composite-check commands.
 
 ### STORY-008-AC-2
+**Satisfies:** PH00-R09
 Lefthook and the CI skeleton preserve generated-bindings → frontend → Go ordering and provide a green lint/type/test skeleton.
 
 ### STORY-008-AC-3
+**Satisfies:** PH00-R09, PH00-R10
 `just trace` generates documented trace maps from stories and `Proves:` tags, while `just trace-check` accepts the empty backlog and rejects stale, invalid, orphaned, or cyclic fixtures.
 
 ### STORY-008-AC-4
+**Satisfies:** PH00-R10
 Initial ADR-0001…0006 are treated as frozen accepted records and are neither copied into `docs/adr/` nor edited.
 
 ## Test plan

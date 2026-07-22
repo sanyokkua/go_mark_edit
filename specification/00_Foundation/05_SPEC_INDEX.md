@@ -117,3 +117,14 @@ the real slug. Registered anchors:
 
 > Note: anchors in phase-file story tables are indicative; the `architect` finalizes exact clause
 > anchors when authoring each story, validated by `just trace-check`.
+
+## 06_Process_and_Traceability anchors
+
+- `07_PHASE_FORMAT.md` — `#identifiers`, `#required-document-order`, `#phase-metadata`,
+  `#requirement-ledger`, `#state-and-transition-model`, `#cross-phase-contracts`,
+  `#edge-and-failure-cases`, `#non-normative-work-packages`, `#phase-exit-evidence`,
+  `#open-specification-conflicts`, `#clarification-revision`, `#completion-semantics`.
+- `02_STORY_FORMAT.md` — `#identifiers`, `#front-matter-schema-copy-exactly`,
+  `#body-template-fixed-section-order--copy-exactly`, `#sizing`, `#lifecycle`.
+- `03_TRACEABILITY.md` — `#the-chain`, `#traceabilityyaml-schema`,
+  `#how-a-test-declares-the-ac-it-proves`, `#the-two-commands`, `#phase-commands`.

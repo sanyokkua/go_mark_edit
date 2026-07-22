@@ -8,6 +8,10 @@ spec_clauses:
   - 03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets
   - 00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets
   - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+phase_requirements:
+  - PH01-R02
+  - PH01-R03
+  - PH01-R12
 modules:
   - logic/adapter/
   - logic/hooks/
@@ -74,21 +78,27 @@ Update the rendered preview from the exact buffer snapshot the backend successfu
 ## Acceptance criteria
 
 ### STORY-017-AC-1
+**Satisfies:** PH01-R03, PH01-R12
 A controlled-clock adapter test proves the shared 200 ms synchronization sends one `UpdateBuffer` for a typing burst and invokes `onAccepted` only after success with the identical sent snapshot and generation.
 
 ### STORY-017-AC-2
+**Satisfies:** PH01-R12
 If `UpdateBuffer` fails, the preview hook keeps the previous accepted preview visible while the normal envelope/toast path reports the failure.
 
 ### STORY-017-AC-3
+**Satisfies:** PH01-R12
 A very large in-memory document does not render on each keystroke and produces at most one render after editing settles.
 
 ### STORY-017-AC-4
+**Satisfies:** PH01-R02, PH01-R12
 The bootstrap `ActiveBuffer` seeds the initial preview once, after which preview text remains ephemeral widget state outside the documents slice and every `state:patch`.
 
 ### STORY-017-AC-5
+**Satisfies:** PH01-R12
 With a normal successful acknowledgement, accepted GFM input renders through `MarkdownView` within the 150–300 ms typing-settle target; publication never precedes success.
 
 ### STORY-017-AC-6
+**Satisfies:** PH01-R12
 If accepted generations complete out of order, the latest generation wins and an older stale completion cannot roll the visible preview backward.
 
 ## Test plan

@@ -12,7 +12,8 @@ A story is `done` only when **all** of the following hold. This is the review ch
 
 1. Every acceptance criterion has a passing automated test whose first docstring/comment line names the
    AC (`Proves: STORY-NNN-AC-N`).
-2. Every `edge_cases:` id has a passing test.
+2. Every `edge_cases:` id has a passing test that explicitly declares the id on its test node; incidental
+   body/fixture text is not evidence.
 3. **Backend (if touched):** `gofmt -l` clean, `go vet ./...` clean, `golangci-lint run` clean for
    touched packages, `go test -race ./...` green.
 4. **Frontend (if touched):** `prettier --check` clean, `eslint` clean, `tsc --noEmit` clean,
@@ -23,10 +24,11 @@ A story is `done` only when **all** of the following hold. This is the review ch
    architecture tests / lint hooks.
 7. Traceability: `just trace` regenerated `traceability.yaml`; `just trace-check` passes with zero
    orphans and a fresh record.
-8. `01_MODULE_INVENTORY.md` is unchanged, or the change is reflected there in the same story.
-9. UI stories: the visual acceptance reference (a mockup file) matches; a `verify:ui` screenshot check
+8. Every AC has a `Satisfies:` mapping whose union equals the story's resolved `phase_requirements`.
+9. `01_MODULE_INVENTORY.md` is unchanged, or the change is reflected there in the same story.
+10. UI stories: the visual acceptance reference (a mockup file) matches; a `verify:ui` screenshot check
    exists where practical.
-10. No new background/unsolicited network calls introduced (offline invariant, DD-32 as revised — the
+11. No new background/unsolicited network calls introduced (offline invariant, DD-32 as revised — the
     only permitted outbound call is a Stage-3 user-invoked LLM inference to the configured provider) —
     verified by review + the no-network architecture check.
 
@@ -52,7 +54,9 @@ A story is `done` only when **all** of the following hold. This is the review ch
 
 ## Phase-level exit criteria
 
-Each phase file (`07_Phases/PHASE_NN_*.md`) lists a **Phase exit checklist** — the manual + automated
-acceptance that the phase as a whole is complete (e.g. "a `.md` opened from the OS file manager opens
-in GoMarkEdit" for the associations phase). A phase is complete when all its stories are `done` and its
-exit checklist passes.
+Each phase follows `07_PHASE_FORMAT.md`: permanent requirements, state transitions, cross-phase contracts,
+edge/failure ownership, non-normative work packages, and blocking exit evidence. `just phase-check` is part
+of `just check` and validates structure for all phases. A phase is complete only when
+`just phase-complete-check NN` confirms every requirement and lifecycle row resolves through done stories,
+ACs, proving tests, and any required real-runtime or human evidence. Passing isolated story gates is not a
+phase-completion substitute. An unresolved specification conflict blocks completion.

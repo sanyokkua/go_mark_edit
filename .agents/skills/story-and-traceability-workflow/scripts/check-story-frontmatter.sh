@@ -4,8 +4,8 @@
 #
 # A quick eyeball aid, NOT a substitute for `just trace-check` (which is the authoritative gate).
 # For each docs/stories/story-*.md it prints id / status / phase / owner / estimate and flags
-# obviously-missing required fields. It does not validate spec anchors, module paths, or the
-# dependency graph — that is `just trace-check`'s job.
+# obviously-missing required fields. It does not validate spec anchors, phase-requirement ids, AC
+# `Satisfies:` unions, module paths, or the dependency graph — that is `just trace-check`'s job.
 #
 # READ-ONLY: greps files; never writes or edits anything.
 #
@@ -27,6 +27,7 @@ fi
 
 # Required scalar front-matter fields we can cheaply check for presence.
 REQUIRED="id title status phase owner estimate"
+REQUIRED_LISTS="spec_clauses phase_requirements modules acceptance_criteria depends_on"
 
 # Collect story files (story-*.md); ignore templates/READMEs.
 FILES=$(find "$DIR" -maxdepth 1 -type f -name 'story-*.md' 2>/dev/null | sort || true)
@@ -73,12 +74,19 @@ for f in $FILES; do
     val=$(field "$f" "$key")
     [ -z "$val" ] && missing="${missing:+$missing,}$key"
   done
+  for key in $REQUIRED_LISTS; do
+    grep -q "^${key}:" "$f" || missing="${missing:+$missing,}$key"
+  done
 
   printf '%-28s %-12s %-6s %-8s %-4s  %s\n' \
     "$base" "${status:-?}" "${phase:-?}" "${owner:-?}" "${est:-?}" "${id:-?}"
 
   if [ -n "$missing" ]; then
     printf '  !! missing required field(s): %s\n' "$missing" >&2
+    RC=1
+  fi
+  if { [ "$status" = "ready" ] || [ "$status" = "in-progress" ]; } && [ "$est" = "L" ]; then
+    printf '  !! L is a non-ready epic; split it into S/M stories before %s\n' "$status" >&2
     RC=1
   fi
 done

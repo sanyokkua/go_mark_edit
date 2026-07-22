@@ -22,7 +22,7 @@ func TestJustfileExposesRequiredCommandTaxonomy(t *testing.T) {
 
 	for _, recipe := range []string{
 		"setup", "dev", "dev-ui", "build", "gen", "fmt", "fmt-check", "lint", "typecheck", "test",
-		"verify-ui", "gen-check", "sqlc-check", "vuln", "trace", "trace-check", "check",
+		"verify-ui", "gen-check", "sqlc-check", "vuln", "trace", "trace-check", "phase-check", "check",
 	} {
 		if !strings.Contains(justfile, "\n"+recipe+":") && !strings.HasPrefix(justfile, recipe+":") {
 			t.Errorf("justfile omits %q recipe", recipe)
@@ -35,6 +35,31 @@ func TestJustfileExposesRequiredCommandTaxonomy(t *testing.T) {
 	}
 	if !strings.Contains(string(golangci), "staticcheck") {
 		t.Error(".golangci.yml does not enable staticcheck")
+	}
+}
+
+// Proves: STORY-024-AC-4
+// The Justfile exposes structural and claimed-completion phase gates while the composite gate runs only structural validation.
+func TestJustfileExposesPhaseValidationGates(t *testing.T) {
+	repositoryRoot := storyEightRepositoryRoot(t)
+	justfile := readToolchainFile(t, repositoryRoot, "justfile")
+	assertExactCommands(t, "phase-check", justRecipeCommands(t, justfile, "phase-check"), []string{
+		"node scripts/phase-check.mjs",
+	})
+	if !strings.Contains(justfile, "\nphase-complete-check phase:\n    node scripts/phase-complete-check.mjs {{phase}}\n") {
+		t.Fatal("justfile omits parameterized phase-complete-check recipe")
+	}
+
+	commands := justRecipeCommands(t, justfile, "check")
+	phaseIndex := indexOfCommand(commands, "just phase-check")
+	traceIndex := indexOfCommand(commands, "just trace-check")
+	if phaseIndex < 0 || traceIndex < 0 || phaseIndex >= traceIndex {
+		t.Fatalf("check commands = %#v; want phase-check before trace-check", commands)
+	}
+	for _, command := range commands {
+		if strings.HasPrefix(command, "just phase-complete-check") {
+			t.Fatalf("check must not claim unfinished phases complete: %#v", commands)
+		}
 	}
 }
 
@@ -165,8 +190,18 @@ func TestJustCheckRunsPhaseZeroGateSetInRequiredOrder(t *testing.T) {
 		"just frontend-test",
 		"just go-vet",
 		"just go-test",
+		"just phase-check",
 		"just trace-check",
 	})
+}
+
+func indexOfCommand(commands []string, target string) int {
+	for index, command := range commands {
+		if command == target {
+			return index
+		}
+	}
+	return -1
 }
 
 // Proves: STORY-010-AC-4

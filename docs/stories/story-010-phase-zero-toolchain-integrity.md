@@ -9,6 +9,9 @@ spec_clauses:
   - 04_Build_and_Release/03_CI_AND_HOOKS.md#6-traceability-gate
   - 06_Process_and_Traceability/03_TRACEABILITY.md#the-two-commands
   - 06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#per-story
+phase_requirements:
+  - PH00-R09
+  - PH00-R10
 modules:
   - internal/application/
 acceptance_criteria:
@@ -61,15 +64,19 @@ Restore a reproducible Phase-00 quality gate so a clean checkout has current gen
 ## Acceptance criteria
 
 ### STORY-010-AC-1
+**Satisfies:** PH00-R09, PH00-R10
 **Given** the committed stories and proving tests in the repository, **when** `just trace` is run followed by `just trace-check`, **then** the committed `docs/traceability.yaml` exactly matches the regenerated record and validation passes with zero orphan clause, module, edge-case, story, or test references.
 
 ### STORY-010-AC-2
+**Satisfies:** PH00-R09
 **Given** the existing Wails-bound Go API on a clean checkout, **when** `just gen-check` is run, **then** all required `frontend/wailsjs/` bindings are tracked and generation leaves no diff in that directory.
 
 ### STORY-010-AC-3
+**Satisfies:** PH00-R09
 **Given** a clean, set-up Phase-00 checkout, **when** `just check` is run, **then** it completes the Phase-00 format, Go and frontend lint, TypeScript typecheck, race-test, architecture/drift, and traceability gates successfully in generated-bindings → frontend → Go order where that ordering is required.
 
 ### STORY-010-AC-4
+**Satisfies:** PH00-R09
 The Go-lint command invoked by `just lint` targets the repository-root Go package and `internal/...` packages, and it resolves no frontend package dependency while the frontend ESLint command remains a separate frontend step.
 
 ## Test plan

@@ -22,6 +22,8 @@ status: draft                          # draft | ready | in-progress | done | su
 spec_clauses:                          # >=1; each <spec-file>#<anchor> resolves to a real heading
   - 01_Product/09_ASSETS_AND_SECURITY.md#relative-path-resolution
   - 00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets
+phase_requirements:                    # >=1; permanent ids from the owning phase ledger
+  - PH09-R01
 modules:                               # >=1; each a path from 01_MODULE_INVENTORY.md
   - internal/assets/
   - logic/markdown/
@@ -48,6 +50,7 @@ estimate: M                            # S | M | L
 | `title` | One imperative sentence, no trailing period. |
 | `status` | One of the five lifecycle enum values. |
 | `spec_clauses` | ≥1; each `<file>#<anchor>` resolves to a real spec heading. |
+| `phase_requirements` | ≥1; each exists in the owning phase requirement ledger. |
 | `modules` | ≥1; each path exists in `01_MODULE_INVENTORY.md`. |
 | `acceptance_criteria` | ≥1; each `STORY-NNN-AC-N` also written out in the body. |
 | `edge_cases` | Optional; each `EC-[A-Z]+-\d+` cited from a spec clause, each proven by a test. |
@@ -79,10 +82,14 @@ estimate: M                            # S | M | L
 ## Acceptance criteria
 
 ### STORY-014-AC-1
+**Satisfies:** PH09-R01
+
 **Given** a document at `/docs/notes.md` referencing `![](img/logo.png)`, **when** the preview renders,
 **then** the asset handler serves `/docs/img/logo.png` and the `<img>` resolves with no console error.
 
 ### STORY-014-AC-2
+**Satisfies:** PH09-R01
+
 A relative image path that escapes the allowlist (e.g. `../../secret.png` outside the document root) is
 rejected by the asset handler with HTTP 403 and is not read from disk. (satisfies EC-ASSET-1)
 
@@ -90,6 +97,8 @@ rejected by the asset handler with HTTP 403 and is not read from disk. (satisfie
 - STORY-014-AC-1 — integration — `internal/assets/handler_test.go` — `TestResolvesRelativeAssetPath`
 - STORY-014-AC-2 — integration — `internal/assets/handler_test.go` — `TestRejectsTraversalOutsideAllowlist` (EC-ASSET-1)
 ```
+
+Implementation-ready stories are S/M. L is a non-ready epic and must be split before `ready`.
 
 Matching proving tests declare the AC id on the **first leading-comment / test-name line**:
 

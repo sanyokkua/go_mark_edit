@@ -41,9 +41,13 @@ approval, then hand story authoring to the `architect` custom agent.
 - Keep `specification/` frozen and read-only.
 - Treat a phase's suggested backlog as input, not authority; reconcile it against the current codebase,
   existing stories, traceability, stage constraints, and the module inventory.
+- Start from the phase's permanent requirement ledger and produce the canonical command's inverse coverage
+  matrix, temporal/adversarial hazard pass, producer/consumer contracts, low-context packets, and skeptical
+  passing-but-incomplete review.
 - Delegate the required read-only current-state map to `investigator`.
 - Resolve every cited specification anchor and verify each proposed module exists in the module inventory.
-- Allocate monotonic, unique story ids; maintain an acyclic dependency graph; make every AC and edge case
-  independently testable.
+- Allocate monotonic, unique story ids; maintain an acyclic dependency graph; map every AC with
+  `Satisfies:` to real phase requirements; make every AC and edge case independently testable; reject L
+  stories as ready.
 - When the specification is ambiguous or contradictory, report the gap and ask rather than inventing
   behaviour. Propose an ADR only in the mutable `docs/adr/` area when the canonical workflow permits it.

@@ -12,6 +12,8 @@ spec_clauses:
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
   - 07_Phases/PHASE_01_CORE_EDITOR.md#out-of-scope
   - 07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope
+phase_requirements:
+  - PH01-R11
 modules:
   - logic/markdown/
   - ui/components/
@@ -80,21 +82,27 @@ Render safe, accessible GFM from an in-memory Markdown string so users can previ
 ## Acceptance criteria
 
 ### STORY-014-AC-1
+**Satisfies:** PH01-R11
 One renderer module configures `react-markdown`, `remark-gfm`, raw-HTML-disabled processing, and sanitize-last behavior for the fixed Phase-01 base GFM tier.
 
 ### STORY-014-AC-2
+**Satisfies:** PH01-R11
 Tables, task lists, strikethrough, and autolinks render with accessible DOM and read-only task checkboxes.
 
 ### STORY-014-AC-3
+**Satisfies:** PH01-R11
 Math/directive and other higher-tier syntax remain literal, while a Mermaid fence renders as an ordinary safe code block; no deferred extension renderer is loaded. (satisfies EC-RENDER-6)
 
 ### STORY-014-AC-4
+**Satisfies:** PH01-R11
 The preview uses the `.gme-preview` root and token-only styling; raw document HTML is disabled/sanitized last and dangerous URLs are stripped without execution. (satisfies EC-RENDER-5)
 
 ### STORY-014-AC-5
+**Satisfies:** PH01-R11
 Remote or local Markdown image/resource input renders non-fetching alt text/placeholder output with no fetchable `src` and triggers no document-supplied request. (satisfies EC-RENDER-7)
 
 ### STORY-014-AC-6
+**Satisfies:** PH01-R11
 Renderer dependencies and production assets contain no runtime remote import, CDN URL, or fetch path.
 
 ## Test plan

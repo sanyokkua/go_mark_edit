@@ -14,6 +14,9 @@ spec_clauses:
   - 00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
   - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope
+phase_requirements:
+  - PH01-R13
+  - PH01-R16
 modules:
   - i18n/
   - ui/components/
@@ -85,21 +88,27 @@ Show users the active cursor location and backend-derived document metadata in t
 ## Acceptance criteria
 
 ### STORY-016-AC-1
+**Satisfies:** PH01-R13
 Given typed initial props, `StatusBar` renders `Ln 1, Col 1`, `0 words`, `UTF-8`, `LF`, and `Split`.
 
 ### STORY-016-AC-2
+**Satisfies:** PH01-R13
 Monaco cursor changes wired through `EditorView` display one-based line and column values immediately while restorable synchronization remains STORY-019.
 
 ### STORY-016-AC-3
+**Satisfies:** PH01-R13
 A backend metadata patch reconciled through `EditorView` changes the word count without reading Monaco content or storing content in Redux.
 
 ### STORY-016-AC-4
+**Satisfies:** PH01-R13
 A reconciled backend view patch updates the arrangement label through the store-connected `EditorView`.
 
 ### STORY-016-AC-5
+**Satisfies:** PH01-R13
 Before Phase 02 file I/O, canonical `utf-8`/`lf` wire values are formatted by the UI as the explicit `UTF-8`/`LF` untitled labels.
 
 ### STORY-016-AC-6
+**Satisfies:** PH01-R16
 `StatusBar` resolves cursor, word-count, encoding, line-ending, and arrangement labels through the typed i18n seam, including named interpolation and locale-aware number formatting.
 
 ## Test plan
