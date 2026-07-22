@@ -10,7 +10,7 @@ import {
 import type { ActiveBuffer } from './logic/store/appModelTypes';
 import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
 import AppShell from './ui/widgets/AppShell';
-import { EditorSessionContext } from './ui/widgets/editorSession';
+import { EditorSessionProvider } from './ui/widgets/editorSession';
 
 function startAppModelBootstrap(): Promise<AppModelBootstrapResult> {
   return import('./logic/adapter')
@@ -40,7 +40,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
 
   return (
     <ToastProvider>
-      <EditorSessionContext.Provider value={activeBuffer}>
+      <EditorSessionProvider activeBuffer={activeBuffer}>
         <AppShell assistantVisible={false} />
         {notifications.map((notification) => (
           <NotificationToast
@@ -51,7 +51,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
             }}
           />
         ))}
-      </EditorSessionContext.Provider>
+      </EditorSessionProvider>
     </ToastProvider>
   );
 };

@@ -19,6 +19,7 @@ interface MockModel {
 
 interface MockMonacoRuntime {
   blurListener: (() => void) | null;
+  content: string;
   cursorListener: ((event: { position: IPosition }) => void) | null;
   editor: editor.IStandaloneCodeEditor;
   model: MockModel;
@@ -38,6 +39,7 @@ const mockRuntime = {} as MockMonacoRuntime;
 
 function resetMockMonaco(): void {
   mockRuntime.blurListener = null;
+  mockRuntime.content = '';
   mockRuntime.cursorListener = null;
   mockRuntime.selectionListener = null;
   mockRuntime.selection = {
@@ -388,4 +390,86 @@ it('STORY-019-AC-5 routes the editable command seam through Monaco and UpdateBuf
     start: { lineNumber: 1, column: 1 },
     end: { lineNumber: 1, column: 1 },
   });
+});
+
+it('keeps replacement undo groups and complete-buffer callbacks at the Monaco boundary', async () => {
+  const ref = { current: null as CodeEditorHandle | null };
+  const updateBuffer = jest.fn<void, [string, string]>();
+  const initialContent = 'alpha beta\ngamma';
+  mockRuntime.content = initialContent;
+  mockRuntime.model.getFullModelRange.mockReturnValue({
+    startLineNumber: 1,
+    startColumn: 1,
+    endLineNumber: 2,
+    endColumn: 6,
+  });
+  (mockRuntime.editor.executeEdits as jest.Mock).mockImplementation(
+    (_source: string, edits: Array<{ range: IRange; text: string }>): void => {
+      const edit = edits[0];
+      const offsetFor = (lineNumber: number, column: number): number => {
+        const lines = mockRuntime.content.split('\n');
+        return (
+          lines
+            .slice(0, lineNumber - 1)
+            .reduce((offset, line): number => offset + line.length + 1, 0) +
+          column -
+          1
+        );
+      };
+      const start = offsetFor(
+        edit.range.startLineNumber,
+        edit.range.startColumn,
+      );
+      const end = offsetFor(edit.range.endLineNumber, edit.range.endColumn);
+      mockRuntime.content = `${mockRuntime.content.slice(0, start)}${edit.text}${mockRuntime.content.slice(end)}`;
+      mockRuntime.props?.onChange?.(
+        mockRuntime.content,
+        {} as Parameters<NonNullable<EditorProps['onChange']>>[1],
+      );
+    },
+  );
+
+  render(
+    <CodeEditor
+      ref={ref}
+      documentId="document-1"
+      initialValue={initialContent}
+      onChange={(content: string): void => {
+        updateBuffer('document-1', content);
+      }}
+    />,
+  );
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+
+  ref.current?.replaceRange(
+    {
+      start: { lineNumber: 1, column: 7 },
+      end: { lineNumber: 1, column: 11 },
+    },
+    'delta',
+  );
+  ref.current?.replaceAll('whole\nreplacement');
+
+  expect(mockRuntime.editor.executeEdits).toHaveBeenCalledTimes(2);
+  expect(mockRuntime.editor.executeEdits).toHaveBeenNthCalledWith(
+    1,
+    'gomarkedit',
+    [expect.objectContaining({ text: 'delta' })],
+  );
+  expect(mockRuntime.editor.executeEdits).toHaveBeenNthCalledWith(
+    2,
+    'gomarkedit',
+    [expect.objectContaining({ text: 'whole\nreplacement' })],
+  );
+  expect(mockRuntime.editor.pushUndoStop).toHaveBeenCalledTimes(4);
+  expect(updateBuffer).toHaveBeenNthCalledWith(
+    1,
+    'document-1',
+    'alpha delta\ngamma',
+  );
+  expect(updateBuffer).toHaveBeenNthCalledWith(
+    2,
+    'document-1',
+    'whole\nreplacement',
+  );
 });

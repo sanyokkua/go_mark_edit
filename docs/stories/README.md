@@ -36,7 +36,7 @@ authors them **per phase** from that phase's suggested-task list
 | STORY-020 | Validate story lifecycle and exact edge-case trace evidence | 01 | done | coder | M |
 | STORY-021 | Serialize per-document view commands by latest intent | 01 | done | coder | M |
 | STORY-022 | Preserve the active Monaco session across view arrangements | 01 | done | coder | M |
-| STORY-023 | Expose document commands through a stable editor-session boundary | 01 | ready | coder | M |
+| STORY-023 | Expose document commands through a stable editor-session boundary | 01 | done | coder | M |
 | STORY-024 | Enforce phase planning completeness | 00 | done | coder | M |
 
 Add a row per story as it is authored, and keep this board in sync with `../traceability.yaml`.
@@ -49,5 +49,5 @@ Promote a draft to `ready` only after every `depends_on` story is `done` and the
 - STORY-020 is done after exact edge-case evidence and lifecycle validation passed independent review.
 - STORY-021 is done after the per-document latest-intent queue and its deferred-ordering, flush, failure, and projection tests passed independent review.
 - STORY-022 is done after the persistent Monaco-session, flush-ordering, responsive round-trip, and independent conformance evidence passed.
-- STORY-023 is ready: its only dependency, STORY-022, is done and its ready-state contract validates.
+- STORY-023 is done after persistent session-boundary command availability, real arrangement/queue proofs, and independent conformance review passed.
 - STORY-024 is done after the phase-planning migration, independent conformance review, and native/bridge-mock Phase-00 runtime evidence passed.

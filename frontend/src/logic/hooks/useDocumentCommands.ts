@@ -12,27 +12,38 @@ export interface DocumentCommandAPI {
   replaceAll: (text: string) => void;
 }
 
+export type EditorHandleSource =
+  RefObject<CodeEditorHandle | null> | (() => CodeEditorHandle | null);
+
+function resolveEditor(
+  editorSource: EditorHandleSource,
+): CodeEditorHandle | null {
+  return typeof editorSource === 'function'
+    ? editorSource()
+    : editorSource.current;
+}
+
 export function createDocumentCommands(
-  editorRef: RefObject<CodeEditorHandle | null>,
+  editorSource: EditorHandleSource,
 ): DocumentCommandAPI {
   return {
     getSelection(): EditorSelection | null {
-      return editorRef.current?.getSelection() ?? null;
+      return resolveEditor(editorSource)?.getSelection() ?? null;
     },
     replaceRange(range: EditorRange, text: string): void {
-      editorRef.current?.replaceRange(range, text);
+      resolveEditor(editorSource)?.replaceRange(range, text);
     },
     replaceAll(text: string): void {
-      editorRef.current?.replaceAll(text);
+      resolveEditor(editorSource)?.replaceAll(text);
     },
   };
 }
 
 export function useDocumentCommands(
-  editorRef: RefObject<CodeEditorHandle | null>,
+  editorSource: EditorHandleSource,
 ): DocumentCommandAPI {
   return useMemo(
-    (): DocumentCommandAPI => createDocumentCommands(editorRef),
-    [editorRef],
+    (): DocumentCommandAPI => createDocumentCommands(editorSource),
+    [editorSource],
   );
 }

@@ -536,12 +536,7 @@ func TestRepositoryPhaseMigrationIsCompleteAndTruthful(t *testing.T) {
 		output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", repositoryRoot, "01")
 		expectedBlockers := []string{
 			"phase-complete-check: PH01-X01 is an unresolved specification conflict",
-			"phase-complete-check: PH01-R09 is owned only by incomplete stories: STORY-023 (ready)",
-			"phase-complete-check: PH01-R10 is owned only by incomplete stories: STORY-023 (ready)",
 			"phase-complete-check: PH01-R15 has no story acceptance-criterion coverage",
-			"phase-complete-check: PH01-T06 transition lacks done-story AC/test evidence for PH01-R09, PH01-R10",
-			"phase-complete-check: PH01-C03 contract lacks done-story AC/test evidence for PH01-R09, PH01-R10",
-			"phase-complete-check: PH01-E04 exit evidence lacks done-story AC/test coverage for PH01-R09, PH01-R10",
 			"phase-complete-check: PH01-E06 real-runtime evidence requires an approval owner and existing artifact",
 			"phase-complete-check: PH01-E07 human evidence requires an approval owner and existing artifact",
 			"phase-complete-check: PH01-E08 real-runtime evidence requires an approval owner and existing artifact",

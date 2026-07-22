@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { useContext } from 'react';
 import { Provider } from 'react-redux';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IRange, ISelection } from 'monaco-editor';
@@ -48,6 +49,7 @@ jest.mock('../../logic/adapter', () => ({
 }));
 
 interface MockMonacoRuntime {
+  content: string;
   cursorPositionListener:
     ((event: editor.ICursorPositionChangedEvent) => void) | undefined;
   editor: editor.IStandaloneCodeEditor;
@@ -63,6 +65,7 @@ interface MockMonacoRuntime {
 const mockRuntime = {} as MockMonacoRuntime;
 
 function resetMockMonaco(): void {
+  mockRuntime.content = '';
   mockRuntime.cursorPositionListener = undefined;
   mockRuntime.selection = {
     selectionStartLineNumber: 1,
@@ -109,9 +112,9 @@ jest.mock('@monaco-editor/react', () => {
 
   const MockMonacoEditor = (props: EditorProps): React.JSX.Element => {
     const editorInstance = React.useMemo(() => mockRuntime.editor, []);
-    mockRuntime.props = props;
 
     React.useEffect((): void => {
+      mockRuntime.props = props;
       props.onMount?.(
         editorInstance,
         {} as Parameters<NonNullable<EditorProps['onMount']>>[1],
@@ -158,7 +161,11 @@ import type {
 } from '../../logic/store/appModelTypes';
 import { appModelAdapter } from '../../logic/adapter';
 import { store } from '../../logic/store';
-import { EditorSessionContext } from './editorSession';
+import {
+  DocumentCommandContext,
+  EditorSessionContext,
+  EditorSessionProvider,
+} from './editorSession';
 import EditorView, { type EditorViewAdapter } from './EditorView';
 
 type VoidResult = { error?: WireError };
@@ -176,6 +183,37 @@ function deferred<T>(): Deferred<T> {
 
   return { promise, resolve: resolve as (value: T) => void };
 }
+
+const SessionCommandControls: React.FC = (): React.JSX.Element => {
+  const commands = useContext(DocumentCommandContext);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(): void => {
+          commands?.replaceRange(
+            {
+              start: { lineNumber: 1, column: 7 },
+              end: { lineNumber: 1, column: 11 },
+            },
+            'delta',
+          );
+        }}
+      >
+        Replace range through session
+      </button>
+      <button
+        type="button"
+        onClick={(): void => {
+          commands?.replaceAll('whole\nreplacement');
+        }}
+      >
+        Replace all through session
+      </button>
+    </>
+  );
+};
 
 beforeEach((): void => {
   jest.useFakeTimers();
@@ -267,6 +305,117 @@ function renderLivePreviewEditor(
     </Provider>,
   );
 }
+
+it('STORY-023-AC-4 preserves replacement undo and UpdateBuffer routing', async () => {
+  const document = statusDocument({
+    view: {
+      arrangement: 'editor',
+      editorVisible: true,
+      previewVisible: false,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 0 },
+    },
+  });
+  const updateBuffer = jest.fn<Promise<void>, [string, string]>(
+    async (): Promise<void> => undefined,
+  );
+  const adapter: EditorViewAdapter = {
+    flushBuffer: async (): Promise<void> => undefined,
+    flushDocView: async (): Promise<void> => undefined,
+    subscribeAcceptedBuffers: (): (() => void) => (): void => undefined,
+    updateBuffer,
+    updateDocView: async (): Promise<void> => undefined,
+  };
+  mockRuntime.content = 'alpha beta\ngamma';
+  mockRuntime.model.getFullModelRange.mockReturnValue({
+    startLineNumber: 1,
+    startColumn: 1,
+    endLineNumber: 2,
+    endColumn: 6,
+  });
+  (mockRuntime.editor.executeEdits as jest.Mock).mockImplementation(
+    (_source: string, edits: Array<{ range: IRange; text: string }>): void => {
+      const edit = edits[0];
+      const offsetFor = (lineNumber: number, column: number): number => {
+        const lines = mockRuntime.content.split('\n');
+        return (
+          lines
+            .slice(0, lineNumber - 1)
+            .reduce((offset, line): number => offset + line.length + 1, 0) +
+          column -
+          1
+        );
+      };
+      const start = offsetFor(
+        edit.range.startLineNumber,
+        edit.range.startColumn,
+      );
+      const end = offsetFor(edit.range.endLineNumber, edit.range.endColumn);
+      mockRuntime.content = `${mockRuntime.content.slice(0, start)}${edit.text}${mockRuntime.content.slice(end)}`;
+      mockRuntime.props?.onChange?.(
+        mockRuntime.content,
+        {} as Parameters<NonNullable<EditorProps['onChange']>>[1],
+      );
+    },
+  );
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: { [document.documentId]: document },
+      activeDocumentId: document.documentId,
+      ui: {},
+    }),
+  );
+
+  render(
+    <Provider store={store}>
+      <EditorSessionProvider
+        activeBuffer={{
+          documentId: document.documentId,
+          content: mockRuntime.content,
+        }}
+      >
+        <SessionCommandControls />
+        <EditorView adapter={adapter} />
+      </EditorSessionProvider>
+    </Provider>,
+  );
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Replace range through session' }),
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Replace all through session' }),
+  );
+
+  expect(mockRuntime.editor.executeEdits).toHaveBeenCalledTimes(2);
+  expect(mockRuntime.editor.executeEdits).toHaveBeenNthCalledWith(
+    1,
+    'gomarkedit',
+    [expect.objectContaining({ text: 'delta' })],
+  );
+  expect(mockRuntime.editor.executeEdits).toHaveBeenNthCalledWith(
+    2,
+    'gomarkedit',
+    [expect.objectContaining({ text: 'whole\nreplacement' })],
+  );
+  expect(mockRuntime.editor.pushUndoStop).toHaveBeenCalledTimes(4);
+  expect(updateBuffer).toHaveBeenNthCalledWith(
+    1,
+    'document-1',
+    'alpha delta\ngamma',
+  );
+  expect(updateBuffer).toHaveBeenNthCalledWith(
+    2,
+    'document-1',
+    'whole\nreplacement',
+  );
+});
 
 // Proves: STORY-016-AC-2
 it('STORY-016-AC-2 displays live one-based cursor position without Redux truth', async () => {

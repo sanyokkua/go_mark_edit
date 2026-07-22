@@ -8,13 +8,12 @@ import {
   useState,
 } from 'react';
 
-import CodeEditor, { type CodeEditorHandle } from '../components/CodeEditor';
+import CodeEditor from '../components/CodeEditor';
 import type { EditorPosition } from '../components/CodeEditor';
 import StatusBar from '../components/StatusBar';
 import ViewModeToggle from '../components/ViewModeToggle';
 import ViewMenu from '../primitives/ViewMenu';
 import { appModelAdapter } from '../../logic/adapter';
-import { useDocumentCommands } from '../../logic/hooks/useDocumentCommands';
 import {
   type LivePreviewAdapter,
   useLivePreview,
@@ -34,7 +33,10 @@ import type {
   DocumentView,
   ViewArrangement,
 } from '../../logic/store/appModelTypes';
-import { DocumentCommandContext, EditorSessionContext } from './editorSession';
+import {
+  EditorSessionContext,
+  useEditorSessionAttachment,
+} from './editorSession';
 import PreviewView from './PreviewView';
 import styles from './EditorView.module.css';
 
@@ -82,9 +84,8 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
     }: ActiveEditorProps,
     ref,
   ): React.JSX.Element {
-    const editorRef = useRef<CodeEditorHandle | null>(null);
     const viewStateCaptureRef = useRef<(() => void) | null>(null);
-    const documentCommands = useDocumentCommands(editorRef);
+    const attachEditor = useEditorSessionAttachment();
     const synchronizedBuffer = useSyncedBuffer(
       activeBuffer.documentId,
       view,
@@ -106,21 +107,19 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
     );
 
     return (
-      <DocumentCommandContext.Provider value={documentCommands}>
-        <CodeEditor
-          ref={editorRef}
-          documentId={activeBuffer.documentId}
-          initialValue={activeBuffer.content}
-          visible={visible}
-          onViewStateCaptureReady={(capture: (() => void) | null): void => {
-            viewStateCaptureRef.current = capture;
-          }}
-          onBlur={synchronizedBuffer.onBlur}
-          onChange={synchronizedBuffer.onChange}
-          onCursorPositionChange={synchronizedBuffer.onCursorPositionChange}
-          onSelectionChange={synchronizedBuffer.onSelectionChange}
-        />
-      </DocumentCommandContext.Provider>
+      <CodeEditor
+        ref={attachEditor}
+        documentId={activeBuffer.documentId}
+        initialValue={activeBuffer.content}
+        visible={visible}
+        onViewStateCaptureReady={(capture: (() => void) | null): void => {
+          viewStateCaptureRef.current = capture;
+        }}
+        onBlur={synchronizedBuffer.onBlur}
+        onChange={synchronizedBuffer.onChange}
+        onCursorPositionChange={synchronizedBuffer.onCursorPositionChange}
+        onSelectionChange={synchronizedBuffer.onSelectionChange}
+      />
     );
   },
 );
