@@ -62,6 +62,10 @@ order, lifecycle, sizing, and the trace-check failure catalog live in the refere
 6. **Regenerate + gate.** `just trace` rewrites `docs/traceability.yaml` (never hand-edit it); `just
    trace-check` must exit 0 with zero orphans and a fresh record. Only then set `status: done`. The
    full check → meaning table is in `references/trace-check-reference.md`.
+7. **Promote unblocked direct dependents.** After the completed story is `done`, scan every story that
+   lists it in `depends_on`. Change `draft` to `ready` only when every dependency is `done` and the
+   dependent independently satisfies all ready-state validation gates; leave partially blocked stories
+   `draft`. Keep `docs/stories/README.md` synchronized, then regenerate and validate traceability again.
 
 ## Reference Index
 

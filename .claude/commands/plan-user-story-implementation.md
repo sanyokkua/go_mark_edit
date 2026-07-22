@@ -115,6 +115,11 @@ Produce a concrete, ordered plan a `coder` can execute in one session:
   owner, and approval identity. Unavailable blocking evidence prevents completion; it is not waived.
 - The **`docs/traceability.yaml`** delta (`just trace` will regenerate it) and confirmation `just trace-check`
   will pass with **zero orphans** — no AC without a proving test, no cited clause/module unresolved.
+- **Completion readiness pass:** after the tester, trace gates, and independent conformance review permit the
+  implemented story to become `done`, scan every `docs/stories/story-*.md` that directly lists it in
+  `depends_on`. Promote a dependent from `draft` to `ready` only when **all** of its dependencies are
+  `done`, its front matter validates, its clause/module/phase mappings resolve, and it is S/M. Leave every
+  other dependent `draft`; update the stories board, regenerate traceability, and re-run `just trace-check`.
 - The exact **Definition-of-Done checklist** for this story (`gofmt`/`vet`/`golangci-lint`/`go test -race`;
   `prettier`/`eslint`/`tsc`/`jest`; bindings drift; module-inventory update if modules changed; UI visual
   reference `mockups/gomarkedit-mockup.html#<theme>-<mode>/<screen>` for UI stories).
@@ -131,7 +136,8 @@ Output a single structured plan:
 6. **Risks / open questions / spec gaps** — explicit stop-and-ask items; any ADR needed.
 7. **Execution handoff** — who does what (`coder` implements; `tester` writes the AC tests + runs
    `just trace`/`trace-check`; `debugger` if failures; an independent `spec-conformance-reviewer`
-   re-derives the phase requirements and final postconditions before `done`).
+   re-derives the phase requirements and final postconditions before `done`; after completion, perform the
+   dependent-story readiness pass described above).
 
 **Guardrails before you present:** every phase requirement resolves; every AC has a matching `Satisfies:`
 mapping and a proving test that reaches the final postcondition; every edge case is covered exactly; every

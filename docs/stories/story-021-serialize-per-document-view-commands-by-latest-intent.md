@@ -1,7 +1,7 @@
 ---
 id: STORY-021
 title: Serialize per-document view commands by latest intent
-status: ready
+status: done
 spec_clauses:
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state

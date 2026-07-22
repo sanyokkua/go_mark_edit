@@ -9,6 +9,7 @@ import type { WireError } from '../utils/parseError';
 import {
   BUFFER_SYNC_MS,
   createAppModelAdapter,
+  type AppModelAdapter,
   type AppModelBindings,
   type AppModelRuntime,
 } from './appModelAdapter';
@@ -24,6 +25,32 @@ const state: AppModelState = {
   },
   activeBuffer: { documentId: '', content: '' },
 };
+
+function viewAt(line: number, previewVisible = false): DocViewInput {
+  return {
+    editorVisible: !previewVisible,
+    previewVisible,
+    cursor: { line, column: 1 },
+    selection: {
+      start: { line, column: 1 },
+      end: { line, column: 1 },
+    },
+    scroll: { editor: line, preview: 0 },
+  };
+}
+
+interface Deferred<T> {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+}
+
+function deferred<T>(): Deferred<T> {
+  let resolve: (value: T) => void = (): void => undefined;
+  const promise = new Promise<T>((resolvePromise): void => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 afterEach((): void => {
   jest.useRealTimers();
@@ -103,6 +130,270 @@ it('STORY-018-AC-4 keeps a newer view command from being overwritten by stale cu
 
   expect(setDocView).toHaveBeenCalledTimes(1);
   expect(setDocView).toHaveBeenCalledWith('document-1', previewView);
+});
+
+it('STORY-021-AC-1 serializes every document view intent while documents remain independent', async () => {
+  jest.useFakeTimers();
+  const firstDocumentCursor = deferred<VoidResult>();
+  const secondDocumentCursor = deferred<VoidResult>();
+  const arrangement = deferred<VoidResult>();
+  const calls: Array<{ documentId: string; view: DocViewInput }> = [];
+  let firstDocumentActive = 0;
+  let maximumFirstDocumentActive = 0;
+  const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
+    (documentId: string, view: DocViewInput): Promise<VoidResult> => {
+      calls.push({ documentId, view });
+      if (documentId === 'document-1') {
+        firstDocumentActive += 1;
+        maximumFirstDocumentActive = Math.max(
+          maximumFirstDocumentActive,
+          firstDocumentActive,
+        );
+        const request = calls.filter(
+          (call): boolean => call.documentId === 'document-1',
+        ).length;
+        const response = request === 1 ? firstDocumentCursor : arrangement;
+        return response.promise.finally((): void => {
+          firstDocumentActive -= 1;
+        });
+      }
+      return secondDocumentCursor.promise;
+    },
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (): Promise<VoidResult> => ({}),
+      setDocView,
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const cursorView = viewAt(3);
+  const arrangementView = viewAt(3, true);
+
+  await adapter.updateDocView('document-1', cursorView);
+  await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+  const arrangementCommand = adapter.setDocView('document-1', arrangementView);
+  await adapter.updateDocView('document-2', viewAt(8));
+  await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+  const flush = adapter.flushDocView('document-1');
+
+  expect(calls).toEqual([
+    { documentId: 'document-1', view: cursorView },
+    { documentId: 'document-2', view: viewAt(8) },
+  ]);
+  expect(maximumFirstDocumentActive).toBe(1);
+
+  secondDocumentCursor.resolve({});
+  firstDocumentCursor.resolve({});
+  await jest.advanceTimersByTimeAsync(0);
+  expect(calls).toEqual([
+    { documentId: 'document-1', view: cursorView },
+    { documentId: 'document-2', view: viewAt(8) },
+    { documentId: 'document-1', view: arrangementView },
+  ]);
+  arrangement.resolve({});
+  await arrangementCommand;
+  await flush;
+
+  expect(maximumFirstDocumentActive).toBe(1);
+});
+
+it('STORY-021-AC-2 serializes both attempted resolver orders around newer explicit intent', async () => {
+  jest.useFakeTimers();
+
+  for (const resolveNewerFirst of [true, false]) {
+    const older = deferred<VoidResult>();
+    const newer = deferred<VoidResult>();
+    const calls: DocViewInput[] = [];
+    const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
+      (_documentId, view): Promise<VoidResult> => {
+        calls.push(view);
+        return calls.length === 1 ? older.promise : newer.promise;
+      },
+    );
+    const adapter = createAppModelAdapter(
+      {
+        getState: async (): Promise<{ data: AppModelState }> => ({
+          data: state,
+        }),
+        updateBuffer: async (): Promise<VoidResult> => ({}),
+        setDocView,
+        setUILayout: async (): Promise<VoidResult> => ({}),
+      },
+      { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const olderView = viewAt(1);
+    const newerView = viewAt(2, true);
+
+    await adapter.updateDocView('document-1', olderView);
+    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+    const newerCommand = adapter.setDocView('document-1', newerView);
+
+    if (resolveNewerFirst) {
+      newer.resolve({});
+      expect(calls).toEqual([olderView]);
+      older.resolve({});
+    } else {
+      older.resolve({});
+      await jest.advanceTimersByTimeAsync(0);
+      expect(calls).toEqual([olderView, newerView]);
+      newer.resolve({});
+    }
+
+    await newerCommand;
+    expect(calls).toEqual([olderView, newerView]);
+  }
+});
+
+it('STORY-021-AC-3 replaces unsent view intent with the latest immutable snapshot', async () => {
+  jest.useFakeTimers();
+  const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
+    async (documentId: string, view: DocViewInput): Promise<VoidResult> => {
+      void documentId;
+      void view;
+      return {};
+    },
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (): Promise<VoidResult> => ({}),
+      setDocView,
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const latest = viewAt(3, true);
+
+  await adapter.updateDocView('document-1', viewAt(1));
+  await adapter.updateDocView('document-1', viewAt(2));
+  await adapter.updateDocView('document-1', latest);
+  latest.cursor.line = 99;
+  await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+
+  expect(setDocView).toHaveBeenCalledTimes(1);
+  expect(setDocView).toHaveBeenCalledWith('document-1', viewAt(3, true));
+});
+
+it('STORY-021-AC-4 flushes the latest document view intent after an in-flight request', async () => {
+  jest.useFakeTimers();
+  const older = deferred<VoidResult>();
+  const newest = deferred<VoidResult>();
+  const calls: DocViewInput[] = [];
+  const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
+    (_documentId, view): Promise<VoidResult> => {
+      calls.push(view);
+      return calls.length === 1 ? older.promise : newest.promise;
+    },
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (): Promise<VoidResult> => ({}),
+      setDocView,
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const olderView = viewAt(1);
+  const newestView = viewAt(2, true);
+
+  await adapter.updateDocView('document-1', olderView);
+  await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+  await adapter.updateDocView('document-1', newestView);
+  const flush = adapter.flushDocView('document-1');
+  let flushed = false;
+  void flush.then((): void => {
+    flushed = true;
+  });
+
+  await Promise.resolve();
+  expect(flushed).toBe(false);
+  expect(calls).toEqual([olderView]);
+  older.resolve({});
+  await jest.advanceTimersByTimeAsync(0);
+  expect(calls).toEqual([olderView, newestView]);
+  expect(flushed).toBe(false);
+  newest.resolve({});
+  await expect(flush).resolves.toBeUndefined();
+  expect(calls).toEqual([olderView, newestView]);
+});
+
+it('STORY-021-AC-5 retains newest unsent intent after failure and reports the existing toast', async () => {
+  jest.useFakeTimers();
+  const wireError = {
+    code: 'internal',
+    title: 'View unavailable',
+    message: 'The older view request failed.',
+    retryable: true,
+  } satisfies WireError;
+  const older = deferred<VoidResult>();
+  const newest = deferred<VoidResult>();
+  const calls: DocViewInput[] = [];
+  const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
+    (_documentId, view): Promise<VoidResult> => {
+      calls.push(view);
+      return calls.length === 1 ? older.promise : newest.promise;
+    },
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (): Promise<VoidResult> => ({}),
+      setDocView,
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const olderView = viewAt(1);
+  const newestView = viewAt(2, true);
+
+  await adapter.updateDocView('document-1', olderView);
+  await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+  const newerCommand = adapter.setDocView('document-1', newestView);
+  older.resolve({ error: wireError });
+
+  await expect(newerCommand).rejects.toBe(wireError);
+  expect(store.getState().notifications.items).toEqual(
+    expect.arrayContaining([expect.objectContaining({ error: wireError })]),
+  );
+  const retry = adapter.flushDocView('document-1');
+  expect(calls).toEqual([olderView, newestView]);
+  newest.resolve({});
+  await expect(retry).resolves.toBeUndefined();
+  expect(calls).toEqual([olderView, newestView]);
+});
+
+it('STORY-021-AC-6 preserves adapter signatures and command-to-patch ownership', async () => {
+  const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
+    async (documentId: string, view: DocViewInput): Promise<VoidResult> => {
+      void documentId;
+      void view;
+      return {};
+    },
+  );
+  const adapter: AppModelAdapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (): Promise<VoidResult> => ({}),
+      setDocView,
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const beforeCommands = store.getState();
+
+  await adapter.updateDocView('document-1', viewAt(1));
+  await adapter.setDocView('document-1', viewAt(2, true));
+  await adapter.flushDocView('document-1');
+
+  expect(adapter.setDocView).toEqual(expect.any(Function));
+  expect(adapter.updateDocView).toEqual(expect.any(Function));
+  expect(adapter.flushDocView).toEqual(expect.any(Function));
+  expect(setDocView).toHaveBeenCalledWith('document-1', viewAt(2, true));
+  expect(store.getState()).toBe(beforeCommands);
 });
 
 it('STORY-012-AC-4 wraps app-model commands without optimistic state', async () => {

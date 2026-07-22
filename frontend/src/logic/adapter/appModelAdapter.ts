@@ -70,8 +70,14 @@ interface BufferRecord {
 
 interface ViewRecord {
   inFlight?: Promise<void>;
-  pending?: DocViewInput;
+  nextIntent: number;
+  pending?: ViewSnapshot;
   timer?: ReturnType<typeof setTimeout>;
+}
+
+interface ViewSnapshot {
+  intent: number;
+  view: DocViewInput;
 }
 
 function isAppStatePatch(payload: unknown): payload is AppStatePatch {
@@ -125,9 +131,30 @@ export function createAppModelAdapter(
       return existing;
     }
 
-    const record: ViewRecord = {};
+    const record: ViewRecord = { nextIntent: 0 };
     viewRecords.set(documentId, record);
     return record;
+  }
+
+  function snapshotDocView(view: DocViewInput): DocViewInput {
+    return {
+      editorVisible: view.editorVisible,
+      previewVisible: view.previewVisible,
+      cursor: { ...view.cursor },
+      selection: {
+        start: { ...view.selection.start },
+        end: { ...view.selection.end },
+      },
+      scroll: { ...view.scroll },
+    };
+  }
+
+  function queueDocView(record: ViewRecord, view: DocViewInput): void {
+    record.nextIntent += 1;
+    record.pending = {
+      intent: record.nextIntent,
+      view: snapshotDocView(view),
+    };
   }
 
   function sendPendingBuffer(documentId: string): Promise<void> {
@@ -195,25 +222,30 @@ export function createAppModelAdapter(
       return record.inFlight.then(() => sendPendingView(documentId));
     }
 
-    const view = record.pending;
-    if (view === undefined) {
+    const snapshot = record.pending;
+    if (snapshot === undefined) {
       return Promise.resolve();
     }
     record.pending = undefined;
 
-    const inFlight = unwrapPromise<void>(setDocView(documentId, view));
+    const inFlight = unwrapPromise<void>(
+      setDocView(documentId, snapshot.view),
+    ).catch((error: unknown): never => {
+      if (
+        record.pending === undefined ||
+        record.pending.intent < snapshot.intent
+      ) {
+        record.pending = snapshot;
+      }
+      throw error;
+    });
     const completed = inFlight.finally((): void => {
       if (record.inFlight === completed) {
         record.inFlight = undefined;
       }
     });
     record.inFlight = completed;
-    return completed.catch((error: unknown): never => {
-      if (record.pending === undefined) {
-        record.pending = view;
-      }
-      throw error;
-    });
+    return completed.then(() => sendPendingView(documentId));
   }
 
   function scheduleDocView(documentId: string): void {
@@ -267,12 +299,12 @@ export function createAppModelAdapter(
         clearTimeout(record.timer);
         record.timer = undefined;
       }
-      record.pending = undefined;
-      return unwrapPromise(setDocView(documentId, view));
+      queueDocView(record, view);
+      return sendPendingView(documentId);
     },
     async updateDocView(documentId: string, view: DocViewInput): Promise<void> {
       const record = viewRecord(documentId);
-      record.pending = view;
+      queueDocView(record, view);
       scheduleDocView(documentId);
     },
     async flushDocView(documentId: string): Promise<void> {

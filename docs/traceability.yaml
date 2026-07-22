@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-21T21:36:45.708Z",
+  "generated_at": "2026-07-22T13:04:52.861Z",
   "generator_version": 2,
   "stories": {
     "STORY-001": {
@@ -566,12 +566,12 @@
         },
         "STORY-012-AC-4": {
           "tests": [
-            "frontend/src/logic/adapter/appModelAdapter.test.ts:108"
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:399"
           ]
         },
         "STORY-012-AC-5": {
           "tests": [
-            "frontend/src/logic/adapter/appModelAdapter.test.ts:208"
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:499"
           ]
         },
         "STORY-012-AC-6": {
@@ -932,7 +932,7 @@
         "STORY-018-AC-4": {
           "tests": [
             "frontend/e2e/core-editor.test.ts:335",
-            "frontend/src/logic/adapter/appModelAdapter.test.ts:66"
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:93"
           ]
         }
       }
@@ -968,7 +968,7 @@
       "acceptance_criteria": {
         "STORY-019-AC-1": {
           "tests": [
-            "frontend/src/logic/adapter/appModelAdapter.test.ts:35",
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:62",
             "frontend/src/logic/adapter/useSyncedBuffer.test.ts:48"
           ]
         },
@@ -1052,7 +1052,7 @@
     },
     "STORY-021": {
       "title": "Serialize per-document view commands by latest intent",
-      "status": "ready",
+      "status": "done",
       "phase": "01",
       "phase_requirements": [
         "PH01-R07"
@@ -1072,28 +1072,40 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-021-AC-1": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:135"
+          ]
         },
         "STORY-021-AC-2": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:203"
+          ]
         },
         "STORY-021-AC-3": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:250"
+          ]
         },
         "STORY-021-AC-4": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:280"
+          ]
         },
         "STORY-021-AC-5": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:324"
+          ]
         },
         "STORY-021-AC-6": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:369"
+          ]
         }
       }
     },
     "STORY-022": {
       "title": "Preserve the active Monaco session across view arrangements",
-      "status": "draft",
+      "status": "ready",
       "phase": "01",
       "phase_requirements": [
         "PH01-R04",
@@ -1619,8 +1631,8 @@
         "frontend/src/App.test.tsx:158",
         "frontend/src/App.test.tsx:183",
         "frontend/src/dev/bridge-mock/appModel.test.ts:9",
-        "frontend/src/logic/adapter/appModelAdapter.test.ts:108",
-        "frontend/src/logic/adapter/appModelAdapter.test.ts:208",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:399",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:499",
         "frontend/src/logic/store/appModelProjection.test.ts:113",
         "frontend/src/logic/store/appModelProjection.test.ts:137",
         "frontend/src/logic/store/appModelProjection.test.ts:83",
@@ -1664,7 +1676,7 @@
       },
       "tests": [
         "frontend/e2e/core-editor.test.ts:153",
-        "frontend/src/logic/adapter/appModelAdapter.test.ts:35",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:62",
         "frontend/src/logic/adapter/useSyncedBuffer.test.ts:149",
         "frontend/src/logic/adapter/useSyncedBuffer.test.ts:191",
         "frontend/src/logic/adapter/useSyncedBuffer.test.ts:48",
@@ -1774,7 +1786,14 @@
           ]
         }
       },
-      "tests": []
+      "tests": [
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:135",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:203",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:250",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:280",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:324",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:369"
+      ]
     },
     "PH01-R08": {
       "phase": "01",
@@ -1806,7 +1825,7 @@
         "frontend/e2e/core-editor.test.ts:254",
         "frontend/e2e/core-editor.test.ts:335",
         "frontend/src/dev/bridge-mock/bridge.test.ts:155",
-        "frontend/src/logic/adapter/appModelAdapter.test.ts:66",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:93",
         "frontend/src/ui/primitives/Segmented.test.tsx:26",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:560",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:652",

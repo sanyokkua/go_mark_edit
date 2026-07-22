@@ -34,7 +34,10 @@ Apply these substitutions while following the canonical workflow:
 
 Codex does not treat this as a slash command. Invoke this skill whenever the request matches its
 description. After approval, hand implementation of exactly one story to the `coder` custom agent, then
-the AC tests to `tester`, and finish with `spec-conformance-reviewer`.
+the AC tests to `tester`, and finish with `spec-conformance-reviewer`. Once the story is eligible for
+`done`, scan its direct `depends_on` consumers: promote only `draft` dependents whose complete dependency
+set is `done` and whose ready-state validation passes; update the stories board, run `just trace`, and
+require `just trace-check` before reporting the lifecycle result.
 
 ## Non-negotiable checks
 
