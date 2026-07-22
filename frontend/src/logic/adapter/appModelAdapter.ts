@@ -45,8 +45,13 @@ export interface AppModelAdapter {
   subscribeAcceptedBuffers: (
     listener: (buffer: AcceptedBuffer) => void,
   ) => () => void;
-  setDocView: (documentId: string, view: DocViewInput) => Promise<void>;
+  setDocView: (
+    documentId: string,
+    view: DocViewIntent,
+    fallbackView?: DocViewInput,
+  ) => Promise<void>;
   updateDocView: (documentId: string, view: DocViewInput) => Promise<void>;
+  updateLocalDocView: (documentId: string, view: DocViewInput) => Promise<void>;
   flushDocView: (documentId: string) => Promise<void>;
   setUILayout: (layout: UILayout) => Promise<void>;
   subscribeStatePatches: (
@@ -70,6 +75,7 @@ interface BufferRecord {
 
 interface ViewRecord {
   inFlight?: Promise<void>;
+  latestView?: DocViewInput;
   nextIntent: number;
   pending?: ViewSnapshot;
   timer?: ReturnType<typeof setTimeout>;
@@ -79,6 +85,13 @@ interface ViewSnapshot {
   intent: number;
   view: DocViewInput;
 }
+
+export interface DocViewArrangementIntent {
+  editorVisible: boolean;
+  previewVisible: boolean;
+}
+
+export type DocViewIntent = DocViewInput | DocViewArrangementIntent;
 
 function isAppStatePatch(payload: unknown): payload is AppStatePatch {
   return (
@@ -149,11 +162,39 @@ export function createAppModelAdapter(
     };
   }
 
-  function queueDocView(record: ViewRecord, view: DocViewInput): void {
+  function isFullDocView(view: DocViewIntent): view is DocViewInput {
+    return 'cursor' in view;
+  }
+
+  function queueDocView(
+    record: ViewRecord,
+    view: DocViewIntent,
+    fallbackView?: DocViewInput,
+    timedUpdate = false,
+  ): void {
+    const baseView = record.latestView ?? fallbackView;
+    if (baseView === undefined && !isFullDocView(view)) {
+      throw new Error('A view arrangement requires a document view snapshot.');
+    }
+    const latestView = isFullDocView(view)
+      ? timedUpdate && baseView !== undefined
+        ? {
+            ...snapshotDocView(view),
+            editorVisible: baseView.editorVisible,
+            previewVisible: baseView.previewVisible,
+          }
+        : snapshotDocView(view)
+      : {
+          ...snapshotDocView(baseView as DocViewInput),
+          editorVisible: view.editorVisible,
+          previewVisible: view.previewVisible,
+        };
+
+    record.latestView = latestView;
     record.nextIntent += 1;
     record.pending = {
       intent: record.nextIntent,
-      view: snapshotDocView(view),
+      view: latestView,
     };
   }
 
@@ -293,18 +334,30 @@ export function createAppModelAdapter(
         acceptedBufferListeners.delete(listener);
       };
     },
-    async setDocView(documentId: string, view: DocViewInput): Promise<void> {
+    async setDocView(
+      documentId: string,
+      view: DocViewIntent,
+      fallbackView?: DocViewInput,
+    ): Promise<void> {
       const record = viewRecord(documentId);
       if (record.timer !== undefined) {
         clearTimeout(record.timer);
         record.timer = undefined;
       }
-      queueDocView(record, view);
+      queueDocView(record, view, fallbackView);
       return sendPendingView(documentId);
     },
     async updateDocView(documentId: string, view: DocViewInput): Promise<void> {
       const record = viewRecord(documentId);
       queueDocView(record, view);
+      scheduleDocView(documentId);
+    },
+    async updateLocalDocView(
+      documentId: string,
+      view: DocViewInput,
+    ): Promise<void> {
+      const record = viewRecord(documentId);
+      queueDocView(record, view, undefined, true);
       scheduleDocView(documentId);
     },
     async flushDocView(documentId: string): Promise<void> {

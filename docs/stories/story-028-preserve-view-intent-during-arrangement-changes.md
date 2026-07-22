@@ -1,7 +1,7 @@
 ---
 id: STORY-028
 title: Preserve the latest editor view intent during arrangement changes
-status: ready
+status: done
 spec_clauses:
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
@@ -15,6 +15,7 @@ phase_requirements:
 modules:
   - logic/adapter/
   - logic/store/
+  - ui/components/
   - ui/widgets/
 acceptance_criteria:
   - STORY-028-AC-1

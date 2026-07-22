@@ -58,6 +58,9 @@ interface ActiveEditorProps {
   adapter: EditorSynchronizationAdapter;
   activeBuffer: ActiveBuffer;
   onLiveCursorChange: (cursor: EditorPosition) => void;
+  onPreviewScrollHandler: (
+    handler: ((scrollTop: number) => void) | null,
+  ) => void;
   visible: boolean;
   view: DocumentView;
 }
@@ -79,6 +82,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
       adapter,
       activeBuffer,
       onLiveCursorChange,
+      onPreviewScrollHandler,
       visible,
       view,
     }: ActiveEditorProps,
@@ -95,6 +99,14 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
     useEffect((): void => {
       onLiveCursorChange(synchronizedBuffer.liveCursor);
     }, [onLiveCursorChange, synchronizedBuffer.liveCursor]);
+
+    useEffect((): (() => void) => {
+      onPreviewScrollHandler(synchronizedBuffer.onPreviewScrollChange);
+
+      return (): void => {
+        onPreviewScrollHandler(null);
+      };
+    }, [onPreviewScrollHandler, synchronizedBuffer.onPreviewScrollChange]);
 
     useImperativeHandle(
       ref,
@@ -118,6 +130,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
         onBlur={synchronizedBuffer.onBlur}
         onChange={synchronizedBuffer.onChange}
         onCursorPositionChange={synchronizedBuffer.onCursorPositionChange}
+        onScrollChange={synchronizedBuffer.onEditorScrollChange}
         onSelectionChange={synchronizedBuffer.onSelectionChange}
       />
     );
@@ -127,12 +140,14 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
 interface LivePreviewProps {
   activeBuffer: ActiveBuffer;
   adapter: LivePreviewAdapter;
+  onScrollChange: (scrollTop: number) => void;
   visible: boolean;
 }
 
 const LivePreview: React.FC<LivePreviewProps> = ({
   activeBuffer,
   adapter,
+  onScrollChange,
   visible,
 }: LivePreviewProps): React.JSX.Element | null => {
   const source = useLivePreview(activeBuffer, adapter);
@@ -147,7 +162,12 @@ const LivePreview: React.FC<LivePreviewProps> = ({
         <span>● Preview · live</span>
         <span className={styles.paneMeta}>GFM</span>
       </header>
-      <div className={styles.previewContent}>
+      <div
+        className={styles.previewContent}
+        onScroll={(event): void => {
+          onScrollChange(event.currentTarget.scrollTop);
+        }}
+      >
         <PreviewView source={source} />
       </div>
     </section>
@@ -170,6 +190,9 @@ const EditorView: React.FC<EditorViewProps> = ({
   const dispatch = useAppDispatch();
   const activeBuffer = useContext(EditorSessionContext);
   const activeEditorRef = useRef<ActiveEditorHandle | null>(null);
+  const previewScrollHandlerRef = useRef<((scrollTop: number) => void) | null>(
+    null,
+  );
   const [liveCursor, setLiveCursor] = useState<EditorPosition>({
     lineNumber: 1,
     column: 1,
@@ -207,6 +230,12 @@ const EditorView: React.FC<EditorViewProps> = ({
   const onLiveCursorChange = useCallback((cursor: EditorPosition): void => {
     setLiveCursor(cursor);
   }, []);
+  const onPreviewScrollHandler = useCallback(
+    (handler: ((scrollTop: number) => void) | null): void => {
+      previewScrollHandlerRef.current = handler;
+    },
+    [],
+  );
 
   if (activeBuffer === null) {
     return null;
@@ -251,6 +280,7 @@ const EditorView: React.FC<EditorViewProps> = ({
             view={view}
             visible={view.editorVisible}
             onLiveCursorChange={onLiveCursorChange}
+            onPreviewScrollHandler={onPreviewScrollHandler}
           />
         </section>
         <LivePreview
@@ -258,6 +288,9 @@ const EditorView: React.FC<EditorViewProps> = ({
           activeBuffer={activeBuffer}
           adapter={adapter}
           visible={view.previewVisible}
+          onScrollChange={(scrollTop: number): void => {
+            previewScrollHandlerRef.current?.(scrollTop);
+          }}
         />
       </div>
       <StatusBar

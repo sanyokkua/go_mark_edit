@@ -53,6 +53,8 @@ export {
   createAppModelAdapter,
   type AppModelAdapter,
   type AppModelBindings,
+  type DocViewArrangementIntent,
+  type DocViewIntent,
   type AppModelRuntime,
 } from './appModelAdapter';
 export {

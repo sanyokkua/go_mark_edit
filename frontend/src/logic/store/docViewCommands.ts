@@ -26,6 +26,16 @@ function docViewInputForArrangement(
   };
 }
 
+function arrangementIntent(arrangement: ViewArrangement): {
+  editorVisible: boolean;
+  previewVisible: boolean;
+} {
+  return {
+    editorVisible: arrangement !== 'preview',
+    previewVisible: arrangement !== 'editor',
+  };
+}
+
 function docViewInputForPaneVisibility(
   view: DocumentView,
   editorVisible: boolean,
@@ -76,6 +86,7 @@ export const setViewArrangement = createAsyncThunk<
     }
     await appModelAdapter.setDocView(
       documentId,
+      arrangementIntent(arrangement),
       docViewInputForArrangement(document.view, arrangement),
     );
   } catch (error) {
@@ -105,6 +116,7 @@ export const setEditorPaneVisible = createAsyncThunk<
     }
     await appModelAdapter.setDocView(
       documentId,
+      { editorVisible, previewVisible: document.view.previewVisible },
       docViewInputForPaneVisibility(
         document.view,
         editorVisible,
@@ -135,6 +147,7 @@ export const setPreviewPaneVisible = createAsyncThunk<
   try {
     await appModelAdapter.setDocView(
       documentId,
+      { editorVisible: document.view.editorVisible, previewVisible },
       docViewInputForPaneVisibility(
         document.view,
         document.view.editorVisible,

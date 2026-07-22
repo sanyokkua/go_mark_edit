@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-22T20:31:59.183Z",
+  "generated_at": "2026-07-22T20:53:13.087Z",
   "generator_version": 2,
   "stories": {
     "STORY-001": {
@@ -551,27 +551,27 @@
       "acceptance_criteria": {
         "STORY-012-AC-1": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:87"
+            "frontend/src/logic/store/appModelProjection.test.ts:88"
           ]
         },
         "STORY-012-AC-2": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:117"
+            "frontend/src/logic/store/appModelProjection.test.ts:118"
           ]
         },
         "STORY-012-AC-3": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:141"
+            "frontend/src/logic/store/appModelProjection.test.ts:142"
           ]
         },
         "STORY-012-AC-4": {
           "tests": [
-            "frontend/src/logic/adapter/appModelAdapter.test.ts:399"
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:496"
           ]
         },
         "STORY-012-AC-5": {
           "tests": [
-            "frontend/src/logic/adapter/appModelAdapter.test.ts:499"
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:596"
           ]
         },
         "STORY-012-AC-6": {
@@ -738,7 +738,7 @@
         },
         "STORY-015-AC-2": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:1001"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:1237"
           ]
         },
         "STORY-015-AC-3": {
@@ -754,12 +754,12 @@
         "STORY-015-AC-5": {
           "tests": [
             "frontend/src/ui/primitives/Segmented.test.tsx:26",
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:1097"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:1337"
           ]
         },
         "STORY-015-AC-6": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.test.tsx:219"
+            "frontend/src/ui/widgets/EditorView.test.tsx:220"
           ]
         }
       }
@@ -804,22 +804,22 @@
         },
         "STORY-016-AC-2": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:421"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:431"
           ]
         },
         "STORY-016-AC-3": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:449"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:459"
           ]
         },
         "STORY-016-AC-4": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:476"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:486"
           ]
         },
         "STORY-016-AC-5": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:514"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:524"
           ]
         },
         "STORY-016-AC-6": {
@@ -871,12 +871,12 @@
         },
         "STORY-017-AC-4": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:528"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:538"
           ]
         },
         "STORY-017-AC-5": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:587"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:597"
           ]
         },
         "STORY-017-AC-6": {
@@ -979,7 +979,7 @@
         },
         "STORY-019-AC-3": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:648"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:658"
           ]
         },
         "STORY-019-AC-4": {
@@ -1133,23 +1133,23 @@
       "acceptance_criteria": {
         "STORY-022-AC-1": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:725"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:735"
           ]
         },
         "STORY-022-AC-2": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:811"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:1046"
           ]
         },
         "STORY-022-AC-3": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:863"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:1098"
           ]
         },
         "STORY-022-AC-4": {
           "tests": [
             "frontend/e2e/core-editor.test.ts:258",
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:648"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:658"
           ]
         },
         "STORY-022-AC-5": {
@@ -1200,7 +1200,7 @@
         },
         "STORY-023-AC-4": {
           "tests": [
-            "frontend/src/ui/widgets/EditorView.integration.test.tsx:309"
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:319"
           ]
         },
         "STORY-023-AC-5": {
@@ -1396,13 +1396,13 @@
         },
         "STORY-027-AC-2": {
           "tests": [
-            "frontend/src/logic/store/appModelProjection.test.ts:206"
+            "frontend/src/logic/store/appModelProjection.test.ts:207"
           ]
         },
         "STORY-027-AC-3": {
           "tests": [
             "frontend/src/App.test.tsx:354",
-            "frontend/src/logic/store/appModelProjection.test.ts:255"
+            "frontend/src/logic/store/appModelProjection.test.ts:256"
           ]
         },
         "STORY-027-AC-4": {
@@ -1414,7 +1414,7 @@
     },
     "STORY-028": {
       "title": "Preserve the latest editor view intent during arrangement changes",
-      "status": "ready",
+      "status": "done",
       "phase": "01",
       "phase_requirements": [
         "PH01-R04",
@@ -1431,6 +1431,7 @@
       "modules": [
         "logic/adapter/",
         "logic/store/",
+        "ui/components/",
         "ui/widgets/"
       ],
       "edge_cases": [
@@ -1438,22 +1439,34 @@
       ],
       "acceptance_criteria": {
         "STORY-028-AC-1": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:399"
+          ]
         },
         "STORY-028-AC-2": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:822"
+          ]
         },
         "STORY-028-AC-3": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/store/docViewCommands.test.ts:66"
+          ]
         },
         "STORY-028-AC-4": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:882"
+          ]
         },
         "STORY-028-AC-5": {
-          "tests": []
+          "tests": [
+            "frontend/src/logic/adapter/appModelAdapter.test.ts:439"
+          ]
         },
         "STORY-028-AC-6": {
-          "tests": []
+          "tests": [
+            "frontend/src/ui/widgets/EditorView.integration.test.tsx:961"
+          ]
         }
       }
     },
@@ -2049,14 +2062,14 @@
         "frontend/src/App.test.tsx:354",
         "frontend/src/App.test.tsx:403",
         "frontend/src/dev/bridge-mock/appModel.test.ts:9",
-        "frontend/src/logic/adapter/appModelAdapter.test.ts:399",
-        "frontend/src/logic/adapter/appModelAdapter.test.ts:499",
-        "frontend/src/logic/store/appModelProjection.test.ts:117",
-        "frontend/src/logic/store/appModelProjection.test.ts:141",
-        "frontend/src/logic/store/appModelProjection.test.ts:206",
-        "frontend/src/logic/store/appModelProjection.test.ts:255",
-        "frontend/src/logic/store/appModelProjection.test.ts:87",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:528"
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:496",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:596",
+        "frontend/src/logic/store/appModelProjection.test.ts:118",
+        "frontend/src/logic/store/appModelProjection.test.ts:142",
+        "frontend/src/logic/store/appModelProjection.test.ts:207",
+        "frontend/src/logic/store/appModelProjection.test.ts:256",
+        "frontend/src/logic/store/appModelProjection.test.ts:88",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:538"
       ]
     },
     "PH01-R03": {
@@ -2141,7 +2154,8 @@
         }
       },
       "tests": [
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:725"
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:735",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:822"
       ]
     },
     "PH01-R05": {
@@ -2183,10 +2197,10 @@
       "tests": [
         "frontend/src/App.test.tsx:234",
         "frontend/src/logic/adapter/useSyncedBuffer.test.ts:191",
-        "frontend/src/logic/store/appModelProjection.test.ts:141",
-        "frontend/src/logic/store/appModelProjection.test.ts:87",
+        "frontend/src/logic/store/appModelProjection.test.ts:142",
+        "frontend/src/logic/store/appModelProjection.test.ts:88",
         "frontend/src/ui/components/CodeEditor.test.tsx:218",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:648",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:658",
         "internal/appmodel/runtime_emitter_test.go:12",
         "internal/appmodel/service_test.go:353",
         "internal/appmodel/service_test.go:403",
@@ -2226,9 +2240,12 @@
       "tests": [
         "frontend/e2e/core-editor.test.ts:207",
         "frontend/e2e/core-editor.test.ts:258",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:648",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:811",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:863"
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:1046",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:1098",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:658",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:822",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:882",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:961"
       ]
     },
     "PH01-R07": {
@@ -2270,7 +2287,12 @@
         "frontend/src/logic/adapter/appModelAdapter.test.ts:250",
         "frontend/src/logic/adapter/appModelAdapter.test.ts:280",
         "frontend/src/logic/adapter/appModelAdapter.test.ts:324",
-        "frontend/src/logic/adapter/appModelAdapter.test.ts:369"
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:369",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:399",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:439",
+        "frontend/src/logic/store/docViewCommands.test.ts:66",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:882",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:961"
       ]
     },
     "PH01-R08": {
@@ -2317,14 +2339,17 @@
         "frontend/e2e/core-editor.test.ts:495",
         "frontend/e2e/core-editor.test.ts:576",
         "frontend/src/dev/bridge-mock/bridge.test.ts:155",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:399",
+        "frontend/src/logic/adapter/appModelAdapter.test.ts:439",
         "frontend/src/logic/adapter/appModelAdapter.test.ts:93",
+        "frontend/src/logic/store/docViewCommands.test.ts:66",
         "frontend/src/ui/primitives/Segmented.test.tsx:26",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:1001",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:1097",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:1237",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:1337",
         "frontend/src/ui/widgets/EditorView.test.tsx:124",
         "frontend/src/ui/widgets/EditorView.test.tsx:159",
         "frontend/src/ui/widgets/EditorView.test.tsx:191",
-        "frontend/src/ui/widgets/EditorView.test.tsx:219"
+        "frontend/src/ui/widgets/EditorView.test.tsx:220"
       ]
     },
     "PH01-R09": {
@@ -2368,7 +2393,7 @@
       "tests": [
         "frontend/src/logic/hooks/useDocumentCommands.test.ts:170",
         "frontend/src/logic/hooks/useDocumentCommands.test.ts:39",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:309",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:319",
         "frontend/src/ui/widgets/editorSession.integration.test.tsx:137",
         "frontend/src/ui/widgets/editorSession.integration.test.tsx:178"
       ]
@@ -2490,8 +2515,8 @@
         "frontend/src/logic/hooks/useLivePreview.test.ts:140",
         "frontend/src/logic/hooks/useLivePreview.test.ts:53",
         "frontend/src/logic/hooks/useLivePreview.test.ts:94",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:528",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:587"
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:538",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:597"
       ]
     },
     "PH01-R13": {
@@ -2534,10 +2559,10 @@
         "frontend/e2e/core-editor.test.ts:495",
         "frontend/src/logic/hooks/useSyncedBuffer.test.ts:19",
         "frontend/src/ui/components/StatusBar.test.tsx:6",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:421",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:449",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:476",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:514"
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:431",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:459",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:486",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:524"
       ]
     },
     "PH01-R14": {
@@ -4699,7 +4724,8 @@
       ],
       "tests": [
         "frontend/e2e/core-editor.test.ts:258",
-        "frontend/src/ui/widgets/EditorView.integration.test.tsx:648"
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:658",
+        "frontend/src/ui/widgets/EditorView.integration.test.tsx:882"
       ]
     }
   },
@@ -4845,6 +4871,7 @@
         "STORY-019",
         "STORY-022",
         "STORY-023",
+        "STORY-028",
         "STORY-030"
       ]
     },

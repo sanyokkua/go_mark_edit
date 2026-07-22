@@ -40,6 +40,7 @@ export interface CodeEditorProps {
   onBlur?: () => void;
   onCursorPositionChange?: (position: EditorPosition) => void;
   onSelectionChange?: (selection: EditorSelection | null) => void;
+  onScrollChange?: (scrollTop: number) => void;
   onEditorMounted?: (editor: editor.IStandaloneCodeEditor) => void;
   onViewStateCaptureReady?: (capture: (() => void) | null) => void;
 }
@@ -147,6 +148,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
       onBlur,
       onCursorPositionChange,
       onSelectionChange,
+      onScrollChange,
       onEditorMounted,
       onViewStateCaptureReady,
     }: CodeEditorProps,
@@ -157,6 +159,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     const onBlurRef = useRef(onBlur);
     const onCursorPositionChangeRef = useRef(onCursorPositionChange);
     const onSelectionChangeRef = useRef(onSelectionChange);
+    const onScrollChangeRef = useRef(onScrollChange);
     const onEditorMountedRef = useRef(onEditorMounted);
     const onViewStateCaptureReadyRef = useRef(onViewStateCaptureReady);
     const restoreViewStateFrameRef = useRef<number | undefined>(undefined);
@@ -167,6 +170,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     onBlurRef.current = onBlur;
     onCursorPositionChangeRef.current = onCursorPositionChange;
     onSelectionChangeRef.current = onSelectionChange;
+    onScrollChangeRef.current = onScrollChange;
     onEditorMountedRef.current = onEditorMounted;
     onViewStateCaptureReadyRef.current = onViewStateCaptureReady;
 
@@ -246,6 +250,11 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
       editorInstance.onDidChangeCursorSelection((event): void => {
         onSelectionChangeRef.current?.(toEditorSelection(event.selection));
       });
+      if (onScrollChangeRef.current !== undefined) {
+        editorInstance.onDidScrollChange((event): void => {
+          onScrollChangeRef.current?.(event.scrollTop);
+        });
+      }
       onEditorMountedRef.current?.(editorInstance);
     };
 

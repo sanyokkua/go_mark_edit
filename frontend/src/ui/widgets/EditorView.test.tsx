@@ -203,6 +203,7 @@ it('STORY-015-AC-4 prevents an empty document arrangement', async () => {
       expect(mockSetDocView).toHaveBeenLastCalledWith(
         'document-1',
         expect.objectContaining(visibility),
+        expect.anything(),
       );
     });
   }

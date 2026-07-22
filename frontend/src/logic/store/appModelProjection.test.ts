@@ -64,6 +64,7 @@ function createAdapter(
     >(),
     setDocView: jest.fn(),
     updateDocView: jest.fn(),
+    updateLocalDocView: jest.fn(),
     flushDocView: jest.fn<Promise<void>, [string]>(),
     setUILayout: jest.fn(),
     subscribeStatePatches(callback): () => void {

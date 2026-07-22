@@ -1,17 +1,26 @@
 import type { DocViewInput, DocumentMetadata } from './appModelTypes';
 
+const mockFlushBuffer = jest.fn<Promise<void>, [string]>(
+  async (): Promise<void> => undefined,
+);
+const mockFlushDocView = jest.fn<Promise<void>, [string]>(
+  async (): Promise<void> => undefined,
+);
 const mockSetDocView = jest.fn<Promise<void>, [string, DocViewInput]>(
   async (): Promise<void> => undefined,
 );
 
 jest.mock('../adapter', () => ({
   appModelAdapter: {
+    flushBuffer: mockFlushBuffer,
+    flushDocView: mockFlushDocView,
     setDocView: mockSetDocView,
   },
 }));
 
-import { setEditorPaneVisible } from './docViewCommands';
+import { setEditorPaneVisible, setViewArrangement } from './docViewCommands';
 import {
+  applyStatePatch,
   hydrateProjection,
   resetProjection,
 } from './appModelProjectionActions';
@@ -49,7 +58,65 @@ function documentFor(
 
 beforeEach((): void => {
   mockSetDocView.mockClear();
+  mockFlushBuffer.mockClear();
+  mockFlushDocView.mockClear();
   store.dispatch(resetProjection());
+});
+
+it('STORY-028-AC-3 keeps the confirmed arrangement and panes unchanged until an accepted backend patch arrives', async (): Promise<void> => {
+  let acknowledgeBuffer: (() => void) | undefined;
+  mockFlushBuffer.mockImplementationOnce(
+    (): Promise<void> =>
+      new Promise<void>((resolve): void => {
+        acknowledgeBuffer = resolve;
+      }),
+  );
+  const document = documentFor(true, true);
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: { [document.documentId]: document },
+      activeDocumentId: document.documentId,
+      ui: {},
+    }),
+  );
+
+  const command = store.dispatch(setViewArrangement('preview'));
+  expect(mockFlushBuffer).toHaveBeenCalledWith(document.documentId);
+  expect(store.getState().documents.byId[document.documentId].view).toEqual(
+    document.view,
+  );
+
+  acknowledgeBuffer?.();
+  await command;
+  expect(mockFlushDocView).toHaveBeenCalledWith(document.documentId);
+  expect(store.getState().documents.byId[document.documentId].view).toEqual(
+    document.view,
+  );
+
+  store.dispatch(
+    applyStatePatch({
+      revision: 2,
+      documents: {
+        upsert: {
+          [document.documentId]: {
+            ...document,
+            view: {
+              ...document.view,
+              arrangement: 'preview',
+              editorVisible: false,
+              previewVisible: true,
+            },
+          },
+        },
+      },
+    }),
+  );
+  expect(store.getState().documents.byId[document.documentId].view).toMatchObject({
+    arrangement: 'preview',
+    editorVisible: false,
+    previewVisible: true,
+  });
 });
 
 afterEach((): void => {

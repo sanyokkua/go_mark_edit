@@ -396,6 +396,103 @@ it('STORY-021-AC-6 preserves adapter signatures and command-to-patch ownership',
   expect(store.getState()).toBe(beforeCommands);
 });
 
+it('STORY-028-AC-1 merges a partial arrangement with the newest cursor, selection, and editor and preview scroll', async () => {
+  jest.useFakeTimers();
+  const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
+    async (_documentId: string, _view: DocViewInput): Promise<VoidResult> => ({}),
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (): Promise<VoidResult> => ({}),
+      setDocView,
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const newest = {
+    editorVisible: true,
+    previewVisible: false,
+    cursor: { line: 19, column: 7 },
+    selection: {
+      start: { line: 18, column: 2 },
+      end: { line: 19, column: 7 },
+    },
+    scroll: { editor: 480, preview: 960 },
+  } satisfies DocViewInput;
+
+  await adapter.updateLocalDocView('document-1', newest);
+  await adapter.setDocView(
+    'document-1',
+    { editorVisible: false, previewVisible: true },
+    viewAt(1),
+  );
+
+  expect(setDocView).toHaveBeenCalledTimes(1);
+  expect(setDocView).toHaveBeenCalledWith('document-1', {
+    ...newest,
+    editorVisible: false,
+    previewVisible: true,
+  });
+});
+
+it('STORY-028-AC-5 retries the newest failed arrangement intent with current fields while stale completion cannot replace it', async () => {
+  jest.useFakeTimers();
+  const failed = {
+    code: 'internal',
+    title: 'View unavailable',
+    message: 'The newest arrangement failed.',
+    retryable: true,
+  } satisfies WireError;
+  const stale = deferred<VoidResult>();
+  const calls: DocViewInput[] = [];
+  const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
+    (_documentId, view): Promise<VoidResult> => {
+      calls.push(view);
+      if (calls.length === 1) {
+        return Promise.resolve({ error: failed });
+      }
+      return stale.promise;
+    },
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (): Promise<VoidResult> => ({}),
+      setDocView,
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const failedIntent = viewAt(3, true);
+  const current = {
+    ...viewAt(27),
+    selection: {
+      start: { line: 25, column: 3 },
+      end: { line: 27, column: 8 },
+    },
+    scroll: { editor: 720, preview: 1440 },
+  } satisfies DocViewInput;
+
+  await expect(adapter.setDocView('document-1', failedIntent)).rejects.toBe(
+    failed,
+  );
+  await adapter.updateLocalDocView('document-1', current);
+  const retry = adapter.setDocView(
+    'document-1',
+    { editorVisible: false, previewVisible: true },
+    failedIntent,
+  );
+
+  expect(calls).toEqual([
+    failedIntent,
+    { ...current, editorVisible: false, previewVisible: true },
+  ]);
+  stale.resolve({});
+  await expect(retry).resolves.toBeUndefined();
+  expect(calls).toHaveLength(2);
+});
+
 it('STORY-012-AC-4 wraps app-model commands without optimistic state', async () => {
   const calls: string[] = [];
   const bindings: AppModelBindings = {

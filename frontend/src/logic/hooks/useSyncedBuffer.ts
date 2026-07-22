@@ -16,6 +16,7 @@ export interface EditorSynchronizationAdapter {
   flushDocView: (documentId: string) => Promise<void>;
   updateBuffer: (documentId: string, content: string) => Promise<void>;
   updateDocView: (documentId: string, view: DocViewInput) => Promise<void>;
+  updateLocalDocView?: (documentId: string, view: DocViewInput) => Promise<void>;
 }
 
 export interface SyncedBufferCallbacks {
@@ -23,6 +24,8 @@ export interface SyncedBufferCallbacks {
   onBlur: () => void;
   onChange: (content: string) => void;
   onCursorPositionChange: (position: EditorPosition) => void;
+  onEditorScrollChange: (scrollTop: number) => void;
+  onPreviewScrollChange: (scrollTop: number) => void;
   onSelectionChange: (selection: EditorSelection | null) => void;
 }
 
@@ -47,13 +50,14 @@ function toDocViewInput(
   view: DocumentView,
   cursor: EditorPosition,
   selection: SelectionRange,
+  scroll: DocumentView['scroll'],
 ): DocViewInput {
   return {
     editorVisible: view.editorVisible,
     previewVisible: view.previewVisible,
     cursor: { line: cursor.lineNumber, column: cursor.column },
     selection,
-    scroll: { ...view.scroll },
+    scroll: { ...scroll },
   };
 }
 
@@ -68,6 +72,7 @@ export function useSyncedBuffer(
   );
   const currentDocumentRef = useRef(documentId);
   const selectionRef = useRef(view.selection);
+  const scrollRef = useRef(view.scroll);
   const [liveCursor, setLiveCursor] = useState<EditorPosition>(() =>
     toEditorPosition(view.cursor.line, view.cursor.column),
   );
@@ -79,14 +84,21 @@ export function useSyncedBuffer(
       currentDocumentRef.current = documentId;
       cursorRef.current = cursor;
       selectionRef.current = view.selection;
+      scrollRef.current = view.scroll;
       setLiveCursor(cursor);
     }
   }, [documentId, view]);
 
   const updateDocView = useCallback((): void => {
-    void adapter.updateDocView(
+    const update = adapter.updateLocalDocView ?? adapter.updateDocView;
+    void update(
       documentId,
-      toDocViewInput(viewRef.current, cursorRef.current, selectionRef.current),
+      toDocViewInput(
+        viewRef.current,
+        cursorRef.current,
+        selectionRef.current,
+        scrollRef.current,
+      ),
     );
   }, [adapter, documentId]);
 
@@ -117,6 +129,22 @@ export function useSyncedBuffer(
     [updateDocView],
   );
 
+  const onEditorScrollChange = useCallback(
+    (scrollTop: number): void => {
+      scrollRef.current = { ...scrollRef.current, editor: scrollTop };
+      updateDocView();
+    },
+    [updateDocView],
+  );
+
+  const onPreviewScrollChange = useCallback(
+    (scrollTop: number): void => {
+      scrollRef.current = { ...scrollRef.current, preview: scrollTop };
+      updateDocView();
+    },
+    [updateDocView],
+  );
+
   const onBlur = useCallback((): void => {
     void Promise.all([
       adapter.flushBuffer(documentId),
@@ -129,6 +157,8 @@ export function useSyncedBuffer(
     onBlur,
     onChange,
     onCursorPositionChange,
+    onEditorScrollChange,
+    onPreviewScrollChange,
     onSelectionChange,
   };
 }

@@ -45,6 +45,7 @@ jest.mock('../../logic/adapter', () => ({
     ),
     updateBuffer: jest.fn(async (): Promise<void> => undefined),
     updateDocView: jest.fn(async (): Promise<void> => undefined),
+    updateLocalDocView: jest.fn(async (): Promise<void> => undefined),
   },
 }));
 
@@ -52,6 +53,8 @@ interface MockMonacoRuntime {
   content: string;
   cursorPositionListener:
     ((event: editor.ICursorPositionChangedEvent) => void) | undefined;
+  cursorSelectionListener:
+    ((event: editor.ICursorSelectionChangedEvent) => void) | undefined;
   editor: editor.IStandaloneCodeEditor;
   model: {
     getFullModelRange: jest.Mock<IRange, []>;
@@ -67,6 +70,7 @@ const mockRuntime = {} as MockMonacoRuntime;
 function resetMockMonaco(): void {
   mockRuntime.content = '';
   mockRuntime.cursorPositionListener = undefined;
+  mockRuntime.cursorSelectionListener = undefined;
   mockRuntime.selection = {
     selectionStartLineNumber: 1,
     selectionStartColumn: 1,
@@ -99,7 +103,13 @@ function resetMockMonaco(): void {
         return { dispose: jest.fn() };
       },
     ),
-    onDidChangeCursorSelection: jest.fn(() => ({ dispose: jest.fn() })),
+    onDidChangeCursorSelection: jest.fn(
+      (listener: (event: editor.ICursorSelectionChangedEvent) => void) => {
+        mockRuntime.cursorSelectionListener = listener;
+        return { dispose: jest.fn() };
+      },
+    ),
+    onDidScrollChange: jest.fn(() => ({ dispose: jest.fn() })),
     pushUndoStop: jest.fn(),
     restoreViewState: jest.fn(),
     saveViewState: jest.fn(() => mockRuntime.viewState),
@@ -790,6 +800,7 @@ it('STORY-022-AC-1 flushes session state before hiding the editor and does not h
     expect(mockSetDocView).toHaveBeenCalledWith(
       'document-1',
       expect.objectContaining({ editorVisible: false, previewVisible: true }),
+      expect.anything(),
     );
   });
   expect(mockedAdapter.flushBuffer.mock.invocationCallOrder[0]).toBeLessThan(
@@ -806,6 +817,230 @@ it('STORY-022-AC-1 flushes session state before hiding the editor and does not h
     expect(mockedAdapter.flushBuffer).toHaveBeenCalledTimes(2);
   });
   expect(mockSetDocView).not.toHaveBeenCalled();
+});
+
+it('STORY-028-AC-2 acknowledges buffer and view before hiding the persistent session', async () => {
+  const document = statusDocument({
+    view: {
+      arrangement: 'editor',
+      editorVisible: true,
+      previewVisible: false,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 0 },
+    },
+  });
+  const bufferFlush = deferred<void>();
+  const viewFlush = deferred<void>();
+  const commandAck = deferred<void>();
+  const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
+  mockedAdapter.flushBuffer.mockImplementationOnce(
+    (): Promise<void> => bufferFlush.promise,
+  );
+  mockedAdapter.flushDocView.mockImplementationOnce(
+    (): Promise<void> => viewFlush.promise,
+  );
+  mockSetDocView.mockImplementationOnce(
+    (): Promise<void> => commandAck.promise,
+  );
+  await renderStatusEditor(document, '# Persistent session');
+  const source = await screen.findByRole('textbox', { name: 'Markdown source' });
+
+  fireEvent.click(screen.getByRole('radio', { name: 'Preview' }));
+  expect(mockedAdapter.flushBuffer).toHaveBeenCalledWith(document.documentId);
+  expect(mockedAdapter.flushDocView).not.toHaveBeenCalled();
+  expect(screen.getByRole('radio', { name: 'Editor' })).toBeChecked();
+
+  await act(async (): Promise<void> => {
+    bufferFlush.resolve();
+  });
+  expect(mockedAdapter.flushDocView).toHaveBeenCalledWith(document.documentId);
+  expect(mockSetDocView).not.toHaveBeenCalled();
+
+  await act(async (): Promise<void> => {
+    viewFlush.resolve();
+  });
+  await waitFor((): void => expect(mockSetDocView).toHaveBeenCalledTimes(1));
+  expect(screen.getByRole('radio', { name: 'Editor' })).toBeChecked();
+  expect(screen.getByLabelText('Markdown source')).toBe(source);
+
+  await act(async (): Promise<void> => {
+    commandAck.resolve();
+  });
+  expect(screen.getByRole('radio', { name: 'Editor' })).toBeChecked();
+  expect(mockedAdapter.flushBuffer.mock.invocationCallOrder[0]).toBeLessThan(
+    mockedAdapter.flushDocView.mock.invocationCallOrder[0],
+  );
+  expect(mockedAdapter.flushDocView.mock.invocationCallOrder[0]).toBeLessThan(
+    mockSetDocView.mock.invocationCallOrder[0],
+  );
+});
+
+it('STORY-028-AC-4 (EC-DOCS-12) preserves newer local view values and focused Monaco content and selection during patch and flush', async () => {
+  const document = statusDocument({
+    view: {
+      arrangement: 'editor',
+      editorVisible: true,
+      previewVisible: false,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 0 },
+    },
+  });
+  const bufferFlush = deferred<void>();
+  const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
+  mockedAdapter.flushBuffer.mockImplementationOnce(
+    (): Promise<void> => bufferFlush.promise,
+  );
+  await renderStatusEditor(document, '# Local working copy');
+  const source = await screen.findByRole<HTMLTextAreaElement>('textbox', {
+    name: 'Markdown source',
+  });
+  mockedAdapter.updateLocalDocView.mockClear();
+  mockRuntime.model.setValue.mockClear();
+  fireEvent.change(source, { target: { value: '# Latest local content' } });
+  source.focus();
+  source.setSelectionRange(3, 10);
+
+  act((): void => {
+    mockRuntime.cursorPositionListener?.({
+      position: { lineNumber: 9, column: 4 },
+    } as editor.ICursorPositionChangedEvent);
+    mockRuntime.cursorSelectionListener?.({
+      selection: {
+        selectionStartLineNumber: 8,
+        selectionStartColumn: 2,
+        positionLineNumber: 9,
+        positionColumn: 4,
+      },
+    } as editor.ICursorSelectionChangedEvent);
+  });
+  fireEvent.click(screen.getByRole('radio', { name: 'Preview' }));
+  expect(mockedAdapter.flushBuffer).toHaveBeenCalledWith(document.documentId);
+
+  act((): void => {
+    store.dispatch(
+      applyStatePatch({
+        revision: 2,
+        documents: {
+          upsert: {
+            [document.documentId]: { ...document, dirty: true, wordCount: 7 },
+          },
+        },
+      }),
+    );
+  });
+
+  expect(mockedAdapter.updateLocalDocView).toHaveBeenLastCalledWith(
+    document.documentId,
+    expect.objectContaining({
+      cursor: { line: 9, column: 4 },
+      selection: {
+        start: { line: 8, column: 2 },
+        end: { line: 9, column: 4 },
+      },
+    }),
+  );
+  expect(source).toHaveValue('# Latest local content');
+  expect(source.selectionStart).toBe(3);
+  expect(source.selectionEnd).toBe(10);
+  expect(mockRuntime.model.setValue).toHaveBeenCalledTimes(1);
+  expect(JSON.stringify(store.getState())).not.toContain('Latest local content');
+
+  await act(async (): Promise<void> => {
+    bufferFlush.resolve();
+  });
+});
+
+it('STORY-028-AC-6 isolates pending view intent across document switch', async () => {
+  const first = statusDocument({
+    view: {
+      arrangement: 'editor',
+      editorVisible: true,
+      previewVisible: false,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 0 },
+    },
+  });
+  const second = {
+    ...statusDocument({ title: 'Second document' }),
+    documentId: 'document-2',
+  };
+  const bufferFlush = deferred<void>();
+  const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
+  mockedAdapter.flushBuffer.mockImplementationOnce(
+    (): Promise<void> => bufferFlush.promise,
+  );
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: { [first.documentId]: first },
+      activeDocumentId: first.documentId,
+      ui: {},
+    }),
+  );
+  const rendered = render(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: first.documentId, content: '# First working copy' }}
+      >
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+
+  fireEvent.click(screen.getByRole('radio', { name: 'Preview' }));
+  expect(mockedAdapter.flushBuffer).toHaveBeenCalledWith(first.documentId);
+  act((): void => {
+    store.dispatch(
+      hydrateProjection({
+        revision: 2,
+        documents: { [second.documentId]: second },
+        activeDocumentId: second.documentId,
+        ui: {},
+      }),
+    );
+  });
+  rendered.rerender(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: second.documentId, content: '# Second working copy' }}
+      >
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+  expect(screen.getByLabelText('Markdown source')).toHaveValue(
+    '# Second working copy',
+  );
+
+  await act(async (): Promise<void> => {
+    bufferFlush.resolve();
+  });
+  await waitFor((): void => {
+    expect(mockSetDocView).toHaveBeenCalledWith(
+      first.documentId,
+      expect.objectContaining({ editorVisible: false, previewVisible: true }),
+      expect.anything(),
+    );
+  });
+  expect(mockSetDocView).not.toHaveBeenCalledWith(
+    second.documentId,
+    expect.anything(),
+  );
+  expect(screen.getByLabelText('Markdown source')).toHaveValue(
+    '# Second working copy',
+  );
 });
 
 it('STORY-022-AC-2 keeps Monaco mounted while preview-only is visible', async () => {
@@ -926,6 +1161,7 @@ it('STORY-022-AC-3 restores the exact Monaco session and saved scroll state with
     expect(mockSetDocView).toHaveBeenCalledWith(
       'document-1',
       expect.objectContaining({ editorVisible: false, previewVisible: true }),
+      expect.anything(),
     );
   });
   expect(mockedEditor.saveViewState).toHaveBeenCalledWith();
@@ -1051,16 +1287,20 @@ it('STORY-015-AC-2 round trips view mode through the backend patch', async () =>
   fireEvent.click(screen.getByRole('radio', { name: 'Preview' }));
 
   await waitFor((): void => {
-    expect(mockSetDocView).toHaveBeenCalledWith('document-1', {
-      editorVisible: false,
-      previewVisible: true,
-      cursor: { line: 1, column: 1 },
-      selection: {
-        start: { line: 1, column: 1 },
-        end: { line: 1, column: 1 },
+    expect(mockSetDocView).toHaveBeenCalledWith(
+      'document-1',
+      { editorVisible: false, previewVisible: true },
+      {
+        editorVisible: false,
+        previewVisible: true,
+        cursor: { line: 1, column: 1 },
+        selection: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 1 },
+        },
+        scroll: { editor: 0, preview: 0 },
       },
-      scroll: { editor: 0, preview: 0 },
-    });
+    );
   });
   expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
   expect(screen.queryByLabelText('Preview pane')).not.toBeInTheDocument();
@@ -1151,6 +1391,7 @@ it('STORY-015-AC-5 keeps keyboard selection and focus backend-controlled', async
   expect(mockSetDocView).toHaveBeenLastCalledWith(
     'document-1',
     expect.objectContaining({ editorVisible: false, previewVisible: true }),
+    expect.anything(),
   );
   expect(editor).toBeChecked();
   expect(editor).toHaveFocus();
@@ -1185,6 +1426,7 @@ it('STORY-015-AC-5 keeps keyboard selection and focus backend-controlled', async
   expect(mockSetDocView).toHaveBeenLastCalledWith(
     'document-1',
     expect.objectContaining({ editorVisible: true, previewVisible: false }),
+    expect.anything(),
   );
   expect(preview).toBeChecked();
   expect(preview).toHaveFocus();
@@ -1197,6 +1439,7 @@ it('STORY-015-AC-5 keeps keyboard selection and focus backend-controlled', async
   expect(mockSetDocView).toHaveBeenLastCalledWith(
     'document-1',
     expect.objectContaining({ editorVisible: true, previewVisible: true }),
+    expect.anything(),
   );
   expect(preview).toBeChecked();
   expect(preview).toHaveFocus();
