@@ -8,6 +8,7 @@ import {
   parseAndValidatePhases,
   resolvePhaseCLIArguments,
 } from './phase-common.mjs';
+import { readAndValidatePhase01Resolution } from './phase-resolution.mjs';
 import {
   buildTraceRecord,
   validateTraceInputs,
@@ -28,9 +29,23 @@ if (phase === undefined) {
     ...(await validateTraceInputs(root, stories, provingTests, edgeCaseTests)),
   );
 
+  const resolvedConflicts = new Set();
+  if (phaseNumber === '01') {
+    const resolution = await readAndValidatePhase01Resolution(root);
+    if (resolution.errors.length > 0) {
+      for (const error of resolution.errors) {
+        errors.push(`PH01 resolution: ${error}`);
+      }
+    } else {
+      resolvedConflicts.add('PH01-X01');
+    }
+  }
+
   if (phase.conflicts.length > 0) {
     for (const conflict of phase.conflicts) {
-      errors.push(`${conflict.ID} is an unresolved specification conflict`);
+      if (!resolvedConflicts.has(conflict.ID)) {
+        errors.push(`${conflict.ID} is an unresolved specification conflict`);
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-22T16:25:24.344Z",
+  "generated_at": "2026-07-22T19:16:28.460Z",
   "generator_version": 2,
   "stories": {
     "STORY-001": {
@@ -1263,7 +1263,7 @@
     },
     "STORY-025": {
       "title": "Record the Phase 01 checkpoint resolution",
-      "status": "ready",
+      "status": "done",
       "phase": "01",
       "phase_requirements": [
         "PH01-R15"
@@ -1282,28 +1282,40 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-025-AC-1": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:551"
+          ]
         },
         "STORY-025-AC-2": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:592"
+          ]
         },
         "STORY-025-AC-3": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:598"
+          ]
         },
         "STORY-025-AC-4": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:688"
+          ]
         },
         "STORY-025-AC-5": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:749"
+          ]
         },
         "STORY-025-AC-6": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:840"
+          ]
         }
       }
     },
     "STORY-026": {
       "title": "Strengthen Phase 01 checkpoint and completion validation",
-      "status": "draft",
+      "status": "ready",
       "phase": "01",
       "phase_requirements": [
         "PH01-R14",
@@ -2572,7 +2584,14 @@
           ]
         }
       },
-      "tests": []
+      "tests": [
+        "internal/application/phase_validation_test.go:551",
+        "internal/application/phase_validation_test.go:592",
+        "internal/application/phase_validation_test.go:598",
+        "internal/application/phase_validation_test.go:688",
+        "internal/application/phase_validation_test.go:749",
+        "internal/application/phase_validation_test.go:840"
+      ]
     },
     "PH01-R16": {
       "phase": "01",

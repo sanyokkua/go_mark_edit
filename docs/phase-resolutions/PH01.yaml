@@ -1,0 +1,34 @@
+schema: gomarkedit.phase-resolution
+version: 1
+phase: "01"
+conflicts:
+  PH01-X01:
+    status: resolved
+    accepted_adr: ADR-0016
+checkpoints:
+  preview:
+    requirements: [PH01-R01, PH01-R02, PH01-R05, PH01-R08, PH01-R11, PH01-R12, PH01-R13, PH01-R14, PH01-R16]
+    prerequisites: []
+  editing:
+    requirements: [PH01-R03, PH01-R04, PH01-R06, PH01-R07, PH01-R09, PH01-R10]
+    prerequisites: [preview]
+full_completion:
+  shared_requirements: [PH01-R15]
+  required_ids:
+    transitions: [PH01-T01, PH01-T02, PH01-T03, PH01-T04, PH01-T05, PH01-T06, PH01-T07]
+    contracts: [PH01-C01, PH01-C02, PH01-C03, PH01-C04, PH01-C05, PH01-C06]
+    edge_cases: [EC-DOCS-12, EC-RENDER-4, EC-RENDER-5, EC-RENDER-6, EC-RENDER-7, EC-I18N-1, EC-I18N-2]
+    evidence: [PH01-E01, PH01-E02, PH01-E03, PH01-E04, PH01-E05, PH01-E06, PH01-E07, PH01-E08, PH01-E09, PH01-E10, PH01-E11]
+exception_policies:
+  PH01-E06:
+    kind: current-host-native
+    accepted_adr: ADR-0016
+    required_record_fields: [host, revision, freshness, procedure, result, limitations, deferred_platforms, accepted_adr, expires_before]
+    allowed_deferred_platforms: [windows, linux]
+    expiry_boundary: before-phase15-release-or-platform-claim
+coverage:
+  version: 1
+  transitions: {}
+  contracts: {}
+  edge_cases: {}
+  evidence: {}

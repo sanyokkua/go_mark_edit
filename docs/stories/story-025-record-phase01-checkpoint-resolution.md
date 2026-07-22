@@ -1,7 +1,7 @@
 ---
 id: STORY-025
 title: Record the Phase 01 checkpoint resolution
-status: ready
+status: done
 spec_clauses:
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#2-stage--phase-mapping
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#5-stage-exit-criteria
@@ -43,11 +43,12 @@ implementation checkpoints mean, while keeping full Phase 01 completion and defe
   resolution record consumed by phase validation.
 - Record exact preview/editing membership, the editing prerequisite, and full Phase 01 shared obligations.
 - Record the exact PH01-E06 current-host exception schema, limitations, deferred targets, and expiry.
-- Reject malformed, incomplete, stale, or unresolved resolution records.
+- Reject malformed, incomplete, or unresolved resolution-policy records.
 
 ## Out of scope
 
 - Implementing checkpoint-aware completion validation, owned by STORY-026.
+- Validating a live PH01-E06 record's revision, freshness, or expiry, owned by STORY-026.
 - Producing native runtime, network, or visual evidence, owned by STORY-032.
 - Editing the frozen stage mapping, roadmap, or Phase 01 specification.
 
@@ -159,8 +160,9 @@ and Linux deferral under ADR-0016 and cannot apply to another evidence row or ce
 ### STORY-025-AC-6
 **Satisfies:** PH01-R15
 
-Validation rejects a stale revision, expired exception, unresolved PH01-X01 marker, or record that claims to
-replace the frozen source, while accepting the mutable record as the implementation-resolution authority.
+Policy validation rejects an unresolved PH01-X01 marker or a record that claims to replace the frozen source,
+while accepting the mutable record as the implementation-resolution authority. Validation of a concrete
+PH01-E06 record's revision, freshness, and expiry is deferred to STORY-026.
 
 ## Test plan
 
@@ -175,13 +177,15 @@ replace the frozen source, while accepting the mutable record as the implementat
 - STORY-025-AC-5 — architecture — `internal/application/phase_validation_test.go` —
   `TestRepositoryPhase01ResolutionDefinesExactE06ExceptionPolicySchema`.
 - STORY-025-AC-6 — architecture — `internal/application/phase_validation_test.go` —
-  `TestPhase01ResolutionRejectsStaleExpiredOrUnresolvedRecords`.
+  `TestPhase01ResolutionRejectsUnresolvedOrSourceReplacingPolicyRecords`.
 
 ## Definition of done
 
 - [ ] Every AC has a passing test naming its `STORY-025-AC-N` id on the first leading-comment line.
 - [ ] Positive tests load `docs/phase-resolutions/PH01.yaml`; derived negative fixtures prove the exact
   partition, prerequisite, full-completion set, versioned schema, and exception-policy schema.
+- [ ] Policy validation does not certify a concrete PH01-E06 record's revision, freshness, or expiry; that
+  live-evidence validation is deferred to STORY-026.
 - [ ] No done story, frozen specification file, or generated traceability record is edited.
 - [ ] Backend quality gates pass for `internal/application`; frontend gates remain unaffected.
 - [ ] Handler layering, Result envelopes, backend authority, adapter-only Wails imports, token-only theming,

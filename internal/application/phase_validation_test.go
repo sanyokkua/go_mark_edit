@@ -535,18 +535,384 @@ func TestRepositoryPhaseMigrationIsCompleteAndTruthful(t *testing.T) {
 	t.Run("Phase 01 reports the exact current blocker set", func(t *testing.T) {
 		output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", repositoryRoot, "01")
 		expectedBlockers := []string{
-			"phase-complete-check: PH01-X01 is an unresolved specification conflict",
-			"phase-complete-check: PH01-R15 has no story acceptance-criterion coverage",
 			"phase-complete-check: PH01-E06 real-runtime evidence requires an approval owner and existing artifact",
 			"phase-complete-check: PH01-E07 human evidence requires an approval owner and existing artifact",
 			"phase-complete-check: PH01-E08 real-runtime evidence requires an approval owner and existing artifact",
-			"phase-complete-check: PH01-E10 exit evidence lacks done-story AC/test coverage for PH01-R15",
 		}
 		actualBlockers := strings.Split(strings.TrimSpace(output), "\n")
 		if strings.Join(actualBlockers, "\n") != strings.Join(expectedBlockers, "\n") {
 			t.Errorf("Phase 01 completion blockers differ:\nactual:\n%s\n\nexpected:\n%s", strings.Join(actualBlockers, "\n"), strings.Join(expectedBlockers, "\n"))
 		}
 	})
+}
+
+// Proves: STORY-025-AC-1
+// The checked-in mutable record has the versioned PH01-X01 resolution and exact preview checkpoint.
+func TestRepositoryPhase01ResolutionHasVersionedConflictAndPreviewCheckpoint(t *testing.T) {
+	runPhaseCLI(t, "scripts/phase-resolution.mjs", storyEightRepositoryRoot(t))
+
+	for _, testCase := range []struct {
+		name    string
+		mutate  func(string) string
+		wantErr string
+	}{
+		{
+			name: "invalid schema",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "schema: gomarkedit.phase-resolution", "schema: other-resolution", 1)
+			},
+			wantErr: "schema must be \"gomarkedit.phase-resolution\"",
+		},
+		{
+			name: "invalid version",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "version: 1", "version: 2", 1)
+			},
+			wantErr: "version must be \"1\"",
+		},
+		{
+			name: "invalid phase",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "phase: \"01\"", "phase: \"02\"", 1)
+			},
+			wantErr: "phase must be \"01\"",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			output := runPhaseCLIFailure(t, "scripts/phase-resolution.mjs", phase01ResolutionFixture(t, testCase.mutate))
+			if !strings.Contains(output, testCase.wantErr) {
+				t.Fatalf("phase-resolution output = %q, want %q", output, testCase.wantErr)
+			}
+		})
+	}
+}
+
+// Proves: STORY-025-AC-2
+// The checked-in mutable record has the exact editing checkpoint and requires preview first.
+func TestRepositoryPhase01ResolutionHasExactEditingCheckpointAndPrerequisite(t *testing.T) {
+	runPhaseCLI(t, "scripts/phase-resolution.mjs", storyEightRepositoryRoot(t))
+}
+
+// Proves: STORY-025-AC-3
+// The checked-in mutable record enumerates every shared requirement, transition, contract, edge, and evidence ID.
+func TestRepositoryPhase01ResolutionEnumeratesFullCompletionIDs(t *testing.T) {
+	runPhaseCLI(t, "scripts/phase-resolution.mjs", storyEightRepositoryRoot(t))
+
+	for _, testCase := range []struct {
+		name    string
+		mutate  func(string) string
+		wantErr string
+	}{
+		{
+			name: "wrong shared requirement",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "shared_requirements: [PH01-R15]", "shared_requirements: [PH01-R14]", 1)
+			},
+			wantErr: "full_completion.shared_requirements has unsupported values: PH01-R14",
+		},
+		{
+			name: "missing shared requirement",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "shared_requirements: [PH01-R15]", "shared_requirements: []", 1)
+			},
+			wantErr: "full_completion.shared_requirements is missing values: PH01-R15",
+		},
+		{
+			name: "wrong transition set",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "PH01-T07]", "PH01-T99]", 1)
+			},
+			wantErr: "full_completion.required_ids.transitions has unsupported values: PH01-T99",
+		},
+		{
+			name: "missing transition set member",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, ", PH01-T07]", "]", 1)
+			},
+			wantErr: "full_completion.required_ids.transitions is missing values: PH01-T07",
+		},
+		{
+			name: "wrong contract set",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "PH01-C06]", "PH01-C99]", 1)
+			},
+			wantErr: "full_completion.required_ids.contracts has unsupported values: PH01-C99",
+		},
+		{
+			name: "missing contract set member",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, ", PH01-C06]", "]", 1)
+			},
+			wantErr: "full_completion.required_ids.contracts is missing values: PH01-C06",
+		},
+		{
+			name: "wrong edge-case set",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "EC-DOCS-12", "EC-DOCS-99", 1)
+			},
+			wantErr: "full_completion.required_ids.edge_cases has unsupported values: EC-DOCS-99",
+		},
+		{
+			name: "missing edge-case set member",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "EC-DOCS-12, ", "", 1)
+			},
+			wantErr: "full_completion.required_ids.edge_cases is missing values: EC-DOCS-12",
+		},
+		{
+			name: "wrong evidence set",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "PH01-E11]", "PH01-E99]", 1)
+			},
+			wantErr: "full_completion.required_ids.evidence has unsupported values: PH01-E99",
+		},
+		{
+			name: "missing evidence set member",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, ", PH01-E11]", "]", 1)
+			},
+			wantErr: "full_completion.required_ids.evidence is missing values: PH01-E11",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			output := runPhaseCLIFailure(t, "scripts/phase-resolution.mjs", phase01ResolutionFixture(t, testCase.mutate))
+			if !strings.Contains(output, testCase.wantErr) {
+				t.Fatalf("phase-resolution output = %q, want %q", output, testCase.wantErr)
+			}
+		})
+	}
+}
+
+// Proves: STORY-025-AC-4
+// Invalid membership, partitioning, and ordering fixtures are rejected by the policy validator.
+func TestPhase01ResolutionRejectsInvalidRequirementPartitions(t *testing.T) {
+	for _, testCase := range []struct {
+		name    string
+		mutate  func(string) string
+		wantErr string
+	}{
+		{
+			name: "unknown requirement",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "PH01-R16]", "PH01-R16, PH01-R99]", 1)
+			},
+			wantErr: "checkpoints.preview.requirements has unsupported values: PH01-R99",
+		},
+		{
+			name: "duplicate membership",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "PH01-R02,", "PH01-R02, PH01-R02,", 1)
+			},
+			wantErr: "checkpoints.preview.requirements has duplicate values: PH01-R02",
+		},
+		{
+			name: "overlap between checkpoints",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "[PH01-R03, PH01-R04", "[PH01-R01, PH01-R04", 1)
+			},
+			wantErr: "checkpoints.editing.requirements has unsupported values: PH01-R01",
+		},
+		{
+			name: "omission from checkpoint partition",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, ", PH01-R16]", "]", 1)
+			},
+			wantErr: "checkpoints.preview.requirements is missing values: PH01-R16",
+		},
+		{
+			name: "shared requirement placed in checkpoint",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "PH01-R16]", "PH01-R15]", 1)
+			},
+			wantErr: "checkpoints.preview.requirements has unsupported values: PH01-R15",
+		},
+		{
+			name: "editing without preview prerequisite",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "prerequisites: [preview]", "prerequisites: []", 1)
+			},
+			wantErr: "checkpoints.editing.prerequisites is missing values: preview",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			root := phase01ResolutionFixture(t, testCase.mutate)
+			output := runPhaseCLIFailure(t, "scripts/phase-resolution.mjs", root)
+			if !strings.Contains(output, testCase.wantErr) {
+				t.Fatalf("phase-resolution output = %q, want %q", output, testCase.wantErr)
+			}
+		})
+	}
+}
+
+// Proves: STORY-025-AC-5
+// The checked-in record has the exact PH01-E06 policy, rejecting generic waivers and policies for other evidence rows.
+func TestRepositoryPhase01ResolutionDefinesExactE06ExceptionPolicySchema(t *testing.T) {
+	runPhaseCLI(t, "scripts/phase-resolution.mjs", storyEightRepositoryRoot(t))
+
+	for _, field := range []string{
+		"host", "revision", "freshness", "procedure", "result", "limitations", "deferred_platforms", "accepted_adr", "expires_before",
+	} {
+		t.Run("missing required policy field "+field, func(t *testing.T) {
+			output := runPhaseCLIFailure(t, "scripts/phase-resolution.mjs", phase01ResolutionFixture(t, func(contents string) string {
+				return removePhaseResolutionListItem(contents, field)
+			}))
+			wantErr := "exception_policies.PH01-E06.required_record_fields is missing values: " + field
+			if !strings.Contains(output, wantErr) {
+				t.Fatalf("phase-resolution output = %q, want %q", output, wantErr)
+			}
+		})
+	}
+
+	for _, testCase := range []struct {
+		name    string
+		mutate  func(string) string
+		wantErr string
+	}{
+		{
+			name: "generic waiver kind",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "kind: current-host-native", "kind: generic-waiver", 1)
+			},
+			wantErr: "exception_policies.PH01-E06.kind must be \"current-host-native\"",
+		},
+		{
+			name: "policy assigned to another evidence row",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "  PH01-E06:\n", "  PH01-E07:\n", 1)
+			},
+			wantErr: "exception_policies has unsupported keys: PH01-E07",
+		},
+		{
+			name: "wrong accepted ADR",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "    accepted_adr: ADR-0016\n    required_record_fields", "    accepted_adr: ADR-9999\n    required_record_fields", 1)
+			},
+			wantErr: "exception_policies.PH01-E06.accepted_adr must be \"ADR-0016\"",
+		},
+		{
+			name: "wrong deferred platform set",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "allowed_deferred_platforms: [windows, linux]", "allowed_deferred_platforms: [windows, macos]", 1)
+			},
+			wantErr: "exception_policies.PH01-E06.allowed_deferred_platforms has unsupported values: macos",
+		},
+		{
+			name: "wrong expiry boundary",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "expiry_boundary: before-phase15-release-or-platform-claim", "expiry_boundary: never", 1)
+			},
+			wantErr: "exception_policies.PH01-E06.expiry_boundary must be \"before-phase15-release-or-platform-claim\"",
+		},
+		{
+			name: "stage certification field",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "    expiry_boundary: before-phase15-release-or-platform-claim\n", "    expiry_boundary: before-phase15-release-or-platform-claim\n    certifies_stage: stage\n", 1)
+			},
+			wantErr: "exception_policies.PH01-E06 has unsupported keys: certifies_stage",
+		},
+		{
+			name: "release certification field",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "    expiry_boundary: before-phase15-release-or-platform-claim\n", "    expiry_boundary: before-phase15-release-or-platform-claim\n    certifies_release: release\n", 1)
+			},
+			wantErr: "exception_policies.PH01-E06 has unsupported keys: certifies_release",
+		},
+		{
+			name: "platform certification field",
+			mutate: func(contents string) string {
+				return strings.Replace(contents, "    expiry_boundary: before-phase15-release-or-platform-claim\n", "    expiry_boundary: before-phase15-release-or-platform-claim\n    certifies_platform: platform\n", 1)
+			},
+			wantErr: "exception_policies.PH01-E06 has unsupported keys: certifies_platform",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			root := phase01ResolutionFixture(t, testCase.mutate)
+			output := runPhaseCLIFailure(t, "scripts/phase-resolution.mjs", root)
+			if !strings.Contains(output, testCase.wantErr) {
+				t.Fatalf("phase-resolution output = %q, want %q", output, testCase.wantErr)
+			}
+		})
+	}
+}
+
+// Proves: STORY-025-AC-6
+// Policy records must resolve PH01-X01 without replacing frozen sources; missing and malformed records are rejected.
+func TestPhase01ResolutionRejectsUnresolvedOrSourceReplacingPolicyRecords(t *testing.T) {
+	runPhaseCLI(t, "scripts/phase-resolution.mjs", storyEightRepositoryRoot(t))
+
+	for _, testCase := range []struct {
+		name    string
+		root    func(*testing.T) string
+		wantErr string
+	}{
+		{
+			name: "unresolved conflict",
+			root: func(t *testing.T) string {
+				return phase01ResolutionFixture(t, func(contents string) string {
+					return strings.Replace(contents, "status: resolved", "status: unresolved", 1)
+				})
+			},
+			wantErr: "conflicts.PH01-X01.status must be \"resolved\"",
+		},
+		{
+			name: "claims to replace frozen source",
+			root: func(t *testing.T) string {
+				return phase01ResolutionFixture(t, func(contents string) string {
+					return strings.Replace(contents, "phase: \"01\"\n", "phase: \"01\"\nsource_authority: replaces-frozen\n", 1)
+				})
+			},
+			wantErr: "resolution has unsupported keys: source_authority",
+		},
+		{
+			name: "missing record",
+			root: func(t *testing.T) string {
+				return t.TempDir()
+			},
+			wantErr: "unable to read docs/phase-resolutions/PH01.yaml",
+		},
+		{
+			name: "malformed record",
+			root: func(t *testing.T) string {
+				return phase01ResolutionFixture(t, func(string) string {
+					return "schema: gomarkedit.phase-resolution\n\tversion: 1\n"
+				})
+			},
+			wantErr: "tabs are not supported",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			output := runPhaseCLIFailure(t, "scripts/phase-resolution.mjs", testCase.root(t))
+			if !strings.Contains(output, testCase.wantErr) {
+				t.Fatalf("phase-resolution output = %q, want %q", output, testCase.wantErr)
+			}
+		})
+	}
+
+	for _, testCase := range []struct {
+		name       string
+		resolution string
+		wantErr    string
+	}{
+		{
+			name:       "completion checker retains unresolved conflict when record is missing",
+			resolution: "",
+			wantErr:    "PH01 resolution: unable to read docs/phase-resolutions/PH01.yaml",
+		},
+		{
+			name:       "completion checker retains unresolved conflict when record is malformed",
+			resolution: "schema: gomarkedit.phase-resolution\n\tversion: 1\n",
+			wantErr:    "PH01 resolution: line 2: tabs are not supported",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", phase01CompletionFixture(t, testCase.resolution), "01")
+			for _, wantErr := range []string{testCase.wantErr, "PH01-X01 is an unresolved specification conflict"} {
+				if !strings.Contains(output, wantErr) {
+					t.Fatalf("phase-complete-check output = %q, want %q", output, wantErr)
+				}
+			}
+		})
+	}
 }
 
 func newPhaseFixture(t *testing.T) string {
@@ -622,6 +988,43 @@ func readPhaseFixture(t *testing.T, path string) string {
 		t.Fatalf("read fixture %s: %v", path, err)
 	}
 	return string(contents)
+}
+
+func phase01ResolutionFixture(t *testing.T, mutate func(string) string) string {
+	t.Helper()
+
+	repositoryRoot := storyEightRepositoryRoot(t)
+	contents := readPhaseFixture(t, filepath.Join(repositoryRoot, "docs", "phase-resolutions", "PH01.yaml"))
+	root := t.TempDir()
+	writePhaseFixture(t, filepath.Join(root, "docs", "phase-resolutions", "PH01.yaml"), mutate(contents))
+	return root
+}
+
+func phase01CompletionFixture(t *testing.T, resolution string) string {
+	t.Helper()
+
+	root := newPhaseFixture(t)
+	phasePath := filepath.Join(root, "specification", "07_Phases", "PHASE_01_FIXTURE.md")
+	conflicts := "## Open specification conflicts\n\n" +
+		"| ID | Conflicting or missing sources | Required decision | Blocked requirements |\n" +
+		"|---|---|---|---|\n" +
+		"| PH01-X01 | fixture.md#valid-clause | Resolve fixture behavior. | PH01-R01 |\n\n"
+	contents := strings.Replace(readPhaseFixture(t, phasePath), "## Cross-phase contracts", conflicts+"## Cross-phase contracts", 1)
+	writePhaseFixture(t, phasePath, contents)
+	if resolution != "" {
+		writePhaseFixture(t, filepath.Join(root, "docs", "phase-resolutions", "PH01.yaml"), resolution)
+	}
+	return root
+}
+
+func removePhaseResolutionListItem(contents, item string) string {
+	if strings.Contains(contents, "["+item+", ") {
+		return strings.Replace(contents, "["+item+", ", "[", 1)
+	}
+	if strings.Contains(contents, ", "+item+"]") {
+		return strings.Replace(contents, ", "+item+"]", "]", 1)
+	}
+	return strings.Replace(contents, item+", ", "", 1)
 }
 
 func writePhaseFixture(t *testing.T, path, contents string) {

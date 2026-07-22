@@ -38,8 +38,8 @@ authors them **per phase** from that phase's suggested-task list
 | STORY-022 | Preserve the active Monaco session across view arrangements | 01 | done | coder | M |
 | STORY-023 | Expose document commands through a stable editor-session boundary | 01 | done | coder | M |
 | STORY-024 | Enforce phase planning completeness | 00 | done | coder | M |
-| STORY-025 | Record the Phase 01 checkpoint resolution | 01 | ready | coder | M |
-| STORY-026 | Strengthen Phase 01 checkpoint and completion validation | 01 | draft | coder | M |
+| STORY-025 | Record the Phase 01 checkpoint resolution | 01 | done | coder | M |
+| STORY-026 | Strengthen Phase 01 checkpoint and completion validation | 01 | ready | coder | M |
 | STORY-027 | Make failed frontend bootstrap retryable | 01 | ready | coder | M |
 | STORY-028 | Preserve the latest editor view intent during arrangement changes | 01 | ready | coder | M |
 | STORY-029 | Add an atomic backend document snapshot seam | 01 | ready | coder | M |
