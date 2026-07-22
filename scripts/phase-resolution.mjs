@@ -191,7 +191,9 @@ export function parsePhaseResolutionYAML(contents) {
         if (childLevel !== level + 2) {
           throw parseError(childIndex + 1, `nested map for ${key} must be indented by two spaces`);
         }
-        result[key] = parseMap(level + 2);
+        result[key] = lines[childIndex].trim().startsWith('- ')
+          ? parseList(level + 2)
+          : parseMap(level + 2);
       } else {
         result[key] = parseValue(rawValue, lineNumber);
       }
@@ -199,6 +201,34 @@ export function parsePhaseResolutionYAML(contents) {
     }
     if (entries === 0) {
       throw parseError(cursor + 1, 'maps cannot be empty; use {}');
+    }
+    return result;
+  }
+
+  function parseList(level) {
+    const result = [];
+    while (cursor < lines.length) {
+      if (lines[cursor].trim() === '') {
+        cursor += 1;
+        continue;
+      }
+      const lineNumber = cursor + 1;
+      const currentLevel = indentation(lines[cursor], lineNumber);
+      if (currentLevel < level) {
+        break;
+      }
+      if (currentLevel !== level) {
+        throw parseError(lineNumber, 'list items must be indented by two spaces');
+      }
+      const item = /^ *- (.+)$/.exec(lines[cursor]);
+      if (item === null) {
+        throw parseError(lineNumber, 'expected a list item');
+      }
+      result.push(parseScalar(item[1], lineNumber));
+      cursor += 1;
+    }
+    if (result.length === 0) {
+      throw parseError(cursor + 1, 'lists cannot be empty; use []');
     }
     return result;
   }
@@ -255,7 +285,7 @@ function expectScalar(value, expected, path, errors) {
 
 function expectExactList(value, expected, path, errors) {
   if (!Array.isArray(value)) {
-    errors.push(`${path} must be an inline list`);
+    errors.push(`${path} must be a list`);
     return;
   }
   const duplicates = [...new Set(value.filter((item, index) => value.indexOf(item) !== index))];
@@ -271,6 +301,65 @@ function expectExactList(value, expected, path, errors) {
   }
   if (missing.length > 0) {
     errors.push(`${path} is missing values: ${missing.join(', ')}`);
+  }
+}
+
+function expectNonemptyList(value, path, errors) {
+  if (!Array.isArray(value) || value.length === 0) {
+    errors.push(`${path} must be a nonempty list`);
+    return;
+  }
+  const duplicates = [...new Set(value.filter((item, index) => value.indexOf(item) !== index))];
+  if (duplicates.length > 0) {
+    errors.push(`${path} has duplicate values: ${duplicates.join(', ')}`);
+  }
+}
+
+function expectString(value, path, errors) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    errors.push(`${path} must be a nonempty scalar string`);
+  }
+}
+
+function validateCoverage(resolution, errors) {
+  const coverage = resolution.coverage;
+  const required = resolution.full_completion?.required_ids;
+  if (!isMap(coverage) || !isMap(required)) {
+    return;
+  }
+  for (const kind of ['transitions', 'contracts', 'edge_cases', 'evidence']) {
+    const rows = coverage[kind];
+    expectExactKeys(rows, required[kind] ?? [], `coverage.${kind}`, errors);
+    if (!isMap(rows)) {
+      continue;
+    }
+    for (const [id, row] of Object.entries(rows)) {
+      const path = `coverage.${kind}.${id}`;
+      const fields = kind === 'edge_cases'
+        ? ['requirements', 'acceptance_criteria', 'evidence_tests']
+        : kind === 'evidence'
+          ? ['requirements', 'acceptance_criteria', 'procedures', 'artifacts', 'owner', 'scope', 'freshness']
+          : ['requirements', 'acceptance_criteria'];
+      expectExactKeys(row, fields, path, errors);
+      expectNonemptyList(row?.requirements, `${path}.requirements`, errors);
+      expectNonemptyList(row?.acceptance_criteria, `${path}.acceptance_criteria`, errors);
+      if (kind === 'edge_cases') {
+        expectNonemptyList(row?.evidence_tests, `${path}.evidence_tests`, errors);
+        for (const identity of row?.evidence_tests ?? []) {
+          if (typeof identity !== 'string' || !/^[^:]+::.+$/.test(identity)) {
+            errors.push(`${path}.evidence_tests must contain path::full test name identities`);
+          }
+        }
+      }
+      if (kind === 'evidence') {
+        if (!Array.isArray(row?.procedures) || !Array.isArray(row?.artifacts) || (row.procedures.length === 0 && row.artifacts.length === 0)) {
+          errors.push(`${path} requires at least one procedure or artifact`);
+        }
+        for (const field of ['owner', 'scope', 'freshness']) {
+          expectString(row?.[field], `${path}.${field}`, errors);
+        }
+      }
+    }
   }
 }
 
@@ -335,6 +424,7 @@ export function validatePhase01Resolution(resolution) {
   for (const key of ['transitions', 'contracts', 'edge_cases', 'evidence']) {
     expectMap(resolution.coverage?.[key], `coverage.${key}`, errors);
   }
+  validateCoverage(resolution, errors);
   return errors;
 }
 

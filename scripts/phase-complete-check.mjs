@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { createHash } from 'node:crypto';
 import process from 'node:process';
 import { resolve } from 'node:path';
 
@@ -14,26 +17,81 @@ import {
   validateTraceInputs,
 } from './trace-common.mjs';
 
-const { root, phase: phaseNumber } = resolvePhaseCLIArguments(
-  process.argv.slice(2),
-  process.cwd(),
-  true,
-);
+const execFileAsync = promisify(execFile);
+const phase01CoverageDigest = '75b32db2af16f91626d51973ae3e3ed2bfe41c34620b70ea7fa169d78244e7ba';
+
+async function currentRevision(root) {
+  try {
+    const { stdout } = await execFileAsync('git', ['rev-parse', 'HEAD'], { cwd: root });
+    return stdout.trim();
+  } catch {
+    return undefined;
+  }
+}
+
+function phaseEvidenceFrontmatter(contents) {
+  return Object.fromEntries([...contents.matchAll(/^\*\*([^:]+):\*\*\s*(.+)$/gm)].map((match) => [match[1].trim().toLowerCase(), match[2].trim()]));
+}
+
+async function validateE06CurrentHostRecord(root, artifact, errors) {
+  let contents;
+  try {
+    contents = await readFile(resolve(root, artifact), 'utf8');
+  } catch {
+    return;
+  }
+  const fields = phaseEvidenceFrontmatter(contents);
+  const revision = await currentRevision(root);
+  const required = ['host', 'revision', 'freshness', 'procedure', 'result', 'limitations', 'deferred platforms', 'accepted adr', 'expires before'];
+  for (const field of required) {
+    if (!fields[field]) errors.push(`PH01-E06 current-host exception is missing ${field}`);
+  }
+  if (fields.host && fields.host !== process.platform) errors.push(`PH01-E06 current-host exception host must be ${process.platform}`);
+  if (revision !== undefined && fields.revision && fields.revision !== revision) errors.push('PH01-E06 current-host exception revision is stale');
+  if (fields.freshness && fields.freshness !== 'exact-revision') errors.push('PH01-E06 current-host exception freshness must be exact-revision');
+  for (const field of ['procedure', 'result', 'limitations']) {
+    if (fields[field] === undefined || fields[field].trim() === '') errors.push(`PH01-E06 current-host exception ${field} must be nonempty`);
+  }
+  if (fields['deferred platforms'] && fields['deferred platforms'] !== 'windows, linux') errors.push('PH01-E06 current-host exception deferred platforms must be windows, linux');
+  if (fields['accepted adr'] && fields['accepted adr'] !== 'ADR-0016') errors.push('PH01-E06 current-host exception accepted ADR must be ADR-0016');
+  if (fields['expires before'] && fields['expires before'] !== 'before-phase15-release-or-platform-claim') errors.push('PH01-E06 current-host exception expiry boundary is invalid');
+}
+
+function resolveCompletionArguments(arguments_, cwd) {
+  const checkpointIndex = arguments_.indexOf('--checkpoint');
+  let checkpoint;
+  let remaining = [...arguments_];
+  if (checkpointIndex >= 0) {
+    checkpoint = arguments_[checkpointIndex + 1];
+    if (!['preview', 'editing'].includes(checkpoint) || checkpointIndex + 2 !== arguments_.length) {
+      throw new Error('usage: phase-complete-check [--root path] 01 [--checkpoint preview|editing]');
+    }
+    remaining = arguments_.slice(0, checkpointIndex);
+  }
+  const parsed = resolvePhaseCLIArguments(remaining, cwd, true);
+  if (checkpoint !== undefined && parsed.phase !== '01') {
+    throw new Error('checkpoint validation is available only for Phase 01');
+  }
+  return { ...parsed, checkpoint };
+}
+
+const { root, phase: phaseNumber, checkpoint } = resolveCompletionArguments(process.argv.slice(2), process.cwd());
 const { phases, errors } = await parseAndValidatePhases(root);
 const phase = phases.find((candidate) => candidate.number === phaseNumber);
 if (phase === undefined) {
   errors.push(`phase ${phaseNumber} does not exist`);
 } else {
-  const { record, stories, provingTests, edgeCaseTests } = await buildTraceRecord(root);
+  const { record, stories, provingTests, edgeCaseTests, edgeCaseTestIdentities } = await buildTraceRecord(root);
   errors.push(
     ...(await validateTraceInputs(root, stories, provingTests, edgeCaseTests)),
   );
 
   const resolvedConflicts = new Set();
+  let phase01Resolution;
   if (phaseNumber === '01') {
-    const resolution = await readAndValidatePhase01Resolution(root);
-    if (resolution.errors.length > 0) {
-      for (const error of resolution.errors) {
+    phase01Resolution = await readAndValidatePhase01Resolution(root);
+    if (phase01Resolution.errors.length > 0) {
+      for (const error of phase01Resolution.errors) {
         errors.push(`PH01 resolution: ${error}`);
       }
     } else {
@@ -93,7 +151,76 @@ if (phase === undefined) {
   }
 
   const requirementIDs = (value) => [...new Set(value.match(/PH\d{2}-R\d{2}/g) ?? [])];
-  for (const [kind, rows] of [
+
+  if (checkpoint !== undefined && phase01Resolution?.resolution !== undefined) {
+    const requirements = phase01Resolution.resolution.checkpoints[checkpoint].requirements;
+    for (const requirement of requirements) {
+      if (!completeRequirements.has(requirement)) {
+        errors.push(`${checkpoint} checkpoint lacks proven done-story coverage for ${requirement}`);
+      }
+    }
+    if (checkpoint === 'editing') {
+      const previewRequirements = phase01Resolution.resolution.checkpoints.preview.requirements;
+      const missingPreview = previewRequirements.filter((requirement) => !completeRequirements.has(requirement));
+      if (missingPreview.length > 0) {
+        errors.push(`editing checkpoint requires preview checkpoint; missing ${missingPreview.join(', ')}`);
+      }
+    }
+  }
+
+  if (phaseNumber === '01' && checkpoint === undefined && phase01Resolution?.resolution !== undefined) {
+    const coverage = phase01Resolution.resolution.coverage;
+    if (createHash('sha256').update(JSON.stringify(coverage)).digest('hex') !== phase01CoverageDigest) {
+      errors.push('PH01 coverage acceptance-criterion mapping differs from the decision-complete STORY-026 table');
+    }
+    const phaseRows = {
+      transitions: new Map(phase.transitions.map((row) => [row.ID, row.Requirements])),
+      contracts: new Map(phase.contracts.map((row) => [row.ID, row.Requirements])),
+      edge_cases: new Map(phase.edgeCases.map((row) => [row['Edge case'], row.Requirements])),
+      evidence: new Map(phase.evidence.map((row) => [row.ID, row.Requirements])),
+    };
+    for (const [kind, rows] of Object.entries(coverage)) {
+      if (kind === 'version' || !phaseRows[kind]) continue;
+      for (const [id, row] of Object.entries(rows)) {
+        const required = new Set(requirementIDs(phaseRows[kind].get(id) ?? ''));
+        const mapped = new Set(row.requirements ?? []);
+        if (required.size !== mapped.size || [...required].some((requirement) => !mapped.has(requirement))) {
+          errors.push(`${id} coverage requirements do not exactly match the phase row`);
+        }
+        const mappedRequirements = new Set();
+        for (const acceptanceCriterion of row.acceptance_criteria ?? []) {
+          const storyID = acceptanceCriterion.slice(0, 'STORY-000'.length);
+          const story = storiesByID.get(storyID);
+          if (story === undefined || !story.acceptance_criteria.includes(acceptanceCriterion)) {
+            errors.push(`${id} references unknown acceptance criterion ${acceptanceCriterion}`);
+            continue;
+          }
+          const satisfied = story.satisfies[acceptanceCriterion] ?? [];
+          const owned = satisfied.filter((requirement) => required.has(requirement));
+          if (owned.length === 0) {
+            errors.push(`${id} maps unrelated acceptance criterion ${acceptanceCriterion}`);
+          }
+          for (const requirement of owned) mappedRequirements.add(requirement);
+          if (story.status !== 'done' || (provingTests.get(acceptanceCriterion) ?? []).length === 0) {
+            errors.push(`${id} acceptance criterion is not proven by a done story: ${acceptanceCriterion}`);
+          }
+        }
+        if ([...required].some((requirement) => !mappedRequirements.has(requirement))) {
+          errors.push(`${id} mapped acceptance criteria do not cover every row requirement`);
+        }
+        if (kind === 'edge_cases') {
+          const collected = new Set(edgeCaseTestIdentities.get(id) ?? []);
+          for (const identity of row.evidence_tests ?? []) {
+            if (!collected.has(identity)) errors.push(`${id} references unresolved edge evidence ${identity}`);
+          }
+        }
+      }
+    }
+    const e06Artifact = coverage.evidence?.['PH01-E06']?.artifacts?.[0];
+    if (e06Artifact !== undefined) await validateE06CurrentHostRecord(root, e06Artifact, errors);
+  }
+
+  if (checkpoint === undefined) for (const [kind, rows] of [
     ['transition', phase.transitions],
     ['contract', phase.contracts],
   ]) {
@@ -107,13 +234,13 @@ if (phase === undefined) {
     }
   }
 
-  for (const edgeCase of phase.edgeCases) {
+  if (checkpoint === undefined) for (const edgeCase of phase.edgeCases) {
     if (edgeCase.Role === 'primary' && (edgeCaseTests.get(edgeCase['Edge case']) ?? []).length === 0) {
       errors.push(`${edgeCase['Edge case']} has no exact primary-phase proving test`);
     }
   }
 
-  for (const evidence of phase.evidence) {
+  if (checkpoint === undefined) for (const evidence of phase.evidence) {
     if (evidence.Blocking.toLowerCase() !== 'yes') {
       continue;
     }
@@ -184,5 +311,7 @@ if (uniqueErrors.length > 0) {
   }
   process.exitCode = 1;
 } else {
-  console.log(`phase-complete-check: phase ${phaseNumber} complete`);
+  console.log(checkpoint === undefined
+    ? `phase-complete-check: phase ${phaseNumber} complete`
+    : `phase-complete-check: Phase 01 ${checkpoint} implementation checkpoint complete`);
 }

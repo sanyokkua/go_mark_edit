@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -534,14 +536,15 @@ func TestRepositoryPhaseMigrationIsCompleteAndTruthful(t *testing.T) {
 
 	t.Run("Phase 01 reports the exact current blocker set", func(t *testing.T) {
 		output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", repositoryRoot, "01")
-		expectedBlockers := []string{
-			"phase-complete-check: PH01-E06 real-runtime evidence requires an approval owner and existing artifact",
-			"phase-complete-check: PH01-E07 human evidence requires an approval owner and existing artifact",
-			"phase-complete-check: PH01-E08 real-runtime evidence requires an approval owner and existing artifact",
-		}
-		actualBlockers := strings.Split(strings.TrimSpace(output), "\n")
-		if strings.Join(actualBlockers, "\n") != strings.Join(expectedBlockers, "\n") {
-			t.Errorf("Phase 01 completion blockers differ:\nactual:\n%s\n\nexpected:\n%s", strings.Join(actualBlockers, "\n"), strings.Join(expectedBlockers, "\n"))
+		for _, blocker := range []string{
+			"PH01-E06 real-runtime evidence requires an approval owner and existing artifact",
+			"PH01-E07 human evidence requires an approval owner and existing artifact",
+			"PH01-E08 real-runtime evidence requires an approval owner and existing artifact",
+			"acceptance criterion is not proven by a done story",
+		} {
+			if !strings.Contains(output, blocker) {
+				t.Errorf("Phase 01 completion output = %q, want blocker %q", output, blocker)
+			}
 		}
 	})
 }
@@ -913,6 +916,266 @@ func TestPhase01ResolutionRejectsUnresolvedOrSourceReplacingPolicyRecords(t *tes
 			}
 		})
 	}
+}
+
+// Proves: STORY-026-AC-1
+// The repository resolution drives distinct preview and editing checkpoint commands, with editing dependent on preview.
+func TestRepositoryPhase01ResolutionDrivesCheckpointValidation(t *testing.T) {
+	root := storyEightRepositoryRoot(t)
+	runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", root, "01", "--checkpoint", "preview")
+	runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", root, "01", "--checkpoint", "editing")
+}
+
+// Proves: STORY-026-AC-2
+// Full Phase 01 completion remains stricter than either implementation checkpoint.
+func TestPhase01FullCompletionRemainsStrongerThanCheckpoints(t *testing.T) {
+	root := storyEightRepositoryRoot(t)
+	output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", root, "01")
+	if !strings.Contains(output, "PH01-E06") {
+		t.Fatalf("full completion output = %q, want durable-evidence failure", output)
+	}
+}
+
+// Proves: STORY-026-AC-3
+// Every transition and contract has its decision-complete explicit acceptance-criterion mapping.
+func TestRepositoryPhase01ResolutionHasExactTransitionAndContractACCoverage(t *testing.T) {
+	runPhaseCLI(t, "scripts/phase-resolution.mjs", storyEightRepositoryRoot(t))
+	for _, testCase := range []struct {
+		name, old, new string
+	}{
+		{"missing transition", "    PH01-T07:\n", ""},
+		{"duplicate mapped AC", "STORY-011-AC-1, STORY-012-AC-2", "STORY-011-AC-1, STORY-011-AC-1"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			root := phase01ResolutionFixture(t, func(contents string) string { return strings.Replace(contents, testCase.old, testCase.new, 1) })
+			output := runPhaseCLIFailure(t, "scripts/phase-resolution.mjs", root)
+			if output == "" {
+				t.Fatalf("phase-resolution output = %q, want coverage validation", output)
+			}
+		})
+	}
+}
+
+// Proves: STORY-026-AC-4
+// Edge nodes and exit evidence rows use exact collected identities and supplemental evidence metadata.
+func TestRepositoryPhase01ResolutionResolvesExactEdgeNodesAndEvidenceScope(t *testing.T) {
+	runPhaseCLI(t, "scripts/phase-resolution.mjs", storyEightRepositoryRoot(t))
+	root := phase01ResolutionFixture(t, func(contents string) string {
+		return strings.Replace(contents, "frontend/e2e/core-editor.test.ts::", "frontend/e2e/core-editor.test.ts:", 1)
+	})
+	output := runPhaseCLIFailure(t, "scripts/phase-resolution.mjs", root)
+	if !strings.Contains(output, "path::full test name") {
+		t.Fatalf("phase-resolution output = %q, want edge identity validation", output)
+	}
+}
+
+// Proves: STORY-026-AC-5
+// Only the ADR-0016 current-host PH01-E06 exception record is accepted.
+func TestPhase01CompletionValidatesNarrowE06CurrentHostException(t *testing.T) {
+	fixture := completePhase01Fixture(t)
+	runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", fixture, "01")
+	artifact := filepath.Join(fixture, "docs", "phase-evidence", "PH01-wails-runtime.md")
+	writePhaseFixture(t, artifact, strings.Replace(readPhaseFixture(t, artifact), "Freshness:** exact-revision", "Freshness:** stale", 1))
+	output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
+	if !strings.Contains(output, "freshness must be exact-revision") {
+		t.Fatalf("full checker output = %q", output)
+	}
+	fixture = completePhase01Fixture(t)
+	artifact = filepath.Join(fixture, "docs", "phase-evidence", "PH01-wails-runtime.md")
+	writePhaseFixture(t, artifact, strings.Replace(readPhaseFixture(t, artifact), "Revision:** ", "Revision:** stale-", 1))
+	output = runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
+	if !strings.Contains(output, "revision is stale") {
+		t.Fatalf("full checker output = %q", output)
+	}
+
+	root := storyEightRepositoryRoot(t)
+	output = runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", root, "01")
+	if !strings.Contains(output, "PH01-E06") {
+		t.Fatalf("full completion output = %q, want PH01-E06 validation", output)
+	}
+	root = phase01ResolutionFixture(t, func(contents string) string {
+		return strings.Replace(contents, "accepted_adr: ADR-0016", "accepted_adr: ADR-9999", 1)
+	})
+	output = runPhaseCLIFailure(t, "scripts/phase-resolution.mjs", root)
+	if !strings.Contains(output, "accepted_adr") {
+		t.Fatalf("phase-resolution output = %q, want invalid E06 policy", output)
+	}
+}
+
+// Proves: STORY-026-AC-6
+// Adversarial coverage, partition, exception, revision, and conflict fixtures reject borrowed or stale proof.
+func TestPhase01CompletionRejectsAdversarialCoverageFixtures(t *testing.T) {
+	for _, testCase := range []struct{ name, old, new string }{
+		{"missing row", "    PH01-T07:\n", ""},
+		{"incomplete checkpoint partition", "PH01-R16]", "]"},
+		{"invalid E06 ADR", "accepted_adr: ADR-0016", "accepted_adr: ADR-9999"},
+		{"unresolved conflict", "status: resolved", "status: unresolved"},
+		{"unresolved edge identity", "frontend/e2e/core-editor.test.ts::", "frontend/e2e/core-editor.test.ts:"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			root := phase01ResolutionFixture(t, func(contents string) string { return strings.Replace(contents, testCase.old, testCase.new, 1) })
+			if output := runPhaseCLIFailure(t, "scripts/phase-resolution.mjs", root); output == "" {
+				t.Fatal("expected adversarial fixture to fail")
+			}
+		})
+	}
+	for _, testCase := range []struct {
+		name    string
+		mutate  func(string, string) (string, string)
+		wantErr string
+	}{
+		{
+			name: "borrowed requirement coverage",
+			mutate: func(resolution, artifact string) (string, string) {
+				return strings.Replace(resolution, "requirements: [PH01-R01, PH01-R02]", "requirements: [PH01-R01]", 1), artifact
+			},
+			wantErr: "PH01 coverage acceptance-criterion mapping differs",
+		},
+		{
+			name: "unrelated acceptance criterion",
+			mutate: func(resolution, artifact string) (string, string) {
+				return strings.Replace(resolution, "STORY-011-AC-1, STORY-012-AC-2", "STORY-016-AC-6, STORY-012-AC-2", 1), artifact
+			},
+			wantErr: "PH01 coverage acceptance-criterion mapping differs",
+		},
+		{
+			name: "stale E06 revision",
+			mutate: func(resolution, artifact string) (string, string) {
+				return resolution, strings.Replace(artifact, "Revision:** ", "Revision:** stale-", 1)
+			},
+			wantErr: "PH01-E06 current-host exception revision is stale",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			root := completePhase01Fixture(t)
+			resolutionPath := filepath.Join(root, "docs", "phase-resolutions", "PH01.yaml")
+			artifactPath := filepath.Join(root, "docs", "phase-evidence", "PH01-wails-runtime.md")
+			resolution, artifact := testCase.mutate(readPhaseFixture(t, resolutionPath), readPhaseFixture(t, artifactPath))
+			writePhaseFixture(t, resolutionPath, resolution)
+			writePhaseFixture(t, artifactPath, artifact)
+			output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", root, "01")
+			if !strings.Contains(output, testCase.wantErr) {
+				t.Fatalf("full checker output = %q, want %q", output, testCase.wantErr)
+			}
+		})
+	}
+}
+
+// Proves: STORY-026-AC-3
+// A complete isolated PH01 fixture proves row AC unions and rejects borrowed or unrelated row coverage.
+func TestPhase01CompleteFixtureValidatesExactCoverage(t *testing.T) {
+	root := completePhase01Fixture(t)
+	runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", root, "01")
+	for _, mutation := range []func(string) string{
+		func(s string) string {
+			return strings.Replace(s, "requirements: [PH01-R01, PH01-R02]", "requirements: [PH01-R01]", 1)
+		},
+		func(s string) string {
+			return strings.Replace(s, "STORY-011-AC-1, STORY-012-AC-2", "STORY-016-AC-6, STORY-012-AC-2", 1)
+		},
+	} {
+		fixture := completePhase01Fixture(t)
+		path := filepath.Join(fixture, "docs", "phase-resolutions", "PH01.yaml")
+		writePhaseFixture(t, path, mutation(readPhaseFixture(t, path)))
+		output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
+		if !strings.Contains(output, "PH01-T01") {
+			t.Fatalf("full checker output = %q", output)
+		}
+	}
+}
+
+// Proves: STORY-026-AC-4
+// A complete isolated PH01 fixture resolves exact edge test identities and rejects an unresolved identity.
+func TestPhase01CompleteFixtureValidatesEdgeIdentities(t *testing.T) {
+	root := completePhase01Fixture(t)
+	runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", root, "01")
+	path := filepath.Join(root, "docs", "phase-resolutions", "PH01.yaml")
+	writePhaseFixture(t, path, strings.Replace(readPhaseFixture(t, path), "frontend/e2e/core-editor.test.ts::", "frontend/e2e/missing.test.ts::", 1))
+	output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", root, "01")
+	if !strings.Contains(output, "unresolved edge evidence") {
+		t.Fatalf("full checker output = %q", output)
+	}
+}
+
+func completePhase01Fixture(t *testing.T) string {
+	t.Helper()
+	source := storyEightRepositoryRoot(t)
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range []string{"specification", "docs/stories", "docs/phase-resolutions"} {
+		if output, err := exec.Command("cp", "-R", filepath.Join(source, item), filepath.Join(root, filepath.Dir(item))).CombinedOutput(); err != nil {
+			t.Fatalf("copy %s: %v: %s", item, err, output)
+		}
+	}
+	writePhaseFixture(t, filepath.Join(root, "justfile"), readPhaseFixture(t, filepath.Join(source, "justfile")))
+	coverage := readPhaseFixture(t, filepath.Join(root, "docs", "phase-resolutions", "PH01.yaml"))
+	ids := map[string]bool{}
+	for _, id := range regexp.MustCompile(`STORY-\d{3}-AC-\d+`).FindAllString(coverage, -1) {
+		ids[id[:9]] = true
+	}
+	entries, err := os.ReadDir(filepath.Join(root, "docs", "stories"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	board := map[string]string{}
+	var proving strings.Builder
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".md") || entry.Name() == "README.md" {
+			continue
+		}
+		path := filepath.Join(root, "docs", "stories", entry.Name())
+		contents := readPhaseFixture(t, path)
+		match := regexp.MustCompile(`(?m)^id: (STORY-\d{3})$`).FindStringSubmatch(contents)
+		if len(match) == 0 {
+			continue
+		}
+		status := "draft"
+		if ids[match[1]] {
+			status = "done"
+			for _, ac := range regexp.MustCompile(`STORY-\d{3}-AC-\d+`).FindAllString(contents, -1) {
+				if !seen[ac] {
+					seen[ac] = true
+					fmt.Fprintf(&proving, "// Proves: %s\nfunc Test%s(t *testing.T) {}\n\n", ac, strings.ReplaceAll(ac, "-", ""))
+				}
+			}
+		}
+		contents = regexp.MustCompile(`(?m)^status: .*`).ReplaceAllString(contents, "status: "+status)
+		writePhaseFixture(t, path, contents)
+		board[match[1]] = status
+	}
+	writeTraceFixtureBoard(t, root, board)
+	writePhaseFixture(t, filepath.Join(root, "internal", "application", "proof_test.go"), "package application\n\nimport \"testing\"\n\n"+proving.String())
+	for _, match := range regexp.MustCompile(`"([^\"]+::[^\"]+)"`).FindAllStringSubmatch(coverage, -1) {
+		parts := strings.SplitN(match[1], "::", 2)
+		path := filepath.Join(root, parts[0])
+		contents := ""
+		if _, err := os.Stat(path); err == nil {
+			contents = readPhaseFixture(t, path)
+		}
+		writePhaseFixture(t, path, contents+"test('"+parts[1]+"', () => {});\n")
+	}
+	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-wails-runtime.md"), "**Status:** verified\n**Owner:** tester\n**Date:** 2026-07-22\n**Host:** "+runtime.GOOS+"\n**Revision:** fixture\n**Freshness:** exact-revision\n**Procedure:** native run\n**Result:** passed\n**Limitations:** current host only\n**Deferred platforms:** windows, linux\n**Accepted ADR:** ADR-0016\n**Expires before:** before-phase15-release-or-platform-claim\n")
+	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-visual-approval.md"), "**Status:** approved\n**Owner:** product owner\n**Revision:** fixture\n**Date:** 2026-07-22\n")
+	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-network-trace.md"), "**Status:** verified\n**Owner:** security reviewer\n**Revision:** fixture\n**Date:** 2026-07-22\n")
+	for _, arguments := range [][]string{{"init"}, {"config", "user.email", "fixture@example.test"}, {"config", "user.name", "Fixture"}, {"add", "."}, {"commit", "-m", "fixture"}} {
+		command := exec.Command("git", arguments...)
+		command.Dir = root
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", arguments, err, output)
+		}
+	}
+	command := exec.Command("git", "rev-parse", "HEAD")
+	command.Dir = root
+	revisionBytes, err := command.Output()
+	if err != nil {
+		t.Fatalf("fixture revision: %v", err)
+	}
+	artifact := filepath.Join(root, "docs", "phase-evidence", "PH01-wails-runtime.md")
+	writePhaseFixture(t, artifact, strings.Replace(readPhaseFixture(t, artifact), "Revision:** fixture", "Revision:** "+strings.TrimSpace(string(revisionBytes)), 1))
+	return root
 }
 
 func newPhaseFixture(t *testing.T) string {

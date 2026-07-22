@@ -90,6 +90,9 @@ phase-check:
 phase-complete-check phase:
     node scripts/phase-complete-check.mjs {{phase}}
 
+phase-checkpoint-check checkpoint:
+    node scripts/phase-complete-check.mjs 01 --checkpoint {{checkpoint}}
+
 # Phase-00 staged local/CI mirror. Full drift and security gates join later phases.
 check:
     just gen-check

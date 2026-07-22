@@ -39,7 +39,7 @@ authors them **per phase** from that phase's suggested-task list
 | STORY-023 | Expose document commands through a stable editor-session boundary | 01 | done | coder | M |
 | STORY-024 | Enforce phase planning completeness | 00 | done | coder | M |
 | STORY-025 | Record the Phase 01 checkpoint resolution | 01 | done | coder | M |
-| STORY-026 | Strengthen Phase 01 checkpoint and completion validation | 01 | ready | coder | M |
+| STORY-026 | Strengthen Phase 01 checkpoint and completion validation | 01 | done | coder | M |
 | STORY-027 | Make failed frontend bootstrap retryable | 01 | ready | coder | M |
 | STORY-028 | Preserve the latest editor view intent during arrangement changes | 01 | ready | coder | M |
 | STORY-029 | Add an atomic backend document snapshot seam | 01 | ready | coder | M |
@@ -63,8 +63,7 @@ Promote a draft to `ready` only after every `depends_on` story is `done` and the
   obligations, and narrow current-host exception from ADR-0016.
 - STORY-027, STORY-028, STORY-029, and STORY-031 are immediately ready independent remediation packets
   because each of their declared prerequisites is already done; they may be implemented in any order.
-- STORY-026 remains draft until STORY-025 is done; it teaches the validator the accepted checkpoint and
-  exact row-level completion rules.
+- STORY-026 is done; it validates the accepted checkpoints and exact row-level completion rules.
 - STORY-030 remains draft until STORY-028 and STORY-029 are done; STORY-023 is already done.
 - STORY-032 remains draft until STORY-026 through STORY-031 are all done; it produces the revision-bound
   automated, current-host native, network, and human-approved visual completion evidence last.

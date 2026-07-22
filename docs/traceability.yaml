@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-22T19:16:28.460Z",
+  "generated_at": "2026-07-22T20:00:00.964Z",
   "generator_version": 2,
   "stories": {
     "STORY-001": {
@@ -1230,18 +1230,18 @@
       "acceptance_criteria": {
         "STORY-024-AC-1": {
           "tests": [
-            "internal/application/phase_validation_test.go:123"
+            "internal/application/phase_validation_test.go:125"
           ]
         },
         "STORY-024-AC-2": {
           "tests": [
-            "internal/application/phase_validation_test.go:101",
-            "internal/application/phase_validation_test.go:15"
+            "internal/application/phase_validation_test.go:103",
+            "internal/application/phase_validation_test.go:17"
           ]
         },
         "STORY-024-AC-3": {
           "tests": [
-            "internal/application/phase_validation_test.go:350"
+            "internal/application/phase_validation_test.go:352"
           ]
         },
         "STORY-024-AC-4": {
@@ -1251,12 +1251,12 @@
         },
         "STORY-024-AC-5": {
           "tests": [
-            "internal/application/phase_validation_test.go:496"
+            "internal/application/phase_validation_test.go:498"
           ]
         },
         "STORY-024-AC-6": {
           "tests": [
-            "internal/application/phase_validation_test.go:528"
+            "internal/application/phase_validation_test.go:530"
           ]
         }
       }
@@ -1283,39 +1283,39 @@
       "acceptance_criteria": {
         "STORY-025-AC-1": {
           "tests": [
-            "internal/application/phase_validation_test.go:551"
+            "internal/application/phase_validation_test.go:554"
           ]
         },
         "STORY-025-AC-2": {
           "tests": [
-            "internal/application/phase_validation_test.go:592"
+            "internal/application/phase_validation_test.go:595"
           ]
         },
         "STORY-025-AC-3": {
           "tests": [
-            "internal/application/phase_validation_test.go:598"
+            "internal/application/phase_validation_test.go:601"
           ]
         },
         "STORY-025-AC-4": {
           "tests": [
-            "internal/application/phase_validation_test.go:688"
+            "internal/application/phase_validation_test.go:691"
           ]
         },
         "STORY-025-AC-5": {
           "tests": [
-            "internal/application/phase_validation_test.go:749"
+            "internal/application/phase_validation_test.go:752"
           ]
         },
         "STORY-025-AC-6": {
           "tests": [
-            "internal/application/phase_validation_test.go:840"
+            "internal/application/phase_validation_test.go:843"
           ]
         }
       }
     },
     "STORY-026": {
       "title": "Strengthen Phase 01 checkpoint and completion validation",
-      "status": "ready",
+      "status": "done",
       "phase": "01",
       "phase_requirements": [
         "PH01-R14",
@@ -1335,22 +1335,36 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-026-AC-1": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:923"
+          ]
         },
         "STORY-026-AC-2": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:931"
+          ]
         },
         "STORY-026-AC-3": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:1066",
+            "internal/application/phase_validation_test.go:941"
+          ]
         },
         "STORY-026-AC-4": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:1089",
+            "internal/application/phase_validation_test.go:961"
+          ]
         },
         "STORY-026-AC-5": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:974"
+          ]
         },
         "STORY-026-AC-6": {
-          "tests": []
+          "tests": [
+            "internal/application/phase_validation_test.go:1007"
+          ]
         }
       }
     },
@@ -1925,12 +1939,12 @@
         }
       },
       "tests": [
-        "internal/application/phase_validation_test.go:101",
-        "internal/application/phase_validation_test.go:123",
-        "internal/application/phase_validation_test.go:15",
-        "internal/application/phase_validation_test.go:350",
-        "internal/application/phase_validation_test.go:496",
-        "internal/application/phase_validation_test.go:528",
+        "internal/application/phase_validation_test.go:103",
+        "internal/application/phase_validation_test.go:125",
+        "internal/application/phase_validation_test.go:17",
+        "internal/application/phase_validation_test.go:352",
+        "internal/application/phase_validation_test.go:498",
+        "internal/application/phase_validation_test.go:530",
         "internal/application/toolchain_test.go:43"
       ]
     },
@@ -2544,6 +2558,12 @@
         }
       },
       "tests": [
+        "internal/application/phase_validation_test.go:1007",
+        "internal/application/phase_validation_test.go:1066",
+        "internal/application/phase_validation_test.go:1089",
+        "internal/application/phase_validation_test.go:931",
+        "internal/application/phase_validation_test.go:941",
+        "internal/application/phase_validation_test.go:961",
         "internal/application/traceability_test.go:132",
         "internal/application/traceability_test.go:176",
         "internal/application/traceability_test.go:189",
@@ -2585,12 +2605,16 @@
         }
       },
       "tests": [
-        "internal/application/phase_validation_test.go:551",
-        "internal/application/phase_validation_test.go:592",
-        "internal/application/phase_validation_test.go:598",
-        "internal/application/phase_validation_test.go:688",
-        "internal/application/phase_validation_test.go:749",
-        "internal/application/phase_validation_test.go:840"
+        "internal/application/phase_validation_test.go:1007",
+        "internal/application/phase_validation_test.go:554",
+        "internal/application/phase_validation_test.go:595",
+        "internal/application/phase_validation_test.go:601",
+        "internal/application/phase_validation_test.go:691",
+        "internal/application/phase_validation_test.go:752",
+        "internal/application/phase_validation_test.go:843",
+        "internal/application/phase_validation_test.go:923",
+        "internal/application/phase_validation_test.go:931",
+        "internal/application/phase_validation_test.go:974"
       ]
     },
     "PH01-R16": {

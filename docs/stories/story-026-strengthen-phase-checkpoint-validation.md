@@ -1,7 +1,7 @@
 ---
 id: STORY-026
 title: Strengthen Phase 01 checkpoint and completion validation
-status: ready
+status: done
 spec_clauses:
   - 06_Process_and_Traceability/03_TRACEABILITY.md#phase-commands
   - 06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#phase-level-exit-criteria

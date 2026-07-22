@@ -124,6 +124,7 @@ export async function collectProvingTests(root) {
   });
   const provingTests = new Map();
   const edgeCaseTests = new Map();
+  const edgeCaseTestIdentities = new Map();
   for (const filename of files.sort()) {
     const contents = await readFile(filename, "utf8");
     const lines = contents.split(/\r?\n/);
@@ -163,6 +164,9 @@ export async function collectProvingTests(root) {
       }
 
       const location = `${relative(root, filename)}:${declaration.lineIndex + 1}`;
+      const testName = isGoTest
+        ? /func\s+(Test\w+)\s*\(/.exec(lines[declaration.lineIndex])?.[1] ?? ""
+        : jestTestNamePattern.exec(lines[declaration.lineIndex])?.[2] ?? "";
       for (const acceptanceCriterion of acceptanceCriteria) {
         addEvidence(provingTests, acceptanceCriterion, location);
       }
@@ -182,16 +186,17 @@ export async function collectProvingTests(root) {
       }
       for (const edgeCase of explicitEdgeCases) {
         addEvidence(edgeCaseTests, edgeCase, location);
+        addEvidence(edgeCaseTestIdentities, edgeCase, `${relative(root, filename)}::${testName}`);
       }
     }
   }
 
-  for (const evidence of [provingTests, edgeCaseTests]) {
+  for (const evidence of [provingTests, edgeCaseTests, edgeCaseTestIdentities]) {
     for (const tests of evidence.values()) {
       tests.sort();
     }
   }
-  return { provingTests, edgeCaseTests };
+  return { provingTests, edgeCaseTests, edgeCaseTestIdentities };
 }
 
 function leadingCommentStart(lines, declarationLine) {
@@ -212,7 +217,7 @@ function addEvidence(evidence, identifier, location) {
 
 export async function buildTraceRecord(root) {
   const stories = await readStories(root);
-  const { provingTests, edgeCaseTests } = await collectProvingTests(root);
+  const { provingTests, edgeCaseTests, edgeCaseTestIdentities } = await collectProvingTests(root);
   const { phases } = await parseAndValidatePhases(root);
   const record = {
     generated_at: new Date().toISOString(),
@@ -295,7 +300,7 @@ export async function buildTraceRecord(root) {
     }
   }
 
-  return { record, stories, provingTests, edgeCaseTests };
+  return { record, stories, provingTests, edgeCaseTests, edgeCaseTestIdentities };
 }
 
 export function renderTraceRecord(record) {
