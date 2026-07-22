@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-22T14:52:28.272Z",
+  "generated_at": "2026-07-22T16:25:24.344Z",
   "generator_version": 2,
   "stories": {
     "STORY-001": {
@@ -1260,6 +1260,338 @@
           ]
         }
       }
+    },
+    "STORY-025": {
+      "title": "Record the Phase 01 checkpoint resolution",
+      "status": "ready",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R15"
+      ],
+      "spec_clauses": [
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#2-stage--phase-mapping",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#5-stage-exit-criteria",
+        "07_Phases/00_ROADMAP.md#stages",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#requirement-ledger",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-evidence",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#open-specification-conflicts"
+      ],
+      "modules": [
+        "internal/application/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-025-AC-1": {
+          "tests": []
+        },
+        "STORY-025-AC-2": {
+          "tests": []
+        },
+        "STORY-025-AC-3": {
+          "tests": []
+        },
+        "STORY-025-AC-4": {
+          "tests": []
+        },
+        "STORY-025-AC-5": {
+          "tests": []
+        },
+        "STORY-025-AC-6": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-026": {
+      "title": "Strengthen Phase 01 checkpoint and completion validation",
+      "status": "draft",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R14",
+        "PH01-R15"
+      ],
+      "spec_clauses": [
+        "06_Process_and_Traceability/03_TRACEABILITY.md#phase-commands",
+        "06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#phase-level-exit-criteria",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#cross-phase-contracts",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#edge-and-failure-cases",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-evidence"
+      ],
+      "modules": [
+        "internal/application/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-026-AC-1": {
+          "tests": []
+        },
+        "STORY-026-AC-2": {
+          "tests": []
+        },
+        "STORY-026-AC-3": {
+          "tests": []
+        },
+        "STORY-026-AC-4": {
+          "tests": []
+        },
+        "STORY-026-AC-5": {
+          "tests": []
+        },
+        "STORY-026-AC-6": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-027": {
+      "title": "Make failed frontend bootstrap retryable",
+      "status": "ready",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R02",
+        "PH01-R16"
+      ],
+      "spec_clauses": [
+        "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "02_Architecture/03_FRONTEND_REACT.md#store",
+        "01_Product/13_I18N.md#i18n-layer",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model"
+      ],
+      "modules": [
+        "logic/store/",
+        "ui/widgets/",
+        "i18n/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-027-AC-1": {
+          "tests": []
+        },
+        "STORY-027-AC-2": {
+          "tests": []
+        },
+        "STORY-027-AC-3": {
+          "tests": []
+        },
+        "STORY-027-AC-4": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-028": {
+      "title": "Preserve the latest editor view intent during arrangement changes",
+      "status": "ready",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R04",
+        "PH01-R06",
+        "PH01-R07",
+        "PH01-R08"
+      ],
+      "spec_clauses": [
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state",
+        "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model"
+      ],
+      "modules": [
+        "logic/adapter/",
+        "logic/store/",
+        "ui/widgets/"
+      ],
+      "edge_cases": [
+        "EC-DOCS-12"
+      ],
+      "acceptance_criteria": {
+        "STORY-028-AC-1": {
+          "tests": []
+        },
+        "STORY-028-AC-2": {
+          "tests": []
+        },
+        "STORY-028-AC-3": {
+          "tests": []
+        },
+        "STORY-028-AC-4": {
+          "tests": []
+        },
+        "STORY-028-AC-5": {
+          "tests": []
+        },
+        "STORY-028-AC-6": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-029": {
+      "title": "Add an atomic backend document snapshot seam",
+      "status": "ready",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R01",
+        "PH01-R09"
+      ],
+      "spec_clauses": [
+        "02_Architecture/02_BACKEND_GO.md#application-model",
+        "02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open",
+        "02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams",
+        "07_Phases/PHASE_09_ASSETS_SECURITY.md#cross-phase-contracts",
+        "07_Phases/PHASE_12_ACTIONS_PROOFREAD_REFORMAT.md#cross-phase-contracts"
+      ],
+      "modules": [
+        "internal/appmodel/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-029-AC-1": {
+          "tests": []
+        },
+        "STORY-029-AC-2": {
+          "tests": []
+        },
+        "STORY-029-AC-3": {
+          "tests": []
+        },
+        "STORY-029-AC-4": {
+          "tests": []
+        },
+        "STORY-029-AC-5": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-030": {
+      "title": "Complete the frontend document command seam",
+      "status": "draft",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R09",
+        "PH01-R10"
+      ],
+      "spec_clauses": [
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open",
+        "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open",
+        "01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode",
+        "02_Architecture/03_FRONTEND_REACT.md#state-ownership",
+        "02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams",
+        "07_Phases/PHASE_05_FORMAT_LINT.md#cross-phase-contracts",
+        "07_Phases/PHASE_12_ACTIONS_PROOFREAD_REFORMAT.md#cross-phase-contracts"
+      ],
+      "modules": [
+        "logic/hooks/",
+        "ui/components/",
+        "ui/widgets/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-030-AC-1": {
+          "tests": []
+        },
+        "STORY-030-AC-2": {
+          "tests": []
+        },
+        "STORY-030-AC-3": {
+          "tests": []
+        },
+        "STORY-030-AC-4": {
+          "tests": []
+        },
+        "STORY-030-AC-5": {
+          "tests": []
+        },
+        "STORY-030-AC-6": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-031": {
+      "title": "Render safe offline GFM footnotes",
+      "status": "ready",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R11"
+      ],
+      "spec_clauses": [
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features",
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization",
+        "01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases",
+        "02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline",
+        "03_NonFunctional/04_OFFLINE.md#2-bundled-assets",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#requirement-ledger"
+      ],
+      "modules": [
+        "logic/markdown/"
+      ],
+      "edge_cases": [
+        "EC-RENDER-5",
+        "EC-RENDER-6"
+      ],
+      "acceptance_criteria": {
+        "STORY-031-AC-1": {
+          "tests": []
+        },
+        "STORY-031-AC-2": {
+          "tests": []
+        },
+        "STORY-031-AC-3": {
+          "tests": []
+        }
+      }
+    },
+    "STORY-032": {
+      "title": "Produce Phase 01 completion evidence",
+      "status": "draft",
+      "phase": "01",
+      "phase_requirements": [
+        "PH01-R01",
+        "PH01-R02",
+        "PH01-R03",
+        "PH01-R04",
+        "PH01-R05",
+        "PH01-R06",
+        "PH01-R07",
+        "PH01-R08",
+        "PH01-R09",
+        "PH01-R10",
+        "PH01-R11",
+        "PH01-R12",
+        "PH01-R13",
+        "PH01-R14",
+        "PH01-R15",
+        "PH01-R16"
+      ],
+      "spec_clauses": [
+        "06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#phase-level-exit-criteria",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#cross-phase-contracts",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#edge-and-failure-cases",
+        "07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-evidence",
+        "mockups/README.md#role-in-the-spec"
+      ],
+      "modules": [
+        "internal/application/"
+      ],
+      "edge_cases": [],
+      "acceptance_criteria": {
+        "STORY-032-AC-1": {
+          "tests": []
+        },
+        "STORY-032-AC-2": {
+          "tests": []
+        },
+        "STORY-032-AC-3": {
+          "tests": []
+        },
+        "STORY-032-AC-4": {
+          "tests": []
+        },
+        "STORY-032-AC-5": {
+          "tests": []
+        },
+        "STORY-032-AC-6": {
+          "tests": []
+        }
+      }
     }
   },
   "phase_requirements": {
@@ -1607,6 +1939,20 @@
             "STORY-011-AC-6",
             "STORY-011-AC-7"
           ]
+        },
+        "STORY-029": {
+          "acceptance_criteria": [
+            "STORY-029-AC-1",
+            "STORY-029-AC-2",
+            "STORY-029-AC-3",
+            "STORY-029-AC-4"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-1",
+            "STORY-032-AC-4"
+          ]
         }
       },
       "tests": [
@@ -1645,6 +1991,19 @@
         "STORY-017": {
           "acceptance_criteria": [
             "STORY-017-AC-4"
+          ]
+        },
+        "STORY-027": {
+          "acceptance_criteria": [
+            "STORY-027-AC-1",
+            "STORY-027-AC-2",
+            "STORY-027-AC-3",
+            "STORY-027-AC-4"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-4"
           ]
         }
       },
@@ -1693,6 +2052,12 @@
             "STORY-019-AC-5",
             "STORY-019-AC-6"
           ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-1",
+            "STORY-032-AC-4"
+          ]
         }
       },
       "tests": [
@@ -1721,6 +2086,17 @@
         "STORY-022": {
           "acceptance_criteria": [
             "STORY-022-AC-1"
+          ]
+        },
+        "STORY-028": {
+          "acceptance_criteria": [
+            "STORY-028-AC-2"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-1",
+            "STORY-032-AC-4"
           ]
         }
       },
@@ -1757,6 +2133,11 @@
             "STORY-019-AC-3",
             "STORY-019-AC-6"
           ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-4"
+          ]
         }
       },
       "tests": [
@@ -1787,6 +2168,19 @@
             "STORY-022-AC-4",
             "STORY-022-AC-5"
           ]
+        },
+        "STORY-028": {
+          "acceptance_criteria": [
+            "STORY-028-AC-2",
+            "STORY-028-AC-4",
+            "STORY-028-AC-6"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-1",
+            "STORY-032-AC-4"
+          ]
         }
       },
       "tests": [
@@ -1812,6 +2206,21 @@
             "STORY-021-AC-4",
             "STORY-021-AC-5",
             "STORY-021-AC-6"
+          ]
+        },
+        "STORY-028": {
+          "acceptance_criteria": [
+            "STORY-028-AC-1",
+            "STORY-028-AC-3",
+            "STORY-028-AC-4",
+            "STORY-028-AC-5",
+            "STORY-028-AC-6"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-1",
+            "STORY-032-AC-4"
           ]
         }
       },
@@ -1847,6 +2256,20 @@
             "STORY-018-AC-3",
             "STORY-018-AC-4"
           ]
+        },
+        "STORY-028": {
+          "acceptance_criteria": [
+            "STORY-028-AC-1",
+            "STORY-028-AC-3",
+            "STORY-028-AC-5"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-1",
+            "STORY-032-AC-3",
+            "STORY-032-AC-4"
+          ]
         }
       },
       "tests": [
@@ -1879,6 +2302,27 @@
             "STORY-023-AC-4",
             "STORY-023-AC-5"
           ]
+        },
+        "STORY-029": {
+          "acceptance_criteria": [
+            "STORY-029-AC-1",
+            "STORY-029-AC-3",
+            "STORY-029-AC-5"
+          ]
+        },
+        "STORY-030": {
+          "acceptance_criteria": [
+            "STORY-030-AC-1",
+            "STORY-030-AC-2",
+            "STORY-030-AC-3",
+            "STORY-030-AC-4",
+            "STORY-030-AC-5"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-4"
+          ]
         }
       },
       "tests": [
@@ -1900,6 +2344,19 @@
           "acceptance_criteria": [
             "STORY-023-AC-1",
             "STORY-023-AC-2"
+          ]
+        },
+        "STORY-030": {
+          "acceptance_criteria": [
+            "STORY-030-AC-1",
+            "STORY-030-AC-3",
+            "STORY-030-AC-5",
+            "STORY-030-AC-6"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-4"
           ]
         }
       },
@@ -1930,6 +2387,20 @@
           "acceptance_criteria": [
             "STORY-018-AC-2",
             "STORY-018-AC-3"
+          ]
+        },
+        "STORY-031": {
+          "acceptance_criteria": [
+            "STORY-031-AC-1",
+            "STORY-031-AC-2",
+            "STORY-031-AC-3"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-1",
+            "STORY-032-AC-2",
+            "STORY-032-AC-4"
           ]
         }
       },
@@ -1965,6 +2436,11 @@
         "STORY-018": {
           "acceptance_criteria": [
             "STORY-018-AC-2"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-4"
           ]
         }
       },
@@ -2004,6 +2480,13 @@
           "acceptance_criteria": [
             "STORY-019-AC-4"
           ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-1",
+            "STORY-032-AC-3",
+            "STORY-032-AC-4"
+          ]
         }
       },
       "tests": [
@@ -2032,6 +2515,20 @@
             "STORY-020-AC-4",
             "STORY-020-AC-5"
           ]
+        },
+        "STORY-026": {
+          "acceptance_criteria": [
+            "STORY-026-AC-2",
+            "STORY-026-AC-3",
+            "STORY-026-AC-4",
+            "STORY-026-AC-6"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-4",
+            "STORY-032-AC-6"
+          ]
         }
       },
       "tests": [
@@ -2049,7 +2546,32 @@
         "00_Foundation/06_IMPLEMENTATION_STAGES.md#5-stage-exit-criteria",
         "07_Phases/00_ROADMAP.md#stages"
       ],
-      "stories": {},
+      "stories": {
+        "STORY-025": {
+          "acceptance_criteria": [
+            "STORY-025-AC-1",
+            "STORY-025-AC-2",
+            "STORY-025-AC-3",
+            "STORY-025-AC-4",
+            "STORY-025-AC-5",
+            "STORY-025-AC-6"
+          ]
+        },
+        "STORY-026": {
+          "acceptance_criteria": [
+            "STORY-026-AC-1",
+            "STORY-026-AC-2",
+            "STORY-026-AC-5",
+            "STORY-026-AC-6"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-5",
+            "STORY-032-AC-6"
+          ]
+        }
+      },
       "tests": []
     },
     "PH01-R16": {
@@ -2063,6 +2585,16 @@
         "STORY-016": {
           "acceptance_criteria": [
             "STORY-016-AC-6"
+          ]
+        },
+        "STORY-027": {
+          "acceptance_criteria": [
+            "STORY-027-AC-4"
+          ]
+        },
+        "STORY-032": {
+          "acceptance_criteria": [
+            "STORY-032-AC-4"
           ]
         }
       },
@@ -3631,7 +4163,9 @@
     },
     "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open": {
       "stories": [
-        "STORY-009"
+        "STORY-009",
+        "STORY-029",
+        "STORY-030"
       ]
     },
     "07_Phases/PHASE_00_SCAFFOLD.md#phase-exit-checklist": {
@@ -3658,12 +4192,14 @@
     },
     "02_Architecture/02_BACKEND_GO.md#application-model": {
       "stories": [
-        "STORY-011"
+        "STORY-011",
+        "STORY-029"
       ]
     },
     "02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model": {
       "stories": [
-        "STORY-011"
+        "STORY-011",
+        "STORY-029"
       ]
     },
     "00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership": {
@@ -3692,7 +4228,8 @@
     },
     "02_Architecture/03_FRONTEND_REACT.md#store": {
       "stories": [
-        "STORY-012"
+        "STORY-012",
+        "STORY-027"
       ]
     },
     "02_Architecture/03_FRONTEND_REACT.md#state-ownership": {
@@ -3703,7 +4240,10 @@
         "STORY-019",
         "STORY-021",
         "STORY-022",
-        "STORY-023"
+        "STORY-023",
+        "STORY-027",
+        "STORY-028",
+        "STORY-030"
       ]
     },
     "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor": {
@@ -3717,7 +4257,8 @@
         "STORY-016",
         "STORY-019",
         "STORY-022",
-        "STORY-023"
+        "STORY-023",
+        "STORY-030"
       ]
     },
     "02_Architecture/03_FRONTEND_REACT.md#components": {
@@ -3752,22 +4293,26 @@
     },
     "01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features": {
       "stories": [
-        "STORY-014"
+        "STORY-014",
+        "STORY-031"
       ]
     },
     "01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization": {
       "stories": [
-        "STORY-014"
+        "STORY-014",
+        "STORY-031"
       ]
     },
     "02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline": {
       "stories": [
-        "STORY-014"
+        "STORY-014",
+        "STORY-031"
       ]
     },
     "03_NonFunctional/04_OFFLINE.md#2-bundled-assets": {
       "stories": [
-        "STORY-014"
+        "STORY-014",
+        "STORY-031"
       ]
     },
     "07_Phases/PHASE_01_CORE_EDITOR.md#out-of-scope": {
@@ -3792,20 +4337,23 @@
       "stories": [
         "STORY-015",
         "STORY-021",
-        "STORY-022"
+        "STORY-022",
+        "STORY-028"
       ]
     },
     "01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state": {
       "stories": [
         "STORY-015",
         "STORY-021",
-        "STORY-022"
+        "STORY-022",
+        "STORY-028"
       ]
     },
     "mockups/README.md#role-in-the-spec": {
       "stories": [
         "STORY-015",
-        "STORY-018"
+        "STORY-018",
+        "STORY-032"
       ]
     },
     "01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n": {
@@ -3820,7 +4368,8 @@
     },
     "01_Product/13_I18N.md#i18n-layer": {
       "stories": [
-        "STORY-016"
+        "STORY-016",
+        "STORY-027"
       ]
     },
     "01_Product/13_I18N.md#string-catalog": {
@@ -3909,12 +4458,100 @@
     },
     "02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams": {
       "stories": [
-        "STORY-023"
+        "STORY-023",
+        "STORY-029",
+        "STORY-030"
       ]
     },
     "06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#phase-level-exit-criteria": {
       "stories": [
-        "STORY-024"
+        "STORY-024",
+        "STORY-026",
+        "STORY-032"
+      ]
+    },
+    "00_Foundation/06_IMPLEMENTATION_STAGES.md#2-stage--phase-mapping": {
+      "stories": [
+        "STORY-025"
+      ]
+    },
+    "00_Foundation/06_IMPLEMENTATION_STAGES.md#5-stage-exit-criteria": {
+      "stories": [
+        "STORY-025"
+      ]
+    },
+    "07_Phases/00_ROADMAP.md#stages": {
+      "stories": [
+        "STORY-025"
+      ]
+    },
+    "07_Phases/PHASE_01_CORE_EDITOR.md#requirement-ledger": {
+      "stories": [
+        "STORY-025",
+        "STORY-031"
+      ]
+    },
+    "07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-evidence": {
+      "stories": [
+        "STORY-025",
+        "STORY-026",
+        "STORY-032"
+      ]
+    },
+    "07_Phases/PHASE_01_CORE_EDITOR.md#open-specification-conflicts": {
+      "stories": [
+        "STORY-025"
+      ]
+    },
+    "06_Process_and_Traceability/03_TRACEABILITY.md#phase-commands": {
+      "stories": [
+        "STORY-026"
+      ]
+    },
+    "07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model": {
+      "stories": [
+        "STORY-026",
+        "STORY-027",
+        "STORY-028",
+        "STORY-032"
+      ]
+    },
+    "07_Phases/PHASE_01_CORE_EDITOR.md#cross-phase-contracts": {
+      "stories": [
+        "STORY-026",
+        "STORY-032"
+      ]
+    },
+    "07_Phases/PHASE_01_CORE_EDITOR.md#edge-and-failure-cases": {
+      "stories": [
+        "STORY-026",
+        "STORY-032"
+      ]
+    },
+    "07_Phases/PHASE_09_ASSETS_SECURITY.md#cross-phase-contracts": {
+      "stories": [
+        "STORY-029"
+      ]
+    },
+    "07_Phases/PHASE_12_ACTIONS_PROOFREAD_REFORMAT.md#cross-phase-contracts": {
+      "stories": [
+        "STORY-029",
+        "STORY-030"
+      ]
+    },
+    "00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open": {
+      "stories": [
+        "STORY-030"
+      ]
+    },
+    "07_Phases/PHASE_05_FORMAT_LINT.md#cross-phase-contracts": {
+      "stories": [
+        "STORY-030"
+      ]
+    },
+    "01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases": {
+      "stories": [
+        "STORY-031"
       ]
     }
   },
@@ -3948,7 +4585,8 @@
     },
     "EC-RENDER-5": {
       "stories": [
-        "STORY-014"
+        "STORY-014",
+        "STORY-031"
       ],
       "tests": [
         "frontend/src/ui/components/MarkdownView.test.tsx:80"
@@ -3956,7 +4594,8 @@
     },
     "EC-RENDER-6": {
       "stories": [
-        "STORY-014"
+        "STORY-014",
+        "STORY-031"
       ],
       "tests": [
         "frontend/src/ui/components/MarkdownView.test.tsx:47"
@@ -3997,7 +4636,8 @@
     "EC-DOCS-12": {
       "stories": [
         "STORY-019",
-        "STORY-022"
+        "STORY-022",
+        "STORY-028"
       ],
       "tests": [
         "frontend/e2e/core-editor.test.ts:258",
@@ -4016,7 +4656,10 @@
         "STORY-010",
         "STORY-011",
         "STORY-020",
-        "STORY-024"
+        "STORY-024",
+        "STORY-025",
+        "STORY-026",
+        "STORY-032"
       ]
     },
     "ui/styles/": {
@@ -4040,7 +4683,10 @@
         "STORY-018",
         "STORY-019",
         "STORY-022",
-        "STORY-023"
+        "STORY-023",
+        "STORY-027",
+        "STORY-028",
+        "STORY-030"
       ]
     },
     "internal/apperr/": {
@@ -4090,7 +4736,8 @@
         "STORY-012",
         "STORY-017",
         "STORY-019",
-        "STORY-021"
+        "STORY-021",
+        "STORY-028"
       ]
     },
     "logic/store/": {
@@ -4100,7 +4747,9 @@
         "STORY-015",
         "STORY-016",
         "STORY-019",
-        "STORY-022"
+        "STORY-022",
+        "STORY-027",
+        "STORY-028"
       ]
     },
     "logic/utils/": {
@@ -4124,7 +4773,8 @@
     },
     "internal/appmodel/": {
       "stories": [
-        "STORY-011"
+        "STORY-011",
+        "STORY-029"
       ]
     },
     "ui/components/": {
@@ -4136,24 +4786,28 @@
         "STORY-018",
         "STORY-019",
         "STORY-022",
-        "STORY-023"
+        "STORY-023",
+        "STORY-030"
       ]
     },
     "logic/markdown/": {
       "stories": [
-        "STORY-014"
+        "STORY-014",
+        "STORY-031"
       ]
     },
     "i18n/": {
       "stories": [
-        "STORY-016"
+        "STORY-016",
+        "STORY-027"
       ]
     },
     "logic/hooks/": {
       "stories": [
         "STORY-017",
         "STORY-019",
-        "STORY-023"
+        "STORY-023",
+        "STORY-030"
       ]
     }
   }
