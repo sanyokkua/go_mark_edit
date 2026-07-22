@@ -1,7 +1,7 @@
 ---
 id: STORY-022
 title: Preserve the active Monaco session across view arrangements
-status: ready
+status: done
 spec_clauses:
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view

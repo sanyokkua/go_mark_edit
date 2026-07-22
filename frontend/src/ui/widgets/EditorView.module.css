@@ -35,6 +35,10 @@
   border-radius: var(--editor-pane-radius);
 }
 
+.paneHidden {
+  display: none;
+}
+
 .paneHeader {
   display: flex;
   justify-content: space-between;

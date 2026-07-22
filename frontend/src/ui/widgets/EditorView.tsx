@@ -1,4 +1,12 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useContext,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 
 import CodeEditor, { type CodeEditorHandle } from '../components/CodeEditor';
 import type { EditorPosition } from '../components/CodeEditor';
@@ -48,7 +56,12 @@ interface ActiveEditorProps {
   adapter: EditorSynchronizationAdapter;
   activeBuffer: ActiveBuffer;
   onLiveCursorChange: (cursor: EditorPosition) => void;
+  visible: boolean;
   view: DocumentView;
+}
+
+interface ActiveEditorHandle {
+  captureViewState(): void;
 }
 
 export interface EditorViewProps {
@@ -58,38 +71,59 @@ export interface EditorViewProps {
 export interface EditorViewAdapter
   extends EditorSynchronizationAdapter, LivePreviewAdapter {}
 
-const ActiveEditor: React.FC<ActiveEditorProps> = ({
-  adapter,
-  activeBuffer,
-  onLiveCursorChange,
-  view,
-}: ActiveEditorProps): React.JSX.Element => {
-  const editorRef = useRef<CodeEditorHandle | null>(null);
-  const documentCommands = useDocumentCommands(editorRef);
-  const synchronizedBuffer = useSyncedBuffer(
-    activeBuffer.documentId,
-    view,
-    adapter,
-  );
+const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
+  function ActiveEditor(
+    {
+      adapter,
+      activeBuffer,
+      onLiveCursorChange,
+      visible,
+      view,
+    }: ActiveEditorProps,
+    ref,
+  ): React.JSX.Element {
+    const editorRef = useRef<CodeEditorHandle | null>(null);
+    const viewStateCaptureRef = useRef<(() => void) | null>(null);
+    const documentCommands = useDocumentCommands(editorRef);
+    const synchronizedBuffer = useSyncedBuffer(
+      activeBuffer.documentId,
+      view,
+      adapter,
+    );
 
-  useEffect((): void => {
-    onLiveCursorChange(synchronizedBuffer.liveCursor);
-  }, [onLiveCursorChange, synchronizedBuffer.liveCursor]);
+    useEffect((): void => {
+      onLiveCursorChange(synchronizedBuffer.liveCursor);
+    }, [onLiveCursorChange, synchronizedBuffer.liveCursor]);
 
-  return (
-    <DocumentCommandContext.Provider value={documentCommands}>
-      <CodeEditor
-        ref={editorRef}
-        documentId={activeBuffer.documentId}
-        initialValue={activeBuffer.content}
-        onBlur={synchronizedBuffer.onBlur}
-        onChange={synchronizedBuffer.onChange}
-        onCursorPositionChange={synchronizedBuffer.onCursorPositionChange}
-        onSelectionChange={synchronizedBuffer.onSelectionChange}
-      />
-    </DocumentCommandContext.Provider>
-  );
-};
+    useImperativeHandle(
+      ref,
+      (): ActiveEditorHandle => ({
+        captureViewState(): void {
+          viewStateCaptureRef.current?.();
+        },
+      }),
+      [],
+    );
+
+    return (
+      <DocumentCommandContext.Provider value={documentCommands}>
+        <CodeEditor
+          ref={editorRef}
+          documentId={activeBuffer.documentId}
+          initialValue={activeBuffer.content}
+          visible={visible}
+          onViewStateCaptureReady={(capture: (() => void) | null): void => {
+            viewStateCaptureRef.current = capture;
+          }}
+          onBlur={synchronizedBuffer.onBlur}
+          onChange={synchronizedBuffer.onChange}
+          onCursorPositionChange={synchronizedBuffer.onCursorPositionChange}
+          onSelectionChange={synchronizedBuffer.onSelectionChange}
+        />
+      </DocumentCommandContext.Provider>
+    );
+  },
+);
 
 interface LivePreviewProps {
   activeBuffer: ActiveBuffer;
@@ -136,6 +170,7 @@ const EditorView: React.FC<EditorViewProps> = ({
 }: EditorViewProps): React.JSX.Element | null => {
   const dispatch = useAppDispatch();
   const activeBuffer = useContext(EditorSessionContext);
+  const activeEditorRef = useRef<ActiveEditorHandle | null>(null);
   const [liveCursor, setLiveCursor] = useState<EditorPosition>({
     lineNumber: 1,
     column: 1,
@@ -148,12 +183,18 @@ const EditorView: React.FC<EditorViewProps> = ({
   });
   const onArrangementChange = useCallback(
     (nextArrangement: ViewArrangement): void => {
+      if (nextArrangement === 'preview') {
+        activeEditorRef.current?.captureViewState();
+      }
       void dispatch(setViewArrangement(nextArrangement));
     },
     [dispatch],
   );
   const onEditorVisibilityChange = useCallback(
     (visible: boolean): void => {
+      if (!visible) {
+        activeEditorRef.current?.captureViewState();
+      }
       void dispatch(setEditorPaneVisible(visible));
     },
     [dispatch],
@@ -191,22 +232,28 @@ const EditorView: React.FC<EditorViewProps> = ({
         <ViewModeToggle value={arrangement} onChange={onArrangementChange} />
       </header>
       <div className={styles.panes}>
-        {view.editorVisible ? (
-          <section aria-label="Editor pane" className={styles.pane}>
-            <header className={styles.paneHeader}>
-              <span>Editor · {title}</span>
-              <span className={styles.paneMeta}>
-                {encoding} · {lineEnding}
-              </span>
-            </header>
-            <ActiveEditor
-              adapter={adapter}
-              activeBuffer={activeBuffer}
-              view={view}
-              onLiveCursorChange={onLiveCursorChange}
-            />
-          </section>
-        ) : null}
+        <section
+          aria-hidden={!view.editorVisible}
+          aria-label="Editor pane"
+          className={`${styles.pane} ${
+            view.editorVisible ? '' : styles.paneHidden
+          }`}
+        >
+          <header className={styles.paneHeader}>
+            <span>Editor · {title}</span>
+            <span className={styles.paneMeta}>
+              {encoding} · {lineEnding}
+            </span>
+          </header>
+          <ActiveEditor
+            ref={activeEditorRef}
+            adapter={adapter}
+            activeBuffer={activeBuffer}
+            view={view}
+            visible={view.editorVisible}
+            onLiveCursorChange={onLiveCursorChange}
+          />
+        </section>
         <LivePreview
           key={activeBuffer.documentId}
           activeBuffer={activeBuffer}

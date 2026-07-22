@@ -52,6 +52,11 @@ function missingDocument(): WireError {
   };
 }
 
+async function flushBeforeHidingEditor(documentId: string): Promise<void> {
+  await appModelAdapter.flushBuffer(documentId);
+  await appModelAdapter.flushDocView(documentId);
+}
+
 export const setViewArrangement = createAsyncThunk<
   void,
   ViewArrangement,
@@ -66,6 +71,9 @@ export const setViewArrangement = createAsyncThunk<
   }
 
   try {
+    if (arrangement === 'preview') {
+      await flushBeforeHidingEditor(documentId);
+    }
     await appModelAdapter.setDocView(
       documentId,
       docViewInputForArrangement(document.view, arrangement),
@@ -92,6 +100,9 @@ export const setEditorPaneVisible = createAsyncThunk<
   }
 
   try {
+    if (!editorVisible) {
+      await flushBeforeHidingEditor(documentId);
+    }
     await appModelAdapter.setDocView(
       documentId,
       docViewInputForPaneVisibility(

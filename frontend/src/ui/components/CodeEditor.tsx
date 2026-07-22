@@ -1,4 +1,12 @@
-import { forwardRef, lazy, Suspense, useImperativeHandle, useRef } from 'react';
+import {
+  forwardRef,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from 'react';
 import type { editor, IPosition, IRange, ISelection } from 'monaco-editor';
 
 import styles from './CodeEditor.module.css';
@@ -27,11 +35,13 @@ export interface CodeEditorProps {
   lineNumbers?: 'on' | 'off';
   wordWrap?: 'on' | 'off';
   minimap?: boolean;
+  visible?: boolean;
   onChange?: (value: string) => void;
   onBlur?: () => void;
   onCursorPositionChange?: (position: EditorPosition) => void;
   onSelectionChange?: (selection: EditorSelection | null) => void;
   onEditorMounted?: (editor: editor.IStandaloneCodeEditor) => void;
+  onViewStateCaptureReady?: (capture: (() => void) | null) => void;
 }
 
 const MonacoEditor = lazy(async () => {
@@ -132,11 +142,13 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
       lineNumbers = 'on',
       wordWrap = 'off',
       minimap = false,
+      visible = true,
       onChange,
       onBlur,
       onCursorPositionChange,
       onSelectionChange,
       onEditorMounted,
+      onViewStateCaptureReady,
     }: CodeEditorProps,
     ref,
   ): React.JSX.Element {
@@ -146,12 +158,56 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     const onCursorPositionChangeRef = useRef(onCursorPositionChange);
     const onSelectionChangeRef = useRef(onSelectionChange);
     const onEditorMountedRef = useRef(onEditorMounted);
+    const onViewStateCaptureReadyRef = useRef(onViewStateCaptureReady);
+    const restoreViewStateFrameRef = useRef<number | undefined>(undefined);
+    const viewStateRef = useRef<editor.ICodeEditorViewState | null>(null);
+    const wasVisibleRef = useRef(visible);
 
     onChangeRef.current = onChange;
     onBlurRef.current = onBlur;
     onCursorPositionChangeRef.current = onCursorPositionChange;
     onSelectionChangeRef.current = onSelectionChange;
     onEditorMountedRef.current = onEditorMounted;
+    onViewStateCaptureReadyRef.current = onViewStateCaptureReady;
+
+    const captureViewState = useCallback((): void => {
+      viewStateRef.current = editorRef.current?.saveViewState?.() ?? null;
+    }, []);
+
+    useEffect(() => {
+      onViewStateCaptureReadyRef.current?.(captureViewState);
+
+      return (): void => {
+        onViewStateCaptureReadyRef.current?.(null);
+      };
+    }, [captureViewState]);
+
+    useEffect(() => {
+      const wasVisible = wasVisibleRef.current;
+      wasVisibleRef.current = visible;
+
+      if (visible && !wasVisible) {
+        editorRef.current?.layout();
+        const viewState = viewStateRef.current;
+
+        if (viewState !== null) {
+          restoreViewStateFrameRef.current = window.requestAnimationFrame(
+            (): void => {
+              editorRef.current?.restoreViewState?.(viewState);
+              viewStateRef.current = null;
+              restoreViewStateFrameRef.current = undefined;
+            },
+          );
+        }
+      }
+
+      return (): void => {
+        if (restoreViewStateFrameRef.current !== undefined) {
+          window.cancelAnimationFrame(restoreViewStateFrameRef.current);
+          restoreViewStateFrameRef.current = undefined;
+        }
+      };
+    }, [visible]);
 
     useImperativeHandle(
       ref,

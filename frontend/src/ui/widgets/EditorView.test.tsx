@@ -161,9 +161,7 @@ it('STORY-015-AC-3 renders each arrangement', () => {
   expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
   expect(screen.queryByLabelText('Preview pane')).not.toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Editor' })).toBeChecked();
-  expect(
-    screen.getByRole('textbox', { name: 'Markdown source' }),
-  ).toBeInTheDocument();
+  expect(screen.getByLabelText('Markdown source')).toBeInTheDocument();
 
   cleanup();
   store.dispatch(resetProjection());
@@ -178,7 +176,11 @@ it('STORY-015-AC-3 renders each arrangement', () => {
   cleanup();
   store.dispatch(resetProjection());
   renderEditorView('preview');
-  expect(screen.queryByLabelText('Editor pane')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Editor pane')).toHaveAttribute(
+    'aria-hidden',
+    'true',
+  );
+  expect(screen.getByLabelText('Markdown source')).toBeInTheDocument();
   expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Preview' })).toBeChecked();
   expect(

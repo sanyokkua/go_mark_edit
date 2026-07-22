@@ -39,7 +39,7 @@ async function expectPaneVisibility(
   if (expected.editor) {
     await expect(editorPane).toBeVisible();
   } else {
-    await expect(editorPane).toHaveCount(0);
+    await expect(editorPane).toBeHidden();
   }
 
   if (expected.preview) {
@@ -59,6 +59,60 @@ async function statePatchCount(page: Page): Promise<number> {
 
     return mirrorWindow.__GME_STATE_PATCHES__?.length ?? 0;
   });
+}
+
+async function expectContentFreeMetadataPatchSince(
+  page: Page,
+  patchCount: number,
+): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate((from: number): boolean => {
+        const mirrorWindow = window as Window & {
+          readonly __GME_STATE_PATCHES__?: readonly unknown[];
+        };
+        const patches = mirrorWindow.__GME_STATE_PATCHES__ ?? [];
+
+        function containsContent(value: unknown): boolean {
+          if (Array.isArray(value)) {
+            return value.some(containsContent);
+          }
+          if (typeof value !== 'object' || value === null) {
+            return false;
+          }
+
+          return Object.entries(value).some(
+            ([key, child]): boolean =>
+              key === 'content' || containsContent(child),
+          );
+        }
+
+        return patches.slice(from).some((patch: unknown): boolean => {
+          if (containsContent(patch)) {
+            return false;
+          }
+          const documents =
+            typeof patch === 'object' && patch !== null
+              ? (patch as Record<string, unknown>).documents
+              : undefined;
+          const upsert =
+            typeof documents === 'object' && documents !== null
+              ? (documents as Record<string, unknown>).upsert
+              : undefined;
+          const document =
+            typeof upsert === 'object' && upsert !== null
+              ? (upsert as Record<string, unknown>)['mock-document']
+              : undefined;
+
+          return (
+            typeof document === 'object' &&
+            document !== null &&
+            (document as Record<string, unknown>).dirty === true
+          );
+        });
+      }, patchCount),
+    )
+    .toBe(true);
 }
 
 async function expectViewPatchSince(
@@ -147,6 +201,193 @@ test('STORY-018-AC-1 verifies responsive editor dimensions', async ({
   }
 
   expect(runtimeErrors).toEqual([]);
+});
+
+// Proves: STORY-022-AC-5
+test('STORY-022-AC-5 round trips an edit through Preview responsively', async ({
+  page,
+}) => {
+  const runtimeErrors = collectRuntimeErrors(page);
+
+  for (const width of viewports) {
+    const source = `round-trip-${width}`;
+    await page.setViewportSize({ width, height: viewportHeight });
+    await page.goto('/');
+
+    const editorPane = page.getByLabel('Editor pane', { exact: true });
+    const previewPane = page.getByLabel('Preview pane', { exact: true });
+    const monaco = page.locator('.monaco-editor');
+    const input = monaco.locator('textarea.inputarea');
+    await expect(monaco).toBeVisible();
+    await input.click({ force: true });
+    await page.keyboard.insertText(source);
+    await expect(monaco.locator('.view-lines')).toContainText(source);
+
+    await page.getByRole('radio', { name: 'Preview' }).click();
+    await expect(editorPane).toBeHidden();
+    await expect(monaco).toBeHidden();
+    await expect(previewPane).toContainText(source);
+
+    await page.getByRole('radio', { name: 'Editor' }).click();
+    await expect(editorPane).toBeVisible();
+    await expect(monaco).toBeVisible();
+    await expect(monaco.locator('.view-lines')).toContainText(source);
+    const bounds = await monaco.boundingBox();
+    expect(bounds?.height).toBeGreaterThan(200);
+
+    await input.click({ force: true });
+    await page.keyboard.press('Meta+z');
+    await page.getByRole('radio', { name: 'Split' }).click();
+    await expect(previewPane).toBeVisible();
+    await expect(previewPane).not.toContainText(source);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (): boolean =>
+            document.documentElement.scrollWidth <= window.innerWidth &&
+            document.body.scrollWidth <= window.innerWidth,
+        ),
+      )
+      .toBe(true);
+  }
+
+  expect(runtimeErrors).toEqual([]);
+});
+
+// Proves: STORY-022-AC-4
+test('STORY-022-AC-4 (EC-DOCS-12) keeps a focused Monaco source, caret, and selection across a metadata patch', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: viewportHeight });
+  await page.goto('/');
+
+  const monaco = page.locator('.monaco-editor');
+  const input = monaco.locator('textarea.inputarea');
+  const source = 'focused local working edit';
+  const patchCount = await statePatchCount(page);
+  await input.click({ force: true });
+  await page.keyboard.insertText(source);
+  await input.focus();
+  await input.press('Shift+ArrowLeft');
+  await expect
+    .poll(() =>
+      monaco.evaluate((node: Element): boolean =>
+        Array.from(
+          node.querySelectorAll<HTMLElement>('.selected-text'),
+          (element: HTMLElement): boolean => {
+            const bounds = element.getBoundingClientRect();
+
+            return bounds.width > 0 && bounds.height > 0;
+          },
+        ).some(Boolean),
+      ),
+    )
+    .toBe(true);
+
+  const sessionBeforePatch = await monaco.evaluate(
+    (
+      node: Element,
+    ): {
+      caret: { left: number; top: number };
+      focused: boolean;
+      selection: Array<{
+        height: number;
+        left: number;
+        top: number;
+        width: number;
+      }>;
+      source: string;
+    } => {
+      const editorInput = node.querySelector('textarea.inputarea');
+      const caret = node.querySelector<HTMLElement>('.cursor');
+      const sourceText = node.querySelector('.view-lines')?.textContent;
+      if (
+        editorInput === null ||
+        caret === null ||
+        sourceText === null ||
+        sourceText === undefined
+      ) {
+        throw new Error('Monaco focused-session DOM is unavailable');
+      }
+      const caretBounds = caret.getBoundingClientRect();
+      const selection = Array.from(
+        node.querySelectorAll<HTMLElement>('.selected-text'),
+        (element: HTMLElement) => {
+          const bounds = element.getBoundingClientRect();
+
+          return {
+            height: bounds.height,
+            left: bounds.left,
+            top: bounds.top,
+            width: bounds.width,
+          };
+        },
+      );
+
+      return {
+        caret: { left: caretBounds.left, top: caretBounds.top },
+        focused: document.activeElement === editorInput,
+        selection,
+        source: sourceText,
+      };
+    },
+  );
+  expect(sessionBeforePatch.focused).toBe(true);
+  expect(sessionBeforePatch.selection.length).toBeGreaterThan(0);
+  expect(sessionBeforePatch.source.replaceAll('\u00a0', ' ')).toContain(source);
+
+  await expectContentFreeMetadataPatchSince(page, patchCount);
+
+  const sessionAfterPatch = await monaco.evaluate(
+    (
+      node: Element,
+    ): {
+      caret: { left: number; top: number };
+      focused: boolean;
+      selection: Array<{
+        height: number;
+        left: number;
+        top: number;
+        width: number;
+      }>;
+      source: string;
+    } => {
+      const editorInput = node.querySelector('textarea.inputarea');
+      const caret = node.querySelector<HTMLElement>('.cursor');
+      const sourceText = node.querySelector('.view-lines')?.textContent;
+      if (
+        editorInput === null ||
+        caret === null ||
+        sourceText === null ||
+        sourceText === undefined
+      ) {
+        throw new Error('Monaco focused-session DOM is unavailable');
+      }
+      const caretBounds = caret.getBoundingClientRect();
+      const selection = Array.from(
+        node.querySelectorAll<HTMLElement>('.selected-text'),
+        (element: HTMLElement) => {
+          const bounds = element.getBoundingClientRect();
+
+          return {
+            height: bounds.height,
+            left: bounds.left,
+            top: bounds.top,
+            width: bounds.width,
+          };
+        },
+      );
+
+      return {
+        caret: { left: caretBounds.left, top: caretBounds.top },
+        focused: document.activeElement === editorInput,
+        selection,
+        source: sourceText,
+      };
+    },
+  );
+
+  expect(sessionAfterPatch).toEqual(sessionBeforePatch);
 });
 
 // Proves: STORY-018-AC-2

@@ -1,7 +1,7 @@
 ---
 id: STORY-023
 title: Expose document commands through a stable editor-session boundary
-status: draft
+status: ready
 spec_clauses:
   - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
   - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
