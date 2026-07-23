@@ -76,7 +76,7 @@ coverage:
       evidence_tests:
         - "frontend/e2e/core-editor.test.ts::STORY-022-AC-4 (EC-DOCS-12) keeps a focused Monaco source, caret, and selection across a metadata patch"
         - "frontend/src/ui/widgets/EditorView.integration.test.tsx::STORY-022-AC-4 (EC-DOCS-12) keeps focused hidden-editor patches content-free"
-        - "frontend/src/ui/widgets/EditorView.integration.test.tsx::STORY-028-AC-4 preserves newer editor intent during patch and flush (EC-DOCS-12)"
+        - "frontend/src/ui/widgets/EditorView.integration.test.tsx::STORY-028-AC-4 (EC-DOCS-12) preserves newer local view values and focused Monaco content and selection during patch and flush"
     EC-RENDER-4:
       requirements: [PH01-R12]
       acceptance_criteria: [STORY-017-AC-3]

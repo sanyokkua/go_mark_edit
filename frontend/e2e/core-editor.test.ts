@@ -572,6 +572,26 @@ test('STORY-018-AC-3 matches the approved split-view reference', async ({
   });
 });
 
+// Proves: STORY-032-AC-3
+// This deterministic candidate is presented for product-owner review; the test never approves it.
+test('STORY-032-AC-3 presents deterministic 1280x720 candidate for owner approval', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: viewportHeight });
+  await page.goto('/');
+
+  await expect(page.getByRole('main', { name: 'Document area' })).toBeVisible();
+  await expect(page.getByLabel('Editor pane', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Preview pane', { exact: true })).toBeVisible();
+  await expect(
+    page.getByLabel('Document status', { exact: true }),
+  ).toContainText('Split');
+  await page.screenshot({
+    path: 'test-results/phase01-owner-candidate-1280x720.png',
+    fullPage: false,
+  });
+});
+
 // Proves: STORY-018-AC-4
 test('STORY-018-AC-4 verifies view-mode and View-menu interaction', async ({
   page,

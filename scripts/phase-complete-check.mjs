@@ -18,7 +18,7 @@ import {
 } from './trace-common.mjs';
 
 const execFileAsync = promisify(execFile);
-const phase01CoverageDigest = '75b32db2af16f91626d51973ae3e3ed2bfe41c34620b70ea7fa169d78244e7ba';
+const phase01CoverageDigest = '5f60d492e15eba527664a206190336079024966a77a840ae31339d5e40c2af9d';
 
 async function currentRevision(root) {
   try {
@@ -30,7 +30,7 @@ async function currentRevision(root) {
 }
 
 function phaseEvidenceFrontmatter(contents) {
-  return Object.fromEntries([...contents.matchAll(/^\*\*([^:]+):\*\*\s*(.+)$/gm)].map((match) => [match[1].trim().toLowerCase(), match[2].trim()]));
+  return Object.fromEntries([...contents.matchAll(/^\*\*([^:]+):\*\*[ \t]+(.+)$/gm)].map((match) => [match[1].trim().toLowerCase(), match[2].trim()]));
 }
 
 async function validateE06CurrentHostRecord(root, artifact, errors) {
@@ -55,6 +55,68 @@ async function validateE06CurrentHostRecord(root, artifact, errors) {
   if (fields['deferred platforms'] && fields['deferred platforms'] !== 'windows, linux') errors.push('PH01-E06 current-host exception deferred platforms must be windows, linux');
   if (fields['accepted adr'] && fields['accepted adr'] !== 'ADR-0016') errors.push('PH01-E06 current-host exception accepted ADR must be ADR-0016');
   if (fields['expires before'] && fields['expires before'] !== 'before-phase15-release-or-platform-claim') errors.push('PH01-E06 current-host exception expiry boundary is invalid');
+  if (/\b(certif(?:y|ies|ied)|release|platform matrix|stage)\b/i.test(fields.limitations ?? '')) {
+    errors.push('PH01-E06 current-host exception limitations make an overbroad claim');
+  }
+}
+
+async function validateE07VisualApprovalRecord(root, artifact, errors) {
+  let contents;
+  try {
+    contents = await readFile(resolve(root, artifact), 'utf8');
+  } catch {
+    return;
+  }
+  const fields = phaseEvidenceFrontmatter(contents);
+  const revision = await currentRevision(root);
+  for (const field of ['owner', 'revision', 'candidate screenshot', 'viewport crop', 'responsive results', 'approval']) {
+    if (!fields[field]) errors.push(`PH01-E07 visual approval is missing ${field}`);
+  }
+  if (fields.status !== 'approved') errors.push('PH01-E07 visual approval must be explicitly approved');
+  if (fields.owner && fields.owner !== 'product owner') errors.push('PH01-E07 visual approval owner must be product owner');
+  if (revision !== undefined && fields.revision && fields.revision !== revision) errors.push('PH01-E07 visual approval revision is stale');
+  if (fields['viewport crop'] && fields['viewport crop'] !== '1280x720') errors.push('PH01-E07 visual approval viewport crop must be 1280x720');
+  if (fields['candidate screenshot']) {
+    try {
+      await readFile(resolve(root, fields['candidate screenshot']));
+    } catch {
+      errors.push('PH01-E07 visual approval candidate screenshot does not exist');
+    }
+  }
+  if (fields.approval && !/^explicit approval by product owner for revision [0-9a-f]{40} and crop 1280x720$/i.test(fields.approval)) {
+    errors.push('PH01-E07 visual approval must name the exact revision and 1280x720 crop');
+  }
+}
+
+async function validateE08NetworkTraceRecord(root, artifact, errors) {
+  let contents;
+  try {
+    contents = await readFile(resolve(root, artifact), 'utf8');
+  } catch {
+    return;
+  }
+  const fields = phaseEvidenceFrontmatter(contents);
+  const revision = await currentRevision(root);
+  for (const field of ['owner', 'revision', 'host', 'procedure', 'capture window', 'capture pid', 'capture scope', 'rerun instructions', 'capture artifact location', 'capture artifact digest', 'attempted outbound activity', 'observed outbound activity']) {
+    if (!fields[field]) errors.push(`PH01-E08 network trace is missing ${field}`);
+  }
+  if (fields.status !== 'verified') errors.push('PH01-E08 network trace must be verified');
+  if (fields.owner && fields.owner !== 'security reviewer') errors.push('PH01-E08 network trace owner must be security reviewer');
+  if (revision !== undefined && fields.revision && fields.revision !== revision) errors.push('PH01-E08 network trace revision is stale');
+  if (fields['capture scope'] && fields['capture scope'] !== 'stage1-stage2-native-runtime') errors.push('PH01-E08 network trace capture scope must be stage1-stage2-native-runtime');
+  if (fields['capture pid'] && !/^\d+$/.test(fields['capture pid'])) errors.push('PH01-E08 network trace capture PID must be numeric');
+  if (fields['capture artifact digest'] && !/^[a-f0-9]{64}$/i.test(fields['capture artifact digest'])) errors.push('PH01-E08 network trace capture artifact digest must be a SHA-256');
+  if (fields['capture artifact location'] && /^[a-f0-9]{64}$/i.test(fields['capture artifact digest'] ?? '')) {
+    try {
+      const capture = await readFile(resolve(root, fields['capture artifact location']));
+      const digest = createHash('sha256').update(capture).digest('hex');
+      if (digest !== fields['capture artifact digest'].toLowerCase()) errors.push('PH01-E08 network trace capture artifact digest does not match');
+    } catch {
+      errors.push('PH01-E08 network trace capture artifact does not exist');
+    }
+  }
+  if (fields['attempted outbound activity'] && fields['attempted outbound activity'] !== '0') errors.push('PH01-E08 network trace attempted outbound activity must be 0');
+  if (fields['observed outbound activity'] && fields['observed outbound activity'] !== '0') errors.push('PH01-E08 network trace observed outbound activity must be 0');
 }
 
 function resolveCompletionArguments(arguments_, cwd) {
@@ -169,6 +231,20 @@ if (phase === undefined) {
   }
 
   if (phaseNumber === '01' && checkpoint === undefined && phase01Resolution?.resolution !== undefined) {
+    const previewMissing = phase01Resolution.resolution.checkpoints.preview.requirements.filter(
+      (requirement) => !completeRequirements.has(requirement),
+    );
+    if (previewMissing.length > 0) {
+      errors.push(`full gate requires logical preview checkpoint evaluation before editing; missing ${previewMissing.join(', ')}`);
+    } else {
+      const editingMissing = phase01Resolution.resolution.checkpoints.editing.requirements.filter(
+        (requirement) => !completeRequirements.has(requirement),
+      );
+      if (editingMissing.length > 0) errors.push(`full gate requires logical editing checkpoint evaluation after preview; missing ${editingMissing.join(', ')}`);
+    }
+  }
+
+  if (phaseNumber === '01' && checkpoint === undefined && phase01Resolution?.resolution !== undefined) {
     const coverage = phase01Resolution.resolution.coverage;
     if (createHash('sha256').update(JSON.stringify(coverage)).digest('hex') !== phase01CoverageDigest) {
       errors.push('PH01 coverage acceptance-criterion mapping differs from the decision-complete STORY-026 table');
@@ -218,6 +294,10 @@ if (phase === undefined) {
     }
     const e06Artifact = coverage.evidence?.['PH01-E06']?.artifacts?.[0];
     if (e06Artifact !== undefined) await validateE06CurrentHostRecord(root, e06Artifact, errors);
+    const e07Artifact = coverage.evidence?.['PH01-E07']?.artifacts?.[0];
+    if (e07Artifact !== undefined) await validateE07VisualApprovalRecord(root, e07Artifact, errors);
+    const e08Artifact = coverage.evidence?.['PH01-E08']?.artifacts?.[0];
+    if (e08Artifact !== undefined) await validateE08NetworkTraceRecord(root, e08Artifact, errors);
   }
 
   if (checkpoint === undefined) for (const [kind, rows] of [

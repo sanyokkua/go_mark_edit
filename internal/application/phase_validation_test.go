@@ -537,9 +537,9 @@ func TestRepositoryPhaseMigrationIsCompleteAndTruthful(t *testing.T) {
 	t.Run("Phase 01 reports the exact current blocker set", func(t *testing.T) {
 		output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", repositoryRoot, "01")
 		for _, blocker := range []string{
-			"PH01-E06 real-runtime evidence requires an approval owner and existing artifact",
-			"PH01-E07 human evidence requires an approval owner and existing artifact",
-			"PH01-E08 real-runtime evidence requires an approval owner and existing artifact",
+			"PH01-E06 current-host exception revision is stale",
+			"PH01-E07 visual approval must be explicitly approved",
+			"PH01-E08 network trace must be verified",
 			"acceptance criterion is not proven by a done story",
 		} {
 			if !strings.Contains(output, blocker) {
@@ -1097,6 +1097,108 @@ func TestPhase01CompleteFixtureValidatesEdgeIdentities(t *testing.T) {
 	}
 }
 
+// Proves: STORY-032-AC-1
+// PH01-E06 accepts only an exact current-host native record under the ADR-0016 exception.
+func TestPhase01E06ArtifactProvesCurrentHostRuntimeUnderAcceptedException(t *testing.T) {
+	fixture := completePhase01Fixture(t)
+	runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", fixture, "01")
+
+	artifact := filepath.Join(fixture, "docs", "phase-evidence", "PH01-wails-runtime.md")
+	writePhaseFixture(t, artifact, strings.Replace(readPhaseFixture(t, artifact), "Accepted ADR:** ADR-0016", "Accepted ADR:** ADR-9999", 1))
+	output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
+	if !strings.Contains(output, "accepted ADR must be ADR-0016") {
+		t.Fatalf("full checker output = %q, want ADR-0016 rejection", output)
+	}
+}
+
+// Proves: STORY-032-AC-2
+// PH01-E08 requires a revision-bound dedicated-host capture with zero attempted and observed outbound activity.
+func TestPhase01E08ArtifactProvesZeroStage1AndStage2OutboundActivity(t *testing.T) {
+	fixture := completePhase01Fixture(t)
+	artifact := filepath.Join(fixture, "docs", "phase-evidence", "PH01-network-trace.md")
+	writePhaseFixture(t, artifact, "**Status:** verified\n**Owner:** security reviewer\n**Revision:** fixture\n**Date:** 2026-07-22\n")
+	output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
+	if !strings.Contains(output, "PH01-E08 network trace is missing capture window") {
+		t.Fatalf("full checker output = %q, want detailed network-record rejection", output)
+	}
+}
+
+// Proves: STORY-032-AC-4
+// Full completion consumes the authoritative version-1 coverage rows for transitions, contracts, edges, and E01–E11.
+func TestPhase01AutomatedExitEvidenceConsumesAuthoritativeRowMap(t *testing.T) {
+	fixture := completePhase01Fixture(t)
+	runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", fixture, "01")
+
+	resolution := filepath.Join(fixture, "docs", "phase-resolutions", "PH01.yaml")
+	writePhaseFixture(t, resolution, strings.Replace(readPhaseFixture(t, resolution), "    PH01-E11:\n", "    PH01-E12:\n", 1))
+	output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
+	if !strings.Contains(output, "PH01 coverage acceptance-criterion mapping differs") {
+		t.Fatalf("full checker output = %q, want authoritative-row-map rejection", output)
+	}
+}
+
+// Proves: STORY-032-AC-5
+// Preview then editing are implementation checkpoints only; full completion cannot replace their ordered obligations.
+func TestPhase01CheckpointAndFullGateEvidenceOrder(t *testing.T) {
+	fixture := completePhase01Fixture(t)
+	runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", fixture, "01", "--checkpoint", "preview")
+	runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", fixture, "01", "--checkpoint", "editing")
+
+	artifact := filepath.Join(fixture, "docs", "phase-evidence", "PH01-visual-approval.md")
+	writePhaseFixture(t, artifact, strings.Replace(readPhaseFixture(t, artifact), "Status:** approved", "Status:** pending", 1))
+	output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
+	if !strings.Contains(output, "PH01-E07 visual approval must be explicitly approved") {
+		t.Fatalf("full checker output = %q, want full gate to reject pending human evidence", output)
+	}
+
+	fixture = completePhase01Fixture(t)
+	entries, err := os.ReadDir(filepath.Join(fixture, "docs", "stories"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".md") || entry.Name() == "README.md" {
+			continue
+		}
+		path := filepath.Join(fixture, "docs", "stories", entry.Name())
+		contents := readPhaseFixture(t, path)
+		writePhaseFixture(t, path, regexp.MustCompile(`(?m)^status: .*`).ReplaceAllString(contents, "status: draft"))
+	}
+	output = runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
+	if !strings.Contains(output, "full gate requires logical preview checkpoint evaluation before editing") {
+		t.Fatalf("full checker output = %q, want preview-before-editing failure", output)
+	}
+}
+
+// Proves: STORY-032-AC-6
+// Evidence audit rejects stale/incomplete records, absent approval, non-zero network activity, and overbroad claims.
+func TestPhase01EvidenceAuditRejectsStaleIncompleteOrOverbroadClaims(t *testing.T) {
+	for _, testCase := range []struct {
+		name     string
+		artifact string
+		old, new string
+		wantErr  string
+	}{
+		{"stale visual revision", "PH01-visual-approval.md", "Revision:** ", "Revision:** stale-", "PH01-E07 visual approval revision is stale"},
+		{"missing visual owner", "PH01-visual-approval.md", "Owner:** product owner", "Owner:** ", "PH01-E07 visual approval is missing owner"},
+		{"missing visual candidate", "PH01-visual-approval.md", "Candidate screenshot:** frontend/e2e/core-editor-snapshots/core-editor-split-1280.png", "Candidate screenshot:** test-results/missing.png", "PH01-E07 visual approval candidate screenshot does not exist"},
+		{"non-zero attempted network", "PH01-network-trace.md", "Attempted outbound activity:** 0", "Attempted outbound activity:** 1", "PH01-E08 network trace attempted outbound activity must be 0"},
+		{"non-zero observed network", "PH01-network-trace.md", "Observed outbound activity:** 0", "Observed outbound activity:** 1", "PH01-E08 network trace observed outbound activity must be 0"},
+		{"capture digest mismatch", "PH01-network-trace.md", "Capture artifact digest:** e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "Capture artifact digest:** 0000000000000000000000000000000000000000000000000000000000000000", "PH01-E08 network trace capture artifact digest does not match"},
+		{"overbroad native claim", "PH01-wails-runtime.md", "Limitations:** current host only", "Limitations:** certifies release platform matrix", "PH01-E06 current-host exception limitations make an overbroad claim"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			fixture := completePhase01Fixture(t)
+			artifact := filepath.Join(fixture, "docs", "phase-evidence", testCase.artifact)
+			writePhaseFixture(t, artifact, strings.Replace(readPhaseFixture(t, artifact), testCase.old, testCase.new, 1))
+			output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
+			if !strings.Contains(output, testCase.wantErr) {
+				t.Fatalf("full checker output = %q, want %q", output, testCase.wantErr)
+			}
+		})
+	}
+}
+
 func completePhase01Fixture(t *testing.T) string {
 	t.Helper()
 	source := storyEightRepositoryRoot(t)
@@ -1158,8 +1260,10 @@ func completePhase01Fixture(t *testing.T) string {
 		writePhaseFixture(t, path, contents+"test('"+parts[1]+"', () => {});\n")
 	}
 	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-wails-runtime.md"), "**Status:** verified\n**Owner:** tester\n**Date:** 2026-07-22\n**Host:** "+runtime.GOOS+"\n**Revision:** fixture\n**Freshness:** exact-revision\n**Procedure:** native run\n**Result:** passed\n**Limitations:** current host only\n**Deferred platforms:** windows, linux\n**Accepted ADR:** ADR-0016\n**Expires before:** before-phase15-release-or-platform-claim\n")
-	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-visual-approval.md"), "**Status:** approved\n**Owner:** product owner\n**Revision:** fixture\n**Date:** 2026-07-22\n")
-	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-network-trace.md"), "**Status:** verified\n**Owner:** security reviewer\n**Revision:** fixture\n**Date:** 2026-07-22\n")
+	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-visual-approval.md"), "**Status:** approved\n**Owner:** product owner\n**Revision:** fixture\n**Date:** 2026-07-22\n**Candidate screenshot:** frontend/e2e/core-editor-snapshots/core-editor-split-1280.png\n**Viewport crop:** 1280x720\n**Responsive results:** 375, 768, and 1280 widths passed\n**Approval:** explicit approval by product owner for revision fixture and crop 1280x720\n")
+	writePhaseFixture(t, filepath.Join(root, "frontend", "e2e", "core-editor-snapshots", "core-editor-split-1280.png"), "fixture candidate")
+	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "fixture.pcap"), "")
+	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-network-trace.md"), "**Status:** verified\n**Owner:** security reviewer\n**Revision:** fixture\n**Date:** 2026-07-22\n**Host:** fixture-host\n**Procedure:** packet capture during scripted native use\n**Capture window:** 2026-07-22T10:00:00Z to 2026-07-22T10:05:00Z\n**Capture PID:** 12345\n**Capture scope:** stage1-stage2-native-runtime\n**Rerun instructions:** repeat the documented clean-host packet capture procedure\n**Capture artifact location:** docs/phase-evidence/fixture.pcap\n**Capture artifact digest:** e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n**Attempted outbound activity:** 0\n**Observed outbound activity:** 0\n")
 	for _, arguments := range [][]string{{"init"}, {"config", "user.email", "fixture@example.test"}, {"config", "user.name", "Fixture"}, {"add", "."}, {"commit", "-m", "fixture"}} {
 		command := exec.Command("git", arguments...)
 		command.Dir = root
@@ -1175,6 +1279,14 @@ func completePhase01Fixture(t *testing.T) string {
 	}
 	artifact := filepath.Join(root, "docs", "phase-evidence", "PH01-wails-runtime.md")
 	writePhaseFixture(t, artifact, strings.Replace(readPhaseFixture(t, artifact), "Revision:** fixture", "Revision:** "+strings.TrimSpace(string(revisionBytes)), 1))
+	revision := strings.TrimSpace(string(revisionBytes))
+	visualArtifact := filepath.Join(root, "docs", "phase-evidence", "PH01-visual-approval.md")
+	visualContents := strings.Replace(readPhaseFixture(t, visualArtifact), "Revision:** fixture", "Revision:** "+revision, 1)
+	visualContents = strings.Replace(visualContents, "revision fixture and crop", "revision "+revision+" and crop", 1)
+	writePhaseFixture(t, visualArtifact, visualContents)
+	networkArtifact := filepath.Join(root, "docs", "phase-evidence", "PH01-network-trace.md")
+	networkContents := strings.Replace(readPhaseFixture(t, networkArtifact), "Revision:** fixture", "Revision:** "+revision, 1)
+	writePhaseFixture(t, networkArtifact, networkContents)
 	return root
 }
 

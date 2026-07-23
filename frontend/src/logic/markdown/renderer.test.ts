@@ -153,7 +153,9 @@ it('STORY-031-AC-1 renders accessible repeated GFM footnotes and backlinks', () 
   for (const backlink of backlinks) {
     const referenceId = backlink.getAttribute('href')?.slice(1);
     expect(referenceIds).toContain(referenceId);
-    expect(container.querySelector(backlink.getAttribute('href') ?? '')).not.toBeNull();
+    expect(
+      container.querySelector(backlink.getAttribute('href') ?? ''),
+    ).not.toBeNull();
   }
 
   // A second render must retain the same deterministic generated IDs.
