@@ -112,7 +112,9 @@ it('STORY-028-AC-3 keeps the confirmed arrangement and panes unchanged until an 
       },
     }),
   );
-  expect(store.getState().documents.byId[document.documentId].view).toMatchObject({
+  expect(
+    store.getState().documents.byId[document.documentId].view,
+  ).toMatchObject({
     arrangement: 'preview',
     editorVisible: false,
     previewVisible: true,

@@ -49,10 +49,6 @@ it('STORY-014-AC-3 (EC-RENDER-6) leaves higher-tier syntax and Mermaid safe', ()
     <MarkdownView
       source={`Inline math stays $x^2$ and :note[directive syntax] stays literal.
 
-Footnote reference[^1]
-
-[^1]: Footnote definition stays literal.
-
 \`\`\`mermaid
 graph TD
   A-->B
@@ -66,13 +62,6 @@ graph TD
       'Inline math stays $x^2$ and :note[directive syntax] stays literal.',
     ),
   ).toBeInTheDocument();
-  expect(screen.getByText('Footnote reference[^1]')).toBeInTheDocument();
-  expect(
-    screen.getByText('[^1]: Footnote definition stays literal.'),
-  ).toBeInTheDocument();
-  expect(
-    screen.queryByRole('link', { name: /footnote/i }),
-  ).not.toBeInTheDocument();
   expect(screen.getByText(/graph TD\s+A-->B/)).toBeInTheDocument();
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
 });

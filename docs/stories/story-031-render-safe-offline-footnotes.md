@@ -1,7 +1,7 @@
 ---
 id: STORY-031
 title: Render safe offline GFM footnotes
-status: ready
+status: done
 spec_clauses:
   - 01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features
   - 01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization

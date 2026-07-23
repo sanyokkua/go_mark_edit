@@ -16,7 +16,10 @@ export interface EditorSynchronizationAdapter {
   flushDocView: (documentId: string) => Promise<void>;
   updateBuffer: (documentId: string, content: string) => Promise<void>;
   updateDocView: (documentId: string, view: DocViewInput) => Promise<void>;
-  updateLocalDocView?: (documentId: string, view: DocViewInput) => Promise<void>;
+  updateLocalDocView?: (
+    documentId: string,
+    view: DocViewInput,
+  ) => Promise<void>;
 }
 
 export interface SyncedBufferCallbacks {

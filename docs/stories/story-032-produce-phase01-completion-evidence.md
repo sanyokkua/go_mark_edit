@@ -1,7 +1,7 @@
 ---
 id: STORY-032
 title: Produce Phase 01 completion evidence
-status: draft
+status: ready
 spec_clauses:
   - 06_Process_and_Traceability/06_DEFINITION_OF_DONE.md#phase-level-exit-criteria
   - 07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model

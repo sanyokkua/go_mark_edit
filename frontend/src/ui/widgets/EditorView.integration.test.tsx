@@ -847,7 +847,9 @@ it('STORY-028-AC-2 acknowledges buffer and view before hiding the persistent ses
     (): Promise<void> => commandAck.promise,
   );
   await renderStatusEditor(document, '# Persistent session');
-  const source = await screen.findByRole('textbox', { name: 'Markdown source' });
+  const source = await screen.findByRole('textbox', {
+    name: 'Markdown source',
+  });
 
   fireEvent.click(screen.getByRole('radio', { name: 'Preview' }));
   expect(mockedAdapter.flushBuffer).toHaveBeenCalledWith(document.documentId);
@@ -951,7 +953,9 @@ it('STORY-028-AC-4 (EC-DOCS-12) preserves newer local view values and focused Mo
   expect(source.selectionStart).toBe(3);
   expect(source.selectionEnd).toBe(10);
   expect(mockRuntime.model.setValue).toHaveBeenCalledTimes(1);
-  expect(JSON.stringify(store.getState())).not.toContain('Latest local content');
+  expect(JSON.stringify(store.getState())).not.toContain(
+    'Latest local content',
+  );
 
   await act(async (): Promise<void> => {
     bufferFlush.resolve();
@@ -992,7 +996,10 @@ it('STORY-028-AC-6 isolates pending view intent across document switch', async (
   const rendered = render(
     <Provider store={store}>
       <EditorSessionContext.Provider
-        value={{ documentId: first.documentId, content: '# First working copy' }}
+        value={{
+          documentId: first.documentId,
+          content: '# First working copy',
+        }}
       >
         <EditorView />
       </EditorSessionContext.Provider>
@@ -1014,7 +1021,10 @@ it('STORY-028-AC-6 isolates pending view intent across document switch', async (
   rendered.rerender(
     <Provider store={store}>
       <EditorSessionContext.Provider
-        value={{ documentId: second.documentId, content: '# Second working copy' }}
+        value={{
+          documentId: second.documentId,
+          content: '# Second working copy',
+        }}
       >
         <EditorView />
       </EditorSessionContext.Provider>
