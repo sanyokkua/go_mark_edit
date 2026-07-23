@@ -7,9 +7,18 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 )
 
-// DocumentContentAccessor is the stable F2 read seam for canonical content.
+// DocumentSnapshot is one canonical active-document tuple copied under the model lock.
+type DocumentSnapshot struct {
+	DocumentID string
+	Path       string
+	Content    string
+	Selection  apperr.SelectionRange
+	Revision   uint64
+}
+
+// DocumentContentAccessor is the stable F2 read seam for canonical active-document state.
 type DocumentContentAccessor interface {
-	Content(ctx context.Context, documentID string) (string, error)
+	SnapshotActive(ctx context.Context) (DocumentSnapshot, error)
 }
 
 // DocumentCommandAPI is the stable F3 command seam for document mutations.
@@ -21,15 +30,22 @@ type documentContentAccessor struct {
 	service *AppModelService
 }
 
-func (accessor documentContentAccessor) Content(_ context.Context, documentID string) (string, error) {
+func (accessor documentContentAccessor) SnapshotActive(_ context.Context) (DocumentSnapshot, error) {
 	accessor.service.mu.RLock()
 	defer accessor.service.mu.RUnlock()
 
+	documentID := accessor.service.state.activeDocumentID
 	document, ok := accessor.service.state.documents[documentID]
 	if !ok {
-		return "", apperr.NotFound(documentID)
+		return DocumentSnapshot{}, apperr.NotFound("active document")
 	}
-	return document.content, nil
+	return DocumentSnapshot{
+		DocumentID: documentID,
+		Path:       document.metadata.Path,
+		Content:    document.content,
+		Selection:  document.metadata.View.Selection,
+		Revision:   accessor.service.state.revision,
+	}, nil
 }
 
 type documentCommands struct {

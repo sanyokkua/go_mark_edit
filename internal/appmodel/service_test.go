@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -150,12 +151,27 @@ func TestSuccessfulCommandsEmitOneRevisionedContentFreePatch(t *testing.T) {
 }
 
 type recordingEmitter struct {
+	mu      sync.Mutex
 	patches []apperr.AppStatePatch
 }
 
 func (emitter *recordingEmitter) EmitStatePatch(_ context.Context, patch apperr.AppStatePatch) error {
+	emitter.mu.Lock()
+	defer emitter.mu.Unlock()
 	emitter.patches = append(emitter.patches, patch)
 	return nil
+}
+
+func (emitter *recordingEmitter) Count() int {
+	emitter.mu.Lock()
+	defer emitter.mu.Unlock()
+	return len(emitter.patches)
+}
+
+func (emitter *recordingEmitter) Patches() []apperr.AppStatePatch {
+	emitter.mu.Lock()
+	defer emitter.mu.Unlock()
+	return append([]apperr.AppStatePatch(nil), emitter.patches...)
 }
 
 // Proves: STORY-011-AC-4
@@ -318,12 +334,12 @@ func TestUpdateBufferUsesDocumentCommandSeamAndContentAccessor(t *testing.T) {
 	if err := service.UpdateBuffer(context.Background(), documentID, content); err != nil {
 		t.Fatalf("UpdateBuffer: %v", err)
 	}
-	accepted, err := service.ContentAccessor().Content(context.Background(), documentID)
+	accepted, err := service.ContentAccessor().SnapshotActive(context.Background())
 	if err != nil {
 		t.Fatalf("Content accessor: %v", err)
 	}
-	if accepted != content {
-		t.Fatalf("accepted content = %q, want %q", accepted, content)
+	if accepted.DocumentID != documentID || accepted.Content != content {
+		t.Fatalf("accepted snapshot = %+v, want document %q with content %q", accepted, documentID, content)
 	}
 
 	updated, err := service.GetState(context.Background())
@@ -346,6 +362,214 @@ func TestUpdateBufferUsesDocumentCommandSeamAndContentAccessor(t *testing.T) {
 	if document.Dirty || document.WordCount != 0 {
 		t.Fatalf("baseline document metadata = %+v, want clean with zero words", document)
 	}
+}
+
+// Proves: STORY-029-AC-1
+// The active accessor returns the complete canonical identity, path, content, selection, and revision tuple.
+func TestDocumentContentAccessorSnapshotActiveReturnsIdentityPathContentSelectionAndRevision(t *testing.T) {
+	service, want := savedDocumentFixture()
+
+	got, err := service.ContentAccessor().SnapshotActive(context.Background())
+	if err != nil {
+		t.Fatalf("SnapshotActive: %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("SnapshotActive = %+v, want %+v", got, want)
+	}
+}
+
+// Proves: STORY-029-AC-2
+// Active-document changes and canonical mutations yield only complete snapshots while the model lock is contended.
+func TestDocumentContentAccessorSnapshotActiveIsCoherentDuringActiveDocumentChanges(t *testing.T) {
+	service, first, second := multipleDocumentFixture()
+	accessor := service.ContentAccessor()
+
+	service.mu.Lock()
+	blocked := make(chan struct {
+		snapshot DocumentSnapshot
+		err      error
+	}, 1)
+	go func() {
+		snapshot, err := accessor.SnapshotActive(context.Background())
+		blocked <- struct {
+			snapshot DocumentSnapshot
+			err      error
+		}{snapshot: snapshot, err: err}
+	}()
+	select {
+	case result := <-blocked:
+		t.Fatalf("snapshot escaped a held write lock: %+v (error %v)", result.snapshot, result.err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	setActiveDocumentTupleLocked(service, second)
+	service.mu.Unlock()
+	result := <-blocked
+	if result.err != nil {
+		t.Fatalf("blocked SnapshotActive: %v", result.err)
+	}
+	if !reflect.DeepEqual(result.snapshot, second) {
+		t.Fatalf("blocked snapshot = %+v, want complete post-write tuple %+v", result.snapshot, second)
+	}
+
+	readerDone := make(chan error, 1)
+	go func() {
+		for index := 0; index < 1_000; index++ {
+			got, err := accessor.SnapshotActive(context.Background())
+			if err != nil {
+				readerDone <- err
+				return
+			}
+			if !reflect.DeepEqual(got, first) && !reflect.DeepEqual(got, second) {
+				readerDone <- fmt.Errorf("snapshot iteration %d = %+v, want one complete tuple", index, got)
+				return
+			}
+		}
+		readerDone <- nil
+	}()
+	for index := 0; index < 100; index++ {
+		service.mu.Lock()
+		if index%2 == 0 {
+			setActiveDocumentTupleLocked(service, first)
+		} else {
+			setActiveDocumentTupleLocked(service, second)
+		}
+		service.mu.Unlock()
+	}
+	if err := <-readerDone; err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Proves: STORY-029-AC-3
+// Empty and dangling active-document ids reuse the typed safe not-found error and return no snapshot data.
+func TestDocumentContentAccessorSnapshotActiveReusesTypedNotFoundWhenNoDocumentIsActive(t *testing.T) {
+	for _, fixture := range []struct {
+		name    string
+		service *AppModelService
+	}{
+		{name: "empty active id", service: noActiveDocumentFixture("")},
+		{name: "dangling active id", service: noActiveDocumentFixture("missing-document")},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			got, err := fixture.service.ContentAccessor().SnapshotActive(context.Background())
+			if got != (DocumentSnapshot{}) {
+				t.Fatalf("SnapshotActive data = %+v, want zero snapshot", got)
+			}
+			var appError *apperr.AppError
+			if !errors.As(err, &appError) || appError.Code != apperr.CodeNotFound {
+				t.Fatalf("SnapshotActive error = %v, want typed not-found", err)
+			}
+			if appError.Details["name"] != "active document" {
+				t.Fatalf("not-found details = %+v, want safe active document name", appError.Details)
+			}
+		})
+	}
+}
+
+// Proves: STORY-029-AC-4
+// Reading a canonical snapshot neither changes revision nor emits a patch or content-bearing projection.
+func TestDocumentContentAccessorSnapshotActiveDoesNotMutateEmitOrProjectContent(t *testing.T) {
+	emitter := &recordingEmitter{}
+	service, want := savedDocumentFixtureWithEmitter(emitter)
+	want.Content = "canonical content after emission"
+	want.Revision++
+	if err := service.UpdateBuffer(context.Background(), want.DocumentID, want.Content); err != nil {
+		t.Fatalf("UpdateBuffer before SnapshotActive: %v", err)
+	}
+	before := emitter.Count()
+
+	got, err := service.ContentAccessor().SnapshotActive(context.Background())
+	if err != nil {
+		t.Fatalf("SnapshotActive: %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("SnapshotActive = %+v, want %+v", got, want)
+	}
+	if emitter.Count() != before {
+		t.Fatalf("snapshot emitted %d patches, want %d", emitter.Count(), before)
+	}
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState after SnapshotActive: %v", err)
+	}
+	if state.Snapshot.Revision != want.Revision {
+		t.Fatalf("revision after SnapshotActive = %d, want %d", state.Snapshot.Revision, want.Revision)
+	}
+	for _, patch := range emitter.Patches() {
+		encoded, marshalErr := json.Marshal(patch)
+		if marshalErr != nil {
+			t.Fatalf("marshal patch: %v", marshalErr)
+		}
+		if strings.Contains(string(encoded), "content") {
+			t.Fatalf("patch leaked content: %s", encoded)
+		}
+	}
+}
+
+func savedDocumentFixture() (*AppModelService, DocumentSnapshot) {
+	return savedDocumentFixtureWithEmitter(&recordingEmitter{})
+}
+
+func savedDocumentFixtureWithEmitter(emitter StatePatchEmitter) (*AppModelService, DocumentSnapshot) {
+	service := NewAppModelService(emitter)
+	selection := apperr.SelectionRange{
+		Start: apperr.CursorPosition{Line: 2, Column: 3},
+		End:   apperr.CursorPosition{Line: 4, Column: 5},
+	}
+	want := DocumentSnapshot{
+		DocumentID: "saved-document",
+		Path:       "/workspace/notes.md",
+		Content:    "acknowledged canonical content",
+		Selection:  selection,
+		Revision:   42,
+	}
+	service.mu.Lock()
+	service.state.documents = map[string]*openDocument{want.DocumentID: {
+		metadata: apperr.DocumentMetadata{DocumentID: want.DocumentID, Path: want.Path, View: apperr.DocView{Selection: selection}},
+		content:  want.Content,
+	}}
+	service.state.activeDocumentID = want.DocumentID
+	service.state.revision = want.Revision
+	service.mu.Unlock()
+	return service, want
+}
+
+func multipleDocumentFixture() (*AppModelService, DocumentSnapshot, DocumentSnapshot) {
+	service, first := savedDocumentFixture()
+	second := DocumentSnapshot{
+		DocumentID: "other-document",
+		Path:       "",
+		Content:    "other canonical content",
+		Selection: apperr.SelectionRange{
+			Start: apperr.CursorPosition{Line: 7, Column: 1},
+			End:   apperr.CursorPosition{Line: 7, Column: 9},
+		},
+		Revision: 84,
+	}
+	service.mu.Lock()
+	service.state.documents[second.DocumentID] = &openDocument{
+		metadata: apperr.DocumentMetadata{DocumentID: second.DocumentID, Path: second.Path, View: apperr.DocView{Selection: second.Selection}},
+		content:  second.Content,
+	}
+	service.mu.Unlock()
+	return service, first, second
+}
+
+func noActiveDocumentFixture(activeDocumentID string) *AppModelService {
+	service := NewAppModelService(&recordingEmitter{})
+	service.mu.Lock()
+	service.state.activeDocumentID = activeDocumentID
+	service.mu.Unlock()
+	return service
+}
+
+func setActiveDocumentTupleLocked(service *AppModelService, snapshot DocumentSnapshot) {
+	document := service.state.documents[snapshot.DocumentID]
+	document.metadata.Path = snapshot.Path
+	document.metadata.View.Selection = snapshot.Selection
+	document.content = snapshot.Content
+	service.state.activeDocumentID = snapshot.DocumentID
+	service.state.revision = snapshot.Revision
 }
 
 // Proves: STORY-011-AC-3

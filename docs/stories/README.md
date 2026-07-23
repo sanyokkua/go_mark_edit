@@ -42,8 +42,8 @@ authors them **per phase** from that phase's suggested-task list
 | STORY-026 | Strengthen Phase 01 checkpoint and completion validation | 01 | done | coder | M |
 | STORY-027 | Make failed frontend bootstrap retryable | 01 | done | coder | M |
 | STORY-028 | Preserve the latest editor view intent during arrangement changes | 01 | done | coder | M |
-| STORY-029 | Add an atomic backend document snapshot seam | 01 | ready | coder | M |
-| STORY-030 | Complete the frontend document command seam | 01 | draft | coder | M |
+| STORY-029 | Add an atomic backend document snapshot seam | 01 | done | coder | M |
+| STORY-030 | Complete the frontend document command seam | 01 | ready | coder | M |
 | STORY-031 | Render safe offline GFM footnotes | 01 | ready | coder | S |
 | STORY-032 | Produce Phase 01 completion evidence | 01 | draft | coder | M |
 
@@ -61,11 +61,13 @@ Promote a draft to `ready` only after every `depends_on` story is `done` and the
 - STORY-024 is done after the phase-planning migration, independent conformance review, and native/bridge-mock Phase-00 runtime evidence passed.
 - STORY-025 is ready first: it records the accepted checkpoint partition, prerequisite, full-completion
   obligations, and narrow current-host exception from ADR-0016.
-- STORY-027, STORY-029, and STORY-031 are immediately ready independent remediation packets
-  because each of their declared prerequisites is already done; they may be implemented in any order.
+- STORY-027 and STORY-031 are immediately ready independent remediation packets because each of their
+  declared prerequisites is already done; they may be implemented in any order.
+- STORY-029 is done after its atomic canonical snapshot, no-active error, concurrency, content-free
+  projection, and downstream-consumer tests passed independent conformance review.
 - STORY-028 is done after its latest-local-view merge, flush ordering, retry, patch, and document-switch
   proofs passed independent conformance review.
 - STORY-026 is done; it validates the accepted checkpoints and exact row-level completion rules.
-- STORY-030 remains draft until STORY-028 and STORY-029 are done; STORY-023 is already done.
+- STORY-030 is ready because STORY-023, STORY-028, and STORY-029 are done.
 - STORY-032 remains draft until STORY-026 through STORY-031 are all done; it produces the revision-bound
   automated, current-host native, network, and human-approved visual completion evidence last.

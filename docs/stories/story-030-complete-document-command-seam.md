@@ -1,7 +1,7 @@
 ---
 id: STORY-030
 title: Complete the frontend document command seam
-status: draft
+status: ready
 spec_clauses:
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
   - 00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open

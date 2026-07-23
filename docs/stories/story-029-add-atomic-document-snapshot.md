@@ -1,7 +1,7 @@
 ---
 id: STORY-029
 title: Add an atomic backend document snapshot seam
-status: ready
+status: done
 spec_clauses:
   - 02_Architecture/02_BACKEND_GO.md#application-model
   - 02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model

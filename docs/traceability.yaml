@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-22T20:53:13.087Z",
+  "generated_at": "2026-07-23T09:08:50.583Z",
   "generator_version": 2,
   "stories": {
     "STORY-001": {
@@ -486,31 +486,31 @@
       "acceptance_criteria": {
         "STORY-011-AC-1": {
           "tests": [
-            "internal/appmodel/service_test.go:18"
+            "internal/appmodel/service_test.go:19"
           ]
         },
         "STORY-011-AC-2": {
           "tests": [
-            "internal/appmodel/service_test.go:305"
+            "internal/appmodel/service_test.go:321"
           ]
         },
         "STORY-011-AC-3": {
           "tests": [
             "internal/appmodel/runtime_emitter_test.go:12",
-            "internal/appmodel/service_test.go:353",
-            "internal/appmodel/service_test.go:403",
-            "internal/appmodel/service_test.go:525",
-            "internal/appmodel/service_test.go:73"
+            "internal/appmodel/service_test.go:577",
+            "internal/appmodel/service_test.go:627",
+            "internal/appmodel/service_test.go:74",
+            "internal/appmodel/service_test.go:749"
           ]
         },
         "STORY-011-AC-4": {
           "tests": [
-            "internal/appmodel/service_test.go:163"
+            "internal/appmodel/service_test.go:179"
           ]
         },
         "STORY-011-AC-5": {
           "tests": [
-            "internal/appmodel/service_test.go:262"
+            "internal/appmodel/service_test.go:278"
           ]
         },
         "STORY-011-AC-6": {
@@ -1472,7 +1472,7 @@
     },
     "STORY-029": {
       "title": "Add an atomic backend document snapshot seam",
-      "status": "ready",
+      "status": "done",
       "phase": "01",
       "phase_requirements": [
         "PH01-R01",
@@ -1492,25 +1492,35 @@
       "edge_cases": [],
       "acceptance_criteria": {
         "STORY-029-AC-1": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/service_test.go:369"
+          ]
         },
         "STORY-029-AC-2": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/service_test.go:383"
+          ]
         },
         "STORY-029-AC-3": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/service_test.go:445"
+          ]
         },
         "STORY-029-AC-4": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/service_test.go:471"
+          ]
         },
         "STORY-029-AC-5": {
-          "tests": []
+          "tests": [
+            "internal/appmodel/document_consumer_test.go:10"
+          ]
         }
       }
     },
     "STORY-030": {
       "title": "Complete the frontend document command seam",
-      "status": "draft",
+      "status": "ready",
       "phase": "01",
       "phase_requirements": [
         "PH01-R09",
@@ -2006,14 +2016,18 @@
       "tests": [
         "internal/appmodel/handler_test.go:13",
         "internal/appmodel/runtime_emitter_test.go:12",
-        "internal/appmodel/service_test.go:163",
-        "internal/appmodel/service_test.go:18",
-        "internal/appmodel/service_test.go:262",
-        "internal/appmodel/service_test.go:305",
-        "internal/appmodel/service_test.go:353",
-        "internal/appmodel/service_test.go:403",
-        "internal/appmodel/service_test.go:525",
-        "internal/appmodel/service_test.go:73",
+        "internal/appmodel/service_test.go:179",
+        "internal/appmodel/service_test.go:19",
+        "internal/appmodel/service_test.go:278",
+        "internal/appmodel/service_test.go:321",
+        "internal/appmodel/service_test.go:369",
+        "internal/appmodel/service_test.go:383",
+        "internal/appmodel/service_test.go:445",
+        "internal/appmodel/service_test.go:471",
+        "internal/appmodel/service_test.go:577",
+        "internal/appmodel/service_test.go:627",
+        "internal/appmodel/service_test.go:74",
+        "internal/appmodel/service_test.go:749",
         "main_test.go:122"
       ]
     },
@@ -2202,10 +2216,10 @@
         "frontend/src/ui/components/CodeEditor.test.tsx:218",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:658",
         "internal/appmodel/runtime_emitter_test.go:12",
-        "internal/appmodel/service_test.go:353",
-        "internal/appmodel/service_test.go:403",
-        "internal/appmodel/service_test.go:525",
-        "internal/appmodel/service_test.go:73"
+        "internal/appmodel/service_test.go:577",
+        "internal/appmodel/service_test.go:627",
+        "internal/appmodel/service_test.go:74",
+        "internal/appmodel/service_test.go:749"
       ]
     },
     "PH01-R06": {
@@ -2395,7 +2409,10 @@
         "frontend/src/logic/hooks/useDocumentCommands.test.ts:39",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:319",
         "frontend/src/ui/widgets/editorSession.integration.test.tsx:137",
-        "frontend/src/ui/widgets/editorSession.integration.test.tsx:178"
+        "frontend/src/ui/widgets/editorSession.integration.test.tsx:178",
+        "internal/appmodel/document_consumer_test.go:10",
+        "internal/appmodel/service_test.go:369",
+        "internal/appmodel/service_test.go:445"
       ]
     },
     "PH01-R10": {
