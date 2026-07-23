@@ -46,29 +46,42 @@ authors them **per phase** from that phase's suggested-task list
 | STORY-030 | Complete the frontend document command seam | 01 | done | coder | M |
 | STORY-031 | Render safe offline GFM footnotes | 01 | done | coder | S |
 | STORY-032 | Produce Phase 01 completion evidence | 01 | done | coder | M |
+| STORY-033 | Record and validate Phase 02 lifecycle resolutions | 00 | ready | coder | M |
+| STORY-034 | Build safe document byte I/O and native dialog seams | 02 | draft | coder | M |
+| STORY-035 | Create and open backend documents with authoritative tab order | 02 | draft | coder | M |
+| STORY-036 | Activate reorder and close clean tabs through revisioned commands | 02 | draft | coder | M |
+| STORY-037 | Save canonical documents with atomic commit semantics | 02 | draft | coder | M |
+| STORY-038 | Guard external file changes with revision-bound decisions | 02 | draft | coder | M |
+| STORY-039 | Project file and tab commands into the active editor session | 02 | draft | coder | M |
+| STORY-040 | Enforce read-only and newline-normalization document safety | 02 | draft | coder | M |
+| STORY-041 | Build the accessible tab bar and zero-document state | 02 | draft | coder | M |
+| STORY-042 | Detect external changes at focus and save checkpoints | 02 | draft | coder | M |
+| STORY-043 | Resolve external changes through Reload or Keep mine | 02 | draft | coder | M |
+| STORY-044 | Plan and execute authoritative dirty-document closes | 02 | draft | coder | M |
+| STORY-045 | Present dirty-close decisions without partial mutation | 02 | draft | coder | M |
+| STORY-046 | Intercept window close and quit through the dirty lifecycle | 02 | draft | coder | M |
+| STORY-047 | Persist and project the autosave preference | 02 | draft | coder | M |
+| STORY-048 | Autosave eligible documents through the serialized save path | 02 | draft | coder | M |
+| STORY-049 | Show autosave and document safety status | 02 | draft | coder | M |
+| STORY-050 | Synchronize the native window title from projected state | 02 | draft | coder | M |
+| STORY-051 | Produce Phase 02 completion evidence | 02 | draft | coder | M |
 
 Add a row per story as it is authored, and keep this board in sync with `../traceability.yaml`.
 
-## Phase 01 remediation readiness sequence
+## Phase 01 completion
 
-Promote a draft to `ready` only after every `depends_on` story is `done` and the front matter, clause anchors, module paths, and dependency graph validate.
+- STORY-011 through STORY-032 are done and immutable.
+- Their accepted checkpoints, remediation, evidence, and completion state are historical; no Phase 01 story
+  remains ready or awaiting implementation.
 
-- STORY-011 through STORY-019 are done and immutable.
-- STORY-020 is done after exact edge-case evidence and lifecycle validation passed independent review.
-- STORY-021 is done after the per-document latest-intent queue and its deferred-ordering, flush, failure, and projection tests passed independent review.
-- STORY-022 is done after the persistent Monaco-session, flush-ordering, responsive round-trip, and independent conformance evidence passed.
-- STORY-023 is done after persistent session-boundary command availability, real arrangement/queue proofs, and independent conformance review passed.
-- STORY-024 is done after the phase-planning migration, independent conformance review, and native/bridge-mock Phase-00 runtime evidence passed.
-- STORY-025 is ready first: it records the accepted checkpoint partition, prerequisite, full-completion
-  obligations, and narrow current-host exception from ADR-0016.
-- STORY-027 and STORY-031 are immediately ready independent remediation packets because each of their
-  declared prerequisites is already done; they may be implemented in any order.
-- STORY-029 is done after its atomic canonical snapshot, no-active error, concurrency, content-free
-  projection, and downstream-consumer tests passed independent conformance review.
-- STORY-028 is done after its latest-local-view merge, flush ordering, retry, patch, and document-switch
-  proofs passed independent conformance review.
-- STORY-026 is done; it validates the accepted checkpoints and exact row-level completion rules.
-- STORY-030 is done after identity-bound working-copy reads and replacements, explicit unavailable and
-  stale-session outcomes, normal Monaco undo/buffer synchronization, and import-boundary proofs.
-- STORY-032 is ready now that STORY-026 through STORY-031 are all done; it produces the revision-bound
-  automated, current-host native, network, and human-approved visual completion evidence last.
+## Phase 02 readiness sequence
+
+- STORY-033 is Phase 00 tooling work and is ready first because STORY-024 and STORY-026 are done and
+  ADR-0023/ADR-0024 are accepted. Its ACs do not prove Phase 02 product outcomes.
+- STORY-034 remains draft until STORY-033 records and validates the Phase 02 conflict policy.
+- Backend file/tab work then proceeds through STORY-035, STORY-036, STORY-037, and STORY-038.
+- STORY-039 consumes the complete backend file/tab surface before any projected UI story becomes ready.
+- Read-only safety, tabs, external prompts, dirty close, window lifecycle, autosave, status, and title work
+  follow their declared dependencies; no frontend story crosses an unfinished Go/TypeScript contract.
+- STORY-051 remains last and cannot complete without exact-revision macOS, Windows, Linux, and product-owner
+  evidence.

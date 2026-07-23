@@ -24,5 +24,11 @@ of the repository's mutable `docs/` working area, **not** the frozen specificati
 | [ADR-0017](0017-coordinated-document-seams.md) | Coordinate backend snapshots with document-bound editor commands | accepted | — | — |
 | [ADR-0018](0018-remove-phase01-manual-network-capture.md) | Remove manual network-capture evidence from Phase 01 completion | accepted | — | — |
 | [ADR-0019](0019-allow-evidence-metadata-commit.md) | Permit an evidence-metadata commit after the tested revision | accepted | — | — |
+| [ADR-0020](0020-phase02-document-lifecycle-policy.md) | Resolve Phase 02 document lifecycle conflicts | superseded by ADR-0024 | — | ADR-0024 |
+| [ADR-0021](0021-identity-bound-active-buffer-acknowledgements.md) | Bind active-buffer acknowledgements to document identity and revision | accepted | — | — |
+| [ADR-0022](0022-commit-writes-and-resynchronize-projection.md) | Commit successful file writes and resynchronize failed projections | accepted | — | — |
+| [ADR-0023](0023-phase02-evidence-metadata-descendants.md) | Permit exact-revision Phase 02 evidence metadata descendants | superseded by ADR-0025 | — | ADR-0025 |
+| [ADR-0024](0024-corrected-phase02-document-lifecycle-policy.md) | Apply the complete corrected Phase 02 document lifecycle policy | accepted | ADR-0020 | — |
+| [ADR-0025](0025-phase02-exact-evidence-descendants.md) | Restrict Phase 02 evidence descendants to exact artifacts and metadata fields | accepted | ADR-0023 | — |
 
 Add a row per ADR as it is authored (start at ADR-0013).
