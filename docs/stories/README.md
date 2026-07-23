@@ -45,7 +45,7 @@ authors them **per phase** from that phase's suggested-task list
 | STORY-029 | Add an atomic backend document snapshot seam | 01 | done | coder | M |
 | STORY-030 | Complete the frontend document command seam | 01 | done | coder | M |
 | STORY-031 | Render safe offline GFM footnotes | 01 | done | coder | S |
-| STORY-032 | Produce Phase 01 completion evidence | 01 | ready | coder | M |
+| STORY-032 | Produce Phase 01 completion evidence | 01 | done | coder | M |
 
 Add a row per story as it is authored, and keep this board in sync with `../traceability.yaml`.
 

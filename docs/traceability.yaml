@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-23T15:41:26.399Z",
+  "generated_at": "2026-07-23T15:44:13.714Z",
   "generator_version": 2,
   "stories": {
     "STORY-001": {
@@ -1617,7 +1617,7 @@
     },
     "STORY-032": {
       "title": "Produce Phase 01 completion evidence",
-      "status": "ready",
+      "status": "done",
       "phase": "01",
       "phase_requirements": [
         "PH01-R01",
