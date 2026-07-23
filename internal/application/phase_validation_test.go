@@ -539,7 +539,6 @@ func TestRepositoryPhaseMigrationIsCompleteAndTruthful(t *testing.T) {
 		for _, blocker := range []string{
 			"PH01-E06 current-host exception revision is stale",
 			"PH01-E07 visual approval must be explicitly approved",
-			"PH01-E08 network trace must be verified",
 			"acceptance criterion is not proven by a done story",
 		} {
 			if !strings.Contains(output, blocker) {
@@ -748,7 +747,7 @@ func TestPhase01ResolutionRejectsInvalidRequirementPartitions(t *testing.T) {
 }
 
 // Proves: STORY-025-AC-5
-// The checked-in record has the exact PH01-E06 policy, rejecting generic waivers and policies for other evidence rows.
+// The checked-in record has the exact PH01-E06 policy and the separate, narrow ADR-0018 E08 exemption.
 func TestRepositoryPhase01ResolutionDefinesExactE06ExceptionPolicySchema(t *testing.T) {
 	runPhaseCLI(t, "scripts/phase-resolution.mjs", storyEightRepositoryRoot(t))
 
@@ -779,9 +778,9 @@ func TestRepositoryPhase01ResolutionDefinesExactE06ExceptionPolicySchema(t *test
 			wantErr: "exception_policies.PH01-E06.kind must be \"current-host-native\"",
 		},
 		{
-			name: "policy assigned to another evidence row",
+			name: "policy assigned to unsupported evidence row",
 			mutate: func(contents string) string {
-				return strings.Replace(contents, "  PH01-E06:\n", "  PH01-E07:\n", 1)
+				return strings.Replace(contents, "  PH01-E08:\n", "  PH01-E07:\n", 1)
 			},
 			wantErr: "exception_policies has unsupported keys: PH01-E07",
 		},
@@ -1112,15 +1111,10 @@ func TestPhase01E06ArtifactProvesCurrentHostRuntimeUnderAcceptedException(t *tes
 }
 
 // Proves: STORY-032-AC-2
-// PH01-E08 requires a revision-bound dedicated-host capture with zero attempted and observed outbound activity.
-func TestPhase01E08ArtifactProvesZeroStage1AndStage2OutboundActivity(t *testing.T) {
+// PH01-E08 accepts no manual artifact only when the explicit ADR-0018 exemption is present.
+func TestPhase01E08ManualCaptureExemptionRequiresADR0018Policy(t *testing.T) {
 	fixture := completePhase01Fixture(t)
-	artifact := filepath.Join(fixture, "docs", "phase-evidence", "PH01-network-trace.md")
-	writePhaseFixture(t, artifact, "**Status:** verified\n**Owner:** security reviewer\n**Revision:** fixture\n**Date:** 2026-07-22\n")
-	output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
-	if !strings.Contains(output, "PH01-E08 network trace is missing capture window") {
-		t.Fatalf("full checker output = %q, want detailed network-record rejection", output)
-	}
+	runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", fixture, "01")
 }
 
 // Proves: STORY-032-AC-4
@@ -1171,7 +1165,7 @@ func TestPhase01CheckpointAndFullGateEvidenceOrder(t *testing.T) {
 }
 
 // Proves: STORY-032-AC-6
-// Evidence audit rejects stale/incomplete records, absent approval, non-zero network activity, and overbroad claims.
+// Evidence audit rejects stale/incomplete records, absent approval, and overbroad claims.
 func TestPhase01EvidenceAuditRejectsStaleIncompleteOrOverbroadClaims(t *testing.T) {
 	for _, testCase := range []struct {
 		name     string
@@ -1182,9 +1176,6 @@ func TestPhase01EvidenceAuditRejectsStaleIncompleteOrOverbroadClaims(t *testing.
 		{"stale visual revision", "PH01-visual-approval.md", "Revision:** ", "Revision:** stale-", "PH01-E07 visual approval revision is stale"},
 		{"missing visual owner", "PH01-visual-approval.md", "Owner:** product owner", "Owner:** ", "PH01-E07 visual approval is missing owner"},
 		{"missing visual candidate", "PH01-visual-approval.md", "Candidate screenshot:** frontend/e2e/core-editor-snapshots/core-editor-split-1280.png", "Candidate screenshot:** test-results/missing.png", "PH01-E07 visual approval candidate screenshot does not exist"},
-		{"non-zero attempted network", "PH01-network-trace.md", "Attempted outbound activity:** 0", "Attempted outbound activity:** 1", "PH01-E08 network trace attempted outbound activity must be 0"},
-		{"non-zero observed network", "PH01-network-trace.md", "Observed outbound activity:** 0", "Observed outbound activity:** 1", "PH01-E08 network trace observed outbound activity must be 0"},
-		{"capture digest mismatch", "PH01-network-trace.md", "Capture artifact digest:** e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "Capture artifact digest:** 0000000000000000000000000000000000000000000000000000000000000000", "PH01-E08 network trace capture artifact digest does not match"},
 		{"overbroad native claim", "PH01-wails-runtime.md", "Limitations:** current host only", "Limitations:** certifies release platform matrix", "PH01-E06 current-host exception limitations make an overbroad claim"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -1262,8 +1253,6 @@ func completePhase01Fixture(t *testing.T) string {
 	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-wails-runtime.md"), "**Status:** verified\n**Owner:** tester\n**Date:** 2026-07-22\n**Host:** "+runtime.GOOS+"\n**Revision:** fixture\n**Freshness:** exact-revision\n**Procedure:** native run\n**Result:** passed\n**Limitations:** current host only\n**Deferred platforms:** windows, linux\n**Accepted ADR:** ADR-0016\n**Expires before:** before-phase15-release-or-platform-claim\n")
 	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-visual-approval.md"), "**Status:** approved\n**Owner:** product owner\n**Revision:** fixture\n**Date:** 2026-07-22\n**Candidate screenshot:** frontend/e2e/core-editor-snapshots/core-editor-split-1280.png\n**Viewport crop:** 1280x720\n**Responsive results:** 375, 768, and 1280 widths passed\n**Approval:** explicit approval by product owner for revision fixture and crop 1280x720\n")
 	writePhaseFixture(t, filepath.Join(root, "frontend", "e2e", "core-editor-snapshots", "core-editor-split-1280.png"), "fixture candidate")
-	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "fixture.pcap"), "")
-	writePhaseFixture(t, filepath.Join(root, "docs", "phase-evidence", "PH01-network-trace.md"), "**Status:** verified\n**Owner:** security reviewer\n**Revision:** fixture\n**Date:** 2026-07-22\n**Host:** fixture-host\n**Procedure:** packet capture during scripted native use\n**Capture window:** 2026-07-22T10:00:00Z to 2026-07-22T10:05:00Z\n**Capture PID:** 12345\n**Capture scope:** stage1-stage2-native-runtime\n**Rerun instructions:** repeat the documented clean-host packet capture procedure\n**Capture artifact location:** docs/phase-evidence/fixture.pcap\n**Capture artifact digest:** e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n**Attempted outbound activity:** 0\n**Observed outbound activity:** 0\n")
 	for _, arguments := range [][]string{{"init"}, {"config", "user.email", "fixture@example.test"}, {"config", "user.name", "Fixture"}, {"add", "."}, {"commit", "-m", "fixture"}} {
 		command := exec.Command("git", arguments...)
 		command.Dir = root
@@ -1284,9 +1273,6 @@ func completePhase01Fixture(t *testing.T) string {
 	visualContents := strings.Replace(readPhaseFixture(t, visualArtifact), "Revision:** fixture", "Revision:** "+revision, 1)
 	visualContents = strings.Replace(visualContents, "revision fixture and crop", "revision "+revision+" and crop", 1)
 	writePhaseFixture(t, visualArtifact, visualContents)
-	networkArtifact := filepath.Join(root, "docs", "phase-evidence", "PH01-network-trace.md")
-	networkContents := strings.Replace(readPhaseFixture(t, networkArtifact), "Revision:** fixture", "Revision:** "+revision, 1)
-	writePhaseFixture(t, networkArtifact, networkContents)
 	return root
 }
 

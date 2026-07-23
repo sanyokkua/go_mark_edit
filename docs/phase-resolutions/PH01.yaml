@@ -26,6 +26,10 @@ exception_policies:
     required_record_fields: [host, revision, freshness, procedure, result, limitations, deferred_platforms, accepted_adr, expires_before]
     allowed_deferred_platforms: [windows, linux]
     expiry_boundary: before-phase15-release-or-platform-claim
+  PH01-E08:
+    kind: manual-capture-exempt
+    accepted_adr: ADR-0018
+    exemption_scope: phase01-completion-gate-only
 coverage:
   version: 1
   transitions:
@@ -161,11 +165,11 @@ coverage:
     PH01-E08:
       requirements: [PH01-R11]
       acceptance_criteria: [STORY-032-AC-2]
-      procedures: [network-trace]
-      artifacts: [docs/phase-evidence/PH01-network-trace.md]
-      owner: security-reviewer
-      scope: stage1-stage2-runtime
-      freshness: current-release-candidate
+      procedures: [manual-capture-exempt-by-ADR-0018]
+      artifacts: []
+      owner: product-owner
+      scope: phase01-completion-gate-only
+      freshness: accepted-adr
     PH01-E09:
       requirements: [PH01-R14]
       acceptance_criteria: [STORY-020-AC-1, STORY-020-AC-2, STORY-020-AC-3, STORY-020-AC-4, STORY-020-AC-5, STORY-026-AC-3, STORY-026-AC-4, STORY-026-AC-6, STORY-032-AC-4]

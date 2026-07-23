@@ -43,6 +43,12 @@ const e06RecordFields = [
   'expires_before',
 ];
 
+const e08ExemptionPolicy = {
+  kind: 'manual-capture-exempt',
+  accepted_adr: 'ADR-0018',
+  exemption_scope: 'phase01-completion-gate-only',
+};
+
 function parseError(line, message) {
   return new Error(`line ${line}: ${message}`);
 }
@@ -405,7 +411,7 @@ export function validatePhase01Resolution(resolution) {
     expectExactList(resolution.full_completion?.required_ids?.[kind], ids, `full_completion.required_ids.${kind}`, errors);
   }
 
-  expectExactKeys(resolution.exception_policies, ['PH01-E06'], 'exception_policies', errors);
+  expectExactKeys(resolution.exception_policies, ['PH01-E06', 'PH01-E08'], 'exception_policies', errors);
   const e06Policy = resolution.exception_policies?.['PH01-E06'];
   expectExactKeys(
     e06Policy,
@@ -418,6 +424,12 @@ export function validatePhase01Resolution(resolution) {
   expectExactList(e06Policy?.required_record_fields, e06RecordFields, 'exception_policies.PH01-E06.required_record_fields', errors);
   expectExactList(e06Policy?.allowed_deferred_platforms, ['windows', 'linux'], 'exception_policies.PH01-E06.allowed_deferred_platforms', errors);
   expectScalar(e06Policy?.expiry_boundary, 'before-phase15-release-or-platform-claim', 'exception_policies.PH01-E06.expiry_boundary', errors);
+
+  const e08Policy = resolution.exception_policies?.['PH01-E08'];
+  expectExactKeys(e08Policy, Object.keys(e08ExemptionPolicy), 'exception_policies.PH01-E08', errors);
+  for (const [field, value] of Object.entries(e08ExemptionPolicy)) {
+    expectScalar(e08Policy?.[field], value, `exception_policies.PH01-E08.${field}`, errors);
+  }
 
   expectExactKeys(resolution.coverage, ['version', 'transitions', 'contracts', 'edge_cases', 'evidence'], 'coverage', errors);
   expectScalar(resolution.coverage?.version, '1', 'coverage.version', errors);

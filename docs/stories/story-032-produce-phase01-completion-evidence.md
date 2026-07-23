@@ -47,6 +47,7 @@ adrs:
   - ADR-0014
   - ADR-0016
   - ADR-0017
+  - ADR-0018
 phase: 01
 owner: coder
 estimate: M
@@ -56,15 +57,15 @@ estimate: M
 
 ## Goal
 
-Assemble fresh, revision-bound automated, native-runtime, network, and human-approved visual proof so the
+Assemble fresh, revision-bound automated, native-runtime, and human-approved visual proof so the
 Phase 01 checkpoints and full completion gate report exactly what has and has not been certified.
 
 ## In scope
 
 - Run and record all PH01-E01 through PH01-E11 procedures at one exact repository revision.
 - Produce current-host packaged/native evidence under the exact ADR-0016 PH01-E06 exception.
-- Produce and automatically validate the Stage 1/2 trace proving zero outbound connections or requests of
-  any kind.
+- Record the accepted ADR-0018 exemption that removes only the manual PH01-E08 packet-capture procedure
+  from the completion gate.
 - Present a deterministic 1280×720 visual candidate for human approval without self-approving it.
 - Run checkpoint, full quality, traceability, and Phase 01 completion gates.
 
@@ -96,12 +97,13 @@ Phase 01 checkpoints and full completion gate report exactly what has and has no
   deferred Windows/Linux proof, limitations, ADR, and expiry before any Phase 15 release/platform claim.
 - The 1280×720 candidate is deterministic and preserves the approved crop if the owner accepts it. The agent
   never self-approves or silently replaces a baseline.
-- Network evidence distinguishes Stage 1/2 zero outbound connections from the later scoped Stage 3 provider
-  exception; for the Stage 1/2 runtime under test, **every** outbound connection/request kind must be zero.
-  This does not introduce a generic all-stage no-socket rule.
-- `internal/application/phase_validation_test.go` reads the checked-in PH01-E06 and PH01-E08 Markdown
-  artifacts and validates revision, procedure, owner/scope, result, limitations, and the row-specific fields;
-  the durable artifacts supplement, rather than replace, collected `Proves:` tests.
+- ADR-0018 removes only PH01-E08's manual packet-capture evidence. The Stage 1/2 offline-by-design
+  invariant, bundled assets, and existing automated regression coverage remain unchanged; this does not
+  introduce a generic all-stage no-socket rule.
+- `internal/application/phase_validation_test.go` reads the checked-in PH01-E06 artifact and validates its
+  revision, procedure, owner/scope, result, and limitations. PH01-E08 has no manual artifact under ADR-0018;
+  its exemption is validated from the narrow resolution policy. Durable artifacts supplement, rather than
+  replace, collected `Proves:` tests.
 - PH01-E01–E11, transition, contract, and edge completeness is evaluated from the authoritative version-1
   `coverage` section in `docs/phase-resolutions/PH01.yaml`, never reconstructed from requirement coverage.
 - Run `just trace`, never edit `docs/traceability.yaml`; then run `just trace-check`, checkpoint gates,
@@ -122,9 +124,10 @@ a collected architecture test reads and validates the repository artifact agains
 ### STORY-032-AC-2
 **Satisfies:** PH01-R11
 
-PH01-E08 records a fresh Stage 1/2 runtime network trace with zero outbound connections or requests of any
-kind and enough procedure detail for an independent rerun; a collected architecture test reads the
-repository artifact and rejects any attempted/observed outbound activity.
+PH01-E08's manual packet-capture artifact, clean-host/VM procedure, security-reviewer sign-off, and digest
+are exempt only from the Phase 01 completion gate through ADR-0018; a collected architecture test accepts
+their absence only with the exact, narrow resolution policy. The Stage 1/2 offline-by-design invariant and
+its existing automated regression coverage remain required.
 
 ### STORY-032-AC-3
 **Satisfies:** PH01-R08, PH01-R13
@@ -159,8 +162,7 @@ without converting them into a waiver.
   `TestPhase01E06ArtifactProvesCurrentHostRuntimeUnderAcceptedException`; additional durable output:
   `docs/phase-evidence/PH01-wails-runtime.md` (`PH01 E06 current-host packaged native procedure and result`).
 - STORY-032-AC-2 — architecture — `internal/application/phase_validation_test.go` —
-  `TestPhase01E08ArtifactProvesZeroStage1AndStage2OutboundActivity`; additional durable output:
-  `docs/phase-evidence/PH01-network-trace.md` (`PH01 E08 zero outbound connections and requests`).
+  `TestPhase01E08ManualCaptureExemptionRequiresADR0018Policy`.
 - STORY-032-AC-3 — human/e2e-smoke — `frontend/e2e/core-editor.test.ts` and
   `docs/phase-evidence/PH01-visual-approval.md` —
   `test('STORY-032-AC-3 presents deterministic 1280x720 candidate for owner approval')`.
