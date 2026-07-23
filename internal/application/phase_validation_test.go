@@ -1110,6 +1110,47 @@ func TestPhase01E06ArtifactProvesCurrentHostRuntimeUnderAcceptedException(t *tes
 	}
 }
 
+// Proves: STORY-032-AC-1
+// E06 and E07 may cite an ancestor only when every intervening committed path is allowlisted evidence metadata.
+func TestPhase01EvidenceMetadataCommitAcceptsOnlyAllowlistedAncestorRevisions(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		mutate func(t *testing.T, root string)
+	}{
+		{
+			name: "source change",
+			mutate: func(t *testing.T, root string) {
+				writePhaseFixture(t, filepath.Join(root, "internal", "application", "after_evidence_revision.go"), "package application\n")
+			},
+		},
+		{
+			name: "resolution policy change",
+			mutate: func(t *testing.T, root string) {
+				path := filepath.Join(root, "docs", "phase-resolutions", "PH01.yaml")
+				writePhaseFixture(t, path, strings.Replace(readPhaseFixture(t, path), "owner: product-owner", "owner: tester", 1))
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			fixture := completePhase01Fixture(t)
+			commitPhaseFixture(t, fixture, "commit phase evidence metadata")
+			runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", fixture, "01")
+
+			testCase.mutate(t, fixture)
+			commitPhaseFixture(t, fixture, "change after tested revision")
+			output := runPhaseCLIWithArgumentsFailure(t, "scripts/phase-complete-check.mjs", fixture, "01")
+			for _, want := range []string{
+				"PH01-E06 current-host exception revision is stale",
+				"PH01-E07 visual approval revision is stale",
+			} {
+				if !strings.Contains(output, want) {
+					t.Errorf("full checker output = %q, want %q", output, want)
+				}
+			}
+		})
+	}
+}
+
 // Proves: STORY-032-AC-2
 // PH01-E08 accepts no manual artifact only when the explicit ADR-0018 exemption is present.
 func TestPhase01E08ManualCaptureExemptionRequiresADR0018Policy(t *testing.T) {
@@ -1274,6 +1315,17 @@ func completePhase01Fixture(t *testing.T) string {
 	visualContents = strings.Replace(visualContents, "revision fixture and crop", "revision "+revision+" and crop", 1)
 	writePhaseFixture(t, visualArtifact, visualContents)
 	return root
+}
+
+func commitPhaseFixture(t *testing.T, root, message string) {
+	t.Helper()
+	for _, arguments := range [][]string{{"add", "."}, {"commit", "-m", message}} {
+		command := exec.Command("git", arguments...)
+		command.Dir = root
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", arguments, err, output)
+		}
+	}
 }
 
 func newPhaseFixture(t *testing.T) string {

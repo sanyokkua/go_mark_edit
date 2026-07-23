@@ -48,6 +48,7 @@ adrs:
   - ADR-0016
   - ADR-0017
   - ADR-0018
+  - ADR-0019
 phase: 01
 owner: coder
 estimate: M
@@ -95,6 +96,8 @@ Phase 01 checkpoints and full completion gate report exactly what has and has no
   stale claim.
 - PH01-E06 may use current macOS native/package evidence only through ADR-0016's exact exception: record host,
   deferred Windows/Linux proof, limitations, ADR, and expiry before any Phase 15 release/platform claim.
+- ADR-0019 permits E06/E07 to cite an ancestor tested revision only when every intervening committed path is
+  Phase evidence metadata, this STORY-032 record, or generated traceability; a source or policy change remains stale.
 - The 1280×720 candidate is deterministic and preserves the approved crop if the owner accepts it. The agent
   never self-approves or silently replaces a baseline.
 - ADR-0018 removes only PH01-E08's manual packet-capture evidence. The Stage 1/2 offline-by-design
@@ -119,7 +122,8 @@ Phase 01 checkpoints and full completion gate report exactly what has and has no
 
 PH01-E06 records a packaged/native run on the current macOS host at the exact tested revision, including the
 procedure, results, limitations, ADR-0016 exception, deferred Windows/Linux proof, and pre-Phase-15 expiry;
-a collected architecture test reads and validates the repository artifact against the resolution policy.
+a collected architecture test reads and validates the repository artifact against the resolution policy and
+the narrow ADR-0019 tested-revision rule.
 
 ### STORY-032-AC-2
 **Satisfies:** PH01-R11
@@ -133,7 +137,8 @@ its existing automated regression coverage remain required.
 **Satisfies:** PH01-R08, PH01-R13
 
 A deterministic 1280×720 screenshot candidate and responsive-width results are presented to the product
-owner; PH01-E07 is complete only after the owner explicitly approves the named revision/crop.
+owner; PH01-E07 is complete only after the owner explicitly approves the named revision/crop, subject to
+the same narrow ADR-0019 tested-revision rule.
 
 ### STORY-032-AC-4
 **Satisfies:** PH01-R01, PH01-R02, PH01-R03, PH01-R04, PH01-R05, PH01-R06, PH01-R07, PH01-R08, PH01-R09, PH01-R10, PH01-R11, PH01-R12, PH01-R13, PH01-R14, PH01-R16
@@ -159,7 +164,8 @@ without converting them into a waiver.
 ## Test plan
 
 - STORY-032-AC-1 — architecture — `internal/application/phase_validation_test.go` —
-  `TestPhase01E06ArtifactProvesCurrentHostRuntimeUnderAcceptedException`; additional durable output:
+  `TestPhase01E06ArtifactProvesCurrentHostRuntimeUnderAcceptedException` and
+  `TestPhase01EvidenceMetadataCommitAcceptsOnlyAllowlistedAncestorRevisions`; additional durable output:
   `docs/phase-evidence/PH01-wails-runtime.md` (`PH01 E06 current-host packaged native procedure and result`).
 - STORY-032-AC-2 — architecture — `internal/application/phase_validation_test.go` —
   `TestPhase01E08ManualCaptureExemptionRequiresADR0018Policy`.

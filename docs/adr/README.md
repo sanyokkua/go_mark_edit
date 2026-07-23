@@ -23,5 +23,6 @@ of the repository's mutable `docs/` working area, **not** the frozen specificati
 | [ADR-0016](0016-phase01-implementation-checkpoints.md) | Separate Phase 01 preview and editing implementation checkpoints | accepted | — | — |
 | [ADR-0017](0017-coordinated-document-seams.md) | Coordinate backend snapshots with document-bound editor commands | accepted | — | — |
 | [ADR-0018](0018-remove-phase01-manual-network-capture.md) | Remove manual network-capture evidence from Phase 01 completion | accepted | — | — |
+| [ADR-0019](0019-allow-evidence-metadata-commit.md) | Permit an evidence-metadata commit after the tested revision | accepted | — | — |
 
 Add a row per ADR as it is authored (start at ADR-0013).

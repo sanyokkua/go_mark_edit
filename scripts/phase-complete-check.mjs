@@ -29,6 +29,26 @@ async function currentRevision(root) {
   }
 }
 
+function isAllowedEvidenceMetadataPath(path) {
+  return path.startsWith('docs/phase-evidence/')
+    || path === 'docs/stories/story-032-produce-phase01-completion-evidence.md'
+    || path === 'docs/traceability.yaml';
+}
+
+async function evidenceRevisionIsCurrentOrMetadataOnly(root, evidenceRevision) {
+  const head = await currentRevision(root);
+  if (head === undefined) return true;
+  if (evidenceRevision === head) return true;
+  if (!/^[a-f0-9]{40}$/i.test(evidenceRevision ?? '')) return false;
+  try {
+    await execFileAsync('git', ['merge-base', '--is-ancestor', evidenceRevision, 'HEAD'], { cwd: root });
+    const { stdout } = await execFileAsync('git', ['diff', '--name-only', '--no-renames', `${evidenceRevision}..HEAD`], { cwd: root });
+    return stdout.split('\n').filter(Boolean).every(isAllowedEvidenceMetadataPath);
+  } catch {
+    return false;
+  }
+}
+
 function phaseEvidenceFrontmatter(contents) {
   return Object.fromEntries([...contents.matchAll(/^\*\*([^:]+):\*\*[ \t]+(.+)$/gm)].map((match) => [match[1].trim().toLowerCase(), match[2].trim()]));
 }
@@ -47,7 +67,7 @@ async function validateE06CurrentHostRecord(root, artifact, errors) {
     if (!fields[field]) errors.push(`PH01-E06 current-host exception is missing ${field}`);
   }
   if (fields.host && fields.host !== process.platform) errors.push(`PH01-E06 current-host exception host must be ${process.platform}`);
-  if (revision !== undefined && fields.revision && fields.revision !== revision) errors.push('PH01-E06 current-host exception revision is stale');
+  if (revision !== undefined && fields.revision && !(await evidenceRevisionIsCurrentOrMetadataOnly(root, fields.revision))) errors.push('PH01-E06 current-host exception revision is stale');
   if (fields.freshness && fields.freshness !== 'exact-revision') errors.push('PH01-E06 current-host exception freshness must be exact-revision');
   for (const field of ['procedure', 'result', 'limitations']) {
     if (fields[field] === undefined || fields[field].trim() === '') errors.push(`PH01-E06 current-host exception ${field} must be nonempty`);
@@ -74,7 +94,7 @@ async function validateE07VisualApprovalRecord(root, artifact, errors) {
   }
   if (fields.status !== 'approved') errors.push('PH01-E07 visual approval must be explicitly approved');
   if (fields.owner && fields.owner !== 'product owner') errors.push('PH01-E07 visual approval owner must be product owner');
-  if (revision !== undefined && fields.revision && fields.revision !== revision) errors.push('PH01-E07 visual approval revision is stale');
+  if (revision !== undefined && fields.revision && !(await evidenceRevisionIsCurrentOrMetadataOnly(root, fields.revision))) errors.push('PH01-E07 visual approval revision is stale');
   if (fields['viewport crop'] && fields['viewport crop'] !== '1280x720') errors.push('PH01-E07 visual approval viewport crop must be 1280x720');
   if (fields['candidate screenshot']) {
     try {

@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-23T15:32:13.869Z",
+  "generated_at": "2026-07-23T15:41:26.399Z",
   "generator_version": 2,
   "stories": {
     "STORY-001": {
@@ -1652,12 +1652,13 @@
       "acceptance_criteria": {
         "STORY-032-AC-1": {
           "tests": [
-            "internal/application/phase_validation_test.go:1101"
+            "internal/application/phase_validation_test.go:1101",
+            "internal/application/phase_validation_test.go:1115"
           ]
         },
         "STORY-032-AC-2": {
           "tests": [
-            "internal/application/phase_validation_test.go:1115"
+            "internal/application/phase_validation_test.go:1156"
           ]
         },
         "STORY-032-AC-3": {
@@ -1667,17 +1668,17 @@
         },
         "STORY-032-AC-4": {
           "tests": [
-            "internal/application/phase_validation_test.go:1122"
+            "internal/application/phase_validation_test.go:1163"
           ]
         },
         "STORY-032-AC-5": {
           "tests": [
-            "internal/application/phase_validation_test.go:1136"
+            "internal/application/phase_validation_test.go:1177"
           ]
         },
         "STORY-032-AC-6": {
           "tests": [
-            "internal/application/phase_validation_test.go:1169"
+            "internal/application/phase_validation_test.go:1210"
           ]
         }
       }
@@ -2046,7 +2047,8 @@
       },
       "tests": [
         "internal/application/phase_validation_test.go:1101",
-        "internal/application/phase_validation_test.go:1122",
+        "internal/application/phase_validation_test.go:1115",
+        "internal/application/phase_validation_test.go:1163",
         "internal/appmodel/handler_test.go:13",
         "internal/appmodel/runtime_emitter_test.go:12",
         "internal/appmodel/service_test.go:179",
@@ -2117,7 +2119,7 @@
         "frontend/src/logic/store/appModelProjection.test.ts:256",
         "frontend/src/logic/store/appModelProjection.test.ts:88",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:538",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH01-R03": {
@@ -2176,7 +2178,8 @@
         "frontend/src/ui/components/CodeEditor.test.tsx:261",
         "frontend/src/ui/components/CodeEditor.test.tsx:346",
         "internal/application/phase_validation_test.go:1101",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1115",
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH01-R04": {
@@ -2207,7 +2210,8 @@
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:735",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:822",
         "internal/application/phase_validation_test.go:1101",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1115",
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH01-R05": {
@@ -2253,7 +2257,7 @@
         "frontend/src/logic/store/appModelProjection.test.ts:88",
         "frontend/src/ui/components/CodeEditor.test.tsx:220",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:658",
-        "internal/application/phase_validation_test.go:1122",
+        "internal/application/phase_validation_test.go:1163",
         "internal/appmodel/runtime_emitter_test.go:12",
         "internal/appmodel/service_test.go:577",
         "internal/appmodel/service_test.go:627",
@@ -2300,7 +2304,8 @@
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:884",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:965",
         "internal/application/phase_validation_test.go:1101",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1115",
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH01-R07": {
@@ -2349,7 +2354,8 @@
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:884",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:965",
         "internal/application/phase_validation_test.go:1101",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1115",
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH01-R08": {
@@ -2409,7 +2415,8 @@
         "frontend/src/ui/widgets/EditorView.test.tsx:191",
         "frontend/src/ui/widgets/EditorView.test.tsx:220",
         "internal/application/phase_validation_test.go:1101",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1115",
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH01-R09": {
@@ -2462,7 +2469,7 @@
         "frontend/src/ui/widgets/editorSession.integration.test.tsx:219",
         "frontend/src/ui/widgets/editorSession.integration.test.tsx:254",
         "frontend/src/ui/widgets/editorSession.integration.test.tsx:319",
-        "internal/application/phase_validation_test.go:1122",
+        "internal/application/phase_validation_test.go:1163",
         "internal/appmodel/document_consumer_test.go:10",
         "internal/appmodel/service_test.go:369",
         "internal/appmodel/service_test.go:445"
@@ -2503,7 +2510,7 @@
         "frontend/src/ui/widgets/editorSession.integration.test.tsx:219",
         "frontend/src/ui/widgets/editorSession.integration.test.tsx:254",
         "frontend/src/ui/widgets/editorSession.integration.test.tsx:319",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH01-R11": {
@@ -2559,7 +2566,8 @@
         "frontend/src/ui/components/MarkdownView.test.tsx:93",
         "internal/application/phase_validation_test.go:1101",
         "internal/application/phase_validation_test.go:1115",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1156",
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH01-R12": {
@@ -2599,7 +2607,7 @@
         "frontend/src/logic/hooks/useLivePreview.test.ts:94",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:538",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:597",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH01-R13": {
@@ -2648,7 +2656,8 @@
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:486",
         "frontend/src/ui/widgets/EditorView.integration.test.tsx:524",
         "internal/application/phase_validation_test.go:1101",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1115",
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH01-R14": {
@@ -2686,8 +2695,8 @@
         "internal/application/phase_validation_test.go:1006",
         "internal/application/phase_validation_test.go:1065",
         "internal/application/phase_validation_test.go:1088",
-        "internal/application/phase_validation_test.go:1122",
-        "internal/application/phase_validation_test.go:1169",
+        "internal/application/phase_validation_test.go:1163",
+        "internal/application/phase_validation_test.go:1210",
         "internal/application/phase_validation_test.go:930",
         "internal/application/phase_validation_test.go:940",
         "internal/application/phase_validation_test.go:960",
@@ -2733,8 +2742,8 @@
       },
       "tests": [
         "internal/application/phase_validation_test.go:1006",
-        "internal/application/phase_validation_test.go:1136",
-        "internal/application/phase_validation_test.go:1169",
+        "internal/application/phase_validation_test.go:1177",
+        "internal/application/phase_validation_test.go:1210",
         "internal/application/phase_validation_test.go:553",
         "internal/application/phase_validation_test.go:594",
         "internal/application/phase_validation_test.go:600",
@@ -2773,7 +2782,7 @@
       "tests": [
         "frontend/src/App.test.tsx:403",
         "frontend/src/i18n/catalog.test.ts:4",
-        "internal/application/phase_validation_test.go:1122"
+        "internal/application/phase_validation_test.go:1163"
       ]
     },
     "PH02-R01": {
