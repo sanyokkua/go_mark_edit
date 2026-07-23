@@ -28,8 +28,9 @@ by construction.
 ## Decision outcome
 
 Chosen: **Option C**. Phase 01 evidence may cite an exact ancestor revision when the current `HEAD` differs
-only by `docs/phase-evidence/`, `docs/stories/story-032-produce-phase01-completion-evidence.md`, and
-`docs/traceability.yaml`. Any other source or policy change after the cited revision makes the record stale.
+only by `docs/phase-evidence/`, `docs/stories/README.md`,
+`docs/stories/story-032-produce-phase01-completion-evidence.md`, and `docs/traceability.yaml`. Any other
+source or policy change after the cited revision makes the record stale.
 
 ### Consequences
 

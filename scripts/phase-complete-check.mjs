@@ -31,6 +31,7 @@ async function currentRevision(root) {
 
 function isAllowedEvidenceMetadataPath(path) {
   return path.startsWith('docs/phase-evidence/')
+    || path === 'docs/stories/README.md'
     || path === 'docs/stories/story-032-produce-phase01-completion-evidence.md'
     || path === 'docs/traceability.yaml';
 }

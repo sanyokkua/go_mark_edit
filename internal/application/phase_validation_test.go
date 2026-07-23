@@ -1133,6 +1133,8 @@ func TestPhase01EvidenceMetadataCommitAcceptsOnlyAllowlistedAncestorRevisions(t 
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			fixture := completePhase01Fixture(t)
+			boardPath := filepath.Join(fixture, "docs", "stories", "README.md")
+			writePhaseFixture(t, boardPath, readPhaseFixture(t, boardPath)+"\n<!-- Phase 01 evidence metadata -->\n")
 			commitPhaseFixture(t, fixture, "commit phase evidence metadata")
 			runPhaseCLIWithArguments(t, "scripts/phase-complete-check.mjs", fixture, "01")
 
