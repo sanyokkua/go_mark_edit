@@ -1,7 +1,7 @@
 # traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
 # Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
 {
-  "generated_at": "2026-07-23T15:46:26.244Z",
+  "generated_at": "2026-07-23T16:18:01.753Z",
   "generator_version": 2,
   "stories": {
     "STORY-001": {
