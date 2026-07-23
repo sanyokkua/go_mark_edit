@@ -3,34 +3,72 @@ import { join, relative, resolve } from 'node:path';
 import * as ts from 'typescript';
 
 import type {
+  CodeEditorHandle,
   EditorRange,
   EditorSelection,
 } from '../../ui/components/CodeEditor';
-import { createDocumentCommands } from './useDocumentCommands';
+import {
+  createDocumentCommands,
+  type DocumentCommandSession,
+} from './useDocumentCommands';
+
+function createHandle(
+  overrides: Partial<CodeEditorHandle> = {},
+): CodeEditorHandle {
+  return {
+    getContent: (): string | null => 'working copy',
+    getSelection: (): EditorSelection | null => null,
+    replaceAll: (): boolean => true,
+    replaceRange: (): boolean => true,
+    ...overrides,
+  };
+}
+
+function createSession(
+  documentId: string,
+  handle: CodeEditorHandle,
+  token = Symbol('editor-session'),
+): DocumentCommandSession {
+  return { documentId, handle, token };
+}
 
 it('STORY-019-AC-5 exposes editor changes through the document-command seam', () => {
   const selection: EditorSelection = {
     start: { lineNumber: 1, column: 2 },
     end: { lineNumber: 1, column: 4 },
   };
-  const replaceRange = jest.fn<void, [EditorRange, string]>();
-  const replaceAll = jest.fn<void, [string]>();
-  const editorRef = {
-    current: {
+  const replaceRange = jest.fn<boolean, [EditorRange, string]>(() => true);
+  const replaceAll = jest.fn<boolean, [string]>(() => true);
+  const session = createSession(
+    'document-1',
+    createHandle({
       getSelection: (): EditorSelection => selection,
       replaceRange,
       replaceAll,
-    },
-  };
-  const commands = createDocumentCommands(editorRef);
+    }),
+  );
+  const commands = createDocumentCommands(
+    session.documentId,
+    session.token,
+    (): DocumentCommandSession => session,
+  );
   const range: EditorRange = {
     start: { lineNumber: 2, column: 1 },
     end: { lineNumber: 2, column: 4 },
   };
 
-  expect(commands.getSelection()).toEqual(selection);
-  commands.replaceRange(range, 'new');
-  commands.replaceAll('whole document');
+  expect(commands.getSelection()).toEqual({
+    status: 'available',
+    value: selection,
+  });
+  expect(commands.replaceRange(range, 'new')).toEqual({
+    status: 'available',
+    value: undefined,
+  });
+  expect(commands.replaceAll('whole document')).toEqual({
+    status: 'available',
+    value: undefined,
+  });
 
   expect(replaceRange).toHaveBeenCalledWith(range, 'new');
   expect(replaceAll).toHaveBeenCalledWith('whole document');
@@ -41,32 +79,111 @@ it('STORY-023-AC-3 returns the current selection or null', () => {
     start: { lineNumber: 3, column: 2 },
     end: { lineNumber: 3, column: 8 },
   };
-  let editor: {
-    getSelection: () => EditorSelection;
-    replaceRange: jest.Mock<void, [EditorRange, string]>;
-    replaceAll: jest.Mock<void, [string]>;
-  } | null = {
-    getSelection: (): EditorSelection => selection,
-    replaceRange: jest.fn<void, [EditorRange, string]>(),
-    replaceAll: jest.fn<void, [string]>(),
-  };
-  const commands = createDocumentCommands(() => editor);
+  const session = createSession(
+    'document-1',
+    createHandle({ getSelection: (): EditorSelection => selection }),
+  );
+  let liveSession: DocumentCommandSession | null = session;
+  const commands = createDocumentCommands(
+    session.documentId,
+    session.token,
+    (): DocumentCommandSession | null => liveSession,
+  );
 
-  expect(commands.getSelection()).toEqual(selection);
+  expect(commands.getSelection()).toEqual({
+    status: 'available',
+    value: selection,
+  });
 
-  editor = null;
+  liveSession = null;
 
-  expect(commands.getSelection()).toBeNull();
-  expect((): void => {
+  expect(commands.getSelection()).toEqual({ status: 'unavailable' });
+  expect(
     commands.replaceRange(
       {
         start: { lineNumber: 1, column: 1 },
         end: { lineNumber: 1, column: 1 },
       },
       'ignored',
-    );
-    commands.replaceAll('ignored');
-  }).not.toThrow();
+    ),
+  ).toEqual({ status: 'unavailable' });
+  expect(commands.replaceAll('ignored')).toEqual({ status: 'unavailable' });
+});
+
+it('STORY-030-AC-2 returns unavailable when no session handle exists', () => {
+  const commands = createDocumentCommands(
+    'document-1',
+    Symbol('expected'),
+    () => null,
+  );
+  const range: EditorRange = {
+    start: { lineNumber: 1, column: 1 },
+    end: { lineNumber: 1, column: 1 },
+  };
+
+  expect(commands.getContent()).toEqual({ status: 'unavailable' });
+  expect(commands.getSelection()).toEqual({ status: 'unavailable' });
+  expect(commands.replaceRange(range, 'ignored')).toEqual({
+    status: 'unavailable',
+  });
+  expect(commands.replaceAll('ignored')).toEqual({ status: 'unavailable' });
+});
+
+it('STORY-030-AC-5 discriminates detached unavailable and stale mismatch', () => {
+  const handle = createHandle();
+  const original = createSession('document-1', handle);
+  let liveSession: DocumentCommandSession | null = original;
+  const commands = createDocumentCommands(
+    original.documentId,
+    original.token,
+    () => liveSession,
+  );
+
+  liveSession = null;
+  expect(commands.getContent()).toEqual({ status: 'unavailable' });
+
+  const replacement = createSession('document-1', createHandle());
+  liveSession = replacement;
+  expect(commands.getContent()).toEqual({ status: 'document-mismatch' });
+  expect(commands.replaceAll('ignored')).toEqual({
+    status: 'document-mismatch',
+  });
+});
+
+it('STORY-030-AC-5 returns unavailable without touching an unavailable Monaco model', () => {
+  const getSelection = jest.fn<EditorSelection | null, []>(() => null);
+  const replaceRange = jest.fn<boolean, [EditorRange, string]>(() => false);
+  const replaceAll = jest.fn<boolean, [string]>(() => false);
+  const session = createSession(
+    'document-1',
+    createHandle({
+      getContent: (): null => null,
+      getSelection,
+      replaceRange,
+      replaceAll,
+    }),
+  );
+  const commands = createDocumentCommands(
+    session.documentId,
+    session.token,
+    (): DocumentCommandSession => session,
+  );
+
+  expect(commands.getContent()).toEqual({ status: 'unavailable' });
+  expect(commands.getSelection()).toEqual({ status: 'unavailable' });
+  expect(getSelection).not.toHaveBeenCalled();
+  expect(
+    commands.replaceRange(
+      {
+        start: { lineNumber: 1, column: 1 },
+        end: { lineNumber: 1, column: 1 },
+      },
+      'ignored',
+    ),
+  ).toEqual({ status: 'unavailable' });
+  expect(commands.replaceAll('ignored')).toEqual({ status: 'unavailable' });
+  expect(replaceRange).toHaveBeenCalledTimes(1);
+  expect(replaceAll).toHaveBeenCalledTimes(1);
 });
 
 function sourceFiles(directory: string): string[] {
@@ -167,7 +284,18 @@ function interfaceMembers(source: ts.SourceFile, name: string): string[] {
   return members;
 }
 
-it('STORY-023-AC-5 enforces the direct-Monaco ownership boundary', () => {
+it('STORY-023-AC-5 continues to enforce the direct-Monaco ownership boundary', () => {
+  const commandSource = sourceFile(
+    resolve(process.cwd(), 'src/logic/hooks/useDocumentCommands.ts'),
+  );
+
+  expect(hasMonacoModuleLoad(commandSource)).toBe(false);
+  expect(interfaceMembers(commandSource, 'DocumentCommandAPI')).toContain(
+    'getSelection',
+  );
+});
+
+it('STORY-030-AC-6 keeps sibling consumers independent of Monaco', () => {
   const sourceRoot = resolve(process.cwd(), 'src');
   const sources = sourceFiles(sourceRoot).map((path) => ({
     path: relative(process.cwd(), path),
@@ -203,6 +331,7 @@ it('STORY-023-AC-5 enforces the direct-Monaco ownership boundary', () => {
     resolve(sourceRoot, 'logic/store/appModelTypes.ts'),
   );
   expect(interfaceMembers(commandSource, 'DocumentCommandAPI')).toEqual([
+    'getContent',
     'getSelection',
     'replaceRange',
     'replaceAll',

@@ -43,7 +43,7 @@ authors them **per phase** from that phase's suggested-task list
 | STORY-027 | Make failed frontend bootstrap retryable | 01 | done | coder | M |
 | STORY-028 | Preserve the latest editor view intent during arrangement changes | 01 | done | coder | M |
 | STORY-029 | Add an atomic backend document snapshot seam | 01 | done | coder | M |
-| STORY-030 | Complete the frontend document command seam | 01 | ready | coder | M |
+| STORY-030 | Complete the frontend document command seam | 01 | done | coder | M |
 | STORY-031 | Render safe offline GFM footnotes | 01 | ready | coder | S |
 | STORY-032 | Produce Phase 01 completion evidence | 01 | draft | coder | M |
 
@@ -68,6 +68,7 @@ Promote a draft to `ready` only after every `depends_on` story is `done` and the
 - STORY-028 is done after its latest-local-view merge, flush ordering, retry, patch, and document-switch
   proofs passed independent conformance review.
 - STORY-026 is done; it validates the accepted checkpoints and exact row-level completion rules.
-- STORY-030 is ready because STORY-023, STORY-028, and STORY-029 are done.
+- STORY-030 is done after identity-bound working-copy reads and replacements, explicit unavailable and
+  stale-session outcomes, normal Monaco undo/buffer synchronization, and import-boundary proofs.
 - STORY-032 remains draft until STORY-026 through STORY-031 are all done; it produces the revision-bound
   automated, current-host native, network, and human-approved visual completion evidence last.

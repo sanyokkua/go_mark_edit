@@ -1,4 +1,4 @@
-import { useMemo, type RefObject } from 'react';
+import { useMemo } from 'react';
 
 import type {
   CodeEditorHandle,
@@ -6,44 +6,129 @@ import type {
   EditorSelection,
 } from '../../ui/components/CodeEditor';
 
-export interface DocumentCommandAPI {
-  getSelection: () => EditorSelection | null;
-  replaceRange: (range: EditorRange, text: string) => void;
-  replaceAll: (text: string) => void;
+export type DocumentCommandResult<T> =
+  | { status: 'available'; value: T }
+  | { status: 'unavailable' }
+  | { status: 'document-mismatch' };
+
+export interface DocumentCommandSession {
+  documentId: string;
+  handle: CodeEditorHandle;
+  token: symbol;
 }
 
-export type EditorHandleSource =
-  RefObject<CodeEditorHandle | null> | (() => CodeEditorHandle | null);
+export interface DocumentCommandAPI {
+  getContent: () => DocumentCommandResult<string>;
+  getSelection: () => DocumentCommandResult<EditorSelection | null>;
+  replaceRange: (
+    range: EditorRange,
+    text: string,
+  ) => DocumentCommandResult<void>;
+  replaceAll: (text: string) => DocumentCommandResult<void>;
+}
 
-function resolveEditor(
-  editorSource: EditorHandleSource,
-): CodeEditorHandle | null {
-  return typeof editorSource === 'function'
-    ? editorSource()
-    : editorSource.current;
+export type EditorSessionSource = () => DocumentCommandSession | null;
+
+function resolveSession(
+  expectedDocumentId: string | null,
+  expectedToken: symbol | null,
+  sessionSource: EditorSessionSource,
+): DocumentCommandResult<CodeEditorHandle> {
+  const session = sessionSource();
+
+  if (session === null) {
+    return { status: 'unavailable' };
+  }
+
+  if (
+    session.documentId !== expectedDocumentId ||
+    session.token !== expectedToken
+  ) {
+    return { status: 'document-mismatch' };
+  }
+
+  return { status: 'available', value: session.handle };
 }
 
 export function createDocumentCommands(
-  editorSource: EditorHandleSource,
+  expectedDocumentId: string | null,
+  expectedToken: symbol | null,
+  sessionSource: EditorSessionSource,
 ): DocumentCommandAPI {
   return {
-    getSelection(): EditorSelection | null {
-      return resolveEditor(editorSource)?.getSelection() ?? null;
+    getContent(): DocumentCommandResult<string> {
+      const session = resolveSession(
+        expectedDocumentId,
+        expectedToken,
+        sessionSource,
+      );
+      if (session.status !== 'available') {
+        return session;
+      }
+
+      const content = session.value.getContent();
+      return content === null
+        ? { status: 'unavailable' }
+        : { status: 'available', value: content };
     },
-    replaceRange(range: EditorRange, text: string): void {
-      resolveEditor(editorSource)?.replaceRange(range, text);
+    getSelection(): DocumentCommandResult<EditorSelection | null> {
+      const session = resolveSession(
+        expectedDocumentId,
+        expectedToken,
+        sessionSource,
+      );
+      if (session.status !== 'available') {
+        return session;
+      }
+
+      if (session.value.getContent() === null) {
+        return { status: 'unavailable' };
+      }
+
+      return { status: 'available', value: session.value.getSelection() };
     },
-    replaceAll(text: string): void {
-      resolveEditor(editorSource)?.replaceAll(text);
+    replaceRange(
+      range: EditorRange,
+      text: string,
+    ): DocumentCommandResult<void> {
+      const session = resolveSession(
+        expectedDocumentId,
+        expectedToken,
+        sessionSource,
+      );
+      if (session.status !== 'available') {
+        return session;
+      }
+
+      return session.value.replaceRange(range, text)
+        ? { status: 'available', value: undefined }
+        : { status: 'unavailable' };
+    },
+    replaceAll(text: string): DocumentCommandResult<void> {
+      const session = resolveSession(
+        expectedDocumentId,
+        expectedToken,
+        sessionSource,
+      );
+      if (session.status !== 'available') {
+        return session;
+      }
+
+      return session.value.replaceAll(text)
+        ? { status: 'available', value: undefined }
+        : { status: 'unavailable' };
     },
   };
 }
 
 export function useDocumentCommands(
-  editorSource: EditorHandleSource,
+  expectedDocumentId: string | null,
+  expectedToken: symbol | null,
+  sessionSource: EditorSessionSource,
 ): DocumentCommandAPI {
   return useMemo(
-    (): DocumentCommandAPI => createDocumentCommands(editorSource),
-    [editorSource],
+    (): DocumentCommandAPI =>
+      createDocumentCommands(expectedDocumentId, expectedToken, sessionSource),
+    [expectedDocumentId, expectedToken, sessionSource],
   );
 }

@@ -11,6 +11,7 @@ import {
 import type { ActiveBuffer } from '../../logic/store/appModelTypes';
 import {
   type DocumentCommandAPI,
+  type DocumentCommandSession,
   useDocumentCommands,
 } from '../../logic/hooks/useDocumentCommands';
 import type { CodeEditorHandle } from '../components/CodeEditor';
@@ -22,7 +23,18 @@ export const DocumentCommandContext = createContext<DocumentCommandAPI | null>(
 );
 
 interface EditorSessionAttachment {
-  attachEditor: (editor: CodeEditorHandle | null) => void;
+  attachEditor: (documentId: string, editor: CodeEditorHandle | null) => void;
+}
+
+class EditorSessionRegistry {
+  public session: DocumentCommandSession | null = null;
+
+  public readonly getSession = (): DocumentCommandSession | null =>
+    this.session;
+
+  public setSession(session: DocumentCommandSession | null): void {
+    this.session = session;
+  }
 }
 
 const EditorSessionAttachmentContext =
@@ -36,18 +48,36 @@ export const EditorSessionProvider: React.FC<EditorSessionProviderProps> = ({
   activeBuffer,
   children,
 }: EditorSessionProviderProps): React.JSX.Element => {
-  const [editor, setEditor] = useState<CodeEditorHandle | null>(null);
-  const attachEditor = useCallback(
-    (nextEditor: CodeEditorHandle | null): void => {
-      setEditor(nextEditor);
-    },
+  const [session, setSession] = useState<DocumentCommandSession | null>(null);
+  const sessionRegistry = useMemo(
+    (): EditorSessionRegistry => new EditorSessionRegistry(),
     [],
   );
-  const getEditor = useCallback(
-    (): CodeEditorHandle | null => editor,
-    [editor],
+  const attachEditor = useCallback(
+    (documentId: string, editor: CodeEditorHandle | null): void => {
+      if (editor === null) {
+        if (sessionRegistry.session?.documentId === documentId) {
+          sessionRegistry.setSession(null);
+          setSession(null);
+        }
+        return;
+      }
+
+      const nextSession: DocumentCommandSession = {
+        documentId,
+        handle: editor,
+        token: Symbol('editor-session'),
+      };
+      sessionRegistry.setSession(nextSession);
+      setSession(nextSession);
+    },
+    [sessionRegistry],
   );
-  const documentCommands = useDocumentCommands(getEditor);
+  const documentCommands = useDocumentCommands(
+    activeBuffer?.documentId ?? null,
+    session?.token ?? null,
+    sessionRegistry.getSession,
+  );
   const attachment = useMemo<EditorSessionAttachment>(
     (): EditorSessionAttachment => ({ attachEditor }),
     [attachEditor],
@@ -69,6 +99,7 @@ export const EditorSessionProvider: React.FC<EditorSessionProviderProps> = ({
 };
 
 export function useEditorSessionAttachment(): (
+  documentId: string,
   editor: CodeEditorHandle | null,
 ) => void {
   const attachment = useContext(EditorSessionAttachmentContext);

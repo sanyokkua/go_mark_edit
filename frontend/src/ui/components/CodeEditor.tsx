@@ -24,9 +24,10 @@ export interface EditorRange {
 export type EditorSelection = EditorRange;
 
 export interface CodeEditorHandle {
+  getContent(): string | null;
   getSelection(): EditorSelection | null;
-  replaceRange(range: EditorRange, text: string): void;
-  replaceAll(text: string): void;
+  replaceRange(range: EditorRange, text: string): boolean;
+  replaceAll(text: string): boolean;
 }
 
 export interface CodeEditorProps {
@@ -119,9 +120,9 @@ function applyEdit(
   editorInstance: editor.IStandaloneCodeEditor | null,
   range: IRange,
   text: string,
-): void {
-  if (editorInstance === null) {
-    return;
+): boolean {
+  if (editorInstance === null || editorInstance.getModel() === null) {
+    return false;
   }
 
   editorInstance.pushUndoStop();
@@ -133,6 +134,8 @@ function applyEdit(
     },
   ]);
   editorInstance.pushUndoStop();
+
+  return true;
 }
 
 const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
@@ -216,6 +219,9 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     useImperativeHandle(
       ref,
       (): CodeEditorHandle => ({
+        getContent(): string | null {
+          return editorRef.current?.getModel()?.getValue() ?? null;
+        },
         getSelection(): EditorSelection | null {
           const selection = editorRef.current?.getSelection();
 
@@ -223,15 +229,17 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
             ? null
             : toEditorSelection(selection);
         },
-        replaceRange(range: EditorRange, text: string): void {
-          applyEdit(editorRef.current, toMonacoRange(range), text);
+        replaceRange(range: EditorRange, text: string): boolean {
+          return applyEdit(editorRef.current, toMonacoRange(range), text);
         },
-        replaceAll(text: string): void {
+        replaceAll(text: string): boolean {
           const model = editorRef.current?.getModel();
 
-          if (model !== null && model !== undefined) {
-            applyEdit(editorRef.current, model.getFullModelRange(), text);
+          if (model === null || model === undefined) {
+            return false;
           }
+
+          return applyEdit(editorRef.current, model.getFullModelRange(), text);
         },
       }),
       [],

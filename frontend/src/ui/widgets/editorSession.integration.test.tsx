@@ -1,8 +1,15 @@
-import { useContext, useState } from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { useContext, useEffect, useState } from 'react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Provider } from 'react-redux';
 
 import type { CodeEditorHandle } from '../components/CodeEditor';
+import type { DocumentCommandAPI } from '../../logic/hooks/useDocumentCommands';
 import {
   applyStatePatch,
   hydrateProjection,
@@ -14,12 +21,13 @@ import { DocumentCommandContext, EditorSessionProvider } from './editorSession';
 import EditorView, { type EditorViewAdapter } from './EditorView';
 
 const mockEditorHandle: CodeEditorHandle = {
+  getContent: jest.fn(() => '# Buffer'),
   getSelection: jest.fn(() => ({
     start: { lineNumber: 2, column: 1 },
     end: { lineNumber: 2, column: 5 },
   })),
-  replaceAll: jest.fn(),
-  replaceRange: jest.fn(),
+  replaceAll: jest.fn(() => true),
+  replaceRange: jest.fn(() => true),
 };
 
 jest.mock('../components/CodeEditor', () => {
@@ -55,12 +63,17 @@ const NonEditorSibling: React.FC = (): React.JSX.Element => {
       <output aria-label="Available document commands">
         {commands === null
           ? 'unavailable'
-          : 'getSelection replaceRange replaceAll'}
+          : 'getContent getSelection replaceRange replaceAll'}
       </output>
       <button
         type="button"
         onClick={(): void => {
-          setSelection(commands?.getSelection() === null ? 'none' : 'selected');
+          const result = commands?.getSelection();
+          setSelection(
+            result?.status === 'available' && result.value !== null
+              ? 'selected'
+              : 'none',
+          );
         }}
       >
         Read active selection
@@ -77,6 +90,32 @@ const NonEditorSibling: React.FC = (): React.JSX.Element => {
     </aside>
   );
 };
+
+interface DocumentCommandCaptureProps {
+  onCommands: (commands: DocumentCommandAPI | null) => void;
+}
+
+const DocumentCommandCapture: React.FC<DocumentCommandCaptureProps> = ({
+  onCommands,
+}: DocumentCommandCaptureProps): null => {
+  const commands = useContext(DocumentCommandContext);
+
+  useEffect((): void => {
+    onCommands(commands);
+  }, [commands, onCommands]);
+
+  return null;
+};
+
+function requireDocumentCommands(
+  commands: DocumentCommandAPI | null,
+): DocumentCommandAPI {
+  if (commands === null) {
+    throw new Error('expected document commands');
+  }
+
+  return commands;
+}
 
 function documentFor(
   editorVisible: boolean,
@@ -105,14 +144,16 @@ function documentFor(
 }
 
 function renderEditorSession(document: DocumentMetadata): void {
-  store.dispatch(
-    hydrateProjection({
-      revision: 1,
-      documents: { [document.documentId]: document },
-      activeDocumentId: document.documentId,
-      ui: {},
-    }),
-  );
+  act((): void => {
+    store.dispatch(
+      hydrateProjection({
+        revision: 1,
+        documents: { [document.documentId]: document },
+        activeDocumentId: document.documentId,
+        ui: {},
+      }),
+    );
+  });
   render(
     <Provider store={store}>
       <EditorSessionProvider
@@ -168,7 +209,7 @@ it('STORY-023-AC-1 exposes commands to a non-editor sibling in Editor and Split'
   expect(screen.getByLabelText('Markdown source')).toBe(mountedEditor);
   expect(
     screen.getByRole('status', { name: 'Available document commands' }),
-  ).toHaveTextContent('getSelection replaceRange replaceAll');
+  ).toHaveTextContent('getContent getSelection replaceRange replaceAll');
   fireEvent.click(
     screen.getByRole('button', { name: 'Read active selection' }),
   );
@@ -208,4 +249,155 @@ it('STORY-023-AC-2 keeps sibling commands available in Preview-only', () => {
   expect(mockEditorHandle.replaceAll).toHaveBeenCalledWith(
     'replacement from sibling',
   );
+});
+
+it('STORY-030-AC-1 reads working content and selection in every arrangement', async () => {
+  const document = documentFor(true, false);
+  let capturedCommands: DocumentCommandAPI | null = null;
+  render(
+    <Provider store={store}>
+      <EditorSessionProvider
+        activeBuffer={{ documentId: document.documentId, content: '# Buffer' }}
+      >
+        <DocumentCommandCapture
+          onCommands={(commands): void => {
+            capturedCommands = commands;
+          }}
+        />
+        <EditorView adapter={adapter} />
+      </EditorSessionProvider>
+    </Provider>,
+  );
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: { [document.documentId]: document },
+      activeDocumentId: document.documentId,
+      ui: {},
+    }),
+  );
+
+  const expectAvailableWorkingCopy = (): void => {
+    expect(capturedCommands?.getContent()).toEqual({
+      status: 'available',
+      value: '# Buffer',
+    });
+    expect(capturedCommands?.getSelection()).toEqual({
+      status: 'available',
+      value: {
+        start: { lineNumber: 2, column: 1 },
+        end: { lineNumber: 2, column: 5 },
+      },
+    });
+  };
+
+  await waitFor(expectAvailableWorkingCopy);
+  act((): void => {
+    store.dispatch(
+      applyStatePatch({
+        revision: 2,
+        documents: {
+          upsert: { [document.documentId]: documentFor(true, true) },
+        },
+      }),
+    );
+  });
+  await waitFor(expectAvailableWorkingCopy);
+  act((): void => {
+    store.dispatch(
+      applyStatePatch({
+        revision: 3,
+        documents: {
+          upsert: { [document.documentId]: documentFor(false, true) },
+        },
+      }),
+    );
+  });
+  await waitFor(expectAvailableWorkingCopy);
+});
+
+it('STORY-030-AC-3 rejects active-tab and stale-identity mismatch', async () => {
+  const documentA = documentFor(true, false);
+  const documentB = { ...documentFor(true, false), documentId: 'document-2' };
+  let capturedCommands: DocumentCommandAPI | null = null;
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: { [documentA.documentId]: documentA },
+      activeDocumentId: documentA.documentId,
+      ui: {},
+    }),
+  );
+  const rendered = render(
+    <Provider store={store}>
+      <EditorSessionProvider
+        activeBuffer={{ documentId: 'document-1', content: '# A' }}
+      >
+        <DocumentCommandCapture
+          onCommands={(commands): void => {
+            capturedCommands = commands;
+          }}
+        />
+        <EditorView adapter={adapter} />
+      </EditorSessionProvider>
+    </Provider>,
+  );
+  await waitFor((): void => {
+    expect(capturedCommands?.getContent()).toEqual({
+      status: 'available',
+      value: '# Buffer',
+    });
+  });
+  const commandsForA = requireDocumentCommands(capturedCommands);
+
+  act((): void => {
+    store.dispatch(
+      hydrateProjection({
+        revision: 2,
+        documents: { [documentB.documentId]: documentB },
+        activeDocumentId: documentB.documentId,
+        ui: {},
+      }),
+    );
+  });
+  rendered.rerender(
+    <Provider store={store}>
+      <EditorSessionProvider
+        activeBuffer={{ documentId: 'document-2', content: '# B' }}
+      >
+        <DocumentCommandCapture
+          onCommands={(commands): void => {
+            capturedCommands = commands;
+          }}
+        />
+        <EditorView adapter={adapter} />
+      </EditorSessionProvider>
+    </Provider>,
+  );
+  await waitFor((): void => {
+    expect(capturedCommands?.getContent()).toEqual({
+      status: 'available',
+      value: '# Buffer',
+    });
+  });
+  jest.clearAllMocks();
+
+  expect(commandsForA.getContent()).toEqual({ status: 'document-mismatch' });
+  expect(commandsForA.getSelection()).toEqual({ status: 'document-mismatch' });
+  expect(
+    commandsForA.replaceRange(
+      {
+        start: { lineNumber: 1, column: 1 },
+        end: { lineNumber: 1, column: 1 },
+      },
+      'ignored',
+    ),
+  ).toEqual({ status: 'document-mismatch' });
+  expect(commandsForA.replaceAll('ignored')).toEqual({
+    status: 'document-mismatch',
+  });
+  expect(mockEditorHandle.getContent).not.toHaveBeenCalled();
+  expect(mockEditorHandle.getSelection).not.toHaveBeenCalled();
+  expect(mockEditorHandle.replaceRange).not.toHaveBeenCalled();
+  expect(mockEditorHandle.replaceAll).not.toHaveBeenCalled();
 });

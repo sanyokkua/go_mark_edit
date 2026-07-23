@@ -90,6 +90,12 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
   ): React.JSX.Element {
     const viewStateCaptureRef = useRef<(() => void) | null>(null);
     const attachEditor = useEditorSessionAttachment();
+    const attachCurrentEditor = useCallback(
+      (editor: Parameters<typeof attachEditor>[1]): void => {
+        attachEditor(activeBuffer.documentId, editor);
+      },
+      [activeBuffer.documentId, attachEditor],
+    );
     const synchronizedBuffer = useSyncedBuffer(
       activeBuffer.documentId,
       view,
@@ -120,7 +126,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
 
     return (
       <CodeEditor
-        ref={attachEditor}
+        ref={attachCurrentEditor}
         documentId={activeBuffer.documentId}
         initialValue={activeBuffer.content}
         visible={visible}

@@ -399,7 +399,12 @@ it('STORY-021-AC-6 preserves adapter signatures and command-to-patch ownership',
 it('STORY-028-AC-1 merges a partial arrangement with the newest cursor, selection, and editor and preview scroll', async () => {
   jest.useFakeTimers();
   const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
-    async (_documentId: string, _view: DocViewInput): Promise<VoidResult> => ({}),
+    async (documentId: string, view: DocViewInput): Promise<VoidResult> => {
+      void documentId;
+      void view;
+
+      return {};
+    },
   );
   const adapter = createAppModelAdapter(
     {

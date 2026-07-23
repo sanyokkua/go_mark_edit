@@ -14,6 +14,7 @@ import { createDocumentCommands } from '../../logic/hooks/useDocumentCommands';
 
 interface MockModel {
   getFullModelRange: jest.Mock<IRange, []>;
+  getValue: jest.Mock<string, []>;
   setValue: jest.Mock<void, [string]>;
 }
 
@@ -50,6 +51,7 @@ function resetMockMonaco(): void {
   } as ISelection;
   mockRuntime.model = {
     getFullModelRange: jest.fn<IRange, []>(() => fullModelRange),
+    getValue: jest.fn<string, []>(() => mockRuntime.content),
     setValue: jest.fn<void, [string]>(),
   };
   mockRuntime.editor = {
@@ -355,7 +357,20 @@ it('STORY-019-AC-5 routes the editable command seam through Monaco and UpdateBuf
     />,
   );
   await screen.findByRole('textbox', { name: 'Markdown source' });
-  const commands = createDocumentCommands(ref);
+  const handle = ref.current;
+  if (handle === null) {
+    throw new Error('expected mounted editor handle');
+  }
+  const session = {
+    documentId: 'document-1',
+    handle,
+    token: Symbol('editor-session'),
+  };
+  const commands = createDocumentCommands(
+    session.documentId,
+    session.token,
+    () => session,
+  );
   (mockRuntime.editor.executeEdits as jest.Mock).mockImplementation(
     (_source: string, edits: Array<{ text: string }>): void => {
       mockRuntime.props?.onChange?.(
@@ -387,9 +402,55 @@ it('STORY-019-AC-5 routes the editable command seam through Monaco and UpdateBuf
     'whole replacement',
   );
   expect(commands.getSelection()).toEqual({
-    start: { lineNumber: 1, column: 1 },
-    end: { lineNumber: 1, column: 1 },
+    status: 'available',
+    value: {
+      start: { lineNumber: 1, column: 1 },
+      end: { lineNumber: 1, column: 1 },
+    },
   });
+});
+
+it('STORY-030-AC-4 applies one undo edit through the normal buffer queue', async () => {
+  const ref = { current: null as CodeEditorHandle | null };
+  const updateBuffer = jest.fn<void, [string]>();
+  mockRuntime.content = 'alpha beta\ngamma';
+  (mockRuntime.editor.executeEdits as jest.Mock).mockImplementation(
+    (_source: string, edits: Array<{ range: IRange; text: string }>): void => {
+      const edit = edits[0];
+      mockRuntime.content = edit.text;
+      mockRuntime.props?.onChange?.(
+        mockRuntime.content,
+        {} as Parameters<NonNullable<EditorProps['onChange']>>[1],
+      );
+    },
+  );
+
+  render(
+    <CodeEditor
+      ref={ref}
+      documentId="document-1"
+      initialValue={mockRuntime.content}
+      onChange={updateBuffer}
+    />,
+  );
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+
+  expect(ref.current?.getContent()).toBe('alpha beta\ngamma');
+  expect(
+    ref.current?.replaceRange(
+      {
+        start: { lineNumber: 1, column: 1 },
+        end: { lineNumber: 1, column: 6 },
+      },
+      'delta',
+    ),
+  ).toBe(true);
+  expect(ref.current?.replaceAll('whole replacement')).toBe(true);
+
+  expect(mockRuntime.editor.executeEdits).toHaveBeenCalledTimes(2);
+  expect(mockRuntime.editor.pushUndoStop).toHaveBeenCalledTimes(4);
+  expect(updateBuffer).toHaveBeenNthCalledWith(1, 'delta');
+  expect(updateBuffer).toHaveBeenNthCalledWith(2, 'whole replacement');
 });
 
 it('keeps replacement undo groups and complete-buffer callbacks at the Monaco boundary', async () => {
