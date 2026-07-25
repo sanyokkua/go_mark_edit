@@ -88,8 +88,8 @@ at all.
    svg` across widths and both modes with **zero console errors / overflow**.
 9. **`just verify-smoke`** — expected: interaction flows (type → debounced preview, Format, Lint)
    pass.
-10. **`just trace` then `just trace-check`** — expected: zero orphans; every EC-RENDER/EC-FMT/EC-LINT
-    id you touched maps to a proving test.
+10. **Check coverage by eye.** Every EC-RENDER / EC-FMT / EC-LINT id you touched has a test that names
+    it. Nothing checks this for you.
 
 If a symptom shows up during any of these steps (script crash, sanitize bypass, jank, wrong
 plugin firing), check `references/troubleshooting.md` before improvising a fix — most rendering
@@ -115,7 +115,7 @@ bugs map to one of a small, known set of causes.
       gated by the DD-22 content policy.
 - [ ] Preview debounced; large-file pause honored; Monaco unchanged for v1.
 - [ ] Format/Compact/Lint use canonical `-`/`_`/`#`; Compact stays conservative; on-save Format→Lint order.
-- [ ] `just check`, `just verify-ui`, `just verify-smoke`, `just trace-check` all green.
+- [ ] `just check`, `just verify-ui`, `just verify-smoke` all green.
 
 ## Gotchas
 
@@ -137,5 +137,5 @@ bugs map to one of a small, known set of causes.
 - `specification/01_Product/06_FORMAT_AND_LINT.md`
 - `specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md`
 - `specification/02_Architecture/03_FRONTEND_REACT.md`
-- `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md`
+- `specification/02_Architecture/01_MODULE_INVENTORY.md`
 - `.claude/rules/ts-markdown-pipeline.md`, `.claude/rules/offline-and-privacy.md`

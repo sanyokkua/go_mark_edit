@@ -1,7 +1,7 @@
 # Layering and the add-a-vertical playbook
 
 Authority: `specification/02_Architecture/02_BACKEND_GO.md` (Layering, Packages). Module inventory
-(the only valid module paths): `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md`.
+(the only valid module paths): `specification/02_Architecture/01_MODULE_INVENTORY.md`.
 Governing rule: `.claude/rules/go-backend-architecture.md`.
 
 ## Layering — strictly inward

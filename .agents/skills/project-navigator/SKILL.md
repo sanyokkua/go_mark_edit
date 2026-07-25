@@ -1,119 +1,17 @@
 ---
 name: project-navigator
-title: Project Navigator
-version: 2.0.0
-description: >
-  Rapidly orient in an unfamiliar source repository (or a folder of several repositories) and report
-  what it is — project type, technology stack, build/run/test commands, directory structure, entry
-  points, key configuration, and how the pieces connect. Tuned for the GoMarkEdit repository
-  (Wails v2 · Go backend · React 19/Vite/TypeScript frontend · Monaco editor · CGO-free SQLite) but
-  works on any repo. Use when the user asks to "understand this project", "what is this repository",
-  "give me an overview", "where is X", "what stack is this", "how do I run this", or before any deeper
-  task that needs orientation. Read-only: it inspects and explains, it does not modify files.
-  Boundaries: defers deep written documentation to project-documentation and diagram creation to
-  create-mermaid-diagrams.
-tags: [navigation, repository, overview, tech-stack, onboarding, structure, codebase, monorepo, multi-repo, gomarkedit, wails, go, typescript]
-allowed-tools: Read, Grep, Glob, Bash
-references:
-  - references/project-structures.md
-  - references/pipeline-guide.md
-  - references/configuration-tracing.md
-scripts:
-  - scripts/inventory.sh
-  - scripts/find-entrypoints.sh
-  - scripts/find-config.sh
-# related-skills are OPTIONAL pointers only — this skill never requires another to function.
-related-skills:
-  - project-documentation: optional — for full written documentation (that skill is self-contained)
-  - create-mermaid-diagrams: optional — to draw a structure/architecture diagram of what was found
-install:
-  defaultLocation: .agents/skills/project-navigator/
-  supportsProject: true
-  supportsGlobal: true
+description: >-
+  >
 ---
 
-# Project Navigator
+# project-navigator
 
-You are a fast, accurate codebase-orientation specialist. Your job is to give a clear overview of a
-repository (or a folder containing several repositories) **without modifying anything**.
+**This skill is a pointer.** The instructions live in one place:
+[`../../../.claude/skills/project-navigator/SKILL.md`](../../../.claude/skills/project-navigator/SKILL.md), together with its
+`references/`, `assets/` and `scripts/` folders. Read that file and follow it exactly.
 
-## When to use
+Where it says `.claude/skills/`, the same content is here under `.agents/skills/` — that is only a
+discovery path, not different guidance.
 
-- "What is this project / repository?", "give me an overview", "what's the stack?", "where does X
-  live?", "how do I run this?".
-- As the first step before refactoring, debugging, documenting, or reviewing an unfamiliar codebase.
-
-## Workflow (gather facts first, then reason)
-
-1. **Run the inventory scripts first.** Execute the bundled scripts to build a compact map before any
-   deep investigation:
-
-   ```bash
-   bash scripts/inventory.sh <repo-path>        # tree, counts, sizes, largest files, LOC, ext histogram
-   bash scripts/find-entrypoints.sh <repo-path> # manifests and entry files
-   bash scripts/find-config.sh <repo-path>      # config / Infrastructure-as-Code / CI files
-   ```
-
-   All three respect `.gitignore`, skip vendored/generated directories, and fall back gracefully when
-   `tree`, `git`, or `cloc` are unavailable.
-
-2. **Detect repositories.** Identify whether the path is one repository or several (multiple `.git`
-   folders, multiple manifests, top-level project folders). Handle each one found.
-
-3. **Identify project type & stack.** From the manifests/lockfiles the scripts surfaced
-   (`package.json`, `pyproject.toml`/`requirements.txt`, `go.mod`, `pom.xml`/`build.gradle`,
-   `Cargo.toml`, `*.csproj`…), language-version files, container files (`Dockerfile`), and
-   continuous-integration configuration, determine languages, frameworks, runtime/version, and key
-   infrastructure. Use `references/project-structures.md` for the project-type decision tree and
-   annotated layouts. **For GoMarkEdit** the tell is `go.mod` **plus** `wails.json` at the root and a
-   `frontend/` folder with its own `package.json` → a **Wails v2** desktop app (Go backend + React 19 /
-   Vite / TypeScript frontend, Monaco editor, CGO-free `modernc.org/sqlite`); see the dedicated
-   "Wails v2 desktop app — GoMarkEdit" layout in `references/project-structures.md`.
-
-4. **Map structure.** Summarize the top-level layout and each significant directory's purpose — do not
-   dump every file.
-
-5. **Find entry points & commands.** Locate the main entry point(s) and extract build/run/test
-   commands from the manifest/scripts/CI/README. Read `references/pipeline-guide.md` for how different
-   build systems and CI pipelines declare these. **For GoMarkEdit** the entry point is `main.go` (the
-   single `wails.Run` composition root; frontend entry `frontend/src/main.tsx`), and the canonical
-   commands are the **`just`** targets (`just check`, `just lint`, `just test`, `just trace`,
-   `just trace-check`) plus `wails dev` / `wails build` / `wails generate module` — prefer these over
-   the raw `npm` scripts in `frontend/package.json`.
-
-6. **Trace key configuration.** Note where configuration and secrets come from (environment variables,
-   config files, parameter/secret stores) at a high level. Read `references/configuration-tracing.md`
-   for the end-to-end value chain.
-
-7. **Summarize how it connects.** Briefly: inputs → processing → outputs/integrations, based on what
-   you actually read.
-
-## Progressive disclosure
-
-Read manifests and the README first; open entry-point and config files next; open deeper modules only
-when the user's question requires it. Prefer `Grep`/`Glob` over reading whole trees.
-
-## Mandatory validation (before answering)
-
-- [ ] Every stack/type claim is backed by a file that was actually read (cite the file).
-- [ ] Build/run/test commands come from the repository (manifest/CI/README), not assumed.
-- [ ] Multi-repo folders: each repository is covered or explicitly listed.
-- [ ] No file was modified.
-- [ ] Script output was used as the starting map (not guessed from memory).
-
-## Output format & location
-
-Output stays in chat (read-only). Structure: Project(s) → Stack (with the source file each came from)
-→ Structure → Entry points & commands → Configuration → How it connects → Unknowns to confirm.
-
-## Gotchas
-
-- Multi-module builds: the real code may be in submodules — scan all modules (check `<modules>` in a
-  root `pom.xml`, `workspaces` in `package.json`, `members` in `Cargo.toml`, etc.).
-- Monorepos: one folder may contain many deployables — list them rather than blending.
-- The README can be stale; prefer manifests/CI as authoritative for commands.
-- Don't assert a framework from a single import — confirm in the manifest.
-- Generated/vendored directories (`node_modules`, `vendor`, `dist`, `build`, `target`, `.venv`) are
-  noise — ignore them; the scripts already respect `.gitignore` and skip them.
-- Initial setup/bootstrap scripts (one-time provisioning) are frequently stale — prefer the committed
-  manifests and CI config as the current source of truth.
+Why a pointer and not a copy: these two trees were hand-synced and had already drifted before this
+was written. One file, two entry points.

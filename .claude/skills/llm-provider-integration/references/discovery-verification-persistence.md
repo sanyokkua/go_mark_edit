@@ -86,7 +86,7 @@ configured and verified, the assistant sidebar stays hidden by default.
 - `specification/01_Product/17_PROVIDERS_MODELS_SETTINGS.md#model-discovery`, `#verification`,
   `#persistence`, `#defaults-local`
 - `specification/00_Foundation/04_DESIGN_DECISIONS.md` DD-32 (revised for Stage 3), DD-46, DD-52, DD-55
-- `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` (`internal/llm/verify/`,
+- `specification/02_Architecture/01_MODULE_INVENTORY.md` (`internal/llm/verify/`,
   `internal/settings/` extended row)
 - `.claude/rules/offline-and-privacy.md` — the only permitted outbound call is a user-invoked LLM
   inference to the user-configured provider

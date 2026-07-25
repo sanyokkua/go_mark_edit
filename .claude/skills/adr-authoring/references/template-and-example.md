@@ -1,6 +1,6 @@
 # ADR template and a worked example
 
-Authority: `specification/06_Process_and_Traceability/04_ADR_FORMAT.md`. The canonical copy-to-start
+Authority: `docs/adr/template.md`. The canonical copy-to-start
 file is `docs/adr/template.md`; `assets/adr-template.md` mirrors it.
 
 ## Template

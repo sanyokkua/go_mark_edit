@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/01_SYSTEM_ARCHITECTURE.md`, `02_Architecture/04_WAILS_INTEGRATION.md`, `02_Architecture/06_ERROR_HANDLING.md`, `01_Product/05_RENDERING_AND_EXTENSIONS.md`, `01_Product/10_THEMING.md`, `06_Process_and_Traceability/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0002`, `08_Decisions/ADR-0003`, `08_Decisions/ADR-0005`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/01_SYSTEM_ARCHITECTURE.md`, `02_Architecture/04_WAILS_INTEGRATION.md`, `02_Architecture/06_ERROR_HANDLING.md`, `01_Product/05_RENDERING_AND_EXTENSIONS.md`, `01_Product/10_THEMING.md`, `02_Architecture/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0002`, `08_Decisions/ADR-0003`, `08_Decisions/ADR-0005`
 
 # Frontend (React / TypeScript)
 

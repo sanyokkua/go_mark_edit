@@ -22,6 +22,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+      - name: Install just
+        uses: extractions/setup-just@v3
       - name: Install golangci-lint
         run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
       - name: Install frontend dependencies
@@ -42,12 +44,10 @@ jobs:
         run: just go-vet
       - name: Go race tests
         run: just go-test
-      - name: Traceability
-        run: just trace-check
 
   release-skeleton:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-24.04
     steps:
-      - run: echo "Release packaging is introduced in Phase 15."
+      - run: echo "Release packaging is introduced in Phase 07 (see specification/07_Phases/PHASE_07_INSTALL_IT.md)."

@@ -28,9 +28,9 @@ and **document** (an active document required). Formatting actions are editor-sc
 selection or current line; file/view actions are global. Bindings shown below use the `Ctrl` form;
 macOS substitutes `Cmd` (see [Platform mapping](#platform-mapping)).
 
-The tables below cover the Stages 1–2 bindings. The **Stage-3** LLM assistant extends this same
-registry with its own binding — **Toggle assistant sidebar**, `Ctrl/Cmd+J` (global) — specified in
-`14_LLM_ASSISTANT_OVERVIEW.md#assistant-sidebar`; it is present only in a Stage-3 build and is not
+The tables below cover every binding that exists before the assistant. The assistant extends this same
+registry with one more — **Toggle assistant sidebar**, `Ctrl/Cmd+J` (global) — specified in
+`14_LLM_ASSISTANT_OVERVIEW.md#assistant-sidebar`; it exists only once the assistant ships and is not
 listed here.
 
 ## Format shortcuts

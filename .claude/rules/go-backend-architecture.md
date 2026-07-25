@@ -7,7 +7,7 @@ paths:
 # Go backend architecture
 
 **Authority:** `specification/00_Foundation/04_DESIGN_DECISIONS.md` (DD-03, DD-62, DD-63, DD-64),
-`specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` (layering map),
+`specification/02_Architecture/01_MODULE_INVENTORY.md` (layering map),
 `specification/02_Architecture/02_BACKEND_GO.md` (incl. `#application-model`),
 `specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model`,
 `docs/adr/0014-backend-authoritative-state.md`. Canonical wiring lives in

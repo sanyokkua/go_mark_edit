@@ -79,8 +79,8 @@ anywhere.
 5. `just check` — expected: lint/`tsc`/tests pass; no hardcoded-color lint finding.
 6. `just verify-ui` — expected: **zero** overflow / console errors / contrast failures across widths
    and **both** modes for all three themes.
-7. `just verify-smoke` then `just trace` / `just trace-check` — expected: theme-switch and OS-toggle
-   flows pass; every EC-THEME id maps to a proving test.
+7. `just verify-smoke` — expected: theme-switch and OS-toggle flows pass.
+8. Check by eye that every EC-THEME id you touched has a test naming it. Nothing checks this for you.
 
 ## Reference Index
 
@@ -99,7 +99,7 @@ anywhere.
 - [ ] `data-theme` + `data-mode` set on `document.documentElement`; `auto` resolved first; portals inherit.
 - [ ] Auto follows OS `prefers-color-scheme` live; watcher only in `auto`; editor + preview unified.
 - [ ] Reading mode hides all chrome via `.reader`/tokens, not layout surgery.
-- [ ] `just verify-ui` clean across both modes for all three themes; `just trace-check` green.
+- [ ] `just verify-ui` clean across both modes for all three themes.
 
 ## Gotchas
 
@@ -121,5 +121,5 @@ anywhere.
 - `specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md`
 - `specification/02_Architecture/03_FRONTEND_REACT.md`
 - `mockups/gomarkedit-mockup.html`
-- `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md`
+- `specification/02_Architecture/01_MODULE_INVENTORY.md`
 - `.claude/rules/ts-theming-tokens.md`, `.claude/rules/ts-react-frontend.md`

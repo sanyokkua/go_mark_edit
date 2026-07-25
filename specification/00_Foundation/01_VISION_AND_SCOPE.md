@@ -37,7 +37,7 @@ platform-native webview (WebView2 / WKWebView / WebKitGTK) on Windows, macOS, an
 - **G4 — Stay out of the way.** Three visual themes with light/dark/auto; minimal, uncluttered chrome;
   the Viewer hides everything but the document.
 - **G5 — Be trustworthy.** Offline-first with no background network, no telemetry, MIT-licensed, logs
-  written locally only. The only outbound traffic the app ever makes is the Stage-3 assistant's
+  written locally only. The only outbound traffic the app ever makes is the assistant assistant's
   user-invoked LLM calls to the provider the user configured (local by default; DD-32 as revised).
 
 ## 3. In scope (v1)
@@ -75,8 +75,8 @@ See `00_Foundation/04_DESIGN_DECISIONS.md` for the authoritative, numbered list.
 
 - **Offline-first, no background network.** The app makes **no background or unsolicited** network
   activity of any kind (no update checks, telemetry, or CDN/asset fetches); all assets (KaTeX fonts,
-  Mermaid, highlight themes, fonts) are bundled. Stages 1–2 make **zero** network calls. The **only**
-  outbound requests are the Stage-3 assistant's user-invoked LLM calls to the configured provider
+  Mermaid, highlight themes, fonts) are bundled. Before the assistant exists the app makes **zero** network calls. The **only**
+  outbound requests are the assistant assistant's user-invoked LLM calls to the configured provider
   (local by default; DD-32 as revised). Remote images/CSS in *documents* are loaded only under an
   explicit user policy (Ask / Always allow / Always block).
 - **No telemetry, no auto-update.** Logs are written to a local file and never transmitted.
@@ -88,10 +88,10 @@ See `00_Foundation/04_DESIGN_DECISIONS.md` for the authoritative, numbered list.
 
 ## 6. Success criteria
 
-The product is complete when all phase stories are `done`, `just check` and `just trace-check` pass,
+The product is complete when every phase in `07_Phases/` is finished, `just check` passes,
 and a manual smoke test confirms, on each OS: open a `.md` from the file manager (association works);
 edit and autosave; open a folder and navigate the filtered tree; render a document containing a GFM
 table, a KaTeX formula, a fenced code block, and a Mermaid diagram; format and lint a document; export
 to PDF; switch across all three themes in light/dark/auto; and confirm the network posture (zero
-outbound connections in Stages 1–2, and in Stage 3 outbound traffic **only** to the user-configured
-LLM provider and **only** on user action — see `00_Foundation/06_IMPLEMENTATION_STAGES.md` §5).
+outbound connections in the phases before the assistant, and in the assistant phases outbound traffic **only** to the user-configured
+LLM provider and **only** on user action — see `07_Phases/00_ROADMAP.md`).

@@ -6,7 +6,7 @@
 
 ## Context and problem statement
 
-The Stage-3 assistant must talk to a range of LLM back-ends the user might already run: local servers
+The assistant assistant must talk to a range of LLM back-ends the user might already run: local servers
 (Ollama, LM Studio, llama.cpp) and hosted OpenAI-compatible APIs (OpenAI, Azure OpenAI), plus any other
 endpoint that speaks the same wire shape ("generic OpenAI-compatible"). All of these expose a broadly
 **OpenAI-compatible** chat-completions surface — the same request/response JSON, tool-call structure, and
@@ -133,6 +133,6 @@ configurable with sensible defaults, sent as pointer fields so "unset" is distin
   `02_Architecture/08_LLM_INTEGRATION.md#provider-abstraction`,
   `02_Architecture/08_LLM_INTEGRATION.md#persistence`,
   `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`, `02_Architecture/06_ERROR_HANDLING.md`.
-- Stories: Phase 11 (LLM foundation) provider-abstraction, model-discovery, verification, and
-  AI/Providers-settings stories per `07_Phases/00_ROADMAP.md` and `07_Phases/PHASE_00_SCAFFOLD.md`
+- Stories: Phase 09 (LLM foundation) provider-abstraction, model-discovery, verification, and
+  AI/Providers-settings stories per `07_Phases/00_ROADMAP.md`
   conventions (authored per phase; none `done` at ADR time).

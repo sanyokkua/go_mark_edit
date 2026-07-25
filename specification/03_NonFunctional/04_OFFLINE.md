@@ -16,7 +16,7 @@ and defines how it is verified.
 3. No CDN at runtime
 4. Document-referenced remote assets
 5. Verification approach
-6. Network policy revision (Stage 3 LLM)
+6. Network policy revision (the assistant phases LLM)
 
 ## 1. The requirement
 
@@ -24,8 +24,8 @@ GoMarkEdit must be **completely functional with no network of any kind** and mus
 background/unsolicited network requests**. Every core feature — editing, rendering (tables, math, code
 highlighting, Mermaid), format, lint, PDF export, theming, associations — works air-gapped. This is
 both a usability promise (works anywhere) and a privacy/security guarantee (nothing can leak because
-nothing is sent unless the user explicitly asks for it) (DD-32, DD-33). Stages 1–2 originate **zero**
-network requests of any kind; the single, scoped, user-invoked exception is the Stage-3 LLM inference
+nothing is sent unless the user explicitly asks for it) (DD-32, DD-33). Before the assistant exists, originate **zero**
+network requests of any kind; the single, scoped, user-invoked exception is the assistant LLM inference
 call, defined in §6.
 
 ## 2. Bundled assets
@@ -71,24 +71,24 @@ Offline is verified, not assumed:
 - **Air-gapped smoke** — the cross-OS release smoke test is run with networking disabled to confirm full
   functionality, satisfying the vision success criterion of "zero outbound network connections."
 
-## 6. Network policy revision (Stage 3 LLM)
+## 6. Network policy revision (the assistant phases LLM)
 
-Stage 3 (the LLM assistant) revises the offline policy from *absolute* to *scoped* (DD-32 as revised;
-ADR-0011). The revision is deliberately narrow and does not weaken §§1–5 for Stages 1–2:
+the assistant phases (the LLM assistant) revises the offline policy from *absolute* to *scoped* (DD-32 as revised;
+ADR-0011). The revision is deliberately narrow and does not weaken §§1–5 for the phases before the assistant:
 
 - **Zero background network in every stage.** No stage ever performs an update check, telemetry ping,
   license call, crash upload, or CDN/asset fetch. All app and rendering assets remain bundled (§§2–3).
 - **The only outbound calls are user-invoked LLM inferences.** The single class of network request the
   app ever originates is an LLM inference call, and only to the provider the user **explicitly
   configured**, and only **on user action** (invoking an action or sending a chat message). There is no
-  background, on-open, on-save, or timed inference. Stages 1–2 make **no** such calls — the provider
+  background, on-open, on-save, or timed inference. Before the assistant exists the app makes **no** such calls — the provider
   client does not exist until Stage 3.
 - **Default provider is local.** The default configuration targets a **local** provider (e.g.
   Ollama / LM Studio), so a default install stays fully on-device and originates nothing over the network.
   Remote providers (e.g. OpenAI, Azure) are strictly opt-in and require the user to enter their own
   endpoint and env-var-named credential (DD-45; `03_NonFunctional/03_SECURITY_AND_PRIVACY.md` §§8–9).
-- **Verification.** A network-egress trace during a representative Stage-3 session must show outbound
+- **Verification.** A network-egress trace during a representative assistant session must show outbound
   requests **only** to the configured provider endpoint and **only** immediately following a user action;
   no request appears at idle, on open, or on save. With a local provider configured (or none), the trace
   shows **no** off-machine connections at all — the same air-gapped result as §5. This is part of the
-  Stage-3 exit criteria (`00_Foundation/06_IMPLEMENTATION_STAGES.md` §5).
+  the assistant phases' exit checks (`07_Phases/PHASE_09_AI_PROVIDER.md`, `PHASE_11_CONVERSATION.md`).

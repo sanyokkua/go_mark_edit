@@ -130,6 +130,6 @@ are all configurable in the AI Context settings tab (DD-53).
   `02_Architecture/08_LLM_INTEGRATION.md#context-budgeter`,
   `02_Architecture/08_LLM_INTEGRATION.md#tokenizer`,
   `03_NonFunctional/04_OFFLINE.md`.
-- Stories: Phase 11 (tokenizer + fit estimate) and Phase 14 (explicit context budget, over-context
+- Stories: Phase 09 (tokenizer + fit estimate) and Phase 11 (explicit context budget, over-context
   warn/chunk, history sliding-window/summarize) per `07_Phases/00_ROADMAP.md` (authored per phase; none
   `done` at ADR time).

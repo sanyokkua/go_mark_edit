@@ -2,15 +2,15 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `CLAUDE.md` (Commands), `00_Foundation/04_DESIGN_DECISIONS.md` (DD-32, DD-33, DD-37), `06_Process_and_Traceability/03_TRACEABILITY.md`, `04_Build_and_Release/01_BUILD_MATRIX.md`, `04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md`, `05_Dependencies/*`
+**Cross-references:** `CLAUDE.md` (Commands), `00_Foundation/04_DESIGN_DECISIONS.md` (DD-32, DD-33, DD-37), `../../docs/stories/README.md`, `04_Build_and_Release/01_BUILD_MATRIX.md`, `04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md`, `05_Dependencies/*`
 
 # CI and Hooks
 
 The toolchain that keeps GoMarkEdit buildable and correct: the `justfile` command taxonomy, the local
-git hooks (Lefthook), the CI gate set, the GitHub Actions build/release matrix, and the traceability
-gate. The full rigour described here is the **target** — DD-37 stages it in over the phases
+git hooks (Lefthook), the CI gate set, and the GitHub Actions build/release matrix. How work itself is
+tracked is §6. The full rigour described here is the **target** — DD-37 stages it in over the phases
 (`07_Phases/00_ROADMAP.md`), so the earliest scaffolding stories are not blocked by the full gate set,
-but every gate below is in scope by Phase 10.
+but every gate below is in scope by Phase 07.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ but every gate below is in scope by Phase 10.
 3. [Ordering: why frontend builds before Go](#3-ordering-why-frontend-builds-before-go)
 4. [CI gate set](#4-ci-gate-set)
 5. [GitHub Actions build & release matrix](#5-github-actions-build--release-matrix)
-6. [Traceability gate](#6-traceability-gate)
+6. [How work is tracked](#6-how-work-is-tracked)
 7. [Example lefthook.yml](#7-example-lefthookyml)
 8. [Example .golangci.yml](#8-example-golangciyml)
 9. [Example justfile](#9-example-justfile)
@@ -44,8 +44,6 @@ command is a thin wrapper so CI, hooks, and humans invoke identical logic.
 | `just verify-ui` | Playwright responsive + smoke | Target A: bridge-mock. |
 | `just gen-check` | `wails generate module` then fail on `frontend/wailsjs/` drift | Bindings-in-sync gate. |
 | `just sqlc-check` | `sqlc diff` | Schema/query codegen drift gate. |
-| `just trace` | Regenerate `traceability.yaml` | From `../docs/stories/`. |
-| `just trace-check` | Validate traceability; fail on orphans | Blocking gate (§6). |
 | `just check` | `fmt-check` + `lint` + `typecheck` + `test` + arch/drift checks | Full local CI mirror. |
 
 ## 2. Git hooks (Lefthook)
@@ -109,18 +107,18 @@ The full gate set that must pass (staged in by phase per DD-37). Grouped by area
 - `sqlc diff` — the sqlc store matches migrations + queries (`internal/db/store/` never hand-edited).
 - `wails doctor` — toolchain sanity.
 
-**Traceability**
+No gate validates a document.
 
-- `just trace-check` — every spec clause/module/edge-case covered, zero orphans (§6).
-
-No gate depends on the network at runtime; the app itself makes no background/unsolicited network
-calls (DD-32 as revised — the sole outbound calls are user-invoked Stage-3 LLM inferences to the
-configured provider) and there is no telemetry (DD-33).
+No gate depends on the network at runtime; the app itself makes no background or unsolicited network
+calls (DD-32 as revised — the sole outbound calls are user-invoked LLM inferences to the configured
+provider, from Phase 09 onward) and there is no telemetry (DD-33).
 
 ## 5. GitHub Actions build & release matrix
 
-`.github/workflows/main.yml` has three jobs, triggered on **`push` of a `v*.*.*` tag** (automatic
-release) or **`workflow_dispatch`** (manual, with an optional "create release" toggle):
+The release workflow has **four jobs**, triggered on **`push` of a `v*.*.*` tag** (automatic release)
+or **`workflow_dispatch`** (manual, with an optional "create release" toggle). This is an outline;
+`04_VERSIONING_ICON_AND_CICD.md#3-release-workflow` is the normative description, including the
+workflow's file name:
 
 - **`determine-version`** — computes `version`/`tag` once and shares them downstream.
 - **`test`** — runs the entire §4 gate set on `ubuntu-24.04` (installs GTK3/WebKit2GTK 4.1 dev libs,
@@ -143,19 +141,26 @@ release) or **`workflow_dispatch`** (manual, with an optional "create release" t
   `SHA256SUMS.txt`, and publishes a GitHub Release (pre-release auto-detected from a `-` in the
   version). Artifacts are **unsigned** (DD-34).
 
-## 6. Traceability gate
+## 6. How work is tracked
 
-Work is tracked as stories (`06_Process_and_Traceability/`); the traceability record ties every spec
-clause, module, and edge-case to a story and a passing test.
+Work is tracked as **phases** (`07_Phases/`) and **stories** (`../docs/stories/`, format in its
+README). There is no traceability gate and no generated traceability record.
 
-- **`just trace`** regenerates `traceability.yaml` from `../docs/stories/*.md` front-matter.
-- **`just trace-check`** fails if any spec clause, listed module, or `EC-*` edge case is uncovered, or
-  any story references a non-existent module/clause ("orphan"). A story is `done` only when
-  `trace-check` passes with zero orphans and every AC has a passing test naming the story id
-  (`CLAUDE.md` "How work is tracked").
+There used to be: `just trace`, `just trace-check`, `just phase-check` and
+`just phase-complete-check NN`, backed by roughly 2,000 lines of custom validators and 2,200 lines of
+Go tests that tested those validators. They were removed on 2026-07-25. They validated the *form* of
+documents rather than the behaviour of the application; `phase-complete-check 00` reported a phase
+complete while the test suite was red, because for automated evidence it only checked that a recipe
+name appeared in a file; and the only failing test in the repository was one of them — failing because
+the work it described had been finished.
 
-`trace-check` runs in `just check` and as a CI gate. Like the other gates it is staged in by phase
-(DD-37) but is blocking from the phase that introduces it onward.
+What replaced them:
+
+- Every acceptance criterion still gets its own test, listed in the story's Tests table.
+- Each such test still carries `// Proves: STORY-NNN-AC-N` (Go) or the id in its name (Jest), so a
+  failure names the requirement that broke. It is a convention read by humans; nothing generates from
+  it and nothing validates it.
+- A phase is finished when a person uses the app and confirms that phase's "Done when" paragraph.
 
 ## 7. Example lefthook.yml
 
@@ -311,13 +316,6 @@ sqlc-check:
 vuln:
     govulncheck ./...
 
-# --- traceability --------------------------------------------------------------
-trace:
-    node scripts/trace/generate.mjs        # regenerates traceability.yaml
-
-trace-check:
-    node scripts/trace/check.mjs           # fails on any orphan / uncovered clause
-
 # --- composite gate ------------------------------------------------------------
-check: fmt-check lint typecheck test gen-check sqlc-check vuln trace-check
+check: fmt-check lint typecheck test gen-check sqlc-check vuln
 ```

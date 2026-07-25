@@ -1,7 +1,7 @@
 # Go tests — table-driven, `-race`, fakes only
 
 Authority: `.claude/rules/go-testing.md`; envelope contract patterns from
-`specification/02_Architecture/06_ERROR_HANDLING.md` and P3 in `05_ACCEPTANCE_CRITERIA_PATTERNS.md`.
+`specification/02_Architecture/06_ERROR_HANDLING.md`.
 
 ## Fakes only, `-race` always
 

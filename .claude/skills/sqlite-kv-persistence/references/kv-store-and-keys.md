@@ -3,7 +3,7 @@
 Authority: `specification/02_Architecture/05_STATE_AND_PERSISTENCE.md` (File-first, KV schema,
 Recent, Window state). Design decisions **DD-10** (what is persisted), **DD-11** (clean launch, no
 session restore), **DD-12** (autosave existing files only). Module inventory:
-`specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` (`internal/db/`,
+`specification/02_Architecture/01_MODULE_INVENTORY.md` (`internal/db/`,
 `internal/settings/`, `internal/recent/`). Governing rule: `.claude/rules/go-persistence-sqlite.md`.
 
 ## What is persisted (and what is not)

@@ -18,14 +18,13 @@ non-trivial decision must trace to a spec clause. If the spec is silent or ambig
 - `AGENTS.md` — this file.
 - `.claude/rules/*.md` — shared path-scoped coding rules; Codex must read every rule whose glob matches files it will touch.
 - `.agents/skills/*/SKILL.md` — Codex task playbooks (invoke by trigger).
-- `.codex/agents/*.toml` — Codex custom-agent definitions (investigator → architect → coder → tester → reviewer → docs).
-- **`specification/`** — the **frozen, read-only** source of truth: requirements, architecture, phases,
-  the initial ADRs (`specification/08_Decisions/`), the process formats, and the UI mockups
-  (`specification/mockups/`). Never edited during implementation. Start at `specification/INDEX.md`.
-- **`docs/`** — the **mutable** working area: generated `docs/stories/`, new decisions `docs/adr/`
-  (ADR-0013+; ADR-0001…0012 are frozen in `specification/08_Decisions/`), and `docs/traceability.yaml`
-  — the GENERATED progress record (`just trace` / `just trace-check`). A spec change is recorded here
-  (new story + new ADR), never by editing the spec.
+- `.codex/agents/*.toml` — Codex custom-agent definitions (investigator → architect → coder → tester → reviewer → docs-writer → debugger).
+- **`specification/`** — what the app should be: product behaviour (`01_Product/`), architecture,
+  non-functional requirements, dependencies, the initial ADRs (`08_Decisions/`), the delivery phases
+  (`07_Phases/`), and the UI mockup (`mockups/gomarkedit-mockup.html` — open it, it shows every
+  screen). Start at `specification/INDEX.md`.
+- **`docs/`** — the working area: `docs/stories/` (current work, format in its README; `archive/` is
+  history), `docs/adr/` (architecture decisions, ADR-0013+), `docs/KNOWN_ISSUES.md`, `docs/audits/`.
 
 ## Non-negotiable architecture constraints
 
@@ -77,55 +76,53 @@ just lint         # golangci-lint + eslint
 just typecheck    # tsc --noEmit
 just test         # go test -race ./...  +  jest
 just verify-ui    # Playwright responsive + smoke tests
-just trace        # regenerate docs/traceability.yaml
-just trace-check  # validate traceability (gate)
-just phase-check  # validate every phase document structurally
-just phase-complete-check NN # prove one claimed-complete phase
 just check        # fmt-check + lint + typecheck + test + arch checks
 ```
 
-## Planning workflows (the two-stage workflow)
+## The three commands
 
-Two Codex skills (`.agents/skills/plan-phase-stories-creation/` and
-`.agents/skills/plan-user-story-implementation/`) bootstrap the whole process. Both run **read-only** —
-they gather full context, delegate mapping to the `investigator` subagent, produce a plan, and request
-explicit user approval. Nothing is created or changed until approval.
+Everything below runs through three workflows — slash commands in Claude Code, skills in Codex. Each
+is read-only until you approve its plan.
 
-- **`plan-phase-stories-creation <PHASE_NN>`** — for starting a new phase. Reads the phase, its permanent
-  `PHNN-RNN` ledger, process formats, and complete cited source set; maps the current codebase; performs
-  inverse-coverage, temporal/adversarial, and producer/consumer passes; then plans the real S/M story set
-  from non-normative work packages with low-context implementation packets and skeptical review. Approve →
-  the `architect` assigns current global ids and authors the story files into `docs/stories/`.
-- **`plan-user-story-implementation <STORY-NNN>`** — for building a story. Reads the story + every cited
-  phase requirement/clause/DD/ADR + applicable rules/skills; investigates every reader, writer, lifecycle
-  boundary, sibling consumer, and competing async path; turns stateful ACs into ordered event sequences;
-  then plans strong adversarial tests, durable evidence, traceability, and DoD, one S/M session's worth. Approve →
-  the `coder` implements and the `tester` writes the AC tests and runs `just trace`/`trace-check`.
+| Command | When | What it does |
+|---|---|---|
+| `/plan-phase <NN>` | Starting a phase | Reads the phase and the product prose behind it, stops on unanswered questions, slices vertical stories, checks coverage three ways, then `architect` writes the files |
+| `/plan-story <NNN>` | Building one story | Investigates readers, writers, lifecycle boundaries and async races; plans the change, one test per criterion, the in-app verification and the close-out; then `coder` + `tester` build it |
+| `/finish-phase <NN>` | Every story built | Runs the real gates, checks each criterion has a test that actually proves something, walks the phase's "Done when" paragraph in a real build, and reports honestly |
+
+The instructions live in `.claude/commands/`. Codex reaches them through `.agents/skills/plan-phase|plan-story|finish-phase`,
+which are pointers to those same files, not copies — one source of truth.
 
 ## How work is tracked
 
-Phases (`specification/07_Phases/`) define normative permanent requirements, transitions, contracts, edge
-ownership, and exit evidence plus **non-normative phase-local work packages**. The `architect` generates
-actual stories into `docs/stories/story-NNN-*.md` per phase, in the fixed format
-(`specification/06_Process_and_Traceability/02_STORY_FORMAT.md`). **One story per coding session.** A
-story is `done` only when every AC has a passing test naming the story id and `just trace-check` passes
-with zero orphans. Every story names `phase_requirements`; every AC has a matching `Satisfies:` marker.
-Implementation-ready stories are S/M; L is a non-ready epic that must be split. A phase is complete only
-when `just phase-complete-check NN` passes. `done` is immutable — a spec change spawns a new story (+ a new ADR in `docs/adr/` if
-significant), never an edit to the frozen spec.
+`specification/07_Phases/` says, in plain language, what to build next and why. Each phase document
+lists the steps in order, points at the `01_Product/` prose and the mockup screens for the detail, and
+names the questions that must be answered before the phase starts.
+
+Stories live in `docs/stories/` — one per usable slice of a phase, one coding session each. A story is
+**fully worded**: it explains the behaviour in prose rather than citing a clause and expecting the
+reader to go and read it. If you cannot tell what the app will do from the story alone, the story is
+wrong. Format and rules: `docs/stories/README.md`.
+
+Every acceptance criterion gets its own test, tagged `// Proves: STORY-NNN-AC-N` so a failure names the
+requirement that broke. That tag is a convention for humans — nothing validates it, nothing is
+generated from it.
+
+A phase is finished when a person uses the app and confirms its "Done when" paragraph. There is no
+completion validator, no evidence file, and no traceability record; that machinery existed, cost more
+than the application code it governed, and was removed on 2026-07-25.
 
 ## Implementation stages
 
 Work ships in three coarse stages (`specification/00_Foundation/06_IMPLEMENTATION_STAGES.md`):
 **Stage 1 — Viewer** → **Stage 2 — Editor** → **Stage 3 — LLM Assistant**. Each stage must ship a working
 app and **leave the seams open for the next without building a wall**. Stage 1/2 stories must honour the
-binding forward-compatibility constraints **F1–F9** (three-region layout slot, document identity + content
+binding forward-compatibility constraints **F1–F10** (three-region layout slot, document identity + content
 accessor, document-command seam, growable settings registry, reserved backend seams incl. the generic gate,
 scoped-not-absolute offline invariant, editable buffer selection/apply, programmatic Format/Lint, reusable
-DiffView). The Stage-3 assistant is built entirely by **consuming** F1–F9 — never by restructuring an
-earlier contract. Two phases are **cross-cutting** and belong to no single stage: Phase 10
-(i18n/packaging) and **Phase 15 — CI/CD & release**
-(`specification/07_Phases/PHASE_15_CICD_RELEASE.md`): version injection via
+DiffView, token-only visual layer). The assistant is built entirely by **consuming** F1–F10 — never by restructuring an
+earlier contract. Packaging, file associations and the release pipeline are
+**Phase 07** (`specification/07_Phases/PHASE_07_INSTALL_IT.md`): version injection via
 `internal/settings.AppVersion` + ldflags, the icon pipeline, and the tag-triggered release workflow
 (DD-65..67, `specification/04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md`). v1 releases ship
 via that pipeline; local/dev builds always report version `dev`.
@@ -156,12 +153,10 @@ delegation is cleaner. Keep parallel subagents to ≤8. Ask each for a concise s
 
 ## Self-discovery
 
-Before assuming a convention doesn't exist: check `.agents/skills/`, the relevant `.claude/rules/*.md`
-(by glob), and `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` for the module
-you're in. The spec itself (`specification/`), especially
-`06_Process_and_Traceability/07_PHASE_FORMAT.md`, shared `.claude/rules/`, Codex `.agents/skills/`, and
-`.codex/agents/` are the
-authoritative source for every structural, envelope, DI, theming, and CI convention.
+Before assuming a convention does not exist: check `.agents/skills/`, the relevant `.claude/rules/*.md`
+(by glob), and `specification/02_Architecture/01_MODULE_INVENTORY.md` for the module you are in.
+`specification/01_Product/` is the authority on behaviour, `specification/02_Architecture/` on
+structure, and `specification/mockups/gomarkedit-mockup.html` on how it should look.
 
 ## Rules Reference
 
@@ -178,7 +173,6 @@ authoritative source for every structural, envelope, DI, theming, and CI convent
 | ts-markdown-pipeline | `frontend/src/logic/markdown/**`, `frontend/src/logic/{format,lint}/**` | remark/rehype, standard mapping |
 | ts-testing | `frontend/src/**/*.test.ts(x)` | RTL/behavioural, a11y queries, mock adapter |
 | wails-integration | `main.go`, `wails.json`, `build/**` | embed, Bind/EnumBind, lifecycle, associations |
-| traceability-and-stories | `docs/stories/**`, `docs/adr/**` | story format, lifecycle, trace-check |
 | offline-and-privacy | `**/*` | no background network, no telemetry, bundled assets, user-invoked provider calls only |
 | llm-integration | `internal/llm/**`, `frontend/src/logic/store/assistant/**`, `frontend/src/logic/llm/**`, `frontend/src/ui/widgets/assistant/**` | Stage-3 assistant: provider abstraction, agent loop, tools, gate, budget, env-var secrets |
 
@@ -186,7 +180,6 @@ authoritative source for every structural, envelope, DI, theming, and CI convent
 
 | Skill | Use when |
 |---|---|
-| story-and-traceability-workflow | Creating/editing a story, or updating the trace record |
 | adr-authoring | A decision is architecturally significant |
 | wails-dev | Anything Wails v2: wails.json, Bind/EnumBind, lifecycle hooks, runtime API, events, menus, platform options, asset server, drag-and-drop, window/UI-layout persistence (12 topic references) |
 | go-envelope-and-di | Adding a handler/service/repository vertical or the DI wiring |
@@ -198,7 +191,7 @@ authoritative source for every structural, envelope, DI, theming, and CI convent
 | llm-provider-integration | Adding/adjusting a provider kind, model discovery, verification, or AI/Providers settings (Stage 3) |
 | agentic-tool-loop | Building/adjusting the agent loop, tools, cancellation, gate, or edit-proposal apply (Stage 3) |
 | context-and-tokenizer | Token estimation, context budgeting, fit meter, or over-context handling (Stage 3) |
-| code-review | Reviewing a diff/PR/branch against GoMarkEdit's layering, envelope, adapter/token, migration, offline, and traceability invariants (read-only) |
+| code-review | Reviewing a diff/PR/branch against GoMarkEdit's layering, envelope, adapter/token, migration, and offline invariants (read-only) |
 | project-navigator | Orienting in the repository — stack, structure, entry points, run/build/test commands (read-only) |
 | project-documentation | Generating architecture/overview docs into `docs/` (or scratch `.agent-docs/`) from the code; never edits the frozen spec |
 
@@ -206,13 +199,13 @@ authoritative source for every structural, envelope, DI, theming, and CI convent
 
 | Agent | Model | Use after |
 |---|---|---|
-| investigator | Haiku | Starting a phase — read-only map of spec vs. code |
-| architect | Opus | Investigation done — write `docs/stories/*.md` + ADRs |
-| coder | Sonnet | A story is `ready` — implement exactly one story |
-| tester | Sonnet | Coder finished — write the AC tests, run `just trace` |
+| investigator | Haiku | Any time you need a read-only map of spec vs. code |
+| architect | Opus | A phase is ready to slice — write fully-worded stories + architecture ADRs |
+| coder | Sonnet | A story is planned — implement exactly one story |
+| tester | Sonnet | Coder finished — write the acceptance-criteria tests |
 | debugger | Sonnet (→Opus after 2 fails) | A non-trivial test/CI failure |
 | docs-writer | Haiku | Public surface changed / an ADR is needed |
-| spec-conformance-reviewer | Opus | Story implementation done — re-derive ACs from spec before `done` |
+| spec-conformance-reviewer | Opus | Story implemented — re-derive its criteria from the spec independently |
 
 ## Context management
 

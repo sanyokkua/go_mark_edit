@@ -6,12 +6,12 @@
 
 ## Context and problem statement
 
-Through Stages 1–2, GoMarkEdit's network policy was stated absolutely: the app makes **zero** network
+Through the phases before the assistant, GoMarkEdit's network policy was stated absolutely: the app makes **zero** network
 calls of any kind — no update checks, no telemetry, no CDN/asset fetches; every rendering asset is bundled
 locally. This absolute framing was correct for a Viewer/Editor with no remote features, and it is a core
 part of the product's privacy promise.
 
-Stage 3 introduces the LLM assistant, whose entire purpose is to send the user's document text to a model
+the assistant phases introduces the LLM assistant, whose entire purpose is to send the user's document text to a model
 and get a rewrite back — which, for a remote provider, is a network call. The original "never open a
 socket" invariant, read literally, forbids the assistant to exist. We must decide how to reconcile the
 assistant with the offline promise **without** weakening the promise into "the app talks to the network
@@ -60,8 +60,8 @@ Precisely:
 - **The default provider is local** (on-device, e.g. a local model server), so a **default install stays
   fully on-device** — zero bytes leave the machine until the user opts into a remote provider and supplies
   their own endpoint/credentials.
-- **Stages 1–2 (Viewer, Editor) make zero network calls of any kind**; the exception exists only in
-  Stage 3 and only through the provider HTTP client, which is the single outbound socket in the app.
+- **the phases before the assistant (Viewer, Editor) make zero network calls of any kind**; the exception exists only in
+  the assistant phases and only through the provider HTTP client, which is the single outbound socket in the app.
 - **Telemetry and auto-update remain never** (DD-33, DD-34); the revision opens exactly one narrowly-scoped
   door and nothing else.
 
@@ -103,7 +103,7 @@ plainly so the user always knows when and where their text can go.
 
 - Good: The simplest, strongest possible promise — literally zero network, nothing to explain or enforce;
   no data ever leaves the machine.
-- Bad: Kills the Stage-3 assistant, the whole point of the stage; a bundled-only local model would bloat
+- Bad: Kills the assistant assistant, the whole point of the stage; a bundled-only local model would bloat
   the app enormously and still couldn't reach the user's existing local/remote endpoints. Rejected as
   incompatible with the product roadmap.
 
@@ -119,7 +119,8 @@ plainly so the user always knows when and where their text can go.
 
 - Design decisions: **DD-32 (revised for Stage 3)** (offline-first, no background network; only outbound
   calls are user-invoked LLM inferences to the user-configured provider; default provider local;
-  Stages 1–2 zero-network), **DD-54** (privacy explicit: document text leaves only on user action, only to
+  zero network before the assistant), **DD-54** (privacy explicit: document text leaves only on user
+  action, only to
   the configured provider; telemetry/auto-update remain never; a local provider keeps everything
   on-device). Related: DD-22 (remote document-asset content policy), DD-33 (no telemetry; local logs only),
   DD-34 (no auto-update).
@@ -128,6 +129,6 @@ plainly so the user always knows when and where their text can go.
   `02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams` (F6 — offline scoping),
   `03_NonFunctional/04_OFFLINE.md`, `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`,
   `.claude/rules/offline-and-privacy.md`.
-- Stories: Phase 11 (LLM foundation — the first stage that opens the provider socket) and the Stage-1/2
+- Stories: Phase 09 (LLM foundation — the first stage that opens the provider socket) and the pre-assistant
   offline-invariant stories (Phases 00–10) that must remain zero-network, per `07_Phases/00_ROADMAP.md`
   (authored per phase; none `done` at ADR time).

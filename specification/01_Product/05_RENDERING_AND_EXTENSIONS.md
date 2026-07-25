@@ -90,6 +90,11 @@ The live preview is **debounced** so typing stays smooth (DD-20). For very large
 updating on an explicit trigger or when editing settles. Editor responsiveness is never sacrificed to
 preview freshness (EC-RENDER-4, EC-DOCS-4).
 
+Pausing the preview affects **only** the preview. The buffer is not rolled back, the cursor and
+selection do not move, and no accepted content is discarded — the document simply stops re-rendering
+until the trigger. A render that fails or is superseded leaves the last successfully rendered output in
+place rather than blanking the pane.
+
 ## Edge cases
 
 - **EC-RENDER-1** — Invalid Mermaid → inline error block; rest of document renders.

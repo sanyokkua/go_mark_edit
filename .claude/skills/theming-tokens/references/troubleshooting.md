@@ -31,5 +31,4 @@ apply logic) before editing — this table tells you where to look, not the full
 - **EC-THEME-3** — Invalid or missing persisted theme/appearance → fall back to defaults
   (Material / Auto). See `theme-token-model.md` § The three themes × three appearances.
 
-Every EC-THEME id must map to a proving test before `just trace-check` is allowed to pass — see the
-Workflow in `SKILL.md`.
+Each EC-THEME id you touch should end up with a test that names it. Workflow in `SKILL.md`.

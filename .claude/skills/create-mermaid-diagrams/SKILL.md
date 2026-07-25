@@ -48,7 +48,7 @@ underlying syntax.
    shape rather than inventing new conventions. `assets/diagram-skeletons.md` has copy-paste starting
    skeletons for each type.
 3. **Use real names.** Every node/participant/entity label must use an actual module or layer name from
-   `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` (`internal/*`, `logic/*`, `ui/*`) —
+   `specification/02_Architecture/01_MODULE_INVENTORY.md` (`internal/*`, `logic/*`, `ui/*`) —
    never an invented name. Keep the diagram consistent with the surrounding spec prose; the prose itself
    is **frozen** — this skill adds/updates the diagram, it does not rewrite spec text to fit the diagram.
 4. **Validate before saving** using the checklist below. If a diagram fails to parse/render, or you're
@@ -90,5 +90,5 @@ underlying syntax.
 ## Spec references
 
 - `specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md`
-- `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md`
-- `specification/06_Process_and_Traceability/02_STORY_FORMAT.md`
+- `specification/02_Architecture/01_MODULE_INVENTORY.md`
+- `docs/stories/README.md`

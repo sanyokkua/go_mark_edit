@@ -36,7 +36,10 @@ in the window focuses the existing tab (EC-DOCS-11 / EC-TABS-1).
 
 **Save** (`Ctrl/Cmd+S`) first **flushes** any pending editor-buffer sync to the backend application
 model, then writes the backend's **canonical** content to the path (DD-62/DD-64, EC-DOCS-13) — it never
-reads frontend text directly. For a never-saved buffer, Save behaves as Save As. Save clears the dirty
+reads frontend text directly. The write is **atomic**: content goes to a temporary file in the same
+directory and is renamed over the target, so a crash or a full disk mid-save can never leave the user
+with a truncated or half-written document. A failed write leaves the original file exactly as it was
+and the document still dirty. For a never-saved buffer, Save behaves as Save As. Save clears the dirty
 flag on success and reports OS errors on failure (EC-DOCS-7). If format-on-save / lint-on-save are
 enabled, they run first (`06_FORMAT_AND_LINT.md#on-save`).
 
@@ -44,7 +47,8 @@ enabled, they run first (`06_FORMAT_AND_LINT.md#on-save`).
 
 **Save As** (`Ctrl/Cmd+Shift+S`) shows the native save dialog, lets the user pick a path/extension,
 and writes there — the tab then tracks the new path. Overwriting an existing file is confirmed by the
-native dialog (EC-DOCS-10). Save As on a new buffer is how it first acquires a path and becomes
+**native** dialog, not by an in-app prompt (EC-DOCS-10); declining the confirmation cancels the save and
+changes nothing. Save As on a new buffer is how it first acquires a path and becomes
 eligible for autosave.
 
 ## Autosave
@@ -87,6 +91,12 @@ control; a "+" adds a new tab (`mockups/gomarkedit-mockup.html` `.tabs`). Behavi
 - Each tab carries its own dirty state and per-document view state, held in the backend application
   model (DD-62; `02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state`). The tab set (order + active
   tab) is likewise backend-owned; tab actions are commands reconciled via `state:patch` (EC-TABS-7).
+- **Switching tabs is all-or-nothing.** The outgoing document's pending buffer and view state flush
+  before the incoming one becomes active. If that flush fails the current tab stays active — there is
+  no half-completed switch that leaves one document's text beside another's tab.
+- **A stale tab command is rejected, not applied.** Reorder and close carry the tab-set revision they
+  were issued against; if the set has moved on, the command is refused and the order is left intact
+  rather than partially rewritten.
 
 ## Open folder
 

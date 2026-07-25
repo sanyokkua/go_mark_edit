@@ -25,11 +25,12 @@ gen:
 
 # --- formatting and quality ---------------------------------------------------
 fmt:
-    gofmt -w .
+    gofmt -w $(git ls-files '*.go')
     npm --prefix frontend run format
 
+# Scoped to tracked sources: frontend/node_modules contains a real Go package (flatted).
 go-format-check:
-    test -z "$(gofmt -l .)"
+    test -z "$(gofmt -l $(git ls-files '*.go'))"
 
 frontend-format-check:
     npm --prefix frontend run format:check
@@ -59,15 +60,15 @@ frontend-test:
     npm --prefix frontend test -- --passWithNoTests
 
 go-vet:
-    go vet ./...
+    go vet ./internal/... .
 
 go-test:
-    go test -race ./...
+    go test -race ./internal/... .
 
 verify-ui:
     npm --prefix frontend run verify:ui
 
-# --- drift, security, and traceability ---------------------------------------
+# --- drift and security -------------------------------------------------------
 gen-check:
     wails generate module
     git diff --exit-code -- frontend/wailsjs/
@@ -78,22 +79,7 @@ sqlc-check:
 vuln:
     govulncheck ./...
 
-trace:
-    node scripts/trace.mjs
-
-trace-check:
-    node scripts/trace-check.mjs
-
-phase-check:
-    node scripts/phase-check.mjs
-
-phase-complete-check phase:
-    node scripts/phase-complete-check.mjs {{phase}}
-
-phase-checkpoint-check checkpoint:
-    node scripts/phase-complete-check.mjs 01 --checkpoint {{checkpoint}}
-
-# Phase-00 staged local/CI mirror. Full drift and security gates join later phases.
+# Local mirror of the CI gate set. Security gates (sqlc-check, vuln) join later.
 check:
     just gen-check
     just frontend-build
@@ -103,8 +89,6 @@ check:
     just frontend-test
     just go-vet
     just go-test
-    just phase-check
-    just trace-check
 
 frontend-build:
     npm --prefix frontend run build

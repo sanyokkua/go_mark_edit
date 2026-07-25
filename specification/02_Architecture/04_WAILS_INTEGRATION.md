@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/01_SYSTEM_ARCHITECTURE.md`, `02_Architecture/02_BACKEND_GO.md`, `01_Product/08_FILE_ASSOCIATIONS.md`, `01_Product/09_ASSETS_AND_SECURITY.md`, `06_Process_and_Traceability/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0001`, `08_Decisions/ADR-0006`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/01_SYSTEM_ARCHITECTURE.md`, `02_Architecture/02_BACKEND_GO.md`, `01_Product/08_FILE_ASSOCIATIONS.md`, `01_Product/09_ASSETS_AND_SECURITY.md`, `02_Architecture/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0001`, `08_Decisions/ADR-0006`
 
 # Wails Integration
 

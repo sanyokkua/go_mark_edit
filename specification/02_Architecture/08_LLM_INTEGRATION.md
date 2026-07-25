@@ -2,19 +2,19 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-14
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-32, DD-38–DD-55), `00_Foundation/06_IMPLEMENTATION_STAGES.md` (F1–F9), `02_Architecture/02_BACKEND_GO.md`, `02_Architecture/06_ERROR_HANDLING.md`, `02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`, `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`, `03_NonFunctional/04_OFFLINE.md`, `06_Process_and_Traceability/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0007`, `08_Decisions/ADR-0008`, `08_Decisions/ADR-0009`, `08_Decisions/ADR-0010`, `08_Decisions/ADR-0011`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-32, DD-38–DD-55), `00_Foundation/06_IMPLEMENTATION_STAGES.md` (F1–F10), `02_Architecture/02_BACKEND_GO.md`, `02_Architecture/06_ERROR_HANDLING.md`, `02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`, `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`, `03_NonFunctional/04_OFFLINE.md`, `02_Architecture/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0007`, `08_Decisions/ADR-0008`, `08_Decisions/ADR-0009`, `08_Decisions/ADR-0010`, `08_Decisions/ADR-0011`
 
 # LLM Integration
 
-The Stage-3 assistant is an **agentic, tool-call-based** workflow layered on top of the working Editor
+The assistant assistant is an **agentic, tool-call-based** workflow layered on top of the working Editor
 (DD-40). This document is the normative architecture contract for the `internal/llm/*` package group: the
 provider abstraction, the bounded tool-call loop, the tool registry, the context budgeter and tokenizer,
 streaming, the single-flight gate and cancellation, the frontend event surface, the LLM error codes, and
 persistence. It extends — never rewrites — the backend layering (`02_Architecture/02_BACKEND_GO.md`) and
-error model (`02_Architecture/06_ERROR_HANDLING.md`), and it consumes the F1–F9 forward-compatibility
-seams reserved in Stages 1–2 (`00_Foundation/06_IMPLEMENTATION_STAGES.md`).
+error model (`02_Architecture/06_ERROR_HANDLING.md`), and it consumes the F1–F10 forward-compatibility
+seams reserved in the phases before the assistant (`00_Foundation/06_IMPLEMENTATION_STAGES.md`).
 
-Everything here is additive: no Stage-1/2 handler, service, or table is changed destructively. The
+Everything here is additive: no pre-assistant handler, service, or table is changed destructively. The
 assistant is off by default and the default provider is **local**, so a default install still performs
 **zero** network I/O until the user explicitly configures a remote provider and invokes an action
 (DD-32, DD-54; `03_NonFunctional/04_OFFLINE.md`).
@@ -36,8 +36,8 @@ assistant is off by default and the default provider is **local**, so a default 
 
 ## Overview
 
-The assistant adds one new package group and one settings extension (Stage-3 rows of
-`06_Process_and_Traceability/01_MODULE_INVENTORY.md`):
+The assistant adds one new package group and one settings extension (assistant rows of
+`02_Architecture/01_MODULE_INVENTORY.md`):
 
 ```
 internal/llm/
@@ -413,7 +413,7 @@ events are the incremental channel.
 
 ## Error codes
 
-Stage 3 adds an **LLM error set** to the `apperr.ErrorCode` catalog. Like the Stage-1/2 codes it is a
+the assistant phases adds an **LLM error set** to the `apperr.ErrorCode` catalog. Like the pre-assistant codes it is a
 string enum exposed to TypeScript via **EnumBind** (`02_Architecture/06_ERROR_HANDLING.md` `#error-codes`;
 `04_WAILS_INTEGRATION.md` `#bind-enumbind`), so the frontend branches on typed codes. Codes reused from
 the base catalog (`busy`, `timeout`, `cancelled`, `validation`, `internal`) keep their existing meaning;
@@ -464,8 +464,8 @@ Assistant configuration extends `internal/settings` **additively** (F4; DD-46):
 
 ## Forward-compat seams
 
-Stage 3 is built entirely by **consuming** the seams reserved in Stages 1–2
-(`00_Foundation/06_IMPLEMENTATION_STAGES.md` §3); it restructures nothing:
+the assistant phases is built entirely by **consuming** the seams reserved in the phases before the assistant
+(`00_Foundation/06_IMPLEMENTATION_STAGES.md`, F1–F10); it restructures nothing:
 
 - **F1 — three-region layout.** The assistant sidebar drops into the reserved, previously-empty **right**
   region and its show/hide plumbing; the shell is not restructured (DD-38).
@@ -482,6 +482,6 @@ Stage 3 is built entirely by **consuming** the seams reserved in Stages 1–2
 - **F9 — reusable DiffView.** The edit-proposal card renders the `propose_edit` diff with the standalone
   diff component reused from the Format/Lint flow, rather than a bespoke renderer.
 - **F6 / offline scoping.** The provider HTTP client is the *only* outbound socket in the app, opened
-  **only** on user action to the **user-configured** provider (local by default). Stages 1–2 remain
+  **only** on user action to the **user-configured** provider (local by default). Before the assistant exists, remain
   zero-network; the invariant is "no *background/unsolicited* network," not "never open a socket"
   (DD-32; `03_NonFunctional/04_OFFLINE.md`).

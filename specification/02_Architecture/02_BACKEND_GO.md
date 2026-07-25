@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/01_SYSTEM_ARCHITECTURE.md`, `02_Architecture/05_STATE_AND_PERSISTENCE.md`, `02_Architecture/06_ERROR_HANDLING.md`, `06_Process_and_Traceability/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0004`, `08_Decisions/ADR-0006`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/01_SYSTEM_ARCHITECTURE.md`, `02_Architecture/05_STATE_AND_PERSISTENCE.md`, `02_Architecture/06_ERROR_HANDLING.md`, `02_Architecture/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0004`, `08_Decisions/ADR-0006`
 
 # Backend (Go)
 
@@ -140,7 +140,7 @@ new package, nil repo in the constructor, real repo in `Init`, `Bind` in `main.g
 
 ## Packages
 
-One package per row of the module inventory (`06_Process_and_Traceability/01_MODULE_INVENTORY.md`):
+One package per row of the module inventory (`02_Architecture/01_MODULE_INVENTORY.md`):
 
 | Package | Role | Entry points |
 |---|---|---|

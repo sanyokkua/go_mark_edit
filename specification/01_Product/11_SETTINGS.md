@@ -39,7 +39,7 @@ settings; each control writes through on change.
 In **Stage 3** the settings dialog gains two additional tabs — **AI / Providers** and **AI Context** —
 that hold the assistant configuration (DD-53). They are specified in
 `17_PROVIDERS_MODELS_SETTINGS.md#persistence` and `18_TOKENIZER_AND_CONTEXT.md`, are added as additive
-registry growth (F4), and are absent from a Stage-1/2 build. This document covers the Stage-1/2 groups
+registry growth (F4), and are absent from a build without the assistant. This document covers the pre-assistant groups
 below.
 
 ## Appearance group
@@ -106,7 +106,7 @@ All settings persist in the SQLite **key-value** store via `internal/settings` (
 instances are multi-process (DD-08), the DB uses WAL + `busy_timeout` for safe concurrent access
 (DD-13); a lock contention retries transparently (EC-SET-1). Window size, per-document view mode, and the
 **application-level window/UI-layout state** — folder-sidebar visibility (and width), the view
-arrangement (Editor / Split / Preview) and pane visibility, and the Stage-3 assistant-sidebar visibility —
+arrangement (Editor / Split / Preview) and pane visibility, and the assistant assistant-sidebar visibility —
 are persisted alongside settings under `ui.*`/`window.*` keys (DD-60/DD-61;
 `02_Architecture/05_STATE_AND_PERSISTENCE.md#window-state`). Layout state is written **through on change**
 and restored when a new window or the app launches; across multiple windows the **last window to change a

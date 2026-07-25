@@ -24,8 +24,8 @@ attribute's acceptance.
 | **Portability** | One codebase on Windows 10+, macOS 12+, modern Linux | `wails build` cross-compiles CGO-free (modernc SQLite); the manual smoke test passes on all three OSes | DD-01, DD-03; ADR-0001 |
 | **Maintainability** | Strict layering, one composition root, generated bindings in sync | `just check` (fmt, lint, typecheck, tests, arch checks) is green; `wails generate module` produces no diff; sqlc `store/` unedited; migrations additive-only | `02_Architecture/02_BACKEND_GO.md`, `#generate-bindings` |
 | **Testability** | Units testable with fakes; UI behavior-tested | Handlers/services unit-testable via swappable seams; pure argv/allowlist logic unit-tested; Playwright `verify:ui` covers responsive + smoke flows | DD-37; module inventory "Test target" column |
-| **Security** | Local-only trust boundary; no injection; guarded assets | No background/unsolicited network egress (the sole outbound calls are user-invoked Stage-3 LLM inferences to the user-configured provider, local by default — DD-32 as revised); asset server allowlist + traversal rejection; sqlc-parameterized queries; no secrets in code/config/DB (API keys referenced by env-var name only) | DD-21, DD-32, DD-45, DD-54; `03_NonFunctional/03_SECURITY_AND_PRIVACY.md` |
-| **Privacy** | Nothing leaves the machine except on an explicit user-invoked assistant action | No telemetry/analytics ever; logs local rotating files only, never transmitted; `cause` never serialized to the UI; document text leaves the machine only when the user invokes a Stage-3 action/chat, and only to the configured provider (on-device with the default local provider) | DD-33, DD-54; `02_Architecture/06_ERROR_HANDLING.md` `#wire` |
+| **Security** | Local-only trust boundary; no injection; guarded assets | No background/unsolicited network egress (the sole outbound calls are user-invoked assistant LLM inferences to the user-configured provider, local by default — DD-32 as revised); asset server allowlist + traversal rejection; sqlc-parameterized queries; no secrets in code/config/DB (API keys referenced by env-var name only) | DD-21, DD-32, DD-45, DD-54; `03_NonFunctional/03_SECURITY_AND_PRIVACY.md` |
+| **Privacy** | Nothing leaves the machine except on an explicit user-invoked assistant action | No telemetry/analytics ever; logs local rotating files only, never transmitted; `cause` never serialized to the UI; document text leaves the machine only when the user invokes a assistant action/chat, and only to the configured provider (on-device with the default local provider) | DD-33, DD-54; `02_Architecture/06_ERROR_HANDLING.md` `#wire` |
 | **Performance** | Fast start, responsive editing | Startup, editor-latency, preview-debounce, large-file, and memory budgets in `02_PERFORMANCE.md` all met | DD-20; `03_NonFunctional/02_PERFORMANCE.md` |
 | **Accessibility (v1)** | Keyboard operability for core actions; Radix a11y baseline | All core actions keyboard-operable; focus managed in dialogs/menus; full screen-reader/contrast certification is explicitly out of v1 scope | DD-36; `03_NonFunctional/05_ACCESSIBILITY.md` |
 | **Openness** | MIT, reproducible-from-spec | MIT license shipped; unsigned-build caveats documented; no auto-update | DD-34 |
@@ -33,7 +33,7 @@ attribute's acceptance.
 
 ## How these are verified
 
-- **Automated gate** — `just check` and `just trace-check` must pass; CI runs the same gate plus
+- **Automated gate** — `just check` must pass; CI runs the same gate plus
   `wails generate module` drift, `sqlc` sanity, and Playwright `verify:ui`.
 - **Offline verification** — a network-egress check (no outbound sockets during a representative
   session) is part of acceptance for offline-touching stories (`03_NonFunctional/04_OFFLINE.md`).

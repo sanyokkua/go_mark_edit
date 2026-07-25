@@ -135,7 +135,7 @@ relevant row. Where a decision is architecturally significant it also has an ADR
   explicitly configured** (Stage 3, DD-38+), and only **on user action** (invoking an action or sending
   a chat message). The **default provider is local** (e.g. Ollama/LM Studio), so a default install stays
   fully on-device. Remote providers (e.g. OpenAI) are strictly opt-in and require the user to enter
-  their own endpoint/credentials. Stages 1–2 (Viewer, Editor) make **zero** network calls of any kind.
+  their own endpoint/credentials. Before the assistant exists, (Viewer, Editor) make **zero** network calls of any kind.
   (Revised for Stage 3; see ADR-0011.)
 - **DD-33** **No telemetry / analytics.** Diagnostic **logs are written to a local file** (rotating)
   and never transmitted.
@@ -151,8 +151,8 @@ relevant row. Where a decision is architecturally significant it also has an ADR
 ## 11. LLM assistant (Stage 3)
 
 The assistant adds LLM-powered proofreading, reformatting, chat, and custom instructions over the
-open document. It is the third implementation stage (`00_Foundation/06_IMPLEMENTATION_STAGES.md`) and
-must not exist in Stages 1–2, but Stages 1–2 must leave the seams open for it (forward-compatibility,
+open document. It is built last (`07_Phases/00_ROADMAP.md`) and
+must not exist before the assistant phases, but the phases before them must leave the seams open for it (forward-compatibility,
 see the stages doc).
 
 - **DD-38** The assistant lives in a **right-hand sidebar** that can be shown/hidden (default hidden
@@ -220,7 +220,7 @@ see the stages doc).
 ## 12. Drag-and-drop
 
 Refines `01_Product/03_FILES_TABS_WORKSPACE.md#drag-and-drop-open`. Drag-and-drop opens files/folders;
-it does not move, copy, or reorder anything on disk. It is a Stage-1/2 capability (it consumes tabs from
+it does not move, copy, or reorder anything on disk. It is a pre-assistant capability (it consumes tabs from
 Stage 2 and the workspace from Stage 1) and adds **no network**.
 
 - **DD-56** The window accepts **drag-and-drop of files and folders**. A dropped **file** opens in a
@@ -288,7 +288,7 @@ the webview as the **View/Controller**.
   visibility and width, view arrangement + pane visibility, assistant-sidebar visibility). There is
   **exactly one** source of truth; nothing is authoritative in the frontend. This gives Go ownership of the
   model's memory and lifecycle and eliminates dual-source drift. Backed by a dedicated `internal/appmodel`
-  service (`06_Process_and_Traceability/01_MODULE_INVENTORY.md`). It does not change the file-first rule
+  service (`02_Architecture/01_MODULE_INVENTORY.md`). It does not change the file-first rule
   (DD-11): documents on disk remain the persistence source of truth; `internal/appmodel` is the in-memory
   *working* model, and the app still opens clean.
 - **DD-63** **The frontend is a thin view/controller — a projection of the backend model, never a store of
@@ -304,7 +304,7 @@ the webview as the **View/Controller**.
   document's editable text for responsiveness — an unavoidable property of an in-webview editor. Edits
   update the webview immediately and are **debounce-pushed** to the backend via an `UpdateBuffer` command;
   the backend model stays authoritative for content, dirty state, autosave, and save, and **every other
-  consumer** (tab dirty indicator, status-bar counts, preview source, PDF export, the Stage-3 assistant)
+  consumer** (tab dirty indicator, status-bar counts, preview source, PDF export, the assistant assistant)
   reads the backend's copy — never Monaco directly. The backend **never echoes buffer text back into the
   focused editor** (that would disturb the cursor/selection); it emits only derived state. On editor
   blur, tab switch, close, and save/autosave, the latest buffer is **flushed** to the backend before the
@@ -313,7 +313,7 @@ the webview as the **View/Controller**.
 ## 15. Versioning, app icon & CI/CD
 
 Refines `04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md` and `04_Build_and_Release/03_CI_AND_HOOKS.md`.
-Recorded in `docs/adr/0015-cicd-versioning-icon.md`. Owned by **Phase 15**.
+Recorded in `docs/adr/0015-cicd-versioning-icon.md`. Owned by **Phase 07**.
 
 - **DD-65** **The git tag is the single source of truth for the app version.** The version variable is
   `internal/settings.AppVersion`, whose compiled-in default is **`"dev"`**. A release build injects the

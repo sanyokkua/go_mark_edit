@@ -1,9 +1,8 @@
 # ADR lifecycle, placement, and the frozen set
 
-Authority: `specification/06_Process_and_Traceability/04_ADR_FORMAT.md` (template, id scheme,
-supersession — normative), `specification/08_Decisions/README.md` (index of the frozen ADR-0001…0012),
-`docs/adr/README.md` (index of the mutable ADR-0013+). Governing rule:
-`.claude/rules/traceability-and-stories.md` (§ ADRs).
+Authority: `docs/adr/README.md` — normative on the id scheme, supersession, and what does and does
+not warrant an ADR. `docs/adr/template.md` is the file to copy. `specification/08_Decisions/README.md`
+indexes the initial ADR-0001…0012.
 
 ## Where ADRs live, and identifiers
 

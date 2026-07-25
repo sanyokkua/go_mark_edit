@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/02_BACKEND_GO.md`, `02_Architecture/03_FRONTEND_REACT.md`, `02_Architecture/04_WAILS_INTEGRATION.md`, `06_Process_and_Traceability/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0001`, `08_Decisions/ADR-0006`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/02_BACKEND_GO.md`, `02_Architecture/03_FRONTEND_REACT.md`, `02_Architecture/04_WAILS_INTEGRATION.md`, `02_Architecture/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0001`, `08_Decisions/ADR-0006`
 
 # System Architecture
 
@@ -61,7 +61,7 @@ flowchart TB
 The embedded assets are compiled in via `//go:embed all:frontend/dist` (see `04_WAILS_INTEGRATION.md`
 `#embed`). Document-referenced local images are served on demand through a guarded `AssetServer.Handler`
 with a directory allowlist (DD-21); the app itself originates no background network requests, and in
-Stages 1–2 none at all — the sole outbound call is the user-invoked Stage-3 LLM inference to the
+and none at all before it — the sole outbound call is the user-invoked assistant LLM inference to the
 configured provider (DD-32 as revised; `08_LLM_INTEGRATION.md`).
 
 ## Process model
@@ -141,8 +141,8 @@ file (`.claude/rules/`) and an architecture check in `just check`:
   `data-mode` on `document.documentElement`. No component hardcodes a color (DD-28, DD-30; ADR-0005).
 - **Offline is a whole-app invariant, not a layer.** No layer may make a background/unsolicited
   network call; all rendering assets are bundled. The sole permitted socket is the user-invoked
-  Stage-3 LLM inference to the configured provider (DD-32 as revised; `03_NonFunctional/04_OFFLINE.md`
+  assistant LLM inference to the configured provider (DD-32 as revised; `03_NonFunctional/04_OFFLINE.md`
   §6, `08_LLM_INTEGRATION.md`).
 
-Modules are enumerated authoritatively in `06_Process_and_Traceability/01_MODULE_INVENTORY.md`; every
+Modules are enumerated authoritatively in `02_Architecture/01_MODULE_INVENTORY.md`; every
 story cites a module path from there.

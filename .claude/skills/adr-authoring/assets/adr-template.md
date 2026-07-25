@@ -1,7 +1,7 @@
 # ADR-NNNN — <decision title, one imperative phrase>
 
 <!--
-  Mirrors docs/adr/template.md and specification/06_Process_and_Traceability/04_ADR_FORMAT.md.
+  Mirrors docs/adr/template.md.
   Copy to docs/adr/NNNN-short-slug.md (four-digit id, next free number, starting at ADR-0013+).
   Never author into specification/08_Decisions/ — that folder is frozen (ADR-0001…0012).
   Delete this comment before committing.

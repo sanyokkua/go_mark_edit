@@ -110,7 +110,7 @@ generated `frontend/wailsjs/` bindings dir.
 main.go                 → composition root: embed frontend/dist, wails.Run, Bind/EnumBind,
                           OnStartup→Init, OnShutdown, Mac.OnFileOpen, runtime.OnFileDrop
 wails.json              → Wails project config: platform options, info.fileAssociations, build hooks
-justfile                → task runner (just check / lint / test / trace / trace-check); primary interface
+justfile                → task runner (just check / lint / test); primary interface
 go.mod / go.sum         → Go module + deps (modernc.org/sqlite, goose, zerolog/lumberjack)
 internal/               → Go backend packages (strict Handler → Service → Repository):
   apperr/               → ErrorCode catalog, AppError, WireError, ToWire, *Result envelopes (bottom of graph)
@@ -133,15 +133,16 @@ frontend/               → React/Vite/TypeScript app
     logic/              → store/(Redux slices — a projection of internal/appmodel, DD-63) · adapter/(ONLY layer importing wailsjs/) · theme/ markdown/ format/ lint/ hooks/ utils/
     i18n/               → i18n init + en bundle
     dev/bridge-mock/    → dev-only Wails bridge mock (plain `npm run dev`, no Go backend)
-specification/          → FROZEN normative spec (source of truth) — read, never edit
-docs/                   → stories/ (docs/stories/story-NNN-*.md), adr/ (0013+), traceability.yaml (generated)
+specification/          → the product spec: 01_Product/ (behaviour), 02_Architecture/, 07_Phases/,
+                          mockups/gomarkedit-mockup.html (the visual reference). Editable.
+docs/                   → stories/ (current + archive/), adr/ (0013+), KNOWN_ISSUES.md, audits/
 .claude/                → agents/, skills/, rules/ (path-scoped guidance)
 build/                  → Wails build assets/output
 ```
 
 - Entry point: `main.go` (single `wails.Run`); frontend entry is `frontend/src/main.tsx`.
-- Commands (all via **`just`**, not raw npm): `just check` (format→lint→vet→test→trace-check),
-  `just lint`, `just test`, `just trace`, `just trace-check`; plus `wails dev`, `wails build`,
+- Commands (all via **`just`**, not raw npm): `just check` (format→lint→vet→test),
+  `just lint`, `just test`; plus `wails dev`, `wails build`,
   `wails generate module`. Go tests co-located as `*_test.go`; frontend tests via Jest + Playwright.
 - Key invariants to note when orienting: strict backend layering + `apperr.*Result` envelope (no
   `ctx` param on handlers), `wailsjs/` imported only from `logic/adapter/`, backend-authoritative state

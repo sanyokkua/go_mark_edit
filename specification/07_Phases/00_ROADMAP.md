@@ -1,81 +1,89 @@
-**Status:** Accepted
 **Owner:** architect
-**Audience:** architect, coder
-**Last Updated:** 2026-07-21
-**Cross-references:** all `PHASE_NN_*.md`, `06_Process_and_Traceability/*`
+**Audience:** everyone
+**Last Updated:** 2026-07-25
 
 # Roadmap
 
-Implementation proceeds through capability-dependent phases. Each phase file defines permanent requirements,
-transitions, producer/consumer contracts, edge ownership, non-normative phase-local work packages, and exact
-exit evidence. Architects assign global story ids only after investigating the current repository. Start a
-consumer only after its producer contract is available; numeric order remains the safe default where the
-explicit dependency graph is silent.
+What we build, in what order, and why that order. Each phase ends with a sentence a user would say
+out loud. Every dependency points backwards — no phase needs something a later phase delivers.
 
-Cross-cutting binding inputs: `03_NonFunctional/*`, `04_Build_and_Release/*`, and `05_Dependencies/*`
-are binding gates consulted in **every** phase plan (per
-`../06_Process_and_Traceability/06_DEFINITION_OF_DONE.md`), whether or not a given story row cites
-them; and `../01_Product/01_FUNCTIONAL_REQUIREMENTS.md#edge-cases` is the master EC registry from
-which every phase's edge-case list is drawn.
+| # | What the user gets | Depends on | State |
+|---|---|---|---|
+| [00](PHASE_00_IT_RUNS.md) | The app opens | — | **done** |
+| [01](PHASE_01_TYPE_AND_SEE.md) | I can type Markdown and watch it render | 00 | **done** |
+| [02](PHASE_02_IT_LOOKS_DESIGNED.md) | It looks designed instead of unstyled | 01 | **next** |
+| [03](PHASE_03_WRITE_MARKDOWN.md) | I can write Markdown, not just type it | 02 | |
+| [04](PHASE_04_REAL_FILES.md) | I can open, edit and save real files, in tabs | 03 | |
+| [05](PHASE_05_RICH_AND_SAFE.md) | My documents render richly and safely | 04 | |
+| [06](PHASE_06_A_FOLDER_OF_NOTES.md) | I can work on a whole folder of notes | 04 | |
+| [07](PHASE_07_INSTALL_IT.md) | I can install it, and double-clicking a `.md` opens it | 06 | |
+| [08](PHASE_08_TIDY_AND_SHARE.md) | My Markdown stays tidy, and I can share it as a PDF | 05 | |
+| [09](PHASE_09_AI_PROVIDER.md) | I can point the app at an AI provider | 04 | |
+| [10](PHASE_10_ASSISTANT_REWRITES.md) | The assistant can proofread and rewrite my document | 08, 09 | |
+| [11](PHASE_11_CONVERSATION.md) | I can have a conversation about my notes | 06, 10 | |
 
-| Phase | Theme | Delivers | Key modules | Depends on |
-|---|---|---|---|---|
-| **00** | Scaffold & toolchain | Wails v2 app boots (blank window), Go+React+Vite wiring, bridge-mock, DI root, apperr envelope, logging, DB open, `.claude`/CI/hooks, traceability scripts, ADR-0001..0006 | apperr, bootstrap, application, logging, db, file, dev/bridge-mock, ui/styles | — |
-| **01** | Core editor + preview | Monaco source editor, live preview (base CommonMark/GFM), split view, view-mode toggle, status bar, single backend-owned in-memory document (`internal/appmodel` foundation: GetState + commands + `state:patch`, DD-62..64) | internal/appmodel, ui/components(CodeEditor,MarkdownView), ui/widgets(EditorView,PreviewView), logic/markdown, logic/store(documents projection) | 00 |
-| **02** | File I/O + tabs | Native open/save/save-as via Go, new/close, UTF-8 + BOM/CRLF preservation, autosave, multiple tabs, dirty state, window title; file + tab ownership in `internal/appmodel` | internal/appmodel, internal/docs, logic/adapter(appModel), logic/store(tabs projection), logic/hooks(useAutosave) | 01 |
-| **03** | Folder workspace + recent | Open folder → filtered tree sidebar, open from tree, recent files/folders, reopen last, multi-instance/new window, drag-and-drop open | internal/workspace, internal/recent, internal/fileassoc, ui/widgets(FileExplorer), logic/store(workspace,recent) | 02 |
-| **04** | Rendering & extensions | Standard selector (Minimal/GFM/Full), KaTeX math, code highlighting, Mermaid, per-standard plugin sets, reading mode | logic/markdown, ui/components(MermaidBlock), ui/widgets(ReaderView) | 01 |
-| **05** | Format & lint | Format + Compact (Prettier/remark), remark-lint consistency, on-demand + on-save, editor squiggles, problems count | logic/format, logic/lint, ui/components(Toolbar,StatusBar) | 04 |
-| **06** | PDF export | Export current document to PDF via webview print; styled vs clean; print stylesheet | internal/export, ui/styles(print), ui/widgets | 04 |
-| **07** | File associations | `wails.json` fileAssociations, `OnFileOpen`/argv routing, open-in-default-mode, per-OS packaging hooks, "set as default" prompt | internal/fileassoc, main.go, build/ | 02 |
-| **08** | Theming & settings | Three themes × auto/light/dark, unified theme, full Settings dialog, Shortcuts & About dialogs, in-app menu bar, keyboard shortcuts, window & UI-layout state persistence (via `internal/appmodel` `SetUILayout`) | ui/styles(tokens), logic/theme, ui/widgets(SettingsDialog,AppMenuBar,ShortcutsDialog,AboutDialog), logic/hooks(useShortcuts), internal/appmodel, internal/settings | 01 |
-| **09** | Assets & security | Local asset handler (relative resolution + allowlist), remote-content policy + banner, path-traversal guard | internal/assets, ui/widgets(ExternalContentBanner), logic/markdown | 04 |
-| **10** | i18n, packaging & release | i18n layer + `en` bundle, NSIS/nfpm packaging, CI build matrix, git hooks, `verify:ui`, release artifacts | i18n, build/, .github/, scripts/ | 00–09 |
-| **11** | LLM foundation | Provider abstraction (OpenAI-compatible + profiles), model discovery, verification (test conn/models/inference), settings tabs (AI/Providers, AI Context), single-flight gate reuse, retries/timeouts, tokenizer + fit estimate | internal/llm/{providers,verify,tokenizer,context}, internal/settings(+providers table), ui/widgets(settings AI tabs) | 08, 02 |
-| **12** | Actions & proofread/reformat | Action catalog (Proofread, Confluence/Wiki, Article, Q&A, Summarize…), assistant sidebar shell, scope (selection/whole-doc) + token meter, single-shot agentic run, edit-proposal → diff → apply via editor command seam | internal/llm/{actions,agent,tools}, ui/widgets(assistant), logic/store(assistant,run) | 11, 05 |
-| **13** | Chat & agentic tool loop | Multi-turn chat + custom instructions, bounded tool-call loop, tools (read document/selection, list/read workspace files), streaming, cancellation, workspace file access | internal/llm/{agent,tools}, ui/widgets(assistant chat), logic/store(chat) | 12, 03 |
-| **14** | Context budgeting & polish | Explicit context budget, over-context warn/chunk, history sliding-window/summarize, transcript, provider/model UX polish, safety/limits hardening | internal/llm/{context,tokenizer,agent}, ui/widgets(assistant) | 13, 11 |
-| **15** | CI/CD & release finalization | Version injection (`AppVersion` + ldflags + wails.json patch, DD-65), icon pipeline (`build/appicon.png` → all per-OS icons, DD-66), tag-triggered release workflow (determine-version → build matrix + test gate → create-release, SHA256SUMS, pre-release detect) + DD-67 isolation gate — cross-cutting; **v1 ships via this pipeline** | internal/settings, internal/application, build/, .github/, assets/icon | 10 |
+## Why this order
 
-## Slicing guidance
+**Phase 02 comes second, not eighth.** `frontend/src/ui/styles/tokens.css` currently holds 62 tokens
+and not one colour. The app renders in default browser colours while `mockups/gomarkedit-mockup.html`
+shows three finished themes. Every phase that adds a surface before the palette exists gets restyled
+later, and reading mode cannot even be demonstrated until there is chrome to hide. Colour first.
 
-- A phase file lists phase-local work packages. The architect refines them into globally numbered **S/M**
-  stories in `../docs/stories/`; an L item is a non-ready epic that must be split before implementation.
-- Prefer **backend story before the UI story** that consumes it (the UI story `depends_on` it).
-- Keep phase 00 stories small and verifiable — they unblock everything else.
-- Each phase's stories cite `01_Product/*` clauses and the relevant `DD-NN`/`ADR-NNNN`.
-- `just phase-check` validates the roadmap's phase documents structurally; `just phase-complete-check NN`
-  proves one claimed-complete phase from done stories and durable exit evidence.
+**Phase 03 exists at all.** Bold, italic, headings, lists, links and tables — the formatting toolbar
+and its eleven keyboard shortcuts — are required by `01_Product/02_EDITOR_AND_VIEWER_MODES.md` and
+were scheduled by nothing. The primary thing a person does in a Markdown editor had no home.
 
-## Stages
+**Phase 07 is not last.** A release pipeline that only runs at the very end has never been proven when
+you need it. Once there is something worth handing to a person, make it installable.
 
-Phases roll up into the three implementation **stages** (`00_Foundation/06_IMPLEMENTATION_STAGES.md`),
-each a shippable app:
+**Phase 09 does not wait for packaging.** The previous plan gated the entire AI assistant on Linux
+`.rpm` construction. It needs the editor, not the installer.
 
-- **Stage 1 — Viewer:** phases 00, 01 (render only), 03, 04, 07, 08 (shell), 09.
-- **Stage 2 — Editor:** phases 02, 05, 06, + editing parts of 01/08.
-- **Stage 3 — Assistant:** phases 11, 12, 13, 14.
+## Rules that apply to every phase, not just one
 
-Phase 10 is cross-cutting: it finalizes i18n, packaging, and release for each stage as it ships
-(see `PHASE_10_I18N_PACKAGING.md`), so it belongs to no single stage; Phase 01 likewise spans
-Stages 1–2 as noted above (render-only parts in Stage 1, editing parts in Stage 2). **Release
-finalization is Phase 15** (`PHASE_15_CICD_RELEASE.md`, DD-65..67) — also cross-cutting: it
-consumes Phase 10's verify gates and packaging metadata and completes the v1 release train
-(version injection, icon derivation, tag-triggered release pipeline).
+These used to be phases of their own. They are not. They are things every phase must do.
 
-Stage-1/2 stories must honour the forward-compatibility constraints **F1–F9** in the stages doc so the
-assistant drops in without rework.
+- **Themes.** Any surface you add works in all three themes across light and dark. No hardcoded colour.
+- **Settings.** A setting ships with the feature it configures, into the Settings dialog shell from
+  Phase 02 — never as a separate later phase.
+- **Menus and shortcuts.** A new user action is registered once in the shortcut registry (Phase 03) and
+  appears in its menu. There is one registry, not two.
+- **Strings.** Every user-facing string goes through `t()` and into `en.json`. Adding a locale is then
+  a new JSON file and nothing else.
+- **Accessibility.** Keyboard reachable, correct roles and names, focus visible.
+- **Offline.** No background network. Ever. The only outbound call in the whole product is a
+  user-invoked request to the AI provider the user configured (Phase 09 onward).
 
-The accepted stage mapping and phase dependency graph are not fully chronological: Stage-1 PH03 depends on
-PH02, which is assigned to Stage 2. This unresolved planning conflict is recorded as PH01-X01 and must not be
-silently resolved by treating the stage labels as either sequential releases or mere capability labels.
+## Where the old phase documents went
 
-## Milestones
+Until 2026-07-25 this folder held 16 phase documents of about 304 KB, built from ID tables —
+requirement ledgers (`PHNN-RNN`), transitions (`PHNN-Tnn`), cross-phase contracts, edge-case tables,
+work packages and exit-evidence rows. They were replaced by the twelve pages above.
 
-- **M1 (Stage 1 — Viewer):** opens & renders files/folders, themes, associations, reading mode. Fully offline.
-- **M2 (Stage 2 — Editor):** editable, saveable multi-tab editor with format/lint and PDF export. Fully offline.
-- **M3 (Stage 3 — Assistant):** provider-configurable AI sidebar — proofread/reformat/chat/custom, agentic
-  tool loop, selection/whole-document scope, context-fit. Local provider by default; user-invoked network only.
+Almost all of that content was a compression of `01_Product/`, which says the same things in prose a
+person can read. Two parts were not, and were carried forward:
 
-Every milestone's shippable release is produced by the **Phase 15** pipeline
-(`PHASE_15_CICD_RELEASE.md`): a `v*.*.*` tag push yields versioned, checksummed per-OS assets.
+- **The 30 open specification conflicts** (`PHNN-Xnn`) — real places where two accepted documents
+  disagreed. Each now appears as a plain question in the "Questions to settle first" section of the
+  phase that owns it, with a recommended answer. Three were artefacts of the deleted phase-completion
+  machinery and died with it.
+- **The 108 transition rows** (`PHNN-Tnn`) — ordering and failure semantics. Most restated what
+  `01_Product/` already says; the ordering that mattered is in each phase's build order, and the few
+  failure rules stated nowhere else were folded into the owning `01_Product/` section.
+
+The originals remain in git at revision `39efb7a`:
+
+```bash
+git show 39efb7a:specification/07_Phases/PHASE_04_RENDERING_EXTENSIONS.md
+```
+
+Read `docs/audits/2026-07-25-phase-00-02-audit.md` for why the change was made.
+
+## How a phase turns into work
+
+Read the phase. Answer its **Questions to settle first** — each answer edits the relevant
+`01_Product/` file, or becomes an ADR in `docs/adr/` when it constrains the architecture. Then write
+one story per step in **Build it in this order** (format in `docs/stories/README.md`). Build one story
+per session. The phase is finished when you use the app and its **Done when** paragraph is true.
+
+There is no completion validator and no evidence file. A person decides.

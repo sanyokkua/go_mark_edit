@@ -5,7 +5,7 @@ They record the founding "why" behind the locked design decisions in
 `00_Foundation/04_DESIGN_DECISIONS.md` (`DD-NN`). They are read-only.
 
 **New decisions made during implementation** (ADR-0013+) live in the mutable working area at
-`../../docs/adr/` — do not add them here. Format: `06_Process_and_Traceability/04_ADR_FORMAT.md`.
+`../../docs/adr/` — do not add them here. Format: `../../docs/adr/template.md`.
 Files `NNNN-slug.md` (4-digit). Only `accepted` ADRs may be cited in a story's `adrs:`.
 
 | ADR | Title | Status | Supersedes | Superseded by |

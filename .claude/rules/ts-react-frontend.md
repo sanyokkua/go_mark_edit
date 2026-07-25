@@ -7,7 +7,7 @@ paths:
 # TypeScript / React frontend
 
 **Authority:** `specification/00_Foundation/04_DESIGN_DECISIONS.md` (DD-04, DD-62, DD-63, DD-64),
-`specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` (frontend modules),
+`specification/02_Architecture/01_MODULE_INVENTORY.md` (frontend modules),
 `specification/02_Architecture/03_FRONTEND_REACT.md` (incl. `#state-ownership`),
 `docs/adr/0014-backend-authoritative-state.md`. Frontend source lives under `frontend/src/`.
 

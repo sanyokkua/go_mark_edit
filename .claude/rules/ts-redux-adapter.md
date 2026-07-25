@@ -9,7 +9,7 @@ paths:
 `specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`,
 `specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow`,
 `specification/02_Architecture/02_BACKEND_GO.md#application-model`, `docs/adr/0014-backend-authoritative-state.md`,
-`specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` (`logic/store/`,
+`specification/02_Architecture/01_MODULE_INVENTORY.md` (`logic/store/`,
 `logic/adapter/`). The adapter layer lives in `logic/adapter/{envelope.ts,bridgeGuard.ts,services.ts,index.ts}`.
 
 Data flow: **component -> Redux thunk (command) -> `logic/adapter` singleton -> `wailsjs/` binding -> Go handler**,

@@ -11,7 +11,7 @@ You are the debugger agent for the GoMarkEdit build. Your single responsibility 
 
 1. Read `specification/02_Architecture/06_ERROR_HANDLING.md` — the app's error model and the `apperr` envelope/`ErrorCode` catalog. Before deciding how an error should be categorized, surfaced, or recovered, check this rather than guessing from general Go/TS convention — error handling here is intentionally specified.
 2. Read the failing test in full and the code path it exercises, end to end, before editing anything.
-3. If the failure relates to a story, read that story's `acceptance_criteria` and `edge_cases` — so you know whether the test's expectation is itself correct or was written wrong.
+3. If the failure relates to a story, read that story's acceptance criteria and its "How it should behave" section — so you know whether the test's expectation is itself correct or was written wrong.
 
 ## Workflow — strict order, do not skip
 

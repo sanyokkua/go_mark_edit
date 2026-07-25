@@ -44,14 +44,18 @@
 - **Appearance** — Light / Dark / Auto (Auto follows OS `prefers-color-scheme`).
 - **Story** — one implementable unit of work (`../docs/stories/story-NNN-*.md`).
 - **AC** — Acceptance Criterion (`STORY-NNN-AC-N`); each has a proving test.
-- **EC** — Edge Case id (`EC-AREA-N`) that a story must satisfy.
+- **EC** — Edge Case id (`EC-AREA-N`) naming a specific failure or boundary condition in `01_Product/`.
 - **ADR** — Architecture Decision Record (`08_Decisions/NNNN-*.md`).
-- **Module inventory** — the authoritative list of shippable modules (`06.../01_MODULE_INVENTORY.md`).
-- **Traceability** — the generated record linking spec clause ↔ story ↔ AC ↔ test ↔ module.
-- **Phase** — a themed batch of related stories delivered together (`07_Phases/`).
-- **Stage** — one of the three coarse delivery milestones (Viewer → Editor → Assistant), each shipping a
-  working app (`00_Foundation/06_IMPLEMENTATION_STAGES.md`).
-- **Assistant / assistant sidebar** — the Stage-3 right-hand sidebar providing LLM-powered actions,
+- **Module inventory** — the authoritative list of shippable modules (`02_Architecture/01_MODULE_INVENTORY.md`).
+- **`Proves:` tag** — the comment or test-name marker linking a test to the acceptance criterion it
+  proves. A convention for humans; nothing generates or validates it.
+- **Phase** — one step of the delivery order in `07_Phases/00_ROADMAP.md`, ending with something a
+  user can do.
+- **Stage 1 / 2 / 3** — retired. Until 2026-07-25 the phases were grouped into three delivery stages
+  (Viewer → Editor → Assistant); the grouping contradicted the phase dependencies and was removed
+  (`00_Foundation/06_IMPLEMENTATION_STAGES.md`). Older text still uses the labels: read **Stage 3** as
+  "the assistant", and **Stage 1 / Stage 2** as "before the assistant". Do not use them in new text.
+- **Assistant / assistant sidebar** — the assistant right-hand sidebar providing LLM-powered actions,
   chat, and custom instructions over the open document (DD-38).
 - **Action** — a preconfigured, one-click assistant task shipped as data (id, label, category, system
   prompt, directive, default scope), e.g. Proofread (DD-39, `15_ACTIONS_LIBRARY.md`).

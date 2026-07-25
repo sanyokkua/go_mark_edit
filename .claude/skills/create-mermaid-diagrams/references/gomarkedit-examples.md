@@ -2,7 +2,7 @@
 
 Four concrete, in-repo-style examples — one per diagram type — to copy the shape of rather than
 inventing conventions from scratch. Each uses real module/layer names from
-`specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md`.
+`specification/02_Architecture/01_MODULE_INVENTORY.md`.
 
 > **A note on scope.** These diagrams are authored **into the spec's Markdown** as documentation —
 > they are read by humans browsing `specification/`. This is a different concern from
@@ -65,19 +65,19 @@ request/response or event-stream interaction — e.g. an OS file-open via `Mac.O
 ````markdown
 ```mermaid
 stateDiagram-v2
-    [*] --> draft
-    draft --> ready: "front-matter validates; deps done; clauses resolve"
-    ready --> inProgress: "coder picks up"
-    inProgress --> done: "every AC test passes; trace-check clean"
-    inProgress --> ready: "blocked; returned to backlog"
-    done --> superseded: "later story replaces it"
+    [*] --> clean
+    clean --> dirty: "user edits"
+    dirty --> saving: "save or autosave"
+    saving --> clean: "write succeeded"
+    saving --> dirty: "write failed; content preserved"
+    dirty --> conflicted: "file changed on disk"
 ```
 ````
 
 Note `inProgress` (no hyphen) as the state **id**; the human-readable label `in-progress` lives only
-in the transition text, since hyphens aren't valid in a bare id. This depicts the story lifecycle from
-`specification/06_Process_and_Traceability/02_STORY_FORMAT.md`; the same shape applies to any other
-lifecycle, e.g. a document's clean/dirty/saving states.
+in the transition text, since hyphens aren't valid in a bare id. This depicts a document's save
+lifecycle from `01_Product/03_FILES_TABS_WORKSPACE.md#dirty-state`; the same shape suits any other
+state machine in the spec.
 
 ## 4. Settings KV + recent files (`erDiagram`)
 

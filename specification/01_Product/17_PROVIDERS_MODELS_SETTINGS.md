@@ -131,7 +131,7 @@ Assistant configuration is persisted locally (DD-46; F4 additive growth of the s
 - The **selected provider** (its id) and the **selected model** are persisted so the assistant reopens
   with the last choice.
 - **Providers are stored** in a `providers` table introduced as an **additive migration** (no rewrite of
-  the Stage-1/2 schema); scalar AI preferences (params, estimator, margins, strategies, max iterations)
+  the pre-assistant schema); scalar AI preferences (params, estimator, margins, strategies, max iterations)
   live as KV keys alongside existing settings groups.
 - **No secret is ever stored** — only the environment-variable *name* per provider (DD-45).
 - Historical run transcripts, if retained, store a **snapshot** of the provider/model name at run time

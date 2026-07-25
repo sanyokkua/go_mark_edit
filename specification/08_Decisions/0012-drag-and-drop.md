@@ -76,7 +76,7 @@ never navigated; the real paths arrive via the Wails event, not the browser drop
 - Design decisions: DD-56, DD-57, DD-58, DD-59. Related: DD-06 (workspace), DD-08 (multi-instance),
   DD-25–DD-27 (OS open routing / default open mode), DD-32 (no network).
 - Spec clauses: `01_Product/03_FILES_TABS_WORKSPACE.md#drag-and-drop-open`,
-  `02_Architecture/04_WAILS_INTEGRATION.md#file-drop`, `06_Process_and_Traceability/01_MODULE_INVENTORY.md`
+  `02_Architecture/04_WAILS_INTEGRATION.md#file-drop`, `02_Architecture/01_MODULE_INVENTORY.md`
   (`internal/fileassoc/`, `logic/hooks/` `useFileDrop`, `ui/components/` `DropOverlay`).
-- Stories: Phase 03 drag-and-drop tasks (STORY-096 backend routing, STORY-097 overlay + wiring), per
-  `07_Phases/PHASE_03_FOLDER_WORKSPACE.md`; authored per phase (none `done` at ADR time).
+- Stories: Phase 06 drag-and-drop tasks (STORY-096 backend routing, STORY-097 overlay + wiring), per
+  `07_Phases/PHASE_06_A_FOLDER_OF_NOTES.md`; authored per phase (none built at ADR time).

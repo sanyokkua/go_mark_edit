@@ -111,5 +111,5 @@ recorded here, not adopted now.
   `01_Product/04_MARKDOWN_STANDARDS.md`, `01_Product/05_RENDERING_AND_EXTENSIONS.md`,
   `01_Product/06_FORMAT_AND_LINT.md`, `01_Product/07_PDF_EXPORT.md`,
   `05_Dependencies/02_FRONTEND_DEPENDENCIES.md`.
-- Stories: Phase 04 rendering/extensions stories, Phase 05 format/lint stories, and Phase 06 PDF-export
+- Stories: Phase 05 rendering/extensions stories, Phase 08 format/lint stories, and Phase 08 PDF-export
   stories, per `07_Phases/00_ROADMAP.md` (authored per phase; none `done` at ADR time).

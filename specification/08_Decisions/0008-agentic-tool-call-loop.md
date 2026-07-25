@@ -6,7 +6,7 @@
 
 ## Context and problem statement
 
-The Stage-3 assistant does more than transform a single blob of text. To proofread, reformat, answer
+The assistant assistant does more than transform a single blob of text. To proofread, reformat, answer
 questions, or act on a custom instruction it may need to read the current document or selection, and —
 when a folder workspace is open — list and read other Markdown/text files under the workspace root, then
 return a proposed edit as a reviewable diff (DD-39, DD-41, DD-42, DD-44). The amount of context it needs,
@@ -133,6 +133,6 @@ aborts promptly — between turns or mid-tool — and `OnShutdown` cancels any i
   `02_Architecture/08_LLM_INTEGRATION.md#tool-registry`,
   `02_Architecture/08_LLM_INTEGRATION.md#gate-and-cancellation`,
   `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`.
-- Stories: Phase 12 (single-shot agentic run, edit-proposal → diff) and Phase 13 (multi-turn chat,
+- Stories: Phase 10 (single-shot agentic run, edit-proposal → diff) and Phase 11 (multi-turn chat,
   bounded tool-call loop, tools, streaming, cancellation) per `07_Phases/00_ROADMAP.md` (authored per
   phase; none `done` at ADR time).

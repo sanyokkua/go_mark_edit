@@ -19,8 +19,7 @@ EC-LINT edge-case ids this skill touches. Check here before improvising a fix.
 ## Edge-case id index
 
 Every EC-RENDER-*/EC-FMT-*/EC-LINT-* id this skill's territory touches, with a one-line meaning.
-Cross-reference against `just trace-check` — every one of these that you touch in a change must
-map to a proving test.
+Each one you touch should end up with a test that names it.
 
 | Edge case | Meaning |
 |---|---|

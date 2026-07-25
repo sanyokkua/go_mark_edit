@@ -19,23 +19,23 @@
 ## Primary use cases
 
 - **UC1 — Edit a Markdown file.** Open a file (dialog, recent, or OS association) → edit source with
-  live preview → autosave / explicit save. (Phases 01, 02, 04)
+  live preview → autosave / explicit save. (Phases 01, 04, 05)
 - **UC2 — Read a Markdown file.** Set the default open mode to Reading (Viewer) (DD-27) → open via OS
   association → read rendered content with Mermaid/math/code → optionally switch to the Editor.
-  (Phases 04, 07, 08)
+  (Phases 02, 05, 07)
 - **UC3 — Work a folder of notes.** Open a folder → filtered tree → open several files in tabs →
-  switch/close tabs → reopen last folder next launch. (Phase 03)
+  switch/close tabs → reopen last folder next launch. (Phase 06)
 - **UC4 — Tidy a document.** Format (pad tables, normalize markers) and Lint (consistency) on demand
-  or on save; fix the flagged issues. (Phase 05)
-- **UC5 — Export to PDF.** Export the current rendered document to PDF, styled or clean. (Phase 06)
+  or on save; fix the flagged issues. (Phase 08)
+- **UC5 — Export to PDF.** Export the current rendered document to PDF, styled or clean. (Phase 08)
 - **UC6 — Make it mine.** Pick a theme (Glass/Material/Minimal) and appearance (auto/light/dark);
-  set default open mode, autosave, markdown standard, remote-content policy. (Phase 08)
+  set default open mode, autosave, markdown standard, remote-content policy. (Phase 02)
 - **UC7 — Handle references.** A document links a local image (resolved relative to the file) and a
-  remote image (loaded only per the content policy). (Phase 09)
-- **UC8 — Assist with the document (Stage 3).** Configure a local LLM provider → open the assistant
+  remote image (loaded only per the content policy). (Phase 05)
+- **UC8 — Assist with the document.** Configure a local LLM provider → open the assistant
   sidebar → run Proofread / a reformat target / Summarize on the selection or whole document, or chat and
   give a custom instruction → review the proposed diff → Apply into the editor and save. Outbound calls go
-  only to the configured provider and only on the user's action. (Phases 11–14)
+  only to the configured provider and only on the user's action. (Phases 09–11)
 
 ## Anti-use-cases (explicitly not supported in v1)
 

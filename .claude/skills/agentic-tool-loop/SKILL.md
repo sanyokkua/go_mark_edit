@@ -46,7 +46,7 @@ emitting `runId`-carrying events. Edits are always **proposals** (a diff), never
 - `specification/00_Foundation/04_DESIGN_DECISIONS.md` — DD-40, DD-41, DD-42, DD-43, DD-44, DD-47, DD-49, DD-55.
 - `specification/08_Decisions/0008-agentic-tool-call-loop.md` (ADR-0008);
   `0010-assistant-sidebar-apply-edit.md` (ADR-0010).
-- `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` — the only valid module paths.
+- `specification/02_Architecture/01_MODULE_INVENTORY.md` — the only valid module paths.
 - Rules: `.claude/rules/llm-integration.md`, `offline-and-privacy.md`, `go-error-envelope.md`.
 
 ## Workflow
@@ -113,6 +113,6 @@ emitting `runId`-carrying events. Edits are always **proposals** (a diff), never
 - `specification/00_Foundation/04_DESIGN_DECISIONS.md` (DD-40–DD-44, DD-47, DD-49, DD-55);
   `06_IMPLEMENTATION_STAGES.md` (F1–F9 seams)
 - `specification/08_Decisions/0008-agentic-tool-call-loop.md`, `0010-assistant-sidebar-apply-edit.md`
-- `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` (`internal/llm/agent/`,
+- `specification/02_Architecture/01_MODULE_INVENTORY.md` (`internal/llm/agent/`,
   `internal/llm/tools/`, `internal/gate/`, `internal/apperr/`, `logic/store/assistant/`, `logic/adapter/`)
 - Rules: `.claude/rules/llm-integration.md`, `offline-and-privacy.md`, `go-error-envelope.md`

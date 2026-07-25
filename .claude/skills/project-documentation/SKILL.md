@@ -31,7 +31,6 @@ assets:
 related-skills:
   - project-navigator: optional — deeper repository orientation (this skill already orients via its own scripts)
   - create-mermaid-diagrams: optional — deeper diagram support (diagram rules are embedded here in references/mermaid-rules.md)
-  - story-and-traceability-workflow: optional — when documentation work should be tracked as a story or cite spec clauses
 install:
   defaultLocation: .claude/skills/project-documentation/
   supportsProject: true

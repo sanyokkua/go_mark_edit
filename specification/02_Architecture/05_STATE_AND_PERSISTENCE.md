@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/02_BACKEND_GO.md`, `01_Product/03_FILES_TABS_WORKSPACE.md`, `01_Product/11_SETTINGS.md`, `06_Process_and_Traceability/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0004`, `08_Decisions/ADR-0006`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/02_BACKEND_GO.md`, `01_Product/03_FILES_TABS_WORKSPACE.md`, `01_Product/11_SETTINGS.md`, `02_Architecture/01_MODULE_INVENTORY.md`, `08_Decisions/ADR-0004`, `08_Decisions/ADR-0006`
 
 # State and Persistence
 

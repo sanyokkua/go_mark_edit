@@ -6,7 +6,7 @@ paths:
 
 # Go error envelope
 
-**Authority:** `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md`
+**Authority:** `specification/02_Architecture/01_MODULE_INVENTORY.md`
 (`internal/apperr/` row), `specification/02_Architecture/02_BACKEND_GO.md`. The error model
 lives in `internal/apperr/{apperr.go,wire.go,results.go}`.
 

@@ -28,7 +28,6 @@ assets:
 related-skills:
   - project-navigator: orient first if the repository is unfamiliar
   - testing-wails-app: to verify test claims / `Proves:` tags by actually running `just test`
-  - story-and-traceability-workflow: to confirm new behavior carries a story + `Proves:` traceability tags
 install:
   defaultLocation: .claude/skills/code-review/
   supportsProject: true

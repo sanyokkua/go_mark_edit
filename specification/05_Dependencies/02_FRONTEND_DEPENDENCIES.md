@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-04, DD-14, DD-16..20, DD-23, DD-32, DD-35), `06_Process_and_Traceability/01_MODULE_INVENTORY.md`, `02_Architecture/03_FRONTEND_REACT.md`, `05_Dependencies/03_DEPENDENCY_POLICY.md`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-04, DD-14, DD-16..20, DD-23, DD-32, DD-35), `02_Architecture/01_MODULE_INVENTORY.md`, `02_Architecture/03_FRONTEND_REACT.md`, `05_Dependencies/03_DEPENDENCY_POLICY.md`
 
 # Frontend Dependencies
 
@@ -51,7 +51,7 @@ standard (Minimal / GFM / Full, DD-14).
 | `remark-footnotes` | Footnote syntax (where not already covered by GFM). | Full |
 
 The Minimal (CommonMark) tier uses react-markdown's base plugins only. `logic/markdown/renderer.ts`
-maps standard → plugin set (`06_Process_and_Traceability/01_MODULE_INVENTORY.md`).
+maps standard → plugin set (`02_Architecture/01_MODULE_INVENTORY.md`).
 
 ## 3. Format & lint (Markdown)
 

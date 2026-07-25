@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `00_Foundation/05_SPEC_INDEX.md`, `01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `01_Product/03_FILES_TABS_WORKSPACE.md`, `01_Product/04_MARKDOWN_STANDARDS.md`, `01_Product/05_RENDERING_AND_EXTENSIONS.md`, `01_Product/06_FORMAT_AND_LINT.md`, `01_Product/07_PDF_EXPORT.md`, `01_Product/08_FILE_ASSOCIATIONS.md`, `01_Product/09_ASSETS_AND_SECURITY.md`, `01_Product/10_THEMING.md`, `01_Product/11_SETTINGS.md`, `01_Product/12_KEYBOARD_SHORTCUTS.md`, `01_Product/13_I18N.md`, `mockups/gomarkedit-mockup.html`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `01_Product/03_FILES_TABS_WORKSPACE.md`, `01_Product/04_MARKDOWN_STANDARDS.md`, `01_Product/05_RENDERING_AND_EXTENSIONS.md`, `01_Product/06_FORMAT_AND_LINT.md`, `01_Product/07_PDF_EXPORT.md`, `01_Product/08_FILE_ASSOCIATIONS.md`, `01_Product/09_ASSETS_AND_SECURITY.md`, `01_Product/10_THEMING.md`, `01_Product/11_SETTINGS.md`, `01_Product/12_KEYBOARD_SHORTCUTS.md`, `01_Product/13_I18N.md`, `mockups/gomarkedit-mockup.html`
 
 # Functional Requirements
 
@@ -241,7 +241,7 @@ ASSOC, FMT, LINT, PDF, THEME, SET, I18N, DND, LLM, REL}. Each feature document r
 Every EC must be satisfied by at least one story acceptance criterion. Three areas are enumerated in the
 feature documents that own them and incorporated here by reference rather than duplicated below:
 **DND** (drag-and-drop, DD-56–DD-59) in `03_FILES_TABS_WORKSPACE.md#drag-and-drop-open`, **LLM**
-(Stage-3 assistant, DD-38–DD-55) across `14_LLM_ASSISTANT_OVERVIEW.md`,
+(assistant assistant, DD-38–DD-55) across `14_LLM_ASSISTANT_OVERVIEW.md`,
 `16_CHAT_AND_AGENTIC_WORKFLOW.md`, `17_PROVIDERS_MODELS_SETTINGS.md`, and `18_TOKENIZER_AND_CONTEXT.md`,
 and **REL** (release pipeline, DD-65–DD-67) in
 `04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#5-edge-cases-rel`.

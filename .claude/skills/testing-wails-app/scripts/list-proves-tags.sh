@@ -2,9 +2,9 @@
 #
 # list-proves-tags.sh — List every `Proves: STORY-NNN-AC-N` id declared across the test tree.
 #
-# A pre-`just trace-check` sanity check: shows which acceptance-criteria ids your tests currently
-# claim to prove, so you can eyeball coverage before running the traceability gate. It does NOT
-# validate against the stories — that is `just trace-check`'s job — it only reports what is declared.
+# A sanity check: shows which acceptance-criteria ids your tests currently claim to prove, so you
+# can compare that list against a story's criteria by eye. It does not validate anything against
+# the stories — it only reports what is declared.
 #
 # READ-ONLY: greps files; never writes, edits, or runs the tests.
 #

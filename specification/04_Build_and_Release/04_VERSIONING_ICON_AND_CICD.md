@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-17
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-34, DD-65, DD-66, DD-67), `04_Build_and_Release/01_BUILD_MATRIX.md`, `04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md`, `04_Build_and_Release/03_CI_AND_HOOKS.md`, `assets/icon/README.md`, `06_Process_and_Traceability/01_MODULE_INVENTORY.md`, `../docs/adr/0015-cicd-versioning-icon.md` (ADR-0015)
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-34, DD-65, DD-66, DD-67), `04_Build_and_Release/01_BUILD_MATRIX.md`, `04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md`, `04_Build_and_Release/03_CI_AND_HOOKS.md`, `assets/icon/README.md`, `02_Architecture/01_MODULE_INVENTORY.md`, `../docs/adr/0015-cicd-versioning-icon.md` (ADR-0015)
 
 # Versioning, Icon and CI/CD
 
@@ -10,8 +10,8 @@ The release-finalization layer of the build system: how the app version gets int
 (DD-65), how all platform icons derive from one canonical source (DD-66), and the tag-triggered
 release workflow with its production-data isolation guarantee (DD-67). It completes what
 `03_CI_AND_HOOKS.md` outlines: that file owns the PR-level gate set, hooks, and command taxonomy;
-**this file is the normative description of the release pipeline itself**. Owned by **Phase 15**
-(`07_Phases/PHASE_15_CICD_RELEASE.md`); recorded in ADR-0015.
+**this file is the normative description of the release pipeline itself**. Owned by **Phase 07**
+(`07_Phases/PHASE_07_INSTALL_IT.md`); recorded in ADR-0015.
 
 ## Table of Contents
 
@@ -240,6 +240,12 @@ jobs:
       # → sha256sum * > SHA256SUMS.txt → release (prerelease: contains(version, '-'), generated notes + DD-34 caveats)
       - ...
 ```
+
+**Publication is gated, and the gate cannot be routed around.** `create-release` runs only after both
+`build` and `test` succeed. Any check that fails — or that was skipped, or was never run — blocks
+publication; it is never weakened or bypassed to get a release out. No fallback path, manual re-run or
+partial-artifact recovery may publish implicitly: publication happens on exactly one path, and only
+when every gate before it passed.
 
 ## 4. CI/dev isolation from production data
 

@@ -6,22 +6,31 @@ paths:
 
 # TypeScript testing
 
-**Authority:** `specification/06_Process_and_Traceability/03_TRACEABILITY.md` (the `Proves:`
-convention), `02_STORY_FORMAT.md` (Definition of done), `01_MODULE_INVENTORY.md`.
+**Authority:** `docs/stories/README.md` (the story format and the `Proves:` convention),
+`specification/02_Architecture/01_MODULE_INVENTORY.md`.
 
-Frontend unit/component tests use **Jest + React Testing Library**.
+Frontend unit/component tests use **Jest + React Testing Library**. They prove application
+behaviour — never the contents of a repository document.
 
 ## DO
 
-- Name the AC in the test name (and/or a leading comment) so `just trace` can collect it:
+- Name the acceptance criterion in the test name, so a failure names the requirement that broke:
 
   ```ts
-  // Proves: STORY-031-AC-1
   it('STORY-031-AC-1 renders a GFM table in the preview', () => { ... });
   ```
 
-- Put every proved `EC-AREA-N` id in the actual Jest test name. An incidental id in a fixture, assertion,
-  or body comment is not exact edge-case evidence.
+  A convention for humans; nothing regenerates from it and nothing validates it.
+
+- **Never mock the component under test.** `jest.mock('./ui/widgets/AppShell')` inside a suite that
+  claims to prove `AppShell`'s layout proves nothing — that mistake is live in this repo today
+  (`docs/KNOWN_ISSUES.md` §4). Mock collaborators; render the subject.
+
+- **Write adversarial tests, not happy paths.** Cover remount and session identity, retry after
+  failure, out-of-order async completion, and consumption through the public seam.
+
+- **Reject a test that proves only** that a symbol exists, that source text contains a string, or a
+  precondition-free happy path — without asserting the final user-visible postcondition.
 
 - Test **behaviour**, from the user's vantage point. Query by **accessible roles/labels/text**
   (`getByRole`, `getByLabelText`, `findByText`), not by class name, test id, or DOM structure.
@@ -34,11 +43,13 @@ Frontend unit/component tests use **Jest + React Testing Library**.
 - Don't reach into `wailsjs/`, internal component state, or private module symbols.
 - Don't assert on exact class names or snapshot huge DOM trees as the primary assertion.
 - Don't delete/skip a failing test to go green; fix the code or the test.
+- **Don't write a test that validates a document**, and don't mock the thing you are testing.
 
 ## Authoring checklist
 
-- [ ] Test name/comment carries `Proves: STORY-NNN-AC-N`.
-- [ ] Any edge-case proof names its `EC-AREA-N` in the actual test title.
+- [ ] Test name carries `STORY-NNN-AC-N`.
+- [ ] The component under test is rendered, not mocked.
 - [ ] Queries are accessibility-first (`getByRole`/`getByLabelText`/text).
 - [ ] Backend seam mocked at `logic/adapter`, not `wailsjs/`.
 - [ ] Async handled with `findBy*`/`waitFor`; every AC has a proving test.
+- [ ] The test asserts a user-visible outcome, not that a function was called.

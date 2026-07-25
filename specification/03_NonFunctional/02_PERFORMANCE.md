@@ -41,7 +41,7 @@ guarantees.
   only on blur / tab switch / close / save.
 - Toolbar/shortcut formatting actions operate on the selection or current line, so their cost is
   independent of document size.
-- Stage-3 LLM inference is **provider-bound** (dominated by model/network latency), runs off the
+- assistant LLM inference is **provider-bound** (dominated by model/network latency), runs off the
   editor/UI thread behind the single-flight gate, and streams into the assistant sidebar; it never blocks
   editing and is **not** measured against these local budgets
   (`02_Architecture/08_LLM_INTEGRATION.md`).

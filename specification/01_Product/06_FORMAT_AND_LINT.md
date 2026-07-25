@@ -30,6 +30,11 @@ Triggered by the toolbar "⌁ Format" button or `Alt+Shift+F`. Format mutates th
 undo step and marks the document dirty. If the content cannot be parsed, Format is a no-op with a
 notice (EC-FMT-1). A very large document formats as a gated long op with a busy indicator (EC-FMT-4).
 
+When the gate is already held, Format reports that the app is busy and **changes nothing** — it does
+not queue silently. Cancelling a running Format, or a Format that fails, releases the gate and leaves
+the buffer as it was: either the original content, or the latest content the backend had accepted.
+There is no partly-formatted result.
+
 ## Compact
 
 **Compact** is a **conservative** whitespace tightening — not aggressive minification — because

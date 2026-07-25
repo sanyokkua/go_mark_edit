@@ -3,7 +3,7 @@
 **Status:** accepted
 **Date:** 2026-07-23
 **Deciders:** project owner, architect
-**Supersedes:** ADR-0020
+**Supersedes:** ADR-0020 (deleted 2026-07-25 with the process ADRs; its content is fully absorbed here — see `git show 39efb7a:docs/adr/0020-phase02-document-lifecycle-policy.md`)
 
 ## Context and problem statement
 
@@ -107,6 +107,6 @@ change requires a new decision. Phase 02 has no Compare-later state.
   `specification/01_Product/03_FILES_TABS_WORKSPACE.md#save-as`,
   `specification/01_Product/03_FILES_TABS_WORKSPACE.md#dirty-state`,
   `specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings`,
-  `specification/07_Phases/PHASE_02_FILE_IO_TABS.md#open-specification-conflicts`
+  `specification/07_Phases/PHASE_04_REAL_FILES.md` (its "Questions to settle first")
 - Stories: STORY-033, STORY-034, STORY-035, STORY-037, STORY-038, STORY-040, STORY-041, STORY-042,
   STORY-043, STORY-044, STORY-045, STORY-046, STORY-048, STORY-049, STORY-051

@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-03, DD-32, DD-33, DD-34), `06_Process_and_Traceability/02_STORY_FORMAT.md`, `04_Build_and_Release/03_CI_AND_HOOKS.md`, `05_Dependencies/01_GO_DEPENDENCIES.md`, `05_Dependencies/02_FRONTEND_DEPENDENCIES.md`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-03, DD-32, DD-33, DD-34), `04_Build_and_Release/03_CI_AND_HOOKS.md`, `05_Dependencies/01_GO_DEPENDENCIES.md`, `05_Dependencies/02_FRONTEND_DEPENDENCIES.md`
 
 # Dependency Policy
 
@@ -33,7 +33,7 @@ anything from a CDN or remote origin at runtime.
 - A dependency that hard-requires a network fetch for a core feature is **rejected**; find a bundleable
   alternative or drop the feature.
 - The only network access anywhere is **document-referenced** remote assets (content policy + guarded
-  AssetServer) and the **user-invoked Stage-3 LLM inference** to the user-configured provider (DD-32
+  AssetServer) and the **user-invoked assistant LLM inference** to the user-configured provider (DD-32
   as revised) — never a library phoning home.
 
 ## 2. No telemetry / network dependencies
@@ -43,7 +43,7 @@ Per DD-33 (no telemetry/analytics) and DD-32 as revised (no background/unsolicit
 - **No analytics, telemetry, crash-reporting, or "check for updates" dependency** — client or server.
   Logs are local rotating files only (`internal/logging`).
 - The Go backend carries **no third-party HTTP client** (Resty and similar are excluded,
-  `05_Dependencies/01_GO_DEPENDENCIES.md` §3); the Stage-3 provider client uses the standard library
+  `05_Dependencies/01_GO_DEPENDENCIES.md` §3); the assistant provider client uses the standard library
   `net/http`, opened only on user action to the user-configured provider.
 - **No auto-update** dependency (DD-34).
 - A dependency discovered to beacon out (even opt-in) is removed and flagged in a story note.

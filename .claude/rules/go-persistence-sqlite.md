@@ -8,7 +8,7 @@ paths:
 # Go persistence (SQLite)
 
 **Authority:** `specification/00_Foundation/04_DESIGN_DECISIONS.md` (DD-03, DD-08, DD-10, DD-13,
-ADR-0004, ADR-0006), `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md`
+ADR-0004, ADR-0006), `specification/02_Architecture/01_MODULE_INVENTORY.md`
 (`internal/db/`, `internal/settings/`, `internal/recent/`). The DB open path lives in
 `internal/db/db.go`; the KV-backed repository in `internal/settings/repository_sqlite.go`.
 

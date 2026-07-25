@@ -80,7 +80,7 @@ func (g *Gate) Release()         { select { case <-g.ch: default: } }
 An exclusive handler does `if !gate.TryAcquire() { return apperr.Busy() }` and `defer gate.Release()`.
 When the gate is held, the second attempt returns `CodeBusy` and the UI shows a "please wait" toast
 rather than launching a concurrent run (`06_ERROR_HANDLING.md` `#toasts`). The gate is process-wide, not
-per-document, so at most one export/format-all runs per instance at a time. The Stage-3 LLM assistant
+per-document, so at most one export/format-all runs per instance at a time. The assistant LLM assistant
 reuses this same `internal/gate`, so an LLM run, a PDF export, and a format-all are mutually exclusive
 app-wide — at most one of the three is ever in flight per instance (DD-47;
 `08_LLM_INTEGRATION.md` `#gate-and-cancellation`).

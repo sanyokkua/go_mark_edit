@@ -5,4 +5,3 @@ just go-format-check
 just go-lint
 just go-vet
 just go-test
-just trace-check

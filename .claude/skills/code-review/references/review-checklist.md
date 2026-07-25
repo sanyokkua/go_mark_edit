@@ -212,10 +212,13 @@ the spec under `specification/` is frozen — review against it, and never propo
 - [ ] **Local assets go through the guarded `internal/assets` handler** (allowlist + traversal
       rejection); remote document assets stay gated by the content policy.
 
-### Traceability (`traceability-and-stories.md`)
+### Stories and tests (`docs/stories/README.md`)
 
-- [ ] **New behavior is traced** — a story under `docs/stories/` cites real spec clauses + module
-      paths from `01_MODULE_INVENTORY.md`, and each proving test carries a
-      `// Proves: STORY-NNN-AC-N` (Go) or `it('STORY-NNN-AC-N …')` (Jest) tag.
-- [ ] **Spec is frozen** — the change does not edit `specification/**`; normative behavior defers to it.
-      A change that needs an earlier contract altered is a new story (+ ADR `0013+` in `docs/adr/`).
+- [ ] **New behaviour has a story** under `docs/stories/`, and every acceptance criterion has a test
+      tagged `// Proves: STORY-NNN-AC-N` (Go) or `it('STORY-NNN-AC-N …')` (Jest).
+- [ ] **Those tests prove something** — each asserts a user-visible outcome, renders the component
+      under test rather than mocking it, and covers a failure path. A test that checks a symbol
+      exists, greps source text, or asserts a function was called is not proof.
+- [ ] **The spec still matches the code** — behaviour that changed is reflected in the owning
+      `specification/01_Product/` section. The specification is editable; leaving it contradicting the
+      code is the defect, not editing it.

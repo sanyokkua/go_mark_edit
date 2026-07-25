@@ -1,8 +1,7 @@
 # Frontend and Playwright tests
 
-Authority: `.claude/rules/ts-testing.md`; P2 (state transition) and P6 (visual) in
-`specification/06_Process_and_Traceability/05_ACCEPTANCE_CRITERIA_PATTERNS.md`. The adapter seam this
-mocks is described in `.claude/rules/ts-redux-adapter.md`.
+Authority: `.claude/rules/ts-testing.md`. The adapter seam these tests mock is described in
+`.claude/rules/ts-redux-adapter.md`.
 
 ## Jest / RTL — behavior, a11y queries, mock the adapter
 

@@ -102,5 +102,5 @@ the model the mockups render across 3 themes × auto/light/dark.
 - Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux`, `01_Product/10_THEMING.md`,
   `01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `02_Architecture/03_FRONTEND_REACT.md`,
   `mockups/gomarkedit-mockup.html`, `mockups/README.md`.
-- Stories: Phase 08 theming/settings stories (three themes × auto/light/dark, unified theme, tokens),
+- Stories: Phase 02 theming/settings stories (three themes × auto/light/dark, unified theme, tokens),
   per `07_Phases/00_ROADMAP.md` (authored per phase; none `done` at ADR time).

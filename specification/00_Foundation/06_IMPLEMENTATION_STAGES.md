@@ -1,130 +1,92 @@
-**Status:** Accepted
 **Owner:** architect
-**Audience:** architect, coder, tester
-**Last Updated:** 2026-07-10
+**Audience:** architect, coder
+**Last Updated:** 2026-07-25
 **Cross-references:** `07_Phases/00_ROADMAP.md`, `04_DESIGN_DECISIONS.md`, `02_Architecture/01_SYSTEM_ARCHITECTURE.md`, `02_Architecture/08_LLM_INTEGRATION.md`
 
-# Implementation Stages
+# Forward-compatibility constraints
 
-GoMarkEdit is delivered in **three high-level stages**. A stage is a coarse milestone that produces a
-**fully working, shippable app**; it groups the fine-grained **phases** (`07_Phases/`) which in turn
-group the **stories** (`../docs/stories/`). Stages are the "where are we" axis; phases/stories are the
-"what to build next" axis.
+**This file used to define a three-stage delivery model on top of the phases. That model was removed
+on 2026-07-25** because it contradicted the phase dependencies: it placed the folder workspace, file
+associations, assets and theming in "Stage 1 — Viewer" while every one of them depends on file I/O,
+which it placed in Stage 2. Stage 1 could therefore never be completed. It also described Stage 1 as
+"rendered, not editable" long after the editor had shipped.
 
-The governing rule: **each stage must ship a working app, and each stage must leave the seams open for
-the next stage without hard-coding decisions that would block it.** A stage may build less, but it must
-not build a wall.
+There is now one ordering: `07_Phases/00_ROADMAP.md`.
 
-## Table of Contents
+What survives is the genuinely useful half of the old document — the constraints that stop an early
+phase from building a wall the later ones cannot get through.
 
-1. The three stages
-2. Stage → phase mapping
-3. Forward-compatibility constraints (per stage)
-4. What each stage explicitly does NOT build
-5. Stage exit criteria
+## The rule
 
-## 1. The three stages
+**Build less if you like, but do not build a wall.** An early phase may leave a capability
+unimplemented; it may not make a structural decision that forces a later phase to rework what it has
+already shipped.
 
-- **Stage 1 — Markdown Viewer.** The complete application shell and read path: open and render single
-  files, open a folder as a filtered workspace tree, theming (3 themes × light/dark/auto), OS
-  file associations, local/remote asset handling, and distraction-free reading mode. **Rendered, not
-  editable.** Fully offline. (Multiple document tabs arrive with Phase 02 in Stage 2 — see §2 and
-  `04_DESIGN_DECISIONS.md` §12.)
-- **Stage 2 — Markdown Editor.** Adds the write path on top of the working Viewer: the source editor,
-  new/open/save/save-as, autosave, dirty state, encoding/line-ending preservation, the rich formatting
-  toolbar and keyboard shortcuts, Format/Compact/Lint, and PDF export. Still fully offline.
-- **Stage 3 — LLM Assistant.** Adds the right-hand assistant sidebar on top of the working Editor:
-  provider/model configuration, an agentic tool-call loop, preconfigured actions (Proofread, reformat
-  targets, summarize…), chat and custom instructions, selection/whole-document scope, tokenizer-based
-  context fitting, and apply-as-diff into the editor. Introduces the app's only outbound network
-  (LLM calls to the user-configured provider; local by default).
+These are binding. A story that violates one is not done.
 
-Each stage is usable on its own: Stage 1 is a capable Markdown viewer; Stage 2 is a full editor; Stage 3
-is the editor plus an AI assistant.
+## F1 — Three-region layout
 
-## 2. Stage → phase mapping
+The app shell is a horizontal three-region layout: **left** (file tree), **center** (document area),
+**right** (assistant). Until the assistant exists the right region is empty and collapsed, but the
+layout, its show/hide plumbing and its grid slot **exist and are reserved**. Adding the assistant must
+not restructure the shell. (DD-38)
 
-Phases are defined in `07_Phases/00_ROADMAP.md`. Their grouping into stages:
+## F2 — Documents have identity and a content accessor
 
-| Stage | Phases | Delivers |
-|---|---|---|
-| **Stage 1 — Viewer** | 00 (scaffold), 01 (render/preview only), 03 (folder workspace + recent), 04 (rendering & extensions), 07 (file associations), 08 (theming & settings shell), 09 (assets & security) | Boots, opens & renders files/folders, themes, associations, reading mode |
-| **Stage 2 — Editor** | 02 (file I/O + tabs write path), 05 (format & lint), 06 (PDF export), + the editing parts of 01/08 | Full create/edit/save/export editor |
-| **Stage 3 — Assistant** | 11 (LLM foundation), 12 (actions & proofread/reformat), 13 (chat & agentic tool loop + workspace access), 14 (context budgeting, tokenizer, polish) | AI assistant sidebar |
+Each open document is a first-class model with an id, a path, and a read accessor for its content and
+selection — not a bare string passed around. The accessor's shape is what later features read through.
 
-> Note: Phase 01 spans stages — its *render/preview* stories are Stage 1; its *editing* stories are
-> Stage 2. Phase 08's *theming + settings shell* is Stage 1; the *AI settings tabs* land in Stage 3.
-> Phase 10 (i18n & packaging) is cross-cutting and finalized per stage as each ships.
+## F3 — One document-command seam
 
-## 3. Forward-compatibility constraints (per stage)
+There is a single interface through which document content is read and mutated. Nothing reaches into
+the editor widget directly. The assistant's apply-edit goes through this same seam.
 
-These are **binding**: a Stage-1/2 story that violates one is not `done`. They ensure the later stages
-drop in without rework.
+## F4 — The settings registry can grow
 
-### Stage 1 must leave open
+Settings are a typed, grouped registry over the KV store. New groups — including AI / Providers and AI
+Context — are added without a schema rewrite. Migrations are additive; the `providers` table arrives
+later as a new additive migration.
 
-- **F1 — Three-region layout.** The app shell is a horizontal three-region layout: **left** (file
-  tree), **center** (document area), **right** (assistant). In Stage 1 the right region is **absent/empty
-  and collapsed**, but the layout, its show/hide plumbing, and its CSS grid/flex slot **exist and are
-  reserved**. Adding the assistant in Stage 3 must not restructure the shell. (DD-38)
-- **F2 — Document model with a stable identity + content accessor.** Each open document/tab is a
-  first-class model with an id, path, and a **read accessor for its content and (later) selection**. In
-  Stage 1 content is read-only; the model and its accessor interface are shaped so Stage 2 can make it
-  editable and Stage 3 can read content/selection through the **same interface**. Do not model a
-  document as a bare string passed around ad hoc.
-- **F3 — A document-command seam.** Define (even if minimally implemented) a **document command
-  interface** — the single point through which content is read and (later) mutated. Stage 2 implements
-  mutation (edit/replace-range/replace-all); Stage 3's apply-edit calls it. No component should reach
-  into the editor widget directly.
-- **F4 — Settings registry that can grow.** Settings are a typed, grouped registry backed by the KV
-  store. Stage 1 ships Appearance/Markdown/Content groups; the registry and its persistence must accept
-  **new groups (AI / Providers, AI Context) without schema rewrites** — migrations are additive, and the
-  `providers` table may be introduced later as a new additive migration.
-- **F5 — Backend seam packages reserved.** The DI root, `apperr` envelope, logging, gate, and file
-  services exist. The **single-flight gate** is generic (guards "a long operation"), so Stage 3 reuses
-  it for inference. No Stage-1 decision may assume single-instance (multi-instance holds, DD-08).
-- **F6 — Offline invariant is scoped, not absolute.** Stage 1/2 make zero network calls. Do not hard-code
-  a "the app must never open a socket" assumption in a way that blocks Stage 3's user-invoked provider
-  calls; the invariant is "no *background/unsolicited* network" (DD-32). Keep an HTTP-client seam
-  possible (not built) so Stage 3 adds a provider client without fighting the architecture.
+## F5 — Backend seams reserved
 
-### Stage 2 must leave open
+The DI root, the `apperr` envelope, logging, the single-flight gate and the file services exist. The
+gate is **generic** — it guards "a long operation", so format-all, export and inference all reuse the
+same one. No decision may assume a single running instance; several windows are supported (DD-08).
 
-- **F7 — Editable buffer exposes selection + apply-edit through F3's command seam.** When the editor
-  becomes editable, the document-command interface gains **get-selection**, **replace-range**, and
-  **replace-all** operations. These are exactly the operations Stage 3's edit-proposal apply needs — so
-  implement them as the stable public surface, not as private editor callbacks.
-- **F8 — Format/Lint pipeline is callable programmatically.** The Format/Lint transforms are pure,
-  callable functions (not only toolbar handlers), so Stage 3 can, e.g., run Format after applying an
-  LLM edit, or reuse the diff renderer for edit proposals.
-- **F9 — Diff rendering is a reusable component.** The Format/Lint (or a dedicated) diff view is a
-  standalone component; Stage 3's edit-proposal card reuses it.
+## F6 — The offline invariant is scoped, not absolute
 
-### Stage 3 builds
+The rule is **no background or unsolicited network**, not "never open a socket" (DD-32). Do not
+hard-code an assumption that blocks a user-invoked call to a configured provider later. Keep an
+HTTP-client seam possible without building it.
 
-- The assistant sidebar, provider abstraction, agentic tool loop, tools (read document/selection,
-  list/read workspace files, propose edit), tokenizer/context budgeter, and the AI settings tabs — all
-  consuming F1–F9 seams. See `02_Architecture/08_LLM_INTEGRATION.md`.
+## F7 — The editable buffer exposes selection and apply-edit
 
-## 4. What each stage explicitly does NOT build
+Once editing exists, the F3 seam gains get-selection, replace-range and replace-all. These are exactly
+what an edit proposal needs, so they are the stable public surface — not private editor callbacks.
 
-- **Stage 1 does NOT build:** any editing/mutation, save, autosave, format/lint, PDF export, or any LLM
-  code, provider client, or network call.
-- **Stage 2 does NOT build:** any LLM code, provider client, assistant UI, tokenizer, or network call.
-- **Stage 3 does NOT change** the Viewer/Editor contracts destructively — it only consumes the reserved
-  seams and adds modules; any required change to an earlier contract is a new story (+ ADR if significant).
+## F8 — Format and Lint are callable programmatically
 
-## 5. Stage exit criteria
+The transforms are pure, callable functions, not only toolbar handlers, so they can be run after an
+applied edit or reused elsewhere.
 
-A stage is complete when **all its phases' stories are `done`**, `just check` + `just trace-check` pass,
-and:
+## F9 — Diff rendering is a reusable component
 
-- **Stage 1 exit:** on each OS, open a `.md` from the file manager (association) → renders in reading
-  mode; open a folder → filtered tree navigable; a document with a table, math, code, and a Mermaid
-  diagram renders; all three themes × light/dark/auto work; **zero** network connections observed.
-- **Stage 2 exit:** create/open/edit/save round-trips with encoding + line endings preserved; autosave
-  works; tabs; Format and Lint operate; export a document to PDF; still **zero** network connections.
-- **Stage 3 exit:** configure a **local** provider; run Proofread on a selection and on the whole
-  document; apply the proposed diff into the editor and save; chat multi-turn with a custom instruction;
-  the token-fit meter warns on an over-context whole-document action; a network trace shows requests
-  **only** to the configured provider endpoint and **only** on user action; telemetry/auto-update absent.
+The diff view is standalone. The format preview and the assistant's edit-proposal card are two
+consumers of one component.
+
+## F10 — The visual layer is a token system, from the start
+
+*Added 2026-07-25, because the previous plan violated it.*
+
+Every visual value is a design token resolved through `data-theme` × `data-mode`. No component ships a
+hardcoded colour, and no component assumes a single appearance. There was no such constraint among
+F1–F9, theming was consequently scheduled ninth of sixteen, and the result was an application with 62
+layout tokens and no colours at all — every surface built before it would have had to be restyled.
+
+A phase that adds a surface adds its tokens at the same time.
+
+## What is built last
+
+The assistant — sidebar, provider abstraction, tool loop, tokenizer, AI settings — is built entirely by
+**consuming** F1–F10. It never restructures an earlier contract. If it needs one changed, that is a new
+story and, when significant, an ADR. See `02_Architecture/08_LLM_INTEGRATION.md`.

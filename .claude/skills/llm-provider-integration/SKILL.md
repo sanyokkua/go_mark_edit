@@ -52,7 +52,7 @@ framework, no per-kind client class.
   (and DD-32 revised).
 - `specification/08_Decisions/0007-llm-provider-abstraction.md` (ADR-0007);
   `0011-network-policy-llm-exception.md` (ADR-0011).
-- `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` — the only valid module paths
+- `specification/02_Architecture/01_MODULE_INVENTORY.md` — the only valid module paths
   (`internal/llm/providers/`, `internal/llm/verify/`, `internal/settings/`, `internal/gate/`,
   `internal/apperr/`).
 - Rules: `.claude/rules/llm-integration.md`, `offline-and-privacy.md`, `go-error-envelope.md`.
@@ -133,6 +133,6 @@ framework, no per-kind client class.
 - `specification/01_Product/17_PROVIDERS_MODELS_SETTINGS.md`; `14_LLM_ASSISTANT_OVERVIEW.md`
 - `specification/00_Foundation/04_DESIGN_DECISIONS.md` (DD-32 revised, DD-45, DD-46, DD-48, DD-52–DD-54)
 - `specification/08_Decisions/0007-llm-provider-abstraction.md`, `0011-network-policy-llm-exception.md`
-- `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` (`internal/llm/providers/`,
+- `specification/02_Architecture/01_MODULE_INVENTORY.md` (`internal/llm/providers/`,
   `internal/llm/verify/`, `internal/settings/`, `internal/gate/`, `internal/apperr/`)
 - Rules: `.claude/rules/llm-integration.md`, `offline-and-privacy.md`, `go-error-envelope.md`

@@ -59,6 +59,10 @@ assistant's separate, user-invoked LLM traffic (DD-32 as revised):
 
 The setting lives in the Settings dialog Content & privacy group (`11_SETTINGS.md#content-privacy-group`).
 
+If persisting a change to this policy fails, the **previously acknowledged policy stays in force** and
+the failure is reported. Nothing is loaded speculatively on the assumption that a policy change will
+save — a request is made only after the change is stored.
+
 ## Banner
 
 Under the **Ask** policy, when a document references external images/CSS, an in-preview **banner** is

@@ -45,7 +45,7 @@ fit meter, the over-context warning, and history trimming — with the provider'
   (and EC-LLM-10, EC-LLM-15).
 - `specification/00_Foundation/04_DESIGN_DECISIONS.md` — DD-50, DD-51, DD-52, DD-53 (and DD-43 scope).
 - `specification/08_Decisions/0009-tokenizer-context-budget.md` (ADR-0009).
-- `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` — the only valid module paths.
+- `specification/02_Architecture/01_MODULE_INVENTORY.md` — the only valid module paths.
 - Rules: `.claude/rules/llm-integration.md`, `offline-and-privacy.md`.
 
 ## Workflow (load references progressively)
@@ -106,6 +106,6 @@ fit meter, the over-context warning, and history trimming — with the provider'
 - `specification/01_Product/18_TOKENIZER_AND_CONTEXT.md` (all sections; EC-LLM-10, EC-LLM-15)
 - `specification/00_Foundation/04_DESIGN_DECISIONS.md` (DD-43, DD-50, DD-51, DD-52, DD-53)
 - `specification/08_Decisions/0009-tokenizer-context-budget.md`
-- `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` (`internal/llm/tokenizer/`,
+- `specification/02_Architecture/01_MODULE_INVENTORY.md` (`internal/llm/tokenizer/`,
   `internal/llm/context/`)
 - Rules: `.claude/rules/llm-integration.md`, `offline-and-privacy.md`

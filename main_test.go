@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -202,6 +203,50 @@ func TestAppOptionsEnumBindIncludesAllErrorCodes(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, apperr.AllErrorCodes) {
 		t.Fatalf("EnumBind ErrorCode catalog = %#v, want %#v", got, apperr.AllErrorCodes)
+	}
+}
+
+// The generated Wails bindings stay committed, so a signature change cannot land as silent drift.
+func TestWailsBindingsRemainTracked(t *testing.T) {
+	output, err := exec.Command("git", "ls-files", "--stage", "frontend/wailsjs").Output()
+	if err != nil {
+		t.Fatalf("list tracked Wails bindings: %v", err)
+	}
+
+	// Every generated binding, not a subset: a handler whose bindings stop being tracked is exactly
+	// the drift this guards. Add a row here when a new bound handler is introduced.
+	required := map[string]bool{
+		"frontend/wailsjs/go/appmodel/AppModelHandler.d.ts": false,
+		"frontend/wailsjs/go/appmodel/AppModelHandler.js":   false,
+		"frontend/wailsjs/go/models.ts":                     false,
+		"frontend/wailsjs/go/settings/SettingsHandler.d.ts": false,
+		"frontend/wailsjs/go/settings/SettingsHandler.js":   false,
+		"frontend/wailsjs/runtime/package.json":             false,
+		"frontend/wailsjs/runtime/runtime.d.ts":             false,
+		"frontend/wailsjs/runtime/runtime.js":               false,
+	}
+
+	entries := strings.FieldsFunc(string(output), func(r rune) bool { return r == '\n' })
+	if len(entries) == 0 {
+		t.Fatal("no Wails bindings are tracked")
+	}
+	for _, entry := range entries {
+		fields := strings.Fields(entry)
+		if len(fields) != 4 {
+			t.Errorf("invalid tracked Wails binding entry %q", entry)
+			continue
+		}
+		if fields[0] != "100755" {
+			t.Errorf("Wails binding mode = %q, want generated mode 100755", entry)
+		}
+		if _, needed := required[fields[3]]; needed {
+			required[fields[3]] = true
+		}
+	}
+	for path, found := range required {
+		if !found {
+			t.Errorf("required Wails binding %q is not tracked", path)
+		}
 	}
 }
 

@@ -135,7 +135,7 @@ enforced by the hooks and CI (`03_CI_AND_HOOKS.md`).
 
 GoMarkEdit keeps a **dev build fully isolated** from a production install so a `wails dev` session never
 touches real user settings, the real DB, or real logs (`internal/file`
-in `06_Process_and_Traceability/01_MODULE_INVENTORY.md`):
+in `02_Architecture/01_MODULE_INVENTORY.md`):
 
 | Concern | Production | `wails dev` |
 |---|---|---|

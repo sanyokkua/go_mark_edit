@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/02_BACKEND_GO.md`, `02_Architecture/03_FRONTEND_REACT.md`, `06_Process_and_Traceability/01_MODULE_INVENTORY.md`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `02_Architecture/02_BACKEND_GO.md`, `02_Architecture/03_FRONTEND_REACT.md`, `02_Architecture/01_MODULE_INVENTORY.md`
 
 # Error Handling
 
@@ -43,7 +43,7 @@ Constructors: `apperr.Validation(field, expected, got)`, `apperr.NotFound(path)`
 
 ### LLM error codes (Stage 3)
 
-The Stage-3 assistant (`02_Architecture/08_LLM_INTEGRATION.md`) extends this same catalog additively.
+The assistant assistant (`02_Architecture/08_LLM_INTEGRATION.md`) extends this same catalog additively.
 These codes are part of the one `apperr.ErrorCode` enum and are exposed to TypeScript via the same
 `EnumBind`. `busy`, `timeout`, `cancelled`, `validation`, and `internal` above are reused with their
 existing meaning (the gate held → `busy`; deadline → `timeout`; etc.); the assistant-specific additions

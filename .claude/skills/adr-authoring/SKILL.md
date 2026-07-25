@@ -13,8 +13,6 @@ references:
   - references/template-and-example.md
 assets:
   - assets/adr-template.md
-related-skills:
-  - story-and-traceability-workflow: the story that cites this ADR in its adrs: field
 ---
 
 # ADR Authoring

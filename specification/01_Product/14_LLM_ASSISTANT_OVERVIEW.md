@@ -2,13 +2,13 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-32, DD-38–DD-55), `00_Foundation/06_IMPLEMENTATION_STAGES.md` (Stage 3, F1–F9), `01_Product/15_ACTIONS_LIBRARY.md`, `01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md`, `01_Product/17_PROVIDERS_MODELS_SETTINGS.md`, `01_Product/18_TOKENIZER_AND_CONTEXT.md`, `01_Product/11_SETTINGS.md`, `mockups/gomarkedit-mockup.html`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-32, DD-38–DD-55), `00_Foundation/06_IMPLEMENTATION_STAGES.md` (Stage 3, F1–F10), `01_Product/15_ACTIONS_LIBRARY.md`, `01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md`, `01_Product/17_PROVIDERS_MODELS_SETTINGS.md`, `01_Product/18_TOKENIZER_AND_CONTEXT.md`, `01_Product/11_SETTINGS.md`, `mockups/gomarkedit-mockup.html`
 
 # LLM Assistant — Overview
 
 The LLM Assistant adds AI-powered proofreading, reformatting, chat, and custom instructions over the
-open document. It is the third and final implementation stage (`06_IMPLEMENTATION_STAGES.md` §1); it
-must not exist in Stages 1–2, and it drops into the seams those stages reserved (F1–F9) without
+open document. It is the last thing built (`07_Phases/00_ROADMAP.md`); it
+must not exist in the phases before the assistant, and it drops into the seams those stages reserved (F1–F10) without
 restructuring the Viewer or Editor. This document defines the assistant surface, its interaction
 modes, its scope model, and its privacy/network posture. The detailed behaviour of each part is
 specified in the four companion documents (15–18).
@@ -125,7 +125,7 @@ user-initiated (DD-32 as revised for Stage 3, DD-54).
   message, or applying a custom instruction — and **only to the single provider the user configured**.
   No document content is sent in the background, on load, on save, or on idle.
 - **The app makes no other network calls, ever** — no update checks, no telemetry, no analytics, no CDN
-  or asset fetches (DD-32, DD-33). All rendering assets remain bundled (Stages 1–2 invariant).
+  or asset fetches (DD-32, DD-33). All rendering assets remain bundled (the pre-assistant invariant).
 - **The default provider is local** (e.g. Ollama / LM Studio), so a default install keeps every byte of
   document text **on-device** (DD-32, DD-54; `17_PROVIDERS_MODELS_SETTINGS.md#defaults-local`). Remote
   providers (OpenAI, Azure, generic compatible) are strictly opt-in and require the user to enter their
@@ -140,11 +140,11 @@ user-initiated (DD-32 as revised for Stage 3, DD-54).
 
 ## Forward-compat
 
-Stage 3 is **additive only**: it consumes the seams Stages 1–2 reserved (`06_IMPLEMENTATION_STAGES.md`
+the assistant phases is **additive only**: it consumes the seams the earlier phases reserved (`06_IMPLEMENTATION_STAGES.md`
 §3) and does not change the Viewer/Editor contracts destructively.
 
 - The sidebar occupies the **reserved right-region slot** (F1) — the three-region shell and its
-  show/hide plumbing already exist; Stage 3 fills the slot rather than restructuring the layout (DD-38).
+  show/hide plumbing already exist; the assistant phases fills the slot rather than restructuring the layout (DD-38).
 - Reading the document and selection, and applying edits, go through the **document-command seam**
   (F2/F3/F7) — the same interface Stage 2 made editable. No assistant component reaches into the editor
   widget directly (DD-42).
@@ -158,5 +158,5 @@ Stage 3 is **additive only**: it consumes the seams Stages 1–2 reserved (`06_I
 - Diff rendering (F9), and the Format/Lint transforms as callable functions (F8), are reused by the
   proposed-edit card and post-apply cleanup.
 
-This document, and 15–18, describe **Stage 3 only**. No behaviour here may be present in a Stage-1/2
+This document, and 15–18, describe **the assistant phases only**. No behaviour here may be present in a pre-assistant
 build.

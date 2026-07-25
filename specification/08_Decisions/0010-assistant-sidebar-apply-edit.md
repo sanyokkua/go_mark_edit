@@ -6,12 +6,12 @@
 
 ## Context and problem statement
 
-The Stage-3 assistant has to live somewhere in the GoMarkEdit shell and has to have a way to turn a
+The assistant assistant has to live somewhere in the GoMarkEdit shell and has to have a way to turn a
 model's suggested rewrite into an actual change in the user's document. Two coupled UX/architecture
 questions follow: **where** does the assistant surface (and how do its settings fit the existing Settings
 dialog), and **how** does an accepted LLM suggestion reach the editor buffer?
 
-The answer must honor the constraints the rest of the app already sets. The Stage-1/2 shell was built with
+The answer must honor the constraints the rest of the app already sets. The pre-assistant shell was built with
 forward-compatibility seams for exactly this feature: a reserved, previously-empty **right** layout region
 (F1), a first-class document model with a content/selection accessor (F2), an editor **document-command**
 interface exposing replace-range and replace-all (F3/F7), programmatic Format/Lint (F8), and a reusable
@@ -82,7 +82,7 @@ safety margin, reply reserve, over-context strategy, history strategy, max tool 
   must degrade gracefully (show/hide, responsive collapse).
 - Negative: The review-and-apply step is an extra interaction versus auto-applying — a deliberate trade of
   a little friction for user control and safety.
-- Neutral: The assistant depends on the F1–F9 seams being present and correct; if a Stage-1/2 story
+- Neutral: The assistant depends on the F1–F10 seams being present and correct; if a pre-assistant story
   regressed a seam, the assistant surfaces it — this is by design (the seams are the contract).
 
 ## Pros and cons of the options
@@ -92,7 +92,7 @@ safety margin, reply reserve, over-context strategy, history strategy, max tool 
 - Good: Uses the reserved region and all the reserved seams; keeps a human in the loop for every edit; a
   single, well-tested apply/save path shared with manual editing; reuses DiffView and Format; settings fit
   the existing dialog; matches the approved mockup.
-- Bad: Occupies screen width; adds a review step; couples the assistant to the correctness of the F1–F9
+- Bad: Occupies screen width; adds a review step; couples the assistant to the correctness of the F1–F10
   seams.
 
 ### Option B — Inline auto-apply edits
@@ -122,6 +122,6 @@ safety margin, reply reserve, over-context strategy, history strategy, max tool 
   `00_Foundation/06_IMPLEMENTATION_STAGES.md` (F1 three-region layout, F2 document accessor, F3/F7
   document-command seam, F8 programmatic Format/Lint, F9 reusable DiffView), and the assistant mockup
   `mockups/gomarkedit-mockup.html`.
-- Stories: Phase 12 (assistant sidebar shell, scope + token meter, edit-proposal → diff → apply via editor
+- Stories: Phase 10 (assistant sidebar shell, scope + token meter, edit-proposal → diff → apply via editor
   command seam) and Phase 08 (Settings dialog that the AI tabs extend) per `07_Phases/00_ROADMAP.md`
   (authored per phase; none `done` at ADR time).

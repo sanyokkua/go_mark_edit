@@ -77,9 +77,9 @@ repository (or a folder containing several repositories) **without modifying any
    commands from the manifest/scripts/CI/README. Read `references/pipeline-guide.md` for how different
    build systems and CI pipelines declare these. **For GoMarkEdit** the entry point is `main.go` (the
    single `wails.Run` composition root; frontend entry `frontend/src/main.tsx`), and the canonical
-   commands are the **`just`** targets (`just check`, `just lint`, `just test`, `just trace`,
-   `just trace-check`) plus `wails dev` / `wails build` / `wails generate module` — prefer these over
-   the raw `npm` scripts in `frontend/package.json`.
+   commands are the **`just`** targets (`just check`, `just lint`, `just test`, `just build`) plus
+   `wails dev` / `wails build` / `wails generate module` — prefer these over the raw `npm` scripts in
+   `frontend/package.json`.
 
 6. **Trace key configuration.** Note where configuration and secrets come from (environment variables,
    config files, parameter/secret stores) at a high level. Read `references/configuration-tracing.md`
