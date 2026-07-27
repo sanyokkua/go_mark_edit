@@ -22,11 +22,12 @@ relevant row. Where a decision is architecturally significant it also has an ADR
 8. OS integration
 9. Theming & UX
 10. Non-functional & operations
-11. LLM assistant (Stage 3)
+11. LLM assistant
 12. Drag-and-drop
 13. Window & UI-layout state
 14. Application state ownership
 15. Versioning, app icon & CI/CD
+16. Decisions from the 2026-07-25 review
 
 ## 1. Platform & framework
 
@@ -90,7 +91,8 @@ relevant row. Where a decision is architecturally significant it also has an ADR
   (setting). CodeMirror 6 is a documented future option. (ADR-0002)
 - **DD-21** **Local image paths resolve relative to the current document** (GitHub/GitLab semantics),
   served through a guarded Wails `AssetServer` handler with a directory **allowlist** (the document's
-  folder + workspace root + user-configured roots); path traversal is rejected.
+  folder + workspace root); path traversal is rejected. *(Configured roots were cut on 2026-07-25 —
+  no setting for them was ever defined; ADR-0030, `01_Product/19_SANITIZATION_AND_CSP.md`.)*
 - **DD-22** **Remote content in documents (images/CSS)** is governed by a policy setting: **Ask**
   (default; shows an in-preview banner), **Always allow**, **Always block**. The app itself makes no
   network calls; only document-referenced remote assets are affected, and only per this policy.
@@ -132,11 +134,11 @@ relevant row. Where a decision is architecturally significant it also has an ADR
 - **DD-32** **Offline-first, no background network.** The app performs **no background network activity
   whatsoever** — no update checks, no telemetry, no CDN/asset fetches; all rendering assets are bundled.
   The **only** outbound requests the app ever makes are **LLM inference calls to the provider the user
-  explicitly configured** (Stage 3, DD-38+), and only **on user action** (invoking an action or sending
+  explicitly configured** (the assistant phases, DD-38+), and only **on user action** (invoking an action or sending
   a chat message). The **default provider is local** (e.g. Ollama/LM Studio), so a default install stays
   fully on-device. Remote providers (e.g. OpenAI) are strictly opt-in and require the user to enter
-  their own endpoint/credentials. Before the assistant exists, (Viewer, Editor) make **zero** network calls of any kind.
-  (Revised for Stage 3; see ADR-0011.)
+  their own endpoint/credentials. Before the assistant exists the app makes **zero** network calls of any kind.
+  (Revised for the assistant; see ADR-0011.)
 - **DD-33** **No telemetry / analytics.** Diagnostic **logs are written to a local file** (rotating)
   and never transmitted.
 - **DD-34** **MIT-licensed, open source.** **No code signing / notarization** and **no auto-update** in
@@ -148,12 +150,12 @@ relevant row. Where a decision is architecturally significant it also has an ADR
 - **DD-37** A high bar of CI/testing rigour is the **target** but is staged in later phases
   (see `07_Phases`); it is not required to block the earliest scaffolding stories.
 
-## 11. LLM assistant (Stage 3)
+## 11. LLM assistant
 
 The assistant adds LLM-powered proofreading, reformatting, chat, and custom instructions over the
 open document. It is built last (`07_Phases/00_ROADMAP.md`) and
-must not exist before the assistant phases, but the phases before them must leave the seams open for it (forward-compatibility,
-see the stages doc).
+must not exist before the assistant phases, but every phase before them must leave the seams open for it
+(the forward-compatibility constraints F1–F10 in `00_Foundation/06_IMPLEMENTATION_STAGES.md`).
 
 - **DD-38** The assistant lives in a **right-hand sidebar** that can be shown/hidden (default hidden
   until a provider is configured). It has, top-to-bottom: a provider/model header, an **apply-to scope**
@@ -169,12 +171,12 @@ see the stages doc).
   edit-proposal tool to return changes; the loop has hard **iteration and time limits**. (ADR-0008)
 - **DD-41** **Tool scope is least-privilege and read-mostly.** Tools expose: the **current document**
   (full or selection), and — **only when a folder workspace is open** — **listing and reading of other
-  Markdown/text files under the workspace root** (allowlisted, traversal-rejected, reusing the Stage-1
-  asset-allowlist rules). No arbitrary filesystem, shell, or network tools. The model **never writes
+  Markdown/text files under the workspace root** (allowlisted, traversal-rejected, reusing the
+  asset-allowlist rules established before the assistant). No arbitrary filesystem, shell, or network tools. The model **never writes
   files directly**.
 - **DD-42** **All edits are proposals the user reviews.** An edit tool returns a **diff** shown in the
   sidebar; the user **Applies** (writes it into the editor buffer via the editor's document API),
-  reviews hunks, or discards. Nothing is written to disk except through the normal save/autosave path
+  re-runs, or discards — there is no partial apply. Nothing is written to disk except through the normal save/autosave path
   after the user applies and the buffer changes. (ADR-0010)
 - **DD-43** **Scope: selection or whole document.** If text is selected, actions default to the
   selection; otherwise to the whole document. The user can override per action. Applying a
@@ -220,10 +222,11 @@ see the stages doc).
 ## 12. Drag-and-drop
 
 Refines `01_Product/03_FILES_TABS_WORKSPACE.md#drag-and-drop-open`. Drag-and-drop opens files/folders;
-it does not move, copy, or reorder anything on disk. It is a pre-assistant capability (it consumes tabs from
-Stage 2 and the workspace from Stage 1) and adds **no network**.
+it does not move, copy, or reorder anything on disk. It is a pre-assistant capability (it consumes the tab set and the folder
+workspace) and adds **no network**.
 
-- **DD-56** The window accepts **drag-and-drop of files and folders**. A dropped **file** opens in a
+- **DD-56** *(narrowed by DD-77 / ADR-0033: the app also creates files and folders in the workspace.)*
+  The window accepts **drag-and-drop of files and folders**. A dropped **file** opens in a
   **new tab**, or in the **current tab if no document is open** (or the current tab is an empty, never-saved
   buffer). Dropping **multiple files** opens each in its own tab. Dropped documents open in the
   **default open mode** (DD-27). A dropped file of an **unsupported type** (not `.md`/`.markdown`/`.mdown`/`.txt`)
@@ -258,7 +261,7 @@ These decisions cover the **application-level** window/chrome layout, which is d
   dispatching a **command**, and the backend updates the model, emits the change, and persists it. The
   persisted layout covers: the native **window size and maximized state**; **folder-sidebar**
   visibility (and width); the current **view arrangement** (Editor / Split / Preview) and individual
-  **pane visibility**; and, in Stage 3, the **assistant-sidebar** visibility (and width). State is written
+  **pane visibility**; and, once the assistant exists, the **assistant-sidebar** visibility (and width). State is written
   **through on every change** — a discrete toggle (show/hide a sidebar, switch arrangement) writes
   **immediately**; a continuous change (window resize) is **debounced** and then **flushed on close** — so
   the store always holds the **last value only**. There is **no history** and **no session/tab restore**
@@ -304,7 +307,7 @@ the webview as the **View/Controller**.
   document's editable text for responsiveness — an unavoidable property of an in-webview editor. Edits
   update the webview immediately and are **debounce-pushed** to the backend via an `UpdateBuffer` command;
   the backend model stays authoritative for content, dirty state, autosave, and save, and **every other
-  consumer** (tab dirty indicator, status-bar counts, preview source, PDF export, the assistant assistant)
+  consumer** (tab dirty indicator, status-bar counts, preview source, PDF export, the assistant)
   reads the backend's copy — never Monaco directly. The backend **never echoes buffer text back into the
   focused editor** (that would disturb the cursor/selection); it emits only derived state. On editor
   blur, tab switch, close, and save/autosave, the latest buffer is **flushed** to the backend before the
@@ -313,7 +316,7 @@ the webview as the **View/Controller**.
 ## 15. Versioning, app icon & CI/CD
 
 Refines `04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md` and `04_Build_and_Release/03_CI_AND_HOOKS.md`.
-Recorded in `docs/adr/0015-cicd-versioning-icon.md`. Owned by **Phase 07**.
+Recorded in `docs/adr/0015-cicd-versioning-icon.md`. Owned by **Phase 08**.
 
 - **DD-65** **The git tag is the single source of truth for the app version.** The version variable is
   `internal/settings.AppVersion`, whose compiled-in default is **`"dev"`**. A release build injects the
@@ -341,3 +344,70 @@ Recorded in `docs/adr/0015-cicd-versioning-icon.md`. Owned by **Phase 07**.
   is a three-job shape: **determine-version → per-OS build matrix (+ full test-gate job) →
   create-release** (versioned artifact names, macOS `.app` re-zipped with permissions preserved,
   `SHA256SUMS.txt`, auto-detected pre-release on a `-suffix`).
+
+## 16. Decisions from the 2026-07-25 review
+
+Added after reviewing the specification against two shipped applications by the same author. Each of
+these closed a hole, a contradiction, or a claim that could not be implemented as written. The
+reasoning behind the larger ones is in ADR-0028 and ADR-0030…ADR-0034.
+
+- **DD-68** **Notifications have two surfaces and one severity scale.** A notification is delivered as a
+  **toast** (transient, stacked, dismissible) or **inline** (a banner attached to the surface it
+  concerns — the blocked-remote-content banner, a read-only badge). It carries a severity, a title, a
+  message, an optional action, and a **dedup key**: a repeat of a live notification refreshes the
+  existing one and increments a count rather than stacking a second. There is a cap on how many toasts
+  are visible at once. Durations are per severity. **Autosave never raises a success toast** — autosave
+  is on by default, and a toast per write means a toast every few seconds while typing. Every
+  `ErrorCode` has a written title and a remediation sentence in `en.json`, not a generic fallback.
+  (`01_Product/20_NOTIFICATIONS_AND_EMPTY_STATES.md`)
+- **DD-69** **One monochrome icon set, tinted from `currentColor`. No emoji in product UI.** A colour
+  emoji is a bitmap: it cannot take a design token, and it renders differently — or not at all — on each
+  platform. Shipping emoji as toolbar and menu glyphs is a standing violation of DD-30 and makes a
+  cross-platform app look unfinished on two of three platforms.
+- **DD-70** **Every unbounded input has a named limit, and a defined behaviour at the limit.** File size
+  at which a document opens read-only; document size at which live preview pauses; maximum open tabs;
+  maximum entries scanned when enumerating a folder; maximum search results; maximum lint markers. Each
+  is a number with a unit, and each says what the user sees when it is reached. All of them live in one
+  table (`03_NonFunctional/02_PERFORMANCE.md#hard-limits`); every other document cites it rather than
+  restating a number. "Bounded" is not a specification.
+- **DD-71** **Autosave never formats.** Format-on-save and lint-on-save run on an **explicit** save only.
+  Autosave is on by default and debounced; running a formatter on it would reflow the document under the
+  user's cursor every few seconds. This also means "what lands on disk is what you were shown" is true
+  of explicit saves and, for autosaved files, true of the text but not of its formatting — which the
+  format section states rather than implies.
+- **DD-72** **Reading size and measure are user-controlled.** The preview and reading mode get their own
+  font size and column width, independent of the editor's font size, with `Ctrl/Cmd +`, `Ctrl/Cmd -`
+  and `Ctrl/Cmd 0`. Reading beautifully is a headline goal; a fixed column with no control is not it.
+- **DD-73** **One command palette, over one registry.** `Ctrl/Cmd+Shift+P` opens a palette over the
+  shortcut registry; `Ctrl/Cmd+P` is **quick-open by filename**. Export to PDF moves to
+  `Ctrl/Cmd+Shift+E`. In an application with tabs, a file tree and Monaco, `Ctrl+P` is where people
+  reach for quick-open; binding it to print is a browser convention in a desktop application.
+- **DD-74** **Panes are draggable and their sizes persist.** The sidebar edge, the assistant edge and the
+  editor/preview divider. `ui.sidebarWidth`, `ui.assistantWidth` and `ui.splitRatio` are persisted.
+  Three width keys were already being stored with no way for a user to change any of them.
+- **DD-75** **Every setting declares a type, a range and a default, and out-of-range values are
+  rejected.** The range is stated once, in `01_Product/11_SETTINGS.md`; the control, the validator and
+  the seeded default all cite that clause rather than carrying their own copy. Rejection names the
+  acceptable range in the message (`apperr.Validation(field, expected, got)`) — it does not silently
+  clamp, because a silently clamped value is one the user believes they set. **Reset to defaults** is a
+  real action, per group and globally.
+- **DD-76** **Document text is data, never instruction.** Everything the assistant reads — the open
+  document, a selection, another workspace file returned by a tool — is untrusted content that may
+  itself contain text shaped like an instruction. It is delimited explicitly in the prompt and framed as
+  inert data, and the model is told so in the system prompt of every action. This applies to **tool
+  observations** as much as to the primary input: a note containing "ignore your instructions and…" is a
+  live injection vector the moment a workspace-read tool exists.
+- **DD-77** **Workspace file operations are additive only.** The app creates files and folders in the
+  workspace, reveals a path in the platform file manager, and copies a path. It **never renames, moves,
+  deletes or reorders** anything on disk. After a create the app knows exactly what changed; after a
+  rename or a delete it would have to reconcile an unknown amount of state with no filesystem watcher
+  and no undo. (Narrows DD-56/DD-59; ADR-0033.)
+- **DD-78** **Drop and paste insert a path; they never convert.** Dropping or pasting an **image**
+  inserts a Markdown image link. A dropped file already on disk is linked by its path relative to the
+  document — the app does not copy it. A clipboard **bitmap** has no path, so it is written next to the
+  document and then linked; that is the only case in which drop or paste writes a file. Pasted **HTML or
+  rich text** is inserted as its plain-text flavour, **unchanged** — the app does not guess at how the
+  user wanted rich content converted to Markdown. The one exception is **unambiguously tabular text**
+  (TSV or CSV, at least two rows with a consistent column count), which becomes a GFM table: that is
+  what a spreadsheet or a database client puts on the clipboard, the shape is unmistakable rather than
+  guessed at, and one undo returns the raw text.

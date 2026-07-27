@@ -18,6 +18,9 @@ editor's failure modes (files, folders, assets, export).
 3. Result envelopes
 4. Frontend parseError
 5. Toasts
+6. Panics are contained everywhere, not only in handlers
+7. Startup failure has five causes and needs five messages
+8. Database corruption recovery
 
 ## Error codes
 
@@ -41,9 +44,9 @@ Constructors: `apperr.Validation(field, expected, got)`, `apperr.NotFound(path)`
 `apperr.Internal(cause)`. Each returns an `*AppError` with a user-facing `Title`/`Message`, a safe
 `Details` allowlist, `Retryable`, and an unexported `cause`.
 
-### LLM error codes (Stage 3)
+### LLM error codes (the assistant phases)
 
-The assistant assistant (`02_Architecture/08_LLM_INTEGRATION.md`) extends this same catalog additively.
+The assistant (`02_Architecture/08_LLM_INTEGRATION.md`) extends this same catalog additively.
 These codes are part of the one `apperr.ErrorCode` enum and are exposed to TypeScript via the same
 `EnumBind`. `busy`, `timeout`, `cancelled`, `validation`, and `internal` above are reused with their
 existing meaning (the gate held → `busy`; deadline → `timeout`; etc.); the assistant-specific additions
@@ -159,3 +162,55 @@ Because every adapter call funnels through `unwrap`, error toasting is automatic
 component builds its own error string. `notifyError` renders `WireError.title` + `message`; `Retryable`
 errors may offer a retry affordance. Diagnostic detail (the `cause`) stays in the local rotating log
 (DD-33), never in the toast.
+
+## Panics are contained everywhere, not only in handlers
+
+Every bound handler recovers into `CodeInternal`. **That rule extends to every goroutine in
+`internal/**`** — the export worker, the autosave timer, the agent loop, an event callback. In Go a
+panic on any goroutine takes the whole process down: no dialog, no envelope, and unless something
+recovers, no log line either.
+
+Every `go func()` therefore goes through one helper that recovers, classifies as `CodeInternal`, and
+logs with the owning component and operation. Where a caller is waiting on the result it receives a
+failed envelope; where nothing is waiting, the failure is a log line rather than a dead application.
+
+A reviewed reference implementation had exactly this helper, never wired it to anything, and eventually
+deleted it as dead code — leaving no panic protection on any background goroutine at all.
+
+## Startup failure has five causes and needs five messages
+
+The whole of startup currently resolves to one dialog: *"GoMarkEdit could not initialize its local
+settings. Please try again."* Five different problems produce it, and only one of them is helped by
+trying again.
+
+| Cause | Fatal? | What the user is told |
+|---|---|---|
+| The configuration folder cannot be resolved | fatal | Names the path it tried. There is nothing the app can do, but the user can. |
+| The database cannot be opened | fatal | The generic message is appropriate here. |
+| A migration fails | fatal | Distinct wording: **the data is intact and the application is wrong.** "Try again" is actively misleading; the next launch fails identically. |
+| The database was written by a **newer** build | fatal | *"…was created by a newer version of GoMarkEdit."* The app must **not** replace or downgrade it. |
+| A corrupt database was recovered | **not fatal** | The app opens with defaults and says so: preferences were reset, and where the old file was preserved. Recovering silently means the user's settings vanish with no explanation. |
+| The **log directory** cannot be created | **not fatal** | Nothing. Logging degrades to console-only and the editor opens. A read-only or full configuration folder currently prevents a Markdown editor from opening at all, which trades the product for a diagnostic. |
+
+**Every step of two-phase `Init` declares whether its failure is fatal or degraded**, and a degraded
+step names what is degraded. A step that warns and returns early — leaving the application running on a
+half-configured dependency while claiming success — is the failure mode this rule exists to prevent.
+
+**Any dependency that is nil until `Init` completes returns a classified error when used early**, never
+a nil dereference.
+
+## Database corruption recovery
+
+Already implemented, and previously undocumented — which is how good behaviour gets removed by a later
+refactor that sees only complexity.
+
+When the database cannot be opened because it is corrupt, the app **preserves it rather than deleting
+it**: the file is renamed alongside the original as `<db>.corrupt-<timestamp>-<random>`, together with
+its `-wal` and `-shm` companions, and a fresh database is created. The rename is guarded by a
+file-identity check so a second instance racing to do the same thing cannot move a file that is no
+longer the one it inspected. A transient lock on first open is retried; a concurrent-migration conflict
+is retried a bounded number of times; a database written by a newer schema is a hard error rather than
+an automatic downgrade.
+
+`EC-SET-2` says "safe defaults or hard startup error". This is the specific behaviour behind it, and the
+user is told (see the table above) rather than finding their preferences reset without explanation.

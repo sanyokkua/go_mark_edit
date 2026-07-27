@@ -71,7 +71,7 @@ exposed to TS via `EnumBind` in `main.go`; errors surface through the `apperr.*R
 | 2xx but empty completion | `empty_completion` | yes |
 | Gate held (run or TestInference) | `busy` | no |
 
-Stage 3 adds this LLM error set to the `apperr.ErrorCode` catalog. Codes reused from the base catalog
+the assistant phases adds this LLM error set to the `apperr.ErrorCode` catalog. Codes reused from the base catalog
 (`busy`, `timeout`, `cancelled`, `validation`, `internal`) keep their existing meaning; two agent-loop
 codes are related but owned outside the provider layer — `tool_failed` (invalid/failed tool call) and
 `agent_limit` (loop hit its iteration/wall-clock limit) — see `agentic-tool-loop` for those.

@@ -8,6 +8,17 @@ them there; do not copy or renumber them.
 - Supersede rather than edit: the new ADR names the old in `Supersedes:`, and the old one's
   `**Status:**` line becomes `superseded by ADR-NNNN`. That status line is the only edit ever made to
   an accepted ADR body. The old file stays.
+- One exception, exercised once on 2026-07-25: a botched global rename ("Stage 3" → "the assistant")
+  left ungrammatical sentences inside several accepted ADR bodies in `specification/08_Decisions/`
+  and in ADR-0013/0014 here. Those sentences were repaired, and one heading anchor
+  (`#11-llm-assistant-stage-3` → `#11-llm-assistant`) was re-pointed. No decision, option, consequence
+  or trade-off was changed. A typo repair is not a supersession; a meaning change still is.
+  The same exception covers re-pointing a link in an ADR's **Links** section when the target file is
+  renamed — the pointer is navigation, not decision.
+- **"Phase 02" inside ADR-0021, ADR-0022 and ADR-0024 means the retired 16-phase numbering**, not the
+  current roadmap. Those three were written on 2026-07-23, before the phase documents were rewritten.
+  Read their "Phase 02" as **today's Phase 05 — "I can open, edit and save real files, in tabs"**. Their
+  Links sections have been re-pointed and are current; their titles and bodies are left as filed.
 
 **These are *Architecture* Decision Records.** Write one when a decision constrains how the software is
 built and would be expensive to reverse. Do **not** write one about documentation, story format,
@@ -28,6 +39,13 @@ and add an ADR here only if the choice also constrains the architecture.
 | [ADR-0021](0021-identity-bound-active-buffer-acknowledgements.md) | Bind active-buffer acknowledgements to document identity and revision | accepted | — | — |
 | [ADR-0022](0022-commit-writes-and-resynchronize-projection.md) | Commit successful file writes and resynchronize failed projections | accepted | — | — |
 | [ADR-0024](0024-corrected-phase02-document-lifecycle-policy.md) | The document lifecycle policy — open modes, suffixless Save As, read-only unsafe bytes, normalization authorization | accepted | — | — |
+| [ADR-0028](0028-window-chrome-and-native-menu.md) | Draw our own title bar, and install a native application menu on macOS | accepted | — | — |
+| [ADR-0029](0029-generated-editor-themes.md) | Generate editor and preview colours at build time from one syntax-token family | accepted | — | — |
+| [ADR-0030](0030-sanitization-allowlist-and-csp.md) | Constrain document HTML with a level-derived allowlist and a fixed CSP | accepted | — | — |
+| [ADR-0031](0031-format-via-remark-stringify.md) | Format with remark-stringify over the maximal plugin set; Prettier is dev-time only | accepted | — | — |
+| [ADR-0032](0032-run-registry-and-shutdown-ordering.md) | A cancellable-run registry, an `OnBeforeClose` veto, and one deterministic shutdown order | accepted | — | — |
+| [ADR-0033](0033-additive-only-workspace-operations.md) | Workspace file operations are additive only: create, never rename, move or delete | accepted | — | — |
+| [ADR-0034](0034-assistant-execution-contract.md) | The assistant's execution contract: per-model capability, one wall-clock budget, a scope-sized reply reserve | accepted | — | — |
 
 Add a row per ADR as it is authored.
 

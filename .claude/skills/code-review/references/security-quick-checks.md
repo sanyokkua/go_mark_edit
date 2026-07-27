@@ -5,7 +5,7 @@ A fast, scannable list of security smells to catch during a normal code review. 
 as a **blocking finding and flag it for a dedicated deeper security pass**.
 
 For GoMarkEdit specifically, weight the checks toward its real attack surface: the guarded
-`internal/assets` handler (path-traversal / allowlist), the Stage-3 LLM tool loop treating **model
+`internal/assets` handler (path-traversal / allowlist), the assistant LLM tool loop treating **model
 output as untrusted input** (schema-validate every tool call, allowlist workspace-file reads), secret
 handling (env-var **name** only, never a key in code/DB/log/transcript), and the offline invariant
 (no unexpected outbound socket). SQLite is CGO-free `modernc.org/sqlite` with sqlc-parameterized

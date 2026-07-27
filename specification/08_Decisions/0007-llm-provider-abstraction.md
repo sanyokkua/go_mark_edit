@@ -6,7 +6,7 @@
 
 ## Context and problem statement
 
-The assistant assistant must talk to a range of LLM back-ends the user might already run: local servers
+The assistant must talk to a range of LLM back-ends the user might already run: local servers
 (Ollama, LM Studio, llama.cpp) and hosted OpenAI-compatible APIs (OpenAI, Azure OpenAI), plus any other
 endpoint that speaks the same wire shape ("generic OpenAI-compatible"). All of these expose a broadly
 **OpenAI-compatible** chat-completions surface — the same request/response JSON, tool-call structure, and
@@ -129,10 +129,10 @@ configurable with sensible defaults, sent as pointer fields so "unset" is distin
   connection/models/inference on a draft config; selected provider/model persisted; default provider
   local), **DD-52** (configurable inference parameters: temperature, max output tokens, context length).
   Related: DD-48 (app-owned retries/timeouts + error classification), DD-54 (privacy).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant-stage-3`,
+- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
   `02_Architecture/08_LLM_INTEGRATION.md#provider-abstraction`,
   `02_Architecture/08_LLM_INTEGRATION.md#persistence`,
   `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`, `02_Architecture/06_ERROR_HANDLING.md`.
-- Stories: Phase 09 (LLM foundation) provider-abstraction, model-discovery, verification, and
+- Stories: Phase 11 (LLM foundation) provider-abstraction, model-discovery, verification, and
   AI/Providers-settings stories per `07_Phases/00_ROADMAP.md`
   conventions (authored per phase; none `done` at ADR time).

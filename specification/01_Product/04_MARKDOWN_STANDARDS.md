@@ -62,7 +62,11 @@ plugin set.
 ## Plugin mapping
 
 Which remark/rehype plugins are active per level. Sanitization and highlighting apply at every level;
-math/footnotes/directives/frontmatter are gated to Full.
+math/footnotes/directives are gated to Full. **Frontmatter is recognised at GFM as well**, because
+almost every real-world `.md` file — Hugo, Jekyll, Astro, Obsidian — opens with a YAML block, and a
+reader who sees it re-rendered as a stray rule plus mangled text concludes the app is broken. It is
+also a correctness requirement: Format round-trips through the AST, so a standard that cannot parse
+frontmatter is a standard whose Format destroys it (ADR-0031).
 
 | Capability | remark/rehype plugin(s) | Minimal | GFM | Full |
 |---|---|:--:|:--:|:--:|
@@ -71,7 +75,7 @@ math/footnotes/directives/frontmatter are gated to Full.
 | Footnotes | `remark-gfm` (footnotes) | no | yes | yes |
 | Math (`$…$`, `$$…$$`) | `remark-math` + `rehype-katex` | no | no | yes |
 | Directives / admonitions | `remark-directive` (+ handler) | no | no | yes |
-| Frontmatter (YAML) | `remark-frontmatter` | no | no | yes |
+| Frontmatter (YAML) | `remark-frontmatter` | no | **yes** | yes |
 | Code highlighting | `rehype-highlight` | yes | yes | yes |
 | Mermaid fences | `components` override → MermaidBlock (DD-19) | yes | yes | yes |
 | HTML sanitization | security level (`05_RENDERING_AND_EXTENSIONS.md#sanitization`) | yes | yes | yes |

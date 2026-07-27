@@ -1,4 +1,4 @@
-# Phase 04 — I can open, edit and save real files, in tabs
+# Phase 05 — I can open, edit and save real files, in tabs
 
 ## What you get
 
@@ -22,7 +22,7 @@ After this phase GoMarkEdit is an editor you could actually use for real work.
    backend's canonical content — never text read back out of the editor. Preserve the BOM and the
    line endings the file arrived with. Clear the dirty marker only on success; report OS errors
    plainly. A never-saved document has no path, so Save behaves as Save As.
-3. **Several files at once.** The tab bar in the Phase 02 chrome: click to switch, drag to reorder,
+3. **Several files at once.** The tab bar in the Phase 03 chrome: click to switch, drag to reorder,
    middle-click or × to close a clean tab. Same basenames get a disambiguating path hint. Overflow
    scrolls. Closing the last tab gives a real empty state, not a blank document.
 4. **Don't lose my work.** Closing a dirty tab, closing the window, or quitting asks Save / Discard /
@@ -83,10 +83,10 @@ All four block step 1 or step 4. Answer them before writing the stories.
    fourth, what happened to the three already saved? Recommendation: one dialog listing all of them
    with Save all / Discard all / Cancel, and nothing written until you choose, so Cancel is always a
    clean no-op.
-4. **A file changed on disk** — Reload and Keep mine, or also a "Compare later" state? Recommendation:
-   two choices. "Compare later" appears only in the functional-requirements master list, is absent
-   from the document that owns this behaviour, and nothing defines what the deferred state would be.
-   Delete it from the master list.
+4. **A file changed on disk** — *Settled 2026-07-25.* **Reload / Keep mine**, two choices. "Compare
+   later" was deleted from the master list: it appeared nowhere else and nothing defined what the
+   deferred state would be. Once Phase 10 builds the diff view, the prompt shows the difference
+   inline (`01_Product/03_FILES_TABS_WORKSPACE.md`, EC-DOCS-2).
 
 ## Done when
 

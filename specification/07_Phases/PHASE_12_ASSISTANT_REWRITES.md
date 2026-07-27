@@ -1,4 +1,4 @@
-# Phase 10 — The assistant can proofread and rewrite my document
+# Phase 12 — The assistant can proofread and rewrite my document
 
 ## What you get
 
@@ -16,13 +16,18 @@ it and click Apply.
 2. **The action catalog.** The preconfigured actions, each with its prompt and its expected output
    shape. Data, not code — adding an action is a catalog entry.
 3. **Scope and fit.** Run against the selection or the whole document, with the token meter from
-   Phase 09 telling you before you press the button whether it fits in the model's context.
+   Phase 11 telling you before you press the button whether it fits in the model's context.
 4. **One run at a time.** A single bounded run against the provider, holding the process-wide gate so
    a second run cannot start; a second attempt is told the app is busy rather than queued silently.
    Progress is visible and the run can be cancelled.
 5. **Propose, don't apply.** The result comes back as an edit proposal against the document revision
-   it was generated from. Show it in the Phase 08 diff view. Apply goes through the document command
+   it was generated from. Show it in the Phase 10 diff view. Apply goes through the document command
    seam from Phase 01 — a normal editor edit, one undo step. The assistant never writes a file.
+6. **Show me what you sent.** Each action card has a disclosure revealing the exact system prompt,
+   directive, guardrail suffix and delimited scope the run will send, with a copy button. The default
+   provider is local and the default model is small, so a model ignoring an instruction is the normal
+   failure — and "what did you actually ask it?" is the first question about a bad rewrite. It reads
+   from the same composer the run uses, so it cannot drift, and it stores nothing.
 
 ## Where the details are
 

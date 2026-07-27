@@ -28,9 +28,10 @@ specification/
   INDEX.md              ← you are here
   00_Foundation/        vision & scope, glossary, personas, the locked design decisions (DD-NN),
                         and the F1–F10 forward-compatibility constraints
-  01_Product/           what the app does, per feature area — editor, viewer, files/tabs/workspace,
-                        standards, rendering, format/lint, PDF, associations, assets & security,
-                        theming, settings, shortcuts, i18n, and the AI assistant (14–18)
+  01_Product/           what the app does, per feature area. 01–13 are the app; 14–18 are the AI
+                        assistant; 19 onward continue the app-level series (sanitization & CSP,
+                        notifications & empty states). Numbering is append-only — a document is never
+                        renumbered, because clauses are cited by path.
   02_Architecture/      module inventory, system, backend (Go), frontend (React), Wails, state and
                         persistence, error handling, large files & concurrency, LLM integration
   03_NonFunctional/     quality attributes, performance, security & privacy, offline, accessibility

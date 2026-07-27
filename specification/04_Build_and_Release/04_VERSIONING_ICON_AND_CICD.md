@@ -10,8 +10,8 @@ The release-finalization layer of the build system: how the app version gets int
 (DD-65), how all platform icons derive from one canonical source (DD-66), and the tag-triggered
 release workflow with its production-data isolation guarantee (DD-67). It completes what
 `03_CI_AND_HOOKS.md` outlines: that file owns the PR-level gate set, hooks, and command taxonomy;
-**this file is the normative description of the release pipeline itself**. Owned by **Phase 07**
-(`07_Phases/PHASE_07_INSTALL_IT.md`); recorded in ADR-0015.
+**this file is the normative description of the release pipeline itself**. Owned by **Phase 08**
+(`07_Phases/PHASE_08_INSTALL_IT.md`); recorded in ADR-0015.
 
 ## Table of Contents
 
@@ -176,7 +176,20 @@ A red `test` job blocks `create-release` — a tag push with a failing gate prod
 3. **Rename every asset with the version** in the filename
    (`GoMarkEdit-<v>-<os>-<arch>…`, per `01_BUILD_MATRIX.md#2-artifact-matrix`).
 4. `sha256sum * > SHA256SUMS.txt` over the renamed assets.
-5. Publish the GitHub Release via a release action with:
+5. **`scripts/verify-release-artifacts.sh` — before publishing, not after.** §5 already promises two of
+   these checks; this is where they become real. It fails the release on any of:
+   - a `.app.zip` whose `Contents/MacOS/GoMarkEdit` is **not executable** after unzipping (EC-REL-4 —
+     the exact failure the `-X` flag in step 2 exists to prevent, so this is the assertion that proves
+     step 2 worked rather than trusting it);
+   - a mismatch between the **binary's reported version** and `Info.plist`'s
+     `CFBundleShortVersionString` / the Windows `info.json`, or between either and the **tag**
+     (EC-REL-6 — the `wails.json` patch being skipped is silent otherwise);
+   - an asset missing from `SHA256SUMS.txt`, or a checksum that does not verify;
+   - an expected filename absent from the artifact set.
+
+   A release that has not been verified is not published. This costs one script and removes the entire
+   class of "the release is up and it does not launch".
+6. Publish the GitHub Release via a release action with:
    - `tag` from `determine-version`;
    - **`prerelease: contains(version, '-')`** — auto-detected, no manual flag (EC-REL-3);
    - generated release notes, **plus the unsigned-install caveats** (Gatekeeper right-click-Open,

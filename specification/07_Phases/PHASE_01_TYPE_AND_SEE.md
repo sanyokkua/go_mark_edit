@@ -7,7 +7,7 @@
 Type Markdown on the left, see it rendered on the right, live. Switch between editor-only, split and
 preview-only. A status bar shows where the cursor is and how much you have written.
 
-There is one document and it lives in memory — you cannot open or save a file yet. That is Phase 04.
+There is one document and it lives in memory — you cannot open or save a file yet. That is Phase 05.
 
 ## What was built
 
@@ -33,7 +33,7 @@ There is one document and it lives in memory — you cannot open or save a file 
 
 ## Known debt carried forward
 
-Phase 04 will need these, and Phase 01 did not build them because there were no tabs and no saving:
+Phase 05 will need these, and Phase 01 did not build them because there were no tabs and no saving:
 
 - **Per-document Monaco models.** Phase 01 deliberately built exactly one editor session for one
   document. Several open documents need several models, one visible session, and disposal on close.

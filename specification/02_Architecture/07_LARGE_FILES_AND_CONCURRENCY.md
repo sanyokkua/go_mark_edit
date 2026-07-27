@@ -15,7 +15,8 @@ document constrains (DD-20).
 1. Large-file strategy
 2. Preview debounce
 3. Gate
-4. Events: progress
+4. Cancelling a run
+5. Events: progress
 
 ## Large-file strategy
 
@@ -80,10 +81,48 @@ func (g *Gate) Release()         { select { case <-g.ch: default: } }
 An exclusive handler does `if !gate.TryAcquire() { return apperr.Busy() }` and `defer gate.Release()`.
 When the gate is held, the second attempt returns `CodeBusy` and the UI shows a "please wait" toast
 rather than launching a concurrent run (`06_ERROR_HANDLING.md` `#toasts`). The gate is process-wide, not
-per-document, so at most one export/format-all runs per instance at a time. The assistant LLM assistant
+per-document, so at most one export/format-all runs per instance at a time. The assistant
 reuses this same `internal/gate`, so an LLM run, a PDF export, and a format-all are mutually exclusive
 app-wide — at most one of the three is ever in flight per instance (DD-47;
 `08_LLM_INTEGRATION.md` `#gate-and-cancellation`).
+
+**The gate is always released, including on the paths that are easy to forget.** `defer` covers a normal
+return and a panic (which the goroutine wrapper recovers — `06_ERROR_HANDLING.md`). The two remaining
+paths are explicit:
+
+- **Cancellation** releases it, and the operation reports what actually completed.
+- **A frontend that never reports back** — export drives `window.print()` from the webview and waits for
+  `afterprint` — releases it on a **wall-clock timeout**. A webview that has gone away must not leave the
+  application permanently busy.
+
+## Cancelling a run
+
+Cancellation is required in three places — shutdown cancels in-flight gated operations, the agent loop
+checks each iteration, and `CodeCancelled` is in the error catalog — and until 2026-07-25 no mechanism
+existed for any of them. ADR-0032 supplies one, and it is shared: **format-all, export and an assistant
+run all cancel the same way.**
+
+**The registry.** One mutex-guarded `map[runID]context.CancelFunc`, owned by the composition root. Every
+long-running operation derives its context from the `OnStartup` context, registers its cancel function on
+entry, and `defer`s both the `delete` and the `cancel` on exit. **`context.Background()` appears in no
+request path** — a context that is not descended from the application's own is a context shutdown cannot
+reach.
+
+**One bound method.** `CancelRun(runId)` serves every feature. Cancelling an id that is unknown or has
+already finished is a **success no-op**, not an error: the caller raced the completion and cannot know
+which won, and reporting that as a failure would make every well-behaved cancel look broken.
+
+**Exactly one terminal outcome.** The race between "cancel arrives" and "the work finishes" is resolved
+at one point in the code, not at each call site. A run cancelled mid-operation produces the *same*
+result shape, log record and event as one cancelled between steps. Two rules follow:
+
+- **Cancelled is a normal outcome, not an error.** It is reported as such (`20_NOTIFICATIONS_AND_EMPTY_STATES.md`).
+- **The report names what completed, never the loop index.** "Cancelled after step 1" when step 1 never
+  finished is a message that lies, and it is a defect a reviewed reference implementation shipped.
+
+**Shutdown** cancels every registered run before flushing anything else
+(`04_WAILS_INTEGRATION.md#closing-and-the-order-things-happen-in`). A run that was in flight when the
+app quit leaves no half-written record.
 
 ## Events: progress
 

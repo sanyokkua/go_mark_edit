@@ -19,9 +19,10 @@ strategy — mirroring the **AI Context** settings tab in `mockups/gomarkedit-mo
 2. [Safety margin](#safety-margin)
 3. [Reply reserve](#reply-reserve)
 4. [Fit meter](#fit-meter)
-5. [Over-context strategy](#over-context-strategy)
-6. [Context budget](#context-budget)
-7. [History strategy](#history-strategy)
+5. [The meter is load-bearing, not a nicety](#the-meter-is-load-bearing-not-a-nicety)
+6. [Over-context strategy](#over-context-strategy)
+7. [Context budget](#context-budget)
+8. [History strategy](#history-strategy)
 
 ## Token estimation
 
@@ -47,9 +48,33 @@ risk of a reactive overflow. The margin is set in **AI Context** settings (DD-53
 
 The app **reserves headroom for the model's response** (DD-50; mockup "Reserve for reply", default
 `1024 tok`). The reply reserve is subtracted from the usable window before deciding what input fits, so
-the model has room to answer or return an edit without truncation. The reserve is aligned with **Max
-output tokens** (`17_PROVIDERS_MODELS_SETTINGS.md#inference-params`): the effective input budget is
+the model has room to answer or return an edit without truncation. The effective input budget is
 `context length − reply reserve − margin`.
+
+The reserve and **Max output tokens** are related but **not the same number**
+(`17_PROVIDERS_MODELS_SETTINGS.md#inference-params`): the reserve is what the fit meter subtracts, and
+`max_tokens` is the wire field that caps generation. `replyReserve ≤ maxOutputTokens < contextWindow`.
+
+### For a full rewrite, the reserve follows the scope
+
+**This is arithmetic, not a preference.** Proofread on a whole document requires the model to emit the
+*entire corrected document* as the argument of an edit proposal. With the defaults above — an 8 192
+window and a 1 024-token reserve — a 5 000-token document **passes the fit check** and then truncates at
+1 024 tokens of output, producing a broken JSON argument, a schema-validation failure, and a user told
+"a tool call had invalid arguments." Which is true, and useless.
+
+So for any action whose expected output is a rewrite of its scope, the fit check is:
+
+```
+estimate(prompt) + margin + max(replyReserve, estimate(scope) × 1.1) ≤ contextWindow
+```
+
+The reserve rises to match what the model has to write back, and the meter **refuses up front** rather
+than failing halfway through.
+
+Proposals still carry full replacement text rather than a patch — small local models cannot produce a
+valid unified diff, and the app computes the diff itself (`16_CHAT_AND_AGENTIC_WORKFLOW.md`). This
+formula is simply the budget admitting what that choice costs (ADR-0034).
 
 ## Fit meter
 
@@ -68,6 +93,22 @@ The meter is a **three-state** signal against the model's context length (DD-50,
 The meter reads its ceiling from **Context length (num_ctx)** and its reserve from the reply reserve, so
 changing either in settings updates the meter immediately.
 
+## The meter is load-bearing, not a nicety
+
+The fit meter is often described as the optimistic path, with the `context_window` error as the safety
+net beneath it. **Against local providers that is backwards**, and it matters for how much care the
+meter gets.
+
+Live testing of a comparable application found that setting `contextWindow` to 200 000 against real
+Ollama **succeeded**: the provider silently reloaded the model at its own 131 072 ceiling. The provider
+clamped; the application never knew. Across a whole test matrix the worst observed outcome was a clean
+timeout, and the reactive over-context test case had to be recorded as *skipped — not reachable with
+the configured providers*.
+
+So the reactive backstop mostly does not fire. What you get instead is a timeout, or a silently
+truncated prompt and a plausible-looking but incomplete answer — which is worse than an error, because
+nothing tells anyone it happened. **The proactive meter is the actual protection.**
+
 ## Over-context strategy
 
 For a **whole-document** action whose estimate exceeds the usable window, the app applies the configured
@@ -76,20 +117,26 @@ over-context strategy (DD-50; mockup **AI Context** → "If document exceeds con
 
 - **Warn (default).** The app **warns** and offers to **process the selection instead** or a single
   chunk, rather than sending an over-budget request. The user chooses; nothing is sent until they do.
-- **Chunk (opt-in).** The app splits the document into windowed chunks **with overlap** to preserve
-  continuity across boundaries, processes them within budget, and assembles the proposed edit. Chunking
-  is **opt-in in v1** (DD-50).
+- **Chunk — cut from v1.** *Decided 2026-07-25 (`07_Phases/PHASE_13_CONVERSATION.md`).* Nothing defines
+  chunk boundaries, overlap size, ordering, or how conflicting overlaps reconcile into **one** reviewable
+  edit — and the last of those is the hard part, because the product's central promise is that every
+  change arrives as a single proposal you review before applying. Building it would mean inventing the
+  specification.
+
+  **Warn is therefore the only strategy in v1**, and the "If document exceeds context" control is not
+  shipped: a segmented control with one option is not a choice. It returns if chunking is ever
+  specified properly.
 
 **Reactive backstop.** If an estimate is wrong and the provider returns a **context-window** error, that
 error is the backstop: it is classified and surfaced through the standard error path, and the run does
 not silently fail (DD-48, DD-50).
 
-- **EC-LLM-10 — Over-context whole document.** A whole-document run whose estimate is red: under **Warn**
-  the app blocks the send and presents the selection/chunk choice; under **Chunk** it proceeds in
-  overlapped windows. Either way it never sends a request known to exceed the window.
+- **EC-LLM-10 — Over-context whole document.** A whole-document run whose estimate is red:
+  the app blocks the send and presents the selection choice. It never sends a request known to exceed
+  the window, and it never silently truncates one.
 - **EC-LLM-15 — Reactive context-window overflow.** Despite a green/amber estimate, the provider rejects
-  the request for length: the app reports the classified context-window error and offers to narrow scope
-  or enable chunking, rather than retrying the identical over-length request.
+  the request for length: the app reports the classified context-window error and offers to narrow the scope, rather than
+  retrying the identical over-length request.
 
 ## Context budget
 
@@ -114,12 +161,17 @@ history strategy", options **Sliding window** / **Summarize**):
 
 - **Sliding window (default).** Keep the most recent turns that fit the history allocation and drop the
   oldest; the current directive and scoped document are never dropped in favour of history.
-- **Summarize (opt-in).** When history would overflow, replace older turns with a compact running
-  summary so long conversations stay within budget while retaining gist.
+- **Summarize — cut from v1.** *Decided 2026-07-25.* Nothing defines the summary prompt, its output
+  schema, how its own token cost is accounted for **while the gate is held**, or what happens when the
+  summarising call itself fails. It is an inference inside an inference, and it is unspecified at every
+  one of those points.
+
+  **Sliding window is therefore the only strategy in v1**, and the "Chat history strategy" control is not
+  shipped for the same reason as above.
 
 - **EC-LLM-21 — Over-budget history trimmed.** When accumulated chat history exceeds its budget
-  allocation, it is trimmed by the configured strategy — **sliding window** (drop oldest turns first) or
-  **summarize** — before the request is built; the **current turn and the directive are never trimmed
+  allocation, it is trimmed by the **sliding window** (drop oldest turns first) before the request is
+  built; the **current turn and the directive are never trimmed
   away**, and trimming affects only what is sent to the model, never the visible transcript (DD-51).
 
 History is per document/tab for the session and is not persisted across launches

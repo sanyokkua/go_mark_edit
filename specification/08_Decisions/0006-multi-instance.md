@@ -101,5 +101,5 @@ each instance is a fully independent process.
   `00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state`,
   `02_Architecture/05_STATE_AND_PERSISTENCE.md`, `02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`,
   `01_Product/03_FILES_TABS_WORKSPACE.md`.
-- Stories: Phase 06 multi-instance / new-window story and the Phase 00 DB-open scaffold story, per
+- Stories: Phase 07 multi-instance / new-window story and the Phase 00 DB-open scaffold story, per
   `07_Phases/00_ROADMAP.md` (authored per phase; none `done` at ADR time).

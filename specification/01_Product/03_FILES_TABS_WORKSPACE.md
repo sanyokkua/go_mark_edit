@@ -18,12 +18,15 @@ Document lifecycle, tabs, and the folder workspace. Refines
 5. [Encoding and line endings](#encoding-and-line-endings)
 6. [Tabs](#tabs)
 7. [Open folder](#open-folder)
-8. [Tree filter](#tree-filter)
-9. [Recent](#recent)
-10. [Reopen last](#reopen-last)
-11. [Multi-instance](#multi-instance)
-12. [Drag-and-drop open](#drag-and-drop-open)
-13. [Edge cases](#edge-cases)
+8. [File operations](#file-operations)
+9. [Tree filter](#tree-filter)
+10. [Recent](#recent)
+11. [The empty state is a launcher](#the-empty-state-is-a-launcher)
+12. [Reopen last](#reopen-last)
+13. [Multi-instance](#multi-instance)
+14. [Drag-and-drop, paste, and inserting images](#drag-and-drop-paste-and-inserting-images)
+15. [Inserting an image, and pasting](#inserting-an-image-and-pasting)
+16. [Edge cases](#edge-cases)
 
 ## New, open, save
 
@@ -98,9 +101,41 @@ control; a "+" adds a new tab (`mockups/gomarkedit-mockup.html` `.tabs`). Behavi
   were issued against; if the set has moved on, the command is refused and the order is left intact
   rather than partially rewritten.
 
+**The dirty dot means unsaved, and nothing else.** It is present when the document differs from what is
+on disk and absent otherwise, on the active tab and on every background tab alike. It is not an
+active-tab indicator — the active tab is shown by its own surface treatment. (The mockup encoded the
+wrong thing until 2026-07-25.) While an autosave write is in flight the dot is muted rather than
+removed, so a tab never looks saved before it is.
+
+**Right-clicking a tab** opens a tab context menu: Close · Close others · Close to the right · Copy
+path · Reveal in file manager. The mockup wired the tab's context menu to the *file tree's* menu, which
+offered operations that do not apply to a tab.
+
+**Tab keyboard navigation** is `Ctrl/Cmd+Tab` / `Ctrl/Cmd+Shift+Tab` (and `Ctrl+PageDown` /
+`Ctrl+PageUp`), with `Ctrl/Cmd+Shift+Alt+T` reopening the last closed tab. Tab-by-number is not
+available: `Ctrl+1/2/3` are heading shortcuts, which a Markdown author uses far more often.
+
+**Dragging a tab to reorder** shows an insertion indicator between tabs at the position it would land,
+and the dragged tab follows the pointer at reduced opacity. `Esc` during a drag cancels it and the tab
+returns to where it was. Dragging past the end of a scrolled tab strip scrolls it. "Drag to reorder"
+without these is a gesture with no feedback, which reads as broken rather than absent.
+
+**The title bar shows where you are**: `<workspace> / <filename>`, plus the save state. Specifically —
+`Notes / release-notes.md · autosaved`. The rules, because a breadcrumb with undefined edges is a
+breadcrumb that will look wrong on somebody's machine:
+
+- **`<workspace>`** is the open folder's name. With **no** folder open it is omitted and only the
+  filename shows.
+- **A file outside the open workspace** shows its parent folder's name in place of the workspace name,
+  so it is clear the file is not part of what you have open.
+- **A never-saved document** shows `Untitled` with no leading segment.
+- **A deep path is not expanded.** Two segments, always. The full path is on the tab's tooltip and in
+  Copy path.
+- The trailing state is `autosaved`, `saved`, `unsaved changes`, or `read-only`.
+
 ## Open folder
 
-**Open Folder** (`Ctrl/Cmd+K O`) opens a directory as a workspace tree (DD-06), shown in the sidebar
+**Open Folder** (`Ctrl/Cmd+Shift+O`) opens a directory as a workspace tree (DD-06), shown in the sidebar
 with the folder name as the workspace label. The tree is populated recursively but lazily — children
 load when a node is expanded — with a large-folder guard to keep enumeration bounded and the UI
 responsive (EC-WS-1). Selecting a file opens it in the default open mode (DD-27). The workspace root
@@ -109,6 +144,31 @@ also participates in the asset allowlist (`09_ASSETS_AND_SECURITY.md#allowlist`)
 v1 has **no live filesystem watcher**; external changes are reflected on manual refresh (EC-WS-6).
 Deleted/moved nodes are handled gracefully on next interaction (EC-WS-3); permission-denied subfolders
 are skipped with an indicator (EC-WS-4); symlink cycles are bounded (EC-WS-5).
+
+## File operations
+
+The app **creates** files and folders in the workspace. It **never** renames, moves, deletes or
+reorders anything on disk (DD-77, ADR-0033).
+
+| Operation | Where | Behaviour |
+|---|---|---|
+| **New file** | sidebar header button; tree context menu | Creates an empty `.md` in the selected folder, or the workspace root when nothing is selected, and opens it in a tab. The name is typed inline in the tree. |
+| **New folder** | sidebar header button; tree context menu | Creates an empty directory in the same place, named inline. |
+| **Reveal in file manager** | tree context menu; tab context menu | Hands the path to the platform. Named this way on every platform — not "Reveal in Finder", which is true on one of three. |
+| **Copy path** | tree context menu; tab context menu | The absolute path to the clipboard. |
+
+**A name that already exists is refused**, with a message naming the conflict. Nothing is ever
+overwritten and nothing is silently renamed to `file (2).md`.
+
+**The tree updates by inserting the node it just created**, not by re-enumerating the folder. This is
+the whole reason creation is safe while renaming and deleting are not: after a create the app knows
+exactly what changed. After a rename or a delete it would have to reconcile an unknown amount of state —
+every open tab, the recent list, the whole subtree — with no filesystem watcher (EC-WS-6) and no way to
+undo it if the user did not mean it. That reconciliation is the cost ADR-0033 declines to pay.
+
+Renaming a file means using a file manager, or Save As. This is a real limitation and is recorded in
+`00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons` rather than left to be
+discovered.
 
 ## Tree filter
 
@@ -122,6 +182,17 @@ reach nested matching files. The sidebar footer displays the active filter chips
 GoMarkEdit maintains a bounded, MRU-ordered list of **recent files** and **recent folders** (DD-10),
 surfaced under File → Open Recent. Opening or saving a file, and opening a folder, promote the path to
 the top. Missing paths are pruned lazily when the list is shown or a stale entry is chosen (EC-DOCS-1).
+
+## The empty state is a launcher
+
+There is no session restore (DD-11): the app launches clean, every time. So the no-tabs state is not an
+edge case — **it is the first screen of every launch**, and it is the most-seen screen in the product.
+
+It shows the app name, three actions — New file · Open file… · Open folder… — and the six most recent
+documents and folders, each with its containing folder beneath it so two files called `notes.md` are
+distinguishable. Clicking one opens it in the default open mode.
+
+Exact copy is in `20_NOTIFICATIONS_AND_EMPTY_STATES.md#empty-states`, with the other four empty states.
 
 ## Reopen last
 
@@ -137,7 +208,24 @@ lock**. Opening a second file from the OS may open a new window/instance per the
 shared settings/recent SQLite database is opened with WAL + `busy_timeout` so concurrent instances
 read/write it safely (DD-13, EC-SET-1); writes are infrequent (settings, recent).
 
-## Drag-and-drop open
+**Two instances may hold the same document open, and both may be autosaving it.** The rule is
+last-writer-wins with a check: before every write — manual or autosave — the app compares the file's
+modification time against what it recorded when it last read or wrote the file. If it has changed
+underneath, the write is **not** performed and the external-change prompt appears instead
+(EC-DOCS-2). This is the same prompt an edit from any other program produces; a second GoMarkEdit
+window is not a special case.
+
+The check is a mitigation, not a lock. Two instances writing within the same filesystem timestamp
+granularity can still lose an edit, and there is deliberately no lock file — DD-08 chose multiple
+instances over single-instance safety, and this is the cost.
+
+**The atomic write preserves the file's mode.** A save writes a temporary file in the same directory
+and renames it over the target, so a crash or a full disk cannot truncate the user's file. A fresh temp
+file does not inherit the original's permissions, so the app reads them first and re-applies them after
+the rename. Hard links to the file are broken by the rename and extended attributes are not carried
+across — both are consequences of atomic replacement, and neither is worth giving up crash safety for.
+
+## Drag-and-drop, paste, and inserting images
 
 The user can **drag files and folders from the OS file manager (or desktop) onto the GoMarkEdit window**
 to open them. This is a convenience path equivalent to opening via a dialog or the OS "Open With"
@@ -178,8 +266,41 @@ no action. Drag-and-drop makes **no network** calls and needs the same read perm
   workspace tree (filtered to Markdown/text).
 - **UC-DND-4** — A workspace is already open; drag another folder → a prompt appears; choosing "Open in a
   new window" launches a second window on the dropped folder, leaving the first intact.
-- **UC-DND-5** — Drag a `.png` (or a selection of text) onto the window → ignored with a brief toast; the
-  document and workspace are unchanged.
+- **UC-DND-6** — Drag a screenshot from the desktop into the editor → a Markdown image link to that file
+  appears at the cursor. The file is not copied and nothing else in the document changes.
+
+## Inserting an image, and pasting
+
+Dropping or pasting an image **inserts a link to it**. The app does not convert, re-encode, or reorganise
+the user's files (DD-78).
+
+**A dropped or pasted image file that already exists on disk** is linked by its path **relative to the
+document**, so `![](assets/diagram.png)` keeps working when the folder is moved or shared. When the image
+lies outside the document's folder tree — a different volume, or somewhere no relative path reaches — the
+absolute path is inserted and a toast says so, because a relative link would silently be wrong.
+
+**A clipboard bitmap has no path.** Pasting a screenshot copied from a screen-capture tool is the one
+case in which the app writes a file: it is saved beside the document as `<document-name>-<n>.png`, and
+then linked exactly as above. Nothing else about drop or paste writes to disk. If the document has never
+been saved there is nowhere to put it, so the paste is refused with a message saying to save the
+document first.
+
+**Pasting tabular text produces a table.** Clipboard content that is unambiguously delimited rows and
+columns — TSV, which is what Excel, Google Sheets and most database clients put on the clipboard, or CSV
+— is inserted as a **GFM table** with a header row and aligned columns. Anything ambiguous is inserted
+as plain text: the test is at least two rows and a consistent column count, not a guess.
+
+This is the case the toolbar's Table button does not serve. That button inserts an empty skeleton you
+then fill in; pasting a range you already have is the far more common way a table gets into a document.
+`Ctrl/Cmd+Z` once returns the raw text if the conversion was not what you wanted.
+
+**Pasted HTML or rich text is inserted as plain text, unchanged.** The app does not convert HTML to
+Markdown. Copying from a browser or a word processor and pasting gives you the text without its
+formatting — a predictable outcome. Converting it would mean guessing at the structure the user wanted,
+and a wrong guess is harder to repair than plain text is to re-format.
+
+**Dropping a non-image, non-Markdown file** — a `.zip`, a `.pdf` — still opens nothing and shows a toast
+(EC-DND-5). That rule is about *opening*, and it now says so.
 
 ## Edge cases
 
@@ -189,7 +310,20 @@ no action. Drag-and-drop makes **no network** calls and needs the same read perm
 - **EC-DND-3** — Drop a **folder** with a workspace **already open** → prompt: Open in this window /
   Open in a new window; Cancel is available and does nothing.
 - **EC-DND-4** — Drop a file whose **path is already open** → focus the existing tab, do not duplicate.
-- **EC-DND-5** — Drop an **unsupported file type** → toast "Unsupported file type", open nothing.
+- **EC-DND-5** — Drop a file type the app cannot **open** (a `.zip`, a `.pdf`) → toast "Can't open that
+  file type", open nothing. Images are not in this class — see EC-DND-6.
+- **EC-DND-6** — Drop or paste an **image file** into the editor → a relative Markdown image link is
+  inserted at the cursor. Nothing is copied or written.
+- **EC-DND-7** — Drop or paste an image that has **no relative path** to the document (another volume) →
+  the absolute path is inserted and a toast explains why.
+- **EC-DND-8** — Paste a **clipboard bitmap** → written beside the document as
+  `<document-name>-<n>.png` and linked. This is the only write in the drop/paste path.
+- **EC-DND-9** — Paste a clipboard bitmap into a **never-saved** document → refused, with a message
+  saying to save the document first. There is nowhere to put the file.
+- **EC-DND-10** — Paste **HTML or rich text** → the plain-text flavour is inserted verbatim. No
+  conversion is attempted.
+- **EC-DOCS-14** — Two instances have the same file open and both autosave → each write checks the
+  file's modification time first; a changed file raises the external-change prompt instead of writing.
 - **EC-DND-6** — Drop a **mix** of files and folders → files open as tabs; each folder runs the folder flow.
 - **EC-DND-7** — **Non-file** drop (text, browser image/tab) → ignored safely (no crash; guards the known
   WebView2 non-file-drop panic).
@@ -197,7 +331,11 @@ no action. Drag-and-drop makes **no network** calls and needs the same read perm
   drop suppressed).
 - **EC-DND-9** — Drop a path that **no longer exists** by the time it is read → toast error, open nothing.
 - **EC-DOCS-1** — Recent entry points at a missing file → error + prune from Recent.
-- **EC-DOCS-2** — Open file modified on disk externally → prompt Reload / Keep mine.
+- **EC-DOCS-2** — Open file modified on disk externally → prompt **Reload / Keep mine**, with the
+  **difference shown inside the prompt** using the diff view Phase 10 builds. A choice between "reload"
+  and "keep mine" made without seeing what changed is a guess; showing it costs almost nothing once the
+  component exists, and turns a frightening decision into an informed one. Before Phase 10 the prompt
+  is the two choices alone.
 - **EC-DOCS-3** — Open file deleted on disk → keep buffer, mark detached, Save recreates.
 - **EC-DOCS-5** — Unsaved changes on close/quit → prompt Save / Discard / Cancel.
 - **EC-DOCS-6** — New buffer never autosaved; needs explicit Save / Save As.

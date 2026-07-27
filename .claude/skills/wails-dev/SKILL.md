@@ -183,9 +183,9 @@ After any change to `apperr.ErrorCode` or **any bound-method signature**, run
 switches on `apperr.ErrorCode.Busy`, `apperr.ErrorCode.Timeout`, `apperr.ErrorCode.Cancelled`, etc. —
 never on raw string literals.
 
-### agent:* events contract (Stage-3 assistant only)
+### agent:* events contract (assistant only)
 
-There is **no chain concept** in GoMarkEdit. The Stage-3 LLM assistant runs an **agentic tool-call loop**
+There is **no chain concept** in GoMarkEdit. The assistant LLM assistant runs an **agentic tool-call loop**
 (`internal/llm/agent/`) whose progress and streamed tokens flow Go→frontend via **Wails events**
 (`runtime.EventsEmit` on the backend, `EventsOn` in `logic/adapter/` → dispatched into the `run` slice in
 `logic/store/assistant/`). The bound `RunResult` envelope still returns the final outcome; events are the

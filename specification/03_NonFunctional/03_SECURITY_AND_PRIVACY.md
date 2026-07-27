@@ -9,7 +9,7 @@
 GoMarkEdit's trust boundary is the local machine. It makes no background or unsolicited network calls,
 stores no secrets, and emits no telemetry; the only outbound requests it ever originates are the scoped,
 user-invoked assistant LLM inferences defined in §§1 and 9. The only untrusted input is document content
-(and, in Stage 3, model output), which is handled defensively.
+(and, once the assistant exists, model output), which is handled defensively.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ user-invoked assistant LLM inferences defined in §§1 and 9. The only untrusted
 The application makes **no background or unsolicited network calls of any kind** (DD-32). There is no
 update check, no license check, no font/CDN fetch, and no crash upload. All rendering assets are bundled
 and embedded (`03_NonFunctional/04_OFFLINE.md`). Before the assistant exists this is absolute: **zero** network calls.
-The single scoped exception is Stage 3, where the **only** outbound requests the app ever originates are
+The single scoped exception is the assistant, where the **only** outbound requests the app ever originates are
 **LLM inference calls to the provider the user explicitly configured**, and only **on user action**
 (invoking an action or sending a chat message); the default provider is local, so a default install still
 originates nothing (see §9). Otherwise the only bytes that move off the machine are those the OS moves
@@ -40,7 +40,7 @@ verified by a network-egress check (§`04_OFFLINE.md`).
 Local images referenced by a document are served through the guarded `AssetServer.Handler`, never by
 direct file:// access (DD-21; `02_Architecture/04_WAILS_INTEGRATION.md` `#assetserver-handler`). The
 handler enforces a directory **allowlist** = the document's folder + the workspace root + any
-user-configured roots, and **rejects path traversal**:
+and **rejects path traversal**:
 
 - Request paths are cleaned and resolved to a real absolute path.
 - A resolved path that escapes every allowlisted root (via `..`, an absolute path, or a symlink) → 403.
@@ -91,7 +91,7 @@ non-user-supplied list.
 ## 8. No secrets
 
 GoMarkEdit has no accounts and stores no secret values. Before the assistant exists there are no credential concept at all.
-the assistant phases may talk to a remote LLM provider that requires an API key, but the **key value is never stored**:
+The assistant may talk to a remote LLM provider that requires an API key, but the **key value is never stored**:
 a provider config references only the **name of an environment variable** (DD-45); the value is read from
 the process environment at request time and is never written to code, config, the database, the run
 transcript, or any log (§9). The local default provider needs no credential at all. So no secret value
@@ -99,7 +99,7 @@ lives anywhere in the app's persisted state on any path.
 
 ## 9. LLM data flow and privacy
 
-The assistant assistant (`02_Architecture/08_LLM_INTEGRATION.md`; DD-38–DD-55) is the only feature that can
+The assistant (`02_Architecture/08_LLM_INTEGRATION.md`; DD-38–DD-55) is the only feature that can
 send document content off the machine, and it does so under strict, explicit constraints (DD-54):
 
 - **User-action only, configured-provider only.** Document text (whole document or the current selection)

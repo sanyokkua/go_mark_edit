@@ -157,6 +157,51 @@ const pushBuffer = useDebouncedCallback(
 Because inactive documents' content lives only in Go, webview memory stays bounded to the visible
 document (`02_BACKEND_GO.md#application-model`, `07_LARGE_FILES_AND_CONCURRENCY.md#large-file-strategy`).
 
+### One Monaco model per open tab, and what that costs
+
+The sentence above and "each tab keeps its own undo history" are in tension, and the tension has to be
+resolved rather than left for an implementer to discover: **Monaco's undo stack lives on the model, and
+the model holds the text.** Disposing a background tab's model to bound memory throws away its undo
+history; keeping it means that document's text *is* in the webview after all.
+
+The resolution:
+
+- **Each open tab owns a `monaco.editor.createModel(text, 'markdown', uri)`**, keyed by the tab's
+  backend-minted id. Switching tabs is `editor.setModel(next)` — not `setValue` — so undo history,
+  cursor, selection, scroll position and folding all survive a switch. That is what a user expects from
+  a tabbed editor, and reconstructing it any other way is not possible.
+- **Go remains authoritative.** The model is a working copy, exactly as the visible buffer already is
+  under DD-64. Nothing reads a background model for content; the backend's copy is what every other
+  consumer sees.
+- **Closing a tab disposes its model.** A test asserts `monaco.editor.getModels().length` returns to its
+  baseline after closing every tab — a leaked model is a leaked document.
+- **The memory bound is therefore the open-tab cap** (40, `03_NonFunctional/02_PERFORMANCE.md#hard-limits`),
+  not "one document". Say that rather than claiming a bound the design does not deliver.
+
+### Whoever subscribes, disposes
+
+Every `onDid*` subscription on an editor or a model returns an `IDisposable`, and **the subscriber owns
+it**. `onEditorMounted` hands out the raw `IStandaloneCodeEditor`, so this is easy to get wrong: a
+component that resubscribes on re-render without disposing the previous handler accumulates listeners
+silently, and the symptom is a cursor-position update firing five times per keystroke rather than an
+error.
+
+Dispose before resubscribing, and dispose on unmount.
+
+### Rendering the preview without rebuilding it
+
+Three memoisation rules, each because its absence is a measurable cost rather than a style preference:
+
+- **The `components` override map is a module-level constant.** A fresh object per render makes
+  react-markdown rebuild its handler map every pass.
+- **The plugin arrays are module-level constants, one per Markdown standard**, selected by key —
+  `const PLUGINS: Record<Standard, {remark, rehype}>`. Writing `remarkPlugins={[remarkGfm]}` inline
+  creates a new array identity on every render, which defeats every downstream memo.
+- **The preview component is wrapped in `memo()`**, and its input is the debounced text, never the raw
+  editor value. `03_NonFunctional/02_PERFORMANCE.md` targets a 150–300 ms debounce; a reviewed reference
+  application re-runs the full remark → rehype → React pipeline, with KaTeX and highlight.js in it, on
+  **every keystroke**, having applied a debounce correctly on two other pages.
+
 ## Theme
 
 `logic/theme/` resolves the active appearance and applies it to `document.documentElement`. GoMarkEdit

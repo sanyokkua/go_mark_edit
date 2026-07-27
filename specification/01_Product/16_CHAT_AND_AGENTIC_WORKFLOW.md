@@ -13,7 +13,7 @@ cancellation, streaming, and the hard limits — plus the loop's edge cases (`EC
 
 The mockup (`mockups/gomarkedit-mockup.html`) shows the transcript with tool-call rows
 (`read_document (scope=doc) ✓ 1.4k tok`, `propose_edit preserve formatting ✓`), a proposed-edit card
-with a coloured diff and **Apply / Review hunks / Discard**, and the composer with a context row.
+with a coloured diff and **Apply / Re-run / Discard**, and the composer with a context row.
 
 ## Table of Contents
 
@@ -83,7 +83,7 @@ tool schema is re-sent every call and consumes the context budget (DD-51). The t
   text / a diff) for the user to review. It **never writes to disk or the buffer** (DD-42).
 
 All tools are exposed through the reserved seams: document/selection via the document-command interface
-(F2/F3), workspace files via the Stage-1 asset allowlist rules (`09_ASSETS_AND_SECURITY.md`).
+(F2/F3), workspace files via the asset allowlist rules (`09_ASSETS_AND_SECURITY.md`).
 
 ## Tool scope
 
@@ -94,8 +94,8 @@ Tool access is **least-privilege and read-mostly** (DD-41):
 - **Document vs workspace.** `read_document`/`read_selection` are always available (they read the open
   buffer). Workspace tools (`list_workspace_files`, `read_workspace_file`) are available **only when a
   folder workspace is open**; with a single loose file open they are absent from the tool set.
-- **Allowlisted + traversal-rejected.** Workspace reads reuse the Stage-1 asset allowlist: workspace
-  root + configured roots only, filtered to `.md/.markdown/.mdown/.txt`; any path escaping the
+- **Allowlisted + traversal-rejected.** Workspace reads reuse the asset allowlist: workspace
+  root only, filtered to `.md/.markdown/.mdown/.txt`; any path escaping the
   allowlist (via `..`, absolute paths, or symlink) is rejected (DD-41;
   `09_ASSETS_AND_SECURITY.md#path-traversal`).
 - **Untrusted arguments.** Tool-call arguments from the model are treated as **untrusted input**: every
@@ -125,7 +125,7 @@ The model **never writes files directly** (DD-42). When it wants to change conte
 `.editcard`): a header naming the scope (`✎ Proposed edit — release-notes.md` / `— the selection`), a
 **coloured diff** (deletions struck through, insertions highlighted), and an action row.
 
-A proposal reuses the reusable diff component (F9) that Stage 2 built for Format/Lint. A run may return
+A proposal reuses the reusable diff component (F9) built for Format/Lint. A run may return
 zero proposals (a pure chat answer) or one proposal; the model returns the *intended* new text and the
 app computes the diff against the current scope for display.
 
@@ -142,8 +142,14 @@ The user decides what happens to a proposal (DD-42). The card's action row offer
   document**-scoped edit replaces the buffer (`replace-all`) (DD-43). This sets the document dirty and
   flows to disk only through the normal save/autosave path — nothing is written to disk by the assistant
   itself.
-- **Review hunks** — expands the diff into individual hunks so the user can accept or reject each one
-  before applying the accepted subset (mockup: **Review hunks**).
+- **Re-run** — runs the action again, against the current buffer. This is the remedy for a proposal you
+  do not like *and* for a proposal that has gone stale because you edited the document while it was
+  running.
+
+  There is **no partial apply.** Accepting individual hunks was refused on 2026-07-25
+  (`00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons`): it needs conflict
+  handling between accepted and rejected hunks for a benefit nobody asked for, and the proposal is
+  already reviewable in full before anything is applied. The mockup's Partial button has been removed.
 - **Discard** — drops the proposal; the transcript keeps a record that it was discarded (DD-55).
 
 After Apply, the app may optionally run **Format** on the applied region (reusing the callable Format
@@ -190,13 +196,54 @@ Hard limits keep the agent bounded and the app responsive (DD-40, DD-47):
 
 - **Max tool iterations** — default **8**, configurable in **AI Context** settings (mockup: "Max agent
   tool iterations"). Hitting it terminates the loop (EC-LLM-1).
-- **Run timeout** — a wall-clock cap per run; exceeding it cancels the loop like a user cancel and
-  surfaces a timeout error (DD-48).
+- **Run timeout** — a wall-clock cap per run, default **120 s**
+  (`17_PROVIDERS_MODELS_SETTINGS.md#ranges-and-defaults`); exceeding it cancels the loop like a user
+  cancel and surfaces a timeout error (DD-48).
+
+  **This budget dominates.** The three bounds multiply: iterations × attempts × per-attempt timeout.
+  At the defaults that is 8 × 4 × 60 s ≈ **32 minutes** of one click holding the gate, if nothing
+  pre-empts it. The run budget is what pre-empts it, and every attempt's deadline is
+  `min(perAttemptTimeout, timeRemainingInRunBudget)` (ADR-0034).
+- **No-progress detection** — the loop stops if the model requests the **same tool with the same
+  arguments twice in a row**. An iteration cap alone does not help here: a small model that calls
+  `read_document` identically will do it eight times and spend the whole budget learning nothing.
+- **Consecutive validation failures** — the loop ends on the **second consecutive** argument-validation
+  failure. A single failure returns an error observation **with the schema echoed back** and consumes
+  one iteration. For a small model, malformed arguments are the normal case rather than an exception,
+  so ending the run on the first one would make the assistant unusable.
 - **Single in-flight inference, app-wide** — a process-wide single-flight gate allows **at most one**
   LLM run at a time; runs are serialized, never parallel (DD-47; reuses the F5 gate).
 
+### When the model cannot call tools
+
+Tool support is a property of the **model**, not the provider kind (ADR-0034), and on a local-first
+default most installed models do not have it.
+
+When `Test tools` has established that the selected model cannot call tools — or a run discovers it —
+the assistant **runs a single-shot path** instead of failing: the scope goes in, edited text comes back,
+and it is presented as the same reviewable proposal. Actions that genuinely need to read other files are
+disabled, with the reason on the row.
+
+Without this the failure is not graceful. Ollama returns HTTP 400 about tools, and unless it is
+recognised the classification is `upstream`, which is retryable — so the user gets four identical
+failures. LM Studio and llama.cpp are worse: they frequently **accept the request, ignore the `tools`
+array and return prose**, which the loop reads as a final answer. The user is shown the model narrating
+what it would like to read.
+
 Edge cases:
 
+- **EC-LLM-23 — Model does not support tool calls.** Recognised as `tools_unsupported` (non-retryable),
+  and the run continues on the single-shot path. Never four retries of the same 400.
+- **EC-LLM-24 — Invalid tool arguments.** An error observation with the schema echoed back; one
+  iteration consumed; the run ends only on the second consecutive failure.
+- **EC-LLM-25 — The model repeats a tool call identically.** The loop stops rather than spending the
+  remaining iterations.
+- **EC-LLM-26 — A proposal was truncated** (`finish_reason == "length"`). Reported as "the model ran out
+  of room to answer — raise Max output tokens", never as "no applicable edit" and never as a generic
+  tool failure.
+- **EC-LLM-27 — Tool output is untrusted content.** A workspace file returned by a tool is delimited and
+  framed as inert data exactly as the primary input is (DD-76). A note containing instructions is
+  content, not a command.
 - **EC-LLM-4 — Provider busy.** A second run requested while one is in flight is refused with a **Busy**
   error (`apperr.Busy()`); the UI keeps the first run and shows a "one request at a time" notice rather
   than queueing silently (DD-47).

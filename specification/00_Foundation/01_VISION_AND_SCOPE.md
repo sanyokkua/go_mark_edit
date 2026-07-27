@@ -37,8 +37,8 @@ platform-native webview (WebView2 / WKWebView / WebKitGTK) on Windows, macOS, an
 - **G4 — Stay out of the way.** Three visual themes with light/dark/auto; minimal, uncluttered chrome;
   the Viewer hides everything but the document.
 - **G5 — Be trustworthy.** Offline-first with no background network, no telemetry, MIT-licensed, logs
-  written locally only. The only outbound traffic the app ever makes is the assistant assistant's
-  user-invoked LLM calls to the provider the user configured (local by default; DD-32 as revised).
+  written locally only. The only outbound traffic the app ever makes is the assistant's user-invoked
+  LLM calls to the provider the user configured (local by default; DD-32 as revised).
 
 ## 3. In scope (v1)
 
@@ -55,7 +55,7 @@ platform-native webview (WebView2 / WKWebView / WebKitGTK) on Windows, macOS, an
 - **Three themes** (Liquid Glass, Material, Minimal) × **Auto/Light/Dark**; unified editor+preview theme.
 - **Keyboard shortcuts** for formatting/lint/format/save/open; **i18n-ready** UI (English shipped).
 - **Multiple app instances** (VS Code-style).
-- **LLM assistant (Stage 3)** — a right-hand sidebar with proofread/reformat/summarize actions, chat,
+- **LLM assistant** (the assistant phases) — a right-hand sidebar with proofread/reformat/summarize actions, chat,
   and custom instructions over the open document, applied as reviewable diffs. The default provider is
   **local** (Ollama / LM Studio / llama.cpp); remote providers are strictly opt-in. This is the app's
   **only** outbound network, and only on explicit user action (DD-32 as revised, DD-38–DD-55).
@@ -69,6 +69,39 @@ platform-native webview (WebView2 / WKWebView / WebKitGTK) on Windows, macOS, an
 - Screen-reader certification and full WCAG audit (basic keyboard access only for v1).
 - Deterministic paginated PDF (page size/headers/footers/breaks) — v1 exports the document as-is.
 
+### Refused on 2026-07-25, with reasons
+
+A review against two shipped applications produced a long list of candidate features. These were
+considered and **declined**. They are recorded here so nobody relitigates them mid-build. Reopening one
+means a new decision, not a story.
+
+| Refused | Why |
+|---|---|
+| Rename, move or delete files from the workspace tree | Needs a filesystem watcher the specification deliberately does not have (EC-WS-6), reconciliation with any open tab on that path, and an undo story. Creating files and folders **is** in scope (DD-77); destructive operations are not. The mockup's Rename…/Delete… entries were removed. |
+| Converting pasted HTML into Markdown | We cannot know how the user wants rich text inserted. Paste inserts the plain-text flavour, unchanged (DD-78). Losing formatting is a predictable outcome; guessing at structure is not. |
+| A density / compact mode | Turns an eighteen-combination visual matrix into thirty-six for a spacing preference. |
+| A custom accent-colour picker | DD-28 rules out user-authored themes; this is the same argument at lower cost to us and higher cost to consistency. |
+| Settings export / import | A schema-versioned file format with its own migration story, for a single-user desktop app. **Reset to defaults** ships instead (DD-75). |
+| A search box inside Settings | Roughly twenty-five settings across seven groups. |
+| Theme preview thumbnails | Swatches are adequate. Revisit only if people cannot tell the themes apart. |
+| Dragging a tree item onto a pane to open it there | A click already opens it; the second gesture buys nothing. |
+| Accepting or rejecting individual hunks of a format result or an assistant proposal | You apply the whole proposal or you re-run it. Partial application needs conflict handling for a benefit nobody asked for. |
+| A bundled "Getting started" guide and Markdown cheat sheet | Two documentation surfaces with no requirement, no phase and no translation plan behind them. |
+| User-configured asset roots | The allowlist is the document's folder plus the workspace root. Three documents required "configured roots" and none defined a setting for them. |
+| A persistent "provider connected" indicator in the status bar | It implies polling, which collides head-on with the no-background-network rule. Provider health is shown as the result of the last call you made. |
+| Hiding individual toolbar groups via settings | A configuration surface substituting for a layout decision. The toolbar overflows instead. |
+| An on-disk log of assistant runs | It would persist your document text to a file to make a misbehaving model diagnosable. The **Show prompt** disclosure (`01_Product/15_ACTIONS_LIBRARY.md`) answers the same question — what was actually sent — while storing nothing. Diagnosis is worth having; a second copy of your documents is not the price. |
+| Link path autocompletion | Typing `](./` completing against the workspace is genuinely useful, and it needs the tree, a path index and a completion provider inside Monaco for a convenience the file tree already provides by other means. Revisit post-v1 if broken relative links turn out to be common. |
+| Table editing helpers (Tab-to-next-cell, add row, set alignment) | Format already aligns table columns, and pasting a spreadsheet range covers how tables usually arrive (DD-78). A cell-aware editing mode inside a plain-text buffer is a small editor of its own. |
+
+### Deferred, not refused
+
+| Deferred | Note |
+|---|---|
+| Character-accurate editor↔preview scroll sync | The costly version. Phase 09 ships heading-accurate sync using the outline's heading-to-source-line map — most of the value, nearly none of the cost. |
+| Spell checking | No offline dictionary is bundled, so a default install has no spelling assistance until an AI provider is configured. This is a deliberate size trade-off, said out loud rather than buried. |
+| Persisted assistant history | The transcript is per-tab and in-memory (DD-44). Persisting it means storing document text, which the privacy posture would have to be reopened for. |
+
 ## 5. Non-negotiable constraints
 
 See `00_Foundation/04_DESIGN_DECISIONS.md` for the authoritative, numbered list. Summary:
@@ -76,7 +109,7 @@ See `00_Foundation/04_DESIGN_DECISIONS.md` for the authoritative, numbered list.
 - **Offline-first, no background network.** The app makes **no background or unsolicited** network
   activity of any kind (no update checks, telemetry, or CDN/asset fetches); all assets (KaTeX fonts,
   Mermaid, highlight themes, fonts) are bundled. Before the assistant exists the app makes **zero** network calls. The **only**
-  outbound requests are the assistant assistant's user-invoked LLM calls to the configured provider
+  outbound requests are the assistant's user-invoked LLM calls to the configured provider
   (local by default; DD-32 as revised). Remote images/CSS in *documents* are loaded only under an
   explicit user policy (Ask / Always allow / Always block).
 - **No telemetry, no auto-update.** Logs are written to a local file and never transmitted.
@@ -93,5 +126,5 @@ and a manual smoke test confirms, on each OS: open a `.md` from the file manager
 edit and autosave; open a folder and navigate the filtered tree; render a document containing a GFM
 table, a KaTeX formula, a fenced code block, and a Mermaid diagram; format and lint a document; export
 to PDF; switch across all three themes in light/dark/auto; and confirm the network posture (zero
-outbound connections in the phases before the assistant, and in the assistant phases outbound traffic **only** to the user-configured
-LLM provider and **only** on user action — see `07_Phases/00_ROADMAP.md`).
+outbound connections before the assistant exists, and once it does, outbound traffic **only** to the
+user-configured LLM provider and **only** on user action — see `07_Phases/00_ROADMAP.md`).

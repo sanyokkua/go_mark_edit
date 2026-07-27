@@ -6,7 +6,7 @@
 
 ## Context and problem statement
 
-The assistant assistant has to live somewhere in the GoMarkEdit shell and has to have a way to turn a
+The assistant has to live somewhere in the GoMarkEdit shell and has to have a way to turn a
 model's suggested rewrite into an actual change in the user's document. Two coupled UX/architecture
 questions follow: **where** does the assistant surface (and how do its settings fit the existing Settings
 dialog), and **how** does an accepted LLM suggestion reach the editor buffer?
@@ -57,7 +57,7 @@ meter** (ADR-0009), a **quick-actions** bar, a **chat transcript**, and a **comp
 instructions (DD-38). It is hidden by default until a provider is configured.
 
 An edit produced by the loop's `propose_edit` tool is a **diff**, never a write. The diff renders in the
-sidebar using the reusable **DiffView** (F9); the user reviews hunks and either **Applies**, or discards.
+sidebar using the reusable **DiffView** (F9); the user reviews the diff and either **Applies**, re-runs, or discards.
 Apply routes through the editor's **document-command seam** — **replace-range** for a selection-scoped edit
 (replacing only the selected range) or **replace-all** for a whole-document edit (F3/F7) — reading content
 and selection through the first-class document accessor (F2), **never** by touching the Monaco instance
@@ -117,11 +117,11 @@ safety margin, reply reserve, over-context strategy, history strategy, max tool 
   the editor document API; disk only through normal save/autosave), **DD-53** (AI settings in dedicated
   AI/Providers and AI Context Settings tabs). Related: DD-39 (action catalog), DD-43 (scope), DD-44
   (multi-turn chat / custom instructions), DD-49 (streaming into the transcript).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant-stage-3`,
+- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
   `02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams`,
   `00_Foundation/06_IMPLEMENTATION_STAGES.md` (F1 three-region layout, F2 document accessor, F3/F7
   document-command seam, F8 programmatic Format/Lint, F9 reusable DiffView), and the assistant mockup
   `mockups/gomarkedit-mockup.html`.
-- Stories: Phase 10 (assistant sidebar shell, scope + token meter, edit-proposal → diff → apply via editor
-  command seam) and Phase 08 (Settings dialog that the AI tabs extend) per `07_Phases/00_ROADMAP.md`
+- Stories: Phase 12 (assistant sidebar shell, scope + token meter, edit-proposal → diff → apply via editor
+  command seam) and Phase 10 (Settings dialog that the AI tabs extend) per `07_Phases/00_ROADMAP.md`
   (authored per phase; none `done` at ADR time).

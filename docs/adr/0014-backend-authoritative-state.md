@@ -48,7 +48,7 @@ design the owner wants to remove.
 ### Consequences
 
 - Positive: one source of truth; Go owns memory/lifecycle of the model; bounded webview memory; the
-  Stage-3 assistant, export, and preview all read one authoritative buffer.
+  The assistant, export, and preview all read one authoritative buffer.
 - Positive: file-first (DD-11) and the envelope/adapter/offline invariants are unchanged.
 - Negative: more IPC (commands + `state:*` events + `GetState` hydration) and a projection-sync layer to
   build and test; a new `internal/appmodel` module and handler.

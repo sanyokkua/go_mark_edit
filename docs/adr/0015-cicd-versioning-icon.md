@@ -7,7 +7,7 @@
 
 ## Context and problem statement
 
-The spec had a CI gate set and packaging metadata (Phase 10, `04_Build_and_Release/03_CI_AND_HOOKS.md`)
+The spec had a CI gate set and packaging metadata (Phase 12, `04_Build_and_Release/03_CI_AND_HOOKS.md`)
 but no end-to-end **release pipeline**: nothing defined how a version gets into the binary, how the
 GitHub release is produced per OS, how the app icon is derived for all platforms, or the guarantee that
 CI/dev builds never touch a user's production database. The owner asked to mirror the proven pipeline of

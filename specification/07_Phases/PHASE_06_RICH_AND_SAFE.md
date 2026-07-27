@@ -1,4 +1,4 @@
-# Phase 05 — My documents render richly and safely
+# Phase 06 — My documents render richly and safely
 
 ## What you get
 
@@ -24,7 +24,11 @@ reading mode that hides everything except the document.
 5. **Sanitization.** Whatever HTML a document contains, the rendered output cannot execute script or
    reach anywhere it should not. This is not optional and not last: it is part of the render pipeline
    from the first line of step 1.
-6. **Reading mode.** Hide every piece of chrome — sidebar, tabs, toolbar, menu bar **and status bar**
+6. **A diagram you can actually read.** Clicking a rendered Mermaid diagram opens it full-window with
+   zoom and pan; `Esc` closes it. The same SVG, not a re-render. A real architecture diagram in a
+   half-width preview pane is unreadable at any usable size, which makes the whole feature look broken
+   rather than small.
+7. **Reading mode.** Hide every piece of chrome — sidebar, tabs, toolbar, menu bar **and status bar**
    — and show only the document. Leaving reading mode restores the exact arrangement, scroll position
    and focus you had.
 
@@ -39,17 +43,18 @@ reading mode that hides everything except the document.
 
 ## Questions to settle first
 
-**Blocking — this one is a hole in the specification, not a disagreement.** Nothing anywhere defines
-what HTML a document may contain: no sanitization levels, no default allowlist of tags, attributes and
-URL schemes, and no actual Content-Security-Policy directives. Three documents require "a level" and
-none says what the levels are. Write it before step 1, because sanitization is in the pipeline from
-the start.
+**Nothing blocking — both former blockers were closed on 2026-07-25.**
 
-Also settle:
+- What HTML a document may contain is now specified in `01_Product/19_SANITIZATION_AND_CSP.md`
+  (ADR-0030): sanitization is derived from the Markdown standard rather than being a separate control,
+  Minimal and GFM escape raw HTML at no cost, and only Full adds `rehype-raw` + `rehype-sanitize`. That
+  document also enumerates the CSP, names the two renderers that bypass the sanitizer entirely
+  (Mermaid and KaTeX), and carries the adversarial fixture corpus.
+- **Configured roots were cut.** The allowlist is the document's folder plus the workspace root, full
+  stop. Three documents required "user-configured roots" and none ever defined a setting for them.
 
-- **Which images may load from where.** The sources talk about "user-configured roots" but no setting
-  key, type, default or UI control exists for them. Recommendation: cut configured roots from v1 — the
-  allowlist is the document's folder plus the workspace root, full stop. This also simplifies Phase 11.
+Still to settle:
+
 - **How long "Load once" lasts.** Is it until the tab changes, the document re-renders, the
   arrangement changes, or the document closes? Recommendation: until that document is closed or its
   path changes; it survives re-render, tab switch and arrangement change.

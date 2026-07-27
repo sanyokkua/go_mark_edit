@@ -20,8 +20,13 @@ persistence, and the local-first default — mirroring the **AI / Providers** se
 4. [Model discovery](#model-discovery)
 5. [Verification](#verification)
 6. [Inference params](#inference-params)
-7. [Persistence](#persistence)
-8. [Defaults local](#defaults-local)
+7. [The variable has to be in the app's environment, not your shell's](#the-variable-has-to-be-in-the-apps-environment-not-your-shells)
+8. [Ranges and defaults](#ranges-and-defaults)
+9. [Base URL, and the `/v1` trap](#base-url-and-the-v1-trap)
+10. [Custom headers, and redaction](#custom-headers-and-redaction)
+11. [Deleting a provider](#deleting-a-provider)
+12. [Persistence](#persistence)
+13. [Defaults local](#defaults-local)
 
 ## Provider kinds
 
@@ -96,7 +101,7 @@ in the background.
 
 ## Verification
 
-Before saving, the user can run three **draft-config** checks (DD-46) — the mockup's Test buttons, each
+Before saving, the user can run four **draft-config** checks (DD-46) — the mockup's Test buttons, each
 with a result badge:
 
 - **Test connection** — reaches the base URL and confirms the endpoint responds (badge `✓`).
@@ -104,6 +109,31 @@ with a result badge:
 - **Test inference** — runs one **minimal** inference on the draft config and reports latency (badge
   `✓ 420 ms`). Because it performs real inference, it **acquires the single-flight gate** (DD-46, DD-47),
   so it cannot run concurrently with an assistant run and vice-versa.
+- **Test tools** — sends a one-tool schema and asserts the reply contains a tool call (badge `✓ tools`
+  or `✗ not supported`). Shares the gate exactly as Test inference does.
+
+**Test tools exists because tool support is a property of the model, not the provider** (ADR-0034).
+Without it, a user finds out during their first Proofread instead of while configuring, and the failure
+they see is a generic provider error four times over. Its result is recorded against
+`(providerId, modelId)`, and a model without tool support runs the assistant's single-shot path rather
+than failing.
+
+**Test inference and Test tools apply the saved inference params** — temperature, max output tokens,
+context length — rather than library defaults. A diagnostic that exercises a code path production never
+takes is a diagnostic that passes while production fails.
+
+**Test connection is deliberately generous:** *any* response from the server means reachable, including
+a 404 and a 429. Only `auth` / `missing_credential` and `unreachable` / `timeout` are failures. A
+connection test that fails on a 404 is really testing the path, and the path is what Test models is for.
+
+**Test models reports zero models as a failure**, not a success with an empty list, and returns the list
+it found so the picker can be populated without a second round trip.
+
+**Cold start is not a fault.** A local provider may have no model loaded; the first inference pays the
+full model-load time, which can be tens of seconds where a warm call is under a second. Test inference
+labels a first call as such rather than reporting a latency that makes a working provider look broken.
+Neither GoMarkEdit nor the reference implementation sets Ollama's `keep_alive`, so a model unloads after
+its idle window and the next run pays the load again — one optional wire field, worth knowing about.
 
 Verification is **diagnostic**: it validates a draft and is never recorded to the run transcript. All
 three run against the **draft** (unsaved) config so problems are caught before persistence. Failures are
@@ -116,13 +146,106 @@ Per selected model, configurable with sensible defaults (DD-52; mockup **Model**
 
 - **Temperature** — sampling temperature (mockup default `0.3`). Also shown as a chip in the composer
   row (`🌡 temp 0.3`).
-- **Max output tokens** — cap on the response length (mockup default `2048`). This is the **reply
-  reserve** the tokenizer accounts for (`18_TOKENIZER_AND_CONTEXT.md#reply-reserve`).
+- **Max output tokens** — the `max_tokens` **wire field**, capping generation (mockup default `2048`).
+  It is *related to* the reply reserve the tokenizer accounts for, but it is **not the same number**
+  (`18_TOKENIZER_AND_CONTEXT.md#reply-reserve`): the reserve is a budgeting figure the fit meter
+  subtracts, and equating them means a user who raises one to be safe silently raises the other.
+  **`maxOutputTokens` must be less than `contextWindow`** — deriving one from the other silently
+  reserves most of the model's real context for "completion" and truncates the prompt before generation,
+  which is a regression a reviewed implementation guards with a dedicated test.
 - **Context length (num_ctx)** — the model's context window the app targets (mockup default `8192`).
   This value drives the token-fit meter and the context budget
   (`18_TOKENIZER_AND_CONTEXT.md#fit-meter`, `#context-budget`).
 
 Defaults are conservative and per-model where the profile knows them; the user can override each.
+
+## The variable has to be in the app's environment, not your shell's
+
+A GUI application launched from Finder, the Dock or Spotlight **does not inherit `~/.zshrc`,
+`~/.bash_profile` or anything else a login shell reads.** So `export OPENAI_API_KEY=…` in a shell profile
+— which is exactly what every provider's own documentation tells you to do — leaves the variable simply
+absent from GoMarkEdit's process, and `missing_credential` fires for a user who did everything right.
+
+The same is true on Windows for a variable set only in a terminal session, and on Linux for anything set
+outside the session's environment.
+
+The settings field therefore explains **where** to set it, per platform, next to the field itself:
+
+| Platform | Where it must be set |
+|---|---|
+| macOS | `launchctl setenv OPENAI_API_KEY …` for the current login session, or a `launchd` user agent to make it persist. Setting it in `~/.zshrc` works **only** if you launch GoMarkEdit from a terminal. |
+| Windows | A user environment variable (System → Environment Variables), not a `set` in one console. |
+| Linux | The session environment — `~/.profile` for most display managers, or a systemd user environment. A `~/.bashrc` export reaches terminals only. |
+
+The app **reads the variable at call time, never at launch**, so setting it and then reopening the app is
+enough — a full logout is not required on macOS once `launchctl setenv` has run.
+
+`missing_credential`'s message says the variable name and points here rather than saying "not set", which
+is the one thing the user already knows.
+
+## Ranges and defaults
+
+DD-75. **Every number lives here once.** The control, the validator and the seeded default cite this
+table; none of them carries its own copy. Three disagreeing sources for one range is how an interface
+ends up offering a timeout the backend rejects — in the reference implementation the UI accepted
+1–3600 seconds, the validator accepted 1–600, and the seeder wrote 60.
+
+| Setting | Range | Step | Default |
+|---|---|---|---|
+| Request timeout | 1 – 600 s | 5 | 60 |
+| Max retries | 0 – 10 | 1 | 3 |
+| Run wall-clock budget | 10 – 600 s | 10 | 120 |
+| Temperature | 0 – 2 | 0.05 | 0.3 |
+| Max output tokens | 1 – 32 000 | 256 | 2 048 |
+| Context length (`num_ctx`) | 1 024 – 200 000 | 1 024 | 8 192 |
+| Agent iterations | 1 – 16 | 1 | 8 |
+| Safety margin | 5 – 40 % | 5 | 15 |
+| Reply reserve | 256 – 8 192 tokens | 256 | 1 024 |
+
+Cross-field: **`maxOutputTokens < contextWindow`**, and **`replyReserve ≤ maxOutputTokens`**.
+
+Out-of-range values are **rejected with the range named**, never clamped.
+
+## Base URL, and the `/v1` trap
+
+Providers disagree about whether the base URL includes `/v1`, and naive concatenation produces
+`/v1/v1/chat/completions` → a 404 → classified as `model_not_found`, which tells the user their *model*
+is wrong when their *URL* is wrong. LM Studio's own server UI shows `http://localhost:1234/v1`;
+OpenRouter's documentation says `https://openrouter.ai/api/v1`; Ollama's is a bare origin.
+
+**The stored form is canonical:** a parseable `http`/`https` URL ending in a trailing slash. Paths are
+stored **without** a leading slash and joined as `trimSuffix(base,"/") + "/" + trimPrefix(path,"/")`. The
+settings field enforces the trailing slash and says so in its validation message.
+
+**Each provider row carries its own path overrides** — `completionPath`, `modelsPath` and `apiVersion` —
+defaulting from the kind's profile. This is the escape hatch: a user who pastes
+`http://localhost:1234/v1/` sets the completion path to `chat/completions` and it works. Azure needs it
+regardless, for its `{deployment}` placeholder and `?api-version=` query.
+
+**Where an override does nothing, the control must not pretend otherwise.** Ollama routes through its
+native `/api/chat` endpoint (`02_Architecture/08_LLM_INTEGRATION.md`), so the completion-path override
+has no effect for that kind; the field is disabled with the reason shown. A control that looks live and
+is not is a defect found by live testing in the reference application.
+
+## Custom headers, and redaction
+
+`ProviderConfig.headers` is a free-form map, so nothing stops a user pasting
+`Authorization: sk-…` into it. Secrets are supposed to be env-var names only (DD-45), and this is the
+hole in that guarantee.
+
+**One case-insensitive redaction rule covers every path a header value can escape by**: logs, error
+messages, events, the run transcript, diagnostics, and any future settings export. Header names matching
+`authorization`, `api-key`, `x-api-key`, `token`, `secret` or `cookie` have their values replaced with
+`••••` everywhere except the moment of sending. The rule is stated once and applied everywhere, rather
+than each surface remembering.
+
+## Deleting a provider
+
+Deleting the **currently selected** provider reassigns the selection to another configured provider.
+Deleting the **last** one returns the assistant sidebar to its **Unconfigured** state
+(`14_LLM_ASSISTANT_OVERVIEW.md#assistant-sidebar`) — not to a Ready state with nothing behind it, and
+not to a blank panel that needs a reload to recover. The reference implementation shipped the blank
+panel and had to add a regression test for it.
 
 ## Persistence
 

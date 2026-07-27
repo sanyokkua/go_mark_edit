@@ -1,11 +1,11 @@
 ---
 name: agentic-tool-loop
 description: >
-  Use when building or adjusting the Stage-3 agent loop, its five tools, run cancellation, the
+  Use when building or adjusting the assistant agent loop, its five tools, run cancellation, the
   single-flight gate, agent event emission, or the edit-proposal (diff) apply path. Triggers: RunAgent,
   AgentHandler, tool registry, read_document, read_selection, list_workspace_files, read_workspace_file,
   propose_edit, JSON-schema arg validation, iteration/wall-clock limit, agent_limit, cancelled, busy,
-  gate defer release, agent:progress/token/done/error, replace-range/replace-all, DiffView (F9). Stage-3
+  gate defer release, agent:progress/token/done/error, replace-range/replace-all, DiffView (F9). assistant
   only; additive; a hand-written Go loop over an OpenAI-compatible endpoint (no agent framework).
 allowed-tools: Read, Edit, Write, Bash, Glob, Grep
 references:
@@ -32,7 +32,7 @@ emitting `runId`-carrying events. Edits are always **proposals** (a diff), never
 
 - Provider client, discovery, retry/error mapping, secrets → use `llm-provider-integration`.
 - Token estimation, fit meter, context budget, history trimming → use `context-and-tokenizer`.
-- Anything in Stages 1–2. The loop is **Stage-3 only** and **additive**: it **consumes** the F2 content
+- Anything in the phases before the assistant. The loop is **the assistant phases only** and **additive**: it **consumes** the F2 content
   accessor, the F3/F7 document-command seam, the F5 gate, the F8 Format transform, and the F9 DiffView.
   It restructures none of them — a required change to an earlier contract is a new story (+ ADR).
 
@@ -62,7 +62,7 @@ emitting `runId`-carrying events. Edits are always **proposals** (a diff), never
    `cancelled` stop reasons. Full code and contract: `references/handler-and-loop.md`.
 4. **Tools.** Add/adjust tools in `internal/llm/tools/` with JSON-schema arg validation and
    least-privilege sources — document/selection reads come from the `internal/appmodel` canonical
-   buffer (DD-62/DD-64), never the frontend editor; gate the two workspace tools on an open folder + the Stage-1 asset allowlist
+   buffer (DD-62/DD-64), never the frontend editor; gate the two workspace tools on an open folder + the pre-assistant asset allowlist
    with traversal rejection. Table, Dispatch code, and gating rules: `references/tools-registry.md`.
 5. **Apply path.** Route Apply through the F3/F7 command seam (`replace-range` / `replace-all`) and render
    diffs via the F9 DiffView; never touch the editor widget directly; optional Format-after-apply via F8;

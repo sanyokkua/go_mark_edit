@@ -15,11 +15,13 @@ binding regeneration. Wails v2 (stable) is mandated over v3 (alpha) (DD-02; ADR-
 1. Embed
 2. Bind-EnumBind
 3. Lifecycle
-4. Dialogs runtime
-5. File associations
-6. File drop
-7. AssetServer handler
-8. Generate bindings
+4. Closing, and the order things happen in
+5. Everything that touches `runtime.*` needs a seam
+6. Dialogs runtime
+7. File associations
+8. File drop
+9. AssetServer handler
+10. Generate bindings
 
 ## Embed
 
@@ -83,17 +85,73 @@ wails.Run(&options.App{
         app.DispatchStartupOpenTarget(ctx)            // route an OS-provided path, if any, into an
                                                       // appmodel OpenDoc command (DD-26, DD-62)
     },
-    OnShutdown: func(ctx context.Context) { app.Close() }, // close DB + logger
+    OnBeforeClose: func(ctx context.Context) bool { return app.VetoClose(ctx) }, // true = stay open
+    OnShutdown:    func(ctx context.Context) { app.Close() },                     // see #shutdown-order
+    Logger:        appLogger,          // the app logger IS the Wails logger — see below
+    Menu:          app.NativeMenu(),   // macOS only; nil elsewhere (ADR-0028)
     Mac: &mac.Options{ OnFileOpen: func(path string) { app.EnqueueOpen(path) } },
 })
 ```
+
+**`Logger:` is not optional.** The application's own logger implements the Wails `logger.Logger`
+interface and is passed here, so Wails' lifecycle output — window creation, binding errors — lands in
+the same rotating file as everything else. Omit it and those diagnostics are lost silently. Its `Fatal`
+must **not** call `os.Exit`, so that `main` can show a dialog before the process ends.
+
+**`Menu:` installs the native macOS application menu** (ADR-0028) carrying the standard App and Edit
+roles. Without it, `Cmd+C`, `Cmd+V`, `Cmd+A` and `Cmd+Z` do nothing inside WKWebView, because the
+webview routes those accelerators through the native Edit menu rather than the DOM. In a text editor
+that is not a rough edge. It is `nil` on Windows and Linux, where the in-window menu bar is the
+convention.
+
+## Closing, and the order things happen in
+
+`OnBeforeClose` returns `true` to **veto** the close. It is the only hook that can, and Phase 05
+requires a cancellable quit prompt — "nothing written until you choose, so Cancel is always a clean
+no-op" — which cannot be built in `OnShutdown`, because by then the window is already going away.
+
+The flow is asynchronous, and that is the fiddly part: the hook vetoes immediately, asks the frontend to
+show **one** dialog listing every dirty document, and waits. On Save all or Discard all it records the
+decision and asks the window to close again, this time returning `false`. On Cancel it simply stays
+vetoed and nothing has been written.
+
+**The shutdown sequence is normative** (ADR-0032):
+
+1. `OnBeforeClose` — veto and prompt while any document is dirty.
+2. Cancel every in-flight run through the registry and release the gate.
+3. **Flush pending debounced writes** — window geometry, the editor buffer, autosave.
+4. Close the database.
+5. Flush and close the logger.
+
+Steps 3 and 4 are in that order for one reason worth stating: reversed, the debounced window-geometry
+write (DD-60) finds a closed database and the user's window size is lost, silently, on every quit.
+
+## Everything that touches `runtime.*` needs a seam
+
+The dialog functions are already routed through swappable package-level variables so tests can fake
+them. **That rule extends to every `runtime.*` call** — `EventsEmit`, `WindowSetSize`,
+`ClipboardGetText`, `BrowserOpenURL`, `MessageDialog`.
+
+The reason is specific and unpleasant: Wails' `runtime` functions resolve the frontend from the
+context, and when the context carries no real frontend they call `log.Fatalf` — which is `os.Exit`.
+That is **not recoverable by `defer/recover`**, and the interface involved references unexported types,
+so it cannot be faked from outside the Wails module either. A unit test that reaches an unseamed
+`runtime.EventsEmit` does not fail; it terminates the test binary.
+
+This matters more here than in most Wails apps, because the architecture emits `state:patch` on every
+model mutation, plus `export:*` and the agent events.
 
 `OnStartup` captures the single runtime context and runs phase-2 wiring, including
 `restoreWindowState` — the persisted window/UI layout is applied **before** the window is shown
 (DD-60; `05_STATE_AND_PERSISTENCE.md` `#window-state`). Once the frontend loads it hydrates its
 projection with one `GetState` query and stays in sync via `state:patch` events (`#bind-enumbind`).
-`OnShutdown` releases the DB and logger. There is **no single-instance guard** — a second launch
-simply starts another process (DD-08; ADR-0006).
+There is **no single-instance guard** — a second launch simply starts another process
+(DD-08; ADR-0006).
+
+**`OnDomReady`** runs after the webview has loaded the frontend. Nothing that must happen *before the
+window is shown* may live there — `restoreWindowState` is deliberately in `OnStartup` for exactly that
+reason (DD-60). `OnDomReady` is for work that needs a live frontend: dispatching a queued OS open
+target, and emitting the first `state:patch` if anything changed during startup.
 
 ## Dialogs runtime
 
@@ -193,7 +251,7 @@ and are served through a **custom `AssetServer.Handler`** with a directory **all
 
 ```go
 func NewAssetHandler(allow AllowlistProvider) http.Handler
-// allowlist = document's folder + workspace root + user-configured roots
+// allowlist = document's folder + workspace root
 // path-traversal ("..", symlink escape, absolute outside allowlist) → 403; not on the list → 404
 ```
 

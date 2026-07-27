@@ -7,7 +7,7 @@ The exactly-five least-privilege tool set, the registry dispatch code, workspace
 
 Model output is **untrusted input**: validate every call's args against its JSON schema before invoking
 (bad args → `tool_failed` observation, EC-LLM-3). Advertise the two workspace tools **only when a folder
-workspace is open** (EC-LLM-13), reusing the Stage-1 asset **allowlist** with traversal rejection
+workspace is open** (EC-LLM-13), reusing the pre-assistant asset **allowlist** with traversal rejection
 (EC-LLM-14). No filesystem/shell/network tools; the model never writes files.
 
 | Tool | Purpose | Source | Least-privilege note |
@@ -59,7 +59,7 @@ provider when a folder workspace is open (`scopeCaps(req)` in the loop — see
 `references/handler-and-loop.md`). If no folder is open, the model must not even see these tools exist
 (EC-LLM-13) — this is an advertisement-time gate, not a runtime rejection.
 
-`read_workspace_file` reuses the **same** Stage-1 asset allowlist (`internal/assets`) that gates document
+`read_workspace_file` reuses the **same** pre-assistant asset allowlist (`internal/assets`) that gates document
 image loading under `offline-and-privacy.md`: document folder + workspace root + any configured roots,
 with path-traversal rejection (`..`, symlink escape) applied **before** any I/O (EC-LLM-14). There is no
 separate, looser allowlist for agent tool reads — one allowlist, two consumers.

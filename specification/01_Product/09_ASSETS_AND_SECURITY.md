@@ -28,13 +28,14 @@ folder**, matching GitHub/GitLab semantics (DD-21). For example, `![diagram](./a
 `./assets/flow.png — resolved relative to this file`). Absolute local paths are resolved as-is but are
 still subject to the allowlist. A referenced file that does not exist renders as alt text / placeholder
 (EC-ASSET-2, EC-RENDER-7). An asset referenced from an **unsaved buffer** has no document folder, so
-only the workspace root and configured roots apply (EC-ASSET-6).
+only the workspace root applies (EC-ASSET-6).
 
 ## Allowlist
 
 The asset handler serves a local file only if its resolved, canonical path lies within the
 **allowlist**: the **current document's folder**, the **workspace root** (if a folder is open), and any
-**user-configured roots** (DD-21). Anything outside is refused. The allowlist is computed from
+(DD-21). Anything outside is refused. Configured roots were cut on 2026-07-25 — three documents
+required them and none ever defined a setting key, type, default or control. The allowlist is computed from
 canonicalised (symlink-resolved) paths so that resolution cannot be tricked into escaping it.
 
 ## Path traversal
@@ -50,7 +51,7 @@ security invariant, not a convenience, and must have its own tests.
 Remote content referenced by documents (remote `<img>`/CSS/URLs) is governed by a **policy setting**
 with three values (DD-22): **Ask** (default), **Always allow**, **Always block**. **GoMarkEdit never
 fetches these remote assets on its own** (DD-32); this policy governs only document-referenced remote
-assets, which the webview loads solely when the policy permits — it is unrelated to the Stage-3
+assets, which the webview loads solely when the policy permits — it is unrelated to the assistant's
 assistant's separate, user-invoked LLM traffic (DD-32 as revised):
 
 - **Ask** — remote content is blocked and the external-content banner is shown; the user chooses.
@@ -88,4 +89,4 @@ document cannot execute code or exfiltrate data. Detail of the exact directives 
 - **EC-ASSET-3** — Remote content with **Ask** → banner, blocked until choice.
 - **EC-ASSET-4** — Remote content with **Always block** → never requested, no banner.
 - **EC-ASSET-5** — Absolute local path outside allowlist → rejected.
-- **EC-ASSET-6** — Asset from unsaved buffer → only workspace root + configured roots apply.
+- **EC-ASSET-6** — Asset from unsaved buffer → only the workspace root applies.

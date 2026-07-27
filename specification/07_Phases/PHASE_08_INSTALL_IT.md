@@ -1,4 +1,4 @@
-# Phase 07 — I can install it, and double-clicking a `.md` opens it
+# Phase 08 — I can install it, and double-clicking a `.md` opens it
 
 ## What you get
 
@@ -8,7 +8,7 @@ double-click a `.md` file in your file manager, and GoMarkEdit opens it.
 ## Why here and not at the end
 
 A release pipeline that has never run is not a release pipeline. Once there is something worth handing
-to another person — and after Phase 06 there is — make it installable and keep it that way. Every later
+to another person — and after Phase 07 there is — make it installable and keep it that way. Every later
 phase then ships through a path that already works.
 
 ## Build it in this order
@@ -47,10 +47,10 @@ phase then ships through a path that already works.
 ## Questions to settle first
 
 - **Opening an unsupported or binary file from the OS.** Someone will associate the app with something
-  odd, or double-click a `.txt` that is really binary. The answer follows Phase 04's question 2 — if
+  odd, or double-click a `.txt` that is really binary. The answer follows Phase 05's question 2 — if
   invalid bytes open read-only, the same applies here and there is nothing new to decide. Binary input
   is declined with a message. Confirm before step 4.
-- **Which view mode an OS open uses.** Same question as Phase 04's question 1, already answered.
+- **Which view mode an OS open uses.** Same question as Phase 05's question 1, already answered.
 
 ## Done when
 

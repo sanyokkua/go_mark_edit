@@ -1,11 +1,11 @@
 ---
 name: context-and-tokenizer
 description: >
-  Use when working on Stage-3 offline token estimation, the context budgeter, the fit meter, reply
+  Use when working on assistant offline token estimation, the context budgeter, the fit meter, reply
   reserve / safety margin, over-context handling (warn / chunk / selection), or chat-history trimming
   (sliding window / summarize) for the assistant. Triggers: Estimate, Fits, FitResult, token meter,
   num_ctx, reply reserve, safety margin, context_window, sliding window, summarize, Budget.Assemble,
-  Budget.Trim, AI Context settings tab. Stage-3 only; additive; offline estimator, never a network call.
+  Budget.Trim, AI Context settings tab. the assistant phases only; additive; offline estimator, never a network call.
 allowed-tools: Read, Edit, Write, Bash, Glob, Grep
 references:
   - references/tokenizer-and-fit.md
@@ -33,7 +33,7 @@ fit meter, the over-context warning, and history trimming — with the provider'
 
 - Provider client, discovery, retry/error mapping, secret handling → use `llm-provider-integration`.
 - The tool-call loop, cancellation, gate, edit-proposal diff → use `agentic-tool-loop`.
-- Anything in Stages 1–2. The tokenizer/budgeter are **Stage-3 only** and **additive** — they consume
+- Anything in the phases before the assistant. The tokenizer/budgeter are **the assistant phases only** and **additive** — they consume
   F2 (document/selection accessor) and per-model params, and restructure nothing.
 
 ## Source of truth

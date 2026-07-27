@@ -65,5 +65,5 @@ erDiagram
 ```
 
 Use for: persisted schema — the `settings(key, value, type)` KV table, the recent-files table, or (in
-Stage 3) the additive `providers` table. Drop the relationship line entirely if the tables don't
+the assistant phases) the additive `providers` table. Drop the relationship line entirely if the tables don't
 actually relate in the schema.

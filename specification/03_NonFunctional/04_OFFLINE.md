@@ -16,7 +16,7 @@ and defines how it is verified.
 3. No CDN at runtime
 4. Document-referenced remote assets
 5. Verification approach
-6. Network policy revision (the assistant phases LLM)
+6. Network policy revision (the LLM assistant)
 
 ## 1. The requirement
 
@@ -60,21 +60,37 @@ request.
 
 ## 5. Verification approach
 
-Offline is verified, not assumed:
+Offline is verified, not assumed. **Two of the three checks below are cheap and deterministic, so they
+are CI gates rather than rituals** (`04_Build_and_Release/03_CI_AND_HOOKS.md` §4). The third is
+genuinely manual and belongs in the release-candidate checklist.
+
+**Gates, run on every build:**
+
+- **No remote URL in the build output** — no file under `frontend/dist` contains `jsdelivr`, `unpkg`,
+  `cdn.` or `googleapis`. It fails the moment somebody adds a CDN font or a Mermaid fallback, and it is
+  the single best guard on DD-32. A reviewed reference application ships a `cdn.jsdelivr.net` Monaco
+  loader in its production bundle and its own offline service worker never caches it, so this is a
+  demonstrated failure mode rather than a hypothetical one.
+- **Every bundled asset is actually present** — KaTeX fonts, the generated highlight stylesheet, the UI
+  fonts, the Monaco worker chunk. A build that silently externalises one of them still works on the
+  developer's machine and breaks air-gapped.
+- **The Monaco presence check runs with the network aborted.** The same Playwright assertion that
+  guards against a collapsed editor becomes an offline regression test when the network is disabled for
+  that run.
+
+**Manual, per release:**
 
 - **Network-egress check** — during a representative session (open, edit, render a document containing a
   table + KaTeX formula + fenced code + Mermaid diagram, format, lint, export to PDF, switch themes),
   the process must open **no outbound network connections**. This is run manually per release and, where
   practical, wired into CI as a socket-egress guard for offline-touching stories.
-- **Static asset scan** — a build check greps shipped assets for remote URLs (http/https in
-  `link`/`script`/`import`/`font-face`) and fails on any hit (excluding user-document handling paths).
 - **Air-gapped smoke** — the cross-OS release smoke test is run with networking disabled to confirm full
   functionality, satisfying the vision success criterion of "zero outbound network connections."
 
-## 6. Network policy revision (the assistant phases LLM)
+## 6. Network policy revision (the LLM assistant)
 
-the assistant phases (the LLM assistant) revises the offline policy from *absolute* to *scoped* (DD-32 as revised;
-ADR-0011). The revision is deliberately narrow and does not weaken §§1–5 for the phases before the assistant:
+The assistant phases revise the offline policy from *absolute* to *scoped* (DD-32 as revised;
+ADR-0011). The revision is deliberately narrow and does not weaken §§1–5 for any earlier phase:
 
 - **Zero background network in every stage.** No stage ever performs an update check, telemetry ping,
   license call, crash upload, or CDN/asset fetch. All app and rendering assets remain bundled (§§2–3).
@@ -82,7 +98,7 @@ ADR-0011). The revision is deliberately narrow and does not weaken §§1–5 for
   app ever originates is an LLM inference call, and only to the provider the user **explicitly
   configured**, and only **on user action** (invoking an action or sending a chat message). There is no
   background, on-open, on-save, or timed inference. Before the assistant exists the app makes **no** such calls — the provider
-  client does not exist until Stage 3.
+  client does not exist until the assistant phases.
 - **Default provider is local.** The default configuration targets a **local** provider (e.g.
   Ollama / LM Studio), so a default install stays fully on-device and originates nothing over the network.
   Remote providers (e.g. OpenAI, Azure) are strictly opt-in and require the user to enter their own
@@ -91,4 +107,4 @@ ADR-0011). The revision is deliberately narrow and does not weaken §§1–5 for
   requests **only** to the configured provider endpoint and **only** immediately following a user action;
   no request appears at idle, on open, or on save. With a local provider configured (or none), the trace
   shows **no** off-machine connections at all — the same air-gapped result as §5. This is part of the
-  the assistant phases' exit checks (`07_Phases/PHASE_09_AI_PROVIDER.md`, `PHASE_11_CONVERSATION.md`).
+  the assistant phases' exit checks (`07_Phases/PHASE_11_AI_PROVIDER.md`, `PHASE_13_CONVERSATION.md`).

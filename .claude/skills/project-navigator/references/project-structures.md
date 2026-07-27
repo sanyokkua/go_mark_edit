@@ -102,7 +102,7 @@ pkg/                    → exported packages
 
 GoMarkEdit is a native, offline-first Markdown editor: a **Wails v2** app pairing a Go backend with a
 React 19 / Vite / TypeScript frontend running in the OS webview, using **Monaco** as the editor. It is
-CGO-free (`modernc.org/sqlite`), MIT-licensed, no telemetry, with a Stage-3 LLM assistant. Signals:
+CGO-free (`modernc.org/sqlite`), MIT-licensed, no telemetry, with a assistant LLM assistant. Signals:
 `go.mod` **and** `wails.json` at the root, a `frontend/` folder with its own `package.json`, and a
 generated `frontend/wailsjs/` bindings dir.
 
@@ -123,7 +123,7 @@ internal/               → Go backend packages (strict Handler → Service → 
   appmodel/             → backend-authoritative application model (DD-62): open docs + canonical content,
                           tabs, workspace ref, UI/layout; GetState query + commands + state:patch events
   recent/ · docs/ · workspace/ · assets/ · export/ · fileassoc/ · gate/  → feature verticals + shared
-  llm/                  → Stage-3 assistant: providers/ verify/ tokenizer/ context/ tools/ agent/ actions/
+  llm/                  → assistant: providers/ verify/ tokenizer/ context/ tools/ agent/ actions/
 frontend/               → React/Vite/TypeScript app
   package.json          → frontend deps + scripts (Vite build/dev); driven via just, not npm directly
   vite.config.ts        → Vite/bundler config
@@ -148,7 +148,7 @@ build/                  → Wails build assets/output
   `ctx` param on handlers), `wailsjs/` imported only from `logic/adapter/`, backend-authoritative state
   (`internal/appmodel` is the single source of truth; Redux is a projection reconciled by `state:patch`,
   DD-62/DD-63/DD-64), token-only theming, CGO-free additive-only SQLite, multi-instance (no flock),
-  offline (only user-invoked Stage-3 LLM calls).
+  offline (only user-invoked assistant LLM calls).
 
 ## Rust
 

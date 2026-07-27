@@ -6,17 +6,17 @@ paths:
   - "frontend/src/ui/widgets/assistant/**"
 ---
 
-# LLM integration (Stage 3 assistant)
+# LLM integration (assistant)
 
 **Authority:** `specification/02_Architecture/08_LLM_INTEGRATION.md` (normative contract for the
 `internal/llm/*` group + the frontend assistant surface),
 `specification/00_Foundation/04_DESIGN_DECISIONS.md` (DD-32 revised, DD-38..DD-55),
-`specification/00_Foundation/06_IMPLEMENTATION_STAGES.md` (Stage 3; the F1–F9 seams). The assistant
+`specification/00_Foundation/06_IMPLEMENTATION_STAGES.md` (the assistant phases; the F1–F9 seams). The assistant
 **extends, never rewrites** the backend layering (`go-backend-architecture.md`) and error envelope
 (`go-error-envelope.md`). Everything here is additive.
 
-The assistant is a **Stage-3-only**, agentic, tool-call-based workflow over the open document. It must not
-exist in Stages 1–2, and it is built **entirely by consuming** the reserved seams (F1 layout slot, F2
+The assistant is a **assistant-phases-only**, agentic, tool-call-based workflow over the open document. It must not
+exist in the phases before the assistant, and it is built **entirely by consuming** the reserved seams (F1 layout slot, F2
 document identity/content accessor, F3/F7 document-command seam, F5 single-flight gate, F8 programmatic
 Format/Lint, F9 reusable DiffView). It restructures no earlier contract.
 
@@ -46,7 +46,7 @@ Format/Lint, F9 reusable DiffView). It restructures no earlier contract.
   blur/tab-switch/close/save, so the assistant sees what the user sees
   (`08_LLM_INTEGRATION.md#tool-registry`). Validate every call's args against its
   JSON schema before invoking — model output is **untrusted input**. Advertise the two workspace tools
-  **only when a folder workspace is open**, and reuse the Stage-1 asset **allowlist** (document folder +
+  **only when a folder workspace is open**, and reuse the pre-assistant asset **allowlist** (document folder +
   workspace root + configured roots) with **path-traversal rejection**. No arbitrary filesystem, shell, or
   network tools.
 - **Edits are proposals, applied via the editor command seam (DD-42, F3/F7).** `propose_edit` returns a
@@ -76,8 +76,8 @@ Format/Lint, F9 reusable DiffView). It restructures no earlier contract.
 - Don't add filesystem/shell/network tools, trust model tool-args without schema validation, expose the
   workspace tools with no folder open, or read a path outside the allowlist / through a traversal.
 - Don't apply an edit by reaching into the editor widget; always go through the F3/F7 command seam.
-- Don't open a socket in Stages 1–2, or to anything other than the user-configured provider.
-- Don't restructure the Stage-1/2 shell, document model, gate, or Format/Lint/Diff contracts — consume the
+- Don't open a socket in the phases before the assistant, or to anything other than the user-configured provider.
+- Don't restructure the pre-assistant/2 shell, document model, gate, or Format/Lint/Diff contracts — consume the
   F1–F9 seams; a required change to an earlier contract is a new story (+ ADR if significant).
 
 ## Authoring checklist
@@ -94,5 +94,5 @@ Format/Lint, F9 reusable DiffView). It restructures no earlier contract.
 - [ ] Edits are diffs applied via the F3/F7 command seam through DiffView (F9); no direct file writes.
 - [ ] Token fit uses the offline estimator + margin + reply reserve; `context_window` is the backstop.
 - [ ] Context is an explicit budget with sliding-window/summarization trimming.
-- [ ] Network only to the configured provider, only on user action; Stage-3-only; F1–F9 seams consumed, not
+- [ ] Network only to the configured provider, only on user action; assistant-phases-only; F1–F9 seams consumed, not
       restructured; bound-signature change → `just gen`, no `wailsjs/` drift.

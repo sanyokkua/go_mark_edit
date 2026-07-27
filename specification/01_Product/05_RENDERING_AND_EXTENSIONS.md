@@ -58,13 +58,43 @@ rendering concern and does not depend on the Markdown standard.
 
 ## Mermaid
 
-` ```mermaid ` fences are rendered to inline SVG by the async **MermaidBlock** component (its
-styles target `.gme-mermaid svg`). Mermaid renders asynchronously: while a diagram
-computes, a loading/placeholder state is shown; on success the SVG replaces it (SVG fills reference
-theme tokens such as `--accent` / `--muted`, as in the mockup diagram). **Invalid Mermaid syntax**
-yields an inline error state within that block, never a crashed preview (EC-RENDER-1). Mermaid is
-available at all standard levels because it is handled by the `components` override, not a remark
-plugin.
+` ```mermaid ` fences are rendered to inline SVG by the async **MermaidBlock** component. Mermaid
+renders asynchronously: while a diagram computes, a loading placeholder is shown; on success the SVG
+replaces it. **Invalid Mermaid syntax** yields an inline error state within that block, never a crashed
+preview (EC-RENDER-1). Mermaid is available at all standard levels because it is handled by the
+`components` override, not a remark plugin.
+
+**Mermaid does not read theme tokens.** An earlier revision of this document said its SVG fills
+"reference theme tokens such as `--accent` / `--muted`" — that is not how Mermaid works. It bakes
+resolved colours into the SVG at render time, and outer CSS can restyle almost none of it. Theming is
+therefore done through `themeVariables` built from the resolved token values, and every open diagram
+**re-renders when the effective theme changes** (`10_THEMING.md#diagrams-and-maths`).
+
+Four lifecycle rules, each of which a shipped implementation gets wrong:
+
+- **Initialise once**, and again only on a theme change. `mermaid.initialize()` sets module-global
+  config; calling it inside the per-block render effect re-initialises the singleton once per diagram
+  per render, and a theme change mid-flight yields interleaved palettes across diagrams. Both reference
+  implementations do this.
+- **A fresh id per render.** `mermaid.render(id, src)` injects a temporary node into the document and
+  removes it on success. Re-entrant renders sharing one id collide, and a *failed* parse can leave the
+  orphan behind permanently. Mint `${blockId}-r${n}` with a per-block counter.
+- **`parse()` before `render()`.** This is the mechanism behind EC-RENDER-1: parsing first yields a
+  clean syntax-error message instead of a half-built node.
+- **A generation token per render pass.** Mermaid and KaTeX finish out of order; anything arriving after
+  a newer pass started is discarded. A cancellation flag that only suppresses `setState` is not enough —
+  the in-flight render still mutates the DOM and Mermaid's global state. The same token gates PDF
+  export's readiness check (`07_EXPORT.md#readiness`).
+
+**A rendered diagram can be opened full-window.** Clicking a diagram — or its expand affordance —
+opens it over the app at full size, with zoom and pan, and `Esc` closes it. A real architecture diagram
+in a half-width preview pane is unreadable at any usable zoom level, which makes the feature look
+broken rather than small. The expanded view is the same SVG, not a re-render, so it costs nothing
+beyond a viewer and inherits the current theme.
+
+Mermaid output is injected with `dangerouslySetInnerHTML` and therefore **bypasses the sanitizer
+entirely**; it is governed by `securityLevel: 'strict'`
+(`19_SANITIZATION_AND_CSP.md#what-the-sanitizer-does-not-cover`).
 
 ## Components override
 

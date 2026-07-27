@@ -2,13 +2,13 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-32, DD-38–DD-55), `00_Foundation/06_IMPLEMENTATION_STAGES.md` (Stage 3, F1–F10), `01_Product/15_ACTIONS_LIBRARY.md`, `01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md`, `01_Product/17_PROVIDERS_MODELS_SETTINGS.md`, `01_Product/18_TOKENIZER_AND_CONTEXT.md`, `01_Product/11_SETTINGS.md`, `mockups/gomarkedit-mockup.html`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md` (DD-32, DD-38–DD-55), `00_Foundation/06_IMPLEMENTATION_STAGES.md` (F1–F10), `01_Product/15_ACTIONS_LIBRARY.md`, `01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md`, `01_Product/17_PROVIDERS_MODELS_SETTINGS.md`, `01_Product/18_TOKENIZER_AND_CONTEXT.md`, `01_Product/11_SETTINGS.md`, `mockups/gomarkedit-mockup.html`
 
 # LLM Assistant — Overview
 
 The LLM Assistant adds AI-powered proofreading, reformatting, chat, and custom instructions over the
 open document. It is the last thing built (`07_Phases/00_ROADMAP.md`); it
-must not exist in the phases before the assistant, and it drops into the seams those stages reserved (F1–F10) without
+must not exist before the assistant phases, and it drops into the seams the earlier phases reserved (F1–F10) without
 restructuring the Viewer or Editor. This document defines the assistant surface, its interaction
 modes, its scope model, and its privacy/network posture. The detailed behaviour of each part is
 specified in the four companion documents (15–18).
@@ -119,7 +119,7 @@ never by touching the editor widget directly (DD-42; `16_CHAT_AND_AGENTIC_WORKFL
 ## Privacy and network
 
 The assistant is the app's **only** source of outbound network traffic, and it is strictly
-user-initiated (DD-32 as revised for Stage 3, DD-54).
+user-initiated (DD-32 as revised for the assistant, DD-54).
 
 - **Document text leaves the machine only on a user action** — invoking an action, sending a chat
   message, or applying a custom instruction — and **only to the single provider the user configured**.
@@ -140,13 +140,13 @@ user-initiated (DD-32 as revised for Stage 3, DD-54).
 
 ## Forward-compat
 
-the assistant phases is **additive only**: it consumes the seams the earlier phases reserved (`06_IMPLEMENTATION_STAGES.md`
+The assistant is **additive only**: it consumes the seams the earlier phases reserved (`06_IMPLEMENTATION_STAGES.md`
 §3) and does not change the Viewer/Editor contracts destructively.
 
 - The sidebar occupies the **reserved right-region slot** (F1) — the three-region shell and its
-  show/hide plumbing already exist; the assistant phases fills the slot rather than restructuring the layout (DD-38).
+  show/hide plumbing already exist; the assistant fills the slot rather than restructuring the layout (DD-38).
 - Reading the document and selection, and applying edits, go through the **document-command seam**
-  (F2/F3/F7) — the same interface Stage 2 made editable. No assistant component reaches into the editor
+  (F2/F3/F7) — the same interface the editor phases made editable. No assistant component reaches into the editor
   widget directly (DD-42).
 - The **single-flight gate** (F5), the `apperr` Result-envelope path, logging, and file services are
   reused as-is; inference becomes "a long operation" the generic gate guards (DD-47).
@@ -158,5 +158,5 @@ the assistant phases is **additive only**: it consumes the seams the earlier pha
 - Diff rendering (F9), and the Format/Lint transforms as callable functions (F8), are reused by the
   proposed-edit card and post-apply cleanup.
 
-This document, and 15–18, describe **the assistant phases only**. No behaviour here may be present in a pre-assistant
+This document, and 15–18, describe **the assistant only**. No behaviour here may be present in a pre-assistant
 build.

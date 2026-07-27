@@ -9,7 +9,7 @@
 
 DD-10 originally persisted only the native window size and the per-document view mode. The product
 owner asked that the **application-level UI layout** also be remembered between sessions and windows —
-which sidebars are open, the Editor/Split/Preview arrangement, pane visibility, and (in Stage 3) the
+which sidebars are open, the Editor/Split/Preview arrangement, pane visibility, and (once the assistant exists) the
 assistant sidebar — so a returning user, and every newly opened window, starts in the layout they last
 left. Because GoMarkEdit runs **multiple windows/instances with no single-instance lock** (DD-08,
 ADR-0006), two windows can change layout independently, which raises the question of *which* window's

@@ -70,6 +70,6 @@ tab represent a true zero-document state. No synthetic Untitled document is cons
 - Design decisions: DD-62, DD-63, DD-64
 - Spec clauses: `specification/02_Architecture/02_BACKEND_GO.md#application-model`,
   `specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`,
-  `specification/07_Phases/PHASE_04_REAL_FILES.md`
-- Stories: the Phase 04 stories, not yet written. (The stories this ADR originally named — STORY-036,
+  `specification/07_Phases/PHASE_05_REAL_FILES.md`
+- Stories: the Phase 05 stories, not yet written. (The stories this ADR originally named — STORY-036,
   038, 039, 041, 043 — were Phase-02 drafts withdrawn on 2026-07-25 without being built.)

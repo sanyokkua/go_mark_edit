@@ -73,3 +73,32 @@ go test -count=60 -run TestOpenRejectsCorruptOrUnsupportedSchemaSafely ./interna
 Pre-existing, unrelated to any current change. A shared CI runner is exactly the environment that
 trips it, so it will surface as an intermittent red build before it surfaces anywhere else. The fix is
 probably a bounded retry in the helper rather than a longer timeout.
+
+## 8. `internal/apperr` will become the shared-DTO dumping ground
+
+**Not yet a defect — a trajectory, recorded so it is noticed at the point it starts costing.**
+
+The rule "`internal/apperr` imports no other internal package" is correct and enforced by
+`internal/apperr/architecture_test.go`. Its side effect is that every type needing to cross a package
+boundary gets pushed *into* `apperr` to dodge an import cycle, because `apperr` is the only package
+everything may already import.
+
+The reference application this architecture came from shows where that ends: its `apperr` owns not just
+`AppError`/`WireError` but a provider-preset type, an action-metadata type, a history-entry type, a
+prompt-preview request, and twenty-four `*Result` envelopes — plus two functions in its composition root
+whose entire job is copying a `db.ProviderPreset` into an `apperr.ProviderPreset` so the persistence
+package can stay free of `apperr` imports.
+
+GoMarkEdit is on the same path: `02_BACKEND_GO.md` and `01_MODULE_INVENTORY.md` both describe
+`internal/apperr` as owning *"all `*Result` + DTOs"*, and the assistant phases add a large number of
+payload types.
+
+**The fix, when it is worth doing:** split into `internal/apperr` (`AppError`, `ErrorCode`, `WireError`,
+`ToWire` — errors only) and a second leaf package (`internal/wire`) for the `*Result` envelopes and
+cross-package DTOs. Both stay at the bottom of the import graph; neither becomes a dumping ground.
+
+**The trigger:** the first time a *non-error* type is added to `apperr` purely to break an import cycle
+between two packages that are not `apperr`. Doing it before then is churn; doing it during the assistant
+phases is a painful refactor across a much larger surface.
+
+This is a refactor, not a specification change, which is why it lives here rather than in an ADR.

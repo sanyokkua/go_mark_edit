@@ -87,9 +87,9 @@ while stripping everything else:
 `import('mermaid')`, local highlight.js token styles, app fonts. **No CDN / network fetch at
 runtime.** This is a repo-wide invariant (see `.claude/rules/offline-and-privacy.md`), not
 specific to this pipeline: GoMarkEdit performs **no background or unsolicited network activity
-whatsoever**. Stages 1–2 (Viewer, Editor) make zero network calls of any kind; the only outbound
+whatsoever**. the phases before the assistant (Viewer, Editor) make zero network calls of any kind; the only outbound
 request the app ever makes anywhere is a user-invoked LLM inference call to the provider the user
-explicitly configured (Stage 3).
+explicitly configured (the assistant phases).
 
 Concretely, for this pipeline:
 

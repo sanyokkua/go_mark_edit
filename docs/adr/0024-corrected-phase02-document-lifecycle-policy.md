@@ -107,6 +107,6 @@ change requires a new decision. Phase 02 has no Compare-later state.
   `specification/01_Product/03_FILES_TABS_WORKSPACE.md#save-as`,
   `specification/01_Product/03_FILES_TABS_WORKSPACE.md#dirty-state`,
   `specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings`,
-  `specification/07_Phases/PHASE_04_REAL_FILES.md` (its "Questions to settle first")
+  `specification/07_Phases/PHASE_05_REAL_FILES.md` (its "Questions to settle first")
 - Stories: STORY-033, STORY-034, STORY-035, STORY-037, STORY-038, STORY-040, STORY-041, STORY-042,
   STORY-043, STORY-044, STORY-045, STORY-046, STORY-048, STORY-049, STORY-051

@@ -53,8 +53,13 @@
   user can do.
 - **Stage 1 / 2 / 3** — retired. Until 2026-07-25 the phases were grouped into three delivery stages
   (Viewer → Editor → Assistant); the grouping contradicted the phase dependencies and was removed
-  (`00_Foundation/06_IMPLEMENTATION_STAGES.md`). Older text still uses the labels: read **Stage 3** as
-  "the assistant", and **Stage 1 / Stage 2** as "before the assistant". Do not use them in new text.
+  (`00_Foundation/06_IMPLEMENTATION_STAGES.md`). The labels were purged from the specification on
+  2026-07-25 and must not reappear in new text. They survive in
+  `00_Foundation/06_IMPLEMENTATION_STAGES.md`, which is the record of their removal, and in
+  `docs/stories/archive/`, which is history.
+- **The assistant phases** — the phases that build the LLM assistant, named as such rather than
+  numbered so the roadmap stays the single place phase numbers live. Everything earlier is
+  **"before the assistant"**. Use these two terms; do not invent a third grouping.
 - **Assistant / assistant sidebar** — the assistant right-hand sidebar providing LLM-powered actions,
   chat, and custom instructions over the open document (DD-38).
 - **Action** — a preconfigured, one-click assistant task shipped as data (id, label, category, system

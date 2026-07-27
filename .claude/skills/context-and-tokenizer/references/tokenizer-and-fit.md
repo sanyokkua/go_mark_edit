@@ -5,7 +5,7 @@ The offline token estimator, the safety-margin/reply-reserve fit check, and the 
 ## Offline estimate + margin + reserve (DD-50, ADR-0009)
 
 The estimator is **offline** — embedded BPE (e.g. cl100k-style) or a `chars ÷ 4` heuristic fallback,
-**never** a network call. This is a repo-wide invariant, not a Stage-3-only preference: `offline-and-privacy.md`
+**never** a network call. This is a repo-wide invariant, not a assistant-phases-only preference: `offline-and-privacy.md`
 lists a user-invoked LLM inference call as the *only* outbound request the app ever makes, and counting
 tokens is not that — it must stay entirely on-device (DD-32, DD-50, ADR-0011).
 

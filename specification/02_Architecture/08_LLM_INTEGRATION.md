@@ -6,7 +6,7 @@
 
 # LLM Integration
 
-The assistant assistant is an **agentic, tool-call-based** workflow layered on top of the working Editor
+The assistant is an **agentic, tool-call-based** workflow layered on top of the working Editor
 (DD-40). This document is the normative architecture contract for the `internal/llm/*` package group: the
 provider abstraction, the bounded tool-call loop, the tool registry, the context budgeter and tokenizer,
 streaming, the single-flight gate and cancellation, the frontend event surface, the LLM error codes, and
@@ -79,7 +79,7 @@ Events: agent:progress · agent:token (streaming) · agent:done · agent:error
 Frontend logic/adapter event subscription → logic/store/assistant run slice
         │
 Edit proposal (propose_edit tool result = a diff) rendered in the sidebar via the reusable DiffView (F9)
-        │  user reviews hunks → Apply
+        │  user reviews diff → Apply
 Apply-edit → editor document-command seam (F3/F7: replace-range | replace-all)
         → optional Format-after-apply (F8) → updated buffer syncs to the backend model (DD-64)
         → normal save/autosave path
@@ -142,7 +142,8 @@ type ProviderProfile struct {
     CompletionPathTemplate string     // e.g. "/v1/chat/completions"
     ModelsPathTemplate     string     // e.g. "/v1/models" or "/api/tags"
     DiscoveryStrategy      DiscoveryStrategy // how ListModels parses the endpoint's model list
-    Capabilities           Capabilities
+    NativeChatPath         string     // non-empty ⇒ use this instead of CompletionPathTemplate
+    Capabilities           Capabilities // kind-level only — see "capability is per model" below
 }
 
 // NewFactory maps a ProviderKind → (builder, profile). One builder wraps the shared
@@ -176,11 +177,74 @@ If `EnvVarName` is set but unresolved in the environment, the service returns `m
 `/v1/models` list vs. an Ollama-style `/api/tags`), returning `[]ModelInfo{ID, …}` for the model picker
 and the AI/Providers settings tab (DD-46).
 
+### `NativeChatPath`, and why Ollama needs one
+
+**Ollama's OpenAI-compatible endpoint silently ignores `options.num_ctx`.** Its native `/api/chat`
+endpoint honours it. Since `17_PROVIDERS_MODELS_SETTINGS.md` promises that the context-length setting
+drives the budget, routing Ollama through `/v1` makes that promise false without failing.
+
+So the Ollama profile sets `NativeChatPath: "api/chat"`, and that endpoint has **a different request
+shape *and* a different response shape**: `options{temperature, num_ctx, num_predict}` going out;
+`message.content`, `done_reason`, `prompt_eval_count` and `eval_count` coming back, instead of
+`choices[]`, `finish_reason` and `usage`. One decoder for all six kinds is therefore wrong, and the
+decoder is selected by profile.
+
+A caution from the same source: this behaviour **changed between Ollama versions** — an earlier
+observation that `num_ctx` was ignored was refuted by a later one against a newer build. Verify against
+the version you ship, not against a note. That is what `docs/testing/LIVE_TESTING_PLAN.md` is for.
+
+### Capability is a property of the model, not of the kind
+
+`Capabilities` on `ProviderProfile` is keyed by `ProviderKind`, which is right for things like
+"strip `<think>` blocks" and **wrong for tool calling**.
+
+One Ollama server on one port serves a model that supports tool calls and a model that does not, at the
+same time. A local-first user's installed catalogue is mostly the second kind. So **tool support is
+recorded against `(providerId, modelId)`**, probed by the *Test tools* verification
+(`17_PROVIDERS_MODELS_SETTINGS.md#verification`), and the assistant **degrades to a single-shot path**
+when it is absent rather than failing (ADR-0034).
+
+Getting this wrong is not a graceful failure. Ollama returns HTTP 400 with a body about tools; nothing
+recognises it; it classifies as `upstream`, which is retryable; the user gets four identical failures.
+LM Studio and llama.cpp are worse — they frequently **accept the request, ignore the `tools` array, and
+return prose**, which the loop reads as a final answer. The user is then shown the model narrating what
+it would like to read.
+
+### Reasoning models emit `<think>` blocks
+
+Local model catalogues are full of them, and hosted APIs are not — so this is a genuine kind-level
+capability, `StripThinkTags`, true for `ollama`, `lmstudio` and `llamacpp`.
+
+The blocks are stripped **before** the empty-content check, so a response that is *entirely* reasoning
+becomes `empty_completion` with an actionable message rather than a `<think>` blob rendered into the
+user's chat.
+
+**Under streaming this is materially harder**: you cannot strip a closed tag before `</think>` has
+arrived. A naive token emitter streams the model's whole chain of thought into the chat bubble. The
+reply is therefore buffered until the closing tag or a bounded prefix length, whichever comes first.
+
 ### Retry + error mapping (owned by the service)
 
-Retries and timeouts are owned by the **service**, not the HTTP client (DD-48). The service classifies
-the outcome, retries only retryable classes with backoff that honors a `Retry-After` header, and stops at
-a bounded attempt count. The mapping from transport/status to `ErrorCode` is fixed:
+Retries and timeouts are owned by the **service**, not the HTTP client (DD-48).
+
+**Attempts are `1 + maxRetries`.** `maxRetries = 3` means four requests reach the provider. This is
+stated once, here, and the settings label says the same thing — the ambiguity between "retries" and
+"attempts" cost a reviewed reference project a release cycle of dead code, and its own live testing had
+to establish the answer empirically.
+
+**Every attempt's deadline is `min(perAttemptTimeout, timeRemainingInRunBudget)`.** Retries do not each
+get a fresh full timeout, because three bounds that multiply produce a run nobody bounded: at a
+60-second timeout, 3 retries and 8 iterations, one click on Proofread can hold the gate for roughly
+half an hour before any limit fires. **The run's wall-clock budget pre-empts retries and iterations
+both** (ADR-0034); it is not a fourth independent limit sitting outside them.
+
+Backoff is exponential from 500 ms, capped at 8 s, and a `Retry-After` header overrides it. **The delay
+is shown to the user**, not merely used internally — parsing it and then hiding it leaves someone
+hitting a real rate limit with no guidance, which is what the reference implementation does.
+
+A retry neither consumes an agent iteration nor emits a new iteration progress event.
+
+The mapping from transport/status to `ErrorCode` is fixed:
 
 | Outcome | ErrorCode | Retryable |
 |---|---|---|
@@ -192,8 +256,43 @@ a bounded attempt count. The mapping from transport/status to `ErrorCode` is fix
 | HTTP 404 (model/endpoint) | `model_not_found` | no |
 | HTTP 429 | `rate_limited` | yes (honor `Retry-After`) |
 | HTTP 400 recognized as context overflow | `context_window` | no |
-| Other non-2xx upstream failure | `upstream` | sometimes |
-| 2xx but empty/blank completion | `empty_completion` | yes |
+| HTTP 400 recognized as "model does not support tools" | `tools_unsupported` | **no** |
+| `finish_reason == "length"` | `output_truncated` | no |
+| Other non-2xx upstream failure | `upstream` | yes |
+| 2xx but empty/blank completion | `empty_completion` | **no** |
+
+Three rows changed on 2026-07-25 and the reasons are worth keeping:
+
+- **`empty_completion` is not retryable.** It looks transient and is not. On a reasoning-style model with
+  a low output cap, the cap is consumed entirely by hidden reasoning tokens before any visible output
+  begins — a deterministic *configuration* outcome. Retrying spends three more identical inferences to
+  produce the same nothing. Its message says which setting to change.
+- **`upstream` is retryable**, not "sometimes". A rule an implementer has to guess at is not a rule.
+- **`output_truncated` is new**, and it is the most actionable diagnostic in the whole surface.
+  `finish_reason` is currently captured and never read — in this specification *and* in the reference
+  implementation. `"length"` means "raise Max output tokens", and it must never surface as
+  `empty_completion` or `tool_failed`.
+
+**The inner cause must reach the user.** When `tool_failed` or `agent_limit` wraps a real failure, the
+notification shows the **inner** code's title and remediation
+(`01_Product/20_NOTIFICATIONS_AND_EMPTY_STATES.md#error-copy`). Collapsing five distinct provider
+failures into one outer code is exactly the state a reviewed application shipped in, where a user could
+not tell a rejected credential from a rate limit from a mistyped model name.
+
+### Recognising a context overflow
+
+`HTTP 400 recognized as context overflow` is where an implementation will guess and get it wrong, so
+the recognition is specified rather than left to a regex somebody invents.
+
+**Phrasing varies across providers and within one provider.** The same llama.cpp backend has been
+observed emitting both *"exceeds the available context size"* and *"greater than the context length
+(n_keep: … >= n_ctx: …)"* depending on runtime and quantisation. Recognition is therefore a small set,
+case-insensitively: `context_length_exceeded`, or `n_ctx`, or `context` together with one of `exceed`,
+`too long`, `greater than`.
+
+**Extracting the limit has a trap.** Try `n_ctx:\s*(\d+)` **first**. A generic
+`context (size|length)[^\d]{0,20}(\d+)` applied to `n_keep: 8530 >= n_ctx: 2048` captures **8530** —
+the amount *requested* — and shows the user a context limit that is not their context limit.
 
 Every mapped error becomes an `apperr.AppError` with a user-facing title/message and the sanitized
 `WireError` surfaced through the standard envelope + toast path (`02_Architecture/06_ERROR_HANDLING.md`).
@@ -311,8 +410,8 @@ Rules:
   surface, or a run-ending error if unrecoverable) — model output is treated as **untrusted input**, not
   a trusted instruction.
 - **Workspace tools are gated.** `list_workspace_files`/`read_workspace_file` are advertised only when a
-  folder workspace is open, and reuse the Stage-1 asset **allowlist** (document folder + workspace root +
-  configured roots) with path-traversal rejection (DD-41; `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`
+  folder workspace is open, and reuse the asset **allowlist** (document folder + workspace root +
+  ) with path-traversal rejection (DD-41; `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`
   `#2-asset-allowlist-and-traversal`). A path escaping the allowlist is rejected, not read.
 - **`propose_edit` never mutates.** It computes and returns a diff against the scoped content; applying it
   is a frontend user action through the editor command seam (F3/F7), never a disk write from the tool.
@@ -377,6 +476,34 @@ real time.
   non-streaming: the same `Chat` call returns the full `ChatResponse.Content` at once and the transcript
   updates on completion. Correctness (final text, proposals, apply) is identical either way.
 
+### Streaming inverts five assumptions the non-streaming path relies on
+
+Every classification rule in this document assumes the whole response body is in hand. Under streaming
+it is not, and each of these is a distinct failure the fallback above does not cover.
+
+- **The error arrives inside a 200.** Status-based classification keys off a non-2xx response. With
+  server-sent events an upstream failure arrives as an error frame *inside* an already-successful
+  response, so `auth`, `rate_limited` and `context_window` become invisible unless the decoder also
+  parses in-stream error frames. It must.
+- **Reasoning blocks cannot be stripped incrementally.** You cannot regex a closed `<think>…</think>`
+  before `</think>` has arrived, so a naive emitter streams the model's entire chain of thought into the
+  user's chat bubble. The reply is buffered until the closing tag or a bounded prefix length, whichever
+  comes first.
+- **`empty_completion` is only decidable at the end.** It cannot be raised from a delta; it is
+  determined when the stream terminates having produced no visible content.
+- **A stream that ends without its terminator is its own failure class.** Not `upstream`, not
+  `empty_completion`, not a partial success — it is an incomplete response, and it is named
+  (`stream_incomplete`) so it can be reported honestly. **Partial text is kept and never replayed
+  automatically**: replaying can double-charge a provider and produces two transcripts for one turn.
+- **Tool-call arguments arrive fragmented.** They stream as `delta.tool_calls[i].function.arguments`
+  string chunks and must be **reassembled per `index`** before JSON-schema validation. The pseudocode
+  above shows `if ToolCalls:` as though the array were atomic; under streaming it is assembled, not
+  received.
+
+**Cancelling mid-stream** aborts the HTTP read *and* decides the terminal state, through the same single
+normalisation point as every other cancel (`07_LARGE_FILES_AND_CONCURRENCY.md#cancelling-a-run`). The
+partial text stays in the transcript, marked as cancelled.
+
 ## Gate and cancellation
 
 The assistant reuses the process-wide **single-flight gate** (`internal/gate`, F5) so **at most one LLM
@@ -413,7 +540,7 @@ events are the incremental channel.
 
 ## Error codes
 
-the assistant phases adds an **LLM error set** to the `apperr.ErrorCode` catalog. Like the pre-assistant codes it is a
+The assistant phases add an **LLM error set** to the `apperr.ErrorCode` catalog. Like the pre-assistant codes it is a
 string enum exposed to TypeScript via **EnumBind** (`02_Architecture/06_ERROR_HANDLING.md` `#error-codes`;
 `04_WAILS_INTEGRATION.md` `#bind-enumbind`), so the frontend branches on typed codes. Codes reused from
 the base catalog (`busy`, `timeout`, `cancelled`, `validation`, `internal`) keep their existing meaning;
@@ -464,7 +591,7 @@ Assistant configuration extends `internal/settings` **additively** (F4; DD-46):
 
 ## Forward-compat seams
 
-the assistant phases is built entirely by **consuming** the seams reserved in the phases before the assistant
+The assistant is built entirely by **consuming** the seams reserved before it
 (`00_Foundation/06_IMPLEMENTATION_STAGES.md`, F1–F10); it restructures nothing:
 
 - **F1 — three-region layout.** The assistant sidebar drops into the reserved, previously-empty **right**
@@ -474,7 +601,7 @@ the assistant phases is built entirely by **consuming** the seams reserved in th
   the backend-authoritative `internal/appmodel` (DD-62/DD-64) — not by reaching into the editor widget.
 - **F3 / F7 — document-command seam.** Applying a reviewed diff calls the editor command interface's
   **replace-range** (selection scope) or **replace-all** (whole-document scope) operations — the exact
-  surface Stage 2 exposed for editing. No component touches the Monaco instance directly (DD-42).
+  surface the editor phases exposed for editing. No component touches the Monaco instance directly (DD-42).
 - **F5 — single-flight gate.** Inference reuses the generic `internal/gate`; a busy gate yields `busy`
   (DD-47).
 - **F8 — programmatic Format/Lint.** After an edit is applied, the assistant may run the pure Format

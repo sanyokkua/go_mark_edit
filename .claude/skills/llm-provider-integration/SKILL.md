@@ -4,10 +4,10 @@ description: >
   Use when adding or adjusting an LLM provider kind (ollama · lmstudio · llamacpp · openai · azure ·
   compat), model discovery, provider verification (Test connection / Test models / Test inference),
   the AI/Providers settings tab, inference params, retry/error classification, or secret (env-var)
-  handling for the GoMarkEdit Stage-3 assistant. Triggers: ProviderProfile, ProviderFactory,
+  handling for the GoMarkEdit assistant. Triggers: ProviderProfile, ProviderFactory,
   OpenAICompatibleProvider, ResolvedConfig, missing_credential, provider_unreachable, ListModels,
   providers table, os.Getenv env-var name, EnumBind ErrorCode, internal/llm/providers,
-  internal/llm/verify. Stage-3 only; additive to Stage-1/2.
+  internal/llm/verify. the assistant phases only; additive to pre-assistant/2.
 allowed-tools: Read, Edit, Write, Bash, Glob, Grep
 references:
   - references/provider-profiles.md
@@ -37,7 +37,7 @@ framework, no per-kind client class.
 
 - Building the tool-call loop, cancellation, or edit-proposal diff → use `agentic-tool-loop`.
 - Token estimation, fit meter, context budget, history trimming → use `context-and-tokenizer`.
-- Anything in Stages 1–2. The assistant is **Stage-3 only** and **additive**: it consumes the reserved
+- Anything in the phases before the assistant. The assistant is **the assistant phases only** and **additive**: it consumes the reserved
   seams (F1–F9) and restructures no existing handler, service, or table. A new provider kind is a new
   **profile row**, never new client code or a rewrite.
 

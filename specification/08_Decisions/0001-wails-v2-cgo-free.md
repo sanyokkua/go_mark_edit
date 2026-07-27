@@ -66,7 +66,7 @@ v3.
 - Negative: Staying on v2 means we forgo v3's native multi-window API and must model multi-instance as
   separate processes (ADR-0006); a future migration to v3 is possible but out of scope for v1.
 - Neutral: We inherit Wails v2's `wails.json` `fileAssociations` schema and lifecycle hooks as the
-  binding integration contract (Phase 07).
+  binding integration contract (Phase 08).
 
 ## Pros and cons of the options
 
@@ -107,5 +107,5 @@ v3.
   `02_Architecture/01_SYSTEM_ARCHITECTURE.md`, `02_Architecture/02_BACKEND_GO.md`,
   `02_Architecture/04_WAILS_INTEGRATION.md`, `04_Build_and_Release/01_BUILD_MATRIX.md`,
   `05_Dependencies/01_GO_DEPENDENCIES.md`.
-- Stories: Phase 00 scaffold stories (Wails v2 app boots, Go+React+Vite wiring, DB open) and Phase 07
+- Stories: Phase 00 scaffold stories (Wails v2 app boots, Go+React+Vite wiring, DB open) and Phase 08
   file-association stories, per `07_Phases/00_ROADMAP.md`; authored per phase (none `done` at ADR time).

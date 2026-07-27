@@ -31,7 +31,7 @@ window yet — that is the point. Everything the rest of the product needs is un
 
 ## Known debt carried forward
 
-- The three-region shell is "proven" by a test that mocks the component under test. Phase 02 rebuilds
+- The three-region shell is "proven" by a test that mocks the component under test. Phase 03 rebuilds
   the chrome and must replace that with a real one — see `docs/KNOWN_ISSUES.md` §4.
 - `tokens.css` exists but contains no colour. That is Phase 02.
 

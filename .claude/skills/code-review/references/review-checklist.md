@@ -202,7 +202,7 @@ the spec under `specification/` is frozen — review against it, and never propo
 
 - [ ] **No background/unsolicited network** — no update check, telemetry, analytics, crash upload, or
       CDN/font fetch; rendering assets are bundled locally. The **only** allowed outbound call is a
-      **user-invoked Stage-3 LLM inference** to the user-configured provider (default local). Stages
+      **user-invoked LLM inference** to the user-configured provider (default local). Stages
       1–2 make zero network calls. No telemetry/auto-update, ever.
 - [ ] **LLM secret handling** — env-var **name** only, resolved at call time; never persisted/logged;
       unset → `missing_credential`, no unauthenticated request.

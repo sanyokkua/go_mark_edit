@@ -100,5 +100,5 @@ ADR pre-authorises revisiting it via a superseding ADR rather than an ad-hoc swa
   `02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`, `03_NonFunctional/02_PERFORMANCE.md`,
   `05_Dependencies/02_FRONTEND_DEPENDENCIES.md`.
 - Stories: Phase 01 editor/preview stories (Monaco source editor, live preview, split view) and the
-  Phase 04 large-file preview-pause story, per `07_Phases/00_ROADMAP.md` (authored per phase; none
+  Phase 05 large-file preview-pause story, per `07_Phases/00_ROADMAP.md` (authored per phase; none
   `done` at ADR time).

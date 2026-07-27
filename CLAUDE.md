@@ -51,11 +51,12 @@ Hold on every turn, not just when a rule file happens to be loaded:
   on `document.documentElement`. No hardcoded colors. The Viewer hides all chrome. (DD-28..30, ADR-0005)
 - **Offline-first, no background network.** No background/unsolicited network calls; bundle all rendering
   assets (KaTeX/Mermaid/fonts). Remote *document* assets load only per the content policy. The **only**
-  outbound calls are user-invoked LLM inferences to the configured provider (local by default); Stages 1–2
-  make none. (DD-32 revised, DD-54, F6, ADR-0011)
+  outbound calls are user-invoked LLM inferences to the configured provider (local by default); before the
+  assistant exists the app makes none. (DD-32 revised, DD-54, F6, ADR-0011)
 - **No telemetry, no auto-update.** Logs are local files only. (DD-33, DD-34)
 - **Multiple instances** (no single-instance lock); settings DB shared via WAL + busy_timeout. (DD-08, ADR-0006)
-- **LLM assistant is Stage-3-only.** It must not exist in Stages 1–2 (which only leave the F1–F9 seams open).
+- **The LLM assistant belongs to the assistant phases only.** It must not exist before them (earlier phases
+  only leave the F1–F10 seams open).
   It is a **bounded agentic tool-call loop** (iteration + wall-clock limits, per-iteration cancellation) with
   a **single in-flight inference** enforced by the process-wide gate (`busy` on contention); tools are
   least-privilege, read-mostly, allowlisted. **Edits are user-applied proposals** (a diff applied via the
@@ -112,17 +113,21 @@ A phase is finished when a person uses the app and confirms its "Done when" para
 completion validator, no evidence file, and no traceability record; that machinery existed, cost more
 than the application code it governed, and was removed on 2026-07-25.
 
-## Implementation stages
+## Forward-compatibility constraints
 
-Work ships in three coarse stages (`specification/00_Foundation/06_IMPLEMENTATION_STAGES.md`):
-**Stage 1 — Viewer** → **Stage 2 — Editor** → **Stage 3 — LLM Assistant**. Each stage must ship a working
-app and **leave the seams open for the next without building a wall**. Stage 1/2 stories must honour the
-binding forward-compatibility constraints **F1–F10** (three-region layout slot, document identity + content
+There is one delivery order: `specification/07_Phases/00_ROADMAP.md`. The three-stage model that used to
+sit on top of it was removed on 2026-07-25 — it contradicted the phase dependencies. Do not reintroduce
+the Stage 1/2/3 vocabulary; say **"the assistant phases"** and **"before the assistant"**.
+
+What survives is the useful half (`specification/00_Foundation/06_IMPLEMENTATION_STAGES.md`): every phase
+must ship a working app and **leave the seams open for the next without building a wall**. Every story
+before the assistant must honour the binding forward-compatibility constraints **F1–F10** (three-region
+layout slot, document identity + content
 accessor, document-command seam, growable settings registry, reserved backend seams incl. the generic gate,
 scoped-not-absolute offline invariant, editable buffer selection/apply, programmatic Format/Lint, reusable
 DiffView, token-only visual layer). The assistant is built entirely by **consuming** F1–F10 — never by restructuring an
 earlier contract. Packaging, file associations and the release pipeline are
-**Phase 07** (`specification/07_Phases/PHASE_07_INSTALL_IT.md`): version injection via
+**Phase 08** (`specification/07_Phases/PHASE_08_INSTALL_IT.md`): version injection via
 `internal/settings.AppVersion` + ldflags, the icon pipeline, and the tag-triggered release workflow
 (DD-65..67, `specification/04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md`). v1 releases ship
 via that pipeline; local/dev builds always report version `dev`.
@@ -146,8 +151,8 @@ delegation is cleaner. Keep parallel subagents to ≤8. Ask each for a concise s
 - CGO or a non-pure-Go SQLite driver. A single-instance flock lock (multi-instance is required).
 - `(T, error)` from a bound handler; a `context.Context` param on a bound handler.
 - Importing `wailsjs/` outside `logic/adapter/`. Hardcoded colors / styling outside the token system.
-- Any background/unsolicited network call from the app; a network call in Stage 1/2; loading a CDN asset at
-  runtime. Telemetry. Auto-update. (Stage 3's only outbound call is a user-invoked inference to the
+- Any background/unsolicited network call from the app; any network call before the assistant phases;
+  loading a CDN asset at runtime. Telemetry. Auto-update. (The assistant's only outbound call is a user-invoked inference to the
   configured provider.)
 - Editing `internal/db/store/` by hand; a non-additive migration. Editing the spec to fit the code.
 
@@ -174,7 +179,7 @@ structure, and `specification/mockups/gomarkedit-mockup.html` on how it should l
 | ts-testing | `frontend/src/**/*.test.ts(x)` | RTL/behavioural, a11y queries, mock adapter |
 | wails-integration | `main.go`, `wails.json`, `build/**` | embed, Bind/EnumBind, lifecycle, associations |
 | offline-and-privacy | `**/*` | no background network, no telemetry, bundled assets, user-invoked provider calls only |
-| llm-integration | `internal/llm/**`, `frontend/src/logic/store/assistant/**`, `frontend/src/logic/llm/**`, `frontend/src/ui/widgets/assistant/**` | Stage-3 assistant: provider abstraction, agent loop, tools, gate, budget, env-var secrets |
+| llm-integration | `internal/llm/**`, `frontend/src/logic/store/assistant/**`, `frontend/src/logic/llm/**`, `frontend/src/ui/widgets/assistant/**` | The assistant: provider abstraction, agent loop, tools, gate, budget, env-var secrets |
 
 ## Skills Reference
 
@@ -188,9 +193,9 @@ structure, and `specification/mockups/gomarkedit-mockup.html` on how it should l
 | theming-tokens | Adding/adjusting a theme or token; light/dark/auto |
 | testing-wails-app | Writing Go/Jest/Playwright tests for a story |
 | create-mermaid-diagrams | Authoring an architecture/flow diagram in the spec |
-| llm-provider-integration | Adding/adjusting a provider kind, model discovery, verification, or AI/Providers settings (Stage 3) |
-| agentic-tool-loop | Building/adjusting the agent loop, tools, cancellation, gate, or edit-proposal apply (Stage 3) |
-| context-and-tokenizer | Token estimation, context budgeting, fit meter, or over-context handling (Stage 3) |
+| llm-provider-integration | Adding/adjusting a provider kind, model discovery, verification, or AI/Providers settings (the assistant) |
+| agentic-tool-loop | Building/adjusting the agent loop, tools, cancellation, gate, or edit-proposal apply (the assistant) |
+| context-and-tokenizer | Token estimation, context budgeting, fit meter, or over-context handling (the assistant) |
 | code-review | Reviewing a diff/PR/branch against GoMarkEdit's layering, envelope, adapter/token, migration, and offline invariants (read-only) |
 | project-navigator | Orienting in the repository — stack, structure, entry points, run/build/test commands (read-only) |
 | project-documentation | Generating architecture/overview docs into `docs/` (or scratch `.agent-docs/`) from the code; never edits the frozen spec |

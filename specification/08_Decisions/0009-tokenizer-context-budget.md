@@ -126,10 +126,10 @@ are all configurable in the AI Context settings tab (DD-53).
   **DD-51** (context is an explicit budget across system/tools/document/history; sliding-window default or
   summarization). Related: DD-52 (configurable context length / max output tokens), DD-53 (AI Context
   settings tab), DD-43 (selection vs. whole-document scope).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant-stage-3`,
+- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
   `02_Architecture/08_LLM_INTEGRATION.md#context-budgeter`,
   `02_Architecture/08_LLM_INTEGRATION.md#tokenizer`,
   `03_NonFunctional/04_OFFLINE.md`.
-- Stories: Phase 09 (tokenizer + fit estimate) and Phase 11 (explicit context budget, over-context
+- Stories: Phase 11 (tokenizer + fit estimate) and Phase 13 (explicit context budget, over-context
   warn/chunk, history sliding-window/summarize) per `07_Phases/00_ROADMAP.md` (authored per phase; none
   `done` at ADR time).

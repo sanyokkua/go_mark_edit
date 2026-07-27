@@ -101,5 +101,5 @@ nothing.
 - Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state`,
   `02_Architecture/05_STATE_AND_PERSISTENCE.md`, `01_Product/03_FILES_TABS_WORKSPACE.md`,
   `01_Product/11_SETTINGS.md`, `05_Dependencies/01_GO_DEPENDENCIES.md`.
-- Stories: Phase 00 DB-open scaffold story and Phase 06 recent-files / reopen-last stories, per
+- Stories: Phase 00 DB-open scaffold story and Phase 07 recent-files / reopen-last stories, per
   `07_Phases/00_ROADMAP.md` (authored per phase; none `done` at ADR time).

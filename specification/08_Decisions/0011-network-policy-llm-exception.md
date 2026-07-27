@@ -6,12 +6,12 @@
 
 ## Context and problem statement
 
-Through the phases before the assistant, GoMarkEdit's network policy was stated absolutely: the app makes **zero** network
+Before the assistant, GoMarkEdit's network policy was stated absolutely: the app makes **zero** network
 calls of any kind — no update checks, no telemetry, no CDN/asset fetches; every rendering asset is bundled
 locally. This absolute framing was correct for a Viewer/Editor with no remote features, and it is a core
 part of the product's privacy promise.
 
-the assistant phases introduces the LLM assistant, whose entire purpose is to send the user's document text to a model
+The assistant phases introduce the LLM assistant, whose entire purpose is to send the user's document text to a model
 and get a rewrite back — which, for a remote provider, is a network call. The original "never open a
 socket" invariant, read literally, forbids the assistant to exist. We must decide how to reconcile the
 assistant with the offline promise **without** weakening the promise into "the app talks to the network
@@ -54,13 +54,22 @@ Precisely:
 - **No background or unsolicited network activity whatsoever** — no update checks, no telemetry, no
   crash/usage uploads, no CDN/asset fetches, no font/plugin/theme fetch. All rendering assets remain
   bundled locally.
-- **The only permitted outbound call** is an LLM inference to the provider the user explicitly configured,
-  and **only on user action** (invoking an action or sending a chat message) — never automatic, never
-  background, never on a timer or launch.
+- **The only permitted outbound calls** are **user-invoked requests to the provider the user explicitly
+  configured**, and **only on user action** — never automatic, never background, never on a timer or
+  launch, and never to any other host.
+
+  *Amended 2026-07-25.* This clause previously read "an LLM **inference**", which forbade the provider
+  settings tab from working: Test connection, Test models, Test inference and Test tools are all
+  user-invoked calls to the configured endpoint, and none of them is an inference in the narrow sense.
+  Model discovery is the same. The clause now names the category — **a user-invoked request to the
+  configured provider** — of which inference is one kind. Nothing else about the policy changes: the
+  host is still only the one the user configured, the trigger is still only a user action, and the
+  count of permitted destinations is still one. The amendment removes a contradiction; it does not open
+  a door.
 - **The default provider is local** (on-device, e.g. a local model server), so a **default install stays
   fully on-device** — zero bytes leave the machine until the user opts into a remote provider and supplies
   their own endpoint/credentials.
-- **the phases before the assistant (Viewer, Editor) make zero network calls of any kind**; the exception exists only in
+- **before the assistant, the app makes zero network calls of any kind**; the exception exists only in
   the assistant phases and only through the provider HTTP client, which is the single outbound socket in the app.
 - **Telemetry and auto-update remain never** (DD-33, DD-34); the revision opens exactly one narrowly-scoped
   door and nothing else.
@@ -103,7 +112,7 @@ plainly so the user always knows when and where their text can go.
 
 - Good: The simplest, strongest possible promise — literally zero network, nothing to explain or enforce;
   no data ever leaves the machine.
-- Bad: Kills the assistant assistant, the whole point of the stage; a bundled-only local model would bloat
+- Bad: Kills the assistant, the whole point of the feature; a bundled-only local model would bloat
   the app enormously and still couldn't reach the user's existing local/remote endpoints. Rejected as
   incompatible with the product roadmap.
 
@@ -117,7 +126,7 @@ plainly so the user always knows when and where their text can go.
 
 ## Links
 
-- Design decisions: **DD-32 (revised for Stage 3)** (offline-first, no background network; only outbound
+- Design decisions: **DD-32 (revised for the assistant)** (offline-first, no background network; only outbound
   calls are user-invoked LLM inferences to the user-configured provider; default provider local;
   zero network before the assistant), **DD-54** (privacy explicit: document text leaves only on user
   action, only to
@@ -125,10 +134,10 @@ plainly so the user always knows when and where their text can go.
   on-device). Related: DD-22 (remote document-asset content policy), DD-33 (no telemetry; local logs only),
   DD-34 (no auto-update).
 - Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations`,
-  `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant-stage-3`,
+  `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
   `02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams` (F6 — offline scoping),
   `03_NonFunctional/04_OFFLINE.md`, `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`,
   `.claude/rules/offline-and-privacy.md`.
-- Stories: Phase 09 (LLM foundation — the first stage that opens the provider socket) and the pre-assistant
+- Stories: Phase 11 (LLM foundation — the first stage that opens the provider socket) and the pre-assistant
   offline-invariant stories (Phases 00–10) that must remain zero-network, per `07_Phases/00_ROADMAP.md`
   (authored per phase; none `done` at ADR time).

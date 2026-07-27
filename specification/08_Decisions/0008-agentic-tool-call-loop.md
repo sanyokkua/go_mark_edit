@@ -6,7 +6,7 @@
 
 ## Context and problem statement
 
-The assistant assistant does more than transform a single blob of text. To proofread, reformat, answer
+The assistant does more than transform a single blob of text. To proofread, reformat, answer
 questions, or act on a custom instruction it may need to read the current document or selection, and —
 when a folder workspace is open — list and read other Markdown/text files under the workspace root, then
 return a proposed edit as a reviewable diff (DD-39, DD-41, DD-42, DD-44). The amount of context it needs,
@@ -64,7 +64,7 @@ The loop is **bounded on both axes**: a configurable maximum iteration count and
 (both in the AI Context settings tab, DD-53). Hitting either is a clean stop reported as `agent_limit`
 when the model never converged on final text — never an unbounded spin. Tools are **least-privilege and
 read-mostly** (DD-41): `read_document`, `read_selection`, `list_workspace_files` and `read_workspace_file`
-(advertised only when a folder workspace is open, reusing the Stage-1 asset allowlist with traversal
+(advertised only when a folder workspace is open, reusing the asset allowlist with traversal
 rejection), and `propose_edit`. There is **no** arbitrary filesystem, shell, or network tool, and no tool
 writes to disk.
 
@@ -128,11 +128,11 @@ aborts promptly — between turns or mid-tool — and `OnShutdown` cancels any i
   **DD-42** (all edits are proposals the user reviews/applies), **DD-47** (single in-flight inference
   app-wide; per-iteration cancellation). Related: DD-44 (multi-turn chat + custom instructions), DD-48
   (retry/error classification), DD-53 (iteration/time limits configurable).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant-stage-3`,
+- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
   `02_Architecture/08_LLM_INTEGRATION.md#agent-loop`,
   `02_Architecture/08_LLM_INTEGRATION.md#tool-registry`,
   `02_Architecture/08_LLM_INTEGRATION.md#gate-and-cancellation`,
   `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`.
-- Stories: Phase 10 (single-shot agentic run, edit-proposal → diff) and Phase 11 (multi-turn chat,
+- Stories: Phase 12 (single-shot agentic run, edit-proposal → diff) and Phase 13 (multi-turn chat,
   bounded tool-call loop, tools, streaming, cancellation) per `07_Phases/00_ROADMAP.md` (authored per
   phase; none `done` at ADR time).

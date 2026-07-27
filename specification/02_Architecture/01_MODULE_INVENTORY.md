@@ -53,7 +53,7 @@ Frontend (webview):
 | `internal/recent/` | Recent files & folders list + "reopen last" H/S/R | `RecentHandler`, `RecentService` | db, apperr | partial | Bounded list; MRU ordering; prune missing paths lazily. |
 | `internal/docs/` | Document I/O: open/save/save-as, native dialogs, encoding & line-ending preservation | `DocsHandler`, `DocsService` | apperr, file, Wails runtime dialogs | integration | UTF-8 new files; preserve BOM/CRLF (DD-15). Uses `runtime.OpenFileDialog`/`SaveFileDialog`. |
 | `internal/workspace/` | Open folder → recursive filtered tree (`.md/.markdown/.mdown/.txt`); lazy children | `WorkspaceHandler`, `WorkspaceService` | apperr, file | partial | Filter hidden files; large-folder guard; optional watch is out of v1 scope. |
-| `internal/assets/` | Guarded `AssetServer.Handler` serving local files to the webview; relative-to-document resolution + allowlist | `NewAssetHandler` | net/http, os | partial | Path-traversal rejection; allowlist = doc dir + workspace root + configured roots (DD-21). |
+| `internal/assets/` | Guarded `AssetServer.Handler` serving local files to the webview; relative-to-document resolution + allowlist | `NewAssetHandler` | net/http, os | partial | Path-traversal rejection; allowlist = doc dir + workspace root (DD-21). |
 | `internal/export/` | PDF export orchestration (trigger webview print of a print-scoped view) | `ExportHandler`, `ExportService` | apperr, Wails runtime | partial | v1 uses webview print path (DD-23). Styling flag (DD-24). |
 | `internal/fileassoc/` | Open-target routing for OS opens **and drag-and-drop**: normalize `OnFileOpen`/argv/**dropped** paths → open request(s); `stat`-classify file vs folder; per-OS open-path helper | `ResolveOpenTarget`, `ResolveDropped`, `OpenPathArgs` | apperr, os | yes | Pure argv/classify mapping is unit-testable. Dropped paths route identically to OS opens (DD-58). |
 | `internal/gate/` | Single-flight guard for long ops (export/format-all) | `Gate.TryAcquire/Release` | none | yes | Surface `apperr.Busy()` when held. |
@@ -112,7 +112,7 @@ reserved seams F1–F10 and must not exist earlier. See
 
 ## Module count summary
 
-- **the phases before the assistant** backend: **15** packages + `main.go` (incl. `internal/appmodel`). Frontend: **13** module folders.
-- **Stage 3** adds backend: **7** new packages (`internal/llm/*`) + `internal/settings` extension.
+- **Before the assistant**, backend: **15** packages + `main.go` (incl. `internal/appmodel`). Frontend: **13** module folders.
+- **The assistant phases** add backend: **7** new packages (`internal/llm/*`) + `internal/settings` extension.
   Frontend: **4** new/extended modules.
 - Total shippable modules tracked here: **~38** (+ composition root).

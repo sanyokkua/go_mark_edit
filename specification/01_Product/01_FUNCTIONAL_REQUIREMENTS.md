@@ -2,7 +2,7 @@
 **Owner:** architect
 **Audience:** architect, coder, tester
 **Last Updated:** 2026-07-10
-**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `01_Product/03_FILES_TABS_WORKSPACE.md`, `01_Product/04_MARKDOWN_STANDARDS.md`, `01_Product/05_RENDERING_AND_EXTENSIONS.md`, `01_Product/06_FORMAT_AND_LINT.md`, `01_Product/07_PDF_EXPORT.md`, `01_Product/08_FILE_ASSOCIATIONS.md`, `01_Product/09_ASSETS_AND_SECURITY.md`, `01_Product/10_THEMING.md`, `01_Product/11_SETTINGS.md`, `01_Product/12_KEYBOARD_SHORTCUTS.md`, `01_Product/13_I18N.md`, `mockups/gomarkedit-mockup.html`
+**Cross-references:** `00_Foundation/04_DESIGN_DECISIONS.md`, `01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `01_Product/03_FILES_TABS_WORKSPACE.md`, `01_Product/04_MARKDOWN_STANDARDS.md`, `01_Product/05_RENDERING_AND_EXTENSIONS.md`, `01_Product/06_FORMAT_AND_LINT.md`, `01_Product/07_EXPORT.md`, `01_Product/08_FILE_ASSOCIATIONS.md`, `01_Product/09_ASSETS_AND_SECURITY.md`, `01_Product/10_THEMING.md`, `01_Product/11_SETTINGS.md`, `01_Product/12_KEYBOARD_SHORTCUTS.md`, `01_Product/13_I18N.md`, `mockups/gomarkedit-mockup.html`
 
 # Functional Requirements
 
@@ -160,7 +160,7 @@ document** styling (DD-24). v1 has no paginated-layout controls.
 **Rationale.** Share a rendered document as a portable file (goal G2).
 
 **Acceptance notes.** Export waits for Mermaid/KaTeX to finish, then invokes print. Detail in
-`07_PDF_EXPORT.md#export-flow`, `#styled-vs-clean`, `#limitations`.
+`07_EXPORT.md#export-flow`, `#styled-vs-clean`, `#limitations`.
 
 ## FR-Associations
 
@@ -237,11 +237,11 @@ Detail in `13_I18N.md`.
 ## Edge cases
 
 Master registry of edge cases, id scheme `EC-<AREA>-<N>` with AREA ∈ {DOCS, WS, TABS, RENDER, ASSET,
-ASSOC, FMT, LINT, PDF, THEME, SET, I18N, DND, LLM, REL}. Each feature document repeats the subset it owns.
+ASSOC, FMT, LINT, PDF, THEME, SET, SANITIZE, NOTIF, I18N, DND, LLM, REL}. Each feature document repeats the subset it owns.
 Every EC must be satisfied by at least one story acceptance criterion. Three areas are enumerated in the
 feature documents that own them and incorporated here by reference rather than duplicated below:
 **DND** (drag-and-drop, DD-56–DD-59) in `03_FILES_TABS_WORKSPACE.md#drag-and-drop-open`, **LLM**
-(assistant assistant, DD-38–DD-55) across `14_LLM_ASSISTANT_OVERVIEW.md`,
+(the assistant, DD-38–DD-55) across `14_LLM_ASSISTANT_OVERVIEW.md`,
 `16_CHAT_AND_AGENTIC_WORKFLOW.md`, `17_PROVIDERS_MODELS_SETTINGS.md`, and `18_TOKENIZER_AND_CONTEXT.md`,
 and **REL** (release pipeline, DD-65–DD-67) in
 `04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md#5-edge-cases-rel`.
@@ -250,10 +250,16 @@ and **REL** (release pipeline, DD-65–DD-67) in
 
 - **EC-DOCS-1** — Open a file whose path no longer exists → clear error, offer to remove from Recent.
 - **EC-DOCS-2** — A file open in a tab is modified on disk by another program → detect on focus/save
-  and prompt Reload / Keep mine / Compare-later (no silent overwrite).
+  and prompt **Reload / Keep mine**, showing the difference in the prompt itself (no silent overwrite).
+  There is no third "Compare later" option; it was removed on 2026-07-25 because it was a state nothing
+  ever resolved.
+- **EC-DOCS-14** — Two instances have the same file open and both autosave → every write checks the
+  file's modification time first; a file changed underneath raises the external-change prompt instead
+  of writing.
 - **EC-DOCS-3** — An open file is deleted on disk → keep the buffer, mark it dirty/detached; Save
   recreates the file at its path.
-- **EC-DOCS-4** — File exceeds the large-file threshold → live preview may pause (setting); editing
+- **EC-DOCS-4** — File exceeds the large-file threshold → live preview pauses at the threshold in
+  `03_NonFunctional/02_PERFORMANCE.md#hard-limits` (2 MB, not user-configurable); editing
   still works.
 - **EC-DOCS-5** — Closing a tab / window / quitting with unsaved changes → prompt Save / Discard /
   Cancel.
@@ -315,7 +321,7 @@ and **REL** (release pipeline, DD-65–DD-67) in
 - **EC-ASSET-4** — Remote content with **Always block** → never requested, no banner.
 - **EC-ASSET-5** — Absolute local path outside the allowlist → rejected.
 - **EC-ASSET-6** — Asset referenced from an unsaved buffer (no document folder) → only workspace root
-  and configured roots apply.
+  applies.
 
 ### File associations (ASSOC)
 
@@ -349,14 +355,30 @@ and **REL** (release pipeline, DD-65–DD-67) in
 - **EC-PDF-1** — Export while Mermaid/KaTeX are still rendering → wait for completion first.
 - **EC-PDF-2** — Export an unsaved buffer → allowed; uses the current rendered preview.
 - **EC-PDF-3** — User cancels the native print dialog → no file written, no error state.
-- **EC-PDF-4** — Remote content blocked by policy → exported without it.
+- **EC-PDF-4** — Remote content blocked by policy → exported without it, **and it does not stall the
+  export** — a blocked image never loads, so the readiness wait is bounded by a timeout.
 - **EC-PDF-5** — Very long document → single continuous export; no pagination controls in v1.
+- **EC-PDF-6** — A code line wider than the page → wrapped, never clipped. Nothing is silently lost.
+- **EC-PDF-7** — Export in a dark theme with **Current theme** styling → white page, legible text; the
+  theme's accent and fonts survive.
+- **EC-PDF-8** — The frontend never reports readiness (a crashed webview) → a wall-clock timeout
+  releases the gate; the app is usable again without a restart.
+- **EC-PDF-9** — Export cancelled before printing → gate released, print root unmounted, no file claimed.
+- **EC-PDF-10** — `window.print()` unavailable on the platform → a plain message saying so, offering
+  Export as HTML.
+- **EC-PDF-11** — Standalone HTML exported for a document with local images → written, and the user is
+  told the images are referenced rather than embedded.
 
 ### Theming (THEME)
 
 - **EC-THEME-1** — OS toggles light/dark while appearance is Auto → live token update.
 - **EC-THEME-2** — Theme switched during reading mode → tokens still apply to the reader surface.
 - **EC-THEME-3** — Persisted theme/appearance invalid or missing → fall back to defaults.
+- **EC-THEME-4** — First paint after launch is already in the persisted theme; no flash of a default.
+- **EC-THEME-5** — A bundled UI font fails to load → the app falls back to its system stack and stays
+  legible; the visual gate detects it via the non-serif `body` assertion.
+- **EC-THEME-6** — Theme changes while a Mermaid diagram is mid-render → the stale render is discarded
+  by its generation token and re-run in the new palette.
 
 ### Settings (SET)
 
@@ -372,6 +394,54 @@ and **REL** (release pipeline, DD-65–DD-67) in
   close (DD-61).
 - **EC-SET-7** — A missing or invalid persisted layout value falls back to a sensible default; the
   window still opens.
+- **EC-SET-8** — A value outside its declared range is submitted → rejected with the acceptable range
+  named; the stored value is unchanged. Never silently clamped (DD-75).
+- **EC-SET-9** — The store holds a key this build does not know → ignored and left untouched, so an
+  older build downgrading does not lose it.
+- **EC-SET-10** — A key this build expects is absent → that scalar falls back to its default; other keys
+  in the group are unaffected.
+- **EC-SET-11** — Reset to defaults → every setting returns to the Defaults table in one transaction.
+  Window geometry, layout state and recent files are untouched.
+- **EC-SET-12** — Two instances open and one changes a setting → the other keeps the old value until it
+  is relaunched. There is no cross-process invalidation.
+- **EC-SET-13** — The log directory cannot be created → logging degrades to console-only, a warning is
+  recorded, and the app opens normally.
+
+### Sanitization & CSP (SANITIZE)
+
+Owned by `19_SANITIZATION_AND_CSP.md`; ADR-0030.
+
+- **EC-SANITIZE-1** — `<script>` at Minimal or GFM → rendered as literal text, no execution, no warning.
+- **EC-SANITIZE-2** — The same document at Full → the element is removed by the allowlist; surrounding
+  content still renders.
+- **EC-SANITIZE-3** — A `javascript:` link target → rendered as inert text with no `href`.
+- **EC-SANITIZE-4** — An external `https` link is clicked → the platform browser opens; the webview does
+  not navigate away.
+- **EC-SANITIZE-5** — Display maths at Full → MathML survives the sanitizer and renders.
+- **EC-SANITIZE-6** — A fenced Go block at Full → highlight classes survive; the block renders in more
+  than one colour.
+- **EC-SANITIZE-7** — A Mermaid block containing a click directive → the diagram renders and the
+  directive does nothing (`securityLevel: 'strict'`).
+- **EC-SANITIZE-8** — Standard switched from Full to GFM with a document open → it re-renders under the
+  stricter pipeline and previously raw HTML becomes escaped text.
+
+### Notifications & empty states (NOTIF)
+
+Owned by `20_NOTIFICATIONS_AND_EMPTY_STATES.md`; DD-68.
+
+- **EC-NOTIF-1** — The same failure recurs while its notification is on screen → the existing one's count
+  increments and its timer resets; no second toast.
+- **EC-NOTIF-2** — A fourth toast arrives while three are visible → the oldest non-error is dismissed
+  early. Errors are never evicted.
+- **EC-NOTIF-3** — An error is raised while a modal dialog is open → the toast is visible above it.
+- **EC-NOTIF-4** — Autosave writes successfully → no toast, ever. Only the status bar changes.
+- **EC-NOTIF-5** — Autosave *fails* → a coalesced error toast keyed to the document, and the document
+  stays dirty. The user is never told it was saved when it was not.
+- **EC-NOTIF-6** — A gated operation is cancelled → gate released, the trigger control returns to its
+  normal label, and the report names the completed count rather than the loop index.
+- **EC-NOTIF-7** — A wrapped failure reaches the UI → the inner code's title and remediation are shown,
+  not the outer wrapper's.
+- **EC-NOTIF-8** — The app quits with toasts visible → they are not persisted and do not reappear.
 
 ### Internationalization (I18N)
 

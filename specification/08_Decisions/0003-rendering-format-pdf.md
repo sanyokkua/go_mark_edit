@@ -109,7 +109,7 @@ recorded here, not adopted now.
 - Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#5-formatting-linting--standards`,
   `00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets`,
   `01_Product/04_MARKDOWN_STANDARDS.md`, `01_Product/05_RENDERING_AND_EXTENSIONS.md`,
-  `01_Product/06_FORMAT_AND_LINT.md`, `01_Product/07_PDF_EXPORT.md`,
+  `01_Product/06_FORMAT_AND_LINT.md`, `01_Product/07_EXPORT.md`,
   `05_Dependencies/02_FRONTEND_DEPENDENCIES.md`.
-- Stories: Phase 05 rendering/extensions stories, Phase 08 format/lint stories, and Phase 08 PDF-export
+- Stories: Phase 06 rendering/extensions stories, Phase 10 format/lint stories, and Phase 10 PDF-export
   stories, per `07_Phases/00_ROADMAP.md` (authored per phase; none `done` at ADR time).

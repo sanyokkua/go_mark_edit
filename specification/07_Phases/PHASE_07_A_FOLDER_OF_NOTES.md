@@ -1,4 +1,4 @@
-# Phase 06 — I can work on a whole folder of notes
+# Phase 07 — I can work on a whole folder of notes
 
 ## What you get
 
@@ -8,7 +8,7 @@ had. Drag a file onto the window and it opens. Open a second window when you wan
 
 ## Build it in this order
 
-1. **Open a folder.** Pick a folder and see its tree in the Phase 02 sidebar slot, filtered to `.md`,
+1. **Open a folder.** Pick a folder and see its tree in the Phase 03 sidebar slot, filtered to `.md`,
    `.markdown`, `.mdown`, `.txt`. Folders always show so you can reach nested files. A folder with
    nothing matching says so rather than looking broken.
 2. **Make the tree behave on a big folder.** Enumerate lazily as you expand, with explicit bounds, so
@@ -39,10 +39,10 @@ had. Drag a file onto the window and it opens. Open a second window when you wan
 ## Questions to settle first
 
 - **Replacing a workspace while files are unsaved.** Opening a different folder has to reuse the
-  dirty-document flow from Phase 04. If Phase 04's question 3 was answered as recommended — one
+  dirty-document flow from Phase 05. If Phase 05's question 3 was answered as recommended — one
   aggregate dialog, nothing written until you choose — this follows directly and needs no separate
   answer. Confirm it does before starting step 5.
-- **Which view mode a tree-opened file uses.** Same question as Phase 04's question 1. It should
+- **Which view mode a tree-opened file uses.** Same question as Phase 05's question 1. It should
   already be answered; do not answer it differently here.
 
 ## Done when

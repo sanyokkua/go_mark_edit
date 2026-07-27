@@ -24,14 +24,14 @@
   association → read rendered content with Mermaid/math/code → optionally switch to the Editor.
   (Phases 02, 05, 07)
 - **UC3 — Work a folder of notes.** Open a folder → filtered tree → open several files in tabs →
-  switch/close tabs → reopen last folder next launch. (Phase 06)
+  switch/close tabs → reopen last folder next launch. (Phase 07)
 - **UC4 — Tidy a document.** Format (pad tables, normalize markers) and Lint (consistency) on demand
-  or on save; fix the flagged issues. (Phase 08)
-- **UC5 — Export to PDF.** Export the current rendered document to PDF, styled or clean. (Phase 08)
+  or on save; fix the flagged issues. (Phase 10)
+- **UC5 — Export to PDF.** Export the current rendered document to PDF, styled or clean. (Phase 10)
 - **UC6 — Make it mine.** Pick a theme (Glass/Material/Minimal) and appearance (auto/light/dark);
-  set default open mode, autosave, markdown standard, remote-content policy. (Phase 02)
+  set default open mode, autosave, markdown standard, remote-content policy. (Phase 03)
 - **UC7 — Handle references.** A document links a local image (resolved relative to the file) and a
-  remote image (loaded only per the content policy). (Phase 05)
+  remote image (loaded only per the content policy). (Phase 06)
 - **UC8 — Assist with the document.** Configure a local LLM provider → open the assistant
   sidebar → run Proofread / a reformat target / Summarize on the selection or whole document, or chat and
   give a custom instruction → review the proposed diff → Apply into the editor and save. Outbound calls go

@@ -78,5 +78,5 @@ never navigated; the real paths arrive via the Wails event, not the browser drop
 - Spec clauses: `01_Product/03_FILES_TABS_WORKSPACE.md#drag-and-drop-open`,
   `02_Architecture/04_WAILS_INTEGRATION.md#file-drop`, `02_Architecture/01_MODULE_INVENTORY.md`
   (`internal/fileassoc/`, `logic/hooks/` `useFileDrop`, `ui/components/` `DropOverlay`).
-- Stories: Phase 06 drag-and-drop tasks (STORY-096 backend routing, STORY-097 overlay + wiring), per
-  `07_Phases/PHASE_06_A_FOLDER_OF_NOTES.md`; authored per phase (none built at ADR time).
+- Stories: Phase 07 drag-and-drop tasks (STORY-096 backend routing, STORY-097 overlay + wiring), per
+  `07_Phases/PHASE_07_A_FOLDER_OF_NOTES.md`; authored per phase (none built at ADR time).

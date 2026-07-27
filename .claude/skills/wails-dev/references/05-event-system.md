@@ -168,7 +168,7 @@ buffer text for the currently focused editor (DD-64) — only derived fields (di
 
 ## GoMarkEdit Agent Events
 
-GoMarkEdit has **no chain concept**. Its Stage-3 LLM assistant runs an **agentic tool-call loop**
+GoMarkEdit has **no chain concept**. Its assistant LLM assistant runs an **agentic tool-call loop**
 (`internal/llm/agent/`) whose progress and streamed tokens flow Go→frontend via four events, emitted by
 the agent orchestrator via `runtime.EventsEmit`. The bound `RunResult` envelope still returns the final
 outcome; events are the incremental channel. Only the frontend `logic/adapter/` subscribes (via

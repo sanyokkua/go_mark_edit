@@ -16,9 +16,10 @@ document defines each mode's states, transitions, defaults, and error cases. It 
 2. [Viewer (reading) mode](#viewer-reading-mode)
 3. [Split view](#split-view)
 4. [View mode toggle](#view-mode-toggle)
-5. [Per-document view state](#per-document-view-state)
-6. [Default open mode](#default-open-mode)
-7. [Edge cases](#edge-cases)
+5. [Status bar](#status-bar)
+6. [Per-document view state](#per-document-view-state)
+7. [Default open mode](#default-open-mode)
+8. [Edge cases](#edge-cases)
 
 ## Editor mode
 
@@ -55,6 +56,12 @@ position.
 (EC-THEME-2). It is per-document: the active document is what is read. Remote-content policy and asset
 resolution behave identically to the preview (`09_ASSETS_AND_SECURITY.md`).
 
+**Typography is yours.** Reading font size and column width are settings, and
+`Ctrl/Cmd +` / `Ctrl/Cmd -` / `Ctrl/Cmd 0` adjust the size live in both the preview and the reader
+(DD-72, `11_SETTINGS.md#editor-group`). They are independent of the editor's font size, which is a
+monospace measurement for a different purpose. Reading Markdown beautifully is stated as a headline
+goal; a fixed size and a fixed measure would not deliver it.
+
 **Relation to default open mode.** When the default open mode is **Reading (Viewer)** (DD-27), any
 file-system open — OS open, drag-and-drop, workspace-tree, or the Open dialog — lands directly in reading
 mode for that document. The default is **Editor**, so out of the box such opens land in the editor.
@@ -70,8 +77,46 @@ yields Editor-only or Preview-only; hiding both is not allowed (at least one pan
 The preview pane header shows a live indicator (`● Preview · live`) and the active standard badge
 (e.g. `GFM`).
 
-**Sizing.** Panes share available width; a future divider-drag is out of v1 scope unless a story adds
-it. On very narrow windows the grid may stack panes vertically.
+**Sizing.** A **draggable divider** sits between the panes. Dragging it sets the split ratio, which is
+persisted as `ui.splitRatio` and restored with the rest of the layout (DD-74). Double-clicking the
+divider returns to an even split. The ratio is clamped so neither pane can be dragged below a usable
+minimum, and `Esc` during a drag cancels it and restores the previous ratio.
+
+This was previously deferred — "a future divider-drag is out of v1 scope" — while
+`02_Architecture/05_STATE_AND_PERSISTENCE.md` already persisted three widths the user had no way to
+change. Editing a wide table or a long code fence in a fixed 50% pane is the common case, not an edge
+one.
+
+On very narrow windows the grid stacks panes vertically and the divider becomes horizontal.
+
+**Scroll sync.** In split view the two panes are linked, **by heading**: scrolling the editor moves the
+preview to the heading you are under, and scrolling the preview moves the editor to that heading's
+source line. It is deliberately not character-accurate — that needs a source-map through the whole
+render pipeline, and Phase 09's outline already produces a heading-to-source-line map for free.
+Heading accuracy is most of the value for almost none of the cost.
+
+Sync is **on by default** with a View-menu toggle, because there is a real case for turning it off:
+comparing two distant parts of one document. A document with no headings does not scroll-sync; the
+panes move independently and nothing pretends otherwise.
+
+**Right-clicking in the editor** opens a context menu: Cut · Copy · Paste · Paste as plain text ·
+*(separator)* · Bold · Italic · Link · *(separator)* · Format document · Compact · *(separator)* ·
+Command palette. Every item dispatches through the shortcut registry and shows its accelerator, so the
+menu is a discovery surface for the bindings rather than a second set of behaviours. On macOS the
+platform's own Edit menu owns the clipboard accelerators (ADR-0028); these entries invoke the same
+commands.
+
+**Find and replace.** `Ctrl/Cmd+F` and `Ctrl/Cmd+H` open Monaco's own find widget, with regular
+expressions, case and whole-word options, and `F3` / `Shift+F3` to step through matches. Two things
+are ours rather than Monaco's:
+
+- **It must be themed.** The widget is a separate colour surface (`editorWidget.*`,
+  `10_THEMING.md#editor-theme`) and ships white. In a dark Liquid Glass window an unthemed find box is
+  the most visible thing on screen.
+- **It is reserved in the registry** (`12_KEYBOARD_SHORTCUTS.md`), so no later phase binds over it.
+
+Find operates on the **editor** pane. In Preview-only and in reading mode the browser's own in-page find
+is what is available; the app does not reimplement it.
 
 ## View mode toggle
 
@@ -80,8 +125,44 @@ A segmented control in the toolbar switches the arrangement between **Editor**, 
 change arrangement; the View-menu pane toggles are the secondary path and stay in sync with it.
 
 **States.** Exactly one segment is active. `Editor` = source only; `Split` = source + preview;
-`Preview` = rendered only (but still with chrome, unlike reading mode). The status bar reflects the
-current arrangement (e.g. `Split`).
+`Preview` = rendered only (but still with chrome, unlike reading mode).
+
+The segmented control is the only indicator of the arrangement. An earlier revision of this document
+also said the status bar showed it; the mockup never did, and duplicating an always-visible control in
+a second always-visible place spends status-bar width on something the user is already looking at. The
+status bar shows **Reading** only, because reading mode hides the segmented control.
+
+## Status bar
+
+A single row along the bottom of the window, present in every arrangement and hidden only in reading
+mode. It is a summary surface, not a control panel: two items are interactive and the rest are read-only.
+
+| Item | Example | Interactive | Source |
+|---|---|---|---|
+| Standard | `Markdown · GFM` | no | `04_MARKDOWN_STANDARDS.md` |
+| Caret position | `Ln 3, Col 12` | no | editor |
+| Counts | `231 words` | no | backend document model (DD-62). With a selection active it shows the selection's counts instead, prefixed `sel`. |
+| Encoding | `UTF-8` | no | `03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings` |
+| Line endings | `LF` | no | same |
+| Autosave | `Autosave: On` | no | `11_SETTINGS.md` |
+| Problems | `⚠ 1` | **yes** — opens the problems list | `06_FORMAT_AND_LINT.md#problems-surface` |
+| Provider | `Ollama · last call OK` | no | the assistant |
+| Reading | `Reading` | **yes** — enters reading mode | this document |
+
+**Character count** is not shown by default; word count is what Markdown authors work in. It is
+available in the counts item's tooltip.
+
+**The provider item reports the last call, not a live connection.** It appears only after the app has
+made at least one provider call in this session, and it shows that call's outcome. A persistent
+"connected" indicator would require polling, which DD-32 forbids — there is no background network, so
+the app genuinely does not know whether a provider is reachable until the user asks it to do something.
+
+**Narrow windows drop items in a fixed order**, so the same item is never in two different places at two
+widths. From the first dropped to the last kept: Provider → Autosave → Encoding and line endings →
+Counts → Caret position → Standard. **Problems and Reading are never dropped** — they are the two
+interactive items, and an affordance that disappears at some widths is worse than one that was never
+there. A dropped item is not hidden information: it moves into the overflow tooltip on the standard
+item.
 
 ## Per-document view state
 

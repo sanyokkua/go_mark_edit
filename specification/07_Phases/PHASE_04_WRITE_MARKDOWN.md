@@ -1,4 +1,4 @@
-# Phase 03 — I can write Markdown, not just type it
+# Phase 04 — I can write Markdown, not just type it
 
 ## What you get
 
@@ -27,18 +27,23 @@ person does in a Markdown editor, so it gets built before the file handling that
    numbered list, task list, quote, link, image, table. Each acts on the selection, or the current
    line when the selection is empty, and each is a single undo step. They go through the document
    command seam from Phase 01, not into Monaco directly.
-3. **The toolbar.** The buttons for those actions, in the chrome from Phase 02, each with an
+3. **The toolbar.** The buttons for those actions, in the chrome from Phase 03, each with an
    accessible name and its shortcut in the tooltip. Disabled when there is no writable document.
 4. **The context menu.** Right-click in the editor: cut, copy, paste, and the formatting actions.
    Same registry, same actions — not a second implementation.
-5. **Editor display settings.** Line numbers on/off, word wrap on/off, font size. Real Monaco options,
+5. **Paste a spreadsheet range as a table.** Clipboard text that is unambiguously rows and columns —
+   TSV or CSV, which is what a spreadsheet or a database client puts on the clipboard — becomes a GFM
+   table with a header row. Anything else pastes as plain text. This is the case the Table button does
+   not serve: that button inserts an empty skeleton to fill in, while pasting a range you already have
+   is how tables usually arrive.
+6. **Editor display settings.** Line numbers on/off, word wrap on/off, font size. Real Monaco options,
    persisted, with their controls in the Settings dialog's Editor group.
-6. **The view and window bindings.** Register the non-formatting actions that already have surfaces:
+7. **The view and window bindings.** Register the non-formatting actions that already have surfaces:
    the Editor / Split / Preview arrangements, full screen (`F11`), and toggle sidebar (`Ctrl+\`) — the
-   last of these acts on the empty sidebar slot Phase 02 built and stays correct once Phase 06 fills
+   last of these acts on the empty sidebar slot Phase 03 built and stays correct once Phase 07 fills
    it. Register them here so there is one registry; the actions themselves may already exist.
-7. **Shortcuts and About dialogs.** The Shortcuts dialog lists the registry, grouped and searchable.
-   About shows the version, which reads `dev` until Phase 07 injects a real one.
+8. **Shortcuts and About dialogs.** The Shortcuts dialog lists the registry, grouped and searchable.
+   About shows the version, which reads `dev` until Phase 08 injects a real one.
 
 ## Where the details are
 

@@ -1,4 +1,4 @@
-# Phase 11 — I can have a conversation about my notes
+# Phase 13 — I can have a conversation about my notes
 
 ## What you get
 
@@ -34,10 +34,10 @@ This is the last phase. After it, the product is done.
 
 ## Questions to settle first
 
-- **Which files the assistant may read.** The sources say the workspace root plus configured roots, and
-  elsewhere say to reuse the broader image allowlist which also includes a loose document's folder.
-  If Phase 05 cut configured roots as recommended, this resolves to: the workspace root only. Confirm
-  it did.
+- **Which files the assistant may read.** Settled: **the workspace root only**, filtered to
+  `.md/.markdown/.mdown/.txt`, with path traversal rejected. Configured roots were cut on
+  2026-07-25 (`01_Product/09_ASSETS_AND_SECURITY.md`), so this is the same allowlist the asset
+  handler already uses — one rule, not two.
 - **Tool limits.** Nothing defines a maximum number of files listed, bytes per read, or total
   observation size. Pick numbers — 500 files, 64 KB per read, 32 KB of total observation — with
   deterministic ordering and a visible truncation marker rather than silent cutting.

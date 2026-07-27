@@ -50,12 +50,12 @@ row for the replacement).
 | ADR-0004 | State: file-first + SQLite KV for settings/recent | DD-10, DD-13 |
 | ADR-0005 | Token-driven theming; three built-in themes; no custom themes | DD-28, DD-30 |
 | ADR-0006 | Multiple instances (no single-instance lock); shared settings DB via WAL | DD-08, DD-13 |
-| ADR-0007 | LLM provider abstraction (OpenAI-compatible + profiles) | Stage-3 |
-| ADR-0008 | Agentic tool-call loop (not a fixed prompt chain) | Stage-3 |
-| ADR-0009 | Offline tokenizer + explicit context budgeting | Stage-3 |
-| ADR-0010 | Assistant sidebar; edits applied via editor command seam | Stage-3 |
-| ADR-0011 | Network policy: offline except user-invoked provider calls | Stage-3 |
-| ADR-0012 | Drag-and-drop opens files/folders via native path-based file drop | Stage-3 |
+| ADR-0007 | LLM provider abstraction (OpenAI-compatible + profiles) | assistant |
+| ADR-0008 | Agentic tool-call loop (not a fixed prompt chain) | assistant |
+| ADR-0009 | Offline tokenizer + explicit context budgeting | assistant |
+| ADR-0010 | Assistant sidebar; edits applied via editor command seam | assistant |
+| ADR-0011 | Network policy: offline except user-invoked provider calls | assistant |
+| ADR-0012 | Drag-and-drop opens files/folders via native path-based file drop | assistant |
 
 Implementation ADRs continue in `docs/adr/`: **ADR-0013** and **ADR-0014** are already authored →
 **ADR-0015** next.

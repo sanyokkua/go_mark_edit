@@ -88,7 +88,9 @@ Representative keys (authoritative list in `01_Product/11_SETTINGS.md` `#persist
 | `view.*` | `view.defaultOpenMode` (`editor`/`viewer`, default `editor`) | DD-27 |
 | `lang.*` | `lang.locale` (`en`) | DD-35 |
 | `window.*` | `window.width`, `window.height`, `window.maximized` | window geometry; see `#window-state` (DD-60) |
-| `ui.*` | `ui.sidebarVisible`, `ui.sidebarWidth`, `ui.viewArrangement` (`editor`/`split`/`preview`), `ui.editorPaneVisible`, `ui.previewPaneVisible`, `ui.assistantVisible`, `ui.assistantWidth` (Stage 3) | application-level UI-layout state; see `#window-state` (DD-60/DD-61) |
+| `ui.*` | `ui.sidebarVisible`, `ui.sidebarWidth`, `ui.viewArrangement` (`editor`/`split`/`preview`), `ui.editorPaneVisible`, `ui.previewPaneVisible`, `ui.splitRatio`, `ui.assistantVisible`, `ui.assistantWidth` (assistant) | application-level UI-layout state; see `#window-state` (DD-60/DD-61/DD-74) |
+| `log.*` | `log.fileEnabled`, `log.level`, `log.directory`, `log.maxSizeMB`, `log.maxBackups`, `log.maxAgeDays`, `log.compress` | logging configuration, applied by `Init` when the logger is reconfigured. `02_BACKEND_GO.md` has always assumed these existed; they are defined in `01_Product/11_SETTINGS.md#diagnostics-group`. |
+| `view.readingFontSize`, `view.readingWidth` | reading typography (DD-72) | `01_Product/11_SETTINGS.md#editor-group` |
 
 Repository accessors are typed `Get*Config`/`Update*Config` groups built on
 `getBool/getInt/getFloat/getString` + `UpsertSetting`. Reads and writes go through the settings
@@ -108,7 +110,12 @@ relational tables (e.g. the recent-items table).
 
 `internal/recent` keeps a bounded most-recently-used list of files and folders (DD-10). Contract:
 
-- **MRU ordering** — opening an item moves it to the front; the list is capped (older entries drop off).
+- **MRU ordering** — opening an item moves it to the front; the list is capped at **20 entries** and
+  older ones drop off.
+- **The insert and the prune are one transaction.** Two instances can write the recent list at the
+  same time (DD-08), and a read-modify-write across two statements silently exceeds the cap under
+  contention. Insert and prune together, or not at all.
+- **Lowering the cap prunes on the next write**, not immediately and not never.
 - **Prune-missing** — an entry whose path no longer exists is removed lazily on next read, so
   "Open Recent" never offers a dead path (edge case `EC-DOCS-*`/`EC-WS-*`).
 - **"Reopen last"** — the most recent file and the most recent folder are individually recoverable,
@@ -128,7 +135,7 @@ type RecentService interface {
 The native window's size and maximized state, plus the **application-level UI-layout state**, persist so
 each window reopens the way the user left it (DD-10, DD-60). This layout state comprises: window size +
 maximized; **folder-sidebar** visibility and width; the **view arrangement** (Editor / Split / Preview)
-and individual **pane visibility**; and, in Stage 3, the **assistant-sidebar** visibility and width. It is
+and individual **pane visibility**; and, once the assistant exists, the **assistant-sidebar** visibility and width. It is
 *application-level* — shared across windows and distinct from the *per-document* view mode below.
 
 **Write-through on change.** Every layout mutation persists the moment it happens: a discrete toggle

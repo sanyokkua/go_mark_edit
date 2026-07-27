@@ -45,7 +45,7 @@ Result-envelope + toast path (DD-48).
 
 ## Persistence — additive (DD-46, DD-52, F4)
 
-Assistant configuration extends `internal/settings` **additively** — no Stage-1/2 handler, service, or
+Assistant configuration extends `internal/settings` **additively** — no pre-assistant/2 handler, service, or
 table is changed destructively:
 
 - A new **`providers` table** via an **additive goose migration** (never a rewrite/backfill), holding
@@ -85,7 +85,7 @@ configured and verified, the assistant sidebar stays hidden by default.
 - `specification/02_Architecture/08_LLM_INTEGRATION.md` §*Model discovery*, §*Persistence*
 - `specification/01_Product/17_PROVIDERS_MODELS_SETTINGS.md#model-discovery`, `#verification`,
   `#persistence`, `#defaults-local`
-- `specification/00_Foundation/04_DESIGN_DECISIONS.md` DD-32 (revised for Stage 3), DD-46, DD-52, DD-55
+- `specification/00_Foundation/04_DESIGN_DECISIONS.md` DD-32 (revised for the assistant phases), DD-46, DD-52, DD-55
 - `specification/02_Architecture/01_MODULE_INVENTORY.md` (`internal/llm/verify/`,
   `internal/settings/` extended row)
 - `.claude/rules/offline-and-privacy.md` — the only permitted outbound call is a user-invoked LLM

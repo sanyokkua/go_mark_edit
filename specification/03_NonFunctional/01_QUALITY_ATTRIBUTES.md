@@ -33,6 +33,20 @@ attribute's acceptance.
 
 ## How these are verified
 
+**Each attribute names the command that proves it.** An attribute whose verification is "it is
+verified" is an attribute nobody checks.
+
+| Attribute | Proven by |
+|---|---|
+| Correctness | `just test` (Go `-race` + Jest), plus the renderer's golden-file corpus |
+| Reliability | the hard-limits fixtures (`02_PERFORMANCE.md#hard-limits`) — a file at each threshold produces the specified refusal, not a hang |
+| Security | the adversarial sanitization corpus (`01_Product/19_SANITIZATION_AND_CSP.md#the-adversarial-corpus`), run as unit tests *and* as one browser smoke flow |
+| Offline | the build-output scan and the bundled-asset assertion (`04_OFFLINE.md` §5) — both CI gates |
+| Performance | the bundle-size ceiling as a CI gate; startup measured against the built artifact and recorded, not gated on a shared runner's wall clock |
+| Consistency (visual) | `just verify-ui` across 3 widths × 6 palettes, with committed baselines |
+| Testability | the coverage ratchet (`03_CI_AND_HOOKS.md` §4c), sitting beneath the test-quality rules rather than replacing them |
+| Openness | `scripts/verify-release-artifacts.sh` — the published artifacts are what the tag says they are |
+
 - **Automated gate** — `just check` must pass; CI runs the same gate plus
   `wails generate module` drift, `sqlc` sanity, and Playwright `verify:ui`.
 - **Offline verification** — a network-egress check (no outbound sockets during a representative

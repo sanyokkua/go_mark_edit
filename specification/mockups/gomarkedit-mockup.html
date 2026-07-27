@@ -12,20 +12,178 @@
    Every widget/state lives here; the Screen selector + URL hash pick a state.
    Hash format:  #<theme>-<mode>/<screen>   e.g. #material-light/settings-ai-providers
    ===================================================================== */
-:root{--mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;--blur:none;--win-radius:16px;--font:"Inter",-apple-system,"Segoe UI",system-ui,sans-serif;}
+:root{--mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;--blur:none;--win-radius:16px;--font:"Inter",-apple-system,"Segoe UI",system-ui,sans-serif;/* stacking scale — no component picks its own z-index */--z-base:1;--z-sticky:10;--z-dropdown:30;--z-overlay:60;--z-modal:70;--z-popover:80;--z-toast:90;/* motion */--dur-fast:120ms;--dur-base:180ms;--dur-slow:300ms;--ease-out:cubic-bezier(.2,.8,.2,1);--ease-in-out:cubic-bezier(.4,0,.2,1);}
 *{box-sizing:border-box;margin:0;padding:0}
+::selection{background:var(--selection-bg);color:var(--selection-fg)}
+    /* DD-69: one monochrome icon set, tinted from currentColor. No emoji in product UI. */
+    .ic svg,svg.ic{width:15px;height:15px;display:inline-block;vertical-align:-2px;flex:none;
+      fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+
+*{scrollbar-color:var(--scrollbar-thumb) var(--scrollbar-track);scrollbar-width:thin}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--scrollbar-track)}
+::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover)}
+:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+@media (prefers-reduced-motion:reduce){*{animation-duration:0ms!important;transition-duration:0ms!important}}
 html,body{height:100%}
-body{font-family:var(--font);min-height:100vh;display:flex;flex-direction:column;align-items:center;background:var(--canvas);color:var(--text);transition:background .3s,color .3s}
+body{font-family:var(--font);min-height:100vh;display:flex;flex-direction:column;align-items:center;background:var(--canvas);color:var(--text);transition:none}
+
+/* ---------------- NARROW WINDOWS ----------------
+   Phase 03's acceptance is "correct at 375, 768 and 1280". Pick a width above.
+   Driven by data-w on .app rather than @media so all three are demonstrable
+   without resizing the browser. */
+.app[data-w="1280"]{width:min(1280px,97vw)}
+.app[data-w="768"] {width:min(768px,97vw)}
+.app[data-w="375"] {width:min(375px,97vw)}
+
+/* 768 — the assistant is the first region to go; the sidebar becomes an icon rail. */
+.app[data-w="768"] .assistant{display:none}
+.app[data-w="768"] .sidebar{width:46px}
+.app[data-w="768"] .sidebar .sb-h span,.app[data-w="768"] .sidebar .row>span:not(.ic):not(.tw),
+.app[data-w="768"] .sidebar .sb-f{display:none}
+.app[data-w="768"] .sidebar .row{justify-content:center;padding:6px 0}
+.app[data-w="768"] .tgrp.tg-over{display:flex}
+.app[data-w="768"] .tgrp.tg-hide{display:none}
+
+/* 375 — panes stack, the sidebar overlays, the tab strip scrolls. */
+.app[data-w="375"] .assistant{display:none}
+.app[data-w="375"] .sidebar{position:absolute;inset:0 auto 0 0;width:230px;z-index:var(--z-dropdown);
+  box-shadow:var(--win-shadow);transform:translateX(-102%);transition:transform var(--dur-base) var(--ease-out)}
+.app[data-w="375"].sidebar-open .sidebar{transform:none}
+.app[data-w="375"] .body{position:relative;padding:6px;flex-direction:column;gap:6px}
+.app[data-w="375"] .pane{min-height:0;flex:1}
+/* the toolbar never grows taller: it collapses to one row plus an overflow menu */
+.toolbar{flex-wrap:nowrap;overflow:hidden}
+.toolbar .tbtn,.toolbar .tgrp,.toolbar .seg{flex:none}
+.toolbar .tbtn.txt{white-space:nowrap}
+.app[data-w="375"] .tbtn.txt{display:none}
+.app[data-w="375"] .tsp{display:none}
+/* the in-window menu bar collapses into the overflow menu too */
+.app[data-w="375"] .titlebar .menu,.app[data-w="375"] .brand-name{display:none}
+/* the menu bar folds into the overflow menu at 375 */
+.app[data-w="375"] .ovf-menu .ovf-menus{display:block}
+.ovf-menu .ovf-menus{display:none}
+/* the caret indicator is the fifth item to drop */
+.app[data-w="375"] .sb-caret{display:none}
+.app[data-w="375"] .statusbar{gap:8px;padding:0 8px}
+.doc-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40ch}
+.app[data-w="375"] .doc-name{max-width:16ch}
+.app[data-w="375"] .tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+.app[data-w="375"] .tabs::-webkit-scrollbar{display:none}
+.app[data-w="375"] .tab{flex:none}
+.app[data-w="375"] .tgrp.tg-over{display:flex}
+.app[data-w="375"] .tgrp.tg-hide,.app[data-w="375"] #viewseg{display:none}
+
+/* Status bar drops in ONE fixed order (02_EDITOR_AND_VIEWER_MODES.md#status-bar):
+   provider -> autosave -> encoding/EOL -> counts -> caret -> standard.
+   Problems and Reading are never dropped. */
+.app[data-w="768"] .sb-provider{display:none}
+.app[data-w="375"] .sb-provider,.app[data-w="375"] .sb-autosave,
+.app[data-w="375"] .sb-enc,.app[data-w="375"] .sb-eol,.app[data-w="375"] .sb-count{display:none}
+
+/* The toolbar overflows into a menu; it never grows taller. */
+.tgrp.tg-over{display:none}
+.ovf-menu{position:absolute;top:78px;right:16px;min-width:212px;background:var(--elevated);
+  border:1px solid var(--stroke);border-radius:12px;box-shadow:var(--win-shadow);padding:6px;
+  z-index:var(--z-dropdown);display:none}
+.app.ovf .ovf-menu{display:block}
+.app.tabctx #tabctx,.app.edctx #edctx{display:block!important;left:210px;top:150px}
+.app.tabctx .ctxmenu#ctxmenu,.app.edctx .ctxmenu#ctxmenu{display:none}
+#navBtn{display:none}
+.app[data-w="375"] #navBtn{display:inline-flex}
+.ovf-menu .mi{display:flex;gap:10px;align-items:center;padding:7px 10px;border-radius:8px;font-size:12px;cursor:default}
+.ovf-menu .mi:hover{background:var(--hover)}
+
+
+/* ---------------- STATES THAT WERE MISSING ---------------- */
+/* The launcher: no tabs open. There is no session restore (DD-11), so this is
+   the FIRST screen of every launch, not an edge case. */
+.launcher{display:none;flex:1;align-items:center;justify-content:center;padding:24px}
+.app.empty .launcher{display:flex}
+.app.empty .body,.app.empty .toolbar,.app.empty .tabs .tab,.app.empty #viewseg{display:none}
+.lc{width:min(430px,100%);text-align:center}
+.lc h2{font-size:20px;margin-bottom:4px}
+.lc .sub{font-size:12.5px;color:var(--muted);margin-bottom:18px}
+.lc .acts{display:flex;gap:8px;justify-content:center;margin-bottom:22px;flex-wrap:wrap}
+.lc .acts button{padding:8px 14px;border-radius:9px;border:1px solid var(--stroke);background:var(--surface);font-size:12.5px}
+.lc .acts button.primary{background:var(--accent);color:var(--accent-contrast);border-color:transparent;font-weight:600}
+.lc .rec{text-align:left;border-top:1px solid var(--stroke-soft);padding-top:12px}
+.lc .rec .lbl{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.lc .rec .r{display:flex;gap:9px;align-items:center;padding:6px 8px;border-radius:8px;font-size:12.5px}
+.lc .rec .r:hover{background:var(--hover)}
+.lc .rec .r small{margin-left:auto;color:var(--faint);font-size:11px}
+
+/* Empty tree, and a filter that matched nothing. */
+.tree-empty,.tree-nomatch{display:none;padding:22px 16px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.6}
+.tree-empty a,.tree-nomatch a{color:var(--accent);text-decoration:underline;cursor:default}
+.app.tree-is-empty .tree{display:none}
+.app.tree-is-empty .tree-empty{display:block}
+.app.tree-no-match .tree{display:none}
+.app.tree-no-match .tree-nomatch{display:block}
+
+/* A gated long operation: progress, and a way out of it. */
+.busybar{display:none;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--stroke-soft);
+  background:var(--accent-soft);font-size:12px;color:var(--accent-ink)}
+.app.busy .busybar{display:flex}
+.busybar .track{flex:1;height:5px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+.busybar .fill{height:100%;width:38%;background:var(--accent);border-radius:3px}
+.busybar button{padding:4px 10px;border-radius:7px;border:1px solid var(--stroke);background:var(--surface);font-size:11.5px}
+/* the trigger becomes Cancel in place — it never appears somewhere new */
+.app.busy .tbtn[title^="Format"]{background:var(--accent);color:var(--accent-contrast)}
+
+/* Preview paused above the size threshold, with the manual refresh. */
+.pausedbar{display:none;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--stroke-soft);
+  background:var(--surface-2);font-size:12px;color:var(--muted)}
+.app.paused .pausedbar{display:flex}
+.pausedbar button{margin-left:auto;padding:4px 10px;border-radius:7px;border:1px solid var(--stroke);background:var(--surface);font-size:11.5px}
+
+/* The problems list behind the status-bar count. */
+.problems{display:none;position:absolute;right:14px;bottom:34px;width:min(430px,86%);background:var(--elevated);
+  border:1px solid var(--stroke);border-radius:12px;box-shadow:var(--win-shadow);z-index:var(--z-popover);overflow:hidden}
+.app.problems-open .problems{display:block}
+.problems .ph{display:flex;align-items:center;padding:9px 12px;border-bottom:1px solid var(--stroke-soft);font-size:11.5px;font-weight:600}
+.problems .ph .close{margin-left:auto;cursor:default}
+.problems .pr{display:flex;gap:9px;padding:8px 12px;font-size:12px;align-items:baseline}
+.problems .pr:hover{background:var(--hover)}
+.problems .pr .loc{color:var(--faint);font-family:var(--mono);font-size:11px;flex:none}
+.problems .pr .rule{margin-left:auto;color:var(--faint);font-size:10.5px}
+
+/* The reserved-but-empty assistant region, which is what every phase before the
+   assistant actually looks like. */
+.app.assistant-reserved .assistant>*:not(.as-reserved){display:none}
+.app.assistant-reserved .as-reserved{display:flex}
+.as-reserved{display:none;flex:1;align-items:center;justify-content:center;padding:20px;text-align:center;
+  color:var(--faint);font-size:12px;line-height:1.6}
+
+/* Focus-visible, which the token now exists for and no screen demonstrated. */
+.app.focusdemo .tbtn:nth-of-type(2),.app.focusdemo .tab.active,.app.focusdemo #viewseg button.active{box-shadow:var(--focus-ring)}
+
+/* The diff view Phase 10 builds and Phase 12 reuses. */
+.diffview{display:none}
+.app.diffing .diffview{display:flex;flex:1;flex-direction:column;min-height:0;align-self:stretch;height:100%}
+.app.diffing .body{display:none}
+.app.diffing .content{display:flex;flex-direction:column;min-height:0}
+.dv-h{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--stroke-soft);font-size:12px}
+.dv-h .sp{flex:1}
+.dv-h button{padding:5px 12px;border-radius:8px;border:1px solid var(--stroke);background:var(--surface);font-size:11.5px}
+.dv-h button.primary{background:var(--accent);color:var(--accent-contrast);border-color:transparent;font-weight:600}
+.dv-b{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--stroke-soft);min-height:0;overflow:auto}
+.dv-side{background:var(--surface);padding:10px 12px;font-family:var(--mono);font-size:11.5px;line-height:1.75}
+.dv-side .dl{display:block;padding:0 4px;border-radius:3px;white-space:pre-wrap}
+.dv-side .del{background:color-mix(in srgb,var(--err) 16%,transparent)}
+.dv-side .add{background:color-mix(in srgb,var(--ok) 16%,transparent)}
+.dv-side .lbl{font-family:var(--font);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
 
 /* ---------------- CANONICAL TOKEN BLOCKS (match design-1/2/3 natives) ---------------- */
-body[data-theme="glass"][data-mode="dark"]{--canvas:radial-gradient(1200px 700px at 15% -10%,#3b2f7a 0,transparent 55%),radial-gradient(1000px 800px at 100% 10%,#1d4e8f 0,transparent 55%),radial-gradient(900px 700px at 60% 120%,#7a2f6a 0,transparent 55%),linear-gradient(160deg,#0d1022,#0a0d1c 60%,#0b0f1e);--app-bg:rgba(255,255,255,.10);--surface:rgba(255,255,255,.10);--surface-2:rgba(255,255,255,.07);--surface-3:rgba(255,255,255,.16);--elevated:rgba(28,30,54,.82);--stroke:rgba(255,255,255,.18);--stroke-soft:rgba(255,255,255,.11);--text:#eaf0ff;--muted:rgba(234,240,255,.6);--faint:rgba(234,240,255,.32);--accent:#7aa2ff;--accent2:#c58bff;--accent-contrast:#0b1024;--accent-soft:rgba(122,162,255,.16);--accent-ink:#cdd8ff;--ok:#39d98a;--warn:#ffcf6b;--err:#ff7a90;--user-bubble:rgba(122,162,255,.18);--hover:rgba(255,255,255,.16);--win-shadow:0 40px 120px rgba(0,0,0,.55);--blur:blur(28px) saturate(160%);--win-radius:16px;--font:-apple-system,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif}
-body[data-theme="glass"][data-mode="light"]{--canvas:radial-gradient(1100px 700px at 12% -12%,#b7c2ff 0,transparent 55%),radial-gradient(1000px 820px at 102% 2%,#a9d8ff 0,transparent 55%),radial-gradient(950px 760px at 60% 122%,#ffc2e6 0,transparent 55%),linear-gradient(160deg,#e4e9fb,#dde6f8);--app-bg:rgba(255,255,255,.42);--surface:rgba(255,255,255,.34);--surface-2:rgba(255,255,255,.24);--surface-3:rgba(255,255,255,.58);--elevated:rgba(255,255,255,.80);--stroke:rgba(70,84,140,.24);--stroke-soft:rgba(70,84,140,.15);--text:#1c2338;--muted:#515a78;--faint:#8b93b6;--accent:#5b7cff;--accent2:#a06bff;--accent-contrast:#ffffff;--accent-soft:rgba(91,124,255,.14);--accent-ink:#3a49b5;--ok:#149e63;--warn:#b7791f;--err:#c0324b;--user-bubble:rgba(91,124,255,.14);--hover:rgba(70,84,140,.12);--win-shadow:0 34px 90px rgba(50,60,120,.28);--blur:blur(28px) saturate(150%);--win-radius:16px;--font:-apple-system,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif}
-body[data-theme="material"][data-mode="light"]{--canvas:#d9d7e6;--app-bg:#faf8ff;--surface:#ffffff;--surface-2:#eceaf6;--surface-3:#e6e3f2;--elevated:#f3f1fb;--stroke:#e3e1ee;--stroke-soft:#eceaf6;--text:#1b1b22;--muted:#5c5c69;--faint:#9aa1ab;--accent:#4f6bed;--accent2:#4f6bed;--accent-contrast:#ffffff;--accent-soft:#dfe4ff;--accent-ink:#0a1a52;--ok:#1f8a54;--warn:#8a5a00;--err:#b3261e;--user-bubble:#eef1ff;--hover:#eceaf6;--win-shadow:0 30px 70px rgba(30,30,60,.28);--win-radius:16px;--font:"Roboto","Segoe UI",Inter,system-ui,sans-serif}
-body[data-theme="material"][data-mode="dark"]{--canvas:#0e0e13;--app-bg:#16161c;--surface:#1d1d25;--surface-2:#202028;--surface-3:#2a2a34;--elevated:#24242e;--stroke:#33333f;--stroke-soft:#26262e;--text:#e6e6ee;--muted:#a8a8b6;--faint:#70707c;--accent:#b3c2ff;--accent2:#b3c2ff;--accent-contrast:#0a1a52;--accent-soft:#34417a;--accent-ink:#dfe4ff;--ok:#5bd08b;--warn:#ffcf6b;--err:#ffb4ab;--user-bubble:#2a3358;--hover:#2a2a34;--win-shadow:0 30px 70px rgba(0,0,0,.55);--win-radius:16px;--font:"Roboto","Segoe UI",Inter,system-ui,sans-serif}
-body[data-theme="minimal"][data-mode="light"]{--canvas:#e9e9ec;--app-bg:#fbfbfa;--surface:#fbfbfa;--surface-2:#f3f3f2;--surface-3:#eaeae9;--elevated:#ffffff;--stroke:#e4e4e7;--stroke-soft:#ececee;--text:#1f2328;--muted:#6b7280;--faint:#9aa1ab;--accent:#10b981;--accent2:#10b981;--accent-contrast:#ffffff;--accent-soft:#ecfdf5;--accent-ink:#047857;--ok:#059669;--warn:#b45309;--err:#b91c1c;--user-bubble:#f0f0ef;--hover:#f4f4f3;--win-shadow:0 24px 60px rgba(20,20,40,.16);--win-radius:12px;--font:"Inter",-apple-system,"Segoe UI",system-ui,sans-serif}
-body[data-theme="minimal"][data-mode="dark"]{--canvas:#0c0c0e;--app-bg:#141416;--surface:#141416;--surface-2:#191919;--surface-3:#1e1e21;--elevated:#1c1c1f;--stroke:#28282c;--stroke-soft:#202023;--text:#e7e7ea;--muted:#9aa1ab;--faint:#63636d;--accent:#34d399;--accent2:#34d399;--accent-contrast:#04140d;--accent-soft:rgba(52,211,153,.14);--accent-ink:#6ee7b7;--ok:#34d399;--warn:#fbbf24;--err:#f87171;--user-bubble:#1e1e21;--hover:#1e1e21;--win-shadow:0 24px 60px rgba(0,0,0,.6);--win-radius:12px;--font:"Inter",-apple-system,"Segoe UI",system-ui,sans-serif}
-body[data-mode="light"]{--c-h:#3056d3;--c-b:#b45309;--c-em:#7c3aed;--c-q:#0369a1;--c-c:#9aa1ab;--c-fn:#be123c;--c-code:#30343b;--gutter:#c9ccd3}
-body[data-mode="dark"]{--c-h:#8fb4ff;--c-b:#ffd479;--c-em:#c58bff;--c-q:#7fe3b5;--c-c:#8a93b8;--c-fn:#ff9d7a;--c-code:#dfe6ff;--gutter:rgba(255,255,255,.22)}
+body[data-theme="glass"][data-mode="dark"]{--focus-ring:0 0 0 2px var(--app-bg),0 0 0 4px var(--accent);--canvas:radial-gradient(1200px 700px at 15% -10%,#3b2f7a 0,transparent 55%),radial-gradient(1000px 800px at 100% 10%,#1d4e8f 0,transparent 55%),radial-gradient(900px 700px at 60% 120%,#7a2f6a 0,transparent 55%),linear-gradient(160deg,#0d1022,#0a0d1c 60%,#0b0f1e);--app-bg:rgba(255,255,255,.10);--surface:rgba(255,255,255,.10);--surface-2:rgba(255,255,255,.07);--surface-3:rgba(255,255,255,.16);--elevated:rgba(28,30,54,.82);--stroke:rgba(255,255,255,.18);--stroke-soft:rgba(255,255,255,.11);--text:#eaf0ff;--muted:rgba(234,240,255,.6);--faint:rgba(234,240,255,.32);--accent:#7aa2ff;--accent2:#c58bff;--accent-contrast:#0b1024;--accent-soft:rgba(122,162,255,.16);--accent-ink:#cdd8ff;--ok:#39d98a;--warn:#ffcf6b;--err:#ff7a90;--user-bubble:rgba(122,162,255,.18);--hover:rgba(255,255,255,.16);--win-shadow:0 40px 120px rgba(0,0,0,.55);--blur:blur(28px) saturate(160%);--win-radius:16px;--font:-apple-system,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif}
+body[data-theme="glass"][data-mode="light"]{--focus-ring:0 0 0 2px var(--app-bg),0 0 0 4px var(--accent);--canvas:radial-gradient(1100px 700px at 12% -12%,#b7c2ff 0,transparent 55%),radial-gradient(1000px 820px at 102% 2%,#a9d8ff 0,transparent 55%),radial-gradient(950px 760px at 60% 122%,#ffc2e6 0,transparent 55%),linear-gradient(160deg,#e4e9fb,#dde6f8);--app-bg:rgba(255,255,255,.42);--surface:rgba(255,255,255,.34);--surface-2:rgba(255,255,255,.24);--surface-3:rgba(255,255,255,.58);--elevated:rgba(255,255,255,.80);--stroke:rgba(70,84,140,.24);--stroke-soft:rgba(70,84,140,.15);--text:#1c2338;--muted:#515a78;--faint:#8b93b6;--accent:#5b7cff;--accent2:#a06bff;--accent-contrast:#ffffff;--accent-soft:rgba(91,124,255,.14);--accent-ink:#3a49b5;--ok:#149e63;--warn:#b7791f;--err:#c0324b;--user-bubble:rgba(91,124,255,.14);--hover:rgba(70,84,140,.12);--win-shadow:0 34px 90px rgba(50,60,120,.28);--blur:blur(28px) saturate(150%);--win-radius:16px;--font:-apple-system,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif}
+body[data-theme="material"][data-mode="light"]{--focus-ring:0 0 0 2px var(--app-bg),0 0 0 4px var(--accent);--canvas:#d9d7e6;--app-bg:#faf8ff;--surface:#ffffff;--surface-2:#eceaf6;--surface-3:#e6e3f2;--elevated:#f3f1fb;--stroke:#e3e1ee;--stroke-soft:#eceaf6;--text:#1b1b22;--muted:#5c5c69;--faint:#9aa1ab;--accent:#4f6bed;--accent2:#4f6bed;--accent-contrast:#ffffff;--accent-soft:#dfe4ff;--accent-ink:#0a1a52;--ok:#1f8a54;--warn:#8a5a00;--err:#b3261e;--user-bubble:#eef1ff;--hover:#eceaf6;--win-shadow:0 30px 70px rgba(30,30,60,.28);--win-radius:16px;--font:"Roboto","Segoe UI",Inter,system-ui,sans-serif}
+body[data-theme="material"][data-mode="dark"]{--focus-ring:0 0 0 2px var(--app-bg),0 0 0 4px var(--accent);--canvas:#0e0e13;--app-bg:#16161c;--surface:#1d1d25;--surface-2:#202028;--surface-3:#2a2a34;--elevated:#24242e;--stroke:#33333f;--stroke-soft:#26262e;--text:#e6e6ee;--muted:#a8a8b6;--faint:#70707c;--accent:#b3c2ff;--accent2:#b3c2ff;--accent-contrast:#0a1a52;--accent-soft:#34417a;--accent-ink:#dfe4ff;--ok:#5bd08b;--warn:#ffcf6b;--err:#ffb4ab;--user-bubble:#2a3358;--hover:#2a2a34;--win-shadow:0 30px 70px rgba(0,0,0,.55);--win-radius:16px;--font:"Roboto","Segoe UI",Inter,system-ui,sans-serif}
+body[data-theme="minimal"][data-mode="light"]{--focus-ring:0 0 0 2px var(--app-bg),0 0 0 4px var(--accent);--canvas:#e9e9ec;--app-bg:#fbfbfa;--surface:#fbfbfa;--surface-2:#f3f3f2;--surface-3:#eaeae9;--elevated:#ffffff;--stroke:#e4e4e7;--stroke-soft:#ececee;--text:#1f2328;--muted:#6b7280;--faint:#9aa1ab;--accent:#10b981;--accent2:#10b981;--accent-contrast:#ffffff;--accent-soft:#ecfdf5;--accent-ink:#047857;--ok:#059669;--warn:#b45309;--err:#b91c1c;--user-bubble:#f0f0ef;--hover:#f4f4f3;--win-shadow:0 24px 60px rgba(20,20,40,.16);--win-radius:12px;--font:"Inter",-apple-system,"Segoe UI",system-ui,sans-serif}
+body[data-theme="minimal"][data-mode="dark"]{--focus-ring:0 0 0 2px var(--app-bg),0 0 0 4px var(--accent);--canvas:#0c0c0e;--app-bg:#141416;--surface:#141416;--surface-2:#191919;--surface-3:#1e1e21;--elevated:#1c1c1f;--stroke:#28282c;--stroke-soft:#202023;--text:#e7e7ea;--muted:#9aa1ab;--faint:#63636d;--accent:#34d399;--accent2:#34d399;--accent-contrast:#04140d;--accent-soft:rgba(52,211,153,.14);--accent-ink:#6ee7b7;--ok:#34d399;--warn:#fbbf24;--err:#f87171;--user-bubble:#1e1e21;--hover:#1e1e21;--win-shadow:0 24px 60px rgba(0,0,0,.6);--win-radius:12px;--font:"Inter",-apple-system,"Segoe UI",system-ui,sans-serif}
+body[data-mode="light"]{--md-heading:#3056d3;--md-strong:#b45309;--md-emphasis:#7c3aed;--md-quote:#0369a1;--md-comment:#9aa1ab;--md-link:#be123c;--md-marker:#9aa1ab;--code-fg:#30343b;--gutter:#c9ccd3;--hl-keyword:#7c3aed;--hl-string:#0369a1;--hl-comment:#9aa1ab;--hl-number:#b45309;--hl-function:#3056d3;--hl-type:#0f766e;--hl-attr:#be123c;--hl-punct:#5c5c69;--selection-bg:rgba(48,86,211,.20);--selection-fg:inherit;--scrollbar-track:transparent;--scrollbar-thumb:rgba(0,0,0,.18);--scrollbar-thumb-hover:rgba(0,0,0,.30)}
+body[data-mode="dark"]{--md-heading:#8fb4ff;--md-strong:#ffd479;--md-emphasis:#c58bff;--md-quote:#7fe3b5;--md-comment:#8a93b8;--md-link:#ff9d7a;--md-marker:#8a93b8;--code-fg:#dfe6ff;--gutter:rgba(255,255,255,.22);--hl-keyword:#c58bff;--hl-string:#7fe3b5;--hl-comment:#8a93b8;--hl-number:#ffd479;--hl-function:#8fb4ff;--hl-type:#5eead4;--hl-attr:#ff9d7a;--hl-punct:#9aa1ab;--selection-bg:rgba(143,180,255,.26);--selection-fg:inherit;--scrollbar-track:transparent;--scrollbar-thumb:rgba(255,255,255,.20);--scrollbar-thumb-hover:rgba(255,255,255,.34)}
 
 /* ---------------- harness (theme × appearance × screen) ---------------- */
 .harness{display:flex;flex-direction:column;gap:8px;align-items:center;margin:14px auto 4px;padding:10px 14px;border-radius:14px;background:var(--elevated);border:1px solid var(--stroke);box-shadow:var(--win-shadow);backdrop-filter:var(--blur);max-width:96vw}
@@ -42,9 +200,9 @@ body[data-mode="dark"]{--c-h:#8fb4ff;--c-b:#ffd479;--c-em:#c58bff;--c-q:#7fe3b5;
 
 /* ---------------- app window ---------------- */
 .app{width:min(1320px,97vw);height:min(792px,86vh);margin:8px auto 20px;display:flex;flex-direction:column;background:var(--app-bg);border:1px solid var(--stroke);border-radius:var(--win-radius);box-shadow:var(--win-shadow);overflow:hidden;position:relative;backdrop-filter:var(--blur)}
-body[data-theme="glass"] .app::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.16),transparent 16%);z-index:2}
+body[data-theme="glass"] .app::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.16),transparent 16%);z-index:var(--z-base)}
 /* titlebar + menu */
-.titlebar{display:flex;align-items:center;gap:12px;height:44px;padding:0 12px;border-bottom:1px solid var(--stroke);position:relative;z-index:30}
+.titlebar{display:flex;align-items:center;gap:12px;height:44px;padding:0 12px;border-bottom:1px solid var(--stroke);position:relative;z-index:var(--z-sticky)}
 .lights{display:flex;gap:8px}.lights i{width:12px;height:12px;border-radius:50%}
 .lights .r{background:#ff5f57}.lights .y{background:#febc2e}.lights .g{background:#28c840}
 .brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px}
@@ -58,7 +216,7 @@ body[data-theme="glass"] .app::before{content:"";position:absolute;inset:0;point
 .tb-mini{width:29px;height:29px;border-radius:8px;border:1px solid var(--stroke);background:var(--surface);color:var(--muted);cursor:pointer;font-size:13px}
 .tb-mini.on{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--stroke-soft)}
 /* dropdown menus */
-.dropdown{position:absolute;top:42px;min-width:250px;background:var(--elevated);border:1px solid var(--stroke);border-radius:12px;box-shadow:var(--win-shadow);padding:6px;z-index:60;display:none;backdrop-filter:var(--blur)}
+.dropdown{position:absolute;top:42px;min-width:250px;background:var(--elevated);border:1px solid var(--stroke);border-radius:12px;box-shadow:var(--win-shadow);padding:6px;z-index:var(--z-dropdown);display:none;backdrop-filter:var(--blur)}
 .dropdown.show{display:block}
 .mi{display:flex;justify-content:space-between;align-items:center;gap:22px;padding:7px 10px;border-radius:8px;font-size:13px;cursor:pointer;color:var(--text)}
 .mi:hover{background:var(--hover)}
@@ -70,12 +228,12 @@ body[data-theme="glass"] .app::before{content:"";position:absolute;inset:0;point
 .swatches{display:flex;gap:8px;padding:6px 10px}
 .swatches i{width:22px;height:22px;border-radius:6px;cursor:pointer;border:1px solid var(--stroke)}.swatches i.sel{outline:2px solid var(--accent);outline-offset:2px}
 .tgl{width:34px;height:19px;border-radius:12px;background:var(--surface-3);border:1px solid var(--stroke);position:relative;cursor:pointer;flex:none}
-.tgl::after{content:"";position:absolute;top:1.5px;left:1.5px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:.16s}
+.tgl::after{content:"";position:absolute;top:1.5px;left:1.5px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:var(--dur-fast) var(--ease-out)}
 .tgl.on{background:var(--accent);border-color:transparent}.tgl.on::after{left:16px;background:var(--accent-contrast)}
 /* main row */
-.main{flex:1;display:flex;min-height:0;position:relative;z-index:1}
+.main{flex:1;display:flex;min-height:0;position:relative;z-index:var(--z-base)}
 /* left sidebar (file tree) */
-.sidebar{width:216px;flex:none;background:var(--surface-2);border-right:1px solid var(--stroke);display:flex;flex-direction:column;overflow:hidden;transition:width .18s}
+.sidebar{width:216px;flex:none;background:var(--surface-2);border-right:1px solid var(--stroke);display:flex;flex-direction:column;overflow:hidden;transition:width var(--dur-slow) var(--ease-in-out)}
 .app.no-sidebar .sidebar{width:0;border-right:0}
 .sb-head{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--stroke-soft)}
 .sb-head .ws{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:700;flex:1}
@@ -96,7 +254,9 @@ body[data-theme="glass"] .app::before{content:"";position:absolute;inset:0;point
 .tab{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:9px;font-size:12.5px;color:var(--muted);cursor:pointer;border:1px solid transparent;max-width:190px}
 .tab:hover{color:var(--text)}
 .tab.active{background:var(--accent-soft);color:var(--text);border-color:var(--stroke-soft)}
-.tab .d{width:6px;height:6px;border-radius:50%;background:var(--faint)}.tab.active .d{background:var(--accent)}
+.tab .d{width:6px;height:6px;border-radius:50%;background:transparent}
+    .tab.dirty .d{background:var(--accent)}                     /* unsaved changes */
+    .tab.dirty.saving .d{background:var(--muted)}               /* autosave in flight */
 .tab .x{color:var(--faint);font-size:14px}
 .tab-add{width:28px;height:28px;border-radius:7px;border:1px solid var(--stroke);background:var(--surface);color:var(--text);cursor:pointer;font-size:15px}
 body[data-theme="minimal"] .tab{border-radius:0;border:0;border-bottom:2px solid transparent;background:none;padding:8px 12px}
@@ -123,18 +283,27 @@ body[data-theme="minimal"] .pane+.pane{border-left:1px solid var(--stroke)}
 .pane-h .live{color:var(--accent-ink)}
 .editor{flex:1;overflow:auto;display:flex;font-family:var(--mono);font-size:13px;line-height:1.8}
 .gutter{padding:12px 10px;text-align:right;color:var(--gutter);user-select:none}
-.code{padding:12px 16px;white-space:pre-wrap;color:var(--c-code)}
-.code .h{color:var(--c-h);font-weight:600}.code .b{color:var(--c-b);font-weight:700}.code .em{color:var(--c-em);font-style:italic}
-.code .q{color:var(--c-q)}.code .c{color:var(--c-c)}.code .fn{color:var(--c-fn)}
+.code{padding:12px 16px;white-space:pre-wrap;color:var(--code-fg)}
+.code .h{color:var(--md-heading);font-weight:600}.code .b{color:var(--md-strong);font-weight:700}.code .em{color:var(--md-emphasis);font-style:italic}
+.code .q{color:var(--md-quote)}
+    .code .mk{color:var(--md-marker)}.code .c{color:var(--md-comment)}.code .fn{color:var(--md-link)}
 .code u.lint{text-decoration:wavy underline var(--warn);text-underline-offset:3px}
 .code .selx{background:var(--accent-soft);outline:1px solid var(--accent);border-radius:3px}
 .preview{flex:1;overflow:auto;padding:6px 0}
 .preview-in{padding:20px 26px}
 .preview h1{font-size:25px;margin:0 0 12px;letter-spacing:-.01em}.preview h2{font-size:18px;margin:20px 0 9px}
-.preview p{color:var(--muted);line-height:1.75;margin:9px 0}.preview strong{color:var(--c-b)}.preview em{color:var(--c-em)}
+.preview p{color:var(--muted);line-height:1.75;margin:9px 0}.preview strong{color:var(--md-strong)}.preview em{color:var(--md-emphasis)}
 .preview ul{margin:9px 0 9px 20px;color:var(--muted)}.preview li{margin:5px 0}
 .preview blockquote{border-left:3px solid var(--accent);padding:6px 14px;margin:12px 0;color:var(--text);background:var(--accent-soft);border-radius:0 8px 8px 0}
-.preview pre{background:var(--surface-2);border:1px solid var(--stroke-soft);border-radius:10px;padding:12px 14px;margin:12px 0;font-family:var(--mono);font-size:12px;color:var(--c-code)}
+.preview pre .hl-keyword{color:var(--hl-keyword)}
+    .preview pre .hl-string{color:var(--hl-string)}
+    .preview pre .hl-comment{color:var(--hl-comment);font-style:italic}
+    .preview pre .hl-number{color:var(--hl-number)}
+    .preview pre .hl-function{color:var(--hl-function)}
+    .preview pre .hl-type{color:var(--hl-type)}
+    .preview pre .hl-attr{color:var(--hl-attr)}
+    .preview pre .hl-punct{color:var(--hl-punct)}
+    .preview pre{background:var(--surface-2);border:1px solid var(--stroke-soft);border-radius:10px;padding:12px 14px;margin:12px 0;font-family:var(--mono);font-size:12px;color:var(--code-fg)}
 .preview .kbd{font-family:var(--mono);background:var(--surface-2);border:1px solid var(--stroke);border-radius:5px;padding:1px 6px;font-size:11px}
 .katex{display:inline-block;padding:2px 9px;border-radius:6px;background:var(--accent-soft);color:var(--accent-ink);font-family:"Times New Roman",serif;font-style:italic}
 .mermaid{margin:12px 0;padding:14px;border:1px dashed var(--stroke);border-radius:10px;background:var(--surface-2);text-align:center;color:var(--muted);font-size:11.5px}
@@ -147,7 +316,7 @@ body[data-theme="minimal"] .pane+.pane{border-left:1px solid var(--stroke)}
 .banner button{border:1px solid var(--stroke);background:var(--surface);color:var(--text);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer}
 .banner button.primary{background:var(--accent);color:var(--accent-contrast);border-color:transparent;font-weight:600}
 /* ---------------- right assistant sidebar ---------------- */
-.assistant{width:352px;flex:none;background:var(--surface-2);border-left:1px solid var(--stroke);display:flex;flex-direction:column;overflow:hidden;transition:width .18s}
+.assistant{width:352px;flex:none;background:var(--surface-2);border-left:1px solid var(--stroke);display:flex;flex-direction:column;overflow:hidden;transition:width var(--dur-slow) var(--ease-in-out)}
 .app.no-assistant .assistant{width:0;border-left:0}
 .as-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--stroke-soft)}
 .as-head .t{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:700;flex:1}
@@ -176,7 +345,7 @@ body[data-theme="minimal"] .pane+.pane{border-left:1px solid var(--stroke)}
 .diff .ins{background:color-mix(in srgb,var(--ok) 22%,transparent);color:var(--ok);border-radius:3px;padding:0 2px}
 .editcard .ea{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--stroke-soft)}
 .editcard .ea button{flex:1;border:0;border-radius:8px;padding:7px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
-.btn-apply{background:var(--accent);color:var(--accent-contrast)}.btn-disc{background:var(--surface-3);color:var(--muted)}.btn-partial{background:var(--surface-3);color:var(--text)}
+.btn-apply{background:var(--accent);color:var(--accent-contrast)}.btn-disc{background:var(--surface-3);color:var(--muted)}
 .composer{border-top:1px solid var(--stroke-soft);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .ctxrow{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--faint)}
 .ctxchip{display:flex;align-items:center;gap:5px;background:var(--surface-3);border:1px solid var(--stroke-soft);border-radius:14px;padding:2px 8px;color:var(--muted)}
@@ -186,14 +355,14 @@ body[data-theme="minimal"] .pane+.pane{border-left:1px solid var(--stroke)}
 .composer .row2{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--faint)}
 .mchip{display:flex;align-items:center;gap:6px;background:var(--surface-3);border:1px solid var(--stroke-soft);border-radius:14px;padding:3px 9px;color:var(--muted);cursor:pointer}
 /* status bar */
-.statusbar{display:flex;align-items:center;gap:14px;height:28px;padding:0 14px;border-top:1px solid var(--stroke);font-size:11px;color:var(--faint);position:relative;z-index:10}
+.statusbar{display:flex;align-items:center;gap:14px;height:28px;padding:0 14px;border-top:1px solid var(--stroke);font-size:11px;color:var(--faint);position:relative;z-index:var(--z-sticky)}
 .statusbar .ssp{flex:1}
 .statusbar .b{display:inline-flex;align-items:center;gap:5px}.statusbar .act2{cursor:pointer}.statusbar .act2:hover{color:var(--text)}
 .statusbar .warnc{color:var(--warn)}.dotk{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block}
 .pill{padding:2px 9px;border-radius:16px;background:var(--surface-2);border:1px solid var(--stroke-soft)}
 body[data-theme="minimal"] .pill{background:none;border:0}
 /* reading mode */
-.reader{position:absolute;inset:0;z-index:80;display:none;background:var(--app-bg);backdrop-filter:var(--blur)}
+.reader{position:absolute;inset:0;z-index:var(--z-modal);display:none;background:var(--app-bg);backdrop-filter:var(--blur)}
 body[data-theme="glass"] .reader{background:var(--canvas)}
 .app.reading .reader{display:block}
 .reader .exit{position:absolute;top:16px;right:20px;border:1px solid var(--stroke);background:var(--surface-2);color:var(--text);border-radius:20px;padding:8px 15px;font-size:12px;cursor:pointer}
@@ -203,22 +372,23 @@ body[data-theme="glass"] .reader{background:var(--canvas)}
 .reader blockquote{border-left:3px solid var(--accent);padding:8px 18px;margin:16px 0;color:var(--text);background:var(--accent-soft);border-radius:0 8px 8px 0}
 .reader ul{margin:12px 0 12px 22px;color:var(--muted);font-size:16px;line-height:1.8}
 /* drop overlay + folder prompt */
-.dropzone{position:absolute;inset:0;z-index:70;display:none;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 14%,transparent);backdrop-filter:blur(2px)}
+.dropzone{position:absolute;inset:0;z-index:var(--z-overlay);display:none;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 14%,transparent);backdrop-filter:blur(2px)}
 .app.dragging .dropzone{display:flex}
 .dropzone .box{padding:24px 34px;border:2px dashed var(--accent);border-radius:16px;background:var(--elevated);color:var(--accent-ink);font-size:15px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--win-shadow)}
 .dropzone .box small{color:var(--muted);font-weight:400;font-size:12.5px}
 /* context menu */
-.ctxmenu{position:absolute;z-index:75;min-width:190px;background:var(--elevated);border:1px solid var(--stroke);border-radius:11px;box-shadow:var(--win-shadow);padding:5px;display:none;backdrop-filter:var(--blur)}
+.tip{z-index:var(--z-popover)}
+    .ctxmenu{position:absolute;z-index:var(--z-dropdown);min-width:190px;background:var(--elevated);border:1px solid var(--stroke);border-radius:11px;box-shadow:var(--win-shadow);padding:5px;display:none;backdrop-filter:var(--blur)}
 .app.ctx .ctxmenu{display:block}
 /* toasts */
-.toasts{position:absolute;right:16px;bottom:40px;z-index:78;display:none;flex-direction:column;gap:8px;width:300px}
+.toasts{position:absolute;right:16px;bottom:40px;z-index:var(--z-toast);display:none;flex-direction:column;gap:8px;width:300px}
 .app.toasting .toasts{display:flex}
 .toast{display:flex;align-items:flex-start;gap:9px;background:var(--elevated);border:1px solid var(--stroke);border-left:3px solid var(--accent);border-radius:10px;padding:9px 11px;font-size:12.5px;color:var(--text);box-shadow:var(--win-shadow);backdrop-filter:var(--blur)}
 .toast.ok{border-left-color:var(--ok)}.toast.warn{border-left-color:var(--warn)}.toast.err{border-left-color:var(--err)}
 .toast .ti{font-size:14px}.toast .tx{flex:1}.toast .tx b{display:block;margin-bottom:1px}
 .toast .txc{color:var(--muted)}
 /* modal (settings/shortcuts/about) */
-.scrim{position:absolute;inset:0;z-index:90;background:rgba(6,8,16,.42);display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.scrim{position:absolute;inset:0;z-index:var(--z-overlay);background:rgba(6,8,16,.42);display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
 .scrim.show{display:flex}
 .modal{width:min(760px,94%);max-height:88%;overflow:hidden;background:var(--elevated);border:1px solid var(--stroke);border-radius:16px;box-shadow:var(--win-shadow);display:flex;flex-direction:column}
 .modal-h{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--stroke-soft)}
@@ -270,6 +440,26 @@ body[data-theme="material"][data-mode="dark"] .modal,body[data-theme="material"]
 </style>
 </head>
 <body data-theme="material" data-mode="light">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<g id="ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></g>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M4 20a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2z"/></symbol>
+<symbol id="i-folder-open" viewBox="0 0 24 24"><path d="M6 20h12a2 2 0 0 0 1.9-1.4l1.6-5A1 1 0 0 0 20.6 12H8.5a2 2 0 0 0-1.9 1.4l-1.7 5.2A1.5 1.5 0 0 1 3.5 19V6a2 2 0 0 1 2-2h4l2 3h6a2 2 0 0 1 2 2v3"/></symbol>
+<symbol id="i-file-plus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 12v6M9 15h6"/></symbol>
+<symbol id="i-folder-plus" viewBox="0 0 24 24"><path d="M4 20a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2z"/><path d="M12 11v6M9 14h6"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="m21 15-5-5L5 21"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2"/></symbol>
+<symbol id="i-article" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+<symbol id="i-files" viewBox="0 0 24 24"><path d="M15 2H9a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6z"/><path d="M15 2v4h4"/><path d="M5 8v12a2 2 0 0 0 2 2h9"/></symbol>
+<symbol id="i-model" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></symbol>
+<symbol id="i-temp" viewBox="0 0 24 24"><path d="M14 14.8V4a2 2 0 1 0-4 0v10.8a4 4 0 1 0 4 0"/></symbol>
+<symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18 16.5 18.8 19l2.2.8-2.2.8L18 23l-.8-2.4-2.2-.8 2.2-.8z"/></symbol>
+<symbol id="i-question" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2a3 3 0 0 1 5.8 1c0 2-3 2.6-3 4"/><path d="M12 17.5h.01"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+</defs></svg>
+
 
 <div class="harness">
   <div class="hrow">
@@ -280,6 +470,10 @@ body[data-theme="material"][data-mode="dark"] .modal,body[data-theme="material"]
     <label>Appearance</label>
     <div class="switch" id="modeSwitch">
       <button data-appear="auto">Auto</button><button data-appear="light" class="on">Light</button><button data-appear="dark">Dark</button>
+    </div>
+    <label>Width</label>
+    <div class="switch" id="widthSwitch">
+      <button data-w="375">375</button><button data-w="768">768</button><button data-w="1280" class="on">1280</button>
     </div>
     <span class="note" id="autoNote"></span>
   </div>
@@ -311,6 +505,32 @@ body[data-theme="material"][data-mode="dark"] .modal,body[data-theme="material"]
     <button data-screen="banner">Ext. content</button>
     <button data-screen="drop-overlay">Drop overlay</button>
     <button data-screen="drop-prompt">Folder prompt</button>
+    <span class="grp">Empty</span>
+    <button data-screen="empty">Launcher</button>
+    <button data-screen="empty-tree">Empty tree</button>
+    <button data-screen="filter-empty">Filter · no match</button>
+    <button data-screen="assistant-reserved">Assistant reserved</button>
+    <span class="grp">Busy</span>
+    <button data-screen="busy">Progress + cancel</button>
+    <button data-screen="paused-preview">Preview paused</button>
+    <button data-screen="problems">Problems list</button>
+    <button data-screen="diff-view">Diff view</button>
+    <span class="grp">Prompts</span>
+    <button data-screen="save-prompt">Save / Discard</button>
+    <button data-screen="quit-prompt">Quit with unsaved</button>
+    <button data-screen="reload-prompt">Changed on disk</button>
+    <span class="grp">Menus 2</span>
+    <button data-screen="tab-menu">Tab menu</button>
+    <button data-screen="editor-menu">Editor menu</button>
+    <button data-screen="toolbar-overflow">Toolbar overflow</button>
+    <button data-screen="focus">Focus ring</button>
+    <span class="grp">Settings</span>
+    <button data-screen="settings-editor">Editor</button>
+    <button data-screen="settings-markdown">Markdown</button>
+    <button data-screen="settings-export">Export</button>
+    <button data-screen="settings-privacy">Content &amp; privacy</button>
+    <button data-screen="settings-language">Language</button>
+    <button data-screen="settings-diagnostics">Diagnostics</button>
     <span class="grp">Ref</span>
     <button data-screen="tokens">Design tokens</button>
   </div>
@@ -319,7 +539,7 @@ body[data-theme="material"][data-mode="dark"] .modal,body[data-theme="material"]
 <div class="app" id="app">
   <div class="titlebar">
     <div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-    <div class="brand"><span class="logo">G</span>GoMarkEdit</div>
+    <button class="sb-icon" id="navBtn" title="Show files" onclick="app.classList.toggle('sidebar-open')">☰</button><div class="brand"><span class="logo">G</span><span class="brand-name">GoMarkEdit</span></div>
     <div class="menu">
       <button data-menu="file">File</button><button data-menu="settings">Settings</button><button data-menu="view">View</button><button data-menu="about">About</button>
     </div>
@@ -334,7 +554,7 @@ body[data-theme="material"][data-mode="dark"] .modal,body[data-theme="material"]
       <div class="mi">Open File…<span class="k">Ctrl O</span></div>
       <div class="mi">Open Folder…<span class="k">Ctrl K O</span></div>
       <div class="sep"></div><div class="lab">Open Recent</div>
-      <div class="mi sub">📄 release-notes.md</div><div class="mi sub">📄 spec-draft.md</div><div class="mi sub">📁 ~/Documents/Notes</div>
+      <div class="mi sub"><svg class="ic"><use href="#i-file"/></svg> release-notes.md</div><div class="mi sub"><svg class="ic"><use href="#i-file"/></svg> spec-draft.md</div><div class="mi sub"><svg class="ic"><use href="#i-folder"/></svg> ~/Documents/Notes</div>
       <div class="mi sub">↺ Reopen last file / folder<span class="k">Ctrl ⇧ T</span></div>
       <div class="sep"></div>
       <div class="mi">Save<span class="k">Ctrl S</span></div><div class="mi">Save As…<span class="k">Ctrl ⇧ S</span></div>
@@ -366,7 +586,6 @@ body[data-theme="material"][data-mode="dark"] .modal,body[data-theme="material"]
       <div class="mi" onclick="showScreen('reading')"><span>Distraction-free reading</span><span class="k">Ctrl ⏎</span></div><div class="mi"><span>Full screen</span><span class="k">F11</span></div>
     </div>
     <div class="dropdown" id="m-about" style="left:240px">
-      <div class="mi">Getting started</div><div class="mi">Markdown cheat sheet</div>
       <div class="mi" onclick="showScreen('shortcuts')">Keyboard shortcuts<span class="k">Ctrl ?</span></div>
       <div class="sep"></div><div class="mi">Open logs folder</div><div class="mi">View on GitHub (MIT)</div>
       <div class="sep"></div><div class="mi" onclick="showScreen('about')">About GoMarkEdit</div>
@@ -375,34 +594,85 @@ body[data-theme="material"][data-mode="dark"] .modal,body[data-theme="material"]
 
   <div class="main">
     <aside class="sidebar">
-      <div class="sb-head"><span class="ws">Notes</span><button class="sb-icon" title="New file">＋</button><button class="sb-icon" title="New folder">🗀</button><button class="sb-icon" onclick="app.classList.add('no-sidebar')" title="Collapse">⟨</button></div>
+      <div class="sb-head"><span class="ws">Notes</span><button class="sb-icon" title="New file"><svg class="ic"><use href="#i-plus"/></svg></button><button class="sb-icon" title="New folder"><svg class="ic"><use href="#i-folder-plus"/></svg></button><button class="sb-icon" onclick="app.dataset.w==='375'?app.classList.remove('sidebar-open'):app.classList.add('no-sidebar')" title="Collapse">⟨</button></div>
+      <div class="tree-empty">No Markdown files in this folder.<br><br><a>New file</a> &nbsp;·&nbsp; <a>Open a different folder…</a></div>
+      <div class="tree-nomatch">Nothing matches &ldquo;draft2&rdquo;.<br><br><a>Clear filter</a></div>
       <div class="tree">
-        <div class="row dir"><span class="tw">▾</span><span class="ic">📂</span>Notes</div>
-        <div class="row dir i1"><span class="tw">▾</span><span class="ic">📂</span>projects</div>
-        <div class="row active i2" oncontextmenu="ctxAt(event)"><span class="tw"></span><span class="ic">📄</span>release-notes.md</div>
-        <div class="row i2"><span class="tw"></span><span class="ic">📄</span>spec-draft.md</div>
-        <div class="row dir i1"><span class="tw">▸</span><span class="ic">📁</span>archive</div>
-        <div class="row i1"><span class="tw"></span><span class="ic">📄</span>readme.md</div>
-        <div class="row i1"><span class="tw"></span><span class="ic">📄</span>todo.txt</div>
-        <div class="row dir"><span class="tw">▸</span><span class="ic">📁</span>drafts</div>
+        <div class="row dir"><span class="tw">▾</span><span class="ic"><svg class="ic"><use href="#i-folder-open"/></svg></span>Notes</div>
+        <div class="row dir i1"><span class="tw">▾</span><span class="ic"><svg class="ic"><use href="#i-folder-open"/></svg></span>projects</div>
+        <div class="row active i2" oncontextmenu="ctxAt(event)"><span class="tw"></span><span class="ic"><svg class="ic"><use href="#i-file"/></svg></span>release-notes.md</div>
+        <div class="row i2"><span class="tw"></span><span class="ic"><svg class="ic"><use href="#i-file"/></svg></span>spec-draft.md</div>
+        <div class="row dir i1"><span class="tw">▸</span><span class="ic"><svg class="ic"><use href="#i-folder"/></svg></span>archive</div>
+        <div class="row i1"><span class="tw"></span><span class="ic"><svg class="ic"><use href="#i-file"/></svg></span>readme.md</div>
+        <div class="row i1"><span class="tw"></span><span class="ic"><svg class="ic"><use href="#i-file"/></svg></span>todo.txt</div>
+        <div class="row dir"><span class="tw">▸</span><span class="ic"><svg class="ic"><use href="#i-folder"/></svg></span>drafts</div>
       </div>
       <div class="sb-foot"><span>Showing</span><span class="chip">.md</span><span class="chip">.markdown</span><span class="chip">.mdown</span><span class="chip">.txt</span></div>
     </aside>
 
     <div class="content">
       <div class="tabs">
-        <div class="tab active" oncontextmenu="ctxAt(event)"><span class="d"></span>release-notes.md<span class="x">×</span></div>
+        <div class="tab active dirty" oncontextmenu="ctxAt(event)"><span class="d"></span>release-notes.md<span class="x">×</span></div>
         <div class="tab"><span class="d"></span>spec-draft.md<span class="x">×</span></div>
         <button class="tab-add" title="New tab">+</button>
       </div>
       <div class="toolbar">
         <div class="tgrp"><button class="tbtn" title="Bold — Ctrl+B"><b>B</b></button><button class="tbtn" title="Italic — Ctrl+I"><i>I</i></button><button class="tbtn" title="Strikethrough"><span style="text-decoration:line-through">S</span></button><button class="tbtn" title="Inline code — Ctrl+E">&lt;/&gt;</button></div>
         <div class="tgrp"><button class="tbtn">H1</button><button class="tbtn">H2</button><button class="tbtn">H3</button></div>
-        <div class="tgrp"><button class="tbtn" title="Bullet list">•</button><button class="tbtn" title="Numbered list">1.</button><button class="tbtn" title="Task">☑</button><button class="tbtn" title="Quote">❝</button></div>
-        <div class="tgrp"><button class="tbtn" title="Link — Ctrl+K">🔗</button><button class="tbtn" title="Image">🖼</button><button class="tbtn" title="Table">▦</button></div>
-        <button class="tbtn txt" title="Format — ⌥⇧F">⌁ Format</button><button class="tbtn txt" title="Lint — ⌥⇧L">✓ Lint</button>
+        <div class="tgrp tg-hide"><button class="tbtn" title="Bullet list">•</button><button class="tbtn" title="Numbered list">1.</button><button class="tbtn" title="Task">☑</button><button class="tbtn" title="Quote">❝</button></div>
+        <div class="tgrp tg-hide"><button class="tbtn" title="Link — Ctrl+K"><svg class="ic"><use href="#i-link"/></svg></button><button class="tbtn" title="Image"><svg class="ic"><use href="#i-image"/></svg></button><button class="tbtn" title="Table">▦</button></div>
+        <button class="tbtn txt" title="Format — ⌥⇧F">⌁ Format</button><button class="tbtn txt tg-hide" title="Compact — ⌥⇧C">⇥ Compact</button><button class="tbtn txt" title="Lint — ⌥⇧L">✓ Lint</button>
+        <div class="tgrp tg-over"><button class="tbtn" title="More" onclick="app.classList.toggle('ovf')">»</button></div>
         <div class="tsp"></div>
         <div class="seg" id="viewseg"><button data-view="edit">Editor</button><button class="active" data-view="split">Split</button><button data-view="preview">Preview</button></div>
+      </div>
+      <div class="busybar">
+        <span>Formatting release-notes.md…</span><span class="track"><span class="fill"></span></span>
+        <span style="font-family:var(--mono);font-size:11px">3 of 8</span>
+        <button onclick="showScreen('editor-split')">Cancel</button>
+      </div>
+      <div class="pausedbar">
+        <svg class="ic"><use href="#i-file"/></svg>
+        <span>Live preview is paused — this document is over 2&nbsp;MB.</span>
+        <button>Refresh preview</button>
+      </div>
+      <div class="launcher">
+        <div class="lc">
+          <h2>GoMarkEdit</h2>
+          <div class="sub">Nothing is open. GoMarkEdit doesn't restore your last session.</div>
+          <div class="acts">
+            <button class="primary">New file</button><button>Open file…</button><button>Open folder…</button>
+          </div>
+          <div class="rec">
+            <div class="lbl">Recent</div>
+            <div class="r"><svg class="ic"><use href="#i-file"/></svg>release-notes.md<small>~/Notes/projects</small></div>
+            <div class="r"><svg class="ic"><use href="#i-file"/></svg>spec-draft.md<small>~/Notes/projects</small></div>
+            <div class="r"><svg class="ic"><use href="#i-file"/></svg>readme.md<small>~/Notes/archive</small></div>
+            <div class="r"><svg class="ic"><use href="#i-folder"/></svg>Notes<small>~/</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="diffview">
+        <div class="dv-h"><b>Preview changes</b><span style="color:var(--muted)">Format · release-notes.md · 6 changes</span>
+          <span class="sp"></span><button>↑ Prev</button><button>↓ Next</button>
+          <button onclick="showScreen('editor-split')">Cancel</button>
+          <button class="primary" onclick="showScreen('editor-split')">Apply</button></div>
+        <div class="dv-b">
+          <div class="dv-side"><div class="lbl">Current</div><span class="dl">## Highlights</span><span class="dl del">*   Faster startup</span><span class="dl del">*   KaTeX math</span><span class="dl">&nbsp;</span><span class="dl del">| a | b |</span><span class="dl del">|---|---|</span><span class="dl del">| 1 | 22222 |</span></div>
+          <div class="dv-side"><div class="lbl">After Format</div><span class="dl">## Highlights</span><span class="dl add">- Faster startup</span><span class="dl add">- KaTeX math</span><span class="dl">&nbsp;</span><span class="dl add">| a | b     |</span><span class="dl add">| - | ----- |</span><span class="dl add">| 1 | 22222 |</span></div>
+        </div>
+      </div>
+      <div class="ovf-menu">
+        <div class="mi">Bullet list<span style="margin-left:auto;color:var(--faint)">Ctrl ⇧ 8</span></div>
+        <div class="mi">Numbered list<span style="margin-left:auto;color:var(--faint)">Ctrl ⇧ 7</span></div>
+        <div class="mi">Task list<span style="margin-left:auto;color:var(--faint)">Ctrl ⇧ 9</span></div>
+        <div class="mi">Quote<span style="margin-left:auto;color:var(--faint)">Ctrl ⇧ .</span></div>
+        <div class="mi">Link<span style="margin-left:auto;color:var(--faint)">Ctrl K</span></div>
+        <div class="mi">Image<span style="margin-left:auto;color:var(--faint)">Ctrl ⇧ I</span></div>
+        <div class="mi">Table<span style="margin-left:auto;color:var(--faint)">Ctrl ⇧ T</span></div>
+        <div class="mi">Compact<span style="margin-left:auto;color:var(--faint)">⌥⇧C</span></div>
+        <div class="mi">View: Editor · Split · Preview</div>
+        <div class="ovf-menus"><div class="mi" style="border-top:1px solid var(--stroke-soft);margin-top:4px;padding-top:9px">File</div><div class="mi">Settings</div><div class="mi">View</div><div class="mi">About</div></div>
       </div>
       <div class="body">
         <div class="pane" id="pane-editor">
@@ -446,6 +716,8 @@ graph LR; A--&gt;B; B--&gt;C;
     </div>
 
     <aside class="assistant">
+      <div class="as-reserved">The assistant lives here.<br>It arrives in Phase 12 &mdash; until then this
+        region is reserved, present and empty.</div>
       <div class="as-head"><span class="t">Assistant</span><span class="provchip" onclick="showScreen('settings-ai-providers')"><span class="dot"></span>Ollama · qwen2.5:7b ▾</span></div>
       <div class="as-scope">
         <div class="scope-row"><span class="lbl">Apply to</span><div class="seg" id="scopeSeg" style="padding:2px"><button class="active" data-scope="doc">Whole document</button><button data-scope="sel">Selection</button></div></div>
@@ -456,32 +728,59 @@ graph LR; A--&gt;B; B--&gt;C;
         <div class="lab2">Quick actions</div>
         <div class="act-grid">
           <button class="act" onclick="runAction('Proofread')"><span class="ic">✓</span>Proofread</button>
-          <button class="act" onclick="runAction('Improve clarity')"><span class="ic">✨</span>Improve clarity</button>
-          <button class="act" onclick="runAction('Format: Confluence')"><span class="ic">📘</span>Confluence</button>
-          <button class="act" onclick="runAction('Format: Article')"><span class="ic">📰</span>Article</button>
-          <button class="act" onclick="runAction('Format: Q&amp;A')"><span class="ic">❓</span>Q&amp;A</button>
-          <button class="act" onclick="runAction('Summarize')"><span class="ic">📝</span>Summarize</button>
-          <button class="act wide" onclick="document.getElementById('composerInput').focus()"><span class="ic">＋</span>Custom instruction…</button>
+          <button class="act" onclick="runAction('Improve clarity')"><span class="ic"><svg class="ic"><use href="#i-sparkle"/></svg></span>Improve clarity</button>
+          <button class="act" onclick="runAction('Format: Confluence')"><span class="ic"><svg class="ic"><use href="#i-book"/></svg></span>Confluence</button>
+          <button class="act" onclick="runAction('Format: Article')"><span class="ic"><svg class="ic"><use href="#i-article"/></svg></span>Article</button>
+          <button class="act" onclick="runAction('Format: Q&amp;A')"><span class="ic"><svg class="ic"><use href="#i-question"/></svg></span>Q&amp;A</button>
+          <button class="act" onclick="runAction('Summarize')"><span class="ic"><svg class="ic"><use href="#i-pencil"/></svg></span>Summarize</button>
+          <button class="act wide" onclick="document.getElementById('composerInput').focus()"><span class="ic"><svg class="ic"><use href="#i-plus"/></svg></span>Custom instruction…</button>
         </div>
       </div>
       <div class="chat" id="chat">
         <div class="msg assistant"><div class="who">Assistant</div><div class="bubble">Hi! Pick a quick action above, or tell me what to do with <b>release-notes.md</b>. I can read the document and workspace files, and propose edits you review before applying.</div></div>
       </div>
       <div class="composer">
-        <div class="ctxrow">Context: <span class="ctxchip">📄 current document</span><span class="ctxchip">🗂 workspace files ▾</span></div>
+        <div class="ctxrow">Context: <span class="ctxchip"><svg class="ic"><use href="#i-file"/></svg> current document</span><span class="ctxchip"><svg class="ic"><use href="#i-files"/></svg> workspace files ▾</span></div>
         <div class="inp"><textarea id="composerInput" rows="1" placeholder="Ask about the document, or give an instruction…"></textarea><button class="send" onclick="sendChat()">➤</button></div>
-        <div class="row2"><span class="mchip" onclick="showScreen('settings-ai-providers')">🧠 qwen2.5:7b ▾</span><span class="mchip">🌡 temp 0.3</span><span class="ssp" style="flex:1"></span><span>tool-call agent · ⏎ send</span></div>
+        <div class="row2"><span class="mchip" onclick="showScreen('settings-ai-providers')"><svg class="ic"><use href="#i-model"/></svg> qwen2.5:7b ▾</span><span class="mchip"><svg class="ic"><use href="#i-temp"/></svg> temp 0.3</span><span class="ssp" style="flex:1"></span><span>tool-call agent · ⏎ send</span></div>
       </div>
     </aside>
   </div>
 
+  <div class="ctxmenu" id="tabctx" style="display:none">
+    <div class="mi">Close<span style="margin-left:auto;color:var(--faint)">Ctrl W</span></div>
+    <div class="mi">Close others</div>
+    <div class="mi">Close to the right</div>
+    <div class="sep"></div>
+    <div class="mi">Copy path</div>
+    <div class="mi">Reveal in file manager</div>
+  </div>
+  <div class="ctxmenu" id="edctx" style="display:none">
+    <div class="mi">Cut<span style="margin-left:auto;color:var(--faint)">Ctrl X</span></div>
+    <div class="mi">Copy<span style="margin-left:auto;color:var(--faint)">Ctrl C</span></div>
+    <div class="mi">Paste<span style="margin-left:auto;color:var(--faint)">Ctrl V</span></div>
+    <div class="mi">Paste as plain text</div>
+    <div class="sep"></div>
+    <div class="mi">Bold<span style="margin-left:auto;color:var(--faint)">Ctrl B</span></div>
+    <div class="mi">Italic<span style="margin-left:auto;color:var(--faint)">Ctrl I</span></div>
+    <div class="mi">Link<span style="margin-left:auto;color:var(--faint)">Ctrl K</span></div>
+    <div class="sep"></div>
+    <div class="mi">Format document<span style="margin-left:auto;color:var(--faint)">⌥⇧F</span></div>
+    <div class="mi">Compact<span style="margin-left:auto;color:var(--faint)">⌥⇧C</span></div>
+    <div class="sep"></div>
+    <div class="mi">Command palette<span style="margin-left:auto;color:var(--faint)">Ctrl ⇧ P</span></div>
+  </div>
+  <div class="problems">
+    <div class="ph">Problems &middot; 1<span class="close" onclick="app.classList.remove('problems-open')">×</span></div>
+    <div class="pr"><span class="loc">4:1</span><span>Use &ldquo;-&rdquo; for bullets</span><span class="rule">unordered-list-marker-style</span></div>
+  </div>
   <div class="statusbar">
-    <span class="b"><span class="dotk"></span>Markdown · <span id="stdLabel">GFM</span></span>
-    <span class="b">Ln 3, Col 12</span><span class="b">231 words</span>
+    <span class="b sb-std"><span class="dotk"></span>Markdown · <span id="stdLabel">GFM</span></span>
+    <span class="b sb-caret">Ln 3, Col 12</span><span class="b sb-count">231 words</span>
     <div class="ssp"></div>
-    <span class="b">UTF-8</span><span class="b">LF</span><span class="b" id="autosaveLabel">Autosave: On</span>
-    <span class="b act2 warnc" title="1 style issue">⚠ 1</span>
-    <span class="b">● Ollama connected</span>
+    <span class="b sb-enc">UTF-8</span><span class="b sb-eol">LF</span><span class="b sb-autosave" id="autosaveLabel">Autosave: On</span>
+    <span class="b act2 warnc" title="1 style issue" onclick="app.classList.toggle('problems-open')">⚠ 1</span>
+    <span class="b sb-provider">Ollama · last call OK</span>
     <span class="b pill act2" onclick="showScreen('reading')">◱ Reading</span>
   </div>
 
@@ -493,13 +792,32 @@ graph LR; A--&gt;B; B--&gt;C;
   <!-- drop overlay -->
   <div class="dropzone"><div class="box">⤓ Drop to open<small>a file opens in a tab · a folder opens as a workspace</small></div></div>
   <!-- context menu -->
-  <div class="ctxmenu" id="ctxmenu"><div class="mi">Open</div><div class="mi">Open in new window</div><div class="sep"></div><div class="mi">Rename…</div><div class="mi">Reveal in Finder</div><div class="mi">Copy path</div><div class="sep"></div><div class="mi" style="color:var(--err)">Delete…</div></div>
+  <div class="ctxmenu" id="ctxmenu"><div class="mi">Open</div><div class="mi">Open in new window</div>
+<div class="sep"></div><div class="mi">Reveal in file manager</div><div class="mi">Copy path</div><div class="sep"></div></div>
   <!-- toasts -->
   <div class="toasts">
     <div class="toast ok"><span class="ti">✓</span><span class="tx"><b>Saved</b><span class="txc">release-notes.md written · UTF-8 · LF preserved</span></span></div>
     <div class="toast"><span class="ti">ℹ</span><span class="tx"><b>Formatted</b><span class="txc">Document formatted — 3 tables aligned</span></span></div>
     <div class="toast warn"><span class="ti">⚠</span><span class="tx"><b>Lint: 1 issue</b><span class="txc">Inconsistent bullet marker on line 7</span></span></div>
     <div class="toast err"><span class="ti">⤫</span><span class="tx"><b>Provider unreachable</b><span class="txc">Ollama at 127.0.0.1:11434 — retrying…</span></span></div>
+  </div>
+  <div class="scrim" id="savePrompt">
+    <div class="modal" style="width:min(440px,92%)">
+      <div class="modal-h"><h3>Save changes to release-notes.md?</h3><button class="close" onclick="showScreen('editor-split')">×</button></div>
+      <div class="modal-b" style="display:block;padding:16px 18px;font-size:13.5px;color:var(--muted);line-height:1.6">It has unsaved changes. Cancel leaves everything exactly as it is — nothing has been written.<div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap"><button class="tbtn" style="background:var(--accent);color:var(--accent-contrast);border:0;font-weight:600;padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Save</button><button class="tbtn" style="border:1px solid var(--stroke);background:var(--surface);padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Discard</button><button class="tbtn" style="border:1px solid var(--stroke);background:var(--surface);padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Cancel</button></div></div>
+    </div>
+  </div>
+  <div class="scrim" id="quitPrompt">
+    <div class="modal" style="width:min(470px,92%)">
+      <div class="modal-h"><h3>Save changes before quitting?</h3><button class="close" onclick="showScreen('editor-split')">×</button></div>
+      <div class="modal-b" style="display:block;padding:16px 18px;font-size:13.5px;color:var(--muted);line-height:1.6">Three documents have unsaved changes.<div style="margin:14px 0;border:1px solid var(--stroke-soft);border-radius:10px;overflow:hidden"><div style="display:flex;gap:9px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--stroke-soft);font-size:12.5px;color:var(--text)"><svg class="ic"><use href="#i-file"/></svg>release-notes.md<span style="margin-left:auto;color:var(--faint);font-size:11px">~/Notes/projects</span></div><div style="display:flex;gap:9px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--stroke-soft);font-size:12.5px;color:var(--text)"><svg class="ic"><use href="#i-file"/></svg>spec-draft.md<span style="margin-left:auto;color:var(--faint);font-size:11px">~/Notes/projects</span></div><div style="display:flex;gap:9px;align-items:center;padding:8px 12px;font-size:12.5px;color:var(--text)"><svg class="ic"><use href="#i-file"/></svg>Untitled<span style="margin-left:auto;color:var(--faint);font-size:11px">never saved</span></div></div>Cancel is a clean no-op: nothing is written until you choose.<div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap"><button class="tbtn" style="background:var(--accent);color:var(--accent-contrast);border:0;font-weight:600;padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Save all</button><button class="tbtn" style="border:1px solid var(--stroke);background:var(--surface);padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Discard all</button><button class="tbtn" style="border:1px solid var(--stroke);background:var(--surface);padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Cancel</button></div></div>
+    </div>
+  </div>
+  <div class="scrim" id="reloadPrompt">
+    <div class="modal" style="width:min(560px,92%)">
+      <div class="modal-h"><h3>release-notes.md changed on disk</h3><button class="close" onclick="showScreen('editor-split')">×</button></div>
+      <div class="modal-b" style="display:block;padding:16px 18px;font-size:13.5px;color:var(--muted);line-height:1.6">Another program modified this file while you had it open. You have unsaved changes of your own.<div style="margin:14px 0;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--stroke-soft);border:1px solid var(--stroke-soft);border-radius:10px;overflow:hidden;font-family:var(--mono);font-size:11px;line-height:1.7"><div style="background:var(--surface);padding:9px 11px"><div style="font-family:var(--font);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:5px">On disk</div><span style="display:block;background:color-mix(in srgb,var(--ok) 16%,transparent);border-radius:3px;padding:0 4px"># Release Notes — v2.2</span><span style="display:block;padding:0 4px">We are excited to…</span></div><div style="background:var(--surface);padding:9px 11px"><div style="font-family:var(--font);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:5px">Yours</div><span style="display:block;background:color-mix(in srgb,var(--err) 16%,transparent);border-radius:3px;padding:0 4px"># Release Notes — v2.1</span><span style="display:block;padding:0 4px">We are excited to…</span></div></div>Reloading discards your changes. Keeping yours leaves the file on disk untouched until you save.<div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap"><button class="tbtn" style="border:1px solid var(--stroke);background:var(--surface);padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Reload from disk</button><button class="tbtn" style="background:var(--accent);color:var(--accent-contrast);border:0;font-weight:600;padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Keep mine</button></div></div>
+    </div>
   </div>
   <!-- folder-conflict prompt -->
   <div class="scrim" id="dropPrompt">
@@ -516,8 +834,8 @@ graph LR; A--&gt;B; B--&gt;C;
       <div class="modal-h"><h3>Settings</h3><button class="close" onclick="showScreen('editor-split')">×</button></div>
       <div class="modal-b">
         <div class="mtabs">
-          <div class="mtab on" data-mtab="appearance">Appearance</div><div class="mtab" data-mtab="editor">Editor</div><div class="mtab" data-mtab="markdown">Markdown</div>
-          <div class="mtab" data-mtab="ai-providers">AI · Providers</div><div class="mtab" data-mtab="ai-context">AI · Context</div><div class="mtab" data-mtab="privacy">Content &amp; privacy</div><div class="mtab" data-mtab="language">Language</div>
+          <div class="mtab on" data-mtab="appearance">Appearance</div><div class="mtab" data-mtab="editor">Editor</div><div class="mtab" data-mtab="markdown">Markdown</div><div class="mtab" data-mtab="export">Export</div>
+          <div class="mtab" data-mtab="ai-providers">AI · Providers</div><div class="mtab" data-mtab="ai-context">AI · Context</div><div class="mtab" data-mtab="privacy">Content &amp; privacy</div><div class="mtab" data-mtab="diagnostics">Diagnostics</div><div class="mtab" data-mtab="language">Language</div>
         </div>
         <div class="mpane" id="mpane"></div>
       </div>
@@ -528,9 +846,9 @@ graph LR; A--&gt;B; B--&gt;C;
     <div class="modal" style="width:min(520px,92%)">
       <div class="modal-h"><h3>Keyboard shortcuts</h3><button class="close" onclick="showScreen('editor-split')">×</button></div>
       <div class="modal-b" style="display:block;padding:14px 18px">
-        <div class="grp-h">File</div><div class="shcut"><span>New / Open file</span><span class="k">Ctrl N · Ctrl O</span><span>Open folder</span><span class="k">Ctrl K O</span><span>Save / Save as</span><span class="k">Ctrl S · Ctrl ⇧ S</span><span>Export PDF</span><span class="k">Ctrl P</span></div>
-        <div class="grp-h">Format</div><div class="shcut"><span>Bold / Italic</span><span class="k">Ctrl B · Ctrl I</span><span>Inline code / Link</span><span class="k">Ctrl E · Ctrl K</span><span>Headings 1–3</span><span class="k">Ctrl 1/2/3</span><span>Format / Lint</span><span class="k">⌥⇧F · ⌥⇧L</span></div>
-        <div class="grp-h">View</div><div class="shcut"><span>Toggle sidebar / assistant</span><span class="k">Ctrl \ · Ctrl J</span><span>Reading mode</span><span class="k">Ctrl ⏎</span><span>Settings</span><span class="k">Ctrl ,</span></div>
+        <div class="grp-h">File</div><div class="shcut"><span>New / Open file</span><span class="k">Ctrl N · Ctrl O</span><span>Open folder</span><span class="k">Ctrl ⇧ O</span><span>Save / Save as</span><span class="k">Ctrl S · Ctrl ⇧ S</span><span>Export PDF</span><span class="k">Ctrl ⇧ E</span><span>Quick open · Command palette</span><span class="k">Ctrl P · Ctrl ⇧ P</span><span>Find · Replace</span><span class="k">Ctrl F · Ctrl H</span><span>Next / previous tab</span><span class="k">Ctrl ⇥ · Ctrl ⇧ ⇥</span></div>
+        <div class="grp-h">Format</div><div class="shcut"><span>Bold / Italic</span><span class="k">Ctrl B · Ctrl I</span><span>Inline code / Link</span><span class="k">Ctrl E · Ctrl K</span><span>Headings 1–3</span><span class="k">Ctrl 1/2/3</span><span>Format / Compact / Lint</span><span class="k">⌥⇧F · ⌥⇧C · ⌥⇧L</span></div>
+        <div class="grp-h">View</div><div class="shcut"><span>Toggle sidebar / assistant</span><span class="k">Ctrl \ · Ctrl J</span><span>Reading mode</span><span class="k">Ctrl ⏎</span><span>Settings</span><span class="k">Ctrl ,</span><span>Reading size</span><span class="k">Ctrl = · Ctrl − · Ctrl 0</span></div>
       </div>
     </div>
   </div>
@@ -584,9 +902,9 @@ graph LR; A--&gt;B; B--&gt;C;
 
   /* ---- screens ---- */
   let screen='editor-split';
-  const CLASSES=['no-sidebar','no-assistant','only-editor','only-preview','reading','dragging','ctx','toasting','show-banner'];
+  const CLASSES=['no-sidebar','no-assistant','only-editor','only-preview','reading','dragging','ctx','toasting','show-banner','empty','tree-is-empty','tree-no-match','busy','paused','problems-open','assistant-reserved','focusdemo','diffing','tabctx','edctx','ovf','sidebar-open'];
   function resetApp(){ CLASSES.forEach(c=>app.classList.remove(c)); closeMenus();
-    ['setModal','shModal','aboutModal','dropPrompt'].forEach(id=>document.getElementById(id).classList.remove('show'));
+    ['setModal','shModal','aboutModal','dropPrompt','savePrompt','quitPrompt','reloadPrompt'].forEach(id=>document.getElementById(id).classList.remove('show'));
     body.classList.remove('show-tokens');
     document.querySelectorAll('#viewseg button').forEach(b=>b.classList.toggle('active',b.dataset.view==='split'));
   }
@@ -616,10 +934,35 @@ graph LR; A--&gt;B; B--&gt;C;
       case 'drop-overlay': app.classList.add('dragging'); break;
       case 'drop-prompt': document.getElementById('dropPrompt').classList.add('show'); break;
       case 'tokens': body.classList.add('show-tokens'); break;
+      case 'empty': app.classList.add('empty'); break;
+      case 'empty-tree': app.classList.add('tree-is-empty'); break;
+      case 'filter-empty': app.classList.add('tree-no-match'); break;
+      case 'busy': app.classList.add('busy'); break;
+      case 'paused-preview': app.classList.add('paused'); break;
+      case 'problems': app.classList.add('problems-open'); break;
+      case 'assistant-reserved': app.classList.add('assistant-reserved'); break;
+      case 'focus': app.classList.add('focusdemo'); break;
+      case 'diff-view': app.classList.add('diffing'); break;
+      case 'tab-menu': app.classList.add('tabctx'); break;
+      case 'editor-menu': app.classList.add('edctx'); break;
+      case 'toolbar-overflow': app.dataset.w='768'; app.classList.add('ovf'); break;
+      case 'save-prompt': document.getElementById('savePrompt').classList.add('show'); break;
+      case 'quit-prompt': document.getElementById('quitPrompt').classList.add('show'); break;
+      case 'reload-prompt': document.getElementById('reloadPrompt').classList.add('show'); break;
+      case 'settings-editor': openSettings('editor'); break;
+      case 'settings-markdown': openSettings('markdown'); break;
+      case 'settings-export': openSettings('export'); break;
+      case 'settings-privacy': openSettings('privacy'); break;
+      case 'settings-language': openSettings('language'); break;
+      case 'settings-diagnostics': openSettings('diagnostics'); break;
     }
     writeHash();
   }
   document.getElementById('screenNav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showScreen(b.dataset.screen);});
+  app.dataset.w='1280';
+  document.getElementById('widthSwitch').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    document.querySelectorAll('#widthSwitch button').forEach(x=>x.classList.toggle('on',x===b));
+    app.dataset.w=b.dataset.w; app.classList.remove('sidebar-open','ovf');});
   function setView(v){document.querySelectorAll('#viewseg button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
     document.getElementById('pane-editor').style.display=(v==='preview')?'none':'flex';
     document.getElementById('pane-preview').style.display=(v==='edit')?'none':'flex';}
@@ -683,7 +1026,20 @@ graph LR; A--&gt;B; B--&gt;C;
       <div class="set"><div class="l">LLM requests<small>Only to your configured provider, on user action</small></div><span class="badge">on-demand</span></div>
       <div class="set"><div class="l">Diagnostic logs<small>Local file, never sent</small></div><button class="selbox" style="cursor:pointer">Open logs folder</button></div>`,
     language:`<div class="grp-h">Language</div>
-      <div class="set"><div class="l">UI language<small>App is internationalization-ready</small></div><select class="selbox"><option selected>English</option><option>(add more…)</option></select></div>`
+      <div class="set"><div class="l">UI language<small>App is internationalization-ready</small></div><select class="selbox"><option selected>English</option><option>(add more…)</option></select></div>`,
+    export:`<div class="grp-h">Export</div>
+      <div class="set"><div class="l">PDF styling<small>Current theme always exports on a light background — a dark theme prints unreadable</small></div><div class="pick"><button class="on">Current theme</button><button>Clean document</button></div></div>
+      <div class="set"><div class="l">HTML export<small>Standalone opens in a browser as-is; Fragment is what a CMS wants</small></div><div class="pick"><button class="on">Standalone</button><button>Fragment</button></div></div>`,
+    diagnostics:`<div class="grp-h">Diagnostics</div>
+      <div class="set"><div class="l">Write logs to a file<small>Local only, never transmitted</small></div><label class="sw on"><i></i></label></div>
+      <div class="set"><div class="l">Log level</div><select class="selbox"><option>debug</option><option>info</option><option selected>warn</option><option>error</option></select></div>
+      <div class="set"><div class="l">Max file size<small>1 – 100 MB</small></div><select class="selbox"><option selected>10 MB</option><option>25 MB</option><option>50 MB</option></select></div>
+      <div class="set"><div class="l">Keep files<small>1 – 20</small></div><select class="selbox"><option selected>5</option><option>10</option></select></div>
+      <div class="set"><div class="l">Keep for<small>1 – 365 days</small></div><select class="selbox"><option selected>30 days</option><option>90 days</option></select></div>
+      <div class="set"><div class="l">Compress rotated files</div><label class="sw on"><i></i></label></div>
+      <div class="set"><div class="l">Log folder<small>~/Library/Logs/GoMarkEdit</small></div><button class="tbtn" style="border:1px solid var(--stroke);padding:6px 12px;border-radius:8px">Open logs folder</button></div>
+      <div class="grp-h" style="margin-top:20px">Reset</div>
+      <div class="set"><div class="l">Reset all settings<small>Returns every setting to its default. Window size, layout and recent files are not touched.</small></div><button class="tbtn" style="border:1px solid var(--err);color:var(--err);padding:6px 12px;border-radius:8px">Reset to defaults</button></div>`
   };
   function renderPane(id){document.getElementById('mpane').innerHTML=paneHTML[id]||paneHTML.appearance;
     document.querySelectorAll('#mpane .pick button').forEach(b=>b.addEventListener('click',()=>{b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
@@ -695,7 +1051,7 @@ graph LR; A--&gt;B; B--&gt;C;
   /* ---- assistant chat demo ---- */
   const chat=document.getElementById('chat');
   function addMsg(html){const d=document.createElement('div');d.innerHTML=html;chat.appendChild(d.firstElementChild);chat.scrollTop=chat.scrollHeight;}
-  function diffCard(){return `<div class="editcard"><div class="eh">✎ Proposed edit — release-notes.md</div><div class="diff">We are <span class="del">exited</span><span class="ins">excited</span> to <span class="del">anounce</span><span class="ins">announce</span> the new <span class="del">relase</span><span class="ins">release</span>. This <span class="del">verison</span><span class="ins">version</span> brings <span class="del">alot</span><span class="ins">a lot</span> of <span class="del">improvments</span><span class="ins">improvements</span> and <span class="del">fixs</span><span class="ins">fixes</span> users asked for.</div><div class="ea"><button class="btn-apply">Apply</button><button class="btn-partial">Review hunks</button><button class="btn-disc">Discard</button></div></div>`;}
+  function diffCard(){return `<div class="editcard"><div class="eh">✎ Proposed edit — release-notes.md</div><div class="diff">We are <span class="del">exited</span><span class="ins">excited</span> to <span class="del">anounce</span><span class="ins">announce</span> the new <span class="del">relase</span><span class="ins">release</span>. This <span class="del">verison</span><span class="ins">version</span> brings <span class="del">alot</span><span class="ins">a lot</span> of <span class="del">improvments</span><span class="ins">improvements</span> and <span class="del">fixs</span><span class="ins">fixes</span> users asked for.</div><div class="ea"><button class="btn-apply">Apply</button><button class="btn-disc">Discard</button></div></div>`;}
   function seedChat(){chat.innerHTML='';
     addMsg('<div class="msg user"><div class="who">You</div><div class="bubble"><b>Proofread</b> → release-notes.md</div></div>');
     addMsg(`<div class="msg assistant"><div class="who">Assistant</div><div class="bubble" style="display:flex;flex-direction:column;gap:8px"><div class="toolcall"><span class="k">read_document</span><span>(scope=doc)</span><span class="ok">✓ 1.4k tok</span></div><div class="toolcall"><span class="k">propose_edit</span><span>preserve formatting</span><span class="ok">✓</span></div>${diffCard()}<p style="margin:0;color:var(--muted);font-size:12.5px">Fixed 7 spelling/grammar issues; formatting and meaning preserved. Apply to write it back into the editor.</p></div></div>`);
