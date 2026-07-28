@@ -1,76 +1,79 @@
 ---
-description: Turn one phase into a complete, ordered set of stories. Read-only until approved.
-argument-hint: <phase number, e.g. 04>
-allowed-tools: Read, Grep, Glob, Bash, Task, ExitPlanMode
-model: opus
+name: plan-phase
+description: Turn one phase into an ordered set of vertical stories. Reads the phase and every feature file it names, stops on unanswered questions, then writes the story files to disk.
 ---
 
-Plan the stories for **phase $1**.
+# Plan phase $ARGUMENTS
 
-You are read-only until the plan is approved. Do not write, edit, or create anything before
-`ExitPlanMode`.
+Read, in full and before anything else:
 
-## 1. Read
+- `docs/delivery/plan/phase-$ARGUMENTS-*.md`
+- **every** feature file it names under `## Where the details are` — in full, not skimmed
+- `docs/delivery/architecture/README.md`
+- `docs/delivery/spec/constraints.md`
+- the screens this phase touches in `docs/delivery/spec/surface/mockup.html`, opened in a browser at
+  the deep links the feature files give (`mockup.html#material-light/<screen>`)
 
-- `specification/07_Phases/PHASE_$1_*.md` — in full.
-- **Every** `01_Product/` file it points at, in full. This is where the behaviour actually lives; the
-  phase document is a plan, not a specification.
-- The mockup screens it names. Open `specification/mockups/gomarkedit-mockup.html` and look at them.
-- Any `ADR-NNNN` and `DD-NN` it names.
-- `docs/KNOWN_ISSUES.md` — check whether any entry belongs to this phase.
-- `docs/stories/README.md` — the story format you will be writing.
+## 1. Stop and ask
 
-## 2. Stop if the phase has unanswered questions
+If the phase has entries under `## Questions to settle first`, or if reading the feature files
+surfaced a contradiction, **stop here and ask the user**.
 
-The phase's **Questions to settle first** section exists because two accepted documents disagree, or
-because something was never specified. If any of them affects the stories you are about to write:
+One plain sentence per question, stated in the software's own terms — never as two anchors the reader
+has to go and look up. Give a recommendation and the cost of being wrong.
 
-**Stop and ask the user.** Present each question in one plain sentence with your recommendation and
-what it would cost to be wrong. Do not invent an answer, do not pick the more convenient reading, and
-do not write a story on top of an unresolved contradiction — that is how the previous plan accumulated
-30 of them.
+> **When the app is quit while a window resize is still being debounced, is the final size stored?**
+> The window's size is written after a pause, and quitting closes the database. If the flush runs after
+> the close it writes to a closed handle and the size is silently lost on every quit.
+> *Recommendation:* flush pending layout writes before closing the database, as one ordered shutdown.
+> *Cost of being wrong:* the window forgets its size every time, which reads as the setting not working
+> at all rather than as a race.
 
-When answered, the answer has to land somewhere. **You cannot write it yourself** — this command is
-read-only and no agent in the pipeline may write to `specification/`. Present the answer and say
-exactly which file needs which edit, so the user can make it (or approve you doing it in a later,
-non-plan turn). If the decision constrains the architecture it also wants an ADR, which `architect`
-can write to `docs/adr/`.
+**Do not write a story on top of an unresolved contradiction.** When a question is answered, say which
+file needs which edit — you do not edit `docs/delivery/spec/` or `docs/delivery/architecture/`
+yourself. That is the user's decision to make and to see.
 
-## 3. Find out what already exists
+A feature file whose `## Open questions` section is not empty is not ready. Do not write a story
+against it.
 
-Delegate to the `investigator` agent: what of this phase is already built, partly built, or stubbed?
-Name real files and symbols. You are slicing work against a real codebase, not a blank one.
+## 2. Slice vertically
 
-## 4. Slice it
+Every story delivers something observable through a real entry point — something you could show
+somebody in the running app. A story that delivers only a Go service, or only a React component, is
+wrong: split the work differently rather than stacking layers.
 
-**Vertically, by what a person can do.** Each story ends with something you can run and try. A story
-that delivers only a backend service, or only a component, is wrong — backend and UI land together.
+In this codebase a vertical slice usually reaches: a handler in `internal/<pkg>/handler.go`, its
+service, its envelope type in `internal/apperr/results.go`, the generated binding, an adapter method in
+`frontend/src/logic/adapter/`, a slice in `frontend/src/logic/store/`, and a widget in
+`frontend/src/ui/widgets/`. If a story touches only one end of that, ask what the user sees.
 
-The test for each: *after this ships, can I state in one sentence a new thing the user can do?*
+Order by dependency. Put something demonstrable as early as possible.
 
-- One story per step in the phase's "Build it in this order", unless a step is plainly two things.
-- Order them so each depends only on what came before. Say what each depends on in prose.
-- One coding session each. More than about six acceptance criteria means split it.
+## 3. Check coverage three ways
 
-## 5. Check coverage before you present
+- **Forwards:** every rule in every feature file this phase names is owned by exactly one story.
+- **Backwards:** read the feature prose again and ask what a user could do that no story delivers.
+- **Edge cases:** every `## Edge cases` entry is owned, or explicitly deferred to the phase that takes
+  it.
 
-Three passes. Report each explicitly — "I checked and found nothing" is a valid result, silence is not.
+Then check the constraints: this phase's "Done when" paragraph names themes, keyboard reachability,
+empty states, strings, notifications, limits and network. Every one of those needs a story that
+delivers it — they are not a review pass at the end.
 
-- **Forwards** — every step in the phase's build order is covered by at least one story.
-- **Backwards** — walk the `01_Product/` sections the phase cites, paragraph by paragraph, and find the
-  story that owns each stated behaviour. Anything unowned is a gap: either add a story or say plainly
-  that it is deferred and to where.
-- **Edges** — the failure cases in those product files: what happens when the file is missing, the
-  disk is full, the user cancels, two things arrive out of order. Each needs an owner.
+## 4. Write the files
 
-Also check the phase's **Done when** paragraph: if you did everything you are proposing, would it be
-true? If not, something is missing.
+Create `docs/delivery/work/story-NNN-<slug>.md` for each story, as a stub carrying the title,
+`## What you'll be able to do` in plain prose, and the rules it owns. `/plan-story NNN` fills the rest.
 
-## 6. Present
+Numbering continues from the highest story in `docs/delivery/work/` and `docs/delivery/work/archive/`.
+Numbers are never reused.
 
-- The story list: id, one-line "what the user can do", what it depends on.
-- The coverage report from step 5, including anything deliberately left out.
-- Anything you had to assume, and what would change if the assumption is wrong.
+**Write the files as you go. Do not hold the plan in the conversation and do not use plan mode** — the
+file on disk is the plan, and it is what the next session reads. If you are interrupted, the work so
+far survives.
 
-Then `ExitPlanMode`. On approval, delegate to the `architect` agent to write the files — it holds the
-rule that stories must be fully worded rather than collections of citations.
+## 5. Report
+
+- the story list, in dependency order, each with its one-line outcome
+- the coverage result for all three passes, plus the constraints pass
+- every assumption you made, and every question still open

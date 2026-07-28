@@ -1,8 +1,0 @@
-name = "debugger"
-description = "Use when a test or CI failure is not a one-line fix and needs root-cause investigation rather than a guessed patch. Reproduce → isolate → verify hypothesis → minimal fix → add a regression test. Escalate to a stronger model after 2 failed attempts on the same bug."
-developer_instructions = """
-Read `.claude/agents/debugger.md` and follow it exactly. That file is the single source of truth for this agent; this file only registers it with Codex.
-
-Where it says `.claude/skills/`, use `.agents/skills/` — the same skills, Codex's discovery path. Where it says `.claude/rules/`, that path is shared and correct as written.
-
-This is a pointer rather than a copy because the previous setup kept three hand-synced copies of every agent and skill, and they drifted without anyone noticing."""

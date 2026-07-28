@@ -1,96 +1,107 @@
 ---
-description: Plan and build one story end to end — investigate, plan, implement, test, verify, close out.
-argument-hint: <story number, e.g. 057>
-allowed-tools: Read, Grep, Glob, Bash, Task, ExitPlanMode
-model: opus
+name: plan-story
+description: Write one self-contained story — feature rules copied in verbatim, architecture rules injected by path-glob match, and a rendered Definition of Done naming a test per rule.
 ---
 
-Plan the implementation of **story $1**.
+# Plan story $ARGUMENTS
 
-You are read-only until the plan is approved. Do not write, edit, or create anything before
-`ExitPlanMode`.
+The output is one file that a stranger could build from with nothing else open. That is the bar, and
+it is testable: hand it to a fresh session and see whether the first thing it does is search the
+repository for basic facts.
 
-## 1. Read
+## 1. Investigate
 
-- `docs/stories/story-$1-*.md` in full. It is self-contained by design — if you cannot tell what to
-  build from the story alone, **that is a defect in the story**. Say so rather than going hunting.
-- The `01_Product/` section and any `ADR-NNNN` / `DD-NN` it cites, for provenance. If the story and
-  the specification disagree, stop and report it; do not silently pick one.
-- The mockup screen it names.
-- The `.claude/rules/*.md` whose globs match the files you will touch, and the `.claude/skills/` for
-  the layers involved.
+Read the feature file, the phase, and the code the story will touch.
 
-## 2. Investigate before you plan
+This repository already has an implementation, so `## How it works now` is **mandatory** in every
+story. For anything that already exists, find every reader, every writer, and every lifecycle
+boundary — what happens on restart, on cancel, on a failed write, on a tab switch mid-debounce. Name
+files and line numbers.
 
-Delegate to the `investigator` agent, or do it yourself for something small. You need:
+## 2. Copy the rules in, verbatim
 
-- Every **reader** and **writer** of the state this story touches.
-- Every **lifecycle boundary** it crosses — mount, unmount, tab switch, close, blur, quit.
-- Every **sibling consumer** of a seam you are about to change.
-- Every **competing async path** — debounces, in-flight requests, event handlers that can arrive out
-  of order or after the thing they refer to is gone.
+Every rule the story implements is **copied whole** from its feature file, with its anchor and a note
+saying where it came from. Never cite and expect the reader to go and read.
 
-This is where implementations go wrong. A change that is correct in isolation and wrong on the fourth
-tab switch is the normal failure mode here.
+```markdown
+### Line endings and a byte-order mark survive a round trip {#line-endings-and-bom-are-preserved}
+*(from `spec/product/opening-and-saving-files.md#line-endings-and-bom-are-preserved` — copied verbatim)*
+- New files are written **UTF-8** with **LF** line endings and no byte-order mark.
+- **When** an existing file is opened, its line endings are detected and preserved on save: a file
+  opened with CRLF is saved with CRLF.
+…
+Examples: a Windows file with CRLF, edited one line, saved → every line still CRLF …
+```
 
-## 3. Turn stateful criteria into ordered sequences
+## 3. Decide where the code goes
 
-For any acceptance criterion involving state, write the actual order of events — command, ack,
-patch, render — and say what must be true between each pair. "It updates the tab" is not a plan;
-"flush the outgoing buffer, await the ack bound to that document id and revision, then activate" is.
+Use `docs/delivery/architecture/structure.md` — in particular its "Where a new thing goes" table. List
+real paths, one line each, saying what changes there.
 
-Name what happens when a step fails halfway.
+The module paths in this project are:
 
-## 4. Plan the implementation
+- Go: `internal/apperr`, `internal/bootstrap`, `internal/logging`, `internal/file`, `internal/db`,
+  `internal/settings`, `internal/appmodel`, `internal/gate`, `internal/application`, and `main.go`.
+  Planned: `internal/docs`, `internal/recent`, `internal/workspace`, `internal/assets`,
+  `internal/export`, `internal/fileassoc`, `internal/llm/…`.
+- Frontend: `frontend/src/logic/adapter`, `frontend/src/logic/store`, `frontend/src/logic/hooks`,
+  `frontend/src/logic/markdown`, `frontend/src/logic/utils`, `frontend/src/ui/styles`,
+  `frontend/src/ui/primitives`, `frontend/src/ui/components`, `frontend/src/ui/widgets`,
+  `frontend/src/i18n`, `frontend/src/dev/bridge-mock`.
 
-Layer by layer, naming real files:
+## 4. Inject the architecture rules
 
-- Backend: which package, which service, what the bound handler returns (a concrete `apperr.*Result`,
-  no `context.Context`, panics recovered to `CodeInternal`), and whether wiring in
-  `internal/application` changes.
-- Frontend: which adapter method, which slice, which component — and confirm nothing outside
-  `logic/adapter/` imports `wailsjs/`.
-- Whether any bound signature changes, and therefore whether `just gen` must run.
-- Whether a migration is needed — additive only; a breaking one means stop and ask.
-- Tokens for anything visual. No hardcoded colour.
+Match those paths against every `Applies to` glob in `docs/delivery/architecture/rules.md`, and copy
+each matching rule into a `## Technical constraints` section — verbatim, with its anchor, its
+`Enforced by`, and its `Do instead of` line.
 
-## 5. Plan the tests — one per acceptance criterion
+This is a glob comparison, not a judgement. A story touching `internal/settings/handler.go` gets
+`#handler-returns-a-result`, `#bound-handlers-take-no-context`, `#panic-becomes-internal-error`,
+`#one-hop-per-layer`, `#logs-stay-local` and the persistence rules — not all thirty-five.
 
-For each: tier (unit / integration / e2e), exact file path, exact test name, and the `Proves:` tag.
+Then link the patterns that apply, from `docs/delivery/architecture/patterns/`:
+`adding-a-backend-vertical.md`, `adding-a-migration.md`, `adding-a-theme-token.md`,
+`extending-the-markdown-pipeline.md`, `adding-a-provider.md`, `writing-a-test.md`. Patterns are
+**linked**, not copied — they are the layer a reader can skip.
 
-**Then check each proposed test against these, and reject it if it fails:**
+If the paths match no rule and the story is not creating a new module, say so — either the rules have
+a gap or the work is somewhere nothing governs.
 
-- Does it assert the **final user-visible outcome**, or just that a function was called?
-- Does it render the real component, or mock the thing under test?
-- Does it cover the failure path, not only the happy one?
-- Does it survive a remount, a retry, or an out-of-order completion?
+## 5. Render the Definition of Done
 
-A test that proves a symbol exists, that source text contains a string, or that a command was invoked
-is not a test. Say so and replace it.
+From `docs/delivery/work/DOD_TEMPLATE.md`. Fill the rule-to-test table with a **specific test file and
+function name** per rule — not "a unit test".
 
-## 6. Plan the verification
+Where tests go in this project:
 
-- `just check` green — and if a file you touched has a lint or type finding, fixing it is part of this
-  story, not a follow-up.
-- What you will do **in the running app** to confirm the story's "What you'll be able to do" paragraph
-  is actually true. Name the steps. This is the real gate; the tests are the safety net.
+- Go: beside the code, `internal/<pkg>/<file>_test.go`. Table-driven, run under `-race`, faked at the
+  package's own interface. Architecture invariants go in `architecture_test.go` with a function name
+  starting `TestArchitecture`.
+- Frontend: beside the component, `frontend/src/**/<Name>.test.tsx`. Render the subject, never mock it;
+  mock at `logic/adapter`, never at `wailsjs/`; query by accessible role, label or text.
+- Whole journeys: `frontend/tests/*.spec.ts`, run by `just e2e-test`.
+- Anything a mocked bridge cannot prove — real bytes on disk, two processes, a real provider, the
+  packaged binary — is a numbered row in `docs/delivery/plan/testing/live-plan.md`, not a test.
 
-## 7. Plan the close-out
+Every test carries `// Proves: <feature>#<anchor>` on its first comment line — for example
+`// Proves: opening-and-saving-files#line-endings-and-bom-are-preserved`.
 
-- Does anything in `docs/KNOWN_ISSUES.md` get fixed by this story? **Say so — do not edit it here.**
-  This command is read-only, and no agent in the pipeline owns that file; the removal is a one-line
-  edit for the user, or for you in a later turn.
-- Does the phase document need a correction because reality differed from the plan? Same: name the
-  correction, do not make it.
-- **Do any later stories become wrong?** If this story changes a seam another story assumed, name it
-  and say what needs rewording. Do not leave a story that no longer reads true, and do not rewrite one
-  silently — surface it.
+Add an optional M-item only if this story genuinely needs one: a migration, a new surface, a long
+operation that takes the gate, packaging.
 
-## 8. Present
+## 6. Write the walkthrough and the unblocks
 
-The plan, the tests, the verification steps, the close-out, and anything you assumed. Then
-`ExitPlanMode`.
+A numbered do-this / expect-that sequence a person runs on a real build, using the words the user
+would read. Include at least one negative assertion and at least one boundary value at the value, not
+near it.
 
-On approval: `coder` implements exactly this story, `tester` writes the acceptance-criteria tests, and
-for anything non-trivial `spec-conformance-reviewer` re-derives the criteria independently before you
-call it done.
+Then name what the next story needs from this one.
+
+## 7. If you cannot make it self-contained
+
+**Say so instead of going hunting.** A story that cannot be written self-contained means the feature
+file is missing something, or the architecture rules do not cover the paths. That is a defect
+upstream, and it goes back rather than getting papered over.
+
+Write the file to `docs/delivery/work/story-$ARGUMENTS-<slug>.md`. **Do not use plan mode** — the file
+on disk is the plan.

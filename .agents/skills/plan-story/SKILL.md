@@ -1,19 +1,11 @@
 ---
 name: plan-story
-description: >-
-  Plan and build one story end to end. Use when a story in docs/stories/ is ready to implement — investigating readers/writers/lifecycle boundaries, planning the change and its tests, verifying in the running app, and closing out.
+description: Write one self-contained story — feature rules copied in verbatim, architecture rules injected by path-glob match, and a rendered Definition of Done naming a test per rule.
 ---
 
-# plan-story
+The instructions for this command live in `.claude/commands/plan-story.md`.
 
-**This skill is a pointer. The instructions live in one place: [`../../../.claude/commands/plan-story.md`](../../../.claude/commands/plan-story.md).**
+Read that file and follow it exactly. It is the single source of truth; this file exists only so the
+command is discoverable from here.
 
-Read that file and follow it exactly. It is shared by Claude Code (as the slash command
-`/plan-story`) and by Codex (as this skill), so there is only ever one copy to keep correct.
-
-Argument: story number (e.g. 057).
-
-Why a pointer and not a copy: this repository previously kept the same guidance in
-`.claude/`, `.agents/` and `.codex/`, hand-synced. They drifted — the `.claude/` copies of the
-story and test-naming rules were stale while the `.agents/` copies were current, and nobody
-noticed. One file, two entry points.
+Two copies of a command diverge within a month. One copy and a pointer does not.

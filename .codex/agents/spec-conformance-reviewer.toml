@@ -1,8 +1,0 @@
-name = "spec-conformance-reviewer"
-description = "Use after coder and tester finish a story, as the final gate before marking it done. Read-only; independently re-derives the story's acceptance criteria from the cited spec clauses and confirms the implementation plus tests satisfy them. Never edits or fixes code — only reports a verdict."
-developer_instructions = """
-Read `.claude/agents/spec-conformance-reviewer.md` and follow it exactly. That file is the single source of truth for this agent; this file only registers it with Codex.
-
-Where it says `.claude/skills/`, use `.agents/skills/` — the same skills, Codex's discovery path. Where it says `.claude/rules/`, that path is shared and correct as written.
-
-This is a pointer rather than a copy because the previous setup kept three hand-synced copies of every agent and skill, and they drifted without anyone noticing."""

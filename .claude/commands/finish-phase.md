@@ -1,76 +1,75 @@
 ---
-description: Check whether a phase is actually finished, by using the app rather than validating documents.
-argument-hint: <phase number, e.g. 04>
-allowed-tools: Read, Grep, Glob, Bash, Task
-model: opus
+name: finish-phase
+description: Decide whether a phase is finished — run the gates, open every named test, then launch the real build and walk the "Done when" paragraph.
 ---
 
-Check whether **phase $1** is finished.
+# Finish phase $ARGUMENTS
 
-This replaces the old `just phase-complete-check NN`. That command validated the shape of documents,
-reported a phase complete while the test suite was red, and is gone. A person decides now — your job
-is to make that decision easy and honest, not to declare it yourself.
+This is a human gate wearing a command. The verdict comes from using the software, not from a green
+check.
 
-## 1. The gates that are real
+## 1. Run the gates, paste the output verbatim
 
-```bash
+```
 just check
 ```
 
-Everything green, including anything you would be tempted to call pre-existing. Report the actual
-output; do not summarise a failure as a warning.
+which is `just gen-check`, `just frontend-build`, `just fmt-check`, `just lint`, `just typecheck`,
+`just frontend-test`, `just go-vet`, `just archtest`, `just go-test`.
 
-## 2. Every story built
+Then `just e2e-test` for the browser journeys.
 
-List the stories written for this phase and, for each, whether it is built. For each acceptance
-criterion, name the test that proves it and confirm that test **exists and passes** — do not take the
-story's Tests table on trust, go and look.
+Verbatim. Not "all passing" — the actual output, so the user can see what ran and what did not.
 
-Flag any criterion whose test asserts a symbol exists, greps source text, mocks the component under
-test, or checks that a function was called without asserting the user-visible outcome. Those are not
-proof and should be reported as gaps, not ticked off.
+`just package` will fail until Phase 08 builds it. That is deliberate: naming a command that does not
+exist is how a Definition of Done certifies something false.
 
-## 3. Walk the "Done when" paragraph
+## 2. Open every named test
 
-Read the phase's **Done when** paragraph and do exactly what it says, in a real build:
+For each story in this phase, take each rule in its Definition-of-Done table, **open the named test
+file, and confirm the function exists and passes.**
 
-```bash
+A test count is not evidence. Say so plainly if you find any of these:
+
+- a test that asserts a symbol exists, or that source text contains a string
+- a test that asserts a function was called, without asserting what the user then sees
+- a component test that mocks the component it claims to prove — this mistake is live in the repository
+  today and is recorded in `docs/delivery/plan/KNOWN_ISSUES.md`
+- a test that reads a document: story text, phase text, a decision record, the `justfile`, CI
+  configuration or anything under `.claude/` are not test subjects
+- a happy path with no precondition that could fail for an interesting reason
+
+## 3. Walk "Done when" on a real build
+
+```
 just build
 ```
 
-Launch the app. Perform each action in the paragraph. Report what happened — including anything that
-worked but felt wrong, and anything you could not test on this machine.
+Launch the binary it produced — not `wails dev`, which uses the mock bridge for anything Playwright
+touches and has a different log level, a different version string and a different configuration folder.
 
-Where a step cannot be checked here (another operating system, for example), say so plainly. Do not
-imply it passed.
+Work through the phase's "Done when" paragraph step by step and **report what actually happened at each
+step** — not that you did it, what you saw.
 
-## 4. What is left over
+That paragraph ends with the cross-cutting constraints: three themes across light and dark, keyboard
+reachability with a visible focus ring, empty states with their exact wording, every string through
+`t()`, the limits at their values, and five minutes with a network monitor showing nothing sent. Those
+are part of the walk, not a separate pass.
 
-- Anything in `docs/KNOWN_ISSUES.md` that this phase was supposed to fix and did not.
-- Any question in the phase's **Questions to settle first** that was never actually answered.
-- Anything the phase promised that quietly did not get built.
+Where a step is already a numbered row in `docs/delivery/plan/testing/live-plan.md`, run it. Where it is
+not, do it by hand, and capture a screenshot for each step you drive. A self-report with no artifact is
+not verification.
 
-## 5. Report
+Add any rows this phase introduced to the live plan, and write the run up in
+`docs/delivery/plan/testing/reports/<date>.md`, naming the commit under test and what was not run.
+Skipping a case is a result — record it with the reason.
 
-```
-## just check
-<actual result>
+## 4. Verdict
 
-## Stories and their proof
-- STORY-NNN — built; AC-1..N proven by <tests>   (or: AC-3 has no real test — <why>)
+- Which "Done when" clauses hold, and which do not.
+- Unfixed known issues, and which phase takes each.
+- Any question that got answered by guessing during the phase — those need a decision recorded now, in
+  the feature file's `## Decisions` or as a decision record, not later.
 
-## Done-when walkthrough
-- <each step, and what actually happened>
-
-## Not verifiable here
-- <step, and why — e.g. needs Windows>
-
-## Left over
-- <unfixed known issue / unanswered question / unbuilt promise, or "none">
-
-## Verdict
-<finished / not finished, and the one sentence that decides it>
-```
-
-Then say plainly whether you would call it finished, and let the user make the call. If something is
-not done, the answer is "not finished" — not "finished with caveats".
+**If something is not done, the answer is "not finished" — not "finished with caveats".** A phase that
+ships with an asterisk teaches everyone that the gate is negotiable.

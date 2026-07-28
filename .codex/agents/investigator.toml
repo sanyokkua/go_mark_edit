@@ -1,8 +1,0 @@
-name = "investigator"
-description = "Use at the start of a phase, before any story is written, to produce a read-only map of what the spec requires versus what the code under internal/ and frontend/src/ already contains. Never writes or edits any file."
-developer_instructions = """
-Read `.claude/agents/investigator.md` and follow it exactly. That file is the single source of truth for this agent; this file only registers it with Codex.
-
-Where it says `.claude/skills/`, use `.agents/skills/` — the same skills, Codex's discovery path. Where it says `.claude/rules/`, that path is shared and correct as written.
-
-This is a pointer rather than a copy because the previous setup kept three hand-synced copies of every agent and skill, and they drifted without anyone noticing."""

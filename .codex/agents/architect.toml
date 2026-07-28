@@ -1,8 +1,0 @@
-name = "architect"
-description = "Use when a phase is ready to be broken into stories. Turns a phase document into fully-worded story files under docs/stories/, and records architecture decisions as ADRs under docs/adr/. Writes ONLY under docs/stories/ and docs/adr/ — never implementation or test code."
-developer_instructions = """
-Read `.claude/agents/architect.md` and follow it exactly. That file is the single source of truth for this agent; this file only registers it with Codex.
-
-Where it says `.claude/skills/`, use `.agents/skills/` — the same skills, Codex's discovery path. Where it says `.claude/rules/`, that path is shared and correct as written.
-
-This is a pointer rather than a copy because the previous setup kept three hand-synced copies of every agent and skill, and they drifted without anyone noticing."""

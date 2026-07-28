@@ -10,9 +10,10 @@ import (
 	"testing"
 )
 
-// Proves: STORY-002-AC-3
+// Proves: architecture#apperr-imports-nothing-internal
 // The bottom-of-graph apperr package imports no package under this application's internal tree.
-func TestApperrHasNoInternalDependencies(t *testing.T) {
+// Named TestArchitecture... so `just archtest` selects it.
+func TestArchitectureApperrHasNoInternalDependencies(t *testing.T) {
 	t.Parallel()
 
 	entries, err := os.ReadDir(".")

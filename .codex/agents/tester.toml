@@ -1,8 +1,0 @@
-name = "tester"
-description = "Use after the coder reports a story implemented. Writes one test per acceptance criterion, each naming the criterion it proves, runs the suite, and reports honestly on anything it could not prove. Never modifies production code to make a test pass."
-developer_instructions = """
-Read `.claude/agents/tester.md` and follow it exactly. That file is the single source of truth for this agent; this file only registers it with Codex.
-
-Where it says `.claude/skills/`, use `.agents/skills/` — the same skills, Codex's discovery path. Where it says `.claude/rules/`, that path is shared and correct as written.
-
-This is a pointer rather than a copy because the previous setup kept three hand-synced copies of every agent and skill, and they drifted without anyone noticing."""

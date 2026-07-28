@@ -1,8 +1,0 @@
-name = "coder"
-description = "Use when one story in docs/stories/ is ready to build. Implements EXACTLY ONE story per invocation, loads the layer skill(s) and matching .claude/rules first, and fixes (not just reports) every lint/type issue in files it touches before declaring done."
-developer_instructions = """
-Read `.claude/agents/coder.md` and follow it exactly. That file is the single source of truth for this agent; this file only registers it with Codex.
-
-Where it says `.claude/skills/`, use `.agents/skills/` — the same skills, Codex's discovery path. Where it says `.claude/rules/`, that path is shared and correct as written.
-
-This is a pointer rather than a copy because the previous setup kept three hand-synced copies of every agent and skill, and they drifted without anyone noticing."""

@@ -1,19 +1,11 @@
 ---
 name: plan-phase
-description: >-
-  Turn one phase into a complete, ordered set of stories. Use when starting a new phase from specification/07_Phases/ — reading the phase, answering its open questions, slicing it into vertical stories, and checking coverage before any story file is written.
+description: Turn one phase into an ordered set of vertical stories. Reads the phase and every feature file it names, stops on unanswered questions, then writes the story files to disk.
 ---
 
-# plan-phase
+The instructions for this command live in `.claude/commands/plan-phase.md`.
 
-**This skill is a pointer. The instructions live in one place: [`../../../.claude/commands/plan-phase.md`](../../../.claude/commands/plan-phase.md).**
+Read that file and follow it exactly. It is the single source of truth; this file exists only so the
+command is discoverable from here.
 
-Read that file and follow it exactly. It is shared by Claude Code (as the slash command
-`/plan-phase`) and by Codex (as this skill), so there is only ever one copy to keep correct.
-
-Argument: phase number (e.g. 04).
-
-Why a pointer and not a copy: this repository previously kept the same guidance in
-`.claude/`, `.agents/` and `.codex/`, hand-synced. They drifted — the `.claude/` copies of the
-story and test-naming rules were stale while the `.agents/` copies were current, and nobody
-noticed. One file, two entry points.
+Two copies of a command diverge within a month. One copy and a pointer does not.
