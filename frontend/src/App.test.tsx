@@ -44,6 +44,25 @@ jest.mock('./ui/widgets/AppShell', () => {
 });
 
 jest.mock('./logic/adapter', () => ({
+  settingsAdapter: {
+    getSettings: jest.fn(async () => ({
+      appearance: {
+        defaultOpenMode: 'editor',
+        mode: 'auto',
+        theme: 'material',
+      },
+      contentPrivacy: { remotePolicy: 'ask' },
+      markdown: {
+        bulletMarker: '-',
+        emphasisMarker: '*',
+        formatOnSave: false,
+        headingStyle: 'atx',
+        lintOnSave: false,
+        standard: 'gfm',
+      },
+    })),
+    updateAppearance: jest.fn(async () => undefined),
+  },
   appModelAdapter: {
     getState: jest.fn(async () => ({
       snapshot: {

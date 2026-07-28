@@ -1,4 +1,6 @@
 .statusBar {
+  background: var(--surface-raised);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   flex-wrap: wrap;

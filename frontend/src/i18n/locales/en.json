@@ -12,5 +12,19 @@
   "view.menu.showEditor": "Show Editor",
   "view.menu.showPreview": "Show Preview",
   "startup.failure.message": "The application could not start. Try again.",
-  "startup.retry": "Retry"
+  "startup.retry": "Retry",
+  "settings.menu.trigger": "Settings",
+  "settings.menu.label": "Settings menu",
+  "settings.menu.appearance": "Appearance",
+  "appearance.title": "Appearance",
+  "appearance.help": "Choose the app theme and appearance.",
+  "appearance.theme.label": "Theme",
+  "appearance.theme.glass": "Liquid Glass",
+  "appearance.theme.material": "Material",
+  "appearance.theme.minimal": "Minimal",
+  "appearance.mode.label": "Appearance",
+  "appearance.mode.auto": "Follows system",
+  "appearance.mode.light": "Light",
+  "appearance.mode.dark": "Dark",
+  "appearance.close": "Close"
 }

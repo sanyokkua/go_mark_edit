@@ -84,6 +84,11 @@ const Segmented = <Value extends string>({
               event.preventDefault();
             }}
             onKeyDown={(event): void => {
+              if (event.key === ' ' || event.key === 'Enter') {
+                event.preventDefault();
+                requestValue(option.value);
+                return;
+              }
               const destination = nextIndex(index, options.length, event.key);
               if (destination === undefined) {
                 return;

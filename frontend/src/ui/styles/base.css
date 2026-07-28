@@ -7,4 +7,31 @@ body,
 
 body {
   margin: 0;
+  background: var(--app-bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
+}
+* {
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+*:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
 }

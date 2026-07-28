@@ -1,6 +1,6 @@
 # Live testing plan
 
-**Version:** 1.0 · **Last updated:** 2026-07-25 · **Covers phases:** 00–03
+**Version:** 1.1 · **Last updated:** 2026-07-28 · **Covers phases:** 00–03
 
 Things to check by using the application, because no mocked bridge can produce them. Written in the
 same voice as the phase documents: what to do, and what you should see. Read `README.md` first for the
@@ -43,6 +43,10 @@ obvious what is not yet covered rather than looking complete.
 | P1-5 | Tab through the interface | Every focused control shows a visible focus ring in every palette. |
 | P1-6 | Scroll any pane | The scrollbar belongs to the theme. |
 | P1-7 | Check the fonts on a machine **without** Roboto or Inter installed | Material and Minimal still look different from each other. If they do not, the fonts are not bundled. |
+| P1-8 | On a real build, choose each of Liquid Glass, Material, and Minimal in Light and Dark | Chrome, preview, and status bar change together; no browser-default surface remains. |
+| P1-9 | Disconnect the network, relaunch, and choose Material then Minimal | Roboto and Inter remain available from the bundle; no font request is made. |
+| P1-10 | Select preview text, focus every appearance option, and scroll a pane | Selection, focus ring, and native scrollbar use the active palette rather than operating-system defaults. |
+| P1-11 | Enable system reduced motion, then switch theme and appearance | The palette flip is instantaneous and all duration tokens resolve to zero. |
 
 ## P2 — The window is a real window
 
@@ -107,3 +111,4 @@ records which model actually filled each role.
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-07-25 | Created. P0–P2 written against phases 00–03; P3–P9 stubbed with their headings so the gaps are visible. |
+| 1.1 | 2026-07-28 | Added Phase 02 palette, bundled-font/offline, selection/scrollbar, and reduced-motion checks. |

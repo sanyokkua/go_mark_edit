@@ -1,0 +1,32 @@
+.menu {
+  position: relative;
+}
+
+.trigger,
+.content,
+.item {
+  border: var(--control-border-width) solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.trigger,
+.item {
+  border-radius: var(--control-radius);
+  padding: var(--control-padding);
+}
+
+.content {
+  border-radius: var(--control-radius);
+  box-shadow: var(--win-shadow);
+  padding: var(--control-gap);
+  inset-block-start: calc(100% + var(--control-gap));
+  inset-inline-end: 0;
+  position: absolute;
+  z-index: var(--z-dropdown);
+}
+
+.item {
+  cursor: pointer;
+}

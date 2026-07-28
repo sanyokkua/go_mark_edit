@@ -231,6 +231,16 @@ Relevant patterns: [adding a theme token](../architecture/patterns/adding-a-them
 
 Before any source edit, /build-story 058 runs just baseline STORY-058 and records it in ../baselines/story-058.md. A red architecture gate or a failure masking these paths stops the implementation.
 
+| Check | Baseline result |
+|---|---|
+| Format | pass (exit 0) |
+| Types | pass (exit 0) |
+| Static analysis | exit 5, with no findings recorded |
+| Tests | pass (exit 0) |
+| Architecture | pass (exit 0) |
+| Frontend build | pass (exit 0) |
+| Coverage | 69.0% (mean of 11 packages) |
+
 ### Mechanical
 
 | # | Check | Command | Passes when |
@@ -281,4 +291,3 @@ just verify-ui covers the controls at 375, 768, and 1280 px in three themes and 
 ### Unblocks
 
 STORY-059 consumes the root token table for Monaco and the deferred preview-highlighter stylesheet. STORY-060 adds live system observation without changing the stored-choice contract. STORY-061 uses these attributes and persistence to prevent first-frame flash and run the full real-build visual/offline gate.
-

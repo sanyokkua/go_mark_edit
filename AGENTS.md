@@ -93,3 +93,13 @@ against the baseline captured before the work started.
 A finding that is in the baseline is not yours. A finding that is not, is.
 
 `just archtest` is the exception: it is never diffed against a baseline. It must be green.
+
+## Live verification
+
+For every story that changes a visible surface or user interaction, validate the running app in live
+mode during implementation after a material UI change and again before claiming the story is done.
+Start the appropriate development server, open its local URL in the available in-app browser, and use
+the actual controls. Confirm the visible state, root attributes or other authoritative UI signal, and
+the affected layout at the relevant viewport. Treat a live finding as a defect: fix it, reload the app,
+and repeat the live check. Automated unit, Playwright, and build checks complement this step; they do
+not replace it.

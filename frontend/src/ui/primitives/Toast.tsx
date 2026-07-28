@@ -2,6 +2,7 @@ import * as RadixToast from '@radix-ui/react-toast';
 import type { PropsWithChildren } from 'react';
 
 import type { Notification } from '../../logic/store/notificationsSlice';
+import styles from './Toast.module.css';
 
 type ToastProviderProps = PropsWithChildren;
 
@@ -15,7 +16,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
 }): React.JSX.Element => (
   <RadixToast.Provider duration={5000}>
     {children}
-    <RadixToast.Viewport />
+    <RadixToast.Viewport className={styles.viewport} />
   </RadixToast.Provider>
 );
 
@@ -24,6 +25,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
   onDismiss,
 }): React.JSX.Element => (
   <RadixToast.Root
+    className={styles.toast}
     open
     onOpenChange={(open: boolean): void => {
       if (!open) {

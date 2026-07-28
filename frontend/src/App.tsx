@@ -10,6 +10,7 @@ import {
 import type { ActiveBuffer } from './logic/store/appModelTypes';
 import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
 import AppShell from './ui/widgets/AppShell';
+import AppearanceControls from './ui/widgets/AppearanceControls';
 import { EditorSessionProvider } from './ui/widgets/editorSession';
 import StartupFailure from './ui/widgets/StartupFailure';
 
@@ -72,6 +73,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
   return (
     <ToastProvider>
       <EditorSessionProvider activeBuffer={activeBuffer}>
+        <AppearanceControls visible={bootstrapStatus === 'ready'} />
         {bootstrapStatus === 'failed' ? (
           <StartupFailure
             isRetrying={isRetrying}
@@ -80,7 +82,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
             }}
           />
         ) : (
-          <AppShell assistantVisible={false} />
+          <>
+            <AppShell assistantVisible={false} />
+          </>
         )}
         {notifications.map((notification) => (
           <NotificationToast

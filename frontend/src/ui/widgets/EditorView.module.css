@@ -1,4 +1,5 @@
 .editorView {
+  background: var(--app-bg);
   box-sizing: border-box;
   display: grid;
   height: 100%;
@@ -27,6 +28,9 @@
 }
 
 .pane {
+  backdrop-filter: var(--blur);
+  background: var(--surface);
+  color: var(--text);
   display: grid;
   grid-template-rows: auto minmax(var(--editor-pane-min-height), 1fr);
   min-width: 0;
@@ -40,6 +44,7 @@
 }
 
 .paneHeader {
+  background: var(--surface-raised);
   display: flex;
   justify-content: space-between;
   gap: var(--editor-pane-header-gap);
@@ -57,6 +62,7 @@
 }
 
 .previewContent {
+  background: var(--surface);
   min-width: 0;
   padding: var(--preview-pane-padding);
 }
