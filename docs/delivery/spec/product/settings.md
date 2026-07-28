@@ -141,7 +141,7 @@ Examples: bullet marker `*` → the toolbar inserts `*` and the linter stops fla
 | PDF styling | segmented | Current theme, Clean document |
 
 - Current theme **always exports on a light background**; see
-  `themes-and-appearance.md#print-forces-light`.
+`exporting-a-document.md#printing-forces-light`.
 
 Examples: Current theme → a light page carrying the theme's accent, radius and fonts · Clean document →
 black on white in a print face, whatever theme is active.

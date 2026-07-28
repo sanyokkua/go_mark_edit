@@ -19,8 +19,10 @@ produce six distinct palettes.
 Auto follows the operating system and changes the moment the system does. The control says "follows
 system" so it is clear that the app is not just showing light.
 
-One selection drives everything: the editor, the preview, the reading view, dialogs, menus and diagrams
-all change together. There is no separate editor theme.
+One selection drives every surface that exists: in Phase 02 that is the editor, preview and status bar.
+Later surfaces consume the same root tokens rather than adding another theme setting. Phase 06 owns
+theme integration for preview syntax highlighting, Mermaid, KaTeX and reading mode; Phase 10 owns print
+styling. There is no separate editor theme.
 
 ## Rules
 
@@ -40,15 +42,13 @@ three status colours and both syntax palettes, and there is no way to do that at
 - **While** the appearance is Auto, the resolved appearance is `dark` when the operating system reports
   `prefers-color-scheme: dark` and `light` otherwise.
 - **When** the operating system switches while Auto is selected, the palette changes immediately without
-  a relaunch, every open Mermaid diagram re-renders in the new palette, and the Monaco editor theme is
-  swapped.
+  a relaunch and the Monaco editor theme is swapped.
 - **While** the appearance is Light or Dark, the system setting is ignored and the app does not subscribe
   to it.
 
-Examples: macOS switches to dark at sunset with Auto selected → the window darkens, the code fence in
-the preview recolours, and a rendered flowchart redraws · the same with Dark pinned → nothing changes ·
-a diagram left in the old palette after a switch → a defect, and the specific one that happens when the
-effective theme is missing from the render effect's dependency list.
+Examples: macOS switches to dark at sunset with Auto selected → the window and Monaco darken together ·
+the same with Dark pinned → nothing changes · the root tokens changing while Monaco stays light → a
+defect.
 
 ### The choice and the resolved value are stored separately {#choice-and-resolved-are-separate}
 - Two values are kept: the user's **choice**, one of `auto`, `light`, `dark`; and the **resolved**
@@ -171,8 +171,8 @@ transition.
 - The `--md-*` family colours the Markdown **source** in the editor: the `#` of a heading, the `**` of
   bold, a link's target, a blockquote's `>`.
 - The `--hl-*` family colours **programming-language tokens inside a fenced block**, and it is used
-  twice — by the preview's highlight stylesheet and by the generated Monaco theme for the embedded
-  language.
+  to generate both the Monaco theme for the embedded language and the highlight stylesheet that Phase
+  06 activates in the preview.
 - Both families are keyed by appearance only, not by theme. Sixteen values, not forty-eight.
 
 | `--md-*` token | Colours | Light | Dark |
@@ -199,9 +199,8 @@ transition.
 | `--hl-punct` | operators and punctuation | `#5c5c69` | `#9aa1ab` |
 
 Examples: a Go snippet in Glass light and in Minimal light → identical token colours, different fence
-background, border, font and gutter · a rendered fence showing exactly one colour → the highlighter ran
-and its stylesheet did not, which is why a test asserts **more than one distinct colour** in a rendered
-fence rather than that it rendered.
+background, border, font and gutter · the generated Monaco rules and preview stylesheet disagreeing on
+`--hl-keyword` → a build failure before Phase 06 activates the stylesheet.
 
 *Why one syntax palette across themes:* syntax colouring is a legibility system. Three variants of it
 would be three sets to keep readable, for no benefit anybody asked for. The theme still changes
@@ -225,38 +224,13 @@ everything around the code.
 `monaco.editor.defineTheme()`, so "the editor and the preview share one theme" needs a mechanism, not an
 assertion.
 
-Examples: the same Go snippet in the editor and in the preview, side by side → identical token colours ·
-a `defineTheme()` call containing a colour that is in no table above → rejected, because the generator is
-the only thing allowed to produce those values.
+Examples: the generated Monaco theme and preview stylesheet map a Go keyword to the same `--hl-keyword`
+value · a `defineTheme()` call containing a colour that is in no table above → rejected, because the
+generator is the only thing allowed to produce those values.
 
 `editorWidget.background` is on that list deliberately: it is the find widget, which ships white and is
 unmissable in a dark Liquid Glass window. Find is built later, but its colours are decided here, because
 this is where colours are decided.
-
-### Diagrams take resolved colours, once {#diagram-theming}
-- Mermaid's `themeVariables` is built from resolved token values read off the root element:
-  `primaryColor` from `--accent-soft`, `primaryBorderColor` from `--accent`, `primaryTextColor` from
-  `--text`, `lineColor` from `--muted`, `background` from `--surface`, `fontFamily` from `--font`.
-- `mermaid.initialize()` is called once, and again only when the effective theme changes — not once per
-  diagram per render.
-- `securityLevel` is `'strict'`.
-- **When** the theme or appearance changes, every open diagram re-renders.
-
-Examples: a document with four diagrams, theme switched → one `initialize`, four re-renders ·
-`initialize` per diagram per render → a global singleton is reconfigured repeatedly and a theme change
-mid-flight interleaves two palettes in one document.
-
-*Why:* Mermaid bakes resolved colours into the SVG at render time. Styling the rendered SVG from outside
-reaches almost nothing.
-
-### Maths is styled explicitly {#maths-styling}
-- Display maths sits in a block with `--surface-2` behind it.
-- **If** an equation is wider than the reading column, **then** it scrolls inside its own container and
-  never widens the page.
-- A maths parse error renders in `--err`, not KaTeX's built-in `#cc0000`.
-
-Examples: a 200-character equation in a 700-pixel column → a horizontal scrollbar on the equation, the
-paragraph below still at its normal width.
 
 ### The first paint is already in the right theme {#no-flash-on-launch}
 - **When** the window first paints after launch, it is already in the persisted theme and appearance.
@@ -267,19 +241,6 @@ paragraph below still at its normal width.
 
 Examples: launching with Glass dark persisted → the window is dark from the first frame · reading the
 theme from the database after the webview boots → a guaranteed light-to-dark flash on every launch.
-
-### Printing forces a light background {#print-forces-light}
-- Export has two styles, selected by a `data-print-style` attribute on the export root.
-- **Clean** prints `--font` at 11pt on white, `--text` as near-black, no surface fills, hairline table
-  borders, and links in `--text` with the URL appended in parentheses.
-- **Current theme** prints the active palette with three mandatory overrides: the export root is forced
-  to `data-mode="light"`, `--blur` becomes `none`, and `--canvas` becomes white.
-- Anywhere a background carries meaning — a fenced block, a table header row, a blockquote — the print
-  stylesheet sets `print-color-adjust: exact`.
-
-Examples: exporting a Glass dark document in Current theme → a light page with the Glass accent and
-radius · without the override → a full-page dark gradient behind translucent panels, which prints as
-either a black page or a blank one depending on the platform's print engine.
 
 ## What it looks like
 
@@ -297,32 +258,20 @@ either a black page or a blank one depending on the platform's print engine.
 | The stored theme name is not one of the three | Material, silently | Nothing — it is corrected on the next write |
 | The stored appearance is not `auto`, `light` or `dark` | Auto, silently | Nothing |
 | A bundled font fails to load | The system font stack; everything stays legible | Nothing — it is a build defect, not a user problem |
-| A Mermaid diagram fails to re-render after a theme change | The diagram's error placeholder in `--err` | Edit the diagram, or switch the theme back |
 
 ## Edge cases
 
 **The operating system switches appearance while Auto is selected**
 - *Trigger:* macOS moves to dark at sunset; the app is open with Auto.
-- *Expected:* the tokens update, every open Mermaid diagram re-renders, and the Monaco theme is swapped —
-  all three, in one change.
-- *Avoid:* updating the CSS tokens only, leaving the editor in its old theme and every diagram in its
-  old palette until the user edits something.
-
-**The theme is switched while reading mode is active**
-- *Trigger:* the user is in distraction-free reading and picks a different theme.
-- *Expected:* the reader restyles live. Chrome stays hidden.
-- *Avoid:* exiting reading mode to apply the theme.
+- *Expected:* the root tokens update and the Monaco theme is swapped in one change.
+- *Avoid:* updating the CSS tokens only, leaving the editor in its old theme until the user edits
+  something.
 
 **A stored theme or appearance is missing or invalid**
 - *Trigger:* a first run, or a value written by a future version.
 - *Expected:* Material and Auto, and the app starts normally.
 - *Avoid:* refusing to start, or leaving the document element with no `data-theme` at all, which renders
   every token as its fallback and produces an unstyled window.
-
-**The theme changes while a Mermaid diagram is mid-render**
-- *Trigger:* a large diagram is rendering when the operating system flips to dark.
-- *Expected:* the in-flight render is discarded by its generation token and re-run in the new palette.
-- *Avoid:* letting the stale render land and paint a light diagram into a dark document.
 
 **A bundled UI font fails to load**
 - *Trigger:* a build that dropped the woff2 subsets.
@@ -334,8 +283,7 @@ either a black page or a blank one depending on the platform's print engine.
 ## Not this
 
 - **No user-authored themes and no theme editor.** Three token sets are three sets to keep readable
-  across six palettes, two syntax families and a print stylesheet. An arbitrary user theme is a set
-  nobody validated.
+  across six palettes and two syntax families. An arbitrary user theme is a set nobody validated.
 - **No custom accent colour.** Separate from the above and settled here so it is not reopened: an
   arbitrary hue would have to be legible against six backgrounds, three status colours and both syntax
   palettes, and nothing checks that at the moment the user picks it.
@@ -356,6 +304,10 @@ either a black page or a blank one depending on the platform's print engine.
   monochrome SVG sprite tinted from `currentColor`.
 - *2026-07-25* — Editor and preview colours are generated at build time from one syntax-token family
   rather than hand-tuned per theme. Recorded in `../../adr/0029-generated-editor-themes.md`.
+- *2026-07-28* — Phase ownership was made explicit. This feature owns the core token, persistence,
+  Auto, Monaco and first-paint infrastructure delivered in Phase 02. Preview syntax activation,
+  Mermaid, KaTeX and reading-mode theme reactions live in `rendering-rich-documents.md` for Phase 06;
+  print styling lives in `exporting-a-document.md` for Phase 10.
 
 ## Open questions
 

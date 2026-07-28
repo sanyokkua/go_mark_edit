@@ -12,10 +12,11 @@ reading mode that hides everything except the document.
 
 1. **Choose how much Markdown.** A standard selector — Minimal, GFM, Full — that changes which
    extensions are active, with the plugin set per level and a visible indication of which is on.
-2. **Code, maths and diagrams.** Syntax highlighting for fenced code with a plain fallback for unknown
-   languages; KaTeX for inline and block maths; Mermaid diagrams rendered asynchronously and contained
-   so a broken diagram shows an error in place rather than taking down the preview. All three ship
-   their assets locally — nothing is fetched at runtime, ever.
+2. **Code, maths and diagrams.** Activate Phase 02's generated highlight stylesheet for fenced code,
+   with a plain fallback for unknown languages. Add KaTeX for inline and block maths and Mermaid for
+   asynchronous diagrams, both consuming Phase 02's resolved theme values and both contained so one
+   failure cannot take down the preview. All three ship their assets locally — nothing is fetched at
+   runtime, ever.
 3. **Local images.** An image path in the document resolves relative to the document's folder and is
    served through a guarded handler with an allowlist. Path traversal is rejected. A missing image
    shows its alt text, not a broken-image icon.
@@ -38,6 +39,9 @@ reading mode that hides everything except the document.
 
 - Behaviour: `../spec/product/choosing-a-markdown-standard.md`, `../spec/product/rendering-rich-documents.md`,
   `../spec/product/images-and-remote-content.md`
+- Theme integration: renderer-specific rules live in
+  `../spec/product/rendering-rich-documents.md`; Phase 02 supplies tokens and generated assets, while
+  this phase owns their live consumers
 - Reading mode: `../spec/product/writing-in-the-editor.md`
 - Offline rule: `../spec/constraints.md#nothing-leaves-the-device`
 - What it looks like: `../spec/surface/mockup.html` → `reading`, `banner`, `preview-only`
@@ -48,6 +52,10 @@ reading mode that hides everything except the document.
 ## Questions to settle first
 
 **Nothing blocking — both former blockers were closed on 2026-07-25.**
+
+Theme ownership was settled on 2026-07-28: Phase 02 supplies theme infrastructure and generated
+syntax assets; this phase owns preview syntax activation, Mermaid and KaTeX, including rerendering on
+theme changes and discarding stale generations.
 
 - What HTML a document may contain is now specified in `../spec/product/images-and-remote-content.md`
   (ADR-0030): sanitization is derived from the Markdown standard rather than being a separate control,
@@ -73,8 +81,10 @@ Open a document containing a GFM table, an inline formula and a display formula,
 fenced block in a language we do not know, a Mermaid diagram, an image sitting next to the file, and an
 image on the internet. Everything renders correctly; the unknown language falls back to plain; the
 local image appears; the remote one is blocked with a banner until you allow it. Switch to reading
-mode, scroll, come back, and land exactly where you were. Watch the network the whole time and see
-nothing except the remote image you explicitly allowed.
+mode, scroll, come back, and land exactly where you were. Switch theme and appearance while a diagram
+is open: the preview code still matches Monaco, the maths restyles, and every diagram rerenders without
+a stale result landing. Watch the network the whole time and see nothing except the remote image you
+explicitly allowed.
 
 And the constraints every phase carries: open a 2.1 MB document and confirm the preview pauses with its
 banner, and a 1.9 MB one and confirm it does not; every new surface works in three themes across light

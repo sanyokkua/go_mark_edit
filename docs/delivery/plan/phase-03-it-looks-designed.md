@@ -49,12 +49,12 @@ they behave when they are empty, busy, or broken.
    lint findings. Each is a written string, not a blank rectangle. The no-tabs one is the first screen
    of every launch — the app does not restore your session — so it is a launcher: New file, Open file,
    Open folder, and your recent documents.
-8. **The Settings dialog shell.** The dialog and its group navigation, with the groups present and
-   mostly empty. Every later phase drops its own controls in. Appearance is the only group with real
-   content at the end of this phase, plus a Reset to defaults that works.
-9. **Menu quick-settings.** The Settings menu in the title bar exposes the most-used controls inline —
-   theme swatches, appearance, and later the default open mode, Markdown standard, and the Autosave /
-   Format-on-save / Lint-on-save toggles — plus "All settings…". This is a *second view of the same
+8. **Expand the Settings dialog shell.** Phase 02 already ships the minimum dialog with real Appearance
+   controls. Add the complete group navigation, leave later groups mostly empty, and add Reset to
+   defaults without replacing the existing Appearance state path.
+9. **Expand menu quick-settings.** Keep Phase 02's theme swatches and appearance controls in the new
+   title-bar Settings menu, then add the default open mode, Markdown standard and Autosave /
+   Format-on-save / Lint-on-save controls plus "All settings…". This remains a *second view of the same
    state*, not a second store: change it in either place and both update.
 10. **Remember the window.** Window geometry, sidebar visibility and widths, and the split ratio are
     owned by the backend (`SetUILayout`), persisted when they change, flushed on close, and **restored
@@ -86,6 +86,8 @@ they behave when they are empty, busy, or broken.
   (build the quick-settings menu from this one), `toasts`, `settings-appearance`, `no-sidebar`, the
   empty-state screens, and the 375/768 narrow states
 - Component layering: `../architecture/structure.md`
+- Prior ownership: Phase 02 supplies the minimum Appearance dialog and Settings-menu controls; this
+  phase expands their shells and adds Reset and the remaining quick settings.
 
 ## Questions to settle first
 
@@ -101,7 +103,8 @@ Open the app on a machine where you have never run it. It appears at a sensible 
 theme, with no tabs — and the empty screen offers you something to do rather than a blank pane. Drag
 the sidebar and the split divider, collapse the sidebar, resize the window, quit, and reopen: it comes
 back exactly the way you left it, without flashing a default layout first. Open the Settings dialog,
-see its groups, change the theme from the Settings *menu* instead, and watch both surfaces agree.
+see its groups, change the theme from the expanded Settings *menu* instead, and confirm the Phase 02
+controls still agree after their shells were expanded.
 Press Reset to defaults and get the defaults. Trigger the same error five times and get one message,
 not five. Narrow the window to 375 pixels and find that everything is still reachable — nothing has
 been clipped, and the toolbar overflowed rather than growing. On macOS, select text and press Cmd+C.

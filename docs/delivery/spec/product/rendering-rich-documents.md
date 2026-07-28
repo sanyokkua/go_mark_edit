@@ -14,6 +14,9 @@ Write GitHub-flavoured Markdown and see it rendered as you type. Fenced code blo
 syntax-coloured. A ` ```mermaid ` fence becomes a diagram — click it to open it full-window with zoom
 and pan. At the Full standard, `$…$` and `$$…$$` become typeset mathematics.
 
+The preview consumes the theme infrastructure from Phase 02. Theme and appearance changes recolour
+highlighted code and maths immediately and re-render every open Mermaid diagram in the new palette.
+
 Everything renders from the bundle. Nothing is fetched, so it all works with the network off.
 
 ## Rules
@@ -50,8 +53,9 @@ machine.
 ### Fenced code is highlighted at every standard level {#code-highlighting}
 - Fenced code blocks are syntax-highlighted regardless of the Markdown standard, because highlighting is
   a rendering concern rather than a Markdown feature.
-- The highlight colours come from the `--hl-*` tokens, so they match the appearance and agree with the
-  editor's own colouring of the same fence.
+- The preview activates the highlight stylesheet generated in Phase 02. Its colours come from the
+  `--hl-*` tokens, so they match the appearance and agree with the editor's own colouring of the same
+  fence.
 - **If** the fence's language is unknown or absent, **then** it renders as a plain, unhighlighted code
   block.
 
@@ -69,18 +73,31 @@ why the acceptance check asserts **more than one distinct colour** rather than t
 Examples: an invalid diagram in the middle of a long document → one error block, everything else reads ·
 an exception escaping the block → a blank preview and no way to tell which diagram caused it.
 
-### Mermaid's four lifecycle rules {#mermaid-lifecycle}
-- **Initialise once**, and again only when the effective theme changes.
+### Diagrams take resolved colours, once {#diagram-theming}
+- Mermaid's `themeVariables` is built from resolved token values read off the root element:
+  `primaryColor` from `--accent-soft`, `primaryBorderColor` from `--accent`, `primaryTextColor` from
+  `--text`, `lineColor` from `--muted`, `background` from `--surface`, `fontFamily` from `--font`.
+- `mermaid.initialize()` is called once, and again only when the effective theme changes — not once per
+  diagram per render.
+- **When** the theme or appearance changes, every open diagram re-renders.
+
+Examples: a document with four diagrams, theme switched → one `initialize`, four re-renders ·
+`initialize` per diagram per render → a module-global singleton is reconfigured repeatedly and a theme
+change mid-flight interleaves two palettes in one document.
+
+*Why:* Mermaid bakes resolved colours into the SVG at render time. Styling the rendered SVG from outside
+reaches almost nothing.
+
+### Mermaid's three render lifecycle rules {#mermaid-lifecycle}
 - **Mint a fresh id per render**, `${blockId}-r${n}` with a per-block counter.
 - **Call `parse()` before `render()`**, so a syntax error is a clean message rather than a half-built
   node.
 - **Carry a generation token per render pass**; anything arriving after a newer pass started is
   discarded, and the discard must prevent the DOM mutation, not merely suppress a state update.
 
-Examples: four diagrams in one document, theme switched → one initialise, four re-renders · calling
-initialise inside each block's render effect → a module-global singleton reconfigured once per diagram
-per render, and a mid-flight theme change interleaves palettes across diagrams · two renders sharing one
-id → they collide, and a failed parse leaves the temporary node in the document permanently.
+Examples: two renders sharing one id → they collide, and a failed parse leaves the temporary node in the
+document permanently · a stale generation allowed to mutate the DOM → a light diagram lands after the
+app has switched to dark.
 
 ### A diagram can be opened full-window {#diagram-full-window}
 - **When** a rendered diagram or its expand control is clicked, it opens over the app at full size with
@@ -101,12 +118,21 @@ this release, on content that came from an untrusted file.
 
 ### Maths renders at the Full standard only {#maths-at-full}
 - **While** the standard is Full, `$…$` and `$$…$$` are parsed and typeset with bundled KaTeX fonts.
-- **If** an expression is invalid, **then** it renders as an inline error token in `--err` and the rest
-  of the document continues to render.
+- **If** an expression is invalid, **then** it renders as an inline error token and the rest of the
+  document continues to render.
 - At Minimal and GFM, the same text renders literally.
 
 Examples: `$x^2$` at Full → typeset · the same at GFM → the characters `$x^2$` · `$\frac{1}{$` at Full →
 one error token, the paragraph around it intact.
+
+### Maths is styled explicitly {#maths-styling}
+- Display maths sits in a block with `--surface-2` behind it.
+- **If** an equation is wider than the reading column, **then** it scrolls inside its own container and
+  never widens the page.
+- A maths parse error renders in `--err`, not KaTeX's built-in `#cc0000`.
+
+Examples: a 200-character equation in a 700-pixel column → a horizontal scrollbar on the equation, the
+paragraph below still at its normal width.
 
 ### An unsupported feature renders literally, never as an error {#unsupported-renders-literally}
 - **When** a document uses a feature above the active standard level, that syntax renders as plain text.
@@ -158,9 +184,15 @@ anyone offline.
 
 **The theme changes while a diagram is mid-render**
 - *Trigger:* a large diagram is rendering when the operating system flips to dark.
-- *Expected:* the in-flight render is discarded by its generation token and re-run in the new palette.
+- *Expected:* highlighted code and maths restyle immediately; the in-flight diagram render is discarded
+  by its generation token and every diagram is re-run in the new palette.
 - *Avoid:* a cancellation flag that only suppresses the state update — the in-flight render still mutates
   the document and Mermaid's global state, and a light diagram lands in a dark page.
+
+**The theme is switched while reading mode is active**
+- *Trigger:* the user is in distraction-free reading and picks a different theme.
+- *Expected:* the reader, highlighted code, maths and diagrams restyle live. Chrome stays hidden.
+- *Avoid:* exiting reading mode to apply the theme, or leaving a rendered block in the old palette.
 
 **Two renders of the same block overlap**
 - *Trigger:* fast typing inside a diagram's fence.
@@ -204,6 +236,9 @@ anyone offline.
   half-width pane is unreadable at any usable zoom, which reads as broken rather than small.
 - *2026-07-25* — The sanitisation allowlist is derived from the active standard level, and the CSP is
   fixed. Recorded in `../../adr/0030-sanitization-allowlist-and-csp.md`.
+- *2026-07-28* — Phase 06 owns the live consumers of Phase 02's theme infrastructure: preview syntax
+  activation, Mermaid theme variables and rerenders, KaTeX styling, reading-mode theme reactions and
+  stale-generation rejection.
 
 ## Open questions
 

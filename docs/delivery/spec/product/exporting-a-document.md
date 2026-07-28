@@ -90,7 +90,7 @@ Examples: a 200-character line in a code fence → it wraps in the PDF · withou
 past the right margin is gone, which is the single most common complaint about Markdown-to-PDF and
 neither reference application handles it.
 
-### Two PDF styles, and Current theme always prints light {#pdf-styling}
+### Two PDF styles, and Current theme always prints light {#printing-forces-light}
 - **Current theme** exports using the active theme's colours and fonts.
 - **Clean document** exports with a neutral print stylesheet: black text on white, print-friendly fonts,
   regardless of the active theme.
@@ -214,6 +214,9 @@ Examples: dismiss the dialog → back to the editor, no file, the app not busy.
   earlier migration and were never a decision: the app exports a PDF, saves Markdown, and leaves copying
   to the webview. Copying from the preview already yields styled text on every platform, so the feature
   was paying for output the platform gives away.
+- *2026-07-28* — Phase 10 owns `printing-forces-light`. Phase 02 supplies the theme tokens, but the
+  Current-theme and Clean behavior is implemented and proven only through the real PDF export entry
+  point.
 
 ## Open questions
 

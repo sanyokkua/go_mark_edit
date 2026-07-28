@@ -40,11 +40,14 @@ callers in mind. Monaco's `DiffEditor` is already in the bundle and costs nothin
    **Neither runs on autosave**  — autosave is on by default and debounced, so formatting on it
    would reflow the document under the cursor several times a minute.
 5. **Export to PDF.** Export what is rendered, in two flavours: Current theme, and Clean — a neutral
-   print stylesheet. Go drives it; the webview prints. A cancelled print is not an error.
+   print stylesheet. This phase owns the `printing-forces-light` behaviour: Current theme keeps the
+   selected theme but forces its light appearance, while Clean prints a neutral white document. Go
+   drives it; the webview prints. A cancelled print is not an error.
 
 ## Where the details are
 
-- Behaviour: `../spec/product/tidying-markdown.md`, `../spec/product/exporting-a-document.md`
+- Behaviour: `../spec/product/tidying-markdown.md`, `../spec/product/exporting-a-document.md`; the
+  print-theme rule is `../spec/product/exporting-a-document.md#printing-forces-light`
 - The gate: `../architecture/rules.md#one-long-operation-at-a-time`, and `internal/gate/`, which has
   existed unused since Phase 00. This phase or Phase 11 is its first consumer, whichever you build
   first — the gate is shared, so neither may assume it owns it
@@ -55,6 +58,8 @@ callers in mind. Monaco's `DiffEditor` is already in the bundle and costs nothin
 
 ## Questions to settle first
 
+Print ownership was settled on 2026-07-28: Phase 10, not Phase 02, owns
+`printing-forces-light`; Phase 02 supplies only the reusable theme tokens.
 
 - **Who holds the gate during a Format, and who releases it if the frontend dies mid-operation?**
   Format is specified as a frontend operation, while a large format-all is required to take the Go
@@ -72,7 +77,8 @@ Take a badly formatted document — mixed bullet markers, inconsistent emphasis,
 row — run Format, review the diff, accept it, and get consistent Markdown in one undo step. Run Lint
 and see squiggles where the problems are and a count in the status bar; click one and land on it. Turn
 format-on-save on and watch a save tidy the file. Export the document to PDF in both stylings and open
-both in a PDF reader. Cancel a print and get no error.
+both in a PDF reader: Current theme uses the selected theme in its forced light appearance, while Clean
+uses the neutral white stylesheet. Cancel a print and get no error.
 
 And the constraints every phase carries: start a format on a large document and confirm the Format
 button itself becomes Cancel, then cancel it and confirm the report names what completed rather than a
