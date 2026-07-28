@@ -1,6 +1,6 @@
 ---
 name: build-story
-description: Implement one story — capture the baseline before any edit, build it, then verify every Definition-of-Done item against that baseline.
+description: Implement one story — refuse a stub, capture a trustworthy baseline before any edit, then build, then verify every Definition-of-Done item against it.
 ---
 
 The instructions for this command live in `.claude/commands/build-story.md`.

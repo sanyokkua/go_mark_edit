@@ -5,6 +5,9 @@
 **Deciders:** project owner, architect
 **Supersedes:** ADR-0020 (deleted 2026-07-25 with the process ADRs; its content is fully absorbed here — see `git show 39efb7a:docs/adr/0020-phase02-document-lifecycle-policy.md`)
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 ADR-0020 resolved PH02-X01 through PH02-X04, but independent review found missing deterministic behavior at
@@ -101,12 +104,12 @@ change requires a new decision. Phase 02 has no Compare-later state.
 ## Links
 
 - Design decisions: DD-10, DD-11, DD-12, DD-15, DD-27, DD-60, DD-62, DD-63, DD-64
-- Spec clauses: `specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#documents--files-docs`,
-  `specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state`,
-  `specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#default-open-mode`,
-  `specification/01_Product/03_FILES_TABS_WORKSPACE.md#save-as`,
-  `specification/01_Product/03_FILES_TABS_WORKSPACE.md#dirty-state`,
-  `specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings`,
+- Spec clauses: ../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#documents--files-docs`,
+  ../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state`,
+  ../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#default-open-mode`,
+  ../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#save-as`,
+  ../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#dirty-state`,
+  ../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings`,
   `specification/07_Phases/PHASE_05_REAL_FILES.md` (its "Questions to settle first")
 - Stories: STORY-033, STORY-034, STORY-035, STORY-037, STORY-038, STORY-040, STORY-041, STORY-042,
   STORY-043, STORY-044, STORY-045, STORY-046, STORY-048, STORY-049, STORY-051

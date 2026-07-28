@@ -23,7 +23,9 @@ editor gives you the source, exactly as written.
 ### Export covers the current document only {#export-is-one-document}
 - Export acts on the active document. There is no export of a folder, a selection or several tabs.
 
-Examples: three tabs open, Export → the active one.
+Examples: three tabs open, Export → the active one. · three tabs open with two of them
+multi-selected in the tab strip → still the active one, because there is no multi-tab export to
+invoke
 
 ### Export renders the backend's copy after a flush {#export-flushes-first}
 - Export flushes any pending editor sync, then renders the backend's canonical content through the
@@ -142,7 +144,9 @@ somewhere else → the control the user pressed is where they will look to un-pr
 ### Cancelling the operating system's dialog writes nothing {#os-cancel-writes-nothing}
 - **If** the user dismisses the Save as PDF dialog, **then** no file is written and the gate is released.
 
-Examples: dismiss the dialog → back to the editor, no file, the app not busy.
+Examples: dismiss the dialog → back to the editor, no file, the app not busy. · the dialog dismissed
+twice in a row → the same outcome both times, with no accumulated busy state and no second gate to
+release
 
 ## What it looks like
 
@@ -219,5 +223,3 @@ Examples: dismiss the dialog → back to the editor, no file, the app not busy.
   point.
 
 ## Open questions
-
-*(none — ready to build)*

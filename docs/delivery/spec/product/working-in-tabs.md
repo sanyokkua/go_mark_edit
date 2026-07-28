@@ -177,5 +177,3 @@ Examples: `Ctrl/Cmd+1` → heading 1, not tab 1 · reopen-last-closed uses `Ctrl
   offered operations that do not apply to a tab.
 
 ## Open questions
-
-*(none — ready to build)*

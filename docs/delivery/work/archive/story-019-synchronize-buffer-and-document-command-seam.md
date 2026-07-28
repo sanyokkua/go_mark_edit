@@ -3,12 +3,12 @@ id: STORY-019
 title: Synchronize the active buffer and establish the editable document-command seam
 status: done
 spec_clauses:
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - 02_Architecture/03_FRONTEND_REACT.md#adapter-layer
-  - 03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
-  - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
+  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
   - PH01-R03
@@ -40,6 +40,9 @@ owner: coder
 estimate: L
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-019 — Synchronize the active buffer and establish the editable document-command seam
 
 ## Goal
@@ -61,12 +64,12 @@ Synchronize the responsive Monaco working copy with the backend's canonical docu
 - Formatting/lint implementations and Stage-3 edit proposals; they later consume the F3/F7 command interface defined here.
 
 ## Spec inputs
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — keep Monaco responsive, derive backend dirty/count metadata, and let preview consume the backend-accepted working snapshot.
-- `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — treat Monaco as an ephemeral working copy, keep content out of Redux, and flush before blur/switch/close/save boundaries.
-- `02_Architecture/03_FRONTEND_REACT.md#adapter-layer` — place per-document debounce/flush ownership behind the adapter singleton and use guarded, unwrapped command calls.
-- `03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness` — avoid bridge traffic on each keystroke, preserve immediate editing/cursor behavior, and serialize flushes safely.
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — deliver the stable F3/F7 document-command seam with selection, replace-range, and replace-all operations.
-- `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62 through DD-64: backend canonical content, disposable projection, debounced working copy, and no focused-editor echo.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — keep Monaco responsive, derive backend dirty/count metadata, and let preview consume the backend-accepted working snapshot.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — treat Monaco as an ephemeral working copy, keep content out of Redux, and flush before blur/switch/close/save boundaries.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer` — place per-document debounce/flush ownership behind the adapter singleton and use guarded, unwrapped command calls.
+- `../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness` — avoid bridge traffic on each keystroke, preserve immediate editing/cursor behavior, and serialize flushes safely.
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — deliver the stable F3/F7 document-command seam with selection, replace-range, and replace-all operations.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62 through DD-64: backend canonical content, disposable projection, debounced working copy, and no focused-editor echo.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#scope` — synchronize the one Phase-01 untitled buffer while deferring file actions and durable editor state.
 
 ## Design constraints

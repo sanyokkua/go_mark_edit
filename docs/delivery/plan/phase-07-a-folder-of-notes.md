@@ -39,12 +39,17 @@ had. Drag a file onto the window and it opens. Open a second window when you wan
 
 ## Questions to settle first
 
-- **Replacing a workspace while files are unsaved.** Opening a different folder has to reuse the
-  dirty-document flow from Phase 05. If Phase 05's question 3 was answered as recommended — one
-  aggregate dialog, nothing written until you choose — this follows directly and needs no separate
-  answer. Confirm it does before starting step 5.
-- **Which view mode a tree-opened file uses.** Same question as Phase 05's question 1. It should
-  already be answered; do not answer it differently here.
+**Both are settled.** Neither blocks story planning.
+
+- **Replacing a workspace while files are unsaved** — *Settled by
+  `../adr/0024-corrected-phase02-document-lifecycle-policy.md`, recorded 2026-07-28.* Phase 05's
+  question 3 was answered as recommended: one aggregate dialog, nothing written until you choose. This
+  reuses it unchanged — `../spec/product/opening-and-saving-files.md#close-prompts-when-modified`.
+- **Which view mode a tree-opened file uses** — *Settled by the same ADR, recorded 2026-07-28.* The
+  workspace tree is named explicitly as a file-system open source, so the global default open mode
+  applies exactly as it does to the Open dialog:
+  `../spec/product/opening-and-saving-files.md#opens-use-the-default-open-mode`. Do not answer it
+  differently here.
 
 ## Done when
 

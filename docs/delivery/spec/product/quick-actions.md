@@ -148,10 +148,12 @@ reflows the document → it changed formatting, which its contract forbids.
   `max(replyReserve, estimate(scope) × 1.1)` rather than the flat reserve, so the run is refused up
   front rather than truncating halfway.
 
-Examples: a 5,000-token document proofread with an 8,192-token window and a 1,024-token flat reserve →
-passes the fit check, then truncates at 1,024 tokens of output, producing a broken argument, a schema
-failure, and a message that says a tool call had invalid arguments — true, and useless. With the
-scope-sized reserve it is refused before anything is sent.
+Examples: a 5,000-token document proofread with an 8,192-token window and a 1,024-token flat reserve
+→ passes the fit check, then truncates at 1,024 tokens of output, producing a broken argument, a
+schema failure, and a message that says a tool call had invalid arguments — true, and useless. With
+the scope-sized reserve it is refused before anything is sent. · a 900-token scope against the same
+1,024-token flat reserve → `max(1024, 990)` is 1,024, so nothing changes and the flat reserve still
+applies; the scope-sized reserve only takes over above about 931 tokens
 
 ### Without tool support, rewrite actions still work {#actions-work-without-tools}
 - **While** the selected model does not support tool calls, every action whose output is a rewrite of its
@@ -228,5 +230,3 @@ and the row says why.
   `../../adr/0034-assistant-execution-contract.md`.
 
 ## Open questions
-
-*(none — ready to build)*

@@ -1,6 +1,6 @@
 ---
 name: plan-phase
-description: Turn one phase into an ordered set of vertical stories. Reads the phase and every feature file it names, stops on unanswered questions, then writes the story files to disk.
+description: Turn one phase into an ordered set of vertical stories. Reads the phase and every feature file it names, stops on unanswered questions, then writes one stub file per story.
 ---
 
 The instructions for this command live in `.claude/commands/plan-phase.md`.

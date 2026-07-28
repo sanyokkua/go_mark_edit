@@ -4,11 +4,14 @@
 **Date:** 2026-07-25
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 Three separate parts of the specification require something the specification never builds.
 
-**Cancellation is required and has no mechanism.** `02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`
+**Cancellation is required and has no mechanism.** `../../_archive-2026-07-28-specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`
 says an in-flight gated operation is cancelled on shutdown; DD-47 says the agent loop checks
 cancellation each iteration; `CodeCancelled` exists in the error catalog. There is no run registry, no
 bound `Cancel` method, and no statement that the `OnStartup` context is the parent of every derived
@@ -119,10 +122,10 @@ directory should cost you your logs, not your text editor.
 ## Links
 
 - Design decisions: DD-47, DD-60, DD-61; new DD-70 (limits)
-- Spec clauses: `specification/02_Architecture/04_WAILS_INTEGRATION.md#lifecycle`,
-  `specification/02_Architecture/02_BACKEND_GO.md`,
-  `specification/02_Architecture/06_ERROR_HANDLING.md`,
-  `specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`
+- Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#lifecycle`,
+  ../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md`,
+  ../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md`,
+  ../../_archive-2026-07-28-specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`
 - Phases: `specification/07_Phases/PHASE_05_REAL_FILES.md` (the quit prompt),
   `specification/07_Phases/PHASE_10_TIDY_AND_SHARE.md` (export),
   `specification/07_Phases/PHASE_12_ASSISTANT_REWRITES.md` (closes its open question)

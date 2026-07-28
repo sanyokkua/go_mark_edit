@@ -3,9 +3,9 @@ id: STORY-027
 title: Make failed frontend bootstrap retryable
 status: done
 spec_clauses:
-  - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - 02_Architecture/03_FRONTEND_REACT.md#store
-  - 01_Product/13_I18N.md#i18n-layer
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#store
+  - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#i18n-layer
   - 07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model
 phase_requirements:
   - PH01-R02
@@ -29,6 +29,9 @@ phase: 01
 owner: coder
 estimate: M
 ---
+
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
 
 # STORY-027 — Make failed frontend bootstrap retryable
 
@@ -56,10 +59,10 @@ listeners and queued patches from the failed attempt to corrupt the successful r
 
 ## Spec inputs
 
-- `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — subscribe before snapshot, reconcile by revision,
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — subscribe before snapshot, reconcile by revision,
   and keep the active buffer ephemeral.
-- `02_Architecture/03_FRONTEND_REACT.md#store` — keep Redux a content-free disposable projection.
-- `01_Product/13_I18N.md#i18n-layer` — resolve startup error and Retry text through the bundled catalog.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#store` — keep Redux a content-free disposable projection.
+- `../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#i18n-layer` — resolve startup error and Retry text through the bundled catalog.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model` — implement PH01-T01's clean retry and stale
   patch isolation semantics.
 

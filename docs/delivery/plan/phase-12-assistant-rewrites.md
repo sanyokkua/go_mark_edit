@@ -42,9 +42,13 @@ it and click Apply.
 
 ## Questions to settle first
 
-- **Cancelling a run that is already in flight.** Cancellation is required and nothing defines the
-  bound method, the run registry, what happens when cancel and completion race, or which of the two
-  produces the terminal result. Define exactly one terminal outcome per run.
+- **Cancelling a run that is already in flight.** — *Settled 2026-07-25 by
+  `../adr/0032-run-registry-and-shutdown-ordering.md`, recorded 2026-07-28.* One bound
+  `CancelRun(runId)` against a mutex-guarded run registry. **Exactly one terminal outcome per run:** a
+  run cancelled mid-flight surfaces as `CodeCancelled` and is normalised into the same result, log and
+  event shape as one cancelled between steps, so the cancel-arrives-versus-work-completes race is
+  resolved once in one place rather than at every call site. The message reports what actually
+  **completed**, never the loop index.
 - **A proposal against a document you have since edited.** Define what the proposal is anchored to and
   what happens when the buffer has moved on. Recommendation: offer only Re-run. Do not attempt partial
   hunk application against a base that no longer exists — that is how you silently corrupt someone's

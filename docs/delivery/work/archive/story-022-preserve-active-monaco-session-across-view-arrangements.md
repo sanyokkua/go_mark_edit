@@ -3,14 +3,14 @@ id: STORY-022
 title: Preserve the active Monaco session across view arrangements
 status: done
 spec_clauses:
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#edge-cases
-  - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - 02_Architecture/03_FRONTEND_REACT.md#components
-  - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#edge-cases
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#components
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist
 phase_requirements:
   - PH01-R04
@@ -37,6 +37,9 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-022 — Preserve the active Monaco session across view arrangements
 
 ## Goal
@@ -56,14 +59,14 @@ Let users move through Editor, Split, and Preview arrangements without losing or
 - Replacing Monaco or creating a second editor/model for Preview-only.
 
 ## Spec inputs
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — retain Monaco's responsive working buffer and source-editing behavior while other views consume backend-accepted state.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view` — implement Editor-only, Split, and Preview-only as pane visibility arrangements without invalidating the editor session.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` — keep exactly one backend-owned arrangement active and synchronize the primary and secondary controls.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` — preserve cursor, selection, scroll, and arrangement for the active document while explicit arrangement intent takes precedence.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#edge-cases` — satisfy EC-DOCS-12 by keeping content-free patches from echoing text or disturbing the focused editor.
-- `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — keep the visible Monaco buffer as ephemeral scaffolding, flush it at boundaries, and reconcile only derived metadata through `state:patch`.
-- `02_Architecture/03_FRONTEND_REACT.md#components` — retain `CodeEditor` as the thin Monaco boundary and keep other components independent of Monaco internals.
-- `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62/DD-63/DD-64 without creating a second content authority or focused-editor echo.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — retain Monaco's responsive working buffer and source-editing behavior while other views consume backend-accepted state.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view` — implement Editor-only, Split, and Preview-only as pane visibility arrangements without invalidating the editor session.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` — keep exactly one backend-owned arrangement active and synchronize the primary and secondary controls.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` — preserve cursor, selection, scroll, and arrangement for the active document while explicit arrangement intent takes precedence.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#edge-cases` — satisfy EC-DOCS-12 by keeping content-free patches from echoing text or disturbing the focused editor.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — keep the visible Monaco buffer as ephemeral scaffolding, flush it at boundaries, and reconcile only derived metadata through `state:patch`.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#components` — retain `CodeEditor` as the thin Monaco boundary and keep other components independent of Monaco internals.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62/DD-63/DD-64 without creating a second content authority or focused-editor echo.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist` — preserve cursor/selection, view-mode behavior, responsive Monaco geometry, and the content-free patch invariant.
 
 ## Design constraints

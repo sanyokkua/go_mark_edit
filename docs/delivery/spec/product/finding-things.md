@@ -79,7 +79,8 @@ different behaviours for arrow keys and Enter.
 - The footer shows the key hints for the current list.
 
 Examples: open the palette, type three letters, press Enter without touching the mouse → the command
-runs.
+runs. · the same list with a result selected and `Esc` pressed → the list closes and nothing runs,
+because Enter is the only thing that activates
 
 ### An empty result says what did not match {#result-list-empty-state}
 - **If** a query matches nothing, **then** the list says so and names the query — `Nothing matches
@@ -215,5 +216,3 @@ heading 300 lines down → the caret lands on that line, not near it.
   navigation rather than search.
 
 ## Open questions
-
-*(none — ready to build)*

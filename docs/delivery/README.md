@@ -14,6 +14,20 @@ prose. It is the real specification; everything else supports it.
 
 **To know what to build next** — read `plan/roadmap.md`, then the current phase file.
 
+**To know how the process works** — read `WORKFLOW.md`: which command to run when, what each
+one leaves on disk, and what to do when something goes wrong.
+
+## The archive
+
+`docs/_archive-2026-07-28-specification/` is the specification as it stood before the
+conversion of **2026-07-28**. It is **historical and not normative** — it is kept so that a
+citation in an accepted decision record or an archived story still resolves to the text it
+was written against.
+
+Nothing in it is maintained, and where it disagrees with `spec/` or `architecture/`, those
+win. Do not write new work against it. Its retired `07_Phases/` documents were deleted
+rather than archived; that set is in git at `e1bd33f`.
+
 ## Authority
 
 `spec/` and `architecture/` are **normative**. They say what must be true. No story edits

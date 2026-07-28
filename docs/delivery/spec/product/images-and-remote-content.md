@@ -108,8 +108,9 @@ to record.
   permits.
 - The policy, the sanitiser and the allowlist are three layers, and no one of them is relied on alone.
 
-Examples: a document that defeats the sanitiser → the content security policy still blocks the outbound
-request it wanted to make.
+Examples: a document that defeats the sanitiser → the content security policy still blocks the
+outbound request it wanted to make. · a document with no remote content at all → nothing is blocked
+and nothing is reported, which is why the three layers are invisible until something tries
 
 ## What it looks like
 
@@ -177,5 +178,3 @@ request it wanted to make.
   security policy is fixed. Recorded in `../../adr/0030-sanitization-allowlist-and-csp.md`.
 
 ## Open questions
-
-*(none — ready to build)*

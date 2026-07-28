@@ -3,9 +3,9 @@ id: STORY-003
 title: Establish bootstrap logging paths and the generic single-flight gate
 status: done
 spec_clauses:
-  - 02_Architecture/02_BACKEND_GO.md#packages
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
-  - 00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
+  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#packages
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
 phase_requirements:
   - PH00-R03
   - PH00-R07
@@ -32,6 +32,8 @@ owner: coder
 estimate: L
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+
 # STORY-003 — Establish bootstrap logging paths and the generic single-flight gate
 
 ## Goal
@@ -44,8 +46,8 @@ Supply the local-only process primitives needed before database initialization a
 - Database opening (STORY-004) and DI of concrete feature repositories (STORY-005).
 
 ## Spec inputs
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — reserve F5 and respect F6.
-- `00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations` — keep logs local and omit telemetry.
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — reserve F5 and respect F6.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations` — keep logs local and omit telemetry.
 
 ## Design constraints
 - No socket, telemetry, auto-update, or single-instance lock may be introduced.

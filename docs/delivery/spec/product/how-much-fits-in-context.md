@@ -46,7 +46,9 @@ not optimistically sent · applying the margin after the decision → the margin
   meter subtracts, and max output tokens is the wire field that caps generation.
   `replyReserve ≤ maxOutputTokens < contextWindow`.
 
-Examples: an 8,192 window with a 1,024 reserve and a 15 % margin → about 6,100 tokens of usable input.
+Examples: an 8,192 window with a 1,024 reserve and a 15 % margin → about 6,100 tokens of usable
+input. · a reserve of exactly `maxOutputTokens` → valid, because the constraint is `replyReserve ≤
+maxOutputTokens`; one token above it → rejected
 
 ### For a rewrite, the reserve follows the scope {#reserve-follows-the-scope}
 - For any action whose expected output is a rewrite of its scope, the fit check is:
@@ -82,11 +84,13 @@ Examples: 1,480 tokens against 8,192 → green · 6,000 → amber · 9,000 → r
 - The proactive meter is the primary defence. The provider's own context-window error is the backstop,
   and it mostly does not fire.
 
-Examples: live testing of a comparable application set `contextWindow` to 200,000 against real Ollama
-and the request **succeeded** — the provider silently reloaded the model at its own 131,072 ceiling. The
-provider clamped; the application never knew. Across a whole test matrix the worst observed outcome was
-a clean timeout, and the reactive over-context case had to be recorded as *skipped — not reachable with
-the configured providers*.
+Examples: live testing of a comparable application set `contextWindow` to 200,000 against real
+Ollama and the request **succeeded** — the provider silently reloaded the model at its own 131,072
+ceiling. The provider clamped; the application never knew. Across a whole test matrix the worst
+observed outcome was a clean timeout, and the reactive over-context case had to be recorded as
+*skipped — not reachable with the configured providers*. · relying on the provider's error instead →
+the path ships never having been exercised, because the provider will not produce the error to
+exercise it with
 
 *So the failure you actually get is a timeout, or a silently truncated prompt and a plausible-looking
 but incomplete answer — which is worse than an error, because nothing tells anyone it happened.*
@@ -124,8 +128,9 @@ the document to keep history → the model answers about a document it was shown
 - The directive and the scoped document are placed at the **start and end** of the prompt, where models
   attend most reliably. Lower-priority history sits in the middle and is trimmed first.
 
-Examples: a directive buried in the middle of a long prompt → a small model is measurably more likely to
-ignore it.
+Examples: a directive buried in the middle of a long prompt → a small model is measurably more
+likely to ignore it. · the same directive at the start and repeated at the end → attended reliably,
+and it is the history in the middle that is trimmed first
 
 ### History is a sliding window {#history-is-a-sliding-window}
 - **When** accumulated history exceeds its allocation, the oldest turns are dropped until it fits.
@@ -139,7 +144,9 @@ dropping turns from the transcript too → the user loses a conversation they we
 - **Max agent tool iterations** caps how many budgeted round trips a single run may take. Its default is
   **8**.
 
-Examples: a model that keeps reading without converging → stopped at 8 with an honest notice.
+Examples: a model that keeps reading without converging → stopped at 8 with an honest notice. · a
+run that converges on exactly the 8th iteration → it completes normally, because the limit is a cap
+on iterations taken, not on iterations allowed to finish; a 9th is never started
 
 ### AI Context settings {#ai-context-settings}
 
@@ -224,5 +231,3 @@ answer.
   `../../adr/0009-tokenizer-context-budget.md`.
 
 ## Open questions
-
-*(none — ready to build)*

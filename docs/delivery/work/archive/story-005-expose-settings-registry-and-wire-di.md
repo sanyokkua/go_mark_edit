@@ -3,14 +3,14 @@ id: STORY-005
 title: Expose the typed settings registry and wire the two-phase application root
 status: done
 spec_clauses:
-  - 02_Architecture/02_BACKEND_GO.md#layering
-  - 02_Architecture/02_BACKEND_GO.md#di-two-phase
-  - 02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
-  - 01_Product/11_SETTINGS.md#persistence
-  - 01_Product/11_SETTINGS.md#appearance-group
-  - 01_Product/11_SETTINGS.md#markdown-group
-  - 01_Product/11_SETTINGS.md#content-privacy-group
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#layering
+  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#di-two-phase
+  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
+  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence
+  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#appearance-group
+  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#markdown-group
+  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#content-privacy-group
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
 phase_requirements:
   - PH00-R02
   - PH00-R03
@@ -36,6 +36,8 @@ owner: coder
 estimate: L
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+
 # STORY-005 — Expose the typed settings registry and wire the two-phase application root
 
 ## Goal
@@ -48,9 +50,9 @@ Make the first complete backend vertical prove the envelope, repository layering
 - Settings UI and theme values, owned by Phase 08; AI groups and providers, owned by Stage 3.
 
 ## Spec inputs
-- `02_Architecture/02_BACKEND_GO.md#di-two-phase` — construct with nil repositories and inject them in `Init(ctx)`.
-- `01_Product/11_SETTINGS.md#persistence` — use generic typed KV persistence.
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — establish F4 without a schema rewrite.
+- `../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#di-two-phase` — construct with nil repositories and inject them in `Init(ctx)`.
+- `../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence` — use generic typed KV persistence.
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — establish F4 without a schema rewrite.
 
 ## Design constraints
 - Enforce Handler → Service → Repository; handlers take no context, return `apperr.*Result`, and recover panics.

@@ -77,7 +77,9 @@ into the editor → a Markdown image link at the caret.
 - **When** a folder is dropped and **no** workspace is open, it opens as the workspace in the current
   window with no prompt.
 
-Examples: a project folder dropped on a fresh window → the tree appears.
+Examples: a project folder dropped on a fresh window → the tree appears. · the same folder dropped
+on a window that already has a workspace open → not this rule; this one covers only the case where
+none is open
 
 ### Dropping a folder when one is open prompts {#dropping-a-folder-when-one-is-open-prompts}
 - **When** a folder is dropped and a workspace is **already** open, a prompt offers:
@@ -108,12 +110,16 @@ webview on a non-file drop → guarded against explicitly, because it takes the 
 ### A path that no longer exists is reported {#dropped-path-vanished}
 - **If** a dropped path cannot be found when it is read, **then** a toast reports it and nothing opens.
 
-Examples: a file deleted between the drag starting and the drop landing → the toast.
+Examples: a file deleted between the drag starting and the drop landing → the toast. · a path that
+still exists but cannot be read → the permission failure, not this one; this rule is only for a path
+that is gone
 
 ### Dragging in makes no network request and needs no extra permission {#drops-need-no-network}
 - A drop reads a local file exactly as any other open does.
 
-Examples: dropping a file with the network off → it opens.
+Examples: dropping a file with the network off → it opens. · a dropped document that references a
+remote image → the file still opens offline, and the image itself is a separate Ask / Always allow /
+Always block decision that the drop does not make
 
 ## What it looks like
 
@@ -176,5 +182,3 @@ Examples: dropping a file with the network off → it opens.
   `../../adr/0012-drag-and-drop.md`.
 
 ## Open questions
-
-*(none — ready to build)*

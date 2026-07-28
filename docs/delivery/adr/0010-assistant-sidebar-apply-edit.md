@@ -4,6 +4,9 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 The assistant has to live somewhere in the GoMarkEdit shell and has to have a way to turn a
@@ -117,9 +120,9 @@ safety margin, reply reserve, over-context strategy, history strategy, max tool 
   the editor document API; disk only through normal save/autosave), **DD-53** (AI settings in dedicated
   AI/Providers and AI Context Settings tabs). Related: DD-39 (action catalog), DD-43 (scope), DD-44
   (multi-turn chat / custom instructions), DD-49 (streaming into the transcript).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
-  `02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams`,
-  `00_Foundation/06_IMPLEMENTATION_STAGES.md` (F1 three-region layout, F2 document accessor, F3/F7
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
+  `../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams`,
+  `../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md` (F1 three-region layout, F2 document accessor, F3/F7
   document-command seam, F8 programmatic Format/Lint, F9 reusable DiffView), and the assistant mockup
   `mockups/gomarkedit-mockup.html`.
 - Stories: Phase 12 (assistant sidebar shell, scope + token meter, edit-proposal → diff → apply via editor

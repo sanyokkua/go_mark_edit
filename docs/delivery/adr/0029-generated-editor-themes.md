@@ -4,9 +4,12 @@
 **Date:** 2026-07-25
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
-DD-29 and `01_Product/10_THEMING.md` promise a unified theme:
+DD-29 and `../../_archive-2026-07-28-specification/01_Product/10_THEMING.md` promise a unified theme:
 
 > Monaco's colours, the preview typography, code-highlight colours, and Mermaid SVG fills all read from
 > the same token set.
@@ -56,10 +59,10 @@ to make impossible.
 
 Chosen: **C**.
 
-- **One source of values.** `01_Product/10_THEMING.md` is normative; `frontend/src/ui/styles/tokens.css`
+- **One source of values.** `../../_archive-2026-07-28-specification/01_Product/10_THEMING.md` is normative; `frontend/src/ui/styles/tokens.css`
   is authored from it. A build step reads the token values and emits both the six Monaco theme objects
   and the token→`hljs-*` stylesheet.
-- **Two token families, named and separated** (`10_THEMING.md#the-two-syntax-palettes`): `--md-*` for
+- **Two token families, named and separated** (`../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#the-two-syntax-palettes`): `--md-*` for
   Markdown source in the editor, `--hl-*` for languages inside fences. The `--hl-*` family has **two
   consumers** — the preview's highlight stylesheet and the embedded-language rules of the generated
   Monaco theme. That shared family is the entire mechanism by which the two sides of a split view agree.
@@ -88,7 +91,7 @@ Chosen: **C**.
   This is a feature — a colour change is visible in review — but it will look like noise the first time.
 - Neutral: Mermaid is handled by the same principle but not the same code path; it takes
   `themeVariables` from the resolved tokens at runtime, because Mermaid re-renders per diagram anyway.
-  `10_THEMING.md#diagrams-and-maths` covers it.
+  `../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#diagrams-and-maths` covers it.
 
 ## Pros and cons of the options
 
@@ -111,10 +114,10 @@ Chosen: **C**.
 ## Links
 
 - Design decisions: DD-28, DD-29, DD-30, DD-69
-- Spec clauses: `specification/01_Product/10_THEMING.md#the-two-syntax-palettes`,
+- Spec clauses: ../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#the-two-syntax-palettes`,
   `#editor-theme`, `#diagrams-and-maths`,
-  `specification/02_Architecture/03_FRONTEND_REACT.md#theme`,
-  `specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md`
+  ../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#theme`,
+  ../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md`
 - Related: ADR-0005 (token theming — this ADR supplies the mechanism its editor half was missing)
 - Phase: `specification/07_Phases/PHASE_02_EVERY_THEME_LOOKS_RIGHT.md` (steps 2 and 3)
 - Stories: the Phase 02 stories, not yet written.

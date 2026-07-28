@@ -4,6 +4,9 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 The assistant does more than transform a single blob of text. To proofread, reformat, answer
@@ -128,11 +131,11 @@ aborts promptly — between turns or mid-tool — and `OnShutdown` cancels any i
   **DD-42** (all edits are proposals the user reviews/applies), **DD-47** (single in-flight inference
   app-wide; per-iteration cancellation). Related: DD-44 (multi-turn chat + custom instructions), DD-48
   (retry/error classification), DD-53 (iteration/time limits configurable).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
-  `02_Architecture/08_LLM_INTEGRATION.md#agent-loop`,
-  `02_Architecture/08_LLM_INTEGRATION.md#tool-registry`,
-  `02_Architecture/08_LLM_INTEGRATION.md#gate-and-cancellation`,
-  `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`.
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
+  `../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#agent-loop`,
+  `../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#tool-registry`,
+  `../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#gate-and-cancellation`,
+  `../../_archive-2026-07-28-specification/03_NonFunctional/03_SECURITY_AND_PRIVACY.md`.
 - Stories: Phase 12 (single-shot agentic run, edit-proposal → diff) and Phase 13 (multi-turn chat,
   bounded tool-call loop, tools, streaming, cancellation) per `07_Phases/00_ROADMAP.md` (authored per
   phase; none `done` at ADR time).

@@ -3,11 +3,11 @@ id: STORY-002
 title: Implement the apperr envelope and Wails-bindable result contracts
 status: done
 spec_clauses:
-  - 02_Architecture/06_ERROR_HANDLING.md#error-codes
-  - 02_Architecture/06_ERROR_HANDLING.md#wire
-  - 02_Architecture/06_ERROR_HANDLING.md#result-envelopes
-  - 02_Architecture/02_BACKEND_GO.md#error-envelope
-  - 02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind
+  - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#error-codes
+  - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#wire
+  - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#result-envelopes
+  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#error-envelope
+  - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind
 phase_requirements:
   - PH00-R02
 modules:
@@ -25,6 +25,8 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+
 # STORY-002 — Implement the apperr envelope and Wails-bindable result contracts
 
 ## Goal
@@ -37,8 +39,8 @@ Give every later Wails-bound vertical one safe, consistent error and result cont
 - Feature handlers and frontend adapters, owned by STORIES-005 and -006.
 
 ## Spec inputs
-- `02_Architecture/06_ERROR_HANDLING.md#wire` — serialize curated errors only.
-- `02_Architecture/06_ERROR_HANDLING.md#result-envelopes` — use concrete data-or-error envelopes.
+- `../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#wire` — serialize curated errors only.
+- `../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#result-envelopes` — use concrete data-or-error envelopes.
 
 ## Design constraints
 - `internal/apperr` is a bottom-of-graph package; it imports no internal package and never serializes causes.

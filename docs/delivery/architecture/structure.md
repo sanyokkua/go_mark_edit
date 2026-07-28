@@ -14,7 +14,7 @@ not a claim that it is there.
 | `internal/bootstrap` | The console logger used before the file logger exists, and `IsDevBuild()` behind a build tag | zerolog | exists |
 | `internal/logging` | zerolog configured over a lumberjack file sink; satisfies the Wails logger interface | zerolog, lumberjack | exists |
 | `internal/file` | Resolves the config, logs and database paths per OS, with a `-Dev` suffix under `wails dev` | `os` | exists |
-| `internal/db` | Opens SQLite, runs goose migrations from `migrations/`, holds the sqlc output in `store/` | `modernc.org/sqlite`, goose | exists |
+| `internal/db` | Opens SQLite and runs goose migrations from `migrations/`. Three subfolders: `migrations/` (numbered, append-only), `queries/` (`settings.sql` — the sqlc input, hand-written) and `store/` (the sqlc output, never hand-edited; `just sqlc-check` diffs it) | `modernc.org/sqlite`, goose | exists |
 | `internal/settings` | The typed settings groups over a generic key/value table | `internal/db`, `internal/apperr` | exists |
 | `internal/appmodel` | The live application model: documents and their text, tabs, workspace reference, layout | `internal/apperr`, Wails runtime | exists |
 | `internal/gate` | A single-flight guard: one long operation at a time, `apperr.Busy()` when held | *nothing* | exists, **no production caller yet** |
@@ -41,17 +41,19 @@ shared interfaces file.
 | Folder | Contains | State |
 |---|---|---|
 | `logic/adapter/` | The wrappers around the generated `wailsjs/` bindings, `unwrap()`, `guardArity()`, and the adapter singletons | exists |
-| `logic/store/` | Redux Toolkit slices projecting the Go model: `documents`, `ui`, `notifications` today | exists |
+| `logic/store/` | Redux Toolkit slices projecting the Go model — `documentsSlice`, `uiSlice`, `notificationsSlice` — plus the non-slice files they depend on: `appModelProjection.ts` (the hydrate-then-patch reducer), `appModelProjectionActions.ts`, `appModelTypes.ts`, `docViewCommands.ts` and `index.ts` | exists |
 | `logic/hooks/` | `useSyncedBuffer`, `useDocumentCommands`, `useLivePreview` | exists |
 | `logic/markdown/` | `renderer.ts` — the remark/rehype plugin set and the component overrides | exists |
 | `logic/utils/` | `parseError` and small helpers | exists |
-| `ui/styles/` | `tokens.css` and `base.css` | exists — **62 layout tokens, no colour tokens yet** |
+| `ui/styles/` | `tokens.css` and `base.css` | exists — 108 tokens across 8 palette blocks, 71 colour literals; the ten in `../plan/KNOWN_ISSUES.md` item 6 are still missing |
 | `ui/primitives/` | `Segmented`, `Toast`, `ViewMenu` — Radix wrappers | exists |
 | `ui/components/` | `CodeEditor`, `MarkdownView`, `StatusBar`, `ViewModeToggle` — presentational, no store imports | exists |
-| `ui/widgets/` | `AppShell`, `EditorView`, `PreviewView`, `StartupFailure` — these read the store and dispatch commands | exists |
+| `ui/widgets/` | `AppShell`, `EditorView`, `PreviewView`, `StartupFailure`, and from STORY-058 `SettingsMenu`, `AppearanceDialog` and `AppearanceControls`; plus `editorSession.ts`, the document-bound editor command seam — these read the store and dispatch commands | exists |
 | `i18n/` | `catalog.ts`, `index.ts`, `locales/en.json` | exists |
 | `dev/bridge-mock/` | A fake Wails bridge so `just dev-ui` runs with no Go process | exists |
-| `logic/theme/` | `resolveEffectiveTheme`, `applyTheme`, `initTheme`, `watchSystemTheme` | planned — Phase 02 |
+| `ui/fonts/` | `Roboto-Latin.woff2` and `Inter-Latin.woff2` — the bundled subsets, referenced by `@font-face` in `tokens.css`. Nothing is fetched at runtime | exists |
+| `test/` | Jest scaffolding, not tests: `setup.ts`, `i18nShim.ts`, `styleMock.ts` | exists |
+| `logic/theme/` | `theme.ts` — normalisation, resolution and the root-attribute applier | exists — STORY-058. `watchSystemTheme` is STORY-060 |
 | `logic/format/`, `logic/lint/` | Format, Compact and lint as plain functions | planned — Phase 04 and Phase 09 |
 | `logic/llm/` | Scope resolution, token-meter formatting, edit-proposal to diff mapping | planned — Phases 11–13 |
 | `ui/widgets/assistant/` | The right-hand assistant sidebar | planned — Phases 11–13 |
@@ -59,6 +61,15 @@ shared interfaces file.
 **Dependency direction.** `ui/widgets` may import `ui/components`, `ui/primitives`, `logic/store` and
 `logic/adapter`. `ui/components` and `ui/primitives` may import neither the store nor the adapter — they
 take props. Nothing outside `logic/adapter/` imports `wailsjs/`.
+
+### Frontend folders outside `frontend/src/`
+
+| Folder | Contains | State |
+|---|---|---|
+| `frontend/e2e/` | The Playwright journeys — `core-editor.test.ts` and its snapshots — run by `just e2e-test`. Against the mock bridge, which is `../plan/KNOWN_ISSUES.md` item 3 | exists |
+| `frontend/scripts/` | `archtest.mjs`, the frontend half of `just archtest`; `archtest-allowlist.json`, which is never added to; `ensure-dist-placeholder.mjs` | exists |
+| `frontend/wailsjs/` | Generated by `just gen`. Never hand-edited; `just gen-check` fails on drift | exists, generated |
+| `frontend/dist/` | The built bundle, embedded into the binary by `main.go`. Gitignored, and produced by `just frontend-build` — which is why `just check` and `scripts/baseline.sh` run it before the tests | generated |
 
 ## Where a new thing goes
 

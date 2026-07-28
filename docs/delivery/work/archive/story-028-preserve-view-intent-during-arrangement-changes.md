@@ -3,9 +3,9 @@ id: STORY-028
 title: Preserve the latest editor view intent during arrangement changes
 status: done
 spec_clauses:
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
-  - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
   - 07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model
 phase_requirements:
   - PH01-R04
@@ -36,6 +36,9 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-028 — Preserve the latest editor view intent during arrangement changes
 
 ## Goal
@@ -58,11 +61,11 @@ is selected, even while view synchronization or backend patches are pending or f
 
 ## Spec inputs
 
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` — synchronize arrangement controls through one
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` — synchronize arrangement controls through one
   backend-owned accepted state.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` — preserve each document's latest cursor,
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` — preserve each document's latest cursor,
   selection, scroll, and arrangement.
-- `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — send commands, await acknowledgement, and reconcile
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — send commands, await acknowledgement, and reconcile
   only content-free backend patches.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model` — satisfy PH01-T03/T04 ordering, retry, and
   stale-completion behavior.

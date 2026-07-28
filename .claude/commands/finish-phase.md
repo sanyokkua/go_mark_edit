@@ -17,12 +17,12 @@ just check
 which is `just gen-check`, `just frontend-build`, `just fmt-check`, `just lint`, `just typecheck`,
 `just frontend-test`, `just go-vet`, `just archtest`, `just go-test`.
 
-Then `just e2e-test` for the browser journeys.
+Then `just e2e-test` for the browser journeys, and `just spec-check` for the specification tree.
 
 Verbatim. Not "all passing" — the actual output, so the user can see what ran and what did not.
 
-`just package` will fail until Phase 08 builds it. That is deliberate: naming a command that does not
-exist is how a Definition of Done certifies something false.
+`just package` exits 1 until Phase 08 builds it, and prints why. That is deliberate: naming a command
+that does not exist is how a Definition of Done certifies something false.
 
 ## 2. Open every named test
 
@@ -38,6 +38,19 @@ A test count is not evidence. Say so plainly if you find any of these:
 - a test that reads a document: story text, phase text, a decision record, the `justfile`, CI
   configuration or anything under `.claude/` are not test subjects
 - a happy path with no precondition that could fail for an interesting reason
+
+## 2a. Check every story was actually finished
+
+For each story in this phase, open its file and confirm:
+
+- it is not still marked `**STATUS:** stub`
+- its Definition of Done has **no blank rows** — a blank row is a step that was skipped, and the rows
+  most often blank are the walkthrough and the surface check
+- **its baseline recorded no gate that exited non-zero with zero findings.** Read
+  `docs/delivery/work/baselines/story-NNN.exit` directly; a line containing `=UNRELIABLE=` means every
+  verify run on that story compared empty against empty and printed PASS regardless.
+
+A story whose gates never ran has not been verified, whatever its report said.
 
 ## 3. Walk "Done when" on a real build
 
@@ -73,3 +86,13 @@ Skipping a case is a result — record it with the reason.
 
 **If something is not done, the answer is "not finished" — not "finished with caveats".** A phase that
 ships with an asterisk teaches everyone that the gate is negotiable.
+
+Then end with exactly this:
+
+> **Next:** if the verdict is finished, run `/reconcile $ARGUMENTS` before starting the next phase.
+> Drift is cheapest to resolve while the phase is still fresh.
+>
+> If the verdict is not finished, plan a story for what does not hold — `/plan-story <NNN>` — build
+> it, and run `/finish-phase $ARGUMENTS` again.
+>
+> Full workflow: `docs/delivery/WORKFLOW.md`

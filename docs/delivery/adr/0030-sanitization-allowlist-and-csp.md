@@ -4,13 +4,16 @@
 **Date:** 2026-07-25
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 Three accepted documents require the rendered preview to be sanitized "according to the security
-level" — `01_Product/05_RENDERING_AND_EXTENSIONS.md`, `01_Product/09_ASSETS_AND_SECURITY.md`, and
+level" — `../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md`, `../../_archive-2026-07-28-specification/01_Product/09_ASSETS_AND_SECURITY.md`, and
 `EC-RENDER-5`. **No document says what the levels are.** There is no allowlist of tags, attributes or
 URL schemes, no Content-Security-Policy directive list anywhere in the specification, and no
-sanitization package in `05_Dependencies/02_FRONTEND_DEPENDENCIES.md`.
+sanitization package in `../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md`.
 
 `PHASE_06_RICH_AND_SAFE.md` names this as a blocking hole rather than a disagreement, and it is right
 to: sanitization is in the render pipeline from its first line, so it cannot be added afterwards.
@@ -49,7 +52,7 @@ Chosen: **C** — with the explicit consequence that "level" stops being a user-
   `<script>`, which is both safe and honest.
 - **Full permits a bounded subset of raw HTML**, and only at Full. This is the only level that adds
   `rehype-raw` followed by `rehype-sanitize`, in that order.
-- **The Full allowlist is enumerated in `01_Product/19_SANITIZATION_AND_CSP.md`**, expressed as the
+- **The Full allowlist is enumerated in `../../_archive-2026-07-28-specification/01_Product/19_SANITIZATION_AND_CSP.md`**, expressed as the
   library's default schema plus a written set of additions. It permits inline and block formatting
   elements, tables, images, links, and `details`/`summary`. It permits **no** `script`, `style`,
   `iframe`, `object`, `embed`, `form`, `input`, `base` or `srcdoc`; **no** `on*` event attribute; and
@@ -64,7 +67,7 @@ Chosen: **C** — with the explicit consequence that "level" stops being a user-
 - **KaTeX is governed by `trust: false`**, which is its default and which is what stops `\href`,
   `\url` and `\includegraphics` from emitting URLs the sanitizer never sees.
 - **A single Content-Security-Policy applies to the whole app**, at every standard, enumerated in
-  `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`. It is not derived from the standard, because the
+  `../../_archive-2026-07-28-specification/03_NonFunctional/03_SECURITY_AND_PRIVACY.md`. It is not derived from the standard, because the
   standard is a per-document setting and the CSP is a per-process one. It must include
   `worker-src 'self' blob:` — Monaco's editor worker does not load without it, and discovering that
   during a phase is worse than writing it down now.
@@ -103,11 +106,11 @@ Chosen: **C** — with the explicit consequence that "level" stops being a user-
 ## Links
 
 - Design decisions: DD-14, DD-19 (standard → plugin set), DD-21, DD-22 (remote content policy)
-- Spec clauses: `specification/01_Product/19_SANITIZATION_AND_CSP.md` (new, owns the detail),
-  `specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization`,
-  `specification/01_Product/04_MARKDOWN_STANDARDS.md`,
-  `specification/01_Product/09_ASSETS_AND_SECURITY.md`,
-  `specification/03_NonFunctional/03_SECURITY_AND_PRIVACY.md`,
-  `specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md`
+- Spec clauses: ../../_archive-2026-07-28-specification/01_Product/19_SANITIZATION_AND_CSP.md` (new, owns the detail),
+  ../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization`,
+  ../../_archive-2026-07-28-specification/01_Product/04_MARKDOWN_STANDARDS.md`,
+  ../../_archive-2026-07-28-specification/01_Product/09_ASSETS_AND_SECURITY.md`,
+  ../../_archive-2026-07-28-specification/03_NonFunctional/03_SECURITY_AND_PRIVACY.md`,
+  ../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md`
 - Phase: `specification/07_Phases/PHASE_06_RICH_AND_SAFE.md` — this closes its blocking question.
 - Stories: the Phase 06 stories, not yet written.

@@ -3,11 +3,11 @@ id: STORY-030
 title: Complete the frontend document command seam
 status: done
 spec_clauses:
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - 02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - ../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
   - 07_Phases/PHASE_05_FORMAT_LINT.md#cross-phase-contracts
   - 07_Phases/PHASE_12_ACTIONS_PROOFREAD_REFORMAT.md#cross-phase-contracts
 phase_requirements:
@@ -39,6 +39,9 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-030 — Complete the frontend document command seam
 
 ## Goal
@@ -62,15 +65,15 @@ arrangement, with explicit outcomes when that editor session is absent, detached
 
 ## Spec inputs
 
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open` — complete F2/F3 identity-bound content
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open` — complete F2/F3 identity-bound content
   access through a first-class document/session seam.
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open` — expose F7 selection,
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open` — expose F7 selection,
   replace-range, and replace-all as the stable mutation surface.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — operate on the responsive active Monaco working
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — operate on the responsive active Monaco working
   copy and preserve selection/undo behavior.
-- `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — treat the working copy as noncanonical until
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — treat the working copy as noncanonical until
   normal buffer synchronization is acknowledged.
-- `02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams` — prevent later sibling consumers from
+- `../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams` — prevent later sibling consumers from
   reaching into Monaco.
 - `07_Phases/PHASE_05_FORMAT_LINT.md#cross-phase-contracts` — support PH05 transforms in all arrangements.
 - `07_Phases/PHASE_12_ACTIONS_PROOFREAD_REFORMAT.md#cross-phase-contracts` — provide the identity-safe apply

@@ -4,6 +4,9 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 Before the assistant, GoMarkEdit's network policy was stated absolutely: the app makes **zero** network
@@ -133,10 +136,10 @@ plainly so the user always knows when and where their text can go.
   the configured provider; telemetry/auto-update remain never; a local provider keeps everything
   on-device). Related: DD-22 (remote document-asset content policy), DD-33 (no telemetry; local logs only),
   DD-34 (no auto-update).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations`,
-  `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
-  `02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams` (F6 — offline scoping),
-  `03_NonFunctional/04_OFFLINE.md`, `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`,
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations`,
+  `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
+  `../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams` (F6 — offline scoping),
+  `../../_archive-2026-07-28-specification/03_NonFunctional/04_OFFLINE.md`, `../../_archive-2026-07-28-specification/03_NonFunctional/03_SECURITY_AND_PRIVACY.md`,
   `.claude/rules/offline-and-privacy.md`.
 - Stories: Phase 11 (LLM foundation — the first stage that opens the provider socket) and the pre-assistant
   offline-invariant stories (Phases 00–10) that must remain zero-network, per `07_Phases/00_ROADMAP.md`

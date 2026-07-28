@@ -32,7 +32,8 @@ encoding, the line ending, whether autosave is on, and the number of lint proble
 - Rendering happens in the preview pane and in reading mode.
 
 Examples: typing `**bold**` → the editor shows `**bold**` with the asterisks coloured as
-`--md-strong`, and the preview shows **bold**.
+`--md-strong`, and the preview shows **bold**. · the same document in reading mode → rendered, with
+no editor and no asterisks; the source is never replaced in place
 
 *Why:* a Markdown editor that hides the syntax has to guess what the user meant when the two disagree,
 and the syntax is the thing being edited.
@@ -215,7 +216,9 @@ need to duplicate an always-visible control the user is already looking at.
 - Line numbers on. Word wrap off. Arrangement Split. Editor font size 14 px, selectable from 13, 14 and
   16 px.
 
-Examples: a first launch → Split, numbered lines, no wrap.
+Examples: a first launch → Split, numbered lines, no wrap. · the editor font size set to 16 px →
+accepted, because it is the largest of the three offered; 15 px → not offered at all, the control
+has exactly 13, 14 and 16
 
 ## What it looks like
 
@@ -294,5 +297,3 @@ Examples: a first launch → Split, numbered lines, no wrap.
   find; this file owns the editor theme the widget is coloured from.
 
 ## Open questions
-
-*(none — ready to build)*

@@ -13,8 +13,10 @@ the token vocabulary and generated assets that every later surface and renderer 
 
 ## Why now, and not later
 
-`frontend/src/ui/styles/tokens.css` has 62 tokens and not one of them is a colour. Every surface built
-before the palette exists gets restyled afterwards.
+When this phase was written, `frontend/src/ui/styles/tokens.css` carried layout values and not one
+colour. Every surface built before the palette exists gets restyled afterwards. STORY-058 has since
+taken it to 108 tokens with 71 colour literals across eight palette blocks; STORY-062 adds the ten it
+left out.
 
 More specifically: Monaco cannot read CSS custom properties — it needs literal colours handed to
 `monaco.editor.defineTheme()` — so a unified editor and preview palette is not something that happens
@@ -59,9 +61,12 @@ Phase 06 activates that stylesheet when it introduces preview syntax highlightin
 
 ## Also fix here
 
-- **Bundle the fonts.** `../spec/product/themes-and-appearance.md` gives Material Roboto and Minimal Inter. Neither is in the
-  bundled-asset list, and nothing may be fetched at runtime. Bundle them, or drop the per-theme font
-  claim — silently falling back to the system font makes two of the three themes look the same.
+- **Bundle the fonts.** ~~`../spec/product/themes-and-appearance.md` gives Material Roboto and Minimal
+  Inter. Neither is in the bundled-asset list, and nothing may be fetched at runtime.~~ **Done in
+  STORY-058 (`c8d88fe`):** `frontend/src/ui/fonts/Roboto-Latin.woff2` (36.6 KB) and
+  `Inter-Latin.woff2` (47.3 KB) ship as subsets, declared as `@font-face` at the top of `tokens.css`
+  with no URL and no runtime fetch. The reason it mattered stands: silently falling back to the
+  system font makes two of the three themes look the same.
 
 ## Where the details are
 

@@ -4,6 +4,9 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 Three closely related frontend capabilities must be pinned together because they share the same
@@ -106,10 +109,10 @@ recorded here, not adopted now.
 - Design decisions: DD-16 (Format + conservative Compact via Prettier/remark), DD-19 (react-markdown +
   remark/rehype + Mermaid override), DD-23 (PDF via webview print of a print-scoped view). Related:
   DD-14 (standards), DD-17 (remark-lint), DD-24 (styled vs clean PDF), DD-32 (offline).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#5-formatting-linting--standards`,
-  `00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets`,
-  `01_Product/04_MARKDOWN_STANDARDS.md`, `01_Product/05_RENDERING_AND_EXTENSIONS.md`,
-  `01_Product/06_FORMAT_AND_LINT.md`, `01_Product/07_EXPORT.md`,
-  `05_Dependencies/02_FRONTEND_DEPENDENCIES.md`.
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#5-formatting-linting--standards`,
+  `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets`,
+  `../../_archive-2026-07-28-specification/01_Product/04_MARKDOWN_STANDARDS.md`, `../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md`,
+  `../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md`, `../../_archive-2026-07-28-specification/01_Product/07_EXPORT.md`,
+  `../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md`.
 - Stories: Phase 06 rendering/extensions stories, Phase 10 format/lint stories, and Phase 10 PDF-export
   stories, per `07_Phases/00_ROADMAP.md` (authored per phase; none `done` at ADR time).

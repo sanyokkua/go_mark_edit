@@ -34,11 +34,40 @@ Versions are the resolved ones in `frontend/package-lock.json`; the caret range 
 | HTML sanitising | `rehype-sanitize` | 6.0.0 | Always in the pipeline; see `rules.md#rendered-html-is-sanitised`. |
 | State | `@reduxjs/toolkit` + `react-redux` | 2.12.0 + 9.3.0 | The store is a projection; see `rules.md#store-is-a-projection`. |
 | Accessible primitives | `@radix-ui/react-dropdown-menu`, `@radix-ui/react-toast` | 2.1.21, 1.2.20 | Behaviour and keyboard handling from Radix; every visual value from tokens. |
-| Unit tests | Jest + `ts-jest` + Testing Library | 30.4.2, 29.4.0, 16.3.0 | `jest.config.mjs`, jsdom environment. |
+| Unit tests | Jest + `ts-jest` + `@testing-library/react` | 30.4.2, 29.4.11, 16.3.2 | `jest.config.mjs`, jsdom environment. `package.json` carries `^29.4.0` and `^16.3.0`; those are the **floors the range allows**, not what resolves. |
 | Browser tests | `@playwright/test` | 1.61.1 | `playwright.config.ts`; run by `just verify-ui` and `just e2e-test`. |
 | Linter | ESLint + `typescript-eslint` | 10.7.0 + 8.64.0 | `frontend/eslint.config.js`. `dist/` and `wailsjs/` are ignored. |
 | Formatter | Prettier | 3.9.5 | The single formatter for `.ts`, `.tsx` and `.css`. |
 | Localisation | hand-written, `frontend/src/i18n/` | — | There is no i18n library. `t()` reads `frontend/src/i18n/locales/en.json` through `catalog.ts`. Adding a language means adding a JSON file. |
+
+### Bundled fonts
+
+Not npm dependencies — vendored binary files, committed to the repository and referenced by
+`@font-face` at the top of `frontend/src/ui/styles/tokens.css` with a relative path and no URL.
+Nothing about them is fetched at runtime; see `../spec/constraints.md#every-asset-is-bundled`.
+
+| Face | File | Size | Used by |
+|---|---|---|---|
+| Roboto (Latin subset) | `frontend/src/ui/fonts/Roboto-Latin.woff2` | 36.6 KB | `--font` in the Material palette, as `GME Roboto`, weight range 400–700 |
+| Inter (Latin subset) | `frontend/src/ui/fonts/Inter-Latin.woff2` | 47.3 KB | `--font` in the Minimal palette, as `GME Inter`, weight range 400–700 |
+
+Liquid Glass uses the system stack and bundles nothing. Both files landed in STORY-058 (`c8d88fe`).
+There is no build step that produces them: replacing one means replacing the committed file.
+
+### The frontend gate's own tooling
+
+These do not ship in the binary. They are what `just lint`, `just typecheck`, `just test` and
+`just frontend-build` actually run, and a version drift here changes what the gates catch.
+
+| Concern | Package | Version | Notes |
+|---|---|---|---|
+| ESLint flat config | `@eslint/js` | 10.0.1 | The recommended rule set `frontend/eslint.config.js` extends. |
+| React lint rules | `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh` | 7.1.1, 0.5.3 | Hooks correctness and fast-refresh safety. |
+| Global declarations | `globals` | 17.7.0 | Supplies the browser and Node global sets to the flat config. |
+| Test environment | `jest-environment-jsdom` | 30.4.1 | The DOM `tokens.test.ts` reads computed custom properties from. |
+| DOM matchers | `@testing-library/jest-dom` | 6.9.1 | `toBeEnabled`, `toHaveAccessibleName` and the rest. |
+| Vite React plugin | `@vitejs/plugin-react` | 5.2.0 | JSX transform and fast refresh for `just dev-ui`. |
+| Type stubs | `@types/react`, `@types/react-dom`, `@types/jest` | 19.2.17, 19.2.3, 30.0.0 | |
 
 ## Build, hooks and CI
 

@@ -3,11 +3,11 @@ id: STORY-015
 title: Compose the split editor and preview with backend-owned view modes
 status: done
 spec_clauses:
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
-  - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
   - mockups/README.md#role-in-the-spec
 phase_requirements:
@@ -37,6 +37,9 @@ owner: coder
 estimate: L
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-015 — Compose the split editor and preview with backend-owned view modes
 
 ## Goal
@@ -57,11 +60,11 @@ Let users switch the active document among source-only, side-by-side, and render
 - Live accepted-snapshot preview synchronization and the status bar, owned by STORY-017 and STORY-016.
 
 ## Spec inputs
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view` — compose evenly sized responsive Editor and Preview panes, prevent both from being hidden, and retain pane headers/badges.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` — provide a primary segmented control with exactly one active Editor, Split, or Preview arrangement.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` — read document arrangement from the backend projection and change it through `SetDocView`.
-- `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — treat the UI action as a command and wait for the backend `state:patch` before rendering the new arrangement.
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — mount in the F1 center region without restructuring the left/right shell or building Stage-3 assistant behavior.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view` — compose evenly sized responsive Editor and Preview panes, prevent both from being hidden, and retain pane headers/badges.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` — provide a primary segmented control with exactly one active Editor, Split, or Preview arrangement.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` — read document arrangement from the backend projection and change it through `SetDocView`.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — treat the UI action as a command and wait for the backend `state:patch` before rendering the new arrangement.
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — mount in the F1 center region without restructuring the left/right shell or building Stage-3 assistant behavior.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#scope` — compose the Phase-01 split layout and segmented view control while leaving broader menu/settings UI for later phases.
 - `mockups/README.md#role-in-the-spec` — treat the canonical mockup as the binding structural/visual reference while behavioral clauses remain authoritative.
 

@@ -226,9 +226,11 @@ Examples: reduced motion on → menus appear without a transition and everything
 - Out-of-range values are **rejected with the range in the message**, never clamped.
 - The control, the validator and the seeded default all read that one statement.
 
-Examples: three copies of a range → an interface offering a value the backend rejects, which is a real
-defect from a reviewed application where a control offered 1–3600 against a validator accepting 1–600
-and a seeder writing 60.
+Examples: three copies of a range → an interface offering a value the backend rejects, which is a
+real defect from a reviewed application where a control offered 1–3600 against a validator accepting
+1–600 and a seeder writing 60. · a validator accepting 1–600 given exactly `600` → accepted, because
+the bound is inclusive; given `601` → rejected with the range in the message, never clamped down to
+600
 
 *Verified by:* type an out-of-range value and read the rejection.
 

@@ -4,6 +4,9 @@
 **Date:** 2026-07-11
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 GoMarkEdit should let a user **drag files and folders from the OS onto the window** to open them — a file
@@ -75,8 +78,8 @@ never navigated; the real paths arrive via the Wails event, not the browser drop
 
 - Design decisions: DD-56, DD-57, DD-58, DD-59. Related: DD-06 (workspace), DD-08 (multi-instance),
   DD-25–DD-27 (OS open routing / default open mode), DD-32 (no network).
-- Spec clauses: `01_Product/03_FILES_TABS_WORKSPACE.md#drag-and-drop-open`,
-  `02_Architecture/04_WAILS_INTEGRATION.md#file-drop`, `02_Architecture/01_MODULE_INVENTORY.md`
+- Spec clauses: `../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#drag-and-drop-paste-and-inserting-images`,
+  `../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#file-drop`, `../../_archive-2026-07-28-specification/02_Architecture/01_MODULE_INVENTORY.md`
   (`internal/fileassoc/`, `logic/hooks/` `useFileDrop`, `ui/components/` `DropOverlay`).
 - Stories: Phase 07 drag-and-drop tasks (STORY-096 backend routing, STORY-097 overlay + wiring), per
   `07_Phases/PHASE_07_A_FOLDER_OF_NOTES.md`; authored per phase (none built at ADR time).

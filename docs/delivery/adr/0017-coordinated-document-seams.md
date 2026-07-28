@@ -5,6 +5,8 @@
 **Deciders:** project owner, architect
 **Supersedes:** (none)
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+
 ## Context and problem statement
 
 Later asset, format, and assistant consumers need a coherent active-document identity, path, canonical
@@ -80,9 +82,9 @@ other.
 ## Links
 
 - Design decisions: DD-41, DD-42, DD-62, DD-63, DD-64
-- Spec clauses: `specification/02_Architecture/02_BACKEND_GO.md#application-model`,
-  `specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`,
-  `specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open`,
-  `specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open`,
-  `specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams`
+- Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model`,
+  ../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`,
+  ../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open`,
+  ../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open`,
+  ../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams`
 - Stories: STORY-029, STORY-030

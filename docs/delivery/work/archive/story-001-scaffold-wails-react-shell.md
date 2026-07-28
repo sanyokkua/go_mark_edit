@@ -3,12 +3,12 @@ id: STORY-001
 title: Scaffold the Wails v2 app and embedded React frontend so a blank window boots
 status: done
 spec_clauses:
-  - 02_Architecture/01_SYSTEM_ARCHITECTURE.md#process-model
-  - 02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries
-  - 02_Architecture/04_WAILS_INTEGRATION.md#embed
-  - 00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework
-  - 05_Dependencies/01_GO_DEPENDENCIES.md#1-runtime-dependencies
-  - 05_Dependencies/01_GO_DEPENDENCIES.md#5-go-version
+  - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#process-model
+  - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries
+  - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#embed
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework
+  - ../../../_archive-2026-07-28-specification/05_Dependencies/01_GO_DEPENDENCIES.md#1-runtime-dependencies
+  - ../../../_archive-2026-07-28-specification/05_Dependencies/01_GO_DEPENDENCIES.md#5-go-version
 phase_requirements:
   - PH00-R01
 modules:
@@ -28,6 +28,8 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+
 # STORY-001 — Scaffold the Wails v2 app and embedded React frontend so a blank window boots
 
 ## Goal
@@ -40,8 +42,8 @@ Provide a real, empty desktop application that later Phase 00 verticals can comp
 - Error envelopes (STORY-002), runtime services, settings, and all document behaviour.
 
 ## Spec inputs
-- `02_Architecture/04_WAILS_INTEGRATION.md#embed` — embed `frontend/dist` in the native binary.
-- `00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework` — use Wails v2 and pure Go.
+- `../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#embed` — embed `frontend/dist` in the native binary.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework` — use Wails v2 and pure Go.
 
 ## Design constraints
 - Keep concrete wiring in `internal/application` plus `main.go`; use no CGO, network call, telemetry, or auto-update.

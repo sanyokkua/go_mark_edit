@@ -1,0 +1,25 @@
+just go-test
+go test -race ./internal/... .
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	(cached)
+?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
+ok  	github.com/sanyokkua/go_mark_edit	1.645s
+just frontend-test
+npm --prefix frontend test -- --passWithNoTests
+
+> frontend@0.0.0 test
+> jest --passWithNoTests
+
+
+Test Suites: 27 passed, 27 total
+Tests:       100 passed, 100 total
+Snapshots:   0 total
+Time:        10.051 s
+Ran all test suites.

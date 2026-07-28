@@ -3,12 +3,12 @@ id: STORY-021
 title: Serialize per-document view commands by latest intent
 status: done
 spec_clauses:
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
-  - 02_Architecture/03_FRONTEND_REACT.md#adapter-layer
-  - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - 03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
-  - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
   - PH01-R07
@@ -32,6 +32,9 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-021 — Serialize per-document view commands by latest intent
 
 ## Goal
@@ -52,12 +55,12 @@ Ensure each document's cursor, selection, and explicit view-arrangement changes 
 - Optimistic Redux view mutations or a frontend-authoritative arrangement fallback.
 
 ## Spec inputs
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` — make the primary segmented control and secondary pane toggles converge on one backend-owned arrangement.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` — preserve each document's cursor, selection, scroll, and arrangement, with explicit user arrangement changes taking precedence.
-- `02_Architecture/03_FRONTEND_REACT.md#adapter-layer` — keep guarded/unwrapped Wails calls, serialization, and failure toasting inside the adapter singleton.
-- `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — send UI intents as backend commands and render only the resulting `state:patch`; never make the queue a second source of truth.
-- `03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness` — coalesce cursor/selection traffic off the immediate caret path while retaining flush boundaries.
-- `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62/DD-63/DD-64: backend-owned per-document state, disposable projection, and a responsive working editor copy.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` — make the primary segmented control and secondary pane toggles converge on one backend-owned arrangement.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` — preserve each document's cursor, selection, scroll, and arrangement, with explicit user arrangement changes taking precedence.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer` — keep guarded/unwrapped Wails calls, serialization, and failure toasting inside the adapter singleton.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — send UI intents as backend commands and render only the resulting `state:patch`; never make the queue a second source of truth.
+- `../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness` — coalesce cursor/selection traffic off the immediate caret path while retaining flush boundaries.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62/DD-63/DD-64: backend-owned per-document state, disposable projection, and a responsive working editor copy.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#scope` — remediate the Phase-01 `SetDocView` command path without expanding into file, tab, or durable-state work.
 
 ## Design constraints

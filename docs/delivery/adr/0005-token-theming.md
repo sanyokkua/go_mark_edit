@@ -4,6 +4,9 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 GoMarkEdit ships **three themes** — **Liquid Glass**, **Material**, **Minimal** — each with **Auto /
@@ -99,8 +102,8 @@ the model the mockups render across 3 themes × auto/light/dark.
 - Design decisions: DD-28 (three built-in themes; no user-authored themes), DD-29 (Auto/Light/Dark;
   Auto follows OS live; unified editor+preview theme), DD-30 (one layout; theme = token layer keyed by
   `data-theme` × `data-mode`; reading mode hides all chrome).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux`, `01_Product/10_THEMING.md`,
-  `01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `02_Architecture/03_FRONTEND_REACT.md`,
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux`, `../../_archive-2026-07-28-specification/01_Product/10_THEMING.md`,
+  `../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md`,
   `mockups/gomarkedit-mockup.html`, `mockups/README.md`.
 - Stories: Phase 02 theming stories and Phase 03 settings stories (three themes × auto/light/dark, unified theme, tokens),
   per `07_Phases/00_ROADMAP.md` (authored per phase; none `done` at ADR time).

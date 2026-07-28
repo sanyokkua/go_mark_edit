@@ -3,23 +3,23 @@ id: STORY-009
 title: Complete Stage-1 settings and fail startup safely
 status: done
 spec_clauses:
-  - 01_Product/11_SETTINGS.md#appearance-group
-  - 01_Product/11_SETTINGS.md#markdown-group
-  - 01_Product/11_SETTINGS.md#content-privacy-group
-  - 01_Product/11_SETTINGS.md#persistence
-  - 01_Product/11_SETTINGS.md#defaults
-  - 01_Product/11_SETTINGS.md#edge-cases
-  - 01_Product/10_THEMING.md#no-custom-themes
-  - 01_Product/10_THEMING.md#edge-cases
-  - 01_Product/04_MARKDOWN_STANDARDS.md#standard-setting
-  - 01_Product/06_FORMAT_AND_LINT.md#on-save
-  - 01_Product/06_FORMAT_AND_LINT.md#canonical-style
-  - 02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
-  - 02_Architecture/02_BACKEND_GO.md#layering
-  - 02_Architecture/02_BACKEND_GO.md#error-envelope
-  - 02_Architecture/02_BACKEND_GO.md#di-two-phase
-  - 02_Architecture/04_WAILS_INTEGRATION.md#lifecycle
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
+  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#appearance-group
+  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#markdown-group
+  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#content-privacy-group
+  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence
+  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#defaults
+  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#edge-cases
+  - ../../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#no-custom-themes
+  - ../../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#edge-cases
+  - ../../../_archive-2026-07-28-specification/01_Product/04_MARKDOWN_STANDARDS.md#standard-setting
+  - ../../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md#on-save
+  - ../../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md#canonical-style
+  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
+  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#layering
+  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#error-envelope
+  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#di-two-phase
+  - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#lifecycle
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
 phase_requirements:
   - PH00-R03
   - PH00-R05
@@ -47,6 +47,8 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+
 # STORY-009 — Complete Stage-1 settings and fail startup safely
 
 ## Goal
@@ -69,20 +71,20 @@ Finish the Stage-1 settings contract so every required Appearance and Markdown p
 - Any new architecture decision; ADR-0004 and ADR-0006 already settle the persistence and multi-instance model.
 
 ## Spec inputs
-- `01_Product/11_SETTINGS.md#appearance-group` — expose Theme, Color mode, and Default open mode with the specified value sets.
-- `01_Product/11_SETTINGS.md#markdown-group` — expose Standard, Format on save, Lint on save, Bullet marker, Emphasis, and Heading style with the specified value sets.
-- `01_Product/11_SETTINGS.md#content-privacy-group` — retain Ask/Allow/Block as the typed external-content policy group without adding adjustable network or telemetry settings.
-- `01_Product/11_SETTINGS.md#persistence` — use the generic typed SQLite KV table, with no migration for new scalar preferences, under the multi-instance WAL policy.
-- `01_Product/11_SETTINGS.md#defaults` — apply the exact Stage-1 defaults for Appearance, Markdown, and Content privacy.
-- `01_Product/11_SETTINGS.md#edge-cases` — use safe scalar defaults or a hard startup failure for corrupt/newer persisted state (EC-SET-2).
-- `01_Product/10_THEMING.md#no-custom-themes` and `01_Product/10_THEMING.md#edge-cases` — restrict Theme and Color mode to the shipped values and fall back to Material/Auto for invalid or missing persisted values (EC-THEME-3).
-- `01_Product/04_MARKDOWN_STANDARDS.md#standard-setting` — default the persisted Markdown standard to GFM.
-- `01_Product/06_FORMAT_AND_LINT.md#on-save` — default Format on save to Off and Lint on save to On.
-- `01_Product/06_FORMAT_AND_LINT.md#canonical-style` — default the formatting/lint style to bullet `-`, emphasis `_`, and ATX headings.
-- `02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema` — use typed accessors over dotted keys in the existing `settings(key,value,type)` schema.
-- `02_Architecture/02_BACKEND_GO.md#layering`, `02_Architecture/02_BACKEND_GO.md#error-envelope`, and `02_Architecture/02_BACKEND_GO.md#di-two-phase` — keep settings in Handler → Service → Repository form, return concrete envelopes at the bridge, and inject persistence only after the database opens.
-- `02_Architecture/04_WAILS_INTEGRATION.md#lifecycle` — on `Init(ctx)` failure, show `runtime.MessageDialog` and exit non-zero instead of continuing startup.
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open` — satisfy F4 with complete Stage-1 Appearance/Markdown/Content groups and registry growth without schema rewrites.
+- `../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#appearance-group` — expose Theme, Color mode, and Default open mode with the specified value sets.
+- `../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#markdown-group` — expose Standard, Format on save, Lint on save, Bullet marker, Emphasis, and Heading style with the specified value sets.
+- `../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#content-privacy-group` — retain Ask/Allow/Block as the typed external-content policy group without adding adjustable network or telemetry settings.
+- `../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence` — use the generic typed SQLite KV table, with no migration for new scalar preferences, under the multi-instance WAL policy.
+- `../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#defaults` — apply the exact Stage-1 defaults for Appearance, Markdown, and Content privacy.
+- `../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#edge-cases` — use safe scalar defaults or a hard startup failure for corrupt/newer persisted state (EC-SET-2).
+- `../../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#no-custom-themes` and `../../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#edge-cases` — restrict Theme and Color mode to the shipped values and fall back to Material/Auto for invalid or missing persisted values (EC-THEME-3).
+- `../../../_archive-2026-07-28-specification/01_Product/04_MARKDOWN_STANDARDS.md#standard-setting` — default the persisted Markdown standard to GFM.
+- `../../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md#on-save` — default Format on save to Off and Lint on save to On.
+- `../../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md#canonical-style` — default the formatting/lint style to bullet `-`, emphasis `_`, and ATX headings.
+- `../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema` — use typed accessors over dotted keys in the existing `settings(key,value,type)` schema.
+- `../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#layering`, `../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#error-envelope`, and `../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#di-two-phase` — keep settings in Handler → Service → Repository form, return concrete envelopes at the bridge, and inject persistence only after the database opens.
+- `../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#lifecycle` — on `Init(ctx)` failure, show `runtime.MessageDialog` and exit non-zero instead of continuing startup.
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open` — satisfy F4 with complete Stage-1 Appearance/Markdown/Content groups and registry growth without schema rewrites.
 
 ## Design constraints
 - Preserve Handler → Service → Repository layering. Bound settings methods take no `context.Context`, recover panics to `CodeInternal`, and return concrete `apperr.*Result` envelopes; services keep `(T, error)` and own validation; only the repository touches SQLite (DD-03, DD-10; ADR-0004).

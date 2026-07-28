@@ -1,5 +1,12 @@
 # GoMarkEdit — Specification (Index)
 
+> **Archived 2026-07-28 — historical, not normative.** The live specification is `../delivery/`.
+> This folder is kept only so that a citation in an accepted decision record or an archived story
+> still resolves to the text it was written against. Nothing here is maintained; where it disagrees
+> with `../delivery/spec/` or `../delivery/architecture/`, those win. Do not write new work against
+> it.
+
+
 GoMarkEdit is a native, **offline-first** desktop **Markdown editor & viewer** for Windows, macOS and
 Linux, built with **Wails v2** (Go backend + React/TypeScript frontend). This folder describes what the
 app should be.
@@ -18,8 +25,9 @@ behaviour, and it is the real specification. Everything else supports it.
 self-contained offline file, 23 screens, all three themes in light and dark. It answers more questions
 in two minutes than any amount of reading.
 
-**If you want to know what to build next**, read `07_Phases/00_ROADMAP.md` and then the phase it points
-at.
+**If you want to know what to build next**, this is no longer the place. Read
+`../delivery/plan/roadmap.md` and then the phase it points at. The `07_Phases/` documents this file
+used to point at were deleted rather than archived; that set is in git at `e1bd33f`.
 
 ## Sections
 
@@ -38,7 +46,6 @@ specification/
   04_Build_and_Release/ build matrix, packaging & file associations, CI & git hooks, versioning,
                         icons and the release pipeline
   05_Dependencies/      Go deps, frontend deps, and the policy for adding one
-  07_Phases/            the roadmap and one page per phase — what to build next, in order
   08_Decisions/         the initial architecture decision records, ADR-0001…0012
   assets/icon/          the canonical app-icon source and its processing pipeline
   mockups/              gomarkedit-mockup.html — the visual reference
@@ -56,8 +63,8 @@ Stories live in `../docs/stories/`.
 
 ## How work gets done
 
-1. Read the next phase in `07_Phases/`. It says, in plain language, what the user gets and what to
-   build in what order.
+1. Read the next phase in `../delivery/plan/`. It says, in plain language, what the user gets and
+   what to build in what order.
 2. Answer the phase's **Questions to settle first**. Each answer edits the relevant `01_Product/` file,
    or becomes an ADR in `../docs/adr/` when it constrains the architecture.
 3. Write one story per step, in the format in `../docs/stories/README.md`. A story is **fully worded** —

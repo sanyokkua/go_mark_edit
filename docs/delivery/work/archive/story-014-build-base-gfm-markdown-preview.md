@@ -3,12 +3,12 @@ id: STORY-014
 title: Build the base GFM Markdown preview
 status: done
 spec_clauses:
-  - 01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering
-  - 01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline
-  - 01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features
-  - 01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization
-  - 02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline
-  - 03_NonFunctional/04_OFFLINE.md#2-bundled-assets
+  - ../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering
+  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline
+  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features
+  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline
+  - ../../../_archive-2026-07-28-specification/03_NonFunctional/04_OFFLINE.md#2-bundled-assets
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
   - 07_Phases/PHASE_01_CORE_EDITOR.md#out-of-scope
   - 07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope
@@ -38,6 +38,9 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-014 — Build the base GFM Markdown preview
 
 ## Goal
@@ -59,12 +62,12 @@ Render safe, accessible GFM from an in-memory Markdown string so users can previ
 - Reading mode and its full-chrome-hidden layout, owned by Phase 04.
 
 ## Spec inputs
-- `01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering` — use the specified react-markdown family as the rendering foundation and deliver the GFM subset for this phase.
-- `01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline` — centralize the offline webview renderer and mount output below a `.gme-preview` root.
-- `01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features` — render tables, read-only task lists, strikethrough, and literal autolinks at the GFM tier.
-- `01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization` — disable/strip executable raw HTML and dangerous URLs, with sanitization as the last processing stage.
-- `02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline` — keep renderer configuration in `logic/markdown/renderer.ts` and expose it through the presentational view.
-- `03_NonFunctional/04_OFFLINE.md#2-bundled-assets` — bundle every renderer dependency and asset into the application; fetch nothing at runtime.
+- `../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering` — use the specified react-markdown family as the rendering foundation and deliver the GFM subset for this phase.
+- `../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline` — centralize the offline webview renderer and mount output below a `.gme-preview` root.
+- `../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features` — render tables, read-only task lists, strikethrough, and literal autolinks at the GFM tier.
+- `../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization` — disable/strip executable raw HTML and dangerous URLs, with sanitization as the last processing stage.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline` — keep renderer configuration in `logic/markdown/renderer.ts` and expose it through the presentational view.
+- `../../../_archive-2026-07-28-specification/03_NonFunctional/04_OFFLINE.md#2-bundled-assets` — bundle every renderer dependency and asset into the application; fetch nothing at runtime.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#scope` — deliver only the base CommonMark/GFM renderer and Phase-01 preview root.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#out-of-scope` — defer footnotes/standard mapping, syntax highlighting, KaTeX, Mermaid, and resource-policy implementation to later phases.
 - `07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope` — assign footnotes, standard/plugin mapping, highlighting, KaTeX, and Mermaid to the Phase-04 renderer expansion.

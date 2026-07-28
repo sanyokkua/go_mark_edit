@@ -27,6 +27,11 @@ in the story: say so rather than going hunting.
 | baseline | `just baseline STORY-NNN` |
 | verify | `just verify STORY-NNN` |
 | everything | `just check` |
+| check one story | `just story-check NNN` — copy fidelity, glob match, anchors, rule count |
+| check the spec tree | `just spec-check` — writing rules, revision level, every `Proves:` tag |
+
+`just spec-check` and `just story-check` are deliberately not part of `just check`. Documentation
+drift is worth knowing about; it is not a reason to block a commit that changes code.
 
 `just dev` runs the real bridge. `just dev-ui` runs the frontend against a mock — every Playwright run
 uses that mock, which is a known divergence recorded in `docs/delivery/plan/KNOWN_ISSUES.md`.
@@ -35,8 +40,14 @@ uses that mock, which is a known divergence recorded in `docs/delivery/plan/KNOW
 
 `/plan-phase NN` → `/plan-story NNN` → `/build-story NNN` → `/finish-phase NN` → `/reconcile NN`.
 
+The manual is `docs/delivery/WORKFLOW.md`: which command when, what each leaves on disk, what to do
+with it, and what to do when it goes wrong. Every command also ends by naming the next one.
+
 Planning writes a file to `docs/delivery/work/`. It does not use plan mode: a permission state
 evaporates, and a file on disk is durable, reviewable and resumable.
+
+A story marked `**STATUS:** stub — not buildable.` is not buildable. `/build-story` refuses it, and
+the correct response to that refusal is `/plan-story NNN`, never filling the gap in place.
 
 ## Non-negotiable
 
@@ -50,6 +61,14 @@ evaporates, and a file on disk is durable, reviewable and resumable.
   is true and is updated freely.
 - **Never leave a placeholder, stub or no-op on a production path.**
 - **Never touch a file outside the story's `Where the code goes`** without saying so.
+- **Never bypass a commit hook with `--no-verify`.** The hook is the last thing standing between a
+  broken gate and a green history. If it is wrong, fix the hook and say you did.
+- **Never delete, skip or ignore a failing test to get a gate green.** A failing test is information.
+  Removing it destroys the information and keeps the defect. That includes `t.Skip`, `.skip()`,
+  `.only()` narrowing a suite, and commenting a case out.
+- **Never build on a gate that did not run.** A gate that exits non-zero and produces no findings
+  crashed — it did not pass. `just baseline` marks that `UNRELIABLE` and `just verify` refuses it.
+  Fix the gate; do not record the anomaly and carry on.
 
 ## Five things about this codebase specifically
 
@@ -94,12 +113,24 @@ A finding that is in the baseline is not yours. A finding that is not, is.
 
 `just archtest` is the exception: it is never diffed against a baseline. It must be green.
 
+The baseline records each gate's **exit code and reliability verdict**, and keeps its raw output in
+`docs/delivery/work/baselines/story-NNN.logs/`. A gate marked `UNRELIABLE` exited non-zero having
+parsed nothing, so it analysed nothing — every later diff against it compares empty with empty and
+prints PASS. That is a hard stop before the story starts, not a caveat to transcribe.
+
 ## Live verification
 
-For every story that changes a visible surface or user interaction, validate the running app in live
-mode during implementation after a material UI change and again before claiming the story is done.
-Start the appropriate development server, open its local URL in the available in-app browser, and use
-the actual controls. Confirm the visible state, root attributes or other authoritative UI signal, and
-the affected layout at the relevant viewport. Treat a live finding as a defect: fix it, reload the app,
-and repeat the live check. Automated unit, Playwright, and build checks complement this step; they do
-not replace it.
+**Per story, during implementation.** For every story that changes a visible surface or user
+interaction, validate the running app in live mode after a material UI change and again before
+claiming the story is done. Start the appropriate development server, open its local URL in the
+available in-app browser, and use the actual controls. Confirm the visible state, root attributes or
+other authoritative UI signal, and the affected layout at the relevant viewport. Treat a live finding
+as a defect: fix it, reload the app, and repeat the live check. Automated unit, Playwright, and build
+checks complement this step; they do not replace it.
+
+**Per phase, at the gate.** `/finish-phase` walks the phase's "Done when" paragraph on `just build`
+output — the real binary, **not** `wails dev`. The dev server serves the mock bridge for anything
+Playwright touches, and it runs with a different log level, version string and configuration folder.
+The two checks are not interchangeable: the dev-server check tells you the interface behaves; only the
+real build tells you the application does. A story-level live check never substitutes for the phase
+gate.

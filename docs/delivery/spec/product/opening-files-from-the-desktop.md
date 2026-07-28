@@ -167,5 +167,3 @@ toast surface — `../surface/mockup.html#material-light/toasts`.
   policy prevent anyway.
 
 ## Open questions
-
-*(none — ready to build)*

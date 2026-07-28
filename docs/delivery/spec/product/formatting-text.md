@@ -232,5 +232,3 @@ disappears entirely at a width → the user cannot reach the feature at all on a
   second press does, which meant three behaviours would have been decided by whoever implemented them.
 
 ## Open questions
-
-*(none — ready to build)*

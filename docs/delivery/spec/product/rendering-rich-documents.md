@@ -105,16 +105,20 @@ app has switched to dark.
 - The expanded view is the **same SVG**, not a re-render, so it costs nothing beyond a viewer and
   inherits the current theme.
 
-Examples: a twenty-node architecture diagram in a half-width preview → unreadable at any usable zoom,
-which makes the feature look broken; clicking it makes it usable.
+Examples: a twenty-node architecture diagram in a half-width preview → unreadable at any usable
+zoom, which makes the feature look broken; clicking it makes it usable. · `Esc` in the expanded view
+→ straight back to the preview at the same scroll position, with no re-render, because it was the
+same SVG throughout
 
 ### Mermaid output bypasses the sanitiser, and strict mode is what constrains it instead {#mermaid-security}
 - Mermaid's SVG is injected with `dangerouslySetInnerHTML` and therefore does not pass through
   `rehype-sanitize`.
 - Mermaid is configured with `securityLevel: 'strict'`, which is what constrains it instead.
 
-Examples: `securityLevel` left at the library default → the constraint is whatever the library decided
-this release, on content that came from an untrusted file.
+Examples: `securityLevel` left at the library default → the constraint is whatever the library
+decided this release, on content that came from an untrusted file. · the same diagram carrying a
+click handler with `securityLevel: 'strict'` set → the handler is dropped and the diagram still
+renders
 
 ### Maths renders at the Full standard only {#maths-at-full}
 - **While** the standard is Full, `$…$` and `$$…$$` are parsed and typeset with bundled KaTeX fonts.
@@ -131,8 +135,9 @@ one error token, the paragraph around it intact.
   never widens the page.
 - A maths parse error renders in `--err`, not KaTeX's built-in `#cc0000`.
 
-Examples: a 200-character equation in a 700-pixel column → a horizontal scrollbar on the equation, the
-paragraph below still at its normal width.
+Examples: a 200-character equation in a 700-pixel column → a horizontal scrollbar on the equation,
+the paragraph below still at its normal width. · a short inline formula in the same paragraph → no
+block, no `--surface-2` and no scrollbar, because this rule is about display maths
 
 ### An unsupported feature renders literally, never as an error {#unsupported-renders-literally}
 - **When** a document uses a feature above the active standard level, that syntax renders as plain text.
@@ -153,6 +158,8 @@ blank pane between renders → a flash on every debounce tick.
   text paint.
 
 Examples: a document with six diagrams → the text is readable immediately and the diagrams fill in.
+· a document with no diagrams and no maths → nothing is deferred and the paint is exactly what it
+would have been
 
 ### Every rendering asset is bundled {#assets-are-bundled}
 - KaTeX's stylesheet and fonts, Mermaid, the highlight token styles and every UI font are imported from
@@ -241,5 +248,3 @@ anyone offline.
   stale-generation rejection.
 
 ## Open questions
-
-*(none — ready to build)*

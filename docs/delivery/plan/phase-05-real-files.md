@@ -68,23 +68,33 @@ it rather than doing them as a batch — see `KNOWN_ISSUES.md`.
 
 ## Questions to settle first
 
-All four block step 1 or step 4. Answer them before writing the stories.
+**All four are settled.** Nothing here blocks story planning; the entries are kept so the reasoning
+is visible and so nobody reopens a decision by accident.
 
-1. **Which view mode wins, and when?** Three things can disagree: the arrangement the window was left
-   in, the mode remembered for that particular file, and the global default open mode. Two accepted
-   documents currently say opposite things. Answer it for all four routes — application launch, a new
-   window, opening a file for the first time, and reopening one you have had open before.
-   Recommendation: the default open mode wins for any file-system open; per-file memory applies only to
-   switching tabs within a session; the restored window arrangement applies at launch and to a new
-   window, before any document is opened. This one answer also unblocks Phases 06 and 07.
-2. **A file that is not valid UTF-8** — do we show it and let you edit it, or open it read-only? The
-   product spec says tolerant read and no corruption on save; the old phase spec said no such path
-   ships at all. Recommendation: UTF-8 only, and invalid bytes open read-only with a status-bar
-   warning, so a lossy save is impossible.
-3. **Quitting with five unsaved files** — five prompts in a row, or one? And if you cancel on the
-   fourth, what happened to the three already saved? Recommendation: one dialog listing all of them
-   with Save all / Discard all / Cancel, and nothing written until you choose, so Cancel is always a
-   clean no-op.
+1. **Which view mode wins, and when?** — *Settled 2026-07-23 by
+   `../adr/0024-corrected-phase02-document-lifecycle-policy.md`, recorded 2026-07-28.*
+   For every file-system open — the Open dialog, an OS association, drag-and-drop, or the workspace
+   tree — the **global default open mode is applied first**. Reading opens directly in Reading mode.
+   Editor mode restores the document's persisted Editor/Split/Preview view, then the last application
+   arrangement, then Split. A new document always opens in Editor mode. The rule is written at
+   `../spec/product/opening-and-saving-files.md#opens-use-the-default-open-mode`; build from there, not
+   from the ADR. This also settles Phase 06's and Phase 07's version of the same question.
+2. **A file that is not valid UTF-8** — *Settled 2026-07-23 by
+   `../adr/0024-corrected-phase02-document-lifecycle-policy.md`, recorded 2026-07-28.*
+   Invalid UTF-8 or NUL-bearing input **opens tolerantly and read-only**. Editing, document commands,
+   Format, Lint, Save, Save As and autosave are all disabled, and every write primitive rejects the
+   document before it touches the disk, so a lossy save is impossible and the original bytes are left
+   alone. The rule is at `../spec/product/opening-and-saving-files.md#tolerant-decoding`.
+3. **Quitting with five unsaved files** — *Settled 2026-07-23 by
+   `../adr/0024-corrected-phase02-document-lifecycle-policy.md` and 2026-07-25 by
+   `../adr/0032-run-registry-and-shutdown-ordering.md`, recorded 2026-07-28.*
+   **One dialog**, listing every dirty document, with Save all / Discard all / Cancel. Nothing is
+   written until you choose, so Cancel is a clean no-op. A multi-dirty close builds a plan covering
+   every requested target before executing any of it; an incomplete choice set performs no save, no
+   discard and no close. Requested saves then run in tab order without closing any tab, and the first
+   failure stops execution — earlier successful saves stay clean, every tab stays open, and no discard
+   is applied. The rule is at
+   `../spec/product/opening-and-saving-files.md#close-prompts-when-modified`.
 4. **A file changed on disk** — *Settled 2026-07-25.* **Reload / Keep mine**, two choices. "Compare
    later" was deleted from the master list: it appeared nowhere else and nothing defined what the
    deferred state would be. Once Phase 10 builds the diff view, the prompt shows the difference

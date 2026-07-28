@@ -4,6 +4,9 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 Every LLM request must fit inside the selected model's **context window**, which has to hold the system
@@ -126,10 +129,10 @@ are all configurable in the AI Context settings tab (DD-53).
   **DD-51** (context is an explicit budget across system/tools/document/history; sliding-window default or
   summarization). Related: DD-52 (configurable context length / max output tokens), DD-53 (AI Context
   settings tab), DD-43 (selection vs. whole-document scope).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
-  `02_Architecture/08_LLM_INTEGRATION.md#context-budgeter`,
-  `02_Architecture/08_LLM_INTEGRATION.md#tokenizer`,
-  `03_NonFunctional/04_OFFLINE.md`.
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
+  `../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#context-budgeter`,
+  `../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#tokenizer`,
+  `../../_archive-2026-07-28-specification/03_NonFunctional/04_OFFLINE.md`.
 - Stories: Phase 11 (tokenizer + fit estimate) and Phase 13 (explicit context budget, over-context
   warn/chunk, history sliding-window/summarize) per `07_Phases/00_ROADMAP.md` (authored per phase; none
   `done` at ADR time).

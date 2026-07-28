@@ -1,6 +1,6 @@
 ---
 name: plan-story
-description: Write one self-contained story — feature rules copied in verbatim, architecture rules injected by path-glob match, and a rendered Definition of Done naming a test per rule.
+description: Expand one story stub in place — feature rules copied in whole, architecture rules injected by path-glob match, and a rendered Definition of Done naming a test per rule.
 ---
 
 The instructions for this command live in `.claude/commands/plan-story.md`.

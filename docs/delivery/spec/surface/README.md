@@ -61,8 +61,11 @@ without resizing the browser.
 The status bar drops items in one fixed order, so an item is never in two different places at two
 widths. Problems and Reading are never dropped.
 
-All 44 screens are verified to render in six palettes at three widths — 264 combinations — with no
-horizontal overflow.
+All 45 screens are verified to render in six palettes at three widths — **45 × 6 × 3 = 810
+combinations** — with no horizontal overflow.
+
+*(This paragraph read "44 screens … 264 combinations" until 2026-07-28. 264 was 44 × 6, with the three
+widths dropped; the screen count has since gained `startup-failure`.)*
 
 ## Screen map
 
@@ -78,6 +81,7 @@ Every screen names the feature file that governs its behaviour.
 | `no-sidebar` | Sidebar collapsed | `../product/the-app-window.md` |
 | `no-assistant` | Assistant region collapsed | `../product/the-app-window.md` |
 | `assistant-reserved` | The reserved but empty right region — what every phase before the assistant looks like | `../product/the-app-window.md` |
+| `startup-failure` | The whole window when the app cannot start: `GoMarkEdit could not start` · `GoMarkEdit could not initialize its local settings. Please try again.` · Retry. Not an overlay — there is no shell behind it | `../product/the-app-window.md` |
 | `focus` | The focus ring on each control type | `../constraints.md#every-action-is-reachable-by-keyboard` |
 | `tokens` | The design-token reference | `../product/themes-and-appearance.md` |
 | `menu-file` | The File menu | `../product/opening-and-saving-files.md` |
@@ -184,3 +188,30 @@ Three additions on the same date, where the mockup was silent and the specificat
 sidebar the Outline tab will sit in, and nothing else from that phase. Because this file is Tier A,
 drawing them is a **deliverable of Phase 09**, done before the screens are built rather than after.
 `../../plan/phase-09-find-anything.md` records it as such.
+
+## Where the shipped app and this file currently disagree
+
+Recorded 2026-07-28. This file is Tier A, so where it disagrees with the code on **shape**, the code is
+what changes — but only when a story says so, and not all of these have one yet.
+
+- **The Phase 02 appearance controls are transitional, and this file does not draw them.** STORY-058
+  shipped `SettingsMenu.tsx` and `AppearanceDialog.tsx` — a compact swatch row and a minimal dialog,
+  the two smallest controls that make theme selection a real user journey. What this file draws at
+  `#material-light/menu-settings` and `#material-light/settings-appearance` is the **Phase 03**
+  target: the full Settings menu and the complete Appearance pane inside the settings shell.
+  The divergence is deliberate and it is not a defect in either. Phase 03 replaces the Phase 02
+  controls with what is drawn here, so this file is **not** being redrawn to match a state that is
+  scheduled to disappear — drawing the transitional shape would create a second thing to un-draw
+  later.
+- **The ten missing tokens.** `#material-light/tokens` shows the complete token reference, including
+  `--canvas`, `--elevated`, `--surface-2`, `--surface-3`, `--stroke`, `--stroke-soft`, `--muted`,
+  `--faint`, `--hover` and `--user-bubble`. None of them exists in `frontend/src/ui/styles/tokens.css`
+  yet. This file is right and the code is wrong; **STORY-062** closes it.
+  See `../../plan/KNOWN_ISSUES.md` items 6 and 14.
+- **The startup-failure copy.** `startup-failure` above, and
+  `../product/the-app-window.md`, both give `GoMarkEdit could not start` and `GoMarkEdit could not
+  initialize its local settings. Please try again.` The shipped
+  `frontend/src/i18n/locales/en.json` says `The application could not start. Try again.` The
+  specification is normative, so the code is the defect — recorded as
+  `../../plan/KNOWN_ISSUES.md` item 16 and resolved by Phase 03, which is where bootstrap and this
+  screen are next touched. Neither side was changed on 2026-07-28.

@@ -3,12 +3,12 @@ id: STORY-011
 title: Establish the backend-authoritative in-memory application model
 status: done
 spec_clauses:
-  - 02_Architecture/02_BACKEND_GO.md#application-model
-  - 02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model
-  - 02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind
-  - 02_Architecture/06_ERROR_HANDLING.md#result-envelopes
-  - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model
+  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model
+  - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind
+  - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#result-envelopes
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
   - PH01-R01
@@ -36,6 +36,9 @@ owner: coder
 estimate: L
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-011 — Establish the backend-authoritative in-memory application model
 
 ## Goal
@@ -58,12 +61,12 @@ Give the first in-memory document one stable backend-owned identity and canonica
 - Stage-3 assistant behavior; this story only preserves the F2/F3 seams it will consume.
 
 ## Spec inputs
-- `02_Architecture/02_BACKEND_GO.md#application-model` — make `internal/appmodel` the mutex-guarded owner of canonical content, document metadata, document view state, and UI layout, exposed through query/command/event shapes.
-- `02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model` — keep document content in Go memory rather than SQLite or frontend state and retain file-first clean startup semantics.
-- `02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind` — bind only the handler, expose concrete result envelopes, and emit mutations as `state:patch` events.
-- `02_Architecture/06_ERROR_HANDLING.md#result-envelopes` — return one payload-specific envelope per bound method and represent failures through `WireError`.
-- `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62 through DD-64: backend authority, disposable frontend projection, and a debounce-synced visible buffer with no content echo.
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — provide stable document identity, content access, and command seams without building Stage-3 functionality.
+- `../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model` — make `internal/appmodel` the mutex-guarded owner of canonical content, document metadata, document view state, and UI layout, exposed through query/command/event shapes.
+- `../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model` — keep document content in Go memory rather than SQLite or frontend state and retain file-first clean startup semantics.
+- `../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind` — bind only the handler, expose concrete result envelopes, and emit mutations as `state:patch` events.
+- `../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#result-envelopes` — return one payload-specific envelope per bound method and represent failures through `WireError`.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62 through DD-64: backend authority, disposable frontend projection, and a debounce-synced visible buffer with no content echo.
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — provide stable document identity, content access, and command seams without building Stage-3 functionality.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#scope` — start with one in-memory untitled document, the four Phase-01 query/commands, and no file I/O or durable layout write.
 
 ## Design constraints

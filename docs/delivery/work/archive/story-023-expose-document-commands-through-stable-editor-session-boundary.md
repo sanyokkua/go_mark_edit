@@ -3,12 +3,12 @@ id: STORY-023
 title: Expose document commands through a stable editor-session boundary
 status: done
 spec_clauses:
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - 02_Architecture/03_FRONTEND_REACT.md#components
-  - 02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
-  - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#components
+  - ../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
   - PH01-R09
@@ -35,6 +35,9 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-023 — Expose document commands through a stable editor-session boundary
 
 ## Goal
@@ -54,12 +57,12 @@ Make the existing document selection and replacement commands available through 
 - Direct file writes, save/autosave behavior, or a second content synchronization path.
 
 ## Spec inputs
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — preserve selection-targeted editor behavior and the responsive Monaco working copy.
-- `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — keep replacements in the active working copy, then synchronize through the adapter to the backend-authoritative model.
-- `02_Architecture/03_FRONTEND_REACT.md#components` — retain `CodeEditor` as the thin Monaco wrapper and expose behavior through a component/session contract.
-- `02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams` — supply the F3/F7 selection and apply-edit surface that a later sibling assistant consumes without touching Monaco.
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — keep F3/F7 stable with `getSelection`, `replaceRange`, and `replaceAll` as the single document-command seam.
-- `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — route edits through the visible working copy and normal `UpdateBuffer` path while the Go model remains canonical.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — preserve selection-targeted editor behavior and the responsive Monaco working copy.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — keep replacements in the active working copy, then synchronize through the adapter to the backend-authoritative model.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#components` — retain `CodeEditor` as the thin Monaco wrapper and expose behavior through a component/session contract.
+- `../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams` — supply the F3/F7 selection and apply-edit surface that a later sibling assistant consumes without touching Monaco.
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — keep F3/F7 stable with `getSelection`, `replaceRange`, and `replaceAll` as the single document-command seam.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — route edits through the visible working copy and normal `UpdateBuffer` path while the Go model remains canonical.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#scope` — remediate the Phase-01 editor session without implementing file I/O or Stage-3 consumers.
 
 ## Design constraints

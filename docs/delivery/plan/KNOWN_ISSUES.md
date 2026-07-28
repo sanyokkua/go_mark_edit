@@ -1,8 +1,11 @@
 # Known issues
 
-Real defects found by reading the code — items 1–8 on 2026-07-25, items 9–13 on 2026-07-28. None is
-urgent today; each becomes a problem the moment the named phase starts. Fold each into the story that
-touches it rather than fixing them as a batch.
+Real defects found by reading the code — items 1–8 on 2026-07-25, items 9–13 on 2026-07-28, items
+14–17 on 2026-07-28 during the r1 → r2 specification upgrade. Each becomes a problem the moment the
+named phase starts. Fold each into the story that touches it rather than fixing them as a batch.
+
+**Item 14 is the exception: it is urgent, because it describes a shipped gap and a gate that could
+not fail.**
 
 Some entries record a **trajectory** rather than a defect, and say what would turn it into one.
 
@@ -50,17 +53,29 @@ A regression in the real shell (a lost region, content leaking into the reserved
 Open a CRLF file — which the files phase makes possible — and the status bar displays the literal
 string `status.lineEnding.crlf`.
 
-## 6. The visual layer does not exist
+## 6. The visual layer was empty — partly built by STORY-058, still incomplete
 
-`frontend/src/ui/styles/tokens.css` has 62 tokens and not one colour; the six colour-named entries
-are `currentColor` or `inherit`. The app renders in default browser colours while
-`../spec/surface/mockup.html` shows three finished themes.
+**Recorded 2026-07-25 as "the visual layer does not exist"; updated 2026-07-28 after STORY-058
+shipped in `c8d88fe`.**
 
-This is not a bug so much as a scheduling mistake — theming sat at phase 8 of 16. It is why the app
-does not look like the mockup, and it is being moved to position 2.
+As found: `frontend/src/ui/styles/tokens.css` had 62 tokens and not one colour; the six colour-named
+entries were `currentColor` or `inherit`. The app rendered in default browser colours while
+`../spec/surface/mockup.html` showed three finished themes. That was a scheduling mistake — theming
+sat at phase 8 of 16 — and it is why the app did not look like the mockup. It was moved to position 2.
 
-Now that a colour-literal scan is part of `just archtest`, the scan passes trivially: there is nothing
-to find because there is no colour anywhere. Phase 02 is where it starts doing work.
+As it stands now: `tokens.css` declares **108 distinct tokens** across **8 palette blocks** (`:root`,
+which is Material light, plus `[data-theme='glass']`, `[data-theme='minimal']`, `[data-mode='dark']`
+and the four theme×mode combinations), carrying **71 colour literals**.
+
+The colour-literal scan in `just archtest` no longer passes trivially — it has 71 literals to check,
+each of which must sit inside exactly one palette block. That entry meant "the gate cannot fail
+because there is nothing to find"; it now means "the gate is doing work".
+
+**Still incomplete.** Ten tokens the mockup uses have zero occurrences in `tokens.css`: `--canvas`,
+`--elevated`, `--surface-2`, `--surface-3`, `--stroke`, `--stroke-soft`, `--muted`, `--faint`,
+`--hover` and `--user-bubble`. They are exactly the ten rows missing from STORY-058's copy of
+`../spec/product/themes-and-appearance.md#theme-identity-is-stable` — see item 14. STORY-062 closes
+this.
 
 ## 7. A database test is flaky under CPU contention
 
@@ -140,14 +155,17 @@ calls them. The four bound settings methods on the Go side are reachable only fr
 Same shape as the entry above: the seam works as far as anything has asked it to. The settings dialog
 arrives in Phase 03, and it is the first thing to find out whether the round trip is right.
 
-## 12. `just package` does not exist
+## 12. `just package` is a deliberate exit-1 stub until Phase 08
 
 The specification's command vocabulary includes `package` — produce the distributable artifact — and
-the `justfile` has no such recipe, because packaging is Phase 08.
+there is nothing behind it, because packaging is Phase 08.
 
 Recorded because the gap is deliberate. A recipe that shells out to `wails build` and calls the result
-"packaged" would let a Definition of Done certify something that has never been produced. `just package`
-prints what phase introduces it and exits non-zero until Phase 08 replaces it.
+"packaged" would let a Definition of Done certify something that has never been produced. So
+`justfile:141` defines `package` as a recipe that prints the phase introducing it and **exits 1**.
+
+An honest stub is not the same as an absent recipe: `just package` fails loudly and says why, rather
+than failing with `error: Justfile does not contain recipe 'package'`, which reads as a typo.
 
 ## 13. Wails does not give a frameless window usable resize edges
 
@@ -180,3 +198,124 @@ follow through until 2026-07-28.
 **Do not delete the zones as redundant with the OS.** They are not redundant; on Windows there may be
 nothing underneath them. Phase 03 builds them and **Phase 08 verifies them on all three platforms** —
 verifying only on the development machine is what would let #1062 ship.
+
+## 14. STORY-058 was built from a truncated rule copy, against a static-analysis gate that never ran
+
+**Two failures that hid each other. Found 2026-07-28 by `scripts/check_story.py` and
+`scripts/upgrade_check.py`, which did not exist when the story was built.**
+
+**The copy.** `docs/delivery/work/story-058-choose-and-persist-six-app-palettes.md` copied
+`../spec/product/themes-and-appearance.md#theme-identity-is-stable` with **11 of the rule's 24 table
+rows**. The implementer built exactly what was in front of them. The ten tokens named only in the
+missing rows have **zero occurrences** in the shipped `frontend/src/ui/styles/tokens.css`:
+
+Counted as `var(--token)` references in `../spec/surface/mockup.html`, and as any occurrence at all in
+`frontend/src/`. Each of the ten is declared six times in the mockup — once per palette.
+
+| Token | Anywhere in `frontend/src/` | `var()` uses in the Tier-A mockup |
+|---|---|---|
+| `--canvas` | 0 | 2 |
+| `--elevated` | 0 | 9 |
+| `--surface-2` | 0 | 16 |
+| `--surface-3` | 0 | 9 |
+| `--stroke` | 0 | 40 |
+| `--stroke-soft` | 0 | 43 |
+| `--muted` | 0 | 46 |
+| `--faint` | 0 | 54 |
+| `--hover` | 0 | 9 |
+| `--user-bubble` | 0 | 1 |
+
+The eleven rows that *were* copied are all present, 2–3 occurrences each. `check_story.py` finds
+truncation in eight further rules in the same story, and flags the story as oversized: **9 rules
+against a ceiling of 5**.
+
+**The gate.** `docs/delivery/work/baselines/story-058.md` recorded `just lint` → **exit 5** with
+**0 findings**. That combination means the gate crashed or parsed nothing — it did not run clean. It
+was recorded as "0 static-analysis findings at baseline", so every later `comm -13` diffed empty
+against empty and printed PASS. M3 of the Definition of Done was never satisfied for that story; it
+could not have failed.
+
+Nothing downstream could see either problem, because nothing counted table rows and nothing checked
+exit codes.
+
+**What was done about it, 2026-07-28:**
+
+- `scripts/baseline.sh` now records every gate's exit code and classifies it; a non-zero exit with
+  zero findings is marked `UNRELIABLE` and the script exits 3.
+- `scripts/verify.sh` refuses outright to verify against an `UNRELIABLE` baseline, and against any
+  baseline captured before exit codes were recorded.
+- `just lint` exits 0 today (`0 issues.`), so STORY-058's baseline was re-captured with the new script.
+- `scripts/check_story.py` is wired into `/plan-story` and `/build-story` as a hard stop.
+
+**What is still owed:** the ten tokens. **STORY-058 is not re-planned** — a built story is the honest
+record of what was built, and rewriting it to look correct after the fact destroys that record. The
+gap is **STORY-062**, which ships the ten tokens across all eight palette blocks and is built before
+STORY-059. STORY-059 generates editor themes from the surface palette; building it on an incomplete
+palette would repeat this failure one layer up.
+
+## 15. `just archtest` runs in no CI job
+
+`.github/workflows/main.yml:31-46` lists eight `just` steps — `gen-check`, `frontend-build`,
+`fmt-check`, `lint`, `typecheck`, `frontend-test`, `go-vet`, `go-test`. **`just archtest` is not
+among them.**
+
+That is M5 of the Definition of Done: the one item never diffed against a baseline, because it is the
+only mechanical thing standing between an implementer and a design decision nobody approved. It is
+enforced by `just check` and by `verify.sh` locally, and by nothing at all in CI.
+
+Combined with item 9 — CI triggers only on a version tag — the architecture rules are checked only on
+a developer's machine, by a developer who chose to run the command. The four checks it bundles
+(`go-archtest`, `cgo-free-check`, `migration-immutability-check`, `frontend-archtest`) include the
+CGO-free guarantee that every non-host build depends on.
+
+The fix is one step in the `test` job. It is not done here because adding a step changes when work is
+blocked, which is the user's call rather than a documentation change — the same argument as item 9.
+
+## 16. A user-visible string disagrees between the specification and the code
+
+| Where | Text |
+|---|---|
+| `../spec/product/the-app-window.md` (When things go wrong) | `GoMarkEdit could not start` · `GoMarkEdit could not initialize its local settings. Please try again.` |
+| `../spec/product/settings.md` (When things go wrong) | the same two strings |
+| `frontend/src/i18n/locales/en.json:14` (`startup.failure.message`) | `The application could not start. Try again.` |
+
+The shipped screen says "The application", not "GoMarkEdit", and drops the sentence naming what
+failed — which is the part that tells a user where to look.
+
+`spec/` is normative, so **the code is the defect.** It is recorded rather than fixed because the
+standard is that a disagreement is raised and approved, not resolved by a commit — and because
+`en.json` is nobody's story right now. **Neither side was changed on 2026-07-28.**
+
+It belongs to the phase that touches bootstrap and the startup-failure screen: **Phase 03**, which
+also builds the settings dialog and redraws `StartupFailure.tsx`. Resolve it there, in one direction,
+with the reason recorded.
+
+## 17. 114 `Proves:` tags name rules that do not exist
+
+**Found 2026-07-28 by `scripts/check_proves.py`, which did not exist before the r2 upgrade.** It is
+now M12 of the Definition of Done and it fails `just verify` today.
+
+Every test's first comment line is supposed to carry `// Proves: <feature>#<anchor>`, and the anchor
+is supposed to exist in `../spec/`. **114 tags across 25 files resolve to nothing**, in three groups:
+
+| Shape | Count of distinct tags | Example | Why it resolves nowhere |
+|---|---|---|---|
+| `STORY-NNN-AC-#N` | most of them | `STORY-011-AC-#3` in `internal/appmodel/service_test.go:72` | The retired story format numbered acceptance criteria per story. Those stories are archived and the numbering scheme is gone. |
+| `EC-<AREA>-#N` | 2 | `EC-I18N-#1` | The retired edge-case registry, removed with the design-decision registry on 2026-07-25. |
+| `all#end-to-end` | 1 | `frontend/src/ui/widgets/AppearanceControls.test.tsx:61` | Never an anchor at all. STORY-058's Definition of Done had a literal `all, end to end` row and it was transcribed into the tag. |
+
+Only **19 rules** in the whole specification are claimed by any tag.
+
+**Why it matters, and why it is not urgent.** The tests themselves pass and test real behaviour; the
+tag is a comment. What is lost is the ability to answer *"which test proves this rule?"* — which is the
+question `/finish-phase` step 2 asks for every rule in every story, and the question that catches a
+rule nobody tested. A tag pointing at nothing reads as coverage and is not.
+
+**Why it is not fixed here.** Each tag needs a decision about which rule the test actually proves, and
+some tests will turn out to prove no rule that survived the conversion. That is `/reconcile` work with
+the code in front of you, not a mechanical rename — and mechanically rewriting a tag to the
+nearest-looking anchor would produce exactly the false coverage this check exists to detect.
+
+**Where it goes.** `/reconcile 02`, for the tests Phase 02 touched. Earlier phases' tags are resolved
+by the phase that next changes the file. Until then M12 fails, and that is the correct reading: the
+tags do not resolve.

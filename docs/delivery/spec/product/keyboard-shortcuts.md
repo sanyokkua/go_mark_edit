@@ -158,7 +158,9 @@ Examples: reading size uses `Ctrl+=` rather than `Ctrl++` because `+` needs Shif
 - Bindings are declared with these tokens and resolved at runtime. Menus and tooltips render the
   platform-correct glyphs.
 
-Examples: `Alt+Shift+F` displays and fires as `⌥⇧F` on macOS.
+Examples: `Alt+Shift+F` displays and fires as `⌥⇧F` on macOS. · the same binding on Windows →
+displays and fires as `Alt+Shift+F` · a binding written literally as `⌥⇧F` → correct on one platform
+and wrong on the other two
 
 ### The shortcuts dialog lists the whole registry {#shortcuts-dialog}
 - `Ctrl/Cmd+?` opens a dialog listing every binding, grouped as the tables above are, with the
@@ -226,5 +228,3 @@ with a hand-maintained list → it goes stale on the first addition.
   not exist is a binding no later phase can use for one that does.
 
 ## Open questions
-
-*(none — ready to build)*

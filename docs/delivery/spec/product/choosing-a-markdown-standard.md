@@ -104,7 +104,8 @@ because formatting a construct you cannot parse is how data is lost.
   shows `Markdown · GFM`.
 
 Examples: a document rendering unexpectedly → the badge tells you which level is in force without
-opening settings.
+opening settings. · the badge reading `GFM` while the document renders as CommonMark → worse than no
+badge, because it is now the thing you check and it lies
 
 ## What it looks like
 
@@ -164,5 +165,3 @@ opening settings.
   `../../adr/0031-format-via-remark-stringify.md`.
 
 ## Open questions
-
-*(none — ready to build)*

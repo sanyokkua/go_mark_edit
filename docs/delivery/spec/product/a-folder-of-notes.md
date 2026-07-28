@@ -197,5 +197,3 @@ files appearing → the user is told twice, and the first time is a lie.
   `finding-things.md#search-never-leaves-the-open-file`.
 
 ## Open questions
-
-*(none — ready to build)*

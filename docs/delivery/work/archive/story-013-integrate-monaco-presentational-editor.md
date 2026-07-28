@@ -3,11 +3,11 @@ id: STORY-013
 title: Integrate Monaco as the presentational Markdown editor
 status: done
 spec_clauses:
-  - 01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - 02_Architecture/03_FRONTEND_REACT.md#components
-  - 03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
-  - 00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour
+  - ../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#components
+  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
   - PH01-R03
@@ -33,6 +33,9 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-013 — Integrate Monaco as the presentational Markdown editor
 
 ## Goal
@@ -53,11 +56,11 @@ Provide a responsive, locally bundled Monaco Markdown component with typed edito
 - Formatting toolbar actions and lint integration, owned by later Stage-2 phases; this story exposes only the low-level selection/edit primitives required by the later command seam.
 
 ## Spec inputs
-- `01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor` — render editable Markdown source in Monaco and debounce-sync its working buffer to the backend-owned canonical model.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — use Markdown syntax mode, line numbers on, word wrap off, Split arrangement, and a 14 px default editor font.
-- `02_Architecture/03_FRONTEND_REACT.md#components` — keep `CodeEditor` thin and presentational with typed editor configuration and callbacks.
-- `03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness` — avoid bridge and preview work on the keystroke path, debounce buffer commands, flush at lifecycle boundaries, and never echo backend text into the focused editor.
-- `00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour` — preserve UTF-8/LF defaults and the later settings-driven Markdown behavior without prematurely persisting editor controls.
+- `../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor` — render editable Markdown source in Monaco and debounce-sync its working buffer to the backend-owned canonical model.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — use Markdown syntax mode, line numbers on, word wrap off, Split arrangement, and a 14 px default editor font.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#components` — keep `CodeEditor` thin and presentational with typed editor configuration and callbacks.
+- `../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness` — avoid bridge and preview work on the keystroke path, debounce buffer commands, flush at lifecycle boundaries, and never echo backend text into the focused editor.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour` — preserve UTF-8/LF defaults and the later settings-driven Markdown behavior without prematurely persisting editor controls.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#scope` — build the Phase-01 `CodeEditor` component while leaving synchronization and persisted preferences to their owning stories/phases.
 
 ## Design constraints

@@ -5,6 +5,8 @@
 **Deciders:** project owner, architect
 **Supersedes:** (none)
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+
 ## Context and problem statement
 
 DD-10 originally persisted only the native window size and the per-document view mode. The product
@@ -65,8 +67,8 @@ before a window is shown, falling back to defaults on a missing/invalid value.
 ## Links
 
 - Design decisions: DD-10, DD-11, DD-13, DD-27, DD-60, DD-61
-- Spec clauses: `specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#window-state`,
-  `specification/01_Product/11_SETTINGS.md#persistence`,
-  `specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state`,
-  `specification/00_Foundation/04_DESIGN_DECISIONS.md#13-window--ui-layout-state`
+- Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#window-state`,
+  ../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence`,
+  ../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state`,
+  ../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#13-window--ui-layout-state`
 - Stories: STORY-098

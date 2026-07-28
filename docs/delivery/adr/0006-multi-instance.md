@@ -4,6 +4,9 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 GoMarkEdit must support **multiple app instances**, VS Code-style: opening a second file may open a new
@@ -97,9 +100,9 @@ each instance is a fully independent process.
 - Design decisions: DD-08 (support multiple app instances; no single-instance lock), DD-13 (settings DB
   opened with WAL + `busy_timeout` for safe concurrent-instance sharing). Related: DD-10 (SQLite KV
   store — ADR-0004), DD-12 (autosave existing files).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#2-documents-files--workspace`,
-  `00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state`,
-  `02_Architecture/05_STATE_AND_PERSISTENCE.md`, `02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`,
-  `01_Product/03_FILES_TABS_WORKSPACE.md`.
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#2-documents-files--workspace`,
+  `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state`,
+  `../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md`, `../../_archive-2026-07-28-specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`,
+  `../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md`.
 - Stories: Phase 07 multi-instance / new-window story and the Phase 00 DB-open scaffold story, per
   `07_Phases/00_ROADMAP.md` (authored per phase; none `done` at ADR time).

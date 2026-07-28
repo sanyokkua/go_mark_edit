@@ -4,10 +4,13 @@
 **Date:** 2026-07-25
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
-`01_Product/06_FORMAT_AND_LINT.md` says Format runs via "Prettier / remark-stringify", and
-`05_Dependencies/02_FRONTEND_DEPENDENCIES.md` lists **both** as runtime dependencies. They are two
+`../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md` says Format runs via "Prettier / remark-stringify", and
+`../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md` lists **both** as runtime dependencies. They are two
 different serializers with different opinions, and running Format through one while Compact uses the
 other means the two commands fight: a document oscillates between two stable forms and Format is not
 idempotent.
@@ -102,8 +105,8 @@ Chosen: **B**.
 ## Links
 
 - Design decisions: DD-16, DD-17 (canonical style), DD-71 (autosave never formats)
-- Spec clauses: `specification/01_Product/06_FORMAT_AND_LINT.md`,
-  `specification/01_Product/04_MARKDOWN_STANDARDS.md`,
-  `specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md` §3
+- Spec clauses: ../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md`,
+  ../../_archive-2026-07-28-specification/01_Product/04_MARKDOWN_STANDARDS.md`,
+  ../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md` §3
 - Phase: `specification/07_Phases/PHASE_10_TIDY_AND_SHARE.md`
 - Stories: the Phase 10 stories, not yet written.

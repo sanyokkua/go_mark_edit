@@ -3,10 +3,10 @@ id: STORY-004
 title: Open the multi-instance-safe SQLite store and generated query layer
 status: done
 spec_clauses:
-  - 02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
-  - 02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations
-  - 02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db
-  - 00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state
+  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
+  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations
+  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state
 phase_requirements:
   - PH00-R04
 modules:
@@ -31,6 +31,8 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+
 # STORY-004 — Open the multi-instance-safe SQLite store and generated query layer
 
 ## Goal
@@ -43,8 +45,8 @@ Create the shared, pure-Go persistence base that settings can use safely from in
 - Settings Handler/Service/Repository behaviour, owned by STORY-005.
 
 ## Spec inputs
-- `02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db` — WAL, timeout, no flock, and classified failures.
-- `02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations` — additive migrations only.
+- `../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db` — WAL, timeout, no flock, and classified failures.
+- `../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations` — additive migrations only.
 
 ## Design constraints
 - Use only `modernc.org/sqlite`; never hand-edit `internal/db/store/`; retain no document data in SQLite.

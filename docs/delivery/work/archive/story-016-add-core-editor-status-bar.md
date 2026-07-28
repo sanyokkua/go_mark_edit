@@ -3,16 +3,16 @@ id: STORY-016
 title: Add the core editor status bar
 status: done
 spec_clauses:
-  - 01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - 01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings
-  - 01_Product/13_I18N.md#i18n-layer
-  - 01_Product/13_I18N.md#string-catalog
-  - 01_Product/13_I18N.md#adding-a-locale
-  - 01_Product/13_I18N.md#formatting
-  - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - 00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
-  - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+  - ../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+  - ../../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings
+  - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#i18n-layer
+  - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#string-catalog
+  - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#adding-a-locale
+  - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#formatting
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope
 phase_requirements:
   - PH01-R13
@@ -43,6 +43,9 @@ owner: coder
 estimate: L
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-016 — Add the core editor status bar
 
 ## Goal
@@ -64,13 +67,13 @@ Show users the active cursor location and backend-derived document metadata in t
 - Migrating pre-existing UI literals globally or exposing the Settings Language UI, both owned by the later i18n/settings stories.
 
 ## Spec inputs
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — include the status bar in editor chrome and use the specified Split, UTF-8/LF, and source-editor defaults.
-- `01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings` — display encoding and line ending explicitly; Phase 01 uses the untitled UTF-8/LF defaults before file I/O exists.
-- `01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n` and `01_Product/13_I18N.md#i18n-layer` — status-bar strings pass through a lightweight, offline i18n layer with English shipped.
-- `01_Product/13_I18N.md#string-catalog`, `#adding-a-locale`, and `#formatting` — resource-file-only locale discovery, stable namespaced keys, named placeholders, and locale-aware word-count formatting.
-- `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — keep cursor position as ephemeral active-view scaffolding and read document counts/view state from the backend projection.
-- `00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations` — DD-35 requires i18n readiness; DD-32 keeps locale resources bundled with no runtime fetch.
-- `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62 through DD-64 so counts and arrangement come from backend-derived metadata rather than Monaco content.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — include the status bar in editor chrome and use the specified Split, UTF-8/LF, and source-editor defaults.
+- `../../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings` — display encoding and line ending explicitly; Phase 01 uses the untitled UTF-8/LF defaults before file I/O exists.
+- `../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n` and `../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#i18n-layer` — status-bar strings pass through a lightweight, offline i18n layer with English shipped.
+- `../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#string-catalog`, `#adding-a-locale`, and `#formatting` — resource-file-only locale discovery, stable namespaced keys, named placeholders, and locale-aware word-count formatting.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — keep cursor position as ephemeral active-view scaffolding and read document counts/view state from the backend projection.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations` — DD-35 requires i18n readiness; DD-32 keeps locale resources bundled with no runtime fetch.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62 through DD-64 so counts and arrangement come from backend-derived metadata rather than Monaco content.
 - `07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope` — defer Markdown-standard selection/badge presentation to the Phase-04 rendering expansion.
 
 ## Design constraints

@@ -192,7 +192,9 @@ project a release cycle of dead code.
   use the assistant" and links to Settings → AI · Providers.
 - Once a provider is saved, the sidebar becomes available and remembers its last shown or hidden state.
 
-Examples: a fresh install → no assistant, no empty panel, no confusion about why nothing works.
+Examples: a fresh install → no assistant, no empty panel, no confusion about why nothing works. · a
+provider saved, the sidebar then hidden by the user, then a relaunch → still hidden, because once a
+provider exists the remembered state is what decides
 
 ### Changing the configuration does not affect a run in flight {#config-change-affects-next-run}
 - **When** the provider or model is changed while a run is in flight, the in-flight run is unaffected.
@@ -281,5 +283,3 @@ Examples: switching model mid-run → the current run finishes on the old model,
   loses the configuration.
 
 ## Open questions
-
-*(none — ready to build)*

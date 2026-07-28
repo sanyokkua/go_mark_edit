@@ -5,6 +5,8 @@
 **Deciders:** project owner, architect
 **Supersedes:** (none)
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+
 ## Context and problem statement
 
 The original architecture split state conventionally: Go owned file I/O, persistence, and OS
@@ -73,9 +75,9 @@ design the owner wants to remove.
 ## Links
 
 - Design decisions: DD-04, DD-09, DD-10, DD-11, DD-60, DD-62, DD-63, DD-64
-- Spec clauses: `specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow`,
-  `specification/02_Architecture/02_BACKEND_GO.md#application-model`,
-  `specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`,
-  `specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model`,
-  `specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership`
+- Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow`,
+  ../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model`,
+  ../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`,
+  ../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model`,
+  ../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership`
 - Stories: STORY-099 (and the Phase 01/02 stories that consume `internal/appmodel`)

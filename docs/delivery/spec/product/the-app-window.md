@@ -293,5 +293,3 @@ someone forgets to bump it.
   minimum. Recorded in `../../plan/KNOWN_ISSUES.md` §13 so nobody later "simplifies" by deleting them.
 
 ## Open questions
-
-*(none — ready to build)*

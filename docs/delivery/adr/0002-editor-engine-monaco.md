@@ -4,6 +4,9 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 GoMarkEdit's editor pane shows **Markdown source with syntax highlighting**; the preview pane renders it
@@ -25,7 +28,7 @@ buffers well. This ADR locks DD-20.
 - Reuse a proven React/Monaco editor/preview approach (DD-19, DD-20).
 - Real Markdown source highlighting, gutter, multi-cursor, find/replace, and a rich keyboard-shortcut
   surface for bold/italic/headings/lists/etc. (DD-31).
-- Robust handling of large documents without freezing the UI (DD-20, `03_NonFunctional/02_PERFORMANCE.md`).
+- Robust handling of large documents without freezing the UI (DD-20, `../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md`).
 - Predictable, well-documented API and long-term maintenance; a large community for edge cases.
 - Offline: the engine and its workers must bundle with no runtime network fetches (DD-32).
 - Keep the door open to a lighter engine later without rewriting product behaviour.
@@ -95,10 +98,10 @@ ADR pre-authorises revisiting it via a superseding ADR rather than an ad-hoc swa
 - Design decisions: DD-20 (Monaco for v1; debounced preview; optional pause; CodeMirror 6 as future
   option). Related: DD-09 (highlighted source, no WYSIWYG), DD-19 (shared render pipeline),
   DD-31 (keyboard shortcuts).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour`,
-  `01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `02_Architecture/03_FRONTEND_REACT.md`,
-  `02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`, `03_NonFunctional/02_PERFORMANCE.md`,
-  `05_Dependencies/02_FRONTEND_DEPENDENCIES.md`.
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour`,
+  `../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md`, `../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md`,
+  `../../_archive-2026-07-28-specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`, `../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md`,
+  `../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md`.
 - Stories: Phase 01 editor/preview stories (Monaco source editor, live preview, split view) and the
   Phase 05 large-file preview-pause story, per `07_Phases/00_ROADMAP.md` (authored per phase; none
   `done` at ADR time).

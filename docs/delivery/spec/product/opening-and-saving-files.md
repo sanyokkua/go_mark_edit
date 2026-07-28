@@ -34,8 +34,9 @@ did not ask for, in a place they will not find.
 ### A new file opens in the editor regardless of the default open mode {#new-files-open-in-the-editor}
 - Creating a new document always opens it in Editor mode, even when the default open mode is Reading.
 
-Examples: default open mode Reading, press `Ctrl/Cmd+N` → the editor, because there is nothing to read
-yet.
+Examples: default open mode Reading, press `Ctrl/Cmd+N` → the editor, because there is nothing to
+read yet. · the same default of Reading with an **existing** file opened from the dialog → Reading,
+because that file has something to read
 
 ### Opens from the file system use the default open mode {#opens-use-the-default-open-mode}
 - The **default open mode** setting is **Editor** or **Reading (Viewer)**, and it defaults to Editor.
@@ -252,5 +253,3 @@ looks wrong on somebody's machine.
   `../../adr/0022-commit-writes-and-resynchronize-projection.md`.
 
 ## Open questions
-
-*(none — ready to build)*

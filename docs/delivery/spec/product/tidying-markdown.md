@@ -121,7 +121,8 @@ document damaged by the tool meant to tidy it.
 ### Lint reports and never changes anything {#lint-never-modifies}
 - Lint reports findings. It does not modify the document, and there is no fix-all action.
 
-Examples: 40 findings → 40 squiggles and a count of 40; the text is byte-identical afterwards.
+Examples: 40 findings → 40 squiggles and a count of 40; the text is byte-identical afterwards. ·
+exactly 0 findings → the empty state `No problems found.`, and still a byte-identical document
 
 ### The lint rule set {#lint-rules}
 
@@ -265,5 +266,3 @@ who wants every write formatted turns autosave off.
   and none of them gave it a way to be invoked.
 
 ## Open questions
-
-*(none — ready to build)*

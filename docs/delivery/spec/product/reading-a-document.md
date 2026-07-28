@@ -54,7 +54,9 @@ reader → two editing surfaces for one document, and a caret in a place the use
 - Reading mode applies to the active document. It is part of that document's view state, so a document
   left in reading mode returns to reading mode when its tab is selected again.
 
-Examples: document A in reading mode, switch to B in Split, switch back to A → reading mode.
+Examples: document A in reading mode, switch to B in Split, switch back to A → reading mode. ·
+reading mode switched off while document B is active → document A is unaffected, because the mode is
+a property of a document and not of the application
 
 ### The theme applies to the reader and updates live {#reader-is-themed}
 - The reader is styled from the same tokens as everything else.
@@ -165,5 +167,3 @@ rendering immediately · requiring the tab to be closed and reopened → the set
   deliver it.
 
 ## Open questions
-
-*(none — ready to build)*

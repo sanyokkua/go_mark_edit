@@ -4,6 +4,9 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 GoMarkEdit edits real Markdown files on disk. Two kinds of state exist and must be handled differently:
@@ -98,8 +101,8 @@ nothing.
   launch; no session restore; no crash recovery/swap files), DD-13 (WAL + `busy_timeout` for
   multi-instance safety). Related: DD-12 (autosave existing files only), DD-03 (CGO-free `modernc`),
   DD-08 (multi-instance — see ADR-0006).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state`,
-  `02_Architecture/05_STATE_AND_PERSISTENCE.md`, `01_Product/03_FILES_TABS_WORKSPACE.md`,
-  `01_Product/11_SETTINGS.md`, `05_Dependencies/01_GO_DEPENDENCIES.md`.
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state`,
+  `../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md`, `../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md`,
+  `../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md`, `../../_archive-2026-07-28-specification/05_Dependencies/01_GO_DEPENDENCIES.md`.
 - Stories: Phase 00 DB-open scaffold story and Phase 07 recent-files / reopen-last stories, per
   `07_Phases/00_ROADMAP.md` (authored per phase; none `done` at ADR time).

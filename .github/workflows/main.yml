@@ -50,4 +50,4 @@ jobs:
     needs: test
     runs-on: ubuntu-24.04
     steps:
-      - run: echo "Release packaging is introduced in Phase 07 (see specification/07_Phases/PHASE_07_INSTALL_IT.md)."
+      - run: echo "Release packaging is introduced in Phase 08 (see docs/delivery/plan/phase-08-install-it.md)."

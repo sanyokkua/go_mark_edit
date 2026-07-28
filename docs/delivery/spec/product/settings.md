@@ -327,5 +327,3 @@ Examples: a first launch → Material, Auto, GFM, autosave on, lint-on-save on, 
   `connecting-an-ai-provider.md#every-model-picker-filters`.
 
 ## Open questions
-
-*(none — ready to build)*

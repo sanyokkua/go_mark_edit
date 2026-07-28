@@ -2,13 +2,27 @@
 # Capture the repository's state immediately before a story starts.
 #
 # Contract (docs/delivery/work/DOD_TEMPLATE.md):
-#   - runs fmt-check, typecheck, lint, test, archtest, build and coverage
+#   - runs fmt-check, typecheck, lint, test, archtest, frontend-build and coverage
 #   - writes docs/delivery/work/baselines/story-NNN.md with the commit, the timestamp, every failing
 #     test by name, every static-analysis finding as file:rule:message, the coverage figure, and each
-#     command's exit code
-#   - ALWAYS exits 0. Recording a red state is a valid outcome; it is the reason baselines exist.
+#     command's exit code AND its reliability verdict
+#   - keeps every gate's raw output in story-NNN.logs/ — it is never deleted, precisely so a broken
+#     gate is diagnosable rather than a mystery
+#   - exits 0 when the capture is trustworthy, even if the tree is red. Recording a red state is a
+#     valid outcome; it is the reason baselines exist.
+#   - exits 3 when a gate is UNRELIABLE. That is not a red state, it is a non-measurement.
 #
-# Usage: just baseline STORY-057   (or: scripts/baseline.sh STORY-057)
+# THE RULE THIS SCRIPT EXISTS TO ENFORCE
+#
+# A gate that exits non-zero and yields zero findings did not run clean — it crashed, found no files
+# to analyse, or its output did not parse. If that is recorded as "0 findings", verify.sh later diffs
+# empty against empty, prints PASS, and does so for every story from then on. The gate is not weak at
+# that point; it cannot fail. STORY-058 shipped against exactly this: `just lint` exit 5, 0 findings.
+#
+# So: every gate records its exit code, its raw log is kept, and the exit/finding combination is
+# classified. verify.sh refuses to run against an UNRELIABLE baseline.
+#
+# Usage: just baseline STORY-058   (or: scripts/baseline.sh STORY-058)
 
 set -uo pipefail
 
@@ -18,7 +32,7 @@ if [[ -z "$STORY_ARG" ]]; then
   exit 2
 fi
 
-# Accept STORY-057, story-057 or 057.
+# Accept STORY-058, story-058 or 058.
 STORY_NUMBER="$(printf '%s' "$STORY_ARG" | tr -cd '0-9')"
 if [[ -z "$STORY_NUMBER" ]]; then
   echo "could not read a story number out of '$STORY_ARG'" >&2
@@ -29,11 +43,12 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 OUT_DIR="docs/delivery/work/baselines"
-OUT_FILE="$OUT_DIR/story-$STORY_NUMBER.md"
-WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+OUT="$OUT_DIR/story-$STORY_NUMBER"
+OUT_FILE="$OUT.md"
+LOGS="$OUT.logs"
 
-mkdir -p "$OUT_DIR"
+mkdir -p "$LOGS"
+: > "$OUT.exit"
 
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo 'not-a-git-repository')"
 COMMIT_FULL="$(git rev-parse HEAD 2>/dev/null || echo '-')"
@@ -43,37 +58,88 @@ if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
   DIRTY="**dirty — uncommitted changes are part of this baseline**"
 fi
 
-# run <var> <label> <logfile> <command...> — never aborts; records the exit code in <var>.
+UNRELIABLE=0
+
+# run <gate> <command...> — never aborts. Keeps the log, records the exit code beside it.
 # Written without associative arrays: macOS ships bash 3.2, which has none.
 run() {
-  local var="$1" label="$2" log="$3"; shift 3
+  local gate="$1"; shift
   local code=0
-  printf '  %-14s ' "$label"
-  "$@" >"$log" 2>&1 || code=$?
-  eval "$var=$code"
+  printf '  %-14s ' "$gate"
+  "$@" >"$LOGS/$gate.log" 2>&1 || code=$?
+  printf '%s\n' "$code" > "$LOGS/$gate.code"
   if [[ "$code" == "0" ]]; then echo "ok"; else echo "exit $code"; fi
+  return 0
+}
+
+# classify_findings <gate> <count>
+#   For the two gates that produce a finding SET. Non-zero exit with nothing extracted means the
+#   gate did not run, and that is the condition this whole script exists to catch.
+classify_findings() {
+  local gate="$1" count="$2"
+  local code verdict
+  code="$(cat "$LOGS/$gate.code")"
+  if   [[ "$code" == "0" ]]; then verdict="clean"
+  elif [[ "$count" -gt 0 ]]; then verdict="ok-with-findings"
+  else verdict="UNRELIABLE"; UNRELIABLE=1
+  fi
+  printf '%s=%s=%s=%s\n' "$gate" "$code" "$verdict" "$count" >> "$OUT.exit"
+  if [[ "$verdict" == "UNRELIABLE" ]]; then
+    echo "  !! $gate exited $code and produced no parseable findings — it did not run."
+    echo "     Raw output: $LOGS/$gate.log"
+  fi
+  return 0
+}
+
+# classify_passfail <gate>
+#   For the gates that are pass/fail rather than finding sets. A non-zero exit is meaningful on its
+#   own here, and "0 findings" is not a claim about anything.
+classify_passfail() {
+  local gate="$1"
+  local code verdict
+  code="$(cat "$LOGS/$gate.code")"
+  if [[ "$code" == "0" ]]; then verdict="clean"; else verdict="failing"; fi
+  printf '%s=%s=%s=0\n' "$gate" "$code" "$verdict" >> "$OUT.exit"
+  return 0
 }
 
 echo "Capturing baseline for STORY-$STORY_NUMBER at $COMMIT"
-run EXIT_FMT      fmt-check "$WORK/fmt.log"       just fmt-check
-run EXIT_TYPES    typecheck "$WORK/typecheck.log" just typecheck
-run EXIT_LINT     lint      "$WORK/lint.log"      just lint
-run EXIT_TEST     test      "$WORK/test.log"      just test
-run EXIT_ARCH     archtest  "$WORK/archtest.log"  just archtest
-run EXIT_BUILD    build     "$WORK/build.log"     just frontend-build
-run EXIT_COVERAGE coverage  "$WORK/cover.log"     go test -cover ./internal/... .
+# frontend-build runs FIRST and the order is load-bearing: main_test.go asserts that
+# frontend/dist/index.html is embedded, frontend/dist/ is gitignored, and `just frontend-build` is
+# what produces it. Run `just test` before it in a clean checkout and the Go suite fails with
+# "read embedded frontend/dist/index.html: file does not exist" — a baseline failure caused entirely
+# by the baseline script's own ordering. `just check` puts frontend-build first for the same reason.
+run frontend-build  just frontend-build
+run fmt-check       just fmt-check
+run typecheck       just typecheck
+run lint            just lint
+run test            just test
+run archtest        just archtest
+run coverage        go test -cover ./internal/... .
 
 # --- failing tests, by fully-qualified name ------------------------------------------------------
-grep -hoE '^\s*--- FAIL: [A-Za-z0-9_/]+' "$WORK/test.log" 2>/dev/null \
-  | sed 's/.*--- FAIL: //' | sort -u > "$WORK/failing-tests.txt" || true
-grep -hoE '^\s+✕ .*' "$WORK/test.log" 2>/dev/null \
-  | sed 's/^ *✕ //' | sort -u >> "$WORK/failing-tests.txt" || true
-FAIL_COUNT="$(wc -l < "$WORK/failing-tests.txt" | tr -d ' ')"
+: > "$OUT.failing-tests"
+grep -hoE '^\s*--- FAIL: [A-Za-z0-9_/]+' "$LOGS/test.log" 2>/dev/null \
+  | sed 's/.*--- FAIL: //' | sort -u >> "$OUT.failing-tests" || true
+grep -hoE '^\s+✕ .*' "$LOGS/test.log" 2>/dev/null \
+  | sed 's/^ *✕ //' | sort -u >> "$OUT.failing-tests" || true
+sort -u "$OUT.failing-tests" -o "$OUT.failing-tests"
+FAIL_COUNT="$(wc -l < "$OUT.failing-tests" | tr -d ' ')"
+
+# A test runner that exits non-zero with no parsed failures did not complete. But a runner that
+# exits 0 has legitimately produced an empty set, so the count alone cannot decide it.
+TEST_RAN="$(grep -cE '^(=== RUN|ok |PASS|FAIL|Tests:|✓|✔)' "$LOGS/test.log" 2>/dev/null || true)"
+if [[ "$TEST_RAN" == "0" ]]; then
+  # Nothing that looks like a test run at all — treat as no findings so classify catches it.
+  FAIL_COUNT_FOR_VERDICT=0
+else
+  FAIL_COUNT_FOR_VERDICT="$FAIL_COUNT"
+fi
 
 # --- static-analysis findings, as file:rule:message ----------------------------------------------
-: > "$WORK/findings.txt"
+: > "$OUT.findings"
 # golangci-lint prints "path:line:col: message (linter)"
-grep -hoE '^[^ ]+\.go:[0-9]+:[0-9]+: .*' "$WORK/lint.log" 2>/dev/null >> "$WORK/findings.txt" || true
+grep -hoE '^[^ ]+\.go:[0-9]+:[0-9]+: .*' "$LOGS/lint.log" 2>/dev/null >> "$OUT.findings" || true
 # eslint stylish prints "  line:col  severity  message  rule-id" under a path header
 awk '
   /^\// { file = $0; next }
@@ -81,12 +147,20 @@ awk '
     rule = $NF
     printf "%s:%s:%s\n", file, rule, $2
   }
-' "$WORK/lint.log" >> "$WORK/findings.txt" 2>/dev/null || true
-sort -u "$WORK/findings.txt" -o "$WORK/findings.txt"
-FINDING_COUNT="$(wc -l < "$WORK/findings.txt" | tr -d ' ')"
+' "$LOGS/lint.log" >> "$OUT.findings" 2>/dev/null || true
+sort -u "$OUT.findings" -o "$OUT.findings"
+FINDING_COUNT="$(wc -l < "$OUT.findings" | tr -d ' ')"
+
+# --- classify every gate ---------------------------------------------------------------------------
+classify_findings lint "$FINDING_COUNT"
+classify_findings test "$FAIL_COUNT_FOR_VERDICT"
+classify_passfail fmt-check
+classify_passfail typecheck
+classify_passfail archtest
+classify_passfail frontend-build
 
 # --- coverage -------------------------------------------------------------------------------------
-COVERAGE="$(grep -hoE 'coverage: [0-9.]+% of statements' "$WORK/cover.log" 2>/dev/null \
+COVERAGE="$(grep -hoE 'coverage: [0-9.]+% of statements' "$LOGS/coverage.log" 2>/dev/null \
   | grep -oE '[0-9.]+' | awk '{s+=$1; n++} END {if (n) printf "%.1f%% (mean of %d packages)", s/n, n; else print "not measured"}')"
 
 # --- write it --------------------------------------------------------------------------------------
@@ -102,18 +176,41 @@ COVERAGE="$(grep -hoE 'coverage: [0-9.]+% of statements' "$WORK/cover.log" 2>/de
   echo "| working tree | $DIRTY |"
   echo "| coverage | $COVERAGE |"
   echo
-  echo "## Command exit codes"
+  echo "## Gates"
   echo
-  echo "| check | command | exit |"
-  echo "|---|---|---|"
-  echo "| format | \`just fmt-check\` | $EXIT_FMT |"
-  echo "| types | \`just typecheck\` | $EXIT_TYPES |"
-  echo "| static analysis | \`just lint\` | $EXIT_LINT |"
-  echo "| tests | \`just test\` | $EXIT_TEST |"
-  echo "| architecture | \`just archtest\` | $EXIT_ARCH |"
-  echo "| build | \`just frontend-build\` | $EXIT_BUILD |"
+  echo "\`clean\` — exit 0. \`ok-with-findings\` — non-zero, but findings were extracted, so the gate ran."
+  echo "\`UNRELIABLE\` — non-zero **and** nothing extracted: the gate did not analyse anything, and a"
+  echo "later diff against it would pass whatever is written."
   echo
-  if [[ "$EXIT_ARCH" != "0" ]]; then
+  echo "| gate | command | exit | verdict | findings |"
+  echo "|---|---|---|---|---|"
+  while IFS='=' read -r gate code verdict count; do
+    case "$gate" in
+      fmt-check)      cmd='just fmt-check' ;;
+      typecheck)      cmd='just typecheck' ;;
+      lint)           cmd='just lint' ;;
+      test)           cmd='just test' ;;
+      archtest)       cmd='just archtest' ;;
+      frontend-build) cmd='just frontend-build' ;;
+      *)              cmd="$gate" ;;
+    esac
+    echo "| $gate | \`$cmd\` | $code | $verdict | $count |"
+  done < "$OUT.exit"
+  echo
+  echo "Raw output for every gate is kept in \`story-$STORY_NUMBER.logs/\`."
+  echo
+  if [[ "$UNRELIABLE" == "1" ]]; then
+    echo "## DO NOT BUILD ON THIS BASELINE"
+    echo
+    echo "A gate above is marked UNRELIABLE: it exited non-zero and produced no parseable findings,"
+    echo "which means it did not analyse anything. A later diff against this baseline will pass"
+    echo "regardless of what is written."
+    echo
+    echo "Fix the gate, record the problem in \`docs/delivery/plan/KNOWN_ISSUES.md\`, and capture the"
+    echo "baseline again. \`just verify STORY-$STORY_NUMBER\` will refuse to run until then."
+    echo
+  fi
+  if [[ "$(grep -c '^archtest=0=' "$OUT.exit" || true)" == "0" ]]; then
     echo "> **The architecture gate is red at baseline.** It is never diffed and never weakened."
     echo "> Fix it before starting the story."
     echo
@@ -124,7 +221,7 @@ COVERAGE="$(grep -hoE 'coverage: [0-9.]+% of statements' "$WORK/cover.log" 2>/de
     echo "*(none)*"
   else
     echo '```'
-    cat "$WORK/failing-tests.txt"
+    cat "$OUT.failing-tests"
     echo '```'
   fi
   echo
@@ -136,17 +233,20 @@ COVERAGE="$(grep -hoE 'coverage: [0-9.]+% of statements' "$WORK/cover.log" 2>/de
     echo "*(none)*"
   else
     echo '```'
-    cat "$WORK/findings.txt"
+    cat "$OUT.findings"
     echo '```'
   fi
 } > "$OUT_FILE"
 
-# Keep the machine-readable copies beside the report so verify can diff against them exactly.
-cp "$WORK/failing-tests.txt" "$OUT_DIR/story-$STORY_NUMBER.failing-tests"
-cp "$WORK/findings.txt"      "$OUT_DIR/story-$STORY_NUMBER.findings"
-printf '%s\n' "$COMMIT_FULL" > "$OUT_DIR/story-$STORY_NUMBER.commit"
+printf '%s\n' "$COMMIT_FULL" > "$OUT.commit"
 
 echo
+cat "$OUT.exit"
+echo
+if [[ "$UNRELIABLE" == "1" ]]; then
+  echo "BASELINE UNRELIABLE — see $OUT_FILE. Do not start the story."
+  exit 3
+fi
 echo "Wrote $OUT_FILE"
 echo "  $FAIL_COUNT failing test(s), $FINDING_COUNT static-analysis finding(s), coverage $COVERAGE"
 exit 0

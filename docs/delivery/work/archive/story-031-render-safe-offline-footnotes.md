@@ -3,11 +3,11 @@ id: STORY-031
 title: Render safe offline GFM footnotes
 status: done
 spec_clauses:
-  - 01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features
-  - 01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization
-  - 01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases
-  - 02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline
-  - 03_NonFunctional/04_OFFLINE.md#2-bundled-assets
+  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features
+  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization
+  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline
+  - ../../../_archive-2026-07-28-specification/03_NonFunctional/04_OFFLINE.md#2-bundled-assets
   - 07_Phases/PHASE_01_CORE_EDITOR.md#requirement-ledger
 phase_requirements:
   - PH01-R11
@@ -28,6 +28,9 @@ phase: 01
 owner: coder
 estimate: S
 ---
+
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
 
 # STORY-031 — Render safe offline GFM footnotes
 
@@ -50,14 +53,14 @@ existing sanitizer, higher-tier literal behavior, and zero-network guarantee.
 
 ## Spec inputs
 
-- `01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features` — GFM and Full include footnotes with
+- `../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features` — GFM and Full include footnotes with
   back-references.
-- `01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization` — keep generated ids/links safe and reject
+- `../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization` — keep generated ids/links safe and reject
   executable document content.
-- `01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases` — preserve EC-RENDER-5 sanitization and
+- `../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases` — preserve EC-RENDER-5 sanitization and
   EC-RENDER-6 literal higher-tier syntax.
-- `02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline` — keep the centralized remark/rehype pipeline.
-- `03_NonFunctional/04_OFFLINE.md#2-bundled-assets` — use bundled dependencies and initiate no runtime
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline` — keep the centralized remark/rehype pipeline.
+- `../../../_archive-2026-07-28-specification/03_NonFunctional/04_OFFLINE.md#2-bundled-assets` — use bundled dependencies and initiate no runtime
   resource request.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#requirement-ledger` — complete PH01-R11's product-defined base GFM set.
 

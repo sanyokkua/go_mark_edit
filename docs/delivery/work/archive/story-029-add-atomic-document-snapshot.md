@@ -3,10 +3,10 @@ id: STORY-029
 title: Add an atomic backend document snapshot seam
 status: done
 spec_clauses:
-  - 02_Architecture/02_BACKEND_GO.md#application-model
-  - 02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
-  - 02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
+  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model
+  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
+  - ../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
   - 07_Phases/PHASE_09_ASSETS_SECURITY.md#cross-phase-contracts
   - 07_Phases/PHASE_12_ACTIONS_PROOFREAD_REFORMAT.md#cross-phase-contracts
 phase_requirements:
@@ -30,6 +30,9 @@ phase: 01
 owner: coder
 estimate: M
 ---
+
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
 
 # STORY-029 — Add an atomic backend document snapshot seam
 
@@ -55,13 +58,13 @@ selection, and revision so later asset and assistant work cannot combine fields 
 
 ## Spec inputs
 
-- `02_Architecture/02_BACKEND_GO.md#application-model` — read stable identity, canonical content, selection,
+- `../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model` — read stable identity, canonical content, selection,
   and revision from the one mutex-guarded model.
-- `02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model` — keep live document content in
+- `../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model` — keep live document content in
   Go memory and outside durable/frontend state.
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open` — complete F2's first-class document
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open` — complete F2's first-class document
   identity and content/selection accessor.
-- `02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams` — let later backend tools consume F2 without
+- `../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams` — let later backend tools consume F2 without
   reaching into Monaco.
 - `07_Phases/PHASE_09_ASSETS_SECURITY.md#cross-phase-contracts` — provide stable identity/path context for
   later least-privilege asset resolution.

@@ -551,6 +551,7 @@ body[data-theme="material"][data-mode="dark"] .modal,body[data-theme="material"]
     <button data-screen="save-prompt">Save / Discard</button>
     <button data-screen="quit-prompt">Quit with unsaved</button>
     <button data-screen="reload-prompt">Changed on disk</button>
+    <button data-screen="startup-failure">Startup failure</button>
     <span class="grp">Menus 2</span>
     <button data-screen="tab-menu">Tab menu</button>
     <button data-screen="editor-menu">Editor menu</button>
@@ -878,6 +879,12 @@ graph LR; A--&gt;B; B--&gt;C;
       <div class="modal-b" style="display:block;padding:16px 18px;font-size:13.5px;color:var(--muted);line-height:1.6">Another program modified this file while you had it open. You have unsaved changes of your own.<div style="margin:14px 0;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--stroke-soft);border:1px solid var(--stroke-soft);border-radius:10px;overflow:hidden;font-family:var(--mono);font-size:11px;line-height:1.7"><div style="background:var(--surface);padding:9px 11px"><div style="font-family:var(--font);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:5px">On disk</div><span style="display:block;background:color-mix(in srgb,var(--ok) 16%,transparent);border-radius:3px;padding:0 4px"># Release Notes — v2.2</span><span style="display:block;padding:0 4px">We are excited to…</span></div><div style="background:var(--surface);padding:9px 11px"><div style="font-family:var(--font);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:5px">Yours</div><span style="display:block;background:color-mix(in srgb,var(--err) 16%,transparent);border-radius:3px;padding:0 4px"># Release Notes — v2.1</span><span style="display:block;padding:0 4px">We are excited to…</span></div></div>Reloading discards your changes. Keeping yours leaves the file on disk untouched until you save.<div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap"><button class="tbtn" style="border:1px solid var(--stroke);background:var(--surface);padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Reload from disk</button><button class="tbtn" style="background:var(--accent);color:var(--accent-contrast);border:0;font-weight:600;padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Keep mine</button></div></div>
     </div>
   </div>
+  <div class="scrim" id="startupFailure">
+    <div class="modal" style="width:min(430px,92%)">
+      <div class="modal-h"><h3>GoMarkEdit could not start</h3></div>
+      <div class="modal-b" style="display:block;padding:16px 18px;font-size:13.5px;color:var(--muted);line-height:1.6">GoMarkEdit could not initialize its local settings. Please try again.<div style="display:flex;gap:8px;margin-top:18px"><button class="tbtn" style="background:var(--accent);color:var(--accent-contrast);border:0;font-weight:600;padding:8px 14px;border-radius:9px" onclick="showScreen('editor-split')">Retry</button></div><div style="margin-top:14px;font-size:12px;color:var(--faint)">This replaces the whole window — there is no title bar, no menu and no editor behind it, because nothing was successfully built. Retry is the only control, and it is disabled while a retry is in flight.</div></div>
+    </div>
+  </div>
   <!-- folder-conflict prompt -->
   <div class="scrim" id="dropPrompt">
     <div class="modal" style="width:min(440px,92%)">
@@ -963,7 +970,7 @@ graph LR; A--&gt;B; B--&gt;C;
   let screen='editor-split';
   const CLASSES=['no-sidebar','no-assistant','only-editor','only-preview','reading','dragging','ctx','toasting','show-banner','empty','tree-is-empty','tree-no-match','busy','paused','problems-open','assistant-reserved','focusdemo','diffing','tabctx','edctx','ovf','sidebar-open'];
   function resetApp(){ CLASSES.forEach(c=>app.classList.remove(c)); closeMenus();
-    ['setModal','shModal','aboutModal','dropPrompt','savePrompt','quitPrompt','reloadPrompt'].forEach(id=>document.getElementById(id).classList.remove('show'));
+    ['setModal','shModal','aboutModal','dropPrompt','savePrompt','quitPrompt','reloadPrompt','startupFailure'].forEach(id=>document.getElementById(id).classList.remove('show'));
     body.classList.remove('show-tokens');
     document.querySelectorAll('#viewseg button').forEach(b=>b.classList.toggle('active',b.dataset.view==='split'));
   }
@@ -1008,6 +1015,7 @@ graph LR; A--&gt;B; B--&gt;C;
       case 'save-prompt': document.getElementById('savePrompt').classList.add('show'); break;
       case 'quit-prompt': document.getElementById('quitPrompt').classList.add('show'); break;
       case 'reload-prompt': document.getElementById('reloadPrompt').classList.add('show'); break;
+      case 'startup-failure': document.getElementById('startupFailure').classList.add('show'); break;
       case 'settings-editor': openSettings('editor'); break;
       case 'settings-markdown': openSettings('markdown'); break;
       case 'settings-export': openSettings('export'); break;

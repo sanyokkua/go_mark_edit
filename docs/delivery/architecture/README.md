@@ -37,4 +37,5 @@ type. And the build is CGO-free — SQLite is `modernc.org/sqlite`, a pure-Go tr
 `wails build` cross-compiles without a C toolchain on any host. Both are checked by `just archtest`.
 
 Read next: `stack.md` for versions · `structure.md` for where a new thing goes · `rules.md` for what you
-may and may not do · `patterns/` for how a recurring job is done here.
+may and may not do · `release.md` for how it is built, versioned, packaged and shipped · `patterns/` for
+how a recurring job is done here.

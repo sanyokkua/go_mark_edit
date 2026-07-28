@@ -4,6 +4,9 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 The assistant must talk to a range of LLM back-ends the user might already run: local servers
@@ -129,10 +132,10 @@ configurable with sensible defaults, sent as pointer fields so "unset" is distin
   connection/models/inference on a draft config; selected provider/model persisted; default provider
   local), **DD-52** (configurable inference parameters: temperature, max output tokens, context length).
   Related: DD-48 (app-owned retries/timeouts + error classification), DD-54 (privacy).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
-  `02_Architecture/08_LLM_INTEGRATION.md#provider-abstraction`,
-  `02_Architecture/08_LLM_INTEGRATION.md#persistence`,
-  `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`, `02_Architecture/06_ERROR_HANDLING.md`.
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#11-llm-assistant`,
+  `../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#provider-abstraction`,
+  `../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#persistence`,
+  `../../_archive-2026-07-28-specification/03_NonFunctional/03_SECURITY_AND_PRIVACY.md`, `../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md`.
 - Stories: Phase 11 (LLM foundation) provider-abstraction, model-discovery, verification, and
   AI/Providers-settings stories per `07_Phases/00_ROADMAP.md`
   conventions (authored per phase; none `done` at ADR time).

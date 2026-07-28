@@ -1,6 +1,6 @@
 ---
 name: plan-phase
-description: Turn one phase into an ordered set of vertical stories. Reads the phase and every feature file it names, stops on unanswered questions, then writes the story files to disk.
+description: Turn one phase into an ordered set of vertical stories. Reads the phase and every feature file it names, stops on unanswered questions, then writes one stub file per story.
 ---
 
 # Plan phase $ARGUMENTS
@@ -49,6 +49,15 @@ service, its envelope type in `internal/apperr/results.go`, the generated bindin
 
 Order by dependency. Put something demonstrable as early as possible.
 
+**Size ceiling.** A story owns **at most 5 rules**. Count them as you slice. If a story would own
+more, split it — by state, by surface, by the order a user meets the behaviour — and say in the report
+why you split it that way.
+
+A story owning nine rules is not one story that is large. It is three stories that were never
+separated, and it will be built as two-and-a-bit, with the remainder disappearing silently because
+nothing downstream counts rules. STORY-058 owned nine rules and shipped without ten of the theme
+tokens one of them names; that is what this ceiling exists to prevent.
+
 ## 3. Check coverage three ways
 
 - **Forwards:** every rule in every feature file this phase names is owned by exactly one story.
@@ -60,13 +69,51 @@ Then check the constraints: this phase's "Done when" paragraph names themes, key
 empty states, strings, notifications, limits and network. Every one of those needs a story that
 delivers it — they are not a review pass at the end.
 
-## 4. Write the files
+## 4. Write one stub per story
 
-Create `docs/delivery/work/story-NNN-<slug>.md` for each story, as a stub carrying the title,
-`## What you'll be able to do` in plain prose, and the rules it owns. `/plan-story NNN` fills the rest.
+Create `docs/delivery/work/story-NNN-<slug>.md` for each story.
 
 Numbering continues from the highest story in `docs/delivery/work/` and `docs/delivery/work/archive/`.
-Numbers are never reused.
+Numbers are never reused — the discontinuities so far are recorded in
+`docs/delivery/work/archive/README.md`.
+
+**Every stub has exactly this shape**, and the status line is mandatory:
+
+```markdown
+# STORY-NNN — <what it does>
+
+**STATUS:** stub — not buildable. Run `/plan-story NNN` to expand.
+**Phase:** $ARGUMENTS
+
+## What you'll be able to do
+
+<Two to four sentences of plain prose. Name the control, menu item or command, and what appears.
+Someone who has not read the feature file must be able to judge from this alone whether the slicing
+is right.>
+
+## Rules this story owns
+
+- **<Rule title, as a sentence>** — `spec/product/<feature>.md#<anchor>`
+  <One sentence saying what the rule actually requires, in the software's own words, with its real
+  values. Not a restatement of the title.>
+
+## Shared constraints carried
+
+- **<Constraint title>** — `spec/constraints.md#<anchor>`
+  <One sentence, same rule.>
+
+## Depends on
+
+<Which earlier story must be built first, and what this one needs from it. Or "nothing".>
+```
+
+**A bare anchor is not a stub entry.** A list of `` - `feature.md#some-anchor` `` with no prose is the
+exact artifact this whole standard exists to eliminate: a set of identifiers that neither a person nor
+an agent can act on, and that hides how big the story really is. Every bullet carries its sentence.
+
+The one-line summaries are for **judging the slicing**, not for building. `/plan-story` replaces them
+with the full rule text copied verbatim. Do not try to copy whole rules here — a stub that looks
+buildable but is not is worse than one that announces itself.
 
 **Write the files as you go. Do not hold the plan in the conversation and do not use plan mode** — the
 file on disk is the plan, and it is what the next session reads. If you are interrupted, the work so
@@ -74,6 +121,17 @@ far survives.
 
 ## 5. Report
 
-- the story list, in dependency order, each with its one-line outcome
+- the story list, in dependency order, each with its one-line outcome **and its rule count**
+- any story you split, and on what axis
 - the coverage result for all three passes, plus the constraints pass
 - every assumption you made, and every question still open
+
+Then end with exactly this, filling in the first story number:
+
+> **Next:** review the slicing above — this is the cheapest moment to disagree. Look for a story that
+> delivers only a layer, and for anything in the phase's features that no story owns.
+>
+> When the slicing looks right, run `/plan-story NNN` for the first story in dependency order. Stories
+> are expanded and built one at a time; do not expand them all now.
+>
+> Full workflow: `docs/delivery/WORKFLOW.md`

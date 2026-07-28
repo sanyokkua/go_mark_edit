@@ -107,7 +107,8 @@ the run crashing → the user loses the whole conversation over one missing file
   buffer changes.
 
 Examples: a run that rewrites a document → a diff card; the file on disk is untouched until the user
-applies and then saves.
+applies and then saves. · the same run with the user closing the tab before applying → nothing
+reached disk, so there is nothing to undo
 
 ### A proposal is a card with a diff and three actions {#the-proposal-card}
 - A proposal renders as a card naming the scope — `✎ Proposed edit — release-notes.md`, or `— the
@@ -165,8 +166,9 @@ memory-hungry operations at once, which is what the gate exists to prevent.
 - **While** the provider supports it, assistant text streams into the transcript.
 - Non-streaming is the fallback, and correctness never depends on streaming.
 
-Examples: a provider without streaming → the reply appears at once when it is done, and everything else
-behaves identically.
+Examples: a provider without streaming → the reply appears at once when it is done, and everything
+else behaves identically. · a provider that streams and then drops the connection halfway → the same
+failure the non-streaming path would have produced, because correctness never depended on the stream
 
 ### The transcript is per document and per session {#transcript-is-per-document-per-session}
 - History is kept per document for the session and is **not** persisted across launches.
@@ -180,7 +182,8 @@ also disappears from the sidebar → the user loses a conversation they were rea
 - The composer's context row shows what this turn may access: the current document always, and workspace
   files only while a folder is open.
 
-Examples: a loose file open → no workspace chip, and the workspace tools are genuinely absent.
+Examples: a loose file open → no workspace chip, and the workspace tools are genuinely absent. · a
+folder open → the workspace chip appears and the workspace tools are reachable in that same turn
 
 ### The model chip opens a picker, and it filters {#model-chip-picker-filters}
 - The model chip in the sidebar header names the model this conversation will use. Activating it opens a
@@ -274,5 +277,3 @@ disagree about what is available.
   answers to "which models can I use".
 
 ## Open questions
-
-*(none — ready to build)*

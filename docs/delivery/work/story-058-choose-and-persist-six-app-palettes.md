@@ -1,5 +1,30 @@
 # STORY-058 — Choose and persist six complete app palettes
 
+**STATUS:** built — shipped in `c8d88fe`, 2026-07-28.
+**Phase:** 02
+
+> **What this story's rule copy lost, recorded 2026-07-28.** This file is not corrected. It is the
+> honest record of what was actually built, and rewriting it to look right after the fact would
+> destroy the only account of how the gap happened.
+>
+> `just story-check 058` reports **10 errors**. The one that reached the user:
+> `themes-and-appearance.md#theme-identity-is-stable` was copied with **11 of the rule's 24 table
+> rows**. The thirteen dropped rows name ten tokens — `--canvas`, `--elevated`, `--surface-2`,
+> `--surface-3`, `--stroke`, `--stroke-soft`, `--muted`, `--faint`, `--hover`, `--user-bubble` —
+> and every one of them has **zero occurrences** in the shipped
+> `frontend/src/ui/styles/tokens.css`. The eleven rows that were copied are all present. The
+> implementer built exactly what was in front of them.
+>
+> Eight further rules in this story lost lines in the same way, and the story owns **9 rules against
+> a ceiling of 5**. Its baseline recorded `just lint` at **exit 5 with 0 findings**, which means the
+> static-analysis gate analysed nothing and every later verify diffed empty against empty — so M3
+> below was never satisfied, and could not have failed.
+>
+> The missing ten tokens are **STORY-062**, built before STORY-059. See
+> `../plan/KNOWN_ISSUES.md` items 6 and 14. The baseline was re-captured on 2026-07-28 with the
+> repaired `scripts/baseline.sh`; `../baselines/story-058.md` now records the real result and the
+> `Baseline` table below is left as it was written.
+
 ## What you'll be able to do
 
 Open the compact Settings menu or the minimum Appearance dialog and choose Liquid Glass, Material, or Minimal with Auto, Light, or Dark appearance. Both controls show one persisted choice and update together after the write succeeds. App chrome, preview, and the status bar receive a complete root-token palette. Missing or invalid stored values are silently Material and Auto.

@@ -4,6 +4,9 @@
 **Date:** 2026-07-25
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 `mockups/gomarkedit-mockup.html` draws a title bar containing three macOS traffic-light dots, an
@@ -15,7 +18,7 @@ and how the window is dragged and resized.
 
 There is a second, sharper problem hiding behind it. `menu.NewMenuFromItems` appears nowhere in the
 specification, and the menu bar is listed only as a React widget
-(`02_Architecture/01_MODULE_INVENTORY.md`, `02_Architecture/03_FRONTEND_REACT.md`). On macOS, WKWebView
+(`../../_archive-2026-07-28-specification/02_Architecture/01_MODULE_INVENTORY.md`, `../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md`). On macOS, WKWebView
 routes **Cmd+C, Cmd+V, Cmd+X, Cmd+A, Cmd+Z and Cmd+Shift+Z through the native Edit menu**, not through
 the DOM. A Wails application that installs no native menu therefore has no working clipboard and no
 working undo inside its own editor, and no Cmd+Q. For a Markdown editor that is not a rough edge; it is
@@ -91,9 +94,9 @@ Concretely:
 ## Links
 
 - Design decisions: DD-28, DD-29, DD-30 (token-only theming), DD-01 (cross-platform Wails v2)
-- Spec clauses: `specification/02_Architecture/04_WAILS_INTEGRATION.md`,
-  `specification/02_Architecture/03_FRONTEND_REACT.md#structure`,
-  `specification/01_Product/12_KEYBOARD_SHORTCUTS.md`,
+- Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md`,
+  ../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#structure`,
+  ../../_archive-2026-07-28-specification/01_Product/12_KEYBOARD_SHORTCUTS.md`,
   `specification/07_Phases/PHASE_03_IT_LOOKS_DESIGNED.md` (step 1)
 - Mockup: `specification/mockups/gomarkedit-mockup.html` — the title bar and `.lights`
 - Stories: the Phase 03 stories, not yet written.

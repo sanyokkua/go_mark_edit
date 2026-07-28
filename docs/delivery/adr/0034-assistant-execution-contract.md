@@ -5,6 +5,9 @@
 **Deciders:** project owner, architect
 **Supersedes:** (none — narrows ADR-0007, ADR-0008 and ADR-0009 without replacing them)
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 The assistant is specified as a bounded agentic tool-call loop against any OpenAI-compatible provider,
@@ -12,7 +15,7 @@ with a local provider as the default. A review against a shipped application bui
 premise surfaced three assumptions in our specification that do not survive contact with local models.
 
 **1. Tool-call support is treated as a property of the provider kind. It is a property of the model.**
-`02_Architecture/08_LLM_INTEGRATION.md` puts `Capabilities` on `ProviderProfile`, which is keyed by
+`../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md` puts `Capabilities` on `ProviderProfile`, which is keyed by
 kind (`ollama`, `lmstudio`, `openai`, …). But one Ollama server on one port serves models that support
 tool calling and models that do not, at the same time. A local-first user's installed model list is
 mostly the second kind. With no clause covering it, the behaviour we would ship is: Ollama returns
@@ -133,10 +136,10 @@ inferences to produce the same nothing. Its message says what to change.
 - Design decisions: DD-38–DD-55, DD-76 (document text is data, never instruction)
 - Narrows: ADR-0007 (provider abstraction), ADR-0008 (agentic tool-call loop),
   ADR-0009 (tokenizer and context budget)
-- Spec clauses: `specification/02_Architecture/08_LLM_INTEGRATION.md`,
-  `specification/01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md`,
-  `specification/01_Product/17_PROVIDERS_MODELS_SETTINGS.md`,
-  `specification/01_Product/18_TOKENIZER_AND_CONTEXT.md`
+- Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md`,
+  ../../_archive-2026-07-28-specification/01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md`,
+  ../../_archive-2026-07-28-specification/01_Product/17_PROVIDERS_MODELS_SETTINGS.md`,
+  ../../_archive-2026-07-28-specification/01_Product/18_TOKENIZER_AND_CONTEXT.md`
 - Phases: `specification/07_Phases/PHASE_11_AI_PROVIDER.md` (Test tools, the wall-clock default),
   `specification/07_Phases/PHASE_12_ASSISTANT_REWRITES.md`,
   `specification/07_Phases/PHASE_13_CONVERSATION.md`

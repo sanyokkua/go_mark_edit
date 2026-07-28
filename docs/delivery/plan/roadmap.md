@@ -7,7 +7,7 @@ loud. Every dependency points backwards — no phase needs something a later pha
 |---|---|---|---|
 | [00](phase-00-it-runs.md) | The app opens | — | **done** |
 | [01](phase-01-type-and-see.md) | I can type Markdown and watch it render | 00 | **done** |
-| [02](phase-02-every-theme-looks-right.md) | Every theme looks right, including my code | 01 | **next** |
+| [02](phase-02-every-theme-looks-right.md) | Every theme looks right, including my code | 01 | **in progress** — STORY-058 built; 062, 059, 060, 061 to go |
 | [03](phase-03-it-looks-designed.md) | It looks like a real app, not a web page | 02 | |
 | [04](phase-04-write-markdown.md) | I can write Markdown, not just type it | 03 | |
 | [05](phase-05-real-files.md) | I can open, edit and save real files, in tabs | 04 | |
@@ -22,10 +22,12 @@ loud. Every dependency points backwards — no phase needs something a later pha
 
 ## Why this order
 
-**Colour comes before chrome, and both come before features.** `frontend/src/ui/styles/tokens.css`
-holds 62 tokens and not one colour, while `../spec/surface/mockup.html` shows three finished themes.
-Every surface added before the palette exists gets restyled later, and reading mode cannot even be
-demonstrated until there is chrome to hide.
+**Colour comes before chrome, and both come before features.** When this order was chosen,
+`frontend/src/ui/styles/tokens.css` carried layout values and not one colour, while
+`../spec/surface/mockup.html` showed three finished themes. Every surface added before the palette
+exists gets restyled later, and reading mode cannot even be demonstrated until there is chrome to
+hide. STORY-058 has since built most of the palette — 108 tokens and 71 colour literals across eight
+blocks — and STORY-062 finishes it.
 
 **Phase 02 and Phase 03 are two phases, not one.** They used to be one, and it hid a lot of work. Phase
 02 is the colour system, and it is harder than it sounds: Monaco cannot read CSS custom properties, so

@@ -4,6 +4,9 @@
 **Date:** 2026-07-25
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 The mockup and the prose contradict each other, and both are readable as normative.
@@ -13,7 +16,7 @@ and gives every tree row a context menu containing **Open · Open in new window 
 Finder · Copy path · Delete…**. `mockups/README.md` calls the mockup "the single source of truth for the
 GoMarkEdit UI".
 
-`01_Product/03_FILES_TABS_WORKSPACE.md` and DD-56/DD-59 say the opposite, deliberately and twice: the
+`../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md` and DD-56/DD-59 say the opposite, deliberately and twice: the
 app "only opens — it never moves, copies, renames, or reorders anything on disk."
 
 Neither position is obviously right. A notes application where you cannot create a note inside your
@@ -41,7 +44,7 @@ tab on that path, and the recent-files list all describing a file that is no lon
 
 Chosen: **B**.
 
-**Permitted, and specified in `01_Product/03_FILES_TABS_WORKSPACE.md`:**
+**Permitted, and specified in `../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md`:**
 
 - **New file** — creates an empty `.md` in the selected folder (or the workspace root) and opens it in a
   tab. If the name is taken, the app says so and does not overwrite.
@@ -69,7 +72,7 @@ The tree is refreshed after a create by inserting the known node, not by re-enum
 - Positive: the mockup and the prose agree, in writing, in one direction.
 - Negative: renaming a note means using a file manager, or Save As and then deleting the original
   elsewhere. This is a real limitation and it is recorded in
-  `00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons` rather than hidden.
+  `../../_archive-2026-07-28-specification/00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons` rather than hidden.
 - Negative: DD-56 and DD-59 said "never creates" and now say "creates, never destroys". That is a
   narrowing of an accepted decision and is why this is an ADR rather than an edit.
 - Neutral: the app still holds no destructive filesystem capability, so the assistant's tool scope
@@ -95,8 +98,8 @@ The tree is refreshed after a create by inserting the known node, not by re-enum
 ## Links
 
 - Design decisions: DD-56, DD-59 (narrowed by this ADR), new DD-77
-- Spec clauses: `specification/01_Product/03_FILES_TABS_WORKSPACE.md#file-operations`,
-  `specification/00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons`
+- Spec clauses: ../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#file-operations`,
+  ../../_archive-2026-07-28-specification/00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons`
 - Mockup: `specification/mockups/gomarkedit-mockup.html` — `#ctxmenu` and the sidebar header buttons
 - Phase: `specification/07_Phases/PHASE_07_A_FOLDER_OF_NOTES.md`
 - Stories: the Phase 07 stories, not yet written.

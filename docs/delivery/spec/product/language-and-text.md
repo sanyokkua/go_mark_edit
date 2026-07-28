@@ -64,7 +64,8 @@ shows a whole subtree moved when one string changed.
 | `tools_unsupported` | This model can't use tools | GoMarkEdit will use a simpler single-step mode. Choose a different model for workspace-wide actions. |
 
 Examples: a new error code added with no copy → it renders as a generic message that tells the user
-nothing and generates a support question.
+nothing and generates a support question. · `cancelled` → a title and deliberately no remediation,
+because it is a normal outcome and raises no error toast at all
 
 ### A message never carries an internal path, a prefix or a raw error {#messages-are-clean}
 - A user-facing message contains no operation prefix, no filesystem path taken from an internal error,
@@ -86,8 +87,10 @@ in.
 - **When** a provider supplies a retry delay, it is shown: `Rate limited — try again in about 20
   seconds.`
 
-Examples: parsing the delay and using it only internally → the user gets no guidance at the one moment
-they need it, which is what that same reference implementation did.
+Examples: parsing the delay and using it only internally → the user gets no guidance at the one
+moment they need it, which is what that same reference implementation did. · a provider that
+rate-limits without supplying a delay → the message carries no number rather than an invented one,
+because a wrong delay is worse than no delay
 
 ### Interpolation uses named placeholders {#named-placeholders}
 - A string with a variable in it uses a named placeholder in the catalogue value — `"status.words":
@@ -117,7 +120,8 @@ button for German → the control was built to fit one string, which is the defe
 ### Every locale resource is bundled {#locales-are-bundled}
 - Language resources ship in the application bundle. Nothing is fetched.
 
-Examples: the app used offline → every string renders.
+Examples: the app used offline → every string renders. · a language added as a fetched JSON file →
+the app renders raw catalogue keys the first time it starts without a network
 
 ### Controls tolerate long strings {#long-strings-do-not-clip}
 - A control wraps or ellipsises a long label rather than clipping it, and its target stays reachable.
@@ -129,8 +133,10 @@ is still clickable · a fixed-width button → the label is cut in half and the 
 - The shipped language is left-to-right. Right-to-left is not a v1 requirement, and the token and layout
   model must not make it impossible.
 
-Examples: layout expressed in logical properties — inline-start, inline-end — rather than left and right
-where it costs nothing.
+Examples: layout expressed in logical properties — inline-start, inline-end — rather than left and
+right where it costs nothing. · a hard-coded `margin-left: 12px` on one status-bar item → costs
+nothing today, and is one of a hundred identical things to find on the day right-to-left is asked
+for
 
 ## What it looks like
 
@@ -180,5 +186,3 @@ where it costs nothing.
   question.
 
 ## Open questions
-
-*(none — ready to build)*

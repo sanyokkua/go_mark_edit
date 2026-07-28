@@ -26,7 +26,7 @@ were deleted on 2026-07-25 along with the machinery they described.
 2026-07-28 there was a registry of 78 numbered design decisions, and the records below cite it heavily.
 That registry is gone: every one of those decisions is now written into the sentence of the feature file
 that needs it, which is the whole point of the conversion. The original registry is in git at revision
-`e1bd33f`, as `specification/00_Foundation/04_DESIGN_DECISIONS.md`, if you ever need to read a citation
+`e1bd33f`, as ../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md`, if you ever need to read a citation
 literally.
 
 The records are **not** being edited to remove those identifiers. A decision record is a historical

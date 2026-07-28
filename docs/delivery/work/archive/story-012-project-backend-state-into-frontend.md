@@ -3,11 +3,11 @@ id: STORY-012
 title: Project backend application state into the frontend
 status: done
 spec_clauses:
-  - 02_Architecture/03_FRONTEND_REACT.md#adapter-layer
-  - 02_Architecture/03_FRONTEND_REACT.md#store
-  - 02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - 02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow
-  - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#store
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+  - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
   - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
   - PH01-R02
@@ -36,6 +36,9 @@ owner: coder
 estimate: L
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-012 — Project backend application state into the frontend
 
 ## Goal
@@ -57,11 +60,11 @@ Hydrate and continuously reconcile a disposable frontend view of the backend app
 - Persisting document content or application state in `localStorage` or SQLite.
 
 ## Spec inputs
-- `02_Architecture/03_FRONTEND_REACT.md#adapter-layer` — keep generated bindings and Wails runtime imports inside typed adapter singletons using `guardArity` and `unwrap`.
-- `02_Architecture/03_FRONTEND_REACT.md#store` — represent documents and UI as metadata-only Redux slices hydrated from and reconciled with the backend model.
-- `02_Architecture/03_FRONTEND_REACT.md#state-ownership` — hydrate once through `GetState`, reconcile `state:*` patches, and keep only ephemeral view scaffolding in the webview.
-- `02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow` — retain the command → handler → model → event → projection → render direction and Result-envelope error path.
-- `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62 through DD-64 and ADR-0014 without storing canonical content or optimistically mutating backend-owned state.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer` — keep generated bindings and Wails runtime imports inside typed adapter singletons using `guardArity` and `unwrap`.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#store` — represent documents and UI as metadata-only Redux slices hydrated from and reconciled with the backend model.
+- `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — hydrate once through `GetState`, reconcile `state:*` patches, and keep only ephemeral view scaffolding in the webview.
+- `../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow` — retain the command → handler → model → event → projection → render direction and Result-envelope error path.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — apply DD-62 through DD-64 and ADR-0014 without storing canonical content or optimistically mutating backend-owned state.
 - `07_Phases/PHASE_01_CORE_EDITOR.md#scope` — introduce the documents/UI projection and single Phase-01 hydration handoff without file, tab, or persistence behavior.
 
 ## Design constraints

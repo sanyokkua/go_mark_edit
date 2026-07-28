@@ -4,10 +4,10 @@ title: Verify the core editor responsively with Playwright
 status: done
 spec_clauses:
   - 07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist
-  - 01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
-  - 03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
-  - 03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets
-  - 03_NonFunctional/05_ACCESSIBILITY.md#2-keyboard-operability
+  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
+  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
+  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets
+  - ../../../_archive-2026-07-28-specification/03_NonFunctional/05_ACCESSIBILITY.md#2-keyboard-operability
   - mockups/README.md#role-in-the-spec
 phase_requirements:
   - PH01-R03
@@ -38,6 +38,9 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 # STORY-018 — Verify the core editor responsively with Playwright
 
 ## Goal
@@ -60,10 +63,10 @@ Prove the complete Phase-01 editor flow at phone, tablet, and desktop widths so 
 
 ## Spec inputs
 - `07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist` — automate the responsive Monaco, GFM rendering, view-mode, debounce, `state:patch`, and screenshot exit checks.
-- `01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view` — verify equal responsive panes, valid Editor/Split/Preview visibility, and the existing chrome/three-region layout.
-- `03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness` — confirm typing remains immediate and is not coupled to bridge or preview work on every keystroke.
-- `03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets` — confirm accepted preview output appears within the 150–300 ms target after typing settles.
-- `03_NonFunctional/05_ACCESSIBILITY.md#2-keyboard-operability` — verify keyboard access to the view arrangement control without stealing normal Monaco editing.
+- `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view` — verify equal responsive panes, valid Editor/Split/Preview visibility, and the existing chrome/three-region layout.
+- `../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness` — confirm typing remains immediate and is not coupled to bridge or preview work on every keystroke.
+- `../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets` — confirm accepted preview output appears within the 150–300 ms target after typing settles.
+- `../../../_archive-2026-07-28-specification/03_NonFunctional/05_ACCESSIBILITY.md#2-keyboard-operability` — verify keyboard access to the view arrangement control without stealing normal Monaco editing.
 - `mockups/README.md#role-in-the-spec` — use the canonical mockup as the binding structural and visual reference for the approved desktop screenshot baseline.
 
 ## Design constraints

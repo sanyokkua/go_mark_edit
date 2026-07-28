@@ -124,7 +124,9 @@ stop being distinguishable, which is checkable rather than a matter of taste.
 | `--warn` | `#b7791f` | `#ffcf6b` |
 | `--err` | `#b3261e` | `#ff7a90` |
 
-Examples: an error toast in Minimal light and in Material light → the same red.
+Examples: an error toast in Minimal light and in Material light → the same red. · the same error
+toast in Material light and Material dark → `#b3261e` and `#ff7a90`, because the key is `data-mode`
+and never `data-theme`
 
 ### Selection, focus and scrollbars are tokens {#interaction-tokens}
 - `--selection-bg` and `--selection-fg` set the text-selection colours, and they apply to `::selection`
@@ -310,5 +312,3 @@ theme from the database after the webview boots → a guaranteed light-to-dark f
   print styling lives in `exporting-a-document.md` for Phase 10.
 
 ## Open questions
-
-*(none — ready to build)*

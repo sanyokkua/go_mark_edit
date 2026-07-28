@@ -4,12 +4,15 @@
 **Date:** 2026-07-10
 **Deciders:** project owner, architect
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+> A link beginning `07_Phases/` names a retired phase document that was deleted rather than archived; that set is in git at `e1bd33f`.
+
 ## Context and problem statement
 
 GoMarkEdit is a cross-platform desktop Markdown editor that must run on Windows 10+, macOS 12+, and
 modern Linux from a single codebase, using each OS's native webview (DD-01). It must be registered as
 a first-class handler for Markdown files and launch when one is opened (see
-`01_Product/08_FILE_ASSOCIATIONS.md`), render a React frontend, and persist a little state in SQLite —
+`../../_archive-2026-07-28-specification/01_Product/08_FILE_ASSOCIATIONS.md`), render a React frontend, and persist a little state in SQLite —
 all offline, with no telemetry (DD-32, DD-33).
 
 The framework and runtime choice is the foundational decision every other module inherits: it fixes
@@ -24,7 +27,7 @@ CGO-dependent SQLite driver. This ADR locks DD-01, DD-02, and DD-03.
 
 - Single codebase, three OSes, native webview per OS — no per-platform UI rewrite (DD-01).
 - File-association / "default app" support as a first-class, already-proven framework feature
-  (`OnFileOpen` on macOS, argv on Windows/Linux) — see `01_Product/08_FILE_ASSOCIATIONS.md`.
+  (`OnFileOpen` on macOS, argv on Windows/Linux) — see `../../_archive-2026-07-28-specification/01_Product/08_FILE_ASSOCIATIONS.md`.
 - Build on proven, well-established patterns (a Wails cross-platform shell + a React Markdown renderer) —
   this is an integration-and-packaging job, not R&D.
 - CGO-free builds for reliable cross-compilation and small, dependency-light binaries (DD-03).
@@ -103,9 +106,9 @@ v3.
 
 - Design decisions: DD-01 (target OSes / one codebase / native webview), DD-02 (Wails v2 not v3),
   DD-03 (Go 1.25+, CGO-free, `modernc.org/sqlite`). Related: DD-04 (React 19 + Vite + TS frontend).
-- Spec clauses: `00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework`,
-  `02_Architecture/01_SYSTEM_ARCHITECTURE.md`, `02_Architecture/02_BACKEND_GO.md`,
-  `02_Architecture/04_WAILS_INTEGRATION.md`, `04_Build_and_Release/01_BUILD_MATRIX.md`,
-  `05_Dependencies/01_GO_DEPENDENCIES.md`.
+- Spec clauses: `../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework`,
+  `../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md`, `../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md`,
+  `../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md`, `../../_archive-2026-07-28-specification/04_Build_and_Release/01_BUILD_MATRIX.md`,
+  `../../_archive-2026-07-28-specification/05_Dependencies/01_GO_DEPENDENCIES.md`.
 - Stories: Phase 00 scaffold stories (Wails v2 app boots, Go+React+Vite wiring, DB open) and Phase 08
   file-association stories, per `07_Phases/00_ROADMAP.md`; authored per phase (none `done` at ADR time).

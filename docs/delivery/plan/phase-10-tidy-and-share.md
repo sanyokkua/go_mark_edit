@@ -61,10 +61,14 @@ callers in mind. Monaco's `DiffEditor` is already in the bundle and costs nothin
 Print ownership was settled on 2026-07-28: Phase 10, not Phase 02, owns
 `printing-forces-light`; Phase 02 supplies only the reusable theme tokens.
 
-- **Who holds the gate during a Format, and who releases it if the frontend dies mid-operation?**
-  Format is specified as a frontend operation, while a large format-all is required to take the Go
-  process-wide gate — and no bound method, ownership boundary or cancellation path connects the two.
-  Decide the acquire/release protocol, including crash-safe release, before step 1.
+- **Who holds the gate during a Format, and who releases it if the frontend dies mid-operation?** —
+  *Settled 2026-07-25 by `../adr/0032-run-registry-and-shutdown-ordering.md`, recorded 2026-07-28.*
+  **Go holds it.** Every long-running operation derives its context from the `OnStartup` context,
+  registers its cancel function in a mutex-guarded run registry owned by the composition root, and
+  `defer`s both the `delete` and the `cancel` on exit — so the release is crash-safe by construction
+  rather than by protocol. One bound `CancelRun(runId)` serves every feature, and cancelling an
+  unknown or already-finished id is a **success no-op**. On quit, `OnBeforeClose` cancels every
+  in-flight run through the registry and releases the gate before anything is flushed or closed.
 - **The exact print handshake.** Go orchestrates, the frontend renders and calls print, and nothing
   specifies the message sequence, the readiness signal, the timeout, what a native cancel looks like,
   or which side releases the gate. Decide before step 5.

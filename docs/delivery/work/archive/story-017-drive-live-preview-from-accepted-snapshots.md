@@ -3,11 +3,11 @@ id: STORY-017
 title: Drive live preview from backend-accepted debounced snapshots
 status: done
 spec_clauses:
-  - 01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce
-  - 02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#preview-debounce
-  - 03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets
-  - 00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets
-  - 00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce
+  - ../../../_archive-2026-07-28-specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#preview-debounce
+  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
 phase_requirements:
   - PH01-R02
   - PH01-R03
@@ -38,6 +38,8 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+
 # STORY-017 — Drive live preview from backend-accepted debounced snapshots
 
 ## Goal
@@ -58,11 +60,11 @@ Update the rendered preview from the exact buffer snapshot the backend successfu
 - Full rendering tiers, syntax highlighting, KaTeX, Mermaid, and reading mode, owned by Phase 04.
 
 ## Spec inputs
-- `01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce` — coalesce preview updates and preserve editor responsiveness for large documents.
-- `02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#preview-debounce` — drive preview and backend synchronization from the same debounced snapshot rather than raw `onChange` text.
-- `03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets` — render approximately 150–300 ms after typing stops and avoid preview work on every keystroke.
-- `00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets` — apply DD-19/DD-20 with a bundled renderer and a debounced Monaco preview path.
-- `00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — make the successful backend-accepted buffer the source for other consumers while retaining preview text only as ephemeral view scaffolding.
+- `../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce` — coalesce preview updates and preserve editor responsiveness for large documents.
+- `../../../_archive-2026-07-28-specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#preview-debounce` — drive preview and backend synchronization from the same debounced snapshot rather than raw `onChange` text.
+- `../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets` — render approximately 150–300 ms after typing stops and avoid preview work on every keystroke.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets` — apply DD-19/DD-20 with a bundled renderer and a debounced Monaco preview path.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership` — make the successful backend-accepted buffer the source for other consumers while retaining preview text only as ephemeral view scaffolding.
 
 ## Design constraints
 - STORY-019's adapter synchronization owner is the only owner of the 200 ms timer. The preview hook consumes accepted snapshot/generation callbacks and owns no timer.

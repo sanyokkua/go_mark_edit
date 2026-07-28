@@ -5,6 +5,8 @@
 **Deciders:** project owner, architect
 **Supersedes:** (none)
 
+> **Historical vocabulary — this record is not rewritten.** The `DD-…` and `EC-…` identifiers below cite the retired 78-entry design-decision registry, last present in git at `e1bd33f` under `specification/00_Foundation/` as `04_DESIGN_DECISIONS.md`; every one of those decisions now lives in the sentence of the feature file that needs it. Links into `_archive-2026-07-28-specification/` are the pre-conversion specification, kept so a citation still resolves, and **not normative**. See `README.md`. A decision record says what was decided against what was known then, so neither is translated forward.
+
 ## Context and problem statement
 
 A Phase 02 save has an irreversible boundary: an atomic file replacement may succeed before the following
@@ -67,8 +69,8 @@ remains dirty.
 ## Links
 
 - Design decisions: DD-15, DD-62, DD-63, DD-64
-- Spec clauses: `specification/01_Product/03_FILES_TABS_WORKSPACE.md#new-open-save`,
-  `specification/02_Architecture/02_BACKEND_GO.md#file-io`,
-  `specification/02_Architecture/02_BACKEND_GO.md#application-model`,
-  `specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`
+- Spec clauses: ../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#new-open-save`,
+  ../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#file-io`,
+  ../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model`,
+  ../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`
 - Stories: STORY-037, STORY-038, STORY-039

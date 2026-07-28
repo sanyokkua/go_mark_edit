@@ -17,6 +17,8 @@ code against `docs/delivery/architecture/rules.md`.
 ```
 git log --oneline <phase-start>..HEAD
 git diff --stat <phase-start>..HEAD
+just spec-check
+just story-check NNN          # for every story in this phase
 ```
 
 List, plainly:
@@ -25,6 +27,9 @@ List, plainly:
 - anything a rule says that the code does not do
 - any rule whose `Enforced by` says a command, where that command does not actually cover it
 - any entry in `frontend/scripts/archtest-allowlist.json` this phase should have shrunk and did not
+- **any rule that reached a story as a truncated copy.** `just story-check NNN` reports it row by row.
+  A rule copied with rows missing produced code missing exactly those rows, and the gap is invisible
+  everywhere else. This is the highest-yield line in the whole command.
 
 ## 2. Resolve each one in exactly one direction
 
@@ -36,6 +41,10 @@ List, plainly:
 
 There is no fourth option, and in particular there is no "update the docs to match what shipped" — that
 is how a specification stops describing the product while still looking maintained.
+
+A truncated copy is never resolved by editing the built story to look correct after the fact. A built
+story is history. The missing behaviour becomes a **new story**, and the built one gets a line saying
+what its copy lost.
 
 Distinguish carefully:
 
@@ -54,13 +63,27 @@ Distinguish carefully:
   folder — ids are never reused, including the eight that were deleted.
 - A decision record is **superseded, never edited**. The replacement names the old one in `Supersedes:`,
   and the old one's `**Status:**` line becomes `superseded by ADR-NNNN`. That status line is the only
-  edit ever made to an accepted record.
+  edit ever made to an accepted record — that, and repointing a link whose target was renamed.
 - New defects found by reading code go to `docs/delivery/plan/KNOWN_ISSUES.md`, each assigned to the
   phase where it becomes a bug rather than batched.
-- Move finished stories to `docs/delivery/work/archive/`; delete their baselines and the
-  `.failing-tests`, `.findings` and `.commit` files beside them.
+- Move finished stories to `docs/delivery/work/archive/`, and record any story-number discontinuity in
+  `docs/delivery/work/archive/README.md` — a gap nobody explains reads as a lost file.
+- Delete their baselines and every sidecar beside them: `.failing-tests`, `.findings`, `.commit`,
+  `.exit` and the `.logs/` directory. Leaving one behind orphans it — `story-057.*` survived that way
+  and nobody could say what it belonged to.
 
 ## 4. Report
 
 Each difference, its direction, and what changed. Anything you could not resolve stays open and
 visible — say so plainly rather than picking a side quietly.
+
+Then end with exactly this:
+
+> **Next:** approve or reject each proposed specification edit above. Nothing under
+> `docs/delivery/spec/` or `docs/delivery/architecture/` changes without your say-so — that constraint
+> is what keeps the documents worth reading.
+>
+> When the differences are resolved, run `/plan-phase <NN+1>` for the next phase in
+> `docs/delivery/plan/roadmap.md`.
+>
+> Full workflow: `docs/delivery/WORKFLOW.md`

@@ -3,9 +3,9 @@ id: STORY-007
 title: Reserve the three-region app shell and token-only style skeleton
 status: done
 spec_clauses:
-  - 00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
-  - 02_Architecture/03_FRONTEND_REACT.md#structure
-  - 00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux
+  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#structure
+  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux
 phase_requirements:
   - PH00-R07
 modules:
@@ -25,6 +25,8 @@ owner: coder
 estimate: M
 ---
 
+> **Historical vocabulary — this story is not maintained.** The `AC-…`, `EC-…` and `DD-…` identifiers are the scheme of the pre-2026-07-28 specification; `spec_clauses` and `phase_requirements` point into `_archive-2026-07-28-specification/`, which is kept so a citation still resolves and is **not normative**. See `README.md`. If anything here disagrees with the code, the code is the truth.
+
 # STORY-007 — Reserve the three-region app shell and token-only style skeleton
 
 ## Goal
@@ -37,8 +39,8 @@ Establish the stable Stage 1 layout and style seam so the future assistant sideb
 - Assistant UI, provider configuration, LLM code, and theme values, owned by Stage 3 and Phase 08.
 
 ## Spec inputs
-- `00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — reserve F1.
-- `00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux` — use tokens rather than hardcoded appearance values.
+- `../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage` — reserve F1.
+- `../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux` — use tokens rather than hardcoded appearance values.
 
 ## Design constraints
 - Keep the right region empty and collapsed, but provide show/hide plumbing without a layout rewrite.
