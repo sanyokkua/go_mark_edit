@@ -50,6 +50,43 @@ background, border, font and gutter · the generated Monaco rules and preview st
 would be three sets to keep readable, for no benefit anybody asked for. The theme still changes
 everything around the code.
 
+### Each theme has one accent, one radius and one font across both appearances {#theme-identity-is-stable}
+*(from `spec/product/themes-and-appearance.md#theme-identity-is-stable` — copied verbatim)*
+- Within a theme, `--accent`, `--win-radius`, `--font` and the blur and shadow character are the same in
+  light and dark. Only surfaces and text invert.
+
+| Token | Liquid Glass | Material | Minimal |
+|---|---|---|---|
+| `--accent` | `#7aa2ff` | `#4f6bed` | `#10b981` |
+| `--accent2` (gradients only) | `#c58bff` | `#4f6bed` | `#10b981` |
+| `--accent-ink` (text on `--accent-soft`) | `#cdd8ff` | `#0a1a52` | `#047857` |
+| `--accent-soft` | `rgba(122,162,255,.16)` | `#dfe4ff` | `#ecfdf5` |
+| `--accent-contrast` (text on `--accent`) | `#0b1024` | `#ffffff` | `#ffffff` |
+| `--canvas` (window backdrop) | aurora: radials `#3b2f7a` + `#1d4e8f` + `#7a2f6a` over linear `#0d1022 → #0a0d1c → #0b0f1e` | `#d9d7e6` | `#e9e9ec` |
+| `--app-bg` | `rgba(255,255,255,.10)` | `#faf8ff` | `#fbfbfa` |
+| `--surface` | `rgba(28,30,54,.82)` | `#ffffff` | `#ffffff` |
+| `--elevated` | `rgba(28,30,54,.82)` | `#f3f1fb` | `#ffffff` |
+| `--surface-2` | `rgba(255,255,255,.07)` | `#eceaf6` | `#f3f3f2` |
+| `--surface-3` | `rgba(255,255,255,.16)` | `#e6e3f2` | `#eaeae9` |
+| `--stroke` | `rgba(255,255,255,.18)` | `#e3e1ee` | `#e4e4e7` |
+| `--stroke-soft` | `rgba(255,255,255,.11)` | `#eceaf6` | `#ececee` |
+| `--text` | `#eaf0ff` | `#1b1b22` | `#1f2328` |
+| `--muted` | `rgba(234,240,255,.60)` | `#5c5c69` | `#6b7280` |
+| `--faint` | `rgba(234,240,255,.32)` | `#9aa1ab` | `#9aa1ab` |
+| `--hover` | `rgba(255,255,255,.16)` | `rgba(0,0,0,.05)` | `rgba(0,0,0,.04)` |
+| `--user-bubble` | `rgba(122,162,255,.14)` | `#dfe4ff` | `#ecfdf5` |
+| `--win-radius` | `16px` | `16px` | `12px` |
+| `--win-shadow` | `0 24px 80px rgba(0,0,0,.55)` | `0 12px 32px rgba(27,27,34,.16)` | `0 8px 24px rgba(31,35,40,.10)` |
+| `--blur` | `blur(28px) saturate(160%)` | `none` | `none` |
+| `--font` | system stack — `-apple-system, "SF Pro Display", "Segoe UI", Inter, …` | `"Roboto", "Segoe UI", Inter, …` | `"Inter", -apple-system, …` |
+| `--mono` | `"SF Mono", "JetBrains Mono", ui-monospace, …` | same | same |
+
+The values above are each theme's **native** appearance — Glass dark, Material light, Minimal light. The
+counterpart appearance inverts surfaces and text and keeps everything else.
+
+Examples: Material dark keeps `--accent: #4f6bed` and `--win-radius: 16px` · Material dark with a
+different accent → the theme reads as a fourth theme rather than the same one at night.
+
 ### The editor theme is generated from these tokens {#editor-theme-is-generated}
 *(from `spec/product/themes-and-appearance.md#editor-theme-is-generated` — copied verbatim)*
 - Six Monaco themes — three themes × light and dark — are generated at build time from the tables above.
@@ -89,9 +126,30 @@ this is where colours are decided.
 
 ## Implementation plan
 
-1. Complete `tokens.css` with the ten missing palette rows and all nine `--md-*` plus eight `--hl-*` values from the copied tables. Syntax values are in appearance-only light/dark selectors, never per-theme selectors. Extend computed-style tests to cover every required token across all six palettes and prove Glass/Material/Minimal share each mode's syntax values.
+### Monaco scope-to-token decision for STORY-063
+
+Monaco 0.52's bundled Monarch tokenizers define the following scopes. The generator emits exactly these
+rules, including dotted descendants. It does not infer scopes from source text or add a second tokenizer.
+
+| Grammar | Monaco scope(s) | Generated token | Deliberate boundary |
+|---|---|---|---|
+| Markdown | `keyword` | `--md-heading` | Monaco uses `keyword` for both ATX headings and list markers; headings take precedence. |
+| Markdown | `meta.separator`, `keyword.table.*` | `--md-marker` | Covers thematic and table separators; list markers share `keyword` above. |
+| Markdown | `strong` | `--md-strong` | Covers `**bold**` and `__bold__`. |
+| Markdown | `emphasis` | `--md-emphasis` | Covers `_italic_` and `*italic*`. |
+| Markdown | `comment`, `comment.*` | `--md-quote` | Covers blockquote markers and HTML comments; Monaco does not distinguish them. |
+| Markdown | `string.link`, `string.target` | `--md-link` | Covers link text, targets, and image paths. |
+| Markdown | `string`, `variable.source` | `--md-comment` and `--code-fg` respectively | Fences use `string`; embedded fenced content uses `variable.source` until its embedded grammar takes over. |
+| Go | `keyword`, `keyword.*`, `string`, `comment`, `comment.*`, `number`, `number.*`, `delimiter`, `delimiter.*`, `annotation` | matching `--hl-keyword`, `--hl-string`, `--hl-comment`, `--hl-number`, `--hl-punct`, `--hl-attr` | These are the distinct bundled Go scopes. |
+| Go | `identifier`, `keyword.type`, `keyword.const` | `--hl-function`, `--hl-type`, `--hl-type` | Go's bundled Monarch grammar does not classify individual function, type, or constant names; these generic scopes are the available boundary. |
+
+The generator test constructs representative Markdown and Go token values for every row and asserts the
+resolved foreground values. It must not inspect the generator's source or claim that Monaco emits a more
+specific scope than the bundled grammar provides.
+
+1. Complete `tokens.css` with every row in the copied `theme-identity-is-stable` table and all nine `--md-*` plus eight `--hl-*` values from the copied tables. Syntax values are in appearance-only light/dark selectors, never per-theme selectors. Extend computed-style tests to cover every required token across all six palettes and prove Glass/Material/Minimal share each mode's syntax values.
 2. Add `frontend/scripts/generate-editor-themes.mjs`. It deterministically parses only the declared palette selectors, rejects a missing, duplicate, unresolved, or untraceable required token, and writes exactly two committed derived assets: `frontend/src/logic/theme/generatedEditorThemes.ts` and `frontend/src/logic/theme/generatedHighlight.css`. The former contains six `gme-{glass|material|minimal}-{light|dark}` definitions; the latter maps the same `--hl-*` values to `hljs-*` selectors but is not imported here.
-3. Map every Monaco colour named in `#editor-theme-is-generated`, including the active line, find/widget, suggest widget, minimap, scrollbar, diagnostics, Markdown grammar, and embedded language rules. The generator is the only producer of literal Monaco colours; it does not fetch or use runtime `getComputedStyle`.
+3. Map every Monaco colour named in `#editor-theme-is-generated`, including the active line, find/widget, suggest widget, minimap, scrollbar, diagnostics, Markdown grammar, and embedded language rules using the scope-to-token table above. The generator is the only producer of literal Monaco colours; it does not fetch or use runtime `getComputedStyle`.
 4. Add a `prebuild` generator hook and run its Node fixture test before Jest. The fixture test proves six complete named themes, same light Go-keyword values for Glass and Minimal, and a hard failure when a required token is absent. It inspects returned/generated values, never source text.
 5. Extend `monacoSetup.ts` to import generated data, define all six themes once, select the initial name from `document.documentElement`, then observe only that root's `data-theme` and `data-mode` attributes. A valid mutation calls `monaco.editor.setTheme` with the generated name. The fallback is Material light while attributes are absent/invalid. It never writes attributes, persists settings, observes the OS, recreates a model, or activates preview highlighting.
 6. Add a controllable-Monaco setup test that verifies six registrations, initial selection, and one root-attribute name swap without remounting the editor. Keep the existing worker/bundle test. Add mocked-bridge Playwright coverage for all six root attribute/theme names, but use the numbered built-binary live case for real Monaco rendering.
@@ -378,12 +436,12 @@ assertion · deleting a failing test to make the suite green.
 
 ## Definition of done
 
-### Baseline — captured at `<sha>`, `<date>` → `../baselines/story-063.md`
+### Baseline — captured at `cf52e78`, `2026-07-29 08:46 UTC` → `../baselines/story-063.md`
 
 | | at baseline |
 |---|---|
-| tests | `<N>` pass, `<M>` fail (`<names>`) |
-| static analysis | `<N>` findings · types clean · format clean · build ok · coverage `<X>%` |
+| tests | all pass, 0 fail |
+| static analysis | 0 findings · types clean · format clean · build ok · coverage `69.0%` |
 
 Capture it with `just baseline STORY-063` **before writing any code**, and paste the two rows above from what it printed. If the baseline is red in the same area or an architecture gate does not pass, stop rather than starting.
 
@@ -414,6 +472,7 @@ Capture it with `just baseline STORY-063` **before writing any code**, and paste
 
 | Rule | Proven by | Path | Kind | Must not |
 |---|---|---|---|---|
+| `themes-and-appearance#theme-identity-is-stable` | `resolvesAllThemeIdentityTokens` | `frontend/src/ui/styles/tokens.test.ts` | unit | assert CSS text; compute all 24 rows in every palette |
 | `themes-and-appearance#two-syntax-palettes` | `resolvesSyntaxTokensByAppearanceOnly` | `frontend/src/ui/styles/tokens.test.ts` | unit | assert CSS text; compute values in every palette |
 | `themes-and-appearance#two-syntax-palettes` | `generatesSharedFencedLanguageRules` | `frontend/scripts/generate-editor-themes.test.mjs` | Node unit | compare generated source text instead of values |
 | `themes-and-appearance#editor-theme-is-generated` | `generatesSixCompleteTraceableMonacoThemes` and `rejectsIncompleteOrUntraceablePalette` | `frontend/scripts/generate-editor-themes.test.mjs` | Node unit | accept missing mappings or assert only a call occurred |

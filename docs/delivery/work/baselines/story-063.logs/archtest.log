@@ -1,0 +1,37 @@
+just go-archtest
+go test -run TestArchitecture -count=1 ./internal/... .
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	0.218s
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.606s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	0.374s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	1.018s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	1.979s [no tests to run]
+?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	0.841s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	1.240s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	1.419s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	1.673s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit	2.352s
+just cgo-free-check
+CGO_ENABLED=0 go build ./...
+just migration-immutability-check
+migrations: no committed file modified in place
+just frontend-archtest
+node frontend/scripts/archtest.mjs
+archtest (frontend) — boundaries
+        src/ui/components/ViewModeToggle.tsx:20:16  An accessible name is user-visible text: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+        src/ui/widgets/AppShell.tsx:18:25  An accessible name is user-visible text: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+        src/ui/widgets/AppShell.tsx:19:24  An accessible name is user-visible text: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+        src/ui/widgets/AppShell.tsx:23:20  An accessible name is user-visible text: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+        src/ui/widgets/EditorView.tsx:166:25  An accessible name is user-visible text: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+        src/ui/widgets/EditorView.tsx:168:15  User-visible text must come from the catalogue: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+        src/ui/widgets/EditorView.tsx:169:43  User-visible text must come from the catalogue: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+        src/ui/widgets/EditorView.tsx:258:25  An accessible name is user-visible text: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+        src/ui/widgets/EditorView.tsx:259:26  An accessible name is user-visible text: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+        src/ui/widgets/EditorView.tsx:271:22  An accessible name is user-visible text: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+        src/ui/widgets/EditorView.tsx:277:19  User-visible text must come from the catalogue: use t("key") and add the key to src/i18n/locales/en.json. See docs/delivery/architecture/rules.md#strings-go-through-t
+  allowed  src/ui/components/ViewModeToggle.tsx: 1 known violation(s)
+  allowed  src/ui/widgets/AppShell.tsx: 3 known violation(s)
+  allowed  src/ui/widgets/EditorView.tsx: 7 known violation(s)
+archtest (frontend) — colour literals
+
+archtest (frontend): ok

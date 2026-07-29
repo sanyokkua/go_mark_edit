@@ -149,8 +149,26 @@ def resolve(spec_root: Path, cited: str) -> Path:
     return hits[0] if len(hits) == 1 else None
 
 
-def check(spec_root: Path, story: Path, rep: Report) -> None:
+def check(spec_root: Path, story: Path, rep: Report, code_roots=()) -> None:
     text = story.read_text(encoding="utf-8")
+
+    # ---- 8. a supersede that was announced but never performed --------------
+    m = SUPERSEDED.search(text)
+    if m:
+        target = m.group(1)
+        hits = sorted((story.parent).glob(f"story-{target}-*.md"))
+        if not hits:
+            rep.error(f"marked as folded into STORY-{target}, but no such story file exists.")
+        else:
+            owned_here = owned_anchors(text)
+            owned_there = owned_anchors(hits[0].read_text(encoding="utf-8", errors="replace"))
+            lost = sorted(owned_here - owned_there)
+            if lost:
+                rep.error(
+                    f"marked as folded into STORY-{target}, but {len(lost)} rule(s) it owns "
+                    f"do not appear in {hits[0].name}: {', '.join('#' + a for a in lost)}. "
+                    f"A supersede that does not move the rules leaves them owned by nobody "
+                    f"buildable \u2014 the phase looks covered and is not.")
 
     # ---- 1. stub -----------------------------------------------------------
     if STUB.search(text):
@@ -280,6 +298,76 @@ def check(spec_root: Path, story: Path, rep: Report) -> None:
     else:
         rep.warn("no `### This story` rule-to-test table found in the Definition of done.")
 
+    # ---- 7. values an owned rule depends on, that nothing provides -----------
+    for tok, why in unresolved_tokens(text, code_roots):
+        rep.error(f"`{tok}` is used by a rule this story owns, but {why}. The implementer "
+                  f"cannot build the rule without inventing a value \u2014 own the rule that "
+                  f"defines it, or depend on a story that has shipped it.")
+
+
+CSS_TOKEN = re.compile(r"--[a-z][a-z0-9-]*")
+TOKEN_DEF_ROW = re.compile(r"^\s*\|\s*`?(--[a-z][a-z0-9-]*)`?\s*\|")
+SUPERSEDED = re.compile(
+    r"^\*\*STATUS:\*\*.*?(?:folded into|re-?planned as|superseded by)\s+STORY-(\d+)",
+    re.M | re.I)
+
+
+def owned_anchors(text):
+    for s in OWNED_SECTION:
+        m = re.search(rf"^{re.escape(s)}\s*$(.*?)(?:^## |\Z)", text, re.M | re.S)
+        if m:
+            body = m.group(1)
+            out = set(re.findall(r"\{#([a-z0-9][a-z0-9-]*)\}", body))
+            out |= set(re.findall(r"`[^`]*\.md#([a-z0-9][a-z0-9-]*)`", body))
+            return out
+    return set()
+
+
+def unresolved_tokens(text, code_roots):
+    section = None
+    for s in OWNED_SECTION:
+        m = re.search(rf"^{re.escape(s)}\s*$(.*?)(?:^## How it works now|^## Technical|"
+                      rf"^## Where the code|^## Implementation|\Z)", text, re.M | re.S)
+        if m:
+            section = m.group(1); break
+    if not section:
+        return []
+    used = set(CSS_TOKEN.findall(section))
+    if not used:
+        return []
+    defined = {m.group(1) for m in
+               (TOKEN_DEF_ROW.match(l) for l in section.splitlines()) if m}
+    families = {f.rstrip("*") for f in re.findall(r"`(--[a-z][a-z0-9-]*\*)`", section)}
+    families |= {f[:-1] for f in re.findall(r"--[a-z][a-z0-9-]*-(?=\*)", section)}
+    in_code = set()
+    for root in code_roots:
+        base = Path(root)
+        if not base.exists():
+            continue
+        files = [base] if base.is_file() else [
+            q for q in base.rglob("*")
+            if q.is_file() and q.suffix in {".css", ".scss", ".less", ".ts", ".tsx",
+                                            ".js", ".jsx", ".html", ".vue", ".svelte"}
+            and not any(x in q.parts for x in ("node_modules", "dist", "build", ".git"))]
+        for q in files:
+            try:
+                body = q.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            for tok in used - in_code:
+                if re.search(re.escape(tok) + r"\s*:", body):
+                    in_code.add(tok)
+    out = []
+    for tok in sorted(used):
+        if tok in defined or tok in in_code:
+            continue
+        if any(tok.startswith(f) for f in families):
+            continue
+        out.append((tok, "no rule in this story defines its value and it does not exist in "
+                         "the code" if code_roots else
+                         "no rule in this story defines its value (pass --code to check code)"))
+    return out
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
@@ -287,6 +375,8 @@ def main() -> int:
     ap.add_argument("spec_root", help="e.g. docs/delivery")
     ap.add_argument("story", help="story number, e.g. 058, or a path to the file")
     ap.add_argument("--quiet", action="store_true", help="errors only")
+    ap.add_argument("--code", nargs="*", default=[],
+                    help="source dirs, to check a value the story does not define")
     args = ap.parse_args()
 
     spec_root = Path(args.spec_root).resolve()
@@ -310,7 +400,7 @@ def main() -> int:
         story = hits[0]
 
     rep = Report()
-    check(spec_root, story, rep)
+    check(spec_root, story, rep, args.code)
 
     print(f"check_story — {story.name}\n")
     for m in rep.errors:

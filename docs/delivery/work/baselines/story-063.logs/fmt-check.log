@@ -1,0 +1,10 @@
+just go-format-check
+test -z "$(gofmt -l $(git ls-files '*.go'))"
+just frontend-format-check
+npm --prefix frontend run format:check
+
+> frontend@0.0.0 format:check
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
