@@ -1,6 +1,6 @@
 # STORY-059 — Generate and apply unified editor themes
 
-**STATUS:** stub — not buildable. Run `/plan-story 059` to expand.
+**STATUS:** stub — superseded and not buildable. Re-planned as STORY-063.
 **Phase:** 02
 
 ## What you'll be able to do

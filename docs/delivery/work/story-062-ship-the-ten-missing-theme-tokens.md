@@ -1,6 +1,6 @@
 # STORY-062 — Ship the ten theme tokens STORY-058 left out
 
-**STATUS:** planned — ready to build.
+**STATUS:** stub — superseded and not buildable. Its repair is folded into STORY-063.
 **Phase:** 02
 
 ## What you'll be able to do

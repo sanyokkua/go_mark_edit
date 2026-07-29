@@ -1,6 +1,6 @@
 # STORY-061 — Launch in the persisted palette without a flash
 
-**STATUS:** stub — not buildable. Run `/plan-story 061` to expand.
+**STATUS:** stub — superseded and not buildable. Re-planned as STORY-065.
 **Phase:** 02
 
 ## What you'll be able to do

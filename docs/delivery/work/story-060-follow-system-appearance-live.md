@@ -1,6 +1,6 @@
 # STORY-060 — Follow system appearance live
 
-**STATUS:** stub — not buildable. Run `/plan-story 060` to expand.
+**STATUS:** stub — superseded and not buildable. Re-planned as STORY-064.
 **Phase:** 02
 
 ## What you'll be able to do
