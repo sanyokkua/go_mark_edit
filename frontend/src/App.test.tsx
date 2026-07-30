@@ -272,7 +272,10 @@ it('STORY-012-AC-7 hands the active buffer to ephemeral editor session state', a
     layout: { sidebarVisible: true },
   });
   expect(JSON.stringify(store.getState())).not.toContain('ephemeral buffer');
-  expect(localStorage).toHaveLength(0);
+  expect(localStorage).toHaveLength(1);
+  expect(localStorage.getItem('gme.theme')).toBe(
+    JSON.stringify({ version: 1, theme: 'material', mode: 'auto' }),
+  );
 });
 
 it('STORY-012-AC-8 keeps bootstrap safe when GetState fails', async () => {

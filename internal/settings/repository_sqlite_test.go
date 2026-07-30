@@ -66,7 +66,7 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 
 	service := NewSettingsService(NewSqliteSettingsRepository(database))
 	wantAppearance := apperr.AppearanceSettings{
-		Theme:           ThemeLiquidGlass,
+		Theme:           ThemeGlass,
 		Mode:            ModeDark,
 		DefaultOpenMode: OpenModeViewer,
 	}
@@ -86,7 +86,7 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 	}
 
 	for key, want := range map[string]store.UpsertSettingParams{
-		appearanceThemeKey:    {Key: appearanceThemeKey, Value: ThemeLiquidGlass, Type: settingTypeString},
+		appearanceThemeKey:    {Key: appearanceThemeKey, Value: ThemeGlass, Type: settingTypeString},
 		appearanceModeKey:     {Key: appearanceModeKey, Value: ModeDark, Type: settingTypeString},
 		defaultOpenModeKey:    {Key: defaultOpenModeKey, Value: OpenModeViewer, Type: settingTypeString},
 		markdownStandardKey:   {Key: markdownStandardKey, Value: MarkdownFull, Type: settingTypeString},
@@ -122,7 +122,7 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 // Per-scalar missing, invalid, and wrong-type persisted rows fall back independently while valid siblings remain intact.
 func TestStoredSettingsFallbackMatrix(t *testing.T) {
 	valid := apperr.Settings{
-		Appearance: apperr.AppearanceSettings{Theme: ThemeLiquidGlass, Mode: ModeDark, DefaultOpenMode: OpenModeViewer},
+		Appearance: apperr.AppearanceSettings{Theme: ThemeGlass, Mode: ModeDark, DefaultOpenMode: OpenModeViewer},
 		Markdown: apperr.MarkdownSettings{
 			Standard:       MarkdownFull,
 			FormatOnSave:   true,
@@ -438,7 +438,7 @@ func TestStoredInvalidValuesResolveToDefaults(t *testing.T) {
 			name: "unsupported type",
 			seed: func(t *testing.T, database *db.Database) {
 				seedStoredSettings(t, database, "future-enum", map[string]string{
-					appearanceThemeKey:     ThemeLiquidGlass,
+					appearanceThemeKey:     ThemeGlass,
 					appearanceModeKey:      ModeLight,
 					markdownStandardKey:    MarkdownMinimal,
 					contentRemotePolicyKey: RemotePolicyBlock,

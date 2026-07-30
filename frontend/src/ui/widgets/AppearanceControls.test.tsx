@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { settingsAdapter } from '../../logic/adapter';
+import { store } from '../../logic/store';
 import AppearanceControls from './AppearanceControls';
 
 jest.mock('../../logic/adapter', () => ({
@@ -139,4 +140,43 @@ it('normalizes invalid persisted values before exposing controls or root attribu
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(screen.getByRole('radio', { name: 'Material' })).toBeChecked();
   expect(screen.getByRole('radio', { name: 'Follows system' })).toBeChecked();
+});
+
+it('owns one Auto listener, ignores a later system change while pinned, and stays silent on success', async (): Promise<void> => {
+  const listeners = new Set<(event: { matches: boolean }) => void>();
+  const media = {
+    matches: false,
+    addEventListener: jest.fn(
+      (_type: string, listener: (event: { matches: boolean }) => void) =>
+        listeners.add(listener),
+    ),
+    removeEventListener: jest.fn(
+      (_type: string, listener: (event: { matches: boolean }) => void) =>
+        listeners.delete(listener),
+    ),
+  };
+  const matchMedia = jest.fn(() => media);
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: matchMedia,
+  });
+
+  render(<AppearanceControls />);
+  await screen.findByRole('button', { name: 'Settings' });
+  expect(listeners.size).toBe(1);
+
+  for (const listener of listeners) listener({ matches: true });
+  expect(document.documentElement).toHaveAttribute('data-mode', 'dark');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  fireEvent.click(screen.getByRole('radio', { name: 'Light' }));
+  await waitFor(() =>
+    expect(media.removeEventListener).toHaveBeenCalledWith(
+      'change',
+      expect.any(Function),
+    ),
+  );
+  expect(document.documentElement).toHaveAttribute('data-mode', 'light');
+  expect(listeners.size).toBe(0);
+  expect(store.getState().notifications.items).toHaveLength(0);
 });

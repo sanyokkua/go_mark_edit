@@ -5,10 +5,12 @@ import {
   applyThemeToRoot,
   normalizeAppearance,
   normalizeTheme,
+  observeSystemAppearance,
   resolveAppearance,
   type AppearanceChoice,
   type Theme,
 } from '../../logic/theme/theme';
+import { writeStartupThemeMirror } from '../../logic/theme/startupThemeMirror';
 import AppearanceDialog from './AppearanceDialog';
 import SettingsMenu from './SettingsMenu';
 import styles from './AppearanceControls.module.css';
@@ -63,11 +65,27 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
         desiredAppearance.current = next;
         setAppearance(next);
         apply(next);
+        writeStartupThemeMirror(localStorage, {
+          theme: next.theme,
+          mode: next.mode,
+        });
       })
       .catch((): void => {
         apply(desiredAppearance.current);
       });
   }, []);
+
+  useEffect((): (() => void) => {
+    if (typeof window.matchMedia !== 'function') {
+      return (): void => undefined;
+    }
+    return observeSystemAppearance(
+      appearance.mode,
+      (query): MediaQueryList => window.matchMedia(query),
+      (mode): void =>
+        applyThemeToRoot({ mode, theme: appearance.theme }, document),
+    );
+  }, [appearance.mode, appearance.theme]);
 
   const persist = useCallback(
     (patch: Partial<Pick<AppearanceState, 'mode' | 'theme'>>): void => {
@@ -78,6 +96,10 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
         .then((): void => {
           setAppearance(next);
           apply(next);
+          writeStartupThemeMirror(localStorage, {
+            theme: next.theme,
+            mode: next.mode,
+          });
         })
         .catch((): void => undefined);
     },

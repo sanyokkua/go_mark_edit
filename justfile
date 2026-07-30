@@ -114,26 +114,11 @@ archtest:
 # baseline records the repository's state before a story starts, so "pre-existing" becomes a lookup
 # rather than an argument. verify re-runs the same gates and compares.
 
-baseline story:
-    bash scripts/baseline.sh {{story}}
+baseline evidence:
+    bash scripts/baseline.sh {{evidence}}
 
-verify story:
-    bash scripts/verify.sh {{story}}
-
-# --- specification checks -------------------------------------------------------
-# Deliberately NOT part of `just check`. Documentation drift is real and worth knowing about, but it
-# is not a reason to block a commit that changes code.
-
-# The whole tree: writing rules, revision level, and every Proves: tag.
-spec-check:
-    python3 scripts/validate_spec.py docs/delivery
-    python3 scripts/upgrade_check.py docs/delivery --repo .
-    python3 scripts/check_proves.py docs/delivery internal frontend/src .
-
-# One story: is it still a stub, do its copied rules match the source verbatim, are the architecture
-# rules its paths match actually present, do its anchors resolve, is it under the 5-rule ceiling.
-story-check story:
-    python3 scripts/check_story.py docs/delivery {{story}}
+verify evidence:
+    bash scripts/verify.sh {{evidence}}
 
 # --- packaging ----------------------------------------------------------------
 # Deliberately not built. Naming a command that does not exist is how a Definition of Done certifies

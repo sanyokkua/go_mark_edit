@@ -10,6 +10,7 @@ import CodeEditor, {
   type EditorPosition,
   type EditorSelection,
 } from './CodeEditor';
+import { applyMonacoThemeFromRoot } from './monacoSetup';
 import { createDocumentCommands } from '../../logic/hooks/useDocumentCommands';
 
 interface MockModel {
@@ -25,6 +26,7 @@ interface MockMonacoRuntime {
   editor: editor.IStandaloneCodeEditor;
   model: MockModel;
   props: EditorProps | null;
+  scrollTop: number;
   selection: ISelection | null;
   selectionListener: ((event: { selection: ISelection }) => void) | null;
 }
@@ -57,6 +59,7 @@ function resetMockMonaco(): void {
   mockRuntime.editor = {
     executeEdits: jest.fn(),
     getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
+    getScrollTop: jest.fn(() => mockRuntime.scrollTop),
     getSelection: jest.fn(() => mockRuntime.selection),
     onDidBlurEditorText: jest.fn((listener: () => void) => {
       mockRuntime.blurListener = listener;
@@ -80,6 +83,7 @@ function resetMockMonaco(): void {
     pushUndoStop: jest.fn(),
   } as unknown as editor.IStandaloneCodeEditor;
   mockRuntime.props = null;
+  mockRuntime.scrollTop = 0;
 }
 
 jest.mock('@monaco-editor/react', () => {
@@ -122,6 +126,7 @@ jest.mock('@monaco-editor/react', () => {
 jest.mock('./monacoSetup', () => ({
   __esModule: true,
   monaco: {},
+  applyMonacoThemeFromRoot: jest.fn(() => jest.fn()),
 }));
 
 beforeEach((): void => {
@@ -256,6 +261,62 @@ it('STORY-013-AC-5 preserves the model cursor and selection on metadata rerender
     start: { lineNumber: 2, column: 4 },
     end: { lineNumber: 3, column: 7 },
   });
+});
+
+it('keeps the mounted Monaco model intact when the root palette changes', async (): Promise<void> => {
+  const { unmount } = render(
+    <CodeEditor documentId="document-1" initialValue="palette-safe content" />,
+  );
+  const model = await screen.findByRole('textbox', { name: 'Markdown source' });
+
+  document.documentElement.setAttribute('data-theme', 'minimal');
+  document.documentElement.setAttribute('data-mode', 'dark');
+  await Promise.resolve();
+
+  expect(screen.getByRole('textbox', { name: 'Markdown source' })).toBe(model);
+  expect(mockRuntime.editor.getModel()).toBe(mockRuntime.model);
+  expect(mockRuntime.model.setValue).not.toHaveBeenCalled();
+  expect(applyMonacoThemeFromRoot).toHaveBeenCalledTimes(1);
+
+  unmount();
+});
+
+it('preserves content selection scroll and undo state across a palette mutation', async (): Promise<void> => {
+  const ref = { current: null as CodeEditorHandle | null };
+  mockRuntime.content = '# heading\nselected text';
+  mockRuntime.scrollTop = 240;
+  mockRuntime.selection = {
+    selectionStartLineNumber: 2,
+    selectionStartColumn: 1,
+    positionLineNumber: 2,
+    positionColumn: 9,
+  } as ISelection;
+
+  render(
+    <CodeEditor
+      ref={ref}
+      documentId="document-1"
+      initialValue={mockRuntime.content}
+    />,
+  );
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+  const editorInstance = mockRuntime.editor;
+  const model = mockRuntime.model;
+
+  document.documentElement.setAttribute('data-theme', 'glass');
+  document.documentElement.setAttribute('data-mode', 'dark');
+  await Promise.resolve();
+
+  expect(mockRuntime.editor).toBe(editorInstance);
+  expect(mockRuntime.editor.getModel()).toBe(model);
+  expect(ref.current?.getContent()).toBe('# heading\nselected text');
+  expect(ref.current?.getSelection()).toEqual({
+    start: { lineNumber: 2, column: 1 },
+    end: { lineNumber: 2, column: 9 },
+  });
+  expect(mockRuntime.editor.getScrollTop()).toBe(240);
+  expect(mockRuntime.editor.executeEdits).not.toHaveBeenCalled();
+  expect(mockRuntime.editor.pushUndoStop).not.toHaveBeenCalled();
 });
 
 it('STORY-013-AC-6 keeps the editor component presentational', async () => {

@@ -63,6 +63,8 @@
 
 .previewContent {
   background: var(--surface);
+  min-height: 0;
   min-width: 0;
+  overflow: auto;
   padding: var(--preview-pane-padding);
 }

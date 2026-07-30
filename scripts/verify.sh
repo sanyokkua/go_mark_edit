@@ -17,22 +17,25 @@
 # 2. The architecture check is never diffed. It must be green outright — it is the only mechanical
 #    thing standing between an implementer and a design decision nobody approved.
 #
-# Usage: just verify STORY-058   (or: scripts/verify.sh STORY-058)
+# Usage: just verify STORY-058 | 001-gomarkedit-product
 
 set -uo pipefail
-
-STORY_ARG="${1:-}"
-if [[ -z "$STORY_ARG" ]]; then
-  echo "usage: scripts/verify.sh STORY-NNN" >&2
-  exit 2
-fi
-STORY_NUMBER="$(printf '%s' "$STORY_ARG" | tr -cd '0-9')"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-BASE_DIR="docs/delivery/work/baselines"
-BASE="$BASE_DIR/story-$STORY_NUMBER"
+# shellcheck source=scripts/evidence_id.sh
+source "$REPO_ROOT/scripts/evidence_id.sh"
+
+EVIDENCE_ARG="${1:-}"
+if [[ -z "$EVIDENCE_ARG" ]]; then
+  echo "usage: scripts/verify.sh STORY-NNN | NNN-feature-name" >&2
+  exit 2
+fi
+EVIDENCE_BASE="$(evidence_baseline_base "$EVIDENCE_ARG")" || exit $?
+EVIDENCE_NAME="$(evidence_display_name "$EVIDENCE_ARG")" || exit $?
+
+BASE="$EVIDENCE_BASE"
 BASE_REPORT="$BASE.md"
 BASE_TESTS="$BASE.failing-tests"
 BASE_FINDINGS="$BASE.findings"
@@ -40,31 +43,31 @@ BASE_EXIT="$BASE.exit"
 BASE_COMMIT_FILE="$BASE.commit"
 
 if [[ ! -f "$BASE_REPORT" ]]; then
-  echo "No baseline for STORY-$STORY_NUMBER." >&2
-  echo "Capture one before starting work:  just baseline STORY-$STORY_NUMBER" >&2
+  echo "No baseline for $EVIDENCE_NAME." >&2
+  echo "Capture one before starting work:  just baseline $EVIDENCE_NAME" >&2
   exit 2
 fi
 
 # --- refuse an untrustworthy baseline --------------------------------------------------------------
 if [[ ! -f "$BASE_EXIT" ]]; then
-  echo "REFUSING TO VERIFY — the baseline for STORY-$STORY_NUMBER records no gate exit codes." >&2
+  echo "REFUSING TO VERIFY — the baseline for $EVIDENCE_NAME records no gate exit codes." >&2
   echo >&2
   echo "It was captured before baseline.sh classified gate reliability, so there is no way to tell a" >&2
   echo "gate that found nothing from a gate that ran nothing. Diffing against it proves nothing." >&2
   echo >&2
-  echo "Re-capture it:  just baseline STORY-$STORY_NUMBER" >&2
+  echo "Re-capture it:  just baseline $EVIDENCE_NAME" >&2
   exit 3
 fi
 
 if grep -q '=UNRELIABLE=' "$BASE_EXIT"; then
-  echo "REFUSING TO VERIFY — the baseline for STORY-$STORY_NUMBER contains an UNRELIABLE gate:" >&2
+  echo "REFUSING TO VERIFY — the baseline for $EVIDENCE_NAME contains an UNRELIABLE gate:" >&2
   grep '=UNRELIABLE=' "$BASE_EXIT" | sed 's/^/  /' >&2
   echo >&2
   echo "That gate exited non-zero and produced no findings, so it analysed nothing. Diffing against" >&2
   echo "it would pass unconditionally." >&2
   echo >&2
   echo "Fix the gate, record it in docs/delivery/plan/KNOWN_ISSUES.md, then re-capture:" >&2
-  echo "  just baseline STORY-$STORY_NUMBER" >&2
+  echo "  just baseline $EVIDENCE_NAME" >&2
   exit 3
 fi
 
@@ -82,7 +85,7 @@ run() {
   return 0
 }
 
-echo "Verifying STORY-$STORY_NUMBER against $BASE_REPORT"
+echo "Verifying $EVIDENCE_NAME against $BASE_REPORT"
 # Same ordering as baseline.sh, and for the same reason: main_test.go reads the embedded
 # frontend/dist/index.html, which only `just frontend-build` produces. Running the tests first in a
 # clean tree fails them for a reason that has nothing to do with the story.
@@ -222,10 +225,10 @@ fi
 echo
 echo "Logs: $WORK"
 if [[ "$FAILED" == "1" ]]; then
-  echo "verify STORY-$STORY_NUMBER: FAILED"
+echo "verify $EVIDENCE_NAME: FAILED"
   exit 1
 fi
-echo "verify STORY-$STORY_NUMBER: every mechanical check passes against the baseline."
+echo "verify $EVIDENCE_NAME: every mechanical check passes against the baseline."
 echo "Still owed by a person: M7 new code is tested, M8 no placeholders, M11 descriptive docs current,"
 echo "M13 scope declared, and the walkthrough in the story's Definition of Done."
 exit 0

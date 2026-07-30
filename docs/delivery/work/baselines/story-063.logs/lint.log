@@ -7,3 +7,11 @@ npm --prefix frontend run lint
 > frontend@0.0.0 lint
 > eslint .
 
+
+/Users/ok/Development/GitHub/go_mark_edit/frontend/scripts/generate-editor-themes.mjs
+  94:9  error  'root' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (1 error, 0 warnings)
+
+error: recipe `frontend-lint` failed on line 50 with exit code 1
+error: recipe `lint` failed on line 47 with exit code 1

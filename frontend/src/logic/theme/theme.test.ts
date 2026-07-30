@@ -2,6 +2,7 @@ import {
   applyThemeToRoot,
   normalizeAppearance,
   normalizeTheme,
+  observeSystemAppearance,
   resolveAppearance,
 } from './theme';
 
@@ -36,4 +37,32 @@ it('sets attributes only on the document element', (): void => {
   expect(child).not.toHaveAttribute('data-mode');
 
   child.remove();
+});
+
+it('subscribes to system appearance only while Auto is selected', (): void => {
+  const listener = jest.fn();
+  const media = {
+    matches: false,
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  };
+  const matchMedia = jest.fn(() => media);
+
+  const noSubscription = observeSystemAppearance('dark', matchMedia, listener);
+  expect(matchMedia).not.toHaveBeenCalled();
+  noSubscription();
+
+  const dispose = observeSystemAppearance('auto', matchMedia, listener);
+  expect(matchMedia).toHaveBeenCalledWith('(prefers-color-scheme: dark)');
+  expect(media.addEventListener).toHaveBeenCalledWith(
+    'change',
+    expect.any(Function),
+  );
+  const handler = media.addEventListener.mock.calls[0][1] as (event: {
+    matches: boolean;
+  }) => void;
+  handler({ matches: true });
+  expect(listener).toHaveBeenCalledWith('dark');
+  dispose();
+  expect(media.removeEventListener).toHaveBeenCalledWith('change', handler);
 });

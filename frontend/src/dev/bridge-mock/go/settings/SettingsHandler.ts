@@ -84,7 +84,10 @@ export function GetSettings(): Promise<SettingsResult> {
 export function UpdateAppearance(
   nextAppearance: AppearanceSettings,
 ): Promise<VoidResult> {
-  if (nextAppearance.theme === 'error') {
+  if (
+    nextAppearance.theme === 'error' ||
+    new URLSearchParams(globalThis.location.search).has('rejectAppearance')
+  ) {
     return Promise.resolve(validationError());
   }
 

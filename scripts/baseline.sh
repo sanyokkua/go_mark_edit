@@ -22,28 +22,26 @@
 # So: every gate records its exit code, its raw log is kept, and the exit/finding combination is
 # classified. verify.sh refuses to run against an UNRELIABLE baseline.
 #
-# Usage: just baseline STORY-058   (or: scripts/baseline.sh STORY-058)
+# Usage: just baseline STORY-058 | 001-gomarkedit-product
 
 set -uo pipefail
-
-STORY_ARG="${1:-}"
-if [[ -z "$STORY_ARG" ]]; then
-  echo "usage: scripts/baseline.sh STORY-NNN" >&2
-  exit 2
-fi
-
-# Accept STORY-058, story-058 or 058.
-STORY_NUMBER="$(printf '%s' "$STORY_ARG" | tr -cd '0-9')"
-if [[ -z "$STORY_NUMBER" ]]; then
-  echo "could not read a story number out of '$STORY_ARG'" >&2
-  exit 2
-fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-OUT_DIR="docs/delivery/work/baselines"
-OUT="$OUT_DIR/story-$STORY_NUMBER"
+# shellcheck source=scripts/evidence_id.sh
+source "$REPO_ROOT/scripts/evidence_id.sh"
+
+EVIDENCE_ARG="${1:-}"
+if [[ -z "$EVIDENCE_ARG" ]]; then
+  echo "usage: scripts/baseline.sh STORY-NNN | NNN-feature-name" >&2
+  exit 2
+fi
+EVIDENCE_BASE="$(evidence_baseline_base "$EVIDENCE_ARG")" || exit $?
+EVIDENCE_NAME="$(evidence_display_name "$EVIDENCE_ARG")" || exit $?
+
+OUT_DIR="$(dirname "$EVIDENCE_BASE")"
+OUT="$EVIDENCE_BASE"
 OUT_FILE="$OUT.md"
 LOGS="$OUT.logs"
 
@@ -103,7 +101,7 @@ classify_passfail() {
   return 0
 }
 
-echo "Capturing baseline for STORY-$STORY_NUMBER at $COMMIT"
+echo "Capturing baseline for $EVIDENCE_NAME at $COMMIT"
 # frontend-build runs FIRST and the order is load-bearing: main_test.go asserts that
 # frontend/dist/index.html is embedded, frontend/dist/ is gitignored, and `just frontend-build` is
 # what produces it. Run `just test` before it in a clean checkout and the Go suite fails with
@@ -165,9 +163,9 @@ COVERAGE="$(grep -hoE 'coverage: [0-9.]+% of statements' "$LOGS/coverage.log" 2>
 
 # --- write it --------------------------------------------------------------------------------------
 {
-  echo "# Baseline — STORY-$STORY_NUMBER"
+  echo "# Baseline — $EVIDENCE_NAME"
   echo
-  echo "Captured by \`just baseline STORY-$STORY_NUMBER\`. Do not edit by hand."
+  echo "Captured by \`just baseline $EVIDENCE_NAME\`. Do not edit by hand."
   echo
   echo "| | |"
   echo "|---|---|"
@@ -197,7 +195,7 @@ COVERAGE="$(grep -hoE 'coverage: [0-9.]+% of statements' "$LOGS/coverage.log" 2>
     echo "| $gate | \`$cmd\` | $code | $verdict | $count |"
   done < "$OUT.exit"
   echo
-  echo "Raw output for every gate is kept in \`story-$STORY_NUMBER.logs/\`."
+  echo "Raw output for every gate is kept in \`$(basename "$OUT").logs/\`."
   echo
   if [[ "$UNRELIABLE" == "1" ]]; then
     echo "## DO NOT BUILD ON THIS BASELINE"
@@ -207,7 +205,7 @@ COVERAGE="$(grep -hoE 'coverage: [0-9.]+% of statements' "$LOGS/coverage.log" 2>
     echo "regardless of what is written."
     echo
     echo "Fix the gate, record the problem in \`docs/delivery/plan/KNOWN_ISSUES.md\`, and capture the"
-    echo "baseline again. \`just verify STORY-$STORY_NUMBER\` will refuse to run until then."
+    echo "baseline again. \`just verify $EVIDENCE_NAME\` will refuse to run until then."
     echo
   fi
   if [[ "$(grep -c '^archtest=0=' "$OUT.exit" || true)" == "0" ]]; then
@@ -244,7 +242,7 @@ echo
 cat "$OUT.exit"
 echo
 if [[ "$UNRELIABLE" == "1" ]]; then
-  echo "BASELINE UNRELIABLE — see $OUT_FILE. Do not start the story."
+  echo "BASELINE UNRELIABLE — see $OUT_FILE. Do not start implementation."
   exit 3
 fi
 echo "Wrote $OUT_FILE"

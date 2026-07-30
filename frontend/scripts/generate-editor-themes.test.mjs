@@ -30,19 +30,49 @@ const materialPalette = `
 `;
 
 const palette = ['glass', 'material', 'minimal']
-  .map((theme) => materialPalette.replaceAll("data-theme='material'", `data-theme='${theme}'`))
+  .map((theme) =>
+    materialPalette.replaceAll(
+      "data-theme='material'",
+      `data-theme='${theme}'`,
+    ),
+  )
   .join('\n');
 
 test('generates six complete named Monaco themes from palette values', () => {
   const generated = generateEditorThemes(palette);
 
-  assert.deepEqual(
-    Object.keys(generated.themes),
-    ['gme-glass-light', 'gme-glass-dark', 'gme-material-light', 'gme-material-dark', 'gme-minimal-light', 'gme-minimal-dark'],
+  assert.deepEqual(Object.keys(generated.themes), [
+    'gme-glass-light',
+    'gme-glass-dark',
+    'gme-material-light',
+    'gme-material-dark',
+    'gme-minimal-light',
+    'gme-minimal-dark',
+  ]);
+  assert.equal(
+    generated.themes['gme-material-light'].colors['editor.background'],
+    '#faf8ff',
   );
-  assert.equal(generated.themes['gme-material-light'].colors['editor.background'], '#faf8ff');
-  assert.equal(generated.themes['gme-material-dark'].rules.find((rule) => rule.token === 'keyword').foreground, '#c58bff');
+  assert.equal(
+    generated.themes['gme-material-dark'].rules.find(
+      (rule) => rule.token === 'keyword.go',
+    ).foreground,
+    '#c58bff',
+  );
   assert.match(generated.highlightCss, /hljs-keyword/);
+});
+
+test('converts CSS rgba palette values to Monaco-compatible hex', () => {
+  const translucentPalette = palette.replace(
+    ":root[data-theme='glass'][data-mode='light'] {\n  --app-bg: #faf8ff",
+    ":root[data-theme='glass'][data-mode='light'] {\n  --app-bg: rgba(255,255,255,.42)",
+  );
+  assert.equal(
+    generateEditorThemes(translucentPalette).themes['gme-glass-light'].colors[
+      'editor.background'
+    ],
+    '#ffffff6b',
+  );
 });
 
 // Proves: themes-and-appearance#two-syntax-palettes
@@ -50,8 +80,12 @@ test('shares each fenced-language value by appearance across themes', () => {
   const generated = generateEditorThemes(palette);
 
   assert.equal(
-    generated.themes['gme-glass-light'].rules.find((rule) => rule.token === 'keyword').foreground,
-    generated.themes['gme-minimal-light'].rules.find((rule) => rule.token === 'keyword').foreground,
+    generated.themes['gme-glass-light'].rules.find(
+      (rule) => rule.token === 'keyword.go',
+    ).foreground,
+    generated.themes['gme-minimal-light'].rules.find(
+      (rule) => rule.token === 'keyword.go',
+    ).foreground,
   );
 });
 
@@ -61,4 +95,91 @@ test('rejects a palette missing a required Monaco token', () => {
     () => generateEditorThemes(palette.replace('--hl-punct: #5c5c69;', '')),
     /--hl-punct/,
   );
+});
+
+test('generates qualified Markdown and Go rules plus every required Monaco UI colour', () => {
+  const generated = generateEditorThemes(palette);
+  const theme = generated.themes['gme-material-light'];
+  const rule = (token) =>
+    theme.rules.find((candidate) => candidate.token === token)?.foreground;
+
+  for (const color of [
+    'editor.background',
+    'editor.foreground',
+    'editorLineNumber.foreground',
+    'editorLineNumber.activeForeground',
+    'editorCursor.foreground',
+    'editor.selectionBackground',
+    'editor.selectionHighlightBackground',
+    'editor.lineHighlightBackground',
+    'editorGutter.background',
+    'editorWidget.background',
+    'editorWidget.border',
+    'editorSuggestWidget.background',
+    'editorSuggestWidget.foreground',
+    'editorSuggestWidget.selectedBackground',
+    'minimap.background',
+    'scrollbarSlider.background',
+    'scrollbarSlider.hoverBackground',
+    'editorError.foreground',
+    'editorWarning.foreground',
+  ]) {
+    assert.ok(theme.colors[color], `missing Monaco UI colour ${color}`);
+  }
+
+  assert.equal(rule('keyword.md'), '#3056d3');
+  assert.equal(rule('keyword.md.*'), '#3056d3');
+  assert.equal(rule('strong.md'), '#b45309');
+  assert.equal(rule('comment.md.*'), '#0369a1');
+  assert.equal(rule('string.link.md'), '#be123c');
+  assert.equal(rule('keyword.go'), '#7c3aed');
+  assert.equal(rule('keyword.go.*'), '#7c3aed');
+  assert.equal(rule('comment.go.*'), '#9aa1ab');
+  assert.equal(rule('number.go.*'), '#b45309');
+  assert.equal(rule('delimiter.go.*'), '#5c5c69');
+  assert.equal(rule('keyword.type.go'), '#0f766e');
+  assert.equal(rule('keyword.const.go'), '#0f766e');
+});
+
+test('rejects duplicate, unresolved, and unsupported palette sources', () => {
+  assert.throws(
+    () =>
+      generateEditorThemes(
+        palette.replace(
+          '--hl-punct: #5c5c69;',
+          '--hl-punct: #5c5c69; --hl-punct: #000000;',
+        ),
+      ),
+    /Duplicate token --hl-punct/,
+  );
+  assert.throws(
+    () =>
+      generateEditorThemes(
+        palette.replace('--hl-punct: #5c5c69;', '--hl-punct: var(--other);'),
+      ),
+    /Unresolved token --hl-punct/,
+  );
+  assert.throws(
+    () =>
+      generateEditorThemes(
+        `${palette}\n:root[data-theme='retro'][data-mode='light'] { --hl-punct: #000000; }`,
+      ),
+    /Untraceable palette selector/,
+  );
+});
+
+test('emits inactive highlight rules for every generated syntax token', () => {
+  const generated = generateEditorThemes(palette);
+  for (const token of [
+    'hljs-keyword',
+    'hljs-string',
+    'hljs-comment',
+    'hljs-number',
+    'hljs-title',
+    'hljs-type',
+    'hljs-attr',
+    'hljs-punctuation',
+  ]) {
+    assert.match(generated.highlightCss, new RegExp(`\\.${token}`));
+  }
 });

@@ -3,8 +3,8 @@
 **Branch**: `001-gomarkedit-product` | **Date**: 2026-07-30 | **Spec**: [spec.md](spec.md)
 
 **Input**: Consolidated product requirements from `specs/001-gomarkedit-product/spec.md`, with
-`docs/delivery/spec/` and `docs/delivery/architecture/` remaining authoritative until migration is
-approved requirement by requirement. `docs/delivery/plan/` is sequencing evidence and a source of
+`docs/delivery/` files remaining historical reference until their needed behavior is copied into
+SpecKit, one approved requirement at a time. `docs/delivery/plan/` is sequencing evidence and a source of
 known risks, not the new plan's authority.
 
 ## Summary

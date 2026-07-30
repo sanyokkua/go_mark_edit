@@ -4,9 +4,9 @@ package settings
 import "github.com/sanyokkua/go_mark_edit/internal/apperr"
 
 const (
-	ThemeLiquidGlass = "liquid-glass"
-	ThemeMaterial    = "material"
-	ThemeMinimal     = "minimal"
+	ThemeGlass    = "glass"
+	ThemeMaterial = "material"
+	ThemeMinimal  = "minimal"
 
 	ModeAuto  = "auto"
 	ModeLight = "light"

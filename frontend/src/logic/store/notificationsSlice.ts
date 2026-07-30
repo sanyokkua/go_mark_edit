@@ -32,7 +32,15 @@ const notificationsSlice = createSlice({
         };
       },
       reducer(state, action: PayloadAction<Notification>): void {
+        const duplicate = state.items.some(
+          (notification) =>
+            notification.error.code === action.payload.error.code &&
+            notification.error.title === action.payload.error.title &&
+            notification.error.message === action.payload.error.message,
+        );
+        if (duplicate) return;
         state.items.push(action.payload);
+        if (state.items.length > 3) state.items.shift();
       },
     },
     dismissNotification(state, action: PayloadAction<number>): void {

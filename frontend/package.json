@@ -5,13 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "generate:editor-themes": "node scripts/generate-editor-themes.mjs",
+    "check:editor-themes": "node scripts/check-editor-themes.mjs",
+    "prebuild": "npm run check:editor-themes",
+    "pretest": "npm run check:editor-themes",
     "build": "tsc --noEmit && vite build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "postbuild": "node scripts/ensure-dist-placeholder.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "jest",
+    "test": "node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest",
     "typecheck": "tsc --noEmit",
     "verify:ui": "playwright test"
   },

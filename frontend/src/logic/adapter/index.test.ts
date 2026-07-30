@@ -144,3 +144,16 @@ it('STORY-006-AC-3 notifies exactly once before throwing the same wire error', (
     expect.objectContaining({ error: wireError }),
   ]);
 });
+
+it('deduplicates repeated classified settings failures', (): void => {
+  const wireError: WireError = {
+    code: 'validation',
+    title: 'Invalid setting',
+    message: 'Choose a supported theme.',
+    retryable: false,
+  };
+
+  expect(() => unwrap({ error: wireError })).toThrow();
+  expect(() => unwrap({ error: wireError })).toThrow();
+  expect(store.getState().notifications.items).toHaveLength(1);
+});

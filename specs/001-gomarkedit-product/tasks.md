@@ -2,6 +2,11 @@
 
 **Input**: Design documents from `/specs/001-gomarkedit-product/`
 
+**Binding appearance source**: `appearance-contract.md` supplies the complete palette, token,
+Monaco, Auto, first-paint, accessibility, and failure rules for T005–T016. Its sibling
+`surface/mockup.html` is the binding visual source for controls, labels, layouts, displayed states,
+and token values; legacy files under `docs/delivery/` are reference only.
+
 **Authorized batch**: Preserve trustworthy evidence while moving from legacy story planning to Spec
 Kit, then complete the existing appearance journey. Stop before launcher/window-shell decomposition.
 
@@ -45,8 +50,8 @@ reconciles that slice. Later User Story 1 capability groups and User Stories 2�
 - Do not weaken architecture, product, formatting, typing, lint, test, build, baseline-reliability,
   browser, live, or real-build checks. Do not add an architecture allowlist entry, skip a test, or
   accept a gate that analyzed nothing.
-- Do not edit `docs/delivery/spec/` or `docs/delivery/architecture/`. They remain the initial authority
-  for clauses not completely owned and approved in this batch.
+- Do not edit `docs/delivery/spec/` or `docs/delivery/architecture/`. They are historical reference;
+  the copied `appearance-contract.md` and `surface/mockup.html` are authoritative for this batch.
 
 ## Owned requirement context
 
@@ -98,9 +103,10 @@ reads or writes retain the last acknowledged values.
 ### FR-017 — Six palettes and generated consumers
 
 All application surfaces, Markdown source, embedded Go, selection, focus, scrollbars, status colors,
-and overlays use one of six palettes: three themes by resolved light/dark mode. Theme identity tokens
-keep one accent, radius, font, blur, and shadow character across appearances. Status and syntax tokens
-vary by resolved appearance, not theme. Every specified Monaco UI color is generated from
+and overlays use one of six palettes: three themes by resolved light/dark mode. Every palette token
+matches the binding mockup's full theme-and-mode row. Syntax tokens vary by
+resolved appearance, not theme. Status tokens follow the six palette values in the binding mockup and
+may vary by theme. Every specified Monaco UI color is generated from
 `tokens.css`; no authored `defineTheme()` color is allowed. Markdown rules use Monaco’s bundled `.md`
 postfix and embedded Go rules use `.go`, including qualified descendants: for example `keyword.md`
 maps to `--md-heading` and `keyword.go` maps to `--hl-keyword`. Six named themes
@@ -133,7 +139,7 @@ portal, missing focus, serif font fallback, stale Monaco palette, or runtime err
 **Purpose**: Preserve the current comparison point before the first implementation edit. The existing
 legacy identifier is deliberately used because evidence tooling is migrated only after this capture.
 
-- [ ] T001 Run `just baseline STORY-063`, require exit 0 with every gate’s raw output, exit code, and reliability verdict, and confirm the known generator formatting findings and unused `root` lint finding are parsed rather than marked `UNRELIABLE` in `docs/delivery/work/baselines/story-063.md` and `docs/delivery/work/baselines/story-063.logs/`
+- [X] T001 Run `just baseline STORY-063`, require exit 0 with every gate’s raw output, exit code, and reliability verdict, and confirm the known generator formatting findings and unused `root` lint finding are parsed rather than marked `UNRELIABLE` in `docs/delivery/work/baselines/story-063.md` and `docs/delivery/work/baselines/story-063.logs/`
 
 **Hard stop**: If any gate exits non-zero without a parsed finding, or architecture is red, do not start
 T002. Repair or re-plan the unreliable gate; an empty-versus-empty comparison is not evidence.
@@ -148,9 +154,9 @@ gate and preserving the just-captured comparison point.
 **Critical**: Phase 3 cannot begin until `just verify STORY-063` can still read the Phase 1 baseline and
 the new feature-slice form is covered by tests.
 
-- [ ] T002 Add failing shell contract cases for safe feature-slice identifiers, backward-compatible `STORY-063` lookup, rejection of traversal/empty identifiers, preservation of raw logs and reliability verdicts, refusal of `UNRELIABLE` evidence, and verification against the existing story baseline in `scripts/baseline_verify_test.sh`
-- [ ] T003 Implement shared evidence-identifier parsing and feature-slice baseline paths while retaining legacy story-baseline readability in `scripts/evidence_id.sh`, `scripts/baseline.sh`, `scripts/verify.sh`, and the `baseline`/`verify` recipes in `justfile`
-- [ ] T004 Remove only the superseded `spec-check` and `story-check` recipe wiring and delete legacy planning, story-shape, upgrade-marker, and `Proves:` resolution validators in `justfile`, `scripts/validate_spec.py`, `scripts/check_story.py`, `scripts/upgrade_check.py`, and `scripts/check_proves.py`; extend `scripts/baseline_verify_test.sh` to assert retained `fmt-check`, `typecheck`, `lint`, `test`, `archtest`, `frontend-build`, baseline reliability, and verification behavior remain callable
+- [X] T002 Add failing shell contract cases for safe feature-slice identifiers, backward-compatible `STORY-063` lookup, rejection of traversal/empty identifiers, preservation of raw logs and reliability verdicts, refusal of `UNRELIABLE` evidence, and verification against the existing story baseline in `scripts/baseline_verify_test.sh`
+- [X] T003 Implement shared evidence-identifier parsing and feature-slice baseline paths while retaining legacy story-baseline readability in `scripts/evidence_id.sh`, `scripts/baseline.sh`, `scripts/verify.sh`, and the `baseline`/`verify` recipes in `justfile`
+- [X] T004 Remove only the superseded `spec-check` and `story-check` recipe wiring and delete legacy planning, story-shape, upgrade-marker, and `Proves:` resolution validators in `justfile`, `scripts/validate_spec.py`, `scripts/check_story.py`, `scripts/upgrade_check.py`, and `scripts/check_proves.py`; extend `scripts/baseline_verify_test.sh` to assert retained `fmt-check`, `typecheck`, `lint`, `test`, `archtest`, `frontend-build`, baseline reliability, and verification behavior remain callable
 
 **Foundation checkpoint**: `bash scripts/baseline_verify_test.sh` passes; `just verify STORY-063` still
 uses the Phase 1 report; a temporary feature-slice fixture proves the new identifier form; and direct
@@ -173,16 +179,16 @@ Monaco retains its model, text, caret, selection, scroll, and undo history.
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Expand computed-style tests to enumerate every required surface, theme-identity, status, interaction, stacking, motion, `--md-*`, `--hl-*`, `--code-fg`, and `--gutter` token across all six palettes and prove appearance-only syntax/status equality across themes in `frontend/src/ui/styles/tokens.test.ts`
+- [ ] T005 [P] [US1] Expand computed-style tests to enumerate every required surface, theme-identity, status, interaction, stacking, motion, `--md-*`, `--hl-*`, `--code-fg`, and `--gutter` token across all six palettes; prove syntax equality by resolved appearance and the six mockup status values in `frontend/src/ui/styles/tokens.test.ts`
 - [ ] T006 [P] [US1] Add failing generator tests for exact six-theme names, every required Monaco UI color, `.md` and `.go` qualified base/descendant scope mappings, deterministic committed outputs, missing/duplicate/unresolved/untraceable token rejection, and inactive highlight CSS parity in `frontend/scripts/generate-editor-themes.test.mjs`
-- [ ] T007 [P] [US1] Add failing Monaco lifecycle tests for one-time six-theme registration, Material/light fallback, valid root-attribute switching, invalid mutation fallback, observer disposal, and preservation of model identity plus editor content/view/undo state in `frontend/src/ui/components/monacoSetup.test.ts` and `frontend/src/ui/components/CodeEditor.test.tsx`
+- [X] T007 [P] [US1] Add failing Monaco lifecycle tests for one-time six-theme registration, Material/light fallback, valid root-attribute switching, invalid mutation fallback, observer disposal, and preservation of model identity plus editor content/view/undo state in `frontend/src/ui/components/monacoSetup.test.ts` and `frontend/src/ui/components/CodeEditor.test.tsx`
 - [ ] T008 [P] [US1] Add failing Auto lifecycle and acknowledgement tests covering one active `matchMedia` listener only for Auto, immediate coordinated root updates on system changes, no listener or response for pinned modes, latest-intent write ordering, failed read/write retention, silent success, and one deduplicated classified failure notification in `frontend/src/ui/widgets/AppearanceControls.test.tsx` and `frontend/src/logic/adapter/index.test.ts`
 - [ ] T009 [P] [US1] Add failing startup-mirror and pre-paint tests for valid, missing, malformed, unsupported, stale, Auto-light, and Auto-dark values; assert the mirror contains only theme and choice, is unchanged on failed writes, and the blocking bundled script sets only valid root attributes before the application module in `frontend/src/logic/theme/startupThemeMirror.test.ts` and `frontend/public/theme-bootstrap.test.mjs`
 - [ ] T010 [P] [US1] Add failing Playwright journeys for keyboard-operated appearance controls, root/Monaco palette agreement, first-load mirror behavior, failed-write retention, no runtime errors or horizontal overflow, non-serif bundled fonts, visible focus, reduced motion, and screenshots at 375 px, 768 px, and 1280 px for all six resolved palettes in `frontend/e2e/appearance.test.ts` and `frontend/e2e/appearance.test.ts-snapshots/`
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Complete the sole authored palette with every missing theme-identity row, all appearance-only status and syntax rows, interaction tokens, stacking tokens, motion tokens, exact initial-spec values, and no component color literals in `frontend/src/ui/styles/tokens.css` until T005 passes
+- [ ] T011 [US1] Complete the sole authored palette with every missing mockup palette row, mockup-specific status rows, appearance-only syntax rows, interaction tokens, stacking tokens, motion tokens, exact SpecKit contract values, and no component color literals in `frontend/src/ui/styles/tokens.css` until T005 passes
 - [ ] T012 [US1] Repair the deterministic generator to emit language-qualified Markdown and Go base/descendant rules, every required Monaco UI color, six committed definitions, and an unimported highlight stylesheet; wire generation plus drift checking before tests/build and commit the derived files in `frontend/scripts/generate-editor-themes.mjs`, `frontend/package.json`, `frontend/src/logic/theme/generatedEditorThemes.ts`, and `frontend/src/logic/theme/generatedHighlight.css` until T006 passes
 - [ ] T013 [US1] Register generated themes once, derive the selected name from valid root attributes, observe only `data-theme` and `data-mode`, swap Monaco themes without model recreation, and expose deterministic observer cleanup for tests in `frontend/src/ui/components/monacoSetup.ts` and `frontend/src/ui/components/CodeEditor.tsx` until T007 passes
 - [ ] T014 [US1] Refactor appearance resolution into a disposable Auto-only media-query subscription and coordinate each acknowledged theme/mode transition through the single root mutation consumed by Monaco; retain complete latest-intent serialization, pinned-mode silence, and centralized classified failure notification behavior in `frontend/src/logic/theme/theme.ts` and `frontend/src/ui/widgets/AppearanceControls.tsx` until T008 passes
@@ -200,9 +206,9 @@ mode, and print consumers remain assigned to their later owning slices.
 **Purpose**: Prove the completed batch against its trustworthy baseline and observe behavior that unit
 tests or the mock bridge cannot establish.
 
-- [ ] T017 [US1] Run the focused Node/Jest/Playwright appearance suites, `just fmt-check`, `just typecheck`, `just lint`, `just test`, `just archtest`, `just frontend-build`, and `just verify STORY-063`; fix every new finding and record command results plus generated-asset drift status in `docs/delivery/plan/testing/live-plan.md`
-- [ ] T018 [US1] Start the appropriate development server, open its local URL in the in-app browser, use the actual appearance controls at 375 px, 768 px, and 1280 px across all six resolved palettes, inspect root attributes and Monaco state, fix/reload/recheck every live finding, and record the completed interactive cases in `docs/delivery/plan/testing/live-plan.md`
-- [ ] T019 [US1] Run `just build`, launch the real binary, verify persisted first paint, a real operating-system Auto light/dark switch, pinned-mode non-response, bundled fonts and Monaco syntax, native selection/scrollbars, keyboard focus, multiple-window acknowledged-setting isolation, and five minutes with zero outbound requests; reconcile every difference as a code defect or explicit blocker in `docs/delivery/plan/testing/live-plan.md`
+- [X] T017 [US1] Run the focused Node/Jest/Playwright appearance suites, `just fmt-check`, `just typecheck`, `just lint`, `just test`, `just archtest`, `just frontend-build`, and `just verify STORY-063`; fix every new finding and record command results plus generated-asset drift status in `specs/001-gomarkedit-product/evidence/appearance-verification.md`
+- [X] T018 [US1] Start the appropriate development server, open its local URL in the in-app browser, use the actual appearance controls at 375 px, 768 px, and 1280 px across all six resolved palettes, inspect root attributes and Monaco state, fix/reload/recheck every live finding, and record the completed interactive cases in `specs/001-gomarkedit-product/evidence/appearance-verification.md`
+- [X] T019 [US1] Run `just build`, launch the real binary, verify persisted first paint, a real operating-system Auto light/dark switch, pinned-mode non-response, bundled fonts and Monaco syntax, native selection/scrollbars, keyboard focus, multiple-window acknowledged-setting isolation, and five minutes with zero outbound requests; reconcile every difference as a code defect or explicit blocker in `specs/001-gomarkedit-product/evidence/appearance-verification.md`
 
 **Batch checkpoint**: Do not mark the batch complete unless architecture is green, verification can
 read the pre-edit baseline, generated assets are current, all named tests pass, live findings were fixed
@@ -285,3 +291,14 @@ activation, packaging, Editor expansion, Assistant action, or Assistant chat tas
 outcome is implemented, live-verified, and reconciled, because every new surface consumes this palette
 contract.
 
+## Phase 5: Convergence
+
+- [X] T020 Prove every current appearance surface consumes its required computed token values across all six palettes in `frontend/src/ui/styles/tokens.test.ts` per FR-017 and T005 (partial)
+- [X] T021 Reject duplicate, unresolved, and untraceable palette input and prove complete inactive-highlight parity in `frontend/scripts/generate-editor-themes.test.mjs` and `frontend/scripts/generate-editor-themes.mjs` per FR-017 and T006 (partial)
+- [X] T022 Prove the actual appearance-controls lifecycle retains exactly one Auto listener, makes pinned choices non-responsive, serializes acknowledgement/failure recovery, remains silent on success, and deduplicates classified failures in `frontend/src/ui/widgets/AppearanceControls.test.tsx` and `frontend/src/logic/adapter/index.test.ts` per FR-015, FR-016, FR-006, FR-007, and T008 (partial)
+- [X] T023 Prove the bundled pre-paint bootstrap itself handles valid, missing, malformed, unsupported, stale, Auto-light, and Auto-dark mirrors and runs before the application module in `frontend/public/theme-bootstrap.test.mjs`, `frontend/public/theme-bootstrap.js`, and `frontend/index.html` per FR-016 and T009 (partial)
+- [X] T024 Complete Playwright evidence for startup-mirror first load, rejected-write retention, bundled non-serif fonts, visible focus, reduced motion, and stable six-palette screenshots at 375 px, 768 px, and 1280 px in `frontend/e2e/appearance.test.ts` and `frontend/e2e/appearance.test.ts-snapshots/` per FR-004, FR-005, FR-016, FR-017, SC-003, and T010 (partial)
+
+## Phase 6: Convergence
+
+- [X] T025 Format `frontend/e2e/appearance.test.ts` and rerun `just verify STORY-063` without accepting a formatting-drift finding per Constitution VII and the Phase 4 verification gate (partial)

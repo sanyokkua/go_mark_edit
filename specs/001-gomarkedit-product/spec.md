@@ -552,11 +552,12 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
 
 ## Assumptions
 
-- The authoritative behavior is the current content of `docs/delivery/spec`, including its surface
-  mockup. The older `docs/delivery/plan` informs sequencing and historical status but cannot override
-  current product behavior. Authority transfers to Spec Kit one requirement at a time only after its
-  complete behavior, exact values, edge cases, and proving evidence are mapped without loss and the
-  mapped requirement is explicitly approved. Unmapped initial requirements remain authoritative.
+- The appearance batch is authoritative in this feature: `appearance-contract.md` supplies its
+  complete behavior, exact values, edge cases, and proving evidence, while
+  `surface/mockup.html` is the binding visual source. The corresponding files under
+  `docs/delivery/` are historical reference only. Other legacy requirements transfer to Spec Kit one
+  requirement at a time after their complete behavior, exact values, edge cases, and proving evidence
+  are mapped without loss and the transfer is explicitly approved.
 - This invocation creates one consolidated product specification because the requested stages are one
   dependency chain sharing documents, rendering, settings, safety rules, and acceptance evidence.
 - Viewer, Editor, Assistant actions, and Assistant chat are delivery stages, not separate editions or
@@ -636,9 +637,9 @@ recovery evidence in that slice.
 - Packaging intentionally fails because the distributable packaging stage has not been implemented.
 - Architecture checks are absent from continuous integration, and continuous integration itself does
   not run on ordinary branch or pull-request changes.
-- Legacy planning, story-copy, phase-status, and retired-requirement traceability validators may remain
-  wired into repository commands even after Spec Kit owns those concerns; the first implementation
-  phase must remove each superseded validator only after confirming that it provides no retained
+- Legacy planning, story-copy, phase-status, and retired-requirement traceability validators are
+  superseded by the SpecKit feature artifacts. The first implementation phase removes their command
+  wiring only after confirming that it provides no retained
   product, architecture, quality, build, baseline-reliability, or live-verification evidence.
 - Startup failure copy differs between the governing specification and current interface.
 - Many historical test traceability tags point to retired or nonexistent requirements; they must be

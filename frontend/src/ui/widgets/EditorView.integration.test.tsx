@@ -153,6 +153,7 @@ jest.mock('@monaco-editor/react', () => {
 
 jest.mock('../components/monacoSetup', () => ({
   __esModule: true,
+  applyMonacoThemeFromRoot: jest.fn(() => jest.fn()),
   monaco: {},
 }));
 

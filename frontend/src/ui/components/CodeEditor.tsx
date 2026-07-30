@@ -190,6 +190,20 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     }, [captureViewState]);
 
     useEffect(() => {
+      let disposeThemeObserver: (() => void) | undefined;
+      let disposed = false;
+
+      void import('./monacoSetup').then(({ applyMonacoThemeFromRoot }) => {
+        if (!disposed) disposeThemeObserver = applyMonacoThemeFromRoot();
+      });
+
+      return (): void => {
+        disposed = true;
+        disposeThemeObserver?.();
+      };
+    }, []);
+
+    useEffect(() => {
       const wasVisible = wasVisibleRef.current;
       wasVisibleRef.current = visible;
 

@@ -26,7 +26,7 @@ dist/assets/monacoSetup-BCAkLAPD.js      2,281.61 kB │ gzip: 590.70 kB
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.38s
+✓ built in 3.33s
 
 > frontend@0.0.0 postbuild
 > node scripts/ensure-dist-placeholder.mjs

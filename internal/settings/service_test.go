@@ -51,6 +51,44 @@ func TestInvalidOrMissingSettingFallsBackToDefault(t *testing.T) {
 	}
 }
 
+func TestAppearanceUsesTheSpecKitGlassValueAndReadsTheRetiredValue(t *testing.T) {
+
+	t.Run("accepts glass for an appearance update", func(t *testing.T) {
+		repository := fakeSettingsRepository{}
+		service := NewSettingsService(&repository)
+		appearance := apperr.AppearanceSettings{
+			Theme:           "glass",
+			Mode:            ModeDark,
+			DefaultOpenMode: OpenModeEditor,
+		}
+
+		if err := service.UpdateAppearance(context.Background(), appearance); err != nil {
+			t.Fatalf("update SpecKit glass appearance: %v", err)
+		}
+		if repository.appearance != appearance {
+			t.Fatalf("stored appearance = %+v, want %+v", repository.appearance, appearance)
+		}
+	})
+
+	t.Run("normalizes retired liquid-glass storage to glass", func(t *testing.T) {
+		service := NewSettingsService(&fakeSettingsRepository{
+			appearance: apperr.AppearanceSettings{
+				Theme:           "liquid-glass",
+				Mode:            ModeLight,
+				DefaultOpenMode: OpenModeEditor,
+			},
+		})
+
+		got, err := service.Get(context.Background())
+		if err != nil {
+			t.Fatalf("read retired appearance: %v", err)
+		}
+		if got.Appearance.Theme != "glass" {
+			t.Fatalf("normalized theme = %q, want glass", got.Appearance.Theme)
+		}
+	})
+}
+
 type fakeSettingsRepository struct {
 	appearance        apperr.AppearanceSettings
 	markdown          apperr.MarkdownSettings

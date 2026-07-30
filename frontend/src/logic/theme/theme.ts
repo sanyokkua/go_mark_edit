@@ -22,6 +22,31 @@ export function resolveAppearance(
   return choice === 'auto' ? (prefersDark() ? 'dark' : 'light') : choice;
 }
 
+interface AppearanceMediaQuery {
+  addEventListener(
+    type: 'change',
+    listener: (event: { matches: boolean }) => void,
+  ): void;
+  matches: boolean;
+  removeEventListener(
+    type: 'change',
+    listener: (event: { matches: boolean }) => void,
+  ): void;
+}
+
+export function observeSystemAppearance(
+  choice: AppearanceChoice,
+  matchMedia: (query: string) => AppearanceMediaQuery,
+  onChange: (mode: ResolvedAppearance) => void,
+): () => void {
+  if (choice !== 'auto') return (): void => undefined;
+  const media = matchMedia('(prefers-color-scheme: dark)');
+  const listener = (event: { matches: boolean }): void =>
+    onChange(event.matches ? 'dark' : 'light');
+  media.addEventListener('change', listener);
+  return (): void => media.removeEventListener('change', listener);
+}
+
 export function applyThemeToRoot(
   state: ThemeState,
   documentRef: Document,

@@ -120,7 +120,9 @@ func nonNilContext(ctx context.Context) context.Context {
 
 func normalizeAppearance(appearance apperr.AppearanceSettings) apperr.AppearanceSettings {
 	defaults := DefaultSettings().Appearance
-	if !isTheme(appearance.Theme) {
+	if appearance.Theme == "liquid-glass" {
+		appearance.Theme = ThemeGlass
+	} else if !isTheme(appearance.Theme) {
 		appearance.Theme = defaults.Theme
 	}
 	if !isMode(appearance.Mode) {
@@ -193,7 +195,7 @@ func validateContentPrivacy(contentPrivacy apperr.ContentPrivacySettings) error 
 }
 
 func isTheme(value string) bool {
-	return value == ThemeLiquidGlass || value == ThemeMaterial || value == ThemeMinimal
+	return value == ThemeGlass || value == ThemeMaterial || value == ThemeMinimal
 }
 
 func isMode(value string) bool {

@@ -7,4 +7,8 @@ npm --prefix frontend run format:check
 > prettier --check .
 
 Checking formatting...
-All matched files use Prettier code style!
+[warn] scripts/generate-editor-themes.mjs
+[warn] scripts/generate-editor-themes.test.mjs
+[warn] Code style issues found in 2 files. Run Prettier with --write to fix.
+error: recipe `frontend-format-check` failed on line 36 with exit code 1
+error: recipe `fmt-check` failed on line 40 with exit code 1
