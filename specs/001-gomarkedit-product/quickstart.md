@@ -10,54 +10,59 @@ checks for working software and does not claim that later stages are implemented
 - The feature contract in [spec.md](spec.md), logical model in [data-model.md](data-model.md), and
   boundary contracts in [contracts/](contracts/)
 
-## 1. Validate the planning artifacts
+## 1. Review the planning boundary
 
 Run:
 
 ```bash
-just spec-check
-rg "placeholder|unresolved clarification" specs/001-gomarkedit-product
+rg "NEEDS CLARIFICATION|TBD|TODO" specs/001-gomarkedit-product/spec.md \
+  specs/001-gomarkedit-product/plan.md specs/001-gomarkedit-product/research.md \
+  specs/001-gomarkedit-product/data-model.md specs/001-gomarkedit-product/contracts
+git diff --check
 ```
 
-Expected: specification checks analyze the tree; manual review confirms no unresolved placeholder in the generated
-plan or Phase 0/1 artifacts. A non-zero command with no analyzed findings is not a pass.
+Expected: no unresolved planning marker and no malformed patch. This is an artifact review, not a
+product completion gate.
 
 Review manually:
 
 1. Every FR-001 through FR-080 remains present in `spec.md`.
-2. `plan.md` authorizes detailed work only for the next dependency-complete slice.
-3. Later stages have entry/exit contracts but no invented API, schema, or component tickets.
-4. Every known gap is either attached to its first consuming slice or identified as a hard evidence
+2. The five 2026-07-30 clarifications appear once and agree with the plan and contracts.
+3. `plan.md` authorizes detailed work only for migration-foundation support plus appearance completion.
+4. Later stages have entry/exit contracts but no invented API, schema, or component tickets.
+5. Every known gap is either attached to its first consuming slice or identified as a hard evidence
    blocker; none is hidden by a delivered label.
 
 ## 2. Establish readiness for the next slice
 
-The next slice is theme completion. Before any code edit, run the repository's story integrity and
-baseline workflow for the selected replacement/current story:
+The next batch is migration-foundation support plus appearance completion. Before any implementation
+edit, capture the current retained baseline using the existing compatible entry point:
 
 ```bash
-just story-check 063
 just baseline STORY-063
 ```
 
-Expected: copied requirements and ownership are complete; every gate records an exit code and reliable
-analysis. Stop if the Markdown-source versus embedded-language token ownership remains contradictory,
-if any gate is `UNRELIABLE`, or if the story requires paths outside its declared scope.
+Expected: every gate records an exit code and reliable analysis. The current generator formatting and
+lint findings are legitimate baseline findings; a gate that reports no analyzed target is not. The
+first batch may migrate baseline storage to a Spec Kit slice label only if later verification can still
+read this comparison point.
 
-Do not generate or implement shell, files, rendering, packaging, Editor, or Assistant tasks merely
-because their stage appears in the plan.
+The language-token decision is no longer open: generated rules use `.md` and `.go` postfixes, including
+qualified descendants. Do not generate or implement shell, file lifecycle, renderer activation,
+packaging, Editor expansion, or Assistant tasks merely because their stage appears in the plan.
 
 ## 3. Verify an implemented slice
 
-For any later authorized story, use its ID:
+For the active batch, use the retained verification entry point or its Spec Kit-compatible replacement:
 
 ```bash
-just verify STORY-NNN
+just verify STORY-063
 just archtest
 ```
 
-Expected: no new finding relative to a trustworthy baseline, all named story tests pass, architecture
-tests are fully green, and requirement mappings resolve to behavior rather than copied identifiers.
+Expected: no new finding relative to a trustworthy baseline, all named behavior tests pass, and
+architecture tests are fully green. The implementation removes legacy planning/traceability validators
+but does not weaken any command listed here.
 
 For visible work, also run the appropriate development server, open its local URL in the in-app
 browser, use the actual controls at the relevant widths and palettes, inspect visible/root state and
@@ -70,7 +75,6 @@ At a stage boundary:
 
 ```bash
 just check
-just spec-check
 just build
 ```
 
@@ -87,10 +91,11 @@ aggregate command, legacy phase status, or mock-only Playwright journey is insuf
 Only after reconciliation confirms the current slice matches its governing requirements:
 
 1. Select the first unmet capability group whose entry dependencies now exist in production.
-2. Copy its complete requirements and applicable architecture rules.
-3. Resolve numeric, lifecycle, error, and wording questions.
-4. Assign every in-scope requirement to one owner and named evidence.
-5. Generate tasks for that slice only.
+2. Map its complete initial-spec behavior, values, edge cases, and evidence into Spec Kit.
+3. Obtain explicit approval for requirement-level authority transfer.
+4. Resolve numeric, lifecycle, error, and wording questions.
+5. Assign every in-scope requirement to one owner and named evidence.
+6. Generate tasks for that slice only.
 
 If the next group still depends on an unimplemented seam, leave it at plan level. That is deliberate
 progressive planning, not missing work.

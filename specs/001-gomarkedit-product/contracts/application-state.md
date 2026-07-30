@@ -10,6 +10,11 @@ Redux hydrates once from the backend snapshot and then applies `state:patch` eve
 projection metadata needed to render the interface. UI components do not directly invent canonical
 document, tab, settings, or operation outcomes.
 
+The theme-only startup mirror is a pre-paint cache, not canonical settings state. It changes only after
+an acknowledged appearance write, is read only before normal startup hydration, and is reconciled
+against SQLite after the bridge becomes available. It contains no unrelated setting and causes no
+write-back by itself.
+
 ## Working-copy exception
 
 The focused Monaco model may hold immediate text, caret, selection, scroll, and undo history. It is an

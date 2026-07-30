@@ -10,7 +10,26 @@
 organized as Viewer, Editor, Assistant actions, and Assistant chat, while distinguishing delivered,
 partial, missing, and known-gap behavior.
 
-## User Scenarios & Testing *(mandatory)*
+## Clarifications
+
+### Session 2026-07-30
+
+- Q: How should Monaco distinguish Markdown headings from Go keywords when both grammars emit a
+  `keyword` token? → A: Use language-qualified rules such as `keyword.md` and `keyword.go`.
+- Q: Which existing validations should the first Spec Kit phase remove as unnecessary? → A: Remove
+  all non-Spec-Kit workflow and traceability validators, but retain product, architecture, quality,
+  build, baseline-reliability, and live-verification gates.
+- Q: Which existing gaps must be fixed in the first Spec Kit implementation phase? → A: Fix
+  migration blockers and independently repairable foundation defects first; assign every
+  consumer-dependent gap to the earliest user-facing slice that exercises it.
+- Q: When should a requirement copied from `docs/delivery/` stop being governed by the initial
+  specification and become governed by the Spec Kit artifacts? → A: Transfer authority
+  requirement by requirement only after complete mapping and explicit approval.
+- Q: How should the first Spec Kit phase treat functionality that already exists in the current source
+  code? → A: Preserve independently verified behavior, repair partial or defective behavior, and
+  implement missing behavior; historical completion labels are not evidence.
+
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - View Any Supported Markdown Document (Priority: P1)
 
@@ -179,7 +198,7 @@ isolation, safety, and non-persistence.
 - Cancelling format, export, provider testing, or an assistant run is a normal outcome and must never
   leave a partial write, partial replacement, or permanently busy interface.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -229,7 +248,10 @@ isolation, safety, and non-persistence.
   animation.
 - **FR-017**: Every surface MUST render correctly in all six theme and resolved-appearance combinations
   using one consistent palette for application surfaces, Markdown source, embedded code, selection,
-  focus, scrollbars, status colors, overlays, and print consumers.
+  focus, scrollbars, status colors, overlays, and print consumers. Generated Monaco syntax rules MUST
+  preserve the distinct Markdown and embedded-language palettes by qualifying every grammar token and
+  descendant with Monaco's bundled language postfix; for example, `keyword.md` MUST use
+  `--md-heading`, while `keyword.go` MUST use `--hl-keyword`.
 - **FR-018**: The Viewer MUST offer Minimal, GFM, and Full Markdown levels, default to GFM, apply one
   level globally, show the active level, and re-render all open documents when it changes.
 - **FR-019**: Minimal MUST render CommonMark; GFM MUST add tables, task lists, strikethrough, autolinks,
@@ -407,38 +429,38 @@ isolation, safety, and non-persistence.
 
 ### Required Settings Catalogue
 
-| Group | Setting | Accepted values | Default |
-|---|---|---|---|
-| Appearance | Theme | Liquid Glass, Material, Minimal | Material |
-| Appearance | Appearance | Auto, Light, Dark | Auto |
-| Appearance | Default open mode | Reading, Editor | Editor |
-| Editor | Autosave | On, Off | On |
-| Editor | Live preview | On, Off | On |
-| Editor | Line numbers | On, Off | On |
-| Editor | Word wrap | On, Off | Off |
-| Editor | Default assistant scope | Whole document, Selection | Whole document |
-| Editor | Editor text size | 13, 14, 16 px | 14 px |
-| Editor | Reading text size | 15, 17, 19 px | 17 px |
-| Editor | Reading width | Narrow 60, Comfortable 72, Wide 90 characters | Comfortable 72 |
-| Markdown | Standard | Minimal, GFM, Full | GFM |
-| Markdown | Format on explicit save | On, Off | Off |
-| Markdown | Lint on explicit save | On, Off | On |
-| Markdown | Bullet marker | `-`, `*`, `+` | `-` |
-| Markdown | Emphasis marker | `_`, `*` | `_` |
-| Markdown | Heading style | ATX, Setext | ATX |
-| Export | PDF styling | Current theme, Clean document | Current theme |
-| Content and privacy | External images and styles | Ask, Always allow, Always block | Ask |
-| Language | Interface language | English in v1 | English |
-| Diagnostics | Write logs locally | On, Off | On |
-| Diagnostics | Log level | debug, info, warn, error | warn release; debug development |
-| Diagnostics | Maximum log file size | 1-100 MB | 10 MB |
-| Diagnostics | Files retained | 1-20 | 5 |
-| Diagnostics | Days retained | 1-365 | 30 days |
-| Diagnostics | Compress rotated logs | On, Off | On |
-| Assistant context | Estimator | Embedded estimate, characters divided by four | Embedded estimate |
-| Assistant context | Safety margin | Percentage | 15 percent |
-| Assistant context | Reply reserve | Token count | 1,024 |
-| Assistant context | Maximum tool iterations | Positive count | 8 |
+| Group               | Setting                    | Accepted values                               | Default                         |
+| ------------------- | -------------------------- | --------------------------------------------- | ------------------------------- |
+| Appearance          | Theme                      | Liquid Glass, Material, Minimal               | Material                        |
+| Appearance          | Appearance                 | Auto, Light, Dark                             | Auto                            |
+| Appearance          | Default open mode          | Reading, Editor                               | Editor                          |
+| Editor              | Autosave                   | On, Off                                       | On                              |
+| Editor              | Live preview               | On, Off                                       | On                              |
+| Editor              | Line numbers               | On, Off                                       | On                              |
+| Editor              | Word wrap                  | On, Off                                       | Off                             |
+| Editor              | Default assistant scope    | Whole document, Selection                     | Whole document                  |
+| Editor              | Editor text size           | 13, 14, 16 px                                 | 14 px                           |
+| Editor              | Reading text size          | 15, 17, 19 px                                 | 17 px                           |
+| Editor              | Reading width              | Narrow 60, Comfortable 72, Wide 90 characters | Comfortable 72                  |
+| Markdown            | Standard                   | Minimal, GFM, Full                            | GFM                             |
+| Markdown            | Format on explicit save    | On, Off                                       | Off                             |
+| Markdown            | Lint on explicit save      | On, Off                                       | On                              |
+| Markdown            | Bullet marker              | `-`, `*`, `+`                                 | `-`                             |
+| Markdown            | Emphasis marker            | `_`, `*`                                      | `_`                             |
+| Markdown            | Heading style              | ATX, Setext                                   | ATX                             |
+| Export              | PDF styling                | Current theme, Clean document                 | Current theme                   |
+| Content and privacy | External images and styles | Ask, Always allow, Always block               | Ask                             |
+| Language            | Interface language         | English in v1                                 | English                         |
+| Diagnostics         | Write logs locally         | On, Off                                       | On                              |
+| Diagnostics         | Log level                  | debug, info, warn, error                      | warn release; debug development |
+| Diagnostics         | Maximum log file size      | 1-100 MB                                      | 10 MB                           |
+| Diagnostics         | Files retained             | 1-20                                          | 5                               |
+| Diagnostics         | Days retained              | 1-365                                         | 30 days                         |
+| Diagnostics         | Compress rotated logs      | On, Off                                       | On                              |
+| Assistant context   | Estimator                  | Embedded estimate, characters divided by four | Embedded estimate               |
+| Assistant context   | Safety margin              | Percentage                                    | 15 percent                      |
+| Assistant context   | Reply reserve              | Token count                                   | 1,024                           |
+| Assistant context   | Maximum tool iterations    | Positive count                                | 8                               |
 
 Background networking and telemetry MUST appear as non-adjustable Off statements, and Assistant
 requests MUST appear as an informational On demand statement. Resetting settings MUST NOT alter window
@@ -446,24 +468,24 @@ geometry, layout, or recent paths. A second open window keeps its acknowledged v
 
 ### Required Shortcut Catalogue
 
-| Area | Action | Binding | Scope |
-|---|---|---|---|
-| Format | Bold; Italic; Strikethrough; Inline code; Link; Image | Primary+B; Primary+I; Primary+Shift+X; Primary+E; Primary+K; Primary+Shift+I | Editor |
-| Format | Heading 1, 2, 3 | Primary+1, Primary+2, Primary+3 | Editor |
-| Format | Bullet; Numbered; Task list; Quote; Table | Primary+Shift+8; Primary+Shift+7; Primary+Shift+9; Primary+Shift+period; Primary+Shift+T | Editor |
-| Tidy | Format; Compact; Lint document | Alt/Option+Shift+F; Alt/Option+Shift+C; Alt/Option+Shift+L | Document |
-| File | New file; New window; Open file; Open folder | Primary+N; Primary+Shift+N; Primary+O; Primary+Shift+O | Global |
-| File | Save; Save As; Export PDF; Close tab; Exit | Primary+S; Primary+Shift+S; Primary+Shift+E; Primary+W; Primary+Q | Document or global as applicable |
-| Tabs | Next; Previous; Reopen closed | Primary+Tab or Primary+PageDown; Primary+Shift+Tab or Primary+PageUp; Primary+Shift+Alt/Option+T | Global |
-| Search | Find; Replace; Next; Previous | Primary+F; Primary+H; F3; Shift+F3 | Editor |
-| Navigate | Quick open; Command palette; Outline | Primary+P; Primary+Shift+P; Primary+Shift+U | Global |
-| View | Sidebar; Reading; Reading size up/down/reset | Primary+backslash; Primary+Enter; Primary+equals, Primary+minus, Primary+0 | Global or document |
-| App | Settings; Shortcut dialog; Full screen | Primary+comma; Primary+question mark; F11 | Global |
+| Area     | Action                                                | Binding                                                                                          | Scope                            |
+| -------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------- |
+| Format   | Bold; Italic; Strikethrough; Inline code; Link; Image | Primary+B; Primary+I; Primary+Shift+X; Primary+E; Primary+K; Primary+Shift+I                     | Editor                           |
+| Format   | Heading 1, 2, 3                                       | Primary+1, Primary+2, Primary+3                                                                  | Editor                           |
+| Format   | Bullet; Numbered; Task list; Quote; Table             | Primary+Shift+8; Primary+Shift+7; Primary+Shift+9; Primary+Shift+period; Primary+Shift+T         | Editor                           |
+| Tidy     | Format; Compact; Lint document                        | Alt/Option+Shift+F; Alt/Option+Shift+C; Alt/Option+Shift+L                                       | Document                         |
+| File     | New file; New window; Open file; Open folder          | Primary+N; Primary+Shift+N; Primary+O; Primary+Shift+O                                           | Global                           |
+| File     | Save; Save As; Export PDF; Close tab; Exit            | Primary+S; Primary+Shift+S; Primary+Shift+E; Primary+W; Primary+Q                                | Document or global as applicable |
+| Tabs     | Next; Previous; Reopen closed                         | Primary+Tab or Primary+PageDown; Primary+Shift+Tab or Primary+PageUp; Primary+Shift+Alt/Option+T | Global                           |
+| Search   | Find; Replace; Next; Previous                         | Primary+F; Primary+H; F3; Shift+F3                                                               | Editor                           |
+| Navigate | Quick open; Command palette; Outline                  | Primary+P; Primary+Shift+P; Primary+Shift+U                                                      | Global                           |
+| View     | Sidebar; Reading; Reading size up/down/reset          | Primary+backslash; Primary+Enter; Primary+equals, Primary+minus, Primary+0                       | Global or document               |
+| App      | Settings; Shortcut dialog; Full screen                | Primary+comma; Primary+question mark; F11                                                        | Global                           |
 
 `Primary` means Ctrl on Windows/Linux and Cmd on macOS. `Alt/Option` follows the same platform mapping.
 Primary+Shift+F remains unbound and unreserved; there is no folder-wide content search.
 
-### Key Entities *(include if feature involves data)*
+### Key Entities _(include if feature involves data)_
 
 - **Document**: A stable identity, optional path, canonical text, disk baseline, encoding and line-ending
   characteristics, modified/read-only state, and per-document view state.
@@ -491,7 +513,7 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
 - **Transcript**: Session-only turns associated with one document, including user prompts, assistant
   replies, capability observations, proposal outcomes, and visible limit or cancellation results.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -532,7 +554,9 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
 
 - The authoritative behavior is the current content of `docs/delivery/spec`, including its surface
   mockup. The older `docs/delivery/plan` informs sequencing and historical status but cannot override
-  current product behavior.
+  current product behavior. Authority transfers to Spec Kit one requirement at a time only after its
+  complete behavior, exact values, edge cases, and proving evidence are mapped without loss and the
+  mapped requirement is explicitly approved. Unmapped initial requirements remain authoritative.
 - This invocation creates one consolidated product specification because the requested stages are one
   dependency chain sharing documents, rendering, settings, safety rules, and acceptance evidence.
 - Viewer, Editor, Assistant actions, and Assistant chat are delivery stages, not separate editions or
@@ -547,7 +571,18 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
 - The default Assistant provider remains local. Remote providers are explicit opt-in choices and
   credentials remain outside application storage.
 - Existing delivered behavior is preserved through the migration but does not become evidence that a
-  broader stage is complete. Planning must independently verify every delivered classification.
+  broader stage is complete. Before assigning implementation work, planning MUST inspect the current
+  production path and direct evidence against the completely mapped requirement. Conforming behavior
+  is preserved, partial or defective behavior is repaired by its owning slice, and missing behavior is
+  implemented. Historical completion labels alone prove nothing.
+- Spec Kit replaces legacy planning and traceability validation as those checks become redundant.
+  The first implementation phase MUST remove superseded workflow-only validators and their wiring,
+  but MUST retain product tests, architecture tests, formatting, type checking, linting, build checks,
+  trustworthy baseline verification, and required live or real-build verification.
+- The first Spec Kit implementation phase fixes specification contradictions, unreliable gates,
+  superseded workflow validators, and foundation defects that can be verified without inventing a
+  future consumer. Every other known gap remains required and MUST be owned by the earliest
+  user-facing slice that exercises its production seam.
 
 ## Migration Baseline and Source Coverage
 
@@ -561,20 +596,25 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
 
 ### Current capability baseline
 
-| Capability | Status on 2026-07-30 | Planning interpretation |
-|---|---|---|
-| Native application foundation, typed failures, local settings storage, multi-window-safe persistence, adapter boundary, and three-region shell reservation | Delivered foundation | Preserve and verify; this is infrastructure, not a complete Viewer journey. |
-| One in-memory document with source editing, sanitized GFM preview including footnotes, Editor/Split/Preview arrangements, counts, and debounced canonical synchronization | Delivered limited slice | Preserve; it has no real file open/save, tabs, workspace, or reading-mode journey. |
-| Application palette choice, six base palettes, persisted appearance values, and bundled Material/Minimal fonts | Partial | The base palette story shipped, but complete tokens, generated editor palettes, live Auto behavior, first-paint correctness, and the full 18-combination gate remain unfinished or blocked. |
-| Complete app window, menus, dialogs, notifications, launcher, responsive chrome, and settings interface | Not delivered | Re-plan under Viewer before declaring the product visually complete. |
-| Real file open/save, atomic preservation, tabs, drag/drop, operating-system open, and recent files | Not delivered | Required for both complete Viewer and Editor stages. |
-| Complete rich rendering, reading mode, local/remote assets, diagrams, mathematics, highlighting, and three Markdown levels | Partial | Base GFM and sanitization exist; the complete Viewer renderer does not. |
-| Formatting toolbar, shortcuts registry, paste/drop transformations, find/navigation, formatter, linter, workspace, and PDF export | Not delivered | Editor-stage scope. |
-| Installers, file associations, platform icons, and package command | Not delivered | Required before Viewer or Editor can be called distributable. |
-| Provider configuration, model discovery, prompt/context controls, and predefined Assistant actions | Not delivered | Assistant action-stage scope. |
-| Custom document chat, bounded capability loop, transcripts, and proposal workflow | Not delivered | Assistant chat sub-stage, after predefined actions. |
+| Capability                                                                                                                                                                | Status on 2026-07-30    | Planning interpretation                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Native application foundation, typed failures, local settings storage, multi-window-safe persistence, adapter boundary, and three-region shell reservation                | Delivered foundation    | Preserve and verify; this is infrastructure, not a complete Viewer journey.                                                                                                                 |
+| One in-memory document with source editing, sanitized GFM preview including footnotes, Editor/Split/Preview arrangements, counts, and debounced canonical synchronization | Delivered limited slice | Preserve; it has no real file open/save, tabs, workspace, or reading-mode journey.                                                                                                          |
+| Application palette choice, six base palettes, persisted appearance values, and bundled Material/Minimal fonts                                                            | Partial                 | The base palette story shipped, but complete tokens, generated editor palettes, live Auto behavior, first-paint correctness, and the full 18-combination gate remain unfinished or blocked. |
+| Complete app window, menus, dialogs, notifications, launcher, responsive chrome, and settings interface                                                                   | Not delivered           | Re-plan under Viewer before declaring the product visually complete.                                                                                                                        |
+| Real file open/save, atomic preservation, tabs, drag/drop, operating-system open, and recent files                                                                        | Not delivered           | Required for both complete Viewer and Editor stages.                                                                                                                                        |
+| Complete rich rendering, reading mode, local/remote assets, diagrams, mathematics, highlighting, and three Markdown levels                                                | Partial                 | Base GFM and sanitization exist; the complete Viewer renderer does not.                                                                                                                     |
+| Formatting toolbar, shortcuts registry, paste/drop transformations, find/navigation, formatter, linter, workspace, and PDF export                                         | Not delivered           | Editor-stage scope.                                                                                                                                                                         |
+| Installers, file associations, platform icons, and package command                                                                                                        | Not delivered           | Required before Viewer or Editor can be called distributable.                                                                                                                               |
+| Provider configuration, model discovery, prompt/context controls, and predefined Assistant actions                                                                        | Not delivered           | Assistant action-stage scope.                                                                                                                                                               |
+| Custom document chat, bounded capability loop, transcripts, and proposal workflow                                                                                         | Not delivered           | Assistant chat sub-stage, after predefined actions.                                                                                                                                         |
 
 ### Known gaps that planning must not hide
+
+The first implementation phase owns migration blockers and independently verifiable foundation
+repairs. A gap that requires a not-yet-built product consumer is not deferred indefinitely: planning
+MUST assign it to the earliest user-facing slice that exercises that seam and include its failure and
+recovery evidence in that slice.
 
 - Current state projection supports only one effective event subscriber; an additional subscriber can
   be discarded silently.
@@ -585,15 +625,21 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
 - The reserved three-region shell has historically been tested through a mock of itself and lacks
   trustworthy user-interface evidence.
 - Encoding and line-ending labels can expose untranslated catalogue keys in the current limited editor.
-- Theme delivery inherited a truncated requirement copy and an unreliable static-analysis baseline;
-  current replacement work also contains an unresolved syntax-scope conflict. Theme completion remains
-  blocked until the governing requirement and trustworthy baseline agree.
+- Theme delivery inherited a truncated requirement copy and a previously unreliable static-analysis
+  baseline. The syntax-scope conflict is resolved by FR-017: generated Monaco rules use bundled
+  language-qualified tokens such as `keyword.md` and `keyword.go`, including qualified descendants,
+  so Markdown and embedded-language palettes remain distinct. Theme completion still requires a
+  trustworthy baseline before implementation.
 - One database concurrency test is intermittently unreliable under CPU contention.
 - The shared long-operation gate and settings adapter exist without production consumers, so their
   important busy, cancellation, failure, and round-trip paths remain unproven.
 - Packaging intentionally fails because the distributable packaging stage has not been implemented.
 - Architecture checks are absent from continuous integration, and continuous integration itself does
   not run on ordinary branch or pull-request changes.
+- Legacy planning, story-copy, phase-status, and retired-requirement traceability validators may remain
+  wired into repository commands even after Spec Kit owns those concerns; the first implementation
+  phase must remove each superseded validator only after confirming that it provides no retained
+  product, architecture, quality, build, baseline-reliability, or live-verification evidence.
 - Startup failure copy differs between the governing specification and current interface.
 - Many historical test traceability tags point to retired or nonexistent requirements; they must be
   reconciled to these requirements or removed only when direct review shows they prove no current rule.
@@ -601,31 +647,33 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
 ### Legacy source coverage map
 
 This consolidated specification covers every current product source as follows. During planning, the
-source file remains a normative detail reference until its clauses are mapped to the listed requirement
-group and verified as copied without loss.
+source file remains authoritative for each clause until its complete behavior, exact values, edge cases,
+and proving evidence are mapped to the listed requirement group without loss and explicitly approved.
+Approval transfers authority only for that mapped requirement; it does not implicitly supersede other
+clauses in the same source file.
 
-| Current source | Consolidated coverage |
-|---|---|
-| `constraints.md` | FR-001 through FR-010 plus stage-specific accessibility, privacy, limits, settings, notifications, and live evidence |
-| `the-app-window.md` | FR-011 through FR-014 |
-| `themes-and-appearance.md` | FR-015 through FR-017 |
-| `choosing-a-markdown-standard.md` | FR-018 and FR-019 |
-| `rendering-rich-documents.md` | FR-020 through FR-022 |
-| `reading-a-document.md` | FR-023 and FR-024 |
-| `images-and-remote-content.md` | FR-025 and FR-026 |
-| `opening-files-from-the-desktop.md`, `dragging-files-in.md` | FR-027 and FR-028 |
-| `writing-in-the-editor.md` | FR-029 through FR-033 |
-| `formatting-text.md`, `keyboard-shortcuts.md` | FR-034 through FR-037 |
-| `opening-and-saving-files.md`, `working-in-tabs.md` | FR-038 through FR-043 |
-| `a-folder-of-notes.md` | FR-044 and FR-045 |
-| `finding-things.md` | FR-046 and FR-047 |
-| `tidying-markdown.md` | FR-048 through FR-050 |
-| `exporting-a-document.md` | FR-051 and FR-052 |
-| `settings.md`, `language-and-text.md` | FR-005 through FR-007, FR-014 through FR-018, FR-024, FR-026, FR-035, and FR-053 through FR-064 |
-| `connecting-an-ai-provider.md` | FR-053 through FR-058 |
-| `quick-actions.md`, `how-much-fits-in-context.md` | FR-059 through FR-067 |
-| `chatting-about-a-document.md` | FR-068 through FR-077 |
-| `surface/mockup.html` | User Stories 1 through 4 and SC-003; shape and presentation arbitration remains authoritative during migration |
+| Current source                                              | Consolidated coverage                                                                                                |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `constraints.md`                                            | FR-001 through FR-010 plus stage-specific accessibility, privacy, limits, settings, notifications, and live evidence |
+| `the-app-window.md`                                         | FR-011 through FR-014                                                                                                |
+| `themes-and-appearance.md`                                  | FR-015 through FR-017                                                                                                |
+| `choosing-a-markdown-standard.md`                           | FR-018 and FR-019                                                                                                    |
+| `rendering-rich-documents.md`                               | FR-020 through FR-022                                                                                                |
+| `reading-a-document.md`                                     | FR-023 and FR-024                                                                                                    |
+| `images-and-remote-content.md`                              | FR-025 and FR-026                                                                                                    |
+| `opening-files-from-the-desktop.md`, `dragging-files-in.md` | FR-027 and FR-028                                                                                                    |
+| `writing-in-the-editor.md`                                  | FR-029 through FR-033                                                                                                |
+| `formatting-text.md`, `keyboard-shortcuts.md`               | FR-034 through FR-037                                                                                                |
+| `opening-and-saving-files.md`, `working-in-tabs.md`         | FR-038 through FR-043                                                                                                |
+| `a-folder-of-notes.md`                                      | FR-044 and FR-045                                                                                                    |
+| `finding-things.md`                                         | FR-046 and FR-047                                                                                                    |
+| `tidying-markdown.md`                                       | FR-048 through FR-050                                                                                                |
+| `exporting-a-document.md`                                   | FR-051 and FR-052                                                                                                    |
+| `settings.md`, `language-and-text.md`                       | FR-005 through FR-007, FR-014 through FR-018, FR-024, FR-026, FR-035, and FR-053 through FR-064                      |
+| `connecting-an-ai-provider.md`                              | FR-053 through FR-058                                                                                                |
+| `quick-actions.md`, `how-much-fits-in-context.md`           | FR-059 through FR-067                                                                                                |
+| `chatting-about-a-document.md`                              | FR-068 through FR-077                                                                                                |
+| `surface/mockup.html`                                       | User Stories 1 through 4 and SC-003; shape and presentation arbitration remains authoritative during migration       |
 
 ## Out of Scope
 

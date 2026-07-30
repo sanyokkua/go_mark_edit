@@ -42,5 +42,12 @@ must not generate tasks for later groups. Each task must produce user-observable
 production-path support for that same slice, map complete owned requirements, name tests/live cases,
 and declare concrete paths. Documentation-only validation work is not a product slice.
 
-The authorized next slice on 2026-07-30 is theme completion. It remains blocked from implementation if
-the Markdown/editor token contract or baseline reliability is unresolved.
+The authorized next task batch on 2026-07-30 is the Spec Kit foundation transition plus complete
+appearance journey. Foundation work is limited to preserving a trustworthy baseline and removing
+superseded legacy planning/traceability validators while retaining correctness gates. Appearance work
+completes generated language-qualified Monaco themes, live Auto behavior, first-paint bootstrap, and
+the 18-combination visual gate. The batch stops before launcher/window-shell decomposition.
+
+The token contract is resolved: Markdown theme rules use bundled `.md` postfixes and embedded Go rules
+use `.go`, including qualified descendants. A non-zero gate with explicit findings may be baselined; a
+gate that analyzed nothing remains a hard stop.

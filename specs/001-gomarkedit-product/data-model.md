@@ -80,14 +80,19 @@ write across windows wins and does not reopen content.
 ## Appearance Preference
 
 Fields: theme (`glass`, `material`, `minimal`); appearance choice (`auto`, `light`, `dark`); resolved
-mode (`light`, `dark`); palette generation/version.
+mode (`light`, `dark`); palette generation/version; an acknowledged theme-only startup mirror carrying
+theme and appearance choice for pre-paint use.
 
-Validation: choice and resolved mode remain distinct. Material and Auto are defaults. Every consumer
-uses the single token source; stale asynchronous renders are discarded.
+Validation: choice and resolved mode remain distinct. Material and Auto are defaults. The startup
+mirror is written only after backend acknowledgement, is never a general settings store, and is not
+authoritative. Every consumer uses the single token source; generated Monaco rules qualify bundled
+grammar tokens by language (`.md`, `.go`, and qualified descendants); stale asynchronous renders are
+discarded.
 
-Transitions: a theme or explicit mode write is acknowledged before becoming durable; Auto resolution
-may change live without changing the stored choice; startup applies the acknowledged palette before
-the first visible frame.
+Transitions: a theme or explicit mode write is acknowledged before becoming durable and before its
+startup mirror changes; Auto resolution may change live without changing the stored choice; startup
+applies the mirrored palette before the first visible frame and later reconciles it with SQLite. A
+missing or invalid mirror falls back to Material/Auto and is corrected after acknowledgement.
 
 ## Setting
 
