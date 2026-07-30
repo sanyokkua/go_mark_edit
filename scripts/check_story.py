@@ -299,14 +299,16 @@ def check(spec_root: Path, story: Path, rep: Report, code_roots=()) -> None:
         rep.warn("no `### This story` rule-to-test table found in the Definition of done.")
 
     # ---- 7. values an owned rule depends on, that nothing provides -----------
-    for tok, why in unresolved_tokens(text, code_roots):
+    for tok, why in unresolved_tokens(text, list(code_roots), spec_root):
         rep.error(f"`{tok}` is used by a rule this story owns, but {why}. The implementer "
                   f"cannot build the rule without inventing a value \u2014 own the rule that "
                   f"defines it, or depend on a story that has shipped it.")
 
 
 CSS_TOKEN = re.compile(r"--[a-z][a-z0-9-]*")
-TOKEN_DEF_ROW = re.compile(r"^\s*\|\s*`?(--[a-z][a-z0-9-]*)`?\s*\|")
+TOKEN_DEF_ROW = re.compile(r"^\s*\|([^|]*)\|")
+DEFAULT_CODE_ROOTS = ("src", "frontend/src", "app", "lib", "assets", "static",
+                      "styles", "web/src", "client/src", "ui")
 SUPERSEDED = re.compile(
     r"^\*\*STATUS:\*\*.*?(?:folded into|re-?planned as|superseded by)\s+STORY-(\d+)",
     re.M | re.I)
@@ -323,7 +325,7 @@ def owned_anchors(text):
     return set()
 
 
-def unresolved_tokens(text, code_roots):
+def unresolved_tokens(text, code_roots, spec_root=None):
     section = None
     for s in OWNED_SECTION:
         m = re.search(rf"^{re.escape(s)}\s*$(.*?)(?:^## How it works now|^## Technical|"
@@ -335,10 +337,27 @@ def unresolved_tokens(text, code_roots):
     used = set(CSS_TOKEN.findall(section))
     if not used:
         return []
-    defined = {m.group(1) for m in
-               (TOKEN_DEF_ROW.match(l) for l in section.splitlines()) if m}
+    defined = set()
+    for line in section.splitlines():
+        mm = TOKEN_DEF_ROW.match(line)
+        if mm:
+            defined |= set(CSS_TOKEN.findall(mm.group(1)))
     families = {f.rstrip("*") for f in re.findall(r"`(--[a-z][a-z0-9-]*\*)`", section)}
     families |= {f[:-1] for f in re.findall(r"--[a-z][a-z0-9-]*-(?=\*)", section)}
+    in_surface = set()
+    if spec_root is not None:
+        sdir = spec_root / "spec" / "surface"
+        for q in (sdir.glob("*") if sdir.is_dir() else []):
+            if q.suffix.lower() not in {".html", ".htm", ".css", ".svg"}:
+                continue
+            b = q.read_text(encoding="utf-8", errors="replace")
+            for tok in used - in_surface:
+                if re.search(re.escape(tok) + r"\s*:", b):
+                    in_surface.add(tok)
+
+    if not code_roots:
+        code_roots = [r for r in DEFAULT_CODE_ROOTS if Path(r).is_dir()]
+
     in_code = set()
     for root in code_roots:
         base = Path(root)
@@ -363,9 +382,17 @@ def unresolved_tokens(text, code_roots):
             continue
         if any(tok.startswith(f) for f in families):
             continue
-        out.append((tok, "no rule in this story defines its value and it does not exist in "
-                         "the code" if code_roots else
-                         "no rule in this story defines its value (pass --code to check code)"))
+        if tok in in_surface:
+            where = ("no rule in this story defines it. Its value IS in the surface "
+                     "artifact \u2014 but a story whose implementer has to open the mockup "
+                     "to find a number is not self-contained. Copy in the rule that carries it")
+        elif code_roots:
+            where = ("no rule in this story defines it, and it is not in "
+                     + ", ".join(code_roots))
+        else:
+            where = ("no rule in this story defines it, and no source directory was found "
+                     "to check against \u2014 pass --code")
+        out.append((tok, where))
     return out
 
 

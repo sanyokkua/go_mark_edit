@@ -4,8 +4,8 @@ Captured by `just baseline STORY-063`. Do not edit by hand.
 
 | | |
 |---|---|
-| commit | `cf52e78` (`cf52e782bb97dabd8adf86ab7953c5f662ee7ec3`) |
-| captured | 2026-07-29 08:46 UTC |
+| commit | `fc785fe` (`fc785fe79712fc8545ed2ba33d6ab32ef1aadfa2`) |
+| captured | 2026-07-29 13:31 UTC |
 | working tree | **dirty — uncommitted changes are part of this baseline** |
 | coverage | 69.0% (mean of 11 packages) |
 
