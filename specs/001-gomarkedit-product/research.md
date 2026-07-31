@@ -1,180 +1,179 @@
-# Phase 0 Research: GoMarkEdit Product Planning
+# Phase 0 Research: Window and Launcher Shell
 
-## Decision 1: Plan progressively, not as an 80-requirement ticket dump
+This research follows the delivered appearance frontier and resolves the technical choices needed for
+the next bounded Viewer slice. It does not use historical completion labels as evidence.
 
-**Decision**: Keep the whole product in one architectural plan, but generate detailed implementation
-tasks for only the next dependency-complete vertical slice. Represent later work as stage-level
-capability groups and explicit entry gates.
+## Decision 1: Make the native window shell the actionable frontier
 
-**Rationale**: The product is one dependency chain, yet the current code exposes only a limited editor
-and theme frontier. Detailed tickets for file lifecycle, packaging, providers, and chat would freeze
-interfaces before their real consumers exist and would conceal unresolved contracts behind apparent
-precision.
+**Decision**: Implement window chrome, durable shell layout, settings/error surfaces, keyboard focus,
+and responsive states now. Keep file opening, tabs, rendering, packaging, Editor expansion, and
+Assistant behavior downstream.
 
-**Alternatives considered**: Generate all tasks now (rejected as overplanning); split into four
-unrelated specifications (rejected because document identity, rendering, settings, proposals, and
-evidence are shared); continue the legacy phase plan unchanged (rejected because it predates the
-consolidated requirement and current blocked-state evidence).
+**Rationale**: The appearance tokens and six palettes are verified, so new chrome can consume a stable
+visual system. Current code has only a structural three-column grid and a framed Wails window; the user
+can observe and verify this slice without inventing file or rendering seams.
 
-## Decision 2: Transfer initial-spec authority requirement by requirement
+**Alternatives considered**: Rebuild the historical phase wholesale, which would expose placeholders;
+combine shell and safe file opening, which crosses the agreed dependency cutoff; generate the entire
+remaining product backlog, which would speculate beyond production seams.
 
-**Decision**: Treat `specs/001-gomarkedit-product/spec.md` as the consolidated index and product-stage
-contract. A clause in `docs/delivery/` remains authoritative until its complete behavior, values, edge
-cases, and evidence are mapped without loss and explicitly approved in Spec Kit. Approval transfers
-only that requirement, not its whole source file.
+## Decision 2: Restore from a hidden Wails startup
 
-**Rationale**: The constitution explicitly defines this migration boundary. The consolidated feature
-maps all legacy sources but intentionally compresses details; assuming it silently supersedes them
-would lose exact values and edge behavior.
+**Decision**: Configure `Frameless`, `StartHidden`, `MinWidth: 375`, and `MinHeight: 480`. Initialize
+SQLite, load and validate stored native size/maximized state, apply it, hydrate frontend layout, then
+show the window. Use 1024 x 768 and normal state as independent defaults. Do not persist screen
+position in v1; let the operating system place each process.
 
-**Alternatives considered**: Declare the Spec Kit feature immediately authoritative (rejected because
-copy fidelity is not yet independently proven); keep two indefinitely equal authorities (rejected
-because contradictions would be irresolvable).
+**Rationale**: Hidden startup is the only existing Wails lifecycle that can prevent a default-size
+flash while SQLite remains authoritative. Size and maximized state are explicitly required; omitting
+position avoids an unsupported cross-platform move-event dependency and matches the shared rather than
+per-monitor layout decision.
 
-## Decision 3: Repair actionable foundation defects, then fold consumer debt into its first slice
+**Alternatives considered**: Show then resize, which visibly jumps; duplicate layout in localStorage,
+which creates a second authority; persist x/y through polling, which adds background work and unstable
+multi-monitor behavior without a product requirement.
 
-**Decision**: The first Spec Kit implementation phase repairs specification contradictions, unreliable
-gates, superseded workflow validators, and independently verifiable foundation defects. Patch fan-out,
-empty-tab assumptions, mock parity, shell coverage, untranslated labels, gate release paths, and other
-consumer-dependent gaps belong to the earliest user-observable slice that exercises the seam. Create
-no generic debt, documentation application, or replacement traceability system.
+## Decision 3: Persist layout per field with original change identity
 
-**Rationale**: This keeps work vertically testable and prevents bureaucracy from being mistaken for
-product progress. It also provides a real integration caller for currently reserved infrastructure.
+**Decision**: Store each layout field as a versioned KV value containing the value, wall-clock change
+time, per-process writer ID, and writer-local sequence. Update atomically only when the incoming change
+identity is newer. Discrete commands write immediately; continuous resize/divider intent is retained in
+Go and written after 250 ms; close flushes only locally pending fields with their original identity.
 
-**Alternatives considered**: A cleanup phase before features (rejected because most repairs lack a
-production consumer); ignore gaps until a failure occurs (rejected because the known failure modes
-would invalidate later evidence).
+**Rationale**: An unconditional close upsert would make the last window to close authoritative, even
+when another window changed the value later. Per-field conditional writes implement last-changed-wins
+without a schema migration or whole-layout snapshots.
 
-## Decision 4: The current actionable frontier is theme completion
+**Alternatives considered**: Save the whole layout on close; unconditional per-field upsert; per-window
+layout identities. All conflict with the accepted shared application-layout behavior or allow stale
+close writes.
 
-**Decision**: Finish the existing appearance journey before opening new Viewer surfaces. The conflict
-is resolved by generating language-qualified Monaco rules: Markdown tokens use the bundled `.md`
-postfix and embedded Go tokens use `.go`, including qualified descendants. Capture a reliable current
-baseline before implementation.
+## Decision 4: Keep one canonical meaning for each arrangement value
 
-**Rationale**: The repository already contains the palette foundation and a partial generator. Every
-later surface consumes those tokens. The installed Monaco grammars already emit the required postfixes,
-so qualification preserves both initial-spec palettes without another tokenizer or arbitrary colour
-precedence. Current formatting and lint findings are reliable baseline inputs, not reasons to pretend
-the partial work is complete.
+**Decision**: A document's view owns its current Editor/Split/Preview arrangement. Application layout
+stores only the last-used arrangement fallback for a document that has no saved view. The shell never
+projects two simultaneous canonical pane states.
 
-**Alternatives considered**: Start the launcher/window shell in parallel (rejected because it would
-build new surfaces on incomplete visual contracts); skip generated Monaco themes (rejected because
-Monaco cannot consume CSS variables and split-view coherence is required).
+**Rationale**: Current DTOs contain both document view and application layout arrangement fields. The
+file-open contract already defines their precedence: saved document view, then application fallback,
+then Split.
 
-## Decision 5: Viewer completes the read journey before Editor expands mutation
+**Alternatives considered**: Make arrangement globally canonical, which loses per-document state;
+persist both without precedence, which creates conflicting owners; remove the application fallback,
+which loses the specified new-document/open fallback.
 
-**Decision**: Within the new product stages, establish safe real-file identity/open/tab behavior before
-complete rendering and OS integration; complete the Viewer journey before planning broad Editor
-mutation features.
+## Decision 5: Isolate the exact resize contract behind the adapter
 
-**Rationale**: Rendering assets, reading mode, OS opens, Assistant reads, save, and workspaces all need
-stable document identity and bounded file access. The present in-memory single-document assumption
-cannot safely support them.
+**Decision**: Render 6 px edge zones and 12 px corner zones in the shell. An injected adapter maps the
+eight directions to the pinned Wails desktop `resize:<direction>` invocation. No component accesses
+`window.WailsInvoke` or Wails private flags. Characterization tests pin the mapping and native live
+cases prove cursor, hit area, resize, maximized/full-screen disablement, and nearby-button clicks.
 
-**Alternatives considered**: Port the legacy phase numbers literally (rejected because the new Viewer
-stage cuts across them); build rich rendering before real file boundaries (rejected because local
-assets and size policies would be mocked or redesigned).
+**Rationale**: Wails v2.12 exposes no public begin-native-resize method. Its built-in hit testing uses
+6 px and cannot meet the required 12 px corners. The pinned desktop runtime already accepts the native
+resize invocation on Windows and Linux; isolating the version-sensitive seam is smaller and safer than
+forking Wails or hand-writing three native backends.
 
-## Decision 6: Contracts describe behavior and authority, not speculative APIs
+**Alternatives considered**: CSS-only zones, which cannot start native resize; accept 6 px corners,
+which weakens a numeric requirement; maintain a Wails fork/native plugin, which adds disproportionate
+cross-platform ownership.
 
-**Decision**: Phase 1 contracts define application-state ownership, command/acknowledgement invariants,
-and stage entry/exit gates. They do not invent future Wails method names, DTO fields, SQL tables,
-provider interfaces, or React component trees.
+## Decision 6: Use platform variants, not universal traffic lights
 
-**Rationale**: Those concrete interfaces should be chosen by the first implementing slice, with its
-actual dependencies and tests visible. Behavioral contracts are stable enough to constrain every
-implementation without overplanning it.
+**Decision**: Detect platform through the adapter/environment contract. macOS renders
+close/minimize/zoom on the left and installs native App/Edit roles; Windows and Linux render
+minimize/maximize/close on the right and install no native menu. All invoke the same window commands;
+standard macOS clipboard/undo roles remain platform-owned.
 
-**Alternatives considered**: Full future API schemas now (rejected as premature); no contracts for a
-desktop application (rejected because the Go/Wails/frontend and product-stage boundaries are external
-interfaces from each layer's perspective).
+**Rationale**: The mockup's traffic lights are a macOS specimen, while FR-012 and the accepted chrome
+decision require platform-appropriate controls. The native macOS Edit role is required for WKWebView
+clipboard and undo behavior.
 
-## Decision 7: Evidence follows behavior; it is not a separate product feature
+**Alternatives considered**: Traffic lights everywhere; native chrome; a native menu on every platform.
+Each violates either the visual or platform behavior contract.
 
-**Decision**: Each slice carries named automated evidence plus live/native cases that mocks cannot
-prove. Requirement mapping is maintained as planning metadata and review evidence, not implemented as
-runtime code or a standalone documentation-validation ticket.
+## Decision 7: Introduce one registry only for actions that work now
 
-**Rationale**: The constitution requires evidence and traceability but warns that green labels and
-symbol checks do not prove behavior. Existing unreliable and retired tags demonstrate the danger of
-measuring documentation rather than outcomes.
+**Decision**: Create one canonical registry containing stable ID, localization key, scope,
+platform-neutral shortcut, availability, and invocation route. This slice registers working window
+controls, full screen, sidebar, Settings, and About actions only. Menus and keyboard handling consume
+the same entries; modal Settings suppresses background actions.
 
-**Alternatives considered**: Build a new traceability application/gate first (rejected as bureaucracy);
-omit mappings (rejected because missing ownership is how requirements disappear).
+**Rationale**: No registry exists today, and duplicating the title menu and shortcuts would guarantee
+drift. Registering future New/Open/Save/Assistant actions before their commands exist would create
+enabled no-ops or misleading availability.
 
-## Decision 8: Reuse pinned dependencies until a slice proves a gap
+**Alternatives considered**: Component-local shortcuts and labels; the complete future catalogue now;
+Go and TypeScript registries with duplicated labels.
 
-**Decision**: Retain the versions in `go.mod` and `frontend/package-lock.json`. Research and approve a
-new library only when the first slice needing it can demonstrate that existing facilities cannot meet
-the governing contract.
+## Decision 8: Repair notifications with real current consumers
 
-**Rationale**: The constitution requires planned, verified upgrades and the user explicitly asked to
-avoid decisions for implementation that does not exist.
+**Decision**: Model severity, subject, dedup key, repetition count, lifecycle, and optional remediation.
+Repeat code+subject refreshes one toast and increments its count. At most three are visible; only the
+oldest non-error may be displaced. Success dismisses after 4 s, info after 6 s, warning after 8 s, and
+errors never auto-dismiss. Current startup/settings/layout errors are real consumers; later save,
+render, lint, and provider outcomes remain with their slices.
 
-**Alternatives considered**: Preselect full Markdown, formatter, PDF, tokenizer, and provider stacks
-now (rejected because it creates lock-in without integration evidence).
+**Rationale**: Existing error plumbing is centralized but incorrectly discards repeats, uses one 5 s
+duration, and may evict errors. Repairing it now makes shell failures observable without inventing
+future operations.
 
-## Decision 9: Replace legacy planning validation, retain correctness evidence
+**Alternatives considered**: Keep error-only toasts; build example-only severities; defer notification
+repair. The first violates FR-007, and the second creates production showcase data.
 
-**Decision**: Remove `spec-check`, `story-check`, and the scripts that validate legacy documentation
-shape, copied story rules, upgrade markers, and historical `Proves:` references. Keep product tests,
-architecture enforcement, formatting, type checking, linting, builds, baseline reliability,
-mock-browser journeys, live checks, and real-build walkthroughs.
+## Decision 9: Expand Settings only around delivered controls
 
-**Rationale**: Spec Kit now owns planning artifacts and task structure. Running two planning systems
-creates false blockers and encourages tickets whose output is documentation validation. Correctness
-gates analyze production behavior and architectural safety, so they remain essential even though
-standard Spec Kit does not prescribe them.
+**Decision**: Turn the Appearance dialog into the accessible modal/navigation shell, synchronize it
+with the title-bar quick settings, and add reset for delivered settings. Trap focus, close on Escape,
+restore opener focus, and suppress background shortcuts. Do not show empty future groups or controls
+whose consumers do not exist. Reset excludes window layout and future recent items.
 
-**Alternatives considered**: Remove every non-Spec-Kit check (rejected because it would discard product
-and architecture evidence); keep all legacy checks (rejected because obsolete story-copy and retired
-traceability rules would continue controlling the new workflow).
+**Rationale**: The current Appearance path is backend-acknowledged and tested. Empty Editor, Export,
+or AI panels would be production placeholders, while exposing Format-on-save before Save exists would
+offer a setting with no behavior.
 
-## Decision 10: Preserve verified code, do not rebuild from status labels
+**Alternatives considered**: Render every mockup group empty; implement the entire 25-setting catalogue;
+keep the current non-modal custom dialog. These either violate scope/no-placeholder rules or fail the
+keyboard/focus contract.
 
-**Decision**: For each authorized slice, inspect its current production path and direct tests. Preserve
-conforming behavior, repair partial or defective behavior, implement missing behavior, and treat an
-unreliable gate as unknown. Historical completion labels are never proof.
+## Decision 10: Treat launcher activation as an explicit entry gate
 
-**Rationale**: The repository contains substantial working foundations and also partial implementations
-whose green labels overstate their journeys. Evidence-based classification avoids both destructive
-rewrites and optimistic gap hiding.
+**Decision**: Fix the launcher data/state/visual contract now, but do not transfer full FR-011 or ship
+enabled launcher actions in the shell-only task batch. Activation joins the safe file lifecycle when
+real New, Open file, Open folder, recent mutation, and close-last commands exist. Zero documents,
+optional active identity/buffer, and dev-bridge parity are implemented in that activation slice.
 
-**Alternatives considered**: Rebuild everything (rejected as wasteful and risky); accept all existing
-code as delivered (rejected because known gaps and mock-only evidence would survive).
+**Rationale**: A true launcher requires an empty document set, while current appmodel always creates and
+dereferences Untitled. Open file/folder behavior owns decoding, path safety, picker cancellation, and
+workspace rules scheduled next. Fake recents, disabled mockup actions, or enabled no-ops would not be a
+vertical slice.
 
-## Decision 11: Use an acknowledged theme-only startup mirror
+**Alternatives considered**: Expand this batch into safe file opening; show disabled or no-op launcher
+buttons; silently keep the initial Untitled document while claiming FR-011. All violate the agreed
+boundary or the product contract.
 
-**Decision**: After the backend acknowledges a theme or appearance write, update a theme-only browser
-mirror. A blocking script in `frontend/index.html` reads only that mirror before CSS paints, resolves
-Auto using the current system preference, and applies `data-theme` plus resolved `data-mode`. SQLite
-remains authoritative and normal startup reconciliation corrects a missing or stale mirror.
+## Decision 11: Apply explicit mockup arbitration corrections
 
-**Rationale**: The initial specification explicitly permits this mechanism. It is implementable with
-the current settings seam, avoids inventing a Wails asset-injection service, and supplies the only
-frontend-readable value early enough to prevent a default-palette frame.
+**Decision**: Use the mockup's visible shape and responsive behavior, with these behavior-authority
+corrections: relative menu order is File, Settings, View, About as drawn, but File is omitted until it
+has a real action; platform controls vary by OS; the toast gallery is not a valid four-toast runtime
+stack; the pre-Assistant right region stays width 0; stale chord accelerators are not copied; only real
+settings groups/actions are visible.
 
-**Alternatives considered**: Inject values through a new asset server (rejected for this slice because
-no such boundary exists); wait for `GetSettings` after React mounts (rejected because it guarantees a
-flash); make the mirror authoritative (rejected because SQLite owns durable settings).
+**Rationale**: These differences are either platform variants or direct conflicts with consolidated
+functional requirements and the production no-placeholder rule. Recording them prevents accidental
+drift from being hidden as implementation taste.
 
-## Decision 12: Stop detailed planning after the complete appearance journey
+**Alternatives considered**: Copy every specimen literally; ignore the mockup; edit the historical
+mockup. The first violates behavior, the second violates visual authority, and the third crosses the
+reference-only boundary.
 
-**Decision**: The next `tasks.md` may cover migration-foundation support and the complete appearance
-journey only. Launcher/window-shell work remains the next capability group but is not decomposed until
-appearance is implemented, live-verified, and reconciled.
+## Resolved Unknowns
 
-**Rationale**: Theme generation, current settings commands, root attributes, Monaco setup, and startup
-HTML are present seams with measurable outcomes. The next shell surfaces consume the finished token
-contract; detailing them now would mix two dependency layers and hide what the first batch must prove.
-
-**Alternatives considered**: Task the whole Viewer stage (rejected as premature); task only the
-generator repair (rejected because it would not deliver the user-observable Auto/first-paint journey).
-
-## Resolved unknowns
-
-There are no unresolved clarification markers in the technical context. The five clarification
-decisions from 2026-07-30 are incorporated above. Stage-local questions that depend on future
-implementation remain explicit entry-gate blockers and are intentionally not converted into tasks.
+- No dependency upgrade is needed.
+- Default window size is 1024 x 768; minimum is 375 x 480; position is OS-managed.
+- Continuous layout debounce is 250 ms and close flush is synchronous before database shutdown.
+- Exact 12 px corner resize uses the adapter-contained pinned Wails invocation.
+- Per-document arrangement and application fallback have distinct precedence.
+- Full launcher activation is entry-gated rather than faked.
+- Complete chrome evidence is current-platform now and all three platforms at the Viewer release gate.

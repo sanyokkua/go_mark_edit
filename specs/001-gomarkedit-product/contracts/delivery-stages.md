@@ -42,12 +42,15 @@ must not generate tasks for later groups. Each task must produce user-observable
 production-path support for that same slice, map complete owned requirements, name tests/live cases,
 and declare concrete paths. Documentation-only validation work is not a product slice.
 
-The authorized next task batch on 2026-07-30 is the Spec Kit foundation transition plus complete
-appearance journey. Foundation work is limited to preserving a trustworthy baseline and removing
-superseded legacy planning/traceability validators while retaining correctness gates. Appearance work
-completes generated language-qualified Monaco themes, live Auto behavior, first-paint bootstrap, and
-the 18-combination visual gate. The batch stops before launcher/window-shell decomposition.
+The 2026-07-30 foundation and appearance batch is delivered and verified. The authorized next task
+batch is the dependency-complete native window shell described by `window-launcher-shell.md`: window
+chrome and controls, exact resize/minimum behavior, durable acknowledged layout, notification repair,
+delivered-settings shell, keyboard/focus, and responsive/palette evidence.
 
-The token contract is resolved: Markdown theme rules use bundled `.md` postfixes and embedded Go rules
-use `.go`, including qualified descendants. A non-zero gate with explicit findings may be baselined; a
-gate that analyzed nothing remains a hard stop.
+Complete launcher activation is the entry gate to the following safe file lifecycle batch. It must not
+ship with enabled no-op New/Open controls or fake recents. File opening, tabs, decoding, size limits,
+workspace enumeration, rendering, OS-open, and packaging remain downstream.
+
+The token contract remains resolved: Markdown theme rules use bundled `.md` postfixes and embedded Go
+rules use `.go`, including qualified descendants. A non-zero gate with explicit findings may be
+baselined; a gate that analyzed nothing remains a hard stop.

@@ -32,9 +32,16 @@ non-zero result that analyzed nothing is unreliable and blocks implementation. B
 be migrated from legacy story labels to Spec Kit slice labels only while preserving readability of the
 comparison point used by the active slice.
 
-## First-batch boundary
+## Current boundary
 
-The authorized batch contains the migration-foundation support above and the complete appearance
-journey. It ends after generated themes, coordinated Auto behavior, first-paint palette application,
-and the three-width by six-palette evidence are implemented and reconciled. Launcher/window-shell,
-file lifecycle, rendering, packaging, Editor expansion, and Assistant work remain plan-level only.
+The migration-foundation and appearance batch is delivered. The next authority transfer may cover the
+complete clauses copied into `window-launcher-shell.md` for FR-012 through FR-014 and affected
+cross-cutting behavior. Tasks must still classify each touched seam from current code and direct tests.
+
+FR-011 is not transferred by the shell-only batch. Its complete launcher behavior moves only with real
+New/Open/Open-folder/recent commands in the safe file lifecycle. Rendering a disabled/no-op facsimile
+does not make that requirement ready.
+
+The current task boundary ends after native shell, acknowledged layout, settings/notification shell,
+keyboard/focus, and responsive evidence. File lifecycle, rendering, packaging, Editor expansion, and
+Assistant work remain plan-level only.

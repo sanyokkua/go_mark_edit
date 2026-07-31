@@ -15,6 +15,16 @@ an acknowledged appearance write, is read only before normal startup hydration, 
 against SQLite after the bridge becomes available. It contains no unrelated setting and causes no
 write-back by itself.
 
+Native window state is applied through Wails, but its durable size/maximized value and shell layout are
+acknowledged by appmodel. The process starts hidden, appmodel loads valid durable fields, the native
+adapter applies them, Redux hydrates the shell projection, and only then may the window be shown. A
+browser cache or component-local layout state must not become an alternative restore source.
+
+Each durable layout field carries its original change identity. Discrete changes persist immediately;
+continuous changes persist after 250 ms; close flushes only locally pending fields without assigning a
+new close-time identity. The repository conditionally accepts only a newer change, so close order never
+overrides change order.
+
 ## Working-copy exception
 
 The focused Monaco model may hold immediate text, caret, selection, scroll, and undo history. It is an
@@ -37,6 +47,15 @@ to reject stale application without making Redux authoritative.
 - A stale tab reorder, close, proposal, or asynchronous render changes nothing.
 - Cancellation and timeout are normal terminal outcomes and release owned gates.
 - Internal errors, secrets, full remote URLs, and private paths never cross the bridge.
+- A failed layout write leaves the last acknowledged layout projected and notifies once per classified
+  code and subject.
+- A stale cross-process layout write projects the newer stored value and is not presented as an error.
+
+## Empty-document state
+
+Zero documents is a valid future appmodel state and is the launcher condition. When the safe file
+lifecycle activates it, active identity and active buffer are optional together. Until real New/Open
+commands exist, the shell task batch must not manufacture a launcher with enabled no-op actions.
 
 ## Proof obligations
 

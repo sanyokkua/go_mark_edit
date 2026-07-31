@@ -11,6 +11,12 @@ Only `frontend/src/logic/adapter/` imports generated `wailsjs/`. The adapter val
 typed envelopes, and exposes application commands to the rest of the frontend. Generated bindings and
 generated database code are regenerated, never hand-edited.
 
+Wails runtime operations follow the same adapter-only boundary. Components receive injected commands
+for minimize, maximize/restore, full screen, close, platform detection, and begin-resize. The pinned
+desktop `resize:<direction>` invocation is contained in that adapter, maps exactly eight allowlisted
+directions, and is covered by a compatibility test; no component accesses `window.WailsInvoke`, Wails
+private flags, or generated runtime modules.
+
 ## Command lifecycle
 
 1. The interface validates local shape and captures the current document/session identity.
@@ -40,6 +46,11 @@ Visible actions have one canonical registry entry containing stable identity, lo
 availability, scope, and shortcut where specified. Menus, tooltips, context menus, shortcut help, and
 the command palette consume that registry. A later slice may add the first specified binding but may
 not silently rebind a shipped action.
+
+The shell slice registers only actions with real consumers. Settings/dialog modality suppresses
+background action dispatch. Standard macOS App/Edit roles remain native platform behavior; any native
+callback shared with the in-window menu emits the same stable action ID rather than creating a second
+command.
 
 ## Compatibility rule
 

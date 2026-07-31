@@ -1,161 +1,167 @@
-# Phase 1 Data Model: GoMarkEdit Product
+# Phase 1 Data Model: Window and Launcher Shell
 
-This is the logical product model. It records authority, identity, relationships, validation, and
-state transitions without prematurely choosing future SQL tables or bridge DTOs.
+This model covers the next bounded shell slice. Document bytes, file identity, tabs, rendering,
+workspaces, recents mutation, saving, providers, proposals, and transcripts remain downstream.
 
-## Authority map
+## Window Presentation
 
-| Entity                                           | Canonical owner                                         | Durable?                                                   | First real stage                           |
-| ------------------------------------------------ | ------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------ |
-| Document, Tab Set, Workspace, Application Layout | Go application model                                    | Document bytes on disk; selected layout/settings in SQLite | Viewer                                     |
-| Editor Working Copy                              | Active Monaco session through the document command seam | No                                                         | Existing limited slice; expanded in Editor |
-| Appearance Preference, Setting                   | Go settings service; applied projection in UI           | SQLite                                                     | Existing/theme frontier                    |
-| Provider Profile                                 | Go service/repository                                   | Profile metadata only; never secret values                 | Assistant actions                          |
-| Assistant Action                                 | Canonical application catalogue                         | Bundled static data                                        | Assistant actions                          |
-| Assistant Run, Proposal                          | Go-owned run/document services with projected UI state  | Session only unless a later approved rule says otherwise   | Assistant actions                          |
-| Transcript                                       | Per-document session state                              | No; discarded on tab close and relaunch                    | Assistant chat                             |
+Fields:
 
-## Document
+- `platform`: macOS, Windows, or Linux; derived from the Wails environment, never user-set
+- `width`, `height`: acknowledged native size; default 1024 x 768; minimum 375 x 480
+- `state`: normal, maximized, or full-screen; only normal/maximized are durable
+- `visible`: false during restore/startup failure; true only after native and frontend layout readiness
+- `resizeDirection`: one of eight transient edge/corner directions while native resize begins
 
-Fields: stable document ID; optional canonical path; canonical text accessor; disk baseline and
-revision; encoding/BOM/line-ending metadata; modified, read-only, and preview-paused flags; per-document
-arrangement, caret, selection, editor scroll, preview scroll, and reading state.
+Validation:
 
-Relationships: belongs to one Tab Set while open; may resolve assets through its folder and the active
-Workspace; owns at most one Editor Working Copy; may own one session Transcript and current Proposal.
+- Each stored dimension validates independently and falls back independently.
+- Full screen is session-only and does not overwrite the durable normal/maximized state.
+- Resize zones are disabled while maximized or full-screen.
+- Window position is operating-system managed and not persisted.
 
-Validation: supported picker extensions are `.md`, `.markdown`, `.mdown`, and `.txt`; binary input is
-refused; above 50 MB is refused, above 10 MB is read-only, above 2 MB pauses live preview; canonicalized
-asset paths may not escape allowed roots.
+Transitions:
 
-Transitions: `pathless-clean -> pathless-modified -> saved`; `disk-clean <-> modified` through editing
-and acknowledged save/reload; any editable state may become `external-change-pending`; a write succeeds
-atomically or leaves both original disk content and canonical modified content intact. Close never
-discards modified content without an explicit decision.
-
-## Editor Working Copy
-
-Fields: bound document ID; session token/handle; immediate text; caret and selection; view state;
-pending synchronization revision; last acknowledged canonical revision.
-
-Validation: every command resolves a live identity-bound session. Flush completes before tab switch,
-close, save, export, blur consumer, or Assistant read. A failed or stale acknowledgement changes
-neither the active document nor canonical state.
-
-Transitions: `clean -> pending -> acknowledged`; `pending -> failed` retains the last acknowledged
-canonical state and visible working copy. Backend projection never echoes full content into the
-focused editor.
-
-## Tab Set
-
-Fields: ordered document IDs; optional active ID; monotonic revision; recently closed identities.
-
-Validation: at most 40 open documents; a canonical path appears once; stale reorder/close revisions are
-rejected atomically; zero documents is a valid state.
-
-Transitions: open/focus; reorder; close after flush and optional discard decision; close-last to empty;
-reopen closed where the document contract permits.
-
-## Workspace
-
-Fields: optional canonical root; lazy entry tree; enumeration generation; loading/error/empty/filter
-state; supported-file allowlist.
-
-Validation: at most 20,000 enumerated entries and 12 levels; list displays at most 1,000 results;
-absolute paths, traversal, and symlink escapes are rejected before access. Mutations are limited to
-non-conflicting create file/folder, reveal, and copy path.
-
-Transitions: absent -> opening -> open or failed; open -> refreshing -> open; replacement requires the
-specified unsaved-work decision. No rename, move, delete, or disk reorder transition exists.
+`created-hidden -> restoring -> ready-visible`, or `created-hidden -> startup-failed`. Normal may toggle
+to maximized and back; either may enter full-screen and return to the preceding state.
 
 ## Application Layout
 
-Fields: window bounds/state; workspace and assistant visibility/width; split arrangement and divider;
-acknowledged revision/timestamp per setting.
+Fields:
 
-Validation: minimum 375 x 480 px; panes remain clamped with at least one document pane visible.
-Discrete changes persist immediately; continuous changes persist after a pause; latest acknowledged
-write across windows wins and does not reopen content.
+- sidebar visibility and width
+- last-used document arrangement fallback
+- reserved Assistant visibility `false` and width `0` until its consumer slice
+- one pending continuous-change record per field
+- acknowledged revision
 
-## Appearance Preference
+Relationships:
 
-Fields: theme (`glass`, `material`, `minimal`); appearance choice (`auto`, `light`, `dark`); resolved
-mode (`light`, `dark`); palette generation/version; an acknowledged theme-only startup mirror carrying
-theme and appearance choice for pre-paint use.
+- Owned by appmodel and projected to Redux.
+- A document view, when one exists, owns its active arrangement. Application layout supplies only the
+  fallback for a document with no saved view.
+- Settings reset never changes application layout.
 
-Validation: choice and resolved mode remain distinct. Material and Auto are defaults. The startup
-mirror is written only after backend acknowledgement, is never a general settings store, and is not
-authoritative. Every consumer uses the single token source; generated Monaco rules qualify bundled
-grammar tokens by language (`.md`, `.go`, and qualified descendants); stale asynchronous renders are
-discarded.
+Validation:
 
-Transitions: a theme or explicit mode write is acknowledged before becoming durable and before its
-startup mirror changes; Auto resolution may change live without changing the stored choice; startup
-applies the mirrored palette before the first visible frame and later reconciles it with SQLite. A
-missing or invalid mirror falls back to Material/Auto and is corrected after acknowledgement.
+- Sidebar width is clamped only to the responsive shell's usable bounds; invalid stored values fall
+  back without discarding valid siblings.
+- At 768 px the visible desktop sidebar becomes a 46 px icon rail. At 375 px it becomes a 230 px
+  off-canvas overlay; these responsive presentations do not overwrite the user's durable desktop width.
+- The Assistant region remains collapsed to zero and contains no placeholder child.
 
-## Setting
+Transitions:
 
-Fields: stable namespaced key; group; type; accepted values/range; default; acknowledged value.
+- Discrete intent: `projected -> persisting -> acknowledged | rejected`.
+- Continuous intent: `projected -> pending -> persisting after 250 ms -> acknowledged | rejected`.
+- Rejection retains the preceding acknowledged projection and produces a classified notification.
+- Close flushes only pending fields and preserves each field's original change identity.
 
-Validation: values outside the catalogue are rejected, not clamped; unknown stored keys are ignored;
-each missing/invalid value falls back independently. Reset affects only the selected scope.
+## Persisted Layout Value
 
-Transitions: `draft -> validating -> acknowledged` or `rejected`; a failed write leaves the prior
-acknowledged value active.
+Fields:
 
-## Provider Profile
+- namespaced field key
+- schema version
+- typed value
+- `changedAtUnixNano`
+- per-process writer ID
+- writer-local sequence
 
-Fields: stable ID; provider kind; endpoint; authentication mode; credential environment-variable name;
-selected model; retained model filter; optional inference values; verification/capability results.
+Validation:
 
-Validation: kinds are the six specified providers; credential values are never stored or returned;
-optional parameters remain absent until set; reply reserve must be no greater than maximum output,
-which must be less than context window.
+- Unknown keys are ignored.
+- Legacy scalar values remain readable and normalize into the versioned form.
+- A conditional SQLite transaction replaces a value only when `(changedAt, writerId, sequence)` is
+  newer than the stored identity.
 
-Transitions: `draft -> tested` without persistence; `draft/tested -> saved`; test failures are
-classified and do not prevent saving unless a governing rule explicitly requires it.
+State transition:
 
-## Assistant Action
+`candidate -> committed | stale-refused`. A stale refusal is a successful conflict outcome: the caller
+reloads/projects the newer acknowledged value and does not show an error.
 
-Fields: stable ID; localized label; family; directive; prerequisites; default scope; preservation
-contract.
+## Shell Action
 
-Validation: family is Correct, Reformat, Summarize, or Rewrite. Scope precedence is explicit choice,
-non-empty selection, action default, then whole document. Unsupported prerequisites disable the action
-with a reason rather than creating a different flow.
+Fields:
 
-## Assistant Run
+- stable action ID
+- localized label and accessible-name key
+- scope: global, document, or editor
+- platform-neutral shortcut definition
+- availability predicate and unavailable reason
+- invocation route
 
-Fields: run ID; frozen provider/model; resolved scope snapshot; exact prompt; token allocation;
-attempt/iteration counts; wall-clock deadline; cancellation state; observations; terminal outcome.
+Validation:
 
-Relationships: may create at most one Proposal; chat-started runs append visible Transcript entries;
-shares the application-wide long-operation gate with other long operations.
+- One action ID and one shortcut registration.
+- Only actions with production consumers are visible/enabled.
+- Modal Settings suppresses global/document/editor actions behind it.
+- Standard macOS App/Edit roles are platform-owned exceptions and are not reimplemented as DOM
+  clipboard/undo handlers.
 
-Validation: one gated run application-wide; retries do not consume iterations; per-attempt timeout is
-bounded by remaining wall time; every content and tool argument is bounded and treated as inert data.
+## Notification
 
-Transitions: `created -> running -> succeeded | failed | cancelled | timed-out | limited`; exactly one
-terminal transition releases the gate. A provider/model change while running affects only the next run.
+Fields:
 
-## Proposal
+- notification ID
+- severity: success, info, warning, or error
+- classified code and subject
+- localized title/remediation keys and named arguments
+- dedup key `(code, subject)`
+- repetition count and refresh generation
+- optional remediation action
+- created/refreshed time
 
-Fields: proposal ID; document ID; base document revision; exact scope/range and source text; replacement
-text; review difference; status.
+Validation:
 
-Validation: one proposal per run; empty, partial, over-context, or unparsable output never becomes a
-proposal; Apply requires matching document identity, base revision, and source scope.
+- At most three are visible.
+- A repeated live dedup key refreshes one notification and increments its count.
+- Error never auto-dismisses and is never displaced by a newer notification.
+- Success/info/warning dismiss after 4/6/8 seconds respectively.
+- Automatic successful work is silent.
+- No internal path, raw error, secret, or full remote URL crosses the boundary.
 
-Transitions: `reviewable -> applied | discarded | superseded | stale`; Apply is one undoable in-memory
-edit and never saves; Re-run supersedes through a new request; stale cannot force-apply.
+Transitions:
 
-## Transcript
+`created -> visible -> refreshed* -> dismissed`; timed dismissal is unavailable for error. A fourth
+notification displaces only the oldest non-error; if all three are errors, the new non-error is not
+shown and a new error remains pending until capacity is available.
 
-Fields: document ID; ordered user/assistant/observation/proposal/terminal entries; visible full history;
-trimmed model-context view.
+## Delivered Settings Shell
 
-Validation: session-only and document-scoped; trimming never removes the current directive or scoped
-content from model context and never hides older visible turns from the user.
+Fields:
 
-Transitions: created on first run; switches with active tab; destroyed on tab close or process exit.
+- modal open state and active delivered group
+- opening control identity for focus restoration
+- backend-acknowledged Appearance values
+- draft interaction state only while a control is being operated
+
+Validation:
+
+- Quick settings and modal Settings render the same acknowledged values.
+- A failed write retains the last acknowledged value in both views.
+- Focus enters the modal, remains trapped, Escape closes it, and focus returns to the opener.
+- Reset affects delivered settings only; layout and future recents are excluded.
+- Empty future setting groups are not rendered.
+
+## Launcher State (Entry-Gated)
+
+Fields:
+
+- empty document set
+- absent active document identity and buffer
+- up to six ordered recent document/folder summaries
+- availability of New, Open file, and Open folder commands
+
+Validation:
+
+- No content or tab set is restored on launch.
+- Recent summaries contain display name, kind, and containing folder only; no fake samples.
+- The empty-recent copy is `Documents you open will appear here.` through the catalogue.
+- Launcher controls become enabled only with their real safe lifecycle commands.
+
+Transitions:
+
+`process-ready -> launcher`; `launcher -> document/workspace` only after a successful command;
+cancelled picker remains launcher with no notification. Closing the last document returns to launcher.
+This entity is designed here but becomes implementable with the safe file lifecycle slice.

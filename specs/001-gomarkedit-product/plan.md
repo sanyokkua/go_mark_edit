@@ -1,83 +1,80 @@
-# Implementation Plan: GoMarkEdit Product
+# Implementation Plan: Window and Launcher Shell
 
-**Branch**: `001-gomarkedit-product` | **Date**: 2026-07-30 | **Spec**: [spec.md](spec.md)
+**Branch**: `001-gomarkedit-product` | **Date**: 2026-07-31 | **Spec**: [spec.md](spec.md)
 
-**Input**: Consolidated product requirements from `specs/001-gomarkedit-product/spec.md`, with
-`docs/delivery/` files remaining historical reference until their needed behavior is copied into
-SpecKit, one approved requirement at a time. `docs/delivery/plan/` is sequencing evidence and a source of
-known risks, not the new plan's authority.
+**Input**: Plan the next dependency-bounded Viewer slice after the verified appearance frontier:
+launcher state, custom window chrome, minimum and resize behavior, durable layout, settings and
+notification shells, keyboard focus, and responsive states. File opening, tabs, rendering, packaging,
+Editor expansion, and Assistant work remain downstream.
 
 ## Summary
 
-Deliver GoMarkEdit as four cumulative product stages: Viewer, Editor, Assistant actions, then Assistant
-chat. Preserve the existing Wails/Go/React foundation and advance through dependency-ordered,
-user-observable vertical slices. The plan deliberately does not create a complete ticket backlog now.
-Only the next slice whose dependencies, contracts, and acceptance evidence exist may be decomposed into
-tasks. Later work remains at stage and capability-group granularity until the preceding stage exposes
-the real integration seams.
+The appearance frontier is delivered by `53af8e4`; the next actionable implementation slice is the
+native window shell around the existing application. It makes the Wails window frameless and hidden
+until its acknowledged layout is restored, adds platform-appropriate controls and the in-window menu,
+implements the exact drag/maximize/full-screen/resize behavior, persists window size and shell layout
+with last-change-wins semantics across processes, repairs notifications, and turns the existing
+Appearance popup into an accessible settings shell. The real shell is then proven at 375, 768, and
+1280 pixels in all six palettes and exercised in a native build.
 
-The immediate implementation frontier is the first Spec Kit foundation slice plus completion of the
-six-palette theme journey already in progress. First preserve the current evidence, remove only the
-superseded legacy planning/traceability validators, and keep every product, architecture, quality,
-build, baseline-reliability, live, and real-build gate. Then repair and finish the partial theme work:
-generate language-qualified Monaco palettes, apply them without disturbing editor state, follow live
-system appearance, prevent a first-frame palette flash, and prove the 18 visual combinations.
-
-That frontier is dependency-complete now. The Markdown-versus-Go token conflict is resolved by FR-017:
-bundled Monaco postfixes distinguish `keyword.md` from `keyword.go`. Current code and direct gate
-output identify concrete repairs rather than speculative interfaces. Work after the theme journey is
-kept in ordered capability groups and MUST NOT be decomposed into tasks until the theme outcome has
-been implemented and reconciled.
+The launcher contract is designed in this plan because zero documents and the launcher are the next
+state of the centre region. Full FR-011 ownership is not transferred yet: enabled New, Open file, and
+Open folder actions require the safe document/workspace lifecycle assigned to the following capability
+group. This slice must not ship enabled no-op controls, fake recent items, an empty future settings
+group, or a visible Assistant placeholder. Task generation may implement the window shell now; it may
+activate the complete launcher only when the next slice brings the real commands into scope.
 
 ## Technical Context
 
 **Language/Version**: Go 1.25.7; TypeScript 5.8.3; React 19.1.1
 
-**Primary Dependencies**: Wails v2.12.0, React, Redux Toolkit, Monaco Editor, React Markdown,
-remark-gfm, rehype-sanitize, modernc.org/sqlite, Goose, zerolog
+**Primary Dependencies**: Wails v2.12.0, React, Redux Toolkit, Radix Dropdown Menu and Toast,
+modernc.org/sqlite; no dependency upgrade or new UI framework
 
-**Storage**: Local files plus a CGO-free SQLite key/value settings store using WAL mode, busy timeout,
-and additive forward-only migrations
+**Storage**: Existing CGO-free SQLite key/value store in WAL mode. Layout fields use versioned values
+carrying change time, writer identity, and sequence so a stale close flush cannot overwrite a newer
+change from another process.
 
-**Testing**: Go tests and race tests; Jest and Testing Library; Playwright against the development
-bridge mock; architecture tests; generated-artifact checks; story baseline/verification gates; live
-checks in the running interface and real-build phase walkthroughs
+**Testing**: Go service/repository/lifecycle tests; Jest and Testing Library; adapter and dev-bridge
+parity tests; Playwright at 375/768/1280 against the mock bridge; current-platform live checks in the
+real Wails app; retained format, typecheck, lint, architecture, build, and baseline verification gates
 
-**Target Platform**: Native macOS, Windows, and Linux desktop applications; one Wails process per
-window; minimum usable window 375 x 480 px
+**Target Platform**: macOS, Windows, and Linux desktop; one process per window; frameless native window;
+minimum 375 x 480 pixels; full chrome verification repeated on all platforms at the Viewer release gate
 
-**Project Type**: Single-process desktop application with a Go backend and embedded React webview
+**Project Type**: Single-process Wails desktop application with a Go backend and embedded React webview
 
-**Performance Goals**: Visible typing/caret response within about 16 ms; live preview 150-300 ms after
-typing pauses at or below 2 MB; bounded operations expose progress and cancellation after about 500 ms
+**Performance Goals**: Restore acknowledged geometry before the first visible frame; keep resize and
+divider interaction responsive; persist continuous layout intent after a 250 ms pause and flush the
+pending final value before close; discrete toggles persist immediately
 
-**Constraints**: Offline and private by default; no telemetry or background networking; CGO-free;
-backend-authoritative state; typed Wails results; only the adapter imports generated bindings; atomic
-file writes; six tokenized palettes; complete keyboard, localization, accessibility, and reduced-motion
-behavior; numeric bounds from FR-010
+**Constraints**: Go owns canonical layout; Redux is a projection; all UI/runtime calls cross the
+adapter; generated bindings remain adapter-only; no background network access; all strings localized;
+all colors tokenized; keyboard/focus/reduced-motion behavior ships with each surface; errors never
+auto-dismiss; no production placeholders or no-op actions
 
-**Scale/Scope**: Up to 40 open documents, 50 MB per opened file, 20,000 workspace entries, 12 folder
-levels, 1,000 displayed search/palette results, and 1,000 decorated lint findings; four cumulative
-product stages and 80 functional requirements
+**Scale/Scope**: One native window per process, concurrent writers to one SQLite database, three
+responsive widths, six palette combinations, at most three visible toasts, and only the shell actions
+whose production consumers exist in this slice
 
 ## Constitution Check
 
-_GATE: Passed before Phase 0 research; passed again after Phase 1 design._
+_GATE: Passed before Phase 0 research and passed again after Phase 1 design._
 
-| Principle                  | Planning gate                                                                                                                                               | Result |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Normative authority        | Authority transfers one requirement at a time only after complete mapping and explicit approval; unmapped `docs/delivery/` clauses remain authoritative.    | PASS   |
-| Vertical slices            | Each implementation increment crosses only the layers needed for an observable outcome and owns complete requirements plus proving evidence.                | PASS   |
-| Backend authority          | Go remains canonical; Redux is a projection; Monaco is an identity-bound working copy; bridge imports and handlers retain their enforced boundaries.        | PASS   |
-| Offline, private, safe     | No network work is planned before explicit provider or remote-asset actions; untrusted content is validated and sanitized at boundaries.                    | PASS   |
-| Data and platforms         | File identity, atomic writes, multi-instance SQLite, additive migrations, CGO-free builds, and numeric refusal/degradation limits are design inputs.        | PASS   |
-| Accessible coherent UI     | Strings, tokens, focus, keyboard access, lifecycle states, responsive widths, and live checks travel with each visible slice.                               | PASS   |
-| Evidence before completion | Baselines must be reliable, architecture tests green, mock evidence supplemented by live/real-build cases, and historical labels are not accepted as proof. | PASS   |
+| Principle                  | Planning gate                                                                                                                                                                                                                                                               | Result |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Normative authority        | FR-012 through FR-014 and affected unmigrated cross-cutting clauses are copied into [contracts/window-launcher-shell.md](contracts/window-launcher-shell.md). FR-011 action ownership remains explicitly deferred; delivered appearance clauses are consumed, not re-owned. | PASS   |
+| Vertical slices            | The actionable batch produces a usable native shell, durable layout, settings/error surfaces, and responsive behavior. Launcher activation is held behind its real command dependency.                                                                                      | PASS   |
+| Backend authority          | Appmodel owns acknowledged layout and persistence intent; Redux renders projections; Wails runtime access is adapter-only.                                                                                                                                                  | PASS   |
+| Offline, private, safe     | The shell adds no network path, remote asset, telemetry, update check, or unsafe error detail.                                                                                                                                                                              | PASS   |
+| Data and platforms         | SQLite stays CGO-free/WAL; per-field conditional writes protect latest changes; native behavior has current-host and later three-platform gates.                                                                                                                            | PASS   |
+| Accessible coherent UI     | All new surfaces use the delivered palettes, catalogue, focus ring, keyboard semantics, reduced motion, and authoritative responsive states.                                                                                                                                | PASS   |
+| Evidence before completion | A reliable feature baseline precedes edits; direct backend, adapter, browser, native, and build evidence is named in the quickstart.                                                                                                                                        | PASS   |
 
-No constitutional exception is required. Spec Kit replaces the legacy planning, story-copy, phase
-status, and retired-requirement traceability validators. Their removal is foundation support inside
-the first authorized slice, not a documentation product. Runtime tests and architecture, formatting,
-typing, lint, build, baseline-reliability, live-interface, and real-build evidence remain mandatory.
+No constitutional exception is required. The pinned Wails desktop runtime has no public begin-resize
+API for a 12 px corner. The selected design isolates its existing `resize:<direction>` invocation
+behind the adapter, characterizes the pinned contract, and requires native live checks. Access from a
+component or an unguarded dependency on global runtime state is not allowed.
 
 ## Project Structure
 
@@ -90,196 +87,138 @@ specs/001-gomarkedit-product/
 ├── research.md
 ├── data-model.md
 ├── quickstart.md
-├── contracts/
-│   ├── application-state.md
-│   ├── command-boundaries.md
-│   ├── delivery-stages.md
-│   └── migration-readiness.md
-└── tasks.md                 # created later by /speckit-tasks; not created by this plan
+├── appearance-contract.md
+├── surface/mockup.html
+└── contracts/
+    ├── application-state.md
+    ├── command-boundaries.md
+    ├── delivery-stages.md
+    ├── migration-readiness.md
+    └── window-launcher-shell.md
 ```
 
 ### Source Code (repository root)
 
 ```text
-main.go                      # Wails composition root
+main.go, main_test.go                   # Wails options, lifecycle, native menu, composition
 internal/
-├── appmodel/                # canonical documents, tabs, workspace, layout
-├── application/             # lifecycle context
-├── apperr/                  # typed boundary errors and result envelopes
-├── bootstrap/               # startup sequencing
-├── db/                      # SQLite and generated query code
-├── file/                    # platform paths; later safe document I/O
-├── gate/                    # shared long-operation exclusion
-├── logging/                 # local redacted logs
-└── settings/                # typed settings service and persistence
+├── appmodel/                           # canonical acknowledged shell layout and projection
+├── application/                        # repository/runtime injection and shutdown order
+├── apperr/                             # typed layout/notification result contracts
+├── db/                                 # existing KV persistence and conditional layout writes
+└── settings/                           # acknowledged settings and delivered-scope reset
 
 frontend/src/
-├── logic/
-│   ├── adapter/             # only generated-Wails import boundary
-│   ├── hooks/               # editor synchronization and commands
-│   ├── markdown/            # one rendering interpretation
-│   ├── store/               # backend state projection only
-│   └── theme/               # preference resolution and root application
-├── ui/
-│   ├── components/
-│   ├── primitives/
-│   ├── styles/              # sole authored color-token source
-│   └── widgets/
-├── dev/bridge-mock/         # Playwright/dev parity implementation
-└── i18n/                    # stable namespaced catalogue
+├── logic/adapter/                      # sole Wails binding/runtime and begin-resize boundary
+├── logic/actions/                      # one registry for shipped shell actions and shortcuts
+├── logic/store/                        # layout and notification projections
+├── ui/primitives/                      # dialog, dropdown, toast, focus behavior
+├── ui/widgets/                         # title bar, shell, settings shell; later launcher activation
+├── ui/styles/                          # tokens and responsive shell rules
+├── dev/bridge-mock/                    # deterministic shell/runtime parity
+└── i18n/locales/en.json                # every visible/accessibility string
 
-frontend/e2e/                # mock-bridge browser journeys
-frontend/index.html          # theme-only blocking first-paint bootstrap
-frontend/scripts/            # generated-theme producer and retained architecture gate
-docs/delivery/plan/testing/  # numbered native/platform/live cases
-scripts/                     # retained baseline/verify plus legacy validators removed in first batch
+frontend/e2e/                           # palette x responsive shell journeys
+docs/delivery/plan/testing/live-plan.md # reference location for native numbered cases
 ```
 
-**Structure Decision**: Extend the established single Wails application by vertical capability. Do
-not create a server, a second frontend state owner, a parallel renderer, or speculative packages for
-future Assistant work. Create a new package only when the first production slice gives it a concrete
-caller and boundary.
+**Structure Decision**: Extend the existing vertical seams. Add no second layout store, browser
+localStorage layout cache, server, UI framework, or future-feature component. A typed appmodel layout
+repository is an appmodel-owned interface; its SQLite implementation is wired at the composition root.
 
-## Delivery Strategy
+## Phase 0: Research Decisions
 
-### Planning unit and readiness rule
+Research is consolidated in [research.md](research.md). The decisions are:
 
-A task set is generated for one vertical slice only when all of the following are true:
+1. Restore the window from hidden startup and show it only after native geometry and frontend
+   acknowledged layout are ready.
+2. Persist layout per field with original change identity; close flushes only still-pending local
+   fields and cannot turn close order into authority.
+3. Use the pinned Wails private resize invocation only behind an injected adapter to obtain the exact
+   eight zones; characterize and live-test it.
+4. Keep per-document arrangement authoritative for a document. The application arrangement is only
+   the last-used fallback for a document with no saved view.
+5. Ship only real settings groups/actions/notification consumers. Future groups, file commands, and
+   Assistant content do not appear as working controls.
+6. Treat the mockup as visible authority with explicit platform variants and runtime corrections
+   recorded in the shell contract.
 
-1. Every owned requirement and applicable initial-spec clause is copied without loss, explicitly
-   approved for authority transfer, and has one owner.
-2. Dependencies are present in production code, not merely reserved interfaces or passing unit tests.
-3. Numeric bounds, error outcomes, state transitions, and user-visible wording are settled.
-4. A reliable unchanged baseline can run and the named evidence can observe the real behavior.
-5. No governing contradiction, unreliable gate, or impossible integration contract remains. A
-   reliable pre-existing finding may enter the baseline and be repaired; an analyzer that examined
-   nothing may not.
+No unresolved planning marker remains for the actionable shell slice. Full launcher activation has a
+named entry gate rather than an unresolved implementation assumption.
 
-If any condition fails, record the question or blocker against that stage and stop. Do not create a
-ticket whose only output is more tracking, copied identifiers, or code that validates planning prose.
+## Phase 1: Design and Contracts
 
-### Stage 0 - First Spec Kit foundation slice
+### Actionable slice A — Native window shell
 
-Treat the existing foundation and limited editor as inputs, not work to rebuild. Before a slice touches
-one of their seams, inspect production code and direct evidence and classify the behavior as conforming,
-partial/defective, missing, or unreliable. Preserve conforming behavior, repair partial behavior, and
-implement only what is missing. Historical `built` or phase labels are not evidence.
+1. Configure a frameless, start-hidden 1024 x 768 window with a 375 x 480 minimum. Install the native
+   App/Edit menu on macOS only. Apply valid stored size/maximized state during startup; invalid values
+   fall back independently; show only after restored layout is ready.
+2. Add the tokenized title area. Empty title space drags; every interactive child opts out of both drag
+   mechanisms; double-click toggles maximize/restore; F11 toggles full screen; drag and resize are inert
+   in full screen.
+3. Add platform controls: macOS close/minimize/zoom on the left; Windows/Linux
+   minimize/maximize/close on the right. The mockup traffic lights are the macOS variant only.
+4. Add 6 px edge and 12 px corner resize zones above content and below overlays, with matching cursors.
+   The adapter owns the pinned runtime invocation and disables zones while maximized/full-screen.
+5. Bind the real three-region shell to acknowledged backend layout. Persist window size/maximized,
+   sidebar visibility/width, and the last-used arrangement fallback. Keep Assistant width zero and do
+   not mount Assistant content.
+6. Persist discrete values immediately and continuous values after 250 ms. Flush only pending local
+   fields on close using their original change identity. A failed write leaves the last acknowledged
+   projection active and raises a classified notification.
+7. Introduce one shell action registry. Register only working window, full-screen, sidebar, settings,
+   and About actions. About reads the injected application version and reports `dev` when none is
+   injected. Standard macOS clipboard/undo roles remain platform-owned. Modal settings suppresses
+   background shortcuts.
+8. Repair notifications: severity and subject, refresh/count repeated dedup keys, at most three visible,
+   errors never auto-dismiss or get evicted, and specified timed dismissal for non-errors.
+9. Expand the current Appearance surface into an accessible settings shell with focus trap, Escape,
+   return focus, synchronized menu/dialog state, and reset of delivered settings only. Do not show empty
+   Editor/Export/AI groups or controls with no consumer.
+10. Implement the authoritative 768 px icon rail/Assistant collapse and 375 px off-canvas sidebar,
+    menu overflow, stacked centre panes, and no horizontal clipping. Preserve all six palettes and
+    reduced-motion behavior.
+11. Converge startup failure onto one hidden-startup outcome: `GoMarkEdit could not start` and
+    `GoMarkEdit could not initialize its local settings. Please try again.`, with Retry and no normal
+    window show until initialization succeeds.
 
-The first task batch owns only these independently actionable foundation repairs:
+### Entry-gated slice B — Complete launcher activation
 
-1. Capture the current pre-edit baseline with raw output and reliability verdicts. Current evidence is
-   concrete: tests and type checking pass; unrestricted CGO-free build passes; formatting reports both
-   partial generator files; lint reports the generator's unused `root`; and existing generator tests do
-   not detect the unqualified `keyword` collision.
-2. Remove the legacy planning/traceability command wiring (`spec-check`, `story-check`, and their
-   documentation-copy, story-shape, upgrade, and `Proves:` resolution scripts). Do not remove or weaken
-   product tests, `archtest`, format, typecheck, lint, builds, baseline reliability, browser journeys,
-   live cases, or real-build walkthroughs. Historical `Proves:` comments may remain as non-authoritative
-   comments until their production file changes; do not create cleanup tickets for comments alone.
-3. Keep baseline/verification behavior, but remove its dependency on a legacy story document as part of
-   the transition to feature-slice evidence. The current baseline format must remain readable until the
-   first slice verifies, so the transition cannot erase its own comparison point.
+The launcher design is fixed in [contracts/window-launcher-shell.md](contracts/window-launcher-shell.md):
+zero documents is valid, no session content restores, the centre region shows the launcher, and recent
+items are bounded to six. It becomes task-ready only when the safe file/workspace lifecycle supplies
+real New, Open file, Open folder, recent-item mutation, and close-last commands. At that point:
 
-Do not create a generic audit, documentation application, traceability replacement, or known-issues
-phase. Consumer-dependent gaps remain mandatory and move to the earliest user-facing slice that can
-exercise their real production seam.
+- `activeDocumentId` and `activeBuffer` become optional through Go, generated DTOs, the adapter, Redux,
+  editor-session identity, and the dev bridge;
+- every launcher action dispatches a real registered command;
+- cancelled pickers change nothing and produce no failure;
+- no fake recent entry or enabled placeholder is permitted.
 
-### Stage 1 - Viewer
-
-Goal: a distributable, view-only-first journey that launches, opens supported local documents safely,
-renders the complete selected Markdown level, supports reading mode and all six palettes, and remains
-offline unless the user explicitly allows a remote asset.
-
-Dependency-ordered capability groups:
-
-1. **Finish the current theme frontier (actionable now):** complete the token source and repair the
-   partial generator so Markdown rules use `.md`-qualified tokens and embedded Go rules use
-   `.go`-qualified tokens, including descendants. Generate and commit six Monaco themes plus the
-   inactive preview highlight stylesheet; register and swap themes without recreating Monaco models;
-   follow system appearance only while Auto is selected; maintain an acknowledged theme-only startup
-   mirror for a blocking first-paint bootstrap while SQLite remains authoritative; and prove the full
-   three-width by six-palette matrix. Preview highlighting remains inactive until its renderer slice.
-2. **Window and launcher shell:** real shell coverage, launcher, title/menu/resize behavior, layout
-   persistence, notifications, settings shell, keyboard/focus and responsive states. Detail only after
-   the theme frontier is implemented and reconciled because every new surface consumes it. This is the
-   deliberate cutoff for the next `tasks.md`.
-3. **Safe file-open and tab lifecycle:** identity, empty tab set, open limits, picker/drop flows,
-   decoding and read-only thresholds, canonical flush ordering, multi-subscriber patches, mock parity,
-   recent items, and modified-close protection. This establishes the real document lifecycle before
-   rich assets or OS-open wiring.
-4. **Complete Viewer rendering:** three Markdown levels, one sanitized pipeline, local/remote asset
-   policy, asynchronous highlighting/diagram/math generations, reading mode, and large-preview
-   degradation. Reuse the file access boundaries established in the previous group.
-5. **Distribution and OS-open:** real packages, four extension associations, queued startup opens,
-   multi-window behavior, icon/version provenance, and three-platform install/launch evidence. Plan
-   this only when the actual file-open journey exists.
-
-The Viewer stage is complete only when its independent test and FR-001 through FR-028 are proven on
-the real build. Packaging is part of the stage outcome but not a dependency for earlier coding.
-
-### Stage 2 - Editor
-
-Entry gate: Viewer document identity, tabs, file access, rendering, settings, action registry, and
-distribution journeys are real and verified.
-
-Capability groups, to be decomposed only after that gate:
-
-1. Editing arrangements, per-document Monaco models, flush/acknowledgement lifecycle, status and large
-   preview controls.
-2. Canonical action/shortcut registry, formatting, paste/drop transformations, and one-step undo.
-3. Atomic save/autosave, external-change resolution, close/quit decisions, and byte/permission
-   preservation.
-4. Additive-only workspace browsing and mutations, followed by shared navigation surfaces.
-5. Shared gated Format/Compact/Lint operations, then PDF export consuming the proven renderer.
-
-FR-029 through FR-052 and their cross-cutting FR-004 through FR-010 obligations are assigned when each
-group becomes task-ready. Do not preselect parser libraries, persistence schemas, or component shapes
-before the preceding seams exist.
-
-### Stage 3 - Assistant actions
-
-Entry gate: Editor can flush, snapshot, apply one undoable scoped edit, detect staleness, and protect
-disk state; the shared operation gate has a real non-Assistant consumer and proven release behavior.
-
-First establish provider profiles, draft-only tests, credential references, model discovery and
-classified failures. Then build offline prompt/context inspection and the data-driven action catalogue.
-Finally add one proposal lifecycle shared by tool-capable and single-step models. FR-053 through FR-067
-own this stage; no provider request occurs outside explicit user actions.
-
-### Stage 4 - Assistant chat
-
-Entry gate: provider, context budget, proposal, cancellation, timeout, and stale-apply behavior are
-already proven by Assistant actions; workspace access boundaries are real.
-
-Add per-document session transcripts and custom prompts to the existing bounded run engine. Introduce
-the five allowlisted capabilities one at a time with validation and recovery evidence, then add loop
-termination and context trimming. FR-068 through FR-077 own this sub-stage. Streaming remains optional
-and must not become a correctness dependency.
-
-### Cross-stage catalogues
-
-FR-078 settings, FR-079 shortcuts, and FR-080 packaging are not standalone cleanup projects. Each
-setting and shortcut ships with its first consumer; each binding is registered once. Packaging ships
-when the Viewer file-open journey is complete. Cross-cutting accessibility, localization, privacy,
-limits, notifications, and failure states are acceptance criteria of every affected slice.
+This gate preserves the deliberate boundary before file opening, tab lifecycle, decoding, size limits,
+workspace enumeration, rendering, OS-open, and packaging.
 
 ## Requirement and Evidence Ownership
 
-- The eventual `tasks.md` must map every requirement in its currently authorized slice to exactly one
-  owning task and at least one named automated test or numbered live case.
-- A requirement may be consumed by later stages without being re-owned. Later tasks name the contract
-  they consume and test only the new integration.
-- SC-012 is satisfied by the union of slice-level mappings, not by a documentation-only application
-  feature or a test that merely scans identifiers.
-- Delivered labels from the legacy roadmap are hypotheses. Direct code, test, live, and real-build
-  evidence decides whether behavior is preserved or needs repair.
-- Known gaps are fixed in the first user-facing slice that exercises the broken seam. Only an urgent
-  gate defect that makes all implementation evidence unreliable may be planned independently.
-- The immediate task batch owns the migrated parts of FR-015 through FR-017 plus affected FR-002,
-  FR-004, FR-005, FR-006, FR-007, and the appearance subset of FR-078. It MUST copy their complete
-  initial-spec clauses into executable task context before authority transfers; later Viewer rules
-  remain governed by `docs/delivery/` and stay out of this task batch.
+- This shell plan owns FR-012, FR-013, FR-014 and the affected unmigrated shell portions of FR-001,
+  FR-002, FR-004 through FR-007, FR-078, FR-079, and the development-version subset of FR-080.
+- It consumes the already delivered appearance behavior in FR-015 through FR-017 and
+  [appearance-contract.md](appearance-contract.md); it does not re-own it.
+- FR-011 remains governed by the product specification until complete launcher command behavior is
+  mapped and approved with the safe file lifecycle. This plan owns its design and entry gate, not a
+  completion claim.
+- FR-008, FR-009, and numeric file/workspace limits have no complete consumer in this slice and remain
+  downstream.
+- Each eventual task owns one behavior and names direct Go/Jest/Playwright evidence plus the applicable
+  native live case. Documentation-only identifier checks are not product evidence.
+- Current-platform native evidence is required now. Windows/Linux/macOS repetition remains a Viewer
+  release gate and must not be reported as already proven.
 
 ## Complexity Tracking
 
-No constitution violation or additional architectural layer is proposed.
+| Deliberate complexity                        | Why needed                                                                                       | Containment                                                                                               |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Version-pinned Wails begin-resize invocation | Public Wails v2.12 has no API that starts native resize from the specified 12 px corners.        | Adapter-only wrapper, injected mock, pinned-runtime characterization, eight-zone native live case.        |
+| Per-field layout value envelope              | An older pending resize flushed on close must not overwrite a newer change from another process. | Existing KV table, one repository contract, conditional transaction, backward-compatible scalar fallback. |
+
+Neither item creates a second state owner or weakens an architecture boundary.
