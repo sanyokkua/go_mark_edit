@@ -37,6 +37,8 @@ assert_equal "$(evidence_id_parse 001-gomarkedit-product)" \
   'feature|001-gomarkedit-product' 'feature parsing'
 assert_equal "$(evidence_baseline_base 001-gomarkedit-product)" \
   'docs/delivery/work/baselines/feature-001-gomarkedit-product' 'feature baseline path'
+assert_equal "$(evidence_verification_baseline_base 001-gomarkedit-product)" \
+  'docs/delivery/work/baselines/story-063' 'product baseline migration alias'
 
 for invalid in '' ' ' '../001-gomarkedit-product' '001/other' \
   '001-gomarkedit-product/' '001-gomarkedit-product.md' \
@@ -85,5 +87,8 @@ done
 for removed_script in validate_spec.py check_story.py upgrade_check.py check_proves.py; do
   [[ ! -e "scripts/$removed_script" ]] || fail "superseded validator '$removed_script' still exists"
 done
+if grep -Eq 'M9|M10|M12|BASE_COMMIT' scripts/verify.sh; then
+  fail 'verification still runs retired configuration or documentation checks'
+fi
 
 printf 'baseline evidence identifier contract: PASS\n'

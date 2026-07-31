@@ -54,20 +54,67 @@ test('changes all six palettes through keyboard reachable appearance controls wi
   expect(runtimeErrors).toEqual([]);
 });
 
-test('uses the pre-paint mirror and keeps the controls visibly focused with bundled typography', async ({
+test('uses the pre-paint mirror before canonical reconciliation and keeps the controls visibly focused with bundled typography', async ({
   page,
 }) => {
-  await page.addInitScript(() =>
+  await page.addInitScript(() => {
+    const writes: Array<{ mode: string | null; theme: string | null }> = [];
+    const setAttribute = Element.prototype.setAttribute;
+
+    Element.prototype.setAttribute = function (
+      name: string,
+      value: string,
+    ): void {
+      setAttribute.call(this, name, value);
+      if (
+        this === document.documentElement &&
+        (name === 'data-theme' || name === 'data-mode')
+      ) {
+        writes.push({
+          mode: this.getAttribute('data-mode'),
+          theme: this.getAttribute('data-theme'),
+        });
+      }
+    };
+
     localStorage.setItem(
       'gme.theme',
       JSON.stringify({ version: 1, theme: 'minimal', mode: 'dark' }),
-    ),
-  );
+    );
+    (
+      globalThis as typeof globalThis & {
+        gmeRootAttributeWrites: typeof writes;
+      }
+    ).gmeRootAttributeWrites = writes;
+  });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
 
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'minimal');
-  await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
+  const writes = await page.evaluate(
+    () =>
+      (
+        globalThis as typeof globalThis & {
+          gmeRootAttributeWrites: Array<{
+            mode: string | null;
+            theme: string | null;
+          }>;
+        }
+      ).gmeRootAttributeWrites,
+  );
+  const mirrorIndex = writes.findIndex(
+    (write) => write.theme === 'minimal' && write.mode === 'dark',
+  );
+  const canonicalIndex = writes.findIndex(
+    (write, index) =>
+      index > mirrorIndex &&
+      write.theme === 'material' &&
+      write.mode === 'light',
+  );
+
+  expect(mirrorIndex).toBeGreaterThanOrEqual(0);
+  expect(canonicalIndex).toBeGreaterThan(mirrorIndex);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'material');
+  await expect(page.locator('html')).toHaveAttribute('data-mode', 'light');
   const settings = page.getByRole('button', { name: 'Settings' });
   await settings.focus();
   await expect

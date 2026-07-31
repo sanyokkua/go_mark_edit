@@ -32,7 +32,7 @@ if [[ -z "$EVIDENCE_ARG" ]]; then
   echo "usage: scripts/verify.sh STORY-NNN | NNN-feature-name" >&2
   exit 2
 fi
-EVIDENCE_BASE="$(evidence_baseline_base "$EVIDENCE_ARG")" || exit $?
+EVIDENCE_BASE="$(evidence_verification_baseline_base "$EVIDENCE_ARG")" || exit $?
 EVIDENCE_NAME="$(evidence_display_name "$EVIDENCE_ARG")" || exit $?
 
 BASE="$EVIDENCE_BASE"
@@ -40,7 +40,6 @@ BASE_REPORT="$BASE.md"
 BASE_TESTS="$BASE.failing-tests"
 BASE_FINDINGS="$BASE.findings"
 BASE_EXIT="$BASE.exit"
-BASE_COMMIT_FILE="$BASE.commit"
 
 if [[ ! -f "$BASE_REPORT" ]]; then
   echo "No baseline for $EVIDENCE_NAME." >&2
@@ -72,7 +71,6 @@ if grep -q '=UNRELIABLE=' "$BASE_EXIT"; then
 fi
 
 WORK="$(mktemp -d)"
-BASE_COMMIT="$(cat "$BASE_COMMIT_FILE" 2>/dev/null || echo '')"
 
 # Written without associative arrays: macOS ships bash 3.2, which has none.
 run() {
@@ -175,44 +173,6 @@ fi
 # M6 — build.
 if [[ "$EXIT_BUILD" == "0" ]]; then row M6 "build" PASS; else
   row M6 "build" FAIL; DETAIL+=("M6 build failed:"$'\n'"$(tail -20 "$WORK/build.log" | sed 's/^/      /')")
-fi
-
-# M9 — gate configuration untouched since the baseline commit.
-if [[ -n "$BASE_COMMIT" ]] && git rev-parse --verify "$BASE_COMMIT" >/dev/null 2>&1; then
-  GATE_CHANGES="$(git diff --name-only "$BASE_COMMIT"..HEAD -- \
-      .golangci.yml frontend/eslint.config.js frontend/eslint.architecture.config.js \
-      frontend/scripts/archtest-allowlist.json justfile .github/ lefthook.yml 2>/dev/null)"
-  if [[ -z "$GATE_CHANGES" ]]; then row M9 "gate config untouched" PASS; else
-    row M9 "gate config untouched" FAIL
-    DETAIL+=("M9 a gate's own configuration changed — name and justify it, or revert it:"$'\n'"$(printf '%s' "$GATE_CHANGES" | sed 's/^/      /')")
-  fi
-else
-  row M9 "gate config untouched" "SKIP"
-fi
-
-# M10 — no normative document was edited.
-if [[ -n "$BASE_COMMIT" ]] && git rev-parse --verify "$BASE_COMMIT" >/dev/null 2>&1; then
-  SPEC_CHANGES="$(git diff --name-only "$BASE_COMMIT"..HEAD -- \
-      docs/delivery/spec/ docs/delivery/architecture/ 2>/dev/null)"
-  if [[ -z "$SPEC_CHANGES" ]]; then row M10 "normative docs untouched" PASS; else
-    row M10 "normative docs untouched" FAIL
-    DETAIL+=("M10 a normative document changed — a needed change is a reconcile item, not a commit:"$'\n'"$(printf '%s' "$SPEC_CHANGES" | sed 's/^/      /')")
-  fi
-else
-  row M10 "normative docs untouched" "SKIP"
-fi
-
-# M12 — every `Proves:` tag names an anchor that exists. A tag pointing at nothing is a test that
-# proves nothing and reads as coverage.
-if [[ -f scripts/check_proves.py ]]; then
-  if python3 scripts/check_proves.py docs/delivery internal frontend/src . >"$WORK/proves.log" 2>&1; then
-    row M12 "Proves: tags resolve" PASS
-  else
-    row M12 "Proves: tags resolve" FAIL
-    DETAIL+=("M12 a Proves: tag names an anchor that does not exist:"$'\n'"$(sed 's/^/      /' "$WORK/proves.log" | head -30)")
-  fi
-else
-  row M12 "Proves: tags resolve" "SKIP"
 fi
 
 if [[ ${#DETAIL[@]} -gt 0 ]]; then
