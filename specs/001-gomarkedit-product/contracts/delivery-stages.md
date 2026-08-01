@@ -43,13 +43,15 @@ production-path support for that same slice, map complete owned requirements, na
 and declare concrete paths. Documentation-only validation work is not a product slice.
 
 The 2026-07-30 foundation and appearance batch is delivered and verified. The authorized next task
-batch is the dependency-complete native window shell described by `window-launcher-shell.md`: window
-chrome and controls, exact resize/minimum behavior, durable acknowledged layout, notification repair,
-delivered-settings shell, keyboard/focus, and responsive/palette evidence.
+batch is exactly `FR-WS-001` through `FR-WS-020`, the dependency-complete native window shell described
+by `window-launcher-shell.md`: ordinary OS-managed framing and exact native minimum, durable
+acknowledged layout, notification repair and queue, atomic delivered-settings reset, offline and
+response evidence, keyboard/focus, and responsive/palette behavior.
 
-Complete launcher activation is the entry gate to the following safe file lifecycle batch. It must not
-ship with enabled no-op New/Open controls or fake recents. File opening, tabs, decoding, size limits,
-workspace enumeration, rendering, OS-open, and packaging remain downstream.
+Complete launcher activation and File commands are entry-gated on safe file lifecycle. They must not
+ship with enabled no-op controls or fake recents. Real tabs and tab overflow, file opening, decoding,
+size limits, workspace enumeration, rendering expansion, OS-open, packaging, Editor expansion, and
+Assistant behavior remain downstream.
 
 The token contract remains resolved: Markdown theme rules use bundled `.md` postfixes and embedded Go
 rules use `.go`, including qualified descendants. A non-zero gate with explicit findings may be

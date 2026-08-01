@@ -4,7 +4,9 @@
 
 **Created**: 2026-07-30
 
-**Status**: Draft
+**Status**: Approved for progressive migration — the native window shell slice was approved on
+2026-07-31; later slices remain governed by their legacy requirements until individually migrated and
+approved.
 
 **Input**: Consolidate the existing GoMarkEdit specification into one Spec Kit product definition,
 organized as Viewer, Editor, Assistant actions, and Assistant chat, while distinguishing delivered,
@@ -28,6 +30,46 @@ partial, missing, and known-gap behavior.
 - Q: How should the first Spec Kit phase treat functionality that already exists in the current source
   code? → A: Preserve independently verified behavior, repair partial or defective behavior, and
   implement missing behavior; historical completion labels are not evidence.
+
+### Session 2026-07-31
+
+- Q: How should the remaining `docs/delivery/` requirements move into Spec Kit? → A: Migrate them
+  progressively. For the current delivery slice, copy every compatible legacy clause with its exact
+  values, edge cases, and evidence obligations. Keep every other clause legacy-governed until its own
+  slice is approved. Discuss a real conflict before replacing either rule.
+- Q: Is the native window shell approved for authority transfer now? → A: Yes. The complete shell
+  requirements FR-WS-001 through FR-WS-020 below are the approved Spec Kit authority for this slice.
+- Q: Who owns Editor, Split, and Preview arrangement? → A: Each document owns its current arrangement.
+  Application layout stores only the last-used fallback for a document that has no saved view.
+- Q: Which menu order governs where the legacy window text and current surface disagree? → A: The
+  binding surface governs presentation: File, Settings, View, About. File remains absent until it has a
+  real command.
+- Q: What offline evidence is required? → A: Retain automated safeguards and a representative runtime
+  network check. Manual packet capture is not required.
+
+### Session 2026-08-01
+
+- Q: Should the shell-only slice implement the mockup's scrolling tab strip even though real tabs and
+  their lifecycle are deferred? → A: No. Keep the tab strip and tab-overflow behavior governed by the
+  later real-tabs slice. The current shell MUST NOT add an empty or fake tab strip. `FR-WS-008` owns
+  only responsive behavior for surfaces that exist in the approved shell slice.
+- Q: How should macOS satisfy window resizing when the pinned Wails runtime cannot start resizing
+  through the planned `resize:<direction>` adapter invocation? → A: Use ordinary operating-system-managed
+  framed windows on macOS, Windows, and Linux. Do not implement frameless windows, custom title controls,
+  custom drag regions, or custom resize zones on any platform.
+- Q: Where should the application's Settings, View, and About menus appear now that every platform uses
+  an operating-system-managed title bar? → A: Use one in-app menu row on all platforms, directly below
+  the native title bar. macOS additionally retains its native App and Edit roles.
+- Q: Should the shell's zero-network acceptance test run under automated request instrumentation for
+  five minutes? → A: No. Keep one short representative automated request check with no duration
+  requirement, together with static source and built-bundle safeguards.
+- Q: How should shell responsiveness be verified without requiring a 60-second resize-and-divider
+  exercise? → A: Collect at least 20 automated resize samples and at least 20 automated divider samples,
+  with no duration requirement, and apply the approved latency thresholds to those samples.
+- Q: Which application interactions must be repeated in the current-host real build after they pass the
+  automated browser matrix? → A: Run one representative real-build walkthrough of native window
+  operations, menus, Settings and reset/focus, sidebar states, About, notifications, and future-surface
+  absence. Keep the complete 18-combination visual matrix in automated browser tests.
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -65,6 +107,51 @@ unsolicited request occurs.
 6. **Given** several application windows, **When** each opens and changes settings, **Then** they operate
    concurrently without a single-instance refusal and each running window retains its acknowledged
    settings until relaunch.
+
+#### Current Authorized Slice - Use the Native Window Shell
+
+The current delivery slice gives the existing document a complete native shell without pretending that
+the launcher, file lifecycle, tabs, renderer expansion, packaging, or Assistant already exist.
+
+**Independent Test**: Launch the application from clean, populated, corrupt, and concurrently modified
+settings. Use the operating system's title bar, window controls, movement, resizing, and full-screen
+behavior together with the app's menus, Settings, sidebar, notifications, and keyboard interactions at
+375, 768, and 1280 pixels in all six palettes. Confirm recovery, persistence, accessibility, responsive
+behavior, and offline operation without using a fake future command.
+
+**Acceptance Scenarios**:
+
+1. **Given** saved valid window and shell values, **When** the application starts, **Then** it restores
+   them before the normal shell appears, without reopening prior documents or visibly jumping from a
+   default layout.
+2. **Given** the normal shell, **When** the user moves, resizes, minimizes, maximizes, restores, closes,
+   or enters full screen, **Then** the operating-system-managed window performs the matching native
+   operation and the application renders no duplicate title control, drag region, or resize target.
+3. **Given** macOS, Windows, or Linux, **When** the shell appears, **Then** the operating system supplies
+   that platform's normal frame, title bar, and window controls; the app supplies one menu row below the
+   title bar on every platform; and macOS also provides the standard application, clipboard, and undo
+   roles.
+4. **Given** widths of 375, 768, and 1280 pixels, **When** the user operates the shell in each of the six
+   palettes, **Then** the specified sidebar form, menu overflow, centre layout, focus, and overlays remain
+   usable with no horizontal clipping.
+5. **Given** two running windows changing the same layout field, **When** they later close in either
+   order, **Then** the value changed most recently remains stored; close order cannot restore an older
+   value.
+6. **Given** two documents with different arrangements, **When** the user switches between them,
+   **Then** each keeps its own arrangement and a document without saved view state uses the last-used
+   application fallback.
+7. **Given** the quick Appearance controls and Settings dialog, **When** a value changes or the delivered
+   Appearance group is reset, **Then** both surfaces show only the acknowledged value and reset changes
+   no window layout, document, or recent path.
+8. **Given** a repeated failure, **When** the same failure affects the same subject, **Then** one
+   actionable notification refreshes with a count; errors remain until dismissed and never expose raw
+   or private details.
+9. **Given** settings initialization fails, **When** the user retries, **Then** the normal shell remains
+   hidden until initialization succeeds and success shows it once.
+10. **Given** representative shell use before Assistant delivery, **When** runtime network activity is
+    observed, **Then** the application makes no outbound request.
+11. **Given** the shell-only slice, **When** menus and Settings are opened, **Then** no File command,
+    launcher control, fake recent item, empty future settings group, or Assistant placeholder appears.
 
 ---
 
@@ -197,10 +284,169 @@ isolation, safety, and non-persistence.
   classified distinctly and never becomes an empty or silently partial edit.
 - Cancelling format, export, provider testing, or an assistant run is a normal outcome and must never
   leave a partial write, partial replacement, or permanently busy interface.
+- Missing or invalid saved window fields fall back independently; a bad height does not discard a valid
+  width, and an off-screen or oversized result is brought onto a usable display.
+- A window that closes after another process made a newer change flushes only its own still-pending
+  fields and cannot replace that newer value.
+- Responsive sidebar widths are temporary presentation. Moving between 375, 768, and desktop widths
+  never overwrites the user's durable desktop sidebar width.
+- A failed Settings reset changes no setting. A successful delivered-scope reset changes all delivered
+  Appearance values together and changes no layout or recent path.
+- If all three visible notifications are errors, a fourth error remains in arrival order without
+  evicting an earlier error and becomes visible when a visible error is dismissed.
+- A shortcut pressed while Settings is open does not operate the document or shell behind the modal.
+- A build without an injected version reports exactly `dev`; it never invents or hard-codes a release
+  version.
+
+## Progressive Migration and Current Authority
+
+`docs/delivery/` is the historical specification being retired one delivery slice at a time. It remains
+normative only for behavior that has not yet been completely copied, reconciled, and explicitly
+approved in Spec Kit.
+
+For every migration slice:
+
+1. Copy compatible behavior, exact values, edge cases, exclusions, and evidence obligations rather than
+   summarizing them away.
+2. Record the legacy source and its destination requirement.
+3. Resolve every conflict explicitly. The binding surface governs shape and presentation; approved
+   product behavior governs interaction; accepted architecture decisions remain in force unless an
+   explicit later decision supersedes them.
+4. Transfer authority only for the listed requirement. Neighboring legacy clauses remain normative.
+5. Give every migrated requirement exactly one primary owning implementation task and at least one named
+   proving test or live case during planning.
+
+### Current authority boundary
+
+| Requirement group                                                          | Authority after this approval | Meaning                                                       |
+| -------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------- |
+| FR-WS-001 through FR-WS-020                                                | Spec Kit                      | Complete approved native window shell slice                   |
+| FR-015 through FR-017                                                      | Spec Kit                      | Delivered appearance behavior consumed by the shell           |
+| FR-011 launcher behavior                                                   | `docs/delivery/`              | Deferred until safe New/Open/recent/close-last commands exist |
+| Complete Settings beyond delivered Appearance                              | `docs/delivery/`              | Deferred to the first slice with real consumers               |
+| Complete shortcut catalogue beyond working shell actions                   | `docs/delivery/`              | Deferred with its commands; shipped bindings remain reserved  |
+| File lifecycle, tabs, rendering, packaging, Editor, and Assistant behavior | `docs/delivery/`              | Migrates in later dependency-ordered slices                   |
 
 ## Requirements _(mandatory)_
 
 ### Functional Requirements
+
+#### Approved native window shell slice
+
+These requirements are complete, approved, and ready to own implementation work. Their `FR-WS-*`
+identifiers are the task-ownership keys for this slice. The broader FR-001 through FR-080 requirements
+remain the product outcome index and do not permit a task to claim an unspecified "portion."
+
+- <a id="fr-ws-001-native-desktop-shell"></a> **FR-WS-001 — Native desktop shell**: The product MUST run as a
+  native desktop application on macOS, Windows, and Linux, allow several independent windows, and
+  require no server, account, companion process, or single-instance takeover.
+- <a id="fr-ws-002-platform-title-area"></a> **FR-WS-002 — Operating-system-managed window frame**: Every platform
+  MUST use its ordinary operating-system-managed frame, title bar, and window controls. The application
+  MUST NOT render replacement close, minimize, maximize, restore, or zoom controls. macOS MUST retain
+  its standard application and editing roles.
+- <a id="fr-ws-003-title-movement"></a> **FR-WS-003 — Native window movement and maximize**: Window movement,
+  title-bar double-click behavior, maximize, and restore MUST remain owned by the operating system. The
+  application MUST NOT add a custom drag region or intercept native title-bar gestures.
+- <a id="fr-ws-004-full-screen"></a> **FR-WS-004 — Full screen**: F11 MUST toggle full screen on every platform.
+  Entry and exit MUST use the native window operation without introducing a second window-state owner.
+- <a id="fr-ws-005-resize-boundaries"></a> **FR-WS-005 — Native resize and minimum size**: Window resizing MUST
+  remain owned by the operating system on macOS, Windows, and Linux. The application MUST NOT render
+  custom edge or corner targets or override native resize cursors. Native resizing MUST clamp at exactly
+  375 by 480 pixels.
+- <a id="fr-ws-006-restore-before-display"></a> **FR-WS-006 — Hidden restore before display**: A normal launch
+  MUST start from a 1024-by-768 default, restore each valid saved size and maximized value before the
+  normal shell appears, and fall back independently for each missing or invalid field. An off-screen or
+  oversized result MUST open on a usable display. Window position and full-screen state MUST NOT be
+  restored.
+- <a id="fr-ws-007-three-region-shell"></a> **FR-WS-007 — Reserved three-region shell**: The shell MUST reserve a
+  left workspace region, centre document region, and right Assistant region. Before Assistant delivery,
+  the right region MUST remain structurally reserved at zero width and contain no Assistant control,
+  content, or visible placeholder.
+- <a id="fr-ws-008-responsive-shell"></a> **FR-WS-008 — Responsive shell**: At 768 pixels the workspace region
+  MUST become a 46-pixel icon rail. At 375 pixels it MUST become a 230-pixel off-canvas overlay, centre
+  panes MUST stack, the in-app menu row MUST move its actions into overflow, the toolbar MUST remain one row, and no
+  existing control MUST clip horizontally. Responsive presentation MUST NOT overwrite durable desktop
+  widths. The real tab strip and its overflow behavior remain outside this slice and MUST NOT be
+  represented by an empty or fake strip.
+- <a id="fr-ws-009-durable-layout-fields"></a> **FR-WS-009 — Durable layout fields**: Durable application layout
+  MUST include window width, height, maximized state, workspace visibility and width, and the last-used
+  document-arrangement fallback. It MUST exclude window position, full-screen state, responsive-only
+  widths, open documents, document content, and the tab set.
+- <a id="fr-ws-010-document-arrangement"></a> **FR-WS-010 — Document arrangement ownership**: Each document MUST
+  own its current Editor, Split, or Preview arrangement and pane state. A document without saved view
+  state MUST use the application's last-used arrangement fallback; the application fallback MUST NOT
+  overwrite an existing document view.
+- <a id="fr-ws-011-latest-layout-change-wins"></a> **FR-WS-011 — Latest layout change wins**: A discrete layout
+  change MUST persist immediately. A continuous resize or divider change MUST persist 250 milliseconds
+  after input stops and MUST flush before close. Across concurrent windows, the value changed most
+  recently MUST win; closing later MUST NOT give an older value authority.
+- <a id="fr-ws-012-layout-failures"></a> **FR-WS-012 — Acknowledged layout failures**: The visible durable layout
+  MUST contain only acknowledged values. A failed write MUST retain the previous acknowledged value and
+  show one classified notification. A rejected stale write MUST load the newer stored winner without
+  showing an error.
+- <a id="fr-ws-013-startup-recovery"></a> **FR-WS-013 — Recoverable startup failure**: If local settings cannot be
+  initialized, the normal shell MUST remain hidden and the user MUST see `GoMarkEdit could not start`,
+  `GoMarkEdit could not initialize its local settings. Please try again.`, and Retry. Retry MUST repeat
+  initialization; success MUST restore and show the shell once. Repeated failure MUST expose no raw
+  error or private configuration path.
+- <a id="fr-ws-014-working-shell-actions"></a> **FR-WS-014 — Working shell actions only**: One canonical action
+  catalogue MUST supply each shipped shell action's stable identity, localized label, scope, shortcut,
+  availability, and invocation to every surface. One in-app menu row directly below the native title bar
+  MUST be used on macOS, Windows, and Linux. Its visible relative order MUST be File, Settings, View,
+  About, but File MUST remain absent until it has a real command. macOS MUST additionally retain its
+  native App and Edit roles without duplicating the in-app action catalogue. Settings MUST suppress
+  background shortcuts while open. No duplicate binding, chord, rebound shipped shortcut, or enabled
+  no-op is permitted.
+- <a id="fr-ws-015-settings-reset"></a> **FR-WS-015 — Delivered Settings and atomic reset**: The quick Appearance
+  controls and modal Settings MUST display the same acknowledged Theme and Appearance values. Settings
+  MUST trap focus, close on Escape, and restore focus to its opener. This slice's reset MUST restore all
+  and only delivered Appearance defaults together; failure MUST change none. Reset MUST NOT change
+  window geometry, application layout, document state, or recent paths. Empty future groups MUST NOT be
+  shown. A second open window MUST keep its already acknowledged Appearance values until relaunch.
+- <a id="fr-ws-016-shell-notifications"></a> **FR-WS-016 — Shell notifications**: A completed event MUST use a
+  toast and a continuing condition MUST use an inline banner. Notifications MUST deduplicate by
+  classified code and subject; repetition MUST refresh one item and show a localized `×N` count.
+  Success, information, and warning toasts MUST dismiss after 4, 6, and 8 seconds. Errors MUST never
+  auto-dismiss or be evicted. At most three toasts may be visible, with a fourth displacing only the
+  oldest non-error. When all three visible toasts are errors, further errors MUST remain queued in
+  arrival order and become visible after dismissal. Toasts MUST appear above dialogs, and successful
+  automatic work MUST remain silent.
+- <a id="fr-ws-017-accessible-shell"></a> **FR-WS-017 — Accessible and coherent shell**: Every shell control MUST
+  be keyboard reachable, expose a correct role and localized accessible name, show visible focus, work
+  with longer translated text, and preserve behavior under reduced motion. Every visible shell string
+  MUST use the catalogue, and every shell surface MUST use the approved palette in all six resolved
+  theme and appearance combinations.
+- <a id="fr-ws-018-offline-shell"></a> **FR-WS-018 — Offline shell**: Before Assistant delivery, representative
+  shell use MUST make zero outbound requests. The shell MUST add no telemetry, analytics, update check,
+  crash upload, remote asset, font fetch, or adjustable control that suggests those prohibited behaviors
+  can be enabled. Automated safeguards and a representative runtime network observation MUST prove this;
+  manual packet capture is not required.
+- <a id="fr-ws-019-build-identity"></a> **FR-WS-019 — Build identity**: About MUST show the injected application
+  version. A build without an injected version MUST show exactly `dev` and MUST NOT use a separately
+  maintained version value.
+- <a id="fr-ws-020-honest-shell-boundary"></a> **FR-WS-020 — Honest shell boundary**: Until their real commands
+  and state exist, the shell MUST NOT show a File menu, launcher control, recent item, zero-document
+  launcher claim, Assistant toggle or placeholder, empty future Settings group, or other disabled or
+  enabled facsimile of future behavior.
+
+##### Native window shell acceptance map
+
+| Requirement                     | Primary acceptance evidence                                                                                     |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| FR-WS-001, FR-WS-002            | Current-slice scenario 3 plus native framed-window checks on each target platform before Viewer completion      |
+| FR-WS-003, FR-WS-004, FR-WS-005 | Current-slice scenario 2 using native movement, resizing, full screen, and the exact minimum size               |
+| FR-WS-006                       | Current-slice scenario 1 plus independent missing, invalid, oversized, and off-screen saved values              |
+| FR-WS-007, FR-WS-008            | Current-slice scenarios 4 and 11 across all 18 width/palette combinations                                       |
+| FR-WS-009, FR-WS-010            | Current-slice scenarios 1 and 6, including a document with saved view and one without                           |
+| FR-WS-011, FR-WS-012            | Current-slice scenario 5 plus stale, failed-write, immediate, paused, and close-flush cases                     |
+| FR-WS-013                       | Current-slice scenario 9 for first failure, repeated failure, and successful Retry                              |
+| FR-WS-014                       | Current-slice scenarios 2, 7, and 11 using menus, keyboard, and an open modal                                   |
+| FR-WS-015                       | Current-slice scenario 7 for acknowledgement, rejection, atomic reset, and second-window retention              |
+| FR-WS-016                       | Current-slice scenario 8 for every severity, timing boundary, capacity, all-error queue, and safe remediation   |
+| FR-WS-017                       | Current-slice scenarios 4 and 7 using keyboard-only operation, longer catalogue text, focus, and reduced motion |
+| FR-WS-018                       | Current-slice scenario 10 with static safeguards, a short automated request log, and current-host observation   |
+| FR-WS-019                       | The build-identity edge case with an injected release version and an uninjected development version             |
+| FR-WS-020                       | Current-slice scenario 11 and direct inspection of every visible shell menu, group, and region                  |
 
 #### Product-wide behavior
 
@@ -233,11 +479,13 @@ isolation, safety, and non-persistence.
 
 - **FR-011**: Every launch MUST begin at a launcher offering New file, Open file, Open folder, and the
   six most recent documents or folders; content from a previous launch MUST not reopen automatically.
-- **FR-012**: The window MUST provide its own themeable title area, platform-appropriate window
-  controls, movement, maximize/restore, full screen, eight resize zones, and a minimum size of
-  375 by 480 pixels.
+- **FR-012**: The window MUST retain the platform's operating-system-managed frame, title bar, controls,
+  movement, resizing, and maximize/restore behavior; F11 MUST toggle full screen and native resizing
+  MUST enforce a minimum size of 375 by 480 pixels. The application MUST NOT duplicate native chrome.
 - **FR-013**: The shell MUST contain a collapsible workspace region, central document region, and
-  reserved assistant region, and MUST restore acknowledged window and pane layout before first display.
+  reserved assistant region, and MUST restore acknowledged window and application layout before first
+  display. Each document owns its current arrangement and pane state; application layout stores only the
+  last-used arrangement fallback for a document without saved view state.
 - **FR-014**: Layout changes MUST persist immediately for discrete actions and after a pause for
   continuous resizing; the most recently changed value across windows wins without reopening content.
 - **FR-015**: The product MUST offer exactly Liquid Glass, Material, and Minimal themes, default to
@@ -495,8 +743,10 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
   and asset/tool access boundary.
 - **Tab Set**: The ordered open-document identities, active document, revision used to reject stale
   commands, and recently closed history.
-- **Application Layout**: Window size and state, pane visibility and widths, active arrangement, and
-  most-recently acknowledged values shared across launches.
+- **Application Layout**: Durable window size and maximized state, workspace visibility and width, the
+  last-used arrangement fallback for a document without saved view state, and the most-recently
+  acknowledged values shared across launches. It does not own an existing document's arrangement or
+  pane state.
 - **Appearance Preference**: Theme choice, user appearance choice, resolved light/dark appearance, and
   the complete visual palette applied to every surface.
 - **Setting**: A stable key with one declared type, accepted range or values, default, current value,
@@ -549,15 +799,49 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
 - **SC-012**: Every functional requirement is mapped during planning to at least one acceptance test or
   explicit live verification case, and no requirement is classified delivered solely from a phase or
   story status label.
+- **SC-013**: The native shell completes all 18 combinations of 375, 768, and 1280-pixel widths across
+  the six resolved palettes with no clipped application control, duplicate native window control,
+  missing focus, or visible future-feature placeholder.
+- **SC-014**: Across at least 20 automated window-resize samples and at least 20 automated divider-drag
+  samples, 95 percent of visible updates follow the user's input within 100 milliseconds, no visible
+  freeze lasts longer than 250 milliseconds, and the final durable value is acknowledged within
+  500 milliseconds after input stops. No minimum test duration is required.
+- **SC-015**: In 100 percent of two-window conflict cases, the layout value changed later remains stored
+  regardless of which process closes first, and every injected write failure leaves the last
+  acknowledged layout visible.
+- **SC-016**: Every tested startup failure keeps the normal shell hidden, every successful Retry shows it
+  exactly once, and no tested failure reveals a raw error or private path.
+- **SC-017**: Automated network instrumentation observes zero outbound attempts during one representative
+  shell journey before Assistant delivery; the journey has no minimum duration requirement and retains
+  its request log.
+- **SC-018**: Before this slice completes, one representative current-host real-build walkthrough MUST
+  exercise native window operations, the in-app menus, Settings and reset/focus, sidebar states, About,
+  notifications, and future-surface absence. The complete 18-combination viewport-and-palette matrix
+  remains automated browser evidence. Viewer completion remains blocked until native window behavior is
+  proven on macOS, Windows, and Linux.
 
 ## Assumptions
 
 - The appearance batch is authoritative in this feature: `appearance-contract.md` supplies its
   complete behavior, exact values, edge cases, and proving evidence, while
-  `surface/mockup.html` is the binding visual source. The corresponding files under
+  `surface/mockup.html` is the binding visual source for delivered appearance and the approved current
+  shell. `surface/future-product-reference.html` preserves later product specimens as non-authoritative
+  reference only. The corresponding files under
   `docs/delivery/` are historical reference only. Other legacy requirements transfer to Spec Kit one
   requirement at a time after their complete behavior, exact values, edge cases, and proving evidence
   are mapped without loss and the transfer is explicitly approved.
+- The native window shell is the second approved migration slice. FR-WS-001 through FR-WS-020 replace
+  only the mapped legacy shell clauses. Launcher, file lifecycle, complete Settings, complete shortcuts,
+  packaging, Editor, and Assistant clauses remain legacy-governed.
+- Current native evidence is collected on the implementation host because one host cannot execute the
+  other platforms' real window behavior. That evidence is enough for this bounded shell increment but
+  not for Viewer completion or a three-platform release claim.
+- The 100-millisecond shell response and 250-millisecond maximum visible-freeze thresholds are the
+  reasonable default for this slice's formerly vague "responsive" goal. A later approved change may
+  tighten them but implementation may not silently relax them.
+- Assistant context settings are not part of this slice. Their missing numeric ranges remain a known
+  migration gap and MUST be resolved when the Assistant context slice copies its legacy requirements;
+  the current shell MUST NOT expose those controls.
 - This invocation creates one consolidated product specification because the requested stages are one
   dependency chain sharing documents, rendering, settings, safety rules, and acceptance evidence.
 - Viewer, Editor, Assistant actions, and Assistant chat are delivery stages, not separate editions or
@@ -576,14 +860,14 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
   production path and direct evidence against the completely mapped requirement. Conforming behavior
   is preserved, partial or defective behavior is repaired by its owning slice, and missing behavior is
   implemented. Historical completion labels alone prove nothing.
-- Spec Kit replaces legacy planning and traceability validation as those checks become redundant.
-  The first implementation phase MUST remove superseded workflow-only validators and their wiring,
-  but MUST retain product tests, architecture tests, formatting, type checking, linting, build checks,
-  trustworthy baseline verification, and required live or real-build verification.
-- The first Spec Kit implementation phase fixes specification contradictions, unreliable gates,
-  superseded workflow validators, and foundation defects that can be verified without inventing a
-  future consumer. Every other known gap remains required and MUST be owned by the earliest
-  user-facing slice that exercises its production seam.
+- The delivered migration-foundation phase replaced legacy planning and traceability validation. It
+  removed superseded workflow-only validators and their wiring while retaining product tests,
+  architecture tests, formatting, type checking, linting, build checks, trustworthy baseline
+  verification, and required live or real-build verification.
+- The delivered first Spec Kit implementation phase resolved specification contradictions, repaired
+  unreliable gates, removed superseded workflow validators, and fixed foundation defects that could be
+  verified without inventing a future consumer. Every remaining known gap is still required and MUST be
+  owned by the earliest user-facing slice that exercises its production seam.
 
 ## Migration Baseline and Source Coverage
 
@@ -597,25 +881,25 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
 
 ### Current capability baseline
 
-| Capability                                                                                                                                                                | Status on 2026-07-30    | Planning interpretation                                                                                                                                                                     |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Native application foundation, typed failures, local settings storage, multi-window-safe persistence, adapter boundary, and three-region shell reservation                | Delivered foundation    | Preserve and verify; this is infrastructure, not a complete Viewer journey.                                                                                                                 |
-| One in-memory document with source editing, sanitized GFM preview including footnotes, Editor/Split/Preview arrangements, counts, and debounced canonical synchronization | Delivered limited slice | Preserve; it has no real file open/save, tabs, workspace, or reading-mode journey.                                                                                                          |
-| Application palette choice, six base palettes, persisted appearance values, and bundled Material/Minimal fonts                                                            | Partial                 | The base palette story shipped, but complete tokens, generated editor palettes, live Auto behavior, first-paint correctness, and the full 18-combination gate remain unfinished or blocked. |
-| Complete app window, menus, dialogs, notifications, launcher, responsive chrome, and settings interface                                                                   | Not delivered           | Re-plan under Viewer before declaring the product visually complete.                                                                                                                        |
-| Real file open/save, atomic preservation, tabs, drag/drop, operating-system open, and recent files                                                                        | Not delivered           | Required for both complete Viewer and Editor stages.                                                                                                                                        |
-| Complete rich rendering, reading mode, local/remote assets, diagrams, mathematics, highlighting, and three Markdown levels                                                | Partial                 | Base GFM and sanitization exist; the complete Viewer renderer does not.                                                                                                                     |
-| Formatting toolbar, shortcuts registry, paste/drop transformations, find/navigation, formatter, linter, workspace, and PDF export                                         | Not delivered           | Editor-stage scope.                                                                                                                                                                         |
-| Installers, file associations, platform icons, and package command                                                                                                        | Not delivered           | Required before Viewer or Editor can be called distributable.                                                                                                                               |
-| Provider configuration, model discovery, prompt/context controls, and predefined Assistant actions                                                                        | Not delivered           | Assistant action-stage scope.                                                                                                                                                               |
-| Custom document chat, bounded capability loop, transcripts, and proposal workflow                                                                                         | Not delivered           | Assistant chat sub-stage, after predefined actions.                                                                                                                                         |
+| Capability                                                                                                                                                                | Status on 2026-07-31     | Planning interpretation                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------- |
+| Native application foundation, typed failures, local settings storage, multi-window-safe persistence, adapter boundary, and three-region shell reservation                | Delivered foundation     | Preserve and verify; this is infrastructure, not a complete Viewer journey.                              |
+| One in-memory document with source editing, sanitized GFM preview including footnotes, Editor/Split/Preview arrangements, counts, and debounced canonical synchronization | Delivered limited slice  | Preserve; it has no real file open/save, tabs, workspace, or reading-mode journey.                       |
+| Application palette choice, six complete palettes, generated editor themes, live Auto behavior, first-paint bootstrap, and 18-combination evidence                        | Delivered                | Consume FR-015 through FR-017 without re-owning or weakening the appearance contract.                    |
+| Native window shell, menus, Settings shell, notifications, responsive chrome, and launcher                                                                                | Specified, not delivered | Implement FR-WS-001 through FR-WS-020 now; launcher activation remains separately deferred under FR-011. |
+| Real file open/save, atomic preservation, tabs, drag/drop, operating-system open, and recent files                                                                        | Not delivered            | Required for both complete Viewer and Editor stages.                                                     |
+| Complete rich rendering, reading mode, local/remote assets, diagrams, mathematics, highlighting, and three Markdown levels                                                | Partial                  | Base GFM and sanitization exist; the complete Viewer renderer does not.                                  |
+| Formatting toolbar, shortcuts registry, paste/drop transformations, find/navigation, formatter, linter, workspace, and PDF export                                         | Not delivered            | Editor-stage scope.                                                                                      |
+| Installers, file associations, platform icons, and package command                                                                                                        | Not delivered            | Required before Viewer or Editor can be called distributable.                                            |
+| Provider configuration, model discovery, prompt/context controls, and predefined Assistant actions                                                                        | Not delivered            | Assistant action-stage scope.                                                                            |
+| Custom document chat, bounded capability loop, transcripts, and proposal workflow                                                                                         | Not delivered            | Assistant chat sub-stage, after predefined actions.                                                      |
 
 ### Known gaps that planning must not hide
 
-The first implementation phase owns migration blockers and independently verifiable foundation
-repairs. A gap that requires a not-yet-built product consumer is not deferred indefinitely: planning
-MUST assign it to the earliest user-facing slice that exercises that seam and include its failure and
-recovery evidence in that slice.
+The delivered migration-foundation phase resolved migration blockers and independently verifiable
+foundation repairs. A remaining gap that requires a not-yet-built product consumer is not deferred
+indefinitely: planning MUST assign it to the earliest user-facing slice that exercises that seam and
+include its failure and recovery evidence in that slice.
 
 - Current state projection supports only one effective event subscriber; an additional subscriber can
   be discarded silently.
@@ -623,25 +907,32 @@ recovery evidence in that slice.
   require correction rather than extension of that assumption.
 - The development bridge and canonical application model disagree about modified-state behavior, so
   mock-only evidence cannot prove file lifecycle correctness.
-- The reserved three-region shell has historically been tested through a mock of itself and lacks
-  trustworthy user-interface evidence.
+- The reserved three-region shell has historically been tested through a mock of itself. FR-WS-007,
+  FR-WS-008, SC-013, and SC-018 now require real-component, browser, and native evidence before the
+  shell can be called delivered.
 - Encoding and line-ending labels can expose untranslated catalogue keys in the current limited editor.
-- Theme delivery inherited a truncated requirement copy and a previously unreliable static-analysis
-  baseline. The syntax-scope conflict is resolved by FR-017: generated Monaco rules use bundled
-  language-qualified tokens such as `keyword.md` and `keyword.go`, including qualified descendants,
-  so Markdown and embedded-language palettes remain distinct. Theme completion still requires a
-  trustworthy baseline before implementation.
+- Theme delivery previously inherited a truncated requirement copy and an unreliable static-analysis
+  baseline. FR-017 and the delivered appearance contract resolved that gap with language-qualified
+  rules, generated coverage, acknowledged Auto behavior, first-paint reconciliation, and current
+  18-combination evidence. Later surfaces must consume that delivered contract.
 - One database concurrency test is intermittently unreliable under CPU contention.
 - The shared long-operation gate and settings adapter exist without production consumers, so their
   important busy, cancellation, failure, and round-trip paths remain unproven.
 - Packaging intentionally fails because the distributable packaging stage has not been implemented.
 - Architecture checks are absent from continuous integration, and continuous integration itself does
   not run on ordinary branch or pull-request changes.
-- Legacy planning, story-copy, phase-status, and retired-requirement traceability validators are
-  superseded by the SpecKit feature artifacts. The first implementation phase removes their command
-  wiring only after confirming that it provides no retained
-  product, architecture, quality, build, baseline-reliability, or live-verification evidence.
-- Startup failure copy differs between the governing specification and current interface.
+- Current startup failure copy differs from FR-WS-013 and must converge in the shell slice.
+- The shell slice requires static source and built-bundle network safeguards plus one short representative
+  automated request-instrumented journey for FR-WS-018 and SC-017. A five-minute automated duration is
+  explicitly unnecessary, but a general statement that no network path was added is not evidence.
+- Delivered-scope Settings reset has no named repository, service, and boundary tests yet. Planning MUST
+  prove all-or-nothing reset, failure retention, exact scope, and unchanged layout/recent paths for
+  FR-WS-015.
+- Current-host native evidence cannot prove the other two platforms. The shell increment records the
+  tested host honestly, and Viewer completion remains blocked on the three-platform gate in SC-018.
+- The Assistant context catalogue still lacks approved numeric ranges for safety margin, reply reserve,
+  and maximum tool iterations. Those controls remain absent until their Assistant slice migrates and
+  resolves the ranges.
 - Many historical test traceability tags point to retired or nonexistent requirements; they must be
   reconciled to these requirements or removed only when direct review shows they prove no current rule.
 
@@ -653,28 +944,42 @@ and proving evidence are mapped to the listed requirement group without loss and
 Approval transfers authority only for that mapped requirement; it does not implicitly supersede other
 clauses in the same source file.
 
-| Current source                                              | Consolidated coverage                                                                                                |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `constraints.md`                                            | FR-001 through FR-010 plus stage-specific accessibility, privacy, limits, settings, notifications, and live evidence |
-| `the-app-window.md`                                         | FR-011 through FR-014                                                                                                |
-| `themes-and-appearance.md`                                  | FR-015 through FR-017                                                                                                |
-| `choosing-a-markdown-standard.md`                           | FR-018 and FR-019                                                                                                    |
-| `rendering-rich-documents.md`                               | FR-020 through FR-022                                                                                                |
-| `reading-a-document.md`                                     | FR-023 and FR-024                                                                                                    |
-| `images-and-remote-content.md`                              | FR-025 and FR-026                                                                                                    |
-| `opening-files-from-the-desktop.md`, `dragging-files-in.md` | FR-027 and FR-028                                                                                                    |
-| `writing-in-the-editor.md`                                  | FR-029 through FR-033                                                                                                |
-| `formatting-text.md`, `keyboard-shortcuts.md`               | FR-034 through FR-037                                                                                                |
-| `opening-and-saving-files.md`, `working-in-tabs.md`         | FR-038 through FR-043                                                                                                |
-| `a-folder-of-notes.md`                                      | FR-044 and FR-045                                                                                                    |
-| `finding-things.md`                                         | FR-046 and FR-047                                                                                                    |
-| `tidying-markdown.md`                                       | FR-048 through FR-050                                                                                                |
-| `exporting-a-document.md`                                   | FR-051 and FR-052                                                                                                    |
-| `settings.md`, `language-and-text.md`                       | FR-005 through FR-007, FR-014 through FR-018, FR-024, FR-026, FR-035, and FR-053 through FR-064                      |
-| `connecting-an-ai-provider.md`                              | FR-053 through FR-058                                                                                                |
-| `quick-actions.md`, `how-much-fits-in-context.md`           | FR-059 through FR-067                                                                                                |
-| `chatting-about-a-document.md`                              | FR-068 through FR-077                                                                                                |
-| `surface/mockup.html`                                       | User Stories 1 through 4 and SC-003; shape and presentation arbitration remains authoritative during migration       |
+| Current source                                              | Consolidated coverage                                                                                                                              |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `constraints.md`                                            | FR-001 through FR-010; shell notification, accessibility, offline, and live clauses migrated to FR-WS-016 through FR-WS-018                        |
+| `the-app-window.md`                                         | Shell clauses migrated to FR-WS-001 through FR-WS-013 and FR-WS-019; launcher clauses remain under FR-011                                          |
+| `themes-and-appearance.md`                                  | FR-015 through FR-017                                                                                                                              |
+| `choosing-a-markdown-standard.md`                           | FR-018 and FR-019                                                                                                                                  |
+| `rendering-rich-documents.md`                               | FR-020 through FR-022                                                                                                                              |
+| `reading-a-document.md`                                     | FR-023 and FR-024                                                                                                                                  |
+| `images-and-remote-content.md`                              | FR-025 and FR-026                                                                                                                                  |
+| `opening-files-from-the-desktop.md`, `dragging-files-in.md` | FR-027 and FR-028                                                                                                                                  |
+| `writing-in-the-editor.md`                                  | FR-029 through FR-033                                                                                                                              |
+| `formatting-text.md`, `keyboard-shortcuts.md`               | Shell registry, platform, and modal clauses migrated to FR-WS-014; remaining catalogue stays with FR-034 through FR-037                            |
+| `opening-and-saving-files.md`, `working-in-tabs.md`         | FR-038 through FR-043                                                                                                                              |
+| `a-folder-of-notes.md`                                      | FR-044 and FR-045                                                                                                                                  |
+| `finding-things.md`                                         | FR-046 and FR-047                                                                                                                                  |
+| `tidying-markdown.md`                                       | FR-048 through FR-050                                                                                                                              |
+| `exporting-a-document.md`                                   | FR-051 and FR-052                                                                                                                                  |
+| `settings.md`, `language-and-text.md`                       | Delivered Appearance/reset/focus clauses migrated to FR-WS-015 and FR-WS-017; remaining groups stay legacy-governed                                |
+| `connecting-an-ai-provider.md`                              | FR-053 through FR-058                                                                                                                              |
+| `quick-actions.md`, `how-much-fits-in-context.md`           | FR-059 through FR-067                                                                                                                              |
+| `chatting-about-a-document.md`                              | FR-068 through FR-077                                                                                                                              |
+| `surface/mockup.html`                                       | User Stories 1 through 4, FR-WS-002, FR-WS-007, FR-WS-008, FR-WS-014 through FR-WS-017, and SC-003; presentation arbitration remains authoritative |
+
+### Approved native window shell migration ledger
+
+| Spec Kit destination                   | Legacy source and migrated clauses                                                                                                                                                                               | Resolution and remaining boundary                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-WS-001 through FR-WS-006, FR-WS-019 | `product/the-app-window.md`: window frame, movement, maximize/restore, resizing, minimum size, platform controls, native macOS roles, full screen, restore-before-show, several windows, About version; ADR-0028 | The 2026-08-01 clarification replaces the legacy frameless/custom-chrome mechanism with operating-system-managed framed windows on every platform while preserving native behavior, minimum size, full screen, restore, concurrency, and identity outcomes. Application menus remain in one in-app row on every platform, while macOS additionally retains native App/Edit roles. Installer/file-association behavior in FR-080 remains deferred. |
+| FR-WS-007 through FR-WS-012            | `product/the-app-window.md`: three-region shell, layout persistence, latest-change-wins, restore-before-show; ADR-0013; `architecture/rules.md#shell-reserves-three-regions`                                     | Approved clarification: a document owns its arrangement; application layout stores only the fallback. The Assistant slot exists at zero width with no visible future feature.                                                                                                                                                                                                                                                                     |
+| FR-WS-013                              | `product/the-app-window.md` and `product/settings.md`: settings-startup failure and Retry                                                                                                                        | Exact title, message, hidden-shell behavior, Retry, and safe-details rule copied.                                                                                                                                                                                                                                                                                                                                                                 |
+| FR-WS-014                              | `product/keyboard-shortcuts.md`: one registry, scopes, frozen bindings, no chords, macOS platform ownership, platform mapping, modal behavior; `surface/mockup.html` menu order                                  | Surface arbitration resolves the wording conflict as File, Settings, View, About. File and unimplemented actions remain absent.                                                                                                                                                                                                                                                                                                                   |
+| FR-WS-015                              | `product/settings.md`: immediate acknowledgement, independent fallback, reset scope, no cross-window invalidation, delivered Appearance controls                                                                 | Only delivered Appearance values migrate now. Full group reset, Reset all, and other groups remain legacy-governed until their consumers exist.                                                                                                                                                                                                                                                                                                   |
+| FR-WS-016                              | `constraints.md#notifications-coalesce`                                                                                                                                                                          | Toast/banner distinction, code-plus-subject identity, localized count, 4/6/8-second timing, capacity, non-evicting errors, overlay order, and silent automatic success copied without loss.                                                                                                                                                                                                                                                       |
+| FR-WS-017                              | `constraints.md`, `product/language-and-text.md`, delivered appearance contract, and binding surface                                                                                                             | Keyboard, focus, localization, longer text, reduced motion, tokenized palettes, and the 18-case surface matrix migrate for the shell only.                                                                                                                                                                                                                                                                                                        |
+| FR-WS-018                              | `constraints.md`, ADR-0011, and retained offline evidence policy                                                                                                                                                 | Zero network before Assistant and automated proof migrate. Manual packet capture remains explicitly unnecessary.                                                                                                                                                                                                                                                                                                                                  |
+| FR-WS-020                              | Production no-placeholder rule plus the launcher and Settings legacy sources                                                                                                                                     | Prevents partial migration from creating fake File, launcher, Settings, or Assistant behavior. FR-011 remains legacy-governed.                                                                                                                                                                                                                                                                                                                    |
 
 ## Out of Scope
 

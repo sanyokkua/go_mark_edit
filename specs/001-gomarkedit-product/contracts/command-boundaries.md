@@ -11,11 +11,16 @@ Only `frontend/src/logic/adapter/` imports generated `wailsjs/`. The adapter val
 typed envelopes, and exposes application commands to the rest of the frontend. Generated bindings and
 generated database code are regenerated, never hand-edited.
 
-Wails runtime operations follow the same adapter-only boundary. Components receive injected commands
-for minimize, maximize/restore, full screen, close, platform detection, and begin-resize. The pinned
-desktop `resize:<direction>` invocation is contained in that adapter, maps exactly eight allowlisted
-directions, and is covered by a compatibility test; no component accesses `window.WailsInvoke`, Wails
-private flags, or generated runtime modules.
+Frontend Wails runtime operations follow the same adapter-only boundary. Components receive injected
+commands for public size/state queries and full-screen operations; no component imports generated
+runtime modules or accesses `window.WailsInvoke` or Wails private flags. Native movement, resizing,
+title-bar gestures, minimize, maximize/restore, and close remain OS-owned and require no frontend
+command, private invocation, custom hit target, or compatibility shim.
+
+Go-side Wails lifecycle access is contained behind an injected native-window port wired in `main.go`.
+It applies hidden restore, usable-display correction, show-once, and final native geometry queries.
+`OnBeforeClose` synchronously flushes appmodel-owned pending layout intent; it does not wait on an
+asynchronous browser callback.
 
 ## Command lifecycle
 
@@ -48,9 +53,12 @@ the command palette consume that registry. A later slice may add the first speci
 not silently rebind a shipped action.
 
 The shell slice registers only actions with real consumers. Settings/dialog modality suppresses
-background action dispatch. Standard macOS App/Edit roles remain native platform behavior; any native
-callback shared with the in-window menu emits the same stable action ID rather than creating a second
-command.
+background action dispatch. Standard macOS App/Edit roles remain native platform behavior and are not
+duplicated in the in-app catalogue. About has one in-app action; native macOS About remains unset.
+
+Delivered Appearance reset is one typed command and one repository transaction, not a sequence of UI
+updates. It validates the exact delivered default set before writing and returns one acknowledged
+projection only after commit.
 
 ## Compatibility rule
 

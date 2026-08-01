@@ -1,219 +1,174 @@
-# Tasks: GoMarkEdit Product — First Foundation and Appearance Batch
+# Tasks: GoMarkEdit Product — Native Window Shell
 
-**Input**: Design documents from `/specs/001-gomarkedit-product/`
+**Input**: Approved design artifacts in `/specs/001-gomarkedit-product/`
 
-**Binding appearance source**: `appearance-contract.md` supplies the complete palette, token,
-Monaco, Auto, first-paint, accessibility, and failure rules for T005–T016. Its sibling
-`surface/mockup.html` is the binding visual source for controls, labels, layouts, displayed states,
-and token values; legacy files under `docs/delivery/` are reference only.
+**Binding scope**: Deliver exactly `FR-WS-001` through `FR-WS-020` from
+`contracts/window-launcher-shell.md` around the existing document. The delivered appearance system is
+a dependency, not new work. Ordinary operating-system-managed framed windows are the only window
+model in this batch.
 
-**Authorized batch**: Preserve trustworthy evidence while moving from legacy story planning to Spec
-Kit, then complete the existing appearance journey. Stop before launcher/window-shell decomposition.
+**Stop boundary**: Do not add launcher activation, zero-document state, New/Open/Open-folder commands,
+recent items, File actions, file lifecycle, real tabs, rendering expansion, packaging, Editor
+expansion, Assistant controls, or future Settings groups.
 
-**Tests**: Required. The specification requires named automated evidence, live interaction checks for
-visible work, and a real-build walkthrough where mock evidence cannot prove the behavior. Test tasks
-must be completed before their matching implementation tasks.
-
-**Organization**: Phase 1 captures the pre-edit comparison point. Phase 2 performs only the blocking
-Spec Kit evidence transition. Phase 3 is the appearance subset of User Story 1. Phase 4 verifies and
-reconciles that slice. Later User Story 1 capability groups and User Stories 2–4 remain plan-level.
+**Tests**: Required. Each implementation group starts with tests that must fail for the missing or
+defective behavior. Test infrastructure, automated checks, browser evidence, native walkthroughs, and
+documentation use `Supports:` and never claim requirement ownership.
 
 ## Format: `[ID] [P?] [Story] Description`
 
-- **[P]**: Can proceed in parallel after Phase 2 because it changes a separate test seam and does not
-  depend on another incomplete Phase 3 task.
-- **[US1]**: The task owns part of User Story 1, “View Any Supported Markdown Document,” limited to the
-  complete appearance journey authorized by the delivery-stage contract.
-- Every task names the exact files it creates, modifies, deletes, or records evidence in.
+- **[P]** means the task has a disjoint file set and no dependency on another incomplete task.
+- **[US1]** identifies the approved native-shell subset of User Story 1, “View Any Supported Markdown
+  Document.”
+- Each `FR-WS-*` appears in exactly one `Owns:` field. Its `Owner: OWS-*` is the sole plan owner from
+  `plan.md`; support tasks refer to those owner keys without duplicating ownership.
 
 ## Governing constraints for every task
 
-- Preserve current behavior only after direct code and test inspection classifies it as conforming;
-  repair partial or defective behavior and implement missing behavior. Historical story or phase
-  status is not evidence.
-- The Go backend and SQLite remain canonical. Redux remains projection metadata. The focused Monaco
-  model remains an ephemeral identity-bound working copy and must not be recreated by a palette change.
-- Only `frontend/src/logic/adapter/` may import `wailsjs/`. Generated Wails and database code must not
-  be hand-edited.
-- No color literal may appear under `frontend/src/ui/` outside
-  `frontend/src/ui/styles/tokens.css`. `data-theme` and resolved `data-mode` belong only on
-  `document.documentElement`; `data-mode="auto"` is invalid.
-- Every visible string and accessible name must come from `frontend/src/i18n/locales/en.json` through
-  `t()`. Theme and appearance controls remain keyboard reachable with visible focus. Reduced motion
-  collapses tokenized durations, and palette changes never animate.
-- No runtime font, theme, Monaco, highlight, telemetry, update, or other background network request is
-  permitted. Generated preview highlighting is committed but remains inactive until the renderer
-  slice.
-- A failed settings read or write keeps the last acknowledged palette and mirror, produces the existing
-  classified actionable notification through the centralized adapter envelope path, exposes no raw
-  error or private path, and produces no success toast. Repeated matching failures remain deduplicated.
-- Do not weaken architecture, product, formatting, typing, lint, test, build, baseline-reliability,
-  browser, live, or real-build checks. Do not add an architecture allowlist entry, skip a test, or
-  accept a gate that analyzed nothing.
-- Do not edit `docs/delivery/spec/` or `docs/delivery/architecture/`. They are historical reference;
-  the copied `appearance-contract.md` and `surface/mockup.html` are authoritative for this batch.
-
-## Owned requirement context
-
-This batch transfers and implements only the following complete clauses and their initial-spec detail.
-All other clauses remain governed by their existing authority and are out of this task file.
-
-### FR-002 — Bundled and offline appearance assets
-
-The product makes no background network request and bundles every application, font, theme, language,
-and editor asset. Material’s Roboto subset, Minimal’s Inter subset, Monaco, generated themes, and the
-inactive preview highlight stylesheet must work without a CDN or runtime fetch.
-
-### FR-004 and FR-005 — Accessible and localized appearance controls
-
-Both appearance entry points and every theme or appearance option are keyboard reachable, expose the
-correct role and a catalogued accessible name, show the two-layer tokenized focus ring, tolerate longer
-text, and continue to work with reduced motion. Missing translations fall back to English and then the
-key. Theme and appearance changes are instantaneous, not animated.
-
-### FR-006 and FR-007 — Failure and notification behavior
-
-A classified settings failure presents a distinct actionable title and remediation without raw errors,
-secrets, full URLs, or private paths. Matching failures deduplicate by failure and subject, no more than
-three toasts are visible, errors do not auto-dismiss, and successful automatic or appearance work is
-silent. The current centralized adapter/notification behavior is preserved and tested, not reimplemented
-inside an appearance component.
-
-### FR-015 — Three themes and three choices
-
-Offer exactly Liquid Glass (`glass`), Material (`material`), and Minimal (`minimal`), with Material as
-default. Offer Auto, Light, and Dark, with Auto as default. Auto resolves from
-`prefers-color-scheme: dark`, changes live when the operating system changes, and is the only choice
-that subscribes to system changes. Pinned Light or Dark ignores the system and has no active listener.
-There is no fourth theme, theme editor, imported theme, custom accent, per-document theme, or separate
-editor theme.
-
-### FR-016 — Choice, resolved mode, acknowledgement, and first paint
-
-The stored choice (`auto | light | dark`) remains distinct from resolved `data-mode` (`light | dark`).
-Theme and choice persist through the existing backend settings command. The visible root and Monaco
-change only after that command is acknowledged. A theme-only startup mirror may contain only theme and
-appearance choice; it updates only from an acknowledged canonical value, is never authoritative, and
-causes no backend write by itself. A blocking bundled script reads it before normal application modules,
-resolves Auto from the current system preference, and writes valid root attributes before first paint.
-A missing, malformed, or unsupported mirror falls back to Material/Auto and normal startup reconciles
-the root and mirror with SQLite without showing an unstyled/default frame after React begins. Failed
-reads or writes retain the last acknowledged values.
-
-### FR-017 — Six palettes and generated consumers
-
-All application surfaces, Markdown source, embedded Go, selection, focus, scrollbars, status colors,
-and overlays use one of six palettes: three themes by resolved light/dark mode. Every palette token
-matches the binding mockup's full theme-and-mode row. Syntax tokens vary by
-resolved appearance, not theme. Status tokens follow the six palette values in the binding mockup and
-may vary by theme. Every specified Monaco UI color is generated from
-`tokens.css`; no authored `defineTheme()` color is allowed. Markdown rules use Monaco’s bundled `.md`
-postfix and embedded Go rules use `.go`, including qualified descendants: for example `keyword.md`
-maps to `--md-heading` and `keyword.go` maps to `--hl-keyword`. Six named themes
-`gme-{glass|material|minimal}-{light|dark}` and one inactive highlight stylesheet are deterministic,
-committed build outputs. Monaco registers them once and follows valid root attribute changes without
-recreating its model, moving the caret, changing selection/scroll, clearing undo history, or flushing
-content.
-
-The generated Monaco color set includes editor background/foreground, active and inactive line
-numbers, cursor, selection and selection highlight, active line, gutter, widgets, suggest widget,
-minimap, scrollbar slider and hover, error and warning diagnostics. Markdown source rules cover
-qualified heading/marker, strong, emphasis, quote/comment descendants, link/target, fence string, and
-source content scopes. Qualified Go rules cover keyword descendants, string, comment descendants,
-number descendants, delimiter descendants, annotation, identifier, type, and constant scopes. The
-preview stylesheet derives the same `--hl-*` values but is not imported in this batch.
-
-### FR-078 appearance subset and SC-003
-
-Appearance settings accept only the three themes and Auto/Light/Dark, default independently to
-Material/Auto for missing or invalid values, persist immediately after acknowledgement, reject invalid
-writes rather than clamp, ignore unknown stored keys, and do not change another window until relaunch.
-Every affected current surface must pass interaction and layout review at 375 px, 768 px, and desktop
-width in all six resolved palettes: 18 combinations per surface, with no horizontal clipping, unthemed
-portal, missing focus, serif font fallback, stale Monaco palette, or runtime error.
+- Classify each touched seam from current code and direct tests before editing. Preserve conforming
+  behavior, repair partial behavior, and implement missing behavior; a historical completion label is
+  not evidence.
+- Go/appmodel owns acknowledged layout and pending persistence intent. Redux is a projection. Browser
+  storage and component state cannot become layout authorities. Each document owns its arrangement;
+  application layout stores only the fallback for a document without saved view state.
+- Every Wails-bound handler returns one typed `apperr.*Result`, takes no `context.Context`, uses a named
+  result, recovers panics in its first statement, and calls its service only. Concrete wiring remains
+  in `main.go` and `internal/application/application_context_holder.go`.
+- Only `frontend/src/logic/adapter/` may import generated bindings or public Wails runtime operations.
+  Generated Wails files are regenerated, never hand-edited.
+- The operating system owns the frame, title bar, movement, title gestures, resize borders/cursors,
+  minimize, maximize/restore, and close on macOS, Windows, and Linux. The app adds no replacement
+  window controls, drag interception, resize target, or private native invocation.
+- Use the delivered tokens and all six palettes. New colors belong in
+  `frontend/src/ui/styles/tokens.css`; visible and accessible strings belong in
+  `frontend/src/i18n/locales/en.json` and render through `t()`.
+- Register only working full-screen, sidebar, Settings, View, and About actions. File, launcher,
+  recents, real tabs, Assistant, future Settings, fake data, and enabled or disabled facsimiles stay
+  absent.
+- A failed layout or settings write retains the acknowledged projection. A stale layout write reloads
+  the newer stored winner without an error. Errors expose no raw failure, secret, full URL, or private
+  path.
+- Do not weaken quality or architecture checks, add an architecture allowlist entry, skip or narrow a
+  failing test, or accept a gate that analyzed nothing. Do not edit `docs/delivery/spec/` or
+  `docs/delivery/architecture/`.
 
 ---
 
-## Phase 1: Trustworthy Pre-Edit Baseline
+## Phase 1: Setup — Trustworthy Pre-Edit Baseline
 
-**Purpose**: Preserve the current comparison point before the first implementation edit. The existing
-legacy identifier is deliberately used because evidence tooling is migrated only after this capture.
+**Purpose**: Preserve a reliable comparison point before any production edit.
 
-- [X] T001 Run `just baseline STORY-063`, require exit 0 with every gate’s raw output, exit code, and reliability verdict, and confirm the known generator formatting findings and unused `root` lint finding are parsed rather than marked `UNRELIABLE` in `docs/delivery/work/baselines/story-063.md` and `docs/delivery/work/baselines/story-063.logs/`
+- [ ] T001 Run `just baseline 001-gomarkedit-product`, require reliable raw output, exit codes, and findings for every retained gate, and preserve the comparison point; Supports: OWS-001 through OWS-020 in `docs/delivery/work/baselines/feature-001-gomarkedit-product.md` and `docs/delivery/work/baselines/feature-001-gomarkedit-product.logs/`
 
-**Hard stop**: If any gate exits non-zero without a parsed finding, or architecture is red, do not start
-T002. Repair or re-plan the unreliable gate; an empty-versus-empty comparison is not evidence.
-
----
-
-## Phase 2: Spec Kit Evidence Foundation (Blocking)
-
-**Purpose**: Replace only the legacy planning/traceability dependency while retaining every correctness
-gate and preserving the just-captured comparison point.
-
-**Critical**: Phase 3 cannot begin until `just verify STORY-063` can still read the Phase 1 baseline and
-the new feature-slice form is covered by tests.
-
-- [X] T002 Add failing shell contract cases for safe feature-slice identifiers, backward-compatible `STORY-063` lookup, rejection of traversal/empty identifiers, preservation of raw logs and reliability verdicts, refusal of `UNRELIABLE` evidence, and verification against the existing story baseline in `scripts/baseline_verify_test.sh`
-- [X] T003 Implement shared evidence-identifier parsing and feature-slice baseline paths while retaining legacy story-baseline readability in `scripts/evidence_id.sh`, `scripts/baseline.sh`, `scripts/verify.sh`, and the `baseline`/`verify` recipes in `justfile`
-- [X] T004 Remove only the superseded `spec-check` and `story-check` recipe wiring and delete legacy planning, story-shape, upgrade-marker, and `Proves:` resolution validators in `justfile`, `scripts/validate_spec.py`, `scripts/check_story.py`, `scripts/upgrade_check.py`, and `scripts/check_proves.py`; extend `scripts/baseline_verify_test.sh` to assert retained `fmt-check`, `typecheck`, `lint`, `test`, `archtest`, `frontend-build`, baseline reliability, and verification behavior remain callable
-
-**Foundation checkpoint**: `bash scripts/baseline_verify_test.sh` passes; `just verify STORY-063` still
-uses the Phase 1 report; a temporary feature-slice fixture proves the new identifier form; and direct
-review confirms no product, architecture, quality, build, browser, live, or real-build gate was removed.
+**Hard stop**: If any gate exits nonzero after analyzing nothing, is marked `UNRELIABLE`, or
+`just archtest` is red, stop before T002 and repair the gate or re-plan the batch.
 
 ---
 
-## Phase 3: User Story 1 — Complete Appearance Journey (Priority: P1) MVP
+## Phase 2: Foundational Test Infrastructure (Blocking)
 
-**Goal**: A user can choose any of the three themes and Light, Dark, or live Auto; the root and Monaco
-change together only after acknowledgement; relaunch begins in the acknowledged palette; and all
-current surfaces remain accessible, offline, and coherent in the full 18-combination matrix.
+**Purpose**: Add deterministic helpers used by failing tests and retained evidence. These helpers have
+real test consumers in later tasks and own no product requirement.
 
-**Independent Test**: With networking disabled, launch the running interface with a persisted palette,
-confirm the first root attributes before React hydration, use the keyboard to choose each theme and
-mode, change the operating-system appearance while Auto is selected, and verify current surfaces plus
-Monaco at 375 px, 768 px, and 1280 px in all six resolved palettes. Confirm pinned modes ignore system
-changes, failed settings calls retain acknowledged state, generated assets are current and bundled, and
-Monaco retains its model, text, caret, selection, scroll, and undo history.
+- [ ] T002 [P] Add deterministic clock, timer, writer-identity, failed-write, and two-connection SQLite fixtures consumed by T004–T005; Supports: OWS-006, OWS-009, OWS-010, OWS-011, OWS-012 in `internal/appmodel/layout_test_helpers_test.go`
+- [ ] T003 [P] Add Playwright request classification, monotonic resize/divider sampling, freeze observation, percentile assertions, and evidence-attachment helpers consumed by T026; Supports: OWS-008, OWS-017, OWS-018 in `frontend/e2e/helpers/shell-observation.ts`
 
-### Tests for User Story 1
-
-- [X] T005 [P] [US1] Expand computed-style tests to enumerate every required surface, theme-identity, status, interaction, stacking, motion, `--md-*`, `--hl-*`, `--code-fg`, and `--gutter` token across all six palettes; prove syntax equality by resolved appearance and the six mockup status values in `frontend/src/ui/styles/tokens.test.ts`
-- [X] T006 [P] [US1] Add failing generator tests for exact six-theme names, every required Monaco UI color, `.md` and `.go` qualified base/descendant scope mappings, deterministic committed outputs, missing/duplicate/unresolved/untraceable token rejection, and inactive highlight CSS parity in `frontend/scripts/generate-editor-themes.test.mjs`
-- [X] T007 [P] [US1] Add failing Monaco lifecycle tests for one-time six-theme registration, Material/light fallback, valid root-attribute switching, invalid mutation fallback, observer disposal, and preservation of model identity plus editor content/view/undo state in `frontend/src/ui/components/monacoSetup.test.ts` and `frontend/src/ui/components/CodeEditor.test.tsx`
-- [X] T008 [P] [US1] Add failing Auto lifecycle and acknowledgement tests covering one active `matchMedia` listener only for Auto, immediate coordinated root updates on system changes, no listener or response for pinned modes, latest-intent write ordering, failed read/write retention, silent success, and one deduplicated classified failure notification in `frontend/src/ui/widgets/AppearanceControls.test.tsx` and `frontend/src/logic/adapter/index.test.ts`
-- [X] T009 [P] [US1] Add failing startup-mirror and pre-paint tests for valid, missing, malformed, unsupported, stale, Auto-light, and Auto-dark values; assert the mirror contains only theme and choice, is unchanged on failed writes, and the blocking bundled script sets only valid root attributes before the application module in `frontend/src/logic/theme/startupThemeMirror.test.ts` and `frontend/public/theme-bootstrap.test.mjs`
-- [X] T010 [P] [US1] Add failing Playwright journeys for keyboard-operated appearance controls, root/Monaco palette agreement, first-load mirror behavior, failed-write retention, no runtime errors or horizontal overflow, non-serif bundled fonts, visible focus, reduced motion, and screenshots at 375 px, 768 px, and 1280 px for all six resolved palettes in `frontend/e2e/appearance.test.ts` and `frontend/e2e/appearance.test.ts-snapshots/`
-
-### Implementation for User Story 1
-
-- [X] T011 [US1] Complete the sole authored palette with every missing mockup palette row, mockup-specific status rows, appearance-only syntax rows, interaction tokens, stacking tokens, motion tokens, exact SpecKit contract values, and no component color literals in `frontend/src/ui/styles/tokens.css` until T005 passes
-- [X] T012 [US1] Repair the deterministic generator to emit language-qualified Markdown and Go base/descendant rules, every required Monaco UI color, six committed definitions, and an unimported highlight stylesheet; wire generation plus drift checking before tests/build and commit the derived files in `frontend/scripts/generate-editor-themes.mjs`, `frontend/package.json`, `frontend/src/logic/theme/generatedEditorThemes.ts`, and `frontend/src/logic/theme/generatedHighlight.css` until T006 passes
-- [X] T013 [US1] Register generated themes once, derive the selected name from valid root attributes, observe only `data-theme` and `data-mode`, swap Monaco themes without model recreation, and expose deterministic observer cleanup for tests in `frontend/src/ui/components/monacoSetup.ts` and `frontend/src/ui/components/CodeEditor.tsx` until T007 passes
-- [X] T014 [US1] Refactor appearance resolution into a disposable Auto-only media-query subscription and coordinate each acknowledged theme/mode transition through the single root mutation consumed by Monaco; retain complete latest-intent serialization, pinned-mode silence, and centralized classified failure notification behavior in `frontend/src/logic/theme/theme.ts` and `frontend/src/ui/widgets/AppearanceControls.tsx` until T008 passes
-- [X] T015 [US1] Implement a versioned theme-only startup mirror written after successful backend acknowledgement or canonical startup reconciliation, never on rejection; add the bundled blocking pre-paint reader before the application module and reconcile valid SQLite settings without backend write-back in `frontend/src/logic/theme/startupThemeMirror.ts`, `frontend/src/ui/widgets/AppearanceControls.tsx`, `frontend/public/theme-bootstrap.js`, and `frontend/index.html` until T009 passes
-- [X] T016 [US1] Complete the 18-combination mock-bridge journey and stable screenshots, using real controls rather than direct DOM mutation after setup; assert current shell, settings surfaces, editor, preview, status, portals, selection/focus/scrollbars, Monaco syntax, generated theme name, layout, and authoritative root state in `frontend/e2e/appearance.test.ts` and `frontend/e2e/appearance.test.ts-snapshots/` until T010 passes
-
-**User Story 1 checkpoint**: The appearance subset is functional and independently testable. The
-generated highlight stylesheet exists but has no production import; renderer, Mermaid, KaTeX, reading
-mode, and print consumers remain assigned to their later owning slices.
+**Checkpoint**: Helpers compile in their test suites and do not alter production behavior.
 
 ---
 
-## Phase 4: Verification, Live Evidence, and Reconciliation
+## Phase 3: User Story 1 — Native Window Shell (Priority: P1) MVP
 
-**Purpose**: Prove the completed batch against its trustworthy baseline and observe behavior that unit
-tests or the mock bridge cannot establish.
+**Goal**: The existing document appears inside a restored, platform-correct, accessible framed native
+shell with durable acknowledged layout, working in-app menus, Settings, notifications, responsive
+behavior, offline proof, and no future-surface facsimile.
 
-- [X] T017 [US1] Run the focused Node/Jest/Playwright appearance suites, `just fmt-check`, `just typecheck`, `just lint`, `just test`, `just archtest`, `just frontend-build`, and `just verify STORY-063`; fix every new finding and record command results plus generated-asset drift status in `specs/001-gomarkedit-product/evidence/appearance-verification.md`
-- [X] T018 [US1] Start the appropriate development server, open its local URL in the in-app browser, use the actual appearance controls at 375 px, 768 px, and 1280 px across all six resolved palettes, inspect root attributes and Monaco state, fix/reload/recheck every live finding, and record the completed interactive cases in `specs/001-gomarkedit-product/evidence/appearance-verification.md`
-- [X] T019 [US1] Run `just build`, launch the real binary, verify persisted first paint, a real operating-system Auto light/dark switch, pinned-mode non-response, bundled fonts and Monaco syntax, native selection/scrollbars, keyboard focus, multiple-window acknowledged-setting isolation, and five minutes with zero outbound requests; reconcile every difference as a code defect or explicit blocker in `specs/001-gomarkedit-product/evidence/appearance-verification.md`
+**Independent Test**: Launch from clean, populated, invalid, and concurrently modified settings; use
+native window operations and the in-app Settings/View/About row, Settings, sidebar, notifications, and
+keyboard actions at 375, 768, and 1280 pixels in all six palettes. Force startup, layout, and settings
+failures. Confirm newest-change persistence, exact recovery, atomic reset, focus, response limits, zero
+outbound requests, and absence of File, launcher, recents, real tabs, future Settings, and Assistant.
 
-**Batch checkpoint**: Do not mark the batch complete unless architecture is green, verification can
-read the pre-edit baseline, generated assets are current, all named tests pass, live findings were fixed
-and rechecked, and the real-build cases demonstrate first paint, Auto, offline assets, and the visual
-matrix. A mock-only pass is insufficient.
+### Group A — Backend-authoritative layout
+
+> Write T004–T005 first and confirm the missing persistence, arbitration, acknowledgement, and
+> arrangement assertions fail before T006.
+
+- [ ] T004 [US1] Add failing repository tests for exact durable/excluded fields, independent invalid-value fallback, legacy scalar reads, versioned values, atomic newer-only writes, two-connection stale refusal, winner reload, and close-order independence; Supports: OWS-006, OWS-009, OWS-011 in `internal/appmodel/layout_repository_sqlite_test.go`
+- [ ] T005 [US1] Add failing service, handler, adapter, and projection tests for document-arrangement precedence, immediate and 250-ms persistence, one pending value per field, original-identity close flush, acknowledged failure retention, classified rollback notification, stale-winner projection without error, typed handler envelopes, and Redux projection-only behavior; Supports: OWS-009, OWS-010, OWS-011, OWS-012 in `internal/appmodel/layout_service_test.go`, `internal/appmodel/handler_test.go`, `frontend/src/logic/adapter/appModelAdapter.test.ts`, and `frontend/src/logic/store/appModelProjection.test.ts`
+- [ ] T006 [US1] Owns: FR-WS-009. Owner: OWS-009. Define only native width/height/maximized state, workspace visibility/desktop width, and last-used arrangement fallback as durable layout; exclude position, full screen, responsive widths, document/content/tab state, document panes, and Assistant state; add versioned per-field validation/defaults and appmodel repository wiring in `internal/apperr/results.go`, `internal/appmodel/layout.go`, `internal/appmodel/layout_repository.go`, `internal/appmodel/layout_repository_sqlite.go`, `internal/appmodel/model.go`, `internal/application/application_context_holder.go`, `frontend/src/logic/store/appModelTypes.ts`, and regenerated `frontend/wailsjs/go/models.ts`
+- [ ] T007 [US1] Owns: FR-WS-010. Owner: OWS-010. Keep Editor/Split/Preview arrangement and pane state on each document, apply the application fallback only when a document has no saved view, and prevent application layout from overwriting an existing document view in `internal/appmodel/document.go`, `internal/appmodel/service.go`, `frontend/src/logic/store/docViewCommands.ts`, and `frontend/src/logic/adapter/appModelAdapter.ts`
+- [ ] T008 [US1] Owns: FR-WS-011. Owner: OWS-011. Persist discrete layout intent immediately; retain continuous native-resize and divider intent in Go for 250 ms; keep one pending original identity per field; conditionally commit the newest `(changedAtUnixNano, writerId, sequence)`; and synchronously flush only still-pending fields before database close in `internal/appmodel/layout_persistence.go`, `internal/appmodel/layout_repository_sqlite.go`, `internal/appmodel/service.go`, and `internal/application/application_context_holder.go`
+- [ ] T009 [US1] Owns: FR-WS-012. Owner: OWS-012. Persist before projecting, retain the prior acknowledged layout after failure, emit one safe classified code-and-subject notification, and project a stale refusal's newer stored winner as a successful acknowledgement in `internal/appmodel/service.go`, `internal/appmodel/handler.go`, `internal/apperr/results.go`, `frontend/src/logic/adapter/appModelAdapter.ts`, and `frontend/src/logic/store/appModelProjectionActions.ts`
+
+### Group B — Ordinary framed native lifecycle
+
+> Write T010 first and confirm the option, platform-role, lifecycle, restore, process, and absence
+> assertions fail before T011.
+
+- [ ] T010 [US1] Add failing macOS/Windows/Linux option and lifecycle tests for an ordinary framed/resizable 1024 × 768 window, exact 375 × 480 minimum, start-hidden behavior, native App/Edit roles only on macOS, no app-owned native About, independent processes, native movement/title gestures/resize ownership, independent restore fallback, usable-display correction, two-sided readiness, show-once, and synchronous close flush; Supports: OWS-001, OWS-002, OWS-003, OWS-005, OWS-006 in `main_test.go` and `internal/application/application_test.go`
+- [ ] T011 [US1] Owns: FR-WS-001. Owner: OWS-001. Configure the embedded Wails application as one ordinary framed native process on macOS, Windows, and Linux while preserving independent concurrent windows, the embedded offline frontend, CGO-free SQLite, and the absence of a server, account, companion process, or single-instance takeover in `main.go` and `wails.json`
+- [ ] T012 [US1] Owns: FR-WS-002. Owner: OWS-002. Retain the operating system's title bar and close/minimize/maximize-or-zoom controls on every platform, install only standard App/Edit roles on macOS, leave native About unset, and install no application-native menu on Windows/Linux in `main.go` and `internal/application/native_menu.go`
+- [ ] T013 [US1] Owns: FR-WS-003. Owner: OWS-003. Keep movement, title-bar double-click, maximize, and restore exclusively native by rendering the application shell below the operating-system title bar and removing any webview gesture interception from `frontend/src/App.tsx`, `frontend/src/ui/widgets/ShellMenuRow.tsx`, and `frontend/src/ui/widgets/ShellMenuRow.module.css`
+- [ ] T014 [US1] Owns: FR-WS-005. Owner: OWS-005. Keep native resizing enabled on all platforms, configure the exact 375 × 480 Wails minimum, and leave native borders and cursors as the only resize mechanism in `main.go`
+- [ ] T015 [US1] Owns: FR-WS-006. Owner: OWS-006. Start from 1024 × 768 while hidden; load and validate saved dimensions/maximized state independently; clamp oversized dimensions through public usable-screen information without restoring position or full screen; coordinate native restore with frontend hydration through a typed application handler; show the normal shell exactly once; and expose a synchronous close-flush port in `main.go`, `internal/application/native_window.go`, `internal/application/application_context_holder.go`, `internal/application/handler.go`, `internal/apperr/results.go`, `frontend/src/logic/adapter/windowAdapter.ts`, `frontend/src/logic/adapter/index.ts`, `frontend/src/logic/store/appModelProjection.ts`, `frontend/src/App.tsx`, and regenerated `frontend/wailsjs/go/application/ApplicationHandler.d.ts` and `frontend/wailsjs/go/application/ApplicationHandler.js`
+
+### Group C — In-app actions, full screen, and build identity
+
+> Write T016 first and confirm registry, adapter, menu-row, modal, and About assertions fail before
+> T017.
+
+- [ ] T016 [US1] Add failing tests for unique shell action IDs/bindings, localized labels, scope, availability, invocation, Settings modality, Settings/View/About row order, responsive overflow, absent File action, F11 public full-screen routing, session-only full screen, native-state return, and injected/exact-`dev` About identity; Supports: OWS-004, OWS-014, OWS-019, OWS-020 in `frontend/src/logic/actions/shellActions.test.ts`, `frontend/src/logic/actions/useShellShortcuts.test.tsx`, `frontend/src/logic/adapter/windowAdapter.test.ts`, `frontend/src/ui/widgets/ShellMenuRow.test.tsx`, `frontend/src/ui/widgets/AboutDialog.test.tsx`, and `internal/bootstrap/version_test.go`
+- [ ] T017 [US1] Owns: FR-WS-014. Owner: OWS-014. Create one localized action catalogue and modal-aware dispatcher consumed by one in-app menu row directly below the native title bar on every platform; show working Settings, View, and About actions in that order; move them into overflow at narrow width; suppress background actions while Settings is open; and omit File and every enabled no-op in `frontend/src/logic/actions/shellActions.ts`, `frontend/src/logic/actions/useShellShortcuts.ts`, `frontend/src/ui/widgets/ShellMenuRow.tsx`, `frontend/src/ui/widgets/ShellMenuRow.module.css`, `frontend/src/ui/widgets/SettingsMenu.tsx`, `frontend/src/ui/primitives/ViewMenu.tsx`, and `frontend/src/App.tsx`
+- [ ] T018 [US1] Owns: FR-WS-004. Owner: OWS-004. Route F11 through the canonical action catalogue and adapter-wrapped public Wails full-screen query/enter/exit operations on every platform, keep full screen session-only, and return to the preceding normal or maximized native state in `frontend/src/logic/adapter/windowAdapter.ts`, `frontend/src/logic/adapter/index.ts`, `frontend/src/logic/actions/shellActions.ts`, and `frontend/src/logic/actions/useShellShortcuts.ts`
+- [ ] T019 [US1] Owns: FR-WS-019. Owner: OWS-019. Define one Go link-time-injected application version with exact `dev` fallback, project it through appmodel without a second maintained value, regenerate bindings, and display it from the working in-app About action in `internal/bootstrap/version.go`, `main.go`, `internal/appmodel/model.go`, `internal/appmodel/service.go`, `internal/apperr/results.go`, `frontend/wailsjs/go/models.ts`, `frontend/src/ui/widgets/AboutDialog.tsx`, and `frontend/src/ui/widgets/ShellMenuRow.tsx`
+
+### Group D — Notifications, delivered Settings reset, and startup recovery
+
+> Write T020–T021 first and confirm notification, transactional reset, boundary, projection, focus,
+> process-retention, and Retry assertions fail before T022.
+
+- [ ] T020 [US1] Add failing reducer/component tests for completed-event toasts, continuing-condition banners, code-plus-subject deduplication, localized `×N`, 4/6/8-second timing, three-visible capacity, oldest-non-error displacement, never-dismissed/non-evicted errors, FIFO queued errors, promotion, safe remediation, silent automatic success, and dialog overlay order; Supports: OWS-012, OWS-013, OWS-016 in `frontend/src/logic/store/notificationsSlice.test.ts`, `frontend/src/ui/primitives/Toast.test.tsx`, `frontend/src/ui/primitives/Banner.test.tsx`, and `frontend/src/ui/widgets/StartupFailure.test.tsx`
+- [ ] T021 [US1] Add failing repository, service, Wails-handler, adapter, projection, and UI tests for one-transaction reset of Theme/Appearance/default-open-mode, full rollback, exact delivered-only membership, unchanged layout/document/recent keys, typed result/arity/named-result/panic recovery, synchronized quick/modal acknowledgement, rejected-write retention, second-process retention until relaunch, focus trap, Escape, opener restoration, and absent future groups; Supports: OWS-015, OWS-017, OWS-020 in `internal/settings/repository_sqlite_test.go`, `internal/settings/service_test.go`, `internal/settings/handler_test.go`, `frontend/src/logic/adapter/services.test.ts`, `frontend/src/logic/store/appModelProjection.test.ts`, `frontend/src/ui/widgets/SettingsDialog.test.tsx`, and `frontend/src/ui/widgets/AppearanceControls.test.tsx`
+- [ ] T022 [US1] Owns: FR-WS-016. Owner: OWS-016. Replace error-only notification storage with classified severity, subject, toast/banner lifecycle, optional remediation, refresh generation, and queued-error arrival order; implement localized count refresh, 4/6/8-second non-error dismissal, non-evictable errors, FIFO error promotion, safe content, and dialog-above-toast ordering using real startup/settings/layout consumers in `frontend/src/logic/store/notificationsSlice.ts`, `frontend/src/ui/primitives/Toast.tsx`, `frontend/src/ui/primitives/Toast.module.css`, `frontend/src/ui/primitives/Banner.tsx`, `frontend/src/ui/primitives/Banner.module.css`, `frontend/src/ui/widgets/StartupFailure.tsx`, and `frontend/src/App.tsx`
+- [ ] T023 [US1] Owns: FR-WS-015. Owner: OWS-015. Reset Material/Auto/Editor as all and only delivered Appearance defaults in one SQLite transaction; roll back all values on failure; leave layout, documents, and recent keys unchanged; return one acknowledged typed result without broadcasting to open peers; regenerate bindings; and replace the existing Appearance dialog with an Appearance-only Settings dialog that synchronizes quick controls, traps focus, closes on Escape, restores opener focus, and renders no future group in `internal/settings/repository.go`, `internal/settings/repository_sqlite.go`, `internal/settings/service.go`, `internal/settings/handler.go`, `internal/apperr/results.go`, `frontend/wailsjs/go/settings/SettingsHandler.d.ts`, `frontend/wailsjs/go/settings/SettingsHandler.js`, `frontend/wailsjs/go/models.ts`, `frontend/src/logic/adapter/services.ts`, `frontend/src/logic/adapter/index.ts`, `frontend/src/ui/widgets/AppearanceControls.tsx`, `frontend/src/ui/widgets/AppearanceDialog.tsx`, `frontend/src/ui/widgets/AppearanceDialog.module.css`, `frontend/src/ui/widgets/SettingsDialog.tsx`, and `frontend/src/ui/widgets/SettingsDialog.module.css`
+- [ ] T024 [US1] Owns: FR-WS-013. Owner: OWS-013. Replace startup exit-on-initialization-failure with the exact localized title, message, and Retry surface while the normal shell stays unmounted; extend the typed application handler so Retry repeats backend initialization; complete restore and show once after success; and keep repeated failure free of raw errors and private paths in `main.go`, `internal/application/application_context_holder.go`, `internal/application/handler.go`, `internal/apperr/results.go`, `frontend/src/logic/adapter/index.ts`, `frontend/src/App.tsx`, `frontend/src/ui/widgets/StartupFailure.tsx`, and `frontend/src/ui/widgets/StartupFailure.module.css`
+
+### Group E — Structural, responsive, accessible, and offline shell
+
+> Write T025–T026 first and confirm real-component, browser-matrix, performance, request, and
+> future-surface assertions fail before T027.
+
+- [ ] T025 [US1] Add failing real-component tests for three structural regions, zero-width empty Assistant reservation without a visible/accessible Assistant surface, desktop sidebar acknowledgement, 768-pixel 46-pixel rail, 375-pixel 230-pixel off-canvas sidebar, stacked centre panes, menu overflow, one-row toolbar, no responsive durable write-back, no horizontal clipping, catalogue text, keyboard focus, longer text, reduced motion, all six palettes, and absence of File/launcher/recents/real tabs/future Settings/Assistant; Supports: OWS-007, OWS-008, OWS-014, OWS-017, OWS-019, OWS-020 in `frontend/src/App.test.tsx`, `frontend/src/ui/widgets/AppShell.test.tsx`, `frontend/src/ui/widgets/ShellMenuRow.test.tsx`, and `frontend/src/ui/widgets/EditorView.integration.test.tsx`
+- [ ] T026 [US1] Add failing Playwright journeys using actual shell components for the complete 375/768/1280 × six-palette matrix; Settings/View/About, reset/focus, sidebar, notifications, build identity, and future-surface absence; one short local-origin-only request-instrumented representative journey with no duration requirement; and retained sets of at least 20 resize plus 20 divider samples enforcing 95% visible updates within 100 ms, no observed freeze over 250 ms, and final acknowledged state within 500 ms; Supports: OWS-007, OWS-008, OWS-014, OWS-015, OWS-016, OWS-017, OWS-018, OWS-019, OWS-020 in `frontend/e2e/window-shell.test.ts` and `frontend/e2e/window-shell.test.ts-snapshots/`
+- [ ] T027 [US1] Owns: FR-WS-007. Owner: OWS-007. Build the left workspace, centre document, and structurally reserved right region around the existing `EditorView`; keep the pre-Assistant right region at zero width with no control, content, landmark, or visible facsimile in `frontend/src/App.tsx`, `frontend/src/ui/widgets/AppShell.tsx`, and `frontend/src/ui/widgets/AppShell.module.css`
+- [ ] T028 [US1] Owns: FR-WS-008. Owner: OWS-008. Implement acknowledged desktop sidebar behavior, the exact 768-pixel 46-pixel icon rail, and the exact 375-pixel 230-pixel off-canvas sidebar with stacked centre panes, menu overflow, one-row toolbar, no horizontal clipping, no responsive write-back to durable desktop width, and no tab strip in `frontend/src/ui/widgets/AppShell.tsx`, `frontend/src/ui/widgets/AppShell.module.css`, `frontend/src/ui/widgets/ShellMenuRow.tsx`, `frontend/src/ui/widgets/ShellMenuRow.module.css`, `frontend/src/ui/widgets/EditorView.module.css`, and `frontend/src/ui/styles/base.css`
+- [ ] T029 [US1] Owns: FR-WS-017. Owner: OWS-017. Make every shell control keyboard reachable with correct role, catalogue name, visible two-layer focus, longer-text tolerance, and reduced-motion behavior; remove authored shell strings from components; and consume the delivered six-palette tokens without adding a second appearance owner in `frontend/src/i18n/locales/en.json`, `frontend/src/App.tsx`, `frontend/src/ui/primitives/Toast.tsx`, `frontend/src/ui/primitives/Banner.tsx`, `frontend/src/ui/widgets/AppShell.tsx`, `frontend/src/ui/widgets/EditorView.tsx`, `frontend/src/ui/widgets/ShellMenuRow.tsx`, `frontend/src/ui/widgets/SettingsDialog.tsx`, `frontend/src/ui/widgets/StartupFailure.tsx`, `frontend/src/ui/styles/tokens.css`, and `frontend/src/ui/styles/base.css`
+- [ ] T030 [US1] Owns: FR-WS-018. Owner: OWS-018. Keep production shell commands local, consume only bundled fonts/assets, and expose no telemetry, analytics, update check, crash upload, remote asset/font, or adjustable networking control in `frontend/src/App.tsx`, `frontend/src/logic/actions/shellActions.ts`, `frontend/src/i18n/locales/en.json`, and `frontend/src/ui/styles/base.css`
+- [ ] T031 [US1] Owns: FR-WS-020. Owner: OWS-020. Remove and guard the production shell against every File action, launcher control, recent item, zero-document claim, tab strip, Assistant control/content/landmark, empty future Settings group, and enabled or disabled future-behavior facsimile while preserving the existing document consumer in `frontend/src/App.tsx`, `frontend/src/logic/actions/shellActions.ts`, `frontend/src/ui/widgets/AppShell.tsx`, `frontend/src/ui/widgets/ShellMenuRow.tsx`, and `frontend/src/ui/widgets/SettingsDialog.tsx`
+
+**User Story 1 checkpoint**: All 20 owner tasks and their named failing-first tests pass together around
+the existing document. No downstream launcher, File, file lifecycle, real-tab, renderer, packaging,
+Editor-expansion, or Assistant behavior is present.
+
+---
+
+## Phase 4: Verification, Browser Repair, Real-Build Evidence, and Reconciliation
+
+**Purpose**: Compare the completed slice with the trustworthy baseline and directly observe behavior
+that unit tests or mock bindings cannot establish. Every task in this phase is supporting evidence.
+
+- [ ] T032 Add and run static production-source and built-bundle network safeguards, run the focused Go/Jest suites and binding-generation checks, inspect every named shell test, and retain raw outcomes before browser repair; Supports: OWS-001 through OWS-020 in `frontend/scripts/archtest.mjs`, `frontend/src/ui/components/CodeEditor.bundle.test.ts`, and `specs/001-gomarkedit-product/evidence/window-shell-verification.md`
+- [ ] T033 Start `just dev-ui`, open its local URL in the in-app browser, operate actual Settings/View/About, Settings reset/focus, sidebar, notifications, and keyboard actions, fix/reload/recheck every visible defect, then run and retain the complete 18-case matrix, the short request log, at least 20 resize samples, and at least 20 divider samples with the 100/250/500-ms thresholds; Supports: OWS-007, OWS-008, OWS-014, OWS-015, OWS-016, OWS-017, OWS-018, OWS-019, OWS-020 in `specs/001-gomarkedit-product/evidence/window-shell-browser.json` and `specs/001-gomarkedit-product/evidence/window-shell-verification.md`
+- [ ] T034 Run `just fmt-check`, `just typecheck`, `just lint`, `just test`, `just archtest`, `just frontend-build`, `just build`, and `just verify 001-gomarkedit-product` after browser repair; compare every reliable result with T001, repair every new finding without weakening a gate, and retain commands, exit codes, findings, and verdicts; Supports: OWS-001 through OWS-020 in `specs/001-gomarkedit-product/evidence/window-shell-verification.md`
+- [ ] T035 Launch the real `just build` binary and record one current-host walkthrough covering native movement, title-bar gestures, border/corner resizing and exact 375 × 480 minimum, minimize, maximize/restore, close during the 250-ms persistence pause, stale-close ordering across two processes, F11 full screen, hidden restore-before-show, isolated startup failure and Retry, Settings/View/About plus keyboard actions and applicable macOS App/Edit roles, Settings acknowledgement/reset/focus, desktop/rail/off-canvas sidebar states, divider acknowledgement, injected and exact-`dev` About identity, notification dedup/timing/error queue/banner behavior, and absence of File/launcher/recents/real tabs/future Settings/Assistant; Supports: OWS-001 through OWS-020 in `specs/001-gomarkedit-product/evidence/window-shell-native.md`
+- [ ] T036 Reconcile the implemented shell against every `FR-WS-001` through `FR-WS-020`, SC-013 through SC-018, the contract, and T001 baseline; classify every difference as a code defect, approved specification amendment, or unresolved blocker; record the tested host and the remaining three-platform Viewer gate without claiming macOS/Windows/Linux runtime completion from one host; Supports: OWS-001 through OWS-020 in `specs/001-gomarkedit-product/evidence/window-shell-reconciliation.md`
+
+**Batch checkpoint**: Do not claim completion unless the baseline is reliable, architecture is green,
+generated assets are current, every named test passes, browser findings were fixed and rechecked, the
+automated matrix/request/timing evidence is retained, the real current-host build proves native
+behavior, and reconciliation has no unresolved in-scope difference. One-host evidence is not
+three-platform Viewer completion.
 
 ---
 
@@ -221,86 +176,83 @@ matrix. A mock-only pass is insufficient.
 
 ### Phase dependencies
 
-1. **Phase 1** has no dependency and must be the first action.
-2. **Phase 2** depends on a trustworthy Phase 1 baseline. It blocks all appearance work.
-3. **Phase 3 tests T005–T010** depend on Phase 2 and may be authored in parallel because they touch
-   separate seams.
-4. **T011** satisfies T005 and establishes the complete token source consumed by T012.
-5. **T012** satisfies T006 and produces the generated data consumed by T013.
-6. **T013** satisfies T007 and establishes Monaco’s root-attribute consumer before Auto and startup
-   flows drive it.
-7. **T014** satisfies T008 and establishes live acknowledged transitions before the mirror is added.
-8. **T015** satisfies T009 and establishes first-paint state before the end-to-end matrix is finalized.
-9. **T016** satisfies T010 and depends on T011–T015.
-10. **Phase 4** is sequential: automated verification, live dev-server interaction, then real-build
-    platform/offline evidence and reconciliation.
+1. T001 is the first hard gate and blocks every production edit.
+2. T002 and T003 may run together after T001 because they use disjoint Go-test and Playwright-helper
+   files.
+3. T004–T005 fail before T006–T009 implement the exact layout model, document fallback, persistence,
+   and acknowledged outcomes. T006 → T007 → T008 → T009 is sequential because the tasks share DTO,
+   service, repository, and projection seams.
+4. T010 fails before T011–T015 configure the ordinary framed process, platform roles, native ownership,
+   exact minimum, hidden restore, and close lifecycle. T011 → T012 → T013 → T014 → T015 is sequential
+   because `main.go`, application lifecycle, and shell placement converge in that order.
+5. T016 fails before T017 establishes the catalogue/menu row, T018 adds F11 through that catalogue,
+   and T019 adds About identity. These tasks share action, adapter, row, and appmodel files and are
+   sequential.
+6. T020–T021 fail before T022 repairs notifications, T023 adds transactional delivered reset, and T024
+   adds recoverable startup. These tasks are sequential because Settings/layout/startup failures are
+   production notification consumers.
+7. T025–T026 fail before T027 builds the shell, T028 adds responsive states, T029 completes
+   accessibility/localization/palettes, T030 constrains offline production behavior, and T031 enforces
+   the honest delivery boundary. Shared `App.tsx`, shell, row, Settings, and style files make the owner
+   tasks sequential.
+8. T032 → T033 → T034 → T035 → T036 is sequential: focused/static checks, browser repair and retained
+   automated evidence, current quality gates, current-host real-build evidence, then reconciliation.
 
 ### User-story dependency graph
 
 ```text
-Trustworthy baseline
-        |
-Spec Kit evidence foundation
-        |
-US1 appearance tests
-        |
-tokens -> generated assets -> Monaco consumer -> Auto transitions -> startup mirror -> 18-case matrix
-        |
-automated verification -> live browser check -> real-build reconciliation
-        |
-STOP: launcher/window-shell planning requires this implemented and reconciled basis
+trustworthy baseline
+      |
+disjoint Go-test and Playwright helpers
+      |
+failing layout tests -> acknowledged durable layout owners
+      |
+failing native tests -> framed lifecycle owners
+      |
+failing registry/menu/About tests -> action, F11, identity owners
+      |
+failing notification/Settings tests -> feedback, reset, recovery owners
+      |
+failing component/browser tests -> shell, responsive, accessible, offline, boundary owners
+      |
+static/focused checks -> browser repair and automated evidence -> current gates
+      |
+current-host real build -> reconciliation
+      |
+STOP: safe file lifecycle, launcher, and every later product slice remain entry-gated
 ```
 
-### Parallel example after Phase 2
+### Parallel opportunities
 
 ```text
-Worker A: T005 token contract tests
-Worker B: T006 generator contract tests
-Worker C: T007 Monaco lifecycle tests
-Worker D: T008 Auto/acknowledgement tests
-Then: T009 and T010 may proceed on their separate startup and Playwright files while earlier reviews run.
-Implementation T011–T016 remains dependency ordered.
+After T001, T002 and T003 may run in parallel: their complete file sets are disjoint and neither
+consumes the other's output. No later task is marked [P]; test and owner groups intentionally serialize
+shared repository, main.go, adapter, App.tsx, shell, Settings, action, style, and evidence files.
 ```
 
 ---
 
 ## Implementation Strategy
 
-### MVP scope
+### Suggested MVP scope
 
-The MVP for this task file is the entire authorized appearance subset of User Story 1, not merely the
-generator repair. It is complete only when generated Monaco palettes, acknowledged live Auto behavior,
-first-paint bootstrap, and the 18-combination evidence work together.
+The MVP is the complete authorized native shell batch, T001–T036. A framed window alone is not an
+independently correct increment because acknowledged layout, recovery, menus, Settings,
+notifications, responsive/accessibility/offline behavior, automated evidence, and current-host native
+evidence are all part of the approved shell contract.
 
 ### Incremental delivery
 
-1. Preserve evidence before changing the evidence tooling.
-2. Move baseline identifiers and remove only obsolete planning validators while retaining correctness
-   gates and old-baseline readability.
-3. Establish failing behavior tests across all appearance seams.
-4. Complete the token source and deterministic generated consumers.
-5. Attach Monaco without changing editor identity.
-6. Add acknowledged Auto behavior, then the non-authoritative pre-paint mirror.
-7. Prove mock, live, native, offline, failure, and recovery behavior and reconcile the result.
+1. Capture the reliable feature baseline.
+2. Add only consumed test helpers and make each implementation group's named tests fail meaningfully.
+3. Deliver backend-authoritative layout, native lifecycle, actions/About, notifications/Settings/retry,
+   and the responsive accessible shell in dependency order.
+4. Run static and focused checks, repair the running browser surface, and retain the matrix, request,
+   and timing evidence.
+5. Re-run current quality gates, walk the real current-host build, and reconcile every shell rule.
 
 ### Deliberate stop boundary
 
-After T019, stop task decomposition. Do not add launcher/window-shell, file lifecycle, renderer
-activation, packaging, Editor expansion, Assistant action, or Assistant chat tasks. The next
-`/speckit-tasks` run may detail the launcher/window-shell capability group only after the appearance
-outcome is implemented, live-verified, and reconciled, because every new surface consumes this palette
-contract.
-
-## Phase 5: Convergence
-
-- [X] T020 Prove every current appearance surface consumes its required computed token values across all six palettes in `frontend/src/ui/styles/tokens.test.ts` per FR-017 and T005 (partial)
-- [X] T021 Reject duplicate, unresolved, and untraceable palette input and prove complete inactive-highlight parity in `frontend/scripts/generate-editor-themes.test.mjs` and `frontend/scripts/generate-editor-themes.mjs` per FR-017 and T006 (partial)
-- [X] T022 Prove the actual appearance-controls lifecycle retains exactly one Auto listener, makes pinned choices non-responsive, serializes acknowledgement/failure recovery, remains silent on success, and deduplicates classified failures in `frontend/src/ui/widgets/AppearanceControls.test.tsx` and `frontend/src/logic/adapter/index.test.ts` per FR-015, FR-016, FR-006, FR-007, and T008 (partial)
-- [X] T023 Prove the bundled pre-paint bootstrap itself handles valid, missing, malformed, unsupported, stale, Auto-light, and Auto-dark mirrors and runs before the application module in `frontend/public/theme-bootstrap.test.mjs`, `frontend/public/theme-bootstrap.js`, and `frontend/index.html` per FR-016 and T009 (partial)
-- [X] T024 Complete Playwright evidence for startup-mirror first load, rejected-write retention, bundled non-serif fonts, visible focus, reduced motion, and stable six-palette screenshots at 375 px, 768 px, and 1280 px in `frontend/e2e/appearance.test.ts` and `frontend/e2e/appearance.test.ts-snapshots/` per FR-004, FR-005, FR-016, FR-017, SC-003, and T010 (partial)
-
-## Phase 6: Convergence
-
-- [X] T025 Repair the startup-mirror Playwright evidence so it observes the pre-hydration bootstrap attributes and separately proves canonical backend reconciliation, without treating the non-authoritative mirror as persistent state, per FR-016 and T010 (partial)
-
-- [X] T026 Format `frontend/e2e/appearance.test.ts` and rerun `just verify STORY-063` without accepting a formatting-drift finding per Constitution VII and the Phase 4 verification gate (partial)
+After T036, stop decomposition. Launcher and File work waits for safe New/Open/recent/close-last
+commands and a valid zero-document model. Real tabs, file lifecycle, rendering expansion, packaging,
+Editor expansion, and Assistant work remain later approved slices.

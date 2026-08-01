@@ -1,15 +1,16 @@
-# Phase 1 Quickstart: Validate the Window and Launcher Shell Plan
+# Phase 1 Quickstart: Validate the Native Window Shell Plan
 
-This guide validates the plan now and defines runnable evidence for the later implementation. Planning
-checks do not claim native behavior is already built.
+This guide validates the design now and defines runnable evidence for later implementation. Planning
+checks do not claim the native shell is built. Do not generate implementation tasks from this guide
+until the plan is approved.
 
 ## Prerequisites
 
-- Go 1.25.7, Node 22, Wails v2.12.0, `just`, and dependencies installed with `just setup`
-- Existing appearance outcome at or after commit `53af8e4`
-- Read [plan.md](plan.md), [data-model.md](data-model.md), and
+- Go 1.25.7, Node 22, Wails v2.12.0, `just`, and dependencies installed by `just setup`
+- delivered appearance outcome at or after commit `53af8e4`
+- [plan.md](plan.md), [data-model.md](data-model.md), and
   [contracts/window-launcher-shell.md](contracts/window-launcher-shell.md)
-- Preserve unrelated working-tree changes; leave planning artifacts unstaged unless explicitly asked
+- unrelated working-tree changes preserved; planning artifacts remain unstaged and uncommitted
 
 ## 1. Validate the planning boundary
 
@@ -25,18 +26,23 @@ rg 'NEEDS[ ]CLARIFICATION|T[B]D|T[O]DO' \
 git diff --check
 ```
 
-Expected: no unresolved marker and no malformed patch.
+Expected: no unresolved planning marker and no malformed patch.
 
 Review manually:
 
-1. FR-012 through FR-014 and affected cross-cutting behavior are complete in the shell contract.
-2. Full FR-011 is explicitly entry-gated with safe file lifecycle; no fake/no-op launcher is authorized.
-3. File opening, tabs, rendering, packaging, Editor expansion, and Assistant work are not decomposed.
-4. Go/appmodel remains canonical and Wails runtime access remains adapter-only.
-5. Exact 6 px edges, 12 px corners, 375 x 480 minimum, 250 ms persistence pause, toast timing, and
-   responsive widths appear consistently in plan, research, model, contract, and quickstart.
+1. `FR-WS-001` through `FR-WS-020` remain complete and each has exactly one plan owner.
+2. Every platform uses ordinary native framing. No replacement window control, drag region, custom
+   resize zone/cursor, 6/12-pixel target, private resize invocation, or compatibility shim is authorized.
+3. The in-app row is Settings, View, About for this slice; File is absent; macOS alone also has native
+   App/Edit roles with no duplicate native About.
+4. Go/appmodel owns acknowledged state and pending layout intent; Redux projects it; frontend generated
+   bindings and public Wails runtime imports occur only in `frontend/src/logic/adapter/`.
+5. Launcher, File commands, real tabs, file lifecycle, rendering expansion, packaging, Editor expansion,
+   and Assistant behavior are downstream and have no placeholder.
+6. Network evidence has no duration requirement. Performance evidence requires at least 20 resize and
+   20 divider samples. The full 18-case matrix remains automated, with one current-host real-build walkthrough.
 
-## 2. Capture the implementation baseline
+## 2. Capture a trustworthy implementation baseline
 
 Before any production edit, run:
 
@@ -45,32 +51,47 @@ just baseline 001-gomarkedit-product
 ```
 
 Expected: every retained gate records raw output, exit code, findings, and a reliable verdict. A nonzero
-analyzer that parsed nothing is `UNRELIABLE` and blocks implementation. Preserve the baseline before
-changing Wails options, appmodel state, persistence, adapters, or UI.
+analyzer that parsed nothing is `UNRELIABLE` and blocks implementation.
 
-## 3. Prove backend and native-lifecycle behavior
+## 3. Prove native options, startup, and close lifecycle
 
-The implementation must add and run focused tests for:
+Later implementation must run focused Go tests and the complete Go suite:
 
 ```bash
-go test ./internal/appmodel ./internal/settings ./internal/db ./internal/application
-go test .
+go test . ./internal/application ./internal/appmodel ./internal/settings ./internal/db
+just test
 ```
 
 Expected coverage:
 
-- frameless/start-hidden/default/minimum Wails options, macOS-only native menu selection, and `dev`
-  version fallback;
-- restore-before-show and startup-failure no-show ordering;
-- exact startup failure copy, Retry, and show-once after recovery;
-- independent missing/corrupt layout fallback;
-- discrete write, 250 ms continuous write, close flush, failed-write rollback;
-- two SQLite connections proving stale close cannot overwrite a newer change;
-- appmodel projection contains acknowledged shell layout only.
+- explicit framed/resizable 1024 x 768 options, exact 375 x 480 minimum, and start-hidden behavior;
+- macOS App/Edit roles without native About or an extra application action catalogue, and no native
+  menu on Windows/Linux;
+- independent missing/invalid size and maximized fallback, oversized size correction using public
+  screen information, no restored position/full-screen state, two-sided readiness, and show-once;
+- safe in-webview startup failure with exact title/message/Retry, repeated failure, and successful Retry;
+- public runtime operations only; no private resize/drag/control compatibility path;
+- discrete commit, 250 ms continuous commit, synchronous `OnBeforeClose` flush, failure retention, and
+  two-connection stale-close arbitration;
+- one acknowledged appmodel projection after commit or newer-winner reload, never before persistence;
+- one Go build-version source with exact `dev` fallback.
 
-## 4. Prove adapter, accessibility, and notification contracts
+## 4. Prove Settings reset and cross-layer boundaries
 
-Run focused frontend tests and then the complete frontend suite:
+Focused tests must prove:
+
+- SQLite commits all delivered Appearance defaults in one transaction and rolls everything back on
+  injected failure;
+- service membership is all and only delivered Appearance fields;
+- the Wails-bound reset handler keeps its typed result, arity, named-result, and panic-recovery contract;
+- both Appearance surfaces update from one acknowledgement; failure retains both old values;
+- a second running process keeps its already acknowledged values until relaunch;
+- layout, documents, and recent-path storage remain unchanged;
+- generated bindings and frontend Wails runtime imports exist only under `frontend/src/logic/adapter/`.
+
+## 5. Prove actions, accessibility, responsive shell, and notifications
+
+Run focused frontend tests, then:
 
 ```bash
 npm --prefix frontend test -- --runInBand
@@ -80,16 +101,19 @@ npm --prefix frontend run lint
 
 Expected coverage:
 
-- eight allowlisted resize mappings and no component access to Wails globals/bindings;
-- platform control order/commands and full-screen/maximized disablement;
-- one registry entry per shipped action and no duplicate shortcut;
-- Settings initial focus, trap, Escape, return focus, and background-shortcut suppression;
-- notification code+subject dedup, count refresh, 4/6/8 second timing, error retention, and
-  oldest-non-error displacement;
-- real `AppShell` rendering rather than a mock asserting on itself;
-- dev bridge parity for layout/window commands and classified failures.
+- one action registration and shortcut per shipped action;
+- one Settings/View/About row, responsive overflow, absent File entry, and no duplicate native chrome;
+- F11 uses adapter-wrapped public full-screen operations; native resize observation queries public
+  native size/maximized state before sending typed layout intent;
+- Settings initial focus, trap, Escape, opener restoration, and background-shortcut suppression;
+- notification code-plus-subject dedup, localized count refresh, 4/6/8-second timing, never-dismissed
+  errors, oldest-non-error displacement, ordered overflow errors, and continuing-condition banners;
+- real `AppShell` rendering, catalogue strings, longer text, reduced motion, delivered focus ring, and
+  dev-bridge parity;
+- source assertions that forbid custom title controls, drag markers, resize targets, private runtime
+  invocations, File/launcher/tab/Assistant placeholders, and empty future Settings groups.
 
-## 5. Validate the visible shell in the in-app browser
+## 6. Run the complete automated browser evidence
 
 Start the mock-backed interface:
 
@@ -97,26 +121,30 @@ Start the mock-backed interface:
 just dev-ui
 ```
 
-Open its local URL in the in-app browser. Use actual controls and record the following cases:
-
-1. At 1280 px, open every shipped menu and Settings; toggle sidebar and Appearance; verify acknowledged
-   root/theme/layout state and focus restoration.
-2. At 768 px, verify the Assistant is absent, the sidebar is a 46 px icon rail, and hidden actions are
-   available through overflow.
-3. At 375 px, open/close the 230 px sidebar overlay by keyboard, verify menu overflow, stacked centre
-   panes, one-row toolbar, and no horizontal clipping.
-4. Repeat the three widths in all six theme/resolved-mode combinations.
-5. Raise the same error five times: one toast shows count five. Fill three error slots and verify a
-   fourth non-error does not evict one. Verify errors remain until dismissed.
-6. Turn on reduced motion and repeat sidebar/menu/dialog interaction with unchanged outcomes.
-
-Run the browser suite after the interaction pass:
+Use the in-app browser for interactive repair, then run:
 
 ```bash
 npm --prefix frontend run verify:ui
 ```
 
-## 6. Validate the real native window
+The automated evidence must:
+
+1. Exercise 375, 768, and 1280 in all six resolved palettes: 18 complete cases, not six desktop
+   screenshots or a representative subset.
+2. At 1280, open Settings, View, and About; operate Appearance/reset, sidebar, notification remediation,
+   keyboard focus, and F11 routing; confirm File and every future surface are absent.
+3. At 768, verify the 46 px workspace rail, responsive menu behavior, empty zero-width Assistant
+   reservation, real centre content, and no tab strip.
+4. At 375, verify the 230 px off-canvas workspace, menu overflow, stacked centre panes, one-row toolbar,
+   keyboard operation, and no horizontal clipping.
+5. Repeat longer translated text and reduced-motion cases without changing outcomes.
+6. Run one short representative journey under request instrumentation; allow only the local test origin,
+   retain the request log, and fail on any outbound attempt. No minimum duration applies.
+7. Retain at least 20 automated viewport-resize samples and at least 20 divider-drag samples. At least
+   95% must update visibly within 100 ms, no freeze may exceed 250 ms, and final durable acknowledgement
+   must appear within 500 ms after input stops.
+
+## 7. Walk one current-host real build
 
 Build and launch the real Wails application, not only the mock server:
 
@@ -124,25 +152,26 @@ Build and launch the real Wails application, not only the mock server:
 just build
 ```
 
-Numbered current-platform cases:
+Record the host/platform and perform one representative walkthrough that covers:
 
-1. First launch appears once at restored/default size with no visible resize/layout jump.
-2. Drag empty title space; click/drag each interactive child and verify it does not move the window.
-3. Double-click empty title space twice and verify maximize then restore.
-4. Operate minimize/maximize/restore/close and F11 entirely by keyboard.
-5. Verify all four 6 px edges and all four 12 px corners show correct cursors and resize. A control near
-   an edge remains clickable.
-6. Maximize/full-screen and verify all zones and drag behavior are inert.
-7. Resize to the minimum and read 375 x 480; smaller stored values fall back/clamp before display.
-8. Change sidebar/size, quit during the 250 ms pause, relaunch, and observe the final acknowledged value.
-9. Run two processes: make a newer layout change in B, then close A with older pending intent; relaunch
-   and observe B's value.
-10. On macOS, verify native App/Edit roles make copy, paste, undo, redo, select all, and quit work.
+1. default and restored hidden startup with no visible layout jump;
+2. native movement and title-bar double-click behavior, native border/corner resizing, exact 375 x 480
+   minimum, minimize, maximize/restore, close, and F11 full screen;
+3. Settings, View, and About in the row directly below the native title bar, with File absent; on macOS,
+   native App/Edit roles and no duplicate native About;
+4. Settings acknowledgement, atomic reset success/failure, focus trap, Escape, and opener restoration;
+5. desktop, rail, and off-canvas sidebar states plus divider acknowledgement;
+6. repeated notification counts, non-dismissed/non-evicted errors, queue promotion, safe remediation,
+   and continuing-condition banner behavior;
+7. injected version and exact `dev` fallback;
+8. absence of launcher, recents, tab strip, Assistant controls/content, and future Settings groups;
+9. quit during the 250 ms persistence pause and two-process stale-close ordering.
 
-Repeat the chrome cases on macOS, Windows, and Linux at the Viewer release gate. Current-host success is
-not three-platform completion.
+This walkthrough complements the automated request log and 18-case browser matrix. It has no five-minute
+or 60-second duration requirement and does not claim macOS, Windows, and Linux completion. Repeat native
+window behavior on all three platforms at the Viewer release gate.
 
-## 7. Verify the completed shell slice
+## 8. Verify the completed slice later
 
 After implementation and live repair loops:
 
@@ -154,6 +183,6 @@ just build
 git diff --check
 ```
 
-Expected: no new baseline finding, architecture tests fully green, named shell tests inspected, visible
-cases passed, and a real build walked. Only then reconcile this slice and run `/speckit-tasks` for the
-safe file lifecycle/launcher activation entry gate.
+Expected: no new reliable-baseline finding, architecture tests green, named tests inspected, complete
+automated evidence retained, and the current-host real-build walkthrough recorded. Only then reconcile
+the shell slice. Task generation and implementation are deliberately outside this planning run.

@@ -1,123 +1,177 @@
-# Contract: Window and Launcher Shell
+# Contract: Native Window Shell
 
 ## Authority and scope
 
-This contract copies the implementation-ready window-shell behavior needed from the product
-specification and the visual mockup. On explicit task-batch approval it transfers FR-012 through FR-014
-and the affected unmigrated shell portions of FR-001, FR-002, FR-004 through FR-007, FR-078, FR-079, and
-the development-version subset of FR-080. It consumes the already delivered FR-015 through FR-017
-appearance contract without re-owning it. Full FR-011 stays with the safe file lifecycle until its
-actions are real.
+This contract preserves the complete approved `FR-WS-001` through `FR-WS-020` behavior. The
+delivered appearance contract is consumed, not re-owned. The 2026-08-01 clarification supersedes every
+frameless/custom-chrome mechanism in earlier plans and in historical mockup specimens. Launcher
+activation, File commands, real tabs, file lifecycle, rendering expansion, packaging, Editor expansion,
+and Assistant behavior remain downstream and absent.
 
-The binding visual source is `../surface/mockup.html`. Behavior in this file wins where a specimen
-shows a gallery, a future feature, one platform only, or a stale accelerator.
+| Approved requirement | Contract location                                                  |
+| -------------------- | ------------------------------------------------------------------ |
+| FR-WS-001            | Native framed window                                               |
+| FR-WS-002            | Native framed window                                               |
+| FR-WS-003            | Native framed window                                               |
+| FR-WS-004            | Full screen and native geometry observation                        |
+| FR-WS-005            | Native framed window                                               |
+| FR-WS-006            | Startup and restore                                                |
+| FR-WS-007            | Shell and responsive states                                        |
+| FR-WS-008            | Shell and responsive states; Offline and response evidence         |
+| FR-WS-009            | Durable acknowledged layout                                        |
+| FR-WS-010            | Durable acknowledged layout                                        |
+| FR-WS-011            | Durable acknowledged layout                                        |
+| FR-WS-012            | Durable acknowledged layout; Notifications                         |
+| FR-WS-013            | Startup recovery                                                   |
+| FR-WS-014            | In-app actions, Settings, and focus                                |
+| FR-WS-015            | In-app actions, Settings, and focus                                |
+| FR-WS-016            | Notifications                                                      |
+| FR-WS-017            | In-app actions, Settings, and focus; Offline and response evidence |
+| FR-WS-018            | Offline and response evidence                                      |
+| FR-WS-019            | Build identity                                                     |
+| FR-WS-020            | Downstream entry gates and absence clauses throughout              |
 
-## Native window
+## Native framed window
 
-- The window is frameless and token-themed on macOS, Windows, and Linux.
-- It starts hidden at 1024 x 768 in normal state unless valid acknowledged size/maximized values exist.
-- Minimum size is exactly 375 x 480. Each invalid/missing stored field falls back independently.
-- The title area is the only drag region and carries both `--wails-draggable: drag` and
-  `-webkit-app-region: drag`. Every interactive child sets both to `no-drag`.
-- Double-clicking empty title space toggles maximize/restore. A no-drag child does not toggle.
-- F11 toggles full screen on every platform. Drag and resize are inert in full screen.
-- macOS controls are close/minimize/zoom on the left. Windows/Linux controls are
-  minimize/maximize/close on the right. The mockup traffic lights are macOS-only.
-- macOS installs native App and Edit roles. Windows/Linux install no native menu.
-- The title area carries app identity and the current document title/breadcrumb when one exists.
-- About shows the injected application version and shows exactly `dev` when no version is injected.
+- macOS, Windows, and Linux use the ordinary OS-managed frame, title bar, controls, movement, title
+  gestures, resize borders/cursors, minimize, maximize/restore, and close.
+- The application renders no replacement window control, drag region, resize target, edge/corner hit
+  area, or cursor override and invokes no private resize operation.
+- Several processes may own independent windows at once. Startup requires no server, account,
+  companion process, or single-instance takeover.
+- The base window is framed/resizable, starts hidden at 1024 x 768, and has an exact native minimum of
+  375 x 480.
+- Native close enters a synchronous Go lifecycle flush before database shutdown. There is no
+  frontend-only close durability path.
+- macOS retains native App/Edit roles. Native About is not installed; About has one in-app owner.
+- Windows and Linux have no native application menu from this slice.
 
-## Startup failure
+## Startup and restore
 
-- A settings-database startup failure keeps the normal shell hidden.
-- The user sees `GoMarkEdit could not start` and
-  `GoMarkEdit could not initialize its local settings. Please try again.` with Retry.
-- Retry repeats initialization; success restores and shows the normal shell once. Repeated failure does
-  not expose a raw error or private configuration path.
+- Load acknowledged native width, height, and maximized state while hidden. Validate each field
+  independently and fall back independently.
+- Position and full-screen state are not restored. OS/Wails placement remains authoritative.
+- An oversized size is clamped using the current/primary logical display exposed by the public Wails
+  screen API, then placed/centered by Wails/OS. The plan does not claim unavailable work-area coordinates.
+- Apply native restore and hydrate the acknowledged frontend shell independently. Show the normal shell
+  exactly once only after both readiness signals are true.
+- Restore never opens a prior document or tab set.
 
-## Resize zones
+## Startup recovery
 
-- Four edge zones are 6 px bands; four corner zones are 12 x 12 px squares.
-- Cursors are `ns-resize`, `ew-resize`, `nwse-resize`, or `nesw-resize` as applicable.
-- Zones sit above content and below menus, dialogs, toasts, and overlays.
-- Maximized/full-screen windows have no active zones and show the normal cursor at their edges.
-- Begin-resize crosses the adapter through an allowlisted mapping to the pinned Wails desktop runtime.
-  CSS-only imitation, direct component invocation, and weakening corners to 6 px are invalid.
+- Initialization failure shows a safe recovery surface inside the framed webview while the normal
+  shell stays unmounted/hidden.
+- It shows exactly `GoMarkEdit could not start`,
+  `GoMarkEdit could not initialize its local settings. Please try again.`, and Retry.
+- Retry invokes repeatable backend initialization through a typed command. Success completes restore
+  and shows the normal shell once. Repeated failure reveals no raw error or private path.
+- A Wails native Error dialog is not the Retry mechanism because pinned Windows/Linux backends do not
+  support the required custom Error-dialog button.
+
+## Full screen and native geometry observation
+
+- F11 toggles full screen on every platform through public Wails runtime operations and the canonical
+  action catalogue. Full screen remains session-only and returns to the preceding normal/maximized state.
+- DOM resize is only a notification. The frontend adapter queries public native window size and
+  maximized state and sends typed layout intent to Go/appmodel.
+- `innerWidth`, component state, and Redux are not durable native geometry authorities.
 
 ## Shell and responsive states
 
 - The shell reserves left workspace, centre document, and right Assistant regions. Before Assistant
-  ships, its width is 0 and it contains no visible placeholder.
-- Desktop sidebar default is the current tokenized width. A discrete show/hide change persists
-  immediately; divider changes persist after 250 ms.
-- At 768 px the Assistant stays hidden and the sidebar becomes a 46 px icon rail.
-- At 375 px the Assistant stays hidden; the sidebar is a 230 px off-canvas overlay; centre panes stack;
-  title menus move into overflow; toolbar stays one row; tabs scroll; no control is clipped.
-- Responsive presentation does not overwrite durable desktop widths.
-- Every state is checked at 375, 768, and 1280 in Liquid Glass, Material, and Minimal, light and dark.
+  delivery, the right region has zero width and no control, content, or visible placeholder.
+- At desktop width, workspace visibility changes are discrete and divider width changes are continuous.
+- At 768 px the workspace becomes a 46 px icon rail.
+- At 375 px the workspace becomes a 230 px off-canvas overlay, centre panes stack, menu actions move to
+  overflow, the toolbar remains one row, and no existing control clips horizontally.
+- Responsive workspace presentations never overwrite durable desktop width.
+- The real tab strip and its overflow remain with the later real-tabs slice; no empty/fake strip exists.
+- Every state is automated at 375, 768, and 1280 in all six resolved palettes.
 
-## Durable layout
+## Durable acknowledged layout
 
-- Durable fields are native width, height, maximized state, sidebar visibility/width, and last-used
-  arrangement fallback. Window position, document content/tab set, full-screen state, and responsive
-  temporary widths are not durable.
-- Appmodel owns acknowledged layout; Redux renders its projection.
-- Discrete values write immediately. Continuous values write after 250 ms and flush before close.
-- Each field carries original change time, writer ID, and sequence. SQLite conditionally accepts only a
-  newer identity. Close flushes only pending fields and cannot overwrite a later change merely because
-  its process closes later.
-- A failed write retains the last acknowledged value and shows a classified notification. A stale
-  conditional write reloads the newer value and is not an error.
-- Layout is restored before first display and never reopens content.
+- Durable fields are native width, height, maximized state, workspace visibility/width, and last-used
+  document-arrangement fallback.
+- Excluded fields are window position, full-screen state, responsive-only widths, document content,
+  document/tab state, document pane visibility, and Assistant visibility/width.
+- Each document owns its current Editor/Split/Preview arrangement and pane state. The application
+  fallback applies only when a document has no saved view and never overwrites one.
+- Appmodel owns acknowledged layout and pending intent; Redux renders the projection.
+- Discrete values persist immediately. Continuous resize/divider values persist 250 ms after input
+  stops and synchronously flush before close.
+- Each field carries original change time, writer ID, and sequence. SQLite conditionally accepts only
+  the newer identity; close flush does not assign new authority.
+- A failed write keeps the prior acknowledged value and emits one classified notification. A stale
+  write reloads/projects the newer stored winner without an error.
 
-## Actions, settings, and focus
+## In-app actions, Settings, and focus
 
-- One registry supplies stable ID, localized label, scope, shortcut, availability, and invocation.
-- Only actions with real consumers are visible/enabled. Modal Settings suppresses shortcuts behind it.
-- The relative menu order follows the mockup: File, Settings, View, About. The shell-only batch omits
-  File until a real file action exists; it must not render an empty menu or advertise a future command.
-- The settings menu and modal render the same acknowledged Appearance state. The modal traps focus,
-  closes on Escape, and restores focus to its opener.
-- Reset affects delivered settings only and excludes window layout and future recents.
-- Empty future setting groups and Assistant groups are not shown.
-- Every control is keyboard reachable, has a localized role/name, and shows the delivered two-layer
-  focus ring. Reduced motion collapses shell transitions without changing behavior.
+- One catalogue supplies stable ID, localized label/accessibility key, scope, shortcut, availability,
+  and invocation for every shipped shell action.
+- One in-app menu row sits directly below the native title bar on macOS, Windows, and Linux.
+- Binding order is File, Settings, View, About. In this slice File is absent, so the visible row is
+  Settings, View, About. It is not rendered as an empty menu or future-command advertisement.
+- Only working actions are visible/enabled. Settings modality suppresses background shortcuts.
+- Quick Appearance and modal Settings show the same acknowledged Theme and Appearance values.
+- Settings traps focus, closes on Escape, and restores focus to its opener.
+- Reset writes all and only delivered Appearance defaults in one backend transaction. Failure changes
+  none; geometry, layout, documents, and recent paths are unchanged.
+- Another open process retains its acknowledged Appearance values until relaunch.
+- Empty future groups and Assistant settings are not shown.
+- Every control is keyboard reachable, localized, correctly named/roled, visibly focused, usable with
+  longer translated text, and behaviorally unchanged under reduced motion.
 
 ## Notifications
 
-- A completed event uses a toast; a condition that remains true uses an inline banner.
-- Deduplication key is classified failure code plus subject. Repetition refreshes one toast and appends
-  `×N` through localized formatting.
-- At most three toasts are visible. A fourth displaces only the oldest non-error. Errors never
-  auto-dismiss and are never evicted.
-- Success/info/warning dismiss after 4/6/8 seconds. Automatic successful work remains silent.
-- Toasts render above dialogs. Titles/remediation are localized and contain no raw error, secret, full
-  remote URL, or private path.
+- A completed event uses a toast; a continuing condition uses an inline banner.
+- Deduplication key is classified code plus subject. Repetition refreshes one item and shows a localized
+  count.
+- At most three toasts are visible. A fourth displaces only the oldest non-error.
+- Errors never auto-dismiss and are never evicted. If all three visible toasts are errors, later errors
+  queue in arrival order and a later non-error is not shown. Dismissal promotes the oldest queued error.
+- Success, information, and warning dismiss after 4, 6, and 8 seconds. Successful automatic work is silent.
+- Toasts appear above dialogs; content is localized and contains no raw error, secret, full remote URL,
+  or private path.
 
-## Launcher entry gate
+## Build identity
 
-The complete launcher has:
+- About displays one Go-injected application version.
+- An uninjected build displays exactly `dev`.
+- Frontend package metadata or a separately maintained version literal is not a product version source.
 
-- zero open documents and no session restore;
-- `GoMarkEdit`, New file, Open file, Open folder, and at most six recent documents/folders with their
-  containing folders;
-- exact empty-recent copy: `Documents you open will appear here.`;
-- no fake entries, no partial document, and no effect or notification after picker cancellation;
-- return to launcher when the last document closes.
+## Offline and response evidence
 
-It becomes implementable only with real safe lifecycle commands. The shell-only batch may preserve this
-contract and prepare component boundaries, but must not claim FR-011, render enabled no-op actions, or
-invent a disabled treatment that contradicts the binding mockup.
+- Static production-source and built-bundle safeguards reject network APIs, remote assets/fonts,
+  telemetry, update checks, and crash uploads introduced by the shell.
+- One short representative Playwright journey records every request, allows only the local test origin,
+  retains its log, and fails on any outbound attempt. No minimum duration or manual packet capture applies.
+- The complete 18-case viewport/palette matrix remains automated browser evidence.
+- At least 20 automated viewport-resize samples and 20 automated divider-drag samples are retained.
+  At least 95% of visible updates are within 100 ms, no freeze exceeds 250 ms, and final durable
+  acknowledgement is within 500 ms after input stops. No minimum duration applies.
 
-## Evidence obligations
+## Current-host real-build evidence
 
-- Go tests: Wails options/lifecycle, repository conditional writes, stale close, fallback, failure
-  rollback, and real appmodel projection.
-- Adapter/Jest tests: eight resize mappings, platform controls, one action registration, settings focus
-  lifecycle, notification timing/dedup/eviction, and mock parity.
-- Playwright: actual menus/settings/sidebar/notifications at all 18 width-palette combinations and no
-  horizontal clipping.
-- Current-platform native build: drag/no-drag, double-click, controls, full screen, all eight resize
-  zones, 375 x 480 clamp, restore-before-show, and final close flush.
-- Viewer release gate: repeat chrome and macOS Edit-role behavior on macOS, Windows, and Linux. One-host
-  or Chromium evidence is not cross-platform completion.
+One representative walkthrough on the current host covers:
+
+- native movement, title gestures, border/corner resizing, exact minimum, minimize,
+  maximize/restore, close/flush, and F11 full screen;
+- in-app Settings/View/About menus and macOS App/Edit roles when the current host is macOS;
+- Settings acknowledgement, atomic reset success/failure, trap/Escape/opener focus;
+- desktop/rail/off-canvas workspace states and divider acknowledgement;
+- About build identity and notification dedup/timing/error-queue/banner behavior;
+- absence of File, launcher, recents, tab strip, Assistant controls/content, and future Settings groups.
+
+The evidence records its host. Viewer completion remains blocked until native window behavior is also
+proven on macOS, Windows, and Linux.
+
+## Downstream entry gates
+
+- Launcher activation waits for real New/Open/Open-folder/recent/close-last commands and a valid
+  zero-document state.
+- File and real tabs wait for safe file/document lifecycle and optional active identity.
+- Rendering expansion and packaging remain later Viewer dependencies.
+- Editor expansion and Assistant behavior remain behind their own document/operation/provider contracts.
+
+This shell may preserve those future contracts by absence only. It must not create a fake state, DTO,
+menu, tab, setting, or control for them.

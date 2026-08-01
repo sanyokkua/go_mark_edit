@@ -1,7 +1,7 @@
 # Appearance contract
 
-> **Authority for this batch:** This file is the SpecKit copy of the complete appearance rules
-> needed by T005–T016. The sibling [`surface/mockup.html`](surface/mockup.html) is the binding
+> **Authority:** This file is the SpecKit copy of the complete delivered appearance rules consumed by
+> the current native-shell slice. The sibling [`surface/mockup.html`](surface/mockup.html) is the binding
 > visual source: if a token value, control label, layout, or visible state conflicts with prose,
 > the mockup wins. The copied legacy wording below is retained so implementation never has to
 > consult `docs/delivery/` for a decisive palette value.
@@ -33,6 +33,7 @@ styling. There is no separate editor theme.
 ## Rules
 
 ### Three themes, and no way to add a fourth {#three-themes}
+
 - The app ships exactly three themes: `glass` (Liquid Glass), `material` (Material) and `minimal`
   (Minimal). The default is **Material**.
 - There is no theme editor, no imported theme file, and no custom accent colour.
@@ -40,11 +41,12 @@ styling. There is no separate editor theme.
 Examples: a persisted theme of `material` → Material · a persisted theme of `dracula` → falls back to
 Material, see `#invalid-settings-fall-back`.
 
-*Why no custom accent:* each theme's accent is part of its identity and is chosen to stay legible
+_Why no custom accent:_ each theme's accent is part of its identity and is chosen to stay legible
 against that theme's own surfaces. A user-chosen hue would have to be validated against six backgrounds,
 three status colours and both syntax palettes, and there is no way to do that at the moment they pick it.
 
 ### Auto follows the system and updates live {#auto-follows-the-system}
+
 - **While** the appearance is Auto, the resolved appearance is `dark` when the operating system reports
   `prefers-color-scheme: dark` and `light` otherwise.
 - **When** the operating system switches while Auto is selected, the palette changes immediately without
@@ -57,6 +59,7 @@ the same with Dark pinned → nothing changes · the root tokens changing while 
 defect.
 
 ### The choice and the resolved value are stored separately {#choice-and-resolved-are-separate}
+
 - Two values are kept: the user's **choice**, one of `auto`, `light`, `dark`; and the **resolved**
   appearance, one of `light`, `dark`.
 - The `data-mode` attribute always carries the resolved value. The literal string `auto` never reaches
@@ -68,6 +71,7 @@ now-dark system → still `auto`, now `data-mode="dark"` · storing only `light`
 resolved to on first run → Auto is silently destroyed and the user's setting never worked.
 
 ### Every visual value is a token on the root element {#tokens-on-the-root-element}
+
 - Colours, spacing, radii, fonts, shadows, durations and stacking levels are CSS custom properties whose
   values are selected by `data-theme` and `data-mode` on `document.documentElement`.
 - Both attributes are set on the document element and on no other element.
@@ -78,35 +82,36 @@ attribute is above it · setting the attributes on the app shell instead → eve
 renders unthemed.
 
 ### Each visible palette matches the binding mockup {#six-mockup-palettes}
+
 - Every token row is selected by the complete `{theme, resolved mode}` pair and matches
   `surface/mockup.html`. Accent, radius, font, blur, and shadow are allowed to differ where the six
   mockup rows differ.
 
-| Token | Liquid Glass | Material | Minimal |
-|---|---|---|---|
-| `--accent` | `#7aa2ff` | `#4f6bed` | `#10b981` |
-| `--accent2` (gradients only) | `#c58bff` | `#4f6bed` | `#10b981` |
-| `--accent-ink` (text on `--accent-soft`) | `#cdd8ff` | `#0a1a52` | `#047857` |
-| `--accent-soft` | `rgba(122,162,255,.16)` | `#dfe4ff` | `#ecfdf5` |
-| `--accent-contrast` (text on `--accent`) | `#0b1024` | `#ffffff` | `#ffffff` |
-| `--canvas` (window backdrop) | aurora: radials `#3b2f7a` + `#1d4e8f` + `#7a2f6a` over linear `#0d1022 → #0a0d1c → #0b0f1e` | `#d9d7e6` | `#e9e9ec` |
-| `--app-bg` | `rgba(255,255,255,.10)` | `#faf8ff` | `#fbfbfa` |
-| `--surface` | `rgba(28,30,54,.82)` | `#ffffff` | `#ffffff` |
-| `--elevated` | `rgba(28,30,54,.82)` | `#f3f1fb` | `#ffffff` |
-| `--surface-2` | `rgba(255,255,255,.07)` | `#eceaf6` | `#f3f3f2` |
-| `--surface-3` | `rgba(255,255,255,.16)` | `#e6e3f2` | `#eaeae9` |
-| `--stroke` | `rgba(255,255,255,.18)` | `#e3e1ee` | `#e4e4e7` |
-| `--stroke-soft` | `rgba(255,255,255,.11)` | `#eceaf6` | `#ececee` |
-| `--text` | `#eaf0ff` | `#1b1b22` | `#1f2328` |
-| `--muted` | `rgba(234,240,255,.60)` | `#5c5c69` | `#6b7280` |
-| `--faint` | `rgba(234,240,255,.32)` | `#9aa1ab` | `#9aa1ab` |
-| `--hover` | `rgba(255,255,255,.16)` | `rgba(0,0,0,.05)` | `rgba(0,0,0,.04)` |
-| `--user-bubble` | `rgba(122,162,255,.14)` | `#dfe4ff` | `#ecfdf5` |
-| `--win-radius` | `16px` | `16px` | `12px` |
-| `--win-shadow` | `0 24px 80px rgba(0,0,0,.55)` | `0 12px 32px rgba(27,27,34,.16)` | `0 8px 24px rgba(31,35,40,.10)` |
-| `--blur` | `blur(28px) saturate(160%)` | `none` | `none` |
-| `--font` | system stack — `-apple-system, "SF Pro Display", "Segoe UI", Inter, …` | `"Roboto", "Segoe UI", Inter, …` | `"Inter", -apple-system, …` |
-| `--mono` | `"SF Mono", "JetBrains Mono", ui-monospace, …` | same | same |
+| Token                                    | Liquid Glass                                                                                | Material                         | Minimal                         |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------- |
+| `--accent`                               | `#7aa2ff`                                                                                   | `#4f6bed`                        | `#10b981`                       |
+| `--accent2` (gradients only)             | `#c58bff`                                                                                   | `#4f6bed`                        | `#10b981`                       |
+| `--accent-ink` (text on `--accent-soft`) | `#cdd8ff`                                                                                   | `#0a1a52`                        | `#047857`                       |
+| `--accent-soft`                          | `rgba(122,162,255,.16)`                                                                     | `#dfe4ff`                        | `#ecfdf5`                       |
+| `--accent-contrast` (text on `--accent`) | `#0b1024`                                                                                   | `#ffffff`                        | `#ffffff`                       |
+| `--canvas` (window backdrop)             | aurora: radials `#3b2f7a` + `#1d4e8f` + `#7a2f6a` over linear `#0d1022 → #0a0d1c → #0b0f1e` | `#d9d7e6`                        | `#e9e9ec`                       |
+| `--app-bg`                               | `rgba(255,255,255,.10)`                                                                     | `#faf8ff`                        | `#fbfbfa`                       |
+| `--surface`                              | `rgba(28,30,54,.82)`                                                                        | `#ffffff`                        | `#ffffff`                       |
+| `--elevated`                             | `rgba(28,30,54,.82)`                                                                        | `#f3f1fb`                        | `#ffffff`                       |
+| `--surface-2`                            | `rgba(255,255,255,.07)`                                                                     | `#eceaf6`                        | `#f3f3f2`                       |
+| `--surface-3`                            | `rgba(255,255,255,.16)`                                                                     | `#e6e3f2`                        | `#eaeae9`                       |
+| `--stroke`                               | `rgba(255,255,255,.18)`                                                                     | `#e3e1ee`                        | `#e4e4e7`                       |
+| `--stroke-soft`                          | `rgba(255,255,255,.11)`                                                                     | `#eceaf6`                        | `#ececee`                       |
+| `--text`                                 | `#eaf0ff`                                                                                   | `#1b1b22`                        | `#1f2328`                       |
+| `--muted`                                | `rgba(234,240,255,.60)`                                                                     | `#5c5c69`                        | `#6b7280`                       |
+| `--faint`                                | `rgba(234,240,255,.32)`                                                                     | `#9aa1ab`                        | `#9aa1ab`                       |
+| `--hover`                                | `rgba(255,255,255,.16)`                                                                     | `rgba(0,0,0,.05)`                | `rgba(0,0,0,.04)`               |
+| `--user-bubble`                          | `rgba(122,162,255,.14)`                                                                     | `#dfe4ff`                        | `#ecfdf5`                       |
+| `--win-radius`                           | `16px`                                                                                      | `16px`                           | `12px`                          |
+| `--win-shadow`                           | `0 24px 80px rgba(0,0,0,.55)`                                                               | `0 12px 32px rgba(27,27,34,.16)` | `0 8px 24px rgba(31,35,40,.10)` |
+| `--blur`                                 | `blur(28px) saturate(160%)`                                                                 | `none`                           | `none`                          |
+| `--font`                                 | system stack — `-apple-system, "SF Pro Display", "Segoe UI", Inter, …`                      | `"Roboto", "Segoe UI", Inter, …` | `"Inter", -apple-system, …`     |
+| `--mono`                                 | `"SF Mono", "JetBrains Mono", ui-monospace, …`                                              | same                             | same                            |
 
 The values above are the mockup's native appearances — Glass dark, Material light, Minimal light. The
 other three rows are defined in `surface/mockup.html` and are equally binding.
@@ -115,6 +120,7 @@ Examples: Material light uses `--accent: #4f6bed`; Material dark uses `--accent:
 light accent in dark mode would disagree with the visible contract.
 
 ### Roboto and Inter are bundled {#fonts-are-bundled}
+
 - Roboto and Inter ship as woff2 subsets in `frontend/src/ui/fonts/` and are loaded from the bundle.
 - Nothing is fetched at runtime.
 
@@ -123,22 +129,24 @@ unbundled → Material and Minimal both fall back to the same system stack and t
 stop being distinguishable, which is checkable rather than a matter of taste.
 
 ### Status colours are part of each visible palette {#status-colours-follow-the-mockup}
+
 - `--ok`, `--warn` and `--err` are selected by both `data-theme` and `data-mode`, exactly as shown
   in `surface/mockup.html`. They are not required to match across themes.
 
-| Palette | `--ok` | `--warn` | `--err` |
-|---|---|---|---|
-| Glass light | `#149e63` | `#b7791f` | `#c0324b` |
-| Glass dark | `#39d98a` | `#ffcf6b` | `#ff7a90` |
+| Palette        | `--ok`    | `--warn`  | `--err`   |
+| -------------- | --------- | --------- | --------- |
+| Glass light    | `#149e63` | `#b7791f` | `#c0324b` |
+| Glass dark     | `#39d98a` | `#ffcf6b` | `#ff7a90` |
 | Material light | `#1f8a54` | `#8a5a00` | `#b3261e` |
-| Material dark | `#5bd08b` | `#ffcf6b` | `#ffb4ab` |
-| Minimal light | `#059669` | `#b45309` | `#b91c1c` |
-| Minimal dark | `#34d399` | `#fbbf24` | `#f87171` |
+| Material dark  | `#5bd08b` | `#ffcf6b` | `#ffb4ab` |
+| Minimal light  | `#059669` | `#b45309` | `#b91c1c` |
+| Minimal dark   | `#34d399` | `#fbbf24` | `#f87171` |
 
 Examples: an error toast in Minimal light is `#b91c1c`; the same toast in Material light is
 `#b3261e`. Treating these as one appearance-only red would contradict the binding mockup.
 
 ### Selection, focus and scrollbars are tokens {#interaction-tokens}
+
 - `--selection-bg` and `--selection-fg` set the text-selection colours, and they apply to `::selection`
   in the preview **and** to the editor's own selection colour.
 - `--focus-ring` is a two-layer ring, `0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent)`, so it reads on
@@ -150,25 +158,25 @@ system's default blue · six palettes shipped with default operating-system scro
 that all look unfinished.
 
 ### Overlay stacking is a fixed scale {#stacking-scale}
-- Nothing sets a numeric `z-index`. Every stacked surface uses one of eight tokens.
 
-| Token | Value | Used by |
-|---|---|---|
-| `--z-base` | `1` | raised in-flow content |
-| `--z-sticky` | `10` | sticky headers, the tab strip |
-| `--z-resize` | `20` | the window's own resize zones |
-| `--z-dropdown` | `30` | menus, context menus, comboboxes |
-| `--z-overlay` | `60` | the modal scrim |
-| `--z-modal` | `70` | dialogs |
-| `--z-popover` | `80` | tooltips and popovers over dialogs |
-| `--z-toast` | `90` | notifications |
+- Nothing sets a numeric `z-index`. Every stacked application surface uses one of seven tokens.
 
-Examples: an error raised by a dialog → the toast is visible above the dialog, because `--z-toast`
-exceeds `--z-modal` · a resize zone along the top edge sits above the title bar it overlaps, because
-`--z-resize` exceeds `--z-sticky`, and still below an open menu, because it is under `--z-dropdown` —
-see `the-app-window.md#the-window-has-its-own-resize-zones`.
+| Token          | Value | Used by                            |
+| -------------- | ----- | ---------------------------------- |
+| `--z-base`     | `1`   | raised in-flow content             |
+| `--z-sticky`   | `10`  | sticky headers, the tab strip      |
+| `--z-dropdown` | `30`  | menus, context menus, comboboxes   |
+| `--z-overlay`  | `60`  | the modal scrim                    |
+| `--z-modal`    | `70`  | dialogs                            |
+| `--z-popover`  | `80`  | tooltips and popovers over dialogs |
+| `--z-toast`    | `90`  | notifications                      |
+
+Example: an error raised by a dialog → the toast is visible above the dialog, because `--z-toast`
+exceeds `--z-modal`. Native frame, title bar, controls, and resize borders remain outside the
+application stacking scale and are owned by the operating system.
 
 ### Motion is tokenised and the theme flip is not animated {#motion-tokens}
+
 - Every animated property uses `--dur-fast` (`120ms`), `--dur-base` (`180ms`) or `--dur-slow` (`300ms`),
   with `--ease-out` (`cubic-bezier(.2,.8,.2,1)`) or `--ease-in-out` (`cubic-bezier(.4,0,.2,1)`).
 - **While** the operating system reports `prefers-reduced-motion: reduce`, one rule sets every duration
@@ -180,6 +188,7 @@ switch cross-faded over 300 ms → six palettes changing at once reads as a rend
 transition.
 
 ### Markdown source and code inside fences are two different palettes {#two-syntax-palettes}
+
 - The `--md-*` family colours the Markdown **source** in the editor: the `#` of a heading, the `**` of
   bold, a link's target, a blockquote's `>`.
 - The `--hl-*` family colours **programming-language tokens inside a fenced block**, and it is used
@@ -187,38 +196,39 @@ transition.
   06 activates in the preview.
 - Both families are keyed by appearance only, not by theme. Sixteen values, not forty-eight.
 
-| `--md-*` token | Colours | Light | Dark |
-|---|---|---|---|
-| `--md-heading` | `#`, heading text | `#3056d3` | `#8fb4ff` |
-| `--md-strong` | `**bold**` | `#b45309` | `#ffd479` |
-| `--md-emphasis` | `_italic_`, inline maths | `#7c3aed` | `#c58bff` |
-| `--md-quote` | `>` blockquote | `#0369a1` | `#7fe3b5` |
-| `--md-link` | link text, target, image path | `#be123c` | `#ff9d7a` |
-| `--md-comment` | HTML comments, fence info strings | `#9aa1ab` | `#8a93b8` |
-| `--md-marker` | list bullets, numbers, `---` | `#9aa1ab` | `#8a93b8` |
-| `--code-fg` | base foreground for any monospace surface | `#30343b` | `#dfe6ff` |
-| `--gutter` | line numbers | `#c9ccd3` | `rgba(255,255,255,.22)` |
+| `--md-*` token  | Colours                                   | Light     | Dark                    |
+| --------------- | ----------------------------------------- | --------- | ----------------------- |
+| `--md-heading`  | `#`, heading text                         | `#3056d3` | `#8fb4ff`               |
+| `--md-strong`   | `**bold**`                                | `#b45309` | `#ffd479`               |
+| `--md-emphasis` | `_italic_`, inline maths                  | `#7c3aed` | `#c58bff`               |
+| `--md-quote`    | `>` blockquote                            | `#0369a1` | `#7fe3b5`               |
+| `--md-link`     | link text, target, image path             | `#be123c` | `#ff9d7a`               |
+| `--md-comment`  | HTML comments, fence info strings         | `#9aa1ab` | `#8a93b8`               |
+| `--md-marker`   | list bullets, numbers, `---`              | `#9aa1ab` | `#8a93b8`               |
+| `--code-fg`     | base foreground for any monospace surface | `#30343b` | `#dfe6ff`               |
+| `--gutter`      | line numbers                              | `#c9ccd3` | `rgba(255,255,255,.22)` |
 
-| `--hl-*` token | Colours | Light | Dark |
-|---|---|---|---|
-| `--hl-keyword` | `func`, `if`, `return` | `#7c3aed` | `#c58bff` |
-| `--hl-string` | string and character literals | `#0369a1` | `#7fe3b5` |
-| `--hl-comment` | comments | `#9aa1ab` | `#8a93b8` |
-| `--hl-number` | numeric and boolean literals | `#b45309` | `#ffd479` |
-| `--hl-function` | function and method names | `#3056d3` | `#8fb4ff` |
-| `--hl-type` | types, classes, constants | `#0f766e` | `#5eead4` |
-| `--hl-attr` | attributes, properties, tags | `#be123c` | `#ff9d7a` |
-| `--hl-punct` | operators and punctuation | `#5c5c69` | `#9aa1ab` |
+| `--hl-*` token  | Colours                       | Light     | Dark      |
+| --------------- | ----------------------------- | --------- | --------- |
+| `--hl-keyword`  | `func`, `if`, `return`        | `#7c3aed` | `#c58bff` |
+| `--hl-string`   | string and character literals | `#0369a1` | `#7fe3b5` |
+| `--hl-comment`  | comments                      | `#9aa1ab` | `#8a93b8` |
+| `--hl-number`   | numeric and boolean literals  | `#b45309` | `#ffd479` |
+| `--hl-function` | function and method names     | `#3056d3` | `#8fb4ff` |
+| `--hl-type`     | types, classes, constants     | `#0f766e` | `#5eead4` |
+| `--hl-attr`     | attributes, properties, tags  | `#be123c` | `#ff9d7a` |
+| `--hl-punct`    | operators and punctuation     | `#5c5c69` | `#9aa1ab` |
 
 Examples: a Go snippet in Glass light and in Minimal light → identical token colours, different fence
 background, border, font and gutter · the generated Monaco rules and preview stylesheet disagreeing on
 `--hl-keyword` → a build failure before Phase 06 activates the stylesheet.
 
-*Why one syntax palette across themes:* syntax colouring is a legibility system. Three variants of it
+_Why one syntax palette across themes:_ syntax colouring is a legibility system. Three variants of it
 would be three sets to keep readable, for no benefit anybody asked for. The theme still changes
 everything around the code.
 
 ### The editor theme is generated from these tokens {#editor-theme-is-generated}
+
 - Six Monaco themes — three themes × light and dark — are generated at build time from the tables above.
   No colour appears in a `defineTheme()` call that is not traceable to a token here.
 - Each generated theme sets at least: `editor.background` from `--app-bg`, `editor.foreground` from
@@ -232,7 +242,7 @@ everything around the code.
   `editorError.foreground` from `--err`, `editorWarning.foreground` from `--warn`, plus token rules for
   the Markdown grammar from `--md-*` and for embedded fenced languages from `--hl-*`.
 
-*Why generated:* Monaco cannot read a CSS custom property. It takes literal colours through
+_Why generated:_ Monaco cannot read a CSS custom property. It takes literal colours through
 `monaco.editor.defineTheme()`, so "the editor and the preview share one theme" needs a mechanism, not an
 assertion.
 
@@ -245,6 +255,7 @@ unmissable in a dark Liquid Glass window. Find is built later, but its colours a
 this is where colours are decided.
 
 ### The first paint is already in the right theme {#no-flash-on-launch}
+
 - **When** the window first paints after launch, it is already in the persisted theme and appearance.
   There is no moment in a default palette.
 - This is achieved by writing `data-theme` and `data-mode` into the served `index.html` at asset-server
@@ -265,30 +276,33 @@ theme from the database after the webview boots → a guaranteed light-to-dark f
 
 ## When things go wrong
 
-| Situation | What the user sees | What they can do |
-|---|---|---|
-| The stored theme name is not one of the three | Material, silently | Nothing — it is corrected on the next write |
-| The stored appearance is not `auto`, `light` or `dark` | Auto, silently | Nothing |
-| A bundled font fails to load | The system font stack; everything stays legible | Nothing — it is a build defect, not a user problem |
+| Situation                                              | What the user sees                              | What they can do                                   |
+| ------------------------------------------------------ | ----------------------------------------------- | -------------------------------------------------- |
+| The stored theme name is not one of the three          | Material, silently                              | Nothing — it is corrected on the next write        |
+| The stored appearance is not `auto`, `light` or `dark` | Auto, silently                                  | Nothing                                            |
+| A bundled font fails to load                           | The system font stack; everything stays legible | Nothing — it is a build defect, not a user problem |
 
 ## Edge cases
 
 **The operating system switches appearance while Auto is selected**
-- *Trigger:* macOS moves to dark at sunset; the app is open with Auto.
-- *Expected:* the root tokens update and the Monaco theme is swapped in one change.
-- *Avoid:* updating the CSS tokens only, leaving the editor in its old theme until the user edits
+
+- _Trigger:_ macOS moves to dark at sunset; the app is open with Auto.
+- _Expected:_ the root tokens update and the Monaco theme is swapped in one change.
+- _Avoid:_ updating the CSS tokens only, leaving the editor in its old theme until the user edits
   something.
 
 **A stored theme or appearance is missing or invalid**
-- *Trigger:* a first run, or a value written by a future version.
-- *Expected:* Material and Auto, and the app starts normally.
-- *Avoid:* refusing to start, or leaving the document element with no `data-theme` at all, which renders
+
+- _Trigger:_ a first run, or a value written by a future version.
+- _Expected:_ Material and Auto, and the app starts normally.
+- _Avoid:_ refusing to start, or leaving the document element with no `data-theme` at all, which renders
   every token as its fallback and produces an unstyled window.
 
 **A bundled UI font fails to load**
-- *Trigger:* a build that dropped the woff2 subsets.
-- *Expected:* the app falls back to its system stack and stays legible.
-- *Avoid:* shipping it. The visual gate catches this by asserting that the computed font on
+
+- _Trigger:_ a build that dropped the woff2 subsets.
+- _Expected:_ the app falls back to its system stack and stays legible.
+- _Avoid:_ shipping it. The visual gate catches this by asserting that the computed font on
   `document.body` is not a serif, which doubles as an offline-regression signal since every font is
   bundled.
 
@@ -307,16 +321,16 @@ theme from the database after the webview boots → a guaranteed light-to-dark f
 
 ## Decisions
 
-- *2026-07-25* — The seven syntax colours that existed only in the mockup as `--c-h`, `--c-b`, `--c-em`,
+- _2026-07-25_ — The seven syntax colours that existed only in the mockup as `--c-h`, `--c-b`, `--c-em`,
   `--c-q`, `--c-c`, `--c-fn` and `--c-code` were given normative names in the `--md-*` family. Two token
   families that existed in neither the mockup nor the prose — `--hl-*` and the stacking scale — were
   added to both. A token in one and not the other is how a token table and an implementation drift apart.
-- *2026-07-25* — Colour emoji were removed from the product interface. A colour emoji is a bitmap: it
+- _2026-07-25_ — Colour emoji were removed from the product interface. A colour emoji is a bitmap: it
   cannot take a token colour and it renders differently, or not at all, on each platform. Icons are one
   monochrome SVG sprite tinted from `currentColor`.
-- *2026-07-25* — Editor and preview colours are generated at build time from one syntax-token family
+- _2026-07-25_ — Editor and preview colours are generated at build time from one syntax-token family
   rather than hand-tuned per theme. Recorded in `../../adr/0029-generated-editor-themes.md`.
-- *2026-07-28* — Phase ownership was made explicit. This feature owns the core token, persistence,
+- _2026-07-28_ — Phase ownership was made explicit. This feature owns the core token, persistence,
   Auto, Monaco and first-paint infrastructure delivered in Phase 02. Preview syntax activation,
   Mermaid, KaTeX and reading-mode theme reactions live in `rendering-rich-documents.md` for Phase 06;
   print styling lives in `exporting-a-document.md` for Phase 10.

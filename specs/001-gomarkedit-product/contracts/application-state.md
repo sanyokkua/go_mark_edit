@@ -16,14 +16,18 @@ against SQLite after the bridge becomes available. It contains no unrelated sett
 write-back by itself.
 
 Native window state is applied through Wails, but its durable size/maximized value and shell layout are
-acknowledged by appmodel. The process starts hidden, appmodel loads valid durable fields, the native
-adapter applies them, Redux hydrates the shell projection, and only then may the window be shown. A
-browser cache or component-local layout state must not become an alternative restore source.
+acknowledged by appmodel. The process starts hidden, appmodel loads valid durable fields, an injected
+Go native-window adapter applies them, Redux hydrates the shell projection, and only then may the normal
+shell be shown. Initialization failure may show only the safe in-webview recovery surface; the normal
+shell stays unmounted until Retry succeeds. A browser cache or component-local layout state must not
+become an alternative restore source.
 
 Each durable layout field carries its original change identity. Discrete changes persist immediately;
-continuous changes persist after 250 ms; close flushes only locally pending fields without assigning a
-new close-time identity. The repository conditionally accepts only a newer change, so close order never
-overrides change order.
+continuous changes reach an appmodel-owned pending service and persist after 250 ms; `OnBeforeClose`
+synchronously flushes only locally pending fields without assigning a new close-time identity. The
+repository conditionally accepts only a newer change, so close order never overrides change order.
+Only a committed value or reloaded newer winner is projected; failed intent never becomes visible
+durable state.
 
 ## Working-copy exception
 
@@ -43,6 +47,9 @@ to reject stale application without making Redux authoritative.
 ## Failure invariants
 
 - A failed settings write leaves the last acknowledged preference active.
+- Delivered Appearance reset is one backend transaction: it projects all defaults after commit or no
+  changed value after failure. Other already-open processes keep their acknowledged Appearance values
+  until relaunch.
 - A failed editor flush leaves active identity and canonical content unchanged.
 - A stale tab reorder, close, proposal, or asynchronous render changes nothing.
 - Cancellation and timeout are normal terminal outcomes and release owned gates.
