@@ -18,3 +18,27 @@
   padding: var(--dialog-padding);
   transition: opacity var(--dur-base) var(--ease-out);
 }
+
+.toast[data-severity='info'],
+.toast[data-severity='success'] {
+  border-color: var(--accent);
+}
+
+.toast[data-severity='warning'] {
+  border-color: var(--warn);
+}
+
+.actions {
+  display: flex;
+  gap: var(--control-gap);
+  margin-top: var(--control-gap);
+}
+
+.action {
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--control-radius);
+  color: var(--accent-contrast);
+  font: inherit;
+  padding: var(--control-padding);
+}

@@ -2,7 +2,9 @@ package appmodel
 
 import (
 	"context"
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -67,9 +69,53 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 	}
 }
 
+// Proves: FR-WS-012
+// A rejected layout persistence write remains a safe typed bridge envelope and
+// never exposes its local failure cause.
+func TestHandlerClassifiesRejectedLayoutWrite(t *testing.T) {
+	handler := NewAppModelHandler(&fakeAppModelService{layoutError: errors.New("/private/user/settings.db")}, nil, nil)
+	result := handler.SetUILayout(apperr.UILayout{})
+	if result.Error == nil || result.Error.Code != apperr.CodeInternal {
+		t.Fatalf("rejected layout result = %+v, want internal typed envelope", result)
+	}
+	if result.Error.Message == "/private/user/settings.db" {
+		t.Fatalf("layout failure leaked private path: %+v", result.Error)
+	}
+}
+
+// Proves: FR-WS-012
+// A real layout persistence failure becomes one safe classified file-operation
+// envelope with a stable layout subject and no raw failure data.
+func TestHandlerClassifiesLayoutPersistenceFailuresWithSafeSubject(t *testing.T) {
+	service := NewAppModelServiceWithLayoutRepository(
+		&recordingEmitter{},
+		failingLayoutRepository{err: errors.New("/private/user/settings.db")},
+	)
+	handler := NewAppModelHandler(service, nil, nil)
+	visible := false
+
+	result := handler.SetUILayout(apperr.UILayout{SidebarVisible: &visible})
+
+	if result.Error == nil || result.Error.Code != apperr.CodeIO {
+		t.Fatalf("layout persistence result = %+v, want io typed envelope", result)
+	}
+	if result.Error.Details["operation"] != "update layout" {
+		t.Fatalf("layout persistence details = %+v, want safe layout operation", result.Error.Details)
+	}
+	for _, forbidden := range []string{
+		"/private/user/settings.db",
+		"settings.db",
+	} {
+		if strings.Contains(result.Error.Message, forbidden) || strings.Contains(result.Error.Title, forbidden) {
+			t.Fatalf("layout persistence leaked raw failure data %q: %+v", forbidden, result.Error)
+		}
+	}
+}
+
 type fakeAppModelService struct {
-	panicOn   string
-	emissions int
+	panicOn     string
+	emissions   int
+	layoutError error
 }
 
 func (service *fakeAppModelService) GetState(_ context.Context) (apperr.AppState, error) {
@@ -98,6 +144,9 @@ func (service *fakeAppModelService) SetDocView(_ context.Context, _ string, _ ap
 func (service *fakeAppModelService) SetUILayout(_ context.Context, _ apperr.UILayout) error {
 	if service.panicOn == "SetUILayout" {
 		panic("service panic")
+	}
+	if service.layoutError != nil {
+		return service.layoutError
 	}
 	service.emissions++
 	return nil

@@ -12,6 +12,7 @@ import type {
 export interface SettingsBindings {
   getSettings: () => Promise<SettingsResult>;
   updateAppearance: (settings: AppearanceSettings) => Promise<VoidResult>;
+  resetAppearance: () => Promise<VoidResult>;
   updateContentPrivacy: (
     settings: ContentPrivacySettings,
   ) => Promise<VoidResult>;
@@ -21,6 +22,7 @@ export interface SettingsBindings {
 export interface SettingsAdapter {
   getSettings: () => Promise<Settings>;
   updateAppearance: (settings: AppearanceSettings) => Promise<void>;
+  resetAppearance: () => Promise<void>;
   updateContentPrivacy: (settings: ContentPrivacySettings) => Promise<void>;
   updateMarkdown: (settings: MarkdownSettings) => Promise<void>;
 }
@@ -35,6 +37,10 @@ export function createSettingsAdapter(
   const updateAppearance = guardArity(
     'SettingsHandler.UpdateAppearance',
     bindings.updateAppearance,
+  );
+  const resetAppearance = guardArity(
+    'SettingsHandler.ResetAppearance',
+    bindings.resetAppearance,
   );
   const updateContentPrivacy = guardArity(
     'SettingsHandler.UpdateContentPrivacy',
@@ -51,6 +57,9 @@ export function createSettingsAdapter(
     },
     async updateAppearance(settings: AppearanceSettings): Promise<void> {
       return unwrap(await updateAppearance(settings));
+    },
+    async resetAppearance(): Promise<void> {
+      return unwrap(await resetAppearance());
     },
     async updateContentPrivacy(
       settings: ContentPrivacySettings,

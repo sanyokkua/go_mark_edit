@@ -98,6 +98,14 @@ export function UpdateAppearance(
   return Promise.resolve({});
 }
 
+export function ResetAppearance(): Promise<VoidResult> {
+  settings = {
+    ...settings,
+    appearance: { theme: 'material', mode: 'auto', defaultOpenMode: 'editor' },
+  };
+  return Promise.resolve({});
+}
+
 export function UpdateContentPrivacy(
   nextContentPrivacy: ContentPrivacySettings,
 ): Promise<VoidResult> {

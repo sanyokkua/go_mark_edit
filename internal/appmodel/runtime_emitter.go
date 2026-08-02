@@ -20,4 +20,15 @@ func (RuntimeStatePatchEmitter) EmitStatePatch(ctx context.Context, patch apperr
 	return nil
 }
 
+// EmitAsyncError publishes a safe classified appmodel error without changing
+// the acknowledged projection.
+func (RuntimeStatePatchEmitter) EmitAsyncError(ctx context.Context, wire apperr.WireError) error {
+	if ctx == nil {
+		return errors.New("wails lifecycle context is required")
+	}
+	runtime.EventsEmit(ctx, "state:error", wire)
+	return nil
+}
+
 var _ StatePatchEmitter = RuntimeStatePatchEmitter{}
+var _ AsyncErrorEmitter = RuntimeStatePatchEmitter{}

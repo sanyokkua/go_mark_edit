@@ -6,6 +6,10 @@ export function GetSettings() {
   return window['go']['settings']['SettingsHandler']['GetSettings']();
 }
 
+export function ResetAppearance() {
+  return window['go']['settings']['SettingsHandler']['ResetAppearance']();
+}
+
 export function UpdateAppearance(arg1) {
   return window['go']['settings']['SettingsHandler']['UpdateAppearance'](arg1);
 }

@@ -26,6 +26,9 @@ export namespace apperr {
 	    }
 	}
 	export class UILayout {
+	    windowWidth?: number;
+	    windowHeight?: number;
+	    windowMaximized?: boolean;
 	    sidebarVisible?: boolean;
 	    sidebarWidth?: number;
 	    viewArrangement?: string;
@@ -40,6 +43,9 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.windowWidth = source["windowWidth"];
+	        this.windowHeight = source["windowHeight"];
+	        this.windowMaximized = source["windowMaximized"];
 	        this.sidebarVisible = source["sidebarVisible"];
 	        this.sidebarWidth = source["sidebarWidth"];
 	        this.viewArrangement = source["viewArrangement"];
@@ -195,6 +201,7 @@ export namespace apperr {
 	}
 	export class AppStateSnapshot {
 	    revision: number;
+	    applicationVersion: string;
 	    documents: Record<string, DocumentMetadata>;
 	    activeDocumentId: string;
 	    ui: UILayout;
@@ -206,6 +213,7 @@ export namespace apperr {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.revision = source["revision"];
+	        this.applicationVersion = source["applicationVersion"];
 	        this.documents = this.convertValues(source["documents"], DocumentMetadata, true);
 	        this.activeDocumentId = source["activeDocumentId"];
 	        this.ui = this.convertValues(source["ui"], UILayout);

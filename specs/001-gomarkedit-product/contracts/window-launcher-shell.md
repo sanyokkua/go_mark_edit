@@ -162,8 +162,10 @@ One representative walkthrough on the current host covers:
 - About build identity and notification dedup/timing/error-queue/banner behavior;
 - absence of File, launcher, recents, tab strip, Assistant controls/content, and future Settings groups.
 
-The evidence records its host. Viewer completion remains blocked until native window behavior is also
-proven on macOS, Windows, and Linux.
+The evidence records its host. Current-host native evidence is sufficient for this shell slice and
+intermediate product stages. Viewer completion is not blocked by Windows/Linux runtime testing; that
+testing is intentionally deferred until the whole application is implemented, when the final release
+gate proves the completed application on macOS, Windows, and Linux.
 
 ## Downstream entry gates
 

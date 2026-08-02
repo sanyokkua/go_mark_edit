@@ -86,9 +86,10 @@
   --preview-table-border-width: 1px;
   --preview-table-cell-padding: 0.5rem;
   --shell-left-width: 16rem;
+  --shell-divider-width: 0.75rem;
+  --shell-divider-line-width: 1px;
   --shell-center-min-width: 0;
   --shell-assistant-collapsed-width: 0;
-  --shell-assistant-visible-width: 20rem;
   --status-bar-border-color: var(--border);
   --status-bar-border-width: 1px;
   --status-bar-font-size: 0.75rem;

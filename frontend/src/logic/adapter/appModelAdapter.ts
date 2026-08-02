@@ -6,6 +6,7 @@ import type {
   DocViewInput,
   UILayout,
 } from '../store/appModelTypes';
+import { isWireError, type WireError } from '../utils/parseError';
 
 export const BUFFER_SYNC_MS = 200;
 
@@ -54,6 +55,7 @@ export interface AppModelAdapter {
   updateLocalDocView: (documentId: string, view: DocViewInput) => Promise<void>;
   flushDocView: (documentId: string) => Promise<void>;
   setUILayout: (layout: UILayout) => Promise<void>;
+  subscribeAsyncErrors?: (onError: (error: WireError) => void) => () => void;
   subscribeStatePatches: (
     onPatch: (patch: AppStatePatch) => void,
   ) => () => void;
@@ -370,6 +372,13 @@ export function createAppModelAdapter(
     },
     async setUILayout(layout: UILayout): Promise<void> {
       return unwrapPromise(setUILayout(layout));
+    },
+    subscribeAsyncErrors(onError: (error: WireError) => void): () => void {
+      return runtime.eventsOn('state:error', (payload: unknown) => {
+        if (isWireError(payload)) {
+          onError(payload);
+        }
+      });
     },
     subscribeStatePatches(onPatch: (patch: AppStatePatch) => void): () => void {
       if (disposeStatePatches !== undefined) {

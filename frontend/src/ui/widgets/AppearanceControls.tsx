@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 
 import { settingsAdapter } from '../../logic/adapter';
 import {
@@ -11,8 +11,8 @@ import {
   type Theme,
 } from '../../logic/theme/theme';
 import { writeStartupThemeMirror } from '../../logic/theme/startupThemeMirror';
-import AppearanceDialog from './AppearanceDialog';
-import SettingsMenu from './SettingsMenu';
+import SettingsDialog from './SettingsDialog';
+import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
 import styles from './AppearanceControls.module.css';
 
 interface AppearanceState {
@@ -22,6 +22,9 @@ interface AppearanceState {
 }
 
 interface AppearanceControlsProps {
+  onSettingsOpenChange?: (open: boolean) => void;
+  settingsMenuRenderer?: (props: SettingsMenuProps) => React.JSX.Element;
+  settingsOpen?: boolean;
   visible?: boolean;
 }
 
@@ -42,6 +45,9 @@ function apply(state: AppearanceState): void {
 }
 
 const AppearanceControls: React.FC<AppearanceControlsProps> = ({
+  onSettingsOpenChange,
+  settingsMenuRenderer: SettingsMenuRenderer,
+  settingsOpen,
   visible = true,
 }: AppearanceControlsProps): React.JSX.Element | null => {
   const [appearance, setAppearance] = useState<AppearanceState>({
@@ -49,8 +55,15 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
     mode: 'auto',
     theme: 'material',
   });
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = settingsOpen ?? internalOpen;
+  const setOpen = (next: boolean): void => {
+    setInternalOpen(next);
+    onSettingsOpenChange?.(next);
+  };
   const desiredAppearance = useRef(appearance);
+  const [settingsReturnFocus, setSettingsReturnFocus] =
+    useState<HTMLElement | null>(null);
   const writeChain = useRef(Promise.resolve());
 
   useEffect((): void => {
@@ -87,6 +100,12 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
     );
   }, [appearance.mode, appearance.theme]);
 
+  useEffect((): void => {
+    if (!open && settingsReturnFocus?.isConnected === true) {
+      settingsReturnFocus.focus();
+    }
+  }, [open, settingsReturnFocus]);
+
   const persist = useCallback(
     (patch: Partial<Pick<AppearanceState, 'mode' | 'theme'>>): void => {
       const next = { ...desiredAppearance.current, ...patch };
@@ -105,39 +124,81 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
     },
     [],
   );
+  const reset = useCallback((): void => {
+    const next: AppearanceState = {
+      defaultOpenMode: 'editor',
+      mode: 'auto',
+      theme: 'material',
+    };
+    void settingsAdapter
+      .resetAppearance()
+      .then((): void => {
+        desiredAppearance.current = next;
+        setAppearance(next);
+        apply(next);
+        writeStartupThemeMirror(localStorage, {
+          theme: next.theme,
+          mode: next.mode,
+        });
+      })
+      .catch((): void => undefined);
+  }, []);
 
   if (!visible) {
     return null;
   }
 
+  const settingsMenuProps: SettingsMenuProps = {
+    mode: appearance.mode,
+    theme: appearance.theme,
+    onModeChange: (mode): void => {
+      persist({ mode });
+    },
+    onOpenAppearance: (): void => {
+      const active =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      const menuRoot = active?.closest('[data-settings-menu-root]');
+      const actionRoot = active?.closest('nav');
+      setSettingsReturnFocus(
+        menuRoot?.querySelector<HTMLElement>('[data-settings-opener]') ??
+          actionRoot?.querySelector<HTMLElement>('[data-settings-overflow]') ??
+          active,
+      );
+      setOpen(true);
+    },
+    onThemeChange: (theme): void => {
+      persist({ theme });
+    },
+  };
+  const menu =
+    SettingsMenuRenderer === undefined ? (
+      <div className={styles.controls}>
+        <SettingsMenu {...settingsMenuProps} />
+      </div>
+    ) : (
+      <SettingsMenuRenderer {...settingsMenuProps} />
+    );
+
   return (
-    <div className={styles.controls}>
-      <SettingsMenu
-        mode={appearance.mode}
-        theme={appearance.theme}
-        onModeChange={(mode): void => {
-          persist({ mode });
-        }}
-        onOpenAppearance={(): void => {
-          setOpen(true);
-        }}
-        onThemeChange={(theme): void => {
-          persist({ theme });
-        }}
-      />
-      <AppearanceDialog
+    <Fragment>
+      {menu}
+      <SettingsDialog
         mode={appearance.mode}
         open={open}
+        returnFocusTo={settingsReturnFocus}
         theme={appearance.theme}
         onModeChange={(mode): void => {
           persist({ mode });
         }}
+        onReset={reset}
         onOpenChange={setOpen}
         onThemeChange={(theme): void => {
           persist({ theme });
         }}
       />
-    </div>
+    </Fragment>
   );
 };
 

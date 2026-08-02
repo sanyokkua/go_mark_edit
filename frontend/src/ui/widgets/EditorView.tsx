@@ -39,6 +39,7 @@ import {
 } from './editorSession';
 import PreviewView from './PreviewView';
 import styles from './EditorView.module.css';
+import { t } from '../../i18n';
 
 function fallbackView(): DocumentView {
   return {
@@ -101,6 +102,16 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
       view,
       adapter,
     );
+    const synchronizeMountedEditorTheme = useCallback((): void => {
+      void import('../components/monacoSetup').then(
+        ({ applyMonacoThemeFromRoot }): void => {
+          // Monaco can restore its default theme while creating the editor,
+          // after CodeEditor installed the root observer. Reapply once at the
+          // mount boundary; CodeEditor's observer owns later root changes.
+          applyMonacoThemeFromRoot()();
+        },
+      );
+    }, []);
 
     useEffect((): void => {
       onLiveCursorChange(synchronizedBuffer.liveCursor);
@@ -138,6 +149,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
         onCursorPositionChange={synchronizedBuffer.onCursorPositionChange}
         onScrollChange={synchronizedBuffer.onEditorScrollChange}
         onSelectionChange={synchronizedBuffer.onSelectionChange}
+        onEditorMounted={synchronizeMountedEditorTheme}
       />
     );
   },
@@ -163,10 +175,10 @@ const LivePreview: React.FC<LivePreviewProps> = ({
   }
 
   return (
-    <section aria-label="Preview pane" className={styles.pane}>
+    <section aria-label={t('editor.previewPane')} className={styles.pane}>
       <header className={styles.paneHeader}>
-        <span>● Preview · live</span>
-        <span className={styles.paneMeta}>GFM</span>
+        <span>{t('editor.preview.live')}</span>
+        <span className={styles.paneMeta}>{t('editor.preview.flavour')}</span>
       </header>
       <div
         className={styles.previewContent}
@@ -249,14 +261,18 @@ const EditorView: React.FC<EditorViewProps> = ({
 
   const view = activeDocument?.view ?? fallbackView();
   const arrangement = arrangementFor(view);
-  const title = activeDocument?.title ?? 'Untitled';
-  const encoding = activeDocument?.encoding.toUpperCase() ?? 'UTF-8';
-  const lineEnding = activeDocument?.lineEnding.toUpperCase() ?? 'LF';
+  const title = activeDocument?.title ?? t('editor.untitled');
+  const encoding = activeDocument?.encoding ?? 'utf-8';
+  const lineEnding = activeDocument?.lineEnding ?? 'lf';
+  const localizedEncoding = t(`status.encoding.${encoding.toLowerCase()}`);
+  const localizedLineEnding = t(
+    `status.lineEnding.${lineEnding.toLowerCase()}`,
+  );
   const wordCount = activeDocument?.wordCount ?? 0;
 
   return (
-    <section aria-label="Editor view" className={styles.editorView}>
-      <header aria-label="Document toolbar" className={styles.toolbar}>
+    <section aria-label={t('editor.view')} className={styles.editorView}>
+      <header aria-label={t('editor.toolbar')} className={styles.toolbar}>
         <ViewMenu
           editorVisible={view.editorVisible}
           previewVisible={view.previewVisible}
@@ -268,15 +284,18 @@ const EditorView: React.FC<EditorViewProps> = ({
       <div className={styles.panes}>
         <section
           aria-hidden={!view.editorVisible}
-          aria-label="Editor pane"
+          aria-label={t('editor.editorPane')}
           className={`${styles.pane} ${
             view.editorVisible ? '' : styles.paneHidden
           }`}
         >
           <header className={styles.paneHeader}>
-            <span>Editor · {title}</span>
+            <span>{t('editor.editorTitle', { title })}</span>
             <span className={styles.paneMeta}>
-              {encoding} · {lineEnding}
+              {t('editor.metadata', {
+                encoding: localizedEncoding,
+                lineEnding: localizedLineEnding,
+              })}
             </span>
           </header>
           <ActiveEditor

@@ -96,6 +96,18 @@ type fakeSettingsRepository struct {
 	panicOperation    string
 	appearanceUpdates int
 	markdownUpdates   int
+	resetError        error
+}
+
+func (repository *fakeSettingsRepository) ResetAppearance(context.Context) error {
+	if repository.panicOperation == "reset appearance" {
+		panic("reset appearance")
+	}
+	if repository.resetError != nil {
+		return repository.resetError
+	}
+	repository.appearance = DefaultSettings().Appearance
+	return nil
 }
 
 func (repository *fakeSettingsRepository) GetAppearance(context.Context) (apperr.AppearanceSettings, error) {

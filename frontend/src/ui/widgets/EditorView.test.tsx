@@ -125,18 +125,18 @@ it('STORY-015-AC-1 applies the responsive split layout contract', () => {
   render(
     <Provider store={store}>
       <EditorSessionContext.Provider value={null}>
-        <AppShell assistantVisible={false} />
+        <AppShell />
       </EditorSessionContext.Provider>
     </Provider>,
   );
 
   expect(
-    screen.getByRole('complementary', { name: 'File explorer' }),
+    screen.getByRole('complementary', { name: 'Workspace' }),
   ).toBeInTheDocument();
   expect(
     screen.getByRole('main', { name: 'Document area' }),
   ).toBeEmptyDOMElement();
-  expect(screen.getByLabelText('Assistant')).toHaveAttribute('hidden');
+  expect(screen.queryByLabelText('Assistant')).not.toBeInTheDocument();
 
   const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');

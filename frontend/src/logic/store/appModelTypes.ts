@@ -44,17 +44,17 @@ export interface DocumentMetadata {
 }
 
 export interface UILayout {
+  windowWidth?: number;
+  windowHeight?: number;
+  windowMaximized?: boolean;
   sidebarVisible?: boolean;
   sidebarWidth?: number;
   viewArrangement?: string;
-  editorPaneVisible?: boolean;
-  previewPaneVisible?: boolean;
-  assistantVisible?: boolean;
-  assistantWidth?: number;
 }
 
 export interface AppStateSnapshot {
   revision: number;
+  applicationVersion?: string;
   documents: Record<string, DocumentMetadata>;
   activeDocumentId: string;
   ui: UILayout;

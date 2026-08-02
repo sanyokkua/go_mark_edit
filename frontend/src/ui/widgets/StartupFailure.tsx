@@ -18,6 +18,7 @@ const StartupFailure: React.FC<StartupFailureProps> = ({
       className={styles.panel}
       role="status"
     >
+      <h1>{t('startup.failure.title')}</h1>
       <p className={styles.message}>{t('startup.failure.message')}</p>
       <div className={styles.actions}>
         <button

@@ -4,6 +4,8 @@ import {apperr} from '../models';
 
 export function GetSettings():Promise<apperr.SettingsResult>;
 
+export function ResetAppearance():Promise<apperr.VoidResult>;
+
 export function UpdateAppearance(arg1:apperr.AppearanceSettings):Promise<apperr.VoidResult>;
 
 export function UpdateContentPrivacy(arg1:apperr.ContentPrivacySettings):Promise<apperr.VoidResult>;

@@ -14,6 +14,7 @@ import { ESLint } from 'eslint';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runProductionNetworkGuard } from './check-production-network.mjs';
 
 const frontendRoot = fileURLToPath(new URL('..', import.meta.url));
 const allowlistPath = join(frontendRoot, 'scripts', 'archtest-allowlist.json');
@@ -128,6 +129,26 @@ async function runColourScan(allowlist) {
   }
 }
 
+// ---------------------------------------------------------------- offline production sources
+
+async function runProductionNetworkScan() {
+  const findings = await runProductionNetworkGuard({
+    sourceRoots: [
+      join(frontendRoot, 'src'),
+      join(frontendRoot, 'public'),
+      join(frontendRoot, 'wailsjs', 'go'),
+    ],
+    bundleRoots: [],
+    requireBundle: false,
+  });
+
+  for (const finding of findings) {
+    fail(
+      `prohibited network path ${relative(frontendRoot, finding.path)}:${finding.line}`,
+    );
+  }
+}
+
 // ----------------------------------------------------------------
 
 const allowlist = JSON.parse(await readFile(allowlistPath, 'utf8'));
@@ -136,6 +157,8 @@ note('archtest (frontend) — boundaries');
 await runBoundaryLint(allowlist);
 note('archtest (frontend) — colour literals');
 await runColourScan(allowlist);
+note('archtest (frontend) — offline production sources');
+await runProductionNetworkScan();
 
 if (failures > 0) {
   process.stdout.write(`\narchtest (frontend): ${failures} failing check(s)\n`);

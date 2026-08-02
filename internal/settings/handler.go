@@ -56,6 +56,20 @@ func (handler *SettingsHandler) UpdateAppearance(appearance apperr.AppearanceSet
 	return apperr.VoidResult{}
 }
 
+func (handler *SettingsHandler) ResetAppearance() (res apperr.VoidResult) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			wire := apperr.ToWire(handler.zlog(), apperr.Internal(fmt.Errorf(panicFormat, recovered)))
+			res = apperr.VoidResult{Error: &wire}
+		}
+	}()
+	if err := handler.service.ResetAppearance(handler.context()); err != nil {
+		wire := apperr.ToWire(handler.zlog(), err)
+		return apperr.VoidResult{Error: &wire}
+	}
+	return apperr.VoidResult{}
+}
+
 // UpdateMarkdown validates and persists the Markdown group immediately.
 func (handler *SettingsHandler) UpdateMarkdown(markdown apperr.MarkdownSettings) (res apperr.VoidResult) {
 	defer func() {

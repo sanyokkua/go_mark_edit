@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -12,6 +15,7 @@ import (
 	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
 )
 
 // Proves: STORY-011-AC-1
@@ -69,6 +73,51 @@ func TestInitialStateCreatesCleanUntitledDocument(t *testing.T) {
 	}
 }
 
+// Proves: FR-WS-019
+func TestInitialStateProjectsTheSingleGoBuildIdentity(t *testing.T) {
+	state, err := NewAppModelService(nil).GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	if state.Snapshot.ApplicationVersion != bootstrap.Version() {
+		t.Fatalf("projected version = %q, want bootstrap identity %q", state.Snapshot.ApplicationVersion, bootstrap.Version())
+	}
+}
+
+// Proves: FR-WS-019
+func TestLinkTimeInjectedBuildIdentityFlowsThroughAppModel(t *testing.T) {
+	const injected = "9.8.7-test+injected"
+	if os.Getenv("GME_VERSION_INJECTION_HELPER") == "1" {
+		state, err := NewAppModelService(nil).GetState(context.Background())
+		if err != nil {
+			t.Fatalf("GetState: %v", err)
+		}
+		if state.Snapshot.ApplicationVersion != injected {
+			t.Fatalf("projected version = %q, want injected %q", state.Snapshot.ApplicationVersion, injected)
+		}
+		return
+	}
+
+	repositoryRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repository root: %v", err)
+	}
+	command := exec.Command(
+		"go",
+		"test",
+		"./internal/appmodel",
+		"-run",
+		"^TestLinkTimeInjectedBuildIdentityFlowsThroughAppModel$",
+		"-count=1",
+		"-ldflags=-X github.com/sanyokkua/go_mark_edit/internal/bootstrap.version="+injected,
+	)
+	command.Dir = repositoryRoot
+	command.Env = append(os.Environ(), "GME_VERSION_INJECTION_HELPER=1")
+	if output, runErr := command.CombinedOutput(); runErr != nil {
+		t.Fatalf("run injected appmodel test: %v\n%s", runErr, output)
+	}
+}
+
 // Proves: STORY-011-AC-3
 // Every successful command, including a no-op, emits one monotonic content-free patch with explicit sections.
 func TestSuccessfulCommandsEmitOneRevisionedContentFreePatch(t *testing.T) {
@@ -97,10 +146,8 @@ func TestSuccessfulCommandsEmitOneRevisionedContentFreePatch(t *testing.T) {
 		t.Fatalf("SetDocView: %v", err)
 	}
 	falseValue := false
-	zero := 0
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{
 		SidebarVisible: &falseValue,
-		SidebarWidth:   &zero,
 	}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
 	}
@@ -127,8 +174,8 @@ func TestSuccessfulCommandsEmitOneRevisionedContentFreePatch(t *testing.T) {
 		t.Fatalf("view patch = %+v, want a keyed metadata replacement", emitter.patches[2])
 	}
 	layoutPatch := emitter.patches[3].UI
-	if layoutPatch == nil || layoutPatch.SidebarVisible == nil || *layoutPatch.SidebarVisible || layoutPatch.SidebarWidth == nil || *layoutPatch.SidebarWidth != 0 {
-		t.Fatalf("layout patch = %+v, want false and zero fields retained", layoutPatch)
+	if layoutPatch == nil || layoutPatch.SidebarVisible == nil || *layoutPatch.SidebarVisible {
+		t.Fatalf("layout patch = %+v, want false visibility retained", layoutPatch)
 	}
 
 	beforeRejected, getErr := service.GetState(context.Background())
@@ -153,12 +200,20 @@ func TestSuccessfulCommandsEmitOneRevisionedContentFreePatch(t *testing.T) {
 type recordingEmitter struct {
 	mu      sync.Mutex
 	patches []apperr.AppStatePatch
+	errors  []apperr.WireError
 }
 
 func (emitter *recordingEmitter) EmitStatePatch(_ context.Context, patch apperr.AppStatePatch) error {
 	emitter.mu.Lock()
 	defer emitter.mu.Unlock()
 	emitter.patches = append(emitter.patches, patch)
+	return nil
+}
+
+func (emitter *recordingEmitter) EmitAsyncError(_ context.Context, wire apperr.WireError) error {
+	emitter.mu.Lock()
+	defer emitter.mu.Unlock()
+	emitter.errors = append(emitter.errors, wire)
 	return nil
 }
 
@@ -172,6 +227,12 @@ func (emitter *recordingEmitter) Patches() []apperr.AppStatePatch {
 	emitter.mu.Lock()
 	defer emitter.mu.Unlock()
 	return append([]apperr.AppStatePatch(nil), emitter.patches...)
+}
+
+func (emitter *recordingEmitter) Errors() []apperr.WireError {
+	emitter.mu.Lock()
+	defer emitter.mu.Unlock()
+	return append([]apperr.WireError(nil), emitter.errors...)
 }
 
 // Proves: STORY-011-AC-4
@@ -274,7 +335,7 @@ func validDocView(editorVisible, previewVisible bool) apperr.DocViewInput {
 }
 
 // Proves: STORY-011-AC-5
-// Layout changes remain in the process-owned model and merge explicit false and zero fields without a persistence collaborator.
+// Discrete layout changes remain in the process-owned model and retain explicit false without a persistence collaborator.
 func TestSetUILayoutUpdatesOnlyInMemoryLayout(t *testing.T) {
 	service := NewAppModelService(&recordingEmitter{})
 	state, err := service.GetState(context.Background())
@@ -286,10 +347,8 @@ func TestSetUILayoutUpdatesOnlyInMemoryLayout(t *testing.T) {
 	}
 
 	falseValue := false
-	zero := 0
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{
 		SidebarVisible: &falseValue,
-		SidebarWidth:   &zero,
 	}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
 	}
@@ -301,17 +360,16 @@ func TestSetUILayoutUpdatesOnlyInMemoryLayout(t *testing.T) {
 		t.Fatalf("layout revision = %d, want 1", updated.Snapshot.Revision)
 	}
 	layout := updated.Snapshot.UI
-	if layout.SidebarVisible == nil || *layout.SidebarVisible || layout.SidebarWidth == nil || *layout.SidebarWidth != 0 {
-		t.Fatalf("in-memory layout = %+v, want explicit false and zero values", layout)
+	if layout.SidebarVisible == nil || *layout.SidebarVisible {
+		t.Fatalf("in-memory layout = %+v, want explicit false visibility", layout)
 	}
 
 	falseValue = true
-	zero = 42
 	fresh, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState after caller changed inputs: %v", err)
 	}
-	if *fresh.Snapshot.UI.SidebarVisible || *fresh.Snapshot.UI.SidebarWidth != 0 {
+	if *fresh.Snapshot.UI.SidebarVisible {
 		t.Fatalf("layout retained caller pointer alias: %+v", fresh.Snapshot.UI)
 	}
 }

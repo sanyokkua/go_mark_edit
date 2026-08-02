@@ -1,6 +1,7 @@
 import {
   GetSettings,
   UpdateAppearance,
+  ResetAppearance,
   UpdateContentPrivacy,
   UpdateMarkdown,
 } from 'wailsjs/go/settings/SettingsHandler';
@@ -11,7 +12,18 @@ import {
   UpdateBuffer,
 } from 'wailsjs/go/appmodel/AppModelHandler';
 import { apperr } from 'wailsjs/go/models';
-import { EventsOn } from 'wailsjs/runtime';
+import {
+  EventsOn,
+  WindowFullscreen,
+  WindowGetSize,
+  WindowIsFullscreen,
+  WindowIsMaximised,
+  WindowUnfullscreen,
+} from 'wailsjs/runtime';
+import {
+  RetryStartup,
+  WindowReady,
+} from 'wailsjs/go/application/ApplicationHandler';
 
 import {
   createAppModelAdapter,
@@ -19,10 +31,12 @@ import {
   type AppModelRuntime,
 } from './appModelAdapter';
 import { createSettingsAdapter, type SettingsBindings } from './services';
+import { createWindowAdapter } from './windowAdapter';
 
 const generatedSettingsBindings: SettingsBindings = {
   getSettings: GetSettings,
   updateAppearance: UpdateAppearance,
+  resetAppearance: ResetAppearance,
   updateContentPrivacy: UpdateContentPrivacy,
   updateMarkdown: UpdateMarkdown,
 };
@@ -46,6 +60,20 @@ export const appModelAdapter = createAppModelAdapter(
   wailsRuntime,
 );
 
+export const windowAdapter = createWindowAdapter({
+  retryStartup: RetryStartup,
+  windowReady: WindowReady,
+  windowFullscreen: WindowFullscreen,
+  windowGetSize: WindowGetSize,
+  windowIsFullscreen: WindowIsFullscreen,
+  windowIsMaximised: WindowIsMaximised,
+  windowUnfullscreen: WindowUnfullscreen,
+});
+
+export const applicationAdapter = {
+  retryStartup: windowAdapter.retryStartup,
+};
+
 export { guardArity } from './bridgeGuard';
 export { unwrap, unwrapPromise } from './envelope';
 export {
@@ -62,6 +90,11 @@ export {
   type SettingsAdapter,
   type SettingsBindings,
 } from './services';
+export {
+  createWindowAdapter,
+  type WindowAdapter,
+  type WindowBindings,
+} from './windowAdapter';
 export type {
   AppearanceSettings,
   ContentPrivacySettings,

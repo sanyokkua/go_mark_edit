@@ -12,9 +12,11 @@
 
 .toolbar {
   display: flex;
+  flex-wrap: nowrap;
   justify-content: space-between;
   gap: var(--editor-view-gap);
   min-width: 0;
+  overflow: hidden;
 }
 
 .panes {
@@ -25,6 +27,22 @@
   );
   gap: var(--editor-view-gap);
   min-width: 0;
+}
+
+@media (max-width: 375px) {
+  .panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .paneHeader {
+    min-width: 0;
+  }
+
+  .paneHeader > :first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .pane {

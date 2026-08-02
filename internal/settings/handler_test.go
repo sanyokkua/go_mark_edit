@@ -122,6 +122,12 @@ func TestSettingsHandlerReturnsRecoveredResultEnvelope(t *testing.T) {
 				},
 			},
 			{
+				name: "reset appearance",
+				call: func(handler *SettingsHandler) *apperr.WireError {
+					return handler.ResetAppearance().Error
+				},
+			},
+			{
 				name: "update markdown",
 				call: func(handler *SettingsHandler) *apperr.WireError {
 					return handler.UpdateMarkdown(DefaultSettings().Markdown).Error
@@ -151,6 +157,7 @@ func TestSettingsHandlerReturnsRecoveredResultEnvelope(t *testing.T) {
 		contextType := reflect.TypeOf((*context.Context)(nil)).Elem()
 		methods := map[string]reflect.Type{
 			"GetSettings":          reflect.TypeOf(apperr.SettingsResult{}),
+			"ResetAppearance":      reflect.TypeOf(apperr.VoidResult{}),
 			"UpdateAppearance":     reflect.TypeOf(apperr.VoidResult{}),
 			"UpdateMarkdown":       reflect.TypeOf(apperr.VoidResult{}),
 			"UpdateContentPrivacy": reflect.TypeOf(apperr.VoidResult{}),

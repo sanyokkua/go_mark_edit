@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
   const isMockMode = mode !== 'wails' && mode !== 'production';
 
   return {
+    base: './',
     plugins: [react(), ...(isMockMode ? [bridgeMockPlugin()] : [])],
     resolve: {
       alias: isMockMode

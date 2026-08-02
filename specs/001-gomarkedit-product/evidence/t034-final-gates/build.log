@@ -1,0 +1,27 @@
+wails build
+Wails CLI v2.12.0
+# Build Options
+Platform(s)        | darwin/arm64                                      
+Compiler           | /opt/homebrew/bin/go                              
+Skip Bindings      | false                                             
+Build Mode         | production                                        
+Devtools           | false                                             
+Frontend Directory | /Users/ok/Development/GitHub/go_mark_edit/frontend
+Obfuscated         | false                                             
+Skip Frontend      | false                                             
+Compress           | false                                             
+Package            | true                                              
+Clean Bin Dir      | false                                             
+LDFlags            |                                                   
+Tags               | []                                                
+Race Detector      | false                                             
+# Building target: darwin/arm64
+  • Generating bindings: Done.
+  • Installing frontend dependencies: Done.
+  • Compiling frontend: Done.
+  • Compiling application: Done.
+  • Packaging application: Done.
+  • Self-signing application: Done.
+Built '/Users/ok/Development/GitHub/go_mark_edit/build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit' in 8.36s.
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project:
+https://github.com/sponsors/leaanthony

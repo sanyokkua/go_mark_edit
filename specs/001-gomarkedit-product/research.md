@@ -248,11 +248,15 @@ loop without minimum samples.
 **Decision**: After automated checks, walk one current-host real build through native movement,
 resizing and exact minimum, minimize, maximize/restore, close/flush, F11 full screen, the in-app menus,
 Settings/reset/focus, sidebar states, About, notifications, and absence of File, launcher, tabs,
-Assistant, and future Settings surfaces. Record the tested host honestly. Repeat native behavior on
-all three platforms only at the Viewer release gate.
+Assistant, and future Settings surfaces. Record the tested host honestly. Do not run or require
+Windows/Linux native runtime tests during the shell slice or any intermediate product stage. Repeat
+the completed application's native behavior on macOS, Windows, and Linux only at whole-application
+completion.
 
 **Rationale**: Mock-bridge browser tests cannot prove OS chrome or native lifecycle, while one current
-host cannot prove three-platform completion. SC-018 defines the correct division.
+host cannot prove other-platform behavior. Current-host evidence is sufficient for intermediate slices;
+the final whole-application gate is the appropriate point to spend the cost of complete Windows/Linux
+runtime verification. SC-018 defines this division.
 
 **Alternatives considered**: Browser-only completion; three-platform claims from source inspection;
 repeating the entire 18-case matrix manually in the native build.

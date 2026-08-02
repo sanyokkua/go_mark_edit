@@ -3,6 +3,7 @@ body,
 #root {
   height: 100%;
   min-height: 100%;
+  min-width: 0;
 }
 
 body {
@@ -10,6 +11,38 @@ body {
   background: var(--canvas);
   color: var(--text);
   font-family: var(--font);
+  overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.application-frame {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.application-menu,
+.application-content {
+  min-width: 0;
+}
+
+.application-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.application-content > [data-testid='application-shell'] {
+  flex: 1 1 auto;
 }
 
 ::selection {
@@ -34,4 +67,13 @@ body {
 *:focus-visible {
   box-shadow: var(--focus-ring);
   outline: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
 }

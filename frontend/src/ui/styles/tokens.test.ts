@@ -49,20 +49,22 @@ it('STORY-007-AC-2 supplies the shell through tokens only', () => {
 
   expect(definedTokens).toEqual([
     '--shell-left-width',
+    '--shell-divider-width',
+    '--shell-divider-line-width',
     '--shell-center-min-width',
     '--shell-assistant-collapsed-width',
-    '--shell-assistant-visible-width',
   ]);
-  expect(consumedTokens).toEqual([
-    '--shell-left-width',
-    '--shell-center-min-width',
-    '--shell-assistant-collapsed-width',
-    '--shell-left-width',
-    '--shell-center-min-width',
-    '--shell-assistant-visible-width',
-  ]);
+  expect(new Set(consumedTokens)).toEqual(new Set(definedTokens));
   expect(shellStylesSource).not.toMatch(colorLiteralPattern);
   expect(tokensSource).toContain('--accent');
+});
+
+it('FR-WS-017 removes shell animation and transition time for reduced motion', () => {
+  const baseStylesSource = readSource('src/ui/styles/base.css');
+
+  expect(baseStylesSource).toMatch(
+    /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\*\s*,\s*\*::before\s*,\s*\*::after\s*\{[\s\S]*?animation-duration:\s*0ms !important;[\s\S]*?transition-duration:\s*0ms !important;/,
+  );
 });
 
 // Proves: themes-and-appearance#theme-identity-is-stable

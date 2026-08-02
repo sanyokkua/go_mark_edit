@@ -18,17 +18,20 @@ import (
 type ApplicationContextHolder struct {
 	mu sync.Mutex
 
-	ctx context.Context
+	ctx        context.Context
+	startupErr error
 
 	DB *db.Database
 
 	fileService file.FileUtilsServiceAPI
 	appLogger   *logging.Logger
 
-	SettingsService *settings.SettingsService
-	SettingsHandler *settings.SettingsHandler
-	AppModelService *appmodel.AppModelService
-	AppModelHandler *appmodel.AppModelHandler
+	SettingsService     *settings.SettingsService
+	SettingsHandler     *settings.SettingsHandler
+	AppModelService     *appmodel.AppModelService
+	AppModelHandler     *appmodel.AppModelHandler
+	NativeWindowService *NativeWindowService
+	ApplicationHandler  *ApplicationHandler
 }
 
 // NewApplicationContextHolder constructs the phase-one dependency graph with
@@ -44,6 +47,8 @@ func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger
 	}
 	holder.SettingsHandler = settings.NewSettingsHandler(settingsService, appLogger, holder.Context)
 	holder.AppModelHandler = appmodel.NewAppModelHandler(appModelService, appLogger, holder.Context)
+	holder.NativeWindowService = NewNativeWindowService(appModelService, nil)
+	holder.ApplicationHandler = NewApplicationHandler(holder, appLogger, holder.Context)
 	return holder
 }
 
@@ -69,32 +74,103 @@ func (holder *ApplicationContextHolder) Init(ctx context.Context) error {
 	defer holder.mu.Unlock()
 
 	if holder.DB != nil {
+		holder.startupErr = nil
+		holder.AppModelService.SetStartupError(nil)
 		return nil
 	}
 	if holder.fileService == nil {
-		return fmt.Errorf("application file service is required")
+		holder.startupErr = fmt.Errorf("application file service is required")
+		holder.AppModelService.SetStartupError(holder.startupErr)
+		return holder.startupErr
 	}
 
 	databasePath, err := holder.fileService.GetAppDatabaseFilePath()
 	if err != nil {
-		return fmt.Errorf("resolve settings database path: %w", err)
+		holder.startupErr = fmt.Errorf("resolve settings database path: %w", err)
+		holder.AppModelService.SetStartupError(holder.startupErr)
+		return holder.startupErr
 	}
 	database, err := db.Open(ctx, databasePath)
 	if err != nil {
-		return fmt.Errorf("open settings database: %w", err)
+		holder.startupErr = fmt.Errorf("open settings database: %w", err)
+		holder.AppModelService.SetStartupError(holder.startupErr)
+		return holder.startupErr
 	}
 
 	holder.SettingsService.SetRepository(settings.NewSqliteSettingsRepository(database))
+	holder.AppModelService.SetLayoutRepository(appmodel.NewSqliteLayoutRepository(database))
 	holder.DB = database
+	holder.startupErr = nil
+	holder.AppModelService.SetStartupError(nil)
 	return nil
+}
+
+func (holder *ApplicationContextHolder) StartupReady() bool {
+	holder.mu.Lock()
+	defer holder.mu.Unlock()
+	return holder.DB != nil && holder.startupErr == nil
+}
+
+func (holder *ApplicationContextHolder) RetryStartup(ctx context.Context) error {
+	if err := holder.Init(ctx); err != nil {
+		return err
+	}
+	return holder.RestoreNativeWindow(ctx)
+}
+
+// FrontendReady forwards the independent webview readiness signal to the
+// currently wired native-window service.
+func (holder *ApplicationContextHolder) FrontendReady(ctx context.Context) {
+	holder.mu.Lock()
+	service := holder.NativeWindowService
+	holder.mu.Unlock()
+	if service != nil {
+		service.FrontendReady(ctx)
+	}
+}
+
+// FlushBeforeClose is the synchronous native-close durability port. A caller
+// must veto close when it returns an error so SQLite remains available for a
+// later retry.
+func (holder *ApplicationContextHolder) FlushBeforeClose() error {
+	holder.mu.Lock()
+	service := holder.AppModelService
+	holder.mu.Unlock()
+	if service == nil {
+		return nil
+	}
+	return service.FlushPendingUILayout()
 }
 
 // Close releases the application-owned database. It is safe to call repeatedly.
 func (holder *ApplicationContextHolder) Close() error {
+	if err := holder.FlushBeforeClose(); err != nil {
+		return err
+	}
+
 	holder.mu.Lock()
 	database := holder.DB
 	holder.DB = nil
 	holder.mu.Unlock()
 
+	if database == nil {
+		return nil
+	}
 	return database.Close()
+}
+
+// SetNativeWindow completes the composition-root native port after Wails has
+// supplied its lifecycle context.
+func (holder *ApplicationContextHolder) SetNativeWindow(native NativeWindowAPI) {
+	holder.mu.Lock()
+	defer holder.mu.Unlock()
+	holder.NativeWindowService = NewNativeWindowService(holder.AppModelService, native)
+}
+
+// RestoreNativeWindow applies saved layout before frontend readiness.
+func (holder *ApplicationContextHolder) RestoreNativeWindow(ctx context.Context) error {
+	holder.mu.Lock()
+	service := holder.NativeWindowService
+	holder.mu.Unlock()
+	return service.Restore(ctx)
 }

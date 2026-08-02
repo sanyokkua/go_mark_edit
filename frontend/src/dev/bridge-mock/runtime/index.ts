@@ -2,6 +2,7 @@ type EventCallback = (...data: unknown[]) => void;
 
 const listeners = new Map<string, Set<EventCallback>>();
 const statePatchMirror: unknown[] = [];
+let fullscreen = false;
 
 declare global {
   interface Window {
@@ -107,4 +108,24 @@ export function EventsOff(
 
 export function EventsOffAll(): void {
   listeners.clear();
+}
+
+export function WindowFullscreen(): void {
+  fullscreen = true;
+}
+
+export function WindowUnfullscreen(): void {
+  fullscreen = false;
+}
+
+export function WindowIsFullscreen(): Promise<boolean> {
+  return Promise.resolve(fullscreen);
+}
+
+export function WindowGetSize(): Promise<{ h: number; w: number }> {
+  return Promise.resolve({ h: window.innerHeight, w: window.innerWidth });
+}
+
+export function WindowIsMaximised(): Promise<boolean> {
+  return Promise.resolve(false);
 }

@@ -10,3 +10,9 @@ import (
 type StatePatchEmitter interface {
 	EmitStatePatch(ctx context.Context, patch apperr.AppStatePatch) error
 }
+
+// AsyncErrorEmitter emits a safe classified error event without changing the
+// acknowledged projection.
+type AsyncErrorEmitter interface {
+	EmitAsyncError(ctx context.Context, wire apperr.WireError) error
+}

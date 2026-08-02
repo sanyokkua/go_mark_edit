@@ -123,6 +123,8 @@ it('STORY-006-AC-4 serves adapter success and validation errors through the dev 
       mockSettings.GetSettings as unknown as SettingsBindings['getSettings'],
     updateAppearance:
       mockSettings.UpdateAppearance as unknown as SettingsBindings['updateAppearance'],
+    resetAppearance:
+      mockSettings.ResetAppearance as unknown as SettingsBindings['resetAppearance'],
     updateContentPrivacy:
       mockSettings.UpdateContentPrivacy as unknown as SettingsBindings['updateContentPrivacy'],
     updateMarkdown:

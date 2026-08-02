@@ -578,6 +578,106 @@ func boolString(value bool) string {
 	return "false"
 }
 
+// Proves: FR-WS-015
+// Reset changes exactly Theme, Appearance mode, and default Editor open mode in
+// one transaction; unrelated and future keys retain their original values.
+func TestResetAppearanceChangesOnlyDeliveredAppearanceKeys(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatalf("open reset database: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close reset database: %v", closeErr)
+		}
+	})
+
+	before := map[string]store.UpsertSettingParams{
+		appearanceThemeKey:       {Key: appearanceThemeKey, Value: ThemeMinimal, Type: settingTypeString},
+		appearanceModeKey:        {Key: appearanceModeKey, Value: ModeDark, Type: settingTypeString},
+		defaultOpenModeKey:       {Key: defaultOpenModeKey, Value: OpenModeViewer, Type: settingTypeString},
+		markdownStandardKey:      {Key: markdownStandardKey, Value: MarkdownFull, Type: settingTypeString},
+		"layout.workspaceWidth":  {Key: "layout.workspaceWidth", Value: "314", Type: "int"},
+		"document.active":        {Key: "document.active", Value: "document-7", Type: settingTypeString},
+		"recent.paths":           {Key: "recent.paths", Value: "opaque", Type: settingTypeString},
+		"future.appearance.glow": {Key: "future.appearance.glow", Value: "high", Type: settingTypeString},
+	}
+	for _, setting := range before {
+		if err := database.Queries.UpsertSetting(ctx, setting); err != nil {
+			t.Fatalf("seed reset key %q: %v", setting.Key, err)
+		}
+	}
+
+	if err := NewSqliteSettingsRepository(database).ResetAppearance(ctx); err != nil {
+		t.Fatalf("reset appearance: %v", err)
+	}
+
+	wantAppearance := map[string]string{
+		appearanceThemeKey: ThemeMaterial,
+		appearanceModeKey:  ModeAuto,
+		defaultOpenModeKey: OpenModeEditor,
+	}
+	for key, want := range wantAppearance {
+		stored, getErr := database.Queries.GetSetting(ctx, key)
+		if getErr != nil {
+			t.Fatalf("read reset key %q: %v", key, getErr)
+		}
+		if stored.Value != want || stored.Type != settingTypeString {
+			t.Fatalf("reset key %q = %+v, want value %q string", key, stored, want)
+		}
+	}
+	for _, key := range []string{markdownStandardKey, "layout.workspaceWidth", "document.active", "recent.paths", "future.appearance.glow"} {
+		stored, getErr := database.Queries.GetSetting(ctx, key)
+		if getErr != nil {
+			t.Fatalf("read retained key %q: %v", key, getErr)
+		}
+		if stored.Value != before[key].Value || stored.Type != before[key].Type {
+			t.Fatalf("retained key %q = %+v, want %+v", key, stored, before[key])
+		}
+	}
+}
+
+// Proves: FR-WS-015
+// A failure on the second delivered key rolls the first write back as well.
+func TestResetAppearanceRollsBackEveryValueOnFailure(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatalf("open rollback database: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close rollback database: %v", closeErr)
+		}
+	})
+	original := apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeDark, DefaultOpenMode: OpenModeViewer}
+	if err := NewSqliteSettingsRepository(database).UpdateAppearance(ctx, original); err != nil {
+		t.Fatalf("seed appearance before rollback: %v", err)
+	}
+	if _, err := database.DB.ExecContext(ctx, `
+		CREATE TRIGGER reject_appearance_mode
+		BEFORE INSERT ON settings
+		WHEN NEW.key = 'appearance.mode'
+		BEGIN
+			SELECT RAISE(ABORT, 'forced reset failure');
+		END`); err != nil {
+		t.Fatalf("install reset failure trigger: %v", err)
+	}
+
+	repository := NewSqliteSettingsRepository(database)
+	if err := repository.ResetAppearance(ctx); err == nil {
+		t.Fatal("reset appearance succeeded despite forced middle-key failure")
+	}
+	got, err := repository.GetAppearance(ctx)
+	if err != nil {
+		t.Fatalf("read appearance after rollback: %v", err)
+	}
+	if got != original {
+		t.Fatalf("appearance after rollback = %+v, want %+v", got, original)
+	}
+}
+
 func settingsTableColumns(t *testing.T, ctx context.Context, database *db.Database) string {
 	t.Helper()
 

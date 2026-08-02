@@ -29,13 +29,14 @@ const (
 // SqliteSettingsRepository persists typed groups through the generic settings
 // key-value table. New scalar settings only need a dotted key and typed helper.
 type SqliteSettingsRepository struct {
-	queries *store.Queries
+	queries  *store.Queries
+	database *sql.DB
 }
 
 // NewSqliteSettingsRepository constructs the SQLite implementation used after
 // ApplicationContextHolder opens the database.
 func NewSqliteSettingsRepository(database *db.Database) *SqliteSettingsRepository {
-	return &SqliteSettingsRepository{queries: database.Queries}
+	return &SqliteSettingsRepository{queries: database.Queries, database: database.DB}
 }
 
 // GetAppearance reads the persisted appearance group with scalar defaults.
@@ -112,6 +113,27 @@ func (repository *SqliteSettingsRepository) UpdateAppearance(ctx context.Context
 		return err
 	}
 	return repository.upsertString(ctx, defaultOpenModeKey, appearance.DefaultOpenMode)
+}
+
+// ResetAppearance atomically restores all and only the delivered appearance
+// values; layout, documents, and every other settings group stay untouched.
+func (repository *SqliteSettingsRepository) ResetAppearance(ctx context.Context) error {
+	transaction, err := repository.database.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = transaction.Rollback() }()
+	defaults := DefaultSettings().Appearance
+	for _, setting := range []struct{ key, value string }{
+		{appearanceThemeKey, defaults.Theme},
+		{appearanceModeKey, defaults.Mode},
+		{defaultOpenModeKey, defaults.DefaultOpenMode},
+	} {
+		if _, err := transaction.ExecContext(ctx, "INSERT INTO settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, type = excluded.type", setting.key, setting.value, settingTypeString); err != nil {
+			return err
+		}
+	}
+	return transaction.Commit()
 }
 
 // UpdateMarkdown writes the complete Markdown group through typed KV keys.

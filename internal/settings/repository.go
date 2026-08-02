@@ -14,6 +14,7 @@ type SettingsRepositoryAPI interface {
 	GetMarkdown(context.Context) (apperr.MarkdownSettings, error)
 	GetContentPrivacy(context.Context) (apperr.ContentPrivacySettings, error)
 	UpdateAppearance(context.Context, apperr.AppearanceSettings) error
+	ResetAppearance(context.Context) error
 	UpdateMarkdown(context.Context, apperr.MarkdownSettings) error
 	UpdateContentPrivacy(context.Context, apperr.ContentPrivacySettings) error
 }

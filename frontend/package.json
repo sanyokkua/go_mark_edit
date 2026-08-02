@@ -12,7 +12,7 @@
     "build": "tsc --noEmit && vite build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "postbuild": "node scripts/ensure-dist-placeholder.mjs",
+    "postbuild": "node scripts/ensure-dist-placeholder.mjs && node scripts/check-production-network.mjs --source-root src --source-root public --source-root wailsjs/go --bundle-root dist --require-bundle",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest",

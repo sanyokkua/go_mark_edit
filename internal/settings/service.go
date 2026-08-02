@@ -71,6 +71,17 @@ func (service *SettingsService) UpdateAppearance(ctx context.Context, appearance
 	return nil
 }
 
+func (service *SettingsService) ResetAppearance(ctx context.Context) error {
+	repository, err := service.getRepository()
+	if err != nil {
+		return err
+	}
+	if err := repository.ResetAppearance(nonNilContext(ctx)); err != nil {
+		return apperr.IO("reset appearance", err)
+	}
+	return nil
+}
+
 // UpdateMarkdown validates and persists the complete Markdown group.
 func (service *SettingsService) UpdateMarkdown(ctx context.Context, markdown apperr.MarkdownSettings) error {
 	if err := validateMarkdown(markdown); err != nil {

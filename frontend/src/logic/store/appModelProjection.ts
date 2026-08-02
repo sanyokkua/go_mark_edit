@@ -1,4 +1,5 @@
 import type { AppModelAdapter } from '../adapter/appModelAdapter';
+import { notifyError } from './notificationsSlice';
 
 import {
   applyStatePatch,
@@ -9,9 +10,11 @@ import type { ActiveBuffer, AppStatePatch } from './appModelTypes';
 import { store } from './index';
 
 export type AppModelBootstrapResult =
-  { status: 'ready'; activeBuffer: ActiveBuffer } | { status: 'failed' };
+  | { status: 'ready'; activeBuffer: ActiveBuffer; applicationVersion: string }
+  | { status: 'failed' };
 
 interface BootstrapAttempt {
+  disposeAsyncErrors?: () => void;
   disposeStatePatches?: () => void;
   isHydrated: boolean;
   queuedPatches: AppStatePatch[];
@@ -45,6 +48,14 @@ async function initializeProjection(
   activeAttempt = attempt;
 
   try {
+    attempt.disposeAsyncErrors = appModelAdapter.subscribeAsyncErrors?.(
+      (error): void => {
+        if (activeAttempt !== attempt) {
+          return;
+        }
+        store.dispatch(notifyError(error));
+      },
+    );
     attempt.disposeStatePatches = appModelAdapter.subscribeStatePatches(
       (patch: AppStatePatch): void => {
         if (activeAttempt !== attempt) {
@@ -61,6 +72,12 @@ async function initializeProjection(
     if (activeAttempt !== attempt) {
       return { status: 'failed' };
     }
+    if (
+      state.snapshot.applicationVersion === undefined ||
+      state.snapshot.applicationVersion.length === 0
+    ) {
+      throw new Error('The backend did not provide an application version.');
+    }
     store.dispatch(hydrateProjection(state.snapshot));
     attempt.isHydrated = true;
     for (const patch of attempt.queuedPatches) {
@@ -68,7 +85,11 @@ async function initializeProjection(
     }
     attempt.queuedPatches = [];
 
-    return { status: 'ready', activeBuffer: state.activeBuffer };
+    return {
+      status: 'ready',
+      activeBuffer: state.activeBuffer,
+      applicationVersion: state.snapshot.applicationVersion,
+    };
   } catch {
     resetAttempt(attempt);
     return { status: 'failed' };
@@ -82,6 +103,8 @@ function resetAttempt(attempt: BootstrapAttempt): void {
 
   activeAttempt = undefined;
   bootstrapPromise = undefined;
+  attempt.disposeAsyncErrors?.();
+  attempt.disposeAsyncErrors = undefined;
   attempt.disposeStatePatches?.();
   attempt.disposeStatePatches = undefined;
   attempt.isHydrated = false;

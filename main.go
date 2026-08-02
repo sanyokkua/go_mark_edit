@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"os"
+	goruntime "runtime"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
@@ -11,6 +12,7 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -20,8 +22,7 @@ import (
 var assets embed.FS
 
 var (
-	messageDialog = runtime.MessageDialog
-	exitProcess   = os.Exit
+	showStartupRecoveryWindow = runtime.WindowShow
 )
 
 func main() {
@@ -55,10 +56,17 @@ func newAppOptions(applicationContext *application.ApplicationContextHolder) *op
 }
 
 func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger) *options.App {
+	applicationContext.SetNativeWindow(wailsNativeWindow{})
 	return &options.App{
-		Title:  "GoMarkEdit",
-		Width:  1024,
-		Height: 768,
+		Title:         "GoMarkEdit",
+		Width:         1024,
+		Height:        768,
+		MinWidth:      375,
+		MinHeight:     480,
+		Frameless:     false,
+		DisableResize: false,
+		StartHidden:   true,
+		Menu:          nativeMenuForPlatform(goruntime.GOOS),
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -68,7 +76,14 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 				if appLogger != nil {
 					appLogger.Error(err.Error())
 				}
-				showStartupFailure(ctx)
+				showStartupRecoveryWindow(ctx)
+				return
+			}
+			if err := applicationContext.RestoreNativeWindow(ctx); err != nil {
+				if appLogger != nil {
+					appLogger.Error(err.Error())
+				}
+				showStartupRecoveryWindow(ctx)
 				return
 			}
 		},
@@ -78,17 +93,41 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 				_ = appLogger.Close()
 			}
 		},
-		Bind:     []interface{}{applicationContext.AppModelHandler, applicationContext.SettingsHandler},
+		OnBeforeClose: func(_ context.Context) bool {
+			return applicationContext.FlushBeforeClose() != nil
+		},
+		Bind:     []interface{}{applicationContext.AppModelHandler, applicationContext.SettingsHandler, applicationContext.ApplicationHandler},
 		EnumBind: []interface{}{apperr.AllErrorCodes},
 		Logger:   appLogger,
 	}
 }
 
-func showStartupFailure(ctx context.Context) {
-	_, _ = messageDialog(ctx, runtime.MessageDialogOptions{
-		Type:    runtime.ErrorDialog,
-		Title:   "GoMarkEdit could not start",
-		Message: "GoMarkEdit could not initialize its local settings. Please try again.",
-	})
-	exitProcess(1)
+type wailsNativeWindow struct{}
+
+func (wailsNativeWindow) UsableSize(ctx context.Context) (int, int) {
+	screens, err := runtime.ScreenGetAll(ctx)
+	if err != nil {
+		return 0, 0
+	}
+	for _, screen := range screens {
+		if screen.IsCurrent || screen.IsPrimary {
+			return screen.Size.Width, screen.Size.Height
+		}
+	}
+	return 0, 0
+}
+
+func (wailsNativeWindow) SetSize(ctx context.Context, width, height int) {
+	runtime.WindowSetSize(ctx, width, height)
+}
+
+func (wailsNativeWindow) Maximise(ctx context.Context) { runtime.WindowMaximise(ctx) }
+
+func (wailsNativeWindow) Show(ctx context.Context) { runtime.WindowShow(ctx) }
+
+// nativeMenuForPlatform preserves the platform editing role without creating a
+// second About entry. The working About action belongs only to the application
+// shell, where it has access to the injected build identity.
+func nativeMenuForPlatform(platform string) *menu.Menu {
+	return application.NativeMenuForPlatform(platform)
 }

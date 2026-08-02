@@ -433,7 +433,7 @@ remain the product outcome index and do not permit a task to claim an unspecifie
 
 | Requirement                     | Primary acceptance evidence                                                                                     |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| FR-WS-001, FR-WS-002            | Current-slice scenario 3 plus native framed-window checks on each target platform before Viewer completion      |
+| FR-WS-001, FR-WS-002            | Current-slice scenario 3 plus one current-host native framed-window walkthrough; Windows/Linux runtime checks are deferred to whole-application completion |
 | FR-WS-003, FR-WS-004, FR-WS-005 | Current-slice scenario 2 using native movement, resizing, full screen, and the exact minimum size               |
 | FR-WS-006                       | Current-slice scenario 1 plus independent missing, invalid, oversized, and off-screen saved values              |
 | FR-WS-007, FR-WS-008            | Current-slice scenarios 4 and 11 across all 18 width/palette combinations                                       |
@@ -817,8 +817,21 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
 - **SC-018**: Before this slice completes, one representative current-host real-build walkthrough MUST
   exercise native window operations, the in-app menus, Settings and reset/focus, sidebar states, About,
   notifications, and future-surface absence. The complete 18-combination viewport-and-palette matrix
-  remains automated browser evidence. Viewer completion remains blocked until native window behavior is
-  proven on macOS, Windows, and Linux.
+  remains automated browser evidence. Native runtime tests on Windows and Linux are explicitly deferred
+  and MUST NOT block this slice or any intermediate product stage. The final whole-application release
+  gate MUST prove the completed application on macOS, Windows, and Linux.
+
+##### Cross-platform runtime-test timing
+
+- **While** the whole application is incomplete, current-host native testing, host-independent tests,
+  browser evidence, and static gates remain required, but Windows/Linux native runtime testing is not
+  required and MUST NOT be used as a completion blocker.
+- **When** all Viewer, Editor, Assistant actions, Assistant chat, packaging, and release behavior are
+  implemented, the final whole-application gate MUST run the completed application natively on macOS,
+  Windows, and Linux and retain the results.
+
+Examples: a completed native-shell slice on macOS with no Windows/Linux runner → valid intermediate
+evidence · a request to mark the whole application released → Windows/Linux native verification required.
 
 ## Assumptions
 
@@ -834,8 +847,9 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
   only the mapped legacy shell clauses. Launcher, file lifecycle, complete Settings, complete shortcuts,
   packaging, Editor, and Assistant clauses remain legacy-governed.
 - Current native evidence is collected on the implementation host because one host cannot execute the
-  other platforms' real window behavior. That evidence is enough for this bounded shell increment but
-  not for Viewer completion or a three-platform release claim.
+  other platforms' real window behavior. That evidence is sufficient for this bounded shell increment
+  and intermediate stages. Windows/Linux native runtime testing is intentionally deferred until the
+  whole application is implemented; it is not a Viewer-stage blocker.
 - The 100-millisecond shell response and 250-millisecond maximum visible-freeze thresholds are the
   reasonable default for this slice's formerly vague "responsive" goal. A later approved change may
   tighten them but implementation may not silently relax them.
@@ -929,7 +943,8 @@ include its failure and recovery evidence in that slice.
   prove all-or-nothing reset, failure retention, exact scope, and unchanged layout/recent paths for
   FR-WS-015.
 - Current-host native evidence cannot prove the other two platforms. The shell increment records the
-  tested host honestly, and Viewer completion remains blocked on the three-platform gate in SC-018.
+  tested host honestly, and the final whole-application release gate—not Viewer completion—requires
+  Windows/Linux native runtime evidence under SC-018.
 - The Assistant context catalogue still lacks approved numeric ranges for safety margin, reply reserve,
   and maximum tool iterations. Those controls remain absent until their Assistant slice migrates and
   resolves the ranges.

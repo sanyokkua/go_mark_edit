@@ -36,13 +36,12 @@ interface DocumentMetadata {
 }
 
 interface UILayout {
+  windowWidth?: number;
+  windowHeight?: number;
+  windowMaximized?: boolean;
   sidebarVisible?: boolean;
   sidebarWidth?: number;
   viewArrangement?: string;
-  editorPaneVisible?: boolean;
-  previewPaneVisible?: boolean;
-  assistantVisible?: boolean;
-  assistantWidth?: number;
 }
 
 interface DocViewInput {
@@ -64,6 +63,7 @@ interface StateResult {
   data?: {
     snapshot: {
       revision: number;
+      applicationVersion: string;
       documents: Record<string, DocumentMetadata>;
       activeDocumentId: string;
       ui: UILayout;
@@ -111,10 +111,12 @@ let metadata: DocumentMetadata = {
   },
 };
 let layout: UILayout = {
+  windowWidth: 1024,
+  windowHeight: 768,
   sidebarVisible: true,
-  editorPaneVisible: true,
-  previewPaneVisible: true,
 };
+let pendingContinuousLayout: UILayout | undefined;
+let pendingContinuousTimer: ReturnType<typeof setTimeout> | undefined;
 
 function cloneMetadata(): DocumentMetadata {
   return {
@@ -151,6 +153,7 @@ export function GetState(): Promise<StateResult> {
     data: {
       snapshot: {
         revision,
+        applicationVersion: 'dev',
         documents: { [documentId]: cloneMetadata() },
         activeDocumentId: documentId,
         ui: { ...layout },
@@ -218,8 +221,44 @@ export function SetDocView(
 }
 
 export function SetUILayout(input: UILayout): Promise<VoidResult> {
-  layout = { ...layout, ...input };
-  revision += 1;
-  emitPatch({ revision, ui: { ...input } });
+  const continuous: UILayout = {
+    sidebarWidth: input.sidebarWidth,
+    windowHeight: input.windowHeight,
+    windowWidth: input.windowWidth,
+  };
+  const hasContinuous = Object.values(continuous).some(
+    (value) => value !== undefined,
+  );
+  if (hasContinuous) {
+    pendingContinuousLayout = {
+      ...pendingContinuousLayout,
+      ...continuous,
+    };
+    if (pendingContinuousTimer !== undefined) {
+      clearTimeout(pendingContinuousTimer);
+    }
+    pendingContinuousTimer = setTimeout(() => {
+      const acknowledged = pendingContinuousLayout;
+      pendingContinuousLayout = undefined;
+      pendingContinuousTimer = undefined;
+      if (acknowledged === undefined) {
+        return;
+      }
+      layout = { ...layout, ...acknowledged };
+      revision += 1;
+      emitPatch({ revision, ui: acknowledged });
+    }, 250);
+  }
+
+  const acknowledged: UILayout = {
+    sidebarVisible: input.sidebarVisible,
+    viewArrangement: input.viewArrangement,
+    windowMaximized: input.windowMaximized,
+  };
+  if (Object.values(acknowledged).some((value) => value !== undefined)) {
+    layout = { ...layout, ...acknowledged };
+    revision += 1;
+    emitPatch({ revision, ui: acknowledged });
+  }
   return Promise.resolve({});
 }

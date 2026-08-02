@@ -1,11 +1,15 @@
 # Working in this repository
 
 GoMarkEdit is one desktop binary: a Go process (Wails v2) serving a React application in a native
-webview. Everything normative lives under `docs/delivery/`.
+webview. Active, migrated Spec Kit work is governed by the matching feature directory under `specs/`.
+The older `docs/delivery/` tree is reference-only for migrated work; do not silently change it to make
+an active specification or gate pass.
 
 ## Read first
 
-`docs/delivery/architecture/README.md` — one page — then the story you were given.
+Read the active feature's `spec.md`, `plan.md`, `tasks.md`, applicable `contracts/`, and
+`.specify/memory/constitution.md` before implementation. For legacy work that has not migrated, read
+the assigned story and its `docs/delivery/architecture/README.md` first.
 
 The story is self-contained by design. If you cannot tell what to build from it alone, that is a defect
 in the story: say so rather than going hunting.
@@ -24,30 +28,51 @@ in the story: say so rather than going hunting.
 | archtest | `just archtest` |
 | build | `just build` |
 | package | `just package` — **not built yet; Phase 08 introduces it, and it exits non-zero until then** |
-| baseline | `just baseline STORY-NNN` |
-| verify | `just verify STORY-NNN` |
+| baseline | `just baseline FEATURE-DIR-OR-ID` |
+| verify | `just verify FEATURE-DIR-OR-ID` |
 | everything | `just check` |
-| check one story | `just story-check NNN` — copy fidelity, glob match, anchors, rule count |
-| check the spec tree | `just spec-check` — writing rules, revision level, every `Proves:` tag |
 
-`just spec-check` and `just story-check` are deliberately not part of `just check`. Documentation
-drift is worth knowing about; it is not a reason to block a commit that changes code.
+If a command is not listed by `just --list`, do not report it as having run. In particular, this
+checkout currently has no `just spec-check` or `just story-check` recipe. Use the available targeted
+checks and the Spec Kit analysis/convergence skills instead, and report unavailable gates honestly.
 
 `just dev` runs the real bridge. `just dev-ui` runs the frontend against a mock — every Playwright run
 uses that mock, which is a known divergence recorded in `docs/delivery/plan/KNOWN_ISSUES.md`.
 
-## Workflow
+## Spec Kit workflow
 
-`/plan-phase NN` → `/plan-story NNN` → `/build-story NNN` → `/finish-phase NN` → `/reconcile NN`.
+For active Spec Kit features, follow the first applicable step in this dependency-ordered flow:
 
-The manual is `docs/delivery/WORKFLOW.md`: which command when, what each leaves on disk, what to do
-with it, and what to do when it goes wrong. Every command also ends by naming the next one.
+`$speckit-specify` → `$speckit-clarify` → `$speckit-plan` → `$speckit-tasks` →
+`$speckit-analyze` → `$speckit-implement` → `$speckit-converge` → review/release.
 
-Planning writes a file to `docs/delivery/work/`. It does not use plan mode: a permission state
-evaporates, and a file on disk is durable, reviewable and resumable.
+Use `$speckit-taskstoissues` only when the user asks to mirror the task list into GitHub issues. Use
+the legacy `/plan-phase` → `/plan-story` → `/build-story` → `/finish-phase` → `/reconcile` flow only
+for a feature that still lives exclusively under `docs/delivery/`.
 
-A story marked `**STATUS:** stub — not buildable.` is not buildable. `/build-story` refuses it, and
-the correct response to that refusal is `/plan-story NNN`, never filling the gap in place.
+Choose the next step from the actual artifact state, not from a completion label:
+
+| Current state | Next action | Suggested prompt |
+|---|---|---|
+| Requirements are missing or ambiguous | `$speckit-clarify` | `Run $speckit-clarify for <feature>. Ask only the questions needed to remove the remaining ambiguity, preserve approved decisions, and update the active specification.` |
+| The specification is ready but has no implementation plan | `$speckit-plan` | `Run $speckit-plan for <feature>. Produce a dependency-ordered vertical-slice plan from the active spec, constitution, and contracts; do not invent unresolved decisions.` |
+| The plan is ready but tasks are missing or incomplete | `$speckit-tasks` | `Run $speckit-tasks for <feature>. Generate complete, traceable, dependency-ordered tasks with one owner and named evidence for every in-scope requirement.` |
+| Tasks exist but have not all been implemented | `$speckit-implement` | `Run $speckit-implement for <feature>. Execute every remaining task in dependency order, verify each task, mark only genuinely completed tasks, and report any blocked requirement.` |
+| Tasks are marked complete after implementation | `$speckit-converge` | `Run $speckit-converge for <feature>. Read the current spec, plan, tasks, constitution, and implementation as the sole intent; append only traceable remaining work, or report converged without changing tasks.` |
+| Convergence appended tasks | `$speckit-implement` | `Run $speckit-implement for <feature> to execute the newly appended convergence tasks, then verify them against the current baseline.` |
+| Convergence reports no remaining work | Review/release | `Review the converged feature against its evidence and release gates. Do not claim the whole product is complete unless every product slice and final gate is complete.` |
+
+Every command handoff must name the next applicable flow step and provide a copy-paste prompt like the
+ones above. The prompt must name the feature, preserve the current scope and dependencies, and state
+whether the next command is read-only or allowed to edit artifacts/code.
+
+Planning writes durable, reviewable artifacts under the active feature directory. It does not use plan
+mode as a substitute for writing the plan to disk.
+
+An active Spec Kit feature with unresolved questions or missing plan/task coverage is not buildable;
+run the applicable planning skill before implementation. A legacy story marked `**STATUS:** stub — not
+buildable.` is not buildable. `/build-story` refuses it, and the correct response is `/plan-story NNN`,
+never filling the gap in place.
 
 ## Non-negotiable
 
@@ -82,8 +107,8 @@ the correct response to that refusal is `/plan-story NNN`, never filling the gap
 5. The app makes no background network call, ever. Migrations only add. SQLite is CGO-free. Several
    windows run at once with no lock.
 
-The full set is `docs/delivery/architecture/rules.md`, and `/plan-story` copies the ones that match
-your paths into the story so you do not have to look.
+The full set is the active feature's applicable architecture/constitution material. The planning and
+task skills copy or map those rules into their artifacts; do not invent a second authority in a task.
 
 ## Communication
 
@@ -104,17 +129,29 @@ Good:
 Use plain words. Describe the actual screen, file or operation. One concrete example beats a paragraph
 of abstraction. If you are asking because you do not know something factual, go and find out instead.
 
+## Task handoff
+
+After each implementation task, the agent MUST verify the task's named evidence before calling it
+complete. In the completion message, it MUST state the task ID and actual result, identify the next
+applicable Spec Kit flow step from the table above, and provide one exact suggested prompt for that
+step. If the next step is blocked, name the missing artifact, failed gate, or user decision instead of
+pretending the task or feature is finished. This handoff is required even when all current tasks are
+complete, because `$speckit-converge` must determine whether the implementation truly matches the
+specification before review or release.
+
 ## Definition of done
 
-Generated per story from `docs/delivery/work/DOD_TEMPLATE.md`. Every item runs a command and is compared
-against the baseline captured before the work started.
+For active Spec Kit features, the Definition of Done is the feature's task list, named evidence, and
+current repository gates. For legacy stories, it is generated from `docs/delivery/work/DOD_TEMPLATE.md`.
+Every item runs a command and is compared against the baseline captured before the work started.
 
 A finding that is in the baseline is not yours. A finding that is not, is.
 
 `just archtest` is the exception: it is never diffed against a baseline. It must be green.
 
-The baseline records each gate's **exit code and reliability verdict**, and keeps its raw output in
-`docs/delivery/work/baselines/story-NNN.logs/`. A gate marked `UNRELIABLE` exited non-zero having
+The baseline records each gate's **exit code and reliability verdict**, and keeps its raw output in the
+active feature's evidence directory (or `docs/delivery/work/baselines/story-NNN.logs/` for legacy
+stories). A gate marked `UNRELIABLE` exited non-zero having
 parsed nothing, so it analysed nothing — every later diff against it compares empty with empty and
 prints PASS. That is a hard stop before the story starts, not a caveat to transcribe.
 
@@ -128,9 +165,10 @@ other authoritative UI signal, and the affected layout at the relevant viewport.
 as a defect: fix it, reload the app, and repeat the live check. Automated unit, Playwright, and build
 checks complement this step; they do not replace it.
 
-**Per phase, at the gate.** `/finish-phase` walks the phase's "Done when" paragraph on `just build`
-output — the real binary, **not** `wails dev`. The dev server serves the mock bridge for anything
-Playwright touches, and it runs with a different log level, version string and configuration folder.
-The two checks are not interchangeable: the dev-server check tells you the interface behaves; only the
-real build tells you the application does. A story-level live check never substitutes for the phase
-gate.
+**Per feature gate.** For active Spec Kit work, run the named current quality/specification checks,
+inspect retained evidence, and walk the real `just build` binary — **not** only `wails dev`. For legacy
+work, `/finish-phase` walks the phase's "Done when" paragraph on `just build`. The dev server serves
+the mock bridge for anything Playwright touches, and it runs with a different log level, version string
+and configuration folder. The two checks are not interchangeable: the dev-server check tells you the
+interface behaves; only the real build tells you the application does. A story-level live check never
+substitutes for the feature or phase gate.

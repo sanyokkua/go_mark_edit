@@ -24,7 +24,8 @@ notifications, and build identity, and proves honest future-surface absence. Aut
 the complete 18-combination viewport/palette matrix, static source and bundle network safeguards, one
 short request-instrumented browser journey, and at least 20 resize plus 20 divider samples. One
 representative current-host real-build walkthrough covers native operations and the complete shell
-interaction set without claiming three-platform completion.
+interaction set without requiring Windows/Linux native runtime tests before the whole application is
+implemented.
 
 ## Technical Context
 
@@ -43,7 +44,7 @@ walkthrough; retained format, typecheck, lint, architecture, build, and reliable
 
 **Target Platform**: macOS, Windows, and Linux desktop; one process per window; ordinary framed native
 window; default 1024 x 768; exact minimum 375 x 480; current-host native evidence in this slice and
-three-platform repetition at the Viewer release gate
+Windows/Linux native runtime repetition only at whole-application completion
 
 **Project Type**: Single-process Wails desktop application with a Go backend and embedded
 React/TypeScript webview
@@ -75,7 +76,7 @@ _GATE: Passed before Phase 0 research and passed again after Phase 1 design._
 | Vertical slices            | The batch produces a usable framed native shell, durable layout, Settings/error surfaces, responsive behavior, and direct evidence. Launcher and file behavior remain behind real command dependencies.             | PASS   |
 | Backend authority          | Appmodel owns acknowledged layout and persistence intent; Redux renders projections; frontend Wails access is adapter-only; close flush stays synchronous in Go lifecycle ownership.                                | PASS   |
 | Offline, private, safe     | Static source/bundle safeguards plus one short request-instrumented browser journey prove zero outbound attempts; no duration claim substitutes for request evidence.                                               | PASS   |
-| Data and platforms         | SQLite remains CGO-free/WAL; conditional per-field writes protect newest change; native behavior is checked on the current host now and all platforms at the Viewer gate.                                           | PASS   |
+| Data and platforms         | SQLite remains CGO-free/WAL; conditional per-field writes protect newest change; native behavior is checked on the current host now, while Windows/Linux runtime tests wait for whole-application completion. | PASS   |
 | Accessible coherent UI     | The in-app row, Settings, notifications, sidebar states, focus lifecycle, localization, longer text, reduced motion, and all six palettes are explicit obligations.                                                 | PASS   |
 | Evidence before completion | A reliable baseline precedes edits; direct backend, adapter, browser, performance, native, and build evidence is named in [quickstart.md](quickstart.md).                                                           | PASS   |
 
@@ -159,7 +160,9 @@ Research is consolidated in [research.md](research.md). The decisions are:
     the 100/250/500 ms thresholds.
 11. Complete one representative current-host real-build walkthrough of native window operations, menus,
     Settings reset/focus, sidebar states, About, notifications, and future-surface absence.
-12. Give every `FR-WS-*` requirement one plan owner; the regenerated task file preserves each as exactly
+12. Do not require Windows/Linux native runtime tests until the whole application is implemented; use
+    current-host and host-independent evidence for this slice and intermediate stages.
+13. Give every `FR-WS-*` requirement one plan owner; the regenerated task file preserves each as exactly
     one primary implementation owner without creating documentation-only or duplicate owners.
 
 ## Phase 1: Design and Contracts
@@ -221,7 +224,7 @@ requirement independently.
 | Requirement | Plan owner | Complete responsibility                                                         | Direct evidence                                                             |
 | ----------- | ---------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | FR-WS-001   | OWS-001    | Framed multi-process native composition                                         | Go option/composition tests; current-host independent-window case           |
-| FR-WS-002   | OWS-002    | OS frame/controls on all platforms and macOS App/Edit roles                     | option/menu tests; current-host frame inspection; later three-platform gate |
+| FR-WS-002   | OWS-002    | OS frame/controls on all platforms and macOS App/Edit roles                     | option/menu tests; current-host frame inspection; final whole-application cross-platform gate |
 | FR-WS-003   | OWS-003    | OS-owned movement and title gestures; no app drag interception                  | source/component absence checks; native movement/title-gesture case         |
 | FR-WS-004   | OWS-004    | F11 and public native full-screen state transition                              | action/adapter tests; native full-screen case                               |
 | FR-WS-005   | OWS-005    | OS-owned resizing and exact 375 x 480 minimum                                   | option tests; native resize/minimum case                                    |
@@ -242,8 +245,9 @@ requirement independently.
 | FR-WS-020   | OWS-020    | Absence of every future-behavior facsimile                                      | rendered absence assertions; browser and real-build inspection              |
 
 The delivered [appearance-contract.md](appearance-contract.md) is consumed, not re-owned. Current-host
-native evidence is required for this slice; it must be labelled with the tested host. macOS, Windows,
-and Linux repetition remains a Viewer release gate.
+native evidence is required for this slice and every intermediate stage; it must be labelled with the
+tested host. Windows/Linux native runtime repetition is intentionally deferred until the whole
+application is implemented and is not a Viewer release gate.
 
 ## Complexity Tracking
 

@@ -46,6 +46,10 @@ it('STORY-006-AC-1 guards and unwraps every settings call', async () => {
       calls.push(`appearance:${nextAppearance.theme}`);
       return Promise.resolve(voidResult);
     },
+    resetAppearance(): Promise<VoidResult> {
+      calls.push('reset appearance');
+      return Promise.resolve(voidResult);
+    },
     updateContentPrivacy(nextContentPrivacy): Promise<VoidResult> {
       calls.push(`privacy:${nextContentPrivacy.remotePolicy}`);
       return Promise.resolve(voidResult);

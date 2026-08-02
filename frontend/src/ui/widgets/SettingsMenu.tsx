@@ -11,6 +11,11 @@ export interface SettingsMenuProps {
   onOpenAppearance: () => void;
   onThemeChange: (theme: Theme) => void;
   theme: Theme;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onTrigger?: () => void;
+  showTrigger?: boolean;
+  triggerLabel?: string;
 }
 
 const themeOptions: readonly SegmentedOption<Theme>[] = [
@@ -31,20 +36,37 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   onOpenAppearance,
   onThemeChange,
   theme,
+  open: controlledOpen,
+  onOpenChange,
+  onTrigger,
+  showTrigger = true,
+  triggerLabel = t('settings.menu.trigger'),
 }: SettingsMenuProps): React.JSX.Element => {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (next: boolean): void => {
+    setInternalOpen(next);
+    onOpenChange?.(next);
+  };
 
   return (
-    <div className={styles.menu}>
-      <button
-        className={styles.trigger}
-        type="button"
-        onClick={(): void => {
-          setOpen(!open);
-        }}
-      >
-        {t('settings.menu.trigger')}
-      </button>
+    <div className={styles.menu} data-settings-menu-root>
+      {showTrigger ? (
+        <button
+          className={styles.trigger}
+          data-settings-opener
+          type="button"
+          onClick={(): void => {
+            if (onTrigger === undefined) {
+              setOpen(!open);
+            } else {
+              onTrigger();
+            }
+          }}
+        >
+          {triggerLabel}
+        </button>
+      ) : null}
       {open ? (
         <div
           aria-label={t('settings.menu.label')}

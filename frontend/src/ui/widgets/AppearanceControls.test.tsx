@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 
 import { settingsAdapter } from '../../logic/adapter';
 import { store } from '../../logic/store';
@@ -23,6 +29,7 @@ jest.mock('../../logic/adapter', () => ({
       },
     })),
     updateAppearance: jest.fn(async (): Promise<void> => undefined),
+    resetAppearance: jest.fn(async (): Promise<void> => undefined),
   },
 }));
 
@@ -32,6 +39,9 @@ const updateAppearance =
   >;
 const getSettings = settingsAdapter.getSettings as jest.MockedFunction<
   typeof settingsAdapter.getSettings
+>;
+const resetAppearance = settingsAdapter.resetAppearance as jest.MockedFunction<
+  typeof settingsAdapter.resetAppearance
 >;
 
 // Proves: constraints#every-action-is-reachable-by-keyboard
@@ -179,4 +189,126 @@ it('owns one Auto listener, ignores a later system change while pinned, and stay
   expect(document.documentElement).toHaveAttribute('data-mode', 'light');
   expect(listeners.size).toBe(0);
   expect(store.getState().notifications.items).toHaveLength(0);
+});
+
+// Proves: FR-WS-015
+it('updates synchronized quick and modal Appearance only after reset is acknowledged', async () => {
+  getSettings.mockResolvedValueOnce({
+    appearance: {
+      defaultOpenMode: 'viewer',
+      mode: 'dark',
+      theme: 'minimal',
+    },
+    contentPrivacy: { remotePolicy: 'ask' },
+    markdown: {
+      bulletMarker: '-',
+      emphasisMarker: '*',
+      formatOnSave: false,
+      headingStyle: 'atx',
+      lintOnSave: false,
+      standard: 'gfm',
+    },
+  });
+  let acknowledgeReset: (() => void) | undefined;
+  resetAppearance.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve): void => {
+        acknowledgeReset = resolve;
+      }),
+  );
+  render(<AppearanceControls />);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+  expect(screen.getByRole('radio', { name: 'Minimal' })).toBeChecked();
+  expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked();
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Appearance' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Reset appearance' }));
+  expect(screen.getByRole('radio', { name: 'Minimal' })).toBeChecked();
+
+  acknowledgeReset?.();
+  await waitFor((): void => {
+    expect(screen.getByRole('radio', { name: 'Material' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Follows system' })).toBeChecked();
+  });
+  expect(document.documentElement).toHaveAttribute('data-theme', 'material');
+  expect(resetAppearance).toHaveBeenCalledTimes(1);
+});
+
+// Proves: FR-WS-015
+it('retains acknowledged Appearance when the transactional reset is rejected', async () => {
+  getSettings.mockResolvedValueOnce({
+    appearance: {
+      defaultOpenMode: 'viewer',
+      mode: 'dark',
+      theme: 'minimal',
+    },
+    contentPrivacy: { remotePolicy: 'ask' },
+    markdown: {
+      bulletMarker: '-',
+      emphasisMarker: '*',
+      formatOnSave: false,
+      headingStyle: 'atx',
+      lintOnSave: false,
+      standard: 'gfm',
+    },
+  });
+  resetAppearance.mockRejectedValueOnce(new Error('private database path'));
+  render(<AppearanceControls />);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Appearance' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Reset appearance' }));
+
+  await waitFor((): void => expect(resetAppearance).toHaveBeenCalledTimes(1));
+  expect(screen.getByRole('radio', { name: 'Minimal' })).toBeChecked();
+  expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked();
+  expect(document.body).not.toHaveTextContent('private database path');
+});
+
+// Proves: FR-WS-015
+it('does not broadcast a reset into another mounted acknowledged Appearance projection', async () => {
+  const persisted: Awaited<ReturnType<typeof settingsAdapter.getSettings>> = {
+    appearance: {
+      defaultOpenMode: 'viewer',
+      mode: 'dark',
+      theme: 'minimal',
+    },
+    contentPrivacy: { remotePolicy: 'ask' },
+    markdown: {
+      bulletMarker: '-',
+      emphasisMarker: '*',
+      formatOnSave: false,
+      headingStyle: 'atx',
+      lintOnSave: false,
+      standard: 'gfm',
+    },
+  };
+  getSettings.mockResolvedValueOnce(persisted).mockResolvedValueOnce(persisted);
+  const first = render(<AppearanceControls />);
+  const second = render(<AppearanceControls />);
+
+  fireEvent.click(
+    await within(first.container).findByRole('button', { name: 'Settings' }),
+  );
+  fireEvent.click(
+    within(first.container).getByRole('menuitem', { name: 'Appearance' }),
+  );
+  fireEvent.click(
+    within(first.container).getByRole('button', { name: 'Reset appearance' }),
+  );
+  await waitFor(() =>
+    expect(
+      within(first.container).getByRole('radio', { name: 'Material' }),
+    ).toBeChecked(),
+  );
+
+  fireEvent.click(
+    await within(second.container).findByRole('button', { name: 'Settings' }),
+  );
+  expect(
+    within(second.container).getByRole('radio', { name: 'Minimal' }),
+  ).toBeChecked();
+  expect(
+    within(second.container).getByRole('radio', { name: 'Dark' }),
+  ).toBeChecked();
 });

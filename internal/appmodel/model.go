@@ -13,9 +13,10 @@ const (
 )
 
 type openDocument struct {
-	metadata apperr.DocumentMetadata
-	content  string
-	baseline string
+	metadata     apperr.DocumentMetadata
+	content      string
+	baseline     string
+	hasSavedView bool
 }
 
 type applicationState struct {

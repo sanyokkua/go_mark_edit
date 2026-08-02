@@ -86,6 +86,9 @@ type DocViewInput struct {
 // UILayout is a mergeable application-level layout payload. Pointer fields
 // preserve an intentional false or zero when commands and patches cross Wails.
 type UILayout struct {
+	WindowWidth        *int    `json:"windowWidth,omitempty"`
+	WindowHeight       *int    `json:"windowHeight,omitempty"`
+	WindowMaximized    *bool   `json:"windowMaximized,omitempty"`
 	SidebarVisible     *bool   `json:"sidebarVisible,omitempty"`
 	SidebarWidth       *int    `json:"sidebarWidth,omitempty"`
 	ViewArrangement    *string `json:"viewArrangement,omitempty"`
@@ -109,10 +112,11 @@ type DocumentMetadata struct {
 
 // AppStateSnapshot is the metadata-only frontend projection of the live model.
 type AppStateSnapshot struct {
-	Revision         uint64                      `json:"revision"`
-	Documents        map[string]DocumentMetadata `json:"documents"`
-	ActiveDocumentID string                      `json:"activeDocumentId"`
-	UI               UILayout                    `json:"ui"`
+	Revision           uint64                      `json:"revision"`
+	ApplicationVersion string                      `json:"applicationVersion"`
+	Documents          map[string]DocumentMetadata `json:"documents"`
+	ActiveDocumentID   string                      `json:"activeDocumentId"`
+	UI                 UILayout                    `json:"ui"`
 }
 
 // ActiveBuffer carries the canonical content only during explicit state hydration.

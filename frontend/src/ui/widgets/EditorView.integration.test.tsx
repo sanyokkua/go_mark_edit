@@ -5,6 +5,8 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { useContext } from 'react';
 import { Provider } from 'react-redux';
 import type { EditorProps } from '@monaco-editor/react';
@@ -19,11 +21,19 @@ import {
 import type { WireError } from '../../logic/utils/parseError';
 
 const mockSetDocView = jest.fn(async (): Promise<void> => undefined);
+const mockGetSettings = jest.fn();
+const mockResetAppearance = jest.fn(async (): Promise<void> => undefined);
+const mockUpdateAppearance = jest.fn(async (): Promise<void> => undefined);
 let mockStatePatchListener:
   | ((patch: import('../../logic/store/appModelTypes').AppStatePatch) => void)
   | undefined;
 
 jest.mock('../../logic/adapter', () => ({
+  settingsAdapter: {
+    getSettings: mockGetSettings,
+    resetAppearance: mockResetAppearance,
+    updateAppearance: mockUpdateAppearance,
+  },
   appModelAdapter: {
     flushBuffer: jest.fn(async (): Promise<void> => undefined),
     flushDocView: jest.fn(async (): Promise<void> => undefined),
@@ -177,6 +187,7 @@ import {
   EditorSessionContext,
   EditorSessionProvider,
 } from './editorSession';
+import AppearanceControls from './AppearanceControls';
 import EditorView, { type EditorViewAdapter } from './EditorView';
 
 type VoidResult = { error?: WireError };
@@ -272,6 +283,7 @@ async function renderStatusEditor(
   const initialState: AppModelState = {
     snapshot: {
       revision: 1,
+      applicationVersion: 'dev',
       documents: { [document.documentId]: document },
       activeDocumentId: document.documentId,
       ui: {},
@@ -292,11 +304,46 @@ async function renderStatusEditor(
   );
 }
 
+it('FR-WS-017 keeps a long document title available while both centre panes render', async () => {
+  const title =
+    'A deliberately long Markdown document title that remains available in the editor pane';
+  const document = statusDocument({
+    title,
+    view: {
+      arrangement: 'split',
+      editorVisible: true,
+      previewVisible: true,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 0 },
+    },
+  });
+  const adapter: EditorViewAdapter = {
+    flushBuffer: async (): Promise<void> => undefined,
+    flushDocView: async (): Promise<void> => undefined,
+    subscribeAcceptedBuffers: (): (() => void) => (): void => undefined,
+    updateBuffer: async (): Promise<void> => undefined,
+    updateDocView: async (): Promise<void> => undefined,
+  };
+  await act(async (): Promise<void> => {
+    renderLivePreviewEditor('# Long title document', adapter, document);
+    await Promise.resolve();
+  });
+
+  expect(screen.getByLabelText('Editor pane')).toHaveTextContent(
+    `Editor · ${title}`,
+  );
+  expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+});
+
 function renderLivePreviewEditor(
   content: string,
   adapter: EditorViewAdapter,
+  document = statusDocument(),
 ): ReturnType<typeof render> {
-  const document = statusDocument();
   store.dispatch(
     hydrateProjection({
       revision: 1,
@@ -316,6 +363,120 @@ function renderLivePreviewEditor(
     </Provider>,
   );
 }
+
+function createRenderedEditorAdapter(): EditorViewAdapter {
+  return {
+    flushBuffer: async (): Promise<void> => undefined,
+    flushDocView: async (): Promise<void> => undefined,
+    subscribeAcceptedBuffers: (): (() => void) => (): void => undefined,
+    updateBuffer: async (): Promise<void> => undefined,
+    updateDocView: async (): Promise<void> => undefined,
+  };
+}
+
+function appearanceSettings(
+  theme: 'glass' | 'material' | 'minimal',
+  mode: 'light' | 'dark',
+): {
+  appearance: { defaultOpenMode: string; mode: string; theme: string };
+  contentPrivacy: { remotePolicy: string };
+  markdown: {
+    bulletMarker: string;
+    emphasisMarker: string;
+    formatOnSave: boolean;
+    headingStyle: string;
+    lintOnSave: boolean;
+    standard: string;
+  };
+} {
+  return {
+    appearance: { defaultOpenMode: 'editor', mode, theme },
+    contentPrivacy: { remotePolicy: 'ask' },
+    markdown: {
+      bulletMarker: '-',
+      emphasisMarker: '*',
+      formatOnSave: false,
+      headingStyle: 'atx',
+      lintOnSave: false,
+      standard: 'gfm',
+    },
+  };
+}
+
+it('FR-WS-017 renders the translated editor catalogue and preview text', async () => {
+  await act(async (): Promise<void> => {
+    renderLivePreviewEditor('# Local preview', createRenderedEditorAdapter());
+    await Promise.resolve();
+  });
+
+  expect(screen.getByLabelText('Editor view')).toBeInTheDocument();
+  expect(screen.getByLabelText('Document toolbar')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'View' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('radiogroup', { name: 'View arrangement' }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('radio', { name: 'Editor' })).toBeInTheDocument();
+  expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+  expect(screen.getByRole('radio', { name: 'Preview' })).toBeInTheDocument();
+  expect(screen.getByText('● Preview · live')).toBeInTheDocument();
+  expect(screen.getByText('GFM')).toBeInTheDocument();
+});
+
+it('FR-WS-017 applies every persisted palette to the rendered Settings control', async () => {
+  const palettes = [
+    ['glass', 'light'],
+    ['glass', 'dark'],
+    ['material', 'light'],
+    ['material', 'dark'],
+    ['minimal', 'light'],
+    ['minimal', 'dark'],
+  ] as const;
+  mockGetSettings.mockReset();
+  for (const [theme, mode] of palettes) {
+    mockGetSettings.mockResolvedValueOnce(appearanceSettings(theme, mode));
+    const rendered = render(<AppearanceControls />);
+
+    await waitFor((): void => {
+      expect(document.documentElement).toHaveAttribute('data-theme', theme);
+      expect(document.documentElement).toHaveAttribute('data-mode', mode);
+    });
+    expect(
+      rendered.getByRole('button', { name: 'Settings' }),
+    ).toBeInTheDocument();
+    rendered.unmount();
+  }
+  expect(mockGetSettings).toHaveBeenCalledTimes(6);
+});
+
+it('FR-WS-017 ships a zero-duration reduced-motion override beside the rendered editor', async () => {
+  await act(async (): Promise<void> => {
+    renderLivePreviewEditor(
+      '# Motion-safe preview',
+      createRenderedEditorAdapter(),
+    );
+    await Promise.resolve();
+  });
+  expect(screen.getByLabelText('Editor view')).toBeInTheDocument();
+
+  const stylesheet = document.createElement('style');
+  stylesheet.textContent = readFileSync(
+    resolve(process.cwd(), 'src/ui/styles/tokens.css'),
+    'utf8',
+  );
+  document.head.append(stylesheet);
+  const reducedMotionRule = Array.from(stylesheet.sheet?.cssRules ?? []).find(
+    (rule): rule is CSSMediaRule =>
+      rule.type === CSSRule.MEDIA_RULE &&
+      (rule as CSSMediaRule).media.mediaText ===
+        '(prefers-reduced-motion: reduce)',
+  );
+  const rootRule = reducedMotionRule?.cssRules[0] as CSSStyleRule | undefined;
+
+  expect(rootRule?.style.getPropertyValue('--dur-fast')).toBe('0ms');
+  expect(rootRule?.style.getPropertyValue('--dur-base')).toBe('0ms');
+  expect(rootRule?.style.getPropertyValue('--dur-slow')).toBe('0ms');
+  stylesheet.remove();
+});
 
 it('STORY-023-AC-4 preserves replacement undo and UpdateBuffer routing', async () => {
   const document = statusDocument({
@@ -613,6 +774,7 @@ it('STORY-017-AC-5 renders accepted GFM within the debounce target', async () =>
         data: {
           snapshot: {
             revision: 1,
+            applicationVersion: 'dev',
             documents: {},
             activeDocumentId: '',
             ui: {},
@@ -750,6 +912,7 @@ it('STORY-022-AC-1 flushes session state before hiding the editor and does not h
   const initialState: AppModelState = {
     snapshot: {
       revision: 1,
+      applicationVersion: 'dev',
       documents: { [initialDocument.documentId]: initialDocument },
       activeDocumentId: initialDocument.documentId,
       ui: {},
@@ -1269,6 +1432,7 @@ it('STORY-015-AC-2 round trips view mode through the backend patch', async () =>
   const initialState: AppModelState = {
     snapshot: {
       revision: 1,
+      applicationVersion: 'dev',
       documents: { [initialDocument.documentId]: initialDocument },
       activeDocumentId: initialDocument.documentId,
       ui: {},
@@ -1369,6 +1533,7 @@ it('STORY-015-AC-5 keeps keyboard selection and focus backend-controlled', async
   const initialState: AppModelState = {
     snapshot: {
       revision: 1,
+      applicationVersion: 'dev',
       documents: { [initialDocument.documentId]: initialDocument },
       activeDocumentId: initialDocument.documentId,
       ui: {},

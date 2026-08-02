@@ -41,6 +41,7 @@ Review manually:
    and Assistant behavior are downstream and have no placeholder.
 6. Network evidence has no duration requirement. Performance evidence requires at least 20 resize and
    20 divider samples. The full 18-case matrix remains automated, with one current-host real-build walkthrough.
+   Windows/Linux native runtime testing is deferred until the whole application is implemented.
 
 ## 2. Capture a trustworthy implementation baseline
 
@@ -168,8 +169,9 @@ Record the host/platform and perform one representative walkthrough that covers:
 9. quit during the 250 ms persistence pause and two-process stale-close ordering.
 
 This walkthrough complements the automated request log and 18-case browser matrix. It has no five-minute
-or 60-second duration requirement and does not claim macOS, Windows, and Linux completion. Repeat native
-window behavior on all three platforms at the Viewer release gate.
+or 60-second duration requirement and is sufficient for this slice and intermediate stages. Do not run
+or require Windows/Linux native runtime testing before the whole application is implemented. At whole-
+application completion, repeat the completed application's native behavior on macOS, Windows, and Linux.
 
 ## 8. Verify the completed slice later
 
