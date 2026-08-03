@@ -1,0 +1,6 @@
+lint=0=clean=0
+test=1=ok-with-findings=1
+fmt-check=0=clean=0
+typecheck=0=clean=0
+archtest=0=clean=0
+frontend-build=0=clean=0

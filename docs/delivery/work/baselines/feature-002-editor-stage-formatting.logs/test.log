@@ -1,0 +1,21 @@
+just go-test
+go test -race ./internal/... .
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	3.558s
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	(cached)
+?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
+--- FAIL: TestWailsBindingsRemainTracked (0.01s)
+    main_test.go:477: Wails binding mode = "100644 1e7c8a5d705eb8edfc5bbf8468f68f62396cbb1b 0\tfrontend/wailsjs/runtime/package.json", want generated mode 100755
+    main_test.go:477: Wails binding mode = "100644 3bbea8489dfc4c0e931740f5da24f0d0d02c33e9 0\tfrontend/wailsjs/runtime/runtime.d.ts", want generated mode 100755
+    main_test.go:477: Wails binding mode = "100644 556621eeb0246756bb479b67781402debad6fd3b 0\tfrontend/wailsjs/runtime/runtime.js", want generated mode 100755
+FAIL
+FAIL	github.com/sanyokkua/go_mark_edit	5.875s
+FAIL
+error: recipe `go-test` failed on line 66 with exit code 1
+error: recipe `test` failed on line 56 with exit code 1

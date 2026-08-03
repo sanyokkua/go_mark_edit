@@ -131,12 +131,17 @@ Research is consolidated in [research.md](research.md). The resolved decisions a
 2. Replace the narrow shell catalogue with one registry carrying identity, labels, scope, availability, and
    platform-neutral shortcuts; preserve native macOS clipboard/edit ownership.
 3. Keep formatting pure and bounded; apply one Monaco edit through `useDocumentCommands` and the normal
-   buffer queue, preserving selection/caret/scroll/undo identity.
+   buffer queue, preserving selection/caret/scroll/undo identity. Numbered-list actions use canonical
+   `1. ` markers per affected line, convert other list markers to `1. `, remove same-kind markers, and
+   never auto-renumber in this slice.
 4. Add `EditorSettings` to the existing typed Go settings path with defaults line numbers on, word wrap off,
    and font sizes exactly 13/14/16 with 14 default; update Monaco in place.
-5. Represent File, visual tabs, right-side control, Image, future Settings/View/About items, and
-   Format/Compact/Lint as explicit localized deferred states with no successful command path.
-6. Use the mockup's 1280/768/375 relocation rules and prove actual reachability/no clipping, not CSS hiding.
+5. Represent File, visual tabs, the shared deferred `toggle-assistant` action across the View item and
+   right-side control, Image, future Settings/View/About items, and Format/Compact/Lint as explicit
+   localized deferred states with no successful command path.
+6. Use the mockup's 1280/768/375 relocation rules and prove actual reachability/no clipping, not CSS hiding;
+   at 375 pixels, allow only the mockup's contained visual tab-strip scrolling, with no tab-management
+   overflow state or command.
 7. Use layered unit, integration, architecture/offline, browser, live, and real-build evidence after a
    reliable pre-edit baseline.
 8. Resolve the heading ambiguity in favor of the explicit ATX H1/H2/H3 action rule; do not invent Setext/H3
@@ -189,7 +194,8 @@ and existing-shell compatibility.
 
 - Add pure transformations in `frontend/src/logic/format/` for emphasis/code toggles, ATX heading
   add/replace/remove, line-by-line bullet/numbered/task conversion, quote, link, and empty GFM table
-  skeleton insertion.
+  skeleton insertion. Numbered-list conversion uses canonical `1. ` per affected line, removes an
+  existing numbered marker on same-kind invocation, and never auto-renumbers selected lines.
 - Read selection/content through the current identity-bound session and route mutations through one
   document-command operation. Multi-line list formatting must be one contiguous/batched Monaco edit and one
   undo step, not one mutation per line.
@@ -205,11 +211,13 @@ and existing-shell compatibility.
 The specification names `useDocumentCommands.test.tsx`; the repository's actual existing focused test is
 `frontend/src/logic/hooks/useDocumentCommands.test.ts`, so extend that file rather than creating a duplicate.
 
-**Proof**: `frontend/src/logic/format/formatting.test.ts` covers every marker/range/line/table rule and
-exact original-byte restoration. `CodeEditor.test.tsx`, `useDocumentCommands.test.ts`, and
+**Proof**: `frontend/src/logic/format/formatting.test.ts` covers every marker/range/line/table rule,
+canonical `1. ` numbered conversion, no auto-renumbering, and exact original-byte restoration.
+`CodeEditor.test.tsx`, `useDocumentCommands.test.ts`, and
 `EditorView.integration.test.tsx` prove identity checks, one `executeEdits`/undo group, buffer queue routing,
-and no focused-editor reset. The pointer/shortcut/context-menu equivalence journey is completed in ED-VS-05
-and ED-LIVE-003.
+and no focused-editor reset. The pointer/shortcut/context-menu equivalence journey covers Bold, Italic, and
+Link; Heading, list, Quote, and Table equivalence is covered through toolbar and shortcut paths, plus
+approved overflow paths wherever those actions are exposed, in ED-VS-05 and ED-LIVE-003.
 
 ### ED-VS-03 — Acknowledged editor display settings and view bindings
 
@@ -259,14 +267,17 @@ FR-ED-008, FR-ED-009, FR-ED-010.
 - Add the visual tab presentation with representative labels, modified dot, close/add affordances, but no
   tab state, file identity, switching, persistence, or backend command.
 - Add both requested sidebar controls: existing left workspace/sidebar visibility remains functional at
-  desktop/768 rail/375 off-canvas; the right-side control is inspectable and visual-only with no Assistant
-  state or panel.
+  desktop/768 rail/375 off-canvas; the tab fixture may use contained horizontal scrolling at 375 for visual
+  reachability only; the right-side control is the visual surface for the same deferred
+  `toggle-assistant` registry identity as the View-menu item, with a localized unavailable outcome and
+  no Assistant state, panel, provider call, or network request.
 - Add `EditorChrome` around the editor controls: all inline/heading/list/quote/link/image/table groups,
   Format/Compact/Lint explicit deferred controls, `»` overflow, and Editor/Split/Preview arrangement.
   Preserve one pane minimum and existing flush-before-hide transitions.
 - Implement the exact 1280/768/375 relocation rules with tokenized, one-row CSS and no page-level horizontal
-  clipping. The visual tab fixture may use the mockup's contained tab-strip overflow at 375; assert
-  responsive-only widths do not overwrite durable desktop layout.
+  clipping. At 375, use only the mockup's contained visual tab-strip scrolling; do not add tab-management
+  overflow state, menus, or commands, and assert responsive-only widths do not overwrite durable desktop
+  layout.
 
 **Concrete paths**: `frontend/src/ui/widgets/ShellMenuRow.tsx/.module.css`, `SettingsMenu.tsx`,
 `ViewMenu.tsx`, `AppShell.tsx/.module.css`, `EditorView.tsx/.module.css`, new
@@ -274,7 +285,8 @@ FR-ED-008, FR-ED-009, FR-ED-010.
 `frontend/src/ui/styles/tokens.css` only for catalogue/token additions; `frontend/e2e/editor-stage.test.ts`.
 
 **Proof**: `EditorChrome.test.tsx` and `ShellMenuRow.test.tsx` cover inventories, deferred states, ordering,
-  overflow, sidebar controls, focus, and no Assistant/tab behavior; `AppShell.test.tsx` and
+  overflow, sidebar controls, focus, the shared `toggle-assistant` identity, and no Assistant/tab behavior;
+  `AppShell.test.tsx` and
   `EditorView.test.tsx` cover one-pane/layout preservation. The E2E matrix covers all 18 width/palette
   combinations, root attributes, visible focus, bounding-box clipping, and actual pointer/keyboard reachability.
 
@@ -289,13 +301,15 @@ FR-ED-008, FR-ED-009, FR-ED-010.
 
 - Add `EditorContextMenu` with the exact registry order and separators: Cut, Copy, Paste, Paste as plain text,
   Bold, Italic, Link, Format document, Compact, Command palette. Do not add Lint to this menu because it is
-  not in the active context-menu inventory.
+  not in the active context-menu inventory. Context-menu equivalence is required for Bold, Italic, and Link;
+  Heading, list, Quote, and Table remain on their toolbar and keyboard surfaces, plus approved overflow
+  surfaces wherever those actions are exposed.
 - Add `ShortcutsDialog` from the same registry, resolving platform accelerators and showing scope/availability
   without duplicating bindings. Preserve modal focus trap, Escape, opener restoration, and background dispatch
   suppression from the consumed dialog rules.
 - Connect toolbar, menu, overflow, tooltip, context-menu, and shortcuts-dialog invocation to identical action
   identities. Ensure toolbar/context-menu pointer invocation can use the originating editor session even when
-  focus moves to the surface.
+  focus moves to the surface, while preserving each action's approved surface membership.
 - Use the existing translation catalogue, semantic roles, focus ring and reduced-motion tokens, and all six
   palettes. Long labels must remain reachable rather than clip or lose their accessible name.
 
@@ -305,8 +319,8 @@ tests.
 
 **Proof**: `frontend/src/ui/widgets/EditorContextMenu.test.tsx` and
 `frontend/src/ui/widgets/ShortcutsDialog.test.tsx` prove exact order, separators, accelerators, modality,
-focus, registry identity, and no duplicate handlers. ED-LIVE-001 and ED-LIVE-003 exercise real pointer,
-keyboard, and context-menu paths.
+focus, registry identity, surface-specific formatting coverage, and no duplicate handlers. ED-LIVE-001 and
+ED-LIVE-003 exercise real pointer, keyboard, overflow, and context-menu paths.
 
 ### ED-VS-06 — Deferred boundaries, offline safeguards, and slice evidence
 
@@ -343,18 +357,18 @@ another slice but do not create a second owner.
 | FR-ED-001 | ED-VS-04 | Menu row below the native title bar and OS-shell preservation. |
 | FR-ED-002 | ED-VS-04 | Visual-only File menu inventory. |
 | FR-ED-003 | ED-VS-04 | Settings inventory, Editor group, and deferred future settings. |
-| FR-ED-004 | ED-VS-04 | View inventory, working arrangements/sidebar/full-screen, and unavailable future view items. |
+| FR-ED-004 | ED-VS-04 | View inventory, working arrangements/sidebar/full-screen, and the shared deferred Toggle Assistant action. |
 | FR-ED-005 | ED-VS-04 | About inventory, local About behavior, and unavailable future links/logs. |
 | FR-ED-006 | ED-VS-04 | Visual tab presentation without canonical tab state or lifecycle. |
 | FR-ED-007 | ED-VS-04 | Functional left sidebar/workspace visibility and responsive presentation. |
-| FR-ED-008 | ED-VS-04 | Visual-only right-side control with no Assistant state or panel. |
+| FR-ED-008 | ED-VS-04 | Right-side visual surface sharing the deferred Toggle Assistant identity with no Assistant state or panel. |
 | FR-ED-009 | ED-VS-04 | Complete toolbar groups and 768/375 overflow relocation. |
 | FR-ED-010 | ED-VS-04 | Visible Format/Compact/Lint controls with explicit deferred availability. |
 | FR-ED-011 | ED-VS-01 | One canonical action registry and derived visible surfaces. |
 | FR-ED-012 | ED-VS-02 | Bounded selection/current-line formatting through the shared seam. |
 | FR-ED-013 | ED-VS-02 | Emphasis/code marker pair toggle and caret insertion. |
 | FR-ED-014 | ED-VS-02 | ATX heading add/replace/remove behavior. |
-| FR-ED-015 | ED-VS-02 | List conversion/removal and canonical/acknowledged marker preferences. |
+| FR-ED-015 | ED-VS-02 | List conversion/removal, canonical `1. ` numbered markers without auto-renumbering, and acknowledged marker preferences. |
 | FR-ED-016 | ED-VS-02 | Quote, Link, Table, and deferred Image action semantics. |
 | FR-ED-017 | ED-VS-02 | Phase 04 bounded behavior and one-edit contract; later document actions deferred. |
 | FR-ED-018 | ED-VS-06 | Deferred Format/Compact/Lint no-gate, deterministic no-mutation outcome. |

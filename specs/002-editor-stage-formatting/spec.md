@@ -16,6 +16,11 @@
 - Q: Should the right-side control toggle an empty shell state or remain a visual-only control while the Assistant region stays absent? → A: Add the button as a visual-only control with no functionality; keep the existing left workspace/sidebar hide/show behavior functional.
 - Q: Which artifact governs the visible shape of the Editor-stage chrome, and how are requirements that are not implemented in this slice handled? → A: `docs/delivery/spec/surface/mockup.html` is the binding shape source; every applicable original rule is either owned here, consumed from the completed `specs/001-gomarkedit-product` contract, or explicitly deferred with its source anchor and downstream boundary. No requirement may be silently omitted.
 - Q: Should Format, Compact, and Lint implement the full approved Phase 10 document behavior in this slice? → A: No. Implement the Phase 04 inline and selection formatting actions here; expose Format, Compact, and Lint as visible controls with explicit unavailable/deferred handlers until the later tidy-markdown slice.
+- Q: When the Numbered list action is applied, should each affected line use the canonical `1. ` marker without automatic renumbering? → A: Yes. Use canonical `1. ` on each affected line; convert other list kinds to it, remove it when already active, and never auto-renumber in this slice.
+- Q: Should the View-menu Toggle Assistant item and the right-side visibility control share one canonical deferred action identity while both remain unavailable and create no Assistant state or panel? → A: Yes. Both surfaces use one deferred `toggle-assistant` registry identity and localized unavailable outcome; dispatch creates no Assistant state, panel, provider call, or network request.
+- Q: May the visual tab strip use contained horizontal scrolling at 375 pixels while real tab behavior remains excluded? → A: Yes. Permit only the mockup-shaped visual scrolling inside the tab strip; do not create canonical tab state, tab-management commands, switching, closing, reordering, restore, or persistence.
+- Q: Should formatting equivalence follow the actions present on each approved surface rather than requiring every action in every surface? → A: Yes. Bold, Italic, and Link must agree across the toolbar, keyboard, and editor context menu; Heading, list, Quote, and Table must agree across their toolbar and keyboard surfaces, plus approved overflow surfaces wherever those actions are exposed, without expanding the context menu.
+- Q: At 375 pixels, should “no horizontal scroll” mean no page-level scroll while allowing the approved contained tab-strip scroll? → A: Yes. Forbid page-level horizontal scrolling; allow only contained visual tab-strip scrolling for visual reachability, with no canonical tab state or tab-management commands.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -51,16 +56,17 @@ focus, responsive overflow, and absence of clipping.
 ### User Story 2 - Apply common Markdown formatting (Priority: P1)
 
 When the editor has focus, the user can format the selected text or current line from the controls row,
-the keyboard, or the editor context menu. The editor continues to show Markdown source, and each
-formatting action produces the same source result regardless of which surface invoked it.
+the keyboard, or the editor context menu when that action is present there. The editor continues to show
+Markdown source, and each formatting action produces the same source result across all surfaces that expose
+it.
 
 **Why this priority**: Formatting is the primary Editor-stage value and is the approved Phase 04
 capability that turns the existing source editor into a practical Markdown-writing tool.
 
 **Independent Test**: With one writable document and the real document-command seam, select text and
-invoke Bold from the pointer, keyboard, and context-menu paths; repeat with an empty selection on a
-line, a multi-line list selection, a heading, and a table insertion. Compare the resulting source and
-undo behavior across all invocation paths.
+invoke Bold from the toolbar, keyboard, and context-menu paths; repeat Heading, list, Quote, and Table
+through their toolbar, keyboard, and approved overflow paths. Compare the resulting source and undo
+behavior across each action's supported invocation paths.
 
 **Acceptance Scenarios**:
 
@@ -75,8 +81,11 @@ undo behavior across all invocation paths.
    the original bytes.
 4. **Given** a line with a different heading or list kind, **When** the target heading or list action is
    invoked, **Then** the existing marker is replaced; invoking the same kind again removes the marker.
-5. **Given** the same selection and action, **When** the user invokes it by toolbar, shortcut, or
-   context menu, **Then** all three paths produce the same source and one undo step.
+5. **Given** the same selection and an action exposed by more than one surface, **When** the user invokes
+   it through each supported surface, **Then** every supported path produces the same source and one undo
+   step. Bold, Italic, and Link use the toolbar, shortcut, and editor context menu; Heading, list, Quote,
+   and Table use the toolbar and shortcut, plus approved overflow surfaces wherever those actions are
+   exposed.
 
 ### User Story 3 - Run document actions and editor/view controls (Priority: P2)
 
@@ -137,6 +146,12 @@ open. Confirm platform-correct labels, focus behavior, and action suppression.
   caret between the markers; the action does not create unrelated document content.
 - A formatting action is invoked on a multi-line selection: line-based actions transform each selected
   line rather than wrapping the entire block in one marker.
+- A multi-line Numbered list action is invoked: each affected line receives the canonical `1. ` marker
+  when added or converted, the same action removes an existing numbered marker, and the action does not
+  auto-renumber the selected lines.
+- Toggle Assistant is invoked from either the View menu or the right-side control: both surfaces resolve
+  to the same deferred `toggle-assistant` identity and localized unavailable outcome, with no Assistant
+  state, panel, provider call, or network request.
 - Format, Compact, or Lint is invoked in this slice: the control remains visibly unavailable/deferred,
   no operation gate is acquired, and no document or editor state changes.
 - A document has more than 1,000 lint findings: the displayed count remains exact while decorations
@@ -144,7 +159,8 @@ open. Confirm platform-correct labels, focus behavior, and action suppression.
 - A control is used with no writable document: it is disabled or returns a localized unavailable
   outcome and never manufactures a document, file, tab, or backend success.
 - The window is 375 pixels wide: menus and controls move into their approved overflow locations, the
-  toolbar remains one row, and no horizontal scroll is introduced.
+  toolbar remains one row, no page-level horizontal scroll is introduced, and the visual tab strip may
+  use contained horizontal scrolling only for visual reachability.
 - A menu, tooltip, context menu, or dialog is opened in each of the six delivered palettes: its
   surface remains legible and uses only centralized tokens.
 - A translated label is substantially longer than English: controls remain reachable and the layout
@@ -167,7 +183,8 @@ behavior, or outbound network activity.
 
 The binding visual authority for this slice is
 `docs/delivery/spec/surface/mockup.html`. Its shape wins for control presence, labels, order, grouping,
-tab affordances, overflow placement, responsive layout, and visible states; this feature specification
+tab affordances, overflow placement, responsive layout, and visible states; at 375 pixels, the tab strip
+may use contained horizontal scrolling for visual reachability only; this feature specification
 wins for behavior. The authoritative Editor-stage screens are `editor-split`, `editor-only`,
 `no-sidebar`, `menu-file`, `menu-settings`, `menu-view`, `menu-about`, `editor-menu`,
 `toolbar-overflow`, `context-menu`, `shortcuts`, `about`, `settings-editor`, and
@@ -204,9 +221,10 @@ successful command.
 - **FR-ED-004**: The View menu MUST expose Editor, Split, Preview, Toggle Sidebar, Toggle Assistant,
   Line numbers, Word wrap, Distraction-free reading, and Full screen in the original mockup order and
   grouping. Editor/Split/Preview, line numbers, word wrap, sidebar, and full-screen behavior remain
-  functional where already implemented; Toggle Assistant and Distraction-free reading are visual-only
-  unavailable surfaces in this slice. A working arrangement change MUST keep at least one pane visible
-  and MUST preserve the existing native-shell contract.
+  functional where already implemented; Toggle Assistant is a registry-derived deferred action shared
+  with the right-side visibility control, and both it and Distraction-free reading are unavailable in
+  this slice. A working arrangement change MUST keep at least one pane visible and MUST preserve the
+  existing native-shell contract.
 - **FR-ED-005**: The About menu MUST expose Keyboard shortcuts, Open logs folder, View on GitHub (MIT),
   and About GoMarkEdit in the original mockup order. Existing local About/version behavior remains
   functional; future log-folder and GitHub actions MUST be visibly unavailable or inert and MUST NOT
@@ -214,16 +232,19 @@ successful command.
   crash-upload, or other network behavior.
 - **FR-ED-006**: The application MUST expose the original mockup's document-tab presentation: the
   representative `release-notes.md` and `spec-draft.md` tabs, modified-dot state, close affordances,
-  and add-tab affordance. These are visual-only future surfaces. The application MUST NOT create
-  canonical tab state or implement tab opening, closing, switching, reordering, overflow, session
-  restore, or tab persistence in this slice.
+  and add-tab affordance. These are visual-only future surfaces. At 375 pixels, the tab strip MAY use
+  contained horizontal scrolling from the mockup as visual layout only. The application MUST NOT create
+  canonical tab state or implement tab opening, closing, switching, reordering, tab-management overflow
+  state or menus, session restore, or tab persistence in this slice.
 - **FR-ED-007**: The application MUST expose controls to inspect and change the approved left-side
   workspace/sidebar visibility state, including its desktop, 768-pixel rail, and 375-pixel off-canvas
   presentations, without writing responsive-only widths back to durable desktop layout.
-- **FR-ED-008**: The application MUST expose the requested right-side visibility control as a
-  visual-only future surface with no functionality, panel, layout state, Assistant behavior, Assistant
-  content, provider call, or visible Assistant placeholder. The existing left workspace/sidebar control
-  remains the only functional sidebar visibility action in this slice.
+- **FR-ED-008**: The application MUST expose the requested right-side visibility control as the visual
+  surface for the deferred `toggle-assistant` registry action shared with the View-menu Toggle Assistant
+  item. Both surfaces MUST resolve to the same localized unavailable outcome with no functionality, panel,
+  layout state, Assistant behavior, Assistant content, provider call, or visible Assistant placeholder.
+  The existing left workspace/sidebar control remains the only functional sidebar visibility action in
+  this slice.
 - **FR-ED-009**: The controls bar MUST expose the original mockup groups: Bold, Italic, Strikethrough,
   Inline code; Heading 1, Heading 2, Heading 3; Bullet list, Numbered list, Task list, Quote; Link,
   Image, Table; and the `»` overflow control, followed by the Editor/Split/Preview arrangement
@@ -247,8 +268,11 @@ successful command.
 - **FR-ED-014**: Heading actions MUST add the requested ATX heading level to a paragraph, replace a
   different existing level, and remove the marker when the requested level is already active.
 - **FR-ED-015**: Bullet, Numbered, and Task list actions MUST add, convert, or remove the line marker
-  according to the selected list kind; the canonical defaults MUST remain `-` bullets, `_` emphasis,
-  and ATX `#` headings while continuing to respect the existing Markdown preferences.
+  according to the selected list kind. Numbered list actions MUST use the canonical `1. ` marker on
+  each affected line, replace another list marker with `1. ` when converting, remove the marker when
+  the numbered kind is already active, and MUST NOT auto-renumber selected lines in this slice. The
+  canonical defaults MUST remain `-` bullets, `_` emphasis, and ATX `#` headings while continuing to
+  respect the existing Markdown preferences.
 - **FR-ED-016**: Quote, Link, and Table actions MUST operate through the same editor action seam;
   Table MUST insert the documented empty GFM skeleton, and Link MUST not introduce an unsolicited
   network request. Image controls MUST retain their visual registry entry and localized unavailable
@@ -326,7 +350,7 @@ replace them with symbol-presence checks:
 | Deferred document-action surfaces | `frontend/src/ui/widgets/EditorChrome.test.tsx`, `frontend/src/ui/widgets/ShellMenuRow.test.tsx` | Format/Compact/Lint labels, registry metadata, localized unavailable state, no gate acquisition, and no document mutation; full action tests remain deferred |
 | Editor command boundary | `frontend/src/logic/hooks/useDocumentCommands.test.tsx`, `frontend/src/ui/widgets/EditorView.integration.test.tsx` | Flush-before-read, identity safety, no focused-editor text echo, and action dispatch through one seam |
 | Menu and toolbar chrome | `frontend/src/ui/widgets/EditorChrome.test.tsx`, `frontend/src/ui/widgets/ShellMenuRow.test.tsx` | Full menu inventory, controls bar, overflow relocation, sidebar controls, accessible names, focus, and six-palette tokens |
-| Context menu and shortcuts dialog | `frontend/src/ui/widgets/EditorContextMenu.test.tsx`, `frontend/src/ui/widgets/ShortcutsDialog.test.tsx` | Registry-derived order, accelerators, keyboard reachability, modality, and no duplicate handlers |
+| Context menu and shortcuts dialog | `frontend/src/ui/widgets/EditorContextMenu.test.tsx`, `frontend/src/ui/widgets/ShortcutsDialog.test.tsx` | Exact registry-derived context-menu order and accelerators for Cut/Copy/Paste, Bold/Italic/Link, deferred Format/Compact, and Command palette; toolbar/keyboard/overflow coverage for formatting actions not present in the context menu; modality and no duplicate handlers |
 | Projection and backend authority | `internal/appmodel/*_test.go`, `frontend/src/logic/store/appModelProjection.test.ts` | Acknowledged transitions, failure retention, stale state rejection, and projection-only Redux behavior |
 | Architecture and offline safeguards | `just archtest`, `frontend/scripts/archtest.mjs` | Adapter-only Wails access, tokenized/localized UI, native-shell preservation, and no introduced network path |
 | Browser/live interface | `frontend/e2e/editor-stage.test.ts`, live cases `ED-LIVE-001` through `ED-LIVE-004` | Real controls at 1280/768/375 in all six palettes, root state, focus, overflow, sidebar state, and no clipping |
@@ -341,9 +365,10 @@ The live cases are:
    controls in all six palettes; confirm one-row toolbar, no clipping, and the approved rail/off-canvas
    layout while preserving durable desktop layout.
 3. **ED-LIVE-003 — Formatting journey**: In a writable current document, select text, invoke Bold by
-   pointer, shortcut, and context menu, then run a line list conversion and Table; inspect source, undo,
-   focus, and localized outcomes. Open Format, Compact, and Lint and confirm their unavailable/deferred
-   states make no source, gate, problems, or focus change.
+   toolbar, shortcut, and context menu, then run a line list conversion and Table through their toolbar,
+   shortcut, or approved overflow surfaces; inspect source, undo, focus, and localized outcomes. Open
+   Format, Compact, and Lint and confirm their unavailable/deferred states make no source, gate, problems,
+   or focus change.
 4. **ED-LIVE-004 — Offline and absence audit**: Instrument the representative journey, allow only the
    local development origin, and confirm no outbound request, file I/O, workspace enumeration, real
    tab lifecycle, rich-rendering expansion, or Assistant/provider behavior occurs.
@@ -375,10 +400,10 @@ The live cases are:
 - **SC-ED-002**: Every in-scope action appears with one identical identity and platform-correct binding
   in every required surface: menu, control/tooltip, context menu or overflow, and shortcuts dialog;
   duplicate or conflicting bindings are zero.
-- **SC-ED-003**: Pointer, keyboard, and context-menu invocation of the representative Phase 04
-  formatting set (Bold, Italic, heading, list, Quote, Link, and Table) produces the documented result
-  in 100% of the named automated cases, with one undo step for each mutating edit; Format, Compact, and
-  Lint remain explicitly unavailable and produce no mutation.
+- **SC-ED-003**: Pointer and keyboard invocation of the representative Phase 04 formatting set (Bold,
+  Italic, heading, list, Quote, Link, and Table), plus context-menu invocation of Bold, Italic, and Link,
+  produces the documented result in 100% of the named automated cases, with one undo step for each
+  mutating edit; Format, Compact, and Lint remain explicitly unavailable and produce no mutation.
 - **SC-ED-004**: A formatting action on selected text or the current line changes no source outside its
   defined range, and no focused-editor state update resets the caret, selection, scroll, or undo history
   in the named identity/projection tests.
