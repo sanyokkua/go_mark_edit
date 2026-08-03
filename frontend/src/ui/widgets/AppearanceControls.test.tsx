@@ -290,9 +290,7 @@ it('does not broadcast a reset into another mounted acknowledged Appearance proj
   fireEvent.click(
     await within(first.container).findByRole('button', { name: 'Settings' }),
   );
-  fireEvent.click(
-    within(first.container).getByRole('menuitem', { name: 'Appearance' }),
-  );
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Appearance' }));
   fireEvent.click(
     within(first.container).getByRole('button', { name: 'Reset appearance' }),
   );
@@ -305,10 +303,9 @@ it('does not broadcast a reset into another mounted acknowledged Appearance proj
   fireEvent.click(
     await within(second.container).findByRole('button', { name: 'Settings' }),
   );
+  const secondMenu = screen.getByRole('menu', { name: 'Settings menu' });
   expect(
-    within(second.container).getByRole('radio', { name: 'Minimal' }),
+    within(secondMenu).getByRole('radio', { name: 'Minimal' }),
   ).toBeChecked();
-  expect(
-    within(second.container).getByRole('radio', { name: 'Dark' }),
-  ).toBeChecked();
+  expect(within(secondMenu).getByRole('radio', { name: 'Dark' })).toBeChecked();
 });

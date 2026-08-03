@@ -22,7 +22,7 @@ interface ShellMenuRowProps {
 }
 
 function isNarrowViewport(): boolean {
-  return typeof window !== 'undefined' && window.innerWidth <= 375;
+  return typeof window !== 'undefined' && window.innerWidth <= 376;
 }
 
 const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
@@ -37,6 +37,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [narrow, setNarrow] = useState(isNarrowViewport);
   const pendingViewOpen = useRef<boolean | null>(null);
+  const overflowTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect((): (() => void) => {
     const onResize = (): void => setNarrow(isNarrowViewport());
@@ -105,6 +106,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
         >
           <DropdownMenu.Trigger asChild>
             <button
+              ref={overflowTriggerRef}
               aria-label={t('shell.overflow')}
               className={styles.trigger}
               data-settings-overflow
@@ -138,9 +140,9 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
             open={!modalOpen && settingsOpen}
             onOpenChange={setSettingsOpen}
             onTrigger={(): void => dispatch(action('settings'))}
-            onOpenAppearance={(): void => {
+            onOpenAppearance={(opener): void => {
               setSettingsOpen(false);
-              settingsMenuProps.onOpenAppearance();
+              settingsMenuProps.onOpenAppearance(opener);
             }}
             triggerLabel={t(action('settings').labelKey)}
           />
@@ -170,8 +172,9 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
             onOpenChange={setSettingsOpen}
             onOpenAppearance={(): void => {
               setSettingsOpen(false);
-              settingsMenuProps.onOpenAppearance();
+              settingsMenuProps.onOpenAppearance(overflowTriggerRef.current);
             }}
+            anchorRef={overflowTriggerRef}
             showTrigger={false}
           />
           {viewMenuProps === undefined ? null : (

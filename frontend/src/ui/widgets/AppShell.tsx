@@ -21,10 +21,24 @@ const AppShell: React.FC = (): React.JSX.Element => {
   const acknowledgedWorkspaceWidth = useAppSelector(
     (state) => state.ui.layout.sidebarWidth ?? 256,
   );
+  const latestLayoutFailure = useAppSelector((state) => {
+    const layoutFailures = [
+      ...state.notifications.items,
+      ...state.notifications.queuedErrors,
+    ].filter(
+      (notification) =>
+        notification.error?.details?.operation === 'update layout',
+    );
+    const latest = layoutFailures.at(-1);
+    return latest === undefined
+      ? undefined
+      : `${latest.id}:${latest.refreshGeneration}`;
+  });
   const [pendingWorkspaceWidth, setPendingWorkspaceWidth] = useState<
     number | undefined
   >(undefined);
   const pendingWorkspaceWidthRef = useRef<number | undefined>(undefined);
+  const handledLayoutFailureRef = useRef<string | undefined>(undefined);
   const workspaceWidth =
     pendingWorkspaceWidth === acknowledgedWorkspaceWidth
       ? acknowledgedWorkspaceWidth
@@ -53,6 +67,20 @@ const AppShell: React.FC = (): React.JSX.Element => {
     },
     [dispatch],
   );
+
+  useEffect((): void => {
+    if (
+      latestLayoutFailure === undefined ||
+      latestLayoutFailure === handledLayoutFailureRef.current
+    ) {
+      return;
+    }
+    handledLayoutFailureRef.current = latestLayoutFailure;
+    if (pendingWorkspaceWidthRef.current !== undefined) {
+      pendingWorkspaceWidthRef.current = undefined;
+      setPendingWorkspaceWidth(undefined);
+    }
+  }, [latestLayoutFailure]);
 
   useEffect((): (() => void) => {
     const onPointerMove = (event: PointerEvent): void => {

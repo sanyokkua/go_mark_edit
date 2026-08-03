@@ -4,10 +4,10 @@ Captured by `just baseline 001-gomarkedit-product`. Do not edit by hand.
 
 | | |
 |---|---|
-| commit | `f70bf3f` (`f70bf3fff24c3534b45589b7d78f12354b9db19d`) |
-| captured | 2026-08-01 13:42 UTC |
+| commit | `011d2b5` (`011d2b55aff5fb95cd61b5c789f5a84472330d1b`) |
+| captured | 2026-08-03 08:34 UTC |
 | working tree | **dirty — uncommitted changes are part of this baseline** |
-| coverage | 69.1% (mean of 11 packages) |
+| coverage | 65.8% (mean of 11 packages) |
 
 ## Gates
 

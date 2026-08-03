@@ -39,7 +39,7 @@ async function openAction(page: Page, label: string): Promise<void> {
     name: 'Application actions',
   });
   const overflow = actionBar.getByRole('button', { name: 'More actions' });
-  if ((page.viewportSize()?.width ?? 1280) <= 375) {
+  if ((page.viewportSize()?.width ?? 1280) <= 376) {
     await expect(overflow).toBeVisible();
     await overflow.click();
     await page.getByRole('menuitem', { name: label }).click();
@@ -361,6 +361,97 @@ for (const width of widths) {
         },
       );
       expect(runtimeErrors).toEqual([]);
+    });
+  }
+}
+
+test('T039 native minimum frame rounding keeps the workspace off-canvas', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 376, height: 480 });
+  await page.goto('/');
+
+  const workspace = page.getByRole('complementary', { name: 'Workspace' });
+  await expect(workspace).toBeVisible();
+  await expect
+    .poll(async () => Math.round((await workspace.boundingBox())?.width ?? -1))
+    .toBe(230);
+  await expect(
+    page.getByRole('button', { name: 'More actions' }),
+  ).toBeVisible();
+});
+
+for (const width of widths) {
+  test(`T040 Settings popup stays operable inside the ${width}px viewport`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 480 });
+    await page.goto('/');
+
+    await openAction(page, 'Settings');
+    const popup = page.getByRole('menu', { name: 'Settings menu' });
+    await expect(popup).toBeVisible();
+    const popupBounds = await popup.boundingBox();
+    expect(popupBounds).not.toBeNull();
+    expect(popupBounds!.x).toBeGreaterThanOrEqual(0);
+    expect(popupBounds!.x + popupBounds!.width).toBeLessThanOrEqual(width);
+    expect(popupBounds!.y).toBeGreaterThanOrEqual(0);
+    expect(popupBounds!.y + popupBounds!.height).toBeLessThanOrEqual(480);
+    await expect
+      .poll(() =>
+        popup.evaluate((element) => element.parentElement === document.body),
+      )
+      .toBe(true);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      )
+      .toBe(true);
+
+    const glass = popup.getByRole('radio', { name: 'Liquid Glass' });
+    await glass.click();
+    await expect(glass).toBeChecked();
+    const dark = popup.getByRole('radio', { name: 'Dark' });
+    await dark.focus();
+    await dark.press('Space');
+    await expect(dark).toBeChecked();
+    const appearance = popup.getByRole('menuitem', { name: 'Appearance' });
+    await appearance.focus();
+    await appearance.press('Enter');
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+  });
+}
+
+for (const width of [375, 1280] as const) {
+  for (const closeMethod of ['Close control', 'Escape'] as const) {
+    test(`T041 ${closeMethod} restores the connected ${width}px Settings opener`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 720 });
+      await page.goto('/');
+
+      const actionBar = page.getByRole('navigation', {
+        name: 'Application actions',
+      });
+      const opener =
+        width === 375
+          ? actionBar.getByRole('button', { name: 'More actions' })
+          : actionBar.getByRole('button', { name: 'Settings', exact: true });
+      await openSettings(page);
+      const dialog = page.getByRole('dialog', { name: 'Settings' });
+      if (closeMethod === 'Escape') {
+        await page.keyboard.press('Escape');
+      } else {
+        await dialog.getByRole('button', { name: 'Close' }).click();
+      }
+
+      await expect(dialog).toHaveCount(0);
+      await expect
+        .poll(() => opener.evaluate((element) => element.isConnected))
+        .toBe(true);
+      await expect(opener).toBeFocused();
     });
   }
 }

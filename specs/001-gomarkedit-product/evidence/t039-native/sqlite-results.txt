@@ -1,0 +1,11 @@
+pending-close
+layout.workspace.width|{"version":1,"value":288,"changedAtUnixNano":1785704054448397000,"writerId":"54f72d5865df447919cca9dc39cfda7d","sequence":2}|layout.versioned
+
+simultaneous-process-after-new-write
+layout.workspace.width|{"version":1,"value":352,"changedAtUnixNano":1785704162133724000,"writerId":"9ef7bbb7be155c680b436b13be92607c","sequence":6}|layout.versioned
+
+simultaneous-process-after-stale-close-and-both-exits
+layout.workspace.width|{"version":1,"value":352,"changedAtUnixNano":1785704162133724000,"writerId":"9ef7bbb7be155c680b436b13be92607c","sequence":6}|layout.versioned
+
+divider-acknowledgement
+layout.workspace.width|{"version":1,"value":304,"changedAtUnixNano":1785704965409798000,"writerId":"22c59c0224581b24b2475008066bbf8e","sequence":3}|layout.versioned

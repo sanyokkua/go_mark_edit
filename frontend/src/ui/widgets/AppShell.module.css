@@ -74,7 +74,9 @@
   }
 }
 
-@media (max-width: 375px) {
+/* The native 375 px minimum can expose a 376 px CSS viewport after frame
+   rounding, so include that one-pixel boundary in the minimum presentation. */
+@media (max-width: 376px) {
   .shell {
     display: grid;
     grid-template-areas: 'workspace document assistant';

@@ -71,6 +71,14 @@ partial, missing, and known-gap behavior.
   operations, menus, Settings and reset/focus, sidebar states, About, notifications, and future-surface
   absence. Keep the complete 18-combination visual matrix in automated browser tests.
 
+### Session 2026-08-02
+
+- Q: Which mechanism should provide deterministic current-host evidence for T039’s otherwise
+  unreachable failure, concurrency, and notification states? → A: Use a build-tagged native evidence
+  driver that is excluded from release builds, injects deterministic scenarios only through existing
+  dependency boundaries, and renders the real native shell and production components. Retain a
+  separate ordinary packaged-build walkthrough for every naturally reachable behavior.
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - View Any Supported Markdown Document (Priority: P1)
@@ -816,16 +824,26 @@ Primary+Shift+F remains unbound and unreserved; there is no folder-wide content 
   its request log.
 - **SC-018**: Before this slice completes, one representative current-host real-build walkthrough MUST
   exercise native window operations, the in-app menus, Settings and reset/focus, sidebar states, About,
-  notifications, and future-surface absence. The complete 18-combination viewport-and-palette matrix
-  remains automated browser evidence. Native runtime tests on Windows and Linux are explicitly deferred
-  and MUST NOT block this slice or any intermediate product stage. The final whole-application release
-  gate MUST prove the completed application on macOS, Windows, and Linux.
+  naturally reachable notifications, and future-surface absence. Otherwise unreachable startup,
+  persistence, concurrency, divider, toast, and banner states MUST be observed in the real native shell
+  through a build-tagged evidence driver that injects deterministic scenarios only at existing dependency
+  boundaries and is absent from release builds. Evidence from that driver MUST NOT substitute for an
+  ordinary packaged-build observation of behavior the shipped application can reach. The complete
+  18-combination viewport-and-palette matrix remains automated browser evidence. Native runtime tests on
+  Windows and Linux are explicitly deferred and MUST NOT block this slice or any intermediate product
+  stage. The final whole-application release gate MUST prove the completed application on macOS, Windows,
+  and Linux.
 
 ##### Cross-platform runtime-test timing
 
 - **While** the whole application is incomplete, current-host native testing, host-independent tests,
   browser evidence, and static gates remain required, but Windows/Linux native runtime testing is not
   required and MUST NOT be used as a completion blocker.
+- **For** a current-host state with no shipped trigger, the evidence driver MUST be compiled only under
+  its dedicated build tag, MUST reuse the production shell and components, MUST inject through an
+  existing dependency boundary, and MUST retain the selected scenario plus its observed result. It MUST
+  expose no release-build command, menu, setting, environment switch, bridge method, or placeholder
+  consumer.
 - **When** all Viewer, Editor, Assistant actions, Assistant chat, packaging, and release behavior are
   implemented, the final whole-application gate MUST run the completed application natively on macOS,
   Windows, and Linux and retain the results.

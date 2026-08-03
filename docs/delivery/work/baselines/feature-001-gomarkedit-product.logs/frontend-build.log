@@ -13,29 +13,30 @@ npm --prefix frontend run build
 
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 1019 modules transformed.
+✓ 1030 modules transformed.
 rendering chunks...
 [plugin vite:reporter] 
-(!) /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/adapter/index.ts is dynamically imported by /Users/ok/Development/GitHub/go_mark_edit/frontend/src/App.tsx but also statically imported by /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/hooks/useLivePreview.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/hooks/useSyncedBuffer.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/store/docViewCommands.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/AppearanceControls.tsx, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/EditorView.tsx, dynamic import will not move module into another chunk.
+(!) /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/adapter/index.ts is dynamically imported by /Users/ok/Development/GitHub/go_mark_edit/frontend/src/App.tsx, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/App.tsx but also statically imported by /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/hooks/useLivePreview.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/hooks/useSyncedBuffer.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/store/docViewCommands.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/store/uiLayoutCommands.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/AppearanceControls.tsx, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/EditorView.tsx, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/ShellMenuRow.tsx, dynamic import will not move module into another chunk.
 
 computing gzip size...
-dist/index.html                              0.44 kB │ gzip:   0.28 kB
+dist/index.html                              0.45 kB │ gzip:   0.28 kB
 dist/assets/Roboto-Latin-DSCY9ty2.woff2     37.52 kB
 dist/assets/Inter-Latin-8kRkwJBP.woff2      48.43 kB
 dist/assets/editor.worker-CdtUXE0K.js      231.31 kB
-dist/assets/index-qiyGhyKH.css              18.74 kB │ gzip:   4.74 kB
+dist/assets/index-wqOw22T-.css              23.66 kB │ gzip:   5.54 kB
 dist/assets/monacoSetup-DyX1CsEw.css        68.26 kB │ gzip:  11.14 kB
 dist/assets/markdown-B811l8j2.js             3.65 kB │ gzip:   1.35 kB
-dist/assets/index-DEjvCQoL.js               14.57 kB │ gzip:   5.06 kB
-dist/assets/index-BU7mR1DI.js              510.12 kB │ gzip: 161.56 kB
-dist/assets/monacoSetup-DbvBiin7.js      2,294.35 kB │ gzip: 592.22 kB
+dist/assets/index-_et11lsg.js               14.57 kB │ gzip:   5.06 kB
+dist/assets/index-BwFg3M_h.js              529.06 kB │ gzip: 167.23 kB
+dist/assets/monacoSetup-D8GAHkVC.js      2,294.41 kB │ gzip: 592.24 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.26s
+✓ built in 3.52s
 
 > frontend@0.0.0 postbuild
-> node scripts/ensure-dist-placeholder.mjs
+> node scripts/ensure-dist-placeholder.mjs && node scripts/check-production-network.mjs --source-root src --source-root public --source-root wailsjs/go --bundle-root dist --require-bundle
 
+production network guard: ok

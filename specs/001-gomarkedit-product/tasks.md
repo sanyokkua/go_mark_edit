@@ -257,3 +257,22 @@ evidence are all part of the approved shell contract.
 After T036, stop decomposition. Launcher and File work waits for safe New/Open/recent/close-last
 commands and a valid zero-document model. Real tabs, file lifecycle, rendering expansion, packaging,
 Editor expansion, and Assistant work remain later approved slices.
+
+## Phase 5: Convergence
+
+- [X] T037 CRITICAL Remove the eleven zero-use string reservations for `src/ui/components/ViewModeToggle.tsx`, `src/ui/widgets/AppShell.tsx`, and `src/ui/widgets/EditorView.tsx` from `frontend/scripts/archtest-allowlist.json`, then run `just archtest` and require a green result with no stale reserve notices per Constitution III and Constitution VII (contradicts)
+- [X] T038 CRITICAL Reopen the false-complete T036 reconciliation outcome, classify every T035 `supported` or `not observed` current-host case as unresolved until T039 supplies direct evidence, and report no-difference convergence only after the retained native record proves the required walkthrough per Constitution VII (contradicts)
+- [X] T039 [US1] Reproduce the real-build 375 × 480 workspace presentation and repair it if it remains a 46-pixel rail instead of the required 230-pixel off-canvas overlay; then complete and retain direct current-host observations for pending-close flush, distinguishable simultaneous-process stale-close ordering, startup failure and Retry, Settings reset/focus, divider acknowledgement, notification timing/deduplication/error queue/banner behavior, and every future-surface absence clause, while preserving the approved Windows/Linux native runtime-test deferral until whole-application completion per FR-WS-008, SC-013, SC-018, and the native-shell contract
+
+## Phase 6: Settings Menu Rendering Convergence
+
+- [X] T040 CRITICAL [US1] Add an integrated regression that opens the real `SettingsMenu` from the visible desktop trigger and the narrow overflow trigger at 375, 768, and 1280 pixels, requires the complete popup to remain inside the viewport and above the shell clipping boundary, and proves every item is pointer- and keyboard-operable; then repair the popup anchoring/portal and responsive internal layout in `frontend/src/ui/widgets/SettingsMenu.tsx`, `frontend/src/ui/widgets/SettingsMenu.module.css`, `frontend/src/ui/widgets/ShellMenuRow.tsx`, and their focused tests so Appearance can be selected without horizontal page overflow per FR-WS-014, FR-WS-017, and Constitution VI (contradicts)
+- [X] T041 CRITICAL [US1] Add an integrated regression proving that closing the Settings dialog by its Close control and by Escape restores focus to the actual connected opener from both the desktop menu row and the narrow overflow menu; then stabilize the Settings renderer/opener identity across application state updates in `frontend/src/App.tsx`, `frontend/src/ui/components/AppearanceControls.tsx`, `frontend/src/ui/widgets/ShellMenuRow.tsx`, and their focused tests so dialog cleanup never targets a remounted element per FR-WS-015, FR-WS-017, and Constitution VI (contradicts)
+
+## Phase 7: Convergence
+
+- [X] T042 CRITICAL Route the release-excluded native-evidence frontend's `LogInfo` and `Quit` Wails runtime calls through an adapter-local evidence seam that remains absent from the ordinary release graph, strengthen `frontend/evidence/check-boundaries.mjs` and `native_evidence_safeguards_test.go` to reject every direct `wailsjs/` import outside the approved adapter and development-mock boundaries, and rerun the focused safeguards plus current architecture and feature verification gates per Constitution III, plan: adapter-only Wails runtime boundary, and SC-018 (contradicts)
+
+## Phase 8: Convergence
+
+- [X] T043 CRITICAL Format `frontend/evidence/check-boundaries.mjs` with the repository Prettier configuration, then rerun `just fmt-check` and `just verify 001-gomarkedit-product` and retain a reliable green result per Constitution VII, SC-018, and T042's current-gate evidence obligation (partial)

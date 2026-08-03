@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Provider } from 'react-redux';
 
 const setUILayout = jest.fn(async (): Promise<void> => undefined);
@@ -21,6 +27,7 @@ import {
 } from '../../logic/store/appModelProjectionActions';
 import type { UILayout } from '../../logic/store/appModelTypes';
 import { store } from '../../logic/store';
+import { notifyError } from '../../logic/store/notificationsSlice';
 import AppShell from './AppShell';
 
 const readSource = (relativePath: string): string =>
@@ -88,7 +95,7 @@ it('FR-WS-007 keeps workspace and document regions while the reserved Assistant 
 it('FR-WS-007 preserves the zero-width Assistant track at the 375px breakpoint', () => {
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
   const narrowShellRule = shellStyles.match(
-    /@media \(max-width:\s*375px\)\s*\{\s*\.shell\s*\{([^}]*)\}/,
+    /@media \(max-width:\s*376px\)\s*\{\s*\.shell\s*\{([^}]*)\}/,
   )?.[1];
 
   expect(narrowShellRule).toBeDefined();
@@ -117,6 +124,35 @@ it('FR-WS-008 renders an immediate non-durable divider width while sending the d
 
   expect(setUILayout).toHaveBeenCalledWith({ sidebarWidth: 320 });
   expect(shell).toHaveStyle({ '--shell-left-width': '320px' });
+});
+
+it('FR-WS-012 restores the last acknowledged divider width after its delayed layout write fails', async () => {
+  renderShell({ sidebarVisible: true, sidebarWidth: 288 });
+
+  const shell = screen.getByTestId('application-shell');
+  const divider = screen.getByRole('separator', {
+    name: 'Resize workspace',
+  });
+  fireEvent(divider, pointerEvent('pointerdown', 288, 7));
+  fireEvent(window, pointerEvent('pointermove', 320, 7));
+  fireEvent(window, pointerEvent('pointerup', 320, 7));
+  expect(shell).toHaveStyle({ '--shell-left-width': '320px' });
+
+  act(() => {
+    store.dispatch(
+      notifyError({
+        code: 'io',
+        title: 'File operation failed',
+        message: 'The file operation could not be completed.',
+        details: { operation: 'update layout' },
+        retryable: true,
+      }),
+    );
+  });
+
+  await waitFor(() => {
+    expect(shell).toHaveStyle({ '--shell-left-width': '288px' });
+  });
 });
 
 it('FR-WS-017 keeps the workspace divider keyboard reachable and requests fixed width steps', () => {
@@ -158,10 +194,10 @@ it('FR-WS-008 uses exact responsive presentations without durable responsive wri
     /@media \(max-width:\s*768px\)[\s\S]*grid-template-columns:\s*46px/,
   );
   expect(shellStyles).toMatch(
-    /@media \(max-width:\s*375px\)[\s\S]*width:\s*230px/,
+    /@media \(max-width:\s*376px\)[\s\S]*width:\s*230px/,
   );
   expect(editorStyles).toMatch(
-    /@media \(max-width:\s*375px\)[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+    /@media \(max-width:\s*376px\)[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
   );
   expect(editorStyles).toMatch(/\.toolbar\s*\{[^}]*flex-wrap:\s*nowrap/s);
   expect(baseStyles).toMatch(/overflow-x:\s*hidden/);

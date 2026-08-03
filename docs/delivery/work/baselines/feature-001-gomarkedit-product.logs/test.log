@@ -25,16 +25,16 @@ npm --prefix frontend test -- --passWithNoTests
 > frontend@0.0.0 test
 > node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --passWithNoTests
 
-✔ applies only a current valid startup mirror before application code (2.625042ms)
-✔ resolves a current Auto mirror from the operating-system preference (0.562ms)
-✔ runs the blocking bootstrap before the application module (0.089792ms)
-✔ generates six complete named Monaco themes from palette values (2.429667ms)
-✔ converts CSS rgba palette values to Monaco-compatible hex (0.674417ms)
-✔ shares each fenced-language value by appearance across themes (0.781958ms)
-✔ rejects a palette missing a required Monaco token (0.262542ms)
-✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.522708ms)
-✔ rejects duplicate, unresolved, and unsupported palette sources (0.283292ms)
-✔ emits inactive highlight rules for every generated syntax token (0.540833ms)
+✔ applies only a current valid startup mirror before application code (3.071792ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.798875ms)
+✔ runs the blocking bootstrap before the application module (0.0935ms)
+✔ generates six complete named Monaco themes from palette values (2.928875ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.751417ms)
+✔ shares each fenced-language value by appearance across themes (1.047042ms)
+✔ rejects a palette missing a required Monaco token (0.327458ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.552834ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.309291ms)
+✔ emits inactive highlight rules for every generated syntax token (0.675916ms)
 ℹ tests 10
 ℹ suites 0
 ℹ pass 10
@@ -42,10 +42,10 @@ npm --prefix frontend test -- --passWithNoTests
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 66.338875
+ℹ duration_ms 74.283334
 
-Test Suites: 31 passed, 31 total
-Tests:       128 passed, 128 total
+Test Suites: 42 passed, 42 total
+Tests:       175 passed, 175 total
 Snapshots:   0 total
-Time:        6.916 s, estimated 8 s
+Time:        7.661 s, estimated 8 s
 Ran all test suites.

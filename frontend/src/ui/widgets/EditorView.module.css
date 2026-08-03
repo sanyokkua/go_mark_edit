@@ -29,7 +29,7 @@
   min-width: 0;
 }
 
-@media (max-width: 375px) {
+@media (max-width: 376px) {
   .panes {
     grid-template-columns: minmax(0, 1fr);
   }

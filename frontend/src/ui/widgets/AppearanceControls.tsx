@@ -23,7 +23,7 @@ interface AppearanceState {
 
 interface AppearanceControlsProps {
   onSettingsOpenChange?: (open: boolean) => void;
-  settingsMenuRenderer?: (props: SettingsMenuProps) => React.JSX.Element;
+  settingsMenuRenderer?: React.ComponentType<SettingsMenuProps>;
   settingsOpen?: boolean;
   visible?: boolean;
 }
@@ -154,17 +154,12 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
     onModeChange: (mode): void => {
       persist({ mode });
     },
-    onOpenAppearance: (): void => {
-      const active =
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
-      const menuRoot = active?.closest('[data-settings-menu-root]');
-      const actionRoot = active?.closest('nav');
+    onOpenAppearance: (opener): void => {
       setSettingsReturnFocus(
-        menuRoot?.querySelector<HTMLElement>('[data-settings-opener]') ??
-          actionRoot?.querySelector<HTMLElement>('[data-settings-overflow]') ??
-          active,
+        opener ??
+          (document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null),
       );
       setOpen(true);
     },

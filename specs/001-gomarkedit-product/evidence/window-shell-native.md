@@ -117,3 +117,58 @@ walkthrough.
 Changed file for this pass:
 
 - `specs/001-gomarkedit-product/evidence/window-shell-native.md`
+
+## T039 follow-up after Settings convergence
+
+The fresh darwin/arm64 `just build` completed successfully. The real Wails bridge was also launched
+with `just dev`, and its printed `http://localhost:34115` URL was operated in the in-app browser.
+Direct current-host observations from that real bridge were:
+
+- at 375 × 480, the workspace measured 230 pixels, centre panes stacked, action overflow was present,
+  and the page had no horizontal overflow;
+- at 375 × 480 and 1280 × 720, the Settings popup stayed wholly inside the viewport and was a body
+  portal above the shell clipping context;
+- Theme was changed by pointer and Appearance by keyboard through the real bridge;
+- both Close and Escape restored focus to the exact connected desktop Settings opener and narrow More
+  actions opener;
+- File, launcher, recent items, tab strip, Assistant controls/content, and future Settings groups were
+  absent from the directly inspected live surface;
+- no browser warning or error log was emitted.
+
+This follow-up does not close every T039 native-only obligation. Native automation did not retain a
+post-fix packaged 375 × 480 screenshot after resizing. Pending-close persistence, distinguishable
+simultaneous-process stale-close ordering, isolated startup-failure/Retry, divider acknowledgement,
+and production notification timing/deduplication/error-queue/banner behavior still lack direct retained
+current-host observations. Production exposes no success/info/warning or continuing-condition trigger,
+so adding a fake trigger solely for evidence would violate the no-placeholder rule. These cases remain
+unresolved in the T038 reconciliation. Windows/Linux runtime testing remains intentionally deferred
+until whole-application completion.
+
+## Approved T039 evidence mechanism
+
+The 2026-08-02 clarification approves a build-tagged native evidence driver for the otherwise
+unreachable cases above. The driver must be absent from release builds, reuse the real native shell and
+production components, and inject deterministic startup, persistence, concurrency, divider, toast, and
+banner scenarios only through existing dependency boundaries. It must retain the selected scenario and
+directly observed native result. A separate ordinary packaged-build walkthrough remains mandatory for
+every naturally reachable behavior; the evidence driver cannot replace it. T039 remains incomplete
+until both evidence sets are retained. The Windows/Linux runtime-test deferral is unchanged.
+
+## T039 closure — build-tagged evidence plus ordinary app bundle
+
+The earlier incomplete notes above are historical and are superseded by the retained T039 record at
+[`t039-native/manifest.md`](t039-native/manifest.md).
+
+The release-excluded driver directly observed pending-close flush, distinguishable simultaneous-process
+stale-close ordering, repeated startup failure followed by successful Retry, exact divider acknowledgement,
+4/6/8-second toast timing, duplicate refresh, the three-visible/fourth-queued error rule, promotion after
+dismissal, and persistent continuing-banner deduplication in separately identified native Wails windows.
+
+A fresh ordinary `just build` app bundle was separately walked for every naturally reachable case. It
+retained the repaired minimum-size off-canvas workspace, stacked panes, separator acknowledgement and
+relaunch persistence, Settings reset, Close/Escape opener focus, View, About/version, ordinary OS frame,
+and the complete future-surface absence audit. The ordinary walkthrough contains no evidence-driver UI.
+
+T039's current-host observations are complete on macOS 26.5.2 arm64. Windows/Linux runtime repetition
+remains intentionally deferred until whole-application completion; no cross-platform runtime claim is
+made here.

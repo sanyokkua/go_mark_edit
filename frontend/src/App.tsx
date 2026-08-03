@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Provider } from 'react-redux';
 
 import {
@@ -22,6 +30,7 @@ import AppShell from './ui/widgets/AppShell';
 import AboutDialog from './ui/widgets/AboutDialog';
 import AppearanceControls from './ui/widgets/AppearanceControls';
 import ShellMenuRow from './ui/widgets/ShellMenuRow';
+import type { SettingsMenuProps } from './ui/widgets/SettingsMenu';
 import { EditorSessionProvider } from './ui/widgets/editorSession';
 import StartupFailure from './ui/widgets/StartupFailure';
 
@@ -57,16 +66,60 @@ function startAppModelBootstrap(
 
 type BootstrapStatus = 'loading' | 'ready' | 'failed';
 
-const AppContents: React.FC = (): React.JSX.Element => {
+interface ApplicationMenuState {
+  aboutOpen: boolean;
+  onAbout: () => void;
+  settingsOpen: boolean;
+}
+
+const ApplicationMenuContext = createContext<ApplicationMenuState | null>(null);
+
+const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
+  settingsMenuProps,
+): React.JSX.Element => {
+  const menuState = useContext(ApplicationMenuContext);
+  if (menuState === null) {
+    throw new Error('ApplicationShellMenu requires ApplicationMenuContext');
+  }
   const dispatch = useAppDispatch();
-  const notifications = useAppSelector((state) => state.notifications.items);
-  const banners = useAppSelector((state) => state.notifications.banners);
   const activeDocument = useAppSelector(
     (state) => state.documents.byId[state.documents.activeDocumentId],
   );
   const workspaceVisible = useAppSelector(
     (state) => state.ui.layout.sidebarVisible ?? true,
   );
+
+  return (
+    <ShellMenuRow
+      modalOpen={menuState.settingsOpen || menuState.aboutOpen}
+      onAbout={menuState.onAbout}
+      settingsMenuProps={settingsMenuProps}
+      viewMenuProps={
+        activeDocument === undefined
+          ? undefined
+          : {
+              editorVisible: activeDocument.view.editorVisible,
+              previewVisible: activeDocument.view.previewVisible,
+              onEditorVisibilityChange: (visible): void => {
+                void dispatch(setEditorPaneVisible(visible));
+              },
+              onPreviewVisibilityChange: (visible): void => {
+                void dispatch(setPreviewPaneVisible(visible));
+              },
+              workspaceVisible,
+              onWorkspaceVisibilityChange: (visible): void => {
+                void dispatch(setWorkspaceVisible(visible));
+              },
+            }
+      }
+    />
+  );
+};
+
+const AppContents: React.FC = (): React.JSX.Element => {
+  const dispatch = useAppDispatch();
+  const notifications = useAppSelector((state) => state.notifications.items);
+  const banners = useAppSelector((state) => state.notifications.banners);
   const [activeBuffer, setActiveBuffer] = useState<ActiveBuffer | null>(null);
   const [bootstrapStatus, setBootstrapStatus] =
     useState<BootstrapStatus>('loading');
@@ -75,6 +128,14 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [version, setVersion] = useState('');
   const bootstrapGeneration = useRef(0);
+  const applicationMenuState = useMemo<ApplicationMenuState>(
+    () => ({
+      aboutOpen,
+      onAbout: (): void => setAboutOpen(true),
+      settingsOpen,
+    }),
+    [aboutOpen, settingsOpen],
+  );
 
   const runBootstrap = useCallback(
     (isRetry: boolean): void => {
@@ -153,36 +214,14 @@ const AppContents: React.FC = (): React.JSX.Element => {
       <EditorSessionProvider activeBuffer={activeBuffer}>
         <div className="application-frame">
           <div className="application-menu">
-            <AppearanceControls
-              visible={bootstrapStatus === 'ready'}
-              settingsOpen={settingsOpen}
-              onSettingsOpenChange={setSettingsOpen}
-              settingsMenuRenderer={(settingsMenuProps): React.JSX.Element => (
-                <ShellMenuRow
-                  modalOpen={settingsOpen || aboutOpen}
-                  onAbout={(): void => setAboutOpen(true)}
-                  settingsMenuProps={settingsMenuProps}
-                  viewMenuProps={
-                    activeDocument === undefined
-                      ? undefined
-                      : {
-                          editorVisible: activeDocument.view.editorVisible,
-                          previewVisible: activeDocument.view.previewVisible,
-                          onEditorVisibilityChange: (visible): void => {
-                            void dispatch(setEditorPaneVisible(visible));
-                          },
-                          onPreviewVisibilityChange: (visible): void => {
-                            void dispatch(setPreviewPaneVisible(visible));
-                          },
-                          workspaceVisible,
-                          onWorkspaceVisibilityChange: (visible): void => {
-                            void dispatch(setWorkspaceVisible(visible));
-                          },
-                        }
-                  }
-                />
-              )}
-            />
+            <ApplicationMenuContext.Provider value={applicationMenuState}>
+              <AppearanceControls
+                visible={bootstrapStatus === 'ready'}
+                settingsOpen={settingsOpen}
+                onSettingsOpenChange={setSettingsOpen}
+                settingsMenuRenderer={ApplicationShellMenu}
+              />
+            </ApplicationMenuContext.Provider>
           </div>
           <div className="application-content">
             {bootstrapStatus === 'failed' ? (
