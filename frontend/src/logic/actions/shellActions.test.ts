@@ -32,7 +32,7 @@ it('FR-WS-014 exposes one unique localized catalogue for every working shell act
         action.shortcut === undefined ? [] : [action.shortcut],
       ),
     ).size,
-  ).toBe(1);
+  ).toBe(2);
   expect(actions.map((action) => action.scope)).toEqual([
     'application',
     'window',
@@ -62,4 +62,31 @@ it('FR-WS-014 suppresses background actions while a modal is open', async () => 
   expect(context.openView).not.toHaveBeenCalled();
   expect(context.openAbout).not.toHaveBeenCalled();
   expect(context.toggleFullscreen).not.toHaveBeenCalled();
+});
+
+it('T048 registers Toggle Sidebar for the scope-aware shortcut dispatcher', async () => {
+  const toggleSidebar = jest.fn();
+  const context = { ...actionContext(), toggleSidebar };
+  const actions = createShellActionCatalogue(context);
+  const action = actions.find((candidate) => candidate.id === 'toggle-sidebar');
+
+  expect(action).toMatchObject({
+    id: 'toggle-sidebar',
+    scope: 'window',
+    shortcut: 'Mod+\\',
+  });
+  await expect(dispatchShellAction(action!)).resolves.toBe(true);
+  expect(toggleSidebar).toHaveBeenCalledTimes(1);
+});
+
+it('T056 includes the registry-owned Settings binding in shell dispatch', () => {
+  const context = actionContext();
+  const settings = createShellActionCatalogue(context).find(
+    (action) => action.id === 'settings',
+  );
+
+  expect(settings).toMatchObject({
+    id: 'settings',
+    shortcut: 'Mod+,',
+  });
 });

@@ -19,10 +19,17 @@ export interface MarkdownSettings {
   headingStyle: string;
 }
 
+export interface EditorSettings {
+  lineNumbers: boolean;
+  wordWrap: boolean;
+  fontSize: number;
+}
+
 export interface Settings {
   appearance: AppearanceSettings;
   markdown: MarkdownSettings;
   contentPrivacy: ContentPrivacySettings;
+  editor?: EditorSettings;
 }
 
 export type SettingsResult = ResultEnvelope<Settings>;

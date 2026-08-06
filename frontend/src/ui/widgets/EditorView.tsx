@@ -11,8 +11,6 @@ import {
 import CodeEditor from '../components/CodeEditor';
 import type { EditorPosition } from '../components/CodeEditor';
 import StatusBar from '../components/StatusBar';
-import ViewModeToggle from '../components/ViewModeToggle';
-import ViewMenu from '../primitives/ViewMenu';
 import { appModelAdapter } from '../../logic/adapter';
 import {
   type LivePreviewAdapter,
@@ -23,11 +21,8 @@ import {
   useSyncedBuffer,
 } from '../../logic/hooks/useSyncedBuffer';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
-import {
-  setEditorPaneVisible,
-  setPreviewPaneVisible,
-  setViewArrangement,
-} from '../../logic/store/docViewCommands';
+import { setViewArrangement } from '../../logic/store/docViewCommands';
+import { setWorkspaceVisible } from '../../logic/store/uiLayoutCommands';
 import type {
   ActiveBuffer,
   DocumentView,
@@ -38,8 +33,11 @@ import {
   useEditorSessionAttachment,
 } from './editorSession';
 import PreviewView from './PreviewView';
+import EditorChrome from './EditorChrome';
+import EditorContextMenu from './EditorContextMenu';
 import styles from './EditorView.module.css';
 import { t } from '../../i18n';
+import { useEditorSettings } from '../../logic/settings/editorSettings';
 
 function fallbackView(): DocumentView {
   return {
@@ -89,6 +87,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
     }: ActiveEditorProps,
     ref,
   ): React.JSX.Element {
+    const editorSettings = useEditorSettings().settings;
     const viewStateCaptureRef = useRef<(() => void) | null>(null);
     const attachEditor = useEditorSessionAttachment();
     const attachCurrentEditor = useCallback(
@@ -140,6 +139,9 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
         ref={attachCurrentEditor}
         documentId={activeBuffer.documentId}
         initialValue={activeBuffer.content}
+        fontSize={editorSettings.fontSize as 13 | 14 | 16}
+        lineNumbers={editorSettings.lineNumbers ? 'on' : 'off'}
+        wordWrap={editorSettings.wordWrap ? 'on' : 'off'}
         visible={visible}
         onViewStateCaptureReady={(capture: (() => void) | null): void => {
           viewStateCaptureRef.current = capture;
@@ -221,27 +223,15 @@ const EditorView: React.FC<EditorViewProps> = ({
     }
     return state.documents.byId[activeBuffer.documentId];
   });
+  const workspaceVisible = useAppSelector(
+    (state) => state.ui.layout.sidebarVisible ?? true,
+  );
   const onArrangementChange = useCallback(
     (nextArrangement: ViewArrangement): void => {
       if (nextArrangement === 'preview') {
         activeEditorRef.current?.captureViewState();
       }
       void dispatch(setViewArrangement(nextArrangement));
-    },
-    [dispatch],
-  );
-  const onEditorVisibilityChange = useCallback(
-    (visible: boolean): void => {
-      if (!visible) {
-        activeEditorRef.current?.captureViewState();
-      }
-      void dispatch(setEditorPaneVisible(visible));
-    },
-    [dispatch],
-  );
-  const onPreviewVisibilityChange = useCallback(
-    (visible: boolean): void => {
-      void dispatch(setPreviewPaneVisible(visible));
     },
     [dispatch],
   );
@@ -272,14 +262,15 @@ const EditorView: React.FC<EditorViewProps> = ({
 
   return (
     <section aria-label={t('editor.view')} className={styles.editorView}>
-      <header aria-label={t('editor.toolbar')} className={styles.toolbar}>
-        <ViewMenu
-          editorVisible={view.editorVisible}
-          previewVisible={view.previewVisible}
-          onEditorVisibilityChange={onEditorVisibilityChange}
-          onPreviewVisibilityChange={onPreviewVisibilityChange}
+      <header className={styles.toolbar}>
+        <EditorChrome
+          arrangement={arrangement}
+          onArrangementChange={onArrangementChange}
+          onWorkspaceVisibilityChange={(visible): void => {
+            void dispatch(setWorkspaceVisible(visible));
+          }}
+          workspaceVisible={workspaceVisible}
         />
-        <ViewModeToggle value={arrangement} onChange={onArrangementChange} />
       </header>
       <div className={styles.panes}>
         <section
@@ -298,15 +289,17 @@ const EditorView: React.FC<EditorViewProps> = ({
               })}
             </span>
           </header>
-          <ActiveEditor
-            ref={activeEditorRef}
-            adapter={adapter}
-            activeBuffer={activeBuffer}
-            view={view}
-            visible={view.editorVisible}
-            onLiveCursorChange={onLiveCursorChange}
-            onPreviewScrollHandler={onPreviewScrollHandler}
-          />
+          <EditorContextMenu>
+            <ActiveEditor
+              ref={activeEditorRef}
+              adapter={adapter}
+              activeBuffer={activeBuffer}
+              view={view}
+              visible={view.editorVisible}
+              onLiveCursorChange={onLiveCursorChange}
+              onPreviewScrollHandler={onPreviewScrollHandler}
+            />
+          </EditorContextMenu>
         </section>
         <LivePreview
           key={activeBuffer.documentId}

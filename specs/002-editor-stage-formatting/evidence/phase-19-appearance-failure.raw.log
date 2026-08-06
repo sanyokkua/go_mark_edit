@@ -1,0 +1,29 @@
+$ npx playwright test e2e/appearance.test.ts
+
+Running 3 tests using 1 worker
+
+  1) [chromium] › e2e/appearance.test.ts:22:1 › changes all six palettes through keyboard reachable appearance controls without overflow
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      13 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: appearance-minimal-light.png
+
+      Call log:
+      - Expect "toHaveScreenshot(appearance-minimal-light.png)" with timeout 5000ms
+      - taking page screenshot
+      - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 13 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+      - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 13 pixels (ratio 0.01 of all image pixels) are different.
+
+  1 failed
+  2 passed (4.7s)

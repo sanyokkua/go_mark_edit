@@ -18,6 +18,10 @@ export function UpdateContentPrivacy(arg1) {
   return window['go']['settings']['SettingsHandler']['UpdateContentPrivacy'](arg1);
 }
 
+export function UpdateEditor(arg1) {
+  return window['go']['settings']['SettingsHandler']['UpdateEditor'](arg1);
+}
+
 export function UpdateMarkdown(arg1) {
   return window['go']['settings']['SettingsHandler']['UpdateMarkdown'](arg1);
 }

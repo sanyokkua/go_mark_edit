@@ -34,16 +34,30 @@
 }
 
 .overflow {
+  box-sizing: border-box;
   display: grid;
   min-width: 10rem;
+  max-block-size: calc(100vh - 4rem);
   gap: var(--control-gap);
+  overflow: auto;
   padding: var(--control-gap);
+  position: fixed;
   box-shadow: var(--win-shadow);
   z-index: var(--z-dropdown);
+}
+
+.narrowOverflow {
+  max-inline-size: calc(100vw - 2 * var(--app-gap));
 }
 
 .item[data-highlighted] {
   outline: var(--segmented-focus-outline-width) solid
     var(--segmented-outline-color);
   outline-offset: var(--segmented-focus-outline-offset);
+}
+
+.submenu {
+  display: grid;
+  gap: var(--control-gap);
+  padding-inline-start: var(--control-padding);
 }

@@ -2,7 +2,7 @@ just go-test
 go test -race ./internal/... .
 ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/application	(cached)
-ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	3.558s
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	3.008s
 ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/db	(cached)
 ?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
@@ -10,12 +10,42 @@ ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
---- FAIL: TestWailsBindingsRemainTracked (0.01s)
-    main_test.go:477: Wails binding mode = "100644 1e7c8a5d705eb8edfc5bbf8468f68f62396cbb1b 0\tfrontend/wailsjs/runtime/package.json", want generated mode 100755
-    main_test.go:477: Wails binding mode = "100644 3bbea8489dfc4c0e931740f5da24f0d0d02c33e9 0\tfrontend/wailsjs/runtime/runtime.d.ts", want generated mode 100755
-    main_test.go:477: Wails binding mode = "100644 556621eeb0246756bb479b67781402debad6fd3b 0\tfrontend/wailsjs/runtime/runtime.js", want generated mode 100755
-FAIL
-FAIL	github.com/sanyokkua/go_mark_edit	5.875s
-FAIL
-error: recipe `go-test` failed on line 66 with exit code 1
-error: recipe `test` failed on line 56 with exit code 1
+ok  	github.com/sanyokkua/go_mark_edit	6.436s
+just frontend-test
+npm --prefix frontend test -- --passWithNoTests
+
+> frontend@0.0.0 pretest
+> npm run check:editor-themes
+
+
+> frontend@0.0.0 check:editor-themes
+> node scripts/check-editor-themes.mjs
+
+
+> frontend@0.0.0 test
+> node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --passWithNoTests
+
+✔ applies only a current valid startup mirror before application code (3.641041ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.623375ms)
+✔ runs the blocking bootstrap before the application module (0.094042ms)
+✔ generates six complete named Monaco themes from palette values (2.606792ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.677542ms)
+✔ shares each fenced-language value by appearance across themes (0.857584ms)
+✔ rejects a palette missing a required Monaco token (0.351209ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.566958ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.296458ms)
+✔ emits inactive highlight rules for every generated syntax token (0.662542ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 74.91625
+
+Test Suites: 42 passed, 42 total
+Tests:       175 passed, 175 total
+Snapshots:   0 total
+Time:        8.049 s, estimated 10 s
+Ran all test suites.

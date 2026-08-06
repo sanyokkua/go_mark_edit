@@ -8,6 +8,7 @@ import {
 } from './appModelProjectionActions';
 import type { ActiveBuffer, AppStatePatch } from './appModelTypes';
 import { store } from './index';
+import { disposeSettingsProjection } from './settingsProjection';
 
 export type AppModelBootstrapResult =
   | { status: 'ready'; activeBuffer: ActiveBuffer; applicationVersion: string }
@@ -110,4 +111,5 @@ function resetAttempt(attempt: BootstrapAttempt): void {
   attempt.isHydrated = false;
   attempt.queuedPatches = [];
   store.dispatch(resetProjection());
+  disposeSettingsProjection();
 }

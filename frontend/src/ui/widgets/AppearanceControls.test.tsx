@@ -1,14 +1,23 @@
 import {
   fireEvent,
-  render,
+  render as rtlRender,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
+import { Provider } from 'react-redux';
 
 import { settingsAdapter } from '../../logic/adapter';
 import { store } from '../../logic/store';
+import { resetSettingsProjection } from '../../logic/store/settingsSlice';
 import AppearanceControls from './AppearanceControls';
+
+const render = (ui: Parameters<typeof rtlRender>[0]) =>
+  rtlRender(<Provider store={store}>{ui}</Provider>);
+
+beforeEach((): void => {
+  store.dispatch(resetSettingsProjection());
+});
 
 jest.mock('../../logic/adapter', () => ({
   settingsAdapter: {
@@ -67,6 +76,19 @@ it('changes appearance from keyboard reachable controls after a successful write
     mode: 'dark',
     theme: 'material',
   });
+});
+
+it('T045 keeps Markdown Standard visible but unavailable without persistence', async () => {
+  render(<AppearanceControls />);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+  const standard = screen.getByRole('menuitem', {
+    name: 'Markdown standard',
+  });
+  expect(standard).toBeDisabled();
+  expect(
+    screen.queryByRole('combobox', { name: 'Markdown standard' }),
+  ).not.toBeInTheDocument();
 });
 
 // Proves: all#end-to-end

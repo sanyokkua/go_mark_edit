@@ -13,8 +13,10 @@ type SettingsRepositoryAPI interface {
 	GetAppearance(context.Context) (apperr.AppearanceSettings, error)
 	GetMarkdown(context.Context) (apperr.MarkdownSettings, error)
 	GetContentPrivacy(context.Context) (apperr.ContentPrivacySettings, error)
+	GetEditor(context.Context) (apperr.EditorSettings, error)
 	UpdateAppearance(context.Context, apperr.AppearanceSettings) error
 	ResetAppearance(context.Context) error
 	UpdateMarkdown(context.Context, apperr.MarkdownSettings) error
 	UpdateContentPrivacy(context.Context, apperr.ContentPrivacySettings) error
+	UpdateEditor(context.Context, apperr.EditorSettings) error
 }

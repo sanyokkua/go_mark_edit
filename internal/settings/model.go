@@ -32,6 +32,10 @@ const (
 	RemotePolicyAsk   = "ask"
 	RemotePolicyAllow = "allow"
 	RemotePolicyBlock = "block"
+
+	EditorFontSizeSmall  = 13
+	EditorFontSizeMedium = 14
+	EditorFontSizeLarge  = 16
 )
 
 // DefaultSettings returns the documented defaults for the currently exposed
@@ -53,6 +57,11 @@ func DefaultSettings() apperr.Settings {
 		},
 		ContentPrivacy: apperr.ContentPrivacySettings{
 			RemotePolicy: RemotePolicyAsk,
+		},
+		Editor: apperr.EditorSettings{
+			LineNumbers: true,
+			WordWrap:    false,
+			FontSize:    EditorFontSizeMedium,
 		},
 	}
 }

@@ -129,6 +129,8 @@ it('STORY-006-AC-4 serves adapter success and validation errors through the dev 
       mockSettings.UpdateContentPrivacy as unknown as SettingsBindings['updateContentPrivacy'],
     updateMarkdown:
       mockSettings.UpdateMarkdown as unknown as SettingsBindings['updateMarkdown'],
+    updateEditor:
+      mockSettings.UpdateEditor as unknown as SettingsBindings['updateEditor'],
   });
 
   await expect(adapter.getSettings()).resolves.toMatchObject({

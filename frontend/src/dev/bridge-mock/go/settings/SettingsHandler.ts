@@ -17,10 +17,17 @@ interface ContentPrivacySettings {
   remotePolicy: string;
 }
 
+interface EditorSettings {
+  lineNumbers: boolean;
+  wordWrap: boolean;
+  fontSize: 13 | 14 | 16;
+}
+
 interface Settings {
   appearance: AppearanceSettings;
   markdown: MarkdownSettings;
   contentPrivacy: ContentPrivacySettings;
+  editor: EditorSettings;
 }
 
 interface WireError {
@@ -56,6 +63,11 @@ let settings: Settings = {
   contentPrivacy: {
     remotePolicy: 'ask',
   },
+  editor: {
+    lineNumbers: true,
+    wordWrap: false,
+    fontSize: 14,
+  },
 };
 
 function cloneSettings(): Settings {
@@ -63,6 +75,7 @@ function cloneSettings(): Settings {
     appearance: { ...settings.appearance },
     markdown: { ...settings.markdown },
     contentPrivacy: { ...settings.contentPrivacy },
+    editor: { ...settings.editor },
   };
 }
 
@@ -131,5 +144,13 @@ export function UpdateMarkdown(
     ...settings,
     markdown: { ...nextMarkdown },
   };
+  return Promise.resolve({});
+}
+
+export function UpdateEditor(nextEditor: EditorSettings): Promise<VoidResult> {
+  if (![13, 14, 16].includes(nextEditor.fontSize)) {
+    return Promise.resolve(validationError());
+  }
+  settings = { ...settings, editor: { ...nextEditor } };
   return Promise.resolve({});
 }

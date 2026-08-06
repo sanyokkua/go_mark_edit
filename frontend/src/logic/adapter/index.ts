@@ -4,6 +4,7 @@ import {
   ResetAppearance,
   UpdateContentPrivacy,
   UpdateMarkdown,
+  UpdateEditor,
 } from 'wailsjs/go/settings/SettingsHandler';
 import {
   GetState,
@@ -39,6 +40,7 @@ const generatedSettingsBindings: SettingsBindings = {
   resetAppearance: ResetAppearance,
   updateContentPrivacy: UpdateContentPrivacy,
   updateMarkdown: UpdateMarkdown,
+  updateEditor: UpdateEditor,
 };
 
 export const settingsAdapter = createSettingsAdapter(generatedSettingsBindings);
@@ -99,5 +101,6 @@ export type {
   AppearanceSettings,
   ContentPrivacySettings,
   MarkdownSettings,
+  EditorSettings,
   Settings,
 } from './settingsTypes';

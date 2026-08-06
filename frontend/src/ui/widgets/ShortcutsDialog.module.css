@@ -1,0 +1,75 @@
+.overlay {
+  background: var(--overlay);
+  inset: 0;
+  position: fixed;
+  z-index: var(--z-overlay);
+}
+
+.dialog {
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--win-radius);
+  box-shadow: var(--win-shadow);
+  color: var(--text);
+  display: grid;
+  gap: var(--app-gap);
+  inset: 50% auto auto 50%;
+  max-block-size: calc(100vh - 2 * var(--app-gap));
+  max-inline-size: min(38rem, calc(100vw - 2 * var(--app-gap)));
+  overflow: auto;
+  padding: var(--dialog-padding);
+  position: fixed;
+  transform: translate(-50%, -50%);
+  z-index: var(--z-modal);
+}
+
+.header,
+.row {
+  align-items: center;
+  display: flex;
+  gap: var(--app-gap);
+  justify-content: space-between;
+}
+
+.header h2 {
+  margin: 0;
+}
+
+.close {
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: var(--control-padding);
+}
+
+.list {
+  display: grid;
+  gap: var(--control-gap);
+}
+
+.row {
+  border-block-end: var(--control-border-width) solid var(--border);
+  min-inline-size: min(26rem, calc(100vw - 4 * var(--app-gap)));
+  padding-block: var(--control-gap);
+}
+
+.metadata {
+  color: var(--text-muted);
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  font-size: var(--font-size-sm);
+  gap: var(--control-gap);
+  justify-content: flex-end;
+  text-align: end;
+}
+
+kbd {
+  background: var(--surface);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  padding: var(--control-gap) var(--control-padding);
+}

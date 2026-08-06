@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -44,6 +45,7 @@ func TestCompleteStageOneDefaultsFromEmptyKV(t *testing.T) {
 			HeadingStyle:   HeadingStyleATX,
 		},
 		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAsk},
+		Editor:         DefaultSettings().Editor,
 	}
 	if got != want {
 		t.Fatalf("empty settings registry = %+v, want %+v", got, want)
@@ -132,6 +134,7 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 			HeadingStyle:   HeadingStyleSetext,
 		},
 		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAllow},
+		Editor:         DefaultSettings().Editor,
 	}
 
 	type storedFault struct {
@@ -270,6 +273,7 @@ func TestSettingsRegistryAddsTypedScalarWithoutSchemaChange(t *testing.T) {
 			HeadingStyle:   HeadingStyleSetext,
 		},
 		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyBlock},
+		Editor:         DefaultSettings().Editor,
 	}
 	if err := service.UpdateAppearance(ctx, existing.Appearance); err != nil {
 		t.Fatalf("seed appearance: %v", err)
@@ -331,6 +335,7 @@ func TestTypedGroupedDefaultsRoundTripThroughKV(t *testing.T) {
 		Appearance:     apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeDark},
 		Markdown:       apperr.MarkdownSettings{Standard: MarkdownFull},
 		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAllow},
+		Editor:         DefaultSettings().Editor,
 	}
 	if err := repository.UpdateAppearance(ctx, want.Appearance); err != nil {
 		if closeErr := database.Close(); closeErr != nil {
@@ -487,7 +492,11 @@ func assertRepositorySettings(t *testing.T, ctx context.Context, repository *Sql
 	if err != nil {
 		t.Fatalf("get content privacy: %v", err)
 	}
-	got := apperr.Settings{Appearance: appearance, Markdown: markdown, ContentPrivacy: contentPrivacy}
+	editor, err := repository.GetEditor(ctx)
+	if err != nil {
+		t.Fatalf("get editor: %v", err)
+	}
+	got := apperr.Settings{Appearance: appearance, Markdown: markdown, ContentPrivacy: contentPrivacy, Editor: editor}
 	if got != want {
 		t.Fatalf("repository settings = %+v, want %+v", got, want)
 	}
@@ -530,6 +539,9 @@ func settingsKVRows(settings apperr.Settings) []store.UpsertSettingParams {
 		{Key: formatEmphasisKey, Value: settings.Markdown.EmphasisMarker, Type: settingTypeString},
 		{Key: formatHeadingStyleKey, Value: settings.Markdown.HeadingStyle, Type: settingTypeString},
 		{Key: contentRemotePolicyKey, Value: settings.ContentPrivacy.RemotePolicy, Type: settingTypeString},
+		{Key: editorLineNumbersKey, Value: boolString(settings.Editor.LineNumbers), Type: settingTypeBool},
+		{Key: editorWordWrapKey, Value: boolString(settings.Editor.WordWrap), Type: settingTypeBool},
+		{Key: editorFontSizeKey, Value: strconv.Itoa(settings.Editor.FontSize), Type: settingTypeString},
 	}
 }
 

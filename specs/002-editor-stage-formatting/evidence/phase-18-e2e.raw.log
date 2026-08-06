@@ -1,0 +1,218 @@
+just verify-ui
+npm --prefix frontend run verify:ui
+
+> frontend@0.0.0 verify:ui
+> playwright test
+
+[WebServer] (node:51104) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 148 tests using 4 workers
+
+(node:51111) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:51110) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:51108) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:51109) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    4 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 1280px Liquid Glass Follows system keeps the Editor stage reachable (688ms)
+  ✓    5 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 1280px Liquid Glass Light keeps the Editor stage reachable (520ms)
+  ✓    3 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 375 glass light (1.4s)
+  ✓    6 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 1280px Liquid Glass Dark keeps the Editor stage reachable (445ms)
+  ✓    8 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 1280px Material Follows system keeps the Editor stage reachable (474ms)
+  ✓    2 [chromium] › e2e/core-editor.test.ts:198:1 › STORY-018-AC-1 verifies responsive editor dimensions (2.3s)
+  ✓    7 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 375 glass dark (1.1s)
+  ✓    9 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 1280px Material Light keeps the Editor stage reachable (483ms)
+  ✓   12 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 1280px Material Dark keeps the Editor stage reachable (438ms)
+  ✘    1 [chromium] › e2e/appearance.test.ts:22:1 › changes all six palettes through keyboard reachable appearance controls without overflow (3.4s)
+  ✓   11 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 375 material light (985ms)
+  ✓   13 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 1280px Minimal Follows system keeps the Editor stage reachable (443ms)
+(node:51194) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   15 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 1280px Minimal Light keeps the Editor stage reachable (512ms)
+  ✓   16 [chromium] › e2e/appearance.test.ts:61:1 › uses the pre-paint mirror before canonical reconciliation and keeps the controls visibly focused with bundled typography (433ms)
+  ✓   14 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 375 material dark (1.0s)
+  ✓   17 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 1280px Minimal Dark keeps the Editor stage reachable (482ms)
+  ✓   18 [chromium] › e2e/appearance.test.ts:147:1 › retains the acknowledged palette when the bridge rejects an appearance write (448ms)
+  ✓   20 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 768px Liquid Glass Follows system keeps the Editor stage reachable (500ms)
+  ✓   10 [chromium] › e2e/core-editor.test.ts:230:1 › STORY-022-AC-5 round trips an edit through Preview responsively (3.0s)
+  ✓   21 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 768px Liquid Glass Light keeps the Editor stage reachable (464ms)
+  ✓   19 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 375 minimal light (1.0s)
+  ✓   23 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 768px Liquid Glass Dark keeps the Editor stage reachable (455ms)
+  ✓   22 [chromium] › e2e/core-editor.test.ts:285:1 › STORY-022-AC-4 (EC-DOCS-12) keeps a focused Monaco source, caret, and selection across a metadata patch (1.0s)
+  ✓   25 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 768px Material Follows system keeps the Editor stage reachable (421ms)
+  ✓   24 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 375 minimal dark (981ms)
+  ✓   27 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 768px Material Light keeps the Editor stage reachable (450ms)
+  ✓   29 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 768px Material Dark keeps the Editor stage reachable (404ms)
+  ✓   28 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 768 glass light (831ms)
+  ✓   26 [chromium] › e2e/core-editor.test.ts:421:1 › STORY-018-AC-2 verifies the live editor preview flow (1.4s)
+  ✓   30 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 768px Minimal Follows system keeps the Editor stage reachable (419ms)
+  ✓   33 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 768px Minimal Light keeps the Editor stage reachable (468ms)
+  ✓   31 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 768 glass dark (855ms)
+  ✓   34 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 768px Minimal Dark keeps the Editor stage reachable (439ms)
+  ✓   32 [chromium] › e2e/core-editor.test.ts:522:1 › STORY-018-AC-3 matches the approved split-view reference (1.0s)
+  ✓   37 [chromium] › e2e/core-editor.test.ts:608:1 › STORY-032-AC-3 presents deterministic 1280x720 candidate for owner approval (265ms)
+  ✓   35 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 768 material light (784ms)
+  ✓   36 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 375px Liquid Glass Follows system keeps the Editor stage reachable (564ms)
+  ✓   38 [chromium] › e2e/core-editor.test.ts:627:1 › STORY-018-AC-4 verifies view-mode and View-menu interaction (633ms)
+  ✓   40 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 375px Liquid Glass Light keeps the Editor stage reachable (569ms)
+  ✓   39 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 768 material dark (799ms)
+  ✓   41 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 375px Liquid Glass Dark keeps the Editor stage reachable (516ms)
+  ✓   42 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 768 minimal light (750ms)
+  ✓   43 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 375px Material Follows system keeps the Editor stage reachable (508ms)
+  ✓   45 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 375px Material Light keeps the Editor stage reachable (535ms)
+  ✓   44 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 768 minimal dark (726ms)
+  ✓   46 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 375px Material Dark keeps the Editor stage reachable (540ms)
+  ✓   47 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 1280 glass light (796ms)
+  ✓   48 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 375px Minimal Follows system keeps the Editor stage reachable (518ms)
+  ✓   50 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 375px Minimal Light keeps the Editor stage reachable (517ms)
+  ✓   49 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 1280 glass dark (819ms)
+  ✓   51 [chromium] › e2e/editor-stage.test.ts:10:7 › T019 375px Minimal Dark keeps the Editor stage reachable (470ms)
+  ✓   52 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 1280 material light (717ms)
+  ✓   53 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 1280px Liquid Glass Follows system keeps popup ownership and geometry safe (716ms)
+  ✓   54 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 1280 material dark (720ms)
+  ✓   55 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 1280px Liquid Glass Light keeps popup ownership and geometry safe (710ms)
+  ✓   56 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 1280 minimal light (728ms)
+  ✓   57 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 1280px Liquid Glass Dark keeps popup ownership and geometry safe (697ms)
+  ✓   58 [chromium] › e2e/window-shell.test.ts:328:5 › T026 shell matrix 1280 minimal dark (728ms)
+  ✓   60 [chromium] › e2e/window-shell.test.ts:441:1 › T039 native minimum frame rounding keeps the workspace off-canvas (232ms)
+  ✓   59 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 1280px Material Follows system keeps popup ownership and geometry safe (700ms)
+  ✓   61 [chromium] › e2e/window-shell.test.ts:458:3 › T040 Settings popup stays operable inside the 375px viewport (503ms)
+  ✓   62 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 1280px Material Light keeps popup ownership and geometry safe (684ms)
+  ✓   63 [chromium] › e2e/window-shell.test.ts:458:3 › T040 Settings popup stays operable inside the 768px viewport (452ms)
+  ✓   65 [chromium] › e2e/window-shell.test.ts:458:3 › T040 Settings popup stays operable inside the 1280px viewport (481ms)
+  ✓   64 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 1280px Material Dark keeps popup ownership and geometry safe (711ms)
+  ✓   66 [chromium] › e2e/window-shell.test.ts:502:5 › T041 Close control restores the connected 375px Settings opener (492ms)
+  ✓   67 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 1280px Minimal Follows system keeps popup ownership and geometry safe (704ms)
+  ✓   68 [chromium] › e2e/window-shell.test.ts:502:5 › T041 Escape restores the connected 375px Settings opener (491ms)
+  ✓   70 [chromium] › e2e/window-shell.test.ts:502:5 › T041 Close control restores the connected 1280px Settings opener (440ms)
+  ✓   69 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 1280px Minimal Light keeps popup ownership and geometry safe (686ms)
+  ✓   71 [chromium] › e2e/window-shell.test.ts:502:5 › T041 Escape restores the connected 1280px Settings opener (478ms)
+  ✓   72 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 1280px Minimal Dark keeps popup ownership and geometry safe (733ms)
+  ✓   74 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 768px Liquid Glass Follows system keeps popup ownership and geometry safe (698ms)
+  ✓   73 [chromium] › e2e/window-shell.test.ts:532:1 › T026 shell actions, focus, reset, sidebar, notification, identity, and absence (1.2s)
+  ✓   76 [chromium] › e2e/window-shell.test.ts:588:1 › T029 keeps a long localized shell label and its two-layer keyboard focus ring visible (269ms)
+  ✓   75 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 768px Liquid Glass Light keeps popup ownership and geometry safe (714ms)
+  ✓   78 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 768px Liquid Glass Dark keeps popup ownership and geometry safe (675ms)
+  ✓   77 [chromium] › e2e/window-shell.test.ts:650:1 › T026 representative shell journey stays local-only (923ms)
+  ✓   79 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 768px Material Follows system keeps popup ownership and geometry safe (691ms)
+  ✓   81 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 768px Material Light keeps popup ownership and geometry safe (667ms)
+  ✓   82 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 768px Material Dark keeps popup ownership and geometry safe (666ms)
+  ✓   83 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 768px Minimal Follows system keeps popup ownership and geometry safe (728ms)
+  ✓   84 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 768px Minimal Light keeps popup ownership and geometry safe (671ms)
+  ✓   85 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 768px Minimal Dark keeps popup ownership and geometry safe (697ms)
+  ✓   86 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 375px Liquid Glass Follows system keeps popup ownership and geometry safe (598ms)
+  ✓   87 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 375px Liquid Glass Light keeps popup ownership and geometry safe (610ms)
+  ✓   88 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 375px Liquid Glass Dark keeps popup ownership and geometry safe (586ms)
+  ✓   89 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 375px Material Follows system keeps popup ownership and geometry safe (574ms)
+  ✓   90 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 375px Material Light keeps popup ownership and geometry safe (581ms)
+  ✓   91 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 375px Material Dark keeps popup ownership and geometry safe (601ms)
+  ✓   92 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 375px Minimal Follows system keeps popup ownership and geometry safe (633ms)
+  ✓   93 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 375px Minimal Light keeps popup ownership and geometry safe (580ms)
+  ✓   94 [chromium] › e2e/editor-stage.test.ts:108:7 › T070 375px Minimal Dark keeps popup ownership and geometry safe (570ms)
+  ✓   95 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 1280px Liquid Glass Follows system retains the mockup chrome hierarchy (385ms)
+  ✓   96 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 1280px Liquid Glass Light retains the mockup chrome hierarchy (421ms)
+  ✓   97 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 1280px Liquid Glass Dark retains the mockup chrome hierarchy (417ms)
+  ✓   98 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 1280px Material Follows system retains the mockup chrome hierarchy (401ms)
+  ✓   99 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 1280px Material Light retains the mockup chrome hierarchy (372ms)
+  ✓  100 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 1280px Material Dark retains the mockup chrome hierarchy (383ms)
+  ✓  101 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 1280px Minimal Follows system retains the mockup chrome hierarchy (383ms)
+  ✓  102 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 1280px Minimal Light retains the mockup chrome hierarchy (389ms)
+  ✓  103 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 1280px Minimal Dark retains the mockup chrome hierarchy (392ms)
+  ✓  104 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 768px Liquid Glass Follows system retains the mockup chrome hierarchy (391ms)
+  ✓  105 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 768px Liquid Glass Light retains the mockup chrome hierarchy (429ms)
+  ✓  106 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 768px Liquid Glass Dark retains the mockup chrome hierarchy (423ms)
+  ✓  107 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 768px Material Follows system retains the mockup chrome hierarchy (391ms)
+  ✓  108 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 768px Material Light retains the mockup chrome hierarchy (389ms)
+  ✓  109 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 768px Material Dark retains the mockup chrome hierarchy (383ms)
+  ✓  110 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 768px Minimal Follows system retains the mockup chrome hierarchy (382ms)
+  ✓   80 [chromium] › e2e/window-shell.test.ts:673:1 › T026 retains at least 20 measured resize and divider samples (16.0s)
+  ✓  111 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 768px Minimal Light retains the mockup chrome hierarchy (387ms)
+  ✓  112 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 768px Minimal Dark retains the mockup chrome hierarchy (383ms)
+  ✓  113 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 375px Liquid Glass Follows system retains the mockup chrome hierarchy (432ms)
+  ✓  114 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 375px Liquid Glass Light retains the mockup chrome hierarchy (428ms)
+  ✓  115 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 375px Liquid Glass Dark retains the mockup chrome hierarchy (433ms)
+  ✓  116 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 375px Material Follows system retains the mockup chrome hierarchy (423ms)
+  ✓  117 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 375px Material Light retains the mockup chrome hierarchy (507ms)
+  ✓  118 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 375px Material Dark retains the mockup chrome hierarchy (525ms)
+  ✓  119 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 375px Minimal Follows system retains the mockup chrome hierarchy (461ms)
+  ✓  120 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 375px Minimal Light retains the mockup chrome hierarchy (445ms)
+  ✓  121 [chromium] › e2e/editor-stage.test.ts:201:7 › T069 375px Minimal Dark retains the mockup chrome hierarchy (434ms)
+  ✓  122 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 1280px Liquid Glass Follows system exercises reachable Editor-stage journeys (1.4s)
+  ✓  123 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 1280px Liquid Glass Light exercises reachable Editor-stage journeys (1.4s)
+  ✓  124 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 1280px Liquid Glass Dark exercises reachable Editor-stage journeys (1.4s)
+  ✓  125 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 1280px Material Follows system exercises reachable Editor-stage journeys (1.4s)
+  ✓  126 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 1280px Material Light exercises reachable Editor-stage journeys (1.3s)
+  ✓  127 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 1280px Material Dark exercises reachable Editor-stage journeys (1.4s)
+  ✓  128 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 1280px Minimal Follows system exercises reachable Editor-stage journeys (1.4s)
+  ✓  129 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 1280px Minimal Light exercises reachable Editor-stage journeys (1.5s)
+  ✓  130 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 1280px Minimal Dark exercises reachable Editor-stage journeys (1.5s)
+  ✓  131 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 768px Liquid Glass Follows system exercises reachable Editor-stage journeys (1.4s)
+  ✓  132 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 768px Liquid Glass Light exercises reachable Editor-stage journeys (1.4s)
+  ✓  133 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 768px Liquid Glass Dark exercises reachable Editor-stage journeys (1.4s)
+  ✓  134 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 768px Material Follows system exercises reachable Editor-stage journeys (1.4s)
+  ✓  135 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 768px Material Light exercises reachable Editor-stage journeys (1.4s)
+  ✓  136 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 768px Material Dark exercises reachable Editor-stage journeys (1.5s)
+  ✓  137 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 768px Minimal Follows system exercises reachable Editor-stage journeys (1.4s)
+  ✓  138 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 768px Minimal Light exercises reachable Editor-stage journeys (1.4s)
+  ✓  139 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 768px Minimal Dark exercises reachable Editor-stage journeys (1.4s)
+  ✓  140 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 375px Liquid Glass Follows system exercises reachable Editor-stage journeys (1.4s)
+  ✓  141 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 375px Liquid Glass Light exercises reachable Editor-stage journeys (1.4s)
+  ✓  142 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 375px Liquid Glass Dark exercises reachable Editor-stage journeys (1.4s)
+  ✓  143 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 375px Material Follows system exercises reachable Editor-stage journeys (1.4s)
+  ✓  144 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 375px Material Light exercises reachable Editor-stage journeys (1.4s)
+  ✓  145 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 375px Material Dark exercises reachable Editor-stage journeys (1.4s)
+  ✓  146 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 375px Minimal Follows system exercises reachable Editor-stage journeys (1.4s)
+  ✓  147 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 375px Minimal Light exercises reachable Editor-stage journeys (1.4s)
+  ✓  148 [chromium] › e2e/editor-stage.test.ts:285:7 › T055 375px Minimal Dark exercises reachable Editor-stage journeys (1.4s)
+
+
+  1) [chromium] › e2e/appearance.test.ts:22:1 › changes all six palettes through keyboard reachable appearance controls without overflow 
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      13 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: appearance-minimal-light.png
+
+    Call log:
+      - Expect "toHaveScreenshot(appearance-minimal-light.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 13 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 13 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      49 |         .toBe(true);
+      50 |       if (width === 1280) {
+    > 51 |         await expect(page).toHaveScreenshot(`appearance-${theme}-${mode}.png`, {
+         |                            ^
+      52 |           animations: 'disabled',
+      53 |         });
+      54 |       }
+        at /Users/ok/Development/GitHub/go_mark_edit/frontend/e2e/appearance.test.ts:51:28
+
+    attachment #1: appearance-minimal-light (image/png) ────────────────────────────────────────────
+    Expected: e2e/appearance.test.ts-snapshots/appearance-minimal-light.png
+    Received: test-results/e2e-appearance-changes-all-3e1d6-e-controls-without-overflow-chromium/appearance-minimal-light-actual.png
+    Diff:     test-results/e2e-appearance-changes-all-3e1d6-e-controls-without-overflow-chromium/appearance-minimal-light-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/e2e-appearance-changes-all-3e1d6-e-controls-without-overflow-chromium/error-context.md
+
+  1 failed
+    [chromium] › e2e/appearance.test.ts:22:1 › changes all six palettes through keyboard reachable appearance controls without overflow 
+  147 passed (1.4m)
+error: recipe `verify-ui` failed on line 69 with exit code 1
+error: recipe `e2e-test` failed on line 74 with exit code 1

@@ -4,8 +4,8 @@ Captured by `just baseline 002-editor-stage-formatting`. Do not edit by hand.
 
 | | |
 |---|---|
-| commit | `5a1e93d` (`5a1e93de3404ef66f0ab5112d1aa20cd1bbf9af6`) |
-| captured | 2026-08-03 21:54 UTC |
+| commit | `cf9d92f` (`cf9d92ffc7d008048a01607f9c8aa938cfcf3c3e`) |
+| captured | 2026-08-04 06:30 UTC |
 | working tree | **dirty — uncommitted changes are part of this baseline** |
 | coverage | 65.8% (mean of 11 packages) |
 
@@ -18,7 +18,7 @@ later diff against it would pass whatever is written.
 | gate | command | exit | verdict | findings |
 |---|---|---|---|---|
 | lint | `just lint` | 0 | clean | 0 |
-| test | `just test` | 1 | ok-with-findings | 1 |
+| test | `just test` | 0 | clean | 0 |
 | fmt-check | `just fmt-check` | 0 | clean | 0 |
 | typecheck | `just typecheck` | 0 | clean | 0 |
 | archtest | `just archtest` | 0 | clean | 0 |
@@ -26,11 +26,9 @@ later diff against it would pass whatever is written.
 
 Raw output for every gate is kept in `feature-002-editor-stage-formatting.logs/`.
 
-## Failing tests at baseline (1)
+## Failing tests at baseline (0)
 
-```
-TestWailsBindingsRemainTracked
-```
+*(none)*
 
 ## Static-analysis findings at baseline (0)
 

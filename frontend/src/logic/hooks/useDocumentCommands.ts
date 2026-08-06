@@ -23,6 +23,7 @@ export interface DocumentCommandAPI {
   replaceRange: (
     range: EditorRange,
     text: string,
+    selection?: EditorSelection,
   ) => DocumentCommandResult<void>;
   replaceAll: (text: string) => DocumentCommandResult<void>;
 }
@@ -90,6 +91,7 @@ export function createDocumentCommands(
     replaceRange(
       range: EditorRange,
       text: string,
+      selection?: EditorSelection,
     ): DocumentCommandResult<void> {
       const session = resolveSession(
         expectedDocumentId,
@@ -100,7 +102,7 @@ export function createDocumentCommands(
         return session;
       }
 
-      return session.value.replaceRange(range, text)
+      return session.value.replaceRange(range, text, selection)
         ? { status: 'available', value: undefined }
         : { status: 'unavailable' };
     },

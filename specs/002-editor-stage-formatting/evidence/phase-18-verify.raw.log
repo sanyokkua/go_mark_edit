@@ -1,0 +1,75 @@
+bash scripts/verify.sh 002-editor-stage-formatting
+Verifying 002-editor-stage-formatting against docs/delivery/work/baselines/feature-002-editor-stage-formatting.md
+  running build          ok
+  running fmt-check      exit 1
+  running typecheck      ok
+  running lint           exit 1
+  running test           exit 1
+  running archtest       ok
+
+| #   | check                        | result |
+|-----|------------------------------|--------|
+| M1  | format                       | FAIL |
+| M2  | types                        | PASS |
+| M3  | static analysis              | FAIL |
+| M4  | tests                        | FAIL |
+| M5  | architecture                 | PASS |
+| M6  | build                        | PASS |
+
+
+  M1 formatting drift:
+      just go-format-check
+      test -z "$(gofmt -l $(git ls-files '*.go'))"
+      just frontend-format-check
+      npm --prefix frontend run format:check
+      
+      > frontend@0.0.0 format:check
+      > prettier --check .
+      
+      Checking formatting...
+      [warn] e2e/appearance.test.ts
+      [warn] Code style issues found in the above file. Run Prettier with --write to fix.
+      error: recipe `frontend-format-check` failed on line 36 with exit code 1
+      error: recipe `fmt-check` failed on line 40 with exit code 1
+
+  M3 findings not in the baseline:
+      /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/ShellMenuRow.tsx:435:26:render:error
+      /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/ShellMenuRow.tsx:498:26:render:error
+      /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/ShellMenuRow.tsx:@typescript-eslint/no-unused-vars:error
+      /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/ShellMenuRow.tsx:render:error
+
+  M4 the test command exited 1 with no failures parsed. The run did not complete.
+      
+            Object {
+          -   "byId": Object {
+          -     "document-1": ObjectNotContaining {
+          -       "content": Anything,
+          -     },
+          -   },
+          -   "revision": 12,
+          +   "byId": Object {},
+          +   "revision": 31,
+            }
+      
+            419 |   });
+            420 |
+          > 421 |   expect(store.getState().documents).toMatchObject({
+                |                                      ^
+            422 |     revision: 12,
+            423 |     byId: {
+            424 |       'document-1': expect.not.objectContaining({ content: expect.anything() }),
+      
+            at Object.<anonymous> (src/App.test.tsx:421:38)
+      
+      
+      Test Suites: 1 failed, 53 passed, 54 total
+      Tests:       2 failed, 252 passed, 254 total
+      Snapshots:   0 total
+      Time:        8.317 s
+      Ran all test suites.
+      error: recipe `frontend-test` failed on line 60 with exit code 1
+      error: recipe `test` failed on line 57 with exit code 1
+
+Logs: /var/folders/r9/r0j788zn3x1g25mmm_xs4wgw0000gn/T/tmp.A1tfS2g6ZB
+verify 002-editor-stage-formatting: FAILED
+error: recipe `verify` failed on line 121 with exit code 1

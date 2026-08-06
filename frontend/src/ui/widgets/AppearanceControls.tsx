@@ -11,6 +11,7 @@ import {
   type Theme,
 } from '../../logic/theme/theme';
 import { writeStartupThemeMirror } from '../../logic/theme/startupThemeMirror';
+import { useEditorSettings } from '../../logic/settings/editorSettings';
 import SettingsDialog from './SettingsDialog';
 import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
 import styles from './AppearanceControls.module.css';
@@ -50,6 +51,7 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
   settingsOpen,
   visible = true,
 }: AppearanceControlsProps): React.JSX.Element | null => {
+  const { markdownSettings, updateMarkdown } = useEditorSettings();
   const [appearance, setAppearance] = useState<AppearanceState>({
     defaultOpenMode: 'editor',
     mode: 'auto',
@@ -111,7 +113,13 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
       const next = { ...desiredAppearance.current, ...patch };
       desiredAppearance.current = next;
       writeChain.current = writeChain.current
-        .then(async (): Promise<void> => settingsAdapter.updateAppearance(next))
+        .then(async (): Promise<void> =>
+          settingsAdapter.updateAppearance({
+            defaultOpenMode: next.defaultOpenMode,
+            mode: next.mode,
+            theme: next.theme,
+          }),
+        )
         .then((): void => {
           setAppearance(next);
           apply(next);
@@ -143,7 +151,6 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
       })
       .catch((): void => undefined);
   }, []);
-
   if (!visible) {
     return null;
   }
@@ -165,6 +172,10 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
     },
     onThemeChange: (theme): void => {
       persist({ theme });
+    },
+    markdownSettings,
+    onMarkdownSettingsChange: (patch): void => {
+      void updateMarkdown(patch).catch((): void => undefined);
     },
   };
   const menu =

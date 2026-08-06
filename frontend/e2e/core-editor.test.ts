@@ -2,6 +2,29 @@ import { expect, test, type Page } from '@playwright/test';
 
 const viewports = [375, 768, 1280] as const;
 const viewportHeight = 720;
+
+async function chooseArrangement(
+  page: Page,
+  arrangement: 'Editor' | 'Split' | 'Preview',
+): Promise<void> {
+  if ((page.viewportSize()?.width ?? 1280) <= 376) {
+    const toolbar = page.getByRole('toolbar', { name: 'Document toolbar' });
+    const overflow = toolbar.getByLabel('More actions');
+    const isOpen = await overflow.evaluate(
+      (trigger): boolean => trigger.closest('details')?.open ?? false,
+    );
+    if (!isOpen) {
+      await overflow.click();
+    }
+    await toolbar
+      .getByRole('radiogroup', { name: 'View arrangement' })
+      .getByRole('radio', { name: arrangement })
+      .last()
+      .click();
+    return;
+  }
+  await page.getByRole('radio', { name: arrangement }).click();
+}
 // CI tolerance covering the frozen 150–300 ms accepted-preview target.
 const acceptedPreviewCIToleranceMs = 500;
 
@@ -219,25 +242,29 @@ test('STORY-022-AC-5 round trips an edit through Preview responsively', async ({
     const monaco = page.locator('.monaco-editor');
     const input = monaco.locator('textarea.inputarea');
     await expect(monaco).toBeVisible();
-    await input.click({ force: true });
+    await input.focus();
     await page.keyboard.insertText(source);
     await expect(monaco.locator('.view-lines')).toContainText(source);
 
-    await page.getByRole('radio', { name: 'Preview' }).click();
+    await chooseArrangement(page, 'Preview');
     await expect(editorPane).toBeHidden();
     await expect(monaco).toBeHidden();
     await expect(previewPane).toContainText(source);
 
-    await page.getByRole('radio', { name: 'Editor' }).click();
+    await chooseArrangement(page, 'Editor');
     await expect(editorPane).toBeVisible();
     await expect(monaco).toBeVisible();
     await expect(monaco.locator('.view-lines')).toContainText(source);
     const bounds = await monaco.boundingBox();
     expect(bounds?.height).toBeGreaterThan(200);
 
-    await input.click({ force: true });
-    await page.keyboard.press('Meta+z');
-    await page.getByRole('radio', { name: 'Split' }).click();
+    await input.focus();
+    await expect(input).toBeFocused();
+    const modifier = await page.evaluate(() =>
+      /Mac|iPhone|iPad/.test(navigator.platform) ? 'Meta' : 'Control',
+    );
+    await input.press(`${modifier}+z`);
+    await chooseArrangement(page, 'Split');
     await expect(previewPane).toBeVisible();
     await expect(previewPane).not.toContainText(source);
     await expect
@@ -499,7 +526,7 @@ test('STORY-018-AC-3 matches the approved split-view reference', async ({
   await page.goto('/');
 
   await expect(
-    page.getByRole('complementary', { name: 'File explorer' }),
+    page.getByRole('complementary', { name: 'Workspace' }),
   ).toBeAttached();
   await expect(page.getByRole('main', { name: 'Document area' })).toBeVisible();
   await expect(page.getByLabel('Editor view', { exact: true })).toBeVisible();
@@ -534,13 +561,15 @@ test('STORY-018-AC-3 matches the approved split-view reference', async ({
     editorBounds,
     previewBounds,
     statusBounds,
+    dividerBounds,
   ] = await Promise.all([
-    page.getByRole('complementary', { name: 'File explorer' }).boundingBox(),
+    page.getByRole('complementary', { name: 'Workspace' }).boundingBox(),
     page.getByRole('main', { name: 'Document area' }).boundingBox(),
     page.getByLabel('Document toolbar', { exact: true }).boundingBox(),
     editorPane.boundingBox(),
     previewPane.boundingBox(),
     page.getByLabel('Document status', { exact: true }).boundingBox(),
+    page.getByRole('separator', { name: 'Resize workspace' }).boundingBox(),
   ]);
 
   expect(explorerBounds).not.toBeNull();
@@ -549,18 +578,20 @@ test('STORY-018-AC-3 matches the approved split-view reference', async ({
   expect(editorBounds).not.toBeNull();
   expect(previewBounds).not.toBeNull();
   expect(statusBounds).not.toBeNull();
+  expect(dividerBounds).not.toBeNull();
   if (
     explorerBounds === null ||
     documentBounds === null ||
     toolbarBounds === null ||
     editorBounds === null ||
     previewBounds === null ||
-    statusBounds === null
+    statusBounds === null ||
+    dividerBounds === null
   ) {
     throw new Error('Core editor layout bounds are unavailable');
   }
-  expect(documentBounds.x).toBe(explorerBounds.x + explorerBounds.width);
-  expect(documentBounds.height).toBe(viewportHeight);
+  expect(documentBounds.x).toBe(dividerBounds.x + dividerBounds.width);
+  expect(documentBounds.y + documentBounds.height).toBe(viewportHeight);
   expect(editorBounds.y).toBeGreaterThanOrEqual(
     toolbarBounds.y + toolbarBounds.height,
   );
@@ -632,39 +663,28 @@ test('STORY-018-AC-4 verifies view-mode and View-menu interaction', async ({
   const viewTrigger = page.getByRole('button', { name: 'View' });
   await viewTrigger.click();
   const viewMenu = page.getByRole('menu', { name: 'View' });
-  const showEditor = viewMenu.getByRole('menuitemcheckbox', {
-    name: 'Show Editor',
+  const viewArrangement = viewMenu.getByRole('group', {
+    name: 'View arrangement',
   });
-  const showPreview = viewMenu.getByRole('menuitemcheckbox', {
-    name: 'Show Preview',
+  const menuEditor = viewArrangement.getByRole('menuitemradio', {
+    name: 'Editor',
   });
-  await expect(showEditor).toHaveAttribute('data-state', 'unchecked');
-  await expect(showPreview).toHaveAttribute('data-state', 'checked');
-  await expect(showPreview).toHaveAttribute('data-disabled');
+  const menuPreview = viewArrangement.getByRole('menuitemradio', {
+    name: 'Preview',
+  });
+  await expect(menuEditor).toHaveAttribute('data-state', 'unchecked');
+  await expect(menuPreview).toHaveAttribute('data-state', 'checked');
 
   const showEditorPatchCount = await statePatchCount(page);
-  await showEditor.click();
-  await expectPaneVisibility(page, { editor: true, preview: true });
-  await expectViewPatchSince(page, showEditorPatchCount, {
-    editor: true,
-    preview: true,
-  });
-
-  const hidePreviewPatchCount = await statePatchCount(page);
-  await viewTrigger.press('ArrowDown');
-  await expect(viewMenu).toBeVisible();
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await expect(showPreview).toBeFocused();
-  await page.keyboard.press('Enter');
+  await menuEditor.click();
   await expectPaneVisibility(page, { editor: true, preview: false });
-  await expectViewPatchSince(page, hidePreviewPatchCount, {
+  await expectViewPatchSince(page, showEditorPatchCount, {
     editor: true,
     preview: false,
   });
 
   await viewTrigger.click();
-  await expect(showEditor).toHaveAttribute('data-state', 'checked');
-  await expect(showEditor).toHaveAttribute('data-disabled');
-  await expect(showPreview).toHaveAttribute('data-state', 'unchecked');
+  await expect(viewMenu).toBeVisible();
+  await expect(menuEditor).toHaveAttribute('data-state', 'checked');
+  await expect(menuPreview).toHaveAttribute('data-state', 'unchecked');
 });

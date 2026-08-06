@@ -65,8 +65,11 @@ jest.mock('./logic/adapter', () => ({
         lintOnSave: false,
         standard: 'gfm',
       },
+      editor: { lineNumbers: true, wordWrap: false, fontSize: 14 },
     })),
     updateAppearance: jest.fn(async () => undefined),
+    updateMarkdown: jest.fn(async () => undefined),
+    updateEditor: jest.fn(async () => undefined),
   },
   appModelAdapter: {
     getState: jest.fn(async () => ({
@@ -219,9 +222,19 @@ it('STORY-001-AC-2 renders the blank application root', async () => {
   ).toBeInTheDocument();
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   expect(
-    screen.queryByText(/greet|hello|markdown|document|file/i),
+    screen.queryByText(/greet|hello|markdown|document/i),
   ).not.toBeInTheDocument();
   act((): void => disposeAppModelProjection());
+});
+
+it('T058 includes the Shortcuts dialog in the shared modal suppression state', () => {
+  const source = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8');
+
+  expect(source).toContain('ModalStateProvider');
+  expect(source).toContain(
+    'modalOpen: settingsOpen || aboutOpen || shortcutsOpen',
+  );
+  expect(source).toContain('modalOpen={menuState.modalOpen}');
 });
 
 // Proves: STORY-007-AC-1
@@ -265,7 +278,7 @@ it('STORY-007-AC-3 keeps the reserved region free of an Assistant surface', () =
   expect(shellSource).not.toMatch(/\b(?:fetch|XMLHttpRequest)\b/);
 });
 
-it('FR-WS-020 keeps the real shell limited to Settings, View, About, and its document surface at desktop and 375px widths', () => {
+it('T018 keeps the feature shell ordered and future behavior explicitly bounded at desktop and 375px widths', () => {
   const RealAppShell = jest.requireActual<
     typeof import('./ui/widgets/AppShell')
   >('./ui/widgets/AppShell').default;
@@ -277,30 +290,27 @@ it('FR-WS-020 keeps the real shell limited to Settings, View, About, and its doc
     theme: 'material',
   };
   const viewMenuProps = {
+    arrangement: 'split' as const,
     editorVisible: true,
+    lineNumbers: true,
+    onArrangementChange: jest.fn(),
     onEditorVisibilityChange: jest.fn(),
+    onFullscreen: jest.fn(),
+    onLineNumbersChange: jest.fn(),
     onPreviewVisibilityChange: jest.fn(),
+    onWordWrapChange: jest.fn(),
+    onWorkspaceVisibilityChange: jest.fn(),
     previewVisible: true,
+    wordWrap: false,
+    workspaceVisible: true,
   };
-  const assertFutureSurfacesAbsent = (): void => {
-    for (const name of [
-      'File',
-      'New',
-      'Open',
-      'Launcher',
-      'Recent',
-      'Recents',
-      'Assistant',
-    ]) {
-      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
-      expect(screen.queryByRole('menuitem', { name })).not.toBeInTheDocument();
-    }
+  const assertFutureSurfacesBounded = (): void => {
     expect(
-      screen.queryByText(/no documents? (?:open|yet)/i),
+      screen.queryByRole('button', { name: 'New File' }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
-    expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Open File' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('complementary', { name: /assistant/i }),
     ).not.toBeInTheDocument();
@@ -335,38 +345,24 @@ it('FR-WS-020 keeps the real shell limited to Settings, View, About, and its doc
     within(screen.getByRole('navigation', { name: 'Application actions' }))
       .getAllByRole('button')
       .map((button) => button.textContent),
-  ).toEqual(['Settings', 'View', 'About']);
+  ).toEqual(['File', 'Settings', 'View', 'About']);
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(
-    screen.getAllByRole('menuitem').map((item) => item.textContent),
-  ).toEqual(['Appearance']);
-  assertFutureSurfacesAbsent();
+    screen.getByRole('menuitem', { name: 'Appearance' }),
+  ).toBeInTheDocument();
+  assertFutureSurfacesBounded();
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
   fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), {
     key: 'ArrowDown',
   });
   const viewMenu = screen.getByRole('menu', { name: 'View' });
   expect(
-    within(viewMenu)
-      .getAllByRole('menuitemcheckbox')
-      .map((item) => item.textContent),
-  ).toEqual(['Show Editor', 'Show Preview']);
-  for (const name of [
-    'File',
-    'New',
-    'Open',
-    'Launcher',
-    'Recent',
-    'Recents',
-    'Assistant',
-  ]) {
-    expect(
-      within(viewMenu).queryByRole('menuitemcheckbox', { name }),
-    ).not.toBeInTheDocument();
-    expect(
-      within(viewMenu).queryByRole('menuitem', { name }),
-    ).not.toBeInTheDocument();
-  }
+    within(viewMenu).getByRole('menuitem', { name: 'Toggle Assistant' }),
+  ).toHaveAttribute('aria-disabled', 'true');
+  expect(
+    within(viewMenu).getByRole('menuitemcheckbox', { name: 'Toggle Sidebar' }),
+  ).toBeInTheDocument();
   fireEvent.keyDown(viewMenu, { key: 'Escape' });
 
   desktop.unmount();
@@ -380,8 +376,8 @@ it('FR-WS-020 keeps the real shell limited to Settings, View, About, and its doc
   });
   expect(
     screen.getAllByRole('menuitem').map((item) => item.textContent),
-  ).toEqual(['Settings', 'View', 'About']);
-  assertFutureSurfacesAbsent();
+  ).toEqual(['File', 'Settings', 'View', 'About']);
+  assertFutureSurfacesBounded();
 
   store.dispatch(resetProjection());
   store.dispatch(
@@ -412,6 +408,15 @@ it('FR-WS-020 exposes exactly the current shell action catalogue', () => {
 });
 
 it('STORY-012-AC-7 hands the active buffer to ephemeral editor session state', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValueOnce(
+    bootstrapState('ephemeral buffer', 12),
+  );
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+
   render(
     <StrictMode>
       <App />
@@ -439,6 +444,7 @@ it('STORY-012-AC-7 hands the active buffer to ephemeral editor session state', a
   expect(localStorage.getItem('gme.theme')).toBe(
     JSON.stringify({ version: 1, theme: 'material', mode: 'auto' }),
   );
+  act((): void => disposeAppModelProjection());
 });
 
 it('FR-WS-019 opens About through the catalogue with the backend-projected build identity', async () => {
@@ -452,7 +458,10 @@ it('FR-WS-019 opens About through the catalogue with the backend-projected build
 
   render(<App />);
 
-  fireEvent.click(await screen.findByRole('button', { name: 'About' }));
+  fireEvent.keyDown(await screen.findByRole('button', { name: 'About' }), {
+    key: 'ArrowDown',
+  });
+  fireEvent.click(screen.getByRole('menuitem', { name: 'About GoMarkEdit' }));
   expect(
     screen.getByRole('dialog', { name: 'About GoMarkEdit' }),
   ).toHaveTextContent('Version 9.8.7-test+injected');
@@ -582,17 +591,22 @@ it('keeps the normal shell unmounted while startup is unresolved', async () => {
   expect(await screen.findByLabelText('Document area')).toBeInTheDocument();
 });
 
-it('FR-WS-020 exposes no downstream File, launcher, recent, tab, or Assistant surface', async () => {
+it('T037 exposes File and visual tab surfaces without downstream lifecycle state', async () => {
   render(<App />);
 
   await screen.findByRole('main', { name: 'Document area' });
-  expect(screen.queryByText(/\bfile\b/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'File' })).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByRole('button', { name: 'File' }), {
+    key: 'ArrowDown',
+  });
+  expect(screen.getByRole('menu', { name: 'File' })).toBeInTheDocument();
+  expect(screen.getByRole('menuitem', { name: 'Open File' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
   expect(
-    screen.queryByText(/launcher|recent|assistant/i),
+    screen.queryByRole('complementary', { name: /assistant/i }),
   ).not.toBeInTheDocument();
-  expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
-  expect(screen.queryByRole('tab')).not.toBeInTheDocument();
-  expect(screen.queryByLabelText(/assistant/i)).not.toBeInTheDocument();
 });
 
 it('FR-WS-020 keeps the existing document consumer while every future shell facsimile stays absent', async () => {
@@ -606,7 +620,7 @@ it('FR-WS-020 keeps the existing document consumer while every future shell facs
     Array.from(actions.querySelectorAll('button')).map(
       (button) => button.textContent,
     ),
-  ).toEqual(['Settings', 'View', 'About']);
+  ).toEqual(['File', 'Settings', 'View', 'About']);
   expect(
     screen.getByRole('status', { name: 'Active editor buffer' }),
   ).not.toBeEmptyDOMElement();
@@ -617,26 +631,9 @@ it('FR-WS-020 keeps the existing document consumer while every future shell facs
   expect(dialog.querySelectorAll('h2')).toHaveLength(1);
   expect(dialog).toHaveTextContent('Appearance');
 
-  for (const unavailableFutureSurface of [
-    /\bfile\b/i,
-    /launcher/i,
-    /recent/i,
-    /zero[ -]?document/i,
-    /assistant/i,
-    /new document/i,
-    /open(?: folder)?/i,
-  ]) {
-    expect(
-      screen.queryByText(unavailableFutureSurface),
-    ).not.toBeInTheDocument();
-  }
-  expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
-  expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'File' })).toBeInTheDocument();
   expect(
-    screen.queryByRole('button', { name: /assistant/i }),
-  ).not.toBeInTheDocument();
-  expect(
-    screen.queryByRole('button', { name: /(?:new|open)/i }),
+    screen.queryByRole('complementary', { name: /assistant/i }),
   ).not.toBeInTheDocument();
 });
 

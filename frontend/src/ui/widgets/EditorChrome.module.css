@@ -1,0 +1,224 @@
+.chrome {
+  display: grid;
+  gap: var(--editor-view-gap);
+  min-width: 0;
+  overflow: visible;
+  position: relative;
+}
+
+.tabStrip {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: var(--control-gap);
+  min-inline-size: 32rem;
+  padding-block-end: var(--control-gap);
+}
+
+.tabItem,
+.group,
+.utilityGroup,
+.rightGroup,
+.overflowArrangement {
+  align-items: center;
+  display: flex;
+  gap: var(--control-gap);
+  min-width: 0;
+}
+
+.tabItem {
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  padding-inline-start: var(--control-padding);
+}
+
+.tab,
+.tabClose,
+.tabAdd,
+.action,
+.overflow summary {
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
+  color: var(--text);
+  font: inherit;
+}
+
+.tab,
+.tabClose,
+.tabAdd,
+.action {
+  cursor: pointer;
+  padding: var(--control-padding);
+  white-space: nowrap;
+}
+
+.actionIcon {
+  align-items: center;
+  display: inline-flex;
+  font-weight: 700;
+  justify-content: center;
+  min-inline-size: 1.2rem;
+}
+
+.tab {
+  border: 0;
+  padding-inline-start: 0;
+}
+
+.tabClose,
+.tabAdd {
+  border: 0;
+}
+
+.modifiedDot {
+  color: var(--accent);
+  padding-inline-end: var(--control-gap);
+}
+
+.toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--control-gap);
+  min-width: 0;
+  overflow: visible;
+}
+
+.utilityGroup {
+  flex: 0 1 auto;
+}
+
+.rightGroup {
+  flex: 0 1 auto;
+  margin-inline-start: auto;
+}
+
+.group {
+  flex: 0 1 auto;
+}
+
+.action {
+  border-radius: var(--control-radius);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action:disabled,
+.tab:disabled,
+.tabClose:disabled,
+.tabAdd:disabled {
+  cursor: not-allowed;
+  opacity: var(--disabled-opacity);
+}
+
+.action:focus-visible,
+.tab:focus-visible,
+.tabClose:focus-visible,
+.tabAdd:focus-visible,
+.overflow summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.action[aria-checked='true'],
+.action[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.overflow {
+  display: none;
+  flex: 0 0 auto;
+}
+
+.overflow summary {
+  border-radius: var(--control-radius);
+  cursor: pointer;
+  list-style: none;
+  padding: var(--control-padding);
+}
+
+.overflow summary::-webkit-details-marker {
+  display: none;
+}
+
+.overflowContent {
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  box-shadow: var(--win-shadow);
+  display: none;
+  gap: var(--control-gap);
+  grid-template-columns: minmax(0, 1fr);
+  inline-size: min(20rem, calc(100vw - 2 * var(--app-gap)));
+  padding: var(--control-gap);
+  position: absolute;
+  z-index: var(--z-dropdown);
+}
+
+.overflowAt768,
+.overflowAt375 {
+  display: contents;
+}
+
+.overflow[open] .overflowContent {
+  display: grid;
+}
+
+.overflowArrangement {
+  flex-wrap: wrap;
+}
+
+.overflowArrangement .action {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 768px) {
+  .overflow {
+    display: block;
+  }
+
+  .relocateAt768 {
+    display: none;
+  }
+
+  .overflowContent {
+    inset-inline-end: var(--control-gap);
+  }
+
+  .overflow[open] .overflowContent {
+    display: grid;
+  }
+}
+
+@media (min-width: 769px) {
+  .overflow {
+    display: none;
+  }
+}
+
+@media (max-width: 376px) {
+  .relocateAt375 {
+    display: none;
+  }
+
+  .toolbar {
+    gap: var(--control-gap);
+  }
+}
+
+@media (min-width: 377px) {
+  .overflowAt375 {
+    display: none;
+  }
+}
