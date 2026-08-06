@@ -22,7 +22,6 @@ import {
 } from '../../logic/hooks/useSyncedBuffer';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { setViewArrangement } from '../../logic/store/docViewCommands';
-import { setWorkspaceVisible } from '../../logic/store/uiLayoutCommands';
 import type {
   ActiveBuffer,
   DocumentView,
@@ -223,9 +222,6 @@ const EditorView: React.FC<EditorViewProps> = ({
     }
     return state.documents.byId[activeBuffer.documentId];
   });
-  const workspaceVisible = useAppSelector(
-    (state) => state.ui.layout.sidebarVisible ?? true,
-  );
   const onArrangementChange = useCallback(
     (nextArrangement: ViewArrangement): void => {
       if (nextArrangement === 'preview') {
@@ -266,10 +262,6 @@ const EditorView: React.FC<EditorViewProps> = ({
         <EditorChrome
           arrangement={arrangement}
           onArrangementChange={onArrangementChange}
-          onWorkspaceVisibilityChange={(visible): void => {
-            void dispatch(setWorkspaceVisible(visible));
-          }}
-          workspaceVisible={workspaceVisible}
         />
       </header>
       <div className={styles.panes}>

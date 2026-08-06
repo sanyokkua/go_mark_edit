@@ -24,8 +24,6 @@ import { useModalState } from './modalStateContext';
 export interface EditorChromeProps {
   arrangement: ViewArrangement;
   onArrangementChange: (arrangement: ViewArrangement) => void;
-  workspaceVisible?: boolean;
-  onWorkspaceVisibilityChange?: (visible: boolean) => void;
 }
 
 const textActions = ['bold', 'italic', 'strike', 'inline-code'] as const;
@@ -126,8 +124,6 @@ function actionButtons(
 const EditorChrome: React.FC<EditorChromeProps> = ({
   arrangement,
   onArrangementChange,
-  onWorkspaceVisibilityChange,
-  workspaceVisible = true,
 }: EditorChromeProps): React.JSX.Element => {
   const commands = useContext(DocumentCommandContext);
   const activeBuffer = useContext(EditorSessionContext);
@@ -285,15 +281,10 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         }}
         onClick={(): void => requestArrangement(next)}
       >
-        <span aria-hidden="true" className={styles.actionIcon}>
-          {actionGlyph(entry.id)}
-        </span>
+        {t(entry.labelKey)}
       </button>
     );
   };
-
-  const sidebarEntry = action('toggle-sidebar');
-  const assistantEntry = action('toggle-assistant');
 
   return (
     <div className={styles.chrome}>
@@ -351,29 +342,6 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         className={styles.toolbar}
         role="toolbar"
       >
-        <div className={styles.utilityGroup}>
-          {onWorkspaceVisibilityChange === undefined ? null : (
-            <button
-              aria-pressed={workspaceVisible}
-              aria-label={t(sidebarEntry.accessibilityKey)}
-              className={styles.action}
-              data-action-id={sidebarEntry.id}
-              data-icon={sidebarEntry.id}
-              type="button"
-              onClick={(): void => {
-                void dispatchAction('toggle-sidebar', {
-                  invoke: (): void =>
-                    onWorkspaceVisibilityChange(!workspaceVisible),
-                  windowFocused: true,
-                });
-              }}
-            >
-              <span aria-hidden="true" className={styles.actionIcon}>
-                {actionGlyph(sidebarEntry.id)}
-              </span>
-            </button>
-          )}
-        </div>
         {actionButtons(
           textActions.map((id) => action(id).id),
           onActivate,
@@ -456,26 +424,6 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
             </div>
           ) : null}
         </details>
-        <div className={styles.rightGroup} data-action-group="right">
-          <button
-            aria-label={t(assistantEntry.accessibilityKey)}
-            className={styles.action}
-            data-action-id={assistantEntry.id}
-            data-availability={assistantEntry.availability.kind}
-            data-icon={assistantEntry.id}
-            disabled={assistantEntry.availability.kind === 'deferred'}
-            title={
-              assistantEntry.availability.kind === 'deferred'
-                ? t('action.unavailable')
-                : undefined
-            }
-            type="button"
-          >
-            <span aria-hidden="true" className={styles.actionIcon}>
-              {actionGlyph(assistantEntry.id)}
-            </span>
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -662,7 +662,7 @@ test('STORY-018-AC-4 verifies view-mode and View-menu interaction', async ({
 
   const viewTrigger = page.getByRole('button', { name: 'View' });
   await viewTrigger.click();
-  const viewMenu = page.getByRole('menu', { name: 'View' });
+  const viewMenu = page.getByRole('menu', { name: 'View options' });
   const viewArrangement = viewMenu.getByRole('group', {
     name: 'View arrangement',
   });

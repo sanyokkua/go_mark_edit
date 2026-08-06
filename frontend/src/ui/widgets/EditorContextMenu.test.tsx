@@ -68,6 +68,9 @@ it('T071 clamps context-menu placement and uses the selection captured at openin
     configurable: true,
     value: 240,
   });
+  const bounds = jest
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockReturnValue(new DOMRect(0, 0, 280, 200));
   const commands = {
     getContent: jest.fn(() => ({
       status: 'available' as const,
@@ -111,7 +114,7 @@ it('T071 clamps context-menu placement and uses the selection captured at openin
     clientX: 300,
     clientY: 220,
   });
-  expect(screen.getByRole('menu')).toHaveStyle({ left: '16px', top: '16px' });
+  expect(screen.getByRole('menu')).toHaveStyle({ left: '32px', top: '12px' });
   fireEvent.click(screen.getByRole('menuitem', { name: 'Bold' }));
   await waitFor(() =>
     expect(commands.replaceRange).toHaveBeenCalledWith(
@@ -120,6 +123,38 @@ it('T071 clamps context-menu placement and uses the selection captured at openin
       expect.anything(),
     ),
   );
+  bounds.mockRestore();
+});
+
+it('T089 measures the rendered context menu and flips it above a lower viewport pointer', () => {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: 320,
+  });
+  Object.defineProperty(window, 'innerHeight', {
+    configurable: true,
+    value: 480,
+  });
+  const bounds = jest
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockReturnValue(new DOMRect(0, 0, 280, 300));
+
+  render(
+    <EditorContextMenu>
+      <textarea aria-label="Markdown source" />
+    </EditorContextMenu>,
+  );
+
+  fireEvent.contextMenu(screen.getByLabelText('Markdown source'), {
+    clientX: 300,
+    clientY: 460,
+  });
+
+  expect(screen.getByRole('menu')).toHaveStyle({
+    left: '32px',
+    top: '152px',
+  });
+  bounds.mockRestore();
 });
 
 it('T030 keeps the originating session callback available without tab or assistant state', () => {

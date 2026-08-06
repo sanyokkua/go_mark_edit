@@ -7,6 +7,7 @@
 }
 
 .tabStrip {
+  backdrop-filter: var(--blur);
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
@@ -24,8 +25,6 @@
 
 .tabItem,
 .group,
-.utilityGroup,
-.rightGroup,
 .overflowArrangement {
   align-items: center;
   display: flex;
@@ -34,6 +33,7 @@
 }
 
 .tabItem {
+  backdrop-filter: var(--blur);
   background: var(--surface-raised);
   border: var(--control-border-width) solid var(--border);
   border-radius: var(--control-radius);
@@ -106,7 +106,9 @@
 }
 
 .action {
-  border-radius: var(--control-radius);
+  background: transparent;
+  border-color: transparent;
+  border-radius: calc(var(--control-radius) / 2);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -136,6 +138,14 @@
   color: var(--accent-contrast);
 }
 
+.group {
+  background: var(--surface-raised);
+  backdrop-filter: var(--blur);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  padding: var(--control-gap);
+}
+
 .overflow {
   display: none;
   flex: 0 0 auto;
@@ -153,6 +163,7 @@
 }
 
 .overflowContent {
+  backdrop-filter: var(--blur);
   background: var(--surface-raised);
   border: var(--control-border-width) solid var(--border);
   border-radius: var(--control-radius);

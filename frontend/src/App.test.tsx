@@ -278,7 +278,7 @@ it('STORY-007-AC-3 keeps the reserved region free of an Assistant surface', () =
   expect(shellSource).not.toMatch(/\b(?:fetch|XMLHttpRequest)\b/);
 });
 
-it('T018 keeps the feature shell ordered and future behavior explicitly bounded at desktop and 375px widths', () => {
+it('T018 keeps the feature shell ordered and future behavior explicitly bounded at desktop and 375px widths', async () => {
   const RealAppShell = jest.requireActual<
     typeof import('./ui/widgets/AppShell')
   >('./ui/widgets/AppShell').default;
@@ -345,7 +345,7 @@ it('T018 keeps the feature shell ordered and future behavior explicitly bounded 
     within(screen.getByRole('navigation', { name: 'Application actions' }))
       .getAllByRole('button')
       .map((button) => button.textContent),
-  ).toEqual(['File', 'Settings', 'View', 'About']);
+  ).toEqual(['File', 'Settings', 'View', 'About', '☰', '✦']);
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(
     screen.getByRole('menuitem', { name: 'Appearance' }),
@@ -356,7 +356,7 @@ it('T018 keeps the feature shell ordered and future behavior explicitly bounded 
   fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), {
     key: 'ArrowDown',
   });
-  const viewMenu = screen.getByRole('menu', { name: 'View' });
+  const viewMenu = await screen.findByRole('menu', { name: 'View options' });
   expect(
     within(viewMenu).getByRole('menuitem', { name: 'Toggle Assistant' }),
   ).toHaveAttribute('aria-disabled', 'true');
@@ -620,7 +620,7 @@ it('FR-WS-020 keeps the existing document consumer while every future shell facs
     Array.from(actions.querySelectorAll('button')).map(
       (button) => button.textContent,
     ),
-  ).toEqual(['File', 'Settings', 'View', 'About']);
+  ).toEqual(['File', 'Settings', 'View', 'About', '☰', '✦']);
   expect(
     screen.getByRole('status', { name: 'Active editor buffer' }),
   ).not.toBeEmptyDOMElement();

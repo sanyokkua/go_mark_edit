@@ -3,7 +3,6 @@ import {
   fireEvent,
   render as rtlRender,
   screen,
-  waitFor,
 } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
@@ -19,14 +18,7 @@ const render = (ui: Parameters<typeof rtlRender>[0]) =>
   rtlRender(<Provider store={store}>{ui}</Provider>);
 
 it('T018 renders the complete toolbar groups and visual tab fixtures', () => {
-  render(
-    <EditorChrome
-      arrangement="split"
-      onArrangementChange={jest.fn()}
-      onWorkspaceVisibilityChange={jest.fn()}
-      workspaceVisible
-    />,
-  );
+  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
 
   expect(
     screen.getByRole('tablist', { name: 'Document tabs' }),
@@ -44,23 +36,10 @@ it('T018 renders the complete toolbar groups and visual tab fixtures', () => {
   ).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Table' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Format' })).toBeDisabled();
-  expect(
-    screen.getByRole('button', { name: 'Toggle Assistant' }),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole('button', { name: 'Toggle Assistant' }),
-  ).toBeDisabled();
 });
 
 it('T068 uses icon-first toolbar controls while retaining localized accessible names', () => {
-  render(
-    <EditorChrome
-      arrangement="split"
-      onArrangementChange={jest.fn()}
-      onWorkspaceVisibilityChange={jest.fn()}
-      workspaceVisible
-    />,
-  );
+  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
 
   const bold = screen.getByRole('button', { name: 'Bold' });
   expect(bold).toHaveAttribute('data-icon', 'bold');
@@ -68,19 +47,11 @@ it('T068 uses icon-first toolbar controls while retaining localized accessible n
   expect(screen.getByRole('button', { name: 'Format' })).toHaveTextContent(
     'Format',
   );
-  expect(
-    screen.getByRole('button', { name: 'Toggle Assistant' }),
-  ).toHaveAttribute('data-icon', 'toggle-assistant');
 });
 
 it('T072 scopes overflow relocation to the documented 768 and 375 width groups', () => {
   const { container } = render(
-    <EditorChrome
-      arrangement="split"
-      onArrangementChange={jest.fn()}
-      onWorkspaceVisibilityChange={jest.fn()}
-      workspaceVisible
-    />,
+    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
   );
   fireEvent.click(
     container.querySelector('summary[aria-label="More actions"]')!,
@@ -128,16 +99,10 @@ it('T018 keeps visual Assistant and future tab controls inert', () => {
   const invoke = jest.fn();
   render(
     <DocumentCommandContext.Provider value={null}>
-      <EditorChrome
-        arrangement="editor"
-        onArrangementChange={jest.fn()}
-        onWorkspaceVisibilityChange={invoke}
-        workspaceVisible
-      />
+      <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
     </DocumentCommandContext.Provider>,
   );
 
-  fireEvent.click(screen.getByRole('button', { name: 'Toggle Assistant' }));
   fireEvent.click(
     screen.getByRole('button', { name: 'Close release-notes.md' }),
   );
@@ -148,59 +113,19 @@ it('T018 keeps visual Assistant and future tab controls inert', () => {
   ).not.toBeInTheDocument();
 });
 
-it('T048 routes Toggle Sidebar through the scope-aware dispatcher', async () => {
-  const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
-  const onWorkspaceVisibilityChange = jest.fn();
-  render(
-    <EditorChrome
-      arrangement="editor"
-      onArrangementChange={jest.fn()}
-      onWorkspaceVisibilityChange={onWorkspaceVisibilityChange}
-      workspaceVisible
-    />,
+it('T091 renders the text-labelled arrangement island in the toolbar', () => {
+  render(<EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />);
+
+  expect(screen.getByRole('radio', { name: 'Editor' })).toHaveTextContent(
+    'Editor',
   );
-
-  fireEvent.click(screen.getByRole('button', { name: 'Toggle Sidebar' }));
-
-  await waitFor(() => {
-    expect(dispatch).toHaveBeenCalledWith(
-      'toggle-sidebar',
-      expect.objectContaining({
-        invoke: expect.any(Function),
-        windowFocused: true,
-      }),
-    );
-    expect(onWorkspaceVisibilityChange).toHaveBeenCalledWith(false);
-  });
-  dispatch.mockRestore();
-});
-
-it('T049 derives the deferred Assistant control from the registry at the toolbar end', () => {
-  render(
-    <EditorChrome
-      arrangement="editor"
-      onArrangementChange={jest.fn()}
-      onWorkspaceVisibilityChange={jest.fn()}
-      workspaceVisible
-    />,
+  expect(screen.getByRole('radio', { name: 'Split' })).toHaveTextContent(
+    'Split',
   );
-
-  const assistant = screen.getByRole('button', { name: 'Toggle Assistant' });
-  expect(assistant).toHaveAttribute('data-action-id', 'toggle-assistant');
-  expect(assistant).toHaveAttribute('data-availability', 'deferred');
-  expect(assistant).toBeDisabled();
-  expect(assistant.closest('[data-action-group="right"]')).toBeInTheDocument();
 });
 
 it('T050 keeps representative tabs unavailable and non-interactive', () => {
-  render(
-    <EditorChrome
-      arrangement="editor"
-      onArrangementChange={jest.fn()}
-      onWorkspaceVisibilityChange={jest.fn()}
-      workspaceVisible
-    />,
-  );
+  render(<EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />);
 
   expect(screen.getByRole('tab', { name: 'release-notes.md' })).toBeDisabled();
   expect(screen.getByRole('tab', { name: 'spec-draft.md' })).toBeDisabled();

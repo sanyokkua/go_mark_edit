@@ -6,20 +6,23 @@
 
 .menu {
   background: var(--surface-raised);
+  backdrop-filter: var(--blur);
   border: var(--control-border-width) solid var(--border);
   border-radius: var(--control-radius);
   box-shadow: var(--win-shadow);
   display: grid;
-  gap: var(--control-gap);
+  gap: 0;
   min-inline-size: 14rem;
+  max-block-size: calc(100vh - 1rem);
   max-inline-size: calc(100vw - 2rem);
   padding: var(--control-gap);
   position: fixed;
+  overflow: auto;
   z-index: var(--z-dropdown);
 }
 
 .item {
-  background: var(--surface-raised);
+  background: transparent;
   border: var(--control-border-width) solid transparent;
   border-radius: var(--control-radius);
   color: var(--text);
@@ -31,6 +34,7 @@
 }
 
 .menu > div {
+  display: grid;
   inline-size: 100%;
 }
 
@@ -48,4 +52,5 @@
 .separator {
   background: var(--border);
   block-size: var(--control-border-width);
+  margin-block: var(--control-gap);
 }

@@ -70,8 +70,20 @@ for (const width of widths) {
         await expect(
           page.getByRole('tab', { name: 'release-notes.md' }),
         ).toBeVisible();
+        if (width === 375) {
+          await page
+            .getByRole('button', { name: 'More actions' })
+            .first()
+            .click();
+          await page.getByRole('menuitem', { name: 'View' }).click();
+        } else {
+          await page.getByRole('button', { name: 'View' }).click();
+        }
         await expect(
-          page.getByRole('button', { name: 'Toggle Assistant' }),
+          page.getByRole('menu', { name: 'View options' }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole('menuitem', { name: 'Toggle Assistant' }),
         ).toBeDisabled();
         await expect(
           page.getByRole('button', { name: 'Format' }),
@@ -149,6 +161,39 @@ for (const width of widths) {
           await expect(
             page.getByRole('button', { name: 'More actions' }).first(),
           ).toBeFocused();
+
+          await openShellItem('View');
+          const view = page.getByRole('menu', { name: 'View options' });
+          await expect(view).toBeVisible();
+          const viewBox = await view.boundingBox();
+          expect(viewBox).not.toBeNull();
+          expect(viewBox!.x).toBeGreaterThanOrEqual(0);
+          expect(viewBox!.x + viewBox!.width).toBeLessThanOrEqual(width);
+          const shell = page.getByTestId('application-shell');
+          const workspaceVisible = await shell.getAttribute(
+            'data-workspace-visible',
+          );
+          await view
+            .getByRole('menuitemcheckbox', { name: 'Toggle Sidebar' })
+            .click();
+          await expect(shell).not.toHaveAttribute(
+            'data-workspace-visible',
+            workspaceVisible ?? '',
+          );
+          await expect(
+            page.getByRole('complementary', { name: 'Workspace' }),
+          ).toBeHidden();
+          await openShellItem('View');
+          await view
+            .getByRole('menuitemcheckbox', { name: 'Toggle Sidebar' })
+            .click();
+          await expect(shell).toHaveAttribute(
+            'data-workspace-visible',
+            workspaceVisible ?? '',
+          );
+          await expect(
+            page.getByRole('complementary', { name: 'Workspace' }),
+          ).toBeVisible();
         }
 
         if (width !== 375) {
@@ -158,7 +203,8 @@ for (const width of widths) {
           const viewTrigger = page.getByRole('button', { name: 'View' });
           await viewTrigger.click();
           await expect(file).toBeHidden();
-          const view = page.getByRole('menu', { name: 'View' });
+          await expect(viewTrigger).toHaveAttribute('aria-expanded', 'true');
+          const view = page.getByRole('menu', { name: 'View options' });
           await expect(view).toBeVisible();
           const viewBox = await view.boundingBox();
           expect(viewBox).not.toBeNull();
@@ -170,7 +216,7 @@ for (const width of widths) {
 
           const shell = page.getByTestId('application-shell');
           const sidebar = page
-            .getByRole('toolbar', { name: 'Document toolbar' })
+            .getByRole('navigation', { name: 'Application actions' })
             .getByRole('button', { name: 'Toggle Sidebar' });
           const workspaceVisible = await shell.getAttribute(
             'data-workspace-visible',
@@ -188,7 +234,7 @@ for (const width of widths) {
         }
 
         await openShellItem('About');
-        const aboutMenu = page.getByRole('menu', { name: 'About GoMarkEdit' });
+        const aboutMenu = page.getByRole('menu', { name: 'About' });
         await expect(aboutMenu).toBeVisible();
         await aboutMenu
           .getByRole('menuitem', { name: 'About GoMarkEdit' })
@@ -347,9 +393,15 @@ for (const width of widths) {
               : 'minimal',
         );
         await page.keyboard.press('Escape');
-        const sidebar = page.getByRole('button', { name: 'Toggle Sidebar' });
         if (width === 375) {
-          await sidebar.dispatchEvent('click');
+          await page
+            .getByRole('button', { name: 'More actions' })
+            .first()
+            .click();
+          await page.getByRole('menuitem', { name: 'View' }).click();
+          await page
+            .getByRole('menuitemcheckbox', { name: 'Toggle Sidebar' })
+            .click();
           await expect(page.getByTestId('application-shell')).toHaveAttribute(
             'data-workspace-visible',
             'false',
@@ -387,37 +439,48 @@ for (const width of widths) {
         await replaceEditorText();
         await editor.press(`${modifier}+a`);
         const editorSurface = page.locator('[data-editor-surface]');
-        if (width === 375) {
-          await editorSurface.dispatchEvent('contextmenu', {
-            bubbles: true,
-            cancelable: true,
-            clientX: 20,
-            clientY: 20,
-          });
-        } else {
-          await editorSurface.click({
-            button: 'right',
-            position: { x: 20, y: 20 },
-          });
-        }
+        await editorSurface.click({
+          button: 'right',
+          position: { x: 20, y: 20 },
+        });
         await page.getByRole('menuitem', { name: 'Bold' }).click({
           force: width === 375,
         });
         await expect(editor).toHaveValue('**hello**');
 
         if (width === 375) {
-          await sidebar.dispatchEvent('click');
+          await page
+            .getByRole('button', { name: 'More actions' })
+            .first()
+            .click();
+          await page.getByRole('menuitem', { name: 'View' }).click();
+          await page
+            .getByRole('menuitemcheckbox', { name: 'Toggle Sidebar' })
+            .click();
         } else {
-          await sidebar.click();
+          await page
+            .getByRole('navigation', { name: 'Application actions' })
+            .getByRole('button', { name: 'Toggle Sidebar' })
+            .click();
         }
         await expect(page.getByTestId('application-shell')).toHaveAttribute(
           'data-workspace-visible',
           width === 375 ? 'true' : 'false',
         );
         if (width === 375) {
-          await sidebar.dispatchEvent('click');
+          await page
+            .getByRole('button', { name: 'More actions' })
+            .first()
+            .click();
+          await page.getByRole('menuitem', { name: 'View' }).click();
+          await page
+            .getByRole('menuitemcheckbox', { name: 'Toggle Sidebar' })
+            .click();
         } else {
-          await sidebar.click();
+          await page
+            .getByRole('navigation', { name: 'Application actions' })
+            .getByRole('button', { name: 'Toggle Sidebar' })
+            .click();
         }
         await expect(page.getByTestId('application-shell')).toHaveAttribute(
           'data-workspace-visible',

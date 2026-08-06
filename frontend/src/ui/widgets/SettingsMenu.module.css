@@ -3,10 +3,8 @@
 }
 
 .trigger,
-.content,
 .item {
-  border: var(--control-border-width) solid var(--border);
-  background: var(--surface-raised);
+  background: transparent;
   color: var(--text);
   font: inherit;
 }
@@ -48,11 +46,15 @@
 
 .trigger,
 .item {
+  border: var(--control-border-width) solid transparent;
   border-radius: var(--control-radius);
   padding: var(--control-padding);
 }
 
 .content {
+  backdrop-filter: var(--blur);
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
   box-sizing: border-box;
   border-radius: var(--control-radius);
   box-shadow: var(--win-shadow);
@@ -75,4 +77,10 @@
 .item {
   cursor: pointer;
   inline-size: 100%;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--surface);
+  border-color: var(--border);
 }

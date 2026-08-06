@@ -40,7 +40,7 @@ afterEach(() => {
   });
 });
 
-it('T018 renders File, Settings, View, About in binding order with exact deferred inventories', () => {
+it('T018 renders File, Settings, View, About in binding order with exact deferred inventories', async () => {
   const onAbout = jest.fn();
   render(
     <ShellMenuRow
@@ -75,7 +75,7 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
   fireEvent.keyDown(within(menu).getByRole('button', { name: 'View' }), {
     key: 'ArrowDown',
   });
-  const viewMenu = screen.getByRole('menu');
+  const viewMenu = await screen.findByRole('menu');
   expect(viewMenu).toBeVisible();
   fireEvent.keyDown(viewMenu, { key: 'Escape' });
 
@@ -141,6 +141,52 @@ it('T018 moves the same ordered top-level actions into overflow at narrow width'
   fireEvent.click(screen.getByRole('menuitem', { name: 'About' }));
   fireEvent.click(screen.getByRole('menuitem', { name: 'About GoMarkEdit' }));
   expect(onAbout).toHaveBeenCalledTimes(1);
+});
+
+it('T091 places the functional sidebar and deferred Assistant controls at the menu-row edge', () => {
+  const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
+  const onWorkspaceVisibilityChange = jest.fn();
+  render(
+    <ShellMenuRow
+      modalOpen={false}
+      onAbout={jest.fn()}
+      settingsMenuProps={settingsMenuProps}
+      viewMenuProps={{
+        ...viewMenuProps,
+        arrangement: 'split',
+        onArrangementChange: jest.fn(),
+        onWorkspaceVisibilityChange,
+        workspaceVisible: true,
+      }}
+    />,
+  );
+
+  const menu = screen.getByRole('navigation', {
+    name: 'Application actions',
+  });
+  const controls = menu.querySelector('[data-menu-row-actions]');
+  expect(controls).not.toBeNull();
+  expect(
+    within(controls as HTMLElement).getByRole('button', {
+      name: 'Toggle Sidebar',
+    }),
+  ).toBeEnabled();
+  expect(
+    within(controls as HTMLElement).getByRole('button', {
+      name: 'Toggle Assistant',
+    }),
+  ).toBeDisabled();
+  fireEvent.click(
+    within(controls as HTMLElement).getByRole('button', {
+      name: 'Toggle Sidebar',
+    }),
+  );
+  expect(dispatch).toHaveBeenCalledWith(
+    'toggle-sidebar',
+    expect.objectContaining({ invoke: expect.any(Function) }),
+  );
+  expect(onWorkspaceVisibilityChange).toHaveBeenCalledWith(false);
+  dispatch.mockRestore();
 });
 
 it('T052 preserves the narrow Open Recent submenu fixtures as deferred items', () => {
@@ -257,6 +303,15 @@ it('T060 keeps a localized short About trigger separate from the long catalogue 
   expect(shellStyles).toMatch(/text-overflow:\s*ellipsis/);
 });
 
+it('T089 registers each desktop menu label as a Radix popup anchor', () => {
+  const shellSource = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    'utf8',
+  );
+
+  expect(shellSource.match(/<DropdownMenu\.Trigger asChild>/g)).toHaveLength(3);
+});
+
 it('T061 dispatches Settings Appearance and About actions through the canonical route', async () => {
   const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
   const onAbout = jest.fn();
@@ -304,7 +359,7 @@ it('T061 dispatches Settings Appearance and About actions through the canonical 
   dispatch.mockRestore();
 });
 
-it('T081 gives View popup ownership after File yields to it', () => {
+it('T081 gives View popup ownership after File yields to it', async () => {
   render(
     <ShellMenuRow
       modalOpen={false}
@@ -325,10 +380,46 @@ it('T081 gives View popup ownership after File yields to it', () => {
     key: 'ArrowDown',
   });
   expect(screen.queryByRole('menu', { name: 'File' })).not.toBeInTheDocument();
-  const viewMenu = screen.getByRole('menu');
+  const viewMenu = await screen.findByRole('menu');
   expect(viewMenu).toBeVisible();
 
   fireEvent.keyDown(viewMenu, { key: 'Escape' });
   expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   expect(view).toHaveFocus();
+});
+
+it('T089 opens View from its menu-row pointer trigger and restores that trigger on Escape', async () => {
+  render(
+    <ShellMenuRow
+      modalOpen={false}
+      onAbout={jest.fn()}
+      settingsMenuProps={settingsMenuProps}
+      viewMenuProps={viewMenuProps}
+    />,
+  );
+
+  const view = screen.getByRole('button', { name: 'View' });
+  fireEvent.pointerDown(view);
+  act(() => view.focus());
+  fireEvent.click(view);
+
+  const viewMenu = await screen.findByRole('menu', { name: 'View options' });
+  expect(viewMenu).toBeVisible();
+  fireEvent.keyDown(viewMenu, { key: 'Escape' });
+  expect(view).toHaveFocus();
+});
+
+it('T093 makes the visible View control the Radix menu trigger', () => {
+  render(
+    <ShellMenuRow
+      modalOpen={false}
+      onAbout={jest.fn()}
+      settingsMenuProps={settingsMenuProps}
+      viewMenuProps={viewMenuProps}
+    />,
+  );
+
+  expect(screen.getByRole('button', { name: 'View' })).toHaveAttribute(
+    'data-view-trigger',
+  );
 });

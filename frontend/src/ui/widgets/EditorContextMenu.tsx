@@ -1,6 +1,7 @@
 import {
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PropsWithChildren,
@@ -49,6 +50,26 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
   const [point, setPoint] = useState<{ left: number; top: number } | null>(
     null,
   );
+
+  useLayoutEffect((): void => {
+    if (point === null || menuRef.current === null) return;
+
+    const margin = 8;
+    const bounds = menuRef.current.getBoundingClientRect();
+    const left = Math.min(
+      Math.max(margin, point.left),
+      Math.max(margin, window.innerWidth - bounds.width - margin),
+    );
+    const below = point.top;
+    const above = point.top - bounds.height - margin;
+    const top =
+      below + bounds.height <= window.innerHeight - margin
+        ? below
+        : Math.max(margin, above);
+    if (left !== point.left || top !== point.top) {
+      setPoint({ left, top });
+    }
+  }, [point]);
 
   useEffect((): (() => void) => {
     const dismiss = (event: PointerEvent): void => {
@@ -169,8 +190,8 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           selection?.status === 'available' ? selection.value : null;
         openerRef.current = event.target as HTMLElement;
         setPoint({
-          left: Math.max(16, Math.min(event.clientX, window.innerWidth - 304)),
-          top: Math.max(16, Math.min(event.clientY, window.innerHeight - 224)),
+          left: Math.max(8, event.clientX),
+          top: Math.max(8, event.clientY),
         });
       }}
     >

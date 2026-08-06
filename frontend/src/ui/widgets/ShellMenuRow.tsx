@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom';
 import { t } from '../../i18n';
 import {
   actionsForSurface,
+  getAction,
   type ActionId,
 } from '../../logic/actions/actionRegistry';
 import {
@@ -65,6 +66,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   const pendingViewOpenerRef = useRef<HTMLButtonElement | null>(null);
   const menuOpenerRef = useRef<HTMLElement | null>(null);
   const overflowTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const narrowPopupRef = useRef<HTMLDivElement | null>(null);
   const settingsOpen = activeMenu === 'settings';
   const viewOpen = activeMenu === 'view';
   const fileOpen = activeMenu === 'file';
@@ -106,22 +108,38 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     menuOpenerRef.current = null;
   }, [activeMenu]);
 
+  useEffect((): (() => void) | undefined => {
+    if (!narrow || !viewOpen) return undefined;
+
+    const dismiss = (event: PointerEvent): void => {
+      const menu = document.querySelector<HTMLElement>(
+        '[role="menu"][aria-label="View options"]',
+      );
+      if (menu?.contains(event.target as Node)) return;
+      setViewOpen(false);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return (): void => document.removeEventListener('pointerdown', dismiss);
+  }, [narrow, viewOpen]);
+
   const updateNarrowPopupAnchor = useCallback((): void => {
     const bounds = overflowTriggerRef.current?.getBoundingClientRect();
     if (bounds === undefined) return;
 
     const margin = 8;
-    const minimumMenuWidth = 160;
+    const popupBounds = narrowPopupRef.current?.getBoundingClientRect();
+    const minimumMenuWidth = popupBounds?.width || 160;
+    const popupHeight = popupBounds?.height || 0;
     const maximumLeft = Math.max(
       margin,
       window.innerWidth - minimumMenuWidth - margin,
     );
     setNarrowPopupAnchor({
       left: Math.min(Math.max(margin, bounds.left), maximumLeft),
-      top: Math.max(
-        margin,
-        Math.min(bounds.bottom, window.innerHeight - margin),
-      ),
+      top:
+        bounds.bottom + popupHeight <= window.innerHeight - margin
+          ? Math.max(margin, bounds.bottom)
+          : Math.max(margin, bounds.top - popupHeight - margin),
     });
   }, []);
 
@@ -193,6 +211,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   );
   const fileActions = actionsForSurface('file-menu');
   const aboutActions = actionsForSurface('about-menu');
+  const sidebarAction = getAction('toggle-sidebar');
+  const assistantAction = getAction('toggle-assistant');
   const action = (id: ShellAction['id']): ShellAction => {
     const found = actions.find((candidate) => candidate.id === id);
     if (found === undefined) {
@@ -213,18 +233,21 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     }
     pendingViewOpen.current = open;
     if (open) {
-      menuOpenerRef.current =
-        pendingViewOpenerRef.current ??
-        (narrow
-          ? overflowTriggerRef.current
-          : document.activeElement instanceof HTMLElement
-            ? document.activeElement
-            : null);
+      if (menuOpenerRef.current === null) {
+        menuOpenerRef.current =
+          pendingViewOpenerRef.current ??
+          (narrow
+            ? overflowTriggerRef.current
+            : document.activeElement instanceof HTMLElement
+              ? document.activeElement
+              : null);
+      }
       pendingViewOpenerRef.current = null;
     }
     setSettingsOpen(false);
     setViewOpen(open);
   };
+
   const selectAboutAction = (id: ActionId): void => {
     const selected = actions.find((candidate): boolean => candidate.id === id);
     if (selected === undefined) {
@@ -240,7 +263,6 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     position: 'fixed',
     width: 1,
   };
-
   return (
     <nav aria-label={t('shell.menuLabel')} className={styles.row}>
       {narrow ? (
@@ -282,9 +304,14 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   className={styles.item}
                   disabled={!item.isAvailable()}
                   key={item.id}
-                  onSelect={(): void => {
+                  onSelect={(event): void => {
+                    if (item.id === 'view') {
+                      event.preventDefault();
+                    }
                     setOverflowOpen(false);
                     if (item.id === 'view') {
+                      pendingViewOpen.current = true;
+                      menuOpenerRef.current = overflowTriggerRef.current;
                       requestViewOpen(true);
                       dispatch(item);
                     } else {
@@ -305,35 +332,38 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
             open={!modalOpen && fileOpen}
             onOpenChange={setFileOpen}
           >
-            <button
-              aria-expanded={fileOpen}
-              aria-haspopup="menu"
-              className={styles.trigger}
-              type="button"
-              onClick={(event): void => {
-                menuOpenerRef.current = event.currentTarget;
-                setSettingsOpen(false);
-                setViewOpen(false);
-                setAboutOpen(false);
-                setFileOpen(true);
-              }}
-              onKeyDown={(event): void => {
-                if (
-                  event.key !== 'ArrowDown' &&
-                  event.key !== 'Enter' &&
-                  event.key !== ' '
-                )
-                  return;
-                event.preventDefault();
-                menuOpenerRef.current = event.currentTarget;
-                setSettingsOpen(false);
-                setViewOpen(false);
-                setAboutOpen(false);
-                setFileOpen(true);
-              }}
-            >
-              {t('shell.file')}
-            </button>
+            <DropdownMenu.Trigger asChild>
+              <button
+                aria-expanded={fileOpen}
+                aria-haspopup="menu"
+                className={styles.trigger}
+                type="button"
+                onClick={(event): void => {
+                  event.preventDefault();
+                  menuOpenerRef.current = event.currentTarget;
+                  setSettingsOpen(false);
+                  setViewOpen(false);
+                  setAboutOpen(false);
+                  setFileOpen(true);
+                }}
+                onKeyDown={(event): void => {
+                  if (
+                    event.key !== 'ArrowDown' &&
+                    event.key !== 'Enter' &&
+                    event.key !== ' '
+                  )
+                    return;
+                  event.preventDefault();
+                  menuOpenerRef.current = event.currentTarget;
+                  setSettingsOpen(false);
+                  setViewOpen(false);
+                  setAboutOpen(false);
+                  setFileOpen(true);
+                }}
+              >
+                {t('shell.file')}
+              </button>
+            </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content
                 aria-label={t('shell.file')}
@@ -392,9 +422,14 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
             <ViewMenu
               {...viewMenuProps}
               modal={false}
-              open={!modalOpen && viewOpen}
               modalOpen={modalOpen}
+              open={!modalOpen && viewOpen}
               onOpenChange={requestViewOpen}
+              onTrigger={(): void => {
+                setFileOpen(false);
+                setAboutOpen(false);
+                requestViewOpen(!viewOpen);
+              }}
               onTriggerPointerDown={(trigger): void => {
                 pendingViewOpenerRef.current = trigger;
               }}
@@ -406,35 +441,38 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
             open={!modalOpen && aboutOpen}
             onOpenChange={setAboutOpen}
           >
-            <button
-              aria-expanded={aboutOpen}
-              aria-haspopup="menu"
-              className={styles.trigger}
-              type="button"
-              onClick={(event): void => {
-                menuOpenerRef.current = event.currentTarget;
-                setSettingsOpen(false);
-                setViewOpen(false);
-                setFileOpen(false);
-                setAboutOpen(true);
-              }}
-              onKeyDown={(event): void => {
-                if (
-                  event.key !== 'ArrowDown' &&
-                  event.key !== 'Enter' &&
-                  event.key !== ' '
-                )
-                  return;
-                event.preventDefault();
-                menuOpenerRef.current = event.currentTarget;
-                setSettingsOpen(false);
-                setViewOpen(false);
-                setFileOpen(false);
-                setAboutOpen(true);
-              }}
-            >
-              {t('shell.about')}
-            </button>
+            <DropdownMenu.Trigger asChild>
+              <button
+                aria-expanded={aboutOpen}
+                aria-haspopup="menu"
+                className={styles.trigger}
+                type="button"
+                onClick={(event): void => {
+                  event.preventDefault();
+                  menuOpenerRef.current = event.currentTarget;
+                  setSettingsOpen(false);
+                  setViewOpen(false);
+                  setFileOpen(false);
+                  setAboutOpen(true);
+                }}
+                onKeyDown={(event): void => {
+                  if (
+                    event.key !== 'ArrowDown' &&
+                    event.key !== 'Enter' &&
+                    event.key !== ' '
+                  )
+                    return;
+                  event.preventDefault();
+                  menuOpenerRef.current = event.currentTarget;
+                  setSettingsOpen(false);
+                  setViewOpen(false);
+                  setFileOpen(false);
+                  setAboutOpen(true);
+                }}
+              >
+                {t('shell.about')}
+              </button>
+            </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content
                 aria-label={t(action('about').labelKey)}
@@ -458,11 +496,38 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
         </>
       )}
 
+      {!narrow && viewMenuProps?.onWorkspaceVisibilityChange !== undefined ? (
+        <div className={styles.menuRowActions} data-menu-row-actions>
+          <button
+            aria-label={t(sidebarAction.accessibilityKey)}
+            aria-pressed={viewMenuProps.workspaceVisible ?? true}
+            className={styles.rowAction}
+            data-action-id={sidebarAction.id}
+            type="button"
+            onClick={(): void => dispatch(action('toggle-sidebar'))}
+          >
+            <span aria-hidden="true">☰</span>
+          </button>
+          <button
+            aria-label={t(assistantAction.accessibilityKey)}
+            className={styles.rowAction}
+            data-action-id={assistantAction.id}
+            data-availability={assistantAction.availability.kind}
+            disabled={assistantAction.availability.kind === 'deferred'}
+            title={t('action.unavailable')}
+            type="button"
+          >
+            <span aria-hidden="true">✦</span>
+          </button>
+        </div>
+      ) : null}
+
       {narrow ? (
         <>
           {fileOpen
             ? createPortal(
                 <div
+                  ref={narrowPopupRef}
                   aria-label={t('shell.file')}
                   className={`${styles.overflow} ${styles.narrowOverflow}`}
                   role="menu"
@@ -526,6 +591,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
           {aboutOpen
             ? createPortal(
                 <div
+                  ref={narrowPopupRef}
                   aria-label={t(action('about').labelKey)}
                   className={`${styles.overflow} ${styles.narrowOverflow}`}
                   role="menu"
@@ -563,7 +629,13 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               {...viewMenuProps}
               modal={false}
               open={!modalOpen && viewOpen}
-              onOpenChange={requestViewOpen}
+              onOpenChange={(open): void => {
+                if (open) requestViewOpen(true);
+              }}
+              onWorkspaceVisibilityChange={(visible): void => {
+                viewMenuProps.onWorkspaceVisibilityChange?.(visible);
+                requestViewOpen(false);
+              }}
               anchorStyle={narrowMenuAnchor}
               showTrigger={false}
             />

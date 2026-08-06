@@ -19,7 +19,10 @@ async function openAppearance(page: Page): Promise<void> {
   await expect(page.getByRole('menu', { name: 'Settings menu' })).toBeVisible();
 }
 
-async function stabilizeMonacoScrollbar(page: Page): Promise<void> {
+async function stabilizeMonacoScrollbar(
+  page: Page,
+  expectedColor: string,
+): Promise<void> {
   await page.addStyleTag({
     content:
       '.monaco-scrollable-element .scrollbar.vertical { opacity: 1 !important; }',
@@ -27,6 +30,20 @@ async function stabilizeMonacoScrollbar(page: Page): Promise<void> {
   await expect(
     page.locator('.monaco-scrollable-element .scrollbar.vertical').first(),
   ).toHaveCSS('opacity', '1');
+  await expect(
+    page
+      .locator('.monaco-scrollable-element .scrollbar.vertical .slider')
+      .first(),
+  ).toHaveCSS('background-color', expectedColor);
+}
+
+async function settleMonacoLayout(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
 }
 
 test('changes all six palettes through keyboard reachable appearance controls without overflow', async ({
@@ -58,7 +75,11 @@ test('changes all six palettes through keyboard reachable appearance controls wi
         )
         .toBe(true);
       if (width === 1280) {
-        await stabilizeMonacoScrollbar(page);
+        await stabilizeMonacoScrollbar(
+          page,
+          mode === 'light' ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.2)',
+        );
+        await settleMonacoLayout(page);
         await expect(page).toHaveScreenshot(`appearance-${theme}-${mode}.png`, {
           animations: 'disabled',
         });

@@ -72,11 +72,17 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
   const trigger = (
     <button
       className={styles.trigger}
+      data-view-trigger
       type="button"
-      onClick={onTrigger}
-      onPointerDown={(event): void =>
-        onTriggerPointerDown?.(event.currentTarget)
-      }
+      onClick={(event): void => {
+        if (onTrigger === undefined) return;
+        event.preventDefault();
+        onTrigger();
+      }}
+      onPointerDown={(event): void => {
+        onTriggerPointerDown?.(event.currentTarget);
+        if (onTrigger !== undefined) event.preventDefault();
+      }}
       onKeyDown={(event): void => {
         if (
           onTrigger !== undefined &&
@@ -106,6 +112,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           aria-label={t('view.menu.label')}
+          aria-labelledby={showTrigger ? undefined : ''}
           className={styles.content}
         >
           {arrangement === undefined || onArrangementChange === undefined ? (

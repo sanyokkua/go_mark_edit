@@ -80,7 +80,12 @@ async function expectEditorStageFixtures(
       'Settings',
       'View',
       'About',
+      '☰',
+      '✦',
     ]);
+    await expect(
+      actionBar.getByRole('button', { name: 'Toggle Assistant' }),
+    ).toBeDisabled();
   }
 
   const tabs = page.getByRole('tablist', { name: 'Document tabs' });
@@ -94,7 +99,7 @@ async function expectEditorStageFixtures(
   const toolbar = page.getByRole('toolbar', { name: 'Document toolbar' });
   await expect(
     toolbar.getByRole('button', { name: 'Toggle Assistant' }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await expect(toolbar.getByRole('button', { name: 'Format' })).toBeDisabled();
   await expect(toolbar.getByRole('button', { name: 'Compact' })).toBeDisabled();
   await expect(toolbar.getByRole('button', { name: 'Lint' })).toBeDisabled();
@@ -121,7 +126,7 @@ async function expectEditorStageFixtures(
 
   if (width > 376) {
     await openAction(page, 'View');
-    const viewMenu = page.getByRole('menu', { name: 'View' });
+    const viewMenu = page.getByRole('menu', { name: 'View options' });
     await expect(
       viewMenu.getByRole('menuitem', { name: 'Toggle Assistant' }),
     ).toBeDisabled();
@@ -132,7 +137,14 @@ async function expectEditorStageFixtures(
   }
 
   await openAction(page, 'About');
-  const aboutMenu = page.getByRole('menu', { name: 'About GoMarkEdit' });
+  const aboutMenu = page.getByRole('menu', { name: 'About' });
+  await expect(aboutMenu.getByRole('menuitem')).toHaveCount(4);
+  expect(await aboutMenu.getByRole('menuitem').allTextContents()).toEqual([
+    'Keyboard shortcuts',
+    'Open logs folder',
+    'View on GitHub (MIT)',
+    'About GoMarkEdit',
+  ]);
   await expect(
     aboutMenu.getByRole('menuitem', { name: 'Open logs folder' }),
   ).toBeDisabled();
@@ -565,7 +577,7 @@ test('T026 shell actions, focus, reset, sidebar, notification, identity, and abs
 
   await openAction(page, 'About');
   await page
-    .getByRole('menu', { name: 'About GoMarkEdit' })
+    .getByRole('menu', { name: 'About' })
     .getByRole('menuitem', { name: 'About GoMarkEdit' })
     .click();
   const about = page.getByRole('dialog', { name: 'About GoMarkEdit' });
