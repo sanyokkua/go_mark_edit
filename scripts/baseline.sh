@@ -3,11 +3,14 @@
 #
 # Contract (docs/delivery/work/DOD_TEMPLATE.md):
 #   - runs fmt-check, typecheck, lint, test, archtest, frontend-build and coverage
-#   - writes docs/delivery/work/baselines/story-NNN.md with the commit, the timestamp, every failing
+#   - writes the baseline report with the commit, the timestamp, every failing
 #     test by name, every static-analysis finding as file:rule:message, the coverage figure, and each
-#     command's exit code AND its reliability verdict
-#   - keeps every gate's raw output in story-NNN.logs/ — it is never deleted, precisely so a broken
-#     gate is diagnosable rather than a mystery
+#     command's exit code AND its reliability verdict. A legacy story writes to
+#     docs/delivery/work/baselines/story-NNN.*; a Spec Kit feature writes to
+#     specs/<feature>/evidence/baseline/baseline.* so evidence sits beside its spec and capture never
+#     writes under the reference-only docs/delivery/ tree.
+#   - keeps every gate's raw output in the matching .logs/ directory — it is never deleted, precisely
+#     so a broken gate is diagnosable rather than a mystery
 #   - exits 0 when the capture is trustworthy, even if the tree is red. Recording a red state is a
 #     valid outcome; it is the reason baselines exist.
 #   - exits 3 when a gate is UNRELIABLE. That is not a red state, it is a non-measurement.
@@ -45,7 +48,7 @@ OUT="$EVIDENCE_BASE"
 OUT_FILE="$OUT.md"
 LOGS="$OUT.logs"
 
-mkdir -p "$LOGS"
+mkdir -p "$OUT_DIR" "$LOGS"
 : > "$OUT.exit"
 
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo 'not-a-git-repository')"

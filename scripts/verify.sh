@@ -3,6 +3,9 @@
 #
 # Contract (docs/delivery/work/DOD_TEMPLATE.md):
 #   - re-runs the same commands baseline.sh ran, parsing their output identically
+#   - resolves a legacy story to docs/delivery/work/baselines/story-NNN.* and a Spec Kit feature to
+#     specs/<feature>/evidence/baseline/baseline.*, except for the two features baselined before
+#     capture moved into specs/, which evidence_id.sh maps through an explicit pre-migration table
 #   - refuses outright to verify against a baseline that contains an UNRELIABLE gate
 #   - prints one row per Definition-of-Done item with PASS or FAIL, naming the specific new finding
 #     or newly-failing test

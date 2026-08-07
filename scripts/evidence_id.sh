@@ -25,22 +25,39 @@ evidence_baseline_base() {
 
   case "$kind" in
     story) printf 'docs/delivery/work/baselines/story-%s\n' "$key" ;;
-    feature) printf 'docs/delivery/work/baselines/feature-%s\n' "$key" ;;
+    feature) printf 'specs/%s/evidence/baseline/baseline\n' "$key" ;;
     *) printf "invalid parsed evidence identifier '%s'\n" "$parsed" >&2; return 2 ;;
   esac
 }
 
-# The first Spec Kit product slice inherits the immutable baseline captured before
-# its legacy-story implementation began. This alias is verification-only: baseline
-# capture keeps the feature's own path and therefore cannot overwrite STORY-063.
+# Verification location.
+#
+# Two features were baselined before capture moved into specs/, and that evidence is immutable
+# history. Verification resolves them through an explicit pre-migration table rather than by
+# probing the filesystem, so the mapping stays deterministic and reviewable:
+#
+#   001-gomarkedit-product      -> story-063, the baseline captured before its legacy-story
+#                                  implementation began. Capture still uses the feature's own
+#                                  path, so this alias cannot overwrite STORY-063.
+#   002-editor-stage-formatting -> its existing docs/delivery/ baseline.
+#
+# Every other feature verifies against the same path it captures to.
 evidence_verification_baseline_base() {
   local parsed kind key
   parsed="$(evidence_id_parse "${1:-}")" || return $?
   IFS='|' read -r kind key <<<"$parsed"
 
-  if [[ "$kind" == 'feature' && "$key" == '001-gomarkedit-product' ]]; then
-    printf 'docs/delivery/work/baselines/story-063\n'
-    return 0
+  if [[ "$kind" == 'feature' ]]; then
+    case "$key" in
+      001-gomarkedit-product)
+        printf 'docs/delivery/work/baselines/story-063\n'
+        return 0
+        ;;
+      002-editor-stage-formatting)
+        printf 'docs/delivery/work/baselines/feature-%s\n' "$key"
+        return 0
+        ;;
+    esac
   fi
 
   evidence_baseline_base "${1:-}"
