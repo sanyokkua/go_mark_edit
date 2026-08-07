@@ -55,7 +55,28 @@ These do not make the baseline unreliable, but they bound what it proves.
    at 28.9%, which pulls the mean down; treat the per-package numbers in `coverage.log` as the real
    signal.
 
-## Defect found and fixed during this inspection
+## Defects found and fixed during this inspection
+
+### 1. Coverage evidence was never committed
+
+`.gitignore` carried a blanket `coverage.*` rule intended for Go coverage profiles
+(`coverage.out`, `coverage.html`). It also matched `baseline.logs/coverage.log` and
+`baseline.logs/coverage.code`, so **every baseline ever captured committed six of its seven gates
+and silently dropped the seventh.** `story-063`, `feature-001-gomarkedit-product` and
+`feature-002-editor-stage-formatting` each have those two files on disk and untracked.
+
+Constitution VII requires every gate's exit code and raw output to be captured, so this baseline was
+incomplete as first committed. Fixed by narrowly negating the rule for `baseline.logs/coverage.log`
+and `baseline.logs/coverage.code` only; `coverage.out` and other stray `coverage.*` artefacts remain
+ignored. `scripts/baseline_verify_test.sh` gained the `every gate log is committable` case, which
+probes the ignore rules with `git check-ignore --no-index` — without `--no-index` the assertion would
+pass merely because the files are already tracked, and could never fail.
+
+The historical baselines were **not** back-filled. Their coverage logs sit on disk untracked, but
+there is no way to prove those files are the originals from those captures rather than output from a
+later re-run, and committing them would assert a provenance that cannot be verified.
+
+### 2. Working-tree provenance was always "dirty"
 
 `baseline.md` from the first capture attempt recorded
 `working tree | **dirty — uncommitted changes are part of this baseline**` even though the checkout
@@ -82,8 +103,8 @@ rewriting them would be exactly the silent history edit the workflow forbids.
 | `baseline.commit` | full commit SHA the capture was taken at |
 | `baseline.failing-tests` | fully-qualified names of failing tests (empty) |
 | `baseline.findings` | static-analysis findings as `file:rule:message` (empty) |
-| `baseline.logs/*.log` | unabridged raw output for every gate |
-| `baseline.logs/*.code` | exit code for every gate, including `coverage` |
+| `baseline.logs/*.log` | unabridged raw output for all seven gates, coverage included |
+| `baseline.logs/*.code` | exit code for all seven gates, coverage included |
 
 ## What this authorises
 

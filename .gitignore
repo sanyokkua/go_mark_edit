@@ -17,6 +17,12 @@ coverage.*
 *.coverprofile
 profile.cov
 
+# Captured baseline evidence keeps every gate's raw output, including the coverage gate.
+# The coverage.* rule above targets Go coverage profiles, not gate logs, and without this
+# negation a baseline would silently commit six of its seven gates.
+!**/baseline.logs/coverage.log
+!**/baseline.logs/coverage.code
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
 frontend/node_modules/

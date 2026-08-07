@@ -121,6 +121,27 @@ output_line="$(grep -n '^mkdir -p ' scripts/baseline.sh | head -1 | cut -d: -f1)
   fail "baseline.sh samples the working tree at line $provenance_line, after creating its own output at line $output_line; every capture would report dirty"
 case_pass 'dirty-state provenance'
 
+# --- 7. every gate log is committable -------------------------------------------------------------
+# Retained raw output is only evidence if it reaches version control. A blanket ignore rule once
+# excluded coverage.log and coverage.code from every baseline, so six of seven gates were committed
+# and the seventh silently was not.
+#
+# --no-index is load-bearing: `git check-ignore` never reports an already-tracked file as ignored,
+# so checking real captured files would pass simply because they are staged, and the assertion could
+# not fail. Test the ignore rules themselves against representative paths instead.
+for gate in frontend-build fmt-check typecheck lint test archtest coverage; do
+  for ext in log code; do
+    probe="specs/000-ignore-probe/evidence/baseline/baseline.logs/$gate.$ext"
+    if git check-ignore --no-index -q "$probe"; then
+      fail "gate output '$gate.$ext' matches an ignore rule; a captured baseline would drop it"
+    fi
+  done
+done
+# The blanket rules this negation carves out of must still apply everywhere else.
+git check-ignore --no-index -q 'coverage.out' || fail 'coverage.out is no longer ignored'
+git check-ignore --no-index -q 'internal/coverage.html' || fail 'stray coverage.* is no longer ignored'
+case_pass 'every gate log is committable'
+
 # Spec Kit replaces only the old planning validators. Correctness gates stay callable.
 recipes="$(just --list)"
 for retained in baseline verify fmt-check typecheck lint test archtest frontend-build; do
