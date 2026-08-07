@@ -1,4 +1,12 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
 import {
@@ -87,6 +95,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
     <button
       aria-label={t(entry.accessibilityKey)}
       className={styles.action}
+      data-action-id={entry.id}
       data-icon={textualControlIds.has(entry.id) ? undefined : entry.id}
       disabled={unavailable}
       title={unavailable ? t('action.unavailable') : t(entry.labelKey)}
@@ -131,9 +140,15 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
   const { markdownSettings } = useEditorSettings();
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDetailsElement | null>(null);
+  const overflowTriggerRef = useRef<HTMLElement | null>(null);
+  const overflowPopupRef = useRef<HTMLDivElement | null>(null);
   const overflowOpenerRef = useRef<HTMLElement | null>(null);
   const arrangementRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const pendingArrangement = useRef<ViewArrangement | undefined>(undefined);
+  const [overflowPosition, setOverflowPosition] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
   const onActivate = useCallback(
     (entry: ActionEntry): void => {
       const formatActionId = formatActionIds[entry.id];
@@ -219,6 +234,11 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
     arrangementRefs.current[arrangementValues.indexOf(arrangement)]?.focus();
   }, [arrangement]);
 
+  const closeOverflow = useCallback((): void => {
+    setOverflowPosition(null);
+    setOverflowOpen(false);
+  }, []);
+
   useEffect((): (() => void) | undefined => {
     if (!overflowOpen) {
       overflowOpenerRef.current?.focus();
@@ -226,13 +246,17 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
       return undefined;
     }
     const dismiss = (event: PointerEvent): void => {
-      if (overflowRef.current?.contains(event.target as Node)) return;
-      setOverflowOpen(false);
+      if (
+        overflowRef.current?.contains(event.target as Node) ||
+        overflowPopupRef.current?.contains(event.target as Node)
+      )
+        return;
+      closeOverflow();
     };
     const dismissOnEscape = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
-      setOverflowOpen(false);
+      closeOverflow();
     };
     document.addEventListener('pointerdown', dismiss);
     document.addEventListener('keydown', dismissOnEscape);
@@ -240,7 +264,45 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
       document.removeEventListener('pointerdown', dismiss);
       document.removeEventListener('keydown', dismissOnEscape);
     };
-  }, [overflowOpen]);
+  }, [closeOverflow, overflowOpen]);
+
+  const positionOverflow = useCallback((): void => {
+    const anchor = overflowTriggerRef.current;
+    const popup = overflowPopupRef.current;
+    if (anchor === null || popup === null) return;
+
+    const margin = 8;
+    const anchorBounds = anchor.getBoundingClientRect();
+    const popupBounds = popup.getBoundingClientRect();
+    const maximumLeft = Math.max(
+      margin,
+      window.innerWidth - popupBounds.width - margin,
+    );
+    const left = Math.min(
+      Math.max(margin, anchorBounds.right - popupBounds.width),
+      maximumLeft,
+    );
+    const below = anchorBounds.bottom + margin;
+    const above = anchorBounds.top - popupBounds.height - margin;
+    const top =
+      below + popupBounds.height <= window.innerHeight - margin
+        ? below
+        : Math.max(margin, above);
+    setOverflowPosition((current) =>
+      current?.left === left && current.top === top ? current : { left, top },
+    );
+  }, []);
+
+  useLayoutEffect((): (() => void) | undefined => {
+    if (!overflowOpen) return undefined;
+    positionOverflow();
+    window.addEventListener('resize', positionOverflow);
+    window.addEventListener('scroll', positionOverflow, true);
+    return (): void => {
+      window.removeEventListener('resize', positionOverflow);
+      window.removeEventListener('scroll', positionOverflow, true);
+    };
+  }, [overflowOpen, positionOverflow]);
 
   const requestArrangement = (next: ViewArrangement): void => {
     if (next !== arrangement) {
@@ -257,6 +319,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         aria-checked={arrangement === next}
         aria-label={t(entry.accessibilityKey)}
         className={styles.action}
+        data-action-id={entry.id}
         data-icon={entry.id}
         ref={(element): void => {
           arrangementRefs.current[index] = element;
@@ -382,16 +445,39 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         >
           <summary
             aria-label={t('editor.moreActions')}
+            ref={overflowTriggerRef}
             onClick={(event): void => {
               event.preventDefault();
               overflowOpenerRef.current = event.currentTarget;
-              setOverflowOpen((open) => !open);
+              if (overflowOpen) {
+                closeOverflow();
+              } else {
+                setOverflowOpen(true);
+              }
             }}
           >
             »
           </summary>
-          {overflowOpen ? (
-            <div className={styles.overflowContent}>
+        </details>
+      </div>
+      {overflowOpen
+        ? createPortal(
+            <div
+              ref={overflowPopupRef}
+              aria-label={t('editor.moreActions')}
+              className={styles.overflowContent}
+              data-viewport-popup="editor-overflow"
+              role="menu"
+              style={
+                overflowPosition === null
+                  ? { position: 'fixed', visibility: 'hidden' }
+                  : {
+                      left: overflowPosition.left,
+                      position: 'fixed',
+                      top: overflowPosition.top,
+                    }
+              }
+            >
               <div className={styles.overflowAt768}>
                 {actionButtons(
                   listActions.map((id) => action(id).id),
@@ -421,10 +507,10 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
                   {arrangementButton('preview')}
                 </div>
               </div>
-            </div>
-          ) : null}
-        </details>
-      </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 };

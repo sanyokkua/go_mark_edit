@@ -15,6 +15,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -66,6 +67,7 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		Frameless:     false,
 		DisableResize: false,
 		StartHidden:   true,
+		Mac:           &mac.Options{DisableZoom: false},
 		Menu:          nativeMenuForPlatform(goruntime.GOOS),
 		AssetServer: &assetserver.Options{
 			Assets: assets,

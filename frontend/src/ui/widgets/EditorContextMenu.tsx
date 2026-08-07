@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -6,6 +7,7 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
 import {
@@ -47,34 +49,48 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
   const menuRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const selectionSnapshotRef = useRef<EditorSelection | null>(null);
+  const pointerRef = useRef<{ left: number; top: number } | null>(null);
   const [point, setPoint] = useState<{ left: number; top: number } | null>(
     null,
   );
 
-  useLayoutEffect((): void => {
-    if (point === null || menuRef.current === null) return;
+  const positionMenu = useCallback((): void => {
+    const pointer = pointerRef.current;
+    if (pointer === null || menuRef.current === null) return;
 
     const margin = 8;
     const bounds = menuRef.current.getBoundingClientRect();
     const left = Math.min(
-      Math.max(margin, point.left),
+      Math.max(margin, pointer.left),
       Math.max(margin, window.innerWidth - bounds.width - margin),
     );
-    const below = point.top;
-    const above = point.top - bounds.height - margin;
+    const below = pointer.top;
+    const above = pointer.top - bounds.height - margin;
     const top =
       below + bounds.height <= window.innerHeight - margin
         ? below
         : Math.max(margin, above);
-    if (left !== point.left || top !== point.top) {
-      setPoint({ left, top });
-    }
-  }, [point]);
+    setPoint((current): { left: number; top: number } | null =>
+      current?.left === left && current.top === top ? current : { left, top },
+    );
+  }, []);
+
+  useLayoutEffect((): (() => void) | undefined => {
+    if (point === null) return undefined;
+    positionMenu();
+    window.addEventListener('resize', positionMenu);
+    window.addEventListener('scroll', positionMenu, true);
+    return (): void => {
+      window.removeEventListener('resize', positionMenu);
+      window.removeEventListener('scroll', positionMenu, true);
+    };
+  }, [point, positionMenu]);
 
   useEffect((): (() => void) => {
     const dismiss = (event: PointerEvent): void => {
       if (menuRef.current?.contains(event.target as Node)) return;
       setPoint(null);
+      openerRef.current?.focus();
     };
     document.addEventListener('pointerdown', dismiss);
     return (): void => document.removeEventListener('pointerdown', dismiss);
@@ -189,64 +205,66 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         selectionSnapshotRef.current =
           selection?.status === 'available' ? selection.value : null;
         openerRef.current = event.target as HTMLElement;
-        setPoint({
-          left: Math.max(8, event.clientX),
-          top: Math.max(8, event.clientY),
-        });
+        pointerRef.current = { left: event.clientX, top: event.clientY };
+        setPoint(pointerRef.current);
       }}
     >
       {children}
-      {point === null ? null : (
-        <div
-          ref={menuRef}
-          aria-label={t('editor.contextMenu')}
-          className={styles.menu}
-          role="menu"
-          style={{ left: point.left, top: point.top }}
-          tabIndex={-1}
-          onContextMenu={(event): void => event.preventDefault()}
-        >
-          {contextActions.map((item: ActionEntry) =>
-            item.separatorBefore?.includes('context') === true ? (
-              <div key={`separator-before-${item.id}`}>
-                <div aria-hidden="true" className={styles.separator} />
-                <button
-                  aria-keyshortcuts={
-                    item.shortcut === undefined
-                      ? undefined
-                      : formatShortcut(item.shortcut, currentPlatform())
-                  }
-                  className={styles.item}
-                  data-action-id={item.id}
-                  disabled={item.availability.kind === 'deferred'}
-                  role="menuitem"
-                  type="button"
-                  onClick={(): void => activate(item.id)}
-                >
-                  {t(item.surfaceLabelKeys?.context ?? item.labelKey)}
-                </button>
-              </div>
-            ) : (
-              <button
-                aria-keyshortcuts={
-                  item.shortcut === undefined
-                    ? undefined
-                    : formatShortcut(item.shortcut, currentPlatform())
-                }
-                className={styles.item}
-                data-action-id={item.id}
-                disabled={item.availability.kind === 'deferred'}
-                key={item.id}
-                role="menuitem"
-                type="button"
-                onClick={(): void => activate(item.id)}
-              >
-                {t(item.surfaceLabelKeys?.context ?? item.labelKey)}
-              </button>
-            ),
+      {point === null
+        ? null
+        : createPortal(
+            <div
+              ref={menuRef}
+              aria-label={t('editor.contextMenu')}
+              className={styles.menu}
+              data-viewport-popup="context-menu"
+              role="menu"
+              style={{ left: point.left, top: point.top }}
+              tabIndex={-1}
+              onContextMenu={(event): void => event.preventDefault()}
+            >
+              {contextActions.map((item: ActionEntry) =>
+                item.separatorBefore?.includes('context') === true ? (
+                  <div key={`separator-before-${item.id}`}>
+                    <div aria-hidden="true" className={styles.separator} />
+                    <button
+                      aria-keyshortcuts={
+                        item.shortcut === undefined
+                          ? undefined
+                          : formatShortcut(item.shortcut, currentPlatform())
+                      }
+                      className={styles.item}
+                      data-action-id={item.id}
+                      disabled={item.availability.kind === 'deferred'}
+                      role="menuitem"
+                      type="button"
+                      onClick={(): void => activate(item.id)}
+                    >
+                      {t(item.surfaceLabelKeys?.context ?? item.labelKey)}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    aria-keyshortcuts={
+                      item.shortcut === undefined
+                        ? undefined
+                        : formatShortcut(item.shortcut, currentPlatform())
+                    }
+                    className={styles.item}
+                    data-action-id={item.id}
+                    disabled={item.availability.kind === 'deferred'}
+                    key={item.id}
+                    role="menuitem"
+                    type="button"
+                    onClick={(): void => activate(item.id)}
+                  >
+                    {t(item.surfaceLabelKeys?.context ?? item.labelKey)}
+                  </button>
+                ),
+              )}
+            </div>,
+            document.body,
           )}
-        </div>
-      )}
     </div>
   );
 };

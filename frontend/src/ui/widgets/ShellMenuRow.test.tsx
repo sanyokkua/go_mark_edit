@@ -64,6 +64,7 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
   fireEvent.click(within(menu).getByRole('button', { name: 'Settings' }));
   const settingsMenu = screen.getByRole('menu', { name: 'Settings menu' });
   expect(settingsMenu).toBeVisible();
+  expect(settingsMenu).toHaveAttribute('data-viewport-popup', 'settings-menu');
   expect(
     within(settingsMenu).getByRole('menuitem', { name: 'Reading (Viewer)' }),
   ).toBeDisabled();
@@ -77,11 +78,16 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
   });
   const viewMenu = await screen.findByRole('menu');
   expect(viewMenu).toBeVisible();
+  expect(viewMenu).toHaveAttribute('data-viewport-popup', 'view-menu');
   fireEvent.keyDown(viewMenu, { key: 'Escape' });
 
   fireEvent.keyDown(within(menu).getByRole('button', { name: 'File' }), {
     key: 'ArrowDown',
   });
+  expect(screen.getByRole('menu', { name: 'File' })).toHaveAttribute(
+    'data-viewport-popup',
+    'file-menu',
+  );
   expect(
     screen.getAllByRole('menuitem').map((item) => item.textContent),
   ).toEqual([
@@ -102,6 +108,10 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
   });
 
   fireEvent.click(within(menu).getByRole('button', { name: 'About' }));
+  expect(screen.getByRole('menu', { name: 'About' })).toHaveAttribute(
+    'data-viewport-popup',
+    'about-menu',
+  );
   fireEvent.click(screen.getByRole('menuitem', { name: 'About GoMarkEdit' }));
   expect(onAbout).toHaveBeenCalledTimes(1);
 });

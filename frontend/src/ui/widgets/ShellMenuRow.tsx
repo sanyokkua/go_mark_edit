@@ -288,6 +288,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
             <DropdownMenu.Content
               aria-label={t('shell.menuLabel')}
               className={styles.overflow}
+              collisionPadding={8}
+              data-viewport-popup="shell-overflow"
             >
               <DropdownMenu.Item
                 className={styles.item}
@@ -369,6 +371,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                 aria-label={t('shell.file')}
                 collisionPadding={8}
                 className={styles.overflow}
+                data-viewport-popup="file-menu"
                 sideOffset={4}
               >
                 {fileActions.map((item) =>
@@ -381,7 +384,11 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                         {t(item.labelKey)}
                       </DropdownMenu.SubTrigger>
                       <DropdownMenu.Portal>
-                        <DropdownMenu.SubContent className={styles.overflow}>
+                        <DropdownMenu.SubContent
+                          className={styles.overflow}
+                          collisionPadding={8}
+                          data-viewport-popup="file-recent-menu"
+                        >
                           <DropdownMenu.Item className={styles.item} disabled>
                             {t('file.recent.release')}
                           </DropdownMenu.Item>
@@ -478,6 +485,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                 aria-label={t(action('about').labelKey)}
                 collisionPadding={8}
                 className={styles.overflow}
+                data-viewport-popup="about-menu"
                 sideOffset={4}
               >
                 {aboutActions.map((item) => (
@@ -530,6 +538,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   ref={narrowPopupRef}
                   aria-label={t('shell.file')}
                   className={`${styles.overflow} ${styles.narrowOverflow}`}
+                  data-viewport-popup="file-menu"
                   role="menu"
                   style={narrowPopupAnchor}
                 >
@@ -594,6 +603,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   ref={narrowPopupRef}
                   aria-label={t(action('about').labelKey)}
                   className={`${styles.overflow} ${styles.narrowOverflow}`}
+                  data-viewport-popup="about-menu"
                   role="menu"
                   style={narrowPopupAnchor}
                 >

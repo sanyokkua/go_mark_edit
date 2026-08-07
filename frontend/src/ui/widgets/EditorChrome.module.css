@@ -168,22 +168,18 @@
   border: var(--control-border-width) solid var(--border);
   border-radius: var(--control-radius);
   box-shadow: var(--win-shadow);
-  display: none;
+  display: grid;
   gap: var(--control-gap);
   grid-template-columns: minmax(0, 1fr);
   inline-size: min(20rem, calc(100vw - 2 * var(--app-gap)));
   padding: var(--control-gap);
-  position: absolute;
+  position: fixed;
   z-index: var(--z-dropdown);
 }
 
 .overflowAt768,
 .overflowAt375 {
   display: contents;
-}
-
-.overflow[open] .overflowContent {
-  display: grid;
 }
 
 .overflowArrangement {
@@ -201,14 +197,6 @@
 
   .relocateAt768 {
     display: none;
-  }
-
-  .overflowContent {
-    inset-inline-end: var(--control-gap);
-  }
-
-  .overflow[open] .overflowContent {
-    display: grid;
   }
 }
 

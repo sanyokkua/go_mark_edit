@@ -157,6 +157,27 @@ it('T089 measures the rendered context menu and flips it above a lower viewport 
   bounds.mockRestore();
 });
 
+it('T094 renders the context menu in the body-owned viewport popup layer', () => {
+  render(
+    <div
+      style={{ filter: 'blur(4px)', overflow: 'hidden', transform: 'scale(1)' }}
+    >
+      <EditorContextMenu>
+        <textarea aria-label="Markdown source" />
+      </EditorContextMenu>
+    </div>,
+  );
+
+  fireEvent.contextMenu(screen.getByLabelText('Markdown source'), {
+    clientX: 120,
+    clientY: 140,
+  });
+
+  const menu = screen.getByRole('menu', { name: 'Editor context menu' });
+  expect(menu.parentElement).toBe(document.body);
+  expect(menu).toHaveAttribute('data-viewport-popup', 'context-menu');
+});
+
 it('T030 keeps the originating session callback available without tab or assistant state', () => {
   const onAction = jest.fn();
   render(

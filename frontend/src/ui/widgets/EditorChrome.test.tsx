@@ -56,8 +56,12 @@ it('T072 scopes overflow relocation to the documented 768 and 375 width groups',
   fireEvent.click(
     container.querySelector('summary[aria-label="More actions"]')!,
   );
-  expect(container.querySelector('[class*="overflowAt768"]')).not.toBeNull();
-  expect(container.querySelector('[class*="overflowAt375"]')).not.toBeNull();
+  expect(
+    document.body.querySelector('[class*="overflowAt768"]'),
+  ).not.toBeNull();
+  expect(
+    document.body.querySelector('[class*="overflowAt375"]'),
+  ).not.toBeNull();
   expect(screen.getAllByRole('button', { name: 'Link' })).toHaveLength(2);
 });
 
@@ -81,6 +85,64 @@ it('T070 closes the toolbar overflow on Escape and outside pointer input', () =>
   fireEvent.click(trigger);
   fireEvent.pointerDown(screen.getByRole('button', { name: 'Outside' }));
   expect(screen.getAllByRole('button', { name: 'Link' })).toHaveLength(1);
+});
+
+it('T094 renders toolbar overflow as a body-owned viewport popup', () => {
+  const { container } = render(
+    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+  );
+  const trigger = container.querySelector(
+    'summary[aria-label="More actions"]',
+  ) as HTMLElement;
+
+  fireEvent.click(trigger);
+
+  const popup = screen.getByRole('menu', { name: 'More actions' });
+  expect(popup.parentElement).toBe(document.body);
+  expect(popup).toHaveAttribute('data-viewport-popup', 'editor-overflow');
+  expect(popup).toHaveStyle({ position: 'fixed' });
+});
+
+it('T095 keeps the Editor-stage semantic action signature independent of palette', () => {
+  const palettes = [
+    ['glass', 'light'],
+    ['glass', 'dark'],
+    ['material', 'light'],
+    ['material', 'dark'],
+    ['minimal', 'light'],
+    ['minimal', 'dark'],
+  ] as const;
+  let signature: string[] | undefined;
+
+  for (const [theme, mode] of palettes) {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-mode', mode);
+    const rendered = render(
+      <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+    );
+    const current = Array.from(
+      rendered.container.querySelectorAll(
+        '[role="toolbar"] button, [role="radiogroup"] button',
+      ),
+    ).map((button) => {
+      const control = button as HTMLButtonElement;
+      const actionId = button.getAttribute('data-action-id');
+      if (actionId === null) {
+        throw new Error(
+          'Editor-stage controls must expose registry action IDs',
+        );
+      }
+      return [
+        actionId,
+        button.getAttribute('aria-label') ?? '',
+        button.getAttribute('aria-checked') ?? '',
+        control.disabled ? 'disabled' : 'enabled',
+      ].join('|');
+    });
+    if (signature === undefined) signature = current;
+    expect(current).toEqual(signature);
+    rendered.unmount();
+  }
 });
 
 it('T068 exposes active arrangement state and explicit icon metadata', () => {

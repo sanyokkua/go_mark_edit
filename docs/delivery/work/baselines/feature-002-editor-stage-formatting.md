@@ -4,10 +4,10 @@ Captured by `just baseline 002-editor-stage-formatting`. Do not edit by hand.
 
 | | |
 |---|---|
-| commit | `cf9d92f` (`cf9d92ffc7d008048a01607f9c8aa938cfcf3c3e`) |
-| captured | 2026-08-04 06:30 UTC |
+| commit | `c025ab4` (`c025ab419214a63de563d31e6e9ddc0adadcec63`) |
+| captured | 2026-08-06 21:00 UTC |
 | working tree | **dirty — uncommitted changes are part of this baseline** |
-| coverage | 65.8% (mean of 11 packages) |
+| coverage | 65.5% (mean of 11 packages) |
 
 ## Gates
 

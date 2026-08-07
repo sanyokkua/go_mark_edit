@@ -114,6 +114,8 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
           aria-label={t('view.menu.label')}
           aria-labelledby={showTrigger ? undefined : ''}
           className={styles.content}
+          collisionPadding={8}
+          data-viewport-popup="view-menu"
         >
           {arrangement === undefined || onArrangementChange === undefined ? (
             <>

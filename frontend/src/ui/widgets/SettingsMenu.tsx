@@ -169,6 +169,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
           ref={contentRef}
           aria-label={t('settings.menu.label')}
           className={styles.content}
+          data-viewport-popup="settings-menu"
           onKeyDown={(event): void => {
             if (event.key === 'Escape') {
               event.preventDefault();

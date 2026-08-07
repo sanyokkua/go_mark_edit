@@ -19,6 +19,10 @@ it('renders synchronized pane toggles without an unlisted view-cycle shortcut', 
     key: 'ArrowDown',
   });
 
+  const menu = screen.getByRole('menu', { name: 'View options' });
+  expect(document.body.contains(menu)).toBe(true);
+  expect(menu).toHaveAttribute('data-viewport-popup', 'view-menu');
+
   expect(
     screen.getByRole('menuitemcheckbox', { name: 'Show Editor' }),
   ).toHaveAttribute('data-state', 'checked');

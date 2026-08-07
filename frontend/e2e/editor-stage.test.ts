@@ -141,6 +141,13 @@ for (const width of widths) {
         await settings.getByRole('radio', { name: mode }).click();
         const settingsBox = await settings.boundingBox();
         expect(settingsBox).not.toBeNull();
+        expect(settings).toHaveAttribute(
+          'data-viewport-popup',
+          'settings-menu',
+        );
+        expect(
+          await settings.evaluate((element) => document.body.contains(element)),
+        ).toBe(true);
         expect(settingsBox!.x).toBeGreaterThanOrEqual(0);
         expect(settingsBox!.x + settingsBox!.width).toBeLessThanOrEqual(width);
         expect(settingsBox!.y).toBeGreaterThanOrEqual(0);
@@ -154,6 +161,10 @@ for (const width of widths) {
           await expect(file).toBeVisible();
           const fileBox = await file.boundingBox();
           expect(fileBox).not.toBeNull();
+          expect(file).toHaveAttribute('data-viewport-popup', 'file-menu');
+          expect(
+            await file.evaluate((element) => document.body.contains(element)),
+          ).toBe(true);
           expect(fileBox!.x).toBeGreaterThanOrEqual(0);
           expect(fileBox!.x + fileBox!.width).toBeLessThanOrEqual(width);
           await page.keyboard.press('Escape');
@@ -167,6 +178,10 @@ for (const width of widths) {
           await expect(view).toBeVisible();
           const viewBox = await view.boundingBox();
           expect(viewBox).not.toBeNull();
+          expect(view).toHaveAttribute('data-viewport-popup', 'view-menu');
+          expect(
+            await view.evaluate((element) => document.body.contains(element)),
+          ).toBe(true);
           expect(viewBox!.x).toBeGreaterThanOrEqual(0);
           expect(viewBox!.x + viewBox!.width).toBeLessThanOrEqual(width);
           const shell = page.getByTestId('application-shell');
@@ -208,6 +223,10 @@ for (const width of widths) {
           await expect(view).toBeVisible();
           const viewBox = await view.boundingBox();
           expect(viewBox).not.toBeNull();
+          expect(view).toHaveAttribute('data-viewport-popup', 'view-menu');
+          expect(
+            await view.evaluate((element) => document.body.contains(element)),
+          ).toBe(true);
           expect(viewBox!.x).toBeGreaterThanOrEqual(0);
           expect(viewBox!.x + viewBox!.width).toBeLessThanOrEqual(width);
           await page.keyboard.press('Escape');
@@ -236,6 +255,12 @@ for (const width of widths) {
         await openShellItem('About');
         const aboutMenu = page.getByRole('menu', { name: 'About' });
         await expect(aboutMenu).toBeVisible();
+        expect(aboutMenu).toHaveAttribute('data-viewport-popup', 'about-menu');
+        expect(
+          await aboutMenu.evaluate((element) =>
+            document.body.contains(element),
+          ),
+        ).toBe(true);
         await aboutMenu
           .getByRole('menuitem', { name: 'About GoMarkEdit' })
           .click();
@@ -413,11 +438,23 @@ for (const width of widths) {
             .getByRole('toolbar', { name: 'Document toolbar' })
             .getByLabel('More actions')
             .click();
+          const overflowMenu = page.locator(
+            '[data-viewport-popup="editor-overflow"]',
+          );
+          await expect(overflowMenu).toBeVisible();
+          expect(
+            await overflowMenu.evaluate((element) =>
+              document.body.contains(element),
+            ),
+          ).toBe(true);
         }
         await replaceEditorText();
         await editor.press(`${modifier}+a`);
-        await page
-          .getByRole('toolbar', { name: 'Document toolbar' })
+        const formattingScope =
+          width === 375
+            ? page.locator('[data-viewport-popup="editor-overflow"]')
+            : page.getByRole('toolbar', { name: 'Document toolbar' });
+        await formattingScope
           .getByRole('button', { name: 'Bold' })
           .first()
           .click();
@@ -443,6 +480,25 @@ for (const width of widths) {
           button: 'right',
           position: { x: 20, y: 20 },
         });
+        const contextMenu = page.getByRole('menu', {
+          name: 'Editor context menu',
+        });
+        await expect(contextMenu).toBeVisible();
+        expect(contextMenu).toHaveAttribute(
+          'data-viewport-popup',
+          'context-menu',
+        );
+        expect(
+          await contextMenu.evaluate((element) =>
+            document.body.contains(element),
+          ),
+        ).toBe(true);
+        const contextBox = await contextMenu.boundingBox();
+        expect(contextBox).not.toBeNull();
+        expect(contextBox!.x).toBeGreaterThanOrEqual(0);
+        expect(contextBox!.y).toBeGreaterThanOrEqual(0);
+        expect(contextBox!.x + contextBox!.width).toBeLessThanOrEqual(width);
+        expect(contextBox!.y + contextBox!.height).toBeLessThanOrEqual(720);
         await page.getByRole('menuitem', { name: 'Bold' }).click({
           force: width === 375,
         });
@@ -492,9 +548,18 @@ for (const width of widths) {
             name: 'Document toolbar',
           });
           await toolbar.getByLabel('More actions').click();
+          const overflowMenu = page.locator(
+            '[data-viewport-popup="editor-overflow"]',
+          );
           await expect(
-            toolbar.getByRole('button', { name: 'Link' }).last(),
+            overflowMenu.getByRole('button', { name: 'Link' }).last(),
           ).toBeVisible();
+          await expect(overflowMenu).toBeVisible();
+          expect(
+            await overflowMenu.evaluate((element) =>
+              document.body.contains(element),
+            ),
+          ).toBe(true);
         }
 
         const overflow = await page.evaluate(() => ({

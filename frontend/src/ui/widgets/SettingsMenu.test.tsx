@@ -19,7 +19,10 @@ it('T070 positions Settings as a portal menu and restores its trigger focus afte
   );
   const trigger = screen.getByRole('button', { name: 'Settings' });
   fireEvent.click(trigger);
-  expect(screen.getByRole('menu', { name: 'Settings menu' })).toBeVisible();
+  const menu = screen.getByRole('menu', { name: 'Settings menu' });
+  expect(menu).toBeVisible();
+  expect(menu.parentElement).toBe(document.body);
+  expect(menu).toHaveAttribute('data-viewport-popup', 'settings-menu');
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(screen.queryByRole('menu', { name: 'Settings menu' })).toBeNull();
   await waitFor(() => expect(trigger).toHaveFocus());

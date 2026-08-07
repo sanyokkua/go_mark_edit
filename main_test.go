@@ -122,6 +122,22 @@ func TestWailsAppUsesOrdinaryHiddenFramedNativeWindow(t *testing.T) {
 	}
 }
 
+// Proves: FR-ED-001, FR-ED-004, FR-ED-026
+// macOS keeps the ordinary framed/resizable window while explicitly enabling
+// the host-owned zoom/fullscreen traffic-light control.
+func TestWailsAppEnablesNativeMacZoomWithoutStartingFullscreen(t *testing.T) {
+	appOptions := newAppOptions(application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil))
+	if appOptions.Mac == nil {
+		t.Fatal("macOS options are nil; want explicit native zoom configuration")
+	}
+	if appOptions.Mac.DisableZoom {
+		t.Fatal("macOS native zoom is disabled; want DisableZoom=false")
+	}
+	if appOptions.Frameless || appOptions.DisableResize || appOptions.Fullscreen {
+		t.Fatalf("native window options = %+v, want framed, resizable, session fullscreen off", appOptions)
+	}
+}
+
 // Proves: FR-WS-002
 // macOS receives the standard application and editing roles, with no separate
 // app-owned native About item. About remains owned by the in-app action row.
