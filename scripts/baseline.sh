@@ -48,9 +48,10 @@ OUT="$EVIDENCE_BASE"
 OUT_FILE="$OUT.md"
 LOGS="$OUT.logs"
 
-mkdir -p "$OUT_DIR" "$LOGS"
-: > "$OUT.exit"
-
+# Provenance is read BEFORE any output directory exists. The script's own report, logs and exit
+# file are untracked the moment they are created, so creating them first made `git status` report
+# "dirty" on every run — including a genuinely clean checkout. A field that always says the same
+# thing records nothing, and it cannot distinguish a contaminated capture from a clean one.
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo 'not-a-git-repository')"
 COMMIT_FULL="$(git rev-parse HEAD 2>/dev/null || echo '-')"
 STAMP="$(date -u '+%Y-%m-%d %H:%M UTC')"
@@ -58,6 +59,9 @@ DIRTY="clean"
 if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
   DIRTY="**dirty — uncommitted changes are part of this baseline**"
 fi
+
+mkdir -p "$OUT_DIR" "$LOGS"
+: > "$OUT.exit"
 
 UNRELIABLE=0
 

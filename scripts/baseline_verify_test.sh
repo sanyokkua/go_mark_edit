@@ -108,6 +108,19 @@ grep -q 'REFUSING TO VERIFY' "$fixture_output" || \
   fail 'verification did not explain its unreliable-evidence refusal'
 case_pass 'unreliable-baseline refusal'
 
+# --- 6. dirty-state provenance ---------------------------------------------------------------------
+# baseline.sh must sample the working tree BEFORE it creates its own report, logs and exit file.
+# Those outputs are untracked the instant they exist, so creating them first makes `git status`
+# report "dirty" on every run — including a clean checkout — and a field that always says the same
+# thing cannot distinguish a contaminated capture from a clean one.
+provenance_line="$(grep -n '^DIRTY="clean"$' scripts/baseline.sh | head -1 | cut -d: -f1)"
+output_line="$(grep -n '^mkdir -p ' scripts/baseline.sh | head -1 | cut -d: -f1)"
+[[ -n "$provenance_line" && -n "$output_line" ]] || \
+  fail 'baseline.sh no longer has a recognisable provenance or output-creation step'
+[[ "$provenance_line" -lt "$output_line" ]] || \
+  fail "baseline.sh samples the working tree at line $provenance_line, after creating its own output at line $output_line; every capture would report dirty"
+case_pass 'dirty-state provenance'
+
 # Spec Kit replaces only the old planning validators. Correctness gates stay callable.
 recipes="$(just --list)"
 for retained in baseline verify fmt-check typecheck lint test archtest frontend-build; do
