@@ -85,7 +85,7 @@ isolated test fixtures. No Feature 003 behavior task may begin before T002 passe
   - **Tests/evidence**: `just baseline 003-real-files-and-tabs`; `just archtest` must be green outright; record an explicit reviewed-baseline note in `specs/003-real-files-and-tabs/evidence/baseline/review.md` without abridging raw output.
   - **Branch/commit**: `feature/v1-implementation--003-t002-baseline-capture`; `test(evidence): capture Feature 003 baseline`.
 
-- [ ] T003 [P] Add deterministic real-file fixture builders in `internal/file/document_fixtures_test.go` and `frontend/e2e/helpers/real-file-fixtures.ts` without committing giant or destructive fixtures. The builders MUST produce, by exact byte count and named scenario:
+- [X] T003 [P] Add deterministic real-file fixture builders in `internal/file/document_fixtures_test.go` and `frontend/e2e/helpers/real-file-fixtures.ts` without committing giant or destructive fixtures. The builders MUST produce, by exact byte count and named scenario:
   - **Line endings**: uniform LF; uniform CRLF; mixed LF/CRLF with a clear dominant ending; mixed LF/CRLF at an exact tie (first-encountered ending wins); **`none` (valid UTF-8 with no LF and no CRLF)**; **lone ASCII CR (0x0D with no LF)**; and a file containing **NEL (U+0085), LINE SEPARATOR (U+2028), and PARAGRAPH SEPARATOR (U+2029)** as ordinary content.
   - **Encoding/safety**: UTF-8 with byte-order mark; UTF-8 without byte-order mark; invalid UTF-8; NUL-bearing bytes.
   - **Permissions**: non-default permission modes (at least one mode that is not the process default).
