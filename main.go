@@ -47,6 +47,15 @@ func main() {
 	}()
 
 	applicationContext := application.NewApplicationContextHolder(fileUtils, appLogger)
+	applicationContext.SetDocumentDialogs(application.NewDocumentDialogs(func(ctx context.Context) (string, error) {
+		return runtime.OpenFileDialog(ctx, runtime.OpenDialogOptions{
+			Title: "Open Markdown or text file",
+			Filters: []runtime.FileFilter{{
+				DisplayName: "Markdown and text",
+				Pattern:     "*.md;*.markdown;*.mdown;*.txt",
+			}},
+		})
+	}))
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
 		bootstrapLogger.Error().Err(err).Msg("run application")
 	}

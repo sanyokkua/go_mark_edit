@@ -35,6 +35,7 @@ type AppModelService struct {
 	reservations     map[string]*openReservation
 	metadata         FileMetadataRepository
 	defaultOpenMode  string
+	openDialog       DocumentOpenDialog
 }
 
 type layoutTimer interface{ AfterFunc(time.Duration, func()) }
@@ -135,6 +136,31 @@ func (service *AppModelService) SetDefaultOpenMode(mode string) {
 	service.mu.Lock()
 	service.defaultOpenMode = mode
 	service.mu.Unlock()
+}
+
+// SetDocumentOpenDialog injects the composition-root native picker without importing Wails here.
+func (service *AppModelService) SetDocumentOpenDialog(dialog DocumentOpenDialog) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.openDialog = dialog
+}
+
+// OpenFromDialog turns cancellation into a normal outcome and delegates selected paths to OpenPath.
+func (service *AppModelService) OpenFromDialog(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenResult {
+	service.mu.RLock()
+	dialog := service.openDialog
+	service.mu.RUnlock()
+	if dialog == nil {
+		return apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog is unavailable.", apperr.RemediationCancel)}
+	}
+	path, err := dialog.ChooseOpenFile(ctx)
+	if err != nil {
+		return apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog could not be opened.", apperr.RemediationRetry)}
+	}
+	if path == "" {
+		return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
+	}
+	return service.OpenPath(ctx, path, expectedTabSetRevision)
 }
 
 func newLayoutWriterID() string {

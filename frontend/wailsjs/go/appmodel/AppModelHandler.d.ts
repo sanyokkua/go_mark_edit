@@ -6,6 +6,8 @@ export function GetState():Promise<apperr.StateResult>;
 
 export function NewDocument(arg1:number):Promise<apperr.DocumentTransitionResult>;
 
+export function OpenDocument(arg1:number):Promise<apperr.OpenResult>;
+
 export function SetDocView(arg1:string,arg2:apperr.DocViewInput):Promise<apperr.VoidResult>;
 
 export function SetUILayout(arg1:apperr.UILayout):Promise<apperr.VoidResult>;

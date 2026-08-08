@@ -22,6 +22,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 	}{
 		{"GetState", 1, reflect.TypeFor[apperr.StateResult]()},
 		{"NewDocument", 2, reflect.TypeFor[apperr.DocumentTransitionOutcome]()},
+		{"OpenDocument", 2, reflect.TypeFor[apperr.OpenResult]()},
 		{"UpdateBuffer", 3, reflect.TypeFor[apperr.VoidResult]()},
 		{"SetDocView", 3, reflect.TypeFor[apperr.VoidResult]()},
 		{"SetUILayout", 2, reflect.TypeFor[apperr.VoidResult]()},
@@ -41,7 +42,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		})
 	}
 
-	for _, method := range []string{"GetState", "NewDocument", "UpdateBuffer", "SetDocView", "SetUILayout"} {
+	for _, method := range []string{"GetState", "NewDocument", "OpenDocument", "UpdateBuffer", "SetDocView", "SetUILayout"} {
 		t.Run(method+" recovers without emitting a patch", func(t *testing.T) {
 			service := &fakeAppModelService{panicOn: method}
 			panickingHandler := NewAppModelHandler(service, nil, nil)
@@ -58,6 +59,11 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 				if transition.Data != nil || transition.Error == nil || transition.Error.Category != apperr.ClassifiedIOFailure {
 					t.Fatalf("panic result = %+v, want a classified internal transition error", transition)
 				}
+			case "OpenDocument":
+				opened := panickingHandler.OpenDocument(0)
+				if opened.Status != apperr.OpenStatusRefused || opened.Error == nil || opened.Error.Category != apperr.ClassifiedSystemCommandFailure {
+					t.Fatalf("panic result = %+v, want a classified dialog error", opened)
+				}
 			case "UpdateBuffer":
 				result = panickingHandler.UpdateBuffer("doc", "content")
 			case "SetDocView":
@@ -65,7 +71,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 			case "SetUILayout":
 				result = panickingHandler.SetUILayout(apperr.UILayout{})
 			}
-			if method != "GetState" && method != "NewDocument" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
+			if method != "GetState" && method != "NewDocument" && method != "OpenDocument" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
 				t.Fatalf("panic result = %+v, want an internal envelope", result)
 			}
 			if service.emissions != 0 {
@@ -123,6 +129,39 @@ type fakeAppModelService struct {
 	emissions   int
 	layoutError error
 }
+
+func (service *fakeAppModelService) OpenFromDialog(_ context.Context, _ uint64) apperr.OpenResult {
+	if service.panicOn == "OpenDocument" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
+}
+
+func TestOpenCancellationHasNoMutation(t *testing.T) {
+	emitter := &recordingEmitter{}
+	service := NewEmptyAppModelService(emitter)
+	service.SetDocumentOpenDialog(cancellationDialog{})
+	before, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState before cancellation: %v", err)
+	}
+	outcome := service.OpenFromDialog(context.Background(), before.Snapshot.TabSetRevision)
+	if outcome.Status != apperr.OpenStatusCancelled || outcome.Error != nil {
+		t.Fatalf("cancellation outcome = %+v", outcome)
+	}
+	after, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState after cancellation: %v", err)
+	}
+	if !reflect.DeepEqual(after, before) || len(emitter.patches) != 0 {
+		t.Fatalf("cancellation mutated state: before=%+v after=%+v patches=%d", before, after, len(emitter.patches))
+	}
+}
+
+type cancellationDialog struct{}
+
+func (cancellationDialog) ChooseOpenFile(context.Context) (string, error) { return "", nil }
 
 func (service *fakeAppModelService) GetState(_ context.Context) (apperr.AppState, error) {
 	if service.panicOn == "GetState" {

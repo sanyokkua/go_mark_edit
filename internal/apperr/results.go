@@ -168,14 +168,17 @@ const (
 	OpenStatusRefused   OpenStatus = "refused"
 )
 
-// OpenOutcome describes canonical Open without placing source in the metadata projection.
-type OpenOutcome struct {
+// OpenResult describes canonical Open without placing source in the metadata projection.
+type OpenResult struct {
 	Status             OpenStatus                   `json:"status"`
 	DocumentID         string                       `json:"documentId,omitempty"`
 	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
 	ActiveBuffer       *ActiveBufferAcknowledgement `json:"activeBuffer,omitempty"`
 	Error              *ClassifiedError             `json:"error,omitempty"`
 }
+
+// OpenOutcome is the contract-level descriptive alias used by appmodel callers.
+type OpenOutcome = OpenResult
 
 // AppState combines a content-free snapshot with the active canonical buffer.
 type AppState struct {

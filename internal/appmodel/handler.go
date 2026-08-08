@@ -15,9 +15,20 @@ const appModelPanicFormat = "panic: %v"
 type AppModelServiceAPI interface {
 	GetState(ctx context.Context) (apperr.AppState, error)
 	NewDocument(ctx context.Context, expectedTabSetRevision uint64) apperr.DocumentTransitionResult
+	OpenFromDialog(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenResult
 	UpdateBuffer(ctx context.Context, documentID, content string) error
 	SetDocView(ctx context.Context, documentID string, view apperr.DocViewInput) error
 	SetUILayout(ctx context.Context, layout apperr.UILayout) error
+}
+
+// OpenDocument opens the native picker and commits its selected path through canonical Open.
+func (handler *AppModelHandler) OpenDocument(expectedTabSetRevision uint64) (res apperr.OpenResult) {
+	defer func() {
+		if recover() != nil {
+			res = apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog could not be opened.", apperr.RemediationRetry)}
+		}
+	}()
+	return handler.service.OpenFromDialog(handler.context(), expectedTabSetRevision)
 }
 
 // NewDocument mints and activates one empty untitled document after a tab-set revision check.

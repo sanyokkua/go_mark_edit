@@ -20,6 +20,11 @@ const (
 	OpenStatusRefused   = apperr.OpenStatusRefused
 )
 
+// DocumentOpenDialog is the only native dependency needed by OpenFromDialog.
+type DocumentOpenDialog interface {
+	ChooseOpenFile(context.Context) (string, error)
+}
+
 // NewDocument performs one revision-checked backend transition. It never
 // creates a file or a recent-file entry; the returned acknowledgement is the
 // only source payload that may be installed after the projection catches up.

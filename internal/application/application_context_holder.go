@@ -32,6 +32,7 @@ type ApplicationContextHolder struct {
 	AppModelHandler     *appmodel.AppModelHandler
 	NativeWindowService *NativeWindowService
 	ApplicationHandler  *ApplicationHandler
+	DocumentDialogs     *DocumentDialogs
 }
 
 // NewApplicationContextHolder constructs the phase-one dependency graph with
@@ -50,6 +51,15 @@ func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger
 	holder.NativeWindowService = NewNativeWindowService(appModelService, nil)
 	holder.ApplicationHandler = NewApplicationHandler(holder, appLogger, holder.Context)
 	return holder
+}
+
+// SetDocumentDialogs wires the composition-root native picker into the backend-owned Open command.
+func (holder *ApplicationContextHolder) SetDocumentDialogs(dialogs *DocumentDialogs) {
+	holder.mu.Lock()
+	holder.DocumentDialogs = dialogs
+	service := holder.AppModelService
+	holder.mu.Unlock()
+	service.SetDocumentOpenDialog(dialogs)
 }
 
 // SetContext records the context Wails supplies during application startup.
@@ -99,6 +109,7 @@ func (holder *ApplicationContextHolder) Init(ctx context.Context) error {
 
 	holder.SettingsService.SetRepository(settings.NewSqliteSettingsRepository(database))
 	holder.AppModelService.SetLayoutRepository(appmodel.NewSqliteLayoutRepository(database))
+	holder.AppModelService.SetFileMetadataRepository(appmodel.NewSqliteFileMetadataRepository(database))
 	holder.DB = database
 	holder.startupErr = nil
 	holder.AppModelService.SetStartupError(nil)
