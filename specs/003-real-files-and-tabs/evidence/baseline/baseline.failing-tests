@@ -1,0 +1,3 @@
+TestOpenCorruptRecoveryHelperProcess
+TestOpenRejectsCorruptOrUnsupportedSchemaSafely
+TestOpenRejectsCorruptOrUnsupportedSchemaSafely/EC

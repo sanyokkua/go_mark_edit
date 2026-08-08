@@ -78,7 +78,7 @@ isolated test fixtures. No Feature 003 behavior task may begin before T002 passe
   - **Tests/evidence**: `bash scripts/baseline_verify_test.sh` must name and pass feature routing, unsafe-ID refusal, legacy-path preservation, Feature 001 alias preservation, and unreliable-baseline refusal.
   - **Branch/commit**: `feature/v1-implementation--003-t001-baseline-routing`; `fix(evidence): route Spec Kit baselines into feature specs`.
 
-- [ ] T002 Capture the trustworthy pre-edit baseline with `just baseline 003-real-files-and-tabs` under `specs/003-real-files-and-tabs/evidence/baseline/` and inspect `baseline.md`, `baseline.exit`, every `baseline.logs/*.log`, and every `baseline.logs/*.code` before allowing implementation.
+- [X] T002 Capture the trustworthy pre-edit baseline with `just baseline 003-real-files-and-tabs` under `specs/003-real-files-and-tabs/evidence/baseline/` and inspect `baseline.md`, `baseline.exit`, every `baseline.logs/*.log`, and every `baseline.logs/*.code` before allowing implementation.
   - **Outcome**: One immutable baseline records every gate exit, raw log, finding set, failing test, coverage value, commit, and dirty-state provenance; any `UNRELIABLE` verdict stops the feature.
   - **Prerequisites**: T001.
   - **Ownership**: Evidence foundation only; no FR/SC ownership.
