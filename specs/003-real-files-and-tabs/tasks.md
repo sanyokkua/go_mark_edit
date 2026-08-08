@@ -71,7 +71,7 @@ uses these primary-source checks:
 **Purpose**: Route migrated-feature evidence correctly, capture a reliable pre-feature baseline, and prepare only
 isolated test fixtures. No Feature 003 behavior task may begin before T002 passes.
 
-- [ ] T001 Repair migrated-feature baseline routing in `scripts/evidence_id.sh`, `scripts/baseline.sh`, `scripts/verify.sh`, and `scripts/baseline_verify_test.sh` so `003-real-files-and-tabs` resolves to `specs/003-real-files-and-tabs/evidence/baseline/baseline{.md,.exit,.commit,.findings,.failing-tests,.logs/}`, while legacy `STORY-NNN` evidence and the Feature 001 verification alias remain at their existing read-only locations.
+- [X] T001 Repair migrated-feature baseline routing in `scripts/evidence_id.sh`, `scripts/baseline.sh`, `scripts/verify.sh`, and `scripts/baseline_verify_test.sh` so `003-real-files-and-tabs` resolves to `specs/003-real-files-and-tabs/evidence/baseline/baseline{.md,.exit,.commit,.findings,.failing-tests,.logs/}`, while legacy `STORY-NNN` evidence and the Feature 001 verification alias remain at their existing read-only locations.
   - **Outcome**: Baseline tooling can capture and verify a migrated feature without writing under `docs/delivery/`.
   - **Prerequisites**: None.
   - **Ownership**: Tooling blocker only; no FR/SC ownership.
