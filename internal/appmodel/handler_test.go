@@ -26,6 +26,8 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		{"UpdateBuffer", 3, reflect.TypeFor[apperr.VoidResult]()},
 		{"SetDocView", 3, reflect.TypeFor[apperr.VoidResult]()},
 		{"SetUILayout", 2, reflect.TypeFor[apperr.VoidResult]()},
+		{"Save", 4, reflect.TypeFor[apperr.WriteResult]()},
+		{"SaveAs", 4, reflect.TypeFor[apperr.WriteResult]()},
 	}
 	for _, tt := range cases {
 		t.Run(tt.method, func(t *testing.T) {
@@ -42,7 +44,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		})
 	}
 
-	for _, method := range []string{"GetState", "NewDocument", "OpenDocument", "UpdateBuffer", "SetDocView", "SetUILayout"} {
+	for _, method := range []string{"GetState", "NewDocument", "OpenDocument", "UpdateBuffer", "SetDocView", "SetUILayout", "Save", "SaveAs"} {
 		t.Run(method+" recovers without emitting a patch", func(t *testing.T) {
 			service := &fakeAppModelService{panicOn: method}
 			panickingHandler := NewAppModelHandler(service, nil, nil)
@@ -70,8 +72,18 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 				result = panickingHandler.SetDocView("doc", validDocView(true, true))
 			case "SetUILayout":
 				result = panickingHandler.SetUILayout(apperr.UILayout{})
+			case "Save":
+				writeResult := panickingHandler.Save("doc", 1, "")
+				if writeResult.Status != apperr.WriteStatusRefused || writeResult.Error == nil || writeResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
+					t.Fatalf("panic result = %+v, want classified Save refusal", writeResult)
+				}
+			case "SaveAs":
+				writeResult := panickingHandler.SaveAs("doc", 1, "")
+				if writeResult.Status != apperr.WriteStatusRefused || writeResult.Error == nil || writeResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
+					t.Fatalf("panic result = %+v, want classified Save As refusal", writeResult)
+				}
 			}
-			if method != "GetState" && method != "NewDocument" && method != "OpenDocument" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
+			if method != "GetState" && method != "NewDocument" && method != "OpenDocument" && method != "Save" && method != "SaveAs" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
 				t.Fatalf("panic result = %+v, want an internal envelope", result)
 			}
 			if service.emissions != 0 {
@@ -203,6 +215,22 @@ func (service *fakeAppModelService) SetUILayout(_ context.Context, _ apperr.UILa
 	}
 	service.emissions++
 	return nil
+}
+
+func (service *fakeAppModelService) Save(_ context.Context, _ string, _ uint64, _ string) apperr.WriteResult {
+	if service.panicOn == "Save" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.WriteResult{Status: apperr.WriteStatusCancelled}
+}
+
+func (service *fakeAppModelService) SaveAs(_ context.Context, _ string, _ uint64, _ string) apperr.WriteResult {
+	if service.panicOn == "SaveAs" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.WriteResult{Status: apperr.WriteStatusCancelled}
 }
 
 var _ AppModelServiceAPI = (*fakeAppModelService)(nil)

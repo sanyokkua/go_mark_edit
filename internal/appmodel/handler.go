@@ -19,6 +19,8 @@ type AppModelServiceAPI interface {
 	UpdateBuffer(ctx context.Context, documentID, content string) error
 	SetDocView(ctx context.Context, documentID string, view apperr.DocViewInput) error
 	SetUILayout(ctx context.Context, layout apperr.UILayout) error
+	Save(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
+	SaveAs(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
 }
 
 // OpenDocument opens the native picker and commits its selected path through canonical Open.
@@ -121,6 +123,26 @@ func (handler *AppModelHandler) SetUILayout(layout apperr.UILayout) (res apperr.
 		return apperr.VoidResult{Error: &wire}
 	}
 	return apperr.VoidResult{}
+}
+
+// Save commits the newest backend-owned buffer for one revision-bound document.
+func (handler *AppModelHandler) Save(documentID string, contentRevision uint64, decisionToken string) (res apperr.WriteResult) {
+	defer func() {
+		if recover() != nil {
+			res = refusedWrite(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be saved.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.Save(handler.context(), documentID, contentRevision, decisionToken)
+}
+
+// SaveAs runs the native target-selection and overwrite-confirmation flow.
+func (handler *AppModelHandler) SaveAs(documentID string, contentRevision uint64, decisionToken string) (res apperr.WriteResult) {
+	defer func() {
+		if recover() != nil {
+			res = refusedWrite(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be saved under a new name.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.SaveAs(handler.context(), documentID, contentRevision, decisionToken)
 }
 
 func (handler *AppModelHandler) context() context.Context {

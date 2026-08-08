@@ -53,13 +53,14 @@ func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger
 	return holder
 }
 
-// SetDocumentDialogs wires the composition-root native picker into the backend-owned Open command.
+// SetDocumentDialogs wires the composition-root native pickers into backend-owned file commands.
 func (holder *ApplicationContextHolder) SetDocumentDialogs(dialogs *DocumentDialogs) {
 	holder.mu.Lock()
 	holder.DocumentDialogs = dialogs
 	service := holder.AppModelService
 	holder.mu.Unlock()
 	service.SetDocumentOpenDialog(dialogs)
+	service.SetDocumentSaveDialog(dialogs)
 }
 
 // SetContext records the context Wails supplies during application startup.

@@ -20,22 +20,27 @@ var nextDocumentID uint64
 
 // AppModelService is the mutex-guarded owner of live document and layout state.
 type AppModelService struct {
-	mu               sync.RWMutex
-	state            applicationState
-	commands         DocumentCommandAPI
-	content          DocumentContentAccessor
-	emitter          StatePatchEmitter
-	layout           LayoutRepositoryAPI
-	sequence         uint64
-	writerID         string
-	timer            layoutTimer
-	pending          *pendingLayout
-	pendingFlushDone chan struct{}
-	startupErr       error
-	reservations     map[string]*openReservation
-	metadata         FileMetadataRepository
-	defaultOpenMode  string
-	openDialog       DocumentOpenDialog
+	mu                  sync.RWMutex
+	state               applicationState
+	commands            DocumentCommandAPI
+	content             DocumentContentAccessor
+	emitter             StatePatchEmitter
+	layout              LayoutRepositoryAPI
+	sequence            uint64
+	writerID            string
+	timer               layoutTimer
+	pending             *pendingLayout
+	pendingFlushDone    chan struct{}
+	startupErr          error
+	reservations        map[string]*openReservation
+	saveReservations    map[string]*saveReservation
+	normalizations      map[string]*normalizationAuthorization
+	writeCoordinators   map[string]*DocumentWriteCoordinator
+	beforeSaveAsRecheck func(string)
+	metadata            FileMetadataRepository
+	defaultOpenMode     string
+	openDialog          DocumentOpenDialog
+	saveDialog          DocumentSaveDialog
 }
 
 type layoutTimer interface{ AfterFunc(time.Duration, func()) }
@@ -94,7 +99,7 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 	if timer == nil {
 		timer = systemLayoutTimer{}
 	}
-	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), defaultOpenMode: OpenModeEditor, state: applicationState{
+	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), saveReservations: make(map[string]*saveReservation), normalizations: make(map[string]*normalizationAuthorization), writeCoordinators: make(map[string]*DocumentWriteCoordinator), defaultOpenMode: OpenModeEditor, state: applicationState{
 		orderedDocumentIDs: []string{documentID},
 		documents:          map[string]*openDocument{documentID: initialDocument},
 		activeDocumentID:   documentID,
@@ -144,6 +149,21 @@ func (service *AppModelService) SetDocumentOpenDialog(dialog DocumentOpenDialog)
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	service.openDialog = dialog
+}
+
+// SetDocumentSaveDialog injects the composition-root save chooser and native overwrite prompt.
+func (service *AppModelService) SetDocumentSaveDialog(dialog DocumentSaveDialog) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.saveDialog = dialog
+}
+
+// SetBeforeSaveAsRecheck is a narrow deterministic test seam for target drift between
+// confirmation and the final version/hash comparison.
+func (service *AppModelService) SetBeforeSaveAsRecheck(hook func(string)) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.beforeSaveAsRecheck = hook
 }
 
 // OpenFromDialog turns cancellation into a normal outcome and delegates selected paths to OpenPath.

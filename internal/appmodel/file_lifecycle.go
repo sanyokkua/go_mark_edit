@@ -25,6 +25,17 @@ type DocumentOpenDialog interface {
 	ChooseOpenFile(context.Context) (string, error)
 }
 
+type SaveDialogRequest struct {
+	DefaultDirectory string
+	DefaultFilename  string
+	Title            string
+}
+
+type DocumentSaveDialog interface {
+	ChooseSaveFile(context.Context, SaveDialogRequest) (string, error)
+	ConfirmOverwrite(context.Context, string) (bool, error)
+}
+
 // NewDocument performs one revision-checked backend transition. It never
 // creates a file or a recent-file entry; the returned acknowledgement is the
 // only source payload that may be installed after the projection catches up.
@@ -267,6 +278,19 @@ func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arr
 		sizeClass = "large"
 	}
 	version, _ := file.CurrentDiskVersion(read.CanonicalPath.Path)
+	normalizationEnding := ""
+	if read.Characteristics.LineEnding == file.LineEndingMixed {
+		switch {
+		case read.Characteristics.LFCount > read.Characteristics.CRLFCount:
+			normalizationEnding = string(file.LineEndingLF)
+		case read.Characteristics.CRLFCount > read.Characteristics.LFCount:
+			normalizationEnding = string(file.LineEndingCRLF)
+		case read.Characteristics.FirstEnding == file.LineEndingCRLF:
+			normalizationEnding = string(file.LineEndingCRLF)
+		default:
+			normalizationEnding = string(file.LineEndingLF)
+		}
+	}
 	return &openDocument{
 		metadata: apperr.DocumentMetadata{
 			DocumentID: documentID, Title: read.CanonicalPath.DisplayName, Path: read.CanonicalPath.Path,
@@ -275,7 +299,7 @@ func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arr
 			LineEnding: string(read.Characteristics.LineEnding), Capability: string(read.Capability), SizeClass: sizeClass,
 			WordCount: len(strings.Fields(read.Content)), View: openView(arrangement),
 		},
-		content: read.Content, baseline: read.Content, baselineVersion: version, baselineOrigin: SaveOriginOpen, committedRevision: 0, canonicalIdentity: read.CanonicalPath.Identity,
+		content: read.Content, baseline: read.Content, baselineVersion: version, baselineOrigin: SaveOriginOpen, committedRevision: 0, normalizationEnding: normalizationEnding, canonicalIdentity: read.CanonicalPath.Identity,
 	}
 }
 

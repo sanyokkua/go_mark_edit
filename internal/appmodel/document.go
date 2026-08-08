@@ -62,6 +62,11 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 	}
 	if document.content != content {
 		document.metadata.ContentRevision++
+		for token, authorization := range commands.service.normalizations {
+			if authorization.documentID == documentID {
+				delete(commands.service.normalizations, token)
+			}
+		}
 	}
 	document.content = content
 	document.metadata.Dirty = document.content != document.baseline || document.detached || (document.metadata.Path == "" && document.content != "") || document.failedWrite || document.metadata.ContentRevision > document.committedRevision

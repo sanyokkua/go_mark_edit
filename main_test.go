@@ -363,6 +363,8 @@ func TestAppModelHandlerIsBoundAndGenerated(t *testing.T) {
 		"export function UpdateBuffer(arg1:string,arg2:string):Promise<apperr.VoidResult>;",
 		"export function SetDocView(arg1:string,arg2:apperr.DocViewInput):Promise<apperr.VoidResult>;",
 		"export function SetUILayout(arg1:apperr.UILayout):Promise<apperr.VoidResult>;",
+		"export function Save(arg1:string,arg2:number,arg3:string):Promise<apperr.WriteResult>;",
+		"export function SaveAs(arg1:string,arg2:number,arg3:string):Promise<apperr.WriteResult>;",
 	} {
 		if !strings.Contains(string(bindings), signature) {
 			t.Errorf("generated app-model bindings omit exact signature %q", signature)

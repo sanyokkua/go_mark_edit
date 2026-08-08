@@ -182,6 +182,7 @@ type CommittedWriteOutcome struct {
 	DocumentID                  string            `json:"documentId"`
 	WrittenContentRevision      uint64            `json:"writtenContentRevision"`
 	CommittedProjectionRevision uint64            `json:"committedProjectionRevision"`
+	TargetPath                  string            `json:"targetPath,omitempty"`
 	TargetPathAdopted           bool              `json:"targetPathAdopted"`
 	LineEndingOutcome           LineEndingOutcome `json:"lineEndingOutcome"`
 	BOMOutcome                  BOMOutcome        `json:"bomOutcome"`
@@ -191,6 +192,27 @@ type CommittedWriteOutcome struct {
 type CommittedWriteResult struct {
 	Data  *CommittedWriteOutcome `json:"data,omitempty"`
 	Error *ClassifiedError       `json:"error,omitempty"`
+}
+
+type WriteStatus string
+
+const (
+	WriteStatusCommitted          WriteStatus = "committed"
+	WriteStatusCancelled          WriteStatus = "cancelled"
+	WriteStatusNeedsNormalization WriteStatus = "needs-normalization"
+	WriteStatusConflict           WriteStatus = "conflict"
+	WriteStatusRefused            WriteStatus = "refused"
+)
+
+// WriteResult distinguishes a committed disk replacement from a cancelled,
+// authorization, conflict, or classified refusal outcome.
+type WriteResult struct {
+	Status           WriteStatus            `json:"status"`
+	Data             *CommittedWriteOutcome `json:"data,omitempty"`
+	DecisionToken    string                 `json:"decisionToken,omitempty"`
+	ProposedEnding   string                 `json:"proposedEnding,omitempty"`
+	DocumentRevision uint64                 `json:"documentRevision,omitempty"`
+	Error            *ClassifiedError       `json:"error,omitempty"`
 }
 
 type OpenStatus string

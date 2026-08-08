@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
 	"os"
 	goruntime "runtime"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
+	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
@@ -47,7 +49,7 @@ func main() {
 	}()
 
 	applicationContext := application.NewApplicationContextHolder(fileUtils, appLogger)
-	applicationContext.SetDocumentDialogs(application.NewDocumentDialogs(func(ctx context.Context) (string, error) {
+	dialogs := application.NewDocumentDialogs(func(ctx context.Context) (string, error) {
 		return runtime.OpenFileDialog(ctx, runtime.OpenDialogOptions{
 			Title: "Open Markdown or text file",
 			Filters: []runtime.FileFilter{{
@@ -55,7 +57,30 @@ func main() {
 				Pattern:     "*.md;*.markdown;*.mdown;*.txt",
 			}},
 		})
-	}))
+	})
+	dialogs.SetSaveFilePicker(func(ctx context.Context, request appmodel.SaveDialogRequest) (string, error) {
+		return runtime.SaveFileDialog(ctx, runtime.SaveDialogOptions{
+			Title:            request.Title,
+			DefaultDirectory: request.DefaultDirectory,
+			DefaultFilename:  request.DefaultFilename,
+			Filters: []runtime.FileFilter{{
+				DisplayName: "Markdown and text",
+				Pattern:     "*.md;*.markdown;*.mdown;*.txt",
+			}},
+		})
+	})
+	dialogs.SetOverwriteConfirmer(func(ctx context.Context, subject string) (bool, error) {
+		result, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
+			Type:          runtime.QuestionDialog,
+			Title:         "Overwrite file?",
+			Message:       fmt.Sprintf("Overwrite %s?", subject),
+			Buttons:       []string{"Overwrite", "Cancel"},
+			DefaultButton: "Cancel",
+			CancelButton:  "Cancel",
+		})
+		return result == "Overwrite", err
+	})
+	applicationContext.SetDocumentDialogs(dialogs)
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
 		bootstrapLogger.Error().Err(err).Msg("run application")
 	}

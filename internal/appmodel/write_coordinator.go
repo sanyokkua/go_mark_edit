@@ -1,6 +1,7 @@
 package appmodel
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/sanyokkua/go_mark_edit/internal/file"
@@ -13,7 +14,18 @@ type WriteSnapshot struct {
 	CanonicalContent    string
 	TargetPath          string
 	ExpectedDiskVersion *file.DiskVersion
+	encodedData         []byte
 }
+
+// committedWriteError lets the coordinator preserve disk truth when the
+// replacement succeeded but a post-commit durability step reported a warning.
+type committedWriteError struct {
+	version file.DiskVersion
+	err     error
+}
+
+func (err *committedWriteError) Error() string { return err.err.Error() }
+func (err *committedWriteError) Unwrap() error { return err.err }
 
 // CommittedWriteResult records disk truth even when projection publication needs recovery.
 type CommittedWriteResult struct {
@@ -52,8 +64,23 @@ func (coordinator *DocumentWriteCoordinator) Commit(snapshot WriteSnapshot) (Com
 		version := *snapshot.ExpectedDiskVersion
 		immutable.ExpectedDiskVersion = &version
 	}
+	if snapshot.encodedData != nil {
+		immutable.encodedData = append([]byte(nil), snapshot.encodedData...)
+	}
 	version, err := coordinator.executor(immutable)
 	if err != nil {
+		var committedErr *committedWriteError
+		if errors.As(err, &committedErr) {
+			result := CommittedWriteResult{
+				Snapshot:       immutable,
+				DiskVersion:    committedErr.version,
+				ResyncRequired: true,
+			}
+			if coordinator.publisher != nil && coordinator.publisher(result) != nil {
+				result.ResyncRequired = true
+			}
+			return result, committedErr.err
+		}
 		return CommittedWriteResult{}, err
 	}
 	result := CommittedWriteResult{Snapshot: immutable, DiskVersion: version}

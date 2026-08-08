@@ -16,16 +16,18 @@ const (
 )
 
 type openDocument struct {
-	metadata          apperr.DocumentMetadata
-	content           string
-	baseline          string
-	baselineVersion   file.DiskVersion
-	baselineOrigin    SaveOrigin
-	committedRevision uint64
-	failedWrite       bool
-	detached          bool
-	canonicalIdentity string
-	hasSavedView      bool
+	metadata            apperr.DocumentMetadata
+	content             string
+	baseline            string
+	baselineVersion     file.DiskVersion
+	baselineOrigin      SaveOrigin
+	committedRevision   uint64
+	failedWrite         bool
+	detached            bool
+	normalizationEnding string
+	baselineRawHash     string
+	canonicalIdentity   string
+	hasSavedView        bool
 }
 
 type applicationState struct {

@@ -338,6 +338,32 @@ export namespace apperr {
 	        this.dedupKey = source["dedupKey"];
 	    }
 	}
+	export class CommittedWriteOutcome {
+	    documentId: string;
+	    writtenContentRevision: number;
+	    committedProjectionRevision: number;
+	    targetPath?: string;
+	    targetPathAdopted: boolean;
+	    lineEndingOutcome: string;
+	    bomOutcome: string;
+	    resyncRequired: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CommittedWriteOutcome(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.documentId = source["documentId"];
+	        this.writtenContentRevision = source["writtenContentRevision"];
+	        this.committedProjectionRevision = source["committedProjectionRevision"];
+	        this.targetPath = source["targetPath"];
+	        this.targetPathAdopted = source["targetPathAdopted"];
+	        this.lineEndingOutcome = source["lineEndingOutcome"];
+	        this.bomOutcome = source["bomOutcome"];
+	        this.resyncRequired = source["resyncRequired"];
+	    }
+	}
 	export class ContentPrivacySettings {
 	    remotePolicy: string;
 	
@@ -632,6 +658,47 @@ export namespace apperr {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.error = this.convertValues(source["error"], WireError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class WriteResult {
+	    status: string;
+	    data?: CommittedWriteOutcome;
+	    decisionToken?: string;
+	    proposedEnding?: string;
+	    documentRevision?: number;
+	    error?: ClassifiedError;
+	
+	    static createFrom(source: any = {}) {
+	        return new WriteResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.data = this.convertValues(source["data"], CommittedWriteOutcome);
+	        this.decisionToken = source["decisionToken"];
+	        this.proposedEnding = source["proposedEnding"];
+	        this.documentRevision = source["documentRevision"];
+	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

@@ -14,6 +14,14 @@ export function OpenDocument(arg1) {
   return window['go']['appmodel']['AppModelHandler']['OpenDocument'](arg1);
 }
 
+export function Save(arg1, arg2, arg3) {
+  return window['go']['appmodel']['AppModelHandler']['Save'](arg1, arg2, arg3);
+}
+
+export function SaveAs(arg1, arg2, arg3) {
+  return window['go']['appmodel']['AppModelHandler']['SaveAs'](arg1, arg2, arg3);
+}
+
 export function SetDocView(arg1, arg2) {
   return window['go']['appmodel']['AppModelHandler']['SetDocView'](arg1, arg2);
 }
