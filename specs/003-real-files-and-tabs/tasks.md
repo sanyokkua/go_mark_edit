@@ -175,7 +175,7 @@ while inspecting bytes and modes.
   - **Tests/evidence**: `npm --prefix frontend test -- --runInBand` with named tests `flushActiveSession accepts latest content and view`, `one failed queue aborts lifecycle`, and `immediate Save waits for pending keystroke`; `just archtest`.
   - **Branch/commit**: `feature/v1-implementation--003-t010-lifecycle-barrier`; `feat(editor): add awaited lifecycle barrier`.
 
-- [ ] T011 [US1] Implement raw encode/decode and portable disk-version primitives in `internal/file/codec.go`, `internal/file/codec_test.go`, `internal/file/disk_version.go`, and `internal/file/disk_version_test.go`.
+- [X] T011 [US1] Implement raw encode/decode and portable disk-version primitives in `internal/file/codec.go`, `internal/file/codec_test.go`, `internal/file/disk_version.go`, and `internal/file/disk_version_test.go`.
   - **Outcome**: Immutable canonical snapshots encode new files as UTF-8/LF/no-BOM, preserve uniform LF/CRLF and BOM presence, and **preserve a `none` file's absence of a terminator until the user inserts a break, which is then encoded as LF**; one version equality implementation covers existence, size, nanosecond time, mode, and optional file identity.
   - **Prerequisites**: T005, T010.
   - **Primary ownership**: FR-FT-010.
