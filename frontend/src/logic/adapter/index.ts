@@ -46,7 +46,24 @@ const generatedSettingsBindings: SettingsBindings = {
 export const settingsAdapter = createSettingsAdapter(generatedSettingsBindings);
 
 const generatedAppModelBindings: AppModelBindings = {
-  getState: GetState,
+  getState: async () => {
+    const result = await GetState();
+    if (result.data === undefined) {
+      return { error: result.error };
+    }
+    return {
+      error: result.error,
+      data: {
+        snapshot: {
+          ...result.data.snapshot,
+          activeDocumentId: result.data.snapshot.activeDocumentId ?? null,
+          orderedDocumentIds: result.data.snapshot.orderedDocumentIds ?? [],
+          documents: result.data.snapshot.documents ?? {},
+        },
+        activeBuffer: result.data.activeBuffer ?? null,
+      },
+    };
+  },
   updateBuffer: UpdateBuffer,
   setDocView: (documentId, view) =>
     SetDocView(documentId, new apperr.DocViewInput(view)),
