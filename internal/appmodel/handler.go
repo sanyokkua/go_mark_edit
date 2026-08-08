@@ -33,6 +33,15 @@ type AppModelServiceAPI interface {
 	CancelConflict(ctx context.Context, documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) apperr.ConflictResult
 }
 
+// ClosePlanServiceAPI is kept separate from the legacy command surface so
+// older test doubles and embedders can continue to expose direct clean-tab
+// commands while the shared close prompt is introduced.
+type ClosePlanServiceAPI interface {
+	PrepareClose(ctx context.Context, kind apperr.ClosePlanKind, targetDocumentIDs []string, expectedTabSetRevision uint64) apperr.ClosePlanResult
+	ResolveClosePlan(ctx context.Context, planID string, decisions []apperr.ClosePlanDecision) apperr.ClosePlanResult
+	ExecuteClosePlan(ctx context.Context, planID string) apperr.TabTransitionResult
+}
+
 // OpenDocument opens the native picker and commits its selected path through canonical Open.
 func (handler *AppModelHandler) OpenDocument(expectedTabSetRevision uint64) (res apperr.OpenResult) {
 	defer func() {
@@ -86,6 +95,51 @@ func (handler *AppModelHandler) CloseDocument(documentID string, expectedTabSetR
 		}
 	}()
 	return handler.service.CloseDocument(handler.context(), documentID, expectedTabSetRevision)
+}
+
+// PrepareClose creates one immutable, revision-bound close plan. The frontend
+// must gather any user decisions before calling ResolveClosePlan.
+func (handler *AppModelHandler) PrepareClose(kind apperr.ClosePlanKind, targetDocumentIDs []string, expectedTabSetRevision uint64) (res apperr.ClosePlanResult) {
+	defer func() {
+		if recover() != nil {
+			res = closePlanRefused(apperr.ClassifiedSystemCommandFailure, "close plan", "The close plan could not be prepared.", apperr.RemediationRetry)
+		}
+	}()
+	planner, ok := handler.service.(ClosePlanServiceAPI)
+	if !ok {
+		return closePlanRefused(apperr.ClassifiedSystemCommandFailure, "close plan", "The close plan service is unavailable.", apperr.RemediationRetry)
+	}
+	return planner.PrepareClose(handler.context(), kind, targetDocumentIDs, expectedTabSetRevision)
+}
+
+// ResolveClosePlan records complete Save/Discard choices and any already
+// authorized write decisions without performing a batch write.
+func (handler *AppModelHandler) ResolveClosePlan(planID string, decisions []apperr.ClosePlanDecision) (res apperr.ClosePlanResult) {
+	defer func() {
+		if recover() != nil {
+			res = closePlanRefused(apperr.ClassifiedSystemCommandFailure, planID, "The close plan could not be resolved.", apperr.RemediationRetry)
+		}
+	}()
+	planner, ok := handler.service.(ClosePlanServiceAPI)
+	if !ok {
+		return closePlanRefused(apperr.ClassifiedSystemCommandFailure, planID, "The close plan service is unavailable.", apperr.RemediationRetry)
+	}
+	return planner.ResolveClosePlan(handler.context(), planID, decisions)
+}
+
+// ExecuteClosePlan saves in authoritative order and removes all targets only
+// after every requested save has committed successfully.
+func (handler *AppModelHandler) ExecuteClosePlan(planID string) (res apperr.TabTransitionResult) {
+	defer func() {
+		if recover() != nil {
+			res = tabTransitionFailure(apperr.ClassifiedSystemCommandFailure, planID, "The close plan could not be executed.", apperr.RemediationRetry)
+		}
+	}()
+	planner, ok := handler.service.(ClosePlanServiceAPI)
+	if !ok {
+		return tabTransitionFailure(apperr.ClassifiedSystemCommandFailure, planID, "The close plan service is unavailable.", apperr.RemediationRetry)
+	}
+	return planner.ExecuteClosePlan(handler.context(), planID)
 }
 
 // CopyPath delegates the explicit canonical path action to the injected clipboard port.

@@ -89,12 +89,48 @@ func (service *AppModelService) scheduleAutosave(documentID string, revision uin
 }
 
 func (service *AppModelService) flushAutosave(documentID string) {
-	service.mu.Lock()
-	service.cancelAutosaveLocked(documentID)
-	done := service.autosaveInFlight[documentID]
-	service.mu.Unlock()
-	if done != nil {
-		<-done
+	service.flushAutosaveMode(documentID, false)
+}
+
+// flushAutosaveForClose turns a pending debounce into accepted synchronous
+// work. Closing is the one boundary where cancelling a scheduled autosave
+// would strand the latest working copy and incorrectly prompt the user.
+func (service *AppModelService) flushAutosaveForClose(documentID string) {
+	service.flushAutosaveMode(documentID, true)
+}
+
+func (service *AppModelService) flushAutosaveMode(documentID string, runScheduled bool) {
+	for {
+		service.mu.Lock()
+		entry := service.autosaveTimers[documentID]
+		done := service.autosaveInFlight[documentID]
+		if entry != nil && done == nil {
+			if !runScheduled {
+				service.cancelAutosaveLocked(documentID)
+				service.mu.Unlock()
+				return
+			}
+			// A close is an accepted flush boundary: stopping
+			// the debounce timer alone would strand the latest working copy.
+			// Leave the entry visible while runAutosave claims it so a timer
+			// callback racing this call cannot start a second write.
+			if entry.timer != nil {
+				entry.timer.Stop()
+			}
+			revision, generation := entry.revision, entry.generation
+			service.mu.Unlock()
+			service.runAutosave(documentID, revision, generation)
+			continue
+		}
+		if entry != nil && done != nil {
+			service.cancelAutosaveLocked(documentID)
+		}
+		service.mu.Unlock()
+		if done != nil {
+			<-done
+			continue
+		}
+		return
 	}
 }
 

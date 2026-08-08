@@ -26,6 +26,10 @@ export function CopyPath(arg1) {
   return window['go']['appmodel']['AppModelHandler']['CopyPath'](arg1);
 }
 
+export function ExecuteClosePlan(arg1) {
+  return window['go']['appmodel']['AppModelHandler']['ExecuteClosePlan'](arg1);
+}
+
 export function GetState() {
   return window['go']['appmodel']['AppModelHandler']['GetState']();
 }
@@ -38,12 +42,20 @@ export function OpenDocument(arg1) {
   return window['go']['appmodel']['AppModelHandler']['OpenDocument'](arg1);
 }
 
+export function PrepareClose(arg1, arg2, arg3) {
+  return window['go']['appmodel']['AppModelHandler']['PrepareClose'](arg1, arg2, arg3);
+}
+
 export function ReloadFromDisk(arg1, arg2, arg3) {
   return window['go']['appmodel']['AppModelHandler']['ReloadFromDisk'](arg1, arg2, arg3);
 }
 
 export function ReorderDocument(arg1, arg2, arg3) {
   return window['go']['appmodel']['AppModelHandler']['ReorderDocument'](arg1, arg2, arg3);
+}
+
+export function ResolveClosePlan(arg1, arg2) {
+  return window['go']['appmodel']['AppModelHandler']['ResolveClosePlan'](arg1, arg2);
 }
 
 export function RevealInFileManager(arg1) {

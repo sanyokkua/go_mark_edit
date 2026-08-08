@@ -203,6 +203,93 @@ type TabTransitionResult struct {
 // TabTransitionOutcome is the contract-level name used by tab callers.
 type TabTransitionOutcome = TabTransitionResult
 
+// ClosePlanKind identifies the operation that selected a set of tabs for a
+// transactional close. The backend orders the supplied targets by its own tab
+// order regardless of the order in the request.
+type ClosePlanKind string
+
+const (
+	ClosePlanSingle ClosePlanKind = "single"
+	ClosePlanOthers ClosePlanKind = "others"
+	ClosePlanRight  ClosePlanKind = "right"
+	ClosePlanWindow ClosePlanKind = "window"
+	ClosePlanQuit   ClosePlanKind = "quit"
+)
+
+// ClosePlanStatus is deliberately terminal for failed/cancelled plans. A
+// retry must prepare a fresh revision snapshot and collect fresh choices.
+type ClosePlanStatus string
+
+const (
+	ClosePlanCollecting ClosePlanStatus = "collecting"
+	ClosePlanReady      ClosePlanStatus = "ready"
+	ClosePlanExecuting  ClosePlanStatus = "executing"
+	ClosePlanFailed     ClosePlanStatus = "failed"
+	ClosePlanCancelled  ClosePlanStatus = "cancelled"
+	ClosePlanComplete   ClosePlanStatus = "complete"
+)
+
+// CloseChoice is the per-document choice collected before any close side
+// effect. Save all and Discard all are normalized to save/discard choices by
+// the backend before execution.
+type CloseChoice string
+
+const (
+	CloseChoiceSave       CloseChoice = "save"
+	CloseChoiceDiscard    CloseChoice = "discard"
+	CloseChoiceCancel     CloseChoice = "cancel"
+	CloseChoiceSaveAll    CloseChoice = "save-all"
+	CloseChoiceDiscardAll CloseChoice = "discard-all"
+)
+
+// ClosePlanDecision binds a user choice and an optional already-authorized
+// write decision (for example mixed-line-ending normalization or Keep mine) to
+// one exact document identity.
+type ClosePlanDecision struct {
+	DocumentID    string      `json:"documentId"`
+	Choice        CloseChoice `json:"choice"`
+	DecisionToken string      `json:"decisionToken,omitempty"`
+}
+
+// CloseTarget is a content-free immutable close-plan target snapshot. The
+// normalization fields are transient requirements returned while a plan is
+// being resolved; they never become application state.
+type CloseTarget struct {
+	DocumentID         string           `json:"documentId"`
+	Title              string           `json:"title"`
+	Path               string           `json:"path,omitempty"`
+	SavePath           string           `json:"savePath,omitempty"`
+	DisplayName        string           `json:"displayName,omitempty"`
+	ContentRevision    uint64           `json:"contentRevision"`
+	Dirty              bool             `json:"dirty"`
+	Capability         string           `json:"capability,omitempty"`
+	WriteInFlight      bool             `json:"writeInFlight,omitempty"`
+	Status             string           `json:"status,omitempty"`
+	Choice             CloseChoice      `json:"choice,omitempty"`
+	NormalizationToken string           `json:"normalizationToken,omitempty"`
+	ProposedEnding     string           `json:"proposedEnding,omitempty"`
+	Conflict           *ConflictPreview `json:"conflict,omitempty"`
+}
+
+// ClosePlanSummary is the only data returned to a caller while a close plan
+// is being collected or executed. Targets are always in authoritative tab
+// order and contain no source copy.
+type ClosePlanSummary struct {
+	ID             string          `json:"id"`
+	Kind           ClosePlanKind   `json:"kind"`
+	TabSetRevision uint64          `json:"tabSetRevision"`
+	Targets        []CloseTarget   `json:"targets"`
+	DirtyTargetIDs []string        `json:"dirtyTargetIds,omitempty"`
+	Status         ClosePlanStatus `json:"status"`
+}
+
+// ClosePlanResult carries a plan summary or a classified refusal. Execution
+// returns the final TabTransitionResult after the summary reaches complete.
+type ClosePlanResult struct {
+	Data  *ClosePlanSummary `json:"data,omitempty"`
+	Error *ClassifiedError  `json:"error,omitempty"`
+}
+
 type PathCommandStatus string
 
 const (

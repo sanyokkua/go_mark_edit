@@ -42,6 +42,8 @@ type AppModelService struct {
 	saveReservations    map[string]*saveReservation
 	normalizations      map[string]*normalizationAuthorization
 	writeCoordinators   map[string]*DocumentWriteCoordinator
+	closePlans          map[string]*closePlan
+	activeClosePlan     string
 	writeExecutor       WriteExecutor
 	writeCommitObserver WriteCommitObserver
 	runtimeContext      context.Context
@@ -115,7 +117,7 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 	if timer == nil {
 		timer = systemLayoutTimer{}
 	}
-	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, autosaveTimers: make(map[string]*autosaveTimerEntry), autosaveInFlight: make(map[string]chan struct{}), writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), saveReservations: make(map[string]*saveReservation), normalizations: make(map[string]*normalizationAuthorization), writeCoordinators: make(map[string]*DocumentWriteCoordinator), conflicts: make(map[string]*documentConflict), conflictQueue: newConflictQueue(), keepMine: make(map[string]*keepMineAuthorization), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, state: applicationState{
+	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, autosaveTimers: make(map[string]*autosaveTimerEntry), autosaveInFlight: make(map[string]chan struct{}), writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), saveReservations: make(map[string]*saveReservation), normalizations: make(map[string]*normalizationAuthorization), writeCoordinators: make(map[string]*DocumentWriteCoordinator), closePlans: make(map[string]*closePlan), conflicts: make(map[string]*documentConflict), conflictQueue: newConflictQueue(), keepMine: make(map[string]*keepMineAuthorization), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, state: applicationState{
 		orderedDocumentIDs: []string{documentID},
 		documents:          map[string]*openDocument{documentID: initialDocument},
 		activeDocumentID:   documentID,
