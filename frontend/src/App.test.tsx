@@ -122,6 +122,7 @@ jest.mock('./logic/adapter', () => ({
       activeBuffer: { documentId: 'document-1', content: 'ephemeral buffer' },
     })),
     updateBuffer: jest.fn(),
+    flushActiveSession: jest.fn(async () => undefined),
     setDocView: jest.fn(),
     setUILayout: jest.fn(),
     reconcileCommittedWrite: jest.fn(),
@@ -611,6 +612,7 @@ it('Reload replaces the active same-document buffer from authoritative state', a
     status: 'reloaded',
     documentId: 'document-1',
   });
+  mockedAppModelAdapter.flushActiveSession?.mockReset();
 
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: 'File' }));
@@ -624,6 +626,9 @@ it('Reload replaces the active same-document buffer from authoritative state', a
     ).toHaveTextContent('disk');
   });
   expect(mockedAppModelAdapter.getState).toHaveBeenCalledTimes(3);
+  expect(mockedAppModelAdapter.flushActiveSession).toHaveBeenCalledWith(
+    'document-1',
+  );
   expect(
     screen.queryByRole('dialog', { name: 'File changed on disk' }),
   ).not.toBeInTheDocument();

@@ -506,6 +506,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       const current = externalConflict;
       if (current === null) return;
       if (decision === 'keep-mine' && !externalConflictValid) return;
+      await appModelAdapter.flushActiveSession?.(current.documentId);
       let result;
       switch (decision) {
         case 'reload':
