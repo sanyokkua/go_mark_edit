@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
+	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
 var nextDocumentID uint64
@@ -41,6 +42,8 @@ type AppModelService struct {
 	defaultOpenMode     string
 	openDialog          DocumentOpenDialog
 	saveDialog          DocumentSaveDialog
+	clipboard           file.ClipboardWriter
+	reveal              file.RevealPort
 }
 
 type layoutTimer interface{ AfterFunc(time.Duration, func()) }
@@ -156,6 +159,20 @@ func (service *AppModelService) SetDocumentSaveDialog(dialog DocumentSaveDialog)
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	service.saveDialog = dialog
+}
+
+// SetClipboardWriter injects the host clipboard without coupling appmodel to Wails.
+func (service *AppModelService) SetClipboardWriter(writer file.ClipboardWriter) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.clipboard = writer
+}
+
+// SetRevealPort injects the host file-manager reveal command.
+func (service *AppModelService) SetRevealPort(port file.RevealPort) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.reveal = port
 }
 
 // SetBeforeSaveAsRecheck is a narrow deterministic test seam for target drift between
@@ -752,6 +769,7 @@ func (service *AppModelService) snapshotLocked() applicationState {
 		documentCopy := *document
 		snapshot.documents[documentID] = &documentCopy
 	}
+	snapshot.recentlyClosed = append([]recentlyClosedDocument(nil), service.state.recentlyClosed...)
 	return snapshot
 }
 

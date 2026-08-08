@@ -22,6 +22,11 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 	}{
 		{"GetState", 1, reflect.TypeFor[apperr.StateResult]()},
 		{"NewDocument", 2, reflect.TypeFor[apperr.DocumentTransitionOutcome]()},
+		{"ActivateDocument", 3, reflect.TypeFor[apperr.DocumentTransitionOutcome]()},
+		{"ReorderDocument", 4, reflect.TypeFor[apperr.TabTransitionResult]()},
+		{"CloseDocument", 3, reflect.TypeFor[apperr.TabTransitionResult]()},
+		{"CopyPath", 2, reflect.TypeFor[apperr.CopyPathResult]()},
+		{"RevealInFileManager", 2, reflect.TypeFor[apperr.RevealResult]()},
 		{"OpenDocument", 2, reflect.TypeFor[apperr.OpenResult]()},
 		{"UpdateBuffer", 3, reflect.TypeFor[apperr.VoidResult]()},
 		{"SetDocView", 3, reflect.TypeFor[apperr.VoidResult]()},
@@ -44,7 +49,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		})
 	}
 
-	for _, method := range []string{"GetState", "NewDocument", "OpenDocument", "UpdateBuffer", "SetDocView", "SetUILayout", "Save", "SaveAs"} {
+	for _, method := range []string{"GetState", "NewDocument", "OpenDocument", "ActivateDocument", "ReorderDocument", "CloseDocument", "CopyPath", "RevealInFileManager", "UpdateBuffer", "SetDocView", "SetUILayout", "Save", "SaveAs"} {
 		t.Run(method+" recovers without emitting a patch", func(t *testing.T) {
 			service := &fakeAppModelService{panicOn: method}
 			panickingHandler := NewAppModelHandler(service, nil, nil)
@@ -60,6 +65,31 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 				transition := panickingHandler.NewDocument(0)
 				if transition.Data != nil || transition.Error == nil || transition.Error.Category != apperr.ClassifiedIOFailure {
 					t.Fatalf("panic result = %+v, want a classified internal transition error", transition)
+				}
+			case "ActivateDocument":
+				transition := panickingHandler.ActivateDocument("doc", 0)
+				if transition.Data != nil || transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
+					t.Fatalf("panic result = %+v, want classified activation refusal", transition)
+				}
+			case "ReorderDocument":
+				transition := panickingHandler.ReorderDocument("doc", 0, 0)
+				if transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
+					t.Fatalf("panic result = %+v, want classified reorder refusal", transition)
+				}
+			case "CloseDocument":
+				transition := panickingHandler.CloseDocument("doc", 0)
+				if transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
+					t.Fatalf("panic result = %+v, want classified close refusal", transition)
+				}
+			case "CopyPath":
+				pathResult := panickingHandler.CopyPath("doc")
+				if pathResult.Error == nil || pathResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
+					t.Fatalf("panic result = %+v, want classified copy refusal", pathResult)
+				}
+			case "RevealInFileManager":
+				revealResult := panickingHandler.RevealInFileManager("doc")
+				if revealResult.Error == nil || revealResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
+					t.Fatalf("panic result = %+v, want classified reveal refusal", revealResult)
 				}
 			case "OpenDocument":
 				opened := panickingHandler.OpenDocument(0)
@@ -83,7 +113,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 					t.Fatalf("panic result = %+v, want classified Save As refusal", writeResult)
 				}
 			}
-			if method != "GetState" && method != "NewDocument" && method != "OpenDocument" && method != "Save" && method != "SaveAs" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
+			if method != "GetState" && method != "NewDocument" && method != "OpenDocument" && method != "ActivateDocument" && method != "ReorderDocument" && method != "CloseDocument" && method != "CopyPath" && method != "RevealInFileManager" && method != "Save" && method != "SaveAs" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
 				t.Fatalf("panic result = %+v, want an internal envelope", result)
 			}
 			if service.emissions != 0 {
@@ -188,6 +218,46 @@ func (service *fakeAppModelService) NewDocument(_ context.Context, _ uint64) app
 	}
 	service.emissions++
 	return apperr.DocumentTransitionOutcome{}
+}
+
+func (service *fakeAppModelService) ActivateDocument(_ context.Context, _ string, _ uint64) apperr.DocumentTransitionOutcome {
+	if service.panicOn == "ActivateDocument" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.DocumentTransitionOutcome{}
+}
+
+func (service *fakeAppModelService) ReorderDocument(_ context.Context, _ string, _ int, _ uint64) apperr.TabTransitionResult {
+	if service.panicOn == "ReorderDocument" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.TabTransitionResult{}
+}
+
+func (service *fakeAppModelService) CloseDocument(_ context.Context, _ string, _ uint64) apperr.TabTransitionResult {
+	if service.panicOn == "CloseDocument" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.TabTransitionResult{}
+}
+
+func (service *fakeAppModelService) CopyPath(_ context.Context, _ string) apperr.CopyPathResult {
+	if service.panicOn == "CopyPath" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.CopyPathResult{}
+}
+
+func (service *fakeAppModelService) RevealInFileManager(_ context.Context, _ string) apperr.RevealResult {
+	if service.panicOn == "RevealInFileManager" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.RevealResult{}
 }
 
 func (service *fakeAppModelService) UpdateBuffer(_ context.Context, _, _ string) error {

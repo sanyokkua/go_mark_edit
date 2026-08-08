@@ -30,6 +30,12 @@ type openDocument struct {
 	hasSavedView        bool
 }
 
+type recentlyClosedDocument struct {
+	path     string
+	identity string
+	view     apperr.DocView
+}
+
 type applicationState struct {
 	revision           uint64
 	tabSetRevision     uint64
@@ -39,4 +45,5 @@ type applicationState struct {
 	ui                 apperr.UILayout
 	recentFiles        []string
 	canReopenLastFile  bool
+	recentlyClosed     []recentlyClosedDocument
 }

@@ -160,6 +160,52 @@ type DocumentTransitionResult struct {
 // DocumentTransitionOutcome is the contract-level descriptive alias used by lifecycle callers.
 type DocumentTransitionOutcome = DocumentTransitionResult
 
+// TabTransitionStatus describes a backend-confirmed tab-session transition.
+type TabTransitionStatus string
+
+const (
+	TabTransitionActivated TabTransitionStatus = "activated"
+	TabTransitionReordered TabTransitionStatus = "reordered"
+	TabTransitionClosed    TabTransitionStatus = "closed"
+	TabTransitionNoop      TabTransitionStatus = "noop"
+	TabTransitionRefused   TabTransitionStatus = "refused"
+)
+
+// TabTransitionResult is the order/active projection barrier returned by tab commands.
+// No caller may infer a new order or active identity before this result is accepted.
+type TabTransitionResult struct {
+	Status             TabTransitionStatus          `json:"status"`
+	DocumentID         string                       `json:"documentId,omitempty"`
+	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
+	TabSetRevision     uint64                       `json:"tabSetRevision,omitempty"`
+	OrderedDocumentIDs []string                     `json:"orderedDocumentIds"`
+	ActiveDocumentID   string                       `json:"activeDocumentId,omitempty"`
+	ActiveBuffer       *ActiveBufferAcknowledgement `json:"activeBuffer,omitempty"`
+	Error              *ClassifiedError             `json:"error,omitempty"`
+}
+
+// TabTransitionOutcome is the contract-level name used by tab callers.
+type TabTransitionOutcome = TabTransitionResult
+
+type PathCommandStatus string
+
+const (
+	PathCommandCopied      PathCommandStatus = "copied"
+	PathCommandRevealed    PathCommandStatus = "revealed"
+	PathCommandUnavailable PathCommandStatus = "unavailable"
+	PathCommandRefused     PathCommandStatus = "refused"
+)
+
+// PathCommandResult contains only the explicit command outcome. The canonical path
+// is deliberately not returned: CopyPath hands it to the injected clipboard port.
+type PathCommandResult struct {
+	Status PathCommandStatus `json:"status"`
+	Error  *ClassifiedError  `json:"error,omitempty"`
+}
+
+type CopyPathResult = PathCommandResult
+type RevealResult = PathCommandResult
+
 type LineEndingOutcome string
 
 const (
@@ -259,7 +305,7 @@ type DocumentsPatch struct {
 type AppStatePatch struct {
 	Revision           uint64               `json:"revision"`
 	TabSetRevision     *uint64              `json:"tabSetRevision,omitempty"`
-	OrderedDocumentIDs []string             `json:"orderedDocumentIds,omitempty"`
+	OrderedDocumentIDs []string             `json:"orderedDocumentIds"`
 	Documents          *DocumentsPatch      `json:"documents,omitempty"`
 	ActiveDocumentID   *string              `json:"activeDocumentId,omitempty"`
 	ActiveDocument     *ActiveDocumentPatch `json:"activeDocument,omitempty"`

@@ -525,6 +525,38 @@ export namespace apperr {
 		    return a;
 		}
 	}
+	export class PathCommandResult {
+	    status: string;
+	    error?: ClassifiedError;
+	
+	    static createFrom(source: any = {}) {
+	        return new PathCommandResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.error = this.convertValues(source["error"], ClassifiedError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 	export class Settings {
@@ -627,6 +659,50 @@ export namespace apperr {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.data = this.convertValues(source["data"], AppState);
 	        this.error = this.convertValues(source["error"], WireError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class TabTransitionResult {
+	    status: string;
+	    documentId?: string;
+	    projectionRevision?: number;
+	    tabSetRevision?: number;
+	    orderedDocumentIds: string[];
+	    activeDocumentId?: string;
+	    activeBuffer?: ActiveBuffer;
+	    error?: ClassifiedError;
+	
+	    static createFrom(source: any = {}) {
+	        return new TabTransitionResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.documentId = source["documentId"];
+	        this.projectionRevision = source["projectionRevision"];
+	        this.tabSetRevision = source["tabSetRevision"];
+	        this.orderedDocumentIds = source["orderedDocumentIds"];
+	        this.activeDocumentId = source["activeDocumentId"];
+	        this.activeBuffer = this.convertValues(source["activeBuffer"], ActiveBuffer);
+	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

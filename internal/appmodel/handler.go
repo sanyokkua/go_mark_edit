@@ -15,6 +15,11 @@ const appModelPanicFormat = "panic: %v"
 type AppModelServiceAPI interface {
 	GetState(ctx context.Context) (apperr.AppState, error)
 	NewDocument(ctx context.Context, expectedTabSetRevision uint64) apperr.DocumentTransitionResult
+	ActivateDocument(ctx context.Context, documentID string, expectedTabSetRevision uint64) apperr.DocumentTransitionResult
+	ReorderDocument(ctx context.Context, documentID string, targetIndex int, expectedTabSetRevision uint64) apperr.TabTransitionResult
+	CloseDocument(ctx context.Context, documentID string, expectedTabSetRevision uint64) apperr.TabTransitionResult
+	CopyPath(ctx context.Context, documentID string) apperr.CopyPathResult
+	RevealInFileManager(ctx context.Context, documentID string) apperr.RevealResult
 	OpenFromDialog(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenResult
 	UpdateBuffer(ctx context.Context, documentID, content string) error
 	SetDocView(ctx context.Context, documentID string, view apperr.DocViewInput) error
@@ -46,6 +51,56 @@ func (handler *AppModelHandler) NewDocument(expectedTabSetRevision uint64) (res 
 	}()
 
 	return handler.service.NewDocument(handler.context(), expectedTabSetRevision)
+}
+
+// ActivateDocument changes the active identity only after a tab-set revision check.
+func (handler *AppModelHandler) ActivateDocument(documentID string, expectedTabSetRevision uint64) (res apperr.DocumentTransitionResult) {
+	defer func() {
+		if recover() != nil {
+			res = documentTransitionFailure(apperr.ClassifiedSystemCommandFailure, "The active document could not be published.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.ActivateDocument(handler.context(), documentID, expectedTabSetRevision)
+}
+
+// ReorderDocument moves one tab by one backend-confirmed position.
+func (handler *AppModelHandler) ReorderDocument(documentID string, targetIndex int, expectedTabSetRevision uint64) (res apperr.TabTransitionResult) {
+	defer func() {
+		if recover() != nil {
+			res = tabTransitionFailure(apperr.ClassifiedSystemCommandFailure, documentID, "The tab order could not be published.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.ReorderDocument(handler.context(), documentID, targetIndex, expectedTabSetRevision)
+}
+
+// CloseDocument removes one tab after a backend tab-set revision check.
+func (handler *AppModelHandler) CloseDocument(documentID string, expectedTabSetRevision uint64) (res apperr.TabTransitionResult) {
+	defer func() {
+		if recover() != nil {
+			res = tabTransitionFailure(apperr.ClassifiedSystemCommandFailure, documentID, "The document could not be closed.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.CloseDocument(handler.context(), documentID, expectedTabSetRevision)
+}
+
+// CopyPath delegates the explicit canonical path action to the injected clipboard port.
+func (handler *AppModelHandler) CopyPath(documentID string) (res apperr.CopyPathResult) {
+	defer func() {
+		if recover() != nil {
+			res = pathCommandFailure(apperr.ClassifiedSystemCommandFailure, documentID, documentID, "The path could not be copied.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.CopyPath(handler.context(), documentID)
+}
+
+// RevealInFileManager delegates the explicit path reveal action to the injected host port.
+func (handler *AppModelHandler) RevealInFileManager(documentID string) (res apperr.RevealResult) {
+	defer func() {
+		if recover() != nil {
+			res = revealFailure(apperr.ClassifiedSystemCommandFailure, documentID, documentID, "The file manager could not reveal this document.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.RevealInFileManager(handler.context(), documentID)
 }
 
 // AppModelHandler is the Wails-bound application-model query and command surface.
