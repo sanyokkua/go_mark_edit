@@ -23,11 +23,16 @@ interface EditorSettings {
   fontSize: 13 | 14 | 16;
 }
 
+interface FileSettings {
+  autosave: boolean;
+}
+
 interface Settings {
   appearance: AppearanceSettings;
   markdown: MarkdownSettings;
   contentPrivacy: ContentPrivacySettings;
   editor: EditorSettings;
+  file: FileSettings;
 }
 
 interface WireError {
@@ -68,6 +73,9 @@ let settings: Settings = {
     wordWrap: false,
     fontSize: 14,
   },
+  file: {
+    autosave: true,
+  },
 };
 
 function cloneSettings(): Settings {
@@ -76,6 +84,7 @@ function cloneSettings(): Settings {
     markdown: { ...settings.markdown },
     contentPrivacy: { ...settings.contentPrivacy },
     editor: { ...settings.editor },
+    file: { ...settings.file },
   };
 }
 

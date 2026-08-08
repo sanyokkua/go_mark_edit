@@ -25,11 +25,16 @@ export interface EditorSettings {
   fontSize: number;
 }
 
+export interface FileSettings {
+  autosave: boolean;
+}
+
 export interface Settings {
   appearance: AppearanceSettings;
   markdown: MarkdownSettings;
   contentPrivacy: ContentPrivacySettings;
   editor?: EditorSettings;
+  file?: FileSettings;
 }
 
 export type SettingsResult = ResultEnvelope<Settings>;

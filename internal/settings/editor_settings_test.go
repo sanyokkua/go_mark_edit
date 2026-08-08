@@ -63,6 +63,9 @@ func (repository *editorSettingsTestRepository) GetEditor(context.Context) (appe
 	}
 	return repository.editor, nil
 }
+func (repository *editorSettingsTestRepository) GetFile(context.Context) (apperr.FileSettings, error) {
+	return DefaultSettings().File, nil
+}
 func (repository *editorSettingsTestRepository) UpdateAppearance(context.Context, apperr.AppearanceSettings) error {
 	return nil
 }
@@ -76,6 +79,9 @@ func (repository *editorSettingsTestRepository) UpdateContentPrivacy(context.Con
 func (repository *editorSettingsTestRepository) UpdateEditor(_ context.Context, editor apperr.EditorSettings) error {
 	repository.editor = editor
 	repository.editorUpdates++
+	return nil
+}
+func (repository *editorSettingsTestRepository) UpdateFile(context.Context, apperr.FileSettings) error {
 	return nil
 }
 

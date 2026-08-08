@@ -94,10 +94,62 @@ type fakeSettingsRepository struct {
 	markdown          apperr.MarkdownSettings
 	contentPrivacy    apperr.ContentPrivacySettings
 	editor            apperr.EditorSettings
+	file              apperr.FileSettings
+	fileSet           bool
 	panicOperation    string
 	appearanceUpdates int
 	markdownUpdates   int
 	resetError        error
+	fileUpdateError   error
+}
+
+func TestAutosaveSettingDefaultAndPersistence(t *testing.T) {
+	repository := &fakeSettingsRepository{}
+	service := NewSettingsService(repository)
+
+	got, err := service.Get(context.Background())
+	if err != nil {
+		t.Fatalf("get default autosave setting: %v", err)
+	}
+	if !got.File.Autosave {
+		t.Fatal("default autosave = false, want true")
+	}
+
+	want := apperr.FileSettings{Autosave: false}
+	if err := service.UpdateFile(context.Background(), want); err != nil {
+		t.Fatalf("persist autosave setting: %v", err)
+	}
+	if !repository.fileSet || repository.file != want {
+		t.Fatalf("persisted autosave = %+v (set=%t), want %+v", repository.file, repository.fileSet, want)
+	}
+	got, err = service.Get(context.Background())
+	if err != nil {
+		t.Fatalf("get persisted autosave setting: %v", err)
+	}
+	if got.File != want {
+		t.Fatalf("round-tripped autosave = %+v, want %+v", got.File, want)
+	}
+}
+
+func TestAutosaveRejectsUnacknowledgedChange(t *testing.T) {
+	repository := &fakeSettingsRepository{
+		file:            DefaultSettings().File,
+		fileSet:         true,
+		fileUpdateError: context.DeadlineExceeded,
+	}
+	service := NewSettingsService(repository)
+
+	err := service.UpdateFile(context.Background(), apperr.FileSettings{Autosave: false})
+	if err == nil {
+		t.Fatal("autosave update succeeded despite persistence failure")
+	}
+	got, getErr := service.Get(context.Background())
+	if getErr != nil {
+		t.Fatalf("get autosave after rejected update: %v", getErr)
+	}
+	if !got.File.Autosave {
+		t.Fatalf("autosave changed before persistence acknowledgement: %+v", got.File)
+	}
 }
 
 func (repository *fakeSettingsRepository) ResetAppearance(context.Context) error {
@@ -142,6 +194,13 @@ func (repository *fakeSettingsRepository) GetEditor(context.Context) (apperr.Edi
 	return repository.editor, nil
 }
 
+func (repository *fakeSettingsRepository) GetFile(context.Context) (apperr.FileSettings, error) {
+	if !repository.fileSet {
+		return DefaultSettings().File, nil
+	}
+	return repository.file, nil
+}
+
 func (repository *fakeSettingsRepository) UpdateAppearance(_ context.Context, appearance apperr.AppearanceSettings) error {
 	if repository.panicOperation == "update appearance" {
 		panic("update appearance")
@@ -173,6 +232,18 @@ func (repository *fakeSettingsRepository) UpdateEditor(_ context.Context, editor
 		panic("update editor")
 	}
 	repository.editor = editor
+	return nil
+}
+
+func (repository *fakeSettingsRepository) UpdateFile(_ context.Context, file apperr.FileSettings) error {
+	if repository.panicOperation == "update file" {
+		panic("update file")
+	}
+	if repository.fileUpdateError != nil {
+		return repository.fileUpdateError
+	}
+	repository.file = file
+	repository.fileSet = true
 	return nil
 }
 

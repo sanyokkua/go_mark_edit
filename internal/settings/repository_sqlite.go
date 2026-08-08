@@ -25,6 +25,7 @@ const (
 	editorLineNumbersKey   = "editor.lineNumbers"
 	editorWordWrapKey      = "editor.wordWrap"
 	editorFontSizeKey      = "editor.fontSize"
+	fileAutosaveKey        = "file.autosave"
 	settingTypeString      = "string"
 	settingTypeBool        = "bool"
 )
@@ -125,6 +126,15 @@ func (repository *SqliteSettingsRepository) GetEditor(ctx context.Context) (appe
 	return apperr.EditorSettings{LineNumbers: lineNumbers, WordWrap: wordWrap, FontSize: fontSize}, nil
 }
 
+// GetFile reads the persisted file-automation group with scalar defaults.
+func (repository *SqliteSettingsRepository) GetFile(ctx context.Context) (apperr.FileSettings, error) {
+	autosave, err := repository.getBool(ctx, fileAutosaveKey, DefaultAutosave)
+	if err != nil {
+		return apperr.FileSettings{}, err
+	}
+	return apperr.FileSettings{Autosave: autosave}, nil
+}
+
 // UpdateAppearance writes the complete appearance group through typed KV keys.
 func (repository *SqliteSettingsRepository) UpdateAppearance(ctx context.Context, appearance apperr.AppearanceSettings) error {
 	if err := repository.upsertString(ctx, appearanceThemeKey, appearance.Theme); err != nil {
@@ -191,6 +201,11 @@ func (repository *SqliteSettingsRepository) UpdateEditor(ctx context.Context, ed
 		return err
 	}
 	return repository.upsertInt(ctx, editorFontSizeKey, editor.FontSize)
+}
+
+// UpdateFile writes the complete file-automation group through typed KV keys.
+func (repository *SqliteSettingsRepository) UpdateFile(ctx context.Context, fileSettings apperr.FileSettings) error {
+	return repository.upsertBool(ctx, fileAutosaveKey, fileSettings.Autosave)
 }
 
 func (repository *SqliteSettingsRepository) getString(ctx context.Context, key, defaultValue string) (string, error) {

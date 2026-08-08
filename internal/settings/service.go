@@ -53,13 +53,30 @@ func (service *SettingsService) Get(ctx context.Context) (apperr.Settings, error
 	if err != nil {
 		return apperr.Settings{}, apperr.IO("read settings", err)
 	}
+	fileSettings, err := repository.GetFile(ctx)
+	if err != nil {
+		return apperr.Settings{}, apperr.IO("read settings", err)
+	}
 
 	return apperr.Settings{
 		Appearance:     normalizeAppearance(appearance),
 		Markdown:       normalizeMarkdown(markdown),
 		ContentPrivacy: normalizeContentPrivacy(contentPrivacy),
 		Editor:         normalizeEditor(editor),
+		File:           normalizeFile(fileSettings),
 	}, nil
+}
+
+// UpdateFile validates and persists the complete file-automation group.
+func (service *SettingsService) UpdateFile(ctx context.Context, fileSettings apperr.FileSettings) error {
+	repository, err := service.getRepository()
+	if err != nil {
+		return err
+	}
+	if err := repository.UpdateFile(nonNilContext(ctx), fileSettings); err != nil {
+		return apperr.IO("update settings", err)
+	}
+	return nil
 }
 
 // UpdateEditor validates and persists the complete editor display group.
@@ -196,6 +213,10 @@ func normalizeEditor(editor apperr.EditorSettings) apperr.EditorSettings {
 		editor.FontSize = defaults.FontSize
 	}
 	return editor
+}
+
+func normalizeFile(fileSettings apperr.FileSettings) apperr.FileSettings {
+	return fileSettings
 }
 
 func validateAppearance(appearance apperr.AppearanceSettings) error {

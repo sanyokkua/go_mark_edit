@@ -35,12 +35,18 @@ type EditorSettings struct {
 	FontSize    int  `json:"fontSize"`
 }
 
+// FileSettings controls file lifecycle automation.
+type FileSettings struct {
+	Autosave bool `json:"autosave"`
+}
+
 // Settings is the bridge DTO for the settings groups available in Stage 1.
 type Settings struct {
 	Appearance     AppearanceSettings     `json:"appearance"`
 	Markdown       MarkdownSettings       `json:"markdown"`
 	ContentPrivacy ContentPrivacySettings `json:"contentPrivacy"`
 	Editor         EditorSettings         `json:"editor"`
+	File           FileSettings           `json:"file"`
 }
 
 // VoidResult is the envelope for a successful operation with no payload.

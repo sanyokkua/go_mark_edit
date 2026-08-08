@@ -27,6 +27,7 @@ it('T054 hydrates Redux settings once from the acknowledged adapter authority', 
       },
       contentPrivacy: { remotePolicy: 'ask' },
       editor: { lineNumbers: false, wordWrap: true, fontSize: 13 },
+      file: { autosave: false },
     })),
     updateAppearance: jest.fn(),
     resetAppearance: jest.fn(),
@@ -42,6 +43,7 @@ it('T054 hydrates Redux settings once from the acknowledged adapter authority', 
   expect(store.getState().settings).toMatchObject({
     hydrated: true,
     editor: { lineNumbers: false, wordWrap: true, fontSize: 13 },
+    file: { autosave: false },
     markdown: { bulletMarker: '+', emphasisMarker: '_' },
   });
 });
