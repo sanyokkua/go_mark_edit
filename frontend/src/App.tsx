@@ -31,6 +31,7 @@ import {
 import type {
   ActiveBuffer,
   ClassifiedError,
+  ConflictPreview,
   DocumentMetadata,
   DocumentTransitionResult,
   TabTransitionResult,
@@ -38,7 +39,11 @@ import type {
   ViewArrangement,
 } from './logic/store/appModelTypes';
 import { setWorkspaceVisible } from './logic/store/uiLayoutCommands';
-import { appModelAdapter, documentWriteAdapter } from './logic/adapter';
+import {
+  appModelAdapter,
+  documentConflictAdapter,
+  documentWriteAdapter,
+} from './logic/adapter';
 import { useEditorSettings } from './logic/settings/editorSettings';
 import { bootstrapSettingsProjection } from './logic/store/settingsProjection';
 import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
@@ -52,6 +57,9 @@ import { EditorSessionProvider } from './ui/widgets/editorSession';
 import StartupFailure from './ui/widgets/StartupFailure';
 import ShortcutsDialog from './ui/widgets/ShortcutsDialog';
 import NormalizationPrompt from './ui/widgets/NormalizationPrompt';
+import ExternalChangePrompt, {
+  type ExternalChangeDecision,
+} from './ui/widgets/ExternalChangePrompt';
 import { ModalStateProvider } from './ui/widgets/modalState';
 
 let activeRetry: Promise<AppModelBootstrapResult> | undefined;
@@ -242,6 +250,12 @@ const AppContents: React.FC = (): React.JSX.Element => {
     decisionToken: string;
     proposedEnding: 'lf' | 'crlf';
   } | null>(null);
+  const [externalConflict, setExternalConflict] = useState<{
+    documentId: string;
+    filename: string;
+    kind: 'save' | 'save-as';
+    preview: ConflictPreview;
+  } | null>(null);
   const [version, setVersion] = useState('');
   const bootstrapGeneration = useRef(0);
   const onNewDocument = useCallback(
@@ -379,6 +393,15 @@ const AppContents: React.FC = (): React.JSX.Element => {
         return result;
       }
       setNormalization(null);
+      if (result.status === 'conflict' && result.conflict !== undefined) {
+        setExternalConflict({
+          documentId,
+          filename,
+          kind,
+          preview: result.conflict,
+        });
+        return result;
+      }
       if (result.status === 'committed' && result.data !== undefined) {
         const recovered = await appModelAdapter.reconcileCommittedWrite(
           result.data,
@@ -474,6 +497,79 @@ const AppContents: React.FC = (): React.JSX.Element => {
   );
   const onSave = useCallback(() => beginWrite('save'), [beginWrite]);
   const onSaveAs = useCallback(() => beginWrite('save-as'), [beginWrite]);
+  const externalConflictValid =
+    externalConflict === null ||
+    activeDocument?.contentRevision === undefined ||
+    activeDocument.contentRevision === externalConflict.preview.contentRevision;
+  const onExternalConflictDecision = useCallback(
+    async (decision: ExternalChangeDecision): Promise<void> => {
+      const current = externalConflict;
+      if (current === null) return;
+      if (decision === 'keep-mine' && !externalConflictValid) return;
+      let result;
+      switch (decision) {
+        case 'reload':
+          result = await documentConflictAdapter.reloadFromDisk(
+            current.documentId,
+            current.preview.contentRevision,
+            current.preview.detectedDiskVersion,
+          );
+          break;
+        case 'keep-mine':
+          result = await documentConflictAdapter.authorizeKeepMine(
+            current.documentId,
+            current.preview.contentRevision,
+            current.preview.path ?? '',
+            current.preview.detectedDiskVersion,
+          );
+          break;
+        case 'skip':
+          result = await documentConflictAdapter.skipConflict(
+            current.documentId,
+            current.preview.contentRevision,
+            current.preview.detectedDiskVersion,
+          );
+          break;
+        case 'cancel':
+          result = await documentConflictAdapter.cancelConflict(
+            current.documentId,
+            current.preview.contentRevision,
+            current.preview.detectedDiskVersion,
+          );
+          break;
+      }
+      if (result.error !== undefined) {
+        reportWriteError(result.error, current.documentId);
+        if (result.preview !== undefined) {
+          setExternalConflict({ ...current, preview: result.preview });
+        }
+        return;
+      }
+      if (decision === 'reload') {
+        if (result.activeBuffer !== undefined) {
+          setActiveBuffer(result.activeBuffer);
+        }
+        setExternalConflict(null);
+        return;
+      }
+      if (decision === 'keep-mine' && result.decisionToken !== undefined) {
+        setExternalConflict(null);
+        await finishWrite(
+          current.kind,
+          current.documentId,
+          current.preview.contentRevision,
+          result.decisionToken,
+          current.filename,
+        );
+        return;
+      }
+      setExternalConflict(null);
+    },
+    [externalConflict, externalConflictValid, finishWrite, reportWriteError],
+  );
+  // Keep the existing modal contract explicit for menu and keyboard consumers.
+  // prettier-ignore
+  const modalOpen = settingsOpen || aboutOpen || shortcutsOpen || normalization !== null || externalConflict !== null;
   const onNormalizeConfirm = useCallback(async (): Promise<void> => {
     if (normalization === null) return;
     await finishWrite(
@@ -486,8 +582,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
   }, [finishWrite, normalization]);
   const applicationMenuState = useMemo<ApplicationMenuState>(
     () => ({
-      modalOpen:
-        settingsOpen || aboutOpen || shortcutsOpen || normalization !== null,
+      modalOpen,
       onAbout: (): void => setAboutOpen(true),
       onNewDocument,
       onOpenDocument,
@@ -503,16 +598,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
       onShortcuts: (): void => setShortcutsOpen(true),
     }),
     [
-      aboutOpen,
       activeBuffer?.documentId,
       activeDocument,
-      normalization,
       onNewDocument,
       onOpenDocument,
       onSave,
       onSaveAs,
-      settingsOpen,
-      shortcutsOpen,
+      modalOpen,
     ],
   );
 
@@ -590,11 +682,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
 
   return (
     <ToastProvider>
-      <ModalStateProvider
-        modalOpen={
-          settingsOpen || aboutOpen || shortcutsOpen || normalization !== null
-        }
-      >
+      <ModalStateProvider modalOpen={modalOpen}>
         <EditorSessionProvider activeBuffer={activeBuffer}>
           <div className="application-frame">
             <div className="application-menu">
@@ -646,6 +734,12 @@ const AppContents: React.FC = (): React.JSX.Element => {
               onConfirm={onNormalizeConfirm}
               open={bootstrapStatus === 'ready' && normalization !== null}
               proposedEnding={normalization?.proposedEnding ?? 'lf'}
+            />
+            <ExternalChangePrompt
+              onDecision={onExternalConflictDecision}
+              open={bootstrapStatus === 'ready' && externalConflict !== null}
+              preview={externalConflict?.preview}
+              valid={externalConflictValid}
             />
             {bootstrapStatus === 'ready'
               ? notifications.map((notification) => (

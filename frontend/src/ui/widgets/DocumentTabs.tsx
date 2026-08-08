@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { appModelAdapter, type AppModelAdapter } from '../../logic/adapter';
+import {
+  appModelAdapter,
+  documentConflictAdapter,
+  type AppModelAdapter,
+  type DocumentConflictAdapter,
+} from '../../logic/adapter';
 import type {
   ClassifiedError,
+  ConflictPreview,
+  ConflictResult,
   DocumentMetadata,
   DocumentTransitionResult,
   TabTransitionResult,
@@ -16,6 +23,9 @@ import {
 } from '../../logic/actions/shortcutRegistry';
 import { t } from '../../i18n';
 import LiveRegion from '../primitives/LiveRegion';
+import ExternalChangePrompt, {
+  type ExternalChangeDecision,
+} from './ExternalChangePrompt';
 import TabContextMenu, {
   type TabContextAction,
   type TabContextAdapter,
@@ -34,6 +44,7 @@ export interface DocumentTabsProps {
     | 'newDocument'
     | 'flushActiveSession'
   >;
+  conflictAdapter?: DocumentConflictAdapter;
   onActivateDocument?: (
     documentId: string,
     expectedTabSetRevision: number,
@@ -96,6 +107,7 @@ function announcementName(
 
 const DocumentTabs: React.FC<DocumentTabsProps> = ({
   adapter = appModelAdapter,
+  conflictAdapter = documentConflictAdapter,
   onActivateDocument,
   onCloseDocument,
   onNewDocument,
@@ -123,6 +135,9 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     null,
   );
   const [announcement, setAnnouncement] = useState('');
+  const [conflictPreview, setConflictPreview] =
+    useState<ConflictPreview | null>(null);
+  const [conflictBusy, setConflictBusy] = useState(false);
   const tabRefs = useRef(new Map<string, HTMLButtonElement>());
   const labels = useMemo(
     () => tabLabelsFor(orderedDocuments),
@@ -137,6 +152,14 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       : orderedDocuments.findIndex(
           (document) => document.documentId === contextDocument.documentId,
         );
+
+  const conflictDocument =
+    conflictPreview === null
+      ? undefined
+      : documentsById[conflictPreview.documentId];
+  const conflictValid =
+    conflictDocument?.contentRevision === undefined ||
+    conflictDocument.contentRevision === conflictPreview?.contentRevision;
 
   const focusDocument = useCallback((documentId: string): void => {
     tabRefs.current.get(documentId)?.focus();
@@ -172,14 +195,71 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
           'The document could not be activated.',
         );
       }
+      if (result?.conflict !== undefined) {
+        setConflictPreview(result.conflict);
+      }
       return result;
     },
     [adapter, dispatch, onActivateDocument, tabSetRevision],
   );
 
+  const handleConflictDecision = useCallback(
+    async (decision: ExternalChangeDecision): Promise<void> => {
+      const preview = conflictPreview;
+      if (preview === null || conflictBusy) return;
+      setConflictBusy(true);
+      let result: ConflictResult;
+      switch (decision) {
+        case 'reload':
+          result = await conflictAdapter.reloadFromDisk(
+            preview.documentId,
+            preview.contentRevision,
+            preview.detectedDiskVersion,
+          );
+          break;
+        case 'keep-mine':
+          result = await conflictAdapter.authorizeKeepMine(
+            preview.documentId,
+            preview.contentRevision,
+            preview.path ?? '',
+            preview.detectedDiskVersion,
+          );
+          break;
+        case 'skip':
+          result = await conflictAdapter.skipConflict(
+            preview.documentId,
+            preview.contentRevision,
+            preview.detectedDiskVersion,
+          );
+          break;
+        case 'cancel':
+          result = await conflictAdapter.cancelConflict(
+            preview.documentId,
+            preview.contentRevision,
+            preview.detectedDiskVersion,
+          );
+          break;
+      }
+      setConflictBusy(false);
+      if (result.error !== undefined) {
+        reportClassifiedError(
+          dispatch,
+          result.error,
+          'The external-change decision could not be completed.',
+        );
+      }
+      if (result.preview !== undefined) {
+        setConflictPreview(result.preview);
+      } else if (result.error === undefined) {
+        setConflictPreview(null);
+      }
+    },
+    [conflictAdapter, conflictBusy, conflictPreview, dispatch],
+  );
+
   useEffect((): (() => void) => {
     const navigate = (event: KeyboardEvent): void => {
-      if (modalOpen) return;
+      if (modalOpen || conflictPreview !== null) return;
       const binding = shortcutForKeyEvent(event, currentPlatform());
       if (binding === undefined) return;
       const action = actionsForSurface('shortcuts').find(
@@ -204,7 +284,13 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     globalThis.document.addEventListener('keydown', navigate);
     return (): void =>
       globalThis.document.removeEventListener('keydown', navigate);
-  }, [activateDocument, activeDocumentId, modalOpen, orderedDocuments]);
+  }, [
+    activateDocument,
+    activeDocumentId,
+    conflictPreview,
+    modalOpen,
+    orderedDocuments,
+  ]);
 
   const closeDocument = useCallback(
     async (
@@ -364,7 +450,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
               <div className={styles.tabItem} key={document.documentId}>
                 <button
                   aria-selected={active}
-                  aria-label={label.accessibleName}
+                  aria-label={`${label.accessibleName}${document.conflictBlocked ? ` · ${t('conflict.blocked')}` : ''}`}
                   className={styles.tab}
                   data-document-id={document.documentId}
                   ref={(element): void => {
@@ -390,6 +476,15 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                       className={styles.modifiedDot}
                     >
                       •
+                    </span>
+                  ) : null}
+                  {document.conflictBlocked ? (
+                    <span
+                      aria-label={t('conflict.blocked')}
+                      className={styles.modifiedDot}
+                      data-conflict-blocked
+                    >
+                      {t('conflict.blocked')}
                     </span>
                   ) : null}
                   <span aria-hidden="true" className={styles.tabLabel}>
@@ -457,6 +552,12 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         />
       ) : null}
       <LiveRegion message={announcement} />
+      <ExternalChangePrompt
+        onDecision={handleConflictDecision}
+        open={conflictPreview !== null && !conflictBusy}
+        preview={conflictPreview ?? undefined}
+        valid={conflictValid}
+      />
     </>
   );
 };

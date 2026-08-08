@@ -14,14 +14,28 @@ type ClassifiedErrorResult = Pick<
   | 'documentId'
   | 'dedupKey'
 >;
-type DocumentTransitionResult = Pick<
-  apperr.DocumentTransitionResult,
-  'data' | 'error'
->;
 type OpenResult = Pick<
   apperr.OpenResult,
   'status' | 'documentId' | 'projectionRevision' | 'activeBuffer' | 'error'
 >;
+
+type MockConflictPreview = {
+  documentId: string;
+  path?: string;
+  displayName?: string;
+  contentRevision: number;
+  detectedDiskVersion: apperr.DiskVersion;
+  onDisk: apperr.ConflictPreviewSide;
+  yours: apperr.ConflictPreviewSide;
+  metadataDifferences?: string[];
+  readOnly: boolean;
+};
+
+type DocumentTransitionResult = {
+  data?: ActiveBufferResult;
+  conflict?: MockConflictPreview;
+  error?: ClassifiedErrorResult;
+};
 
 interface CursorPosition {
   line: number;
@@ -57,6 +71,7 @@ interface DocumentMetadata {
   wordCount: number;
   status?: string;
   detached?: boolean;
+  conflictBlocked?: boolean;
   view: DocView;
 }
 
@@ -115,6 +130,24 @@ interface TabTransitionResult {
   error?: ClassifiedErrorResult;
 }
 
+type MockConflictResult = {
+  status: string;
+  documentId?: string;
+  projectionRevision?: number;
+  documentRevision?: number;
+  decisionToken?: string;
+  activeBuffer?: ActiveBufferResult;
+  preview?: MockConflictPreview;
+  error?: ClassifiedErrorResult;
+};
+
+type ConflictMethod =
+  | 'checkExternalChanges'
+  | 'reloadFromDisk'
+  | 'authorizeKeepMine'
+  | 'skipConflict'
+  | 'cancelConflict';
+
 interface AppStatePatch {
   revision: number;
   tabSetRevision?: number;
@@ -162,6 +195,8 @@ let nextUntitledNumber = 2;
 let openSelection: MockOpenSelection | null = null;
 let mockSaveResult: MockWriteResult | undefined;
 let mockSaveAsResult: MockWriteResult | undefined;
+let mockConflictResults: Partial<Record<ConflictMethod, MockConflictResult>> =
+  {};
 let mockCopyPathResult:
   { status: string; error?: ClassifiedErrorResult } | undefined;
 let mockRevealResult:
@@ -242,6 +277,41 @@ function activeBuffer(document: MockDocument): ActiveBufferResult {
   };
 }
 
+function e2eConflictEnabled(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('ft-vs-04')
+  );
+}
+
+function e2eConflictPreview(document: MockDocument): MockConflictPreview {
+  return {
+    contentRevision: document.documentRevision,
+    detectedDiskVersion: {
+      exists: true,
+      mode: 0o644,
+      modifiedUnixNano: 7,
+      size: 12,
+    },
+    displayName: document.metadata.title,
+    documentId: document.metadata.documentId,
+    onDisk: {
+      byteCount: 6,
+      lineCount: 1,
+      text: 'disk\n',
+      truncated: false,
+    },
+    path: document.metadata.path || undefined,
+    readOnly: false,
+    yours: {
+      byteCount: 6,
+      lineCount: 1,
+      text: 'mine\n',
+      truncated: false,
+    },
+  };
+}
+
 function classifiedError(
   category: string,
   message: string,
@@ -302,6 +372,7 @@ export function resetMockAppModel(): void {
   openSelection = null;
   mockSaveResult = undefined;
   mockSaveAsResult = undefined;
+  mockConflictResults = {};
   mockCopyPathResult = undefined;
   mockRevealResult = undefined;
   documents = initialDocuments();
@@ -326,6 +397,17 @@ export function setMockSaveResult(result: MockWriteResult | null): void {
 
 export function setMockSaveAsResult(result: MockWriteResult | null): void {
   mockSaveAsResult = result ?? undefined;
+}
+
+export function setMockConflictResult(
+  method: ConflictMethod,
+  result: MockConflictResult | null,
+): void {
+  if (result === null) {
+    delete mockConflictResults[method];
+    return;
+  }
+  mockConflictResults[method] = result;
 }
 
 export function setMockCopyPathResult(
@@ -465,6 +547,16 @@ export function ActivateDocument(
       orderedDocumentIds: [...orderedDocumentIds],
       activeDocumentId,
     });
+  }
+  if (e2eConflictEnabled()) {
+    const conflict = e2eConflictPreview(document);
+    document.metadata = { ...document.metadata, conflictBlocked: true };
+    revision += 1;
+    emitPatch({
+      revision,
+      documents: { upsert: { [requestedDocumentId]: cloneMetadata(document) } },
+    });
+    return Promise.resolve({ data: activeBuffer(document), conflict });
   }
   return Promise.resolve({ data: activeBuffer(document) });
 }
@@ -679,6 +771,105 @@ export function UpdateBuffer(
     documents: { upsert: { [requestedDocumentId]: cloneMetadata(document) } },
   });
   return Promise.resolve({});
+}
+
+function conflictResultFor(
+  method: ConflictMethod,
+  requestedDocumentId: string,
+): MockConflictResult {
+  const configured = mockConflictResults[method];
+  if (configured !== undefined) {
+    return {
+      ...configured,
+      documentId: configured.documentId ?? requestedDocumentId,
+    };
+  }
+  const status =
+    method === 'checkExternalChanges'
+      ? 'unchanged'
+      : method === 'reloadFromDisk'
+        ? 'reloaded'
+        : method === 'authorizeKeepMine'
+          ? 'authorized'
+          : method === 'skipConflict'
+            ? 'skipped'
+            : 'cancelled';
+  return { status, documentId: requestedDocumentId };
+}
+
+function publishConflictProjection(
+  requestedDocumentId: string,
+  result: MockConflictResult,
+): void {
+  const document = documents[requestedDocumentId];
+  if (document === undefined || result.status !== 'detected') return;
+  document.metadata = {
+    ...document.metadata,
+    conflictBlocked: true,
+  };
+  revision += 1;
+  emitPatch({
+    revision,
+    documents: { upsert: { [requestedDocumentId]: cloneMetadata(document) } },
+  });
+}
+
+export function CheckExternalChanges(
+  requestedDocumentId: string,
+): Promise<MockConflictResult> {
+  const result = conflictResultFor('checkExternalChanges', requestedDocumentId);
+  publishConflictProjection(requestedDocumentId, result);
+  return Promise.resolve(result);
+}
+
+export function ReloadFromDisk(
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult> {
+  void _contentRevision;
+  void _detectedVersion;
+  return Promise.resolve(
+    conflictResultFor('reloadFromDisk', requestedDocumentId),
+  );
+}
+
+export function AuthorizeKeepMine(
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _path: string,
+  _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult> {
+  void _contentRevision;
+  void _path;
+  void _detectedVersion;
+  return Promise.resolve(
+    conflictResultFor('authorizeKeepMine', requestedDocumentId),
+  );
+}
+
+export function SkipConflict(
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult> {
+  void _contentRevision;
+  void _detectedVersion;
+  return Promise.resolve(
+    conflictResultFor('skipConflict', requestedDocumentId),
+  );
+}
+
+export function CancelConflict(
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult> {
+  void _contentRevision;
+  void _detectedVersion;
+  return Promise.resolve(
+    conflictResultFor('cancelConflict', requestedDocumentId),
+  );
 }
 
 function writeResultFor(

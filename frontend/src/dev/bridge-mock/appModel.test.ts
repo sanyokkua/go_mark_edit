@@ -1,11 +1,16 @@
 import {
+  AuthorizeKeepMine,
+  CheckExternalChanges,
+  CancelConflict,
   GetState,
   NewDocument,
   OpenDocument,
   Save,
   SaveAs,
+  SkipConflict,
   resetMockAppModel,
   setMockOpenSelection,
+  setMockConflictResult,
   SetDocView,
   SetUILayout,
   UpdateBuffer,
@@ -239,5 +244,74 @@ it('mock Save As adopts its selected target only after a committed result', asyn
   });
   expect((await GetState()).data?.snapshot.documents['mock-document']).toEqual(
     expect.objectContaining({ path: '/tmp/Untitled.md', status: 'saved' }),
+  );
+});
+
+it('mock conflict bridge preserves bounded preview and decision outcomes', async () => {
+  const preview = {
+    documentId: 'mock-document',
+    displayName: 'notes.md',
+    contentRevision: 2,
+    detectedDiskVersion: {
+      exists: true,
+      size: 12,
+      modifiedUnixNano: 3,
+      mode: 0o644,
+    },
+    onDisk: {
+      text: 'disk\n',
+      lineCount: 1,
+      byteCount: 5,
+      truncated: false,
+    },
+    yours: {
+      text: 'mine\n',
+      lineCount: 1,
+      byteCount: 5,
+      truncated: false,
+    },
+    readOnly: false,
+  };
+  setMockConflictResult('checkExternalChanges', {
+    status: 'detected',
+    documentId: 'mock-document',
+    documentRevision: 2,
+    preview,
+  });
+  setMockConflictResult('authorizeKeepMine', {
+    status: 'authorized',
+    documentId: 'mock-document',
+    decisionToken: 'decision-1',
+  });
+
+  await expect(CheckExternalChanges('mock-document')).resolves.toEqual({
+    status: 'detected',
+    documentId: 'mock-document',
+    documentRevision: 2,
+    preview,
+  });
+  await expect(
+    AuthorizeKeepMine('mock-document', 2, '/tmp/notes.md', {
+      exists: true,
+      size: 12,
+      modifiedUnixNano: 3,
+      mode: 0o644,
+    }),
+  ).resolves.toMatchObject({
+    status: 'authorized',
+    decisionToken: 'decision-1',
+  });
+  await expect(
+    SkipConflict('mock-document', 2, preview.detectedDiskVersion),
+  ).resolves.toMatchObject({
+    status: 'skipped',
+  });
+  await expect(
+    CancelConflict('mock-document', 2, preview.detectedDiskVersion),
+  ).resolves.toMatchObject({
+    status: 'cancelled',
+  });
+  expect((await GetState()).data?.snapshot.documents['mock-document']).toEqual(
+    expect.objectContaining({ conflictBlocked: true }),
   );
 });

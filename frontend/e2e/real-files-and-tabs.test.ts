@@ -79,3 +79,30 @@ test('FT-VS-03 exposes real tabs, backend-confirmed menu moves, and exact naviga
     'true',
   );
 });
+
+test('FT-VS-04 shows the bounded external-change prompt and safe Skip decision', async ({
+  page,
+}) => {
+  await page.goto('/?ft-vs-04');
+
+  await page.getByRole('button', { name: 'New tab' }).click();
+  const tabs = page.getByRole('tab');
+  await tabs.nth(1).click();
+
+  const prompt = page.getByRole('dialog', { name: 'File changed on disk' });
+  await expect(prompt).toBeVisible();
+  await expect(
+    prompt.getByRole('heading', { name: /^On disk ·/u }),
+  ).toBeVisible();
+  await expect(
+    prompt.getByRole('heading', { name: /^Yours ·/u }),
+  ).toBeVisible();
+  await expect(prompt.getByRole('button').allTextContents()).resolves.toEqual([
+    'Reload from disk',
+    'Keep mine',
+    'Skip',
+  ]);
+  await expect(prompt.getByRole('button', { name: 'Skip' })).toBeFocused();
+  await prompt.getByRole('button', { name: 'Skip' }).click();
+  await expect(prompt).toHaveCount(0);
+});

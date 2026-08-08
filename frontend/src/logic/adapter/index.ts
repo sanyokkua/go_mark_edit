@@ -20,6 +20,11 @@ import {
   UpdateBuffer,
   Save,
   SaveAs,
+  CheckExternalChanges,
+  ReloadFromDisk,
+  AuthorizeKeepMine,
+  SkipConflict,
+  CancelConflict,
 } from 'wailsjs/go/appmodel/AppModelHandler';
 import { apperr } from 'wailsjs/go/models';
 import {
@@ -40,11 +45,17 @@ import {
   type AppModelBindings,
   type AppModelRuntime,
 } from './appModelAdapter';
-import { createSettingsAdapter, type SettingsBindings } from './services';
-import { createDocumentWriteAdapter } from './services';
+import {
+  createDocumentConflictAdapter,
+  createDocumentWriteAdapter,
+  createSettingsAdapter,
+  type SettingsBindings,
+} from './services';
 import { createWindowAdapter } from './windowAdapter';
 import type {
   ClassifiedError,
+  ConflictPreview,
+  ConflictResult,
   DocumentTransitionResult,
   DocumentMetadata,
   LineEndingOutcome,
@@ -93,7 +104,66 @@ function normalizeTransitionResult(
             projectionRevision: result.data.projectionRevision,
             content: result.data.content,
           },
+    conflict: normalizeConflictPreview(result.conflict),
     error: normalizeClassifiedError(result.error),
+  };
+}
+
+function normalizeConflictPreview(
+  preview: apperr.ConflictPreview | undefined,
+): ConflictPreview | undefined {
+  if (preview === undefined) return undefined;
+  return {
+    contentRevision: preview.contentRevision,
+    detectedDiskVersion: {
+      exists: preview.detectedDiskVersion.exists,
+      size: preview.detectedDiskVersion.size,
+      modifiedUnixNano: preview.detectedDiskVersion.modifiedUnixNano,
+      mode: preview.detectedDiskVersion.mode,
+      fileIdentity: preview.detectedDiskVersion.fileIdentity,
+    },
+    displayName: preview.displayName,
+    documentId: preview.documentId,
+    metadataDifferences: preview.metadataDifferences
+      ? [...preview.metadataDifferences]
+      : undefined,
+    onDisk: {
+      byteCount: preview.onDisk.byteCount,
+      lineCount: preview.onDisk.lineCount,
+      text: preview.onDisk.text,
+      truncated: preview.onDisk.truncated,
+    },
+    path: preview.path,
+    readOnly: preview.readOnly,
+    yours: {
+      byteCount: preview.yours.byteCount,
+      lineCount: preview.yours.lineCount,
+      text: preview.yours.text,
+      truncated: preview.yours.truncated,
+    },
+  };
+}
+
+function normalizeConflictResult(
+  result: apperr.ConflictResult,
+): ConflictResult {
+  return {
+    activeBuffer:
+      result.activeBuffer === undefined
+        ? undefined
+        : {
+            content: result.activeBuffer.content,
+            documentId: result.activeBuffer.documentId,
+            documentRevision: result.activeBuffer.documentRevision,
+            projectionRevision: result.activeBuffer.projectionRevision,
+          },
+    decisionToken: result.decisionToken,
+    documentId: result.documentId,
+    documentRevision: result.documentRevision,
+    error: normalizeClassifiedError(result.error),
+    preview: normalizeConflictPreview(result.preview),
+    projectionRevision: result.projectionRevision,
+    status: result.status as ConflictResult['status'],
   };
 }
 
@@ -134,6 +204,7 @@ function normalizeTabTransitionResult(
             projectionRevision: result.activeBuffer.projectionRevision,
             content: result.activeBuffer.content,
           },
+    conflict: normalizeConflictPreview(result.conflict),
     error: normalizeClassifiedError(result.error),
   };
 }
@@ -171,6 +242,7 @@ function normalizeWriteResult(result: apperr.WriteResult): WriteResult {
         ? undefined
         : (result.proposedEnding as 'lf' | 'crlf'),
     documentRevision: result.documentRevision,
+    conflict: normalizeConflictPreview(result.conflict),
     error: normalizeClassifiedError(result.error),
   };
 }
@@ -194,6 +266,49 @@ export const documentWriteAdapter = createDocumentWriteAdapter({
   saveAs: async (documentId, contentRevision, decisionToken) =>
     normalizeWriteResult(
       await SaveAs(documentId, contentRevision, decisionToken),
+    ),
+});
+
+export const documentConflictAdapter = createDocumentConflictAdapter({
+  authorizeKeepMine: async (
+    documentId,
+    contentRevision,
+    path,
+    detectedVersion,
+  ) =>
+    normalizeConflictResult(
+      await AuthorizeKeepMine(
+        documentId,
+        contentRevision,
+        path,
+        new apperr.DiskVersion(detectedVersion),
+      ),
+    ),
+  cancelConflict: async (documentId, contentRevision, detectedVersion) =>
+    normalizeConflictResult(
+      await CancelConflict(
+        documentId,
+        contentRevision,
+        new apperr.DiskVersion(detectedVersion),
+      ),
+    ),
+  checkExternalChanges: async (documentId) =>
+    normalizeConflictResult(await CheckExternalChanges(documentId)),
+  reloadFromDisk: async (documentId, contentRevision, detectedVersion) =>
+    normalizeConflictResult(
+      await ReloadFromDisk(
+        documentId,
+        contentRevision,
+        new apperr.DiskVersion(detectedVersion),
+      ),
+    ),
+  skipConflict: async (documentId, contentRevision, detectedVersion) =>
+    normalizeConflictResult(
+      await SkipConflict(
+        documentId,
+        contentRevision,
+        new apperr.DiskVersion(detectedVersion),
+      ),
     ),
 });
 
@@ -290,8 +405,11 @@ export {
   createSettingsAdapter,
   createDocumentLifecycleAdapter,
   createDocumentWriteAdapter,
+  createDocumentConflictAdapter,
   type DocumentWriteAdapter,
   type DocumentWriteBindings,
+  type DocumentConflictAdapter,
+  type DocumentConflictBindings,
   type DocumentLifecycleAdapter,
   type DocumentLifecycleBindings,
   type SettingsAdapter,

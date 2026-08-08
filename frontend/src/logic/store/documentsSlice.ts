@@ -40,6 +40,7 @@ function normalizeDocumentMetadata(
     capability: document.capability,
     sizeClass: document.sizeClass,
     detached: document.detached,
+    conflictBlocked: document.conflictBlocked,
     status: document.status,
     view: {
       arrangement: document.view.arrangement,

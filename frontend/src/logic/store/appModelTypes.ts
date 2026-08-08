@@ -48,6 +48,7 @@ export interface DocumentMetadata {
   capability?: string;
   sizeClass?: string;
   detached?: boolean;
+  conflictBlocked?: boolean;
   status?: SaveStatus;
   view: DocumentView;
 }
@@ -82,6 +83,56 @@ export interface WriteResult {
   decisionToken?: string;
   proposedEnding?: 'lf' | 'crlf';
   documentRevision?: number;
+  conflict?: ConflictPreview;
+  error?: ClassifiedError;
+}
+
+export interface ConflictPreviewSide {
+  text: string;
+  lineCount: number;
+  byteCount: number;
+  truncated: boolean;
+}
+
+export interface DiskVersion {
+  exists: boolean;
+  size: number;
+  modifiedUnixNano: number;
+  mode: number;
+  fileIdentity?: string;
+}
+
+export interface ConflictPreview {
+  documentId: string;
+  path?: string;
+  displayName?: string;
+  contentRevision: number;
+  detectedDiskVersion: DiskVersion;
+  onDisk: ConflictPreviewSide;
+  yours: ConflictPreviewSide;
+  metadataDifferences?: string[];
+  readOnly: boolean;
+}
+
+export type ConflictStatus =
+  | 'unchanged'
+  | 'detected'
+  | 'reloaded'
+  | 'authorized'
+  | 'skipped'
+  | 'cancelled'
+  | 'detached'
+  | 'unstable'
+  | 'refused';
+
+export interface ConflictResult {
+  status: ConflictStatus;
+  documentId?: string;
+  projectionRevision?: number;
+  documentRevision?: number;
+  decisionToken?: string;
+  activeBuffer?: ActiveBuffer;
+  preview?: ConflictPreview;
   error?: ClassifiedError;
 }
 
@@ -169,6 +220,7 @@ export interface ClassifiedError {
 
 export interface DocumentTransitionResult {
   data?: ActiveBuffer;
+  conflict?: ConflictPreview;
   error?: ClassifiedError;
 }
 
@@ -183,6 +235,7 @@ export interface TabTransitionResult {
   orderedDocumentIds: string[];
   activeDocumentId?: string;
   activeBuffer?: ActiveBuffer;
+  conflict?: ConflictPreview;
   error?: ClassifiedError;
 }
 

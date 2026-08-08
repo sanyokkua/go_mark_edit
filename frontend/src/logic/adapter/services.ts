@@ -1,6 +1,8 @@
 import { guardArity } from './bridgeGuard';
 import { unwrap } from './envelope';
 import type {
+  ConflictResult,
+  DiskVersion,
   DocumentTransitionResult,
   OpenResult,
   WriteResult,
@@ -65,6 +67,70 @@ export interface DocumentWriteBindings {
 export interface DocumentWriteAdapter {
   save: DocumentWriteBindings['save'];
   saveAs: DocumentWriteBindings['saveAs'];
+}
+
+export interface DocumentConflictBindings {
+  checkExternalChanges: (documentId: string) => Promise<ConflictResult>;
+  reloadFromDisk: (
+    documentId: string,
+    contentRevision: number,
+    detectedVersion: DiskVersion,
+  ) => Promise<ConflictResult>;
+  authorizeKeepMine: (
+    documentId: string,
+    contentRevision: number,
+    path: string,
+    detectedVersion: DiskVersion,
+  ) => Promise<ConflictResult>;
+  skipConflict: (
+    documentId: string,
+    contentRevision: number,
+    detectedVersion: DiskVersion,
+  ) => Promise<ConflictResult>;
+  cancelConflict: (
+    documentId: string,
+    contentRevision: number,
+    detectedVersion: DiskVersion,
+  ) => Promise<ConflictResult>;
+}
+
+export type DocumentConflictAdapter = DocumentConflictBindings;
+
+export function createDocumentConflictAdapter(
+  bindings: DocumentConflictBindings,
+): DocumentConflictAdapter {
+  const checkExternalChanges = guardArity(
+    'AppModelHandler.CheckExternalChanges',
+    bindings.checkExternalChanges,
+  );
+  const reloadFromDisk = guardArity(
+    'AppModelHandler.ReloadFromDisk',
+    bindings.reloadFromDisk,
+  );
+  const authorizeKeepMine = guardArity(
+    'AppModelHandler.AuthorizeKeepMine',
+    bindings.authorizeKeepMine,
+  );
+  const skipConflict = guardArity(
+    'AppModelHandler.SkipConflict',
+    bindings.skipConflict,
+  );
+  const cancelConflict = guardArity(
+    'AppModelHandler.CancelConflict',
+    bindings.cancelConflict,
+  );
+
+  return {
+    checkExternalChanges: (documentId) => checkExternalChanges(documentId),
+    reloadFromDisk: (documentId, contentRevision, detectedVersion) =>
+      reloadFromDisk(documentId, contentRevision, detectedVersion),
+    authorizeKeepMine: (documentId, contentRevision, path, detectedVersion) =>
+      authorizeKeepMine(documentId, contentRevision, path, detectedVersion),
+    skipConflict: (documentId, contentRevision, detectedVersion) =>
+      skipConflict(documentId, contentRevision, detectedVersion),
+    cancelConflict: (documentId, contentRevision, detectedVersion) =>
+      cancelConflict(documentId, contentRevision, detectedVersion),
+  };
 }
 
 export function createDocumentLifecycleAdapter(
