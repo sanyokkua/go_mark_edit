@@ -60,8 +60,10 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 		commands.service.mu.Unlock()
 		return apperr.NotFound(documentID)
 	}
+	acceptedRevision := uint64(0)
 	if document.content != content {
 		document.metadata.ContentRevision++
+		acceptedRevision = document.metadata.ContentRevision
 		for token, authorization := range commands.service.normalizations {
 			if authorization.documentID == documentID {
 				delete(commands.service.normalizations, token)
@@ -79,6 +81,9 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 		return err
 	}
 	commands.service.mu.Unlock()
+	if acceptedRevision != 0 {
+		commands.service.scheduleAutosave(documentID, acceptedRevision)
+	}
 
 	return nil
 }

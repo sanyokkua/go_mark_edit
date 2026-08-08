@@ -39,9 +39,10 @@ type WritePublisher func(CommittedWriteResult) error
 
 // DocumentWriteCoordinator serializes replacement attempts for one document.
 type DocumentWriteCoordinator struct {
-	mu        sync.Mutex
-	executor  WriteExecutor
-	publisher WritePublisher
+	mu            sync.Mutex
+	executor      WriteExecutor
+	publisher     WritePublisher
+	lastCommitted *CommittedWriteResult
 }
 
 // WriteCoordinator is the concise contract-level name for a document coordinator.
@@ -67,6 +68,9 @@ func (coordinator *DocumentWriteCoordinator) Commit(snapshot WriteSnapshot) (Com
 	if snapshot.encodedData != nil {
 		immutable.encodedData = append([]byte(nil), snapshot.encodedData...)
 	}
+	if coordinator.lastCommitted != nil && reusableCommit(*coordinator.lastCommitted, immutable) {
+		return cloneCommittedWriteResult(*coordinator.lastCommitted), nil
+	}
 	version, err := coordinator.executor(immutable)
 	if err != nil {
 		var committedErr *committedWriteError
@@ -79,6 +83,7 @@ func (coordinator *DocumentWriteCoordinator) Commit(snapshot WriteSnapshot) (Com
 			if coordinator.publisher != nil && coordinator.publisher(result) != nil {
 				result.ResyncRequired = true
 			}
+			coordinator.lastCommitted = committedWriteResultPointer(result)
 			return result, committedErr.err
 		}
 		return CommittedWriteResult{}, err
@@ -87,5 +92,39 @@ func (coordinator *DocumentWriteCoordinator) Commit(snapshot WriteSnapshot) (Com
 	if coordinator.publisher != nil && coordinator.publisher(result) != nil {
 		result.ResyncRequired = true
 	}
+	coordinator.lastCommitted = committedWriteResultPointer(result)
 	return result, nil
+}
+
+func reusableCommit(committed CommittedWriteResult, requested WriteSnapshot) bool {
+	if committed.Snapshot.DocumentID != requested.DocumentID || committed.Snapshot.ContentRevision != requested.ContentRevision || committed.Snapshot.CanonicalContent != requested.CanonicalContent || committed.Snapshot.TargetPath != requested.TargetPath {
+		return false
+	}
+	if requested.ExpectedDiskVersion == nil {
+		return committed.Snapshot.ExpectedDiskVersion == nil
+	}
+	return committed.DiskVersion.Equal(*requested.ExpectedDiskVersion)
+}
+
+func committedWriteResultPointer(result CommittedWriteResult) *CommittedWriteResult {
+	cloned := cloneCommittedWriteResult(result)
+	return &cloned
+}
+
+func cloneCommittedWriteResult(result CommittedWriteResult) CommittedWriteResult {
+	cloned := result
+	cloned.Snapshot = cloneWriteSnapshot(result.Snapshot)
+	return cloned
+}
+
+func cloneWriteSnapshot(snapshot WriteSnapshot) WriteSnapshot {
+	cloned := snapshot
+	if snapshot.ExpectedDiskVersion != nil {
+		version := *snapshot.ExpectedDiskVersion
+		cloned.ExpectedDiskVersion = &version
+	}
+	if snapshot.encodedData != nil {
+		cloned.encodedData = append([]byte(nil), snapshot.encodedData...)
+	}
+	return cloned
 }

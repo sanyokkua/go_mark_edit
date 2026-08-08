@@ -65,6 +65,7 @@ func (service *AppModelService) Save(ctx context.Context, documentID string, exp
 	if path == "" {
 		return service.SaveAs(ctx, documentID, expectedContentRevision, decisionToken)
 	}
+	service.flushAutosave(documentID)
 	if result := service.prepareWriteDisk(ctx, documentID, expectedContentRevision, decisionToken); result.Status != "" {
 		return result
 	}
@@ -241,6 +242,9 @@ func (service *AppModelService) snapshotForWrite(documentID string, expectedCont
 	if document.metadata.Capability != string(file.CapabilityWritable) {
 		return writeSnapshot{}, refusedWrite(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationCancel)
 	}
+	if !targetPathAdopted && document.metadata.Path != targetPath {
+		return writeSnapshot{}, refusedWrite(documentID, apperr.ClassifiedConflict, "The document path changed before it could be saved.", apperr.RemediationRetry)
+	}
 	if document.metadata.LineEnding == string(file.LineEndingMixed) {
 		authorization, ok := service.normalizations[decisionToken]
 		if !ok || authorization.documentID != documentID || authorization.contentRevision != expectedContentRevision || authorization.proposedEnding != document.normalizationEnding {
@@ -359,16 +363,20 @@ func (service *AppModelService) writeCoordinator(documentID string) *DocumentWri
 	if coordinator := service.writeCoordinators[documentID]; coordinator != nil {
 		return coordinator
 	}
-	coordinator := NewDocumentWriteCoordinator(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
-		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{
-			TargetPath: snapshot.TargetPath, Data: snapshot.encodedData,
-			ExpectedVersion: snapshot.ExpectedDiskVersion,
-		})
-		if replaced.Committed && err != nil {
-			return replaced.Version, &committedWriteError{version: replaced.Version, err: err}
+	executor := service.writeExecutor
+	if executor == nil {
+		executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+			replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{
+				TargetPath: snapshot.TargetPath, Data: snapshot.encodedData,
+				ExpectedVersion: snapshot.ExpectedDiskVersion,
+			})
+			if replaced.Committed && err != nil {
+				return replaced.Version, &committedWriteError{version: replaced.Version, err: err}
+			}
+			return replaced.Version, err
 		}
-		return replaced.Version, err
-	})
+	}
+	coordinator := NewDocumentWriteCoordinator(executor)
 	service.writeCoordinators[documentID] = coordinator
 	return coordinator
 }
