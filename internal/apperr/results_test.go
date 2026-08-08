@@ -3,6 +3,7 @@ package apperr
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -108,6 +109,32 @@ func TestResultEnvelopesExposeOnlyContractFields(t *testing.T) {
 		if _, err := json.Marshal(entry.Value); err != nil {
 			t.Fatalf("marshal ErrorCode %q: %v", entry.Value, err)
 		}
+	}
+}
+
+func TestDocumentTransitionWireShape(t *testing.T) {
+	acknowledgement := ActiveBufferAcknowledgement{
+		DocumentID:         "doc-1",
+		DocumentRevision:   0,
+		ProjectionRevision: 7,
+		Content:            "",
+	}
+	success, err := json.Marshal(DocumentTransitionOutcome{Data: &acknowledgement})
+	if err != nil {
+		t.Fatalf("marshal successful transition: %v", err)
+	}
+	if string(success) != `{"data":{"documentId":"doc-1","documentRevision":0,"projectionRevision":7,"content":""}}` {
+		t.Fatalf("successful transition JSON = %s", success)
+	}
+	failure, err := json.Marshal(DocumentTransitionOutcome{Error: func() *ClassifiedError {
+		value := NewClassifiedError(ClassifiedCapacityLimit, "Untitled", "The window already contains 40 documents.", RemediationCancel, "")
+		return &value
+	}()})
+	if err != nil {
+		t.Fatalf("marshal refused transition: %v", err)
+	}
+	if !strings.Contains(string(failure), `"error"`) || !strings.Contains(string(failure), `"category":"capacity-limit"`) {
+		t.Fatalf("refused transition JSON = %s", failure)
 	}
 }
 

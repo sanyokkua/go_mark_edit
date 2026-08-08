@@ -21,6 +21,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		output reflect.Type
 	}{
 		{"GetState", 1, reflect.TypeFor[apperr.StateResult]()},
+		{"NewDocument", 2, reflect.TypeFor[apperr.DocumentTransitionOutcome]()},
 		{"UpdateBuffer", 3, reflect.TypeFor[apperr.VoidResult]()},
 		{"SetDocView", 3, reflect.TypeFor[apperr.VoidResult]()},
 		{"SetUILayout", 2, reflect.TypeFor[apperr.VoidResult]()},
@@ -40,7 +41,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		})
 	}
 
-	for _, method := range []string{"GetState", "UpdateBuffer", "SetDocView", "SetUILayout"} {
+	for _, method := range []string{"GetState", "NewDocument", "UpdateBuffer", "SetDocView", "SetUILayout"} {
 		t.Run(method+" recovers without emitting a patch", func(t *testing.T) {
 			service := &fakeAppModelService{panicOn: method}
 			panickingHandler := NewAppModelHandler(service, nil, nil)
@@ -52,6 +53,11 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 				if stateResult.Data != nil || stateResult.Error == nil || stateResult.Error.Code != apperr.CodeInternal {
 					t.Fatalf("panic result = %+v, want an internal envelope without data", stateResult)
 				}
+			case "NewDocument":
+				transition := panickingHandler.NewDocument(0)
+				if transition.Data != nil || transition.Error == nil || transition.Error.Category != apperr.ClassifiedIOFailure {
+					t.Fatalf("panic result = %+v, want a classified internal transition error", transition)
+				}
 			case "UpdateBuffer":
 				result = panickingHandler.UpdateBuffer("doc", "content")
 			case "SetDocView":
@@ -59,7 +65,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 			case "SetUILayout":
 				result = panickingHandler.SetUILayout(apperr.UILayout{})
 			}
-			if method != "GetState" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
+			if method != "GetState" && method != "NewDocument" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
 				t.Fatalf("panic result = %+v, want an internal envelope", result)
 			}
 			if service.emissions != 0 {
@@ -123,6 +129,14 @@ func (service *fakeAppModelService) GetState(_ context.Context) (apperr.AppState
 		panic("service panic")
 	}
 	return apperr.AppState{}, nil
+}
+
+func (service *fakeAppModelService) NewDocument(_ context.Context, _ uint64) apperr.DocumentTransitionOutcome {
+	if service.panicOn == "NewDocument" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.DocumentTransitionOutcome{}
 }
 
 func (service *fakeAppModelService) UpdateBuffer(_ context.Context, _, _ string) error {

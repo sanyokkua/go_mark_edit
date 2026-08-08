@@ -115,6 +115,7 @@ type DocumentMetadata struct {
 	ParentName      string  `json:"parentName,omitempty"`
 	Dirty           bool    `json:"dirty"`
 	Encoding        string  `json:"encoding"`
+	BOM             string  `json:"bom,omitempty"`
 	LineEnding      string  `json:"lineEnding"`
 	WordCount       int     `json:"wordCount"`
 	ContentRevision uint64  `json:"contentRevision,omitempty"`
@@ -140,9 +141,23 @@ type AppStateSnapshot struct {
 
 // ActiveBuffer carries the canonical content only during explicit state hydration.
 type ActiveBuffer struct {
-	DocumentID string `json:"documentId"`
-	Content    string `json:"content"`
+	DocumentID         string `json:"documentId"`
+	DocumentRevision   uint64 `json:"documentRevision"`
+	ProjectionRevision uint64 `json:"projectionRevision"`
+	Content            string `json:"content"`
 }
+
+// ActiveBufferAcknowledgement is the identity and projection barrier for a newly active source.
+type ActiveBufferAcknowledgement = ActiveBuffer
+
+// DocumentTransitionResult is the data-or-classified-error envelope for backend New transitions.
+type DocumentTransitionResult struct {
+	Data  *ActiveBufferAcknowledgement `json:"data,omitempty"`
+	Error *ClassifiedError             `json:"error,omitempty"`
+}
+
+// DocumentTransitionOutcome is the contract-level descriptive alias used by lifecycle callers.
+type DocumentTransitionOutcome = DocumentTransitionResult
 
 // AppState combines a content-free snapshot with the active canonical buffer.
 type AppState struct {

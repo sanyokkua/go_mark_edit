@@ -6,6 +6,10 @@ export function GetState() {
   return window['go']['appmodel']['AppModelHandler']['GetState']();
 }
 
+export function NewDocument(arg1) {
+  return window['go']['appmodel']['AppModelHandler']['NewDocument'](arg1);
+}
+
 export function SetDocView(arg1, arg2) {
   return window['go']['appmodel']['AppModelHandler']['SetDocView'](arg1, arg2);
 }

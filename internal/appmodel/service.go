@@ -143,7 +143,12 @@ func (service *AppModelService) GetState(_ context.Context) (apperr.AppState, er
 	if hasActiveDocument && service.state.activeDocumentID != "" {
 		id := service.state.activeDocumentID
 		activeDocumentID = &id
-		activeBuffer = &apperr.ActiveBuffer{DocumentID: id, Content: activeDocument.content}
+		activeBuffer = &apperr.ActiveBuffer{
+			DocumentID:         id,
+			DocumentRevision:   activeDocument.metadata.ContentRevision,
+			ProjectionRevision: service.state.revision,
+			Content:            activeDocument.content,
+		}
 	}
 	orderedDocumentIDs := append([]string(nil), service.state.orderedDocumentIDs...)
 	return apperr.AppState{

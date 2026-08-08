@@ -13,6 +13,8 @@ export namespace apperr {
 	}
 	export class ActiveBuffer {
 	    documentId: string;
+	    documentRevision: number;
+	    projectionRevision: number;
 	    content: string;
 	
 	    static createFrom(source: any = {}) {
@@ -22,6 +24,8 @@ export namespace apperr {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.documentId = source["documentId"];
+	        this.documentRevision = source["documentRevision"];
+	        this.projectionRevision = source["projectionRevision"];
 	        this.content = source["content"];
 	    }
 	}
@@ -163,6 +167,7 @@ export namespace apperr {
 	    parentName?: string;
 	    dirty: boolean;
 	    encoding: string;
+	    bom?: string;
 	    lineEnding: string;
 	    wordCount: number;
 	    contentRevision?: number;
@@ -184,6 +189,7 @@ export namespace apperr {
 	        this.parentName = source["parentName"];
 	        this.dirty = source["dirty"];
 	        this.encoding = source["encoding"];
+	        this.bom = source["bom"];
 	        this.lineEnding = source["lineEnding"];
 	        this.wordCount = source["wordCount"];
 	        this.contentRevision = source["contentRevision"];
@@ -308,6 +314,28 @@ export namespace apperr {
 	        this.defaultOpenMode = source["defaultOpenMode"];
 	    }
 	}
+	export class ClassifiedError {
+	    category: string;
+	    safeSubject?: string;
+	    message: string;
+	    remediation?: string;
+	    documentId?: string;
+	    dedupKey: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClassifiedError(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.safeSubject = source["safeSubject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.documentId = source["documentId"];
+	        this.dedupKey = source["dedupKey"];
+	    }
+	}
 	export class ContentPrivacySettings {
 	    remotePolicy: string;
 	
@@ -361,6 +389,38 @@ export namespace apperr {
 		}
 	}
 	
+	export class DocumentTransitionResult {
+	    data?: ActiveBuffer;
+	    error?: ClassifiedError;
+	
+	    static createFrom(source: any = {}) {
+	        return new DocumentTransitionResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.data = this.convertValues(source["data"], ActiveBuffer);
+	        this.error = this.convertValues(source["error"], ClassifiedError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class EditorSettings {
 	    lineNumbers: boolean;
 	    wordWrap: boolean;

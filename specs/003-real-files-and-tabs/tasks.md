@@ -124,7 +124,7 @@ projection or recent-file state.
   - **Tests/evidence**: `go test -race ./internal/file -run 'TestCanonicalizeDocumentPath|TestReadClassifiedDocument|TestLineEndingClassification'` with suffix-case, alias, LF/CRLF/mixed/tie tables; a `none` writable case; a lone-CR read-only case; a NEL/U+2028/U+2029 ordinary-content case; BOM; invalid UTF-8; NUL; and exact-byte size rows at 2,097,152 / 2,097,153 / 10,485,760 / 10,485,761 / 52,428,800 / 52,428,801 asserting the read cap is never exceeded.
   - **Branch/commit**: `feature/v1-implementation--003-t005-document-ingress`; `feat(files): classify canonical document input`.
 
-- [ ] T006 [US2] Implement revision-checked New as one backend transition in `internal/appmodel/file_lifecycle.go`, `internal/appmodel/file_lifecycle_test.go`, `internal/appmodel/handler.go`, `internal/appmodel/handler_test.go`, and `internal/apperr/results.go`.
+- [X] T006 [US2] Implement revision-checked New as one backend transition in `internal/appmodel/file_lifecycle.go`, `internal/appmodel/file_lifecycle_test.go`, `internal/appmodel/handler.go`, `internal/appmodel/handler_test.go`, and `internal/apperr/results.go`.
   - **Outcome**: New mints one stable empty untitled UTF-8/LF/no-BOM Editor document without a path, write, recent entry, or default-mode leakage, and refuses stale or 41st-document requests atomically with a classified `capacity-limit` message naming the limit.
   - **Prerequisites**: T004.
   - **Primary ownership**: FR-FT-001; the shared 40-document guard supports T007's sole FR-FT-038 ownership.

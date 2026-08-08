@@ -14,9 +14,25 @@ const appModelPanicFormat = "panic: %v"
 // AppModelServiceAPI is the handler's package-owned service boundary.
 type AppModelServiceAPI interface {
 	GetState(ctx context.Context) (apperr.AppState, error)
+	NewDocument(ctx context.Context, expectedTabSetRevision uint64) apperr.DocumentTransitionResult
 	UpdateBuffer(ctx context.Context, documentID, content string) error
 	SetDocView(ctx context.Context, documentID string, view apperr.DocViewInput) error
 	SetUILayout(ctx context.Context, layout apperr.UILayout) error
+}
+
+// NewDocument mints and activates one empty untitled document after a tab-set revision check.
+func (handler *AppModelHandler) NewDocument(expectedTabSetRevision uint64) (res apperr.DocumentTransitionResult) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			res = documentTransitionFailure(
+				apperr.ClassifiedIOFailure,
+				"The new document could not be published.",
+				apperr.RemediationRetry,
+			)
+		}
+	}()
+
+	return handler.service.NewDocument(handler.context(), expectedTabSetRevision)
 }
 
 // AppModelHandler is the Wails-bound application-model query and command surface.
