@@ -1,3 +1,5 @@
+import { createRef } from 'react';
+
 import { fireEvent, render, screen } from '@testing-library/react';
 import ModalShell from './ModalShell';
 
@@ -72,4 +74,25 @@ it('ModalShell sends backdrop requests only for the backdrop surface', () => {
     document.querySelector('[data-modal-backdrop]') as HTMLElement,
   );
   expect(onBackdrop).toHaveBeenCalledTimes(1);
+});
+
+it('ModalShell honors a requested initial control before trapping focus', () => {
+  const initialFocusRef = createRef<HTMLButtonElement>();
+  render(
+    <ModalShell
+      initialFocusRef={initialFocusRef}
+      labelledBy="modal-title"
+      onBackdrop={jest.fn()}
+      onEscape={jest.fn()}
+      open
+      title="Accessible modal"
+    >
+      <button ref={initialFocusRef} type="button">
+        Cancel
+      </button>
+      <button type="button">Confirm</button>
+    </ModalShell>,
+  );
+
+  expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
 });

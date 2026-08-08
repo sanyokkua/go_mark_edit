@@ -238,6 +238,12 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 			service.mu.Unlock()
 			return response
 		}
+		service.mu.Lock()
+		current = service.closePlans[planID]
+		if current != nil && index < len(current.summary.Targets) {
+			current.summary.Targets[index].Conflict = nil
+		}
+		service.mu.Unlock()
 		if result.Status == apperr.WriteStatusRefused {
 			category := apperr.ClassifiedIOFailure
 			if result.Error != nil {

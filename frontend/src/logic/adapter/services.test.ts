@@ -1,4 +1,5 @@
 import {
+  createClosePlanAdapter,
   createDocumentConflictAdapter,
   createDocumentLifecycleAdapter,
   createDocumentWriteAdapter,
@@ -6,8 +7,10 @@ import {
   type DocumentLifecycleBindings,
   type DocumentConflictBindings,
   type DocumentWriteBindings,
+  type ClosePlanBindings,
   type SettingsBindings,
 } from './services';
+import type { ClosePlanKind, ClosePlanResult } from '../store/appModelTypes';
 
 // Proves: FR-WS-015
 it('acknowledges ResetAppearance through one guarded zero-arity typed binding', async () => {
@@ -158,4 +161,98 @@ it('T020 guards every conflict decision with its exact bridge argument order', a
   );
   expect(bindings.skipConflict).toHaveBeenCalledWith('doc-1', 4, version);
   expect(bindings.cancelConflict).toHaveBeenCalledWith('doc-1', 4, version);
+});
+
+it('ClosePlan complete-plan bridge preserves choices and exact arity', async () => {
+  const prepareClose: ClosePlanBindings['prepareClose'] = jest.fn(
+    async (
+      kind: ClosePlanKind,
+      ids: string[],
+      revision: number,
+    ): Promise<ClosePlanResult> => {
+      expect(kind).toBe('right');
+      expect(ids).toEqual(['doc-1', 'doc-2']);
+      expect(revision).toBe(12);
+      return {
+        data: {
+          id: 'plan-1',
+          kind: 'right',
+          status: 'collecting',
+          tabSetRevision: 12,
+          targets: [
+            {
+              documentId: 'doc-1',
+              title: 'one.md',
+              contentRevision: 4,
+              dirty: true,
+            },
+          ],
+        },
+      };
+    },
+  );
+  const resolveClosePlan: ClosePlanBindings['resolveClosePlan'] = jest.fn(
+    async (
+      planId: string,
+      decisions: Parameters<ClosePlanBindings['resolveClosePlan']>[1],
+    ): Promise<ClosePlanResult> => {
+      void planId;
+      void decisions;
+      return {
+        data: {
+          id: 'plan-1',
+          kind: 'right',
+          status: 'ready',
+          tabSetRevision: 12,
+          targets: [
+            {
+              documentId: 'doc-1',
+              title: 'one.md',
+              contentRevision: 4,
+              dirty: true,
+              choice: 'save',
+              normalizationToken: 'ending-token',
+            },
+          ],
+        },
+      };
+    },
+  );
+  const executeClosePlan: ClosePlanBindings['executeClosePlan'] = jest.fn(
+    async (planId: string) => {
+      expect(planId).toBe('plan-1');
+      return { status: 'closed' as const, orderedDocumentIds: [] };
+    },
+  );
+  const bindings: ClosePlanBindings = {
+    prepareClose,
+    resolveClosePlan,
+    executeClosePlan,
+  };
+  const adapter = createClosePlanAdapter(bindings);
+
+  await expect(
+    adapter.prepareClose('right', ['doc-1', 'doc-2'], 12),
+  ).resolves.toMatchObject({ data: { id: 'plan-1', kind: 'right' } });
+  await expect(
+    adapter.resolveClosePlan('plan-1', [
+      {
+        documentId: 'doc-1',
+        choice: 'save',
+        decisionToken: 'ending-token',
+      },
+    ]),
+  ).resolves.toMatchObject({ data: { status: 'ready' } });
+  await expect(adapter.executeClosePlan('plan-1')).resolves.toEqual({
+    status: 'closed',
+    orderedDocumentIds: [],
+  });
+  expect(prepareClose).toHaveBeenCalledWith('right', ['doc-1', 'doc-2'], 12);
+  expect(resolveClosePlan).toHaveBeenCalledWith('plan-1', [
+    {
+      documentId: 'doc-1',
+      choice: 'save',
+      decisionToken: 'ending-token',
+    },
+  ]);
 });

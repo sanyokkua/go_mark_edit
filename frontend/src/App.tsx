@@ -31,7 +31,12 @@ import {
 import type {
   ActiveBuffer,
   ClassifiedError,
+  CloseChoice,
+  ClosePlanDecision,
   ConflictPreview,
+  ClosePlanKind,
+  ClosePlanResult,
+  ClosePlanSummary,
   DocumentMetadata,
   DocumentTransitionResult,
   TabTransitionResult,
@@ -41,6 +46,7 @@ import type {
 import { setWorkspaceVisible } from './logic/store/uiLayoutCommands';
 import {
   appModelAdapter,
+  closePlanAdapter,
   documentConflictAdapter,
   documentWriteAdapter,
 } from './logic/adapter';
@@ -60,6 +66,7 @@ import NormalizationPrompt from './ui/widgets/NormalizationPrompt';
 import ExternalChangePrompt, {
   type ExternalChangeDecision,
 } from './ui/widgets/ExternalChangePrompt';
+import ClosePrompt from './ui/widgets/ClosePrompt';
 import { ModalStateProvider } from './ui/widgets/modalState';
 
 let activeRetry: Promise<AppModelBootstrapResult> | undefined;
@@ -86,6 +93,22 @@ function writeLineEndingLabel(outcome: { lineEndingOutcome: string }): string {
     default:
       return t('status.lineEnding.lf');
   }
+}
+
+function closePlanDecisions(
+  plan: ClosePlanSummary,
+  tokenOverride?: { documentId: string; decisionToken: string },
+): ClosePlanDecision[] {
+  return plan.targets
+    .filter((target) => target.dirty && target.choice !== undefined)
+    .map((target) => ({
+      choice: target.choice as CloseChoice,
+      decisionToken:
+        target.documentId === tokenOverride?.documentId
+          ? tokenOverride.decisionToken
+          : target.normalizationToken,
+      documentId: target.documentId,
+    }));
 }
 
 function startAppModelBootstrap(
@@ -260,6 +283,23 @@ const AppContents: React.FC = (): React.JSX.Element => {
     kind: 'save' | 'save-as';
     preview: ConflictPreview;
   } | null>(null);
+  const [closePlan, setClosePlan] = useState<ClosePlanSummary | null>(null);
+  const [closeNormalization, setCloseNormalization] = useState<{
+    planId: string;
+    documentId: string;
+    contentRevision: number;
+    decisionToken: string;
+    proposedEnding: 'lf' | 'crlf';
+    filename: string;
+  } | null>(null);
+  const [closeConflict, setCloseConflict] = useState<{
+    planId: string;
+    documentId: string;
+    preview: ConflictPreview;
+  } | null>(null);
+  const orderedDocumentIds = useAppSelector(
+    (state) => state.documents.orderedIds,
+  );
   const [version, setVersion] = useState('');
   const bootstrapGeneration = useRef(0);
   const onNewDocument = useCallback(
@@ -305,36 +345,6 @@ const AppContents: React.FC = (): React.JSX.Element => {
     },
     [activeBuffer?.documentId],
   );
-  const onCloseDocument = useCallback(
-    async (
-      documentId: string,
-      expectedTabSetRevision: number,
-    ): Promise<TabTransitionResult> => {
-      if (activeBuffer?.documentId === documentId) {
-        await appModelAdapter.flushActiveSession?.(documentId);
-      }
-      const result = await appModelAdapter.closeDocument?.(
-        documentId,
-        expectedTabSetRevision,
-      );
-      if (result === undefined) {
-        return {
-          status: 'refused',
-          orderedDocumentIds: [],
-        };
-      }
-      if (result.activeBuffer !== undefined)
-        setActiveBuffer(result.activeBuffer);
-      else if (
-        result.activeDocumentId === undefined ||
-        result.activeDocumentId === ''
-      ) {
-        setActiveBuffer(null);
-      }
-      return result;
-    },
-    [activeBuffer?.documentId],
-  );
   const reportWriteError = useCallback(
     (error: ClassifiedError | undefined, documentId: string): void => {
       const category = error?.category ?? 'io-failure';
@@ -364,6 +374,261 @@ const AppContents: React.FC = (): React.JSX.Element => {
       );
     },
     [dispatch],
+  );
+  const clearCloseState = useCallback((): void => {
+    setClosePlan(null);
+    setCloseNormalization(null);
+    setCloseConflict(null);
+  }, []);
+  const completeClosePlan = useCallback(
+    async (planId: string): Promise<TabTransitionResult> => {
+      const result = await closePlanAdapter.executeClosePlan(planId);
+      clearCloseState();
+      if (result.error !== undefined) {
+        reportWriteError(result.error, result.error.documentId ?? planId);
+      } else if (result.activeBuffer !== undefined) {
+        setActiveBuffer(result.activeBuffer);
+      } else if (
+        result.activeDocumentId === undefined ||
+        result.activeDocumentId === ''
+      ) {
+        setActiveBuffer(null);
+      }
+      return result;
+    },
+    [clearCloseState, reportWriteError],
+  );
+  const processClosePlanResult = useCallback(
+    async (
+      result: ClosePlanResult,
+    ): Promise<TabTransitionResult | undefined> => {
+      if (result.error !== undefined) {
+        clearCloseState();
+        reportWriteError(result.error, result.error.documentId ?? 'close-plan');
+        return undefined;
+      }
+      const summary = result.data;
+      if (summary === undefined) return undefined;
+      if (
+        summary.status === 'cancelled' ||
+        summary.status === 'failed' ||
+        summary.status === 'complete'
+      ) {
+        clearCloseState();
+        return undefined;
+      }
+      if (summary.status === 'ready') {
+        return completeClosePlan(summary.id);
+      }
+
+      setClosePlan(summary);
+      const normalizationTarget = summary.targets.find(
+        (target) =>
+          target.dirty &&
+          target.choice === 'save' &&
+          target.normalizationToken !== undefined,
+      );
+      if (normalizationTarget !== undefined) {
+        setCloseConflict(null);
+        setCloseNormalization({
+          planId: summary.id,
+          documentId: normalizationTarget.documentId,
+          contentRevision: normalizationTarget.contentRevision,
+          decisionToken: normalizationTarget.normalizationToken as string,
+          proposedEnding: normalizationTarget.proposedEnding ?? 'lf',
+          filename:
+            normalizationTarget.displayName ?? normalizationTarget.title,
+        });
+        return undefined;
+      }
+      const conflictTarget = summary.targets.find(
+        (target) =>
+          target.dirty &&
+          target.choice === 'save' &&
+          target.conflict !== undefined,
+      );
+      setCloseNormalization(null);
+      if (
+        conflictTarget !== undefined &&
+        conflictTarget.conflict !== undefined
+      ) {
+        setCloseConflict({
+          planId: summary.id,
+          documentId: conflictTarget.documentId,
+          preview: conflictTarget.conflict,
+        });
+      } else {
+        setCloseConflict(null);
+      }
+      return undefined;
+    },
+    [clearCloseState, completeClosePlan, reportWriteError],
+  );
+  const resolvePreparedClosePlan = useCallback(
+    async (
+      prepared: ClosePlanResult,
+    ): Promise<TabTransitionResult | undefined> => {
+      if (prepared.data?.status !== 'ready') {
+        return processClosePlanResult(prepared);
+      }
+      const resolved = await closePlanAdapter.resolveClosePlan(
+        prepared.data.id,
+        [],
+      );
+      return processClosePlanResult(resolved);
+    },
+    [processClosePlanResult],
+  );
+  const onClosePlanChoice = useCallback(
+    async (choice: CloseChoice): Promise<void> => {
+      const plan = closePlan;
+      if (plan === null) return;
+      const dirtyTargets = plan.targets.filter((target) => target.dirty);
+      const decisions: ClosePlanDecision[] =
+        plan.kind === 'single' && dirtyTargets.length === 1
+          ? [
+              {
+                choice,
+                documentId: dirtyTargets[0].documentId,
+              },
+            ]
+          : [{ choice }];
+      const result = await closePlanAdapter.resolveClosePlan(
+        plan.id,
+        decisions,
+      );
+      await processClosePlanResult(result);
+    },
+    [closePlan, processClosePlanResult],
+  );
+  const onCloseNormalizationDecision = useCallback(
+    async (confirm: boolean): Promise<void> => {
+      const plan = closePlan;
+      const requirement = closeNormalization;
+      if (plan === null || requirement === null) return;
+      const decisions = confirm
+        ? closePlanDecisions(plan, {
+            documentId: requirement.documentId,
+            decisionToken: requirement.decisionToken,
+          })
+        : [{ documentId: requirement.documentId, choice: 'cancel' as const }];
+      const result = await closePlanAdapter.resolveClosePlan(
+        requirement.planId,
+        decisions,
+      );
+      await processClosePlanResult(result);
+    },
+    [closeNormalization, closePlan, processClosePlanResult],
+  );
+  const closeConflictValid =
+    closeConflict === null ||
+    closePlan?.targets.find(
+      (target) => target.documentId === closeConflict.documentId,
+    )?.contentRevision === closeConflict.preview.contentRevision;
+  const onCloseConflictDecision = useCallback(
+    async (decision: ExternalChangeDecision): Promise<void> => {
+      const conflict = closeConflict;
+      const plan = closePlan;
+      if (conflict === null || plan === null) return;
+      if (decision === 'keep-mine' && !closeConflictValid) return;
+      if (decision === 'keep-mine') {
+        if (activeBuffer?.documentId === conflict.documentId) {
+          await appModelAdapter.flushActiveSession?.(conflict.documentId);
+        }
+        const result = await documentConflictAdapter.authorizeKeepMine(
+          conflict.documentId,
+          conflict.preview.contentRevision,
+          conflict.preview.path ?? '',
+          conflict.preview.detectedDiskVersion,
+        );
+        if (result.error !== undefined) {
+          reportWriteError(result.error, conflict.documentId);
+          if (result.preview !== undefined) {
+            setCloseConflict({ ...conflict, preview: result.preview });
+          }
+          return;
+        }
+        if (result.decisionToken === undefined) return;
+        const resolved = await closePlanAdapter.resolveClosePlan(
+          conflict.planId,
+          closePlanDecisions(plan, {
+            documentId: conflict.documentId,
+            decisionToken: result.decisionToken,
+          }),
+        );
+        await processClosePlanResult(resolved);
+        return;
+      }
+      if (decision === 'reload') {
+        await closePlanAdapter.resolveClosePlan(plan.id, [
+          { choice: 'cancel' },
+        ]);
+        const result = await documentConflictAdapter.reloadFromDisk(
+          conflict.documentId,
+          conflict.preview.contentRevision,
+          conflict.preview.detectedDiskVersion,
+        );
+        if (result.error !== undefined) {
+          reportWriteError(result.error, conflict.documentId);
+          return;
+        }
+        if (result.activeBuffer !== undefined)
+          setActiveBuffer(result.activeBuffer);
+        clearCloseState();
+        const state = await appModelAdapter.getState();
+        const prepared = await closePlanAdapter.prepareClose(
+          plan.kind,
+          plan.targets.map((target) => target.documentId),
+          state.snapshot.tabSetRevision ?? plan.tabSetRevision,
+        );
+        await resolvePreparedClosePlan(prepared);
+        return;
+      }
+      const cancelled = await closePlanAdapter.resolveClosePlan(plan.id, [
+        { choice: 'cancel' },
+      ]);
+      await processClosePlanResult(cancelled);
+    },
+    [
+      activeBuffer?.documentId,
+      clearCloseState,
+      closeConflict,
+      closeConflictValid,
+      closePlan,
+      processClosePlanResult,
+      reportWriteError,
+      resolvePreparedClosePlan,
+    ],
+  );
+  const onCloseDocument = useCallback(
+    async (
+      documentId: string,
+      expectedTabSetRevision: number,
+      kind: ClosePlanKind = 'single',
+      targetDocumentIds: string[] = [documentId],
+    ): Promise<TabTransitionResult> => {
+      const targets =
+        targetDocumentIds.length > 0 ? targetDocumentIds : [documentId];
+      if (
+        activeBuffer?.documentId !== undefined &&
+        targets.includes(activeBuffer.documentId)
+      ) {
+        await appModelAdapter.flushActiveSession?.(activeBuffer.documentId);
+      }
+      const prepared = await closePlanAdapter.prepareClose(
+        kind,
+        targets,
+        expectedTabSetRevision,
+      );
+      const transition = await resolvePreparedClosePlan(prepared);
+      return (
+        transition ?? {
+          status: 'noop',
+          orderedDocumentIds,
+        }
+      );
+    },
+    [activeBuffer, orderedDocumentIds, resolvePreparedClosePlan],
   );
   const finishWrite = useCallback(
     async (
@@ -576,8 +841,15 @@ const AppContents: React.FC = (): React.JSX.Element => {
     [externalConflict, externalConflictValid, finishWrite, reportWriteError],
   );
   // Keep the existing modal contract explicit for menu and keyboard consumers.
-  // prettier-ignore
-  const modalOpen = settingsOpen || aboutOpen || shortcutsOpen || normalization !== null || externalConflict !== null;
+  const modalOpen =
+    settingsOpen ||
+    aboutOpen ||
+    shortcutsOpen ||
+    normalization !== null ||
+    externalConflict !== null ||
+    closePlan !== null ||
+    closeNormalization !== null ||
+    closeConflict !== null;
   const onNormalizeConfirm = useCallback(async (): Promise<void> => {
     if (normalization === null) return;
     await finishWrite(
@@ -743,11 +1015,39 @@ const AppContents: React.FC = (): React.JSX.Element => {
               open={bootstrapStatus === 'ready' && normalization !== null}
               proposedEnding={normalization?.proposedEnding ?? 'lf'}
             />
+            <ClosePrompt
+              onChoice={onClosePlanChoice}
+              open={
+                bootstrapStatus === 'ready' &&
+                closePlan !== null &&
+                closeNormalization === null &&
+                closeConflict === null &&
+                closePlan.status === 'collecting'
+              }
+              plan={closePlan ?? undefined}
+            />
+            <NormalizationPrompt
+              filename={closeNormalization?.filename ?? ''}
+              onCancel={(): void => {
+                void onCloseNormalizationDecision(false);
+              }}
+              onConfirm={(): void => {
+                void onCloseNormalizationDecision(true);
+              }}
+              open={bootstrapStatus === 'ready' && closeNormalization !== null}
+              proposedEnding={closeNormalization?.proposedEnding ?? 'lf'}
+            />
             <ExternalChangePrompt
               onDecision={onExternalConflictDecision}
               open={bootstrapStatus === 'ready' && externalConflict !== null}
               preview={externalConflict?.preview}
               valid={externalConflictValid}
+            />
+            <ExternalChangePrompt
+              onDecision={onCloseConflictDecision}
+              open={bootstrapStatus === 'ready' && closeConflict !== null}
+              preview={closeConflict?.preview}
+              valid={closeConflictValid}
             />
             {bootstrapStatus === 'ready'
               ? notifications.map((notification) => (

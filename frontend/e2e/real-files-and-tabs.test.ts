@@ -133,3 +133,38 @@ test('FT-VS-05 exposes acknowledged autosave control and truthful save status wi
     page.locator('[data-notification-code="automatic-save"]'),
   ).toHaveCount(0);
 });
+
+test('FT-VS-06 close plan gathers a complete choice before any tab removal', async ({
+  page,
+}) => {
+  await page.goto('/?close-plan');
+
+  const editor = page.getByRole('textbox', { name: 'Editor content' });
+  await expect(editor).toBeVisible();
+  await editor.press('ControlOrMeta+A');
+  await page.keyboard.type('dirty before close');
+
+  const firstTab = page.getByRole('tab').first();
+  const tabItem = firstTab.locator('..');
+  await tabItem.getByRole('button', { name: /^Close /u }).click();
+
+  const prompt = page.getByRole('dialog', {
+    name: 'Save changes before closing?',
+  });
+  await expect(prompt).toBeVisible();
+  await expect(
+    prompt.locator('[data-close-target="mock-document"]'),
+  ).toBeVisible();
+  await expect(page.getByRole('tab')).toHaveCount(1);
+
+  await prompt.getByRole('button', { name: 'Cancel' }).click();
+  await expect(prompt).toHaveCount(0);
+  await expect(page.getByRole('tab')).toHaveCount(1);
+
+  await tabItem.getByRole('button', { name: /^Close /u }).click();
+  const secondPrompt = page.getByRole('dialog', {
+    name: 'Save changes before closing?',
+  });
+  await secondPrompt.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('tab')).toHaveCount(0);
+});

@@ -2,10 +2,16 @@ import { guardArity } from './bridgeGuard';
 import { unwrap } from './envelope';
 import type {
   ConflictResult,
+  ClosePlanDecision,
+  ClosePlanKind,
+  ClosePlanResult,
+  ClosePlanSummary,
+  CloseTarget,
   DiskVersion,
   DocumentTransitionResult,
   OpenResult,
   WriteResult,
+  TabTransitionResult,
 } from '../store/appModelTypes';
 import type {
   AppearanceSettings,
@@ -98,6 +104,84 @@ export interface DocumentConflictBindings {
 }
 
 export type DocumentConflictAdapter = DocumentConflictBindings;
+
+export interface ClosePlanBindings {
+  prepareClose: (
+    kind: ClosePlanKind,
+    targetDocumentIds: string[],
+    expectedTabSetRevision: number,
+  ) => Promise<ClosePlanResult>;
+  resolveClosePlan: (
+    planId: string,
+    decisions: ClosePlanDecision[],
+  ) => Promise<ClosePlanResult>;
+  executeClosePlan: (planId: string) => Promise<TabTransitionResult>;
+}
+
+export interface ClosePlanAdapter {
+  prepareClose: ClosePlanBindings['prepareClose'];
+  resolveClosePlan: ClosePlanBindings['resolveClosePlan'];
+  executeClosePlan: ClosePlanBindings['executeClosePlan'];
+}
+
+function normalizeCloseTarget(target: CloseTarget): CloseTarget {
+  return {
+    ...target,
+    conflict:
+      target.conflict === undefined
+        ? undefined
+        : {
+            ...target.conflict,
+            detectedDiskVersion: {
+              ...target.conflict.detectedDiskVersion,
+              modifiedUnixNano: String(
+                target.conflict.detectedDiskVersion.modifiedUnixNano,
+              ),
+            },
+          },
+  };
+}
+
+function normalizeClosePlanResult(result: ClosePlanResult): ClosePlanResult {
+  return {
+    error: result.error,
+    data:
+      result.data === undefined
+        ? undefined
+        : {
+            ...result.data,
+            kind: result.data.kind as ClosePlanSummary['kind'],
+            status: result.data.status as ClosePlanSummary['status'],
+            targets: result.data.targets.map(normalizeCloseTarget),
+          },
+  };
+}
+
+export function createClosePlanAdapter(
+  bindings: ClosePlanBindings,
+): ClosePlanAdapter {
+  const prepareClose = guardArity(
+    'AppModelHandler.PrepareClose',
+    bindings.prepareClose,
+  );
+  const resolveClosePlan = guardArity(
+    'AppModelHandler.ResolveClosePlan',
+    bindings.resolveClosePlan,
+  );
+  const executeClosePlan = guardArity(
+    'AppModelHandler.ExecuteClosePlan',
+    bindings.executeClosePlan,
+  );
+  return {
+    prepareClose: async (kind, targetDocumentIds, expectedTabSetRevision) =>
+      normalizeClosePlanResult(
+        await prepareClose(kind, targetDocumentIds, expectedTabSetRevision),
+      ),
+    resolveClosePlan: async (planId, decisions) =>
+      normalizeClosePlanResult(await resolveClosePlan(planId, decisions)),
+    executeClosePlan: async (planId) => executeClosePlan(planId),
+  };
+}
 
 export function createDocumentConflictAdapter(
   bindings: DocumentConflictBindings,

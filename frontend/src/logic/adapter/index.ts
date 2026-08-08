@@ -14,8 +14,11 @@ import {
   ActivateDocument,
   ReorderDocument,
   CloseDocument,
+  ExecuteClosePlan,
   CopyPath,
+  PrepareClose,
   RevealInFileManager,
+  ResolveClosePlan,
   SetDocView,
   SetUILayout,
   UpdateBuffer,
@@ -49,6 +52,7 @@ import {
 import {
   createDocumentConflictAdapter,
   createDocumentWriteAdapter,
+  createClosePlanAdapter,
   createSettingsAdapter,
   type SettingsBindings,
 } from './services';
@@ -57,6 +61,7 @@ import type {
   ClassifiedError,
   ConflictPreview,
   ConflictResult,
+  ClosePlanResult,
   DocumentTransitionResult,
   DocumentMetadata,
   LineEndingOutcome,
@@ -378,6 +383,29 @@ export const appModelAdapter = createAppModelAdapter(
   wailsRuntime,
 );
 
+export const closePlanAdapter = createClosePlanAdapter({
+  prepareClose: async (kind, targetDocumentIds, expectedTabSetRevision) =>
+    (await PrepareClose(
+      kind,
+      targetDocumentIds,
+      expectedTabSetRevision,
+    )) as unknown as ClosePlanResult,
+  resolveClosePlan: async (planId, decisions) =>
+    (await ResolveClosePlan(
+      planId,
+      decisions.map(
+        (decision) =>
+          new apperr.ClosePlanDecision({
+            choice: decision.choice,
+            decisionToken: decision.decisionToken,
+            documentId: decision.documentId ?? '',
+          }),
+      ),
+    )) as unknown as ClosePlanResult,
+  executeClosePlan: (planId) =>
+    ExecuteClosePlan(planId).then(normalizeTabTransitionResult),
+});
+
 export const windowAdapter = createWindowAdapter({
   retryStartup: RetryStartup,
   windowReady: WindowReady,
@@ -408,10 +436,13 @@ export {
   createDocumentLifecycleAdapter,
   createDocumentWriteAdapter,
   createDocumentConflictAdapter,
+  createClosePlanAdapter,
   type DocumentWriteAdapter,
   type DocumentWriteBindings,
   type DocumentConflictAdapter,
   type DocumentConflictBindings,
+  type ClosePlanAdapter,
+  type ClosePlanBindings,
   type DocumentLifecycleAdapter,
   type DocumentLifecycleBindings,
   type SettingsAdapter,

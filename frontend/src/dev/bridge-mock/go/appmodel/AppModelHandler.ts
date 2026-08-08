@@ -130,6 +130,42 @@ interface TabTransitionResult {
   error?: ClassifiedErrorResult;
 }
 
+type CloseChoice = 'save' | 'discard' | 'cancel' | 'save-all' | 'discard-all';
+interface ClosePlanDecision {
+  documentId?: string;
+  choice: CloseChoice;
+  decisionToken?: string;
+}
+interface CloseTarget {
+  documentId: string;
+  title: string;
+  path?: string;
+  savePath?: string;
+  displayName?: string;
+  contentRevision: number;
+  dirty: boolean;
+  capability?: string;
+  writeInFlight?: boolean;
+  status?: string;
+  choice?: CloseChoice;
+  normalizationToken?: string;
+  proposedEnding?: 'lf' | 'crlf';
+  conflict?: MockConflictPreview;
+}
+interface ClosePlanSummary {
+  id: string;
+  kind: string;
+  tabSetRevision: number;
+  targets: CloseTarget[];
+  dirtyTargetIds?: string[];
+  status:
+    'collecting' | 'ready' | 'executing' | 'failed' | 'cancelled' | 'complete';
+}
+interface ClosePlanResult {
+  data?: ClosePlanSummary;
+  error?: ClassifiedErrorResult;
+}
+
 type MockConflictResult = {
   status: string;
   documentId?: string;
@@ -197,6 +233,8 @@ let mockSaveResult: MockWriteResult | undefined;
 let mockSaveAsResult: MockWriteResult | undefined;
 let mockConflictResults: Partial<Record<ConflictMethod, MockConflictResult>> =
   {};
+let nextClosePlanNumber = 1;
+let mockClosePlans = new Map<string, ClosePlanSummary>();
 let mockCopyPathResult:
   { status: string; error?: ClassifiedErrorResult } | undefined;
 let mockRevealResult:
@@ -369,6 +407,8 @@ export function resetMockAppModel(): void {
   orderedDocumentIds = [initialDocumentId];
   activeDocumentId = initialDocumentId;
   nextUntitledNumber = 2;
+  nextClosePlanNumber = 1;
+  mockClosePlans = new Map();
   openSelection = null;
   mockSaveResult = undefined;
   mockSaveAsResult = undefined;
@@ -689,6 +729,173 @@ export function CloseDocument(
   return Promise.resolve({
     status: 'closed',
     documentId: requestedDocumentId,
+    projectionRevision: revision,
+    tabSetRevision,
+    orderedDocumentIds: [...orderedDocumentIds],
+    activeDocumentId,
+    activeBuffer:
+      nextActive === undefined ? undefined : activeBuffer(nextActive),
+  });
+}
+
+function cloneClosePlan(plan: ClosePlanSummary): ClosePlanSummary {
+  return {
+    ...plan,
+    dirtyTargetIds: plan.dirtyTargetIds ? [...plan.dirtyTargetIds] : undefined,
+    targets: plan.targets.map((target) => ({
+      ...target,
+      conflict: target.conflict
+        ? {
+            ...target.conflict,
+            detectedDiskVersion: { ...target.conflict.detectedDiskVersion },
+          }
+        : undefined,
+    })),
+  };
+}
+
+function closePlanTargetIds(plan: ClosePlanSummary): string[] {
+  return plan.targets.map((target) => target.documentId);
+}
+
+export function PrepareClose(
+  kind: string,
+  requestedTargetIds: string[],
+  expectedTabSetRevision: number,
+): Promise<ClosePlanResult> {
+  if (!expectedRevisionMatches(expectedTabSetRevision)) {
+    return Promise.resolve({ error: staleRevisionError() });
+  }
+  const requested =
+    kind === 'window' || kind === 'quit'
+      ? [...orderedDocumentIds]
+      : [...new Set(requestedTargetIds)];
+  const targets = orderedDocumentIds
+    .filter((documentId) => requested.includes(documentId))
+    .map((documentId): CloseTarget => {
+      const document = documents[documentId];
+      return {
+        documentId,
+        title: document.metadata.title,
+        path: document.metadata.path || undefined,
+        displayName: document.metadata.title,
+        contentRevision: document.documentRevision,
+        dirty: document.metadata.dirty,
+        capability: 'writable',
+        status: document.metadata.status,
+      };
+    });
+  const dirtyTargetIds = targets
+    .filter((target) => target.dirty)
+    .map((target) => target.documentId);
+  const plan: ClosePlanSummary = {
+    id: `mock-close-plan-${nextClosePlanNumber++}`,
+    kind,
+    tabSetRevision,
+    targets,
+    dirtyTargetIds,
+    status: dirtyTargetIds.length > 0 ? 'collecting' : 'ready',
+  };
+  mockClosePlans.set(plan.id, plan);
+  return Promise.resolve({ data: cloneClosePlan(plan) });
+}
+
+export function ResolveClosePlan(
+  planId: string,
+  decisions: ClosePlanDecision[],
+): Promise<ClosePlanResult> {
+  const plan = mockClosePlans.get(planId);
+  if (plan === undefined) {
+    return Promise.resolve({
+      error: classifiedError(
+        'not-found',
+        'The close plan is no longer active.',
+        planId,
+      ),
+    });
+  }
+  if (decisions.some((decision) => decision.choice === 'cancel')) {
+    plan.status = 'cancelled';
+    mockClosePlans.delete(planId);
+    return Promise.resolve({ data: cloneClosePlan(plan) });
+  }
+  const allChoice = decisions.find(
+    (decision) =>
+      decision.choice === 'save-all' || decision.choice === 'discard-all',
+  )?.choice;
+  for (const target of plan.targets) {
+    if (!target.dirty) continue;
+    const decision = decisions.find(
+      (candidate) => candidate.documentId === target.documentId,
+    );
+    const choice =
+      allChoice === 'save-all'
+        ? 'save'
+        : allChoice === 'discard-all'
+          ? 'discard'
+          : decision?.choice;
+    if (choice !== 'save' && choice !== 'discard') {
+      return Promise.resolve({ data: cloneClosePlan(plan) });
+    }
+    target.choice = choice;
+  }
+  plan.status = 'ready';
+  return Promise.resolve({ data: cloneClosePlan(plan) });
+}
+
+export function ExecuteClosePlan(planId: string): Promise<TabTransitionResult> {
+  const plan = mockClosePlans.get(planId);
+  if (plan === undefined || plan.status !== 'ready') {
+    return Promise.resolve({
+      status: 'refused',
+      orderedDocumentIds: [],
+      error: classifiedError(
+        'conflict',
+        'The close plan is incomplete.',
+        planId,
+      ),
+    });
+  }
+  plan.status = 'executing';
+  const targetIds = closePlanTargetIds(plan);
+  const targetSet = new Set(targetIds);
+  for (const target of plan.targets) {
+    if (target.choice === 'save') {
+      const document = documents[target.documentId];
+      document.metadata = {
+        ...document.metadata,
+        dirty: false,
+        status: 'saved',
+      };
+    }
+  }
+  const activeIndex = orderedDocumentIds.indexOf(activeDocumentId);
+  orderedDocumentIds = orderedDocumentIds.filter(
+    (documentId) => !targetSet.has(documentId),
+  );
+  for (const documentId of targetIds) delete documents[documentId];
+  if (targetSet.has(activeDocumentId)) {
+    activeDocumentId =
+      orderedDocumentIds[
+        Math.min(activeIndex, orderedDocumentIds.length - 1)
+      ] ?? '';
+  }
+  tabSetRevision += 1;
+  revision += 1;
+  emitPatch({
+    revision,
+    tabSetRevision,
+    orderedDocumentIds: [...orderedDocumentIds],
+    activeDocumentId,
+    documents: { remove: targetIds },
+  });
+  plan.status = 'complete';
+  mockClosePlans.delete(planId);
+  const nextActive =
+    activeDocumentId === '' ? undefined : documents[activeDocumentId];
+  return Promise.resolve({
+    status: 'closed',
+    documentId: targetIds[0],
     projectionRevision: revision,
     tabSetRevision,
     orderedDocumentIds: [...orderedDocumentIds],

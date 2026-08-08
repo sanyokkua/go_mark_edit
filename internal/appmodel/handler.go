@@ -99,7 +99,7 @@ func (handler *AppModelHandler) CloseDocument(documentID string, expectedTabSetR
 
 // PrepareClose creates one immutable, revision-bound close plan. The frontend
 // must gather any user decisions before calling ResolveClosePlan.
-func (handler *AppModelHandler) PrepareClose(kind apperr.ClosePlanKind, targetDocumentIDs []string, expectedTabSetRevision uint64) (res apperr.ClosePlanResult) {
+func (handler *AppModelHandler) PrepareClose(kind string, targetDocumentIDs []string, expectedTabSetRevision uint64) (res apperr.ClosePlanResult) {
 	defer func() {
 		if recover() != nil {
 			res = closePlanRefused(apperr.ClassifiedSystemCommandFailure, "close plan", "The close plan could not be prepared.", apperr.RemediationRetry)
@@ -109,7 +109,7 @@ func (handler *AppModelHandler) PrepareClose(kind apperr.ClosePlanKind, targetDo
 	if !ok {
 		return closePlanRefused(apperr.ClassifiedSystemCommandFailure, "close plan", "The close plan service is unavailable.", apperr.RemediationRetry)
 	}
-	return planner.PrepareClose(handler.context(), kind, targetDocumentIDs, expectedTabSetRevision)
+	return planner.PrepareClose(handler.context(), apperr.ClosePlanKind(kind), targetDocumentIDs, expectedTabSetRevision)
 }
 
 // ResolveClosePlan records complete Save/Discard choices and any already

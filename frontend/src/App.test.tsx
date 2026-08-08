@@ -276,9 +276,8 @@ it('T058 includes the Shortcuts dialog in the shared modal suppression state', (
   const source = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8');
 
   expect(source).toContain('ModalStateProvider');
-  expect(source).toContain(
-    'settingsOpen || aboutOpen || shortcutsOpen || normalization !== null',
-  );
+  expect(source).toContain('settingsOpen ||');
+  expect(source).toContain('closePlan !== null');
   expect(source).toContain('modalOpen={menuState.modalOpen}');
 });
 

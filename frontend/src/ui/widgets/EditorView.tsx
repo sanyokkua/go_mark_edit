@@ -26,6 +26,7 @@ import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { setViewArrangement } from '../../logic/store/docViewCommands';
 import type {
   ActiveBuffer,
+  ClosePlanKind,
   DocumentTransitionResult,
   DocumentView,
   TabTransitionResult,
@@ -83,6 +84,8 @@ export interface EditorViewProps {
   onCloseDocument?: (
     documentId: string,
     expectedTabSetRevision: number,
+    kind?: ClosePlanKind,
+    targetDocumentIds?: string[],
   ) => Promise<TabTransitionResult>;
 }
 

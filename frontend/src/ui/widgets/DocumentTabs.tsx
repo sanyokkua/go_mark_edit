@@ -8,6 +8,7 @@ import {
 } from '../../logic/adapter';
 import type {
   ClassifiedError,
+  ClosePlanKind,
   ConflictPreview,
   ConflictResult,
   DocumentMetadata,
@@ -52,6 +53,8 @@ export interface DocumentTabsProps {
   onCloseDocument?: (
     documentId: string,
     expectedTabSetRevision: number,
+    kind?: ClosePlanKind,
+    targetDocumentIds?: string[],
   ) => Promise<TabTransitionResult>;
   onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
   modalOpen?: boolean;
@@ -296,9 +299,16 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     async (
       documentId: string,
       expectedRevision: number,
+      kind: ClosePlanKind = 'single',
+      targetDocumentIds: string[] = [documentId],
     ): Promise<TabTransitionResult | undefined> => {
       const result = onCloseDocument
-        ? await onCloseDocument(documentId, expectedRevision)
+        ? await onCloseDocument(
+            documentId,
+            expectedRevision,
+            kind,
+            targetDocumentIds,
+          )
         : await adapter.closeDocument?.(documentId, expectedRevision);
       if (result?.error !== undefined) {
         reportClassifiedError(
@@ -378,7 +388,9 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         return result;
       }
       if (action === 'close-tab') {
-        return closeDocument(document.documentId, tabSetRevision);
+        return closeDocument(document.documentId, tabSetRevision, 'single', [
+          document.documentId,
+        ]);
       }
       const targets =
         action === 'close-right'
@@ -390,14 +402,12 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
           : orderedDocuments.filter(
               (candidate) => candidate.documentId !== document.documentId,
             );
-      let expectedRevision = tabSetRevision;
-      for (const target of [...targets].reverse()) {
-        const result = await closeDocument(target.documentId, expectedRevision);
-        if (result?.tabSetRevision !== undefined) {
-          expectedRevision = result.tabSetRevision;
-        }
-      }
-      return undefined;
+      return closeDocument(
+        document.documentId,
+        tabSetRevision,
+        action === 'close-right' ? 'right' : 'others',
+        targets.map((target) => target.documentId),
+      );
     },
     [
       adapter,

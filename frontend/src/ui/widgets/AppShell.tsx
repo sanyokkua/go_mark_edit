@@ -10,6 +10,7 @@ import { t } from '../../i18n';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { setWorkspaceWidth } from '../../logic/store/uiLayoutCommands';
 import type {
+  ClosePlanKind,
   DocumentTransitionResult,
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
@@ -26,6 +27,8 @@ export interface AppShellProps {
   onCloseDocument?: (
     documentId: string,
     expectedTabSetRevision: number,
+    kind?: ClosePlanKind,
+    targetDocumentIds?: string[],
   ) => Promise<TabTransitionResult>;
 }
 

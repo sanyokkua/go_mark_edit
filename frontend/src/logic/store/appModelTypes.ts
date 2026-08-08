@@ -240,6 +240,49 @@ export interface TabTransitionResult {
   error?: ClassifiedError;
 }
 
+export type ClosePlanKind = 'single' | 'others' | 'right' | 'window' | 'quit';
+export type ClosePlanStatus =
+  'collecting' | 'ready' | 'executing' | 'failed' | 'cancelled' | 'complete';
+export type CloseChoice =
+  'save' | 'discard' | 'cancel' | 'save-all' | 'discard-all';
+
+export interface ClosePlanDecision {
+  documentId?: string;
+  choice: CloseChoice;
+  decisionToken?: string;
+}
+
+export interface CloseTarget {
+  documentId: string;
+  title: string;
+  path?: string;
+  savePath?: string;
+  displayName?: string;
+  contentRevision: number;
+  dirty: boolean;
+  capability?: string;
+  writeInFlight?: boolean;
+  status?: string;
+  choice?: CloseChoice;
+  normalizationToken?: string;
+  proposedEnding?: 'lf' | 'crlf';
+  conflict?: ConflictPreview;
+}
+
+export interface ClosePlanSummary {
+  id: string;
+  kind: ClosePlanKind;
+  tabSetRevision: number;
+  targets: CloseTarget[];
+  dirtyTargetIds?: string[];
+  status: ClosePlanStatus;
+}
+
+export interface ClosePlanResult {
+  data?: ClosePlanSummary;
+  error?: ClassifiedError;
+}
+
 export type PathCommandStatus =
   'copied' | 'revealed' | 'unavailable' | 'refused';
 
