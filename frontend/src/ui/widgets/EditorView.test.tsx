@@ -191,6 +191,40 @@ it('STORY-015-AC-3 renders each arrangement', () => {
   ).toBeInTheDocument();
 });
 
+it('replaces the same-document editor model when a Reload acknowledgement changes content', () => {
+  const document = documentFor('editor');
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: { [document.documentId]: document },
+      activeDocumentId: document.documentId,
+      ui: {},
+    }),
+  );
+  const rendered = render(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: document.documentId, content: 'mine\n' }}
+      >
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+
+  expect(screen.getByLabelText('Markdown source')).toHaveValue('mine\n');
+  rendered.rerender(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: document.documentId, content: 'disk\n' }}
+      >
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+
+  expect(screen.getByLabelText('Markdown source')).toHaveValue('disk\n');
+});
+
 it('STORY-015-AC-4 prevents an empty document arrangement', async () => {
   renderEditorView('split');
 
