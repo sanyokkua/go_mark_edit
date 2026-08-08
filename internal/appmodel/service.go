@@ -37,6 +37,9 @@ type AppModelService struct {
 	saveReservations    map[string]*saveReservation
 	normalizations      map[string]*normalizationAuthorization
 	writeCoordinators   map[string]*DocumentWriteCoordinator
+	conflicts           map[string]*documentConflict
+	conflictQueue       *conflictQueue
+	keepMine            map[string]*keepMineAuthorization
 	beforeSaveAsRecheck func(string)
 	metadata            FileMetadataRepository
 	defaultOpenMode     string
@@ -44,6 +47,8 @@ type AppModelService struct {
 	saveDialog          DocumentSaveDialog
 	clipboard           file.ClipboardWriter
 	reveal              file.RevealPort
+	stableRead          func(string, int64) (file.StableClassifiedRead, error)
+	diskVersion         func(string) (file.DiskVersion, error)
 }
 
 type layoutTimer interface{ AfterFunc(time.Duration, func()) }
@@ -102,7 +107,7 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 	if timer == nil {
 		timer = systemLayoutTimer{}
 	}
-	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), saveReservations: make(map[string]*saveReservation), normalizations: make(map[string]*normalizationAuthorization), writeCoordinators: make(map[string]*DocumentWriteCoordinator), defaultOpenMode: OpenModeEditor, state: applicationState{
+	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), saveReservations: make(map[string]*saveReservation), normalizations: make(map[string]*normalizationAuthorization), writeCoordinators: make(map[string]*DocumentWriteCoordinator), conflicts: make(map[string]*documentConflict), conflictQueue: newConflictQueue(), keepMine: make(map[string]*keepMineAuthorization), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, state: applicationState{
 		orderedDocumentIDs: []string{documentID},
 		documents:          map[string]*openDocument{documentID: initialDocument},
 		activeDocumentID:   documentID,
@@ -115,6 +120,19 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 	service.commands = documentCommands{service: service}
 	service.content = documentContentAccessor{service: service}
 	return service
+}
+
+// SetConflictReadersForTesting injects deterministic version/read races without
+// changing the production foreground-only policy.
+func (service *AppModelService) SetConflictReadersForTesting(stableRead func(string, int64) (file.StableClassifiedRead, error), diskVersion func(string) (file.DiskVersion, error)) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	if stableRead != nil {
+		service.stableRead = stableRead
+	}
+	if diskVersion != nil {
+		service.diskVersion = diskVersion
+	}
 }
 
 // NewEmptyAppModelService constructs the same backend state with no open
@@ -389,6 +407,7 @@ func (service *AppModelService) effectiveDocumentMetadataLocked(document *openDo
 	metadata.Status = string(status)
 	metadata.Dirty = status == SaveStatusUnsavedChanges
 	metadata.Detached = document.detached
+	metadata.ConflictBlocked = document.conflictBlocked
 	if document.hasSavedView || service.state.ui.ViewArrangement == nil {
 		return metadata
 	}

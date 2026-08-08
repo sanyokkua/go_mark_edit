@@ -14,6 +14,8 @@ type openReservation struct {
 	expectedTabRevision uint64
 	canonical           file.CanonicalDocumentPath
 	read                file.ClassifiedRead
+	version             file.DiskVersion
+	rawHash             string
 	existingDocumentID  string
 	arrangement         string
 }

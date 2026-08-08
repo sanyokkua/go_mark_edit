@@ -26,6 +26,11 @@ type AppModelServiceAPI interface {
 	SetUILayout(ctx context.Context, layout apperr.UILayout) error
 	Save(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
 	SaveAs(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
+	CheckExternalChanges(ctx context.Context, documentID string) apperr.ConflictResult
+	ReloadFromDisk(ctx context.Context, documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) apperr.ConflictResult
+	AuthorizeKeepMine(ctx context.Context, documentID string, contentRevision uint64, path string, detectedVersion apperr.DiskVersion) apperr.ConflictResult
+	SkipConflict(ctx context.Context, documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) apperr.ConflictResult
+	CancelConflict(ctx context.Context, documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) apperr.ConflictResult
 }
 
 // OpenDocument opens the native picker and commits its selected path through canonical Open.
@@ -198,6 +203,56 @@ func (handler *AppModelHandler) SaveAs(documentID string, contentRevision uint64
 		}
 	}()
 	return handler.service.SaveAs(handler.context(), documentID, contentRevision, decisionToken)
+}
+
+// CheckExternalChanges performs an explicit foreground-only version check.
+func (handler *AppModelHandler) CheckExternalChanges(documentID string) (res apperr.ConflictResult) {
+	defer func() {
+		if recover() != nil {
+			res = conflictRefused(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be checked for external changes.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.CheckExternalChanges(handler.context(), documentID)
+}
+
+// ReloadFromDisk applies one revision/version-bound external reload.
+func (handler *AppModelHandler) ReloadFromDisk(documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) (res apperr.ConflictResult) {
+	defer func() {
+		if recover() != nil {
+			res = conflictRefused(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be reloaded.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.ReloadFromDisk(handler.context(), documentID, contentRevision, detectedVersion)
+}
+
+// AuthorizeKeepMine returns a single-use overwrite token for the compared state.
+func (handler *AppModelHandler) AuthorizeKeepMine(documentID string, contentRevision uint64, path string, detectedVersion apperr.DiskVersion) (res apperr.ConflictResult) {
+	defer func() {
+		if recover() != nil {
+			res = conflictRefused(documentID, apperr.ClassifiedSystemCommandFailure, "The overwrite decision could not be prepared.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.AuthorizeKeepMine(handler.context(), documentID, contentRevision, path, detectedVersion)
+}
+
+// SkipConflict cancels one write/check attempt without changing source or disk.
+func (handler *AppModelHandler) SkipConflict(documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) (res apperr.ConflictResult) {
+	defer func() {
+		if recover() != nil {
+			res = conflictRefused(documentID, apperr.ClassifiedSystemCommandFailure, "The conflict decision could not be cancelled.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.SkipConflict(handler.context(), documentID, contentRevision, detectedVersion)
+}
+
+// CancelConflict dismisses a read-only foreground check without changing disk or source.
+func (handler *AppModelHandler) CancelConflict(documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) (res apperr.ConflictResult) {
+	defer func() {
+		if recover() != nil {
+			res = conflictRefused(documentID, apperr.ClassifiedSystemCommandFailure, "The conflict decision could not be cancelled.", apperr.RemediationRetry)
+		}
+	}()
+	return handler.service.CancelConflict(handler.context(), documentID, contentRevision, detectedVersion)
 }
 
 func (handler *AppModelHandler) context() context.Context {

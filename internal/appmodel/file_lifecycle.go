@@ -2,6 +2,7 @@ package appmodel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -141,10 +142,14 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	}
 	service.mu.RUnlock()
 
-	read, readErr := file.ReadClassifiedDocument(path)
+	stable, readErr := file.ReadClassifiedStable(path, file.MaxClassifiedReadBytes)
 	if readErr != nil {
+		if errors.Is(readErr, file.ErrUnstableRead) {
+			return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedConflict, "The document changed while it was being read; try again.", apperr.RemediationRetry)
+		}
 		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)
 	}
+	read := stable.Read
 	if read.Error != nil {
 		return OpenPreparation{}, read.Error
 	}
@@ -180,7 +185,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	reservationID := mintDocumentID()
 	service.reservations[reservationID] = &openReservation{
 		id: reservationID, identity: identity, expectedTabRevision: expectedTabSetRevision,
-		canonical: read.CanonicalPath, read: read, existingDocumentID: existingDocumentID, arrangement: arrangement,
+		canonical: read.CanonicalPath, read: read, version: stable.Version, rawHash: stable.RawHash, existingDocumentID: existingDocumentID, arrangement: arrangement,
 	}
 	return OpenPreparation{ReservationID: reservationID}, nil
 }
@@ -222,7 +227,7 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		}
 	} else {
 		documentID = mintDocumentID()
-		document := documentFromClassifiedRead(documentID, reservation.read, reservation.arrangement)
+		document := documentFromClassifiedRead(documentID, reservation.read, reservation.arrangement, reservation.version, reservation.rawHash)
 		if len(service.state.documents) == 1 && service.state.activeDocumentID != "" {
 			placeholder, exists := service.state.documents[service.state.activeDocumentID]
 			if exists && placeholder.metadata.Path == "" && placeholder.content == "" && !placeholder.metadata.Dirty {
@@ -272,25 +277,12 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 	return openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
 }
 
-func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arrangement string) *openDocument {
+func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arrangement string, version file.DiskVersion, rawHash string) *openDocument {
 	sizeClass := "small"
 	if read.Capability == file.CapabilityLargeReadOnly {
 		sizeClass = "large"
 	}
-	version, _ := file.CurrentDiskVersion(read.CanonicalPath.Path)
-	normalizationEnding := ""
-	if read.Characteristics.LineEnding == file.LineEndingMixed {
-		switch {
-		case read.Characteristics.LFCount > read.Characteristics.CRLFCount:
-			normalizationEnding = string(file.LineEndingLF)
-		case read.Characteristics.CRLFCount > read.Characteristics.LFCount:
-			normalizationEnding = string(file.LineEndingCRLF)
-		case read.Characteristics.FirstEnding == file.LineEndingCRLF:
-			normalizationEnding = string(file.LineEndingCRLF)
-		default:
-			normalizationEnding = string(file.LineEndingLF)
-		}
-	}
+	normalizationEnding := normalizationEndingForRead(read)
 	return &openDocument{
 		metadata: apperr.DocumentMetadata{
 			DocumentID: documentID, Title: read.CanonicalPath.DisplayName, Path: read.CanonicalPath.Path,
@@ -299,7 +291,23 @@ func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arr
 			LineEnding: string(read.Characteristics.LineEnding), Capability: string(read.Capability), SizeClass: sizeClass,
 			WordCount: len(strings.Fields(read.Content)), View: openView(arrangement),
 		},
-		content: read.Content, baseline: read.Content, baselineVersion: version, baselineOrigin: SaveOriginOpen, committedRevision: 0, normalizationEnding: normalizationEnding, canonicalIdentity: read.CanonicalPath.Identity,
+		content: read.Content, baseline: read.Content, baselineVersion: version, baselineCharacteristics: read.Characteristics, baselineRawHash: rawHash, baselineOrigin: SaveOriginOpen, committedRevision: 0, normalizationEnding: normalizationEnding, canonicalIdentity: read.CanonicalPath.Identity,
+	}
+}
+
+func normalizationEndingForRead(read file.ClassifiedRead) string {
+	if read.Characteristics.LineEnding != file.LineEndingMixed {
+		return ""
+	}
+	switch {
+	case read.Characteristics.LFCount > read.Characteristics.CRLFCount:
+		return string(file.LineEndingLF)
+	case read.Characteristics.CRLFCount > read.Characteristics.LFCount:
+		return string(file.LineEndingCRLF)
+	case read.Characteristics.FirstEnding == file.LineEndingCRLF:
+		return string(file.LineEndingCRLF)
+	default:
+		return string(file.LineEndingLF)
 	}
 }
 

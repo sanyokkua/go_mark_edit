@@ -6,6 +6,18 @@ export function ActivateDocument(arg1, arg2) {
   return window['go']['appmodel']['AppModelHandler']['ActivateDocument'](arg1, arg2);
 }
 
+export function AuthorizeKeepMine(arg1, arg2, arg3, arg4) {
+  return window['go']['appmodel']['AppModelHandler']['AuthorizeKeepMine'](arg1, arg2, arg3, arg4);
+}
+
+export function CancelConflict(arg1, arg2, arg3) {
+  return window['go']['appmodel']['AppModelHandler']['CancelConflict'](arg1, arg2, arg3);
+}
+
+export function CheckExternalChanges(arg1) {
+  return window['go']['appmodel']['AppModelHandler']['CheckExternalChanges'](arg1);
+}
+
 export function CloseDocument(arg1, arg2) {
   return window['go']['appmodel']['AppModelHandler']['CloseDocument'](arg1, arg2);
 }
@@ -24,6 +36,10 @@ export function NewDocument(arg1) {
 
 export function OpenDocument(arg1) {
   return window['go']['appmodel']['AppModelHandler']['OpenDocument'](arg1);
+}
+
+export function ReloadFromDisk(arg1, arg2, arg3) {
+  return window['go']['appmodel']['AppModelHandler']['ReloadFromDisk'](arg1, arg2, arg3);
 }
 
 export function ReorderDocument(arg1, arg2, arg3) {
@@ -48,6 +64,10 @@ export function SetDocView(arg1, arg2) {
 
 export function SetUILayout(arg1) {
   return window['go']['appmodel']['AppModelHandler']['SetUILayout'](arg1);
+}
+
+export function SkipConflict(arg1, arg2, arg3) {
+  return window['go']['appmodel']['AppModelHandler']['SkipConflict'](arg1, arg2, arg3);
 }
 
 export function UpdateBuffer(arg1, arg2) {

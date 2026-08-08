@@ -33,6 +33,11 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		{"SetUILayout", 2, reflect.TypeFor[apperr.VoidResult]()},
 		{"Save", 4, reflect.TypeFor[apperr.WriteResult]()},
 		{"SaveAs", 4, reflect.TypeFor[apperr.WriteResult]()},
+		{"CheckExternalChanges", 2, reflect.TypeFor[apperr.ConflictResult]()},
+		{"ReloadFromDisk", 4, reflect.TypeFor[apperr.ConflictResult]()},
+		{"AuthorizeKeepMine", 5, reflect.TypeFor[apperr.ConflictResult]()},
+		{"SkipConflict", 4, reflect.TypeFor[apperr.ConflictResult]()},
+		{"CancelConflict", 4, reflect.TypeFor[apperr.ConflictResult]()},
 	}
 	for _, tt := range cases {
 		t.Run(tt.method, func(t *testing.T) {
@@ -118,6 +123,30 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 			}
 			if service.emissions != 0 {
 				t.Fatalf("recovered %s panic emitted %d patches, want none", method, service.emissions)
+			}
+		})
+	}
+}
+
+func TestHandlerConflictMethodsRecoverClassifiedErrors(t *testing.T) {
+	for _, method := range []string{"CheckExternalChanges", "ReloadFromDisk", "AuthorizeKeepMine", "SkipConflict", "CancelConflict"} {
+		t.Run(method, func(t *testing.T) {
+			handler := NewAppModelHandler(&fakeAppModelService{panicOn: method}, nil, nil)
+			var result apperr.ConflictResult
+			switch method {
+			case "CheckExternalChanges":
+				result = handler.CheckExternalChanges("doc")
+			case "ReloadFromDisk":
+				result = handler.ReloadFromDisk("doc", 1, apperr.DiskVersion{})
+			case "AuthorizeKeepMine":
+				result = handler.AuthorizeKeepMine("doc", 1, "path", apperr.DiskVersion{})
+			case "SkipConflict":
+				result = handler.SkipConflict("doc", 1, apperr.DiskVersion{})
+			case "CancelConflict":
+				result = handler.CancelConflict("doc", 1, apperr.DiskVersion{})
+			}
+			if result.Error == nil || result.Error.Category != apperr.ClassifiedSystemCommandFailure {
+				t.Fatalf("panic result = %+v", result)
 			}
 		})
 	}
@@ -301,6 +330,46 @@ func (service *fakeAppModelService) SaveAs(_ context.Context, _ string, _ uint64
 	}
 	service.emissions++
 	return apperr.WriteResult{Status: apperr.WriteStatusCancelled}
+}
+
+func (service *fakeAppModelService) CheckExternalChanges(_ context.Context, _ string) apperr.ConflictResult {
+	if service.panicOn == "CheckExternalChanges" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.ConflictResult{Status: apperr.ConflictStatusUnchanged}
+}
+
+func (service *fakeAppModelService) ReloadFromDisk(_ context.Context, _ string, _ uint64, _ apperr.DiskVersion) apperr.ConflictResult {
+	if service.panicOn == "ReloadFromDisk" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.ConflictResult{Status: apperr.ConflictStatusReloaded}
+}
+
+func (service *fakeAppModelService) AuthorizeKeepMine(_ context.Context, _ string, _ uint64, _ string, _ apperr.DiskVersion) apperr.ConflictResult {
+	if service.panicOn == "AuthorizeKeepMine" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.ConflictResult{Status: apperr.ConflictStatusAuthorized}
+}
+
+func (service *fakeAppModelService) SkipConflict(_ context.Context, _ string, _ uint64, _ apperr.DiskVersion) apperr.ConflictResult {
+	if service.panicOn == "SkipConflict" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.ConflictResult{Status: apperr.ConflictStatusSkipped}
+}
+
+func (service *fakeAppModelService) CancelConflict(_ context.Context, _ string, _ uint64, _ apperr.DiskVersion) apperr.ConflictResult {
+	if service.panicOn == "CancelConflict" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.ConflictResult{Status: apperr.ConflictStatusCancelled}
 }
 
 var _ AppModelServiceAPI = (*fakeAppModelService)(nil)

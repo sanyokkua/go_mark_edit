@@ -4,6 +4,12 @@ import {apperr} from '../models';
 
 export function ActivateDocument(arg1:string,arg2:number):Promise<apperr.DocumentTransitionResult>;
 
+export function AuthorizeKeepMine(arg1:string,arg2:number,arg3:string,arg4:apperr.DiskVersion):Promise<apperr.ConflictResult>;
+
+export function CancelConflict(arg1:string,arg2:number,arg3:apperr.DiskVersion):Promise<apperr.ConflictResult>;
+
+export function CheckExternalChanges(arg1:string):Promise<apperr.ConflictResult>;
+
 export function CloseDocument(arg1:string,arg2:number):Promise<apperr.TabTransitionResult>;
 
 export function CopyPath(arg1:string):Promise<apperr.PathCommandResult>;
@@ -13,6 +19,8 @@ export function GetState():Promise<apperr.StateResult>;
 export function NewDocument(arg1:number):Promise<apperr.DocumentTransitionResult>;
 
 export function OpenDocument(arg1:number):Promise<apperr.OpenResult>;
+
+export function ReloadFromDisk(arg1:string,arg2:number,arg3:apperr.DiskVersion):Promise<apperr.ConflictResult>;
 
 export function ReorderDocument(arg1:string,arg2:number,arg3:number):Promise<apperr.TabTransitionResult>;
 
@@ -25,5 +33,7 @@ export function SaveAs(arg1:string,arg2:number,arg3:string):Promise<apperr.Write
 export function SetDocView(arg1:string,arg2:apperr.DocViewInput):Promise<apperr.VoidResult>;
 
 export function SetUILayout(arg1:apperr.UILayout):Promise<apperr.VoidResult>;
+
+export function SkipConflict(arg1:string,arg2:number,arg3:apperr.DiskVersion):Promise<apperr.ConflictResult>;
 
 export function UpdateBuffer(arg1:string,arg2:string):Promise<apperr.VoidResult>;

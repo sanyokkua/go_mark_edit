@@ -174,6 +174,7 @@ export namespace apperr {
 	    capability?: string;
 	    sizeClass?: string;
 	    detached?: boolean;
+	    conflictBlocked?: boolean;
 	    status?: string;
 	    view: DocView;
 	
@@ -197,6 +198,7 @@ export namespace apperr {
 	        this.capability = source["capability"];
 	        this.sizeClass = source["sizeClass"];
 	        this.detached = source["detached"];
+	        this.conflictBlocked = source["conflictBlocked"];
 	        this.status = source["status"];
 	        this.view = this.convertValues(source["view"], DocView);
 	    }
@@ -364,6 +366,135 @@ export namespace apperr {
 	        this.resyncRequired = source["resyncRequired"];
 	    }
 	}
+	export class ConflictPreviewSide {
+	    text: string;
+	    lineCount: number;
+	    byteCount: number;
+	    truncated: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConflictPreviewSide(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.text = source["text"];
+	        this.lineCount = source["lineCount"];
+	        this.byteCount = source["byteCount"];
+	        this.truncated = source["truncated"];
+	    }
+	}
+	export class DiskVersion {
+	    exists: boolean;
+	    size: number;
+	    modifiedUnixNano: number;
+	    mode: number;
+	    fileIdentity?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DiskVersion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.exists = source["exists"];
+	        this.size = source["size"];
+	        this.modifiedUnixNano = source["modifiedUnixNano"];
+	        this.mode = source["mode"];
+	        this.fileIdentity = source["fileIdentity"];
+	    }
+	}
+	export class ConflictPreview {
+	    documentId: string;
+	    path?: string;
+	    displayName?: string;
+	    contentRevision: number;
+	    detectedDiskVersion: DiskVersion;
+	    onDisk: ConflictPreviewSide;
+	    yours: ConflictPreviewSide;
+	    metadataDifferences?: string[];
+	    readOnly: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConflictPreview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.documentId = source["documentId"];
+	        this.path = source["path"];
+	        this.displayName = source["displayName"];
+	        this.contentRevision = source["contentRevision"];
+	        this.detectedDiskVersion = this.convertValues(source["detectedDiskVersion"], DiskVersion);
+	        this.onDisk = this.convertValues(source["onDisk"], ConflictPreviewSide);
+	        this.yours = this.convertValues(source["yours"], ConflictPreviewSide);
+	        this.metadataDifferences = source["metadataDifferences"];
+	        this.readOnly = source["readOnly"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class ConflictResult {
+	    status: string;
+	    documentId?: string;
+	    projectionRevision?: number;
+	    documentRevision?: number;
+	    decisionToken?: string;
+	    activeBuffer?: ActiveBuffer;
+	    preview?: ConflictPreview;
+	    error?: ClassifiedError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConflictResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.documentId = source["documentId"];
+	        this.projectionRevision = source["projectionRevision"];
+	        this.documentRevision = source["documentRevision"];
+	        this.decisionToken = source["decisionToken"];
+	        this.activeBuffer = this.convertValues(source["activeBuffer"], ActiveBuffer);
+	        this.preview = this.convertValues(source["preview"], ConflictPreview);
+	        this.error = this.convertValues(source["error"], ClassifiedError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ContentPrivacySettings {
 	    remotePolicy: string;
 	
@@ -376,6 +507,7 @@ export namespace apperr {
 	        this.remotePolicy = source["remotePolicy"];
 	    }
 	}
+	
 	
 	
 	export class DocViewInput {
@@ -419,6 +551,7 @@ export namespace apperr {
 	
 	export class DocumentTransitionResult {
 	    data?: ActiveBuffer;
+	    conflict?: ConflictPreview;
 	    error?: ClassifiedError;
 	
 	    static createFrom(source: any = {}) {
@@ -428,6 +561,7 @@ export namespace apperr {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.data = this.convertValues(source["data"], ActiveBuffer);
+	        this.conflict = this.convertValues(source["conflict"], ConflictPreview);
 	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
 	
@@ -687,6 +821,7 @@ export namespace apperr {
 	    orderedDocumentIds: string[];
 	    activeDocumentId?: string;
 	    activeBuffer?: ActiveBuffer;
+	    conflict?: ConflictPreview;
 	    error?: ClassifiedError;
 	
 	    static createFrom(source: any = {}) {
@@ -702,6 +837,7 @@ export namespace apperr {
 	        this.orderedDocumentIds = source["orderedDocumentIds"];
 	        this.activeDocumentId = source["activeDocumentId"];
 	        this.activeBuffer = this.convertValues(source["activeBuffer"], ActiveBuffer);
+	        this.conflict = this.convertValues(source["conflict"], ConflictPreview);
 	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
 	
@@ -761,6 +897,7 @@ export namespace apperr {
 	    decisionToken?: string;
 	    proposedEnding?: string;
 	    documentRevision?: number;
+	    conflict?: ConflictPreview;
 	    error?: ClassifiedError;
 	
 	    static createFrom(source: any = {}) {
@@ -774,6 +911,7 @@ export namespace apperr {
 	        this.decisionToken = source["decisionToken"];
 	        this.proposedEnding = source["proposedEnding"];
 	        this.documentRevision = source["documentRevision"];
+	        this.conflict = this.convertValues(source["conflict"], ConflictPreview);
 	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
 	

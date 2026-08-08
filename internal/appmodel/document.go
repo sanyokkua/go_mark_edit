@@ -67,6 +67,8 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 				delete(commands.service.normalizations, token)
 			}
 		}
+		deleteTokensForDocument(commands.service.keepMine, documentID)
+		commands.service.removeConflictLocked(documentID)
 	}
 	document.content = content
 	document.metadata.Dirty = document.content != document.baseline || document.detached || (document.metadata.Path == "" && document.content != "") || document.failedWrite || document.metadata.ContentRevision > document.committedRevision

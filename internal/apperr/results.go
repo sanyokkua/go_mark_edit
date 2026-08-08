@@ -122,6 +122,7 @@ type DocumentMetadata struct {
 	Capability      string  `json:"capability,omitempty"`
 	SizeClass       string  `json:"sizeClass,omitempty"`
 	Detached        bool    `json:"detached,omitempty"`
+	ConflictBlocked bool    `json:"conflictBlocked,omitempty"`
 	Status          string  `json:"status,omitempty"`
 	View            DocView `json:"view"`
 }
@@ -153,8 +154,9 @@ type ActiveBufferAcknowledgement = ActiveBuffer
 
 // DocumentTransitionResult is the data-or-classified-error envelope for backend New transitions.
 type DocumentTransitionResult struct {
-	Data  *ActiveBufferAcknowledgement `json:"data,omitempty"`
-	Error *ClassifiedError             `json:"error,omitempty"`
+	Data     *ActiveBufferAcknowledgement `json:"data,omitempty"`
+	Conflict *ConflictPreview             `json:"conflict,omitempty"`
+	Error    *ClassifiedError             `json:"error,omitempty"`
 }
 
 // DocumentTransitionOutcome is the contract-level descriptive alias used by lifecycle callers.
@@ -181,6 +183,7 @@ type TabTransitionResult struct {
 	OrderedDocumentIDs []string                     `json:"orderedDocumentIds"`
 	ActiveDocumentID   string                       `json:"activeDocumentId,omitempty"`
 	ActiveBuffer       *ActiveBufferAcknowledgement `json:"activeBuffer,omitempty"`
+	Conflict           *ConflictPreview             `json:"conflict,omitempty"`
 	Error              *ClassifiedError             `json:"error,omitempty"`
 }
 
@@ -258,7 +261,71 @@ type WriteResult struct {
 	DecisionToken    string                 `json:"decisionToken,omitempty"`
 	ProposedEnding   string                 `json:"proposedEnding,omitempty"`
 	DocumentRevision uint64                 `json:"documentRevision,omitempty"`
+	Conflict         *ConflictPreview       `json:"conflict,omitempty"`
 	Error            *ClassifiedError       `json:"error,omitempty"`
+}
+
+// DiskVersion is the bridge-safe representation of a filesystem version. It
+// intentionally contains only portable stat facts and a stable identity.
+type DiskVersion struct {
+	Exists           bool   `json:"exists"`
+	Size             int64  `json:"size"`
+	ModifiedUnixNano int64  `json:"modifiedUnixNano"`
+	Mode             uint32 `json:"mode"`
+	FileIdentity     string `json:"fileIdentity,omitempty"`
+}
+
+// ConflictPreviewSide is bounded transient comparison text. It is never part
+// of the metadata projection or persisted state.
+type ConflictPreviewSide struct {
+	Text      string `json:"text"`
+	LineCount int    `json:"lineCount"`
+	ByteCount int    `json:"byteCount"`
+	Truncated bool   `json:"truncated"`
+}
+
+// ConflictPreview carries the exact revision/version pair shown by one
+// external-change decision. MetadataDifferences is used when canonical text is
+// equal but raw characteristics differ.
+type ConflictPreview struct {
+	DocumentID          string              `json:"documentId"`
+	Path                string              `json:"path,omitempty"`
+	DisplayName         string              `json:"displayName,omitempty"`
+	ContentRevision     uint64              `json:"contentRevision"`
+	DetectedDiskVersion DiskVersion         `json:"detectedDiskVersion"`
+	OnDisk              ConflictPreviewSide `json:"onDisk"`
+	Yours               ConflictPreviewSide `json:"yours"`
+	MetadataDifferences []string            `json:"metadataDifferences,omitempty"`
+	ReadOnly            bool                `json:"readOnly"`
+}
+
+// ConflictStatus is the typed outcome of a foreground external-change
+// check or one of its revision-bound decisions.
+type ConflictStatus string
+
+const (
+	ConflictStatusUnchanged  ConflictStatus = "unchanged"
+	ConflictStatusDetected   ConflictStatus = "detected"
+	ConflictStatusReloaded   ConflictStatus = "reloaded"
+	ConflictStatusAuthorized ConflictStatus = "authorized"
+	ConflictStatusSkipped    ConflictStatus = "skipped"
+	ConflictStatusCancelled  ConflictStatus = "cancelled"
+	ConflictStatusDetached   ConflictStatus = "detached"
+	ConflictStatusUnstable   ConflictStatus = "unstable"
+	ConflictStatusRefused    ConflictStatus = "refused"
+)
+
+// ConflictResult is returned separately from WriteResult so foreground checks
+// and reload/decision commands can share the same safe envelope.
+type ConflictResult struct {
+	Status             ConflictStatus               `json:"status"`
+	DocumentID         string                       `json:"documentId,omitempty"`
+	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
+	DocumentRevision   uint64                       `json:"documentRevision,omitempty"`
+	DecisionToken      string                       `json:"decisionToken,omitempty"`
+	ActiveBuffer       *ActiveBufferAcknowledgement `json:"activeBuffer,omitempty"`
+	Preview            *ConflictPreview             `json:"preview,omitempty"`
+	Error              *ClassifiedError             `json:"error,omitempty"`
 }
 
 type OpenStatus string

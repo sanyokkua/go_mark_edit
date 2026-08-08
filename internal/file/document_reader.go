@@ -2,6 +2,9 @@ package file
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -62,6 +65,20 @@ const (
 	WarningLoneCR      = "lone-cr"
 )
 
+// ErrUnstableRead means the file changed while its classification and raw-byte
+// hash were being captured. Callers must perform a fresh foreground check; they
+// must not retry the write against either half of this read.
+var ErrUnstableRead = errors.New("document changed while being read")
+
+// StableClassifiedRead is the complete, version-bound source snapshot used by
+// Open, Reload, and external-change decisions.
+type StableClassifiedRead struct {
+	Read    ClassifiedRead
+	Version DiskVersion
+	RawHash string
+	Stable  bool
+}
+
 // FileCharacteristics describes raw bytes before any document enters the appmodel.
 type FileCharacteristics struct {
 	Encoding     Encoding
@@ -105,6 +122,44 @@ func (service *DocumentFileService) CanonicalizeCandidate(path string) (Canonica
 
 func (service *DocumentFileService) ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 	return ReadClassified(path, maxBytes)
+}
+
+// ReadClassifiedStable captures a disk version before classification and after
+// the raw-byte hash. A result is usable only when both versions are equal.
+// The read itself remains bounded by ReadClassified's configured limit.
+func (service *DocumentFileService) ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, error) {
+	return ReadClassifiedStable(path, maxBytes)
+}
+
+func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, error) {
+	before, err := CurrentDiskVersion(path)
+	if err != nil {
+		return StableClassifiedRead{}, err
+	}
+	if !before.Exists {
+		return StableClassifiedRead{Version: before}, nil
+	}
+	read, err := ReadClassified(path, maxBytes)
+	if err != nil {
+		return StableClassifiedRead{Read: read, Version: before}, err
+	}
+	if read.Error != nil {
+		return StableClassifiedRead{Read: read, Version: before, Stable: true}, nil
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return StableClassifiedRead{Read: read, Version: before}, err
+	}
+	digest := sha256.Sum256(raw)
+	after, err := CurrentDiskVersion(path)
+	if err != nil {
+		return StableClassifiedRead{Read: read, Version: before, RawHash: hex.EncodeToString(digest[:])}, err
+	}
+	result := StableClassifiedRead{Read: read, Version: after, RawHash: hex.EncodeToString(digest[:]), Stable: before.Equal(after)}
+	if !result.Stable {
+		return result, ErrUnstableRead
+	}
+	return result, nil
 }
 
 // ReadClassified reads no more than the configured cap and refuses an over-limit file before

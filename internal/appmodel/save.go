@@ -65,6 +65,9 @@ func (service *AppModelService) Save(ctx context.Context, documentID string, exp
 	if path == "" {
 		return service.SaveAs(ctx, documentID, expectedContentRevision, decisionToken)
 	}
+	if result := service.prepareWriteDisk(ctx, documentID, expectedContentRevision, decisionToken); result.Status != "" {
+		return result
+	}
 
 	snapshot, result := service.snapshotForWrite(documentID, expectedContentRevision, decisionToken, path, false)
 	if result.Status != "" {
@@ -96,6 +99,7 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 			return service.RequestNormalization(documentID, expectedContentRevision)
 		}
 	}
+	sourcePath := document.metadata.Path
 	dialog := service.saveDialog
 	defaultFilename := document.metadata.DisplayName
 	defaultDirectory := filepath.Dir(document.metadata.Path)
@@ -108,6 +112,11 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		defaultDirectory = ""
 	}
 	service.mu.RUnlock()
+	if sourcePath != "" {
+		if result := service.prepareWriteDisk(ctx, documentID, expectedContentRevision, decisionToken); result.Status != "" {
+			return result
+		}
+	}
 	if dialog == nil {
 		return refusedWrite(documentID, apperr.ClassifiedSystemCommandFailure, "The Save dialog is unavailable.", apperr.RemediationCancel)
 	}
@@ -305,8 +314,11 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	}
 	document.metadata.LineEnding = writtenLineEnding(snapshot, service.normalizationEndingForLocked(snapshot.documentID))
 	document.normalizationEnding = ""
+	document.detached = false
 	applyCommittedBaseline(document, committed.Snapshot, committed.DiskVersion, origin)
-	document.baselineRawHash, _ = rawBytesHash(snapshot.path)
+	document.baselineRawHash = hashBytes(encoded.data)
+	document.baselineCharacteristics = characteristicsForWrittenSnapshot(snapshot, encoded, committed.DiskVersion)
+	service.removeConflictLocked(snapshot.documentID)
 	if document.metadata.LineEnding == string(file.LineEndingLF) && encoded.lineEndingOutcome == apperr.LineEndingPreservedCRLF {
 		document.metadata.LineEnding = string(file.LineEndingCRLF)
 	}
@@ -470,6 +482,28 @@ func rawBytesHash(path string) (string, error) {
 	}
 	digest := sha256.Sum256(data)
 	return hex.EncodeToString(digest[:]), nil
+}
+
+func characteristicsForWrittenSnapshot(snapshot writeSnapshot, encoded encodedWrite, version file.DiskVersion) file.FileCharacteristics {
+	lineEnding := file.LineEnding(snapshot.metadata.LineEnding)
+	if lineEnding == file.LineEndingMixed {
+		if encoded.lineEndingOutcome == apperr.LineEndingNormalizedCRLF {
+			lineEnding = file.LineEndingCRLF
+		} else {
+			lineEnding = file.LineEndingLF
+		}
+	}
+	if lineEnding == "" {
+		lineEnding = file.LineEndingLF
+	}
+	bom := file.BOM(snapshot.metadata.BOM)
+	if bom == "" {
+		bom = file.BOMAbsent
+	}
+	return file.FileCharacteristics{
+		Encoding: file.EncodingUTF8, BOM: bom, LineEnding: lineEnding,
+		RawSizeBytes: int64(len(encoded.data)), Capability: file.CapabilityWritable, Mode: version.Mode,
+	}
 }
 
 var errTargetDiskChanged = errors.New("target disk version changed while reading")

@@ -10,17 +10,20 @@ import (
 // acknowledgement is the sole source payload that may be installed by a caller.
 func (service *AppModelService) ActivateDocument(ctx context.Context, documentID string, expectedTabSetRevision uint64) apperr.DocumentTransitionOutcome {
 	service.mu.Lock()
-	defer service.mu.Unlock()
 
 	if service.state.tabSetRevision != expectedTabSetRevision {
+		service.mu.Unlock()
 		return documentTransitionClassified(apperr.ClassifiedConflict, documentID, "The tab set changed; activation must be retried.", apperr.RemediationRetry)
 	}
 	document, exists := service.state.documents[documentID]
 	if !exists {
+		service.mu.Unlock()
 		return documentTransitionClassified(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationCancel)
 	}
 	if service.state.activeDocumentID == documentID {
-		return activeDocumentTransition(documentID, service.state.revision, document)
+		outcome := activeDocumentTransition(documentID, service.state.revision, document)
+		service.mu.Unlock()
+		return service.attachForegroundConflict(ctx, documentID, outcome)
 	}
 
 	before := service.snapshotLocked()
@@ -28,9 +31,20 @@ func (service *AppModelService) ActivateDocument(ctx context.Context, documentID
 	service.state.tabSetRevision++
 	patch := service.documentPatchLocked(documentID)
 	if err := service.publishLocked(ctx, before, patch); err != nil {
+		service.mu.Unlock()
 		return documentTransitionClassified(apperr.ClassifiedIOFailure, documentID, "The active document could not be published.", apperr.RemediationRetry)
 	}
-	return activeDocumentTransition(documentID, service.state.revision, document)
+	outcome := activeDocumentTransition(documentID, service.state.revision, document)
+	service.mu.Unlock()
+	return service.attachForegroundConflict(ctx, documentID, outcome)
+}
+
+func (service *AppModelService) attachForegroundConflict(ctx context.Context, documentID string, outcome apperr.DocumentTransitionOutcome) apperr.DocumentTransitionOutcome {
+	checked := service.CheckExternalChanges(ctx, documentID)
+	if checked.Status == apperr.ConflictStatusDetected {
+		outcome.Conflict = checked.Preview
+	}
+	return outcome
 }
 
 func activeDocumentTransition(documentID string, projectionRevision uint64, document *openDocument) apperr.DocumentTransitionOutcome {
@@ -59,6 +73,8 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	}
 
 	before := service.snapshotLocked()
+	deleteTokensForDocument(service.keepMine, documentID)
+	service.removeConflictLocked(documentID)
 	index := indexOfDocument(service.state.orderedDocumentIDs, documentID)
 	delete(service.state.documents, documentID)
 	service.state.orderedDocumentIDs = append(service.state.orderedDocumentIDs[:index], service.state.orderedDocumentIDs[index+1:]...)
