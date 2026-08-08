@@ -192,7 +192,7 @@ it('STORY-015-AC-3 renders each arrangement', () => {
 });
 
 it('replaces the same-document editor model when a Reload acknowledgement changes content', () => {
-  const document = documentFor('editor');
+  const document = documentFor('split');
   store.dispatch(
     hydrateProjection({
       revision: 1,
@@ -204,25 +204,35 @@ it('replaces the same-document editor model when a Reload acknowledgement change
   const rendered = render(
     <Provider store={store}>
       <EditorSessionContext.Provider
-        value={{ documentId: document.documentId, content: 'mine\n' }}
+        value={{ documentId: document.documentId, content: '# mine\n' }}
       >
         <EditorView />
       </EditorSessionContext.Provider>
     </Provider>,
   );
 
-  expect(screen.getByLabelText('Markdown source')).toHaveValue('mine\n');
+  expect(screen.getByLabelText('Markdown source')).toHaveValue('# mine\n');
+  expect(
+    within(screen.getByLabelText('Preview pane')).getByRole('heading', {
+      name: 'mine',
+    }),
+  ).toBeInTheDocument();
   rendered.rerender(
     <Provider store={store}>
       <EditorSessionContext.Provider
-        value={{ documentId: document.documentId, content: 'disk\n' }}
+        value={{ documentId: document.documentId, content: '# disk\n' }}
       >
         <EditorView />
       </EditorSessionContext.Provider>
     </Provider>,
   );
 
-  expect(screen.getByLabelText('Markdown source')).toHaveValue('disk\n');
+  expect(screen.getByLabelText('Markdown source')).toHaveValue('# disk\n');
+  expect(
+    within(screen.getByLabelText('Preview pane')).getByRole('heading', {
+      name: 'disk',
+    }),
+  ).toBeInTheDocument();
 });
 
 it('STORY-015-AC-4 prevents an empty document arrangement', async () => {

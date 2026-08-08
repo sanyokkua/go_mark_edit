@@ -355,7 +355,7 @@ const EditorView: React.FC<EditorViewProps> = ({
           </EditorContextMenu>
         </section>
         <LivePreview
-          key={activeBuffer.documentId}
+          key={`${activeBuffer.documentId}:${activeBuffer.content}`}
           activeBuffer={activeBuffer}
           adapter={adapter}
           visible={view.previewVisible}
