@@ -281,7 +281,7 @@ simultaneous conflicts resolving one modal at a time with the waiting tab visibl
   - **Tests/evidence**: `npm --prefix frontend test -- --runInBand` with named suites `ExternalChangePrompt decisions and invalidation`, `conflict preview enforces both 12-line and 4096-byte bounds without splitting a code point`, `truncated side is visibly identified`, `metadata-only conflict shows characteristic differences`, `read-only conflict offers Reload and Cancel only with Cancel focused`, `queued conflict tabs render blocked-by-conflict`, and `ModalShell focus contract`; `npm --prefix frontend run verify:ui -- e2e/real-files-and-tabs.test.ts --grep 'FT-VS-04'`; `just archtest`.
   - **Branch/commit**: `feature/v1-implementation--003-t020-conflict-prompt`; `feat(files): add accessible external-change decisions`.
 
-- [ ] T021 [US4] Record current-host external-writer recovery proof in `specs/003-real-files-and-tabs/evidence/ft-vs-04/walkthrough.md` and unabridged logs/artifacts under `specs/003-real-files-and-tabs/evidence/ft-vs-04/` using real files, the real bridge, and a second process/editor.
+- [X] T021 [US4] Record current-host external-writer recovery proof in `specs/003-real-files-and-tabs/evidence/ft-vs-04/walkthrough.md` and unabridged logs/artifacts under `specs/003-real-files-and-tabs/evidence/ft-vs-04/` using real files, the real bridge, and a second process/editor.
   - **Outcome**: SC-FT-006 has auditable zero-silent-overwrite evidence, with demonstrated, host-unverified, and deferred behavior separated.
   - **Prerequisites**: T020.
   - **Primary ownership**: SC-FT-006 only; no behavior ownership.
