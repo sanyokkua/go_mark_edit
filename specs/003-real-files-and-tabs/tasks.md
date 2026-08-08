@@ -182,7 +182,7 @@ while inspecting bytes and modes.
   - **Tests/evidence**: `go test -race ./internal/file -run 'TestDocumentCodecRoundTrip|TestNoneEndingPreservedUntilBreakInserted|TestDiskVersionEquality'` with byte-exact LF/CRLF/BOM/new/`none`/mixed-refusal and replacement-identity tables.
   - **Branch/commit**: `feature/v1-implementation--003-t011-file-codec-version`; `feat(files): add document codec and disk versions`.
 
-- [ ] T012 [US1] Implement injected same-directory replacement in `internal/file/atomic_replace.go`, `internal/file/atomic_replace_unix.go`, `internal/file/atomic_replace_windows.go`, `internal/file/atomic_replace_test.go`, `internal/file/atomic_replace_unix_test.go`, and `internal/file/atomic_replace_windows_test.go`, updating `go.mod` and `go.sum` only if the existing `golang.org/x/sys` support becomes a direct dependency.
+- [X] T012 [US1] Implement injected same-directory replacement in `internal/file/atomic_replace.go`, `internal/file/atomic_replace_unix.go`, `internal/file/atomic_replace_windows.go`, `internal/file/atomic_replace_test.go`, `internal/file/atomic_replace_unix_test.go`, and `internal/file/atomic_replace_windows_test.go`, updating `go.mod` and `go.sum` only if the existing `golang.org/x/sys` support becomes a direct dependency.
   - **Outcome**: Full write, mode application, sync/close, version recheck, platform replace, Unix parent-directory sync, cleanup, and classified pre/post-commit outcomes are explicit; plain cross-platform `os.Rename` is not accepted as Windows proof.
   - **Prerequisites**: T011.
   - **Primary ownership**: FR-FT-009; closes CP-07.
