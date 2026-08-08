@@ -131,6 +131,13 @@ jest.mock('./logic/adapter', () => ({
     save: jest.fn(async () => ({ status: 'cancelled' })),
     saveAs: jest.fn(async () => ({ status: 'cancelled' })),
   },
+  documentConflictAdapter: {
+    checkExternalChanges: jest.fn(async () => ({ status: 'unchanged' })),
+    reloadFromDisk: jest.fn(async () => ({ status: 'cancelled' })),
+    authorizeKeepMine: jest.fn(async () => ({ status: 'cancelled' })),
+    skipConflict: jest.fn(async () => ({ status: 'cancelled' })),
+    cancelConflict: jest.fn(async () => ({ status: 'cancelled' })),
+  },
 }));
 
 jest.mock('./ui/widgets/StartupFailure', () => {
@@ -189,6 +196,7 @@ import {
 import { createShellActionCatalogue } from './logic/actions/shellActions';
 import {
   appModelAdapter,
+  documentConflictAdapter,
   applicationAdapter,
   documentWriteAdapter,
 } from './logic/adapter';
@@ -203,6 +211,9 @@ const mockedApplicationAdapter = applicationAdapter as jest.Mocked<
 >;
 const mockedDocumentWriteAdapter = documentWriteAdapter as jest.Mocked<
   typeof documentWriteAdapter
+>;
+const mockedDocumentConflictAdapter = documentConflictAdapter as jest.Mocked<
+  typeof documentConflictAdapter
 >;
 
 function bootstrapState(
@@ -554,6 +565,68 @@ it('Save reports exactly one confirmation', async () => {
     0,
     '',
   );
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+it('Reload replaces the active same-document buffer from authoritative state', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState
+    .mockResolvedValueOnce(bootstrapState('mine\n', 12))
+    .mockResolvedValueOnce(bootstrapState('mine\n', 12))
+    .mockResolvedValueOnce(bootstrapState('disk\n', 13));
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'conflict',
+    conflict: {
+      documentId: 'document-1',
+      displayName: 'one.md',
+      contentRevision: 0,
+      detectedDiskVersion: {
+        exists: true,
+        size: 5,
+        modifiedUnixNano: '1',
+        mode: 0o644,
+      },
+      onDisk: {
+        text: 'disk\n',
+        lineCount: 1,
+        byteCount: 5,
+        truncated: false,
+      },
+      yours: {
+        text: 'mine\n',
+        lineCount: 1,
+        byteCount: 5,
+        truncated: false,
+      },
+      readOnly: false,
+    },
+  });
+  mockedDocumentConflictAdapter.reloadFromDisk.mockReset().mockResolvedValue({
+    status: 'reloaded',
+    documentId: 'document-1',
+  });
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+  await screen.findByRole('dialog', { name: 'File changed on disk' });
+  fireEvent.click(screen.getByRole('button', { name: 'Reload from disk' }));
+
+  await waitFor(() => {
+    expect(
+      screen.getByRole('status', { name: 'Active editor buffer' }),
+    ).toHaveTextContent('disk');
+  });
+  expect(mockedAppModelAdapter.getState).toHaveBeenCalledTimes(3);
+  expect(
+    screen.queryByRole('dialog', { name: 'File changed on disk' }),
+  ).not.toBeInTheDocument();
   store.dispatch(resetNotifications());
   act((): void => disposeAppModelProjection());
 });

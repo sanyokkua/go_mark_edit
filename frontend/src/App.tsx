@@ -546,7 +546,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
         return;
       }
       if (decision === 'reload') {
-        if (result.activeBuffer !== undefined) {
+        const refreshedState = await appModelAdapter.getState();
+        if (refreshedState.activeBuffer?.documentId === current.documentId) {
+          setActiveBuffer(refreshedState.activeBuffer);
+        } else if (result.activeBuffer !== undefined) {
           setActiveBuffer(result.activeBuffer);
         }
         setExternalConflict(null);
