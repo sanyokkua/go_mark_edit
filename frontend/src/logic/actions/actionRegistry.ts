@@ -8,6 +8,7 @@ export type ActionSurface =
   | 'preview'
   | 'overflow'
   | 'context'
+  | 'tab-context'
   | 'shortcuts';
 export type NativeActionRole = 'clipboard' | 'none';
 
@@ -18,10 +19,18 @@ export type ActionId =
   | 'open-folder'
   | 'open-recent'
   | 'reopen'
+  | 'next-tab'
+  | 'previous-tab'
   | 'save'
   | 'save-as'
   | 'export-pdf'
   | 'close-tab'
+  | 'close-others'
+  | 'close-right'
+  | 'move-tab-left'
+  | 'move-tab-right'
+  | 'copy-path'
+  | 'reveal-in-file-manager'
   | 'exit'
   | 'settings'
   | 'appearance'
@@ -81,6 +90,7 @@ export interface ActionEntry {
   readonly accessibilityKey: string;
   readonly scope: ActionScope;
   readonly shortcut?: string;
+  readonly shortcutAliases?: readonly string[];
   readonly availability: ActionAvailability;
   readonly surfaces: readonly ActionSurface[];
   readonly surfaceOrder?: Partial<Record<ActionSurface, number>>;
@@ -103,6 +113,7 @@ function entry(
     Pick<
       ActionEntry,
       | 'shortcut'
+      | 'shortcutAliases'
       | 'nativeRole'
       | 'availability'
       | 'surfaceOrder'
@@ -129,11 +140,13 @@ function entry(
       ? {}
       : { separatorBefore: options.separatorBefore }),
     ...(options.shortcut === undefined ? {} : { shortcut: options.shortcut }),
+    ...(options.shortcutAliases === undefined
+      ? {}
+      : { shortcutAliases: options.shortcutAliases }),
   };
 }
 
 const fileDeferred = deferred('file-lifecycle-deferred');
-const tabDeferred = deferred('tab-lifecycle-deferred');
 const assistantDeferred = deferred('assistant-deferred');
 const laterDeferred = deferred('later-slice');
 
@@ -159,7 +172,28 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
   entry('export-pdf', 'document', ['file-menu'], {
     availability: fileDeferred,
   }),
-  entry('close-tab', 'document', ['file-menu'], { availability: tabDeferred }),
+  entry('close-tab', 'document', ['file-menu', 'tab-context'], {
+    availability: available(),
+    surfaceOrder: { 'tab-context': 0 },
+  }),
+  entry('close-others', 'document', ['tab-context'], {
+    surfaceOrder: { 'tab-context': 1 },
+  }),
+  entry('close-right', 'document', ['tab-context'], {
+    surfaceOrder: { 'tab-context': 2 },
+  }),
+  entry('move-tab-left', 'document', ['tab-context'], {
+    surfaceOrder: { 'tab-context': 3 },
+  }),
+  entry('move-tab-right', 'document', ['tab-context'], {
+    surfaceOrder: { 'tab-context': 4 },
+  }),
+  entry('copy-path', 'document', ['tab-context'], {
+    surfaceOrder: { 'tab-context': 5 },
+  }),
+  entry('reveal-in-file-manager', 'document', ['tab-context'], {
+    surfaceOrder: { 'tab-context': 6 },
+  }),
   entry('exit', 'application', ['file-menu'], { availability: fileDeferred }),
 
   entry('settings', 'application', ['settings-menu'], { shortcut: 'Mod+,' }),
@@ -292,6 +326,14 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     availability: deferred('command-palette-deferred'),
     surfaceOrder: { context: 9 },
     separatorBefore: ['context'],
+  }),
+  entry('next-tab', 'window', ['shortcuts'], {
+    shortcut: 'Mod+Tab',
+    shortcutAliases: ['Ctrl+PageDown'],
+  }),
+  entry('previous-tab', 'window', ['shortcuts'], {
+    shortcut: 'Mod+Shift+Tab',
+    shortcutAliases: ['Ctrl+PageUp'],
   }),
 ]);
 

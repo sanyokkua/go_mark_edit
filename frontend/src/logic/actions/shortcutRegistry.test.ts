@@ -1,5 +1,6 @@
 import {
   formatShortcut,
+  shortcutAliases,
   shortcutRegistry,
   shortcutForKeyEvent,
 } from './shortcutRegistry';
@@ -12,6 +13,25 @@ it('T002 exposes the frozen Editor-stage bindings', () => {
   expect(shortcutRegistry.table).toBe('Mod+Shift+T');
   expect(shortcutRegistry.format).toBe('Alt+Shift+F');
   expect(shortcutRegistry.fullscreen).toBe('F11');
+});
+
+it('T018 binds next and previous navigation to the exact alternate keys', () => {
+  expect(shortcutRegistry['next-tab']).toBe('Mod+Tab');
+  expect(shortcutAliases['next-tab']).toEqual(['Ctrl+PageDown']);
+  expect(shortcutRegistry['previous-tab']).toBe('Mod+Shift+Tab');
+  expect(shortcutAliases['previous-tab']).toEqual(['Ctrl+PageUp']);
+  expect(
+    shortcutForKeyEvent(
+      {
+        key: 'PageDown',
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+      },
+      'darwin',
+    ),
+  ).toBe('Ctrl+PageDown');
 });
 
 it('T002 resolves platform labels without changing the binding', () => {

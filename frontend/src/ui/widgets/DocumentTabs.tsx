@@ -1,0 +1,464 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { appModelAdapter, type AppModelAdapter } from '../../logic/adapter';
+import type {
+  ClassifiedError,
+  DocumentMetadata,
+  DocumentTransitionResult,
+  TabTransitionResult,
+} from '../../logic/store/appModelTypes';
+import { useAppDispatch, useAppSelector } from '../../logic/store';
+import { notifyToast } from '../../logic/store/notificationsSlice';
+import { actionsForSurface } from '../../logic/actions/actionRegistry';
+import {
+  currentPlatform,
+  shortcutForKeyEvent,
+} from '../../logic/actions/shortcutRegistry';
+import { t } from '../../i18n';
+import LiveRegion from '../primitives/LiveRegion';
+import TabContextMenu, {
+  type TabContextAction,
+  type TabContextAdapter,
+} from './TabContextMenu';
+import { tabLabelsFor, truncateTabLabel, type TabLabel } from './tabLabel';
+import styles from './DocumentTabs.module.css';
+
+export interface DocumentTabsProps {
+  adapter?: Pick<
+    AppModelAdapter,
+    | 'activateDocument'
+    | 'closeDocument'
+    | 'copyPath'
+    | 'reorderDocument'
+    | 'revealInFileManager'
+    | 'newDocument'
+    | 'flushActiveSession'
+  >;
+  onActivateDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  onCloseDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
+  onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
+  modalOpen?: boolean;
+}
+
+function errorCode(category: ClassifiedError['category'] | undefined): string {
+  switch (category) {
+    case 'not-found':
+      return 'not_found';
+    case 'permission-denied':
+      return 'permission';
+    case 'system-command-failure':
+      return 'system-command-failure';
+    case 'unsupported-input':
+      return 'unsupported';
+    case 'conflict':
+      return 'conflict';
+    default:
+      return 'io';
+  }
+}
+
+function reportClassifiedError(
+  dispatch: ReturnType<typeof useAppDispatch>,
+  error: ClassifiedError | undefined,
+  fallback: string,
+  reveal = false,
+): void {
+  if (error === undefined) return;
+  dispatch(
+    notifyToast({
+      code: errorCode(error.category),
+      message: error.message || fallback,
+      remediation:
+        error.remediation === 'Copy path' && reveal
+          ? { action: 'copy-path', labelKey: 'action.copy-path.label' }
+          : error.remediation === 'Retry'
+            ? { action: 'retry', labelKey: 'action.retry.label' }
+            : undefined,
+      severity: 'error',
+      subject: error.dedupKey,
+      title: error.safeSubject ?? fallback,
+    }),
+  );
+}
+
+function announcementName(
+  label: TabLabel | undefined,
+  fallback: string,
+): string {
+  return (label?.accessibleName ?? fallback).replace(/[\u2066-\u2069]/gu, '');
+}
+
+const DocumentTabs: React.FC<DocumentTabsProps> = ({
+  adapter = appModelAdapter,
+  onActivateDocument,
+  onCloseDocument,
+  onNewDocument,
+  modalOpen = false,
+}: DocumentTabsProps): React.JSX.Element => {
+  const dispatch = useAppDispatch();
+  const orderedIds = useAppSelector((state) => state.documents.orderedIds);
+  const documentsById = useAppSelector((state) => state.documents.byId);
+  const orderedDocuments = useMemo(
+    () =>
+      orderedIds
+        .map((documentId) => documentsById[documentId])
+        .filter(
+          (document): document is DocumentMetadata => document !== undefined,
+        ),
+    [documentsById, orderedIds],
+  );
+  const activeDocumentId = useAppSelector(
+    (state) => state.documents.activeDocumentId,
+  );
+  const tabSetRevision = useAppSelector(
+    (state) => state.documents.tabSetRevision,
+  );
+  const [contextDocumentId, setContextDocumentId] = useState<string | null>(
+    null,
+  );
+  const [announcement, setAnnouncement] = useState('');
+  const tabRefs = useRef(new Map<string, HTMLButtonElement>());
+  const labels = useMemo(
+    () => tabLabelsFor(orderedDocuments),
+    [orderedDocuments],
+  );
+  const contextDocument = orderedDocuments.find(
+    (document) => document.documentId === contextDocumentId,
+  );
+  const contextIndex =
+    contextDocument === undefined
+      ? -1
+      : orderedDocuments.findIndex(
+          (document) => document.documentId === contextDocument.documentId,
+        );
+
+  const focusDocument = useCallback((documentId: string): void => {
+    tabRefs.current.get(documentId)?.focus();
+  }, []);
+
+  const focusFallback = useCallback((): void => {
+    if (activeDocumentId !== null && tabRefs.current.has(activeDocumentId)) {
+      focusDocument(activeDocumentId);
+      return;
+    }
+    document.querySelector<HTMLButtonElement>('[data-tab-new="true"]')?.focus();
+  }, [activeDocumentId, focusDocument]);
+
+  const announce = useCallback((message: string): void => {
+    setAnnouncement('');
+    window.setTimeout((): void => setAnnouncement(message), 0);
+    window.setTimeout((): void => setAnnouncement(''), 3000);
+  }, []);
+
+  const activateDocument = useCallback(
+    async (documentId: string): Promise<unknown> => {
+      const result = onActivateDocument
+        ? await onActivateDocument(documentId, tabSetRevision)
+        : await adapter.activateDocument?.(documentId, tabSetRevision);
+      if (
+        result !== undefined &&
+        'error' in result &&
+        result.error !== undefined
+      ) {
+        reportClassifiedError(
+          dispatch,
+          result.error,
+          'The document could not be activated.',
+        );
+      }
+      return result;
+    },
+    [adapter, dispatch, onActivateDocument, tabSetRevision],
+  );
+
+  useEffect((): (() => void) => {
+    const navigate = (event: KeyboardEvent): void => {
+      if (modalOpen) return;
+      const binding = shortcutForKeyEvent(event, currentPlatform());
+      if (binding === undefined) return;
+      const action = actionsForSurface('shortcuts').find(
+        (candidate) =>
+          candidate.shortcut === binding ||
+          candidate.shortcutAliases?.includes(binding),
+      );
+      if (action?.id !== 'next-tab' && action?.id !== 'previous-tab') return;
+      if (orderedDocuments.length < 2 || activeDocumentId === null) return;
+      const current = orderedDocuments.findIndex(
+        (document) => document.documentId === activeDocumentId,
+      );
+      if (current < 0) return;
+      event.preventDefault();
+      const offset = action.id === 'next-tab' ? 1 : -1;
+      const target =
+        orderedDocuments[
+          (current + offset + orderedDocuments.length) % orderedDocuments.length
+        ];
+      if (target !== undefined) void activateDocument(target.documentId);
+    };
+    globalThis.document.addEventListener('keydown', navigate);
+    return (): void =>
+      globalThis.document.removeEventListener('keydown', navigate);
+  }, [activateDocument, activeDocumentId, modalOpen, orderedDocuments]);
+
+  const closeDocument = useCallback(
+    async (
+      documentId: string,
+      expectedRevision: number,
+    ): Promise<TabTransitionResult | undefined> => {
+      const result = onCloseDocument
+        ? await onCloseDocument(documentId, expectedRevision)
+        : await adapter.closeDocument?.(documentId, expectedRevision);
+      if (result?.error !== undefined) {
+        reportClassifiedError(
+          dispatch,
+          result.error,
+          'The document could not be closed.',
+        );
+      }
+      return result;
+    },
+    [adapter, dispatch, onCloseDocument],
+  );
+
+  const handleTabAction = useCallback(
+    async (
+      action: TabContextAction,
+      document: DocumentMetadata,
+      targetIndex?: number,
+    ): Promise<unknown> => {
+      if (action === 'move-tab-left' || action === 'move-tab-right') {
+        const result = await adapter.reorderDocument?.(
+          document.documentId,
+          targetIndex ?? 0,
+          tabSetRevision,
+        );
+        if (result?.error !== undefined) {
+          reportClassifiedError(
+            dispatch,
+            result.error,
+            'The tab could not be moved.',
+          );
+        } else if (result?.status === 'reordered') {
+          const position = (targetIndex ?? 0) + 1;
+          announce(
+            t('editor.tab.moved', {
+              filename: announcementName(
+                labels.get(document.documentId),
+                document.title,
+              ),
+              position,
+              count: orderedDocuments.length,
+            }),
+          );
+        }
+        return result;
+      }
+      if (action === 'copy-path') {
+        const result = await adapter.copyPath?.(document.documentId);
+        if (result?.error !== undefined) {
+          reportClassifiedError(
+            dispatch,
+            result.error,
+            'The path could not be copied.',
+          );
+        } else if (result?.status === 'copied') {
+          announce(
+            t('editor.tab.copiedPath', {
+              filename: announcementName(
+                labels.get(document.documentId),
+                document.title,
+              ),
+            }),
+          );
+        }
+        return result;
+      }
+      if (action === 'reveal-in-file-manager') {
+        const result = await adapter.revealInFileManager?.(document.documentId);
+        if (result?.error !== undefined) {
+          reportClassifiedError(
+            dispatch,
+            result.error,
+            'The file manager could not reveal the document.',
+            true,
+          );
+        }
+        return result;
+      }
+      if (action === 'close-tab') {
+        return closeDocument(document.documentId, tabSetRevision);
+      }
+      const targets =
+        action === 'close-right'
+          ? orderedDocuments.slice(
+              orderedDocuments.findIndex(
+                (candidate) => candidate.documentId === document.documentId,
+              ) + 1,
+            )
+          : orderedDocuments.filter(
+              (candidate) => candidate.documentId !== document.documentId,
+            );
+      let expectedRevision = tabSetRevision;
+      for (const target of [...targets].reverse()) {
+        const result = await closeDocument(target.documentId, expectedRevision);
+        if (result?.tabSetRevision !== undefined) {
+          expectedRevision = result.tabSetRevision;
+        }
+      }
+      return undefined;
+    },
+    [
+      adapter,
+      announce,
+      closeDocument,
+      dispatch,
+      labels,
+      orderedDocuments,
+      tabSetRevision,
+    ],
+  );
+
+  const contextAdapter: TabContextAdapter = adapter;
+
+  return (
+    <>
+      <div
+        aria-label={t('editor.tabs')}
+        className={styles.tabStrip}
+        role="tablist"
+        onKeyDown={(event): void => {
+          if (event.key === 'Home' || event.key === 'End') {
+            event.preventDefault();
+            const target =
+              event.key === 'Home'
+                ? orderedDocuments[0]
+                : orderedDocuments.at(-1);
+            if (target !== undefined) focusDocument(target.documentId);
+            return;
+          }
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+          const current = orderedDocuments.findIndex(
+            (document) => document.documentId === activeDocumentId,
+          );
+          if (current < 0) return;
+          event.preventDefault();
+          const next =
+            event.key === 'ArrowLeft'
+              ? Math.max(0, current - 1)
+              : Math.min(orderedDocuments.length - 1, current + 1);
+          const target = orderedDocuments[next];
+          if (target !== undefined) void activateDocument(target.documentId);
+        }}
+      >
+        <div className={styles.tabs}>
+          {orderedDocuments.map((document) => {
+            const label = labels.get(document.documentId) as TabLabel;
+            const active = document.documentId === activeDocumentId;
+            return (
+              <div className={styles.tabItem} key={document.documentId}>
+                <button
+                  aria-selected={active}
+                  aria-label={label.accessibleName}
+                  className={styles.tab}
+                  data-document-id={document.documentId}
+                  ref={(element): void => {
+                    if (element === null)
+                      tabRefs.current.delete(document.documentId);
+                    else tabRefs.current.set(document.documentId, element);
+                  }}
+                  role="tab"
+                  tabIndex={active ? 0 : -1}
+                  title={document.path || undefined}
+                  type="button"
+                  onClick={(): void => {
+                    void activateDocument(document.documentId);
+                  }}
+                  onContextMenu={(event): void => {
+                    event.preventDefault();
+                    setContextDocumentId(document.documentId);
+                  }}
+                >
+                  {document.dirty ? (
+                    <span
+                      aria-label={t('editor.tab.modified')}
+                      className={styles.modifiedDot}
+                    >
+                      •
+                    </span>
+                  ) : null}
+                  <span aria-hidden="true" className={styles.tabLabel}>
+                    {truncateTabLabel(label, 42)}
+                  </span>
+                </button>
+                <button
+                  aria-label={t('editor.tab.close', {
+                    title: label.accessibleName,
+                  })}
+                  className={styles.tabClose}
+                  type="button"
+                  onClick={(): void => {
+                    void closeDocument(
+                      document.documentId,
+                      tabSetRevision,
+                    ).then((result): void => {
+                      if (
+                        result?.activeDocumentId !== undefined &&
+                        result.activeDocumentId !== ''
+                      ) {
+                        focusDocument(result.activeDocumentId);
+                      } else {
+                        focusFallback();
+                      }
+                    });
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+          <button
+            aria-label={t('editor.tab.new')}
+            className={styles.tabAdd}
+            data-tab-new="true"
+            type="button"
+            onClick={(): void => {
+              void (onNewDocument
+                ? onNewDocument(tabSetRevision)
+                : adapter.newDocument?.(tabSetRevision));
+            }}
+          >
+            +
+          </button>
+        </div>
+      </div>
+      {contextDocument !== undefined && contextIndex >= 0 ? (
+        <TabContextMenu
+          adapter={contextAdapter}
+          document={contextDocument}
+          index={contextIndex}
+          onAction={handleTabAction}
+          onClose={(): void => {
+            setContextDocumentId(null);
+            if (tabRefs.current.has(contextDocument.documentId)) {
+              focusDocument(contextDocument.documentId);
+            } else {
+              focusFallback();
+            }
+          }}
+          orderedDocuments={orderedDocuments}
+          tabSetRevision={tabSetRevision}
+        />
+      ) : null}
+      <LiveRegion message={announcement} />
+    </>
+  );
+};
+
+export default DocumentTabs;

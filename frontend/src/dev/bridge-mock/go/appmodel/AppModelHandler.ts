@@ -56,6 +56,7 @@ interface DocumentMetadata {
   lineEnding: string;
   wordCount: number;
   status?: string;
+  detached?: boolean;
   view: DocView;
 }
 
@@ -101,6 +102,17 @@ interface StateResult {
 
 interface VoidResult {
   error?: WireError;
+}
+
+interface TabTransitionResult {
+  status: string;
+  documentId?: string;
+  projectionRevision?: number;
+  tabSetRevision?: number;
+  orderedDocumentIds: string[];
+  activeDocumentId?: string;
+  activeBuffer?: ActiveBufferResult;
+  error?: ClassifiedErrorResult;
 }
 
 interface AppStatePatch {
@@ -150,6 +162,10 @@ let nextUntitledNumber = 2;
 let openSelection: MockOpenSelection | null = null;
 let mockSaveResult: MockWriteResult | undefined;
 let mockSaveAsResult: MockWriteResult | undefined;
+let mockCopyPathResult:
+  { status: string; error?: ClassifiedErrorResult } | undefined;
+let mockRevealResult:
+  { status: string; error?: ClassifiedErrorResult } | undefined;
 let layout: UILayout = {
   windowWidth: 1024,
   windowHeight: 768,
@@ -286,6 +302,8 @@ export function resetMockAppModel(): void {
   openSelection = null;
   mockSaveResult = undefined;
   mockSaveAsResult = undefined;
+  mockCopyPathResult = undefined;
+  mockRevealResult = undefined;
   documents = initialDocuments();
   layout = {
     windowWidth: 1024,
@@ -308,6 +326,18 @@ export function setMockSaveResult(result: MockWriteResult | null): void {
 
 export function setMockSaveAsResult(result: MockWriteResult | null): void {
   mockSaveAsResult = result ?? undefined;
+}
+
+export function setMockCopyPathResult(
+  result: { status: string; error?: ClassifiedErrorResult } | null,
+): void {
+  mockCopyPathResult = result ?? undefined;
+}
+
+export function setMockRevealResult(
+  result: { status: string; error?: ClassifiedErrorResult } | null,
+): void {
+  mockRevealResult = result ?? undefined;
 }
 
 function expectedRevisionMatches(expectedTabSetRevision: number): boolean {
@@ -406,6 +436,223 @@ export function OpenDocument(
     projectionRevision: revision,
     activeBuffer: activeBuffer(document),
   });
+}
+
+export function ActivateDocument(
+  requestedDocumentId: string,
+  expectedTabSetRevision: number,
+): Promise<DocumentTransitionResult> {
+  if (!expectedRevisionMatches(expectedTabSetRevision)) {
+    return Promise.resolve({ error: staleRevisionError() });
+  }
+  const document = documents[requestedDocumentId];
+  if (document === undefined) {
+    return Promise.resolve({
+      error: classifiedError(
+        'not-found',
+        'The document is no longer open.',
+        `mock-not-found:${requestedDocumentId}`,
+      ),
+    });
+  }
+  if (activeDocumentId !== requestedDocumentId) {
+    activeDocumentId = requestedDocumentId;
+    tabSetRevision += 1;
+    revision += 1;
+    emitPatch({
+      revision,
+      tabSetRevision,
+      orderedDocumentIds: [...orderedDocumentIds],
+      activeDocumentId,
+    });
+  }
+  return Promise.resolve({ data: activeBuffer(document) });
+}
+
+export function ReorderDocument(
+  requestedDocumentId: string,
+  targetIndex: number,
+  expectedTabSetRevision: number,
+): Promise<TabTransitionResult> {
+  if (!expectedRevisionMatches(expectedTabSetRevision)) {
+    return Promise.resolve({
+      status: 'refused',
+      orderedDocumentIds: [],
+      error: staleRevisionError(),
+    });
+  }
+  const currentIndex = orderedDocumentIds.indexOf(requestedDocumentId);
+  if (currentIndex < 0) {
+    return Promise.resolve({
+      status: 'refused',
+      documentId: requestedDocumentId,
+      orderedDocumentIds: [...orderedDocumentIds],
+      error: classifiedError(
+        'not-found',
+        'The document is no longer open.',
+        `mock-not-found:${requestedDocumentId}`,
+      ),
+    });
+  }
+  const atEdge =
+    targetIndex === currentIndex ||
+    (currentIndex === 0 && targetIndex === -1) ||
+    (currentIndex === orderedDocumentIds.length - 1 &&
+      targetIndex === orderedDocumentIds.length);
+  if (atEdge) {
+    return Promise.resolve({
+      status: 'noop',
+      documentId: requestedDocumentId,
+      projectionRevision: revision,
+      tabSetRevision,
+      orderedDocumentIds: [...orderedDocumentIds],
+      activeDocumentId,
+    });
+  }
+  if (
+    targetIndex < 0 ||
+    targetIndex >= orderedDocumentIds.length ||
+    Math.abs(targetIndex - currentIndex) !== 1
+  ) {
+    return Promise.resolve({
+      status: 'refused',
+      documentId: requestedDocumentId,
+      orderedDocumentIds: [...orderedDocumentIds],
+      error: classifiedError(
+        'unsupported-input',
+        'The requested tab position is invalid.',
+        `mock-invalid-order:${requestedDocumentId}`,
+      ),
+    });
+  }
+  const nextOrder = [...orderedDocumentIds];
+  [nextOrder[currentIndex], nextOrder[targetIndex]] = [
+    nextOrder[targetIndex],
+    nextOrder[currentIndex],
+  ];
+  orderedDocumentIds = nextOrder;
+  tabSetRevision += 1;
+  revision += 1;
+  emitPatch({
+    revision,
+    tabSetRevision,
+    orderedDocumentIds: [...orderedDocumentIds],
+    activeDocumentId,
+  });
+  return Promise.resolve({
+    status: 'reordered',
+    documentId: requestedDocumentId,
+    projectionRevision: revision,
+    tabSetRevision,
+    orderedDocumentIds: [...orderedDocumentIds],
+    activeDocumentId,
+  });
+}
+
+export function CloseDocument(
+  requestedDocumentId: string,
+  expectedTabSetRevision: number,
+): Promise<TabTransitionResult> {
+  if (!expectedRevisionMatches(expectedTabSetRevision)) {
+    return Promise.resolve({
+      status: 'refused',
+      orderedDocumentIds: [],
+      error: staleRevisionError(),
+    });
+  }
+  const currentIndex = orderedDocumentIds.indexOf(requestedDocumentId);
+  if (currentIndex < 0) {
+    return Promise.resolve({
+      status: 'refused',
+      documentId: requestedDocumentId,
+      orderedDocumentIds: [...orderedDocumentIds],
+      error: classifiedError(
+        'not-found',
+        'The document is no longer open.',
+        `mock-not-found:${requestedDocumentId}`,
+      ),
+    });
+  }
+  orderedDocumentIds = orderedDocumentIds.filter(
+    (documentId) => documentId !== requestedDocumentId,
+  );
+  delete documents[requestedDocumentId];
+  if (activeDocumentId === requestedDocumentId) {
+    activeDocumentId =
+      orderedDocumentIds[currentIndex] ??
+      orderedDocumentIds[currentIndex - 1] ??
+      '';
+  }
+  tabSetRevision += 1;
+  revision += 1;
+  emitPatch({
+    revision,
+    tabSetRevision,
+    orderedDocumentIds: [...orderedDocumentIds],
+    activeDocumentId,
+    documents: { remove: [requestedDocumentId] },
+  });
+  const nextActive =
+    activeDocumentId === '' ? undefined : documents[activeDocumentId];
+  return Promise.resolve({
+    status: 'closed',
+    documentId: requestedDocumentId,
+    projectionRevision: revision,
+    tabSetRevision,
+    orderedDocumentIds: [...orderedDocumentIds],
+    activeDocumentId,
+    activeBuffer:
+      nextActive === undefined ? undefined : activeBuffer(nextActive),
+  });
+}
+
+export function CopyPath(
+  requestedDocumentId: string,
+): Promise<{ status: string; error?: ClassifiedErrorResult }> {
+  if (documents[requestedDocumentId] === undefined) {
+    return Promise.resolve({
+      status: 'refused',
+      error: classifiedError(
+        'not-found',
+        'The document is no longer open.',
+        `mock-not-found:${requestedDocumentId}`,
+      ),
+    });
+  }
+  if (mockCopyPathResult !== undefined)
+    return Promise.resolve(mockCopyPathResult);
+  if (documents[requestedDocumentId].metadata.path === '') {
+    return Promise.resolve({
+      status: 'refused',
+      error: classifiedError(
+        'unsupported-input',
+        'This document does not have a file path.',
+        `mock-untitled:${requestedDocumentId}`,
+      ),
+    });
+  }
+  return Promise.resolve({ status: 'copied' });
+}
+
+export function RevealInFileManager(
+  requestedDocumentId: string,
+): Promise<{ status: string; error?: ClassifiedErrorResult }> {
+  if (documents[requestedDocumentId] === undefined) {
+    return Promise.resolve({
+      status: 'refused',
+      error: classifiedError(
+        'not-found',
+        'The document is no longer open.',
+        `mock-not-found:${requestedDocumentId}`,
+      ),
+    });
+  }
+  if (mockRevealResult !== undefined) return Promise.resolve(mockRevealResult);
+  const document = documents[requestedDocumentId];
+  if (document.metadata.path === '' || document.metadata.detached === true) {
+    return Promise.resolve({ status: 'unavailable' });
+  }
+  return Promise.resolve({ status: 'revealed' });
 }
 
 export function UpdateBuffer(

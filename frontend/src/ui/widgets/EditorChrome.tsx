@@ -28,10 +28,15 @@ import type { ViewArrangement } from '../../logic/store/appModelTypes';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import styles from './EditorChrome.module.css';
 import { useModalState } from './modalStateContext';
+import DocumentTabs, { type DocumentTabsProps } from './DocumentTabs';
 
 export interface EditorChromeProps {
   arrangement: ViewArrangement;
   onArrangementChange: (arrangement: ViewArrangement) => void;
+  tabAdapter?: DocumentTabsProps['adapter'];
+  onActivateDocument?: DocumentTabsProps['onActivateDocument'];
+  onCloseDocument?: DocumentTabsProps['onCloseDocument'];
+  onNewDocument?: DocumentTabsProps['onNewDocument'];
 }
 
 const textActions = ['bold', 'italic', 'strike', 'inline-code'] as const;
@@ -133,6 +138,10 @@ function actionButtons(
 const EditorChrome: React.FC<EditorChromeProps> = ({
   arrangement,
   onArrangementChange,
+  tabAdapter,
+  onActivateDocument,
+  onCloseDocument,
+  onNewDocument,
 }: EditorChromeProps): React.JSX.Element => {
   const commands = useContext(DocumentCommandContext);
   const activeBuffer = useContext(EditorSessionContext);
@@ -351,54 +360,13 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
 
   return (
     <div className={styles.chrome}>
-      <div
-        aria-label={t('editor.tabs')}
-        className={styles.tabStrip}
-        role="tablist"
-      >
-        <div className={styles.tabs}>
-          {(['release-notes.md', 'spec-draft.md'] as const).map(
-            (title, index) => (
-              <div className={styles.tabItem} key={title}>
-                <button
-                  aria-selected={index === 0}
-                  aria-label={title}
-                  className={styles.tab}
-                  disabled
-                  role="tab"
-                  type="button"
-                >
-                  {index === 0 ? (
-                    <span
-                      aria-label={t('editor.tab.modified')}
-                      className={styles.modifiedDot}
-                    >
-                      •
-                    </span>
-                  ) : null}
-                  {title}
-                </button>
-                <button
-                  aria-label={t('editor.tab.close', { title })}
-                  className={styles.tabClose}
-                  disabled
-                  type="button"
-                >
-                  ×
-                </button>
-              </div>
-            ),
-          )}
-          <button
-            aria-label={t('editor.tab.new')}
-            className={styles.tabAdd}
-            disabled
-            type="button"
-          >
-            +
-          </button>
-        </div>
-      </div>
+      <DocumentTabs
+        adapter={tabAdapter}
+        modalOpen={modalOpen}
+        onActivateDocument={onActivateDocument}
+        onCloseDocument={onCloseDocument}
+        onNewDocument={onNewDocument}
+      />
 
       <div
         aria-label={t('editor.toolbar')}

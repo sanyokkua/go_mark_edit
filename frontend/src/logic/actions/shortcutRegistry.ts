@@ -11,6 +11,16 @@ export const shortcutRegistry: Readonly<Partial<Record<ActionId, string>>> =
     ),
   );
 
+export const shortcutAliases: Readonly<
+  Partial<Record<ActionId, readonly string[]>>
+> = Object.freeze(
+  Object.fromEntries(
+    actionRegistry
+      .filter((action) => action.shortcutAliases !== undefined)
+      .map((action) => [action.id, action.shortcutAliases]),
+  ),
+);
+
 const specialKeys: Record<string, string> = {
   ',': ',',
   '.': '.',
@@ -70,26 +80,48 @@ export function shortcutForKeyEvent(
   ) {
     return 'F11';
   }
-  if (!modifier && !event.altKey) return undefined;
-  const parts = [modifier ? 'Mod' : 'Alt'];
-  if (event.altKey && modifier) parts.push('Alt');
-  if (event.shiftKey) parts.push('Shift');
-  const candidates = [
-    [...parts, physicalKey ?? key].join('+'),
-    [...parts, key].join('+'),
-  ];
-  if (event.shiftKey && /^[^A-Z0-9]$/.test(key)) {
+  if (!modifier && !event.altKey && !(platform === 'darwin' && event.ctrlKey)) {
+    return undefined;
+  }
+  const modifierSets: string[][] = [];
+  if (modifier) modifierSets.push(['Mod']);
+  if (platform === 'darwin' && event.ctrlKey) modifierSets.push(['Ctrl']);
+  if (!modifier && event.altKey) modifierSets.push(['Alt']);
+  const candidates: string[] = [];
+  for (const modifierParts of modifierSets) {
+    const parts = [...modifierParts];
+    if (event.altKey && modifier) parts.push('Alt');
+    if (event.shiftKey) parts.push('Shift');
     candidates.push(
-      [
-        modifier ? 'Mod' : 'Alt',
-        ...(event.altKey && modifier ? ['Alt'] : []),
-        key,
-      ].join('+'),
+      [...parts, physicalKey ?? key].join('+'),
+      [...parts, key].join('+'),
     );
   }
-  return candidates.find((candidate) =>
-    Object.values(shortcutRegistry).includes(candidate),
-  );
+  if (event.shiftKey && /^[^A-Z0-9]$/.test(key)) {
+    candidates.push(
+      ...modifierSets.map((modifierParts) =>
+        [
+          ...modifierParts,
+          ...(event.altKey && modifier ? ['Alt'] : []),
+          key,
+        ].join('+'),
+      ),
+    );
+  }
+  const registered = actionRegistry.flatMap((action) => [
+    action.shortcut,
+    ...(action.shortcutAliases ?? []),
+  ]);
+  for (const candidate of candidates) {
+    const direct = registered.find((binding) => binding === candidate);
+    if (direct !== undefined) return direct;
+    // Ctrl+PageUp/PageDown are physical Control bindings on every platform;
+    // Mod is the platform-neutral spelling used by the registry primary map.
+    const controlBinding = candidate.replace(/^Mod\+/, 'Ctrl+');
+    const control = registered.find((binding) => binding === controlBinding);
+    if (control !== undefined) return control;
+  }
+  return undefined;
 }
 
 export function currentPlatform(): Platform {

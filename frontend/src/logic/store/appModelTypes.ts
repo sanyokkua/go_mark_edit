@@ -172,6 +172,28 @@ export interface DocumentTransitionResult {
   error?: ClassifiedError;
 }
 
+export type TabTransitionStatus =
+  'activated' | 'reordered' | 'closed' | 'noop' | 'refused';
+
+export interface TabTransitionResult {
+  status: TabTransitionStatus;
+  documentId?: string;
+  projectionRevision?: number;
+  tabSetRevision?: number;
+  orderedDocumentIds: string[];
+  activeDocumentId?: string;
+  activeBuffer?: ActiveBuffer;
+  error?: ClassifiedError;
+}
+
+export type PathCommandStatus =
+  'copied' | 'revealed' | 'unavailable' | 'refused';
+
+export interface PathCommandResult {
+  status: PathCommandStatus;
+  error?: ClassifiedError;
+}
+
 export type OpenStatus = 'cancelled' | 'focused' | 'opened' | 'refused';
 
 export interface OpenResult {

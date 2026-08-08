@@ -9,7 +9,9 @@ import type {
   DocViewInput,
   OpenResult,
   CommittedWriteOutcome,
+  PathCommandResult,
   RecoverySurface,
+  TabTransitionResult,
   UILayout,
 } from '../store/appModelTypes';
 import { isWireError, type WireError } from '../utils/parseError';
@@ -31,6 +33,21 @@ export interface AppModelBindings {
     expectedTabSetRevision: number,
   ) => Promise<DocumentTransitionResult>;
   openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  activateDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  reorderDocument?: (
+    documentId: string,
+    targetIndex: number,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
+  closeDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
+  copyPath?: (documentId: string) => Promise<PathCommandResult>;
+  revealInFileManager?: (documentId: string) => Promise<PathCommandResult>;
   updateBuffer: (documentId: string, content: string) => Promise<VoidResult>;
   setDocView: (documentId: string, view: DocViewInput) => Promise<VoidResult>;
   setUILayout: (layout: UILayout) => Promise<VoidResult>;
@@ -55,6 +72,21 @@ export interface AppModelAdapter {
     expectedTabSetRevision: number,
   ) => Promise<DocumentTransitionResult>;
   openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  activateDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  reorderDocument?: (
+    documentId: string,
+    targetIndex: number,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
+  closeDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
+  copyPath?: (documentId: string) => Promise<PathCommandResult>;
+  revealInFileManager?: (documentId: string) => Promise<PathCommandResult>;
   updateBuffer: (documentId: string, content: string) => Promise<void>;
   flushActiveSession?: (
     documentId: string,
@@ -140,6 +172,32 @@ export function createAppModelAdapter(
           newDocument: bindings.newDocument,
           openDocument: bindings.openDocument,
         });
+  const activateDocument =
+    bindings.activateDocument === undefined
+      ? undefined
+      : guardArity(
+          'AppModelHandler.ActivateDocument',
+          bindings.activateDocument,
+        );
+  const reorderDocument =
+    bindings.reorderDocument === undefined
+      ? undefined
+      : guardArity('AppModelHandler.ReorderDocument', bindings.reorderDocument);
+  const closeDocument =
+    bindings.closeDocument === undefined
+      ? undefined
+      : guardArity('AppModelHandler.CloseDocument', bindings.closeDocument);
+  const copyPath =
+    bindings.copyPath === undefined
+      ? undefined
+      : guardArity('AppModelHandler.CopyPath', bindings.copyPath);
+  const revealInFileManager =
+    bindings.revealInFileManager === undefined
+      ? undefined
+      : guardArity(
+          'AppModelHandler.RevealInFileManager',
+          bindings.revealInFileManager,
+        );
   const updateBuffer = guardArity(
     'AppModelHandler.UpdateBuffer',
     bindings.updateBuffer,
@@ -390,6 +448,45 @@ export function createAppModelAdapter(
         : async (expectedTabSetRevision: number): Promise<OpenResult> => {
             assertCommandsAvailable();
             return documentLifecycle.openDocument(expectedTabSetRevision);
+          },
+    activateDocument:
+      activateDocument === undefined
+        ? undefined
+        : async (documentId, expectedTabSetRevision) => {
+            assertCommandsAvailable();
+            return activateDocument(documentId, expectedTabSetRevision);
+          },
+    reorderDocument:
+      reorderDocument === undefined
+        ? undefined
+        : async (documentId, targetIndex, expectedTabSetRevision) => {
+            assertCommandsAvailable();
+            return reorderDocument(
+              documentId,
+              targetIndex,
+              expectedTabSetRevision,
+            );
+          },
+    closeDocument:
+      closeDocument === undefined
+        ? undefined
+        : async (documentId, expectedTabSetRevision) => {
+            assertCommandsAvailable();
+            return closeDocument(documentId, expectedTabSetRevision);
+          },
+    copyPath:
+      copyPath === undefined
+        ? undefined
+        : async (documentId) => {
+            assertCommandsAvailable();
+            return copyPath(documentId);
+          },
+    revealInFileManager:
+      revealInFileManager === undefined
+        ? undefined
+        : async (documentId) => {
+            assertCommandsAvailable();
+            return revealInFileManager(documentId);
           },
     async updateBuffer(documentId: string, content: string): Promise<void> {
       assertCommandsAvailable();

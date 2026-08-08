@@ -17,18 +17,13 @@ import { ModalStateProvider } from './modalState';
 const render = (ui: Parameters<typeof rtlRender>[0]) =>
   rtlRender(<Provider store={store}>{ui}</Provider>);
 
-it('T018 renders the complete toolbar groups and visual tab fixtures', () => {
+it('T018 renders the complete toolbar groups and a real tab surface', () => {
   render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
 
   expect(
     screen.getByRole('tablist', { name: 'Document tabs' }),
   ).toBeInTheDocument();
-  expect(
-    screen.getByRole('tab', { name: /release-notes\.md/ }),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole('tab', { name: /spec-draft\.md/ }),
-  ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'New tab' })).toBeEnabled();
   expect(screen.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Heading 1' })).toBeInTheDocument();
   expect(
@@ -157,7 +152,7 @@ it('T068 exposes active arrangement state and explicit icon metadata', () => {
   );
 });
 
-it('T018 keeps visual Assistant and future tab controls inert', () => {
+it('T018 keeps the Assistant deferred while exposing real tab controls', () => {
   const invoke = jest.fn();
   render(
     <DocumentCommandContext.Provider value={null}>
@@ -165,10 +160,7 @@ it('T018 keeps visual Assistant and future tab controls inert', () => {
     </DocumentCommandContext.Provider>,
   );
 
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Close release-notes.md' }),
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'New tab' }));
+  expect(screen.getByRole('button', { name: 'New tab' })).toBeEnabled();
   expect(invoke).not.toHaveBeenCalled();
   expect(
     screen.queryByRole('region', { name: 'Assistant' }),
@@ -186,11 +178,10 @@ it('T091 renders the text-labelled arrangement island in the toolbar', () => {
   );
 });
 
-it('T050 keeps representative tabs unavailable and non-interactive', () => {
+it('T050 keeps the tab-strip New affordance available', () => {
   render(<EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />);
 
-  expect(screen.getByRole('tab', { name: 'release-notes.md' })).toBeDisabled();
-  expect(screen.getByRole('tab', { name: 'spec-draft.md' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'New tab' })).toBeEnabled();
 });
 
 it('preserves the editor selection when a toolbar format button is pressed', () => {

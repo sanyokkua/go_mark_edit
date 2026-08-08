@@ -26,7 +26,9 @@ import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { setViewArrangement } from '../../logic/store/docViewCommands';
 import type {
   ActiveBuffer,
+  DocumentTransitionResult,
   DocumentView,
+  TabTransitionResult,
   ViewArrangement,
 } from '../../logic/store/appModelTypes';
 import {
@@ -35,6 +37,7 @@ import {
 } from './editorSession';
 import PreviewPane from './PreviewPane';
 import EditorChrome from './EditorChrome';
+import type { DocumentTabsProps } from './DocumentTabs';
 import EditorContextMenu from './EditorContextMenu';
 import styles from './EditorView.module.css';
 import { t } from '../../i18n';
@@ -71,6 +74,16 @@ interface ActiveEditorHandle {
 
 export interface EditorViewProps {
   adapter?: EditorViewAdapter;
+  tabAdapter?: DocumentTabsProps['adapter'];
+  onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
+  onActivateDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  onCloseDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
 }
 
 export interface EditorViewAdapter
@@ -244,6 +257,10 @@ function arrangementFor(view: DocumentView): ViewArrangement {
 
 const EditorView: React.FC<EditorViewProps> = ({
   adapter = appModelAdapter,
+  tabAdapter,
+  onNewDocument,
+  onActivateDocument,
+  onCloseDocument,
 }: EditorViewProps): React.JSX.Element | null => {
   const dispatch = useAppDispatch();
   const activeBuffer = useContext(EditorSessionContext);
@@ -301,6 +318,10 @@ const EditorView: React.FC<EditorViewProps> = ({
         <EditorChrome
           arrangement={arrangement}
           onArrangementChange={onArrangementChange}
+          tabAdapter={tabAdapter}
+          onActivateDocument={onActivateDocument}
+          onCloseDocument={onCloseDocument}
+          onNewDocument={onNewDocument}
         />
       </header>
       <div className={styles.panes}>

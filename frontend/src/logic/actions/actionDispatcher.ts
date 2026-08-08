@@ -24,6 +24,10 @@ export interface ActionDispatchContext {
   documentId?: string;
   sessionDocumentId?: string;
   writable?: boolean;
+  tabCommand?: boolean;
+  targetDocumentId?: string;
+  targetIndex?: number;
+  expectedTabSetRevision?: number;
 }
 
 export async function dispatchAction(
@@ -46,7 +50,11 @@ export async function dispatchAction(
   if (action.scope === 'editor' && context.editorFocused !== true) {
     return { status: 'unavailable', actionId, reason: 'no-editor' };
   }
-  if (action.scope === 'document' && context.writable !== true) {
+  if (
+    action.scope === 'document' &&
+    context.writable !== true &&
+    context.tabCommand !== true
+  ) {
     return { status: 'unavailable', actionId, reason: 'no-document' };
   }
   if (

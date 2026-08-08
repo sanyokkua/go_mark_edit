@@ -32,6 +32,8 @@ import type {
   ActiveBuffer,
   ClassifiedError,
   DocumentMetadata,
+  DocumentTransitionResult,
+  TabTransitionResult,
   WriteResult,
   ViewArrangement,
 } from './logic/store/appModelTypes';
@@ -265,6 +267,55 @@ const AppContents: React.FC = (): React.JSX.Element => {
       return result;
     },
     [],
+  );
+  const onActivateDocument = useCallback(
+    async (
+      documentId: string,
+      expectedTabSetRevision: number,
+    ): Promise<DocumentTransitionResult> => {
+      const currentDocumentId = activeBuffer?.documentId;
+      if (currentDocumentId !== undefined && currentDocumentId !== documentId) {
+        await appModelAdapter.flushActiveSession?.(currentDocumentId);
+      }
+      const result = await appModelAdapter.activateDocument?.(
+        documentId,
+        expectedTabSetRevision,
+      );
+      if (result === undefined) return {};
+      if (result.data !== undefined) setActiveBuffer(result.data);
+      return result;
+    },
+    [activeBuffer?.documentId],
+  );
+  const onCloseDocument = useCallback(
+    async (
+      documentId: string,
+      expectedTabSetRevision: number,
+    ): Promise<TabTransitionResult> => {
+      if (activeBuffer?.documentId === documentId) {
+        await appModelAdapter.flushActiveSession?.(documentId);
+      }
+      const result = await appModelAdapter.closeDocument?.(
+        documentId,
+        expectedTabSetRevision,
+      );
+      if (result === undefined) {
+        return {
+          status: 'refused',
+          orderedDocumentIds: [],
+        };
+      }
+      if (result.activeBuffer !== undefined)
+        setActiveBuffer(result.activeBuffer);
+      else if (
+        result.activeDocumentId === undefined ||
+        result.activeDocumentId === ''
+      ) {
+        setActiveBuffer(null);
+      }
+      return result;
+    },
+    [activeBuffer?.documentId],
   );
   const reportWriteError = useCallback(
     (error: ClassifiedError | undefined, documentId: string): void => {
@@ -572,7 +623,11 @@ const AppContents: React.FC = (): React.JSX.Element => {
                       notification={notification}
                     />
                   ))}
-                  <AppShell />
+                  <AppShell
+                    onNewDocument={onNewDocument}
+                    onActivateDocument={onActivateDocument}
+                    onCloseDocument={onCloseDocument}
+                  />
                 </>
               ) : null}
             </div>

@@ -1,0 +1,119 @@
+.tabStrip {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  position: relative;
+  scrollbar-width: thin;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: var(--control-gap);
+  min-inline-size: max-content;
+  padding-block-end: var(--control-gap);
+}
+
+.tabItem {
+  align-items: center;
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  display: flex;
+  min-width: 0;
+  padding-inline-start: var(--control-padding);
+}
+
+.tab,
+.tabClose,
+.tabAdd,
+.contextMenuItem {
+  background: var(--surface-raised);
+  border: 0;
+  color: var(--text);
+  font: inherit;
+}
+
+.tab,
+.tabClose,
+.tabAdd,
+.contextMenuItem {
+  cursor: pointer;
+  padding: var(--control-padding);
+  white-space: nowrap;
+}
+
+.tab {
+  min-width: 8rem;
+  overflow: hidden;
+  text-align: start;
+  text-overflow: ellipsis;
+}
+
+.tabLabel {
+  display: inline-block;
+  max-width: 24rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+.tab[aria-selected='true'] {
+  box-shadow: inset 0 -2px var(--accent);
+}
+
+.tabClose,
+.tabAdd {
+  min-inline-size: 2rem;
+}
+
+.modifiedDot {
+  color: var(--accent);
+  padding-inline-end: var(--control-gap);
+}
+
+.tab:focus-visible,
+.tabClose:focus-visible,
+.tabAdd:focus-visible,
+.contextMenuItem:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tab:disabled,
+.tabClose:disabled,
+.tabAdd:disabled,
+.contextMenuItem:disabled {
+  cursor: not-allowed;
+  opacity: var(--disabled-opacity);
+}
+
+.contextMenu {
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  box-shadow: var(--win-shadow);
+  display: grid;
+  gap: var(--control-gap);
+  min-inline-size: 14rem;
+  padding: var(--control-gap);
+  position: absolute;
+  right: var(--app-gap);
+  top: 3rem;
+  z-index: var(--z-dropdown);
+}
+
+.contextMenuItem {
+  text-align: start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab,
+  .tabClose,
+  .tabAdd,
+  .contextMenuItem {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}

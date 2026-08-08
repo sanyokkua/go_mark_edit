@@ -47,3 +47,35 @@ test('FT-VS-02 flushes the latest edit and reports one explicit Save confirmatio
     1,
   );
 });
+
+test('FT-VS-03 exposes real tabs, backend-confirmed menu moves, and exact navigation', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  const newTab = page.getByRole('button', { name: 'New tab' });
+  await expect(newTab).toBeEnabled();
+  await newTab.click();
+  await expect(page.getByRole('tab')).toHaveCount(2);
+
+  const tabs = page.getByRole('tab');
+  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await tabs.nth(1).click({ button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Tab actions' });
+  await expect(
+    menu.getByRole('menuitem', { name: 'Move tab left' }),
+  ).toBeEnabled();
+  await expect(
+    menu.getByRole('menuitem', { name: 'Move tab right' }),
+  ).toBeDisabled();
+  await menu.getByRole('menuitem', { name: 'Move tab left' }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Moved' }),
+  ).toContainText('position 1 of 2');
+
+  await page.keyboard.press('Control+PageDown');
+  await expect(page.getByRole('tab').nth(1)).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});

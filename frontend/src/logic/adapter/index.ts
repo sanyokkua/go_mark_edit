@@ -10,6 +10,11 @@ import {
   GetState,
   NewDocument,
   OpenDocument,
+  ActivateDocument,
+  ReorderDocument,
+  CloseDocument,
+  CopyPath,
+  RevealInFileManager,
   SetDocView,
   SetUILayout,
   UpdateBuffer,
@@ -44,6 +49,8 @@ import type {
   DocumentMetadata,
   LineEndingOutcome,
   OpenResult,
+  PathCommandResult,
+  TabTransitionResult,
   WriteResult,
 } from '../store/appModelTypes';
 
@@ -104,6 +111,38 @@ function normalizeOpenResult(result: apperr.OpenResult): OpenResult {
             projectionRevision: result.activeBuffer.projectionRevision,
             content: result.activeBuffer.content,
           },
+    error: normalizeClassifiedError(result.error),
+  };
+}
+
+function normalizeTabTransitionResult(
+  result: apperr.TabTransitionResult,
+): TabTransitionResult {
+  return {
+    status: result.status as TabTransitionResult['status'],
+    documentId: result.documentId,
+    projectionRevision: result.projectionRevision,
+    tabSetRevision: result.tabSetRevision,
+    orderedDocumentIds: [...(result.orderedDocumentIds ?? [])],
+    activeDocumentId: result.activeDocumentId,
+    activeBuffer:
+      result.activeBuffer === undefined
+        ? undefined
+        : {
+            documentId: result.activeBuffer.documentId,
+            documentRevision: result.activeBuffer.documentRevision,
+            projectionRevision: result.activeBuffer.projectionRevision,
+            content: result.activeBuffer.content,
+          },
+    error: normalizeClassifiedError(result.error),
+  };
+}
+
+function normalizePathCommandResult(
+  result: apperr.PathCommandResult,
+): PathCommandResult {
+  return {
+    status: result.status as PathCommandResult['status'],
     error: normalizeClassifiedError(result.error),
   };
 }
@@ -191,6 +230,22 @@ const generatedAppModelBindings: AppModelBindings = {
     normalizeTransitionResult(await NewDocument(expectedTabSetRevision)),
   openDocument: async (expectedTabSetRevision) =>
     normalizeOpenResult(await OpenDocument(expectedTabSetRevision)),
+  activateDocument: async (documentId, expectedTabSetRevision) =>
+    normalizeTransitionResult(
+      await ActivateDocument(documentId, expectedTabSetRevision),
+    ),
+  reorderDocument: async (documentId, targetIndex, expectedTabSetRevision) =>
+    normalizeTabTransitionResult(
+      await ReorderDocument(documentId, targetIndex, expectedTabSetRevision),
+    ),
+  closeDocument: async (documentId, expectedTabSetRevision) =>
+    normalizeTabTransitionResult(
+      await CloseDocument(documentId, expectedTabSetRevision),
+    ),
+  copyPath: async (documentId) =>
+    normalizePathCommandResult(await CopyPath(documentId)),
+  revealInFileManager: async (documentId) =>
+    normalizePathCommandResult(await RevealInFileManager(documentId)),
   updateBuffer: UpdateBuffer,
   setDocView: (documentId, view) =>
     SetDocView(documentId, new apperr.DocViewInput(view)),

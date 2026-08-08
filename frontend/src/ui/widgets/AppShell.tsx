@@ -9,11 +9,31 @@ import {
 import { t } from '../../i18n';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { setWorkspaceWidth } from '../../logic/store/uiLayoutCommands';
+import type {
+  DocumentTransitionResult,
+  TabTransitionResult,
+} from '../../logic/store/appModelTypes';
 import styles from './AppShell.module.css';
 
 import EditorView from './EditorView';
 
-const AppShell: React.FC = (): React.JSX.Element => {
+export interface AppShellProps {
+  onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
+  onActivateDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  onCloseDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
+}
+
+const AppShell: React.FC<AppShellProps> = ({
+  onNewDocument,
+  onActivateDocument,
+  onCloseDocument,
+}: AppShellProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const workspaceVisible = useAppSelector(
     (state) => state.ui.layout.sidebarVisible ?? true,
@@ -168,7 +188,11 @@ const AppShell: React.FC = (): React.JSX.Element => {
         />
       ) : null}
       <main aria-label={t('shell.document')} className={styles.document}>
-        <EditorView />
+        <EditorView
+          onNewDocument={onNewDocument}
+          onActivateDocument={onActivateDocument}
+          onCloseDocument={onCloseDocument}
+        />
       </main>
     </div>
   );
