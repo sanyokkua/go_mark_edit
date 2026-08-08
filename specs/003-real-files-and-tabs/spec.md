@@ -512,6 +512,10 @@ backdrop effects, palette layering, focus, checked/selected/disabled states, and
 approved mockup screenshots are reference illustrations of that source; the approved current-build screenshots
 are audit evidence, not alternative baselines. Behavior comes from this specification.
 
+All the time, when UI changes are made, they should be compared with screenshots of the Mockup to validate the
+consistency of the style, theme, widget, sizes, and other aspects of the UI/UX. Screenshots are in the
+folder: "specs/003-real-files-and-tabs/surface".
+
 The completed operating-system-managed frame supersedes the mockup's obsolete custom traffic lights, brand,
 drag region, resize zones, and outer window shadow. The in-app row below that native frame remains in scope and
 inherits the mockup row's webview-owned metrics and state styling. Native Open/Save dialogs are behavior evidence,

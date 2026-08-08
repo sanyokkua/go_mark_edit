@@ -7,7 +7,7 @@ is `UNRELIABLE`, not green.
 
 ## 1. Prepare deterministic inputs
 
-- Work on the Feature 003 parent/task branch named by the task ledger; do not implement on `master`.
+- Work on the Feature 003 parent/task branch named by the task ledger; do not implement on `master`. feature/v1-implementation is the parent feature (development branch). It is the main branch for the whole app development. Sub-branches should be created per each task and merged back when finished.
 - Read `spec.md`, `plan.md`, `research.md`, `data-model.md`, every file under `contracts/`, and the task being
   executed before changing code.
 - Use temporary real files outside the repository for destructive file-lifecycle tests. Include LF, CRLF,

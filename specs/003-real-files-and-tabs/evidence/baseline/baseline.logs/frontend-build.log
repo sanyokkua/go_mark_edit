@@ -34,7 +34,7 @@ dist/assets/monacoSetup-CTla-L__.js      2,294.41 kB │ gzip: 592.24 kB
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.58s
+✓ built in 3.43s
 
 > frontend@0.0.0 postbuild
 > node scripts/ensure-dist-placeholder.mjs && node scripts/check-production-network.mjs --source-root src --source-root public --source-root wailsjs/go --bundle-root dist --require-bundle

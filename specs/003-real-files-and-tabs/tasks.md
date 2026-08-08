@@ -6,6 +6,7 @@ description: "Dependency-ordered implementation tasks for Real Files and Tabs"
 
 **Input**: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, all four files in
 `contracts/`, `.specify/memory/constitution.md`, current source/tests, and the primary-source fact checks below.
+Screenshots of the Mockup for visual validation: `specs/003-real-files-and-tabs/surface`.
 
 **Parent branch**: `feature/v1-implementation`. Every task uses one `feature/v1-implementation--003-tNNN-*`
 branch, one Conventional Commit, its named evidence, and a squash merge back to the parent. Do not create a

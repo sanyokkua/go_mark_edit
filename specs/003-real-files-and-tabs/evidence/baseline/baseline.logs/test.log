@@ -2,7 +2,7 @@ just go-test
 go test -race ./internal/... .
 ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/application	(cached)
-ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	4.098s
 ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/db	(cached)
 ?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
@@ -10,7 +10,7 @@ ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
-ok  	github.com/sanyokkua/go_mark_edit	(cached)
+ok  	github.com/sanyokkua/go_mark_edit	7.493s
 just frontend-test
 npm --prefix frontend test -- --passWithNoTests
 
@@ -25,16 +25,16 @@ npm --prefix frontend test -- --passWithNoTests
 > frontend@0.0.0 test
 > node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --passWithNoTests
 
-✔ applies only a current valid startup mirror before application code (3.25175ms)
-✔ resolves a current Auto mirror from the operating-system preference (0.588875ms)
-✔ runs the blocking bootstrap before the application module (0.086833ms)
-✔ generates six complete named Monaco themes from palette values (2.643875ms)
-✔ converts CSS rgba palette values to Monaco-compatible hex (0.693291ms)
-✔ shares each fenced-language value by appearance across themes (0.849708ms)
-✔ rejects a palette missing a required Monaco token (0.296042ms)
-✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.559584ms)
-✔ rejects duplicate, unresolved, and unsupported palette sources (0.289917ms)
-✔ emits inactive highlight rules for every generated syntax token (0.560833ms)
+✔ applies only a current valid startup mirror before application code (3.670625ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.622875ms)
+✔ runs the blocking bootstrap before the application module (0.085167ms)
+✔ generates six complete named Monaco themes from palette values (2.852583ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.675417ms)
+✔ shares each fenced-language value by appearance across themes (0.848542ms)
+✔ rejects a palette missing a required Monaco token (0.326ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.551292ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.316292ms)
+✔ emits inactive highlight rules for every generated syntax token (0.550708ms)
 ℹ tests 10
 ℹ suites 0
 ℹ pass 10
@@ -42,10 +42,108 @@ npm --prefix frontend test -- --passWithNoTests
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 73.003583
+ℹ duration_ms 72.7635
+PASS src/logic/format/formatting.test.ts
+PASS src/logic/adapter/appModelAdapter.test.ts
+PASS src/ui/widgets/EditorChrome.test.tsx
+PASS src/ui/components/CodeEditor.test.tsx
+PASS src/logic/store/appModelProjection.test.ts
+PASS src/ui/styles/tokens.test.ts
+PASS src/ui/widgets/editorSession.integration.test.tsx
+  ● Console
+
+    console.error
+      An update to EditorView inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      269 |     </Provider>,
+      270 |   );
+    > 271 |   store.dispatch(
+          |         ^
+      272 |     hydrateProjection({
+      273 |       revision: 1,
+      274 |       documents: { [document.documentId]: document },
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at forceStoreRerender (node_modules/react-dom/cjs/react-dom-client.development.js:8262:24)
+      at Object.callback (node_modules/react-dom/cjs/react-dom-client.development.js:8247:11)
+      at node_modules/react-redux/src/utils/Subscription.ts:29:20
+      at defaultNoopBatch (node_modules/react-redux/src/utils/batch.ts:3:3)
+      at Object.notify (node_modules/react-redux/src/utils/Subscription.ts:26:7)
+      at Object.notifyNestedSubs (node_modules/react-redux/src/utils/Subscription.ts:124:15)
+      at handleChangeWrapper (node_modules/react-redux/src/utils/Subscription.ts:129:20)
+      at listener (node_modules/@reduxjs/toolkit/src/autoBatchEnhancer.ts:93:67)
+      at node_modules/redux/src/createStore.ts:220:7
+          at Map.forEach (<anonymous>)
+      at Object.dispatch (node_modules/redux/src/createStore.ts:219:15)
+      at dispatch (node_modules/@reduxjs/toolkit/src/autoBatchEnhancer.ts:126:22)
+      at node_modules/@reduxjs/toolkit/src/serializableStateInvariantMiddleware.ts:169:22
+      at node_modules/redux-thunk/dist/cjs/redux-thunk.cjs:32:12
+      at node_modules/@reduxjs/toolkit/src/immutableStateInvariantMiddleware.ts:183:34
+      at Object.dispatch (node_modules/@reduxjs/toolkit/src/actionCreatorInvariantMiddleware.ts:29:12)
+      at Object.<anonymous> (src/ui/widgets/editorSession.integration.test.tsx:271:9)
+
+PASS src/ui/widgets/EditorView.test.tsx
+PASS src/logic/adapter/useSyncedBuffer.test.ts
+PASS src/ui/widgets/AppShell.test.tsx
+PASS src/logic/hooks/useLivePreview.test.ts
+PASS src/ui/widgets/EditorContextMenu.test.tsx
+PASS src/logic/adapter/index.test.ts
+PASS src/logic/store/notificationsSlice.test.ts
+PASS src/ui/widgets/AppearanceControls.test.tsx
+PASS src/ui/components/MarkdownView.test.tsx
+PASS src/logic/store/docViewCommands.test.ts
+PASS src/logic/actions/useShellShortcuts.test.tsx
+PASS src/ui/primitives/Toast.test.tsx
+PASS src/logic/actions/actionDispatcher.test.ts
+PASS src/logic/actions/shellActions.test.ts
+PASS src/i18n/catalog.test.ts
+PASS src/ui/widgets/EditorView.integration.test.tsx
+PASS src/logic/theme/theme.test.ts
+PASS src/ui/widgets/ShortcutsDialog.test.tsx
+PASS src/ui/primitives/ViewMenu.test.tsx
+PASS src/logic/hooks/useSyncedBuffer.test.ts
+PASS src/ui/widgets/SettingsDialog.test.tsx
+PASS src/dev/bridge-mock/appModel.test.ts
+PASS src/ui/components/CodeEditor.bundle.test.ts
+PASS src/logic/adapter/windowAdapter.test.ts
+PASS src/ui/components/monacoThemes.test.ts
+PASS src/logic/actions/shortcutRegistry.test.ts
+PASS src/logic/actions/actionRegistry.test.ts
+PASS src/logic/store/settingsSlice.test.ts
+PASS src/logic/utils/parseError.test.ts
+PASS src/ui/primitives/Segmented.test.tsx
+PASS src/logic/adapter/editorSettings.test.ts
+PASS src/logic/store/settingsProjection.test.ts
+PASS src/logic/settings/settingsCommands.test.ts
+PASS src/ui/widgets/ShellMenuRow.test.tsx
+PASS src/App.test.tsx
+PASS src/logic/store/store.test.ts
+PASS src/logic/theme/startupThemeMirror.test.ts
+PASS src/ui/widgets/AboutDialog.test.tsx
+PASS src/logic/adapter/services.test.ts
+PASS src/ui/widgets/SettingsMenu.test.tsx
+PASS src/ui/widgets/StartupFailure.test.tsx
+PASS src/ui/primitives/Banner.test.tsx
+PASS src/ui/components/StatusBar.test.tsx
+PASS src/dev/bridge-mock/runtime/index.test.ts
+PASS src/dev/bridge-mock/bridge.test.ts
+PASS src/logic/hooks/useDocumentCommands.test.ts
+PASS src/logic/markdown/renderer.test.ts (8.694 s)
 
 Test Suites: 54 passed, 54 total
 Tests:       262 passed, 262 total
 Snapshots:   0 total
-Time:        8.964 s
+Time:        11.049 s
 Ran all test suites.
