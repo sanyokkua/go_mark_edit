@@ -136,7 +136,9 @@ func writeSizedFixture(path string, size int64, mode os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	const chunkSize int64 = 64 * 1024
 	chunk := make([]byte, chunkSize)

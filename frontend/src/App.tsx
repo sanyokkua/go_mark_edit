@@ -100,8 +100,10 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
     throw new Error('ApplicationShellMenu requires ApplicationMenuContext');
   }
   const dispatch = useAppDispatch();
-  const activeDocument = useAppSelector(
-    (state) => state.documents.byId[state.documents.activeDocumentId],
+  const activeDocument = useAppSelector((state) =>
+    state.documents.activeDocumentId === null
+      ? undefined
+      : state.documents.byId[state.documents.activeDocumentId],
   );
   const workspaceVisible = useAppSelector(
     (state) => state.ui.layout.sidebarVisible ?? true,

@@ -90,8 +90,9 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 		timer = systemLayoutTimer{}
 	}
 	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, writerID: newLayoutWriterID(), state: applicationState{
-		documents:        map[string]*openDocument{documentID: initialDocument},
-		activeDocumentID: documentID,
+		orderedDocumentIDs: []string{documentID},
+		documents:          map[string]*openDocument{documentID: initialDocument},
+		activeDocumentID:   documentID,
 		ui: apperr.UILayout{
 			WindowWidth:    pointerTo(1024),
 			WindowHeight:   pointerTo(768),
@@ -100,6 +101,19 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 	}}
 	service.commands = documentCommands{service: service}
 	service.content = documentContentAccessor{service: service}
+	return service
+}
+
+// NewEmptyAppModelService constructs the same backend state with no open
+// documents. It is used by the zero-document launcher and keeps the optional
+// active identity explicit instead of manufacturing a placeholder.
+func NewEmptyAppModelService(emitter StatePatchEmitter) *AppModelService {
+	service := newAppModelService(emitter, nil, systemLayoutTimer{})
+	service.mu.Lock()
+	service.state.documents = map[string]*openDocument{}
+	service.state.orderedDocumentIDs = nil
+	service.state.activeDocumentID = ""
+	service.mu.Unlock()
 	return service
 }
 
@@ -123,19 +137,27 @@ func (service *AppModelService) GetState(_ context.Context) (apperr.AppState, er
 	for documentID, document := range service.state.documents {
 		documents[documentID] = service.effectiveDocumentMetadataLocked(document)
 	}
-	activeDocument := service.state.documents[service.state.activeDocumentID]
+	activeDocument, hasActiveDocument := service.state.documents[service.state.activeDocumentID]
+	var activeDocumentID *string
+	var activeBuffer *apperr.ActiveBuffer
+	if hasActiveDocument && service.state.activeDocumentID != "" {
+		id := service.state.activeDocumentID
+		activeDocumentID = &id
+		activeBuffer = &apperr.ActiveBuffer{DocumentID: id, Content: activeDocument.content}
+	}
+	orderedDocumentIDs := append([]string(nil), service.state.orderedDocumentIDs...)
 	return apperr.AppState{
 		Snapshot: apperr.AppStateSnapshot{
 			Revision:           service.state.revision,
+			TabSetRevision:     service.state.tabSetRevision,
 			ApplicationVersion: bootstrap.Version(),
 			Documents:          documents,
 			ActiveDocumentID:   service.state.activeDocumentID,
+			ActiveDocument:     activeDocumentID,
+			OrderedDocumentIDs: orderedDocumentIDs,
 			UI:                 cloneUILayout(service.state.ui),
 		},
-		ActiveBuffer: apperr.ActiveBuffer{
-			DocumentID: service.state.activeDocumentID,
-			Content:    activeDocument.content,
-		},
+		ActiveBuffer: activeBuffer,
 	}, nil
 }
 
@@ -611,20 +633,38 @@ func validateUILayout(layout apperr.UILayout) error {
 
 func (service *AppModelService) documentPatchLocked(documentID string) apperr.AppStatePatch {
 	service.state.revision++
-	return apperr.AppStatePatch{
-		Revision: service.state.revision,
-		Documents: &apperr.DocumentsPatch{Upsert: map[string]apperr.DocumentMetadata{
-			documentID: service.state.documents[documentID].metadata,
-		}},
+	tabSetRevision := service.state.tabSetRevision
+	orderedDocumentIDs := append([]string(nil), service.state.orderedDocumentIDs...)
+	var metadata apperr.DocumentMetadata
+	if document, ok := service.state.documents[documentID]; ok {
+		metadata = document.metadata
 	}
+	return apperr.AppStatePatch{
+		Revision:           service.state.revision,
+		TabSetRevision:     &tabSetRevision,
+		OrderedDocumentIDs: orderedDocumentIDs,
+		Documents: &apperr.DocumentsPatch{Upsert: map[string]apperr.DocumentMetadata{
+			documentID: metadata,
+		}},
+		ActiveDocument: activeDocumentPatch(service.state.activeDocumentID),
+	}
+}
+
+func activeDocumentPatch(documentID string) *apperr.ActiveDocumentPatch {
+	if documentID == "" {
+		return &apperr.ActiveDocumentPatch{Present: false}
+	}
+	return &apperr.ActiveDocumentPatch{Present: true, DocumentID: documentID}
 }
 
 func (service *AppModelService) snapshotLocked() applicationState {
 	snapshot := applicationState{
-		revision:         service.state.revision,
-		documents:        make(map[string]*openDocument, len(service.state.documents)),
-		activeDocumentID: service.state.activeDocumentID,
-		ui:               cloneUILayout(service.state.ui),
+		revision:           service.state.revision,
+		tabSetRevision:     service.state.tabSetRevision,
+		orderedDocumentIDs: append([]string(nil), service.state.orderedDocumentIDs...),
+		documents:          make(map[string]*openDocument, len(service.state.documents)),
+		activeDocumentID:   service.state.activeDocumentID,
+		ui:                 cloneUILayout(service.state.ui),
 	}
 	for documentID, document := range service.state.documents {
 		documentCopy := *document

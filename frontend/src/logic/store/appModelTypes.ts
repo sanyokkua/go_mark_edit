@@ -36,10 +36,16 @@ export interface DocumentMetadata {
   documentId: string;
   title: string;
   path: string;
+  displayName?: string;
+  parentName?: string;
   dirty: boolean;
   encoding: string;
   lineEnding: string;
   wordCount: number;
+  contentRevision?: number;
+  capability?: string;
+  sizeClass?: string;
+  detached?: boolean;
   view: DocumentView;
 }
 
@@ -54,15 +60,20 @@ export interface UILayout {
 
 export interface AppStateSnapshot {
   revision: number;
+  tabSetRevision?: number;
   applicationVersion?: string;
   documents: Record<string, DocumentMetadata>;
-  activeDocumentId: string;
+  orderedDocumentIds?: string[];
+  activeDocumentId: string | null;
+  activeDocument?: string | null;
+  recentFiles?: string[];
+  canReopenLastFile?: boolean;
   ui: UILayout;
 }
 
 export interface AppModelState {
   snapshot: AppStateSnapshot;
-  activeBuffer: ActiveBuffer;
+  activeBuffer: ActiveBuffer | null;
 }
 
 export interface DocumentsPatch {
@@ -73,9 +84,43 @@ export interface DocumentsPatch {
 // AppStatePatch is intentionally content-free: the active buffer never travels in events.
 export interface AppStatePatch {
   revision: number;
+  tabSetRevision?: number;
+  orderedDocumentIds?: string[];
   documents?: DocumentsPatch;
-  activeDocumentId?: string;
+  activeDocumentId?: string | null;
+  activeDocument?: { present: boolean; documentId?: string };
+  recentFiles?: string[];
+  canReopenLastFile?: boolean;
   ui?: UILayout;
+}
+
+export type ClassifiedErrorCategory =
+  | 'not-found'
+  | 'permission-denied'
+  | 'io-failure'
+  | 'conflict'
+  | 'capacity-limit'
+  | 'unsupported-input'
+  | 'system-command-failure'
+  | 'persistence-warning';
+
+export type ClassifiedRemediation =
+  | ''
+  | 'Retry'
+  | 'Reload from disk'
+  | 'Keep mine'
+  | 'Skip'
+  | 'Save to recreate'
+  | 'Copy path'
+  | 'Cancel';
+
+export interface ClassifiedError {
+  category: ClassifiedErrorCategory;
+  safeSubject?: string;
+  message: string;
+  remediation: ClassifiedRemediation;
+  documentId?: string;
+  dedupKey: string;
 }
 
 export interface DocViewInput {

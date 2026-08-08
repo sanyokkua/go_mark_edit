@@ -122,6 +122,7 @@ export function createAppModelAdapter(
     bindings.setUILayout,
   );
   let disposeStatePatches: (() => void) | undefined;
+  const statePatchListeners = new Set<(patch: AppStatePatch) => void>();
   const acceptedBufferListeners = new Set<(buffer: AcceptedBuffer) => void>();
   const bufferRecords = new Map<string, BufferRecord>();
   const viewRecords = new Map<string, ViewRecord>();
@@ -381,26 +382,34 @@ export function createAppModelAdapter(
       });
     },
     subscribeStatePatches(onPatch: (patch: AppStatePatch) => void): () => void {
-      if (disposeStatePatches !== undefined) {
-        return disposeStatePatches;
+      statePatchListeners.add(onPatch);
+      if (disposeStatePatches === undefined) {
+        const unsubscribe = runtime.eventsOn(
+          'state:patch',
+          (payload: unknown) => {
+            if (!isAppStatePatch(payload)) {
+              return;
+            }
+            for (const listener of statePatchListeners) {
+              listener(payload);
+            }
+          },
+        );
+        disposeStatePatches = (): void => {
+          unsubscribe();
+          disposeStatePatches = undefined;
+        };
       }
-
-      const unsubscribe = runtime.eventsOn(
-        'state:patch',
-        (payload: unknown) => {
-          if (isAppStatePatch(payload)) {
-            onPatch(payload);
-          }
-        },
-      );
       const dispose = (): void => {
-        if (disposeStatePatches !== dispose) {
+        statePatchListeners.delete(onPatch);
+        if (
+          statePatchListeners.size !== 0 ||
+          disposeStatePatches === undefined
+        ) {
           return;
         }
-        unsubscribe();
-        disposeStatePatches = undefined;
+        disposeStatePatches();
       };
-      disposeStatePatches = dispose;
       return dispose;
     },
   };

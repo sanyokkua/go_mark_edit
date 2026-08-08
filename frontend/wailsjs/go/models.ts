@@ -159,10 +159,16 @@ export namespace apperr {
 	    documentId: string;
 	    title: string;
 	    path: string;
+	    displayName?: string;
+	    parentName?: string;
 	    dirty: boolean;
 	    encoding: string;
 	    lineEnding: string;
 	    wordCount: number;
+	    contentRevision?: number;
+	    capability?: string;
+	    sizeClass?: string;
+	    detached?: boolean;
 	    view: DocView;
 	
 	    static createFrom(source: any = {}) {
@@ -174,10 +180,16 @@ export namespace apperr {
 	        this.documentId = source["documentId"];
 	        this.title = source["title"];
 	        this.path = source["path"];
+	        this.displayName = source["displayName"];
+	        this.parentName = source["parentName"];
 	        this.dirty = source["dirty"];
 	        this.encoding = source["encoding"];
 	        this.lineEnding = source["lineEnding"];
 	        this.wordCount = source["wordCount"];
+	        this.contentRevision = source["contentRevision"];
+	        this.capability = source["capability"];
+	        this.sizeClass = source["sizeClass"];
+	        this.detached = source["detached"];
 	        this.view = this.convertValues(source["view"], DocView);
 	    }
 	
@@ -201,9 +213,14 @@ export namespace apperr {
 	}
 	export class AppStateSnapshot {
 	    revision: number;
+	    tabSetRevision: number;
 	    applicationVersion: string;
 	    documents: Record<string, DocumentMetadata>;
-	    activeDocumentId: string;
+	    orderedDocumentIds: string[];
+	    activeDocumentId?: string;
+	    activeDocument?: string;
+	    recentFiles?: string[];
+	    canReopenLastFile: boolean;
 	    ui: UILayout;
 	
 	    static createFrom(source: any = {}) {
@@ -213,9 +230,14 @@ export namespace apperr {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.revision = source["revision"];
+	        this.tabSetRevision = source["tabSetRevision"];
 	        this.applicationVersion = source["applicationVersion"];
 	        this.documents = this.convertValues(source["documents"], DocumentMetadata, true);
+	        this.orderedDocumentIds = source["orderedDocumentIds"];
 	        this.activeDocumentId = source["activeDocumentId"];
+	        this.activeDocument = source["activeDocument"];
+	        this.recentFiles = source["recentFiles"];
+	        this.canReopenLastFile = source["canReopenLastFile"];
 	        this.ui = this.convertValues(source["ui"], UILayout);
 	    }
 	
@@ -239,7 +261,7 @@ export namespace apperr {
 	}
 	export class AppState {
 	    snapshot: AppStateSnapshot;
-	    activeBuffer: ActiveBuffer;
+	    activeBuffer?: ActiveBuffer;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppState(source);

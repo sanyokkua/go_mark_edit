@@ -598,7 +598,7 @@ it('STORY-012-AC-4 wraps app-model commands without optimistic state', async () 
   );
 });
 
-it('STORY-012-AC-5 disposes state patch subscriptions', () => {
+it('fans out state patches with independent disposal', () => {
   let eventCallback: ((payload: unknown) => void) | undefined;
   const unsubscribe = jest.fn();
   const runtime: AppModelRuntime = {
@@ -626,14 +626,17 @@ it('STORY-012-AC-5 disposes state patch subscriptions', () => {
   );
   eventCallback?.({ revision: 3 });
 
-  expect(firstDispose).toBe(repeatedDispose);
+  expect(firstDispose).not.toBe(repeatedDispose);
   expect(firstPatchHandler).toHaveBeenCalledWith({ revision: 3 });
-  expect(repeatedConsumerHandler).not.toHaveBeenCalled();
+  expect(repeatedConsumerHandler).toHaveBeenCalledWith({ revision: 3 });
 
   firstDispose();
-  repeatedDispose();
   eventCallback?.({ revision: 4 });
 
-  expect(unsubscribe).toHaveBeenCalledTimes(1);
+  expect(unsubscribe).not.toHaveBeenCalled();
   expect(firstPatchHandler).toHaveBeenCalledTimes(1);
+  expect(repeatedConsumerHandler).toHaveBeenCalledTimes(2);
+
+  repeatedDispose();
+  expect(unsubscribe).toHaveBeenCalledTimes(1);
 });

@@ -108,22 +108,33 @@ type UILayout struct {
 
 // DocumentMetadata is the content-free projection of one open document.
 type DocumentMetadata struct {
-	DocumentID string  `json:"documentId"`
-	Title      string  `json:"title"`
-	Path       string  `json:"path"`
-	Dirty      bool    `json:"dirty"`
-	Encoding   string  `json:"encoding"`
-	LineEnding string  `json:"lineEnding"`
-	WordCount  int     `json:"wordCount"`
-	View       DocView `json:"view"`
+	DocumentID      string  `json:"documentId"`
+	Title           string  `json:"title"`
+	Path            string  `json:"path"`
+	DisplayName     string  `json:"displayName,omitempty"`
+	ParentName      string  `json:"parentName,omitempty"`
+	Dirty           bool    `json:"dirty"`
+	Encoding        string  `json:"encoding"`
+	LineEnding      string  `json:"lineEnding"`
+	WordCount       int     `json:"wordCount"`
+	ContentRevision uint64  `json:"contentRevision,omitempty"`
+	Capability      string  `json:"capability,omitempty"`
+	SizeClass       string  `json:"sizeClass,omitempty"`
+	Detached        bool    `json:"detached,omitempty"`
+	View            DocView `json:"view"`
 }
 
 // AppStateSnapshot is the metadata-only frontend projection of the live model.
 type AppStateSnapshot struct {
 	Revision           uint64                      `json:"revision"`
+	TabSetRevision     uint64                      `json:"tabSetRevision"`
 	ApplicationVersion string                      `json:"applicationVersion"`
 	Documents          map[string]DocumentMetadata `json:"documents"`
-	ActiveDocumentID   string                      `json:"activeDocumentId"`
+	OrderedDocumentIDs []string                    `json:"orderedDocumentIds"`
+	ActiveDocumentID   string                      `json:"activeDocumentId,omitempty"`
+	ActiveDocument     *string                     `json:"activeDocument,omitempty"`
+	RecentFiles        []string                    `json:"recentFiles,omitempty"`
+	CanReopenLastFile  bool                        `json:"canReopenLastFile"`
 	UI                 UILayout                    `json:"ui"`
 }
 
@@ -136,7 +147,14 @@ type ActiveBuffer struct {
 // AppState combines a content-free snapshot with the active canonical buffer.
 type AppState struct {
 	Snapshot     AppStateSnapshot `json:"snapshot"`
-	ActiveBuffer ActiveBuffer     `json:"activeBuffer"`
+	ActiveBuffer *ActiveBuffer    `json:"activeBuffer,omitempty"`
+}
+
+// ActiveDocumentPatch explicitly represents both activation and clearing. A nil
+// patch member means that activation did not change.
+type ActiveDocumentPatch struct {
+	Present    bool   `json:"present"`
+	DocumentID string `json:"documentId,omitempty"`
 }
 
 // DocumentsPatch replaces upserted metadata entries and removes named ids.
@@ -147,10 +165,15 @@ type DocumentsPatch struct {
 
 // AppStatePatch is a content-free, revisioned incremental projection update.
 type AppStatePatch struct {
-	Revision         uint64          `json:"revision"`
-	Documents        *DocumentsPatch `json:"documents,omitempty"`
-	ActiveDocumentID *string         `json:"activeDocumentId,omitempty"`
-	UI               *UILayout       `json:"ui,omitempty"`
+	Revision           uint64               `json:"revision"`
+	TabSetRevision     *uint64              `json:"tabSetRevision,omitempty"`
+	OrderedDocumentIDs []string             `json:"orderedDocumentIds,omitempty"`
+	Documents          *DocumentsPatch      `json:"documents,omitempty"`
+	ActiveDocumentID   *string              `json:"activeDocumentId,omitempty"`
+	ActiveDocument     *ActiveDocumentPatch `json:"activeDocument,omitempty"`
+	RecentFiles        []string             `json:"recentFiles,omitempty"`
+	CanReopenLastFile  *bool                `json:"canReopenLastFile,omitempty"`
+	UI                 *UILayout            `json:"ui,omitempty"`
 }
 
 // StateResult is the envelope for an application-model hydration query.

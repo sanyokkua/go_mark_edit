@@ -131,6 +131,31 @@ it('STORY-012-AC-1 strips content while hydrating projection metadata', async ()
   expect(localStorage).toHaveLength(0);
 });
 
+it('projects optional active state', async () => {
+  const state = appState(9);
+  state.snapshot.documents = {};
+  state.snapshot.orderedDocumentIds = [];
+  state.snapshot.activeDocumentId = null;
+  state.snapshot.activeDocument = null;
+  state.activeBuffer = null;
+
+  await expect(
+    bootstrapAppModelProjection(createAdapter(async () => state)),
+  ).resolves.toEqual({
+    status: 'ready',
+    activeBuffer: null,
+    applicationVersion: 'test-build',
+  });
+
+  expect(store.getState().documents).toMatchObject({
+    revision: 9,
+    tabSetRevision: 9,
+    orderedIds: [],
+    byId: {},
+    activeDocumentId: null,
+  });
+});
+
 it('FR-WS-009 hydrates backend-acknowledged native geometry without a browser-owned substitute', async () => {
   const state = appState(3);
   state.snapshot.ui = {
@@ -298,6 +323,8 @@ it('STORY-027-AC-2 isolates stale listeners queued patches and partial projectio
   await expect(first).resolves.toEqual({ status: 'failed' });
   expect(store.getState().documents).toEqual({
     revision: -1,
+    tabSetRevision: -1,
+    orderedIds: [],
     byId: {},
     activeDocumentId: '',
   });

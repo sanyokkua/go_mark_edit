@@ -20,8 +20,10 @@ type openDocument struct {
 }
 
 type applicationState struct {
-	revision         uint64
-	documents        map[string]*openDocument
-	activeDocumentID string
-	ui               apperr.UILayout
+	revision           uint64
+	tabSetRevision     uint64
+	orderedDocumentIDs []string
+	documents          map[string]*openDocument
+	activeDocumentID   string
+	ui                 apperr.UILayout
 }

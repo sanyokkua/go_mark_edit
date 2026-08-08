@@ -11,7 +11,11 @@ import { store } from './index';
 import { disposeSettingsProjection } from './settingsProjection';
 
 export type AppModelBootstrapResult =
-  | { status: 'ready'; activeBuffer: ActiveBuffer; applicationVersion: string }
+  | {
+      status: 'ready';
+      activeBuffer: ActiveBuffer | null;
+      applicationVersion: string;
+    }
   | { status: 'failed' };
 
 interface BootstrapAttempt {
