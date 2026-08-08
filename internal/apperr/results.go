@@ -159,6 +159,24 @@ type DocumentTransitionResult struct {
 // DocumentTransitionOutcome is the contract-level descriptive alias used by lifecycle callers.
 type DocumentTransitionOutcome = DocumentTransitionResult
 
+type OpenStatus string
+
+const (
+	OpenStatusCancelled OpenStatus = "cancelled"
+	OpenStatusFocused   OpenStatus = "focused"
+	OpenStatusOpened    OpenStatus = "opened"
+	OpenStatusRefused   OpenStatus = "refused"
+)
+
+// OpenOutcome describes canonical Open without placing source in the metadata projection.
+type OpenOutcome struct {
+	Status             OpenStatus                   `json:"status"`
+	DocumentID         string                       `json:"documentId,omitempty"`
+	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
+	ActiveBuffer       *ActiveBufferAcknowledgement `json:"activeBuffer,omitempty"`
+	Error              *ClassifiedError             `json:"error,omitempty"`
+}
+
 // AppState combines a content-free snapshot with the active canonical buffer.
 type AppState struct {
 	Snapshot     AppStateSnapshot `json:"snapshot"`

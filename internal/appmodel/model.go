@@ -13,10 +13,11 @@ const (
 )
 
 type openDocument struct {
-	metadata     apperr.DocumentMetadata
-	content      string
-	baseline     string
-	hasSavedView bool
+	metadata          apperr.DocumentMetadata
+	content           string
+	baseline          string
+	canonicalIdentity string
+	hasSavedView      bool
 }
 
 type applicationState struct {
@@ -26,4 +27,6 @@ type applicationState struct {
 	documents          map[string]*openDocument
 	activeDocumentID   string
 	ui                 apperr.UILayout
+	recentFiles        []string
+	canReopenLastFile  bool
 }

@@ -32,6 +32,9 @@ type AppModelService struct {
 	pending          *pendingLayout
 	pendingFlushDone chan struct{}
 	startupErr       error
+	reservations     map[string]*openReservation
+	metadata         FileMetadataRepository
+	defaultOpenMode  string
 }
 
 type layoutTimer interface{ AfterFunc(time.Duration, func()) }
@@ -89,7 +92,7 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 	if timer == nil {
 		timer = systemLayoutTimer{}
 	}
-	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, writerID: newLayoutWriterID(), state: applicationState{
+	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), defaultOpenMode: OpenModeEditor, state: applicationState{
 		orderedDocumentIDs: []string{documentID},
 		documents:          map[string]*openDocument{documentID: initialDocument},
 		activeDocumentID:   documentID,
@@ -115,6 +118,23 @@ func NewEmptyAppModelService(emitter StatePatchEmitter) *AppModelService {
 	service.state.activeDocumentID = ""
 	service.mu.Unlock()
 	return service
+}
+
+// SetFileMetadataRepository configures optional per-path arrangement persistence.
+func (service *AppModelService) SetFileMetadataRepository(repository FileMetadataRepository) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.metadata = repository
+}
+
+// SetDefaultOpenMode records the acknowledged setting used before path arrangements.
+func (service *AppModelService) SetDefaultOpenMode(mode string) {
+	if mode != OpenModeEditor && mode != OpenModeViewer {
+		return
+	}
+	service.mu.Lock()
+	service.defaultOpenMode = mode
+	service.mu.Unlock()
 }
 
 func newLayoutWriterID() string {
@@ -160,6 +180,8 @@ func (service *AppModelService) GetState(_ context.Context) (apperr.AppState, er
 			ActiveDocumentID:   service.state.activeDocumentID,
 			ActiveDocument:     activeDocumentID,
 			OrderedDocumentIDs: orderedDocumentIDs,
+			RecentFiles:        append([]string(nil), service.state.recentFiles...),
+			CanReopenLastFile:  service.state.canReopenLastFile,
 			UI:                 cloneUILayout(service.state.ui),
 		},
 		ActiveBuffer: activeBuffer,
@@ -651,7 +673,9 @@ func (service *AppModelService) documentPatchLocked(documentID string) apperr.Ap
 		Documents: &apperr.DocumentsPatch{Upsert: map[string]apperr.DocumentMetadata{
 			documentID: metadata,
 		}},
-		ActiveDocument: activeDocumentPatch(service.state.activeDocumentID),
+		ActiveDocument:    activeDocumentPatch(service.state.activeDocumentID),
+		RecentFiles:       append([]string(nil), service.state.recentFiles...),
+		CanReopenLastFile: pointerTo(service.state.canReopenLastFile),
 	}
 }
 
@@ -670,6 +694,8 @@ func (service *AppModelService) snapshotLocked() applicationState {
 		documents:          make(map[string]*openDocument, len(service.state.documents)),
 		activeDocumentID:   service.state.activeDocumentID,
 		ui:                 cloneUILayout(service.state.ui),
+		recentFiles:        append([]string(nil), service.state.recentFiles...),
+		canReopenLastFile:  service.state.canReopenLastFile,
 	}
 	for documentID, document := range service.state.documents {
 		documentCopy := *document
