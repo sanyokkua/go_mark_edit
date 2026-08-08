@@ -88,6 +88,76 @@ it('T009 exposes guarded New/Open commands without converting classified outcome
   expect(openDocument).toHaveBeenCalledWith(4);
 });
 
+it('T010 flushes the latest buffer and view queues as one ordered lifecycle drain', async () => {
+  const calls: string[] = [];
+  const updateBuffer = jest.fn(
+    async (_documentId: string, content: string): Promise<VoidResult> => {
+      calls.push(`buffer:${content}`);
+      return {};
+    },
+  );
+  const setDocView = jest.fn(
+    async (_documentId: string, _view: DocViewInput): Promise<VoidResult> => {
+      calls.push('view');
+      return {};
+    },
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer,
+      setDocView,
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+
+  await adapter.updateBuffer('document-1', 'latest');
+  await adapter.updateDocView('document-1', viewAt(8));
+  await adapter.flushActiveSession?.('document-1');
+
+  expect(calls).toEqual(['buffer:latest', 'view']);
+  expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest');
+  expect(setDocView).toHaveBeenCalledWith('document-1', viewAt(8));
+});
+
+it('T010 aborts the lifecycle drain before the view queue when content acceptance fails', async () => {
+  const setDocView = jest.fn(
+    async (_documentId: string, _view: DocViewInput): Promise<VoidResult> => ({
+      error: { code: 'io' } as WireError,
+    }),
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (
+        _documentId: string,
+        _content: string,
+      ): Promise<VoidResult> => ({
+        error: {
+          code: 'io',
+          title: 'Buffer failed',
+          message: 'Buffer failed',
+          retryable: true,
+        },
+      }),
+      setDocView,
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+
+  await adapter.updateBuffer('document-1', 'latest');
+  await adapter.updateDocView('document-1', viewAt(9));
+
+  await expect(
+    adapter.flushActiveSession?.('document-1'),
+  ).rejects.toMatchObject({
+    code: 'io',
+  });
+  expect(setDocView).not.toHaveBeenCalled();
+});
+
 it('STORY-019-AC-1 coalesces edits in the adapter-owned timer', async () => {
   jest.useFakeTimers();
   const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(

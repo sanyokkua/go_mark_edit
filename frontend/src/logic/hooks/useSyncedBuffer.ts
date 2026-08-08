@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { appModelAdapter } from '../adapter';
+import {
+  createLifecycleBarrier,
+  type LifecycleCapture,
+} from './useLifecycleBarrier';
 import type {
   DocViewInput,
   DocumentView,
@@ -12,6 +16,7 @@ import type {
 } from '../../ui/components/CodeEditor';
 
 export interface EditorSynchronizationAdapter {
+  flushActiveSession?: (documentId: string) => Promise<void>;
   flushBuffer: (documentId: string) => Promise<void>;
   flushDocView: (documentId: string) => Promise<void>;
   updateBuffer: (documentId: string, content: string) => Promise<void>;
@@ -23,6 +28,11 @@ export interface EditorSynchronizationAdapter {
 }
 
 export interface SyncedBufferCallbacks {
+  activationToken: symbol;
+  flushActiveSession: (
+    expectedDocumentId: string,
+    expectedActivationToken: symbol,
+  ) => Promise<LifecycleCapture<string, DocViewInput, symbol>>;
   liveCursor: EditorPosition;
   onBlur: () => void;
   onChange: (content: string) => void;
@@ -68,12 +78,25 @@ export function useSyncedBuffer(
   documentId: string,
   view: DocumentView,
   adapter: EditorSynchronizationAdapter = appModelAdapter,
+  initialContent = '',
 ): SyncedBufferCallbacks {
   const viewRef = useRef(view);
   const cursorRef = useRef(
     toEditorPosition(view.cursor.line, view.cursor.column),
   );
   const currentDocumentRef = useRef(documentId);
+  const activationRef = useRef({
+    documentId,
+    token: Symbol('editor-activation'),
+  });
+  const contentRef = useRef(initialContent);
+  if (activationRef.current.documentId !== documentId) {
+    activationRef.current = {
+      documentId,
+      token: Symbol('editor-activation'),
+    };
+    contentRef.current = initialContent;
+  }
   const selectionRef = useRef(view.selection);
   const scrollRef = useRef(view.scroll);
   const [liveCursor, setLiveCursor] = useState<EditorPosition>(() =>
@@ -85,12 +108,47 @@ export function useSyncedBuffer(
     if (currentDocumentRef.current !== documentId) {
       const cursor = toEditorPosition(view.cursor.line, view.cursor.column);
       currentDocumentRef.current = documentId;
+      contentRef.current = initialContent;
       cursorRef.current = cursor;
       selectionRef.current = view.selection;
       scrollRef.current = view.scroll;
       setLiveCursor(cursor);
     }
-  }, [documentId, view]);
+  }, [documentId, initialContent, view]);
+
+  const lifecycleBarrier = useMemo(
+    () =>
+      createLifecycleBarrier<string, DocViewInput, symbol>({
+        flushBuffer: adapter.flushBuffer,
+        flushDocView: adapter.flushDocView,
+        queueBuffer: adapter.updateBuffer,
+        queueDocView: adapter.updateDocView,
+      }),
+    [adapter],
+  );
+
+  const flushActiveSession = useCallback(
+    (
+      expectedDocumentId: string,
+      expectedActivationToken: symbol,
+    ): Promise<LifecycleCapture<string, DocViewInput, symbol>> =>
+      lifecycleBarrier.flushActiveSession(
+        expectedDocumentId,
+        expectedActivationToken,
+        (): LifecycleCapture<string, DocViewInput, symbol> => ({
+          documentId,
+          activationToken: activationRef.current.token,
+          content: contentRef.current,
+          view: toDocViewInput(
+            viewRef.current,
+            cursorRef.current,
+            selectionRef.current,
+            scrollRef.current,
+          ),
+        }),
+      ),
+    [documentId, lifecycleBarrier],
+  );
 
   const updateDocView = useCallback((): void => {
     const update = adapter.updateLocalDocView ?? adapter.updateDocView;
@@ -107,6 +165,7 @@ export function useSyncedBuffer(
 
   const onChange = useCallback(
     (content: string): void => {
+      contentRef.current = content;
       void adapter.updateBuffer(documentId, content);
     },
     [adapter, documentId],
@@ -149,13 +208,14 @@ export function useSyncedBuffer(
   );
 
   const onBlur = useCallback((): void => {
-    void Promise.all([
-      adapter.flushBuffer(documentId),
-      adapter.flushDocView(documentId),
-    ]).catch((): void => undefined);
-  }, [adapter, documentId]);
+    void flushActiveSession(documentId, activationRef.current.token).catch(
+      (): void => undefined,
+    );
+  }, [documentId, flushActiveSession]);
 
   return {
+    activationToken: activationRef.current.token,
+    flushActiveSession,
     liveCursor,
     onBlur,
     onChange,

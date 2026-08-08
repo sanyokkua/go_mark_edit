@@ -168,7 +168,7 @@ suffix rules, cancellation, collisions, target drift, reservation release, every
 edits during write, the full status-precedence table, and committed projection loss with its bounded retry schedule
 while inspecting bytes and modes.
 
-- [ ] T010 [US1] Replace separate/fire-and-forget content and view drains with one identity-and-activation-token-bound imperative lifecycle barrier in `frontend/src/logic/hooks/useSyncedBuffer.ts`, `frontend/src/logic/hooks/useSyncedBuffer.test.ts`, `frontend/src/logic/hooks/useLifecycleBarrier.ts`, `frontend/src/logic/hooks/useLifecycleBarrier.test.ts`, `frontend/src/logic/store/docViewCommands.ts`, `frontend/src/logic/store/docViewCommands.test.ts`, `frontend/src/logic/adapter/appModelAdapter.ts`, and `frontend/src/logic/adapter/appModelAdapter.test.ts`.
+- [X] T010 [US1] Replace separate/fire-and-forget content and view drains with one identity-and-activation-token-bound imperative lifecycle barrier in `frontend/src/logic/hooks/useSyncedBuffer.ts`, `frontend/src/logic/hooks/useSyncedBuffer.test.ts`, `frontend/src/logic/hooks/useLifecycleBarrier.ts`, `frontend/src/logic/hooks/useLifecycleBarrier.test.ts`, `frontend/src/logic/store/docViewCommands.ts`, `frontend/src/logic/store/docViewCommands.test.ts`, `frontend/src/logic/adapter/appModelAdapter.ts`, and `frontend/src/logic/adapter/appModelAdapter.test.ts`.
   - **Outcome**: Save/switch/close/reload/hide either await newest content and complete view together for the captured activation or abort without an identity transition.
   - **Prerequisites**: T009.
   - **Primary ownership**: FR-FT-008; closes CP-05.

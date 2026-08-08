@@ -53,6 +53,7 @@ export interface AppModelAdapter {
   ) => Promise<DocumentTransitionResult>;
   openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
   updateBuffer: (documentId: string, content: string) => Promise<void>;
+  flushActiveSession?: (documentId: string) => Promise<void>;
   flushBuffer: (documentId: string) => Promise<void>;
   subscribeAcceptedBuffers: (
     listener: (buffer: AcceptedBuffer) => void,
@@ -332,6 +333,21 @@ export function createAppModelAdapter(
       record.nextGeneration += 1;
       record.pending = { generation: record.nextGeneration, content };
       scheduleBuffer(documentId);
+    },
+    async flushActiveSession(documentId: string): Promise<void> {
+      const buffer = bufferRecord(documentId);
+      const view = viewRecord(documentId);
+      if (buffer.timer !== undefined) {
+        clearTimeout(buffer.timer);
+        buffer.timer = undefined;
+      }
+      if (view.timer !== undefined) {
+        clearTimeout(view.timer);
+        view.timer = undefined;
+      }
+
+      await sendPendingBuffer(documentId);
+      await sendPendingView(documentId);
     },
     async flushBuffer(documentId: string): Promise<void> {
       const record = bufferRecord(documentId);

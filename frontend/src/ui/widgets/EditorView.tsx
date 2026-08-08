@@ -101,6 +101,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
       activeBuffer.documentId,
       view,
       adapter,
+      activeBuffer.content,
     );
     const synchronizeMountedEditorTheme = useCallback((): void => {
       void import('../components/monacoSetup').then(

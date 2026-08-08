@@ -63,6 +63,10 @@ function missingDocument(): WireError {
 }
 
 async function flushBeforeHidingEditor(documentId: string): Promise<void> {
+  if (appModelAdapter.flushActiveSession !== undefined) {
+    await appModelAdapter.flushActiveSession(documentId);
+    return;
+  }
   await appModelAdapter.flushBuffer(documentId);
   await appModelAdapter.flushDocView(documentId);
 }
