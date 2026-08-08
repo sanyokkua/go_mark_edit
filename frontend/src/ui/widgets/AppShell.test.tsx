@@ -82,6 +82,10 @@ it('FR-WS-007 keeps workspace and document regions while the reserved Assistant 
   );
   expect(screen.queryByLabelText(/assistant/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/assistant/i)).not.toBeInTheDocument();
+  expect(screen.getByTestId('application-shell')).toHaveAttribute(
+    'data-document-state',
+    'empty',
+  );
 
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
   const tokens = readSource('src/ui/styles/tokens.css');

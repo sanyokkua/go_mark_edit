@@ -14,8 +14,10 @@ import StatusBar from '../components/StatusBar';
 import { appModelAdapter } from '../../logic/adapter';
 import {
   type LivePreviewAdapter,
-  useLivePreview,
+  type LivePreviewSnapshot,
+  useLivePreviewSnapshot,
 } from '../../logic/hooks/useLivePreview';
+import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import {
   type EditorSynchronizationAdapter,
   useSyncedBuffer,
@@ -31,7 +33,7 @@ import {
   EditorSessionContext,
   useEditorSessionAttachment,
 } from './editorSession';
-import PreviewView from './PreviewView';
+import PreviewPane from './PreviewPane';
 import EditorChrome from './EditorChrome';
 import EditorContextMenu from './EditorContextMenu';
 import styles from './EditorView.module.css';
@@ -169,7 +171,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
   onScrollChange,
   visible,
 }: LivePreviewProps): React.JSX.Element | null => {
-  const source = useLivePreview(activeBuffer, adapter);
+  const accepted = useLivePreviewSnapshot(activeBuffer, adapter);
 
   if (!visible) {
     return null;
@@ -187,7 +189,20 @@ const LivePreview: React.FC<LivePreviewProps> = ({
           onScrollChange(event.currentTarget.scrollTop);
         }}
       >
-        <PreviewView source={source} />
+        <PreviewPane
+          ariaLabel={null}
+          accepted={accepted}
+          onRefresh={async () => {
+            const result = await dispatchAction('refresh-preview', {
+              invoke: (): LivePreviewSnapshot => accepted,
+              windowFocused: true,
+            });
+            if (result.status !== 'mutated') {
+              throw new Error('Preview refresh is unavailable.');
+            }
+            return accepted;
+          }}
+        />
       </div>
     </section>
   );

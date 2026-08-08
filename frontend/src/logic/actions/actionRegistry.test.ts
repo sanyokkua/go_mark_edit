@@ -24,6 +24,10 @@ it('T002 exposes one localized registry entry for every Editor-stage identity', 
   expect(getAction('format').availability.kind).toBe('deferred');
   expect(getAction('command-palette').availability.kind).toBe('deferred');
   expect(getAction('bold').shortcut).toBe('Mod+B');
+  expect(getAction('new-file').availability.kind).toBe('available');
+  expect(getAction('open-file').availability.kind).toBe('available');
+  expect(getAction('refresh-preview').shortcut).toBeUndefined();
+  expect(getAction('refresh-preview').surfaces).toContain('preview');
 });
 
 it('T002 keeps required surface membership and omits deferred actions from native clipboard ownership', () => {

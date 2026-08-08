@@ -1,9 +1,12 @@
 import { guardArity } from './bridgeGuard';
 import { unwrapPromise } from './envelope';
+import { createDocumentLifecycleAdapter } from './services';
 import type {
   AppModelState,
   AppStatePatch,
+  DocumentTransitionResult,
   DocViewInput,
+  OpenResult,
   UILayout,
 } from '../store/appModelTypes';
 import { isWireError, type WireError } from '../utils/parseError';
@@ -21,6 +24,10 @@ interface StateResult {
 
 export interface AppModelBindings {
   getState: () => Promise<StateResult>;
+  newDocument?: (
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
   updateBuffer: (documentId: string, content: string) => Promise<VoidResult>;
   setDocView: (documentId: string, view: DocViewInput) => Promise<VoidResult>;
   setUILayout: (layout: UILayout) => Promise<VoidResult>;
@@ -41,6 +48,10 @@ export interface AcceptedBuffer {
 
 export interface AppModelAdapter {
   getState: () => Promise<AppModelState>;
+  newDocument?: (
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
   updateBuffer: (documentId: string, content: string) => Promise<void>;
   flushBuffer: (documentId: string) => Promise<void>;
   subscribeAcceptedBuffers: (
@@ -109,6 +120,13 @@ export function createAppModelAdapter(
   runtime: AppModelRuntime,
 ): AppModelAdapter {
   const getState = guardArity('AppModelHandler.GetState', bindings.getState);
+  const documentLifecycle =
+    bindings.newDocument === undefined || bindings.openDocument === undefined
+      ? undefined
+      : createDocumentLifecycleAdapter({
+          newDocument: bindings.newDocument,
+          openDocument: bindings.openDocument,
+        });
   const updateBuffer = guardArity(
     'AppModelHandler.UpdateBuffer',
     bindings.updateBuffer,
@@ -307,6 +325,8 @@ export function createAppModelAdapter(
     async getState(): Promise<AppModelState> {
       return unwrapPromise(getState());
     },
+    newDocument: documentLifecycle?.newDocument,
+    openDocument: documentLifecycle?.openDocument,
     async updateBuffer(documentId: string, content: string): Promise<void> {
       const record = bufferRecord(documentId);
       record.nextGeneration += 1;

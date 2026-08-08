@@ -1,6 +1,10 @@
 import { guardArity } from './bridgeGuard';
 import { unwrap } from './envelope';
 import type {
+  DocumentTransitionResult,
+  OpenResult,
+} from '../store/appModelTypes';
+import type {
   AppearanceSettings,
   ContentPrivacySettings,
   EditorSettings,
@@ -28,6 +32,40 @@ export interface SettingsAdapter {
   updateContentPrivacy: (settings: ContentPrivacySettings) => Promise<void>;
   updateMarkdown: (settings: MarkdownSettings) => Promise<void>;
   updateEditor: (settings: EditorSettings) => Promise<void>;
+}
+
+export interface DocumentLifecycleBindings {
+  newDocument: (
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  openDocument: (expectedTabSetRevision: number) => Promise<OpenResult>;
+}
+
+export interface DocumentLifecycleAdapter {
+  newDocument: (
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  openDocument: (expectedTabSetRevision: number) => Promise<OpenResult>;
+}
+
+export function createDocumentLifecycleAdapter(
+  bindings: DocumentLifecycleBindings,
+): DocumentLifecycleAdapter {
+  const newDocument = guardArity(
+    'AppModelHandler.NewDocument',
+    bindings.newDocument,
+  );
+  const openDocument = guardArity(
+    'AppModelHandler.OpenDocument',
+    bindings.openDocument,
+  );
+
+  return {
+    newDocument: (expectedTabSetRevision: number) =>
+      newDocument(expectedTabSetRevision),
+    openDocument: (expectedTabSetRevision: number) =>
+      openDocument(expectedTabSetRevision),
+  };
 }
 
 export function createSettingsAdapter(

@@ -98,3 +98,23 @@ it('T043 refuses an available action without a typed invocation route', async ()
     status: 'unavailable',
   });
 });
+
+it('T009 dispatches New and Open as focused application commands', async () => {
+  const invoke = jest.fn(async () => ({ status: 'opened' }));
+
+  await expect(
+    dispatchAction('new-file', { applicationFocused: true, invoke }),
+  ).resolves.toMatchObject({ status: 'mutated', actionId: 'new-file' });
+  await expect(
+    dispatchAction('open-file', { applicationFocused: true, invoke }),
+  ).resolves.toMatchObject({ status: 'mutated', actionId: 'open-file' });
+  expect(invoke).toHaveBeenCalledTimes(2);
+});
+
+it('T009 dispatches Refresh preview as an available window action without a shortcut', async () => {
+  const invoke = jest.fn(async () => undefined);
+
+  await expect(
+    dispatchAction('refresh-preview', { windowFocused: true, invoke }),
+  ).resolves.toMatchObject({ status: 'mutated', actionId: 'refresh-preview' });
+});

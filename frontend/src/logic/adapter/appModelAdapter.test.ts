@@ -59,6 +59,35 @@ afterEach((): void => {
   }
 });
 
+it('T009 exposes guarded New/Open commands without converting classified outcomes', async () => {
+  const newDocument = jest.fn(async (_expectedTabSetRevision: number) => ({
+    data: { documentId: 'new-doc', content: '' },
+  }));
+  const openDocument = jest.fn(async (_expectedTabSetRevision: number) => ({
+    status: 'cancelled' as const,
+  }));
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      newDocument,
+      openDocument,
+      updateBuffer: async (): Promise<VoidResult> => ({}),
+      setDocView: async (): Promise<VoidResult> => ({}),
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+
+  await expect(adapter.newDocument?.(4)).resolves.toEqual({
+    data: { documentId: 'new-doc', content: '' },
+  });
+  await expect(adapter.openDocument?.(4)).resolves.toEqual({
+    status: 'cancelled',
+  });
+  expect(newDocument).toHaveBeenCalledWith(4);
+  expect(openDocument).toHaveBeenCalledWith(4);
+});
+
 it('STORY-019-AC-1 coalesces edits in the adapter-owned timer', async () => {
   jest.useFakeTimers();
   const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(

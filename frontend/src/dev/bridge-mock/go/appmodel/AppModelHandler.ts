@@ -1,4 +1,27 @@
 import { EventsEmit } from '../../runtime';
+import type { apperr } from '../../../../../wailsjs/go/models';
+
+type ActiveBufferResult = Pick<
+  apperr.ActiveBuffer,
+  'documentId' | 'documentRevision' | 'projectionRevision' | 'content'
+>;
+type ClassifiedErrorResult = Pick<
+  apperr.ClassifiedError,
+  | 'category'
+  | 'safeSubject'
+  | 'message'
+  | 'remediation'
+  | 'documentId'
+  | 'dedupKey'
+>;
+type DocumentTransitionResult = Pick<
+  apperr.DocumentTransitionResult,
+  'data' | 'error'
+>;
+type OpenResult = Pick<
+  apperr.OpenResult,
+  'status' | 'documentId' | 'projectionRevision' | 'activeBuffer' | 'error'
+>;
 
 interface CursorPosition {
   line: number;
@@ -63,15 +86,14 @@ interface StateResult {
   data?: {
     snapshot: {
       revision: number;
+      tabSetRevision: number;
       applicationVersion: string;
       documents: Record<string, DocumentMetadata>;
+      orderedDocumentIds: string[];
       activeDocumentId: string;
       ui: UILayout;
     };
-    activeBuffer: {
-      documentId: string;
-      content: string;
-    };
+    activeBuffer: ActiveBufferResult;
   };
   error?: WireError;
 }
@@ -82,34 +104,31 @@ interface VoidResult {
 
 interface AppStatePatch {
   revision: number;
+  tabSetRevision?: number;
+  orderedDocumentIds?: string[];
   documents?: { upsert?: Record<string, DocumentMetadata>; remove?: string[] };
   activeDocumentId?: string;
   ui?: UILayout;
 }
 
-const documentId = 'mock-document';
+interface MockOpenSelection {
+  path: string;
+  content?: string;
+}
+
+interface MockDocument {
+  metadata: DocumentMetadata;
+  content: string;
+  documentRevision: number;
+}
+
+const initialDocumentId = 'mock-document';
 let revision = 0;
-let content = '';
-let metadata: DocumentMetadata = {
-  documentId,
-  title: 'Untitled',
-  path: '',
-  dirty: false,
-  encoding: 'utf-8',
-  lineEnding: 'lf',
-  wordCount: 0,
-  view: {
-    arrangement: 'split',
-    editorVisible: true,
-    previewVisible: true,
-    cursor: { line: 1, column: 1 },
-    selection: {
-      start: { line: 1, column: 1 },
-      end: { line: 1, column: 1 },
-    },
-    scroll: { editor: 0, preview: 0 },
-  },
-};
+let tabSetRevision = 0;
+let orderedDocumentIds: string[] = [initialDocumentId];
+let activeDocumentId = initialDocumentId;
+let nextUntitledNumber = 2;
+let openSelection: MockOpenSelection | null = null;
 let layout: UILayout = {
   windowWidth: 1024,
   windowHeight: 768,
@@ -118,18 +137,83 @@ let layout: UILayout = {
 let pendingContinuousLayout: UILayout | undefined;
 let pendingContinuousTimer: ReturnType<typeof setTimeout> | undefined;
 
-function cloneMetadata(): DocumentMetadata {
+function newDocumentMetadata(
+  documentId: string,
+  title: string,
+  path = '',
+): DocumentMetadata {
   return {
-    ...metadata,
+    documentId,
+    title,
+    path,
+    dirty: false,
+    encoding: 'utf-8',
+    lineEnding: 'lf',
+    wordCount: 0,
     view: {
-      ...metadata.view,
-      cursor: { ...metadata.view.cursor },
+      arrangement: 'split',
+      editorVisible: true,
+      previewVisible: true,
+      cursor: { line: 1, column: 1 },
       selection: {
-        start: { ...metadata.view.selection.start },
-        end: { ...metadata.view.selection.end },
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
       },
-      scroll: { ...metadata.view.scroll },
+      scroll: { editor: 0, preview: 0 },
     },
+  };
+}
+
+function initialDocuments(): Record<string, MockDocument> {
+  return {
+    [initialDocumentId]: {
+      metadata: newDocumentMetadata(initialDocumentId, 'Untitled'),
+      content: '',
+      documentRevision: 0,
+    },
+  };
+}
+
+let documents = initialDocuments();
+
+function activeDocument(): MockDocument {
+  return documents[activeDocumentId];
+}
+
+function cloneMetadata(document: MockDocument): DocumentMetadata {
+  return {
+    ...document.metadata,
+    view: {
+      ...document.metadata.view,
+      cursor: { ...document.metadata.view.cursor },
+      selection: {
+        start: { ...document.metadata.view.selection.start },
+        end: { ...document.metadata.view.selection.end },
+      },
+      scroll: { ...document.metadata.view.scroll },
+    },
+  };
+}
+
+function activeBuffer(document: MockDocument): ActiveBufferResult {
+  return {
+    documentId: document.metadata.documentId,
+    documentRevision: document.documentRevision,
+    projectionRevision: revision,
+    content: document.content,
+  };
+}
+
+function classifiedError(
+  category: string,
+  message: string,
+  dedupKey: string,
+): ClassifiedErrorResult {
+  return {
+    category,
+    message,
+    remediation: 'Retry',
+    dedupKey,
   };
 }
 
@@ -149,17 +233,146 @@ function notFound(): VoidResult {
 }
 
 export function GetState(): Promise<StateResult> {
+  const current = activeDocument();
   return Promise.resolve({
     data: {
       snapshot: {
         revision,
+        tabSetRevision,
         applicationVersion: 'dev',
-        documents: { [documentId]: cloneMetadata() },
-        activeDocumentId: documentId,
+        documents: Object.fromEntries(
+          orderedDocumentIds.map((id) => [id, cloneMetadata(documents[id])]),
+        ),
+        orderedDocumentIds: [...orderedDocumentIds],
+        activeDocumentId,
         ui: { ...layout },
       },
-      activeBuffer: { documentId, content },
+      activeBuffer: activeBuffer(current),
     },
+  });
+}
+
+export function resetMockAppModel(): void {
+  if (pendingContinuousTimer !== undefined) {
+    clearTimeout(pendingContinuousTimer);
+  }
+  revision = 0;
+  tabSetRevision = 0;
+  orderedDocumentIds = [initialDocumentId];
+  activeDocumentId = initialDocumentId;
+  nextUntitledNumber = 2;
+  openSelection = null;
+  documents = initialDocuments();
+  layout = {
+    windowWidth: 1024,
+    windowHeight: 768,
+    sidebarVisible: true,
+  };
+  pendingContinuousLayout = undefined;
+  pendingContinuousTimer = undefined;
+}
+
+export function setMockOpenSelection(
+  selection: MockOpenSelection | null,
+): void {
+  openSelection = selection;
+}
+
+function expectedRevisionMatches(expectedTabSetRevision: number): boolean {
+  return expectedTabSetRevision === tabSetRevision;
+}
+
+function staleRevisionError(): ClassifiedErrorResult {
+  return classifiedError(
+    'conflict',
+    'The tab set changed before this operation completed.',
+    'mock-tab-revision-conflict',
+  );
+}
+
+function emitTabTransitionPatch(document: MockDocument): void {
+  revision += 1;
+  emitPatch({
+    revision,
+    tabSetRevision,
+    orderedDocumentIds: [...orderedDocumentIds],
+    activeDocumentId: document.metadata.documentId,
+    documents: {
+      upsert: { [document.metadata.documentId]: cloneMetadata(document) },
+    },
+  });
+}
+
+export function NewDocument(
+  expectedTabSetRevision: number,
+): Promise<DocumentTransitionResult> {
+  if (!expectedRevisionMatches(expectedTabSetRevision)) {
+    return Promise.resolve({ error: staleRevisionError() });
+  }
+
+  const documentId = `mock-document-${nextUntitledNumber}`;
+  const document: MockDocument = {
+    metadata: newDocumentMetadata(documentId, `Untitled ${nextUntitledNumber}`),
+    content: '',
+    documentRevision: 0,
+  };
+  nextUntitledNumber += 1;
+  documents = { ...documents, [documentId]: document };
+  orderedDocumentIds = [...orderedDocumentIds, documentId];
+  activeDocumentId = documentId;
+  tabSetRevision += 1;
+  emitTabTransitionPatch(document);
+
+  return Promise.resolve({ data: activeBuffer(document) });
+}
+
+function selectedDocumentId(path: string): string {
+  const normalized = path.replaceAll('\\', '/');
+  return normalized.slice(normalized.lastIndexOf('/') + 1) || 'selected.md';
+}
+
+export function OpenDocument(
+  expectedTabSetRevision: number,
+): Promise<OpenResult> {
+  if (!expectedRevisionMatches(expectedTabSetRevision)) {
+    return Promise.resolve({ status: 'refused', error: staleRevisionError() });
+  }
+  const selection = openSelection;
+  openSelection = null;
+  if (selection === null || selection.path.length === 0) {
+    return Promise.resolve({ status: 'cancelled' });
+  }
+
+  const documentId = selectedDocumentId(selection.path);
+  const existing = documents[documentId];
+  if (existing !== undefined) {
+    activeDocumentId = documentId;
+    revision += 1;
+    emitPatch({ revision, activeDocumentId: documentId });
+    return Promise.resolve({
+      status: 'focused',
+      documentId,
+      projectionRevision: revision,
+      activeBuffer: activeBuffer(existing),
+    });
+  }
+
+  const document: MockDocument = {
+    metadata: newDocumentMetadata(documentId, documentId, selection.path),
+    content: selection.content ?? `# ${documentId}`,
+    documentRevision: 0,
+  };
+  document.metadata.wordCount = document.content.trim().split(/\s+/).length;
+  documents = { ...documents, [documentId]: document };
+  orderedDocumentIds = [...orderedDocumentIds, documentId];
+  activeDocumentId = documentId;
+  tabSetRevision += 1;
+  emitTabTransitionPatch(document);
+  return Promise.resolve({
+    status: 'opened',
+    documentId,
+    projectionRevision: revision,
+    activeBuffer: activeBuffer(document),
   });
 }
 
@@ -167,20 +380,23 @@ export function UpdateBuffer(
   requestedDocumentId: string,
   nextContent: string,
 ): Promise<VoidResult> {
-  if (requestedDocumentId !== documentId) {
+  const document = documents[requestedDocumentId];
+  if (document === undefined) {
     return Promise.resolve(notFound());
   }
 
-  content = nextContent;
-  metadata = {
-    ...metadata,
-    dirty: content.length > 0,
-    wordCount: content.trim() === '' ? 0 : content.trim().split(/\s+/).length,
+  document.content = nextContent;
+  document.documentRevision += 1;
+  document.metadata = {
+    ...document.metadata,
+    dirty: nextContent.length > 0,
+    wordCount:
+      nextContent.trim() === '' ? 0 : nextContent.trim().split(/\s+/).length,
   };
   revision += 1;
   emitPatch({
     revision,
-    documents: { upsert: { [documentId]: cloneMetadata() } },
+    documents: { upsert: { [requestedDocumentId]: cloneMetadata(document) } },
   });
   return Promise.resolve({});
 }
@@ -189,12 +405,13 @@ export function SetDocView(
   requestedDocumentId: string,
   input: DocViewInput,
 ): Promise<VoidResult> {
-  if (requestedDocumentId !== documentId) {
+  const document = documents[requestedDocumentId];
+  if (document === undefined) {
     return Promise.resolve(notFound());
   }
 
-  metadata = {
-    ...metadata,
+  document.metadata = {
+    ...document.metadata,
     view: {
       arrangement:
         input.editorVisible && input.previewVisible
@@ -215,7 +432,7 @@ export function SetDocView(
   revision += 1;
   emitPatch({
     revision,
-    documents: { upsert: { [documentId]: cloneMetadata() } },
+    documents: { upsert: { [requestedDocumentId]: cloneMetadata(document) } },
   });
   return Promise.resolve({});
 }

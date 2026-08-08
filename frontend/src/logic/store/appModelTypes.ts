@@ -1,6 +1,8 @@
 export interface ActiveBuffer {
   documentId: string;
   content: string;
+  documentRevision?: number;
+  projectionRevision?: number;
 }
 
 export const viewArrangements = ['editor', 'split', 'preview'] as const;
@@ -121,6 +123,21 @@ export interface ClassifiedError {
   remediation: ClassifiedRemediation;
   documentId?: string;
   dedupKey: string;
+}
+
+export interface DocumentTransitionResult {
+  data?: ActiveBuffer;
+  error?: ClassifiedError;
+}
+
+export type OpenStatus = 'cancelled' | 'focused' | 'opened' | 'refused';
+
+export interface OpenResult {
+  status: OpenStatus;
+  documentId?: string;
+  projectionRevision?: number;
+  activeBuffer?: ActiveBuffer;
+  error?: ClassifiedError;
 }
 
 export interface DocViewInput {

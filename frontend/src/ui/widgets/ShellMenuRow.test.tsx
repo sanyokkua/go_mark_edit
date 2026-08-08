@@ -116,6 +116,55 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
   expect(onAbout).toHaveBeenCalledTimes(1);
 });
 
+it('T009 routes the available File New/Open controls through the lifecycle dispatcher', async () => {
+  const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
+  const onNewDocument = jest.fn(async () => undefined);
+  const onOpenDocument = jest.fn(async () => undefined);
+
+  render(
+    <ShellMenuRow
+      modalOpen={false}
+      onAbout={jest.fn()}
+      onNewDocument={onNewDocument}
+      onOpenDocument={onOpenDocument}
+      settingsMenuProps={settingsMenuProps}
+      viewMenuProps={viewMenuProps}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'File' }));
+  const fileMenu = screen.getByRole('menu', { name: 'File' });
+  expect(
+    within(fileMenu).getByRole('menuitem', { name: 'New File' }),
+  ).toBeEnabled();
+  expect(
+    within(fileMenu).getByRole('menuitem', { name: 'Open File' }),
+  ).toBeEnabled();
+
+  fireEvent.click(within(fileMenu).getByRole('menuitem', { name: 'New File' }));
+  await waitFor(() =>
+    expect(dispatch).toHaveBeenCalledWith(
+      'new-file',
+      expect.objectContaining({
+        applicationFocused: true,
+        invoke: expect.any(Function),
+      }),
+    ),
+  );
+  expect(onNewDocument).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Open File' }));
+  await waitFor(() =>
+    expect(dispatch).toHaveBeenCalledWith(
+      'open-file',
+      expect.objectContaining({ applicationFocused: true }),
+    ),
+  );
+  expect(onOpenDocument).toHaveBeenCalledTimes(1);
+  dispatch.mockRestore();
+});
+
 it('T018 moves the same ordered top-level actions into overflow at narrow width', () => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,

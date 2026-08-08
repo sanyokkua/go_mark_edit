@@ -16,6 +16,7 @@ import {
   getAction,
   type ActionId,
 } from '../../logic/actions/actionRegistry';
+import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import {
   createShellActionCatalogue,
   dispatchShellAction,
@@ -30,6 +31,8 @@ import styles from './ShellMenuRow.module.css';
 interface ShellMenuRowProps {
   modalOpen: boolean;
   onAbout: () => void;
+  onNewDocument?: () => Promise<unknown> | unknown;
+  onOpenDocument?: () => Promise<unknown> | unknown;
   onShortcuts?: () => void;
   settingsMenuProps: SettingsMenuProps;
   toggleFullscreen?: () => Promise<boolean>;
@@ -50,6 +53,8 @@ interface PopupAnchor {
 const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   modalOpen,
   onAbout,
+  onNewDocument,
+  onOpenDocument,
   onShortcuts,
   settingsMenuProps,
   toggleFullscreen = windowAdapter.toggleFullscreen,
@@ -227,6 +232,22 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     }
     void dispatchShellAction(selected);
   };
+  const dispatchFileAction = (id: ActionId): void => {
+    const invoke =
+      id === 'new-file'
+        ? onNewDocument
+        : id === 'open-file'
+          ? onOpenDocument
+          : undefined;
+    if (invoke === undefined) return;
+
+    setFileOpen(false);
+    setOverflowOpen(false);
+    void dispatchAction(id, {
+      applicationFocused: true,
+      invoke,
+    });
+  };
   const requestViewOpen = (open: boolean): void => {
     if (pendingViewOpen.current === open) {
       return;
@@ -403,6 +424,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                       className={styles.item}
                       disabled={item.availability.kind === 'deferred'}
                       key={item.id}
+                      onSelect={(): void => dispatchFileAction(item.id)}
                     >
                       {t(item.labelKey)}
                     </DropdownMenu.Item>
@@ -588,6 +610,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                         key={item.id}
                         role="menuitem"
                         type="button"
+                        onClick={(): void => dispatchFileAction(item.id)}
                       >
                         {t(item.labelKey)}
                       </button>

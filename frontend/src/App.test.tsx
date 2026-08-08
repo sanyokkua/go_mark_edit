@@ -428,7 +428,6 @@ it('STORY-012-AC-7 hands the active buffer to ephemeral editor session state', a
       screen.getByRole('status', { name: 'Active editor buffer' }),
     ).toHaveTextContent('ephemeral buffer');
   });
-
   expect(store.getState().documents).toMatchObject({
     revision: 12,
     byId: {
@@ -444,6 +443,40 @@ it('STORY-012-AC-7 hands the active buffer to ephemeral editor session state', a
   expect(localStorage.getItem('gme.theme')).toBe(
     JSON.stringify({ version: 1, theme: 'material', mode: 'auto' }),
   );
+  act((): void => disposeAppModelProjection());
+});
+
+it('T009 operates File New through the real menu and installs its acknowledged buffer', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  const newDocument = jest.fn(async (_tabSetRevision: number) => ({
+    data: {
+      documentId: 'document-2',
+      documentRevision: 0,
+      projectionRevision: 13,
+      content: 'new document content',
+    },
+  }));
+  mockedAppModelAdapter.newDocument = newDocument;
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValueOnce(
+    bootstrapState('initial content', 12),
+  );
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+
+  render(<App />);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'New File' }));
+
+  await waitFor(() => {
+    expect(newDocument).toHaveBeenCalledWith(12);
+    expect(
+      screen.getByRole('status', { name: 'Active editor buffer' }),
+    ).toHaveTextContent('new document content');
+  });
+  mockedAppModelAdapter.newDocument = undefined;
   act((): void => disposeAppModelProjection());
 });
 
@@ -591,7 +624,7 @@ it('keeps the normal shell unmounted while startup is unresolved', async () => {
   expect(await screen.findByLabelText('Document area')).toBeInTheDocument();
 });
 
-it('T037 exposes File and visual tab surfaces without downstream lifecycle state', async () => {
+it('T037 exposes File and visual tab surfaces while T009 enables New/Open lifecycle state', async () => {
   render(<App />);
 
   await screen.findByRole('main', { name: 'Document area' });
@@ -600,10 +633,8 @@ it('T037 exposes File and visual tab surfaces without downstream lifecycle state
     key: 'ArrowDown',
   });
   expect(screen.getByRole('menu', { name: 'File' })).toBeInTheDocument();
-  expect(screen.getByRole('menuitem', { name: 'Open File' })).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
+  expect(screen.getByRole('menuitem', { name: 'New File' })).toBeEnabled();
+  expect(screen.getByRole('menuitem', { name: 'Open File' })).toBeEnabled();
   expect(
     screen.queryByRole('complementary', { name: /assistant/i }),
   ).not.toBeInTheDocument();

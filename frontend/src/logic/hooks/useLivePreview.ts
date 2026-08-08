@@ -13,17 +13,42 @@ export interface LivePreviewAdapter {
 interface PreviewSnapshot {
   content: string;
   documentId: string;
+  revision: number;
 }
 
-export function useLivePreview(
+export interface LivePreviewSnapshot {
+  byteLength: number;
+  content: string;
+  documentId: string;
+  revision: number;
+}
+
+function byteLength(content: string): number {
+  let size = 0;
+  for (const character of content) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    size +=
+      codePoint <= 0x7f
+        ? 1
+        : codePoint <= 0x7ff
+          ? 2
+          : codePoint <= 0xffff
+            ? 3
+            : 4;
+  }
+  return size;
+}
+
+export function useLivePreviewSnapshot(
   activeBuffer: ActiveBuffer,
   adapter: LivePreviewAdapter = appModelAdapter,
-): string {
+): LivePreviewSnapshot {
   const acceptedGenerationRef = useRef(0);
   const [acceptedSnapshot, setAcceptedSnapshot] = useState<PreviewSnapshot>(
     () => ({
       documentId: activeBuffer.documentId,
       content: activeBuffer.content,
+      revision: activeBuffer.documentRevision ?? 0,
     }),
   );
 
@@ -46,6 +71,7 @@ export function useLivePreview(
         setAcceptedSnapshot({
           documentId: buffer.documentId,
           content: buffer.content,
+          revision: buffer.generation,
         });
       },
     );
@@ -56,7 +82,24 @@ export function useLivePreview(
     };
   }, [activeBuffer.documentId, adapter]);
 
-  return acceptedSnapshot.documentId === activeBuffer.documentId
-    ? acceptedSnapshot.content
-    : activeBuffer.content;
+  const current =
+    acceptedSnapshot.documentId === activeBuffer.documentId
+      ? acceptedSnapshot
+      : {
+          documentId: activeBuffer.documentId,
+          content: activeBuffer.content,
+          revision: activeBuffer.documentRevision ?? 0,
+        };
+
+  return {
+    ...current,
+    byteLength: byteLength(current.content),
+  };
+}
+
+export function useLivePreview(
+  activeBuffer: ActiveBuffer,
+  adapter: LivePreviewAdapter = appModelAdapter,
+): string {
+  return useLivePreviewSnapshot(activeBuffer, adapter).content;
 }

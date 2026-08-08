@@ -18,6 +18,11 @@ const AppShell: React.FC = (): React.JSX.Element => {
   const workspaceVisible = useAppSelector(
     (state) => state.ui.layout.sidebarVisible ?? true,
   );
+  const hasActiveDocument = useAppSelector(
+    (state) =>
+      state.documents.activeDocumentId !== null &&
+      state.documents.activeDocumentId !== '',
+  );
   const acknowledgedWorkspaceWidth = useAppSelector(
     (state) => state.ui.layout.sidebarWidth ?? 256,
   );
@@ -121,6 +126,7 @@ const AppShell: React.FC = (): React.JSX.Element => {
     <div
       className={styles.shell}
       data-testid="application-shell"
+      data-document-state={hasActiveDocument ? 'active' : 'empty'}
       data-workspace-visible={String(workspaceVisible)}
       style={shellStyle}
     >

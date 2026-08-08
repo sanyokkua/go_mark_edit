@@ -8,6 +8,8 @@ import {
 } from 'wailsjs/go/settings/SettingsHandler';
 import {
   GetState,
+  NewDocument,
+  OpenDocument,
   SetDocView,
   SetUILayout,
   UpdateBuffer,
@@ -31,8 +33,63 @@ import {
   type AppModelBindings,
   type AppModelRuntime,
 } from './appModelAdapter';
-import { createSettingsAdapter, type SettingsBindings } from './services';
+import {
+  createDocumentLifecycleAdapter,
+  createSettingsAdapter,
+  type SettingsBindings,
+} from './services';
 import { createWindowAdapter } from './windowAdapter';
+import type {
+  ClassifiedError,
+  DocumentTransitionResult,
+  OpenResult,
+} from '../store/appModelTypes';
+
+function normalizeClassifiedError(
+  error: apperr.ClassifiedError | undefined,
+): ClassifiedError | undefined {
+  if (error === undefined) return undefined;
+  return {
+    ...error,
+    category: error.category as ClassifiedError['category'],
+    remediation: (error.remediation ?? '') as ClassifiedError['remediation'],
+  };
+}
+
+function normalizeTransitionResult(
+  result: apperr.DocumentTransitionResult,
+): DocumentTransitionResult {
+  return {
+    data:
+      result.data === undefined
+        ? undefined
+        : {
+            documentId: result.data.documentId,
+            documentRevision: result.data.documentRevision,
+            projectionRevision: result.data.projectionRevision,
+            content: result.data.content,
+          },
+    error: normalizeClassifiedError(result.error),
+  };
+}
+
+function normalizeOpenResult(result: apperr.OpenResult): OpenResult {
+  return {
+    status: result.status as OpenResult['status'],
+    documentId: result.documentId,
+    projectionRevision: result.projectionRevision,
+    activeBuffer:
+      result.activeBuffer === undefined
+        ? undefined
+        : {
+            documentId: result.activeBuffer.documentId,
+            documentRevision: result.activeBuffer.documentRevision,
+            projectionRevision: result.activeBuffer.projectionRevision,
+            content: result.activeBuffer.content,
+          },
+    error: normalizeClassifiedError(result.error),
+  };
+}
 
 const generatedSettingsBindings: SettingsBindings = {
   getSettings: GetSettings,
@@ -64,6 +121,10 @@ const generatedAppModelBindings: AppModelBindings = {
       },
     };
   },
+  newDocument: async (expectedTabSetRevision) =>
+    normalizeTransitionResult(await NewDocument(expectedTabSetRevision)),
+  openDocument: async (expectedTabSetRevision) =>
+    normalizeOpenResult(await OpenDocument(expectedTabSetRevision)),
   updateBuffer: UpdateBuffer,
   setDocView: (documentId, view) =>
     SetDocView(documentId, new apperr.DocViewInput(view)),
@@ -106,6 +167,9 @@ export {
 } from './appModelAdapter';
 export {
   createSettingsAdapter,
+  createDocumentLifecycleAdapter,
+  type DocumentLifecycleAdapter,
+  type DocumentLifecycleBindings,
   type SettingsAdapter,
   type SettingsBindings,
 } from './services';

@@ -28,6 +28,7 @@ import type {
   ViewArrangement,
 } from './logic/store/appModelTypes';
 import { setWorkspaceVisible } from './logic/store/uiLayoutCommands';
+import { appModelAdapter } from './logic/adapter';
 import { useEditorSettings } from './logic/settings/editorSettings';
 import { bootstrapSettingsProjection } from './logic/store/settingsProjection';
 import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
@@ -87,6 +88,8 @@ type BootstrapStatus = 'loading' | 'ready' | 'failed';
 interface ApplicationMenuState {
   modalOpen: boolean;
   onAbout: () => void;
+  onNewDocument: (expectedTabSetRevision: number) => Promise<unknown>;
+  onOpenDocument: (expectedTabSetRevision: number) => Promise<unknown>;
   onShortcuts: () => void;
 }
 
@@ -108,12 +111,21 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
   const workspaceVisible = useAppSelector(
     (state) => state.ui.layout.sidebarVisible ?? true,
   );
+  const tabSetRevision = useAppSelector(
+    (state) => state.documents.tabSetRevision,
+  );
   const editorSettings = useEditorSettings();
 
   return (
     <ShellMenuRow
       modalOpen={menuState.modalOpen}
       onAbout={menuState.onAbout}
+      onNewDocument={(): Promise<unknown> =>
+        menuState.onNewDocument(tabSetRevision)
+      }
+      onOpenDocument={(): Promise<unknown> =>
+        menuState.onOpenDocument(tabSetRevision)
+      }
       onShortcuts={menuState.onShortcuts}
       settingsMenuProps={{
         ...settingsMenuProps,
@@ -174,13 +186,39 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [version, setVersion] = useState('');
   const bootstrapGeneration = useRef(0);
+  const onNewDocument = useCallback(
+    async (expectedTabSetRevision: number): Promise<unknown> => {
+      const result = await appModelAdapter.newDocument?.(
+        expectedTabSetRevision,
+      );
+      if (result?.data !== undefined) {
+        setActiveBuffer(result.data);
+      }
+      return result;
+    },
+    [],
+  );
+  const onOpenDocument = useCallback(
+    async (expectedTabSetRevision: number): Promise<unknown> => {
+      const result = await appModelAdapter.openDocument?.(
+        expectedTabSetRevision,
+      );
+      if (result?.activeBuffer !== undefined) {
+        setActiveBuffer(result.activeBuffer);
+      }
+      return result;
+    },
+    [],
+  );
   const applicationMenuState = useMemo<ApplicationMenuState>(
     () => ({
       modalOpen: settingsOpen || aboutOpen || shortcutsOpen,
       onAbout: (): void => setAboutOpen(true),
+      onNewDocument,
+      onOpenDocument,
       onShortcuts: (): void => setShortcutsOpen(true),
     }),
-    [aboutOpen, settingsOpen, shortcutsOpen],
+    [aboutOpen, onNewDocument, onOpenDocument, settingsOpen, shortcutsOpen],
   );
 
   const runBootstrap = useCallback(

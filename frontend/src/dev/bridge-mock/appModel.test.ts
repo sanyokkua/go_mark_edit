@@ -1,10 +1,18 @@
 import {
   GetState,
+  NewDocument,
+  OpenDocument,
+  resetMockAppModel,
+  setMockOpenSelection,
   SetDocView,
   SetUILayout,
   UpdateBuffer,
 } from './go/appmodel/AppModelHandler';
 import { EventsOn } from './runtime';
+
+beforeEach(() => {
+  resetMockAppModel();
+});
 
 it('STORY-012-AC-6 mirrors the app-model bridge contract', async () => {
   const initial = await GetState();
@@ -18,7 +26,12 @@ it('STORY-012-AC-6 mirrors the app-model bridge contract', async () => {
           }),
         }),
       }),
-      activeBuffer: { documentId: 'mock-document', content: '' },
+      activeBuffer: {
+        documentId: 'mock-document',
+        documentRevision: 0,
+        projectionRevision: 0,
+        content: '',
+      },
     }),
   });
 
@@ -79,4 +92,120 @@ it('STORY-012-AC-6 mirrors the app-model bridge contract', async () => {
     expect.objectContaining({ ui: { sidebarVisible: false } }),
   ]);
   expect(JSON.stringify(patches)).not.toContain('one two');
+});
+
+it('accepts NewDocument at the current tab revision and emits one activation patch', async () => {
+  const initial = await GetState();
+  const patches: unknown[] = [];
+  const unsubscribe = EventsOn('state:patch', (patch: unknown): void => {
+    patches.push(patch);
+  });
+
+  await expect(
+    NewDocument(initial.data!.snapshot.tabSetRevision),
+  ).resolves.toEqual({
+    data: {
+      documentId: 'mock-document-2',
+      documentRevision: 0,
+      projectionRevision: 1,
+      content: '',
+    },
+  });
+  unsubscribe();
+
+  const state = await GetState();
+  expect(state.data!.snapshot.orderedDocumentIds).toEqual([
+    'mock-document',
+    'mock-document-2',
+  ]);
+  expect(state.data!.snapshot.activeDocumentId).toBe('mock-document-2');
+  expect(patches).toEqual([
+    expect.objectContaining({
+      revision: 1,
+      tabSetRevision: 1,
+      orderedDocumentIds: ['mock-document', 'mock-document-2'],
+      activeDocumentId: 'mock-document-2',
+      documents: {
+        upsert: {
+          'mock-document-2': expect.objectContaining({
+            title: 'Untitled 2',
+            dirty: false,
+          }),
+        },
+      },
+    }),
+  ]);
+});
+
+it('rejects stale NewDocument without mutating state', async () => {
+  const initial = await GetState();
+
+  await expect(
+    NewDocument(initial.data!.snapshot.tabSetRevision + 1),
+  ).resolves.toEqual({
+    error: expect.objectContaining({
+      category: 'conflict',
+      remediation: 'Retry',
+    }),
+  });
+  await expect(GetState()).resolves.toEqual(initial);
+});
+
+it('returns OpenDocument cancellation without a patch or state mutation', async () => {
+  const initial = await GetState();
+  const patches: unknown[] = [];
+  const unsubscribe = EventsOn('state:patch', (patch: unknown): void => {
+    patches.push(patch);
+  });
+
+  await expect(
+    OpenDocument(initial.data!.snapshot.tabSetRevision),
+  ).resolves.toEqual({
+    status: 'cancelled',
+  });
+  unsubscribe();
+
+  expect(patches).toEqual([]);
+  await expect(GetState()).resolves.toEqual(initial);
+});
+
+it('opens the selected mock path and returns its active-buffer acknowledgement', async () => {
+  setMockOpenSelection({ path: '/tmp/selected.md', content: '# selected' });
+  const initial = await GetState();
+  const patches: unknown[] = [];
+  const unsubscribe = EventsOn('state:patch', (patch: unknown): void => {
+    patches.push(patch);
+  });
+
+  await expect(
+    OpenDocument(initial.data!.snapshot.tabSetRevision),
+  ).resolves.toEqual({
+    status: 'opened',
+    documentId: 'selected.md',
+    projectionRevision: 1,
+    activeBuffer: {
+      documentId: 'selected.md',
+      documentRevision: 0,
+      projectionRevision: 1,
+      content: '# selected',
+    },
+  });
+  unsubscribe();
+
+  expect(patches).toEqual([
+    expect.objectContaining({
+      revision: 1,
+      tabSetRevision: 1,
+      orderedDocumentIds: ['mock-document', 'selected.md'],
+      activeDocumentId: 'selected.md',
+      documents: {
+        upsert: {
+          'selected.md': expect.objectContaining({
+            path: '/tmp/selected.md',
+            title: 'selected.md',
+          }),
+        },
+      },
+    }),
+  ]);
 });

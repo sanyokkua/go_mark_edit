@@ -5,6 +5,7 @@ export type ActionSurface =
   | 'view-menu'
   | 'about-menu'
   | 'toolbar'
+  | 'preview'
   | 'overflow'
   | 'context'
   | 'shortcuts';
@@ -35,6 +36,7 @@ export type ActionId =
   | 'editor'
   | 'split'
   | 'preview'
+  | 'refresh-preview'
   | 'toggle-sidebar'
   | 'toggle-assistant'
   | 'line-numbers'
@@ -137,13 +139,13 @@ const laterDeferred = deferred('later-slice');
 
 export const actionRegistry: readonly ActionEntry[] = Object.freeze([
   entry('new-file', 'application', ['file-menu'], {
-    availability: fileDeferred,
+    availability: available(),
   }),
   entry('new-window', 'application', ['file-menu'], {
     availability: fileDeferred,
   }),
   entry('open-file', 'application', ['file-menu'], {
-    availability: fileDeferred,
+    availability: available(),
   }),
   entry('open-folder', 'application', ['file-menu'], {
     availability: fileDeferred,
@@ -186,6 +188,7 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
   entry('editor', 'window', ['view-menu', 'toolbar']),
   entry('split', 'window', ['view-menu', 'toolbar']),
   entry('preview', 'window', ['view-menu', 'toolbar']),
+  entry('refresh-preview', 'window', ['preview']),
   entry('toggle-sidebar', 'window', ['view-menu', 'toolbar'], {
     shortcut: 'Mod+\\',
   }),
