@@ -612,7 +612,7 @@ it('Reload replaces the active same-document buffer from authoritative state', a
     status: 'reloaded',
     documentId: 'document-1',
   });
-  mockedAppModelAdapter.flushActiveSession?.mockReset();
+  mockedAppModelAdapter.flushActiveSession = jest.fn(async () => undefined);
 
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: 'File' }));
