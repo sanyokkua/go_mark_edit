@@ -5,7 +5,7 @@
 
 **Created**: 2026-08-07
 
-**Status**: Draft — clarified, visually bounded, and ready for planning
+**Status**: ready for implementation
 
 **Input**: User description: "I can open, edit, save, and switch between real Markdown files. Add New, Open, Save, Save As, backend-authoritative file lifecycle, atomic preservation, dirty/close protection, saved-file autosave, external-change recovery, identity-safe real tabs, recent files, the 40-document limit, and mockup-aligned file widgets. Keep workspace enumeration, folder trees, file associations, rich-rendering expansion, packaging, and Assistant behavior deferred."
 
