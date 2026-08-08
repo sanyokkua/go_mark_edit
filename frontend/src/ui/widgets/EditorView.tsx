@@ -91,18 +91,40 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
     const editorSettings = useEditorSettings().settings;
     const viewStateCaptureRef = useRef<(() => void) | null>(null);
     const attachEditor = useEditorSessionAttachment();
-    const attachCurrentEditor = useCallback(
-      (editor: Parameters<typeof attachEditor>[1]): void => {
-        attachEditor(activeBuffer.documentId, editor);
-      },
-      [activeBuffer.documentId, attachEditor],
-    );
     const synchronizedBuffer = useSyncedBuffer(
       activeBuffer.documentId,
       view,
       adapter,
       activeBuffer.content,
     );
+    const activationToken = synchronizedBuffer.activationToken;
+    const flushSession = synchronizedBuffer.flushActiveSession;
+    const attachCurrentEditor = useCallback(
+      (editor: Parameters<typeof attachEditor>[1]): void => {
+        attachEditor(
+          activeBuffer.documentId,
+          editor,
+          synchronizedBuffer.activationToken,
+        );
+      },
+      [
+        activeBuffer.documentId,
+        attachEditor,
+        synchronizedBuffer.activationToken,
+      ],
+    );
+    useEffect((): (() => void) | undefined => {
+      if (adapter.registerActiveSession === undefined) {
+        return undefined;
+      }
+      return adapter.registerActiveSession({
+        documentId: activeBuffer.documentId,
+        activationToken,
+        flushActiveSession: async (): Promise<void> => {
+          await flushSession(activeBuffer.documentId, activationToken);
+        },
+      });
+    }, [adapter, activeBuffer.documentId, activationToken, flushSession]);
     const synchronizeMountedEditorTheme = useCallback((): void => {
       void import('../components/monacoSetup').then(
         ({ applyMonacoThemeFromRoot }): void => {
@@ -141,6 +163,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
         ref={attachCurrentEditor}
         documentId={activeBuffer.documentId}
         initialValue={activeBuffer.content}
+        activationId={synchronizedBuffer.activationId}
         fontSize={editorSettings.fontSize as 13 | 14 | 16}
         lineNumbers={editorSettings.lineNumbers ? 'on' : 'off'}
         wordWrap={editorSettings.wordWrap ? 'on' : 'off'}

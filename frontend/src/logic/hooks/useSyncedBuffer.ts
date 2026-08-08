@@ -16,7 +16,15 @@ import type {
 } from '../../ui/components/CodeEditor';
 
 export interface EditorSynchronizationAdapter {
-  flushActiveSession?: (documentId: string) => Promise<void>;
+  flushActiveSession?: (
+    documentId: string,
+    expectedActivationToken?: symbol,
+  ) => Promise<void>;
+  registerActiveSession?: (session: {
+    documentId: string;
+    activationToken: symbol;
+    flushActiveSession: () => Promise<void>;
+  }) => () => void;
   flushBuffer: (documentId: string) => Promise<void>;
   flushDocView: (documentId: string) => Promise<void>;
   updateBuffer: (documentId: string, content: string) => Promise<void>;
@@ -29,6 +37,7 @@ export interface EditorSynchronizationAdapter {
 
 export interface SyncedBufferCallbacks {
   activationToken: symbol;
+  activationId: string;
   flushActiveSession: (
     expectedDocumentId: string,
     expectedActivationToken: symbol,
@@ -41,6 +50,8 @@ export interface SyncedBufferCallbacks {
   onPreviewScrollChange: (scrollTop: number) => void;
   onSelectionChange: (selection: EditorSelection | null) => void;
 }
+
+let activationSequence = 0;
 
 function toSelectionRange(selection: EditorSelection): SelectionRange {
   return {
@@ -86,7 +97,10 @@ export function useSyncedBuffer(
   );
   const currentDocumentRef = useRef(documentId);
   const activation = useMemo(
-    () => ({ documentId, token: Symbol('editor-activation') }),
+    () => ({
+      documentId,
+      token: Symbol(`editor-activation-${++activationSequence}`),
+    }),
     [documentId],
   );
   const contentRef = useRef(initialContent);
@@ -208,6 +222,7 @@ export function useSyncedBuffer(
 
   return {
     activationToken: activation.token,
+    activationId: String(activation.token),
     flushActiveSession,
     liveCursor,
     onBlur,

@@ -1,6 +1,7 @@
 import { guardArity } from './bridgeGuard';
 import { unwrapPromise } from './envelope';
 import { createDocumentLifecycleAdapter } from './services';
+import type { RegisteredLifecycleSession } from '../hooks/useLifecycleBarrier';
 import type {
   AppModelState,
   AppStatePatch,
@@ -55,7 +56,13 @@ export interface AppModelAdapter {
   ) => Promise<DocumentTransitionResult>;
   openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
   updateBuffer: (documentId: string, content: string) => Promise<void>;
-  flushActiveSession?: (documentId: string) => Promise<void>;
+  flushActiveSession?: (
+    documentId: string,
+    expectedActivationToken?: symbol,
+  ) => Promise<void>;
+  registerActiveSession?: (
+    session: RegisteredLifecycleSession<symbol>,
+  ) => () => void;
   flushBuffer: (documentId: string) => Promise<void>;
   subscribeAcceptedBuffers: (
     listener: (buffer: AcceptedBuffer) => void,
@@ -153,6 +160,7 @@ export function createAppModelAdapter(
   let greatestProjectionRevision = 0;
   let recoveryPromise: Promise<AppModelState | RecoverySurface> | undefined;
   let recoverySurface: RecoverySurface | undefined;
+  let activeSession: RegisteredLifecycleSession<symbol> | undefined;
 
   function assertCommandsAvailable(): void {
     if (recoveryPromise !== undefined || recoverySurface !== undefined) {
@@ -338,6 +346,22 @@ export function createAppModelAdapter(
     }, BUFFER_SYNC_MS);
   }
 
+  async function flushQueuedSession(documentId: string): Promise<void> {
+    const buffer = bufferRecord(documentId);
+    const view = viewRecord(documentId);
+    if (buffer.timer !== undefined) {
+      clearTimeout(buffer.timer);
+      buffer.timer = undefined;
+    }
+    if (view.timer !== undefined) {
+      clearTimeout(view.timer);
+      view.timer = undefined;
+    }
+
+    await sendPendingBuffer(documentId);
+    await sendPendingView(documentId);
+  }
+
   async function hydrateState(): Promise<AppModelState> {
     const state = await unwrapPromise(getState());
     greatestProjectionRevision = Math.max(
@@ -374,21 +398,37 @@ export function createAppModelAdapter(
       record.pending = { generation: record.nextGeneration, content };
       scheduleBuffer(documentId);
     },
-    async flushActiveSession(documentId: string): Promise<void> {
+    async flushActiveSession(
+      documentId: string,
+      expectedActivationToken?: symbol,
+    ): Promise<void> {
       assertCommandsAvailable();
-      const buffer = bufferRecord(documentId);
-      const view = viewRecord(documentId);
-      if (buffer.timer !== undefined) {
-        clearTimeout(buffer.timer);
-        buffer.timer = undefined;
+      if (
+        activeSession !== undefined &&
+        activeSession.documentId === documentId
+      ) {
+        if (
+          expectedActivationToken !== undefined &&
+          !Object.is(expectedActivationToken, activeSession.activationToken)
+        ) {
+          throw new Error(
+            'The active editor activation changed while its lifecycle state was being flushed.',
+          );
+        }
+        await activeSession.flushActiveSession();
+        return;
       }
-      if (view.timer !== undefined) {
-        clearTimeout(view.timer);
-        view.timer = undefined;
-      }
-
-      await sendPendingBuffer(documentId);
-      await sendPendingView(documentId);
+      await flushQueuedSession(documentId);
+    },
+    registerActiveSession(
+      session: RegisteredLifecycleSession<symbol>,
+    ): () => void {
+      activeSession = session;
+      return (): void => {
+        if (activeSession === session) {
+          activeSession = undefined;
+        }
+      };
     },
     async flushBuffer(documentId: string): Promise<void> {
       assertCommandsAvailable();

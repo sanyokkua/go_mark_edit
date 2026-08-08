@@ -37,6 +37,8 @@ export interface CodeEditorHandle {
 export interface CodeEditorProps {
   documentId: string;
   initialValue: string;
+  /** Fresh identity for each activation; omitted only by isolated legacy callers. */
+  activationId?: string;
   lineNumbers?: 'on' | 'off';
   wordWrap?: 'on' | 'off';
   fontSize?: 13 | 14 | 16;
@@ -117,8 +119,10 @@ function getEditorFontSize(): number {
   return Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 14;
 }
 
-function modelPath(documentId: string): string {
-  return `inmemory://gomarkedit/${encodeURIComponent(documentId)}.md`;
+function modelPath(documentId: string, activationId?: string): string {
+  const activationSuffix =
+    activationId === undefined ? '' : `/${encodeURIComponent(activationId)}`;
+  return `inmemory://gomarkedit/${encodeURIComponent(documentId)}${activationSuffix}.md`;
 }
 
 function applyEdit(
@@ -152,6 +156,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     {
       documentId,
       initialValue,
+      activationId,
       lineNumbers = 'on',
       wordWrap = 'off',
       fontSize,
@@ -212,6 +217,19 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
         disposeThemeObserver?.();
       };
     }, []);
+
+    useEffect((): (() => void) => {
+      return (): void => {
+        const model = editorRef.current?.getModel();
+        if (typeof model?.dispose === 'function') {
+          model.dispose();
+        }
+        if (typeof editorRef.current?.dispose === 'function') {
+          editorRef.current.dispose();
+        }
+        editorRef.current = null;
+      };
+    }, [activationId, documentId]);
 
     useEffect(() => {
       const wasVisible = wasVisibleRef.current;
@@ -313,10 +331,10 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
           fallback={<div aria-busy="true" className={styles.loading} />}
         >
           <MonacoEditor
-            key={documentId}
+            key={`${documentId}:${activationId ?? 'legacy'}`}
             defaultValue={initialValue}
             language="markdown"
-            path={modelPath(documentId)}
+            path={modelPath(documentId, activationId)}
             className={styles.editor}
             options={{
               lineNumbers,

@@ -14,6 +14,13 @@ export interface LifecycleCapture<
   view: TView;
 }
 
+/** The active editor session registered with lifecycle commands. */
+export interface RegisteredLifecycleSession<TActivationToken> {
+  documentId: string;
+  activationToken: TActivationToken;
+  flushActiveSession: () => Promise<void>;
+}
+
 /** Reads the latest active-session state at the instant a lifecycle command starts. */
 export type LifecycleCaptureProvider<TContent, TView, TActivationToken> = () =>
   | LifecycleCapture<TContent, TView, TActivationToken>

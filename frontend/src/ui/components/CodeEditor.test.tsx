@@ -14,6 +14,7 @@ import { applyMonacoThemeFromRoot } from './monacoSetup';
 import { createDocumentCommands } from '../../logic/hooks/useDocumentCommands';
 
 interface MockModel {
+  dispose: jest.Mock<void, []>;
   getFullModelRange: jest.Mock<IRange, []>;
   getValue: jest.Mock<string, []>;
   setValue: jest.Mock<void, [string]>;
@@ -52,6 +53,7 @@ function resetMockMonaco(): void {
     positionColumn: 1,
   } as ISelection;
   mockRuntime.model = {
+    dispose: jest.fn<void, []>(),
     getFullModelRange: jest.fn<IRange, []>(() => fullModelRange),
     getValue: jest.fn<string, []>(() => mockRuntime.content),
     setValue: jest.fn<void, [string]>(),
@@ -82,6 +84,7 @@ function resetMockMonaco(): void {
       },
     ),
     pushUndoStop: jest.fn(),
+    dispose: jest.fn(),
   } as unknown as editor.IStandaloneCodeEditor;
   mockRuntime.props = null;
   mockRuntime.scrollTop = 0;
@@ -221,6 +224,31 @@ it('STORY-013-AC-4 seeds a model only for a new document identity', async () => 
     defaultValue: 'second document',
     path: 'inmemory://gomarkedit/document-2.md',
   });
+});
+
+it('T017 creates a fresh activation model and drops prior undo identity', async () => {
+  const { rerender } = render(
+    <CodeEditor
+      documentId="document-1"
+      activationId="Symbol(editor-activation-1)"
+      initialValue="first activation"
+    />,
+  );
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+  const firstPath = mockRuntime.props?.path;
+
+  rerender(
+    <CodeEditor
+      documentId="document-1"
+      activationId="Symbol(editor-activation-2)"
+      initialValue="second activation"
+    />,
+  );
+
+  expect(mockRuntime.props?.path).not.toBe(firstPath);
+  expect(mockRuntime.props?.defaultValue).toBe('second activation');
+  expect(mockRuntime.model.dispose).toHaveBeenCalled();
+  expect(mockRuntime.editor.dispose).toHaveBeenCalled();
 });
 
 it('STORY-013-AC-5 preserves the model cursor and selection on metadata rerender', async () => {

@@ -73,9 +73,26 @@ it('T009 exposes guarded New/Open commands without converting classified outcome
       getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
       newDocument,
       openDocument,
-      updateBuffer: async (): Promise<VoidResult> => ({}),
-      setDocView: async (): Promise<VoidResult> => ({}),
-      setUILayout: async (): Promise<VoidResult> => ({}),
+      updateBuffer: async (
+        _documentId: string,
+        _content: string,
+      ): Promise<VoidResult> => {
+        void _documentId;
+        void _content;
+        return {};
+      },
+      setDocView: async (
+        _documentId: string,
+        _view: DocViewInput,
+      ): Promise<VoidResult> => {
+        void _documentId;
+        void _view;
+        return {};
+      },
+      setUILayout: async (_layout): Promise<VoidResult> => {
+        void _layout;
+        return {};
+      },
     },
     { eventsOn: (): (() => void) => (): void => undefined },
   );
@@ -124,6 +141,81 @@ it('T010 flushes the latest buffer and view queues as one ordered lifecycle drai
   expect(calls).toEqual(['buffer:latest', 'view']);
   expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest');
   expect(setDocView).toHaveBeenCalledWith('document-1', viewAt(8));
+});
+
+it('T017 routes imperative flush through the registered activation session', async () => {
+  const flushActiveSession = jest.fn(async (): Promise<void> => undefined);
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (
+        _documentId: string,
+        _content: string,
+      ): Promise<VoidResult> => {
+        void _documentId;
+        void _content;
+        return {};
+      },
+      setDocView: async (
+        _documentId: string,
+        _view: DocViewInput,
+      ): Promise<VoidResult> => {
+        void _documentId;
+        void _view;
+        return {};
+      },
+      setUILayout: async (_layout): Promise<VoidResult> => {
+        void _layout;
+        return {};
+      },
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const activationToken = Symbol('registered-activation');
+  const dispose = adapter.registerActiveSession?.({
+    documentId: 'document-1',
+    activationToken,
+    flushActiveSession,
+  });
+
+  await adapter.flushActiveSession?.('document-1', activationToken);
+  expect(flushActiveSession).toHaveBeenCalledTimes(1);
+  await expect(
+    adapter.flushActiveSession?.('document-1', Symbol('stale-activation')),
+  ).rejects.toThrow('activation changed');
+
+  dispose?.();
+  await adapter.updateBuffer('document-1', 'fallback queue');
+  await adapter.flushActiveSession?.('document-1');
+});
+
+it('T017 failed outgoing flush keeps the current session installed', async () => {
+  const failure = new Error('outgoing flush failed');
+  const flushActiveSession = jest
+    .fn<Promise<void>, []>()
+    .mockRejectedValueOnce(failure)
+    .mockResolvedValueOnce(undefined);
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer: async (): Promise<VoidResult> => ({}),
+      setDocView: async (): Promise<VoidResult> => ({}),
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const activationToken = Symbol('outgoing-activation');
+  adapter.registerActiveSession?.({
+    documentId: 'document-1',
+    activationToken,
+    flushActiveSession,
+  });
+
+  await expect(
+    adapter.flushActiveSession?.('document-1', activationToken),
+  ).rejects.toBe(failure);
+  await adapter.flushActiveSession?.('document-1', activationToken);
+  expect(flushActiveSession).toHaveBeenCalledTimes(2);
 });
 
 it('T010 aborts the lifecycle drain before the view queue when content acceptance fails', async () => {

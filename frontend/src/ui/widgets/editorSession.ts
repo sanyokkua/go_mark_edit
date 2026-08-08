@@ -8,7 +8,10 @@ import {
   type PropsWithChildren,
 } from 'react';
 
-import type { ActiveBuffer } from '../../logic/store/appModelTypes';
+import type {
+  ActiveBuffer,
+  AppStateSnapshot,
+} from '../../logic/store/appModelTypes';
 import {
   type DocumentCommandAPI,
   type DocumentCommandSession,
@@ -23,7 +26,11 @@ export const DocumentCommandContext = createContext<DocumentCommandAPI | null>(
 );
 
 interface EditorSessionAttachment {
-  attachEditor: (documentId: string, editor: CodeEditorHandle | null) => void;
+  attachEditor: (
+    documentId: string,
+    editor: CodeEditorHandle | null,
+    activationToken?: symbol,
+  ) => void;
 }
 
 class EditorSessionRegistry {
@@ -54,7 +61,11 @@ export const EditorSessionProvider: React.FC<EditorSessionProviderProps> = ({
     [],
   );
   const attachEditor = useCallback(
-    (documentId: string, editor: CodeEditorHandle | null): void => {
+    (
+      documentId: string,
+      editor: CodeEditorHandle | null,
+      activationToken?: symbol,
+    ): void => {
       if (editor === null) {
         if (sessionRegistry.session?.documentId === documentId) {
           sessionRegistry.setSession(null);
@@ -66,16 +77,20 @@ export const EditorSessionProvider: React.FC<EditorSessionProviderProps> = ({
       const nextSession: DocumentCommandSession = {
         documentId,
         handle: editor,
-        token: Symbol('editor-session'),
+        token: activationToken ?? Symbol('editor-session'),
       };
       sessionRegistry.setSession(nextSession);
       setSession(nextSession);
     },
     [sessionRegistry],
   );
+  const sessionToken =
+    activeBuffer?.documentId === session?.documentId
+      ? (session?.token ?? null)
+      : null;
   const documentCommands = useDocumentCommands(
     activeBuffer?.documentId ?? null,
-    session?.token ?? null,
+    sessionToken,
     sessionRegistry.getSession,
   );
   const attachment = useMemo<EditorSessionAttachment>(
@@ -101,6 +116,7 @@ export const EditorSessionProvider: React.FC<EditorSessionProviderProps> = ({
 export function useEditorSessionAttachment(): (
   documentId: string,
   editor: CodeEditorHandle | null,
+  activationToken?: symbol,
 ) => void {
   const attachment = useContext(EditorSessionAttachmentContext);
 
@@ -108,3 +124,31 @@ export function useEditorSessionAttachment(): (
 }
 
 function noopEditorAttachment(): void {}
+
+export interface ActivationRequest {
+  generation: number;
+  documentId: string;
+}
+
+/**
+ * Accepts an active-buffer acknowledgement only after the request won, the
+ * projection caught up, and the projected document revision still matches.
+ */
+export function acceptsActivationAcknowledgement(
+  acknowledgement: ActiveBuffer,
+  request: ActivationRequest,
+  latestGeneration: number,
+  projection: Pick<
+    AppStateSnapshot,
+    'activeDocumentId' | 'revision' | 'documents'
+  >,
+): boolean {
+  const projectedDocument = projection.documents[acknowledgement.documentId];
+  return (
+    request.generation === latestGeneration &&
+    request.documentId === acknowledgement.documentId &&
+    projection.revision >= (acknowledgement.projectionRevision ?? 0) &&
+    projection.activeDocumentId === acknowledgement.documentId &&
+    projectedDocument?.contentRevision === acknowledgement.documentRevision
+  );
+}
