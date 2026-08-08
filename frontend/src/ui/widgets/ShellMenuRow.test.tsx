@@ -165,6 +165,46 @@ it('T009 routes the available File New/Open controls through the lifecycle dispa
   dispatch.mockRestore();
 });
 
+it('T015 routes writable Save and Save As through the document dispatcher', async () => {
+  const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
+  const onSave = jest.fn(async () => undefined);
+  const onSaveAs = jest.fn(async () => undefined);
+
+  render(
+    <ShellMenuRow
+      modalOpen={false}
+      onAbout={jest.fn()}
+      onSave={onSave}
+      onSaveAs={onSaveAs}
+      documentId="document-1"
+      sessionDocumentId="document-1"
+      writable
+      settingsMenuProps={settingsMenuProps}
+      viewMenuProps={viewMenuProps}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'File' }));
+  const fileMenu = screen.getByRole('menu', { name: 'File' });
+  fireEvent.click(within(fileMenu).getByRole('menuitem', { name: 'Save' }));
+  await waitFor(() =>
+    expect(dispatch).toHaveBeenCalledWith(
+      'save',
+      expect.objectContaining({
+        documentId: 'document-1',
+        sessionDocumentId: 'document-1',
+        writable: true,
+      }),
+    ),
+  );
+  expect(onSave).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save As' }));
+  await waitFor(() => expect(onSaveAs).toHaveBeenCalledTimes(1));
+  dispatch.mockRestore();
+});
+
 it('T018 moves the same ordered top-level actions into overflow at narrow width', () => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,

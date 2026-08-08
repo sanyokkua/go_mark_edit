@@ -40,6 +40,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
 }): React.JSX.Element => (
   <RadixToast.Root
     className={styles.toast}
+    data-notification-code={notification.code}
     data-severity={notification.severity}
     duration={durations[notification.severity]}
     open

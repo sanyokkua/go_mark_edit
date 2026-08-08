@@ -46,6 +46,24 @@ jest.mock('./ui/widgets/EditorView', () => ({
   ),
 }));
 
+jest.mock('./i18n', () => ({
+  t: (key: string, values: Record<string, string> = {}): string => {
+    const copy: Record<string, string> = {
+      'recovery.title': 'Editor recovery needed',
+      'save.readOnly': 'This document is read-only and cannot be saved.',
+      'save.success.message': 'Saved {filename} · {encoding} · {lineEnding}',
+      'save.success.title': 'Saved',
+      'status.encoding.utf-8': 'UTF-8',
+      'status.lineEnding.crlf': 'CRLF',
+      'status.lineEnding.lf': 'LF',
+    };
+    return Object.entries(values).reduce(
+      (text, [name, value]) => text.replace(`{${name}}`, value),
+      copy[key] ?? key,
+    );
+  },
+}));
+
 jest.mock('./logic/adapter', () => ({
   applicationAdapter: { retryStartup: jest.fn(async () => undefined) },
   windowAdapter: { windowReady: jest.fn(async () => undefined) },
@@ -106,7 +124,12 @@ jest.mock('./logic/adapter', () => ({
     updateBuffer: jest.fn(),
     setDocView: jest.fn(),
     setUILayout: jest.fn(),
+    reconcileCommittedWrite: jest.fn(),
     subscribeStatePatches: jest.fn(() => jest.fn()),
+  },
+  documentWriteAdapter: {
+    save: jest.fn(async () => ({ status: 'cancelled' })),
+    saveAs: jest.fn(async () => ({ status: 'cancelled' })),
   },
 }));
 
@@ -152,7 +175,10 @@ import {
   resetProjection,
 } from './logic/store/appModelProjectionActions';
 import { store } from './logic/store';
-import { dismissNotification } from './logic/store/notificationsSlice';
+import {
+  dismissNotification,
+  resetNotifications,
+} from './logic/store/notificationsSlice';
 import type { WireError } from './logic/utils/parseError';
 import {
   createAppModelAdapter,
@@ -161,7 +187,11 @@ import {
   type AppModelRuntime,
 } from './logic/adapter/appModelAdapter';
 import { createShellActionCatalogue } from './logic/actions/shellActions';
-import { appModelAdapter, applicationAdapter } from './logic/adapter';
+import {
+  appModelAdapter,
+  applicationAdapter,
+  documentWriteAdapter,
+} from './logic/adapter';
 import type { AppModelState } from './logic/store/appModelTypes';
 import AppShell from './ui/widgets/AppShell';
 import ShellMenuRow from './ui/widgets/ShellMenuRow';
@@ -170,6 +200,9 @@ import type { SettingsMenuProps } from './ui/widgets/SettingsMenu';
 const mockedAppModelAdapter = appModelAdapter as jest.Mocked<AppModelAdapter>;
 const mockedApplicationAdapter = applicationAdapter as jest.Mocked<
   typeof applicationAdapter
+>;
+const mockedDocumentWriteAdapter = documentWriteAdapter as jest.Mocked<
+  typeof documentWriteAdapter
 >;
 
 function bootstrapState(
@@ -232,7 +265,7 @@ it('T058 includes the Shortcuts dialog in the shared modal suppression state', (
 
   expect(source).toContain('ModalStateProvider');
   expect(source).toContain(
-    'modalOpen: settingsOpen || aboutOpen || shortcutsOpen',
+    'settingsOpen || aboutOpen || shortcutsOpen || normalization !== null',
   );
   expect(source).toContain('modalOpen={menuState.modalOpen}');
 });
@@ -480,6 +513,107 @@ it('T009 operates File New through the real menu and installs its acknowledged b
     ).toHaveTextContent('new document content');
   });
   mockedAppModelAdapter.newDocument = undefined;
+  act((): void => disposeAppModelProjection());
+});
+
+it('Save reports exactly one confirmation', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.reconcileCommittedWrite.mockResolvedValue(
+    bootstrapState('draft', 13),
+  );
+  mockedDocumentWriteAdapter.save.mockResolvedValue({
+    status: 'committed',
+    data: {
+      documentId: 'document-1',
+      writtenContentRevision: 2,
+      committedProjectionRevision: 13,
+      targetPath: '/documents/one.md',
+      targetPathAdopted: false,
+      lineEndingOutcome: 'preserved-lf',
+      bomOutcome: 'absent',
+      resyncRequired: false,
+    },
+  });
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+
+  await waitFor(() => {
+    expect(screen.getByText('Saved one.md · UTF-8 · LF')).toBeVisible();
+  });
+  expect(screen.getAllByText('Saved one.md · UTF-8 · LF')).toHaveLength(1);
+  expect(mockedDocumentWriteAdapter.save).toHaveBeenCalledWith(
+    'document-1',
+    0,
+    '',
+  );
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+it('Normalize line endings prompt focus and resumption', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.reconcileCommittedWrite.mockResolvedValue(
+    bootstrapState('draft', 13),
+  );
+  mockedDocumentWriteAdapter.save
+    .mockReset()
+    .mockResolvedValueOnce({
+      status: 'needs-normalization',
+      decisionToken: 'decision-1',
+      documentRevision: 7,
+      proposedEnding: 'crlf',
+    })
+    .mockResolvedValueOnce({
+      status: 'committed',
+      data: {
+        documentId: 'document-1',
+        writtenContentRevision: 7,
+        committedProjectionRevision: 13,
+        targetPath: '/documents/one.md',
+        targetPathAdopted: false,
+        lineEndingOutcome: 'normalized-crlf',
+        bomOutcome: 'absent',
+        resyncRequired: false,
+      },
+    });
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  await within(screen.getByRole('menu', { name: 'File' }))
+    .getByRole('menuitem', { name: /^Save$/u })
+    .click();
+
+  const prompt = await screen.findByRole('dialog', {
+    name: 'Normalize line endings?',
+  });
+  expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  await screen.getByRole('button', { name: 'Normalize and save' }).click();
+
+  await waitFor(() =>
+    expect(mockedDocumentWriteAdapter.save).toHaveBeenCalledTimes(2),
+  );
+  expect(mockedDocumentWriteAdapter.save).toHaveBeenNthCalledWith(
+    2,
+    'document-1',
+    7,
+    'decision-1',
+  );
+  expect(prompt).not.toBeInTheDocument();
+  store.dispatch(resetNotifications());
   act((): void => disposeAppModelProjection());
 });
 

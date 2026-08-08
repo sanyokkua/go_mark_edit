@@ -2,6 +2,8 @@ import {
   GetState,
   NewDocument,
   OpenDocument,
+  Save,
+  SaveAs,
   resetMockAppModel,
   setMockOpenSelection,
   SetDocView,
@@ -208,4 +210,34 @@ it('opens the selected mock path and returns its active-buffer acknowledgement',
       },
     }),
   ]);
+});
+
+it('dev bridge dirty state follows disk baseline', async () => {
+  await UpdateBuffer('mock-document', '# saved');
+  expect((await GetState()).data?.snapshot.documents['mock-document']).toEqual(
+    expect.objectContaining({ dirty: true, status: 'unsaved-changes' }),
+  );
+
+  await expect(Save('mock-document', 1, '')).resolves.toMatchObject({
+    status: 'committed',
+    data: expect.objectContaining({
+      documentId: 'mock-document',
+      lineEndingOutcome: 'preserved-lf',
+    }),
+  });
+  expect((await GetState()).data?.snapshot.documents['mock-document']).toEqual(
+    expect.objectContaining({ dirty: false, status: 'saved' }),
+  );
+});
+
+it('mock Save As adopts its selected target only after a committed result', async () => {
+  await UpdateBuffer('mock-document', '# saved as');
+
+  await expect(SaveAs('mock-document', 1, '')).resolves.toMatchObject({
+    status: 'committed',
+    data: expect.objectContaining({ targetPathAdopted: true }),
+  });
+  expect((await GetState()).data?.snapshot.documents['mock-document']).toEqual(
+    expect.objectContaining({ path: '/tmp/Untitled.md', status: 'saved' }),
+  );
 });

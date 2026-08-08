@@ -124,3 +124,30 @@ it('offers only the localized remediation label and keeps toasts above dialogs',
     ),
   ).toContain('z-index: var(--z-toast)');
 });
+
+it('T015 renders one explicit save confirmation with its localized safe filename', () => {
+  render(
+    <ToastProvider>
+      <NotificationToast
+        notification={{
+          code: 'save-success',
+          count: 1,
+          id: 101,
+          message: 'Saved selected.md · UTF-8 · LF',
+          refreshGeneration: 0,
+          severity: 'success',
+          subject: 'document-1',
+          title: 'Saved',
+        }}
+        onDismiss={jest.fn()}
+      />
+    </ToastProvider>,
+  );
+
+  expect(screen.getByText('Saved')).toBeVisible();
+  expect(screen.getByText('Saved selected.md · UTF-8 · LF')).toBeVisible();
+  expect(document.querySelector('[data-notification-code]')).toHaveAttribute(
+    'data-notification-code',
+    'save-success',
+  );
+});

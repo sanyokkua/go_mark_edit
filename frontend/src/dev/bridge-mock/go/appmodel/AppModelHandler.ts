@@ -55,6 +55,7 @@ interface DocumentMetadata {
   encoding: string;
   lineEnding: string;
   wordCount: number;
+  status?: string;
   view: DocView;
 }
 
@@ -116,6 +117,24 @@ interface MockOpenSelection {
   content?: string;
 }
 
+type MockWriteResult = {
+  status: string;
+  data?: {
+    documentId: string;
+    writtenContentRevision: number;
+    committedProjectionRevision: number;
+    targetPath?: string;
+    targetPathAdopted: boolean;
+    lineEndingOutcome: string;
+    bomOutcome: string;
+    resyncRequired: boolean;
+  };
+  decisionToken?: string;
+  proposedEnding?: string;
+  documentRevision?: number;
+  error?: apperr.ClassifiedError;
+};
+
 interface MockDocument {
   metadata: DocumentMetadata;
   content: string;
@@ -129,6 +148,8 @@ let orderedDocumentIds: string[] = [initialDocumentId];
 let activeDocumentId = initialDocumentId;
 let nextUntitledNumber = 2;
 let openSelection: MockOpenSelection | null = null;
+let mockSaveResult: MockWriteResult | undefined;
+let mockSaveAsResult: MockWriteResult | undefined;
 let layout: UILayout = {
   windowWidth: 1024,
   windowHeight: 768,
@@ -150,6 +171,7 @@ function newDocumentMetadata(
     encoding: 'utf-8',
     lineEnding: 'lf',
     wordCount: 0,
+    status: 'not-saved',
     view: {
       arrangement: 'split',
       editorVisible: true,
@@ -262,6 +284,8 @@ export function resetMockAppModel(): void {
   activeDocumentId = initialDocumentId;
   nextUntitledNumber = 2;
   openSelection = null;
+  mockSaveResult = undefined;
+  mockSaveAsResult = undefined;
   documents = initialDocuments();
   layout = {
     windowWidth: 1024,
@@ -276,6 +300,14 @@ export function setMockOpenSelection(
   selection: MockOpenSelection | null,
 ): void {
   openSelection = selection;
+}
+
+export function setMockSaveResult(result: MockWriteResult | null): void {
+  mockSaveResult = result ?? undefined;
+}
+
+export function setMockSaveAsResult(result: MockWriteResult | null): void {
+  mockSaveAsResult = result ?? undefined;
 }
 
 function expectedRevisionMatches(expectedTabSetRevision: number): boolean {
@@ -390,6 +422,7 @@ export function UpdateBuffer(
   document.metadata = {
     ...document.metadata,
     dirty: nextContent.length > 0,
+    status: nextContent.length > 0 ? 'unsaved-changes' : 'not-saved',
     wordCount:
       nextContent.trim() === '' ? 0 : nextContent.trim().split(/\s+/).length,
   };
@@ -399,6 +432,88 @@ export function UpdateBuffer(
     documents: { upsert: { [requestedDocumentId]: cloneMetadata(document) } },
   });
   return Promise.resolve({});
+}
+
+function writeResultFor(
+  requestedDocumentId: string,
+  result: MockWriteResult | undefined,
+  saveAs: boolean,
+): MockWriteResult {
+  const document = documents[requestedDocumentId];
+  if (document === undefined) {
+    return {
+      status: 'refused',
+      error: {
+        category: 'not-found',
+        safeSubject: requestedDocumentId,
+        message: 'The mock document does not exist.',
+        remediation: 'Cancel',
+        documentId: requestedDocumentId,
+        dedupKey: `mock-not-found:${requestedDocumentId}`,
+      },
+    };
+  }
+  if (result !== undefined) {
+    return result;
+  }
+
+  const targetPath =
+    document.metadata.path ||
+    `/tmp/${document.metadata.title || 'Untitled'}.md`;
+  if (saveAs) {
+    document.metadata = {
+      ...document.metadata,
+      path: targetPath,
+      title: targetPath.split(/[\\/]/u).pop() ?? document.metadata.title,
+    };
+  }
+  document.metadata = {
+    ...document.metadata,
+    dirty: false,
+    status: 'saved',
+  };
+  revision += 1;
+  emitPatch({
+    revision,
+    documents: { upsert: { [requestedDocumentId]: cloneMetadata(document) } },
+  });
+  return {
+    status: 'committed',
+    data: {
+      documentId: requestedDocumentId,
+      writtenContentRevision: document.documentRevision,
+      committedProjectionRevision: revision,
+      targetPath,
+      targetPathAdopted: saveAs,
+      lineEndingOutcome: 'preserved-lf',
+      bomOutcome: 'absent',
+      resyncRequired: false,
+    },
+  };
+}
+
+export function Save(
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _decisionToken: string,
+): Promise<MockWriteResult> {
+  void _contentRevision;
+  void _decisionToken;
+  return Promise.resolve(
+    writeResultFor(requestedDocumentId, mockSaveResult, false),
+  );
+}
+
+export function SaveAs(
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _decisionToken: string,
+): Promise<MockWriteResult> {
+  void _contentRevision;
+  void _decisionToken;
+  return Promise.resolve(
+    writeResultFor(requestedDocumentId, mockSaveAsResult, true),
+  );
 }
 
 export function SetDocView(

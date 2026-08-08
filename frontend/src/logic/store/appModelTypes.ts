@@ -66,10 +66,23 @@ export interface CommittedWriteOutcome {
   documentId: string;
   writtenContentRevision: number;
   committedProjectionRevision: number;
+  targetPath?: string;
   targetPathAdopted: boolean;
   lineEndingOutcome: LineEndingOutcome;
   bomOutcome: 'preserved' | 'absent';
   resyncRequired: boolean;
+}
+
+export type WriteStatus =
+  'committed' | 'cancelled' | 'needs-normalization' | 'conflict' | 'refused';
+
+export interface WriteResult {
+  status: WriteStatus;
+  data?: CommittedWriteOutcome;
+  decisionToken?: string;
+  proposedEnding?: 'lf' | 'crlf';
+  documentRevision?: number;
+  error?: ClassifiedError;
 }
 
 export interface RecoverySurface {

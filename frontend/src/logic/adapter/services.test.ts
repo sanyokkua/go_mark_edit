@@ -1,7 +1,9 @@
 import {
   createDocumentLifecycleAdapter,
+  createDocumentWriteAdapter,
   createSettingsAdapter,
   type DocumentLifecycleBindings,
+  type DocumentWriteBindings,
   type SettingsBindings,
 } from './services';
 
@@ -44,4 +46,43 @@ it('T009 preserves classified New/Open outcomes through guarded lifecycle bindin
   });
   expect(bindings.newDocument).toHaveBeenCalledWith(7);
   expect(bindings.openDocument).toHaveBeenCalledWith(7);
+});
+
+it('T015 guards Save and Save As with their exact three-argument bridge shapes', async () => {
+  const bindings: DocumentWriteBindings = {
+    save: jest.fn(
+      async (
+        documentId: string,
+        contentRevision: number,
+        decisionToken: string,
+      ) => {
+        void documentId;
+        void contentRevision;
+        void decisionToken;
+        return { status: 'cancelled' as const };
+      },
+    ),
+    saveAs: jest.fn(
+      async (
+        documentId: string,
+        contentRevision: number,
+        decisionToken: string,
+      ) => {
+        void documentId;
+        void contentRevision;
+        void decisionToken;
+        return { status: 'cancelled' as const };
+      },
+    ),
+  };
+  const adapter = createDocumentWriteAdapter(bindings);
+
+  await expect(adapter.save('doc-1', 8, '')).resolves.toEqual({
+    status: 'cancelled',
+  });
+  await expect(adapter.saveAs('doc-1', 8, 'decision-1')).resolves.toEqual({
+    status: 'cancelled',
+  });
+  expect(bindings.save).toHaveBeenCalledWith('doc-1', 8, '');
+  expect(bindings.saveAs).toHaveBeenCalledWith('doc-1', 8, 'decision-1');
 });

@@ -154,8 +154,8 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     availability: fileDeferred,
   }),
   entry('reopen', 'application', ['file-menu'], { availability: fileDeferred }),
-  entry('save', 'document', ['file-menu'], { availability: fileDeferred }),
-  entry('save-as', 'document', ['file-menu'], { availability: fileDeferred }),
+  entry('save', 'document', ['file-menu']),
+  entry('save-as', 'document', ['file-menu']),
   entry('export-pdf', 'document', ['file-menu'], {
     availability: fileDeferred,
   }),

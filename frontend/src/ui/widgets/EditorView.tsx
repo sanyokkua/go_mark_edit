@@ -324,6 +324,7 @@ const EditorView: React.FC<EditorViewProps> = ({
         cursor={liveCursor}
         encoding={encoding}
         lineEnding={lineEnding}
+        status={activeDocument?.status ?? 'not-saved'}
         wordCount={wordCount}
       />
     </section>

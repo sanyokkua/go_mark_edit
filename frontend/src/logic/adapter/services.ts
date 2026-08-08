@@ -3,6 +3,7 @@ import { unwrap } from './envelope';
 import type {
   DocumentTransitionResult,
   OpenResult,
+  WriteResult,
 } from '../store/appModelTypes';
 import type {
   AppearanceSettings,
@@ -48,6 +49,24 @@ export interface DocumentLifecycleAdapter {
   openDocument: (expectedTabSetRevision: number) => Promise<OpenResult>;
 }
 
+export interface DocumentWriteBindings {
+  save: (
+    documentId: string,
+    contentRevision: number,
+    decisionToken: string,
+  ) => Promise<WriteResult>;
+  saveAs: (
+    documentId: string,
+    contentRevision: number,
+    decisionToken: string,
+  ) => Promise<WriteResult>;
+}
+
+export interface DocumentWriteAdapter {
+  save: DocumentWriteBindings['save'];
+  saveAs: DocumentWriteBindings['saveAs'];
+}
+
 export function createDocumentLifecycleAdapter(
   bindings: DocumentLifecycleBindings,
 ): DocumentLifecycleAdapter {
@@ -65,6 +84,20 @@ export function createDocumentLifecycleAdapter(
       newDocument(expectedTabSetRevision),
     openDocument: (expectedTabSetRevision: number) =>
       openDocument(expectedTabSetRevision),
+  };
+}
+
+export function createDocumentWriteAdapter(
+  bindings: DocumentWriteBindings,
+): DocumentWriteAdapter {
+  const save = guardArity('AppModelHandler.Save', bindings.save);
+  const saveAs = guardArity('AppModelHandler.SaveAs', bindings.saveAs);
+
+  return {
+    save: (documentId, contentRevision, decisionToken) =>
+      save(documentId, contentRevision, decisionToken),
+    saveAs: (documentId, contentRevision, decisionToken) =>
+      saveAs(documentId, contentRevision, decisionToken),
   };
 }
 

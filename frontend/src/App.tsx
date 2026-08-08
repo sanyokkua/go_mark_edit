@@ -9,8 +9,13 @@ import {
 } from 'react';
 import { Provider } from 'react-redux';
 
+import { t } from './i18n';
+
 import {
   dismissNotification,
+  notifyCondition,
+  notifyError,
+  notifyToast,
   resetNotifications,
 } from './logic/store/notificationsSlice';
 import { store, useAppDispatch, useAppSelector } from './logic/store';
@@ -25,10 +30,13 @@ import {
 } from './logic/store/appModelProjection';
 import type {
   ActiveBuffer,
+  ClassifiedError,
+  DocumentMetadata,
+  WriteResult,
   ViewArrangement,
 } from './logic/store/appModelTypes';
 import { setWorkspaceVisible } from './logic/store/uiLayoutCommands';
-import { appModelAdapter } from './logic/adapter';
+import { appModelAdapter, documentWriteAdapter } from './logic/adapter';
 import { useEditorSettings } from './logic/settings/editorSettings';
 import { bootstrapSettingsProjection } from './logic/store/settingsProjection';
 import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
@@ -41,9 +49,34 @@ import type { SettingsMenuProps } from './ui/widgets/SettingsMenu';
 import { EditorSessionProvider } from './ui/widgets/editorSession';
 import StartupFailure from './ui/widgets/StartupFailure';
 import ShortcutsDialog from './ui/widgets/ShortcutsDialog';
+import NormalizationPrompt from './ui/widgets/NormalizationPrompt';
 import { ModalStateProvider } from './ui/widgets/modalState';
 
 let activeRetry: Promise<AppModelBootstrapResult> | undefined;
+
+function safeFilename(
+  document: DocumentMetadata | undefined,
+  targetPath?: string,
+): string {
+  const source =
+    targetPath ?? document?.displayName ?? document?.path ?? document?.title;
+  if (source === undefined || source.length === 0) {
+    return 'Untitled.md';
+  }
+  const basename = source.replaceAll('\\', '/').split('/').pop() ?? source;
+  const safe = basename.replace(/[\p{Cc}\p{Cf}]/gu, '');
+  return safe.length === 0 ? 'Untitled.md' : safe;
+}
+
+function writeLineEndingLabel(outcome: { lineEndingOutcome: string }): string {
+  switch (outcome.lineEndingOutcome) {
+    case 'preserved-crlf':
+    case 'normalized-crlf':
+      return t('status.lineEnding.crlf');
+    default:
+      return t('status.lineEnding.lf');
+  }
+}
 
 function startAppModelBootstrap(
   isRetry: boolean,
@@ -90,6 +123,11 @@ interface ApplicationMenuState {
   onAbout: () => void;
   onNewDocument: (expectedTabSetRevision: number) => Promise<unknown>;
   onOpenDocument: (expectedTabSetRevision: number) => Promise<unknown>;
+  onSave: () => Promise<unknown>;
+  onSaveAs: () => Promise<unknown>;
+  documentId?: string;
+  sessionDocumentId?: string;
+  writable?: boolean;
   onShortcuts: () => void;
 }
 
@@ -126,6 +164,11 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
       onOpenDocument={(): Promise<unknown> =>
         menuState.onOpenDocument(tabSetRevision)
       }
+      onSave={menuState.onSave}
+      onSaveAs={menuState.onSaveAs}
+      documentId={menuState.documentId}
+      sessionDocumentId={menuState.sessionDocumentId}
+      writable={menuState.writable}
       onShortcuts={menuState.onShortcuts}
       settingsMenuProps={{
         ...settingsMenuProps,
@@ -177,6 +220,11 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const notifications = useAppSelector((state) => state.notifications.items);
   const banners = useAppSelector((state) => state.notifications.banners);
+  const activeDocument = useAppSelector((state) =>
+    state.documents.activeDocumentId === null
+      ? undefined
+      : state.documents.byId[state.documents.activeDocumentId],
+  );
   const [activeBuffer, setActiveBuffer] = useState<ActiveBuffer | null>(null);
   const [bootstrapStatus, setBootstrapStatus] =
     useState<BootstrapStatus>('loading');
@@ -184,6 +232,14 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [normalization, setNormalization] = useState<{
+    documentId: string;
+    filename: string;
+    kind: 'save' | 'save-as';
+    contentRevision: number;
+    decisionToken: string;
+    proposedEnding: 'lf' | 'crlf';
+  } | null>(null);
   const [version, setVersion] = useState('');
   const bootstrapGeneration = useRef(0);
   const onNewDocument = useCallback(
@@ -210,15 +266,203 @@ const AppContents: React.FC = (): React.JSX.Element => {
     },
     [],
   );
+  const reportWriteError = useCallback(
+    (error: ClassifiedError | undefined, documentId: string): void => {
+      const category = error?.category ?? 'io-failure';
+      const code =
+        category === 'not-found'
+          ? 'not_found'
+          : category === 'permission-denied'
+            ? 'permission'
+            : category === 'unsupported-input'
+              ? 'unsupported'
+              : category === 'conflict'
+                ? 'io'
+                : 'io';
+      const subject = error?.dedupKey ?? documentId;
+      dispatch(
+        notifyError(
+          {
+            code,
+            title: error?.safeSubject ?? 'File operation failed',
+            message:
+              error?.message ?? 'The file operation could not be completed.',
+            retryable: error?.remediation === 'Retry',
+            details: { subject },
+          },
+          subject,
+        ),
+      );
+    },
+    [dispatch],
+  );
+  const finishWrite = useCallback(
+    async (
+      kind: 'save' | 'save-as',
+      documentId: string,
+      contentRevision: number,
+      decisionToken: string,
+      filename: string,
+    ): Promise<WriteResult> => {
+      const result =
+        kind === 'save'
+          ? await documentWriteAdapter.save(
+              documentId,
+              contentRevision,
+              decisionToken,
+            )
+          : await documentWriteAdapter.saveAs(
+              documentId,
+              contentRevision,
+              decisionToken,
+            );
+      if (result.status === 'needs-normalization') {
+        setNormalization({
+          contentRevision: result.documentRevision ?? contentRevision,
+          decisionToken: result.decisionToken ?? decisionToken,
+          documentId,
+          filename,
+          kind,
+          proposedEnding: result.proposedEnding ?? 'lf',
+        });
+        return result;
+      }
+      setNormalization(null);
+      if (result.status === 'committed' && result.data !== undefined) {
+        const recovered = await appModelAdapter.reconcileCommittedWrite(
+          result.data,
+        );
+        if ('savedOnDisk' in recovered) {
+          dispatch(
+            notifyCondition({
+              code: 'recovery',
+              message: recovered.message,
+              severity: 'warning',
+              subject: documentId,
+              title: t('recovery.title'),
+            }),
+          );
+        } else if (recovered.activeBuffer !== null) {
+          setActiveBuffer(recovered.activeBuffer);
+        }
+        const safeName = safeFilename(
+          activeDocument,
+          result.data.targetPath ?? filename,
+        );
+        dispatch(
+          notifyToast({
+            code: 'save-success',
+            message: t('save.success.message', {
+              encoding: t(
+                `status.encoding.${activeDocument?.encoding ?? 'utf-8'}`,
+              ),
+              filename: safeName,
+              lineEnding: writeLineEndingLabel(result.data),
+            }),
+            severity: 'success',
+            subject: documentId,
+            title: t('save.success.title'),
+          }),
+        );
+      } else if (result.status === 'conflict' || result.status === 'refused') {
+        reportWriteError(result.error, documentId);
+      }
+      return result;
+    },
+    [activeDocument, dispatch, reportWriteError],
+  );
+  const beginWrite = useCallback(
+    async (kind: 'save' | 'save-as'): Promise<unknown> => {
+      const documentId = activeDocument?.documentId ?? activeBuffer?.documentId;
+      if (documentId === undefined) return undefined;
+      if (
+        activeDocument?.status === 'read-only' ||
+        activeDocument?.capability === 'read-only' ||
+        activeDocument?.detached === true
+      ) {
+        reportWriteError(
+          {
+            category: 'permission-denied',
+            message: t('save.readOnly'),
+            remediation: '',
+            documentId,
+            dedupKey: `read-only:${documentId}`,
+          },
+          documentId,
+        );
+        return undefined;
+      }
+      await appModelAdapter.flushActiveSession?.(documentId);
+      const state = await appModelAdapter.getState();
+      if (state.activeBuffer?.documentId !== documentId) {
+        reportWriteError(
+          {
+            category: 'conflict',
+            message: 'The active document changed before Save could start.',
+            remediation: 'Retry',
+            documentId,
+            dedupKey: `active-document:${documentId}`,
+          },
+          documentId,
+        );
+        return undefined;
+      }
+      const revision =
+        state.activeBuffer.documentRevision ??
+        activeDocument?.contentRevision ??
+        0;
+      return finishWrite(
+        kind,
+        documentId,
+        revision,
+        '',
+        safeFilename(activeDocument),
+      );
+    },
+    [activeBuffer, activeDocument, finishWrite, reportWriteError],
+  );
+  const onSave = useCallback(() => beginWrite('save'), [beginWrite]);
+  const onSaveAs = useCallback(() => beginWrite('save-as'), [beginWrite]);
+  const onNormalizeConfirm = useCallback(async (): Promise<void> => {
+    if (normalization === null) return;
+    await finishWrite(
+      normalization.kind,
+      normalization.documentId,
+      normalization.contentRevision,
+      normalization.decisionToken,
+      normalization.filename,
+    );
+  }, [finishWrite, normalization]);
   const applicationMenuState = useMemo<ApplicationMenuState>(
     () => ({
-      modalOpen: settingsOpen || aboutOpen || shortcutsOpen,
+      modalOpen:
+        settingsOpen || aboutOpen || shortcutsOpen || normalization !== null,
       onAbout: (): void => setAboutOpen(true),
       onNewDocument,
       onOpenDocument,
+      onSave,
+      onSaveAs,
+      documentId: activeDocument?.documentId,
+      sessionDocumentId: activeBuffer?.documentId,
+      writable:
+        activeDocument !== undefined &&
+        activeDocument.status !== 'read-only' &&
+        activeDocument.capability !== 'read-only' &&
+        activeDocument.detached !== true,
       onShortcuts: (): void => setShortcutsOpen(true),
     }),
-    [aboutOpen, onNewDocument, onOpenDocument, settingsOpen, shortcutsOpen],
+    [
+      aboutOpen,
+      activeBuffer?.documentId,
+      activeDocument,
+      normalization,
+      onNewDocument,
+      onOpenDocument,
+      onSave,
+      onSaveAs,
+      settingsOpen,
+      shortcutsOpen,
+    ],
   );
 
   const runBootstrap = useCallback(
@@ -296,7 +540,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
   return (
     <ToastProvider>
       <ModalStateProvider
-        modalOpen={settingsOpen || aboutOpen || shortcutsOpen}
+        modalOpen={
+          settingsOpen || aboutOpen || shortcutsOpen || normalization !== null
+        }
       >
         <EditorSessionProvider activeBuffer={activeBuffer}>
           <div className="application-frame">
@@ -338,6 +584,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
             <ShortcutsDialog
               open={bootstrapStatus === 'ready' && shortcutsOpen}
               onOpenChange={setShortcutsOpen}
+            />
+            <NormalizationPrompt
+              filename={normalization?.filename ?? ''}
+              onCancel={(): void => setNormalization(null)}
+              onConfirm={onNormalizeConfirm}
+              open={bootstrapStatus === 'ready' && normalization !== null}
+              proposedEnding={normalization?.proposedEnding ?? 'lf'}
             />
             {bootstrapStatus === 'ready'
               ? notifications.map((notification) => (

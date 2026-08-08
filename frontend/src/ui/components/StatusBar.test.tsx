@@ -22,3 +22,18 @@ it('STORY-016-AC-1 renders initial untitled metadata', () => {
   expect(within(status).getByText('LF')).toBeVisible();
   expect(within(status).getByText('Split')).toBeVisible();
 });
+
+it('T015 renders the authoritative saved status beside document metadata', () => {
+  render(
+    <StatusBar
+      arrangement="editor"
+      cursor={{ lineNumber: 4, column: 2 }}
+      encoding="utf-8"
+      lineEnding="lf"
+      status="saved"
+      wordCount={3}
+    />,
+  );
+
+  expect(screen.getByRole('contentinfo')).toHaveTextContent('Saved');
+});

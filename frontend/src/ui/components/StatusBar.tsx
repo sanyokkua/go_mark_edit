@@ -1,5 +1,8 @@
 import type { EditorPosition } from './CodeEditor';
-import type { ViewArrangement } from '../../logic/store/appModelTypes';
+import type {
+  SaveStatus,
+  ViewArrangement,
+} from '../../logic/store/appModelTypes';
 import { formatNumber, t } from '../../i18n';
 import styles from './StatusBar.module.css';
 
@@ -8,6 +11,7 @@ export interface StatusBarProps {
   cursor: EditorPosition;
   encoding: string;
   lineEnding: string;
+  status?: SaveStatus;
   wordCount: number;
 }
 
@@ -20,6 +24,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   cursor,
   encoding,
   lineEnding,
+  status = 'not-saved',
   wordCount,
 }: StatusBarProps): React.JSX.Element => (
   <footer aria-label={t('status.ariaLabel')} className={styles.statusBar}>
@@ -33,6 +38,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
     <span className={styles.spacer} />
     <span>{t(translationKey('encoding', encoding))}</span>
     <span>{t(translationKey('lineEnding', lineEnding))}</span>
+    <span>{t(translationKey('saveStatus', status))}</span>
     <span>{t(translationKey('arrangement', arrangement))}</span>
   </footer>
 );

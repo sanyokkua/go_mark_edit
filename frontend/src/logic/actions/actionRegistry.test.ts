@@ -42,6 +42,13 @@ it('T002 keeps required surface membership and omits deferred actions from nativ
   expect(getAction('bold').nativeRole).toBe('none');
 });
 
+it('T015 makes Save and Save As available document actions in the File menu', () => {
+  expect(getAction('save').availability.kind).toBe('available');
+  expect(getAction('save-as').availability.kind).toBe('available');
+  expect(getAction('save').scope).toBe('document');
+  expect(getAction('save-as').scope).toBe('document');
+});
+
 it('T043 derives the exact context surface order from the canonical registry', () => {
   expect(actionsForSurface('context').map((entry) => entry.id)).toEqual([
     'cut',

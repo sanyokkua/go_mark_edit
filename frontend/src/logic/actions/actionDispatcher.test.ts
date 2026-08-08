@@ -118,3 +118,21 @@ it('T009 dispatches Refresh preview as an available window action without a shor
     dispatchAction('refresh-preview', { windowFocused: true, invoke }),
   ).resolves.toMatchObject({ status: 'mutated', actionId: 'refresh-preview' });
 });
+
+it('T015 refuses Save before invoking the bridge for a read-only document', async () => {
+  const invoke = jest.fn();
+
+  await expect(
+    dispatchAction('save', {
+      documentId: 'doc-1',
+      sessionDocumentId: 'doc-1',
+      writable: false,
+      invoke,
+    }),
+  ).resolves.toMatchObject({
+    actionId: 'save',
+    reason: 'no-document',
+    status: 'unavailable',
+  });
+  expect(invoke).not.toHaveBeenCalled();
+});

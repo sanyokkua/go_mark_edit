@@ -13,6 +13,8 @@ import {
   SetDocView,
   SetUILayout,
   UpdateBuffer,
+  Save,
+  SaveAs,
 } from 'wailsjs/go/appmodel/AppModelHandler';
 import { apperr } from 'wailsjs/go/models';
 import {
@@ -34,12 +36,15 @@ import {
   type AppModelRuntime,
 } from './appModelAdapter';
 import { createSettingsAdapter, type SettingsBindings } from './services';
+import { createDocumentWriteAdapter } from './services';
 import { createWindowAdapter } from './windowAdapter';
 import type {
   ClassifiedError,
   DocumentTransitionResult,
   DocumentMetadata,
+  LineEndingOutcome,
   OpenResult,
+  WriteResult,
 } from '../store/appModelTypes';
 
 function normalizeSaveStatus(
@@ -103,6 +108,34 @@ function normalizeOpenResult(result: apperr.OpenResult): OpenResult {
   };
 }
 
+function normalizeWriteResult(result: apperr.WriteResult): WriteResult {
+  return {
+    status: result.status as WriteResult['status'],
+    data:
+      result.data === undefined
+        ? undefined
+        : {
+            documentId: result.data.documentId,
+            writtenContentRevision: result.data.writtenContentRevision,
+            committedProjectionRevision:
+              result.data.committedProjectionRevision,
+            targetPath: result.data.targetPath,
+            targetPathAdopted: result.data.targetPathAdopted,
+            lineEndingOutcome: result.data
+              .lineEndingOutcome as LineEndingOutcome,
+            bomOutcome: result.data.bomOutcome as 'preserved' | 'absent',
+            resyncRequired: result.data.resyncRequired,
+          },
+    decisionToken: result.decisionToken,
+    proposedEnding:
+      result.proposedEnding === undefined
+        ? undefined
+        : (result.proposedEnding as 'lf' | 'crlf'),
+    documentRevision: result.documentRevision,
+    error: normalizeClassifiedError(result.error),
+  };
+}
+
 const generatedSettingsBindings: SettingsBindings = {
   getSettings: GetSettings,
   updateAppearance: UpdateAppearance,
@@ -113,6 +146,17 @@ const generatedSettingsBindings: SettingsBindings = {
 };
 
 export const settingsAdapter = createSettingsAdapter(generatedSettingsBindings);
+
+export const documentWriteAdapter = createDocumentWriteAdapter({
+  save: async (documentId, contentRevision, decisionToken) =>
+    normalizeWriteResult(
+      await Save(documentId, contentRevision, decisionToken),
+    ),
+  saveAs: async (documentId, contentRevision, decisionToken) =>
+    normalizeWriteResult(
+      await SaveAs(documentId, contentRevision, decisionToken),
+    ),
+});
 
 const generatedAppModelBindings: AppModelBindings = {
   getState: async () => {
@@ -190,6 +234,9 @@ export {
 export {
   createSettingsAdapter,
   createDocumentLifecycleAdapter,
+  createDocumentWriteAdapter,
+  type DocumentWriteAdapter,
+  type DocumentWriteBindings,
   type DocumentLifecycleAdapter,
   type DocumentLifecycleBindings,
   type SettingsAdapter,

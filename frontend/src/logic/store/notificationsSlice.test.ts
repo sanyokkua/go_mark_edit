@@ -166,3 +166,15 @@ it('refreshes continuing conditions and keeps automatic success silent', () => {
   state = reducer(state, clearCondition(state.banners[0].id));
   expect(state.banners).toEqual([]);
 });
+
+it('repeated failures update one notification with a count', () => {
+  const first = notifyError(error('io', 'First failure', 'Safe detail.'));
+  const second = notifyError(error('io', 'Second failure', 'New safe detail.'));
+  first.payload.subject = 'document-1';
+  second.payload.subject = 'document-1';
+
+  const state = reducer(reducer(undefined, first), second);
+
+  expect(state.items).toHaveLength(1);
+  expect(state.items[0]).toMatchObject({ count: 2, subject: 'document-1' });
+});

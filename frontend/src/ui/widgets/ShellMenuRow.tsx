@@ -33,6 +33,11 @@ interface ShellMenuRowProps {
   onAbout: () => void;
   onNewDocument?: () => Promise<unknown> | unknown;
   onOpenDocument?: () => Promise<unknown> | unknown;
+  onSave?: () => Promise<unknown> | unknown;
+  onSaveAs?: () => Promise<unknown> | unknown;
+  documentId?: string;
+  sessionDocumentId?: string;
+  writable?: boolean;
   onShortcuts?: () => void;
   settingsMenuProps: SettingsMenuProps;
   toggleFullscreen?: () => Promise<boolean>;
@@ -55,7 +60,12 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   onAbout,
   onNewDocument,
   onOpenDocument,
+  onSave,
+  onSaveAs,
   onShortcuts,
+  documentId,
+  sessionDocumentId,
+  writable,
   settingsMenuProps,
   toggleFullscreen = windowAdapter.toggleFullscreen,
   viewMenuProps,
@@ -215,6 +225,9 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       (action.id !== 'view' || viewMenuProps !== undefined),
   );
   const fileActions = actionsForSurface('file-menu');
+  const fileActionDisabled = (id: ActionId): boolean =>
+    getAction(id).availability.kind === 'deferred' ||
+    (['save', 'save-as'].includes(id) && writable !== true);
   const aboutActions = actionsForSurface('about-menu');
   const sidebarAction = getAction('toggle-sidebar');
   const assistantAction = getAction('toggle-assistant');
@@ -238,14 +251,21 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
         ? onNewDocument
         : id === 'open-file'
           ? onOpenDocument
-          : undefined;
+          : id === 'save'
+            ? onSave
+            : id === 'save-as'
+              ? onSaveAs
+              : undefined;
     if (invoke === undefined) return;
 
     setFileOpen(false);
     setOverflowOpen(false);
     void dispatchAction(id, {
       applicationFocused: true,
+      documentId,
       invoke,
+      sessionDocumentId,
+      writable,
     });
   };
   const requestViewOpen = (open: boolean): void => {
@@ -422,7 +442,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   ) : (
                     <DropdownMenu.Item
                       className={styles.item}
-                      disabled={item.availability.kind === 'deferred'}
+                      disabled={fileActionDisabled(item.id)}
                       key={item.id}
                       onSelect={(): void => dispatchFileAction(item.id)}
                     >
@@ -606,7 +626,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                     ) : (
                       <button
                         className={styles.item}
-                        disabled={item.availability.kind === 'deferred'}
+                        disabled={fileActionDisabled(item.id)}
                         key={item.id}
                         role="menuitem"
                         type="button"
@@ -633,7 +653,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   {aboutActions.map((item) => (
                     <button
                       className={styles.item}
-                      disabled={item.availability.kind === 'deferred'}
+                      disabled={fileActionDisabled(item.id)}
                       key={item.id}
                       role="menuitem"
                       type="button"
