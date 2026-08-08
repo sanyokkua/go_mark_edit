@@ -163,7 +163,7 @@ it('ExternalChangePrompt decisions and invalidation', async () => {
     detectedDiskVersion: {
       exists: true,
       mode: 0o644,
-      modifiedUnixNano: 4,
+      modifiedUnixNano: '4',
       size: 12,
     },
     displayName: 'two.md',

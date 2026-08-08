@@ -118,7 +118,7 @@ function normalizeConflictPreview(
     detectedDiskVersion: {
       exists: preview.detectedDiskVersion.exists,
       size: preview.detectedDiskVersion.size,
-      modifiedUnixNano: preview.detectedDiskVersion.modifiedUnixNano,
+      modifiedUnixNano: String(preview.detectedDiskVersion.modifiedUnixNano),
       mode: preview.detectedDiskVersion.mode,
       fileIdentity: preview.detectedDiskVersion.fileIdentity,
     },

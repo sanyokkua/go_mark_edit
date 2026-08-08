@@ -97,7 +97,7 @@ export interface ConflictPreviewSide {
 export interface DiskVersion {
   exists: boolean;
   size: number;
-  modifiedUnixNano: number;
+  modifiedUnixNano: string;
   mode: number;
   fileIdentity?: string;
 }

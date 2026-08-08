@@ -93,7 +93,7 @@ it('T020 guards every conflict decision with its exact bridge argument order', a
   const version = {
     exists: true,
     mode: 0o644,
-    modifiedUnixNano: 9,
+    modifiedUnixNano: '9',
     size: 12,
   };
   const bindings: DocumentConflictBindings = {

@@ -9,7 +9,7 @@ function preview(overrides: Partial<ConflictPreview> = {}): ConflictPreview {
     detectedDiskVersion: {
       exists: true,
       mode: 0o644,
-      modifiedUnixNano: 2,
+      modifiedUnixNano: '2',
       size: 16,
     },
     displayName: 'notes.md',

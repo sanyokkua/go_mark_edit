@@ -202,3 +202,45 @@ func TestResultEnvelopeFieldContracts(t *testing.T) {
 		})
 	}
 }
+
+// Proves: FR-FT-021
+// Nanosecond disk versions survive a JSON round trip without JavaScript-number rounding.
+func TestDiskVersionJSONUsesExactTimestampText(t *testing.T) {
+	t.Parallel()
+
+	want := DiskVersion{
+		Exists:           true,
+		Size:             31,
+		ModifiedUnixNano: 1786223275058000123,
+		Mode:             0o644,
+		FileIdentity:     "file:1:2",
+	}
+	encoded, err := json.Marshal(want)
+	if err != nil {
+		t.Fatalf("marshal disk version: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"modifiedUnixNano":"1786223275058000123"`) {
+		t.Fatalf("disk version JSON = %s, want exact timestamp text", encoded)
+	}
+	var got DiskVersion
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatalf("unmarshal disk version: %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("round trip = %+v, want %+v", got, want)
+	}
+}
+
+// Proves: FR-FT-021
+// The bridge remains compatible with legacy numeric timestamp payloads.
+func TestDiskVersionJSONReadsLegacyNumericTimestamp(t *testing.T) {
+	t.Parallel()
+
+	var got DiskVersion
+	if err := json.Unmarshal([]byte(`{"exists":true,"size":1,"modifiedUnixNano":123,"mode":420}`), &got); err != nil {
+		t.Fatalf("unmarshal legacy disk version: %v", err)
+	}
+	if got.ModifiedUnixNano != 123 {
+		t.Fatalf("legacy timestamp = %d, want 123", got.ModifiedUnixNano)
+	}
+}

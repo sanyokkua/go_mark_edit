@@ -1,5 +1,11 @@
 package apperr
 
+import (
+	"encoding/json"
+	"fmt"
+	"strconv"
+)
+
 // AppearanceSettings contains the persisted appearance settings.
 type AppearanceSettings struct {
 	Theme           string `json:"theme"`
@@ -273,6 +279,72 @@ type DiskVersion struct {
 	ModifiedUnixNano int64  `json:"modifiedUnixNano"`
 	Mode             uint32 `json:"mode"`
 	FileIdentity     string `json:"fileIdentity,omitempty"`
+}
+
+// MarshalJSON encodes the nanosecond timestamp as text so the JavaScript
+// bridge does not round an int64 beyond Number.MAX_SAFE_INTEGER.
+func (version DiskVersion) MarshalJSON() ([]byte, error) {
+	type wireDiskVersion struct {
+		Exists           bool   `json:"exists"`
+		Size             int64  `json:"size"`
+		ModifiedUnixNano string `json:"modifiedUnixNano"`
+		Mode             uint32 `json:"mode"`
+		FileIdentity     string `json:"fileIdentity,omitempty"`
+	}
+	return json.Marshal(wireDiskVersion{
+		Exists:           version.Exists,
+		Size:             version.Size,
+		ModifiedUnixNano: strconv.FormatInt(version.ModifiedUnixNano, 10),
+		Mode:             version.Mode,
+		FileIdentity:     version.FileIdentity,
+	})
+}
+
+// UnmarshalJSON accepts both the current string form and the legacy numeric
+// form so persisted or mock bridge payloads remain readable during rollout.
+func (version *DiskVersion) UnmarshalJSON(data []byte) error {
+	type wireDiskVersion struct {
+		Exists           bool            `json:"exists"`
+		Size             int64           `json:"size"`
+		ModifiedUnixNano json.RawMessage `json:"modifiedUnixNano"`
+		Mode             uint32          `json:"mode"`
+		FileIdentity     string          `json:"fileIdentity,omitempty"`
+	}
+	var wire wireDiskVersion
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	modifiedUnixNano, err := parseDiskVersionTimestamp(wire.ModifiedUnixNano)
+	if err != nil {
+		return err
+	}
+	*version = DiskVersion{
+		Exists:           wire.Exists,
+		Size:             wire.Size,
+		ModifiedUnixNano: modifiedUnixNano,
+		Mode:             wire.Mode,
+		FileIdentity:     wire.FileIdentity,
+	}
+	return nil
+}
+
+func parseDiskVersionTimestamp(raw json.RawMessage) (int64, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return 0, nil
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		value, parseErr := strconv.ParseInt(text, 10, 64)
+		if parseErr != nil {
+			return 0, fmt.Errorf("parse modifiedUnixNano: %w", parseErr)
+		}
+		return value, nil
+	}
+	var value int64
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return 0, fmt.Errorf("parse modifiedUnixNano: %w", err)
+	}
+	return value, nil
 }
 
 // ConflictPreviewSide is bounded transient comparison text. It is never part
