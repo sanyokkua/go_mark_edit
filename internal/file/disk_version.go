@@ -83,7 +83,7 @@ func portableFileIdentity(info fs.FileInfo) string {
 	high, hasHigh := uintField(value, "FileIndexHigh")
 	low, hasLow := uintField(value, "FileIndexLow")
 	if hasVolume && hasHigh && hasLow {
-		return fmt.Sprintf("volume:%d:index:%d", volume, uint64(high)<<32|low)
+		return fmt.Sprintf("volume:%d:index:%d", volume, high<<32|low)
 	}
 	return ""
 }

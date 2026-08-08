@@ -1,7 +1,10 @@
 // Package appmodel owns GoMarkEdit's backend-authoritative live application state.
 package appmodel
 
-import "github.com/sanyokkua/go_mark_edit/internal/apperr"
+import (
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/file"
+)
 
 const (
 	// ArrangementEditor shows only the editor pane.
@@ -16,6 +19,11 @@ type openDocument struct {
 	metadata          apperr.DocumentMetadata
 	content           string
 	baseline          string
+	baselineVersion   file.DiskVersion
+	baselineOrigin    SaveOrigin
+	committedRevision uint64
+	failedWrite       bool
+	detached          bool
 	canonicalIdentity string
 	hasSavedView      bool
 }

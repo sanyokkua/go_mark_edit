@@ -174,6 +174,7 @@ export namespace apperr {
 	    capability?: string;
 	    sizeClass?: string;
 	    detached?: boolean;
+	    status?: string;
 	    view: DocView;
 	
 	    static createFrom(source: any = {}) {
@@ -196,6 +197,7 @@ export namespace apperr {
 	        this.capability = source["capability"];
 	        this.sizeClass = source["sizeClass"];
 	        this.detached = source["detached"];
+	        this.status = source["status"];
 	        this.view = this.convertValues(source["view"], DocView);
 	    }
 	

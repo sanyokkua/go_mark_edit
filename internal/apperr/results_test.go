@@ -138,6 +138,35 @@ func TestDocumentTransitionWireShape(t *testing.T) {
 	}
 }
 
+func TestCommittedWriteResultWireShape(t *testing.T) {
+	result := CommittedWriteResult{Data: &CommittedWriteOutcome{
+		DocumentID:                  "doc-1",
+		WrittenContentRevision:      4,
+		CommittedProjectionRevision: 8,
+		TargetPathAdopted:           true,
+		LineEndingOutcome:           LineEndingPreservedCRLF,
+		BOMOutcome:                  BOMOutcomePreserved,
+		ResyncRequired:              true,
+	}}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatalf("marshal committed write result: %v", err)
+	}
+	for _, field := range []string{
+		`"documentId":"doc-1"`,
+		`"writtenContentRevision":4`,
+		`"committedProjectionRevision":8`,
+		`"targetPathAdopted":true`,
+		`"lineEndingOutcome":"preserved-crlf"`,
+		`"bomOutcome":"preserved"`,
+		`"resyncRequired":true`,
+	} {
+		if !strings.Contains(string(encoded), field) {
+			t.Fatalf("committed write result JSON = %s, missing %s", encoded, field)
+		}
+	}
+}
+
 func mapKeys(values map[string]json.RawMessage) []string {
 	keys := make([]string, 0, len(values))
 	for key := range values {

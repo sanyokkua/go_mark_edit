@@ -85,18 +85,11 @@ export function useSyncedBuffer(
     toEditorPosition(view.cursor.line, view.cursor.column),
   );
   const currentDocumentRef = useRef(documentId);
-  const activationRef = useRef({
-    documentId,
-    token: Symbol('editor-activation'),
-  });
+  const activation = useMemo(
+    () => ({ documentId, token: Symbol('editor-activation') }),
+    [documentId],
+  );
   const contentRef = useRef(initialContent);
-  if (activationRef.current.documentId !== documentId) {
-    activationRef.current = {
-      documentId,
-      token: Symbol('editor-activation'),
-    };
-    contentRef.current = initialContent;
-  }
   const selectionRef = useRef(view.selection);
   const scrollRef = useRef(view.scroll);
   const [liveCursor, setLiveCursor] = useState<EditorPosition>(() =>
@@ -137,7 +130,7 @@ export function useSyncedBuffer(
         expectedActivationToken,
         (): LifecycleCapture<string, DocViewInput, symbol> => ({
           documentId,
-          activationToken: activationRef.current.token,
+          activationToken: activation.token,
           content: contentRef.current,
           view: toDocViewInput(
             viewRef.current,
@@ -147,7 +140,7 @@ export function useSyncedBuffer(
           ),
         }),
       ),
-    [documentId, lifecycleBarrier],
+    [activation.token, documentId, lifecycleBarrier],
   );
 
   const updateDocView = useCallback((): void => {
@@ -208,13 +201,13 @@ export function useSyncedBuffer(
   );
 
   const onBlur = useCallback((): void => {
-    void flushActiveSession(documentId, activationRef.current.token).catch(
+    void flushActiveSession(documentId, activation.token).catch(
       (): void => undefined,
     );
-  }, [documentId, flushActiveSession]);
+  }, [activation.token, documentId, flushActiveSession]);
 
   return {
-    activationToken: activationRef.current.token,
+    activationToken: activation.token,
     flushActiveSession,
     liveCursor,
     onBlur,

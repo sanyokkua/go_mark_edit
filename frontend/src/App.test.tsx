@@ -449,14 +449,17 @@ it('STORY-012-AC-7 hands the active buffer to ephemeral editor session state', a
 it('T009 operates File New through the real menu and installs its acknowledged buffer', async () => {
   act((): void => disposeAppModelProjection());
   store.dispatch(resetProjection());
-  const newDocument = jest.fn(async (_tabSetRevision: number) => ({
-    data: {
-      documentId: 'document-2',
-      documentRevision: 0,
-      projectionRevision: 13,
-      content: 'new document content',
-    },
-  }));
+  const newDocument = jest.fn(async (expectedTabSetRevision: number) => {
+    void expectedTabSetRevision;
+    return {
+      data: {
+        documentId: 'document-2',
+        documentRevision: 0,
+        projectionRevision: 13,
+        content: 'new document content',
+      },
+    };
+  });
   mockedAppModelAdapter.newDocument = newDocument;
   mockedAppModelAdapter.getState.mockReset();
   mockedAppModelAdapter.subscribeStatePatches.mockReset();

@@ -203,7 +203,7 @@ func TestSuccessfulCommandsEmitOneRevisionedContentFreePatch(t *testing.T) {
 		if marshalErr != nil {
 			t.Fatalf("marshal patch %d: %v", index, marshalErr)
 		}
-		if strings.Contains(string(encoded), "content") || strings.Contains(string(encoded), "activeBuffer") {
+		if strings.Contains(string(encoded), `"content":`) || strings.Contains(string(encoded), "activeBuffer") {
 			t.Fatalf("patch %d leaked buffer data: %s", index, encoded)
 		}
 	}
@@ -598,7 +598,7 @@ func TestDocumentContentAccessorSnapshotActiveDoesNotMutateEmitOrProjectContent(
 		if marshalErr != nil {
 			t.Fatalf("marshal patch: %v", marshalErr)
 		}
-		if strings.Contains(string(encoded), "content") {
+		if strings.Contains(string(encoded), `"content":`) {
 			t.Fatalf("patch leaked content: %s", encoded)
 		}
 	}

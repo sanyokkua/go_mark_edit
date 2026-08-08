@@ -40,6 +40,7 @@ function normalizeDocumentMetadata(
     capability: document.capability,
     sizeClass: document.sizeClass,
     detached: document.detached,
+    status: document.status,
     view: {
       arrangement: document.view.arrangement,
       editorVisible: document.view.editorVisible,

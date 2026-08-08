@@ -33,17 +33,29 @@ import {
   type AppModelBindings,
   type AppModelRuntime,
 } from './appModelAdapter';
-import {
-  createDocumentLifecycleAdapter,
-  createSettingsAdapter,
-  type SettingsBindings,
-} from './services';
+import { createSettingsAdapter, type SettingsBindings } from './services';
 import { createWindowAdapter } from './windowAdapter';
 import type {
   ClassifiedError,
   DocumentTransitionResult,
+  DocumentMetadata,
   OpenResult,
 } from '../store/appModelTypes';
+
+function normalizeSaveStatus(
+  status: string | undefined,
+): DocumentMetadata['status'] {
+  switch (status) {
+    case 'not-saved':
+    case 'unsaved-changes':
+    case 'saved':
+    case 'autosaved':
+    case 'read-only':
+      return status;
+    default:
+      return undefined;
+  }
+}
 
 function normalizeClassifiedError(
   error: apperr.ClassifiedError | undefined,
@@ -115,7 +127,17 @@ const generatedAppModelBindings: AppModelBindings = {
           ...result.data.snapshot,
           activeDocumentId: result.data.snapshot.activeDocumentId ?? null,
           orderedDocumentIds: result.data.snapshot.orderedDocumentIds ?? [],
-          documents: result.data.snapshot.documents ?? {},
+          documents: Object.fromEntries(
+            Object.entries(result.data.snapshot.documents ?? {}).map(
+              ([documentId, document]) => [
+                documentId,
+                {
+                  ...document,
+                  status: normalizeSaveStatus(document.status),
+                },
+              ],
+            ),
+          ),
         },
         activeBuffer: result.data.activeBuffer ?? null,
       },

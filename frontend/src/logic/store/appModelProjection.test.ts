@@ -72,6 +72,7 @@ function createAdapter(
     updateLocalDocView: jest.fn(),
     flushDocView: jest.fn<Promise<void>, [string]>(),
     setUILayout: jest.fn(),
+    reconcileCommittedWrite: jest.fn(),
     subscribeAsyncErrors(callback): () => void {
       errorListeners.push(callback);
       return jest.fn();
@@ -129,6 +130,28 @@ it('STORY-012-AC-1 strips content while hydrating projection metadata', async ()
   expect(projection).not.toHaveProperty('documents.byId.document-1.content');
   expect(JSON.stringify(projection)).not.toContain('Canonical content');
   expect(localStorage).toHaveLength(0);
+});
+
+it('dev bridge dirty state follows disk baseline', async (): Promise<void> => {
+  const state = appState(12);
+  state.snapshot.documents = {
+    [documentMetadata.documentId]: {
+      ...documentMetadata,
+      dirty: true,
+      status: 'unsaved-changes',
+    } as DocumentMetadata,
+  };
+
+  await expect(
+    bootstrapAppModelProjection(createAdapter(async () => state)),
+  ).resolves.toMatchObject({ status: 'ready' });
+
+  expect(
+    store.getState().documents.byId[documentMetadata.documentId],
+  ).toMatchObject({
+    dirty: true,
+    status: 'unsaved-changes',
+  });
 });
 
 it('projects optional active state', async () => {

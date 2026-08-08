@@ -25,12 +25,14 @@ it('acknowledges ResetAppearance through one guarded zero-arity typed binding', 
 
 it('T009 preserves classified New/Open outcomes through guarded lifecycle bindings', async () => {
   const bindings: DocumentLifecycleBindings = {
-    newDocument: jest.fn(async (_expectedTabSetRevision: number) => ({
-      data: { documentId: 'new-doc', content: '' },
-    })),
-    openDocument: jest.fn(async (_expectedTabSetRevision: number) => ({
-      status: 'cancelled' as const,
-    })),
+    newDocument: jest.fn(async (expectedTabSetRevision: number) => {
+      void expectedTabSetRevision;
+      return { data: { documentId: 'new-doc', content: '' } };
+    }),
+    openDocument: jest.fn(async (expectedTabSetRevision: number) => {
+      void expectedTabSetRevision;
+      return { status: 'cancelled' as const };
+    }),
   };
   const adapter = createDocumentLifecycleAdapter(bindings);
 

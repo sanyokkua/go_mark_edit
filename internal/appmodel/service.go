@@ -75,6 +75,7 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 			DocumentID: documentID,
 			Title:      "Untitled",
 			Path:       "",
+			Capability: "writable",
 			Encoding:   "utf-8",
 			LineEnding: "lf",
 			View: apperr.DocView{
@@ -347,6 +348,10 @@ func (service *AppModelService) SetDocView(ctx context.Context, documentID strin
 
 func (service *AppModelService) effectiveDocumentMetadataLocked(document *openDocument) apperr.DocumentMetadata {
 	metadata := document.metadata
+	status := saveStatusForDocument(document)
+	metadata.Status = string(status)
+	metadata.Dirty = status == SaveStatusUnsavedChanges
+	metadata.Detached = document.detached
 	if document.hasSavedView || service.state.ui.ViewArrangement == nil {
 		return metadata
 	}
@@ -690,7 +695,7 @@ func (service *AppModelService) documentPatchLocked(documentID string) apperr.Ap
 	orderedDocumentIDs := append([]string(nil), service.state.orderedDocumentIDs...)
 	var metadata apperr.DocumentMetadata
 	if document, ok := service.state.documents[documentID]; ok {
-		metadata = document.metadata
+		metadata = service.effectiveDocumentMetadataLocked(document)
 	}
 	return apperr.AppStatePatch{
 		Revision:           service.state.revision,

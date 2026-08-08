@@ -122,6 +122,7 @@ type DocumentMetadata struct {
 	Capability      string  `json:"capability,omitempty"`
 	SizeClass       string  `json:"sizeClass,omitempty"`
 	Detached        bool    `json:"detached,omitempty"`
+	Status          string  `json:"status,omitempty"`
 	View            DocView `json:"view"`
 }
 
@@ -158,6 +159,39 @@ type DocumentTransitionResult struct {
 
 // DocumentTransitionOutcome is the contract-level descriptive alias used by lifecycle callers.
 type DocumentTransitionOutcome = DocumentTransitionResult
+
+type LineEndingOutcome string
+
+const (
+	LineEndingPreservedLF    LineEndingOutcome = "preserved-lf"
+	LineEndingPreservedCRLF  LineEndingOutcome = "preserved-crlf"
+	LineEndingNormalizedLF   LineEndingOutcome = "normalized-lf"
+	LineEndingNormalizedCRLF LineEndingOutcome = "normalized-crlf"
+	LineEndingNewLF          LineEndingOutcome = "new-lf"
+)
+
+type BOMOutcome string
+
+const (
+	BOMOutcomePreserved BOMOutcome = "preserved"
+	BOMOutcomeAbsent    BOMOutcome = "absent"
+)
+
+// CommittedWriteOutcome records the irreversible disk result and the projection barrier state.
+type CommittedWriteOutcome struct {
+	DocumentID                  string            `json:"documentId"`
+	WrittenContentRevision      uint64            `json:"writtenContentRevision"`
+	CommittedProjectionRevision uint64            `json:"committedProjectionRevision"`
+	TargetPathAdopted           bool              `json:"targetPathAdopted"`
+	LineEndingOutcome           LineEndingOutcome `json:"lineEndingOutcome"`
+	BOMOutcome                  BOMOutcome        `json:"bomOutcome"`
+	ResyncRequired              bool              `json:"resyncRequired"`
+}
+
+type CommittedWriteResult struct {
+	Data  *CommittedWriteOutcome `json:"data,omitempty"`
+	Error *ClassifiedError       `json:"error,omitempty"`
+}
 
 type OpenStatus string
 

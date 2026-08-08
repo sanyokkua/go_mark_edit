@@ -48,7 +48,36 @@ export interface DocumentMetadata {
   capability?: string;
   sizeClass?: string;
   detached?: boolean;
+  status?: SaveStatus;
   view: DocumentView;
+}
+
+export type SaveStatus =
+  'not-saved' | 'unsaved-changes' | 'saved' | 'autosaved' | 'read-only';
+
+export type LineEndingOutcome =
+  | 'preserved-lf'
+  | 'preserved-crlf'
+  | 'normalized-lf'
+  | 'normalized-crlf'
+  | 'new-lf';
+
+export interface CommittedWriteOutcome {
+  documentId: string;
+  writtenContentRevision: number;
+  committedProjectionRevision: number;
+  targetPathAdopted: boolean;
+  lineEndingOutcome: LineEndingOutcome;
+  bomOutcome: 'preserved' | 'absent';
+  resyncRequired: boolean;
+}
+
+export interface RecoverySurface {
+  persistent: boolean;
+  savedOnDisk: boolean;
+  commandsBlocked: boolean;
+  closeBlocked: boolean;
+  message: string;
 }
 
 export interface UILayout {

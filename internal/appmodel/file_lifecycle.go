@@ -266,6 +266,7 @@ func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arr
 	if read.Capability == file.CapabilityLargeReadOnly {
 		sizeClass = "large"
 	}
+	version, _ := file.CurrentDiskVersion(read.CanonicalPath.Path)
 	return &openDocument{
 		metadata: apperr.DocumentMetadata{
 			DocumentID: documentID, Title: read.CanonicalPath.DisplayName, Path: read.CanonicalPath.Path,
@@ -274,7 +275,7 @@ func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arr
 			LineEnding: string(read.Characteristics.LineEnding), Capability: string(read.Capability), SizeClass: sizeClass,
 			WordCount: len(strings.Fields(read.Content)), View: openView(arrangement),
 		},
-		content: read.Content, baseline: read.Content, canonicalIdentity: read.CanonicalPath.Identity,
+		content: read.Content, baseline: read.Content, baselineVersion: version, baselineOrigin: SaveOriginOpen, committedRevision: 0, canonicalIdentity: read.CanonicalPath.Identity,
 	}
 }
 

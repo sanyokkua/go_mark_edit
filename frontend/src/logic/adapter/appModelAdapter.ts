@@ -7,6 +7,8 @@ import type {
   DocumentTransitionResult,
   DocViewInput,
   OpenResult,
+  CommittedWriteOutcome,
+  RecoverySurface,
   UILayout,
 } from '../store/appModelTypes';
 import { isWireError, type WireError } from '../utils/parseError';
@@ -67,6 +69,9 @@ export interface AppModelAdapter {
   updateLocalDocView: (documentId: string, view: DocViewInput) => Promise<void>;
   flushDocView: (documentId: string) => Promise<void>;
   setUILayout: (layout: UILayout) => Promise<void>;
+  reconcileCommittedWrite: (
+    outcome: CommittedWriteOutcome,
+  ) => Promise<AppModelState | RecoverySurface>;
   subscribeAsyncErrors?: (onError: (error: WireError) => void) => () => void;
   subscribeStatePatches: (
     onPatch: (patch: AppStatePatch) => void,
@@ -145,6 +150,17 @@ export function createAppModelAdapter(
   const acceptedBufferListeners = new Set<(buffer: AcceptedBuffer) => void>();
   const bufferRecords = new Map<string, BufferRecord>();
   const viewRecords = new Map<string, ViewRecord>();
+  let greatestProjectionRevision = 0;
+  let recoveryPromise: Promise<AppModelState | RecoverySurface> | undefined;
+  let recoverySurface: RecoverySurface | undefined;
+
+  function assertCommandsAvailable(): void {
+    if (recoveryPromise !== undefined || recoverySurface !== undefined) {
+      throw new Error(
+        recoverySurface?.message ?? 'Editor-state recovery is in progress.',
+      );
+    }
+  }
 
   function bufferRecord(documentId: string): BufferRecord {
     const existing = bufferRecords.get(documentId);
@@ -322,19 +338,44 @@ export function createAppModelAdapter(
     }, BUFFER_SYNC_MS);
   }
 
+  async function hydrateState(): Promise<AppModelState> {
+    const state = await unwrapPromise(getState());
+    greatestProjectionRevision = Math.max(
+      greatestProjectionRevision,
+      state.snapshot.revision,
+    );
+    return state;
+  }
+
   return {
     async getState(): Promise<AppModelState> {
-      return unwrapPromise(getState());
+      return hydrateState();
     },
-    newDocument: documentLifecycle?.newDocument,
-    openDocument: documentLifecycle?.openDocument,
+    newDocument:
+      documentLifecycle === undefined
+        ? undefined
+        : async (
+            expectedTabSetRevision: number,
+          ): Promise<DocumentTransitionResult> => {
+            assertCommandsAvailable();
+            return documentLifecycle.newDocument(expectedTabSetRevision);
+          },
+    openDocument:
+      documentLifecycle === undefined
+        ? undefined
+        : async (expectedTabSetRevision: number): Promise<OpenResult> => {
+            assertCommandsAvailable();
+            return documentLifecycle.openDocument(expectedTabSetRevision);
+          },
     async updateBuffer(documentId: string, content: string): Promise<void> {
+      assertCommandsAvailable();
       const record = bufferRecord(documentId);
       record.nextGeneration += 1;
       record.pending = { generation: record.nextGeneration, content };
       scheduleBuffer(documentId);
     },
     async flushActiveSession(documentId: string): Promise<void> {
+      assertCommandsAvailable();
       const buffer = bufferRecord(documentId);
       const view = viewRecord(documentId);
       if (buffer.timer !== undefined) {
@@ -350,6 +391,7 @@ export function createAppModelAdapter(
       await sendPendingView(documentId);
     },
     async flushBuffer(documentId: string): Promise<void> {
+      assertCommandsAvailable();
       const record = bufferRecord(documentId);
       if (record.timer !== undefined) {
         clearTimeout(record.timer);
@@ -378,6 +420,7 @@ export function createAppModelAdapter(
       view: DocViewIntent,
       fallbackView?: DocViewInput,
     ): Promise<void> {
+      assertCommandsAvailable();
       const record = viewRecord(documentId);
       if (record.timer !== undefined) {
         clearTimeout(record.timer);
@@ -387,6 +430,7 @@ export function createAppModelAdapter(
       return sendPendingView(documentId);
     },
     async updateDocView(documentId: string, view: DocViewInput): Promise<void> {
+      assertCommandsAvailable();
       const record = viewRecord(documentId);
       queueDocView(record, view);
       scheduleDocView(documentId);
@@ -395,11 +439,13 @@ export function createAppModelAdapter(
       documentId: string,
       view: DocViewInput,
     ): Promise<void> {
+      assertCommandsAvailable();
       const record = viewRecord(documentId);
       queueDocView(record, view, undefined, true);
       scheduleDocView(documentId);
     },
     async flushDocView(documentId: string): Promise<void> {
+      assertCommandsAvailable();
       const record = viewRecord(documentId);
       if (record.timer !== undefined) {
         clearTimeout(record.timer);
@@ -408,7 +454,54 @@ export function createAppModelAdapter(
       await sendPendingView(documentId);
     },
     async setUILayout(layout: UILayout): Promise<void> {
+      assertCommandsAvailable();
       return unwrapPromise(setUILayout(layout));
+    },
+    async reconcileCommittedWrite(
+      outcome: CommittedWriteOutcome,
+    ): Promise<AppModelState | RecoverySurface> {
+      if (
+        !outcome.resyncRequired &&
+        outcome.committedProjectionRevision <= greatestProjectionRevision
+      ) {
+        return hydrateState();
+      }
+      if (recoveryPromise !== undefined) {
+        return recoveryPromise;
+      }
+
+      recoveryPromise = new Promise<AppModelState | RecoverySurface>(
+        (resolve) => {
+          let attempts = 0;
+          const tryHydrate = (): void => {
+            attempts += 1;
+            void hydrateState()
+              .then((state): void => {
+                recoverySurface = undefined;
+                resolve(state);
+              })
+              .catch((): void => {
+                if (attempts >= 3) {
+                  recoverySurface = {
+                    persistent: true,
+                    savedOnDisk: true,
+                    commandsBlocked: true,
+                    closeBlocked: true,
+                    message:
+                      'The file was saved on disk, but editor-state recovery failed.',
+                  };
+                  resolve(recoverySurface);
+                  return;
+                }
+                setTimeout(tryHydrate, attempts === 1 ? 250 : 1000);
+              });
+          };
+          tryHydrate();
+        },
+      ).finally((): void => {
+        recoveryPromise = undefined;
+      });
+      return recoveryPromise;
     },
     subscribeAsyncErrors(onError: (error: WireError) => void): () => void {
       return runtime.eventsOn('state:error', (payload: unknown) => {
@@ -426,6 +519,10 @@ export function createAppModelAdapter(
             if (!isAppStatePatch(payload)) {
               return;
             }
+            greatestProjectionRevision = Math.max(
+              greatestProjectionRevision,
+              payload.revision,
+            );
             for (const listener of statePatchListeners) {
               listener(payload);
             }

@@ -117,7 +117,7 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 		return AtomicReplaceResult{}, newAtomicReplaceError(request.TargetPath, false, AtomicReplacePreCommit, apperr.ClassifiedIOFailure, errors.New("target path is empty"))
 	}
 
-	expected := DiskVersion{}
+	var expected DiskVersion
 	if request.ExpectedVersion != nil {
 		expected = *request.ExpectedVersion
 	} else {
@@ -249,17 +249,19 @@ func classifyAtomicReplaceCause(err error) apperr.ClassifiedErrorCategory {
 
 func newAtomicReplaceError(target string, committed bool, phase AtomicReplacePhase, category apperr.ClassifiedErrorCategory, cause error) *AtomicReplaceError {
 	message := "The document could not be saved."
-	if category == apperr.ClassifiedConflict {
+	switch category {
+	case apperr.ClassifiedConflict:
 		message = "The document changed on disk before it could be saved."
-	} else if category == apperr.ClassifiedPermissionDenied {
+	case apperr.ClassifiedPermissionDenied:
 		message = "The document could not be saved because permission was denied."
-	} else if category == apperr.ClassifiedPersistenceWarning {
+	case apperr.ClassifiedPersistenceWarning:
 		message = "The document was saved, but its durability could not be confirmed."
 	}
 	remediation := apperr.RemediationRetry
-	if category == apperr.ClassifiedConflict {
+	switch category {
+	case apperr.ClassifiedConflict:
 		remediation = apperr.RemediationReload
-	} else if category == apperr.ClassifiedPersistenceWarning {
+	case apperr.ClassifiedPersistenceWarning:
 		remediation = apperr.RemediationNone
 	}
 	classified := apperr.NewClassifiedError(category, target, message, remediation, "")
