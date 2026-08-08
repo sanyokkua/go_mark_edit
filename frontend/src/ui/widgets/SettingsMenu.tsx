@@ -10,7 +10,11 @@ import { createPortal } from 'react-dom';
 import { t } from '../../i18n';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import { getAction, type ActionId } from '../../logic/actions/actionRegistry';
-import type { EditorSettings, MarkdownSettings } from '../../logic/adapter';
+import type {
+  EditorSettings,
+  FileSettings,
+  MarkdownSettings,
+} from '../../logic/adapter';
 import type { AppearanceChoice, Theme } from '../../logic/theme/theme';
 import Segmented, { type SegmentedOption } from '../primitives/Segmented';
 import styles from './SettingsMenu.module.css';
@@ -29,6 +33,8 @@ export interface SettingsMenuProps {
   anchorRef?: RefObject<HTMLElement | null>;
   editorSettings?: EditorSettings;
   onEditorSettingsChange?: (patch: Partial<EditorSettings>) => void;
+  fileSettings?: FileSettings;
+  onFileSettingsChange?: (patch: Partial<FileSettings>) => void;
   markdownSettings?: MarkdownSettings;
   onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
 }
@@ -65,6 +71,8 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   anchorRef,
   editorSettings,
   onEditorSettingsChange,
+  fileSettings,
+  onFileSettingsChange,
   markdownSettings,
   onMarkdownSettingsChange,
 }: SettingsMenuProps): React.JSX.Element => {
@@ -297,17 +305,36 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
           <fieldset className={styles.group}>
             <legend>{t('settings.menu.save')}</legend>
             {(['autosave', 'format-on-save', 'lint-on-save'] as const).map(
-              (id: ActionId) => (
-                <button
-                  className={styles.item}
-                  disabled
-                  role="menuitem"
-                  key={id}
-                  type="button"
-                >
-                  {t(getAction(id).labelKey)}
-                </button>
-              ),
+              (id: ActionId) =>
+                id === 'autosave' &&
+                fileSettings !== undefined &&
+                onFileSettingsChange !== undefined ? (
+                  <label className={styles.checkbox} key={id}>
+                    <input
+                      aria-label={t(getAction(id).labelKey)}
+                      checked={fileSettings.autosave}
+                      type="checkbox"
+                      onChange={(event): void =>
+                        dispatchSettingsAction(id, () =>
+                          onFileSettingsChange({
+                            autosave: event.target.checked,
+                          }),
+                        )
+                      }
+                    />
+                    {t(getAction(id).labelKey)}
+                  </label>
+                ) : (
+                  <button
+                    className={styles.item}
+                    disabled
+                    role="menuitem"
+                    key={id}
+                    type="button"
+                  >
+                    {t(getAction(id).labelKey)}
+                  </button>
+                ),
             )}
           </fieldset>
           {editorSettings !== undefined &&

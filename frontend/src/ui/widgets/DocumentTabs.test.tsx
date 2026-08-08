@@ -154,6 +154,20 @@ it('renders real dirty state and full canonical path tooltips', () => {
   expect(screen.getByLabelText('Modified')).toBeInTheDocument();
 });
 
+it('mutes the dirty dot only while the backend reports a write in flight', () => {
+  const document = {
+    ...documentFor('one', '/private/work/readme.md', true),
+    writeInFlight: true,
+  };
+  hydrate([document]);
+  renderTabs();
+
+  expect(screen.getByLabelText('Modified')).toHaveAttribute(
+    'data-write-in-flight',
+    'true',
+  );
+});
+
 it('ExternalChangePrompt decisions and invalidation', async () => {
   const first = documentFor('one', '/repo/one.md');
   const second = documentFor('two', '/repo/two.md');

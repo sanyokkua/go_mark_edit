@@ -34,6 +34,7 @@ it('T054 hydrates Redux settings once from the acknowledged adapter authority', 
     updateContentPrivacy: jest.fn(),
     updateMarkdown: jest.fn(),
     updateEditor: jest.fn(),
+    updateFile: jest.fn(),
   };
 
   await expect(bootstrapSettingsProjection(adapter)).resolves.toBeUndefined();

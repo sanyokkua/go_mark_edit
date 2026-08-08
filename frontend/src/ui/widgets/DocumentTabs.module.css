@@ -73,6 +73,10 @@
   padding-inline-end: var(--control-gap);
 }
 
+.modifiedDotMuted {
+  opacity: var(--disabled-opacity);
+}
+
 .tab:focus-visible,
 .tabClose:focus-visible,
 .tabAdd:focus-visible,

@@ -5,6 +5,7 @@ import {
   UpdateContentPrivacy,
   UpdateMarkdown,
   UpdateEditor,
+  UpdateFile,
 } from 'wailsjs/go/settings/SettingsHandler';
 import {
   GetState,
@@ -254,6 +255,7 @@ const generatedSettingsBindings: SettingsBindings = {
   updateContentPrivacy: UpdateContentPrivacy,
   updateMarkdown: UpdateMarkdown,
   updateEditor: UpdateEditor,
+  updateFile: UpdateFile,
 };
 
 export const settingsAdapter = createSettingsAdapter(generatedSettingsBindings);
@@ -425,5 +427,6 @@ export type {
   ContentPrivacySettings,
   MarkdownSettings,
   EditorSettings,
+  FileSettings,
   Settings,
 } from './settingsTypes';

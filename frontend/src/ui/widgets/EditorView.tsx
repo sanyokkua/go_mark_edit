@@ -370,6 +370,7 @@ const EditorView: React.FC<EditorViewProps> = ({
         encoding={encoding}
         lineEnding={lineEnding}
         status={activeDocument?.status ?? 'not-saved'}
+        writeInFlight={activeDocument?.writeInFlight}
         wordCount={wordCount}
       />
     </section>

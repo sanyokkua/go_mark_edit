@@ -37,6 +37,11 @@ type CommittedWriteResult struct {
 type WriteExecutor func(WriteSnapshot) (file.DiskVersion, error)
 type WritePublisher func(CommittedWriteResult) error
 
+// WriteCommitObserver observes the coordinator's disk-commit acknowledgement.
+// It is intentionally separate from publication so evidence cannot substitute
+// for or delay the production write path.
+type WriteCommitObserver func(CommittedWriteResult, SaveOrigin)
+
 // DocumentWriteCoordinator serializes replacement attempts for one document.
 type DocumentWriteCoordinator struct {
 	mu            sync.Mutex

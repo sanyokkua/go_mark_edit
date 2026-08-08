@@ -129,7 +129,7 @@ it('displaces only the oldest non-error and drops non-errors behind three errors
 });
 
 // Proves: FR-WS-016
-it('refreshes continuing conditions and keeps automatic success silent', () => {
+it('autosave success emits no toast while refreshing continuing conditions', () => {
   const condition = {
     code: 'offline',
     message: 'Changes remain local.',

@@ -186,6 +186,10 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
         onEditorSettingsChange: (patch): void => {
           void editorSettings.update(patch).catch((): void => undefined);
         },
+        fileSettings: editorSettings.fileSettings,
+        onFileSettingsChange: (patch): void => {
+          void editorSettings.updateFile(patch).catch((): void => undefined);
+        },
       }}
       viewMenuProps={
         activeDocument === undefined

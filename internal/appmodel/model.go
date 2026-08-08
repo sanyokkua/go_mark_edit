@@ -29,6 +29,7 @@ type openDocument struct {
 	baselineRawHash         string
 	canonicalIdentity       string
 	conflictBlocked         bool
+	writeInFlight           bool
 	hasSavedView            bool
 }
 

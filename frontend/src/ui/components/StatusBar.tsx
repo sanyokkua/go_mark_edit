@@ -12,6 +12,7 @@ export interface StatusBarProps {
   encoding: string;
   lineEnding: string;
   status?: SaveStatus;
+  writeInFlight?: boolean;
   wordCount: number;
 }
 
@@ -25,6 +26,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   encoding,
   lineEnding,
   status = 'not-saved',
+  writeInFlight = false,
   wordCount,
 }: StatusBarProps): React.JSX.Element => (
   <footer aria-label={t('status.ariaLabel')} className={styles.statusBar}>
@@ -38,7 +40,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
     <span className={styles.spacer} />
     <span>{t(translationKey('encoding', encoding))}</span>
     <span>{t(translationKey('lineEnding', lineEnding))}</span>
-    <span>{t(translationKey('saveStatus', status))}</span>
+    <span data-write-in-flight={writeInFlight || undefined}>
+      {t(translationKey('saveStatus', status))}
+      {writeInFlight ? ` · ${t('status.writeInFlight')}` : ''}
+    </span>
     <span>{t(translationKey('arrangement', arrangement))}</span>
   </footer>
 );

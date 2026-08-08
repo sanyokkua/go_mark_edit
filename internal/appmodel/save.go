@@ -272,10 +272,12 @@ func (service *AppModelService) requestNormalizationLocked(documentID string, ex
 }
 
 func (service *AppModelService) executeWrite(ctx context.Context, snapshot writeSnapshot, origin SaveOrigin) apperr.WriteResult {
+	ctx = service.runtimeContextOr(ctx)
 	encoded, err := encodeWrite(snapshot, origin, service.normalizationEndingFor(snapshot.documentID))
 	if err != nil {
 		return refusedWrite(snapshot.documentID, apperr.ClassifiedIOFailure, "The document could not be encoded for saving.", apperr.RemediationRetry)
 	}
+	service.setWriteInFlight(ctx, snapshot.documentID, true)
 	coordinator := service.writeCoordinator(snapshot.documentID)
 	committed, replaceErr := coordinator.Commit(WriteSnapshot{
 		DocumentID: snapshot.documentID, ContentRevision: snapshot.contentRevision,
@@ -283,7 +285,16 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		ExpectedDiskVersion: &snapshot.expectedVersion, encodedData: encoded.data,
 	})
 	committedToDisk := committed.Snapshot.DocumentID != ""
+	if committedToDisk {
+		service.mu.RLock()
+		observer := service.writeCommitObserver
+		service.mu.RUnlock()
+		if observer != nil {
+			observer(committed, origin)
+		}
+	}
 	if !committedToDisk {
+		service.setWriteInFlight(ctx, snapshot.documentID, false)
 		category := apperr.ClassifiedIOFailure
 		message := "The document could not be saved."
 		if atomicErr, ok := replaceErr.(*file.AtomicReplaceError); ok && atomicErr.Classified != nil {
@@ -302,6 +313,7 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		service.mu.Unlock()
 		return refusedWrite(snapshot.documentID, apperr.ClassifiedNotFound, "The document was closed before the save completed.", apperr.RemediationCancel)
 	}
+	document.writeInFlight = false
 	if snapshot.targetPathAdopted {
 		candidate, candidateErr := file.CanonicalizeCandidateDocumentPath(snapshot.path)
 		if candidateErr == nil {
@@ -355,6 +367,25 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		BOMOutcome: encoded.bomOutcome, ResyncRequired: resyncRequired,
 	}}
 	return result
+}
+
+func (service *AppModelService) setWriteInFlight(ctx context.Context, documentID string, inFlight bool) {
+	ctx = service.runtimeContextOr(ctx)
+	service.mu.Lock()
+	document, ok := service.state.documents[documentID]
+	if !ok || document.writeInFlight == inFlight {
+		service.mu.Unlock()
+		return
+	}
+	document.writeInFlight = inFlight
+	patch := service.documentPatchLocked(documentID)
+	if service.emitter != nil {
+		func() {
+			defer func() { _ = recover() }()
+			_ = service.emitter.EmitStatePatch(ctx, patch)
+		}()
+	}
+	service.mu.Unlock()
 }
 
 func (service *AppModelService) writeCoordinator(documentID string) *DocumentWriteCoordinator {

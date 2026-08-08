@@ -26,6 +26,7 @@ it('T002 exposes one localized registry entry for every Editor-stage identity', 
   expect(getAction('bold').shortcut).toBe('Mod+B');
   expect(getAction('new-file').availability.kind).toBe('available');
   expect(getAction('open-file').availability.kind).toBe('available');
+  expect(getAction('autosave').availability.kind).toBe('available');
   expect(getAction('refresh-preview').shortcut).toBeUndefined();
   expect(getAction('refresh-preview').surfaces).toContain('preview');
 });

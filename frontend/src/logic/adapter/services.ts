@@ -11,6 +11,7 @@ import type {
   AppearanceSettings,
   ContentPrivacySettings,
   EditorSettings,
+  FileSettings,
   MarkdownSettings,
   Settings,
   SettingsResult,
@@ -26,6 +27,7 @@ export interface SettingsBindings {
   ) => Promise<VoidResult>;
   updateMarkdown: (settings: MarkdownSettings) => Promise<VoidResult>;
   updateEditor: (settings: EditorSettings) => Promise<VoidResult>;
+  updateFile: (settings: FileSettings) => Promise<VoidResult>;
 }
 
 export interface SettingsAdapter {
@@ -35,6 +37,7 @@ export interface SettingsAdapter {
   updateContentPrivacy: (settings: ContentPrivacySettings) => Promise<void>;
   updateMarkdown: (settings: MarkdownSettings) => Promise<void>;
   updateEditor: (settings: EditorSettings) => Promise<void>;
+  updateFile: (settings: FileSettings) => Promise<void>;
 }
 
 export interface DocumentLifecycleBindings {
@@ -194,6 +197,10 @@ export function createSettingsAdapter(
     'SettingsHandler.UpdateEditor',
     bindings.updateEditor,
   );
+  const updateFile = guardArity(
+    'SettingsHandler.UpdateFile',
+    bindings.updateFile,
+  );
 
   return {
     async getSettings(): Promise<Settings> {
@@ -215,6 +222,9 @@ export function createSettingsAdapter(
     },
     async updateEditor(settings: EditorSettings): Promise<void> {
       return unwrap(await updateEditor(settings));
+    },
+    async updateFile(settings: FileSettings): Promise<void> {
+      return unwrap(await updateFile(settings));
     },
   };
 }

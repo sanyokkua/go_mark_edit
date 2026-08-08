@@ -49,6 +49,7 @@ export interface DocumentMetadata {
   sizeClass?: string;
   detached?: boolean;
   conflictBlocked?: boolean;
+  writeInFlight?: boolean;
   status?: SaveStatus;
   view: DocumentView;
 }

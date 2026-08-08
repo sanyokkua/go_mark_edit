@@ -36,6 +36,7 @@ it('T015 keeps EditorSettings DTO and binding arity parity', async () => {
     updateContentPrivacy: jest.fn(),
     updateMarkdown: jest.fn(),
     updateEditor,
+    updateFile: jest.fn(),
   };
   const adapter = createSettingsAdapter(bindings);
 

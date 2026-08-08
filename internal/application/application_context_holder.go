@@ -66,9 +66,12 @@ func (holder *ApplicationContextHolder) SetDocumentDialogs(dialogs *DocumentDial
 // SetContext records the context Wails supplies during application startup.
 func (holder *ApplicationContextHolder) SetContext(ctx context.Context) {
 	holder.mu.Lock()
-	defer holder.mu.Unlock()
-
 	holder.ctx = ctx
+	service := holder.AppModelService
+	holder.mu.Unlock()
+	if service != nil {
+		service.SetRuntimeContext(ctx)
+	}
 }
 
 // Context returns the lifecycle context captured during startup.

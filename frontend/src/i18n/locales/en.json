@@ -10,6 +10,7 @@
   "status.saveStatus.saved": "Saved",
   "status.saveStatus.autosaved": "Autosaved",
   "status.saveStatus.read-only": "Read-only",
+  "status.writeInFlight": "Saving",
   "status.arrangement.editor": "Editor",
   "status.arrangement.split": "Split",
   "status.arrangement.preview": "Preview",

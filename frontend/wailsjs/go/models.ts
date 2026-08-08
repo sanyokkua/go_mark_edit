@@ -175,6 +175,7 @@ export namespace apperr {
 	    sizeClass?: string;
 	    detached?: boolean;
 	    conflictBlocked?: boolean;
+	    writeInFlight?: boolean;
 	    status?: string;
 	    view: DocView;
 	
@@ -199,6 +200,7 @@ export namespace apperr {
 	        this.sizeClass = source["sizeClass"];
 	        this.detached = source["detached"];
 	        this.conflictBlocked = source["conflictBlocked"];
+	        this.writeInFlight = source["writeInFlight"];
 	        this.status = source["status"];
 	        this.view = this.convertValues(source["view"], DocView);
 	    }

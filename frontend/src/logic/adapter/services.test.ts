@@ -19,6 +19,7 @@ it('acknowledges ResetAppearance through one guarded zero-arity typed binding', 
     updateContentPrivacy: jest.fn(),
     updateMarkdown: jest.fn(),
     updateEditor: jest.fn(),
+    updateFile: jest.fn(),
   };
   const adapter = createSettingsAdapter(bindings);
 

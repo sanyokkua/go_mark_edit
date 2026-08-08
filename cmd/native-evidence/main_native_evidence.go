@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,9 +31,11 @@ var (
 	nativeEvidenceDatabaseDir string
 	nativeEvidenceInstance    = "native-evidence"
 	nativeEvidenceScenario    string
+	nativeEvidenceAutosave    *autosaveLatencyScenario
 )
 
 func main() {
+	parseNativeEvidenceFlags()
 	if err := validateNativeEvidenceConfiguration(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
@@ -49,6 +52,22 @@ func main() {
 	if err := wails.Run(nativeEvidenceOptions(holder, paths)); err != nil {
 		fmt.Fprintf(os.Stderr, "native evidence run: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+func parseNativeEvidenceFlags() {
+	scenario := flag.String("scenario", nativeEvidenceScenario, "native evidence scenario")
+	assets := flag.String("assets", nativeEvidenceAssetsDir, "native evidence frontend assets directory")
+	database := flag.String("database", nativeEvidenceDatabaseDir, "native evidence database and evidence directory")
+	flag.Parse()
+	nativeEvidenceScenario = *scenario
+	nativeEvidenceAssetsDir = *assets
+	nativeEvidenceDatabaseDir = *database
+	if nativeEvidenceAssetsDir == "" && nativeEvidenceScenario != "" {
+		nativeEvidenceAssetsDir = filepath.Join("frontend", "dist-native-evidence", nativeEvidenceScenario)
+	}
+	if nativeEvidenceDatabaseDir == "" {
+		nativeEvidenceDatabaseDir = filepath.Join(os.TempDir(), "gomarkedit-native-evidence")
 	}
 }
 
@@ -69,12 +88,19 @@ func validateNativeEvidenceConfiguration() error {
 }
 
 func configureNativeEvidenceDependencies(holder *application.ApplicationContextHolder, scenario string) {
+	nativeEvidenceAutosave = nil
 	var timer nativeEvidenceLayoutTimer = systemNativeEvidenceTimer{}
 	switch scenario {
 	case "pending-close", "stale-close-old":
 		timer = stalledNativeEvidenceTimer{}
 	case "stale-close-new":
 		timer = immediateNativeEvidenceTimer{}
+	case "autosave-latency":
+		latencyScenario, err := newAutosaveLatencyScenario(nativeEvidenceDatabaseDir)
+		if err != nil {
+			panic(err)
+		}
+		nativeEvidenceAutosave = latencyScenario
 	}
 
 	model := appmodel.NewAppModelServiceWithLayoutRepositoryAndTimer(
@@ -83,6 +109,10 @@ func configureNativeEvidenceDependencies(holder *application.ApplicationContextH
 		timer,
 	)
 	holder.AppModelService = model
+	if nativeEvidenceAutosave != nil {
+		model.SetDocumentOpenDialog(nativeEvidenceAutosave)
+		model.SetWriteCommitObserver(nativeEvidenceAutosave.recordCommit)
+	}
 	holder.AppModelHandler = appmodel.NewAppModelHandler(model, nil, holder.Context)
 	holder.NativeWindowService = application.NewNativeWindowService(model, nil)
 	holder.ApplicationHandler = application.NewApplicationHandler(holder, nil, holder.Context)
@@ -106,6 +136,11 @@ func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *
 		},
 		OnStartup: func(ctx context.Context) {
 			holder.SetContext(ctx)
+			if nativeEvidenceAutosave != nil {
+				nativeEvidenceAutosave.attachContext(ctx)
+				wailsruntime.EventsOn(ctx, autosaveInputEvent, nativeEvidenceAutosave.recordInput)
+				wailsruntime.EventsOn(ctx, autosaveMissEvent, nativeEvidenceAutosave.recordMiss)
+			}
 			if err := holder.Init(ctx); err != nil {
 				wailsruntime.WindowShow(ctx)
 				return

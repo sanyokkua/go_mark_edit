@@ -106,3 +106,30 @@ test('FT-VS-04 shows the bounded external-change prompt and safe Skip decision',
   await prompt.getByRole('button', { name: 'Skip' }).click();
   await expect(prompt).toHaveCount(0);
 });
+
+test('FT-VS-05 exposes acknowledged autosave control and truthful save status wiring', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const menu = page.getByRole('menu', { name: 'Settings menu' });
+  const autosave = menu.getByRole('checkbox', { name: 'Autosave' });
+  await expect(autosave).toBeChecked();
+  await autosave.uncheck();
+  await expect(autosave).not.toBeChecked();
+  await autosave.check();
+  await expect(autosave).toBeChecked();
+  await expect(
+    menu.getByRole('menuitem', { name: 'Format on save' }),
+  ).toBeDisabled();
+  await expect(
+    menu.getByRole('menuitem', { name: 'Lint on save' }),
+  ).toBeDisabled();
+
+  await expect(page.locator('footer')).toContainText('Not saved');
+  await expect(page.locator('[data-write-in-flight="true"]')).toHaveCount(0);
+  await expect(
+    page.locator('[data-notification-code="automatic-save"]'),
+  ).toHaveCount(0);
+});

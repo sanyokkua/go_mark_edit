@@ -67,6 +67,9 @@ const settingsSlice = createSlice({
     ): void {
       state.markdown = action.payload;
     },
+    acknowledgeFileSettings(state, action: PayloadAction<FileSettings>): void {
+      state.file = action.payload;
+    },
     resetSettingsProjection(): SettingsProjectionState {
       return initialSettingsState;
     },
@@ -75,6 +78,7 @@ const settingsSlice = createSlice({
 
 export const {
   acknowledgeEditorSettings,
+  acknowledgeFileSettings,
   acknowledgeMarkdownSettings,
   hydrateSettings,
   resetSettingsProjection,

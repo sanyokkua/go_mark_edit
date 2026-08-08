@@ -31,3 +31,24 @@ it('T070 positions Settings as a portal menu and restores its trigger focus afte
   fireEvent.pointerDown(screen.getByRole('button', { name: 'Outside' }));
   expect(screen.queryByRole('menu', { name: 'Settings menu' })).toBeNull();
 });
+
+it('renders the acknowledged autosave control and leaves deferred save actions unavailable', () => {
+  const onFileSettingsChange = jest.fn();
+  render(
+    <SettingsMenu
+      {...props}
+      fileSettings={{ autosave: true }}
+      onFileSettingsChange={onFileSettingsChange}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+
+  const autosave = screen.getByRole('checkbox', { name: 'Autosave' });
+  expect(autosave).toBeChecked();
+  fireEvent.click(autosave);
+  expect(onFileSettingsChange).toHaveBeenCalledWith({ autosave: false });
+  expect(
+    screen.getByRole('menuitem', { name: 'Format on save' }),
+  ).toBeDisabled();
+  expect(screen.getByRole('menuitem', { name: 'Lint on save' })).toBeDisabled();
+});

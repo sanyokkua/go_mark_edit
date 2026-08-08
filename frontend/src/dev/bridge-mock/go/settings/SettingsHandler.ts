@@ -163,3 +163,8 @@ export function UpdateEditor(nextEditor: EditorSettings): Promise<VoidResult> {
   settings = { ...settings, editor: { ...nextEditor } };
   return Promise.resolve({});
 }
+
+export function UpdateFile(nextFile: FileSettings): Promise<VoidResult> {
+  settings = { ...settings, file: { ...nextFile } };
+  return Promise.resolve({});
+}

@@ -37,3 +37,22 @@ it('T015 renders the authoritative saved status beside document metadata', () =>
 
   expect(screen.getByRole('contentinfo')).toHaveTextContent('Saved');
 });
+
+it('shows the write-in-flight state without replacing the authoritative dirty status', () => {
+  render(
+    <StatusBar
+      arrangement="editor"
+      cursor={{ lineNumber: 4, column: 2 }}
+      encoding="utf-8"
+      lineEnding="lf"
+      status="unsaved-changes"
+      wordCount={3}
+      writeInFlight
+    />,
+  );
+
+  const status = screen.getByRole('contentinfo');
+  expect(status).toHaveTextContent('Unsaved changes');
+  expect(status).toHaveTextContent('Saving');
+  expect(status.querySelector('[data-write-in-flight="true"]')).not.toBeNull();
+});

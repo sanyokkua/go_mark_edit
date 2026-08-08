@@ -43,6 +43,8 @@ type AppModelService struct {
 	normalizations      map[string]*normalizationAuthorization
 	writeCoordinators   map[string]*DocumentWriteCoordinator
 	writeExecutor       WriteExecutor
+	writeCommitObserver WriteCommitObserver
+	runtimeContext      context.Context
 	conflicts           map[string]*documentConflict
 	conflictQueue       *conflictQueue
 	keepMine            map[string]*keepMineAuthorization
@@ -213,6 +215,31 @@ func (service *AppModelService) SetWriteExecutorForTesting(executor WriteExecuto
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	service.writeExecutor = executor
+}
+
+// SetWriteCommitObserver installs an optional read-only observation seam for
+// current-host evidence. It does not alter coordination, timing, or disk I/O.
+func (service *AppModelService) SetWriteCommitObserver(observer WriteCommitObserver) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.writeCommitObserver = observer
+}
+
+// SetRuntimeContext supplies the Wails lifecycle context used by timer-driven
+// state patches. Foreground handlers still pass their request context directly.
+func (service *AppModelService) SetRuntimeContext(ctx context.Context) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.runtimeContext = ctx
+}
+
+func (service *AppModelService) runtimeContextOr(fallback context.Context) context.Context {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	if service.runtimeContext != nil {
+		return service.runtimeContext
+	}
+	return fallback
 }
 
 // OpenFromDialog turns cancellation into a normal outcome and delegates selected paths to OpenPath.
@@ -422,6 +449,7 @@ func (service *AppModelService) effectiveDocumentMetadataLocked(document *openDo
 	metadata.Dirty = status == SaveStatusUnsavedChanges
 	metadata.Detached = document.detached
 	metadata.ConflictBlocked = document.conflictBlocked
+	metadata.WriteInFlight = document.writeInFlight
 	if document.hasSavedView || service.state.ui.ViewArrangement == nil {
 		return metadata
 	}

@@ -41,6 +41,7 @@ function normalizeDocumentMetadata(
     sizeClass: document.sizeClass,
     detached: document.detached,
     conflictBlocked: document.conflictBlocked,
+    writeInFlight: document.writeInFlight,
     status: document.status,
     view: {
       arrangement: document.view.arrangement,

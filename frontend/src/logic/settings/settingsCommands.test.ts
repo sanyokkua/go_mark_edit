@@ -1,9 +1,11 @@
 import type {
   EditorSettings,
+  FileSettings,
   MarkdownSettings,
 } from '../adapter/settingsTypes';
 import {
   acknowledgeEditorSettingsUpdate,
+  acknowledgeFileSettingsUpdate,
   acknowledgeMarkdownSettingsUpdate,
 } from './settingsCommands';
 
@@ -20,6 +22,7 @@ const currentMarkdown: MarkdownSettings = {
   emphasisMarker: '*',
   headingStyle: 'atx',
 };
+const currentFile: FileSettings = { autosave: true };
 
 it('T054 retains editor projection on a rejected backend acknowledgement', async () => {
   const dispatch = jest.fn();
@@ -57,4 +60,49 @@ it('T054 dispatches Markdown projection only after backend acknowledgement', asy
   expect(dispatch.mock.calls[0]?.[0]).toMatchObject({
     payload: next,
   });
+});
+
+it('autosave setting is acknowledged before it applies', async () => {
+  const dispatch = jest.fn();
+  let resolveUpdate: (() => void) | undefined;
+  const adapter = {
+    updateFile: jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveUpdate = resolve;
+        }),
+    ),
+  };
+  const update = acknowledgeFileSettingsUpdate(
+    adapter,
+    currentFile,
+    { autosave: false },
+    dispatch,
+  );
+
+  await Promise.resolve();
+  expect(dispatch).not.toHaveBeenCalled();
+  resolveUpdate?.();
+  await update;
+  expect(dispatch).toHaveBeenCalledWith({
+    type: 'settings/acknowledgeFileSettings',
+    payload: { autosave: false },
+  });
+});
+
+it('keeps acknowledged autosave unchanged when persistence rejects', async () => {
+  const dispatch = jest.fn();
+  const adapter = {
+    updateFile: jest.fn().mockRejectedValue(new Error('write failed')),
+  };
+
+  await expect(
+    acknowledgeFileSettingsUpdate(
+      adapter,
+      currentFile,
+      { autosave: false },
+      dispatch,
+    ),
+  ).rejects.toThrow('write failed');
+  expect(dispatch).not.toHaveBeenCalled();
 });

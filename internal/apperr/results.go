@@ -135,6 +135,7 @@ type DocumentMetadata struct {
 	SizeClass       string  `json:"sizeClass,omitempty"`
 	Detached        bool    `json:"detached,omitempty"`
 	ConflictBlocked bool    `json:"conflictBlocked,omitempty"`
+	WriteInFlight   bool    `json:"writeInFlight,omitempty"`
 	Status          string  `json:"status,omitempty"`
 	View            DocView `json:"view"`
 }

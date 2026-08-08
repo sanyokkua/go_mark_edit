@@ -140,7 +140,7 @@ func (service *AppModelService) runAutosave(documentID string, revision, generat
 		service.mu.Unlock()
 	}()
 
-	ctx := context.Background()
+	ctx := service.runtimeContextOr(context.Background())
 	if result := service.prepareWriteDisk(ctx, documentID, revision, ""); result.Status != "" {
 		return
 	}

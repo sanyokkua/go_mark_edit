@@ -473,7 +473,8 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                   {document.dirty ? (
                     <span
                       aria-label={t('editor.tab.modified')}
-                      className={styles.modifiedDot}
+                      className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
+                      data-write-in-flight={document.writeInFlight || undefined}
                     >
                       •
                     </span>
