@@ -1,0 +1,170 @@
+T028 raw accessibility snapshots
+
+These are direct `sky.get_app_state({app:"GoMarkEdit", disableDiff:true}).text` results from the real Wails application. No mock bridge or aggregate test label was used.
+
+=== dirty single-tab close prompt ===
+Window: "GoMarkEdit", App: GoMarkEdit.
+0 standard window GoMarkEdit, Secondary Actions: Raise
+\t1 scroll area
+\t\t2 HTML content Description: GoMarkEdit, URL: wails://wails/
+\t\t\t3 container Save changes before closing?
+\t\t\t\t4 heading Save changes before closing?, Value: 1
+\t\t\t\t\t5 text Save changes before closing?
+\t\t\t\t6 text This document has unsaved changes.
+\t\t\t\t7 content list Documents with unsaved changes
+\t\t\t\t\t8 container Untitled
+\t\t\t\t\t\t9 list marker •
+\t\t\t\t\t\t10 text Untitled
+\t\t\t\t11 button Cancel
+\t\t\t\t12 button Discard
+\t\t\t\t13 button Save
+\t14 close button
+\t15 full screen button
+\t16 minimize button
+\t17 text GoMarkEdit
+18 menu bar
+\t19 GoMarkEdit
+\t20 Edit
+
+=== Close Others prompt ===
+Window: "GoMarkEdit", App: GoMarkEdit.
+0 standard window GoMarkEdit, Secondary Actions: Raise
+\t1 scroll area
+\t\t2 HTML content Description: GoMarkEdit, URL: wails://wails/
+\t\t\t3 container Save changes before closing?
+\t\t\t\t4 heading Save changes before closing?, Value: 1
+\t\t\t\t\t5 text Save changes before closing?
+\t\t\t\t6 text These documents have unsaved changes.
+\t\t\t\t7 content list Documents with unsaved changes
+\t\t\t\t\t8 container Untitled
+\t\t\t\t\t\t9 list marker •
+\t\t\t\t\t\t10 text Untitled
+\t\t\t\t11 button Cancel
+\t\t\t\t12 button Discard all
+\t\t\t\t13 button Save all
+\t14 close button
+\t15 full screen button
+\t16 minimize button
+\t17 text GoMarkEdit
+18 menu bar
+\t19 GoMarkEdit
+\t20 Edit
+
+=== Close to the Right prompt ===
+Window: "GoMarkEdit", App: GoMarkEdit.
+0 standard window GoMarkEdit, Secondary Actions: Raise
+\t1 scroll area
+\t\t2 HTML content Description: GoMarkEdit, URL: wails://wails/
+\t\t\t3 container Save changes before closing?
+\t\t\t\t4 heading Save changes before closing?, Value: 1
+\t\t\t\t\t5 text Save changes before closing?
+\t\t\t\t6 text These documents have unsaved changes.
+\t\t\t\t7 content list Documents with unsaved changes
+\t\t\t\t\t8 container Untitled
+\t\t\t\t\t\t9 list marker •
+\t\t\t\t\t\t10 text Untitled
+\t\t\t\t11 button Cancel
+\t\t\t\t12 button Discard all
+\t\t\t\t13 button Save all
+\t14 close button
+\t15 full screen button
+\t16 minimize button
+\t17 text GoMarkEdit
+18 menu bar
+\t19 GoMarkEdit
+\t20 Edit
+
+=== Save all prompt with two dirty targets ===
+Window: "GoMarkEdit", App: GoMarkEdit.
+0 standard window GoMarkEdit, Secondary Actions: Raise
+\t1 scroll area
+\t\t2 HTML content Description: GoMarkEdit, URL: wails://wails/
+\t\t\t3 container Save changes before closing?
+\t\t\t\t4 heading Save changes before closing?, Value: 1
+\t\t\t\t\t5 text Save changes before closing?
+\t\t\t\t6 text These documents have unsaved changes.
+\t\t\t\t7 content list Documents with unsaved changes
+\t\t\t\t\t8 container Untitled
+\t\t\t\t\t\t9 list marker •
+\t\t\t\t\t\t10 text Untitled
+\t\t\t\t\t11 container Untitled
+\t\t\t\t\t\t12 list marker •
+\t\t\t\t\t\t13 text Untitled
+\t\t\t\t14 button Cancel
+\t\t\t\t15 button Discard all
+\t\t\t\t16 button Save all
+\t17 close button
+\t18 full screen button
+\t19 minimize button
+\t20 text GoMarkEdit
+21 menu bar
+\t22 GoMarkEdit
+\t23 Edit
+
+=== native Save As panel for first target ===
+Window: "Save Markdown document", App: GoMarkEdit.
+0 sheet Description: save markdown document, ID: save-panel, Secondary Actions: Raise
+\t1 split group
+\t\t2 text Value: Where:, ID: whereLabel
+\t\t3 pop up button Where:, Value: gomarkedit-native-evidence-run2, ID: where popup
+\t\t4 disclosure triangle Description: show more options, Value: 0
+\t\t5 text Value: Save As:, ID: nameFieldLabel
+\t\t6 text field (settable, string) Value: Untitled.md, ID: saveAsNameTextField
+\t\t7 text Value: Tags:, ID: tagsLabel
+\t\t8 text field (settable, string) tag editor
+\t\t9 button Cancel, ID: CancelButton
+\t\t10 button Save, ID: OKButton
+11 menu bar
+\t12 GoMarkEdit
+\t13 Edit
+
+=== native window-close prompt ===
+Window: "GoMarkEdit", App: GoMarkEdit.
+0 standard window GoMarkEdit, Secondary Actions: Raise
+\t1 scroll area
+\t\t2 HTML content Description: GoMarkEdit, URL: wails://wails/
+\t\t\t3 container Save changes before closing?
+\t\t\t\t4 heading Save changes before closing?, Value: 1
+\t\t\t\t\t5 text Save changes before closing?
+\t\t\t\t6 text These documents have unsaved changes.
+\t\t\t\t7 content list Documents with unsaved changes
+\t\t\t\t\t8 container Untitled
+\t\t\t\t\t\t9 list marker •
+\t\t\t\t\t\t10 text Untitled
+\t\t\t\t11 button Cancel
+\t\t\t\t12 button Discard all
+\t\t\t\t13 button Save all
+\t14 close button
+\t15 full screen button
+\t16 minimize button
+\t17 text GoMarkEdit
+18 menu bar
+\t19 GoMarkEdit
+\t20 Edit
+
+=== repeated native close prompt ===
+The exact same accessibility tree remained after clicking the native close button again: prompt at node 3, Cancel at 11, Discard all at 12, Save all at 13, and the dirty target at nodes 8–10.
+
+=== final app-bundle quit prompt ===
+Window: "GoMarkEdit", App: GoMarkEdit.
+0 standard window GoMarkEdit, Secondary Actions: Raise
+\t1 scroll area
+\t\t2 HTML content Description: GoMarkEdit, URL: wails://wails/
+\t\t\t3 container Save changes before closing?
+\t\t\t\t4 heading Save changes before closing?, Value: 1
+\t\t\t\t\t5 text Save changes before closing?
+\t\t\t\t6 text These documents have unsaved changes.
+\t\t\t\t7 content list Documents with unsaved changes
+\t\t\t\t\t8 container Untitled
+\t\t\t\t\t\t9 list marker •
+\t\t\t\t\t\t10 text Untitled
+\t\t\t\t11 button Cancel
+\t\t\t\t12 button Discard all
+\t\t\t\t13 button Save all
+\t14 close button
+\t15 full screen button
+\t16 minimize button
+\t17 text GoMarkEdit
+18 menu bar
+\t19 GoMarkEdit
+\t20 Edit

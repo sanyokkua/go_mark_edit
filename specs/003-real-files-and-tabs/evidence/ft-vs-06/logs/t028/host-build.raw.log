@@ -1,0 +1,41 @@
+T028 host/build/process evidence
+
+$ sw_vers -productVersion
+26.5.2
+
+$ uname -a
+Darwin Oleksandrs-MacBook-Pro.local 25.5.0 Darwin Kernel Version 25.5.0: Tue Jun 9 22:18:58 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T6000 arm64
+
+$ git rev-parse HEAD
+fea08b7460bf7d0db634dbeb2dd3f762d8dab32f
+
+$ git branch --show-current
+feature/v1-implementation--003-t028-close-evidence
+
+$ go version
+go version go1.26.5 darwin/arm64
+
+$ shasum -a 256 /tmp/GoMarkEdit-t028
+fada5f1aa57080c148359402cd574286e35d166708f5dc45cd29bde906003365  /tmp/GoMarkEdit-t028
+
+$ stat -f 'binary_mtime=%Sm size=%z' -t '%Y-%m-%dT%H:%M:%S%z' /tmp/GoMarkEdit-t028
+binary_mtime=2026-08-09T07:29:25+0200 size=16700114
+
+Build commands and outcomes:
+
+$ npm --prefix frontend run build
+PASS
+
+$ CGO_LDFLAGS='-framework UniformTypeIdentifiers' GOCACHE=/tmp/gomarkedit-go-cache go build -buildvcs=false -tags 'desktop,wv2runtime.download,production' -ldflags '-w -s' -o /tmp/GoMarkEdit-t028 .
+PASS
+
+$ just build
+FAIL at the Wails application compile with `ERROR exit status 1`; the direct equivalent Go build above completed and its SHA-256 is recorded above. No failure was hidden or reinterpreted.
+
+Final native process verification after the app-bundle quit:
+
+$ ps -axo pid,ppid,command | rg '/GoMarkEdit.app/Contents/MacOS/GoMarkEdit|/tmp/GoMarkEdit-t028' || true
+96504  2606 /bin/zsh -c ps -axo pid,ppid,command | rg '/GoMarkEdit.app/Contents/MacOS/GoMarkEdit|/tmp/GoMarkEdit-t028' || true
+96506 96504 rg /GoMarkEdit.app/Contents/MacOS/GoMarkEdit|/tmp/GoMarkEdit-t028
+
+No matching GoMarkEdit process remained.

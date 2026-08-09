@@ -381,7 +381,7 @@ native close, one-shot Quit, drain failure, shutdown ordering, and the twice-con
   - **Tests/evidence**: `go test -race ./internal/application . -run 'TestNativeCloseCoordinator|TestOnBeforeCloseVetoAndOneShotPermit|TestDrainFailureCreatesNoPermit|TestRecoveryQuitStillDrainsAndPermits|TestShutdownOrder'`; `npm --prefix frontend test -- --runInBand`; `just archtest`.
   - **Branch/commit**: `feature/v1-implementation--003-t027-native-close`; `feat(lifecycle): protect native close with one-shot plans`.
 
-- [ ] T028 [US2] Record real clean/dirty tab close, Close others/right, final-tab, window-close, and quit evidence in `specs/003-real-files-and-tabs/evidence/ft-vs-06/walkthrough.md` with unabridged logs/screenshots under `specs/003-real-files-and-tabs/evidence/ft-vs-06/`.
+- [X] T028 [US2] Record real clean/dirty tab close, Close others/right, final-tab, window-close, and quit evidence in `specs/003-real-files-and-tabs/evidence/ft-vs-06/walkthrough.md` with unabridged logs/screenshots under `specs/003-real-files-and-tabs/evidence/ft-vs-06/`.
   - **Outcome**: SC-FT-005 is proven through real controls and the real bridge, including zero-effect Cancel, ordered Save all, first failure, retry, repeated native close, and final launcher transition.
   - **Prerequisites**: T027.
   - **Primary ownership**: SC-FT-005 only.
