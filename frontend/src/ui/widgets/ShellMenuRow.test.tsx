@@ -33,6 +33,37 @@ const viewMenuProps = {
   previewVisible: true,
 };
 
+it('T033 keeps popup accelerators, group labels, separators, and viewport sizing tokenized', () => {
+  const menuStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    'utf8',
+  );
+  const menuSource = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    'utf8',
+  );
+  const viewStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/primitives/ViewMenu.module.css'),
+    'utf8',
+  );
+  const settingsStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/SettingsMenu.module.css'),
+    'utf8',
+  );
+
+  expect(menuStyles).toContain('min-width: var(--popup-min-width)');
+  expect(menuStyles).toContain('font-size: var(--popup-accelerator-font-size)');
+  expect(menuStyles).toContain('font-size: var(--popup-group-font-size)');
+  expect(menuStyles).toContain('content: attr(data-shortcut)');
+  expect(menuSource).toContain('menuDecoration(item.id)');
+  expect(menuSource).toContain('data-shortcut={shortcutForMenuItem');
+  expect(menuSource).toContain("'open-recent'");
+  expect(viewStyles).toContain('min-inline-size: var(--popup-min-width)');
+  expect(viewStyles).toContain('font-size: var(--popup-row-font-size)');
+  expect(settingsStyles).toContain('border-radius: var(--popup-radius)');
+  expect(settingsStyles).toContain('min-inline-size: var(--popup-min-width)');
+});
+
 afterEach(() => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
@@ -400,6 +431,21 @@ it('T060 keeps a localized short About trigger separate from the long catalogue 
   expect(t('shell.about')).toBe('About');
   expect(t('action.about.label')).toBe('About GoMarkEdit');
   expect(shellStyles).toMatch(/text-overflow:\s*ellipsis/);
+});
+
+it('T033 keeps menu and popup geometry on the binding metric tokens', () => {
+  const shellStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    'utf8',
+  );
+
+  expect(shellStyles).toContain('min-height: var(--menu-row-height)');
+  expect(shellStyles).toContain('padding: var(--menu-trigger-padding)');
+  expect(shellStyles).toContain('border-radius: var(--menu-trigger-radius)');
+  expect(shellStyles).toContain('min-width: var(--popup-min-width)');
+  expect(shellStyles).toContain('padding: var(--popup-padding)');
+  expect(shellStyles).toContain('padding: var(--popup-row-padding)');
+  expect(shellStyles).toContain('font-size: var(--popup-row-font-size)');
 });
 
 it('T089 registers each desktop menu label as a Radix popup anchor', () => {

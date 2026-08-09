@@ -153,7 +153,7 @@ it('STORY-015-AC-1 applies the responsive split layout contract', () => {
   expect(shellStyles).toContain('overflow: hidden;');
   expect(shellStyles).toContain('min-width: 0;');
   expect(tokens).toContain('--editor-pane-min-width: 20rem;');
-  expect(tokens).toContain('--editor-view-gap: 0.75rem;');
+  expect(tokens).toContain('--pane-gap: 10px;');
   expect(tokens).toContain('--shell-assistant-collapsed-width: 0;');
   expect(editorStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
   expect(shellStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);

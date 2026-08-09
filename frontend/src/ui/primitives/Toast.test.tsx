@@ -123,6 +123,12 @@ it('offers only the localized remediation label and keeps toasts above dialogs',
       'utf8',
     ),
   ).toContain('z-index: var(--z-toast)');
+  expect(
+    readFileSync(
+      resolve(process.cwd(), 'src/ui/primitives/Toast.module.css'),
+      'utf8',
+    ),
+  ).toMatch(/inset: auto 16px 40px auto/);
 });
 
 it('T015 renders one explicit save confirmation with its localized safe filename', () => {

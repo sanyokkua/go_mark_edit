@@ -26,6 +26,7 @@ import {
 import { DocumentCommandContext, EditorSessionContext } from './editorSession';
 import type { ViewArrangement } from '../../logic/store/appModelTypes';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
+import Icon, { type IconName } from '../primitives/Icon';
 import styles from './EditorChrome.module.css';
 import { useModalState } from './modalStateContext';
 import DocumentTabs, { type DocumentTabsProps } from './DocumentTabs';
@@ -56,31 +57,6 @@ const textualControlIds = new Set<ActionEntry['id']>([
   'compact',
   'lint',
 ]);
-
-function actionGlyph(id: ActionEntry['id']): string {
-  const glyphs: Partial<Record<ActionEntry['id'], string>> = {
-    bold: '𝐁',
-    italic: '𝘐',
-    strike: 'S̶',
-    'inline-code': '</>',
-    'heading-1': 'H1',
-    'heading-2': 'H2',
-    'heading-3': 'H3',
-    'bullet-list': '•',
-    'numbered-list': '1.',
-    'task-list': '☑',
-    quote: '❝',
-    link: '↗',
-    image: '▧',
-    table: '▦',
-    'toggle-sidebar': '☰',
-    'toggle-assistant': '✦',
-    editor: '▣',
-    split: '▥',
-    preview: '▤',
-  };
-  return glyphs[id] ?? '•';
-}
 
 function action(id: ActionEntry['id']): ActionEntry {
   return getAction(id);
@@ -113,9 +89,11 @@ const ActionButton: React.FC<ActionButtonProps> = ({
       {textualControlIds.has(entry.id) ? (
         t(entry.labelKey)
       ) : (
-        <span aria-hidden="true" className={styles.actionIcon}>
-          {actionGlyph(entry.id)}
-        </span>
+        <Icon
+          className={styles.actionIcon}
+          name={entry.id as IconName}
+          size={15}
+        />
       )}
     </button>
   );
@@ -399,7 +377,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         )}
         <div
           aria-label={t('editor.arrangement')}
-          className={`${styles.group} ${styles.relocateAt375}`}
+          className={`${styles.group} ${styles.arrangement} ${styles.relocateAt375}`}
           role="radiogroup"
         >
           {arrangementButton('editor')}
@@ -424,7 +402,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
               }
             }}
           >
-            »
+            <Icon name="more" size={15} />
           </summary>
         </details>
       </div>
@@ -467,7 +445,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
                 )}
                 <div
                   aria-label={t('editor.arrangement')}
-                  className={styles.overflowArrangement}
+                  className={`${styles.overflowArrangement} ${styles.arrangement}`}
                   role="radiogroup"
                 >
                   {arrangementButton('editor')}

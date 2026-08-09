@@ -24,6 +24,7 @@ import {
 } from '../../logic/actions/shortcutRegistry';
 import { t } from '../../i18n';
 import LiveRegion from '../primitives/LiveRegion';
+import Icon from '../primitives/Icon';
 import ExternalChangePrompt, {
   type ExternalChangeDecision,
 } from './ExternalChangePrompt';
@@ -486,7 +487,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                       className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
                       data-write-in-flight={document.writeInFlight || undefined}
                     >
-                      •
+                      <Icon name="modified" size={15} />
                     </span>
                   ) : null}
                   {document.conflictBlocked ? (
@@ -524,7 +525,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                     });
                   }}
                 >
-                  ×
+                  <Icon name="close" size={15} />
                 </button>
               </div>
             );
@@ -540,7 +541,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                 : adapter.newDocument?.(tabSetRevision));
             }}
           >
-            +
+            <Icon name="add" size={15} />
           </button>
         </div>
       </div>

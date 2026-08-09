@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import {
   createEvent,
   fireEvent,
@@ -31,6 +34,29 @@ it('T018 renders the complete toolbar groups and a real tab surface', () => {
   ).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Table' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Format' })).toBeDisabled();
+});
+
+it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', () => {
+  const chromeStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    'utf8',
+  );
+
+  expect(chromeStyles).toContain('gap: var(--toolbar-gap)');
+  expect(chromeStyles).toContain('block-size: var(--toolbar-action-height)');
+  expect(chromeStyles).toContain(
+    'min-inline-size: var(--toolbar-action-min-width)',
+  );
+  expect(chromeStyles).toContain(
+    'padding-inline: var(--toolbar-action-padding-inline)',
+  );
+  expect(chromeStyles).toContain('border-radius: var(--toolbar-group-radius)');
+  expect(chromeStyles).toContain('font-size: 11.5px');
+  expect(chromeStyles).toContain('min-inline-size: var(--popup-min-width)');
+  expect(chromeStyles).toContain('min-inline-size: max-content');
+  expect(chromeStyles).toContain(":global(:root[data-theme='glass'])");
+  expect(chromeStyles).toContain(":global(:root[data-theme='material'])");
+  expect(chromeStyles).toContain(":global(:root[data-theme='minimal'])");
 });
 
 it('T068 uses icon-first toolbar controls while retaining localized accessible names', () => {

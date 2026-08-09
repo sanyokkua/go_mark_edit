@@ -1,4 +1,5 @@
 .statusBar {
+  box-sizing: border-box;
   background: var(--surface-raised);
   color: var(--text-muted);
   display: flex;
@@ -13,6 +14,7 @@
     var(--status-bar-border-color);
   font-size: var(--status-bar-font-size);
   position: relative;
+  overflow: hidden;
 }
 
 .spacer {
@@ -21,6 +23,9 @@
 
 .responsiveItem {
   flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -37,6 +42,9 @@
   display: flex;
   gap: var(--status-bar-gap);
   padding: var(--control-padding);
+  max-width: calc(100vw - 16px);
+  min-width: min(250px, calc(100vw - 16px));
+  flex-wrap: wrap;
   position: absolute;
   right: var(--status-bar-padding-inline);
   transform: translateY(calc(-100% - var(--status-bar-min-height)));
@@ -44,14 +52,19 @@
 }
 
 @media (max-width: 768px) {
-  .responsiveItem:nth-child(-n + 2),
-  .responsiveItem:nth-last-of-type(-n + 2) {
-    display: none;
+  .responsiveItem[data-status-item='cursor'],
+  .responsiveItem[data-status-item='count'],
+  .responsiveItem[data-status-item='encoding'],
+  .responsiveItem[data-status-item='line-ending'],
+  .responsiveItem[data-status-item='standard'] {
+    display: inline-flex;
   }
 }
 
 @media (max-width: 376px) {
-  .responsiveItem {
+  .responsiveItem[data-status-item='count'],
+  .responsiveItem[data-status-item='encoding'],
+  .responsiveItem[data-status-item='line-ending'] {
     display: none;
   }
 }

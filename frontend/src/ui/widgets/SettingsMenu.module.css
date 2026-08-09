@@ -47,8 +47,8 @@
 .trigger,
 .item {
   border: var(--control-border-width) solid transparent;
-  border-radius: var(--control-radius);
-  padding: var(--control-padding);
+  border-radius: var(--menu-trigger-radius);
+  padding: var(--menu-trigger-padding);
 }
 
 .content {
@@ -56,14 +56,15 @@
   background: var(--surface-raised);
   border: var(--control-border-width) solid var(--border);
   box-sizing: border-box;
-  border-radius: var(--control-radius);
+  border-radius: var(--popup-radius);
   box-shadow: var(--win-shadow);
   display: grid;
-  gap: var(--control-gap);
+  gap: 0;
   inline-size: min(30rem, calc(100vw - 2 * var(--control-gap)));
+  min-inline-size: var(--popup-min-width);
   max-block-size: calc(100vh - 4rem);
   overflow: auto;
-  padding: var(--control-gap);
+  padding: var(--popup-padding);
   position: fixed;
   z-index: var(--z-dropdown);
 }
@@ -77,6 +78,11 @@
 .item {
   cursor: pointer;
   inline-size: 100%;
+  font-size: var(--popup-row-font-size);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .item:hover,

@@ -96,6 +96,17 @@ it('FR-WS-007 keeps workspace and document regions while the reserved Assistant 
   expect(tokens).not.toContain('--shell-assistant-visible-width');
 });
 
+it('T033 keeps the shell as a contained, tokenized surface across palettes', () => {
+  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
+  const baseStyles = readSource('src/ui/styles/base.css');
+
+  expect(shellStyles).toContain('overflow: hidden');
+  expect(shellStyles).toContain('overscroll-behavior: contain');
+  expect(shellStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
+  expect(baseStyles).toContain('overflow-x: hidden');
+  expect(baseStyles).toContain('prefers-reduced-motion: reduce');
+});
+
 it('FR-WS-007 preserves the zero-width Assistant track at the 375px breakpoint', () => {
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
   const narrowShellRule = shellStyles.match(

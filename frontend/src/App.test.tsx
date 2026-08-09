@@ -420,8 +420,15 @@ it('T018 keeps the feature shell ordered and future behavior explicitly bounded 
   expect(
     within(screen.getByRole('navigation', { name: 'Application actions' }))
       .getAllByRole('button')
-      .map((button) => button.textContent),
-  ).toEqual(['File', 'Settings', 'View', 'About', '☰', '✦']);
+      .map((button) => button.getAttribute('aria-label') ?? button.textContent),
+  ).toEqual([
+    'File',
+    'Settings',
+    'View',
+    'About',
+    'Toggle Sidebar',
+    'Toggle Assistant',
+  ]);
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(
     screen.getByRole('menuitem', { name: 'Appearance' }),
@@ -989,9 +996,16 @@ it('FR-WS-020 keeps the existing document consumer while every future shell facs
   });
   expect(
     Array.from(actions.querySelectorAll('button')).map(
-      (button) => button.textContent,
+      (button) => button.getAttribute('aria-label') ?? button.textContent,
     ),
-  ).toEqual(['File', 'Settings', 'View', 'About', '☰', '✦']);
+  ).toEqual([
+    'File',
+    'Settings',
+    'View',
+    'About',
+    'Toggle Sidebar',
+    'Toggle Assistant',
+  ]);
   expect(
     screen.getByRole('status', { name: 'Active editor buffer' }),
   ).not.toBeEmptyDOMElement();

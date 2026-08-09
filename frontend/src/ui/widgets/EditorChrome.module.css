@@ -1,6 +1,6 @@
 .chrome {
   display: grid;
-  gap: var(--editor-view-gap);
+  gap: 0;
   min-width: 0;
   overflow: visible;
   position: relative;
@@ -18,9 +18,9 @@
 
 .tabs {
   display: inline-flex;
-  gap: var(--control-gap);
-  min-inline-size: 32rem;
-  padding-block-end: var(--control-gap);
+  gap: var(--tabs-gap);
+  min-inline-size: max-content;
+  padding: var(--tabs-row-padding);
 }
 
 .tabItem,
@@ -28,7 +28,7 @@
 .overflowArrangement {
   align-items: center;
   display: flex;
-  gap: var(--control-gap);
+  gap: var(--toolbar-group-gap);
   min-width: 0;
 }
 
@@ -63,9 +63,8 @@
 .actionIcon {
   align-items: center;
   display: inline-flex;
-  font-weight: 700;
   justify-content: center;
-  min-inline-size: 1.2rem;
+  min-inline-size: var(--icon-size);
 }
 
 .tab {
@@ -87,9 +86,10 @@
   align-items: center;
   display: flex;
   flex-wrap: nowrap;
-  gap: var(--control-gap);
+  gap: var(--toolbar-gap);
   min-width: 0;
   overflow: visible;
+  padding: var(--toolbar-row-padding);
 }
 
 .utilityGroup {
@@ -108,10 +108,20 @@
 .action {
   background: transparent;
   border-color: transparent;
-  border-radius: calc(var(--control-radius) / 2);
+  border-radius: var(--arrangement-option-radius);
+  block-size: var(--toolbar-action-height);
+  font-size: var(--toolbar-icon-label-font-size);
+  min-inline-size: var(--toolbar-action-min-width);
   max-width: 100%;
   overflow: hidden;
+  padding-inline: var(--toolbar-action-padding-inline);
   text-overflow: ellipsis;
+}
+
+.action[data-action-id='format'],
+.action[data-action-id='compact'],
+.action[data-action-id='lint'] {
+  font-size: var(--toolbar-text-label-font-size);
 }
 
 .action:disabled,
@@ -127,7 +137,8 @@
 .tabClose:focus-visible,
 .tabAdd:focus-visible,
 .overflow summary:focus-visible {
-  outline: 2px solid var(--accent);
+  box-shadow: var(--focus-ring);
+  outline: 0;
   outline-offset: 2px;
 }
 
@@ -142,8 +153,18 @@
   background: var(--surface-raised);
   backdrop-filter: var(--blur);
   border: var(--control-border-width) solid var(--border);
-  border-radius: var(--control-radius);
-  padding: var(--control-gap);
+  border-radius: var(--toolbar-group-radius);
+  padding: var(--toolbar-group-padding);
+}
+
+.arrangement {
+  border-radius: var(--arrangement-radius);
+}
+
+.arrangement .action {
+  border-radius: var(--arrangement-option-radius);
+  font-size: 11.5px;
+  padding: var(--arrangement-option-padding);
 }
 
 .overflow {
@@ -152,10 +173,15 @@
 }
 
 .overflow summary {
-  border-radius: var(--control-radius);
+  align-items: center;
+  border-radius: var(--arrangement-option-radius);
   cursor: pointer;
+  display: inline-flex;
+  height: var(--toolbar-action-height);
+  justify-content: center;
   list-style: none;
-  padding: var(--control-padding);
+  min-width: var(--toolbar-action-min-width);
+  padding: 0 var(--toolbar-action-padding-inline);
 }
 
 .overflow summary::-webkit-details-marker {
@@ -166,13 +192,14 @@
   backdrop-filter: var(--blur);
   background: var(--surface-raised);
   border: var(--control-border-width) solid var(--border);
-  border-radius: var(--control-radius);
+  border-radius: var(--popup-radius);
   box-shadow: var(--win-shadow);
   display: grid;
-  gap: var(--control-gap);
+  gap: var(--toolbar-group-gap);
   grid-template-columns: minmax(0, 1fr);
-  inline-size: min(20rem, calc(100vw - 2 * var(--app-gap)));
-  padding: var(--control-gap);
+  inline-size: min(var(--popup-min-width), calc(100vw - 2 * var(--app-gap)));
+  min-inline-size: var(--popup-min-width);
+  padding: var(--popup-padding);
   position: fixed;
   z-index: var(--z-dropdown);
 }
@@ -188,6 +215,24 @@
 
 .overflowArrangement .action {
   flex: 1 1 auto;
+}
+
+:global(:root[data-theme='material']) .group {
+  background: var(--surface-2);
+  border-color: var(--stroke);
+}
+
+:global(:root[data-theme='minimal']) .group {
+  background: transparent;
+  border-color: transparent;
+  backdrop-filter: none;
+}
+
+:global(:root[data-theme='glass']) .group,
+:global(:root[data-theme='glass']) .tabItem {
+  backdrop-filter: var(--blur);
+  background: var(--surface-2);
+  border-color: var(--stroke);
 }
 
 @media (max-width: 768px) {

@@ -126,6 +126,60 @@ it('definesEightNamedStackingTokens', (): void => {
   expect(appliedToken('material', 'light', '--z-modal')).toBe('70');
 });
 
+it('exposes the binding surface metrics as centralized tokens', (): void => {
+  const exactMetrics: Record<string, string> = {
+    '--menu-row-height': '44px',
+    '--menu-trigger-font-size': '13px',
+    '--menu-trigger-padding': '6px 10px',
+    '--menu-trigger-radius': '7px',
+    '--icon-size': '15px',
+    '--icon-stroke': '1.75',
+    '--popup-min-width': '250px',
+    '--popup-radius': '12px',
+    '--popup-padding': '6px',
+    '--popup-row-padding': '7px 10px',
+    '--popup-row-font-size': '13px',
+    '--popup-accelerator-font-size': '11px',
+    '--popup-group-font-size': '10px',
+    '--tabs-row-padding': '7px 10px',
+    '--tabs-gap': '5px',
+    '--tab-padding': '7px 12px',
+    '--tab-label-font-size': '12.5px',
+    '--tab-add-size': '28px',
+    '--toolbar-row-padding': '7px 10px',
+    '--toolbar-gap': '4px',
+    '--toolbar-group-padding': '3px',
+    '--toolbar-group-gap': '3px',
+    '--toolbar-group-radius': '11px',
+    '--toolbar-action-height': '30px',
+    '--toolbar-action-min-width': '30px',
+    '--toolbar-action-padding-inline': '8px',
+    '--arrangement-radius': '10px',
+    '--arrangement-option-padding': '5px 12px',
+    '--arrangement-option-radius': '7px',
+    '--pane-gap': '10px',
+    '--pane-radius': '12px',
+    '--pane-header-padding-block': '9px',
+    '--pane-header-padding-inline': '14px',
+    '--pane-header-meta-font-size': '10px',
+    '--preview-content-padding': '20px 26px',
+    '--disabled-opacity': '0.48',
+    '--toast-width': '300px',
+    '--toast-gap': '8px',
+    '--toast-padding': '9px 11px',
+    '--toast-radius': '10px',
+    '--toast-font-size': '12.5px',
+    '--status-bar-font-size': '11px',
+    '--status-bar-gap': '14px',
+    '--status-bar-min-height': '28px',
+    '--status-bar-padding-inline': '14px',
+  };
+
+  for (const [token, value] of Object.entries(exactMetrics)) {
+    expect(appliedToken('material', 'light', token)).toBe(value);
+  }
+});
+
 // Proves: themes-and-appearance#motion-tokens
 it('removesTokenizedMotionWhenReducedMotionIsRequested', (): void => {
   const stylesheet = installTokens();

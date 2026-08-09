@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
@@ -73,6 +76,25 @@ function renderTabs(
 
 beforeEach(() => {
   store.dispatch(resetProjection());
+});
+
+it('T033 applies the contained tab-strip metrics and fixed add-control size', () => {
+  const tabStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+    'utf8',
+  );
+
+  expect(tabStyles).toContain('gap: var(--tabs-gap)');
+  expect(tabStyles).toContain('padding: var(--tabs-row-padding)');
+  expect(tabStyles).toContain('padding: var(--tab-padding)');
+  expect(tabStyles).toContain('font-size: var(--tab-label-font-size)');
+  expect(tabStyles).toContain('max-width: 190px');
+  expect(tabStyles).toContain('block-size: var(--tab-add-size)');
+  expect(tabStyles).toContain('inline-size: var(--tab-add-size)');
+  expect(tabStyles).toMatch(/overflow-x:\s*auto/);
+  expect(tabStyles).toContain(":global(:root[data-theme='material'])");
+  expect(tabStyles).toContain(":global(:root[data-theme='minimal'])");
+  expect(tabStyles).toContain('border-bottom: 2px solid transparent');
 });
 
 it('Move tab actions sit between close and path groups', () => {

@@ -1,7 +1,26 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { render, screen, within } from '@testing-library/react';
 import { fireEvent } from '@testing-library/react';
 
 import StatusBar from './StatusBar';
+
+it('T033 keeps the status surface at one exact 28px row with accessible details', () => {
+  const statusStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/components/StatusBar.module.css'),
+    'utf8',
+  );
+
+  expect(statusStyles).toContain('height: var(--status-bar-min-height)');
+  expect(statusStyles).toContain('max-height: var(--status-bar-min-height)');
+  expect(statusStyles).toContain('gap: var(--status-bar-gap)');
+  expect(statusStyles).toContain(
+    'padding-inline: var(--status-bar-padding-inline)',
+  );
+  expect(statusStyles).toContain('flex-wrap: wrap');
+  expect(statusStyles).toContain('max-width: calc(100vw - 16px)');
+});
 
 // Proves: STORY-016-AC-1
 it('STORY-016-AC-1 renders initial untitled metadata', () => {

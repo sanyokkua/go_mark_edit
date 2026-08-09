@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <symbol id="icon-add" viewBox="0 0 15 15"><path d="M7.5 2.5v10M2.5 7.5h10"/></symbol>
+  <symbol id="icon-bold" viewBox="0 0 15 15"><path d="M4 2.5h3.7a2.5 2.5 0 0 1 .5 4.95H4m4.2 0A2.55 2.55 0 0 1 8 12.5H4v-10"/></symbol>
+  <symbol id="icon-bullet-list" viewBox="0 0 15 15"><circle cx="2.5" cy="4" r=".75" fill="currentColor" stroke="none"/><circle cx="2.5" cy="7.5" r=".75" fill="currentColor" stroke="none"/><circle cx="2.5" cy="11" r=".75" fill="currentColor" stroke="none"/><path d="M5.5 4h7M5.5 7.5h7M5.5 11h7"/></symbol>
+  <symbol id="icon-close" viewBox="0 0 15 15"><path d="m3.5 3.5 8 8m0-8-8 8"/></symbol>
+  <symbol id="icon-editor" viewBox="0 0 15 15"><path d="M2.5 2.5h10v10h-10zm2.5 2.5h5m-5 2.5h5m-5 2.5h3"/></symbol>
+  <symbol id="icon-heading-1" viewBox="0 0 15 15"><path d="M2.5 3v9m0-4.5h4M6.5 3v9m3-7.5 2-1.5v9"/></symbol>
+  <symbol id="icon-heading-2" viewBox="0 0 15 15"><path d="M2.5 3v9m0-4.5h4M6.5 3v9m3 1c0-3.5 3-3 3-5.2 0-1.8-2.5-2.3-3-.4"/></symbol>
+  <symbol id="icon-heading-3" viewBox="0 0 15 15"><path d="M2.5 3v9m0-4.5h4M6.5 3v9m3 1h1.6c1.1 0 1.6-.7 1.6-1.6S12.2 11 11 11h-.6m.6 0c1.2 0 1.8-.6 1.8-1.5S12.1 8 11 8H9.5"/></symbol>
+  <symbol id="icon-image" viewBox="0 0 15 15"><rect x="2" y="2.5" width="11" height="10" rx="1"/><circle cx="5.25" cy="5.5" r="1"/><path d="m3 11 3-3 2 2 1.5-1.5 3.5 3.5"/></symbol>
+  <symbol id="icon-inline-code" viewBox="0 0 15 15"><path d="m5.5 4-3 3.5 3 3.5m4-7 3 3.5-3 3.5"/><path d="m8.5 2.5-2 10"/></symbol>
+  <symbol id="icon-italic" viewBox="0 0 15 15"><path d="M6 2.5h5M4 12.5h5m-2-10-2 10"/></symbol>
+  <symbol id="icon-link" viewBox="0 0 15 15"><path d="M6.2 9.8 5 11a2.5 2.5 0 0 1-3.5-3.5l2-2A2.5 2.5 0 0 1 7 5m1.8.2L10 4a2.5 2.5 0 0 1 3.5 3.5l-2 2A2.5 2.5 0 0 1 8 9"/><path d="m5.5 7.5 4-.1"/></symbol>
+  <symbol id="icon-more" viewBox="0 0 15 15"><circle cx="3" cy="7.5" r=".9" fill="currentColor" stroke="none"/><circle cx="7.5" cy="7.5" r=".9" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r=".9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="icon-modified" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="2.3" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="icon-numbered-list" viewBox="0 0 15 15"><path d="M5.5 4h7M5.5 7.5h7M5.5 11h7"/><path d="M2.1 3.2h.8v2M2 5.2h1.2M2 6.7h1.1l-1.1 1.5h1.2M2 10.4c.3-.5 1.1-.4 1.1.2 0 .7-1.1.8-1.1 1.5h1.2"/></symbol>
+  <symbol id="icon-preview" viewBox="0 0 15 15"><path d="M1.8 7.5s2-3.3 5.7-3.3 5.7 3.3 5.7 3.3-2 3.3-5.7 3.3-5.7-3.3-5.7-3.3Z"/></symbol>
+  <symbol id="icon-quote" viewBox="0 0 15 15"><path d="M2.5 6.8A2.8 2.8 0 0 1 5.3 4h.2v2.1H5a1.1 1.1 0 0 0-1.1 1.1v.1h1.6v3.2H2.5zm6 0A2.8 2.8 0 0 1 11.3 4h.2v2.1H11a1.1 1.1 0 0 0-1.1 1.1v.1h1.6v3.2H8.5z"/></symbol>
+  <symbol id="icon-sidebar" viewBox="0 0 15 15"><path d="M2.5 3.5h10m-10 4h10m-10 4h10"/></symbol>
+  <symbol id="icon-split" viewBox="0 0 15 15"><path d="M2.5 2.5h10v10h-10zm5 0v10"/></symbol>
+  <symbol id="icon-strike" viewBox="0 0 15 15"><path d="M3 5a2.5 2.5 0 0 1 4.7-1.2M12 10a2.5 2.5 0 0 1-4.7 1.2M2.5 7.5h10"/></symbol>
+  <symbol id="icon-table" viewBox="0 0 15 15"><rect x="2" y="2.5" width="11" height="10" rx=".5"/><path d="M2 6h11M2 9.3h11M5.7 2.5v10M9.3 2.5v10"/></symbol>
+  <symbol id="icon-task-list" viewBox="0 0 15 15"><rect x="2" y="2.7" width="3" height="3" rx=".4"/><path d="m2.8 4.1.7.7 1.3-1.5M7 4.2h5.5M7 8h5.5M7 11.8h5.5"/><path d="m2.5 7.7 1 1 1.7-2"/></symbol>
+  <symbol id="icon-assistant" viewBox="0 0 15 15"><path d="m7.5 1.8.9 3.8 3.8.9-3.8.9-.9 3.8-.9-3.8-3.8-.9 3.8-.9z"/></symbol>
+</svg>

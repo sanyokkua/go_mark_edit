@@ -7,14 +7,14 @@
   gap: var(--editor-view-gap);
   min-width: 0;
   min-height: 0;
-  padding: var(--editor-view-padding) var(--editor-view-padding) 0;
+  padding: var(--pane-body-padding-block) var(--pane-body-padding-inline) 0;
 }
 
 .toolbar {
   display: flex;
   flex-wrap: nowrap;
   justify-content: space-between;
-  gap: var(--editor-view-gap);
+  gap: var(--toolbar-gap);
   min-width: 0;
   overflow: hidden;
 }
@@ -32,6 +32,12 @@
 @media (max-width: 376px) {
   .panes {
     grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .editorView {
+    gap: 6px;
+    padding: 6px;
   }
 
   .paneHeader {
@@ -54,7 +60,7 @@
   min-width: 0;
   overflow: hidden;
   border: var(--editor-pane-border-width) solid var(--editor-pane-border-color);
-  border-radius: var(--editor-pane-radius);
+  border-radius: var(--pane-radius);
 }
 
 .paneHidden {
@@ -67,15 +73,14 @@
   display: flex;
   justify-content: space-between;
   gap: var(--editor-pane-header-gap);
-  padding: var(--editor-pane-header-padding-block)
-    var(--editor-pane-header-padding-inline);
+  padding: var(--pane-header-padding-block) var(--pane-header-padding-inline);
   border-bottom: var(--editor-pane-border-width) solid
     var(--editor-pane-border-color);
   font-weight: var(--editor-pane-header-font-weight);
 }
 
 .paneMeta {
-  font-size: var(--editor-pane-meta-font-size);
+  font-size: var(--pane-header-meta-font-size);
   font-weight: var(--editor-pane-meta-font-weight);
   white-space: nowrap;
 }
@@ -85,5 +90,42 @@
   min-height: 0;
   min-width: 0;
   overflow: auto;
-  padding: var(--preview-pane-padding);
+  padding: var(--preview-content-padding);
+}
+
+:global(:root[data-theme='minimal']) .pane {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+@media (min-width: 377px) {
+  :global(:root[data-theme='minimal']) .editorView {
+    gap: 0;
+    padding: 0;
+  }
+
+  :global(:root[data-theme='minimal']) .panes {
+    gap: 0;
+  }
+}
+
+:global(:root[data-theme='minimal']) .pane + .pane {
+  border-inline-start: var(--control-border-width) solid var(--border);
+}
+
+:global(:root[data-theme='minimal']) .paneHeader {
+  background: transparent;
+  border-bottom-color: var(--border);
+}
+
+:global(:root[data-theme='material']) .pane {
+  box-shadow: var(--win-shadow);
+}
+
+:global(:root[data-theme='glass']) .editorView,
+:global(:root[data-theme='glass']) .pane,
+:global(:root[data-theme='glass']) .paneHeader,
+:global(:root[data-theme='glass']) .previewContent {
+  backdrop-filter: var(--blur);
 }

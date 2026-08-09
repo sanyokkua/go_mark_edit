@@ -41,20 +41,25 @@ const StatusBar: React.FC<StatusBarProps> = ({
   const lineEndingLabel = t(translationKey('lineEnding', lineEnding));
   return (
     <footer aria-label={t('status.ariaLabel')} className={styles.statusBar}>
-      <span className={styles.responsiveItem}>
+      <span className={styles.responsiveItem} data-status-item="cursor">
         {t('status.cursor', {
           column: cursor.column,
           line: cursor.lineNumber,
         })}
       </span>
-      <span className={styles.responsiveItem}>
+      <span className={styles.responsiveItem} data-status-item="count">
         {t('status.words', { count: formatNumber(wordCount) })}
       </span>
       <span className={styles.spacer} />
-      <span className={styles.responsiveItem}>{encodingLabel}</span>
-      <span className={styles.responsiveItem}>{lineEndingLabel}</span>
+      <span className={styles.responsiveItem} data-status-item="encoding">
+        {encodingLabel}
+      </span>
+      <span className={styles.responsiveItem} data-status-item="line-ending">
+        {lineEndingLabel}
+      </span>
       <span
         className={styles.responsiveItem}
+        data-status-item="standard"
         data-write-in-flight={writeInFlight || undefined}
       >
         {saveStatus}

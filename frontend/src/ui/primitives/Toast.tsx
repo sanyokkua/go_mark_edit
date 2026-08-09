@@ -50,7 +50,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       }
     }}
   >
-    <RadixToast.Title>
+    <RadixToast.Title className={styles.title}>
       {notification.title}
       {notification.count > 1
         ? t('notification.count', {
@@ -58,7 +58,9 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
           })
         : ''}
     </RadixToast.Title>
-    <RadixToast.Description>{notification.message}</RadixToast.Description>
+    <RadixToast.Description className={styles.description}>
+      {notification.message}
+    </RadixToast.Description>
     <div className={styles.actions}>
       {notification.remediation !== undefined && onRemediate !== undefined ? (
         <button
