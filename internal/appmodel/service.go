@@ -52,6 +52,7 @@ type AppModelService struct {
 	keepMine            map[string]*keepMineAuthorization
 	beforeSaveAsRecheck func(string)
 	metadata            FileMetadataRepository
+	recentFiles         RecentFilesRepository
 	defaultOpenMode     string
 	openDialog          DocumentOpenDialog
 	saveDialog          DocumentSaveDialog
@@ -165,6 +166,14 @@ func (service *AppModelService) SetFileMetadataRepository(repository FileMetadat
 	service.metadata = repository
 }
 
+// SetRecentFilesRepository configures durable MRU metadata without changing
+// the in-memory document/session authority.
+func (service *AppModelService) SetRecentFilesRepository(repository RecentFilesRepository) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.recentFiles = repository
+}
+
 // SetDefaultOpenMode records the acknowledged setting used before path arrangements.
 func (service *AppModelService) SetDefaultOpenMode(mode string) {
 	if mode != OpenModeEditor && mode != OpenModeViewer {
@@ -271,7 +280,8 @@ func newLayoutWriterID() string {
 }
 
 // GetState returns a metadata-only snapshot plus the active canonical buffer.
-func (service *AppModelService) GetState(_ context.Context) (apperr.AppState, error) {
+func (service *AppModelService) GetState(ctx context.Context) (apperr.AppState, error) {
+	service.refreshRecentFiles(ctx)
 	service.mu.RLock()
 	defer service.mu.RUnlock()
 	if service.startupErr != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -204,13 +205,14 @@ func (service *AppModelService) CancelPreparedOpen(reservationID string) error {
 // CommitPreparedOpen revalidates the tab revision and applies exactly one Open transition.
 func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservationID string) apperr.OpenOutcome {
 	service.mu.Lock()
-	defer service.mu.Unlock()
 	reservation, ok := service.reservations[reservationID]
 	if !ok {
+		service.mu.Unlock()
 		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedConflict, "The Open request is no longer valid.", apperr.RemediationRetry)}
 	}
 	delete(service.reservations, reservationID)
 	if service.state.tabSetRevision != reservation.expectedTabRevision {
+		service.mu.Unlock()
 		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedConflict, "The tab set changed; Open must be retried.", apperr.RemediationRetry)}
 	}
 	before := service.snapshotLocked()
@@ -250,12 +252,32 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		service.state.tabSetRevision++
 		changed = true
 	}
-	service.state.recentFiles = promoteRecentFile(service.state.recentFiles, reservation.canonical.Path)
-	if service.state.recentFilesChanged(before.recentFiles) {
-		changed = true
+	var promotionWarning *apperr.ClassifiedError
+	if service.recentFiles == nil {
+		service.state.recentFiles = promoteRecentFile(service.state.recentFiles, reservation.canonical.Path)
+		if service.state.recentFilesChanged(before.recentFiles) {
+			changed = true
+		}
+	} else {
+		repository := service.recentFiles
+		service.mu.Unlock()
+		entries, err := repository.Promote(ctx, reservation.canonical.Path)
+		service.mu.Lock()
+		if err != nil {
+			warning := apperr.NewClassifiedError(apperr.ClassifiedPersistenceWarning, reservation.canonical.Path, "The file opened successfully, but recent-file history could not be updated.", apperr.RemediationNone, "recent-files")
+			promotionWarning = &warning
+		} else {
+			service.state.recentFiles = append([]string(nil), entries...)
+			if service.state.recentFilesChanged(before.recentFiles) {
+				changed = true
+			}
+		}
 	}
 	if !changed {
-		return openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
+		result := openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
+		result.Error = promotionWarning
+		service.mu.Unlock()
+		return result
 	}
 	service.state.revision++
 	metadata := service.state.documents[documentID].metadata
@@ -272,9 +294,51 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		patch.Documents.Remove = []string{removedID}
 	}
 	if err := service.publishLocked(ctx, before, patch); err != nil {
+		service.mu.Unlock()
 		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedIOFailure, "The opened document could not be published.", apperr.RemediationRetry)}
 	}
-	return openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
+	result := openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
+	result.Error = promotionWarning
+	service.mu.Unlock()
+	return result
+}
+
+// ReopenLastFile consumes the newest eligible closed entry only after a
+// canonical Open succeeds. The file is read again from disk, so discarded
+// source content is never retained in the closed-history record.
+func (service *AppModelService) ReopenLastFile(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenOutcome {
+	service.mu.RLock()
+	if service.state.tabSetRevision != expectedTabSetRevision {
+		service.mu.RUnlock()
+		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedConflict, "The tab set changed; Reopen must be retried.", apperr.RemediationRetry)}
+	}
+	if len(service.state.recentlyClosed) == 0 {
+		service.mu.RUnlock()
+		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedNotFound, "There is no recently closed file to reopen.", apperr.RemediationCancel)}
+	}
+	entry := service.state.recentlyClosed[0]
+	service.mu.RUnlock()
+
+	if _, err := os.Stat(entry.path); errors.Is(err, os.ErrNotExist) {
+		service.consumeClosedEntry(ctx, entry.path)
+		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedNotFound, "The recently closed file no longer exists.", apperr.RemediationCancel)}
+	}
+
+	result := service.OpenPath(ctx, entry.path, expectedTabSetRevision)
+	if result.Status != apperr.OpenStatusOpened && result.Status != apperr.OpenStatusFocused {
+		return result
+	}
+	if result.DocumentID != "" {
+		_ = service.SetDocView(ctx, result.DocumentID, apperr.DocViewInput{
+			EditorVisible:  entry.view.EditorVisible,
+			PreviewVisible: entry.view.PreviewVisible,
+			Cursor:         entry.view.Cursor,
+			Selection:      entry.view.Selection,
+			Scroll:         entry.view.Scroll,
+		})
+	}
+	service.consumeClosedEntry(ctx, entry.path)
+	return result
 }
 
 func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arrangement string, version file.DiskVersion, rawHash string) *openDocument {

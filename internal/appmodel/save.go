@@ -338,7 +338,13 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	if document.metadata.LineEnding == string(file.LineEndingLF) && encoded.lineEndingOutcome == apperr.LineEndingPreservedCRLF {
 		document.metadata.LineEnding = string(file.LineEndingCRLF)
 	}
-	service.state.recentFiles = promoteRecentFile(service.state.recentFiles, snapshot.path)
+	recentRepository := service.recentFiles
+	shouldPromoteRecent := origin == SaveOriginExplicitSave || origin == SaveOriginSaveAs
+	if !shouldPromoteRecent {
+		recentRepository = nil
+	} else if recentRepository == nil {
+		service.state.recentFiles = promoteRecentFile(service.state.recentFiles, snapshot.path)
+	}
 	patch := service.documentPatchLocked(snapshot.documentID)
 	projectionRevision := service.state.revision
 	resyncRequired := false
@@ -357,6 +363,17 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		}()
 	}
 	service.mu.Unlock()
+
+	var promotionWarning *apperr.ClassifiedError
+	if recentRepository != nil {
+		entries, promoteErr := recentRepository.Promote(ctx, snapshot.path)
+		if promoteErr != nil {
+			warning := apperr.NewClassifiedError(apperr.ClassifiedPersistenceWarning, snapshot.path, "The document was saved successfully, but recent-file history could not be updated.", apperr.RemediationNone, "recent-files")
+			promotionWarning = &warning
+		} else {
+			service.publishRecentFiles(ctx, entries)
+		}
+	}
 	if replaceErr != nil {
 		resyncRequired = true
 	}
@@ -365,7 +382,7 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		CommittedProjectionRevision: projectionRevision, TargetPath: snapshot.path,
 		TargetPathAdopted: snapshot.targetPathAdopted, LineEndingOutcome: encoded.lineEndingOutcome,
 		BOMOutcome: encoded.bomOutcome, ResyncRequired: resyncRequired,
-	}}
+	}, Error: promotionWarning}
 	return result
 }
 

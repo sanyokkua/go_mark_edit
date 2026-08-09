@@ -97,6 +97,27 @@ func (service *AppModelService) rememberClosedLocked(path string, document *open
 	service.state.recentlyClosed = filtered
 }
 
+func (service *AppModelService) removeClosedEntryLocked(path string) {
+	filtered := service.state.recentlyClosed[:0]
+	for _, entry := range service.state.recentlyClosed {
+		if entry.path != path {
+			filtered = append(filtered, entry)
+		}
+	}
+	service.state.recentlyClosed = filtered
+	service.state.canReopenLastFile = len(filtered) > 0
+}
+
+func (service *AppModelService) consumeClosedEntry(ctx context.Context, path string) {
+	service.mu.Lock()
+	before := service.snapshotLocked()
+	service.removeClosedEntryLocked(path)
+	service.state.revision++
+	patch := apperr.AppStatePatch{Revision: service.state.revision, CanReopenLastFile: pointerTo(service.state.canReopenLastFile)}
+	_ = service.publishLocked(ctx, before, patch)
+	service.mu.Unlock()
+}
+
 func indexOfDocument(order []string, documentID string) int {
 	for index, candidate := range order {
 		if candidate == documentID {

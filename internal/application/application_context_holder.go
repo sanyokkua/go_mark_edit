@@ -116,6 +116,7 @@ func (holder *ApplicationContextHolder) Init(ctx context.Context) error {
 	holder.SettingsService.SetRepository(settings.NewSqliteSettingsRepository(database))
 	holder.AppModelService.SetLayoutRepository(appmodel.NewSqliteLayoutRepository(database))
 	holder.AppModelService.SetFileMetadataRepository(appmodel.NewSqliteFileMetadataRepository(database))
+	holder.AppModelService.SetRecentFilesRepository(appmodel.NewSqliteRecentFilesRepository(database))
 	holder.DB = database
 	holder.startupErr = nil
 	holder.AppModelService.SetStartupError(nil)
