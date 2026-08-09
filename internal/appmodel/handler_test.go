@@ -209,6 +209,22 @@ func (service *fakeAppModelService) OpenFromDialog(_ context.Context, _ uint64) 
 	return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
 }
 
+func (service *fakeAppModelService) OpenPath(_ context.Context, _ string, _ uint64) apperr.OpenResult {
+	if service.panicOn == "OpenRecentFile" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
+}
+
+func (service *fakeAppModelService) ReopenLastFile(_ context.Context, _ uint64) apperr.OpenResult {
+	if service.panicOn == "ReopenLastFile" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
+}
+
 func TestOpenCancellationHasNoMutation(t *testing.T) {
 	emitter := &recordingEmitter{}
 	service := NewEmptyAppModelService(emitter)

@@ -17,9 +17,12 @@ import type {
 import styles from './AppShell.module.css';
 
 import EditorView from './EditorView';
+import DocumentIdentity from './DocumentIdentity';
+import Launcher from './Launcher';
 
 export interface AppShellProps {
   onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
+  onOpenDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
   onActivateDocument?: (
     documentId: string,
     expectedTabSetRevision: number,
@@ -30,12 +33,18 @@ export interface AppShellProps {
     kind?: ClosePlanKind,
     targetDocumentIds?: string[],
   ) => Promise<TabTransitionResult>;
+  onOpenRecentFile?: (
+    path: string,
+    expectedTabSetRevision: number,
+  ) => Promise<unknown>;
 }
 
 const AppShell: React.FC<AppShellProps> = ({
   onNewDocument,
+  onOpenDocument,
   onActivateDocument,
   onCloseDocument,
+  onOpenRecentFile,
 }: AppShellProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const workspaceVisible = useAppSelector(
@@ -45,6 +54,21 @@ const AppShell: React.FC<AppShellProps> = ({
     (state) =>
       state.documents.activeDocumentId !== null &&
       state.documents.activeDocumentId !== '',
+  );
+  const activeDocument = useAppSelector((state) =>
+    hasActiveDocument && state.documents.activeDocumentId !== null
+      ? state.documents.byId[state.documents.activeDocumentId]
+      : undefined,
+  );
+  const recentFiles = useAppSelector(
+    (state) => state.documents.recentFiles ?? [],
+  );
+  const showLauncher =
+    onNewDocument !== undefined ||
+    onOpenDocument !== undefined ||
+    recentFiles.length > 0;
+  const tabSetRevision = useAppSelector(
+    (state) => state.documents.tabSetRevision,
   );
   const acknowledgedWorkspaceWidth = useAppSelector(
     (state) => state.ui.layout.sidebarWidth ?? 256,
@@ -191,6 +215,29 @@ const AppShell: React.FC<AppShellProps> = ({
         />
       ) : null}
       <main aria-label={t('shell.document')} className={styles.document}>
+        {hasActiveDocument ? (
+          <DocumentIdentity document={activeDocument} />
+        ) : showLauncher ? (
+          <Launcher
+            recentFiles={recentFiles}
+            onNewDocument={
+              onNewDocument === undefined
+                ? undefined
+                : (): Promise<unknown> => onNewDocument(tabSetRevision)
+            }
+            onOpenDocument={
+              onOpenDocument === undefined
+                ? undefined
+                : (): Promise<unknown> => onOpenDocument(tabSetRevision)
+            }
+            onOpenRecentFile={
+              onOpenRecentFile === undefined
+                ? undefined
+                : (path): Promise<unknown> =>
+                    onOpenRecentFile(path, tabSetRevision)
+            }
+          />
+        ) : null}
         <EditorView
           onNewDocument={onNewDocument}
           onActivateDocument={onActivateDocument}

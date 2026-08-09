@@ -33,6 +33,11 @@ export interface AppModelBindings {
     expectedTabSetRevision: number,
   ) => Promise<DocumentTransitionResult>;
   openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  openRecentFile?: (
+    path: string,
+    expectedTabSetRevision: number,
+  ) => Promise<OpenResult>;
+  reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
   activateDocument?: (
     documentId: string,
     expectedTabSetRevision: number,
@@ -72,6 +77,11 @@ export interface AppModelAdapter {
     expectedTabSetRevision: number,
   ) => Promise<DocumentTransitionResult>;
   openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  openRecentFile?: (
+    path: string,
+    expectedTabSetRevision: number,
+  ) => Promise<OpenResult>;
+  reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
   activateDocument?: (
     documentId: string,
     expectedTabSetRevision: number,
@@ -171,6 +181,8 @@ export function createAppModelAdapter(
       : createDocumentLifecycleAdapter({
           newDocument: bindings.newDocument,
           openDocument: bindings.openDocument,
+          openRecentFile: bindings.openRecentFile,
+          reopenLastFile: bindings.reopenLastFile,
         });
   const activateDocument =
     bindings.activateDocument === undefined
@@ -448,6 +460,32 @@ export function createAppModelAdapter(
         : async (expectedTabSetRevision: number): Promise<OpenResult> => {
             assertCommandsAvailable();
             return documentLifecycle.openDocument(expectedTabSetRevision);
+          },
+    openRecentFile:
+      documentLifecycle?.openRecentFile === undefined
+        ? undefined
+        : async (
+            path: string,
+            expectedTabSetRevision: number,
+          ): Promise<OpenResult> => {
+            assertCommandsAvailable();
+            return (
+              documentLifecycle.openRecentFile?.(
+                path,
+                expectedTabSetRevision,
+              ) ?? { status: 'cancelled' }
+            );
+          },
+    reopenLastFile:
+      documentLifecycle?.reopenLastFile === undefined
+        ? undefined
+        : async (expectedTabSetRevision: number): Promise<OpenResult> => {
+            assertCommandsAvailable();
+            return (
+              documentLifecycle.reopenLastFile?.(expectedTabSetRevision) ?? {
+                status: 'cancelled',
+              }
+            );
           },
     activateDocument:
       activateDocument === undefined

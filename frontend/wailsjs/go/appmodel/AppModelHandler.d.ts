@@ -22,9 +22,13 @@ export function NewDocument(arg1:number):Promise<apperr.DocumentTransitionResult
 
 export function OpenDocument(arg1:number):Promise<apperr.OpenResult>;
 
+export function OpenRecentFile(arg1:string,arg2:number):Promise<apperr.OpenResult>;
+
 export function PrepareClose(arg1:string,arg2:Array<string>,arg3:number):Promise<apperr.ClosePlanResult>;
 
 export function ReloadFromDisk(arg1:string,arg2:number,arg3:apperr.DiskVersion):Promise<apperr.ConflictResult>;
+
+export function ReopenLastFile(arg1:number):Promise<apperr.OpenResult>;
 
 export function ReorderDocument(arg1:string,arg2:number,arg3:number):Promise<apperr.TabTransitionResult>;
 

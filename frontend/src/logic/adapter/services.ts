@@ -51,6 +51,10 @@ export interface DocumentLifecycleBindings {
     expectedTabSetRevision: number,
   ) => Promise<DocumentTransitionResult>;
   openDocument: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  openRecentFile?: (
+    path: string,
+    expectedTabSetRevision: number,
+  ) => Promise<OpenResult>;
   reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
 }
 
@@ -59,6 +63,10 @@ export interface DocumentLifecycleAdapter {
     expectedTabSetRevision: number,
   ) => Promise<DocumentTransitionResult>;
   openDocument: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  openRecentFile?: (
+    path: string,
+    expectedTabSetRevision: number,
+  ) => Promise<OpenResult>;
   reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
 }
 
@@ -237,12 +245,21 @@ export function createDocumentLifecycleAdapter(
     bindings.reopenLastFile === undefined
       ? undefined
       : guardArity('AppModelHandler.ReopenLastFile', bindings.reopenLastFile);
+  const openRecentFile =
+    bindings.openRecentFile === undefined
+      ? undefined
+      : guardArity('AppModelHandler.OpenRecentFile', bindings.openRecentFile);
 
   return {
     newDocument: (expectedTabSetRevision: number) =>
       newDocument(expectedTabSetRevision),
     openDocument: (expectedTabSetRevision: number) =>
       openDocument(expectedTabSetRevision),
+    openRecentFile:
+      openRecentFile === undefined
+        ? undefined
+        : (path: string, expectedTabSetRevision: number) =>
+            openRecentFile(path, expectedTabSetRevision),
     reopenLastFile:
       reopenLastFile === undefined
         ? undefined

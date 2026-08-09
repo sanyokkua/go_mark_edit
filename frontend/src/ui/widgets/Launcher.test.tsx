@@ -1,0 +1,37 @@
+import { fireEvent, render, screen, within } from '@testing-library/react';
+
+import Launcher from './Launcher';
+
+it('Launcher first-run and six recent files', () => {
+  const onNewDocument = jest.fn();
+  const onOpenDocument = jest.fn();
+  const onOpenRecentFile = jest.fn();
+  const { rerender } = render(
+    <Launcher
+      onNewDocument={onNewDocument}
+      onOpenDocument={onOpenDocument}
+      onOpenRecentFile={onOpenRecentFile}
+    />,
+  );
+
+  expect(
+    screen.getByText('Create a new Markdown file or open one from disk.'),
+  ).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Open Folder' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'New File' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Open File' }));
+  expect(onNewDocument).toHaveBeenCalledTimes(1);
+  expect(onOpenDocument).toHaveBeenCalledTimes(1);
+
+  const recentFiles = Array.from(
+    { length: 7 },
+    (_, index) => `/tmp/file-${index}.md`,
+  );
+  rerender(
+    <Launcher recentFiles={recentFiles} onOpenRecentFile={onOpenRecentFile} />,
+  );
+  const recent = within(screen.getByLabelText('Recent files'));
+  expect(recent.getAllByRole('button')).toHaveLength(6);
+  fireEvent.click(recent.getByRole('button', { name: 'file-0.md' }));
+  expect(onOpenRecentFile).toHaveBeenCalledWith('/tmp/file-0.md');
+});

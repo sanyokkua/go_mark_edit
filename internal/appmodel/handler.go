@@ -21,6 +21,8 @@ type AppModelServiceAPI interface {
 	CopyPath(ctx context.Context, documentID string) apperr.CopyPathResult
 	RevealInFileManager(ctx context.Context, documentID string) apperr.RevealResult
 	OpenFromDialog(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenResult
+	OpenPath(ctx context.Context, path string, expectedTabSetRevision uint64) apperr.OpenResult
+	ReopenLastFile(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenResult
 	UpdateBuffer(ctx context.Context, documentID, content string) error
 	SetDocView(ctx context.Context, documentID string, view apperr.DocViewInput) error
 	SetUILayout(ctx context.Context, layout apperr.UILayout) error
@@ -50,6 +52,26 @@ func (handler *AppModelHandler) OpenDocument(expectedTabSetRevision uint64) (res
 		}
 	}()
 	return handler.service.OpenFromDialog(handler.context(), expectedTabSetRevision)
+}
+
+// OpenRecentFile opens a selected recent path through the same canonical Open lifecycle.
+func (handler *AppModelHandler) OpenRecentFile(path string, expectedTabSetRevision uint64) (res apperr.OpenResult) {
+	defer func() {
+		if recover() != nil {
+			res = apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The recent file could not be opened.", apperr.RemediationRetry)}
+		}
+	}()
+	return handler.service.OpenPath(handler.context(), path, expectedTabSetRevision)
+}
+
+// ReopenLastFile consumes the newest eligible closed entry through canonical Open.
+func (handler *AppModelHandler) ReopenLastFile(expectedTabSetRevision uint64) (res apperr.OpenResult) {
+	defer func() {
+		if recover() != nil {
+			res = apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The recently closed file could not be reopened.", apperr.RemediationRetry)}
+		}
+	}()
+	return handler.service.ReopenLastFile(handler.context(), expectedTabSetRevision)
 }
 
 // NewDocument mints and activates one empty untitled document after a tab-set revision check.

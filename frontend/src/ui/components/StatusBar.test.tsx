@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import { fireEvent } from '@testing-library/react';
 
 import StatusBar from './StatusBar';
 
@@ -55,4 +56,33 @@ it('shows the write-in-flight state without replacing the authoritative dirty st
   expect(status).toHaveTextContent('Unsaved changes');
   expect(status).toHaveTextContent('Saving');
   expect(status.querySelector('[data-write-in-flight="true"]')).not.toBeNull();
+});
+
+it('StatusBar responsive detail keeps dropped file facts accessible', () => {
+  render(
+    <StatusBar
+      arrangement="split"
+      autosave
+      cursor={{ lineNumber: 2, column: 4 }}
+      encoding="utf-8"
+      lineEnding="mixed"
+      readOnly
+      status="read-only"
+      wordCount={2}
+    />,
+  );
+
+  const status = screen.getByRole('contentinfo', { name: 'Document status' });
+  const detailsButton = within(status).getByRole('button', {
+    name: 'Document details',
+  });
+  expect(detailsButton).toHaveAttribute('aria-expanded', 'false');
+  fireEvent.click(detailsButton);
+  expect(detailsButton).toHaveAttribute('aria-expanded', 'true');
+  const details = within(status).getByRole('region', {
+    name: 'Document details',
+  });
+  expect(details).toHaveTextContent('Mixed');
+  expect(details).toHaveTextContent('Autosave on');
+  expect(details).toHaveTextContent('Read-only');
 });

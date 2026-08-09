@@ -1,0 +1,29 @@
+.identity {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--control-gap);
+  min-width: 0;
+  padding: var(--editor-pane-header-padding-block)
+    var(--editor-pane-header-padding-inline);
+  background: var(--surface-raised);
+  border-bottom: var(--control-border-width) solid var(--border);
+}
+
+.heading,
+.status {
+  min-width: 0;
+  margin: 0;
+}
+
+.heading {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--editor-pane-meta-font-size);
+}
+
+.status {
+  color: var(--text-muted);
+  font-size: var(--status-bar-font-size);
+}

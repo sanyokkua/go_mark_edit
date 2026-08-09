@@ -13,6 +13,8 @@ export interface DocumentsState {
   orderedIds: string[];
   byId: Record<string, DocumentMetadata>;
   activeDocumentId: string | null;
+  recentFiles?: string[];
+  canReopenLastFile?: boolean;
 }
 
 const initialState: DocumentsState = {
@@ -102,6 +104,8 @@ const documentsSlice = createSlice({
         if (action.payload.activeDocument !== undefined) {
           state.activeDocumentId = action.payload.activeDocument;
         }
+        state.recentFiles = [...(action.payload.recentFiles ?? [])];
+        state.canReopenLastFile = action.payload.canReopenLastFile ?? false;
       })
       .addCase(applyStatePatch, (state, action): void => {
         const patch = action.payload;
@@ -132,6 +136,12 @@ const documentsSlice = createSlice({
           state.activeDocumentId = patch.activeDocument.present
             ? (patch.activeDocument.documentId ?? null)
             : null;
+        }
+        if (patch.recentFiles !== undefined) {
+          state.recentFiles = [...patch.recentFiles];
+        }
+        if (patch.canReopenLastFile !== undefined) {
+          state.canReopenLastFile = patch.canReopenLastFile;
         }
       })
       .addCase(resetProjection, (): DocumentsState => initialState);

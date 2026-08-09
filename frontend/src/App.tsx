@@ -160,6 +160,11 @@ interface ApplicationMenuState {
   onAbout: () => void;
   onNewDocument: (expectedTabSetRevision: number) => Promise<unknown>;
   onOpenDocument: (expectedTabSetRevision: number) => Promise<unknown>;
+  onOpenRecentFile: (
+    path: string,
+    expectedTabSetRevision: number,
+  ) => Promise<unknown>;
+  onReopenLastFile: (expectedTabSetRevision: number) => Promise<unknown>;
   onSave: () => Promise<unknown>;
   onSaveAs: () => Promise<unknown>;
   documentId?: string;
@@ -189,6 +194,12 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
   const tabSetRevision = useAppSelector(
     (state) => state.documents.tabSetRevision,
   );
+  const recentFiles = useAppSelector(
+    (state) => state.documents.recentFiles ?? [],
+  );
+  const canReopenLastFile = useAppSelector(
+    (state) => state.documents.canReopenLastFile ?? false,
+  );
   const editorSettings = useEditorSettings();
 
   return (
@@ -201,11 +212,19 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
       onOpenDocument={(): Promise<unknown> =>
         menuState.onOpenDocument(tabSetRevision)
       }
+      onOpenRecentFile={(path): Promise<unknown> =>
+        menuState.onOpenRecentFile(path, tabSetRevision)
+      }
+      onReopenLastFile={(): Promise<unknown> =>
+        menuState.onReopenLastFile(tabSetRevision)
+      }
       onSave={menuState.onSave}
       onSaveAs={menuState.onSaveAs}
       documentId={menuState.documentId}
       sessionDocumentId={menuState.sessionDocumentId}
       writable={menuState.writable}
+      recentFiles={recentFiles}
+      canReopenLastFile={canReopenLastFile}
       onShortcuts={menuState.onShortcuts}
       settingsMenuProps={{
         ...settingsMenuProps,
@@ -328,6 +347,31 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const onOpenDocument = useCallback(
     async (expectedTabSetRevision: number): Promise<unknown> => {
       const result = await appModelAdapter.openDocument?.(
+        expectedTabSetRevision,
+      );
+      if (result?.activeBuffer !== undefined) {
+        setActiveBuffer(result.activeBuffer);
+      }
+      return result;
+    },
+    [],
+  );
+  const onOpenRecentFile = useCallback(
+    async (path: string, expectedTabSetRevision: number): Promise<unknown> => {
+      const result = await appModelAdapter.openRecentFile?.(
+        path,
+        expectedTabSetRevision,
+      );
+      if (result?.activeBuffer !== undefined) {
+        setActiveBuffer(result.activeBuffer);
+      }
+      return result;
+    },
+    [],
+  );
+  const onReopenLastFile = useCallback(
+    async (expectedTabSetRevision: number): Promise<unknown> => {
+      const result = await appModelAdapter.reopenLastFile?.(
         expectedTabSetRevision,
       );
       if (result?.activeBuffer !== undefined) {
@@ -1019,6 +1063,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
       onAbout: (): void => setAboutOpen(true),
       onNewDocument,
       onOpenDocument,
+      onOpenRecentFile,
+      onReopenLastFile,
       onSave,
       onSaveAs,
       documentId: activeDocument?.documentId,
@@ -1035,6 +1081,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
       activeDocument,
       onNewDocument,
       onOpenDocument,
+      onOpenRecentFile,
+      onReopenLastFile,
       onSave,
       onSaveAs,
       modalOpen,
@@ -1163,6 +1211,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
                   ) : null}
                   <AppShell
                     onNewDocument={onNewDocument}
+                    onOpenDocument={onOpenDocument}
+                    onOpenRecentFile={(
+                      path,
+                      expectedTabSetRevision,
+                    ): Promise<unknown> =>
+                      onOpenRecentFile(path, expectedTabSetRevision)
+                    }
                     onActivateDocument={onActivateDocument}
                     onCloseDocument={onCloseDocument}
                   />

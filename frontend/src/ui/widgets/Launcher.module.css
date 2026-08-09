@@ -1,0 +1,77 @@
+.launcher {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  place-items: center;
+  padding: var(--editor-view-padding);
+}
+
+.panel {
+  display: grid;
+  gap: var(--app-gap);
+  width: min(100%, var(--startup-failure-max-width));
+  padding: var(--dialog-padding);
+  background: var(--surface);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--win-radius);
+}
+
+.panel h1,
+.panel h2,
+.message,
+.empty {
+  margin: 0;
+}
+
+.panel h1 {
+  font-size: var(--launcher-title-size);
+}
+
+.panel h2 {
+  font-size: var(--launcher-section-size);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--control-gap);
+}
+
+.actions button,
+.recent button {
+  padding: var(--control-padding);
+}
+
+.recent {
+  display: grid;
+  gap: var(--control-gap);
+}
+
+.recent ul {
+  display: grid;
+  gap: var(--control-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent button {
+  width: 100%;
+  overflow: hidden;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 376px) {
+  .launcher {
+    place-items: start center;
+    padding: var(--editor-view-padding);
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

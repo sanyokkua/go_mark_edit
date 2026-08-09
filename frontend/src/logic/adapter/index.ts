@@ -11,6 +11,8 @@ import {
   GetState,
   NewDocument,
   OpenDocument,
+  OpenRecentFile,
+  ReopenLastFile,
   ActivateDocument,
   ReorderDocument,
   CloseDocument,
@@ -358,6 +360,10 @@ const generatedAppModelBindings: AppModelBindings = {
     normalizeTransitionResult(await NewDocument(expectedTabSetRevision)),
   openDocument: async (expectedTabSetRevision) =>
     normalizeOpenResult(await OpenDocument(expectedTabSetRevision)),
+  openRecentFile: async (path, expectedTabSetRevision) =>
+    normalizeOpenResult(await OpenRecentFile(path, expectedTabSetRevision)),
+  reopenLastFile: async (expectedTabSetRevision) =>
+    normalizeOpenResult(await ReopenLastFile(expectedTabSetRevision)),
   activateDocument: async (documentId, expectedTabSetRevision) =>
     normalizeTransitionResult(
       await ActivateDocument(documentId, expectedTabSetRevision),

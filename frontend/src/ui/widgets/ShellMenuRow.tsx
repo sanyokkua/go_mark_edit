@@ -25,6 +25,7 @@ import {
 import { useShellShortcuts } from '../../logic/actions/useShellShortcuts';
 import { windowAdapter } from '../../logic/adapter';
 import ViewMenu, { type ViewMenuProps } from '../primitives/ViewMenu';
+import { safeRecentLabel } from './Launcher';
 import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
 import styles from './ShellMenuRow.module.css';
 
@@ -33,6 +34,10 @@ interface ShellMenuRowProps {
   onAbout: () => void;
   onNewDocument?: () => Promise<unknown> | unknown;
   onOpenDocument?: () => Promise<unknown> | unknown;
+  onOpenRecentFile?: (path: string) => Promise<unknown> | unknown;
+  onReopenLastFile?: () => Promise<unknown> | unknown;
+  recentFiles?: readonly string[];
+  canReopenLastFile?: boolean;
   onSave?: () => Promise<unknown> | unknown;
   onSaveAs?: () => Promise<unknown> | unknown;
   documentId?: string;
@@ -60,6 +65,10 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   onAbout,
   onNewDocument,
   onOpenDocument,
+  onOpenRecentFile,
+  onReopenLastFile,
+  recentFiles = [],
+  canReopenLastFile = false,
   onSave,
   onSaveAs,
   onShortcuts,
@@ -227,7 +236,13 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   const fileActions = actionsForSurface('file-menu');
   const fileActionDisabled = (id: ActionId): boolean =>
     getAction(id).availability.kind === 'deferred' ||
+    (id === 'open-recent' && recentFiles.length === 0) ||
+    (id === 'reopen' && !canReopenLastFile) ||
     (['save', 'save-as'].includes(id) && writable !== true);
+  const displayedRecentFiles =
+    recentFiles.length === 0
+      ? [t('file.recent.release'), t('file.recent.spec')]
+      : recentFiles.slice(0, 6);
   const aboutActions = actionsForSurface('about-menu');
   const sidebarAction = getAction('toggle-sidebar');
   const assistantAction = getAction('toggle-assistant');
@@ -255,7 +270,9 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
             ? onSave
             : id === 'save-as'
               ? onSaveAs
-              : undefined;
+              : id === 'reopen'
+                ? onReopenLastFile
+                : undefined;
     if (invoke === undefined) return;
 
     setFileOpen(false);
@@ -266,6 +283,15 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       invoke,
       sessionDocumentId,
       writable,
+    });
+  };
+  const dispatchRecentFile = (path: string): void => {
+    if (onOpenRecentFile === undefined) return;
+    setFileOpen(false);
+    setOverflowOpen(false);
+    void dispatchAction('open-recent', {
+      applicationFocused: true,
+      invoke: async (): Promise<unknown> => onOpenRecentFile(path),
     });
   };
   const requestViewOpen = (open: boolean): void => {
@@ -420,7 +446,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                     <DropdownMenu.Sub key={item.id}>
                       <DropdownMenu.SubTrigger
                         className={styles.item}
-                        disabled={item.availability.kind === 'deferred'}
+                        disabled={fileActionDisabled(item.id)}
                       >
                         {t(item.labelKey)}
                       </DropdownMenu.SubTrigger>
@@ -430,12 +456,18 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                           collisionPadding={8}
                           data-viewport-popup="file-recent-menu"
                         >
-                          <DropdownMenu.Item className={styles.item} disabled>
-                            {t('file.recent.release')}
-                          </DropdownMenu.Item>
-                          <DropdownMenu.Item className={styles.item} disabled>
-                            {t('file.recent.spec')}
-                          </DropdownMenu.Item>
+                          {displayedRecentFiles.map((path) => (
+                            <DropdownMenu.Item
+                              className={styles.item}
+                              disabled={recentFiles.length === 0}
+                              key={path}
+                              onSelect={(): void => dispatchRecentFile(path)}
+                            >
+                              {recentFiles.length === 0
+                                ? path
+                                : safeRecentLabel(path)}
+                            </DropdownMenu.Item>
+                          ))}
                         </DropdownMenu.SubContent>
                       </DropdownMenu.Portal>
                     </DropdownMenu.Sub>
@@ -594,7 +626,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                         <button
                           aria-haspopup="menu"
                           className={styles.item}
-                          disabled
+                          disabled={fileActionDisabled(item.id)}
                           role="menuitem"
                           type="button"
                         >
@@ -605,22 +637,20 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                           className={styles.submenu}
                           role="menu"
                         >
-                          <button
-                            className={styles.item}
-                            disabled
-                            role="menuitem"
-                            type="button"
-                          >
-                            {t('file.recent.release')}
-                          </button>
-                          <button
-                            className={styles.item}
-                            disabled
-                            role="menuitem"
-                            type="button"
-                          >
-                            {t('file.recent.spec')}
-                          </button>
+                          {displayedRecentFiles.map((path) => (
+                            <button
+                              className={styles.item}
+                              disabled={recentFiles.length === 0}
+                              key={path}
+                              role="menuitem"
+                              type="button"
+                              onClick={(): void => dispatchRecentFile(path)}
+                            >
+                              {recentFiles.length === 0
+                                ? path
+                                : safeRecentLabel(path)}
+                            </button>
+                          ))}
                         </div>
                       </div>
                     ) : (

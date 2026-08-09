@@ -624,6 +624,14 @@ export function OpenDocument(
   });
 }
 
+export function OpenRecentFile(
+  path: string,
+  expectedTabSetRevision: number,
+): Promise<OpenResult> {
+  setMockOpenSelection({ path });
+  return OpenDocument(expectedTabSetRevision);
+}
+
 export async function ReopenLastFile(
   expectedTabSetRevision: number,
 ): Promise<OpenResult> {

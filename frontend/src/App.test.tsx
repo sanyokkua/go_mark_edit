@@ -388,12 +388,6 @@ it('T018 keeps the feature shell ordered and future behavior explicitly bounded 
   };
   const assertFutureSurfacesBounded = (): void => {
     expect(
-      screen.queryByRole('button', { name: 'New File' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Open File' }),
-    ).not.toBeInTheDocument();
-    expect(
       screen.queryByRole('complementary', { name: /assistant/i }),
     ).not.toBeInTheDocument();
   };
@@ -459,6 +453,7 @@ it('T018 keeps the feature shell ordered and future behavior explicitly bounded 
   expect(
     screen.getAllByRole('menuitem').map((item) => item.textContent),
   ).toEqual(['File', 'Settings', 'View', 'About']);
+  fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
   assertFutureSurfacesBounded();
 
   store.dispatch(resetProjection());

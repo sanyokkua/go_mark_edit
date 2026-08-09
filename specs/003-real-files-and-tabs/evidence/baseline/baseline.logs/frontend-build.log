@@ -26,15 +26,15 @@ dist/assets/editor.worker-CdtUXE0K.js      231.31 kB
 dist/assets/index-18Q8UH5R.css              36.39 kB │ gzip:   7.29 kB
 dist/assets/monacoSetup-DyX1CsEw.css        68.26 kB │ gzip:  11.14 kB
 dist/assets/markdown-B811l8j2.js             3.65 kB │ gzip:   1.35 kB
-dist/assets/index-CHh4SDa0.js               14.57 kB │ gzip:   5.06 kB
-dist/assets/index-2mSIFV4T.js              640.47 kB │ gzip: 196.58 kB
-dist/assets/monacoSetup-CcwYecOw.js      2,294.41 kB │ gzip: 592.24 kB
+dist/assets/index-lkdmX7Ic.js               14.57 kB │ gzip:   5.06 kB
+dist/assets/index-Ckuu7Fsa.js              644.21 kB │ gzip: 197.38 kB
+dist/assets/monacoSetup-D4ASynof.js      2,294.41 kB │ gzip: 592.24 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.58s
+✓ built in 3.52s
 
 > frontend@0.0.0 postbuild
 > node scripts/ensure-dist-placeholder.mjs && node scripts/check-production-network.mjs --source-root src --source-root public --source-root wailsjs/go --bundle-root dist --require-bundle
