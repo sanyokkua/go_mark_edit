@@ -539,6 +539,13 @@ export function createAppModelAdapter(
     ): Promise<void> {
       assertCommandsAvailable();
       if (
+        expectedActivationToken !== undefined &&
+        activeSession !== undefined &&
+        activeSession.documentId !== documentId
+      ) {
+        return;
+      }
+      if (
         activeSession !== undefined &&
         activeSession.documentId === documentId
       ) {

@@ -621,6 +621,38 @@ it('T009 operates File New through the real menu and installs its acknowledged b
   act((): void => disposeAppModelProjection());
 });
 
+it('flushes the active editor session before File Open invokes the native command', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  const calls: string[] = [];
+  mockedAppModelAdapter.flushActiveSession = jest.fn(async (documentId) => {
+    calls.push(`flush:${documentId}`);
+  });
+  const openDocument = jest.fn(async (expectedTabSetRevision: number) => {
+    calls.push('open');
+    expect(expectedTabSetRevision).toBe(12);
+    return { status: 'cancelled' as const };
+  });
+  mockedAppModelAdapter.openDocument = openDocument;
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Open File' }));
+
+  await waitFor(() => expect(openDocument).toHaveBeenCalledTimes(1));
+  expect(mockedAppModelAdapter.flushActiveSession).toHaveBeenCalledWith(
+    'document-1',
+  );
+  expect(calls).toEqual(['flush:document-1', 'open']);
+  mockedAppModelAdapter.openDocument = undefined;
+  act((): void => disposeAppModelProjection());
+});
+
 it('Save reports exactly one confirmation', async () => {
   act((): void => disposeAppModelProjection());
   store.dispatch(resetProjection());

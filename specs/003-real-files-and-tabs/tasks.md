@@ -424,7 +424,7 @@ launcher, shortcut collisions including Move tab and Table, clean restart, and a
   - **Tests/evidence**: `npm --prefix frontend test -- --runInBand` with named suites `Launcher first-run and six recent files`, `DocumentIdentity safe path display`, `DocumentIdentity renders all five status values`, `identity heading keeps at most one parent segment`, and `StatusBar responsive detail`; `just archtest`.
   - **Branch/commit**: `feature/v1-implementation--003-t031-launcher-status`; `feat(files): add recents launcher and file status`.
 
-- [ ] T032 [US5] Prove recents/reopen/launcher/status through actual controls and real cross-instance/disk behavior in `frontend/e2e/real-files-and-tabs.test.ts` and `specs/003-real-files-and-tabs/evidence/ft-vs-07/`.
+- [X] T032 [US5] Prove recents/reopen/launcher/status through actual controls and real cross-instance/disk behavior in `frontend/e2e/real-files-and-tabs.test.ts` and `specs/003-real-files-and-tabs/evidence/ft-vs-07/`.
   - **Outcome**: SC-FT-008 has browser and real-bridge evidence for >6 order/dedup/persistence/lazy prune/stale choice, **two real application instances sharing one settings database whose interleaved promotions follow SQLite commit order with no lost stale-snapshot update and an explicit-refresh observation**, a forced busy-timeout producing one `persistence-warning` with the prior list intact, 40-history uniqueness/consume/retry/no source/fresh identity, unavailable folder/no restore, shortcut collisions, and responsive details.
   - **Prerequisites**: T031.
   - **Primary ownership**: SC-FT-008 only.

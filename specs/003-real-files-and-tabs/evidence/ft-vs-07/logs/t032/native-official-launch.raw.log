@@ -1,0 +1,8 @@
+$ HOME=/tmp/gomarkedit-t032-official-home build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit
+SIGABRT: abort
+github.com/wailsapp/wails/v2/internal/frontend/desktop/darwin._Cfunc_Create
+github.com/wailsapp/wails/v2/internal/frontend/desktop/darwin.NewWindow
+exit=2
+
+The official app attempted to create its Darwin window while the host was locked and aborted
+before an application database was initialized.

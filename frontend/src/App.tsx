@@ -332,8 +332,14 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const nativeClosePendingRef = useRef(false);
   const recoveryQuitConfirmedRef = useRef(false);
   const recoveryQuitCancelRef = useRef<HTMLButtonElement | null>(null);
+  const activeDocumentId = activeBuffer?.documentId;
+  const flushActiveDocument = useCallback(async (): Promise<void> => {
+    if (activeDocumentId === undefined) return;
+    await appModelAdapter.flushActiveSession?.(activeDocumentId);
+  }, [activeDocumentId]);
   const onNewDocument = useCallback(
     async (expectedTabSetRevision: number): Promise<unknown> => {
+      await flushActiveDocument();
       const result = await appModelAdapter.newDocument?.(
         expectedTabSetRevision,
       );
@@ -342,10 +348,11 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       return result;
     },
-    [],
+    [flushActiveDocument],
   );
   const onOpenDocument = useCallback(
     async (expectedTabSetRevision: number): Promise<unknown> => {
+      await flushActiveDocument();
       const result = await appModelAdapter.openDocument?.(
         expectedTabSetRevision,
       );
@@ -354,10 +361,11 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       return result;
     },
-    [],
+    [flushActiveDocument],
   );
   const onOpenRecentFile = useCallback(
     async (path: string, expectedTabSetRevision: number): Promise<unknown> => {
+      await flushActiveDocument();
       const result = await appModelAdapter.openRecentFile?.(
         path,
         expectedTabSetRevision,
@@ -367,10 +375,11 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       return result;
     },
-    [],
+    [flushActiveDocument],
   );
   const onReopenLastFile = useCallback(
     async (expectedTabSetRevision: number): Promise<unknown> => {
+      await flushActiveDocument();
       const result = await appModelAdapter.reopenLastFile?.(
         expectedTabSetRevision,
       );
@@ -379,7 +388,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       return result;
     },
-    [],
+    [flushActiveDocument],
   );
   const onActivateDocument = useCallback(
     async (

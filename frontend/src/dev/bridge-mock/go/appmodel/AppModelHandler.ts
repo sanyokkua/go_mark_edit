@@ -201,6 +201,7 @@ interface AppStatePatch {
 interface MockOpenSelection {
   path: string;
   content?: string;
+  documentId?: string;
 }
 
 type MockWriteResult = {
@@ -235,13 +236,31 @@ interface RecentlyClosedMockDocument {
 }
 
 const initialDocumentId = 'mock-document';
+const e2eRecentFiles = [
+  '/tmp/t032-recent-07.md',
+  '/tmp/t032-recent-06.md',
+  '/tmp/t032-recent-05.md',
+  '/tmp/t032-recent-04.md',
+  '/tmp/t032-recent-03.md',
+  '/tmp/t032-recent-02.md',
+  '/tmp/t032-recent-01.md',
+];
+
+function seededRecentFiles(): string[] {
+  return typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('ft-vs-07')
+    ? [...e2eRecentFiles]
+    : [];
+}
+
 let revision = 0;
 let tabSetRevision = 0;
 let orderedDocumentIds: string[] = [initialDocumentId];
 let activeDocumentId = initialDocumentId;
-let recentFiles: string[] = [];
+let recentFiles: string[] = seededRecentFiles();
 let recentlyClosed: RecentlyClosedMockDocument[] = [];
 let nextUntitledNumber = 2;
+let nextReopenDocumentNumber = 1;
 let openSelection: MockOpenSelection | null = null;
 let mockSaveResult: MockWriteResult | undefined;
 let mockSaveAsResult: MockWriteResult | undefined;
@@ -460,9 +479,10 @@ export function resetMockAppModel(): void {
   tabSetRevision = 0;
   orderedDocumentIds = [initialDocumentId];
   activeDocumentId = initialDocumentId;
-  recentFiles = [];
+  recentFiles = seededRecentFiles();
   recentlyClosed = [];
   nextUntitledNumber = 2;
+  nextReopenDocumentNumber = 1;
   nextClosePlanNumber = 1;
   mockClosePlans = new Map();
   openSelection = null;
@@ -568,7 +588,11 @@ export function NewDocument(
   return Promise.resolve({ data: activeBuffer(document) });
 }
 
-function selectedDocumentId(path: string): string {
+function selectedDocumentId(
+  path: string,
+  requestedDocumentId?: string,
+): string {
+  if (requestedDocumentId !== undefined) return requestedDocumentId;
   const normalized = path.replaceAll('\\', '/');
   return normalized.slice(normalized.lastIndexOf('/') + 1) || 'selected.md';
 }
@@ -585,7 +609,8 @@ export function OpenDocument(
     return Promise.resolve({ status: 'cancelled' });
   }
 
-  const documentId = selectedDocumentId(selection.path);
+  const displayName = selectedDocumentId(selection.path);
+  const documentId = selectedDocumentId(selection.path, selection.documentId);
   const existing = documents[documentId];
   if (existing !== undefined) {
     promoteRecentFile(selection.path);
@@ -605,7 +630,7 @@ export function OpenDocument(
   }
 
   const document: MockDocument = {
-    metadata: newDocumentMetadata(documentId, documentId, selection.path),
+    metadata: newDocumentMetadata(documentId, displayName, selection.path),
     content: selection.content ?? `# ${documentId}`,
     documentRevision: 0,
   };
@@ -628,7 +653,13 @@ export function OpenRecentFile(
   path: string,
   expectedTabSetRevision: number,
 ): Promise<OpenResult> {
-  setMockOpenSelection({ path });
+  const wasRecentlyClosed = recentlyClosed.some((entry) => entry.path === path);
+  setMockOpenSelection({
+    path,
+    documentId: wasRecentlyClosed
+      ? `${selectedDocumentId(path)}-reopened-${nextReopenDocumentNumber++}`
+      : undefined,
+  });
   return OpenDocument(expectedTabSetRevision);
 }
 
@@ -650,7 +681,11 @@ export async function ReopenLastFile(
     };
   }
 
-  setMockOpenSelection({ path: entry.path, content: entry.content });
+  setMockOpenSelection({
+    path: entry.path,
+    content: entry.content,
+    documentId: `${selectedDocumentId(entry.path)}-reopened-${nextReopenDocumentNumber++}`,
+  });
   const result = await OpenDocument(expectedTabSetRevision);
   if (result.status !== 'opened' && result.status !== 'focused') {
     return result;

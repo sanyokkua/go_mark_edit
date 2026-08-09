@@ -1,19 +1,19 @@
 just go-archtest
 go test -run TestArchitecture -count=1 ./internal/... .
-ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	0.324s
-ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.429s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	0.763s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	0.959s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/db	1.266s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	0.238s
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.352s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	0.591s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	0.756s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	1.972s [no tests to run]
 ?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
-ok  	github.com/sanyokkua/go_mark_edit/internal/file	1.451s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/gate	1.713s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/logging	2.237s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/settings	1.963s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit	2.557s
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	1.744s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	0.933s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	2.176s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	1.578s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit	1.370s
 just cgo-free-check
 CGO_ENABLED=0 go build ./...
-go: writing stat cache: open /Users/ok/go/pkg/mod/cache/download/github.com/sanyokkua/go_mark_edit/@v/v0.0.0-20260809065005-47e55db3c78b.info998152503.tmp: operation not permitted
+go: writing stat cache: open /Users/ok/go/pkg/mod/cache/download/github.com/sanyokkua/go_mark_edit/@v/v0.0.0-20260809071658-068fed7ae591.info27644385.tmp: operation not permitted
 just migration-immutability-check
 migrations: no committed file modified in place
 just frontend-archtest

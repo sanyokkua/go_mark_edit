@@ -168,3 +168,99 @@ test('FT-VS-06 close plan gathers a complete choice before any tab removal', asy
   await secondPrompt.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('tab')).toHaveCount(0);
 });
+
+test('FT-VS-07 proves recents, reopen, launcher, and responsive status controls', async ({
+  page,
+}) => {
+  await page.goto('/?ft-vs-07');
+
+  const file = page.getByRole('button', { name: 'File' });
+  await file.click();
+  const menu = page.getByRole('menu', { name: 'File' });
+  const openRecent = menu.getByRole('menuitem', { name: 'Open Recent' });
+  await expect(openRecent).toBeEnabled();
+  await openRecent.hover();
+
+  const recentMenu = page.getByRole('menu', { name: 'Open Recent' });
+  await expect(recentMenu).toBeVisible();
+  const recentItems = recentMenu.getByRole('menuitem');
+  await expect(recentItems).toHaveCount(6);
+  await expect(recentItems).toHaveText([
+    't032-recent-07.md',
+    't032-recent-06.md',
+    't032-recent-05.md',
+    't032-recent-04.md',
+    't032-recent-03.md',
+    't032-recent-02.md',
+  ]);
+  await recentItems.nth(3).click();
+  await expect(
+    page.locator('[aria-label="Document identity"] h1'),
+  ).toContainText('t032-recent-04.md');
+
+  const openedTab = page.getByRole('tab', { name: 't032-recent-04.md' });
+  await expect(openedTab).toHaveAttribute('aria-selected', 'true');
+  await openedTab
+    .locator('..')
+    .getByRole('button', { name: /^Close /u })
+    .click();
+  const closePrompt = page.getByRole('dialog', {
+    name: 'Save changes before closing?',
+  });
+  await closePrompt.getByRole('button', { name: 'Discard' }).click();
+  await expect(
+    page.locator('[data-notification-code="not_found"]'),
+  ).toHaveCount(0);
+
+  await file.click();
+  const reopen = page
+    .getByRole('menu', { name: 'File' })
+    .getByRole('menuitem', {
+      name: 'Reopen last file / folder',
+    });
+  await expect(reopen).toBeEnabled();
+  await reopen.click();
+  await expect(
+    page.locator('[aria-label="Document identity"] h1'),
+  ).toContainText('t032-recent-04.md');
+  await expect(
+    page.locator('[data-notification-code="not_found"]'),
+  ).toHaveCount(0);
+
+  await page.goto('/?ft-vs-07');
+  const initialTab = page.getByRole('tab', { name: 'Untitled' });
+  await initialTab
+    .locator('..')
+    .getByRole('button', { name: /^Close /u })
+    .click();
+  await expect(page.getByRole('tab')).toHaveCount(0);
+  const launcher = page.getByTestId('document-launcher');
+  await expect(launcher).toBeVisible();
+  await expect(
+    launcher.getByRole('button', { name: 'Open Folder' }),
+  ).toBeDisabled();
+  await expect(launcher.getByRole('listitem')).toHaveCount(6);
+  await expect(launcher.getByRole('listitem').first()).toContainText(
+    't032-recent-07.md',
+  );
+
+  await launcher.getByRole('button', { name: 't032-recent-07.md' }).click();
+  await expect(
+    page.getByRole('tab', { name: 't032-recent-07.md' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('[data-notification-code="not_found"]'),
+  ).toHaveCount(0);
+
+  await page.setViewportSize({ width: 375, height: 720 });
+  const details = page.getByRole('button', { name: 'Document details' });
+  await expect(details).toBeVisible();
+  await details.click();
+  await expect(
+    page.getByRole('region', { name: 'Document details' }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.innerWidth)).toBe(375);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(375);
+});

@@ -1,0 +1,10 @@
+$ npm --prefix frontend run verify:ui -- e2e/real-files-and-tabs.test.ts --grep 'FT-VS-07'
+
+> frontend@0.0.0 verify:ui
+> playwright test e2e/real-files-and-tabs.test.ts --grep FT-VS-07
+
+Running 1 test using 1 worker
+✓  1 [chromium] › e2e/real-files-and-tabs.test.ts:172:1 › FT-VS-07 proves recents, reopen, launcher, and responsive status controls (1.1s)
+
+1 passed (1.9s)
+exit=0

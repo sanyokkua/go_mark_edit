@@ -4,10 +4,10 @@ Captured by `just baseline 003-real-files-and-tabs`. Do not edit by hand.
 
 | | |
 |---|---|
-| commit | `47e55db` (`47e55db3c78b2c362ae6ac1f2e5cb6620558a35b`) |
-| captured | 2026-08-09 06:50 UTC |
+| commit | `068fed7` (`068fed7ae591435efb0060fe4f7408126e3aea7b`) |
+| captured | 2026-08-09 07:17 UTC |
 | working tree | clean |
-| coverage | 63.2% (mean of 11 packages) |
+| coverage | 63.1% (mean of 11 packages) |
 
 ## Gates
 
@@ -17,7 +17,7 @@ later diff against it would pass whatever is written.
 
 | gate | command | exit | verdict | findings |
 |---|---|---|---|---|
-| lint | `just lint` | 0 | clean | 0 |
+| lint | `just lint` | 0 | clean | 2 |
 | test | `just test` | 0 | clean | 0 |
 | fmt-check | `just fmt-check` | 0 | clean | 0 |
 | typecheck | `just typecheck` | 0 | clean | 0 |
@@ -30,8 +30,11 @@ Raw output for every gate is kept in `baseline.logs/`.
 
 *(none)*
 
-## Static-analysis findings at baseline (0)
+## Static-analysis findings at baseline (2)
 
 A finding present here was not caused by this story. A finding absent here was.
 
-*(none)*
+```
+/Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/DocumentIdentity.tsx:react-refresh/only-export-components:warning
+/Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/Launcher.tsx:react-refresh/only-export-components:warning
+```

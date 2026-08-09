@@ -1,4 +1,4 @@
-lint=0=clean=0
+lint=0=clean=2
 test=0=clean=0
 fmt-check=0=clean=0
 typecheck=0=clean=0

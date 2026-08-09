@@ -218,6 +218,37 @@ it('T017 failed outgoing flush keeps the current session installed', async () =>
   expect(flushActiveSession).toHaveBeenCalledTimes(2);
 });
 
+it('T032 ignores a stale activation flush after a newer document owns the session', async () => {
+  const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
+    async (): Promise<VoidResult> => ({}),
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+      updateBuffer,
+      setDocView: async (): Promise<VoidResult> => ({}),
+      setUILayout: async (): Promise<VoidResult> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const oldActivation = Symbol('old-activation');
+  adapter.registerActiveSession?.({
+    documentId: 'document-1',
+    activationToken: oldActivation,
+    flushActiveSession: async (): Promise<void> => undefined,
+  });
+  await adapter.updateBuffer('document-1', 'stale content');
+  adapter.registerActiveSession?.({
+    documentId: 'document-2',
+    activationToken: Symbol('new-activation'),
+    flushActiveSession: async (): Promise<void> => undefined,
+  });
+
+  await adapter.flushActiveSession?.('document-1', oldActivation);
+
+  expect(updateBuffer).not.toHaveBeenCalled();
+});
+
 it('T010 aborts the lifecycle drain before the view queue when content acceptance fails', async () => {
   const setDocView = jest.fn(
     async (documentId: string, view: DocViewInput): Promise<VoidResult> => {
