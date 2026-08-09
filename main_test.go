@@ -249,11 +249,22 @@ func TestWailsOptionsAllowIndependentNativeProcesses(t *testing.T) {
 	}
 }
 
-// Proves: FR-WS-011
-// A successful native close first synchronously flushes pending layout, then
-// lets Wails invoke shutdown and release the application-owned database.
+// Proves: FR-FT-027
+// Native close is vetoed once for asynchronous planning, then the authorized
+// programmatic quit consumes exactly one permit before shutdown.
 func TestWailsAppInstallsCloseFlushLifecycleHook(t *testing.T) {
 	ctx := context.Background()
+	previousEmit := emitNativeCloseRequest
+	previousQuit := quitNativeApplication
+	t.Cleanup(func() {
+		emitNativeCloseRequest = previousEmit
+		quitNativeApplication = previousQuit
+	})
+	closeRequests := 0
+	quitCalls := 0
+	emitNativeCloseRequest = func(context.Context) { closeRequests++ }
+	quitNativeApplication = func(context.Context) { quitCalls++ }
+
 	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
 	appOptions := newAppOptions(holder)
 	if err := holder.Init(ctx); err != nil {
@@ -270,34 +281,57 @@ func TestWailsAppInstallsCloseFlushLifecycleHook(t *testing.T) {
 		t.Fatalf("queue native resize before close: %v", err)
 	}
 	if appOptions.OnBeforeClose == nil {
-		t.Fatal("OnBeforeClose is nil; pending layout cannot flush before native close")
+		t.Fatal("OnBeforeClose is nil; native close cannot be vetoed")
 	}
 	if appOptions.OnShutdown == nil {
 		t.Fatal("OnShutdown is nil; a permitted native close cannot release the application database")
 	}
-	shutdownCalls := 0
+	if prevent := appOptions.OnBeforeClose(ctx); !prevent {
+		t.Fatal("first native close was not vetoed for asynchronous planning")
+	}
+	if prevent := appOptions.OnBeforeClose(ctx); !prevent {
+		t.Fatal("repeated native close was not idempotently vetoed")
+	}
+	if closeRequests != 1 {
+		t.Fatalf("native close request events = %d, want one", closeRequests)
+	}
+	if result := holder.ApplicationHandler.AuthorizeQuit(); result.Error != nil {
+		t.Fatalf("AuthorizeQuit returned error: %+v", result.Error)
+	}
+	if quitCalls != 1 {
+		t.Fatalf("programmatic quit calls = %d, want one", quitCalls)
+	}
 	if prevent := appOptions.OnBeforeClose(ctx); prevent {
-		t.Fatal("close flush prevented the native close")
-	} else {
-		shutdownCalls++
-		appOptions.OnShutdown(ctx)
-		if holder.DB == nil {
-			repository.events = append(repository.events, "close")
-		}
+		t.Fatal("authorized native close permit was not consumed")
+	}
+	appOptions.OnShutdown(ctx)
+	if holder.DB == nil {
+		repository.events = append(repository.events, "close")
 	}
 	if got, want := repository.events, []string{"flush", "close"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("close lifecycle events = %v, want synchronous flush before close", got)
+		t.Fatalf("close lifecycle events = %v, want ordered drain then close", got)
 	}
-	if shutdownCalls != 1 || holder.DB != nil {
-		t.Fatalf("permitted close shutdown calls = %d and database = %p, want one shutdown after flush and a closed database", shutdownCalls, holder.DB)
+	if holder.DB != nil {
+		t.Fatal("authorized close did not release the application database")
 	}
 }
 
-// Proves: FR-WS-011
-// A failed synchronous flush vetoes the native close. The lifecycle harness
-// directly records that Wails never reaches the shutdown/close callback.
+// Proves: FR-FT-027
+// A failed drain cannot create a permit or invoke Quit; the same pending
+// request remains available for an explicit retry.
 func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 	ctx := context.Background()
+	previousEmit := emitNativeCloseRequest
+	previousQuit := quitNativeApplication
+	t.Cleanup(func() {
+		emitNativeCloseRequest = previousEmit
+		quitNativeApplication = previousQuit
+	})
+	closeRequests := 0
+	quitCalls := 0
+	emitNativeCloseRequest = func(context.Context) { closeRequests++ }
+	quitNativeApplication = func(context.Context) { quitCalls++ }
+
 	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
 	appOptions := newAppOptions(holder)
 	if err := holder.Init(ctx); err != nil {
@@ -323,15 +357,56 @@ func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 	if appOptions.OnBeforeClose == nil || appOptions.OnShutdown == nil {
 		t.Fatal("native lifecycle hooks are incomplete; a failed close cannot veto shutdown")
 	}
-	shutdownCalls := 0
 	if prevent := appOptions.OnBeforeClose(ctx); !prevent {
-		t.Fatal("close continued after the synchronous layout flush failed; want native shutdown prevented")
+		t.Fatal("first native close did not remain vetoed while planning")
 	}
-	if got, want := repository.events, []string{"flush"}; !reflect.DeepEqual(got, want) {
+	if got, want := repository.events, []string(nil); !reflect.DeepEqual(got, want) {
 		t.Fatalf("failed-close lifecycle events = %v, want %v", got, want)
 	}
-	if shutdownCalls != 0 || holder.DB == nil {
-		t.Fatalf("failed close shutdown calls = %d and database = %p, want no shutdown and an open application database", shutdownCalls, holder.DB)
+	failed := holder.ApplicationHandler.AuthorizeQuit()
+	if failed.Error == nil || failed.Error.Code != apperr.CodeIO || !failed.Error.Retryable {
+		t.Fatalf("failed AuthorizeQuit error = %+v, want retryable io error", failed.Error)
+	}
+	if quitCalls != 0 || holder.DB == nil {
+		t.Fatalf("failed close quit calls = %d and database = %p, want no quit and open database", quitCalls, holder.DB)
+	}
+	if closeRequests != 1 {
+		t.Fatalf("native close request events after failed drain = %d, want one", closeRequests)
+	}
+	repository.err = nil
+	if retry := holder.ApplicationHandler.AuthorizeQuit(); retry.Error != nil {
+		t.Fatalf("retry AuthorizeQuit returned error: %+v", retry.Error)
+	}
+	if quitCalls != 1 || appOptions.OnBeforeClose(ctx) {
+		t.Fatalf("retry close quit calls = %d or permit was not consumed", quitCalls)
+	}
+	appOptions.OnShutdown(ctx)
+}
+
+// Proves: FR-FT-027
+// Shutdown releases SQLite only after the final layout drain has completed.
+func TestShutdownOrder(t *testing.T) {
+	ctx := context.Background()
+	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
+	if err := holder.Init(ctx); err != nil {
+		t.Fatalf("initialize application before shutdown: %v", err)
+	}
+	repository := &recordingMainLayoutRepository{delegate: holder.AppModelService.LayoutRepository()}
+	holder.AppModelService = appmodel.NewAppModelServiceWithLayoutRepository(
+		discardingMainStatePatchEmitter{},
+		repository,
+	)
+	width := 1200
+	if err := holder.AppModelService.SetUILayout(ctx, apperr.UILayout{WindowWidth: &width}); err != nil {
+		t.Fatalf("queue shutdown layout: %v", err)
+	}
+	appOptions := newAppOptions(holder)
+	appOptions.OnShutdown(ctx)
+	if holder.DB == nil {
+		repository.events = append(repository.events, "sqlite-close")
+	}
+	if got, want := repository.events, []string{"flush", "sqlite-close"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("shutdown order events = %v, want %v", got, want)
 	}
 }
 
@@ -437,6 +512,9 @@ func (repository *recordingMainLayoutRepository) Write(ctx context.Context, fiel
 	repository.events = append(repository.events, "flush")
 	if repository.err != nil {
 		return appmodel.LayoutWriteResult{}, repository.err
+	}
+	if repository.delegate == nil {
+		return appmodel.LayoutWriteResult{Applied: true, Value: value}, nil
 	}
 	return repository.delegate.Write(ctx, field, value)
 }

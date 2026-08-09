@@ -24,6 +24,14 @@ type ApplicationServiceAPI interface {
 	RetryStartup(context.Context) error
 }
 
+// NativeCloseServiceAPI is optional so the startup lifecycle seam remains
+// usable by focused tests and older composition fixtures that do not install
+// native close coordination.
+type NativeCloseServiceAPI interface {
+	AuthorizeQuit(context.Context) error
+	CancelQuit(context.Context)
+}
+
 func NewApplicationHandler(service ApplicationServiceAPI, logger *logging.Logger, contextProvider func() context.Context) *ApplicationHandler {
 	return &ApplicationHandler{service: service, logger: logger, contextProvider: contextProvider}
 }
@@ -56,11 +64,55 @@ func (handler *ApplicationHandler) RetryStartup() (result apperr.VoidResult) {
 	return apperr.VoidResult{}
 }
 
+// AuthorizeQuit completes the frontend close plan and arms one native close
+// permit. Wails calls this without a context argument; the captured lifecycle
+// context is the only runtime context used by the handler.
+func (handler *ApplicationHandler) AuthorizeQuit() (result apperr.VoidResult) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			wire := apperr.ToWire(handler.zlog(), apperr.Internal(fmt.Errorf("panic: %v", recovered)))
+			result = apperr.VoidResult{Error: &wire}
+		}
+	}()
+	service, ok := handler.service.(NativeCloseServiceAPI)
+	if !ok {
+		wire := apperr.ToWire(handler.zlog(), apperr.Unsupported("native close authorization"))
+		return apperr.VoidResult{Error: &wire}
+	}
+	if err := service.AuthorizeQuit(handler.context()); err != nil {
+		wire := apperr.ToWire(handler.zlog(), err)
+		return apperr.VoidResult{Error: &wire}
+	}
+	return apperr.VoidResult{}
+}
+
+// CancelQuit abandons the pending native close plan and leaves the window
+// open. It is intentionally idempotent.
+func (handler *ApplicationHandler) CancelQuit() (result apperr.VoidResult) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			wire := apperr.ToWire(handler.zlog(), apperr.Internal(fmt.Errorf("panic: %v", recovered)))
+			result = apperr.VoidResult{Error: &wire}
+		}
+	}()
+	service, ok := handler.service.(NativeCloseServiceAPI)
+	if !ok {
+		wire := apperr.ToWire(handler.zlog(), apperr.Unsupported("native close cancellation"))
+		return apperr.VoidResult{Error: &wire}
+	}
+	service.CancelQuit(handler.context())
+	return apperr.VoidResult{}
+}
+
 func (handler *ApplicationHandler) context() context.Context {
 	if handler.contextProvider == nil {
 		return context.Background()
 	}
-	return handler.contextProvider()
+	ctx := handler.contextProvider()
+	if ctx == nil {
+		return context.Background()
+	}
+	return ctx
 }
 
 func (handler *ApplicationHandler) zlog() zerolog.Logger {

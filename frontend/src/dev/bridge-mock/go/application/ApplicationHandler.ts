@@ -8,3 +8,11 @@ export function WindowReady(): Promise<apperr.VoidResult> {
 export function RetryStartup(): Promise<apperr.VoidResult> {
   return Promise.resolve(new apperr.VoidResult({}));
 }
+
+export function AuthorizeQuit(): Promise<apperr.VoidResult> {
+  return Promise.resolve(new apperr.VoidResult({}));
+}
+
+export function CancelQuit(): Promise<apperr.VoidResult> {
+  return Promise.resolve(new apperr.VoidResult({}));
+}

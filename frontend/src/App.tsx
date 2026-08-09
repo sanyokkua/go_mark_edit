@@ -39,6 +39,7 @@ import type {
   ClosePlanSummary,
   DocumentMetadata,
   DocumentTransitionResult,
+  RecoverySurface,
   TabTransitionResult,
   WriteResult,
   ViewArrangement,
@@ -49,7 +50,9 @@ import {
   closePlanAdapter,
   documentConflictAdapter,
   documentWriteAdapter,
+  nativeLifecycleAdapter,
 } from './logic/adapter';
+import { parseError } from './logic/utils/parseError';
 import { useEditorSettings } from './logic/settings/editorSettings';
 import { bootstrapSettingsProjection } from './logic/store/settingsProjection';
 import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
@@ -68,6 +71,7 @@ import ExternalChangePrompt, {
 } from './ui/widgets/ExternalChangePrompt';
 import ClosePrompt from './ui/widgets/ClosePrompt';
 import { ModalStateProvider } from './ui/widgets/modalState';
+import ModalShell from './ui/primitives/ModalShell';
 
 let activeRetry: Promise<AppModelBootstrapResult> | undefined;
 
@@ -297,11 +301,18 @@ const AppContents: React.FC = (): React.JSX.Element => {
     documentId: string;
     preview: ConflictPreview;
   } | null>(null);
+  const [nativeClosePending, setNativeClosePending] = useState(false);
+  const [recoverySurface, setRecoverySurface] =
+    useState<RecoverySurface | null>(null);
+  const [recoveryQuitConfirmOpen, setRecoveryQuitConfirmOpen] = useState(false);
   const orderedDocumentIds = useAppSelector(
     (state) => state.documents.orderedIds,
   );
   const [version, setVersion] = useState('');
   const bootstrapGeneration = useRef(0);
+  const nativeClosePendingRef = useRef(false);
+  const recoveryQuitConfirmedRef = useRef(false);
+  const recoveryQuitCancelRef = useRef<HTMLButtonElement | null>(null);
   const onNewDocument = useCallback(
     async (expectedTabSetRevision: number): Promise<unknown> => {
       const result = await appModelAdapter.newDocument?.(
@@ -375,6 +386,32 @@ const AppContents: React.FC = (): React.JSX.Element => {
     },
     [dispatch],
   );
+  const reportNativeCloseError = useCallback(
+    (error: unknown): void => {
+      const parsed = parseError(error);
+      reportWriteError(
+        {
+          category: 'io-failure',
+          message: parsed.message,
+          remediation: parsed.retryable ? 'Retry' : '',
+          documentId: 'native-close',
+          dedupKey: 'native-close:io-failure',
+        },
+        'native-close',
+      );
+    },
+    [reportWriteError],
+  );
+  const cancelNativeClose = useCallback(async (): Promise<void> => {
+    if (!nativeClosePendingRef.current) return;
+    nativeClosePendingRef.current = false;
+    setNativeClosePending(false);
+    try {
+      await nativeLifecycleAdapter.cancelQuit();
+    } catch (error) {
+      reportNativeCloseError(error);
+    }
+  }, [reportNativeCloseError]);
   const clearCloseState = useCallback((): void => {
     setClosePlan(null);
     setCloseNormalization(null);
@@ -382,10 +419,21 @@ const AppContents: React.FC = (): React.JSX.Element => {
   }, []);
   const completeClosePlan = useCallback(
     async (planId: string): Promise<TabTransitionResult> => {
-      const result = await closePlanAdapter.executeClosePlan(planId);
+      const isNativeClose = nativeClosePendingRef.current;
+      let result: TabTransitionResult;
+      try {
+        result = await closePlanAdapter.executeClosePlan(planId);
+      } catch (error) {
+        if (isNativeClose) {
+          reportNativeCloseError(error);
+          await cancelNativeClose();
+        }
+        throw error;
+      }
       clearCloseState();
       if (result.error !== undefined) {
         reportWriteError(result.error, result.error.documentId ?? planId);
+        if (isNativeClose) await cancelNativeClose();
       } else if (result.activeBuffer !== undefined) {
         setActiveBuffer(result.activeBuffer);
       } else if (
@@ -394,9 +442,24 @@ const AppContents: React.FC = (): React.JSX.Element => {
       ) {
         setActiveBuffer(null);
       }
+      if (isNativeClose && result.error === undefined) {
+        try {
+          await nativeLifecycleAdapter.authorizeQuit();
+          nativeClosePendingRef.current = false;
+          setNativeClosePending(false);
+        } catch (error) {
+          reportNativeCloseError(error);
+          await cancelNativeClose();
+        }
+      }
       return result;
     },
-    [clearCloseState, reportWriteError],
+    [
+      cancelNativeClose,
+      clearCloseState,
+      reportNativeCloseError,
+      reportWriteError,
+    ],
   );
   const processClosePlanResult = useCallback(
     async (
@@ -405,6 +468,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (result.error !== undefined) {
         clearCloseState();
         reportWriteError(result.error, result.error.documentId ?? 'close-plan');
+        await cancelNativeClose();
         return undefined;
       }
       const summary = result.data;
@@ -415,10 +479,34 @@ const AppContents: React.FC = (): React.JSX.Element => {
         summary.status === 'complete'
       ) {
         clearCloseState();
+        await cancelNativeClose();
         return undefined;
       }
       if (summary.status === 'ready') {
         return completeClosePlan(summary.id);
+      }
+
+      if (
+        nativeClosePendingRef.current &&
+        recoveryQuitConfirmedRef.current &&
+        recoverySurface !== null
+      ) {
+        const discarded = await closePlanAdapter.resolveClosePlan(summary.id, [
+          { choice: 'discard-all' },
+        ]);
+        if (discarded.error !== undefined) {
+          clearCloseState();
+          reportWriteError(
+            discarded.error,
+            discarded.error.documentId ?? summary.id,
+          );
+          await cancelNativeClose();
+          return undefined;
+        }
+        if (discarded.data?.status === 'ready') {
+          return completeClosePlan(discarded.data.id);
+        }
+        return undefined;
       }
 
       setClosePlan(summary);
@@ -462,7 +550,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       return undefined;
     },
-    [clearCloseState, completeClosePlan, reportWriteError],
+    [
+      cancelNativeClose,
+      clearCloseState,
+      completeClosePlan,
+      recoverySurface,
+      reportWriteError,
+    ],
   );
   const resolvePreparedClosePlan = useCallback(
     async (
@@ -479,6 +573,59 @@ const AppContents: React.FC = (): React.JSX.Element => {
     },
     [processClosePlanResult],
   );
+  const prepareNativeClosePlan = useCallback(async (): Promise<void> => {
+    try {
+      const state = await appModelAdapter.getState();
+      if (
+        recoverySurface === null &&
+        state.activeBuffer?.documentId !== undefined
+      ) {
+        await appModelAdapter.flushActiveSession?.(
+          state.activeBuffer.documentId,
+        );
+      }
+      const targets = state.snapshot.orderedDocumentIds ?? orderedDocumentIds;
+      const prepared = await closePlanAdapter.prepareClose(
+        'quit',
+        targets,
+        state.snapshot.tabSetRevision ?? 0,
+      );
+      await resolvePreparedClosePlan(prepared);
+    } catch (error) {
+      reportNativeCloseError(error);
+      await cancelNativeClose();
+    }
+  }, [
+    cancelNativeClose,
+    orderedDocumentIds,
+    recoverySurface,
+    reportNativeCloseError,
+    resolvePreparedClosePlan,
+  ]);
+  const onNativeCloseRequested = useCallback(async (): Promise<void> => {
+    if (nativeClosePendingRef.current) return;
+    nativeClosePendingRef.current = true;
+    recoveryQuitConfirmedRef.current = false;
+    setNativeClosePending(true);
+    if (recoverySurface !== null) {
+      setRecoveryQuitConfirmOpen(true);
+      return;
+    }
+    await prepareNativeClosePlan();
+  }, [prepareNativeClosePlan, recoverySurface]);
+  const onRecoveryQuitConfirm = useCallback((): void => {
+    if (!nativeClosePendingRef.current || recoverySurface === null) return;
+    recoveryQuitConfirmedRef.current = true;
+    setRecoveryQuitConfirmOpen(false);
+    void prepareNativeClosePlan();
+  }, [prepareNativeClosePlan, recoverySurface]);
+  const onRecoveryQuitCancel = useCallback((): void => {
+    setRecoveryQuitConfirmOpen(false);
+    void cancelNativeClose();
+  }, [cancelNativeClose]);
+  const requestRecoveryQuit = useCallback((): void => {
+    nativeLifecycleAdapter.requestQuit();
+  }, []);
   const onClosePlanChoice = useCallback(
     async (choice: CloseChoice): Promise<void> => {
       const plan = closePlan;
@@ -676,6 +823,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
           result.data,
         );
         if ('savedOnDisk' in recovered) {
+          setRecoverySurface(recovered);
           dispatch(
             notifyCondition({
               code: 'recovery',
@@ -685,8 +833,11 @@ const AppContents: React.FC = (): React.JSX.Element => {
               title: t('recovery.title'),
             }),
           );
-        } else if (recovered.activeBuffer !== null) {
-          setActiveBuffer(recovered.activeBuffer);
+        } else {
+          setRecoverySurface(null);
+          if (recovered.activeBuffer !== null) {
+            setActiveBuffer(recovered.activeBuffer);
+          }
         }
         const safeName = safeFilename(
           activeDocument,
@@ -849,7 +1000,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
     externalConflict !== null ||
     closePlan !== null ||
     closeNormalization !== null ||
-    closeConflict !== null;
+    closeConflict !== null ||
+    nativeClosePending ||
+    recoveryQuitConfirmOpen;
   const onNormalizeConfirm = useCallback(async (): Promise<void> => {
     if (normalization === null) return;
     await finishWrite(
@@ -960,6 +1113,15 @@ const AppContents: React.FC = (): React.JSX.Element => {
     };
   }, [bootstrapStatus]);
 
+  useEffect((): (() => void) | undefined => {
+    if (bootstrapStatus !== 'ready') {
+      return undefined;
+    }
+    return nativeLifecycleAdapter.onCloseRequested((): void => {
+      void onNativeCloseRequested();
+    });
+  }, [bootstrapStatus, onNativeCloseRequested]);
+
   return (
     <ToastProvider>
       <ModalStateProvider modalOpen={modalOpen}>
@@ -991,6 +1153,14 @@ const AppContents: React.FC = (): React.JSX.Element => {
                       notification={notification}
                     />
                   ))}
+                  {recoverySurface !== null ? (
+                    <section aria-label={t('recovery.title')} role="alert">
+                      <p>{recoverySurface.message}</p>
+                      <button type="button" onClick={requestRecoveryQuit}>
+                        {t('recovery.quit.action')}
+                      </button>
+                    </section>
+                  ) : null}
                   <AppShell
                     onNewDocument={onNewDocument}
                     onActivateDocument={onActivateDocument}
@@ -1049,6 +1219,31 @@ const AppContents: React.FC = (): React.JSX.Element => {
               preview={closeConflict?.preview}
               valid={closeConflictValid}
             />
+            <ModalShell
+              initialFocusRef={recoveryQuitCancelRef}
+              labelledBy="recovery-quit-title"
+              onBackdrop={onRecoveryQuitCancel}
+              onEscape={onRecoveryQuitCancel}
+              open={bootstrapStatus === 'ready' && recoveryQuitConfirmOpen}
+              title={t('recovery.quit.title')}
+            >
+              <p>{t('recovery.quit.message')}</p>
+              {recoverySurface?.message !== undefined ? (
+                <p>{recoverySurface.message}</p>
+              ) : null}
+              <div>
+                <button
+                  ref={recoveryQuitCancelRef}
+                  type="button"
+                  onClick={onRecoveryQuitCancel}
+                >
+                  {t('recovery.quit.cancel')}
+                </button>
+                <button type="button" onClick={onRecoveryQuitConfirm}>
+                  {t('recovery.quit.confirm')}
+                </button>
+              </div>
+            </ModalShell>
             {bootstrapStatus === 'ready'
               ? notifications.map((notification) => (
                   <NotificationToast

@@ -129,3 +129,7 @@ export function WindowGetSize(): Promise<{ h: number; w: number }> {
 export function WindowIsMaximised(): Promise<boolean> {
   return Promise.resolve(false);
 }
+
+export function Quit(): void {
+  EventsEmit('application-close-requested');
+}

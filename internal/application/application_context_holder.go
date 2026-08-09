@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
@@ -33,6 +34,7 @@ type ApplicationContextHolder struct {
 	NativeWindowService *NativeWindowService
 	ApplicationHandler  *ApplicationHandler
 	DocumentDialogs     *DocumentDialogs
+	closeCoordinator    *CloseCoordinator
 }
 
 // NewApplicationContextHolder constructs the phase-one dependency graph with
@@ -155,6 +157,57 @@ func (holder *ApplicationContextHolder) FlushBeforeClose() error {
 		return nil
 	}
 	return service.FlushPendingUILayout()
+}
+
+// SetCloseCoordinator installs the native close protocol owned by the
+// composition root. Tests and non-Wails callers may leave it unset and use
+// the synchronous legacy flush fallback through BeforeClose.
+func (holder *ApplicationContextHolder) SetCloseCoordinator(coordinator *CloseCoordinator) {
+	holder.mu.Lock()
+	holder.closeCoordinator = coordinator
+	holder.mu.Unlock()
+}
+
+// BeforeClose is the Wails veto hook. A native request is always vetoed once
+// so the frontend can finish its asynchronous close plan before authorization.
+func (holder *ApplicationContextHolder) BeforeClose(ctx context.Context) bool {
+	holder.mu.Lock()
+	coordinator := holder.closeCoordinator
+	holder.mu.Unlock()
+	if coordinator == nil {
+		return holder.FlushBeforeClose() != nil
+	}
+	return coordinator.BeforeClose(ctx)
+}
+
+// AuthorizeQuit drains the editor/layout path before creating the one-shot
+// native close permit. A failed drain leaves the request pending for Retry and
+// can never create a permit.
+func (holder *ApplicationContextHolder) AuthorizeQuit(ctx context.Context) error {
+	if err := holder.FlushBeforeClose(); err != nil {
+		return apperr.IO("native close drain", err)
+	}
+
+	holder.mu.Lock()
+	coordinator := holder.closeCoordinator
+	holder.mu.Unlock()
+	if coordinator == nil {
+		return apperr.Unsupported("native close authorization")
+	}
+	if err := coordinator.Authorize(ctx); err != nil {
+		return apperr.Validation("native close", "a pending native close request", "none")
+	}
+	return nil
+}
+
+// CancelQuit abandons the pending native close without creating a permit.
+func (holder *ApplicationContextHolder) CancelQuit(context.Context) {
+	holder.mu.Lock()
+	coordinator := holder.closeCoordinator
+	holder.mu.Unlock()
+	if coordinator != nil {
+		coordinator.Cancel()
+	}
 }
 
 // Close releases the application-owned database. It is safe to call repeatedly.

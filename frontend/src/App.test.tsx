@@ -128,6 +128,36 @@ jest.mock('./logic/adapter', () => ({
     reconcileCommittedWrite: jest.fn(),
     subscribeStatePatches: jest.fn(() => jest.fn()),
   },
+  closePlanAdapter: {
+    prepareClose: jest.fn(async () => ({
+      data: {
+        id: 'close-plan-1',
+        kind: 'quit',
+        tabSetRevision: 0,
+        targets: [],
+        status: 'ready',
+      },
+    })),
+    resolveClosePlan: jest.fn(async () => ({
+      data: {
+        id: 'close-plan-1',
+        kind: 'quit',
+        tabSetRevision: 0,
+        targets: [],
+        status: 'ready',
+      },
+    })),
+    executeClosePlan: jest.fn(async () => ({
+      status: 'closed',
+      orderedDocumentIds: [],
+    })),
+  },
+  nativeLifecycleAdapter: {
+    onCloseRequested: jest.fn(() => jest.fn()),
+    requestQuit: jest.fn(),
+    authorizeQuit: jest.fn(async () => undefined),
+    cancelQuit: jest.fn(async () => undefined),
+  },
   documentWriteAdapter: {
     save: jest.fn(async () => ({ status: 'cancelled' })),
     saveAs: jest.fn(async () => ({ status: 'cancelled' })),
@@ -197,9 +227,11 @@ import {
 import { createShellActionCatalogue } from './logic/actions/shellActions';
 import {
   appModelAdapter,
+  closePlanAdapter,
   documentConflictAdapter,
   applicationAdapter,
   documentWriteAdapter,
+  nativeLifecycleAdapter,
 } from './logic/adapter';
 import type { AppModelState } from './logic/store/appModelTypes';
 import AppShell from './ui/widgets/AppShell';
@@ -215,6 +247,12 @@ const mockedDocumentWriteAdapter = documentWriteAdapter as jest.Mocked<
 >;
 const mockedDocumentConflictAdapter = documentConflictAdapter as jest.Mocked<
   typeof documentConflictAdapter
+>;
+const mockedClosePlanAdapter = closePlanAdapter as jest.Mocked<
+  typeof closePlanAdapter
+>;
+const mockedNativeLifecycleAdapter = nativeLifecycleAdapter as jest.Mocked<
+  typeof nativeLifecycleAdapter
 >;
 
 function bootstrapState(
@@ -486,6 +524,67 @@ it('STORY-012-AC-7 hands the active buffer to ephemeral editor session state', a
   expect(localStorage).toHaveLength(1);
   expect(localStorage.getItem('gme.theme')).toBe(
     JSON.stringify({ version: 1, theme: 'material', mode: 'auto' }),
+  );
+  act((): void => disposeAppModelProjection());
+});
+
+it('T027 native close requests complete a clean plan before authorizing one quit', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedClosePlanAdapter.prepareClose.mockResolvedValue({
+    data: {
+      id: 'native-close-plan',
+      kind: 'quit',
+      tabSetRevision: 12,
+      targets: [],
+      status: 'ready',
+    },
+  });
+  mockedClosePlanAdapter.resolveClosePlan.mockResolvedValue({
+    data: {
+      id: 'native-close-plan',
+      kind: 'quit',
+      tabSetRevision: 12,
+      targets: [],
+      status: 'ready',
+    },
+  });
+  mockedClosePlanAdapter.executeClosePlan.mockResolvedValue({
+    status: 'closed',
+    orderedDocumentIds: [],
+  });
+  mockedNativeLifecycleAdapter.onCloseRequested.mockReset();
+  mockedNativeLifecycleAdapter.authorizeQuit.mockReset().mockResolvedValue();
+  mockedNativeLifecycleAdapter.cancelQuit.mockReset().mockResolvedValue();
+  let requestListener: (() => void) | undefined;
+  mockedNativeLifecycleAdapter.onCloseRequested.mockImplementation(
+    (listener) => {
+      requestListener = listener;
+      return jest.fn();
+    },
+  );
+
+  render(<App />);
+  await waitFor(() => expect(requestListener).toBeDefined());
+  act(() => {
+    requestListener?.();
+  });
+
+  await waitFor(() => {
+    expect(mockedClosePlanAdapter.prepareClose).toHaveBeenCalledWith(
+      'quit',
+      ['document-1'],
+      0,
+    );
+    expect(mockedNativeLifecycleAdapter.authorizeQuit).toHaveBeenCalledTimes(1);
+  });
+  expect(mockedClosePlanAdapter.resolveClosePlan).toHaveBeenCalledWith(
+    'native-close-plan',
+    [],
   );
   act((): void => disposeAppModelProjection());
 });

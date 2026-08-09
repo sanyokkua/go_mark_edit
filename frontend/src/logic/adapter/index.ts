@@ -38,10 +38,13 @@ import {
   WindowIsFullscreen,
   WindowIsMaximised,
   WindowUnfullscreen,
+  Quit,
 } from 'wailsjs/runtime';
 import {
   RetryStartup,
   WindowReady,
+  AuthorizeQuit,
+  CancelQuit,
 } from 'wailsjs/go/application/ApplicationHandler';
 
 import {
@@ -70,6 +73,9 @@ import type {
   TabTransitionResult,
   WriteResult,
 } from '../store/appModelTypes';
+import { unwrapPromise } from './envelope';
+
+const NATIVE_CLOSE_REQUEST_EVENT = 'application-close-requested';
 
 function normalizeSaveStatus(
   status: string | undefined,
@@ -418,6 +424,25 @@ export const windowAdapter = createWindowAdapter({
 
 export const applicationAdapter = {
   retryStartup: windowAdapter.retryStartup,
+};
+
+export interface NativeLifecycleAdapter {
+  onCloseRequested: (listener: () => void) => () => void;
+  requestQuit: () => void;
+  authorizeQuit: () => Promise<void>;
+  cancelQuit: () => Promise<void>;
+}
+
+export const nativeLifecycleAdapter: NativeLifecycleAdapter = {
+  onCloseRequested: (listener) =>
+    EventsOn(NATIVE_CLOSE_REQUEST_EVENT, () => listener()),
+  requestQuit: () => Quit(),
+  authorizeQuit: async () => {
+    await unwrapPromise(AuthorizeQuit());
+  },
+  cancelQuit: async () => {
+    await unwrapPromise(CancelQuit());
+  },
 };
 
 export { guardArity } from './bridgeGuard';

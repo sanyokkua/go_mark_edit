@@ -26,6 +26,10 @@ var assets embed.FS
 
 var (
 	showStartupRecoveryWindow = runtime.WindowShow
+	emitNativeCloseRequest    = func(ctx context.Context) {
+		runtime.EventsEmit(ctx, application.NativeCloseRequestEvent)
+	}
+	quitNativeApplication = runtime.Quit
 )
 
 func main() {
@@ -92,6 +96,7 @@ func newAppOptions(applicationContext *application.ApplicationContextHolder) *op
 
 func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger) *options.App {
 	applicationContext.SetNativeWindow(wailsNativeWindow{})
+	applicationContext.SetCloseCoordinator(application.NewCloseCoordinator(emitNativeCloseRequest, quitNativeApplication))
 	return &options.App{
 		Title:         "GoMarkEdit",
 		Width:         1024,
@@ -129,8 +134,8 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 				_ = appLogger.Close()
 			}
 		},
-		OnBeforeClose: func(_ context.Context) bool {
-			return applicationContext.FlushBeforeClose() != nil
+		OnBeforeClose: func(ctx context.Context) bool {
+			return applicationContext.BeforeClose(ctx)
 		},
 		Bind:     []interface{}{applicationContext.AppModelHandler, applicationContext.SettingsHandler, applicationContext.ApplicationHandler},
 		EnumBind: []interface{}{apperr.AllErrorCodes},
