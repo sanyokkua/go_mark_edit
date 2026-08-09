@@ -136,3 +136,49 @@ it('T015 refuses Save before invoking the bridge for a read-only document', asyn
   });
   expect(invoke).not.toHaveBeenCalled();
 });
+
+it('T030 dispatches an active-tab command from projected state through its typed invoke', async () => {
+  const invoke = jest.fn(async () => ({ status: 'closed' }));
+
+  await expect(
+    dispatchAction('close-tab', {
+      applicationFocused: true,
+      documentId: 'doc-1',
+      invoke,
+      projectedState: {
+        activeDocumentId: 'doc-1',
+        orderedDocumentIds: ['doc-1', 'doc-2'],
+        documents: { 'doc-1': { capability: 'read-only' } },
+      },
+    }),
+  ).resolves.toMatchObject({ status: 'mutated', actionId: 'close-tab' });
+  expect(invoke).toHaveBeenCalledTimes(1);
+});
+
+it('T030 returns deterministic availability outcomes before invoking a command', async () => {
+  const invoke = jest.fn();
+  const projectedState = {
+    activeDocumentId: 'doc-1',
+    orderedDocumentIds: ['doc-1'],
+    documents: { 'doc-1': { capability: 'writable' } },
+  };
+
+  await expect(
+    dispatchAction('close-tab', {
+      applicationFocused: true,
+      invoke,
+      modalOpen: true,
+      projectedState,
+    }),
+  ).resolves.toMatchObject({ status: 'unavailable', reason: 'modal' });
+  await expect(
+    dispatchAction('move-tab-right', {
+      applicationFocused: true,
+      documentId: 'doc-1',
+      invoke,
+      projectedState,
+      targetIndex: 1,
+    }),
+  ).resolves.toMatchObject({ status: 'unavailable', reason: 'edge' });
+  expect(invoke).not.toHaveBeenCalled();
+});

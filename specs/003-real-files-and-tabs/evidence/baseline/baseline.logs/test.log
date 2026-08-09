@@ -1,24 +1,51 @@
 just go-test
 go test -race ./internal/... .
-ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	1.564s
-ok  	github.com/sanyokkua/go_mark_edit/internal/application	2.842s
-ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	4.923s
-ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	2.073s
---- FAIL: TestOpenRejectsCorruptOrUnsupportedSchemaSafely (12.59s)
-    --- FAIL: TestOpenRejectsCorruptOrUnsupportedSchemaSafely/EC-SET-2_concurrent_processes_converge_after_another_opener_moves_corrupt_files (12.55s)
-        --- FAIL: TestOpenRejectsCorruptOrUnsupportedSchemaSafely/EC-SET-2_concurrent_processes_converge_after_another_opener_moves_corrupt_files/attempt-a (0.04s)
-            database_test.go:185: helper process 1 failed: exit status 1
-                --- FAIL: TestOpenCorruptRecoveryHelperProcess (0.01s)
-                    database_test.go:280: open corrupt database from helper process: open replacement database: ping sqlite database: disk I/O error (1802)
-                FAIL
-FAIL
-FAIL	github.com/sanyokkua/go_mark_edit/internal/db	14.583s
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	(cached)
 ?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
-ok  	github.com/sanyokkua/go_mark_edit/internal/file	3.610s
-ok  	github.com/sanyokkua/go_mark_edit/internal/gate	3.986s
-ok  	github.com/sanyokkua/go_mark_edit/internal/logging	2.818s
-ok  	github.com/sanyokkua/go_mark_edit/internal/settings	3.942s
-ok  	github.com/sanyokkua/go_mark_edit	18.997s
-FAIL
-error: recipe `go-test` failed on line 66 with exit code 1
-error: recipe `test` failed on line 56 with exit code 1
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
+ok  	github.com/sanyokkua/go_mark_edit	(cached)
+just frontend-test
+npm --prefix frontend test -- --passWithNoTests
+
+> frontend@0.0.0 pretest
+> npm run check:editor-themes
+
+
+> frontend@0.0.0 check:editor-themes
+> node scripts/check-editor-themes.mjs
+
+
+> frontend@0.0.0 test
+> node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --passWithNoTests
+
+✔ applies only a current valid startup mirror before application code (2.723917ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.5705ms)
+✔ runs the blocking bootstrap before the application module (0.084709ms)
+✔ generates six complete named Monaco themes from palette values (2.882292ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.646417ms)
+✔ shares each fenced-language value by appearance across themes (0.967833ms)
+✔ rejects a palette missing a required Monaco token (0.378125ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.603542ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.318334ms)
+✔ emits inactive highlight rules for every generated syntax token (0.683917ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 72.185875
+
+Test Suites: 65 passed, 65 total
+Tests:       339 passed, 339 total
+Snapshots:   0 total
+Time:        8.895 s, estimated 9 s
+Ran all test suites.

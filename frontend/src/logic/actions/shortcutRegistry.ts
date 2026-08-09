@@ -90,8 +90,8 @@ export function shortcutForKeyEvent(
   const candidates: string[] = [];
   for (const modifierParts of modifierSets) {
     const parts = [...modifierParts];
-    if (event.altKey && modifier) parts.push('Alt');
     if (event.shiftKey) parts.push('Shift');
+    if (event.altKey && modifier) parts.push('Alt');
     candidates.push(
       [...parts, physicalKey ?? key].join('+'),
       [...parts, key].join('+'),

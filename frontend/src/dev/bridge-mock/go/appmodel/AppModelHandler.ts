@@ -69,6 +69,7 @@ interface DocumentMetadata {
   encoding: string;
   lineEnding: string;
   wordCount: number;
+  capability?: string;
   status?: string;
   detached?: boolean;
   conflictBlocked?: boolean;
@@ -108,9 +109,11 @@ interface StateResult {
       documents: Record<string, DocumentMetadata>;
       orderedDocumentIds: string[];
       activeDocumentId: string;
+      recentFiles?: string[];
+      canReopenLastFile?: boolean;
       ui: UILayout;
     };
-    activeBuffer: ActiveBufferResult;
+    activeBuffer?: ActiveBufferResult;
   };
   error?: WireError;
 }
@@ -190,6 +193,8 @@ interface AppStatePatch {
   orderedDocumentIds?: string[];
   documents?: { upsert?: Record<string, DocumentMetadata>; remove?: string[] };
   activeDocumentId?: string;
+  recentFiles?: string[];
+  canReopenLastFile?: boolean;
   ui?: UILayout;
 }
 
@@ -222,11 +227,20 @@ interface MockDocument {
   documentRevision: number;
 }
 
+interface RecentlyClosedMockDocument {
+  content: string;
+  path: string;
+  title: string;
+  view: DocView;
+}
+
 const initialDocumentId = 'mock-document';
 let revision = 0;
 let tabSetRevision = 0;
 let orderedDocumentIds: string[] = [initialDocumentId];
 let activeDocumentId = initialDocumentId;
+let recentFiles: string[] = [];
+let recentlyClosed: RecentlyClosedMockDocument[] = [];
 let nextUntitledNumber = 2;
 let openSelection: MockOpenSelection | null = null;
 let mockSaveResult: MockWriteResult | undefined;
@@ -260,6 +274,7 @@ function newDocumentMetadata(
     encoding: 'utf-8',
     lineEnding: 'lf',
     wordCount: 0,
+    capability: 'writable',
     status: 'not-saved',
     view: {
       arrangement: 'split',
@@ -306,12 +321,49 @@ function cloneMetadata(document: MockDocument): DocumentMetadata {
   };
 }
 
-function activeBuffer(document: MockDocument): ActiveBufferResult {
+function activeBuffer(
+  document: MockDocument | undefined,
+): ActiveBufferResult | undefined {
+  if (document === undefined) return undefined;
   return {
     documentId: document.metadata.documentId,
     documentRevision: document.documentRevision,
     projectionRevision: revision,
     content: document.content,
+  };
+}
+
+function promoteRecentFile(path: string): void {
+  recentFiles = [
+    path,
+    ...recentFiles.filter((candidate) => candidate !== path),
+  ].slice(0, 6);
+}
+
+function rememberClosed(document: MockDocument): void {
+  if (document.metadata.path === '') return;
+  recentlyClosed = [
+    {
+      content: document.content,
+      path: document.metadata.path,
+      title: document.metadata.title,
+      view: cloneView(document.metadata.view),
+    },
+    ...recentlyClosed.filter(
+      (candidate) => candidate.path !== document.metadata.path,
+    ),
+  ].slice(0, 40);
+}
+
+function cloneView(view: DocView): DocView {
+  return {
+    ...view,
+    cursor: { ...view.cursor },
+    selection: {
+      start: { ...view.selection.start },
+      end: { ...view.selection.end },
+    },
+    scroll: { ...view.scroll },
   };
 }
 
@@ -391,6 +443,8 @@ export function GetState(): Promise<StateResult> {
         ),
         orderedDocumentIds: [...orderedDocumentIds],
         activeDocumentId,
+        recentFiles: [...recentFiles],
+        canReopenLastFile: recentlyClosed.length > 0,
         ui: { ...layout },
       },
       activeBuffer: activeBuffer(current),
@@ -406,6 +460,8 @@ export function resetMockAppModel(): void {
   tabSetRevision = 0;
   orderedDocumentIds = [initialDocumentId];
   activeDocumentId = initialDocumentId;
+  recentFiles = [];
+  recentlyClosed = [];
   nextUntitledNumber = 2;
   nextClosePlanNumber = 1;
   mockClosePlans = new Map();
@@ -481,6 +537,8 @@ function emitTabTransitionPatch(document: MockDocument): void {
     tabSetRevision,
     orderedDocumentIds: [...orderedDocumentIds],
     activeDocumentId: document.metadata.documentId,
+    recentFiles: [...recentFiles],
+    canReopenLastFile: recentlyClosed.length > 0,
     documents: {
       upsert: { [document.metadata.documentId]: cloneMetadata(document) },
     },
@@ -530,9 +588,14 @@ export function OpenDocument(
   const documentId = selectedDocumentId(selection.path);
   const existing = documents[documentId];
   if (existing !== undefined) {
+    promoteRecentFile(selection.path);
     activeDocumentId = documentId;
     revision += 1;
-    emitPatch({ revision, activeDocumentId: documentId });
+    emitPatch({
+      revision,
+      activeDocumentId: documentId,
+      recentFiles: [...recentFiles],
+    });
     return Promise.resolve({
       status: 'focused',
       documentId,
@@ -547,6 +610,7 @@ export function OpenDocument(
     documentRevision: 0,
   };
   document.metadata.wordCount = document.content.trim().split(/\s+/).length;
+  promoteRecentFile(selection.path);
   documents = { ...documents, [documentId]: document };
   orderedDocumentIds = [...orderedDocumentIds, documentId];
   activeDocumentId = documentId;
@@ -558,6 +622,48 @@ export function OpenDocument(
     projectionRevision: revision,
     activeBuffer: activeBuffer(document),
   });
+}
+
+export async function ReopenLastFile(
+  expectedTabSetRevision: number,
+): Promise<OpenResult> {
+  if (!expectedRevisionMatches(expectedTabSetRevision)) {
+    return { status: 'refused', error: staleRevisionError() };
+  }
+  const entry = recentlyClosed[0];
+  if (entry === undefined) {
+    return {
+      status: 'refused',
+      error: classifiedError(
+        'not-found',
+        'There is no recently closed file to reopen.',
+        'mock-reopen-empty',
+      ),
+    };
+  }
+
+  setMockOpenSelection({ path: entry.path, content: entry.content });
+  const result = await OpenDocument(expectedTabSetRevision);
+  if (result.status !== 'opened' && result.status !== 'focused') {
+    return result;
+  }
+  recentlyClosed = recentlyClosed.filter(
+    (candidate) => candidate.path !== entry.path,
+  );
+  const reopened =
+    result.documentId === undefined ? undefined : documents[result.documentId];
+  if (reopened !== undefined) {
+    reopened.metadata = { ...reopened.metadata, view: cloneView(entry.view) };
+    revision += 1;
+    emitPatch({
+      revision,
+      canReopenLastFile: recentlyClosed.length > 0,
+      documents: {
+        upsert: { [reopened.metadata.documentId]: cloneMetadata(reopened) },
+      },
+    });
+  }
+  return result;
 }
 
 export function ActivateDocument(
@@ -705,6 +811,8 @@ export function CloseDocument(
       ),
     });
   }
+  const closing = documents[requestedDocumentId];
+  if (closing !== undefined) rememberClosed(closing);
   orderedDocumentIds = orderedDocumentIds.filter(
     (documentId) => documentId !== requestedDocumentId,
   );
@@ -722,6 +830,7 @@ export function CloseDocument(
     tabSetRevision,
     orderedDocumentIds: [...orderedDocumentIds],
     activeDocumentId,
+    canReopenLastFile: recentlyClosed.length > 0,
     documents: { remove: [requestedDocumentId] },
   });
   const nextActive =
@@ -859,6 +968,10 @@ export function ExecuteClosePlan(planId: string): Promise<TabTransitionResult> {
   plan.status = 'executing';
   const targetIds = closePlanTargetIds(plan);
   const targetSet = new Set(targetIds);
+  for (const targetId of targetIds) {
+    const document = documents[targetId];
+    if (document !== undefined) rememberClosed(document);
+  }
   for (const target of plan.targets) {
     if (target.choice === 'save') {
       const document = documents[target.documentId];
@@ -887,6 +1000,7 @@ export function ExecuteClosePlan(planId: string): Promise<TabTransitionResult> {
     tabSetRevision,
     orderedDocumentIds: [...orderedDocumentIds],
     activeDocumentId,
+    canReopenLastFile: recentlyClosed.length > 0,
     documents: { remove: targetIds },
   });
   plan.status = 'complete';
@@ -1117,9 +1231,11 @@ function writeResultFor(
     dirty: false,
     status: 'saved',
   };
+  promoteRecentFile(targetPath);
   revision += 1;
   emitPatch({
     revision,
+    recentFiles: [...recentFiles],
     documents: { upsert: { [requestedDocumentId]: cloneMetadata(document) } },
   });
   return {

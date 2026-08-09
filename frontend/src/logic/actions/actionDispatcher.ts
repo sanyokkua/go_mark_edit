@@ -1,12 +1,17 @@
-import { getAction, type ActionId } from './actionRegistry';
+import {
+  getAction,
+  getActionAvailability,
+  type ActionAvailabilityContext,
+  type ActionId,
+  type ActionUnavailableReason,
+} from './actionRegistry';
 
 export type ActionResult =
   | { status: 'mutated'; actionId: ActionId; documentId?: string }
   | {
       status: 'unavailable';
       actionId: ActionId;
-      reason:
-        'no-document' | 'no-editor' | 'deferred' | 'modal' | 'unsupported';
+      reason: ActionUnavailableReason | 'no-editor';
     }
   | {
       status: 'document-mismatch';
@@ -15,19 +20,36 @@ export type ActionResult =
       currentSessionIdentity: string;
     };
 
-export interface ActionDispatchContext {
+export interface ActionDispatchContext extends ActionAvailabilityContext {
   invoke?: () => Promise<unknown> | unknown;
   applicationFocused?: boolean;
   windowFocused?: boolean;
-  modalOpen?: boolean;
   editorFocused?: boolean;
-  documentId?: string;
   sessionDocumentId?: string;
-  writable?: boolean;
-  tabCommand?: boolean;
-  targetDocumentId?: string;
-  targetIndex?: number;
   expectedTabSetRevision?: number;
+}
+
+const tabActionIds: ReadonlySet<ActionId> = new Set([
+  'close-tab',
+  'close-others',
+  'close-right',
+  'move-tab-left',
+  'move-tab-right',
+  'copy-path',
+  'reveal-in-file-manager',
+]);
+
+function projectedDocumentIsWritable(context: ActionDispatchContext): boolean {
+  const projected = context.projectedState ?? context.projection;
+  const documentId =
+    context.targetDocumentId ??
+    context.documentId ??
+    projected?.activeDocumentId ??
+    undefined;
+  return (
+    documentId !== undefined &&
+    projected?.documents?.[documentId]?.capability === 'writable'
+  );
 }
 
 export async function dispatchAction(
@@ -41,6 +63,9 @@ export async function dispatchAction(
   if (context.modalOpen === true) {
     return { status: 'unavailable', actionId, reason: 'modal' };
   }
+  if (context.commandBarrier === true || context.barrierBlocked === true) {
+    return { status: 'unavailable', actionId, reason: 'barrier' };
+  }
   if (action.scope === 'application' && context.applicationFocused !== true) {
     return { status: 'unavailable', actionId, reason: 'unsupported' };
   }
@@ -52,8 +77,9 @@ export async function dispatchAction(
   }
   if (
     action.scope === 'document' &&
+    !tabActionIds.has(actionId) &&
     context.writable !== true &&
-    context.tabCommand !== true
+    !projectedDocumentIsWritable(context)
   ) {
     return { status: 'unavailable', actionId, reason: 'no-document' };
   }
@@ -68,6 +94,10 @@ export async function dispatchAction(
       expectedDocumentId: context.documentId,
       currentSessionIdentity: context.sessionDocumentId,
     };
+  }
+  const availability = getActionAvailability(actionId, context);
+  if (availability.kind === 'unavailable') {
+    return { status: 'unavailable', actionId, reason: availability.reason };
   }
   if (context.invoke === undefined) {
     return { status: 'unavailable', actionId, reason: 'unsupported' };
@@ -98,7 +128,11 @@ export async function dispatchAction(
         invocation.reason === 'no-editor' ||
         invocation.reason === 'deferred' ||
         invocation.reason === 'modal' ||
-        invocation.reason === 'unsupported')
+        invocation.reason === 'unsupported' ||
+        invocation.reason === 'barrier' ||
+        invocation.reason === 'limit' ||
+        invocation.reason === 'edge' ||
+        invocation.reason === 'no-recent')
         ? invocation.reason
         : undefined;
     return {

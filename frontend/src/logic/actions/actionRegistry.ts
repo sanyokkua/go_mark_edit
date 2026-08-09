@@ -12,6 +12,17 @@ export type ActionSurface =
   | 'shortcuts';
 export type NativeActionRole = 'clipboard' | 'none';
 
+export type ActionUnavailableReason =
+  | 'no-document'
+  | 'no-editor'
+  | 'deferred'
+  | 'modal'
+  | 'unsupported'
+  | 'barrier'
+  | 'limit'
+  | 'edge'
+  | 'no-recent';
+
 export type ActionId =
   | 'new-file'
   | 'new-window'
@@ -99,6 +110,39 @@ export interface ActionEntry {
   readonly nativeRole: NativeActionRole;
 }
 
+export interface ProjectedActionDocument {
+  readonly capability?: string;
+  readonly detached?: boolean;
+  readonly path?: string;
+}
+
+export interface ProjectedActionState {
+  readonly activeDocumentId?: string | null;
+  readonly canReopenLastFile?: boolean;
+  readonly documents?: Readonly<Record<string, ProjectedActionDocument>>;
+  readonly orderedDocumentIds?: readonly string[];
+  readonly recentFiles?: readonly string[];
+}
+
+export interface ActionAvailabilityContext {
+  readonly barrierBlocked?: boolean;
+  readonly commandBarrier?: boolean;
+  readonly documentId?: string;
+  readonly limitReached?: boolean;
+  readonly modalOpen?: boolean;
+  readonly projectedState?: ProjectedActionState;
+  readonly projection?: ProjectedActionState;
+  readonly tabLimit?: number;
+  readonly tabCommand?: boolean;
+  readonly targetDocumentId?: string;
+  readonly targetIndex?: number;
+  readonly writable?: boolean;
+}
+
+export type ResolvedActionAvailability =
+  | { kind: 'available' }
+  | { kind: 'unavailable'; reason: ActionUnavailableReason };
+
 const available = (): ActionAvailability => ({ kind: 'available' });
 const deferred = (reason: string): ActionAvailability => ({
   kind: 'deferred',
@@ -152,27 +196,32 @@ const laterDeferred = deferred('later-slice');
 
 export const actionRegistry: readonly ActionEntry[] = Object.freeze([
   entry('new-file', 'application', ['file-menu'], {
+    shortcut: 'Mod+N',
     availability: available(),
   }),
   entry('new-window', 'application', ['file-menu'], {
     availability: fileDeferred,
   }),
   entry('open-file', 'application', ['file-menu'], {
+    shortcut: 'Mod+O',
     availability: available(),
   }),
   entry('open-folder', 'application', ['file-menu'], {
     availability: fileDeferred,
   }),
-  entry('open-recent', 'application', ['file-menu'], {
-    availability: fileDeferred,
+  entry('open-recent', 'application', ['file-menu']),
+  entry('reopen', 'application', ['file-menu'], {
+    shortcut: 'Mod+Shift+Alt+T',
   }),
-  entry('reopen', 'application', ['file-menu'], { availability: fileDeferred }),
-  entry('save', 'document', ['file-menu']),
-  entry('save-as', 'document', ['file-menu']),
+  entry('save', 'document', ['file-menu'], { shortcut: 'Mod+S' }),
+  entry('save-as', 'document', ['file-menu'], {
+    shortcut: 'Mod+Shift+S',
+  }),
   entry('export-pdf', 'document', ['file-menu'], {
     availability: fileDeferred,
   }),
   entry('close-tab', 'document', ['file-menu', 'tab-context'], {
+    shortcut: 'Mod+W',
     availability: available(),
     surfaceOrder: { 'tab-context': 0 },
   }),
@@ -183,9 +232,11 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     surfaceOrder: { 'tab-context': 2 },
   }),
   entry('move-tab-left', 'document', ['tab-context'], {
+    shortcut: 'Mod+Shift+PageUp',
     surfaceOrder: { 'tab-context': 3 },
   }),
   entry('move-tab-right', 'document', ['tab-context'], {
+    shortcut: 'Mod+Shift+PageDown',
     surfaceOrder: { 'tab-context': 4 },
   }),
   entry('copy-path', 'document', ['tab-context'], {
@@ -348,6 +399,193 @@ const contextSurfaceOrder: Readonly<Partial<Record<ActionId, number>>> =
 const registryById = new Map(
   actionRegistry.map((action) => [action.id, action]),
 );
+
+const TAB_ACTIONS: ReadonlySet<ActionId> = new Set([
+  'close-tab',
+  'close-others',
+  'close-right',
+  'move-tab-left',
+  'move-tab-right',
+  'copy-path',
+  'reveal-in-file-manager',
+]);
+
+function projectedStateFor(
+  context: ActionAvailabilityContext,
+): ProjectedActionState | undefined {
+  return context.projectedState ?? context.projection;
+}
+
+function projectedDocument(
+  context: ActionAvailabilityContext,
+): ProjectedActionDocument | undefined {
+  const projected = projectedStateFor(context);
+  const documentId =
+    context.targetDocumentId ??
+    context.documentId ??
+    projected?.activeDocumentId ??
+    undefined;
+  return documentId === undefined
+    ? undefined
+    : projected?.documents?.[documentId];
+}
+
+function projectedDocumentId(
+  context: ActionAvailabilityContext,
+): string | undefined {
+  const projected = projectedStateFor(context);
+  return (
+    context.targetDocumentId ??
+    context.documentId ??
+    projected?.activeDocumentId ??
+    undefined
+  );
+}
+
+function isAtTabLimit(context: ActionAvailabilityContext): boolean {
+  if (context.limitReached === true) return true;
+  const projected = projectedStateFor(context);
+  const tabLimit = context.tabLimit ?? 40;
+  return (
+    projected?.orderedDocumentIds !== undefined &&
+    projected.orderedDocumentIds.length >= tabLimit
+  );
+}
+
+function targetIndexFor(
+  actionId: ActionId,
+  context: ActionAvailabilityContext,
+): number | undefined {
+  if (context.targetIndex !== undefined) return context.targetIndex;
+  const projected = projectedStateFor(context);
+  const documentId = projectedDocumentId(context);
+  const currentIndex =
+    documentId === undefined
+      ? -1
+      : (projected?.orderedDocumentIds?.indexOf(documentId) ?? -1);
+  if (currentIndex < 0) return undefined;
+  return currentIndex + (actionId === 'move-tab-left' ? -1 : 1);
+}
+
+export function getActionAvailability(
+  id: ActionId,
+  context: ActionAvailabilityContext = {},
+): ResolvedActionAvailability {
+  const action = getAction(id);
+  if (action.availability.kind === 'deferred') {
+    return { kind: 'unavailable', reason: 'deferred' };
+  }
+  if (context.modalOpen === true) {
+    return { kind: 'unavailable', reason: 'modal' };
+  }
+  if (context.commandBarrier === true || context.barrierBlocked === true) {
+    return { kind: 'unavailable', reason: 'barrier' };
+  }
+
+  const projected = projectedStateFor(context);
+  const orderedDocumentIds = projected?.orderedDocumentIds;
+  const documentId = projectedDocumentId(context);
+  const document = projectedDocument(context);
+  const hasProjectedDocument =
+    projected === undefined
+      ? undefined
+      : documentId !== undefined && document !== undefined;
+
+  if ((id === 'new-file' || id === 'open-file') && isAtTabLimit(context)) {
+    return { kind: 'unavailable', reason: 'limit' };
+  }
+  if (id === 'open-recent') {
+    if (
+      projected?.recentFiles !== undefined &&
+      projected.recentFiles.length === 0
+    ) {
+      return { kind: 'unavailable', reason: 'no-recent' };
+    }
+    if (isAtTabLimit(context)) return { kind: 'unavailable', reason: 'limit' };
+  }
+  if (id === 'reopen') {
+    if (projected?.canReopenLastFile === false) {
+      return { kind: 'unavailable', reason: 'no-recent' };
+    }
+    if (isAtTabLimit(context)) return { kind: 'unavailable', reason: 'limit' };
+  }
+
+  if (id === 'save' || id === 'save-as') {
+    if (context.writable === false) {
+      return { kind: 'unavailable', reason: 'no-document' };
+    }
+    if (hasProjectedDocument === false) {
+      return { kind: 'unavailable', reason: 'no-document' };
+    }
+    if (
+      document?.capability !== undefined &&
+      document.capability !== 'writable'
+    ) {
+      return { kind: 'unavailable', reason: 'no-document' };
+    }
+  }
+
+  if (TAB_ACTIONS.has(id)) {
+    if (hasProjectedDocument === false) {
+      return { kind: 'unavailable', reason: 'no-document' };
+    }
+    if (id === 'copy-path' || id === 'reveal-in-file-manager') {
+      if (document?.path === '')
+        return { kind: 'unavailable', reason: 'no-document' };
+      if (id === 'reveal-in-file-manager' && document?.detached === true) {
+        return { kind: 'unavailable', reason: 'no-document' };
+      }
+    }
+    if (
+      id === 'close-others' &&
+      orderedDocumentIds !== undefined &&
+      orderedDocumentIds.length <= 1
+    ) {
+      return { kind: 'unavailable', reason: 'edge' };
+    }
+    if (id === 'close-right' && orderedDocumentIds !== undefined) {
+      const currentIndex =
+        documentId === undefined ? -1 : orderedDocumentIds.indexOf(documentId);
+      if (currentIndex < 0 || currentIndex === orderedDocumentIds.length - 1) {
+        return { kind: 'unavailable', reason: 'edge' };
+      }
+    }
+    if (id === 'move-tab-left' || id === 'move-tab-right') {
+      // A context-menu command may carry an explicit target index before the
+      // caller has a full projection. Let the backend validate that command;
+      // apply edge checks whenever projected tab order is available.
+      if (projected !== undefined) {
+        const targetIndex = targetIndexFor(id, context);
+        if (
+          targetIndex === undefined ||
+          orderedDocumentIds === undefined ||
+          targetIndex < 0 ||
+          targetIndex >= orderedDocumentIds.length
+        ) {
+          return { kind: 'unavailable', reason: 'edge' };
+        }
+        const currentIndex =
+          documentId === undefined
+            ? -1
+            : orderedDocumentIds.indexOf(documentId);
+        if (targetIndex === currentIndex) {
+          return { kind: 'unavailable', reason: 'edge' };
+        }
+      }
+    }
+  }
+
+  if (id === 'next-tab' || id === 'previous-tab') {
+    if (orderedDocumentIds !== undefined && orderedDocumentIds.length < 2) {
+      return { kind: 'unavailable', reason: 'edge' };
+    }
+    if (projected !== undefined && documentId === undefined) {
+      return { kind: 'unavailable', reason: 'no-document' };
+    }
+  }
+
+  return { kind: 'available' };
+}
 
 export function getAction(id: ActionId): ActionEntry {
   const action = registryById.get(id);

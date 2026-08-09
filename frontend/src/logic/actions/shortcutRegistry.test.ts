@@ -34,6 +34,64 @@ it('T018 binds next and previous navigation to the exact alternate keys', () => 
   ).toBe('Ctrl+PageDown');
 });
 
+it('shortcut registry has no duplicate binding', () => {
+  const bindings = [
+    ...Object.values(shortcutRegistry),
+    ...Object.values(shortcutAliases).flat(),
+  ];
+  expect(new Set(bindings).size).toBe(bindings.length);
+});
+
+it('Move tab left and right bind to Mod+Shift+PageUp and Mod+Shift+PageDown', () => {
+  expect(shortcutRegistry['move-tab-left']).toBe('Mod+Shift+PageUp');
+  expect(shortcutRegistry['move-tab-right']).toBe('Mod+Shift+PageDown');
+});
+
+it('Table retains Mod+Shift+T', () => {
+  expect(shortcutRegistry.table).toBe('Mod+Shift+T');
+});
+
+it('Reopen last file binds Mod+Shift+Alt+T', () => {
+  expect(shortcutRegistry.reopen).toBe('Mod+Shift+Alt+T');
+});
+
+it('Refresh preview exposes no shortcut', () => {
+  expect(shortcutRegistry['refresh-preview']).toBeUndefined();
+});
+
+it('no jump-to-tab-by-number binding exists', () => {
+  expect(
+    Object.keys(shortcutRegistry).some((id) => /^tab-[0-9]+$/.test(id)),
+  ).toBe(false);
+});
+
+it('T030 matches active-tab movement and reopen keyboard events', () => {
+  expect(
+    shortcutForKeyEvent(
+      {
+        key: 'PageUp',
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: true,
+      },
+      'linux',
+    ),
+  ).toBe('Mod+Shift+PageUp');
+  expect(
+    shortcutForKeyEvent(
+      {
+        key: 't',
+        metaKey: false,
+        ctrlKey: true,
+        altKey: true,
+        shiftKey: true,
+      },
+      'linux',
+    ),
+  ).toBe('Mod+Shift+Alt+T');
+});
+
 it('T002 resolves platform labels without changing the binding', () => {
   expect(formatShortcut('Mod+Shift+F', 'darwin')).toBe('⌘⇧F');
   expect(formatShortcut('Alt+Shift+F', 'win32')).toBe('Alt+Shift+F');

@@ -4,10 +4,10 @@ Captured by `just baseline 003-real-files-and-tabs`. Do not edit by hand.
 
 | | |
 |---|---|
-| commit | `4abb423` (`4abb423a1beeb1a361752e232abba50f4cac19fe`) |
-| captured | 2026-08-08 15:55 UTC |
+| commit | `fca13a0` (`fca13a0812dda876bcf6497e1b5cf95bf7d8d763`) |
+| captured | 2026-08-09 06:34 UTC |
 | working tree | clean |
-| coverage | 64.9% (mean of 11 packages) |
+| coverage | 63.2% (mean of 11 packages) |
 
 ## Gates
 
@@ -18,7 +18,7 @@ later diff against it would pass whatever is written.
 | gate | command | exit | verdict | findings |
 |---|---|---|---|---|
 | lint | `just lint` | 0 | clean | 0 |
-| test | `just test` | 1 | ok-with-findings | 3 |
+| test | `just test` | 0 | clean | 0 |
 | fmt-check | `just fmt-check` | 0 | clean | 0 |
 | typecheck | `just typecheck` | 0 | clean | 0 |
 | archtest | `just archtest` | 0 | clean | 0 |
@@ -26,13 +26,9 @@ later diff against it would pass whatever is written.
 
 Raw output for every gate is kept in `baseline.logs/`.
 
-## Failing tests at baseline (3)
+## Failing tests at baseline (0)
 
-```
-TestOpenCorruptRecoveryHelperProcess
-TestOpenRejectsCorruptOrUnsupportedSchemaSafely
-TestOpenRejectsCorruptOrUnsupportedSchemaSafely/EC
-```
+*(none)*
 
 ## Static-analysis findings at baseline (0)
 

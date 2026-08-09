@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react';
 
 import { createShellActionCatalogue } from './shellActions';
-import { useShellShortcuts } from './useShellShortcuts';
+import { useShellShortcuts, type ShortcutAction } from './useShellShortcuts';
 
 const toggleFullscreen = jest.fn(async (): Promise<boolean> => true);
 const toggleSidebar = jest.fn();
@@ -124,4 +124,33 @@ it('T058 suppresses F11, Settings, and Toggle Sidebar while a modal is open', ()
   expect(toggleFullscreen).not.toHaveBeenCalled();
   expect(openSettings).not.toHaveBeenCalled();
   expect(modalToggleSidebar).not.toHaveBeenCalled();
+});
+
+it('T030 routes canonical file/tab shortcuts through typed actions', () => {
+  const invoke = jest.fn(async () => ({ status: 'closed' }));
+  const action: ShortcutAction = {
+    id: 'close-tab',
+    invoke,
+    isAvailable: () => true,
+    shortcut: 'Mod+W',
+    dispatchContext: {
+      applicationFocused: true,
+      documentId: 'doc-1',
+      projectedState: {
+        activeDocumentId: 'doc-1',
+        orderedDocumentIds: ['doc-1', 'doc-2'],
+        documents: { 'doc-1': { capability: 'writable' } },
+      },
+    },
+  };
+
+  function CanonicalHarness(): null {
+    useShellShortcuts([action]);
+    return null;
+  }
+
+  render(<CanonicalHarness />);
+  fireEvent.keyDown(window, { key: 'w', ctrlKey: true });
+
+  expect(invoke).toHaveBeenCalledTimes(1);
 });
