@@ -346,6 +346,61 @@ async function ensureReferenceZeroAssistant(page: Page): Promise<void> {
   );
 }
 
+async function prepareReferenceHarness(page: Page): Promise<void> {
+  // The immutable reference places its capture app below its own harness.
+  // At 375px the harness wraps tall enough for the body flex container to
+  // shrink the app to zero; the external harness must not change the app's
+  // source-defined viewport geometry.
+  await page.locator('#app').evaluate((app) => {
+    app.style.flexShrink = '0';
+  });
+
+  // The source harness has a document click closer. Keep screen-nav clicks
+  // on the source's own navigation path without letting that unrelated
+  // document handler immediately close a selected menu.
+  await page.locator('#screenNav').evaluate((screenNav) => {
+    screenNav.addEventListener('click', (event) => event.stopPropagation());
+  });
+}
+
+async function assertReferenceReady(
+  page: Page,
+  entry: ManifestEntry,
+  screen: string,
+): Promise<void> {
+  const mapping = SURFACES[entry.family];
+  await expect(page.locator('body')).toHaveAttribute(
+    'data-theme',
+    entry.palette.theme,
+  );
+  await expect(page.locator('body')).toHaveAttribute(
+    'data-mode',
+    entry.palette.mode,
+  );
+  await expect(
+    page.locator(`#themeSwitch button[data-theme="${entry.palette.theme}"]`),
+  ).toHaveClass(/\bon\b/u);
+  await expect(
+    page.locator(`#modeSwitch button[data-appear="${entry.palette.mode}"]`),
+  ).toHaveClass(/\bon\b/u);
+  await expect(
+    page.locator(`#widthSwitch button[data-w="${entry.width}"]`),
+  ).toHaveClass(/\bon\b/u);
+  await expect(
+    page.locator(`#screenNav button[data-screen="${screen}"]`),
+  ).toHaveClass(/\bon\b/u);
+  await expect(page).toHaveURL(
+    new RegExp(
+      `#${entry.palette.id}/${screen.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
+      'u',
+    ),
+  );
+  await expect(page.locator('#app')).toHaveClass(/\bno-assistant\b/u);
+  await expect(page.locator(mapping.referenceSelector)).toBeVisible({
+    timeout: MAPPED_SELECTOR_TIMEOUT_MS,
+  });
+}
+
 function routeForEntry(entry: ManifestEntry): string {
   if (entry.family === 'reload-prompt') {
     return `/?ft-vs-04&parity-case=${encodeURIComponent(entry.key)}`;
@@ -998,6 +1053,7 @@ async function setupReference(
     ),
   );
   await waitForParityReady(page);
+  await prepareReferenceHarness(page);
   await assertSameOrigin(page, REFERENCE_ORIGIN);
   const servedHash = response?.headers()['x-reference-source-sha256'];
   const servedVariant = response?.headers()['x-reference-variant'];
@@ -1053,29 +1109,13 @@ async function setupReference(
   // viewport before opening the mapped screen so the reference menu state is
   // not dismissed by the width control's bubbling click.
   await page.locator(`#screenNav button[data-screen="${screen}"]`).click();
-  await expect(page.locator('body')).toHaveAttribute(
-    'data-theme',
-    entry.palette.theme,
-  );
-  await expect(page.locator('body')).toHaveAttribute(
-    'data-mode',
-    entry.palette.mode,
-  );
-  await expect(
-    page.locator(`#themeSwitch button[data-theme="${entry.palette.theme}"]`),
-  ).toHaveClass(/on/u);
-  await expect(
-    page.locator(`#modeSwitch button[data-appear="${entry.palette.mode}"]`),
-  ).toHaveClass(/on/u);
-  await expect(
-    page.locator(`#widthSwitch button[data-w="${entry.width}"]`),
-  ).toHaveClass(/on/u);
   void labels;
   await freezeParityPixels(page);
   // Apply the reviewed zero-Assistant boundary after freezing transitions;
   // otherwise the mockup's width transition can leave the old 352px
   // geometry in the first capture even though the class is present.
   await ensureReferenceZeroAssistant(page);
+  await assertReferenceReady(page, entry, screen);
 }
 
 async function captureSurface(
@@ -1255,6 +1295,55 @@ function deterministicHashFailures(
   }
   return failures;
 }
+
+const T050_REFERENCE_PROBES = [
+  ['editor-split', 1280, 'glass-light'],
+  ['editor-split', 768, 'material-dark'],
+  ['editor-split', 375, 'minimal-light'],
+  ['menu-file', 1280, 'glass-light'],
+  ['menu-settings', 768, 'material-dark'],
+  ['menu-view', 375, 'minimal-light'],
+  ['menu-about', 1280, 'glass-dark'],
+  ['save-prompt', 375, 'material-light'],
+  ['quit-prompt', 375, 'material-dark'],
+  ['reload-prompt', 375, 'minimal-dark'],
+  ['settings-appearance', 375, 'glass-light'],
+  ['settings-editor', 768, 'material-light'],
+  ['settings-markdown', 1280, 'minimal-dark'],
+  ['toolbar-overflow', 375, 'glass-dark'],
+] as const;
+
+test('T050 reference navigation reaches every mapped probe before capture', async ({
+  page,
+}) => {
+  const referenceSourceHash = hashReferenceSource(
+    await readFile(REFERENCE_PATH),
+  );
+
+  for (const [family, width, palette] of T050_REFERENCE_PROBES) {
+    const entry = PARITY_MANIFEST.find(
+      (candidate) =>
+        candidate.kind === 'primary' &&
+        candidate.family === family &&
+        candidate.width === width &&
+        candidate.palette.id === palette,
+    );
+    if (entry === undefined) {
+      throw new Error(`T050 probe is not a primary manifest case: ${family}`);
+    }
+
+    await setupReference(page, entry, referenceSourceHash);
+
+    const screen = screenForEntry(entry);
+    await expect(
+      page.locator(`#screenNav button[data-screen="${screen}"]`),
+    ).toHaveClass(/\bon\b/u);
+    await expect(page.locator('#app')).toHaveClass(/\bno-assistant\b/u);
+    await expect(
+      page.locator(SURFACES[entry.family].referenceSelector),
+    ).toBeVisible();
+  }
+});
 
 test('T035 proves all 546 binding comparisons across three unchanged repetitions', async ({
   page,

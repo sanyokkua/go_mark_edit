@@ -1104,109 +1104,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "tab-40-document": [
@@ -1214,109 +1214,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "label-long-localized": [
@@ -1324,109 +1324,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "path-hostile-disambiguated": [
@@ -1434,109 +1434,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "identity-not-saved": [
@@ -2534,109 +2534,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "control-checked": [
@@ -2644,109 +2644,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "control-selected": [
@@ -2754,109 +2754,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "control-focused": [
@@ -2864,109 +2864,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "control-hovered": [
@@ -2974,109 +2974,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "control-unavailable": [
@@ -3084,109 +3084,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "tab-menu-move-left-unavailable": [
@@ -3414,109 +3414,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "preview-refreshing": [
@@ -3524,109 +3524,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "preview-refresh-failed": [
@@ -3634,109 +3634,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "prompt-normalization": [
@@ -3854,109 +3854,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "conflict-metadata-only": [
@@ -3964,109 +3964,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "conflict-read-only": [
@@ -4074,109 +4074,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "resync-recovery": [
@@ -4184,109 +4184,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ],
   "quit-discard-newer": [
@@ -4294,109 +4294,109 @@
       "palette": "glass-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "material-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
       "status": "failed",
-      "comparisonCompleted": false
+      "comparisonCompleted": true
     }
   ]
 }
