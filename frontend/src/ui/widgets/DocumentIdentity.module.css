@@ -3,11 +3,14 @@
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--control-gap);
+  flex: 0 1 auto;
+  margin-inline-start: auto;
+  max-width: min(40ch, 42vw);
   min-width: 0;
-  padding: var(--editor-pane-header-padding-block)
-    var(--editor-pane-header-padding-inline);
+  overflow: hidden;
+  padding: 0;
   background: var(--surface-raised);
-  border-bottom: var(--control-border-width) solid var(--border);
+  white-space: nowrap;
 }
 
 .heading,
@@ -20,10 +23,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--editor-pane-meta-font-size);
+  font-size: var(--status-bar-font-size);
 }
 
 .status {
   color: var(--text-muted);
   font-size: var(--status-bar-font-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 376px) {
+  .identity {
+    max-width: min(16ch, 42vw);
+  }
 }

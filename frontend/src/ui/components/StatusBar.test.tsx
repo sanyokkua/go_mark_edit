@@ -34,13 +34,27 @@ it('STORY-016-AC-1 renders initial untitled metadata', () => {
     />,
   );
 
-  const status = screen.getByRole('contentinfo', { name: 'Document status' });
+  const status = screen.getByRole('status', { name: 'Document status' });
 
   expect(within(status).getByText('Ln 1, Col 1')).toBeVisible();
   expect(within(status).getByText('0 words')).toBeVisible();
   expect(within(status).getByText('UTF-8')).toBeVisible();
   expect(within(status).getByText('LF')).toBeVisible();
   expect(within(status).getByText('Split')).toBeVisible();
+});
+
+it('T042 exposes the shell status row as a status landmark', () => {
+  render(
+    <StatusBar
+      arrangement="editor"
+      cursor={{ lineNumber: 1, column: 1 }}
+      encoding="utf-8"
+      lineEnding="lf"
+      wordCount={0}
+    />,
+  );
+
+  expect(screen.getByRole('status', { name: 'Document status' })).toBeVisible();
 });
 
 it('T015 renders the authoritative saved status beside document metadata', () => {
@@ -55,7 +69,7 @@ it('T015 renders the authoritative saved status beside document metadata', () =>
     />,
   );
 
-  expect(screen.getByRole('contentinfo')).toHaveTextContent('Saved');
+  expect(screen.getByRole('status')).toHaveTextContent('Saved');
 });
 
 it('shows the write-in-flight state without replacing the authoritative dirty status', () => {
@@ -71,7 +85,7 @@ it('shows the write-in-flight state without replacing the authoritative dirty st
     />,
   );
 
-  const status = screen.getByRole('contentinfo');
+  const status = screen.getByRole('status');
   expect(status).toHaveTextContent('Unsaved changes');
   expect(status).toHaveTextContent('Saving');
   expect(status.querySelector('[data-write-in-flight="true"]')).not.toBeNull();
@@ -91,7 +105,7 @@ it('StatusBar responsive detail keeps dropped file facts accessible', () => {
     />,
   );
 
-  const status = screen.getByRole('contentinfo', { name: 'Document status' });
+  const status = screen.getByRole('status', { name: 'Document status' });
   const detailsButton = within(status).getByRole('button', {
     name: 'Document details',
   });

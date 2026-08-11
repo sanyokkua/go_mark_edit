@@ -52,3 +52,26 @@ it('dispatches a target move through the typed context action', () => {
 
   expect(onAction).toHaveBeenCalledWith('move-tab-left', second, 0);
 });
+
+it('focuses the first action without scrolling the parity viewport', () => {
+  const focus = jest.spyOn(HTMLElement.prototype, 'focus');
+
+  render(
+    <TabContextMenu
+      adapter={{}}
+      document={documentFor('first')}
+      index={0}
+      onAction={jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'closed',
+        activeDocumentId: undefined,
+        orderedDocumentIds: [],
+      }))}
+      onClose={jest.fn()}
+      orderedDocuments={[documentFor('first')]}
+      tabSetRevision={7}
+    />,
+  );
+
+  expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  focus.mockRestore();
+});

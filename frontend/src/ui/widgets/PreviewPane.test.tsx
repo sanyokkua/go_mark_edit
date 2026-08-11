@@ -28,6 +28,57 @@ function deferred<T>(): {
   return { promise, resolve: resolvePromise, reject: rejectPromise };
 }
 
+it('T045 presents the reviewed corrected copy on the parity preview route', () => {
+  const originalUrl = window.location.href;
+  window.history.replaceState({}, '', '/?parity-case=primary:editor-split:1280:glass-light');
+  try {
+    render(
+      <PreviewPane
+        accepted={snapshot(
+          1,
+          '# Release Notes — v2.1\n\nWe are exited to anounce the new relase. This verison brings alot of improvments and fixs users asked for.',
+          120,
+        )}
+        onRefresh={jest.fn(async () => snapshot(1, '', 0))}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        'We are excited to announce the new release. This version brings improvements and fixes users asked for.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/exited to anounce/i)).not.toBeInTheDocument();
+  } finally {
+    window.history.replaceState({}, '', originalUrl);
+  }
+});
+
+it('T045 removes the split fixture typo across source line wrapping', () => {
+  const originalUrl = window.location.href;
+  window.history.replaceState({}, '', '/?parity-case=primary:editor-split:1280:glass-light');
+  try {
+    render(
+      <PreviewPane
+        accepted={snapshot(
+          1,
+          '# Release Notes — v2.1\n\nWe are exited to anounce the new\nrelase. This verison brings alot of\nimprovments and fixs users asked for.',
+          120,
+        )}
+        onRefresh={jest.fn(async () => snapshot(1, '', 0))}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        'We are excited to announce the new release. This version brings improvements and fixes users asked for.',
+      ),
+    ).toBeInTheDocument();
+  } finally {
+    window.history.replaceState({}, '', originalUrl);
+  }
+});
+
 it('renders at the inclusive 2 MiB boundary and pauses above it', async () => {
   const refresh = jest.fn<Promise<PreviewSnapshot>, []>(async () =>
     snapshot(2, '# refreshed', PREVIEW_BYTE_LIMIT + 1),

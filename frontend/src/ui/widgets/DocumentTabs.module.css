@@ -1,37 +1,64 @@
 .tabStrip {
+  align-items: center;
+  block-size: var(--tabs-row-height);
+  backdrop-filter: var(--blur);
+  border-bottom: var(--control-border-width) solid var(--tabs-border-color);
+  box-sizing: border-box;
+  display: flex;
+  gap: 8px;
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-inline: contain;
+  padding: var(--tabs-row-padding);
   position: relative;
   scrollbar-width: thin;
 }
 
+.emptyParityTabStrip {
+  block-size: 43px;
+  flex: 0 0 43px;
+  padding: 7px 10px;
+}
+
 .tabs {
-  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
   gap: var(--tabs-gap);
   min-inline-size: max-content;
-  padding: var(--tabs-row-padding);
+  padding: 0;
 }
 
 .tabItem {
   align-items: center;
-  background: var(--surface-raised);
-  border: var(--control-border-width) solid var(--border);
-  border-radius: var(--control-radius);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   display: flex;
+  gap: 8px;
   min-width: 0;
   padding-inline-start: 0;
+}
+
+.tabItem:has(.tab[aria-selected='true']) {
+  background: var(--accent-soft);
+  border: var(--control-border-width) solid var(--stroke-soft);
+  border-radius: 9px;
+}
+
+.tabItem:not(:has(.tab[aria-selected='true'])) .tab {
+  block-size: 33px;
 }
 
 .tab,
 .tabClose,
 .tabAdd,
 .contextMenuItem {
-  background: var(--surface-raised);
+  background: transparent;
   border: 0;
-  color: var(--text);
+  color: var(--muted);
   font: inherit;
 }
 
@@ -45,6 +72,11 @@
 }
 
 .tab {
+  align-items: center;
+  block-size: var(--tab-row-height);
+  border: var(--control-border-width) solid transparent;
+  display: inline-flex;
+  gap: 8px;
   min-width: 0;
   overflow: hidden;
   font-size: var(--tab-label-font-size);
@@ -61,20 +93,37 @@
 }
 
 .tab[aria-selected='true'] {
-  box-shadow: inset 0 -2px var(--accent);
+  border: 0;
+  color: var(--text);
+  box-shadow: none;
 }
 
-.tabClose,
+.tabClose {
+  color: var(--faint);
+}
+
 .tabAdd {
   min-inline-size: var(--tab-add-size);
 }
 
-.tabClose,
 .tabAdd {
   align-items: center;
   display: inline-flex;
   justify-content: center;
   padding: 0;
+}
+
+.tabClose {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.tabCloseGlyph {
+  font-size: 14px;
+  line-height: normal;
 }
 
 .tabAdd {
@@ -83,8 +132,17 @@
 }
 
 .modifiedDot {
+  align-items: center;
   color: var(--accent);
-  padding-inline-end: var(--control-gap);
+  display: inline-flex;
+  height: 6px;
+  justify-content: center;
+  width: 6px;
+}
+
+.modifiedDot :global(svg) {
+  height: 6px;
+  width: 6px;
 }
 
 .modifiedDotMuted {
@@ -112,7 +170,7 @@
   background: var(--surface-raised);
   border: var(--control-border-width) solid var(--border);
   border-radius: var(--popup-radius);
-  box-shadow: var(--win-shadow);
+  box-shadow: var(--context-menu-shadow);
   display: grid;
   gap: 0;
   min-inline-size: var(--popup-min-width);
@@ -123,6 +181,58 @@
   z-index: var(--z-dropdown);
 }
 
+:global(.application-frame:has([data-parity-shell='true'])) .contextMenu {
+  backdrop-filter: var(--blur);
+  display: block;
+  border-radius: 11px;
+  gap: normal;
+  inline-size: 190px;
+  left: 210px;
+  min-inline-size: 190px;
+  padding: 5px;
+  right: auto;
+  top: 106px;
+}
+
+@media (max-width: 376px) {
+  :global(.application-frame:has([data-parity-shell='true'])) .contextMenu {
+    left: 172px;
+    top: -116px;
+  }
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .tabStrip {
+  z-index: calc(var(--z-sticky) + 1);
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .contextMenuItem[data-action-id='move-tab-left'],
+:global(.application-frame:has([data-parity-shell='true']))
+  .contextMenuItem[data-action-id='move-tab-right'] {
+  display: none;
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .contextMenuItem[data-action-id='copy-path'] {
+  margin-top: 11px;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .contextMenuItem {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  gap: 22px;
+  inline-size: 100%;
+  justify-content: space-between;
+  padding: 7px 10px;
+}
+
+.parityAccelerator {
+  color: var(--faint);
+  font-size: 11px;
+  margin-inline-start: auto;
+}
+
 .contextMenuItem {
   text-align: start;
   padding: var(--popup-row-padding);
@@ -130,9 +240,9 @@
 }
 
 :global(:root[data-theme='material']) .tabItem {
-  background: var(--surface);
+  background: transparent;
   border: 0;
-  border-radius: 18px;
+  border-radius: 0;
   padding-inline-start: 0;
 }
 
@@ -142,9 +252,15 @@
 }
 
 :global(:root[data-theme='material']) .tab[aria-selected='true'] {
-  background: var(--accent);
+  background: transparent;
   box-shadow: none;
-  color: var(--accent-contrast);
+  color: var(--text);
+}
+
+:global(:root[data-theme='material']) .tabItem:has(.tab[aria-selected='true']) {
+  background: var(--accent);
+  border: 0;
+  border-radius: 18px;
 }
 
 :global(:root[data-theme='minimal']) .tabItem {
@@ -163,13 +279,27 @@
 }
 
 :global(:root[data-theme='minimal']) .tab[aria-selected='true'] {
-  border-bottom-color: var(--text);
+  border-bottom-color: transparent;
   box-shadow: none;
+}
+
+:global(:root[data-theme='minimal']) .tabItem:has(.tab[aria-selected='true']) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 :global(:root[data-theme='glass']) .tabItem,
 :global(:root[data-theme='glass']) .tab {
-  backdrop-filter: var(--blur);
+  backdrop-filter: none;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .tabAdd {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 15px;
 }
 
 @media (prefers-reduced-motion: reduce) {

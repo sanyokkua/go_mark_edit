@@ -30,7 +30,13 @@ export async function waitForParityReady(
 }
 
 export async function freezeParityPixels(page: Page): Promise<void> {
-  await page.addStyleTag({ content: PARITY_FREEZE_STYLE });
+  const freezeStyle = page.locator('style[data-parity-freeze]');
+  if ((await freezeStyle.count()) === 0) {
+    const style = await page.addStyleTag({ content: PARITY_FREEZE_STYLE });
+    await style.evaluate((element) => {
+      (element as HTMLElement).setAttribute('data-parity-freeze', 'true');
+    });
+  }
   await page.evaluate(() => {
     document.documentElement.dataset.parityFrozen = 'true';
   });

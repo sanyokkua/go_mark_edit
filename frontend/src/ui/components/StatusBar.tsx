@@ -40,7 +40,11 @@ const StatusBar: React.FC<StatusBarProps> = ({
   const encodingLabel = t(translationKey('encoding', encoding));
   const lineEndingLabel = t(translationKey('lineEnding', lineEnding));
   return (
-    <footer aria-label={t('status.ariaLabel')} className={styles.statusBar}>
+    <footer
+      aria-label={t('status.ariaLabel')}
+      className={styles.statusBar}
+      role="status"
+    >
       <span className={styles.responsiveItem} data-status-item="cursor">
         {t('status.cursor', {
           column: cursor.column,

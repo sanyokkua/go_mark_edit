@@ -35,10 +35,9 @@ test('FT-VS-02 flushes the latest edit and reports one explicit Save confirmatio
   const file = page.getByRole('button', { name: 'File' });
   await file.click();
   const menu = page.getByRole('menu', { name: 'File' });
-  await expect(
-    menu.getByRole('menuitem', { name: 'Save', exact: true }),
-  ).toBeEnabled();
-  await menu.getByRole('menuitem', { name: 'Save', exact: true }).click();
+  const save = menu.getByRole('menuitem').filter({ hasText: /^Save$/u });
+  await expect(save).toBeEnabled();
+  await save.click();
 
   await expect(
     page.locator('[data-notification-code="save-success"]'),
@@ -216,7 +215,7 @@ test('FT-VS-07 proves recents, reopen, launcher, and responsive status controls'
   const reopen = page
     .getByRole('menu', { name: 'File' })
     .getByRole('menuitem', {
-      name: 'Reopen last file / folder',
+      name: 'Reopen last file',
     });
   await expect(reopen).toBeEnabled();
   await reopen.click();

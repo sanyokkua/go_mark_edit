@@ -155,6 +155,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                   value === 'preview'
                 ) {
                   dispatchWindowAction(value, () => onArrangementChange(value));
+                  onOpenChange?.(false);
                 }
               }}
             >

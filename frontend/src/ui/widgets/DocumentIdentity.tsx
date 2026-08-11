@@ -34,7 +34,7 @@ function parentFor(props: DocumentIdentityProps): string | undefined {
   if (direct.length > 0) return direct;
   const source = props.path ?? props.document?.path ?? '';
   const parts = source.replaceAll('\\', '/').split('/').filter(Boolean);
-  return safeSegment(parts.at(-2));
+  return safeSegment(parts.at(-2)) || undefined;
 }
 
 export function statusLabel(status: SaveStatus | undefined): string {

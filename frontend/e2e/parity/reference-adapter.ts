@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 
-export const REFERENCE_ADAPTER_VERSION = 'feature-003-reference-adapter-v1';
+export const REFERENCE_ADAPTER_VERSION = 'feature-003-reference-adapter-v2';
+
+export const REFERENCE_ZERO_ASSISTANT_CLASS = 'no-assistant';
 
 export const referenceVariants = [
   'base',
@@ -50,7 +52,11 @@ function hash(value: string): string {
 }
 
 export const REFERENCE_ADAPTER_HASH = hash(
-  JSON.stringify({ REFERENCE_ADAPTER_VERSION, variantRules }),
+  JSON.stringify({
+    REFERENCE_ADAPTER_VERSION,
+    REFERENCE_ZERO_ASSISTANT_CLASS,
+    variantRules,
+  }),
 );
 
 function assertVariant(variant: string): asserts variant is ReferenceVariant {
@@ -61,7 +67,8 @@ function assertVariant(variant: string): asserts variant is ReferenceVariant {
 
 /**
  * The adapter is deliberately declarative. It records the reviewed variant
- * and permitted region boundary without rewriting binding HTML/CSS or adding
+ * and permitted region boundary and activates the mockup's existing
+ * zero-Assistant class without changing the source HTML/CSS values or adding
  * masks. T035 owns the browser-side region mapping for each manifest case.
  */
 export function adaptReferenceHtml(
@@ -71,9 +78,13 @@ export function adaptReferenceHtml(
   assertVariant(variant);
   const rules = variantRules[variant];
   const marker = `data-reference-variant="${variant}"`;
-  const adaptedHtml = html.includes(marker)
+  const withVariantMarker = html.includes(marker)
     ? html
     : html.replace(/<body\b/u, `<body ${marker}`);
+  const adaptedHtml = withVariantMarker.replace(
+    '<div class="app" id="app">',
+    `<div class="app ${REFERENCE_ZERO_ASSISTANT_CLASS}" id="app">`,
+  );
   return {
     adapterHash: REFERENCE_ADAPTER_HASH,
     sourceHash: hash(html),

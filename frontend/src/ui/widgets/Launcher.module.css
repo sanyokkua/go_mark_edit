@@ -64,14 +64,114 @@
   white-space: nowrap;
 }
 
+.parityLauncher {
+  display: flex;
+  flex: 1 1 0%;
+  height: 313px;
+  min-height: auto;
+  margin: 0;
+  overflow: visible;
+  padding: 24px;
+}
+
+.parityLauncher .panel {
+  gap: 0;
+  width: min(430px, 100%);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+}
+
+.parityLauncher .panel h1 {
+  font-size: 20px;
+  margin-block: 0 4px;
+}
+
+.parityLauncher .panel h2 {
+  color: var(--faint);
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  margin-block: 0 6px;
+  text-transform: uppercase;
+}
+
+.parityLauncher .message {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  margin-block: 0 18px;
+}
+
+.parityLauncher .actions {
+  gap: 8px;
+  justify-content: center;
+  margin-block: 0 22px;
+}
+
+.parityLauncher .actions button,
+.parityLauncher .recent button {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 8px 14px;
+}
+
+.parityLauncher .actions button:first-child {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+
+.parityLauncher .recent {
+  gap: 0;
+  border-top: 1px solid var(--stroke-soft);
+  padding-top: 12px;
+  text-align: start;
+}
+
+.parityLauncher .recent ul {
+  gap: 1px;
+}
+
+.parityLauncher .recent button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  display: flex;
+  gap: 9px;
+}
+
+.parityLauncher .recent button:hover {
+  background: var(--hover);
+}
+
+.parityLauncher .recent button small {
+  color: var(--faint);
+  font-size: 11px;
+  margin-inline-start: auto;
+}
+
 @media (max-width: 376px) {
   .launcher {
     place-items: start center;
     padding: var(--editor-view-padding);
   }
 
+  .parityLauncher {
+    height: 316px;
+    padding: 24px;
+  }
+
   .actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 377px) and (max-width: 768px) {
+  .parityLauncher {
+    height: 301px;
   }
 }

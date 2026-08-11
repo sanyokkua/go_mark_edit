@@ -45,6 +45,14 @@ it('control and bidirectional characters render as visible escapes', () => {
   ).toContain('\\u202E');
 });
 
+it('disambiguates a hostile basename against its sanitized sibling', () => {
+  const hostile = documentFor('hostile', '/tmp/projects/alpha/notes\u202E.md');
+  const sibling = documentFor('sibling', '/tmp/projects/beta/notes.md');
+
+  expect(tabLabelFor(hostile, [hostile, sibling]).suffix).toContain('alpha');
+  expect(tabLabelFor(sibling, [hostile, sibling]).suffix).toContain('beta');
+});
+
 it('ellipsis retains a distinguishing suffix and the complete label stays accessible', () => {
   const label = tabLabelFor(
     documentFor('one', '/repo/first/very-long-name.md'),

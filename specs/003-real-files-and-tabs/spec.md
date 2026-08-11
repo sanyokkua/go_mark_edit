@@ -151,6 +151,28 @@
   non-recursive snapshot of only the immediate parent directory of the target file, taken before and after; the only
   permitted diff is the target file itself, and the atomic-replace temporary file must already be gone.
 
+### Session 2026-08-09
+
+- Q: Should exact binding-mockup parity be achieved by changing production UI or by normalizing the comparison
+  harness? → A: Change the production UI to match the immutable binding mockup as closely as the in-scope contract
+  requires. Do not edit the mockup, replace the reference, widen masks, increase tolerance, or normalize away
+  genuine production layout drift.
+- Q: Where should document identity, the resize divider, and status live in the converged layout? → A: Render
+  document identity in the top in-app menu row and remove the separate vertical identity row; keep the divider
+  resizable but overlay it so it consumes no layout width; render the 28 px status bar below the editor content,
+  outside the main document content area.
+- Q: What workspace and Assistant surfaces are in scope? → A: Match the empty workspace frame only. Do not add a
+  populated folder tree or workspace enumeration. Keep the Assistant surface zero-width and defer all Assistant and
+  provider behavior.
+- Q: Should ordinary startup change to support parity? → A: No. Preserve normal startup behavior unchanged and
+  seed the populated multi-document fixture only on the deterministic parity route.
+- Q: How should T045 resolve the retained editor-region metric that includes the mockup Assistant column even
+  though CL-17 and FR-FT-049 require a zero-width Assistant? → A: Preserve the zero-width Assistant contract and
+  revise the fixed reference mapping to an explicit zero-Assistant adapter region. The adapter may activate the
+  mockup's existing `.app.no-assistant` class, preserve the immutable source hash and HTML/CSS values, and map
+  the editor region to `#app.no-assistant .content`; it MUST NOT change production Assistant behavior, masks,
+  pixel tolerance, coordinate handling, comparator, or the mockup source.
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Open, edit, and safely save a real file (Priority: P1)
@@ -939,7 +961,9 @@ table, safe-subject only, remediated only from that row's vocabulary.
   segment when useful, and the localized projection of FR-FT-014's status: `Not saved`, `Unsaved changes`, `Saved`,
   `Autosaved`, or `Read-only`. Untitled documents MUST show `Untitled`; the empty untitled state MUST show `Not saved`.
   The heading MUST remain limited to at most one safe parent segment even when tabs require a longer unique suffix.
-  Full paths belong in tab tooltips and explicit Copy path/Reveal affordances, not the heading.
+  Full paths belong in tab tooltips and explicit Copy path/Reveal affordances, not the heading. In the converged
+  binding layout, this identity surface MUST be rendered in the top in-app menu row; a separate vertical identity
+  row MUST NOT push the mapped editor content downward.
 - **FR-FT-044**: The status surface MUST expose the active file's encoding, line-ending or mixed-ending state,
   autosave state, and read-only warning at the widths where the binding responsive contract retains them. Dropped
   status items MUST remain available through an accessible detail surface.
@@ -947,10 +971,14 @@ table, safe-subject only, remediated only from that row's vocabulary.
   the binding mockup's control presence, labels, order, grouping, dimensions, typography, iconography, spacing,
   borders, radii, shadows, opacity, blur, alignment, focus, hover, checked, selected, and unavailable treatment
   across all six delivered palettes, subject only to the explicit behavior and exclusion overrides in this
-  specification. General resemblance, correct hierarchy, or reachability alone MUST NOT satisfy this rule.
+  specification. General resemblance, correct hierarchy, or reachability alone MUST NOT satisfy this rule. Production
+  layout and component structure MUST be corrected when required to reach that result; the comparison harness MUST
+  not hide a genuine mismatch through coordinate normalization or broader exclusions.
 - **FR-FT-046**: At 1280, 768, and 375 pixels, every in-scope file or tab action MUST remain pointer- and
   keyboard-reachable with no clipping or page-level horizontal scroll. Only the contained tab strip may scroll
-  horizontally; the completed workspace rail/off-canvas and one-row editor toolbar contracts MUST remain intact.
+  horizontally; the completed workspace rail/off-canvas and one-row editor toolbar contracts MUST remain intact. The
+  editor resize divider MUST remain pointer- and keyboard-operable while overlaying the boundary without consuming
+  layout width.
 - **FR-FT-047**: Every new action, shortcut, tooltip, prompt, status, error, and unavailable outcome MUST derive
   from the canonical registry or translation catalogue, expose correct roles and accessible names, retain visible
   focus and modal focus containment, tolerate longer text, respect reduced motion, and use centralized tokens.
@@ -960,7 +988,8 @@ table, safe-subject only, remediated only from that row's vocabulary.
 - **FR-FT-049**: This feature MUST NOT add workspace enumeration, a folder tree, file associations, operating-
   system open forwarding, drag-and-drop, packaging behavior, export, rich-rendering expansion, full document diff
   navigation, search, tab groups, split tab panes, pinning, detachable tabs, session restore, crash recovery,
-  swap files, or Assistant/provider behavior.
+  swap files, or Assistant/provider behavior. Visual convergence MAY reproduce only the empty workspace frame; it
+  MUST NOT populate a folder tree or add Assistant width or behavior.
 - **FR-FT-050**: The binding mockup's HTML/CSS values MUST remain the exact source authority for the mapped
   webview-owned result. The application may use its established component architecture, but its rendered and
   computed result MUST match the binding values. The supplied mockup screenshots MUST be treated as reference
@@ -985,14 +1014,18 @@ table, safe-subject only, remediated only from that row's vocabulary.
   device-pixel ratio 1, 100% zoom, loaded local fonts, resolved palette, locale, fixture data, focus, scroll,
   overlay state, frozen caret, and reduced-motion/animation state. The mockup's external harness and the
   application's native host frame are outside the selector crop. Readiness MUST be asserted before capture, and
-  three consecutive unchanged captures MUST produce identical image hashes. Repeating all 546 logical cases three
-  times MUST execute exactly 1,638 comparisons without changing the manifest count.
+  three consecutive unchanged captures MUST produce identical image hashes. Normal startup behavior MUST remain
+  unchanged; any populated multi-document fixture used for parity MUST be seeded only on the deterministic parity
+  route. Repeating all 546 logical cases three times MUST execute exactly 1,638 comparisons without changing the
+  manifest count.
 - **FR-FT-055**: Each deterministic comparison MUST use a reviewed mapping from binding region to application
   region and require zero unexplained changed pixels after approved exclusions. Reference, actual, and difference
   images MUST be retained on failure. Any mask MUST be the smallest reviewed rectangle for an unfreezable dynamic
   pixel and MUST NOT hide geometry, text, icons, focus, state, or a whole component. Increasing tolerance,
   replacing the reference with the current application, or accepting a baseline solely to make a gate pass is
-  prohibited.
+  prohibited. A Feature 003 reference adapter MAY activate an existing mockup class that expresses the approved
+  zero-Assistant boundary, provided it preserves the immutable source hash and does not alter the mockup's
+  HTML/CSS values; the reviewed mapping MUST name that adapted region explicitly.
 - **FR-FT-056**: Behavior-owned differences from the historical mockup MUST be rendered as explicit Feature 003
   reference variants using the same binding primitives: the launcher contains file recents only and an unavailable
   Open Folder action; the File menu contains no recent folder; the tab menu adds Move tab left and Move tab right

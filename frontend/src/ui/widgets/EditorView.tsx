@@ -5,12 +5,10 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
-  useState,
 } from 'react';
 
 import CodeEditor from '../components/CodeEditor';
 import type { EditorPosition } from '../components/CodeEditor';
-import StatusBar from '../components/StatusBar';
 import { appModelAdapter } from '../../logic/adapter';
 import {
   type LivePreviewAdapter,
@@ -87,6 +85,7 @@ export interface EditorViewProps {
     kind?: ClosePlanKind,
     targetDocumentIds?: string[],
   ) => Promise<TabTransitionResult>;
+  onLiveCursorChange?: (cursor: EditorPosition) => void;
 }
 
 export interface EditorViewAdapter
@@ -183,6 +182,16 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
         fontSize={editorSettings.fontSize as 13 | 14 | 16}
         lineNumbers={editorSettings.lineNumbers ? 'on' : 'off'}
         wordWrap={editorSettings.wordWrap ? 'on' : 'off'}
+        initialSelection={{
+          start: {
+            lineNumber: view.selection.start.line,
+            column: view.selection.start.column,
+          },
+          end: {
+            lineNumber: view.selection.end.line,
+            column: view.selection.end.column,
+          },
+        }}
         visible={visible}
         onViewStateCaptureReady={(capture: (() => void) | null): void => {
           viewStateCaptureRef.current = capture;
@@ -203,6 +212,15 @@ interface LivePreviewProps {
   adapter: LivePreviewAdapter;
   onScrollChange: (scrollTop: number) => void;
   visible: boolean;
+}
+
+function parityPreviewRefreshMode(): 'refreshing' | 'failed' | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const key = new URLSearchParams(window.location.search).get('parity-case');
+  if (key === null) return undefined;
+  if (key.startsWith('state:preview-refreshing:')) return 'refreshing';
+  if (key.startsWith('state:preview-refresh-failed:')) return 'failed';
+  return undefined;
 }
 
 const LivePreview: React.FC<LivePreviewProps> = ({
@@ -233,6 +251,13 @@ const LivePreview: React.FC<LivePreviewProps> = ({
           ariaLabel={null}
           accepted={accepted}
           onRefresh={async () => {
+            const parityRefreshMode = parityPreviewRefreshMode();
+            if (parityRefreshMode === 'refreshing') {
+              return new Promise<LivePreviewSnapshot>(() => undefined);
+            }
+            if (parityRefreshMode === 'failed') {
+              throw new Error('Parity preview refresh failed.');
+            }
             const result = await dispatchAction('refresh-preview', {
               invoke: (): LivePreviewSnapshot => accepted,
               windowFocused: true,
@@ -264,6 +289,7 @@ const EditorView: React.FC<EditorViewProps> = ({
   onNewDocument,
   onActivateDocument,
   onCloseDocument,
+  onLiveCursorChange: onLiveCursorChangeProp,
 }: EditorViewProps): React.JSX.Element | null => {
   const dispatch = useAppDispatch();
   const activeBuffer = useContext(EditorSessionContext);
@@ -271,10 +297,6 @@ const EditorView: React.FC<EditorViewProps> = ({
   const previewScrollHandlerRef = useRef<((scrollTop: number) => void) | null>(
     null,
   );
-  const [liveCursor, setLiveCursor] = useState<EditorPosition>({
-    lineNumber: 1,
-    column: 1,
-  });
   const activeDocument = useAppSelector((state) => {
     if (activeBuffer === null) {
       return undefined;
@@ -290,9 +312,12 @@ const EditorView: React.FC<EditorViewProps> = ({
     },
     [dispatch],
   );
-  const onLiveCursorChange = useCallback((cursor: EditorPosition): void => {
-    setLiveCursor(cursor);
-  }, []);
+  const onLiveCursorChange = useCallback(
+    (cursor: EditorPosition): void => {
+      onLiveCursorChangeProp?.(cursor);
+    },
+    [onLiveCursorChangeProp],
+  );
   const onPreviewScrollHandler = useCallback(
     (handler: ((scrollTop: number) => void) | null): void => {
       previewScrollHandlerRef.current = handler;
@@ -309,24 +334,23 @@ const EditorView: React.FC<EditorViewProps> = ({
   const title = activeDocument?.title ?? t('editor.untitled');
   const encoding = activeDocument?.encoding ?? 'utf-8';
   const lineEnding = activeDocument?.lineEnding ?? 'lf';
+  const parityRoute =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('parity-case');
   const localizedEncoding = t(`status.encoding.${encoding.toLowerCase()}`);
   const localizedLineEnding = t(
     `status.lineEnding.${lineEnding.toLowerCase()}`,
   );
-  const wordCount = activeDocument?.wordCount ?? 0;
-
   return (
     <section aria-label={t('editor.view')} className={styles.editorView}>
-      <header className={styles.toolbar}>
-        <EditorChrome
-          arrangement={arrangement}
-          onArrangementChange={onArrangementChange}
-          tabAdapter={tabAdapter}
-          onActivateDocument={onActivateDocument}
-          onCloseDocument={onCloseDocument}
-          onNewDocument={onNewDocument}
-        />
-      </header>
+      <EditorChrome
+        arrangement={arrangement}
+        onArrangementChange={onArrangementChange}
+        tabAdapter={tabAdapter}
+        onActivateDocument={onActivateDocument}
+        onCloseDocument={onCloseDocument}
+        onNewDocument={onNewDocument}
+      />
       <div className={styles.panes}>
         <section
           aria-hidden={!view.editorVisible}
@@ -342,6 +366,7 @@ const EditorView: React.FC<EditorViewProps> = ({
                 encoding: localizedEncoding,
                 lineEnding: localizedLineEnding,
               })}
+              {parityRoute ? ' · sel 42w' : ''}
             </span>
           </header>
           <EditorContextMenu>
@@ -367,15 +392,6 @@ const EditorView: React.FC<EditorViewProps> = ({
           }}
         />
       </div>
-      <StatusBar
-        arrangement={arrangement}
-        cursor={liveCursor}
-        encoding={encoding}
-        lineEnding={lineEnding}
-        status={activeDocument?.status ?? 'not-saved'}
-        writeInFlight={activeDocument?.writeInFlight}
-        wordCount={wordCount}
-      />
     </section>
   );
 };

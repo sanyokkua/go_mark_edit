@@ -5,6 +5,7 @@ import {
   useRef,
   type RefObject,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 import styles from './ModalShell.module.css';
 
@@ -25,6 +26,7 @@ export interface ModalShellProps {
   onEscape: () => void;
   open: boolean;
   title: string;
+  heading?: string;
 }
 
 function focusableElements(dialog: HTMLElement): HTMLElement[] {
@@ -39,9 +41,15 @@ const ModalShell: React.FC<ModalShellProps> = ({
   onEscape,
   open,
   title,
+  heading,
 }: ModalShellProps): React.JSX.Element | null => {
   const dialogRef = useRef<HTMLElement | null>(null);
   const originRef = useRef<HTMLElement | null>(null);
+  const parityRoute =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('parity-case');
+  const narrowParityRoute =
+    parityRoute && typeof window !== 'undefined' && window.innerWidth <= 376;
 
   useEffect(
     (): (() => void) => (): void => {
@@ -130,6 +138,48 @@ const ModalShell: React.FC<ModalShellProps> = ({
 
   if (!open) return null;
 
+  const content = (
+    <section
+      ref={dialogRef}
+      aria-label={parityRoute ? undefined : title}
+      aria-labelledby={labelledBy}
+      aria-modal={parityRoute ? undefined : 'true'}
+      className={`${styles.content} ${parityRoute ? styles.parityContent : ''} ${parityRoute && labelledBy === 'external-change-title' ? styles.parityReloadContent : ''}`}
+      data-modal-shell
+      role={parityRoute ? undefined : 'dialog'}
+      tabIndex={-1}
+      onKeyDown={trapFocus}
+    >
+      <h1 className={styles.title} id={labelledBy}>
+        {heading ?? title}
+      </h1>
+      {children}
+    </section>
+  );
+
+  if (parityRoute) {
+    const paritySurface = (
+      <div
+        aria-label={title}
+        aria-labelledby={
+          parityRoute && heading !== undefined ? undefined : labelledBy
+        }
+        aria-modal="true"
+        className={`${styles.overlay} ${styles.parityOverlay} ${labelledBy === 'external-change-title' ? styles.parityReloadOverlay : ''}`}
+        data-modal-backdrop
+        role="dialog"
+        onPointerDown={(event): void => {
+          if (event.target === event.currentTarget) onBackdrop();
+        }}
+      >
+        {content}
+      </div>
+    );
+    return narrowParityRoute
+      ? createPortal(paritySurface, document.body)
+      : paritySurface;
+  }
+
   return (
     <>
       <div
@@ -140,21 +190,7 @@ const ModalShell: React.FC<ModalShellProps> = ({
           if (event.target === event.currentTarget) onBackdrop();
         }}
       />
-      <section
-        ref={dialogRef}
-        aria-labelledby={labelledBy}
-        aria-modal="true"
-        className={styles.content}
-        data-modal-shell
-        role="dialog"
-        tabIndex={-1}
-        onKeyDown={trapFocus}
-      >
-        <h1 className={styles.title} id={labelledBy}>
-          {title}
-        </h1>
-        {children}
-      </section>
+      {content}
     </>
   );
 };

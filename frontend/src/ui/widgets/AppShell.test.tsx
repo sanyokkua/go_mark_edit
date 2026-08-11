@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
@@ -25,9 +26,13 @@ import {
   hydrateProjection,
   resetProjection,
 } from '../../logic/store/appModelProjectionActions';
-import type { UILayout } from '../../logic/store/appModelTypes';
+import type {
+  DocumentMetadata,
+  UILayout,
+} from '../../logic/store/appModelTypes';
 import { store } from '../../logic/store';
 import { notifyError } from '../../logic/store/notificationsSlice';
+import { hydrateSettings } from '../../logic/store/settingsSlice';
 import AppShell from './AppShell';
 
 const readSource = (relativePath: string): string =>
@@ -90,7 +95,7 @@ it('FR-WS-007 keeps workspace and document regions while the reserved Assistant 
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
   const tokens = readSource('src/ui/styles/tokens.css');
   expect(shellStyles).toMatch(
-    /grid-template-areas:\s*['"]workspace divider document assistant['"]/,
+    /grid-template-areas:\s*['"]workspace document assistant['"]/,
   );
   expect(tokens).toContain('--shell-assistant-collapsed-width: 0;');
   expect(tokens).not.toContain('--shell-assistant-visible-width');
@@ -120,6 +125,63 @@ it('FR-WS-007 preserves the zero-width Assistant track at the 375px breakpoint',
   );
   expect(narrowShellRule).toMatch(
     /grid-template-columns:\s*0\s+minmax\(0,\s*1fr\)\s+var\(--shell-assistant-collapsed-width\)/,
+  );
+});
+
+it('T040 keeps the empty workspace as a binding surface frame without enumeration', () => {
+  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
+  const workspaceRule = shellStyles.match(/\.workspace\s*\{([^}]*)\}/)?.[1];
+
+  expect(workspaceRule).toBeDefined();
+  expect(workspaceRule).toMatch(/background:\s*var\(--surface-2\)/);
+});
+
+it('T045 keeps the parity shell route bounded to the binding window geometry', () => {
+  const shellSource = readSource('src/ui/widgets/AppShell.tsx');
+  const baseStyles = readSource('src/ui/styles/base.css');
+  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
+
+  expect(shellSource).toContain(
+    "data-parity-shell={parityRoute ? 'true' : undefined}",
+  );
+  expect(shellSource).toContain("data-parity-family={parityFamily}");
+  expect(baseStyles).toMatch(
+    /\.application-frame:has\(\[data-parity-shell='true'\]\)/,
+  );
+  expect(baseStyles).toContain('width: 97vw;');
+  expect(baseStyles).toContain('height: 430px;');
+  expect(baseStyles).toContain('margin: 224px auto 0;');
+  expect(baseStyles).toContain('height: 322px;');
+  expect(baseStyles).toContain('margin-top: 333px;');
+  expect(baseStyles).toContain('height: 2px;');
+  expect(baseStyles).toContain('margin-top: 666px;');
+  expect(baseStyles).toMatch(
+    /\.application-content:has\(\[data-parity-shell='true'\]\)\s*\{[^}]*overflow:\s*visible;/s,
+  );
+
+  const parityShellRule = shellStyles.match(
+    /\.shell\[data-parity-shell='true'\]\s*\{([^}]*)\}/,
+  )?.[1];
+  expect(parityShellRule).toBeDefined();
+  expect(parityShellRule).toMatch(/min-height:\s*2px/);
+  expect(shellStyles).toMatch(
+    /\.shell\[data-parity-shell='true'\]\s*\{[^}]*overflow:\s*visible;/s,
+  );
+  expect(shellStyles).toMatch(
+    /\.shell\[data-parity-shell='true'\] \.document\s*\{[^}]*overflow:\s*visible;/s,
+  );
+});
+
+it('T045 preserves the overflowing empty parity bands at narrow widths', () => {
+  const shellSource = readSource('src/ui/widgets/AppShell.tsx');
+  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
+
+  expect(shellSource).toContain('window.scrollTo(0, 0)');
+  expect(shellStyles).toMatch(
+    /@media \(min-width: 377px\) and \(max-width: 768px\)[\s\S]*?application-content:has\(\[data-parity-shell='true'\]\[data-document-state='empty'\]\)[\s\S]*?transform:\s*translateY\(-25px\);/s,
+  );
+  expect(shellStyles).toMatch(
+    /@media \(max-width: 376px\)[\s\S]*?application-content:has\(\[data-parity-shell='true'\]\[data-document-state='empty'\]\)[\s\S]*?transform:\s*translateY\(-231px\);/s,
   );
 });
 
@@ -186,6 +248,200 @@ it('FR-WS-017 keeps the workspace divider keyboard reachable and requests fixed 
   expect(setUILayout).toHaveBeenLastCalledWith({ sidebarWidth: 288 });
 });
 
+it('T040 overlays the resizable divider without adding a layout column at every parity width', () => {
+  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
+
+  expect(shellStyles).toMatch(
+    /grid-template-columns:\s*var\(--shell-left-width\)\s+minmax\(var\(--shell-center-min-width\),\s*1fr\)\s+var\(--shell-assistant-collapsed-width\)/,
+  );
+  expect(shellStyles).not.toMatch(
+    /grid-template-columns:[^;]*var\(--shell-divider-width\)/,
+  );
+  expect(shellStyles).toMatch(
+    /\.divider\s*\{[\s\S]*inset-block:\s*0;[\s\S]*position:\s*absolute;[\s\S]*z-index:\s*var\(--z-resize\)/,
+  );
+  expect(shellStyles).toMatch(
+    /@media \(max-width:\s*768px\)[\s\S]*--shell-divider-position:\s*46px[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/,
+  );
+  expect(shellStyles).toMatch(
+    /@media \(max-width:\s*376px\)[\s\S]*--shell-divider-position:\s*0px[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/,
+  );
+});
+
+it('T042 places the 28px status surface below editor content in the shell region', () => {
+  const document: DocumentMetadata = {
+    documentId: 'document-1',
+    title: 'notes.md',
+    path: '/Users/test/projects/notes.md',
+    displayName: 'notes.md',
+    parentName: 'projects',
+    dirty: false,
+    encoding: 'utf-8',
+    lineEnding: 'lf',
+    wordCount: 3,
+    status: 'saved',
+    view: {
+      arrangement: 'editor',
+      editorVisible: true,
+      previewVisible: false,
+      cursor: { line: 4, column: 2 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 0 },
+    },
+  };
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: { [document.documentId]: document },
+      activeDocumentId: document.documentId,
+      ui: {},
+    }),
+  );
+  render(
+    <Provider store={store}>
+      <AppShell />
+    </Provider>,
+  );
+
+  const documentArea = screen.getByRole('main', { name: 'Document area' });
+  const status = within(documentArea).getByRole('status', {
+    name: 'Document status',
+  });
+  expect(status).toHaveTextContent('Saved');
+  expect(status.parentElement).toBe(documentArea);
+});
+
+it('T047 projects an acknowledged autosave-on setting into status details', () => {
+  const document: DocumentMetadata = {
+    documentId: 'document-autosave-off',
+    title: 'notes.md',
+    path: '/Users/test/projects/notes.md',
+    displayName: 'notes.md',
+    parentName: 'projects',
+    dirty: false,
+    encoding: 'utf-8',
+    lineEnding: 'lf',
+    wordCount: 3,
+    status: 'saved',
+    view: {
+      arrangement: 'editor',
+      editorVisible: true,
+      previewVisible: false,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 0 },
+    },
+  };
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: { [document.documentId]: document },
+      activeDocumentId: document.documentId,
+      ui: {},
+    }),
+  );
+  store.dispatch(
+    hydrateSettings({
+      appearance: {
+        theme: 'glass',
+        mode: 'light',
+        defaultOpenMode: 'split',
+      },
+      markdown: {
+        standard: 'gfm',
+        formatOnSave: false,
+        lintOnSave: false,
+        bulletMarker: '-',
+        emphasisMarker: '*',
+        headingStyle: 'atx',
+      },
+      contentPrivacy: { remotePolicy: 'local-only' },
+      file: { autosave: true },
+    }),
+  );
+
+  render(
+    <Provider store={store}>
+      <AppShell />
+    </Provider>,
+  );
+
+  const status = screen.getByRole('status', { name: 'Document status' });
+  fireEvent.click(
+    within(status).getByRole('button', { name: 'Document details' }),
+  );
+  expect(
+    within(status).getByRole('region', { name: 'Document details' }),
+  ).toHaveTextContent('Autosave on');
+
+  act(() => {
+    store.dispatch(
+      hydrateSettings({
+        appearance: {
+          theme: 'glass',
+          mode: 'light',
+          defaultOpenMode: 'split',
+        },
+        markdown: {
+          standard: 'gfm',
+          formatOnSave: false,
+          lintOnSave: false,
+          bulletMarker: '-',
+          emphasisMarker: '*',
+          headingStyle: 'atx',
+        },
+        contentPrivacy: { remotePolicy: 'local-only' },
+        file: { autosave: false },
+      }),
+    );
+  });
+  expect(
+    within(status).getByRole('region', { name: 'Document details' }),
+  ).toHaveTextContent('Autosave off');
+});
+
+it('T045 keeps the parity empty launcher between the tab and status bands', () => {
+  window.history.pushState(
+    {},
+    '',
+    '/?parity-case=primary:empty:1280:glass-light',
+  );
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: {},
+      activeDocumentId: '',
+      ui: {},
+    }),
+  );
+
+  render(
+    <Provider store={store}>
+      <AppShell
+        onNewDocument={async (): Promise<void> => undefined}
+        onOpenDocument={async (): Promise<void> => undefined}
+      />
+    </Provider>,
+  );
+
+  expect(
+    screen.getByRole('tablist', { name: 'Document tabs' }),
+  ).toBeVisible();
+  expect(screen.getByRole('button', { name: 'New tab' })).toBeVisible();
+  expect(
+    screen.getByRole('status', { name: 'Document status' }),
+  ).toBeVisible();
+  expect(screen.getByTestId('document-launcher')).toBeVisible();
+
+  window.history.pushState({}, '', '/');
+});
+
 it('FR-WS-008 uses exact responsive presentations without durable responsive write-back', () => {
   renderShell({ sidebarVisible: true, sidebarWidth: 288 });
 
@@ -212,7 +468,7 @@ it('FR-WS-008 uses exact responsive presentations without durable responsive wri
     /@media \(max-width:\s*376px\)[\s\S]*width:\s*230px/,
   );
   expect(editorStyles).toMatch(
-    /@media \(max-width:\s*376px\)[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+    /@media \(max-width:\s*376px\)[\s\S]*flex-direction:\s*column/,
   );
   expect(editorStyles).toMatch(/\.toolbar\s*\{[^}]*flex-wrap:\s*nowrap/s);
   expect(baseStyles).toMatch(/overflow-x:\s*hidden/);

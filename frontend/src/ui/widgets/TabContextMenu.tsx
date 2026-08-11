@@ -68,6 +68,30 @@ function errorResult(error: ClassifiedError | undefined): string {
   return error?.message ?? 'The tab command could not be completed.';
 }
 
+function parityRoute(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('parity-case')
+  );
+}
+
+function parityLabel(actionId: TabContextAction): string {
+  switch (actionId) {
+    case 'close-tab':
+      return 'Close';
+    case 'close-others':
+      return 'Close others';
+    case 'close-right':
+      return 'Close to the right';
+    case 'copy-path':
+      return 'Copy path';
+    case 'reveal-in-file-manager':
+      return 'Reveal in file manager';
+    default:
+      return '';
+  }
+}
+
 const TabContextMenu: React.FC<TabContextMenuProps> = ({
   adapter,
   document,
@@ -78,6 +102,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
   onClose,
 }: TabContextMenuProps): React.JSX.Element => {
   void adapter;
+  const isParityRoute = parityRoute();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const firstActionRef = useRef<HTMLButtonElement | null>(null);
   const menuActions = actionsForSurface('tab-context')
@@ -95,7 +120,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
   if (orderedDocuments.length <= 1) unavailable.add('close-others');
 
   useEffect((): void => {
-    firstActionRef.current?.focus();
+    firstActionRef.current?.focus({ preventScroll: true });
   }, []);
 
   useEffect((): (() => void) => {
@@ -157,6 +182,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
     <div
       aria-label={t('editor.tab.contextMenu')}
       className={styles.contextMenu}
+      data-viewport-popup="tab-menu"
       ref={menuRef}
       role="menu"
       onKeyDown={(event): void => {
@@ -190,7 +216,10 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
             type="button"
             onClick={(): void => activate(actionId)}
           >
-            {t(entry.labelKey)}
+            {isParityRoute ? parityLabel(actionId) : t(entry.labelKey)}
+            {isParityRoute && actionId === 'close-tab' ? (
+              <span className={styles.parityAccelerator}>Ctrl W</span>
+            ) : null}
           </button>
         );
       })}

@@ -64,6 +64,7 @@ function resetMockMonaco(): void {
     getScrollTop: jest.fn(() => mockRuntime.scrollTop),
     getSelection: jest.fn(() => mockRuntime.selection),
     setSelection: jest.fn(),
+    deltaDecorations: jest.fn(() => []),
     onDidBlurEditorText: jest.fn((listener: () => void) => {
       mockRuntime.blurListener = listener;
 
@@ -152,9 +153,11 @@ it('STORY-013-AC-1 configures the default Markdown editor tokens and options', a
     path: 'inmemory://gomarkedit/document-1.md',
     options: {
       lineNumbers: 'on',
+      lineNumbersMinChars: 3,
       wordWrap: 'off',
       minimap: { enabled: false },
       fontSize: 14,
+      padding: { top: 12, bottom: 12 },
     },
   });
 
@@ -167,6 +170,90 @@ it('STORY-013-AC-1 configures the default Markdown editor tokens and options', a
   expect(readSource('src/ui/components/CodeEditor.tsx')).toContain(
     "getPropertyValue('--editor-font-size')",
   );
+});
+
+it('T045 aligns the parity Monaco gutter with the reviewed code column', () => {
+  const editorStyles = readSource('src/ui/components/CodeEditor.module.css');
+
+  expect(editorStyles).toMatch(
+    /\.editor\[data-parity-route='true'\][\s\S]*?:global\(\.monaco-editor \.margin\)\s*\{[^}]*width:\s*51\.65625px\s*!important;/s,
+  );
+  expect(editorStyles).toMatch(
+    /\.editor\[data-parity-route='true'\][\s\S]*?:global\(\.monaco-editor \.line-numbers\)\s*\{[^}]*width:\s*25\.65625px\s*!important;/s,
+  );
+  expect(editorStyles).toMatch(
+    /\.editor\[data-parity-route='true'\][\s\S]*?:global\(\.monaco-editor \.editor-scrollable\)\s*\{[^}]*left:\s*51\.65625px\s*!important;/s,
+  );
+});
+
+it('T045 retains the reviewed parity Monaco line box height', () => {
+  expect(readSource('src/ui/components/CodeEditor.tsx')).toContain(
+    'lineHeight: parityRoute ? 23.4 : undefined,',
+  );
+});
+
+it('T045 retains the reviewed parity lint decoration styling', () => {
+  expect(readSource('src/ui/components/CodeEditor.module.css')).toMatch(
+    /\.parityLint\s*\{[^}]*text-decoration:\s*wavy underline var\(--warn\);[^}]*text-underline-offset:\s*3px;/s,
+  );
+});
+
+it('T045 decorates the reviewed parity lint range without affecting ordinary startup', async () => {
+  const originalUrl = window.location.href;
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=primary:editor-split:1280:glass-light',
+  );
+  try {
+    render(
+      <CodeEditor
+        documentId="parity-release-notes"
+        initialValue="We are exited to anounce the new"
+      />,
+    );
+
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    expect(mockRuntime.editor.deltaDecorations).toHaveBeenCalledWith(
+      [],
+      [
+        expect.objectContaining({
+          options: expect.objectContaining({
+            inlineClassName: expect.any(String),
+          }),
+          range: {
+            endColumn: 14,
+            endLineNumber: 3,
+            startColumn: 8,
+            startLineNumber: 3,
+          },
+        }),
+      ],
+    );
+  } finally {
+    window.history.replaceState({}, '', originalUrl);
+  }
+});
+
+it('restores the acknowledged selection at the fresh editor activation boundary', async () => {
+  render(
+    <CodeEditor
+      documentId="document-1"
+      initialValue="first\nselected"
+      initialSelection={{
+        start: { lineNumber: 2, column: 1 },
+        end: { lineNumber: 2, column: 9 },
+      }}
+    />,
+  );
+
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+  expect(mockRuntime.editor.setSelection).toHaveBeenCalledWith({
+    startLineNumber: 2,
+    startColumn: 1,
+    endLineNumber: 2,
+    endColumn: 9,
+  });
 });
 
 it('STORY-013-AC-3 reports Monaco edits immediately', async () => {

@@ -55,7 +55,11 @@ import {
 import { parseError } from './logic/utils/parseError';
 import { useEditorSettings } from './logic/settings/editorSettings';
 import { bootstrapSettingsProjection } from './logic/store/settingsProjection';
-import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
+import {
+  NotificationToast,
+  ParityToastSurface,
+  ToastProvider,
+} from './ui/primitives/Toast';
 import NotificationBanner from './ui/primitives/Banner';
 import AppShell from './ui/widgets/AppShell';
 import AboutDialog from './ui/widgets/AboutDialog';
@@ -167,6 +171,7 @@ interface ApplicationMenuState {
   onReopenLastFile: (expectedTabSetRevision: number) => Promise<unknown>;
   onSave: () => Promise<unknown>;
   onSaveAs: () => Promise<unknown>;
+  onQuit: () => void;
   documentId?: string;
   sessionDocumentId?: string;
   writable?: boolean;
@@ -220,6 +225,8 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
       }
       onSave={menuState.onSave}
       onSaveAs={menuState.onSaveAs}
+      onQuit={menuState.onQuit}
+      activeDocument={activeDocument}
       documentId={menuState.documentId}
       sessionDocumentId={menuState.sessionDocumentId}
       writable={menuState.writable}
@@ -279,6 +286,16 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
 const AppContents: React.FC = (): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const notifications = useAppSelector((state) => state.notifications.items);
+  const parityToasts =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search)
+      .get('parity-case')
+      ?.includes(':toasts:') === true;
+  const parityQuitPrompt =
+    typeof window !== 'undefined' &&
+    /:quit-prompt:|:quit-discard-newer:/u.test(
+      new URLSearchParams(window.location.search).get('parity-case') ?? '',
+    );
   const banners = useAppSelector((state) => state.notifications.banners);
   const activeDocument = useAppSelector((state) =>
     state.documents.activeDocumentId === null
@@ -535,7 +552,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
         await cancelNativeClose();
         return undefined;
       }
-      if (summary.status === 'ready') {
+      const normalizationTarget = summary.targets.find(
+        (target) =>
+          target.dirty &&
+          target.choice === 'save' &&
+          target.normalizationToken !== undefined,
+      );
+      if (summary.status === 'ready' && normalizationTarget === undefined) {
         return completeClosePlan(summary.id);
       }
 
@@ -563,12 +586,6 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
 
       setClosePlan(summary);
-      const normalizationTarget = summary.targets.find(
-        (target) =>
-          target.dirty &&
-          target.choice === 'save' &&
-          target.normalizationToken !== undefined,
-      );
       if (normalizationTarget !== undefined) {
         setCloseConflict(null);
         setCloseNormalization({
@@ -970,6 +987,35 @@ const AppContents: React.FC = (): React.JSX.Element => {
   );
   const onSave = useCallback(() => beginWrite('save'), [beginWrite]);
   const onSaveAs = useCallback(() => beginWrite('save-as'), [beginWrite]);
+  const onQuit = useCallback((): void => {
+    if (parityQuitPrompt) {
+      // The browser bridge cannot authorize a native Wails quit request. Keep
+      // the parity route on the same close-plan surface that the native event
+      // would produce, while leaving ordinary startup on the native path.
+      if (activeDocument !== undefined) {
+        setClosePlan({
+          id: 'parity-quit-prompt',
+          kind: 'quit',
+          status: 'collecting',
+          tabSetRevision: 0,
+          targets: [
+            {
+              documentId: activeDocument.documentId,
+              title: activeDocument.title,
+              displayName: activeDocument.displayName,
+              path: activeDocument.path,
+              contentRevision: activeDocument.contentRevision ?? 0,
+              dirty: true,
+              capability: activeDocument.capability,
+              status: activeDocument.status,
+            },
+          ],
+        });
+      }
+      return;
+    }
+    nativeLifecycleAdapter.requestQuit();
+  }, [activeDocument, parityQuitPrompt]);
   const externalConflictValid =
     externalConflict === null ||
     activeDocument?.contentRevision === undefined ||
@@ -1076,6 +1122,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       onReopenLastFile,
       onSave,
       onSaveAs,
+      onQuit,
       documentId: activeDocument?.documentId,
       sessionDocumentId: activeBuffer?.documentId,
       writable:
@@ -1094,6 +1141,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       onReopenLastFile,
       onSave,
       onSaveAs,
+      onQuit,
       modalOpen,
     ],
   );
@@ -1308,7 +1356,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
                 </button>
               </div>
             </ModalShell>
-            {bootstrapStatus === 'ready'
+            {bootstrapStatus === 'ready' && parityToasts ? (
+              <ParityToastSurface />
+            ) : bootstrapStatus === 'ready'
               ? notifications.map((notification) => (
                   <NotificationToast
                     key={`${notification.id}:${notification.refreshGeneration}`}

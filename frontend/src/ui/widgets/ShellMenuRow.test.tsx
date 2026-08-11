@@ -11,6 +11,7 @@ import { resolve } from 'node:path';
 
 import { t } from '../../i18n';
 import * as actionDispatcher from '../../logic/actions/actionDispatcher';
+import type { DocumentMetadata } from '../../logic/store/appModelTypes';
 import type { SettingsMenuProps } from './SettingsMenu';
 import ShellMenuRow from './ShellMenuRow';
 
@@ -31,6 +32,30 @@ const viewMenuProps = {
   onEditorVisibilityChange: jest.fn(),
   onPreviewVisibilityChange: jest.fn(),
   previewVisible: true,
+};
+
+const identityDocument: DocumentMetadata = {
+  documentId: 'document-1',
+  title: 'notes.md',
+  path: '/Users/test/projects/notes.md',
+  displayName: 'notes.md',
+  parentName: 'projects',
+  dirty: true,
+  encoding: 'utf-8',
+  lineEnding: 'lf',
+  wordCount: 1,
+  status: 'unsaved-changes',
+  view: {
+    arrangement: 'editor',
+    editorVisible: true,
+    previewVisible: false,
+    cursor: { line: 1, column: 1 },
+    selection: {
+      start: { line: 1, column: 1 },
+      end: { line: 1, column: 1 },
+    },
+    scroll: { editor: 0, preview: 0 },
+  },
 };
 
 it('T033 keeps popup accelerators, group labels, separators, and viewport sizing tokenized', () => {
@@ -127,7 +152,7 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
     'Open File',
     'Open Folder',
     'Open Recent',
-    'Reopen last file / folder',
+    'Reopen last file',
     'Save',
     'Save As',
     'Export to PDF',
@@ -145,6 +170,27 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
   );
   fireEvent.click(screen.getByRole('menuitem', { name: 'About GoMarkEdit' }));
   expect(onAbout).toHaveBeenCalledTimes(1);
+});
+
+it('T041 keeps document identity inside the top menu row without a vertical identity block', () => {
+  render(
+    <ShellMenuRow
+      activeDocument={identityDocument}
+      modalOpen={false}
+      onAbout={jest.fn()}
+      settingsMenuProps={settingsMenuProps}
+      viewMenuProps={viewMenuProps}
+    />,
+  );
+
+  const menu = screen.getByRole('navigation', {
+    name: 'Application actions',
+  });
+  expect(
+    within(menu).getByRole('heading', { name: 'projects / notes.md' }),
+  ).toBeVisible();
+  expect(within(menu).getByText('Unsaved changes')).toBeVisible();
+  expect(screen.getAllByRole('heading')).toHaveLength(1);
 });
 
 it('T009 routes the available File New/Open controls through the lifecycle dispatcher', async () => {
@@ -273,6 +319,38 @@ it('T018 moves the same ordered top-level actions into overflow at narrow width'
   expect(onAbout).toHaveBeenCalledTimes(1);
 });
 
+it('T045 closes the narrow View menu after choosing an arrangement', async () => {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: 375,
+  });
+  const onArrangementChange = jest.fn();
+  render(
+    <ShellMenuRow
+      modalOpen={false}
+      onAbout={jest.fn()}
+      settingsMenuProps={settingsMenuProps}
+      toggleFullscreen={jest.fn(async () => true)}
+      viewMenuProps={{
+        ...viewMenuProps,
+        arrangement: 'split',
+        onArrangementChange,
+      }}
+    />,
+  );
+
+  const overflow = screen.getByRole('button', { name: 'More actions' });
+  fireEvent.keyDown(overflow, { key: 'ArrowDown' });
+  fireEvent.click(screen.getByRole('menuitem', { name: 'View' }));
+  const viewMenu = screen.getByRole('menu', { name: 'View options' });
+  fireEvent.click(within(viewMenu).getByRole('menuitemradio', { name: 'Preview' }));
+
+  expect(onArrangementChange).toHaveBeenCalledWith('preview');
+  await waitFor(() =>
+    expect(screen.queryByRole('menu', { name: 'View options' })).toBeNull(),
+  );
+});
+
 it('T091 places the functional sidebar and deferred Assistant controls at the menu-row edge', () => {
   const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
   const onWorkspaceVisibilityChange = jest.fn();
@@ -380,6 +458,37 @@ it('T085 repositions a narrow File popup from the overflow anchor after a resize
   await waitFor(() =>
     expect(fileMenu).toHaveStyle({ left: '24px', top: '44px' }),
   );
+});
+
+it('T045 keeps Radix shell popups in the Popper positioning flow', () => {
+  const shellSource = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    'utf8',
+  );
+  const shellStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    'utf8',
+  );
+
+  expect(shellSource.match(/styles\.radixOverflow/g)).toHaveLength(4);
+  expect(shellStyles).toMatch(
+    /\.radixOverflow\s*\{[^}]*position:\s*relative;/s,
+  );
+  expect(shellStyles).toContain(
+    'var(--radix-dropdown-menu-content-available-height)',
+  );
+});
+
+it('T045 keeps the narrow View anchor row-relative under glass blur', () => {
+  const shellSource = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    'utf8',
+  );
+
+  expect(shellSource).toMatch(
+    /const narrowMenuAnchor[\s\S]*?position:\s*'absolute'/s,
+  );
+  expect(shellSource).toContain('ref={menuRowRef}');
 });
 
 it('FR-WS-008 switches to the keyboard-reachable overflow only at the 375-pixel state', () => {

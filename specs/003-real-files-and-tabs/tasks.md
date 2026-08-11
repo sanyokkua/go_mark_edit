@@ -299,7 +299,7 @@ the criterion on a real build. This slice owns FR-FT-017–019 exactly once.
 conflicts/deletion, one serialized explicit overlap and silent success; then run the **harness-driven real-binary** 100-trial
 measurement.
 
-- [ ] T022 [US4] Add acknowledged `FileSettings.autosave` defaulting true through the existing KV settings stack in `internal/settings/model.go`, `internal/settings/repository.go`, `internal/settings/repository_sqlite.go`, `internal/settings/repository_sqlite_test.go`, `internal/settings/service.go`, `internal/settings/service_test.go`, `internal/settings/handler.go`, `internal/settings/handler_test.go`, `frontend/src/logic/adapter/settingsTypes.ts`, `frontend/src/logic/store/settingsSlice.ts`, `frontend/src/logic/store/settingsSlice.test.ts`, `frontend/src/logic/store/settingsProjection.ts`, and `frontend/src/logic/store/settingsProjection.test.ts`.
+- [X] T022 [US4] Add acknowledged `FileSettings.autosave` defaulting true through the existing KV settings stack in `internal/settings/model.go`, `internal/settings/repository.go`, `internal/settings/repository_sqlite.go`, `internal/settings/repository_sqlite_test.go`, `internal/settings/service.go`, `internal/settings/service_test.go`, `internal/settings/handler.go`, `internal/settings/handler_test.go`, `frontend/src/logic/adapter/settingsTypes.ts`, `frontend/src/logic/store/settingsSlice.ts`, `frontend/src/logic/store/settingsSlice.test.ts`, `frontend/src/logic/store/settingsProjection.ts`, and `frontend/src/logic/store/settingsProjection.test.ts`.
   - **Outcome**: Autosave restores before the normal shell and reaches appmodel only after persistence acknowledgement; corrupt/unknown KV values fall back safely without a migration or read-triggered rewrite.
   - **Prerequisites**: T021.
   - **Primary ownership**: Settings infrastructure only; T023 is the sole FR-FT-017 owner.
@@ -682,3 +682,144 @@ any FT-VS-01 task remains incomplete.
 - Every size threshold is written as an exact byte count, never as decimal MB.
 - `docs/delivery/` stays read-only; generated bindings/database files are never hand-edited; `just package` is
   not run or claimed.
+
+## Phase 11: Convergence — Session 2026-08-09 production parity decisions
+
+**Purpose**: Implement the four approved decisions recorded in the 2026-08-09 clarification session and close the
+gaps found by the read-only convergence review. This section is append-only so the historical T035–T039 task text and
+its evidence history remain intact.
+
+**Dependency note**: T040–T043 are prerequisite remediation for the still-open T035 matrix execution. They MUST be
+implemented and verified before T035 is rerun, even though this append-only convergence phase follows the historical
+FT-VS-08 task entries. No mockup, reference image, comparator tolerance, or mask may be changed to avoid the work.
+
+**Clarification ownership addendum**: The four new decisions are CL-15 (production UI is the parity target), CL-16
+(top-row identity, overlay divider, and bottom status placement), CL-17 (empty workspace frame with zero-width deferred
+Assistant), and CL-18 (unchanged normal startup with a parity-only fixture). T040–T043 provide their implementation
+and proving evidence; the authoritative clarified-clause count is now 18, superseding the historical aggregate phrase
+in T039 without rewriting that task.
+
+- [ ] T040 [US5] Converge the production application shell to the binding mockup's in-scope geometry while preserving the empty workspace boundary in `frontend/src/ui/widgets/AppShell.tsx`, `frontend/src/ui/widgets/AppShell.module.css`, `frontend/src/ui/styles/tokens.css`, `frontend/src/ui/widgets/AppShell.test.tsx`, and the parity geometry assertions in `frontend/e2e/real-files-parity.test.ts`. The workspace MUST remain an empty frame with no folder enumeration, the Assistant column MUST remain zero-width, and the resizable workspace divider MUST overlay the boundary without consuming layout width while preserving its pointer, keyboard, persisted-width, and backend-confirmation behavior at 1280, 768, and 375 logical pixels.
+  - **Outcome**: The production shell, editor edge, workspace frame, and divider match the binding values in every supported width and palette; no coordinate normalization, broader exclusion, mockup edit, or hidden workspace/Assistant behavior is introduced.
+  - **Prerequisites**: T033 and T034; blocks T035 rerun.
+  - **Primary ownership**: CL-15, CL-16, and CL-17; supporting proof for FR-FT-045, FR-FT-046, FR-FT-049, FR-FT-050, and FR-FT-052.
+  - **Tests/evidence**: `npm --prefix frontend test -- --runInBand`; exact computed-style and bounding-box assertions at 1280/768/375; inspect the unrestricted parity harness mapping and retain any reference/actual/difference artifacts under `specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/`.
+  - **Branch/commit**: `feature/v1-implementation--003-t040-shell-parity`; `feat(ui): converge production shell geometry`.
+
+- [ ] T041 [US5] Move the real document identity surface into the top in-app menu row and remove the separate vertical identity block in `frontend/src/ui/widgets/AppShell.tsx`, `frontend/src/ui/widgets/ShellMenuRow.tsx`, `frontend/src/ui/widgets/DocumentIdentity.tsx`, their module styles and tests, and the affected parity state mappings. Preserve the safe filename, optional one-parent heading, localized save status, tooltip/path actions, accessible name, focus behavior, and normal empty/untitled startup behavior while ensuring identity does not push the editor content downward.
+  - **Outcome**: Identity occupies the binding menu-row position and the mapped editor begins at the binding top edge in all six palettes without losing file lifecycle semantics or accessibility.
+  - **Prerequisites**: T040; blocks T035 rerun.
+  - **Primary ownership**: CL-16; supporting proof for FR-FT-043, FR-FT-045, FR-FT-047, and FR-FT-052.
+  - **Tests/evidence**: `npm --prefix frontend test -- --runInBand`; named component tests for identity placement and safe labels; exact browser bounding-box assertions for `identity-not-saved`, `label-short`, `label-long-localized`, and `path-hostile-disambiguated`.
+  - **Branch/commit**: `feature/v1-implementation--003-t041-identity-row`; `feat(ui): place document identity in menu row`.
+
+- [ ] T042 [US5] Move the 28 px status surface out of `EditorView` and into the shell region below the editor content in `frontend/src/ui/widgets/EditorView.tsx`, `frontend/src/ui/widgets/AppShell.tsx`, `frontend/src/ui/components/StatusBar.tsx`, the related module styles and tests, and the affected parity state mappings. Preserve encoding, line-ending, autosave, read-only, cursor, arrangement, responsive drop order, accessible detail, and no-wrap behavior while making the status row part of the bottom editor-area layout rather than the document content.
+  - **Outcome**: Status is exactly 28 px high below the editor content, does not grow the pane or wrap, and matches the binding placement across palettes and assigned widths.
+  - **Prerequisites**: T040; blocks T035 rerun.
+  - **Primary ownership**: CL-16; supporting proof for FR-FT-044, FR-FT-045, FR-FT-046, and FR-FT-052.
+  - **Tests/evidence**: `npm --prefix frontend test -- --runInBand`; named StatusBar and EditorView tests; exact computed-style and bounding-box assertions for `status-saved`, `status-autosaved`, `status-unsaved-changes`, `status-read-only`, `status-mixed-ending`, and `status-large-file`.
+  - **Branch/commit**: `feature/v1-implementation--003-t042-status-placement`; `feat(ui): place status below editor content`.
+
+- [ ] T043 [US5] Complete deterministic actual-state preparation for all 40 additional parity IDs in `frontend/e2e/real-files-parity.test.ts`, `frontend/e2e/parity/manifest.ts`, `frontend/e2e/parity/reference-server.ts`, `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`, `frontend/src/dev/bridge-mock/appModel.test.ts`, and `specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/`. Replace every unexposed actual-state failure with an explicit state-to-fixture transition; keep populated multi-document seed data restricted to the parity route and assert that ordinary startup remains unchanged. Each state MUST be mapped and captured independently without hiding production drift through masks or tolerance changes.
+  - **Outcome**: T035 can execute the unrestricted 546-case matrix with actual state for every additional ID, exactly 1,638 comparisons, and retained failure triplets; normal startup still uses its existing empty/untitled behavior.
+  - **Prerequisites**: T040, T041, T042, and T034; blocks T035 rerun.
+  - **Primary ownership**: CL-17 and CL-18; supporting proof for FR-FT-049, FR-FT-051, FR-FT-054, FR-FT-055, and FR-FT-056.
+  - **Tests/evidence**: `npm --prefix frontend test -- --runInBand`; unrestricted `npm --prefix frontend run verify:ui -- e2e/real-files-parity.test.ts`; inspect the per-state coverage table, 546-key manifest, 1,638-comparison report, normal-startup test, and raw failure artifacts.
+  - **Branch/commit**: `feature/v1-implementation--003-t043-parity-state-fixtures`; `test(ui): expose all parity state fixtures`.
+
+- [ ] T044 [US5] Reconcile the release evidence and coverage ledger with the four approved 2026-08-09 decisions in `specs/003-real-files-and-tabs/evidence/ft-vs-08/`, `specs/003-real-files-and-tabs/evidence/ft-ev-09/coverage-ledger.md`, `specs/003-real-files-and-tabs/evidence/ft-ev-09/current-host-walkthrough.md`, and `specs/003-real-files-and-tabs/evidence/ft-ev-09/gates/`. The final ledger MUST name CL-15–CL-18, report 18 clarified clauses, demonstrate the empty workspace and zero-width Assistant boundary, prove unchanged normal startup versus parity-only fixture startup, and classify same-browser production drift separately from native-host differences.
+  - **Outcome**: Release evidence cannot claim convergence while any approved decision, production UI gap, stale aggregate count, or deferred-surface boundary is unproven; T039's historical 14-clause wording is superseded by this append-only evidence addendum.
+  - **Prerequisites**: T040–T043 and T039.
+  - **Primary ownership**: Aggregate traceability and release evidence only; no FR/SC takeover.
+  - **Tests/evidence**: Inspect every named artifact, run `just verify 003-real-files-and-tabs` after T035–T037 are green, and retain the raw unrestricted matrix, regression, current-host, and gate outputs without running `just package`.
+  - **Branch/commit**: `feature/v1-implementation--003-t044-clarification-evidence`; `test(evidence): reconcile parity decision coverage`.
+
+## Phase 12: Convergence — T035 production drift and preparation remediation
+
+**Purpose**: Close the two evidence-backed gaps found after the T040–T043 implementation pass. This section is append-only; the immutable binding mockup, fixed parity mappings, comparator, masks, and tolerances remain unchanged.
+
+- [ ] T045 [US5] Resolve the fixed parity geometry drift in the production shell/editor region per FR-FT-045, FR-FT-050, FR-FT-052, and CL-15–CL-17 (`partial`). Reconcile the rendered `section[aria-label="Editor view"]` and its surrounding shell with the immutable `#app .content` binding metrics at 1280, 768, and 375 logical pixels across all six palettes, while preserving the empty workspace frame, zero-width Assistant, top-row identity, overlay divider, and 28 px bottom status placement. Do not change the reference HTML/CSS, selector mapping, coordinate handling, masks, pixel tolerance, or comparator.
+  - **Outcome**: The fixed editor-family mappings no longer report the observed bounds/style/pixel drift; any remaining mismatch retains reference, actual, difference, metrics, and raw-status artifacts and keeps T035 open.
+  - **Prerequisites**: T040–T043 and T034.
+  - **Primary ownership**: FR-FT-045, FR-FT-050, and FR-FT-052; remediation for CL-15–CL-17 and T035.
+  - **Tests/evidence**: Add or update exact computed-style and bounding-box assertions for 1280/768/375, run the relevant unrestricted parity families, then run unrestricted `npm --prefix frontend run verify:ui -- e2e/real-files-parity.test.ts`; inspect the retained editor-family triplets without normalizing geometry.
+  - **Branch/commit**: `feature/v1-implementation--003-t045-parity-geometry`; `fix(ui): converge fixed parity geometry`.
+
+- [ ] T046 [US5] Repair deterministic actual-state preparation and reference navigation for every T035 setup failure per FR-FT-051, FR-FT-054, FR-FT-055, FR-FT-056, and CL-17–CL-18 (`partial`). Make the 375px Settings overflow transition and 1280px toast Save transition operate through real controls, ensure repeated reference navigation verifies the immutable source without false missing-header failures, and retain independent per-state coverage for all 40 additional IDs. Keep populated multi-document data parity-route-only and preserve ordinary startup unchanged; do not change the fixed mappings, mockup, masks, tolerances, or comparator.
+  - **Outcome**: Every assigned state reaches a truthful mapped capture, the report distinguishes planned, attempted, completed, passed, and failed comparisons, and an unrestricted run records exactly 546 logical cases and 1,638 comparisons with retained failure artifacts when applicable.
+  - **Prerequisites**: T043, T045, and T034.
+  - **Primary ownership**: FR-FT-051, FR-FT-054–056; remediation for CL-17–CL-18 and T035.
+  - **Tests/evidence**: Add focused bridge/harness tests for the two failed transitions and reference-source verification, run the unrestricted parity test, inspect the 546-key manifest, per-state coverage, three-run hashes, and raw failure artifacts, and confirm the ordinary startup fixture remains unchanged.
+  - **Branch/commit**: `feature/v1-implementation--003-t046-parity-preparation`; `fix(ui): complete deterministic parity preparation`.
+
+### T045 decision addendum — Session 2026-08-09
+
+- **Decision**: Preserve CL-17 and FR-FT-049. The fixed reference mapping is revised to an explicit zero-Assistant
+  adapter region using the mockup's existing `.app.no-assistant` class; the production Assistant remains
+  zero-width and deferred.
+- **Allowed change**: The parity adapter/server may apply that existing class and the editor mapping may name
+  `#app.no-assistant .content`. This is a reviewed reference-boundary change, not a mockup HTML/CSS edit or a
+  production behavior change; the immutable source hash remains the raw mockup hash. This narrow addendum
+  supersedes T045's selector-mapping prohibition only for this explicit zero-Assistant mapping.
+- **Still prohibited**: Coordinate normalization, masks, pixel-tolerance changes, comparator changes, replacing
+  the reference with the application, or adding Assistant/workspace behavior. The retained vertical harness
+  shrink and any other genuine mismatch remain evidence-backed T035 work until resolved or explicitly deferred.
+  T046's prohibition on changing fixed mappings applies after this reviewed mapping decision.
+
+## Phase 13: Convergence — acknowledged autosave status projection
+
+**Purpose**: Close the runtime status gap found by the read-only convergence audit. The settings projection already
+stores the acknowledged file autosave value, but the shell-owned status surface currently falls back to `false`.
+
+- [ ] T047 [US5] Wire the acknowledged `state.settings.file.autosave` value into the shell-owned status detail in `frontend/src/ui/widgets/AppShell.tsx`, `frontend/src/ui/components/StatusBar.tsx`, `frontend/src/ui/widgets/AppShell.test.tsx`, `frontend/src/ui/components/StatusBar.test.tsx`, and the mapped status cases in `frontend/e2e/real-files-parity.test.ts`. The status detail MUST report the persisted/default On state and an acknowledged Off state accurately, while preserving backend-authoritative `Saved`/`Autosaved`/`Unsaved changes`/`Read-only` status, no catch-up write when autosave is disabled, and the existing accessible detail surface.
+  - **Outcome**: A real settings toggle and the default settings projection produce the matching visible autosave state in the status detail; no status surface claims Autosave Off solely because the prop was omitted, and no file write is introduced by rendering the state.
+  - **Prerequisites**: T022, T024, T031, and T042.
+  - **Primary ownership**: FR-FT-044; supporting proof for FR-FT-017–018 and SC-FT-009/SC-FT-013.
+  - **Tests/evidence**: Add component/projection coverage for acknowledged On and Off values, run the real-control status cases at the assigned parity widths and palettes, and retain the resulting status evidence without changing the reference, mapping, mask, tolerance, or comparator.
+  - **Branch/commit**: `feature/v1-implementation--003-t047-status-autosave-wiring`; `fix(ui): project autosave setting into status`.
+
+## Phase 14: Convergence — bounded stable reads and file-only reopen label
+
+- [X] T048 Bound the stable raw-byte hash read to the configured 52,428,801-byte classification cap and detect growth races in `internal/file/document_reader.go`, with regression coverage in `internal/file/document_reader_test.go`, per FR-FT-005 and FR-FT-020 (partial).
+- [X] T049 Replace the `Reopen last file / folder` label and its browser/accessibility assertions with the exact `Reopen last file` contract, while keeping Open Folder visibly unavailable and folder behavior deferred, per FR-FT-041 and FR-FT-042 (contradicts).
+
+## Phase 15: Convergence — T046 harness and fixture remediation
+
+**Purpose**: Decompose the remaining T046 gaps exposed by the latest unrestricted run into dependency-ordered
+harness/fixture work. This section is append-only. The binding mockup, fixed region mapping, zero-Assistant boundary,
+coordinate handling, reviewed masks, pixel tolerance, and comparator remain immutable.
+
+- [ ] T050 [US5] Repair reference navigation and readiness for every mapped family/viewport in `frontend/e2e/real-files-parity.test.ts`, `frontend/e2e/parity/reference-server.ts`, `frontend/e2e/parity/reference-server.test.ts`, and `frontend/e2e/parity/reference-adapter.test.ts`. After each immutable-source navigation, palette selection, width selection, and screen selection, assert the expected hash/variant, selected screen marker, required application class, and mapped selector visibility before capture; cover the four primary menus, 375px editor/preview/toolbar/prompt/settings screens, and the currently incomplete additional-state screens. The fix MUST eliminate the 738 retained reference-selector waits without changing the mockup source, mapping, coordinate handling, masks, tolerance, or comparator.
+  - **Outcome**: Every planned capture reaches the intended reference screen or fails with a stage-specific navigation/readiness error; no capture observes a stale screen, hidden mapped region, or false missing-header condition.
+  - **Prerequisites**: T046, T045, and T034.
+  - **Primary ownership**: FR-FT-051, FR-FT-054–055; remediation for the reference-navigation portion of T046.
+  - **Tests/evidence**: Add focused navigation tests for every `ReferenceVariant` and mapped screen class at 1280, 768, and 375 where assigned; run the unrestricted parity test and inspect that the 738 incomplete rows are gone while all source, adapter, manifest, and mapping hashes remain unchanged.
+  - **Branch/commit**: `feature/v1-implementation--003-t050-reference-readiness`; `test(ui): stabilize parity reference readiness`.
+
+- [ ] T051 [US5] Isolate the parity-only launcher fixture in `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`, `frontend/src/dev/bridge-mock/appModel.test.ts`, `frontend/e2e/real-files-and-tabs.test.ts`, and `frontend/e2e/real-files-parity.test.ts`. Ensure the primary empty route does not inherit the FT-VS-07 `t032-recent-*` seed or emit a stale `not_found` notification; define deterministic file-only recent entries for the binding launcher, plus separate first-run and maximum-six state setup, while keeping Open Folder unavailable, recent folders absent, and ordinary startup unchanged.
+  - **Outcome**: `empty`, `launcher-first-run`, and `launcher-six-file` each reach their assigned truthful fixture through the parity route, with no cross-test recent-file leakage, stale notification, or automatic document restore; the retained launcher evidence has the expected file-only state and overflow metrics.
+  - **Prerequisites**: T050, T043, and T034.
+  - **Primary ownership**: FR-FT-042, FR-FT-049, FR-FT-054, and FR-FT-056; remediation for the launcher portion of T046.
+  - **Tests/evidence**: Extend bridge tests for route-scoped recent seeds and reset isolation; run the FT-VS-07 normal-startup regression and the three launcher assignments across six palettes, inspecting recent labels, notification absence, Open Folder unavailability, and retained reference/actual/difference artifacts.
+  - **Branch/commit**: `feature/v1-implementation--003-t051-launcher-fixture`; `test(ui): isolate parity launcher fixtures`.
+
+- [ ] T052 [US5] Complete the real-control transitions and behavior-owned fixtures for settings overflow, toast Save, preview, and recovery prompts in `frontend/e2e/real-files-parity.test.ts`, `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`, `frontend/src/dev/bridge-mock/appModel.test.ts`, and the affected browser regression tests. Drive the 375px Settings path through its overflow menu, drive the 1280px toast state through Save, and seed/assert the correct active `release-notes.md` document, large-file preview state, normalization/resync close plan, quit-discard-newer state, and editable/truncated/metadata-only/read-only disk conflicts before capture.
+  - **Outcome**: Every named transition is reached through an actual accessible control, the target state is asserted before the mapped screenshot, prompt text and buttons describe the intended document/conflict variant, preview controls expose the assigned paused/busy/failed state, and toast content is produced by the real Save outcome rather than a leftover notification.
+  - **Prerequisites**: T050, T051, T043, and T045.
+  - **Primary ownership**: FR-FT-051, FR-FT-054, and FR-FT-056; remediation for the explicit transition and behavior-fixture portions of T046.
+  - **Tests/evidence**: Add focused bridge/harness tests for each transition and each recovery variant; run the assigned 375px/1280px state cases in the unrestricted matrix and inspect the active document identity, conflict metadata/content bounds, preview state, toast code, and failure artifacts.
+  - **Branch/commit**: `feature/v1-implementation--003-t052-parity-transitions`; `test(ui): complete parity control transitions`.
+
+- [ ] T053 [US5] Complete state-aware reference/actual pairing for all 40 additional IDs in `frontend/e2e/real-files-parity.test.ts`, `frontend/e2e/parity/manifest.ts`, `frontend/e2e/parity/reference-server.ts`, and the parity fixture tests without changing the fixed `SURFACES` region mapping or the immutable mockup. Give each assigned state an explicit readiness assertion on both pages, use only existing mockup controls and reviewed adapter variants for reference state preparation, and fail closed when a state has no source-supported reference condition instead of reusing a neighboring state or silently comparing a base screen. Preserve the one-capture/one-state rule.
+  - **Outcome**: All 40 state IDs have six palette rows at their assigned width, each reference and actual page is demonstrably in the named state, no additional state is represented by a duplicate or stale base capture, and any unsupported reference condition is reported as an explicit unresolved contract rather than counted as parity.
+  - **Prerequisites**: T050–T052 and T034.
+  - **Primary ownership**: FR-FT-051, FR-FT-054–056 and SC-FT-009; remediation for the remaining per-state portion of T046.
+  - **Tests/evidence**: Add a state-to-readiness ledger test covering all 40 IDs and `assertNoCaptureSatisfiesTwoStates`; run the unrestricted matrix, inspect the 40×6 coverage rows and reference/actual hashes, and retain all failure artifacts without altering mapping, masks, tolerance, or comparator.
+  - **Branch/commit**: `feature/v1-implementation--003-t053-state-pairing`; `test(ui): prove independent parity state pairing`.
+
+- [ ] T054 [US5] Close the T046 evidence contract in `frontend/e2e/real-files-parity.test.ts` and `specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/` by making the unrestricted run report planned, attempted, reference-ready, actual-ready, comparison-completed, passed, and failed counts separately for every manifest key and repetition. Keep the compact manifest/state/hash reports source-controlled candidates while retaining failure triplets locally under the existing ignored per-case tree; do not add thousands of generated case files to Git.
+  - **Outcome**: A clean unrestricted run proves 546 logical keys, three repetitions, and 1,638 comparisons with deterministic hashes and zero failures; an incomplete or failed setup is visibly distinct from a completed pixel/metric failure, and no aggregate gate can claim completion when any state row is missing or unpaired.
+  - **Prerequisites**: T050–T053 and T034.
+  - **Primary ownership**: FR-FT-051, FR-FT-054–055, SC-FT-009, and SC-FT-012; final evidence remediation for T046/T035.
+  - **Tests/evidence**: Run three unchanged unrestricted repetitions, inspect the compact manifest report, 40-state coverage report, hash report, source hashes, and representative raw failure artifacts; verify `git ls-files specs/003-real-files-and-tabs/evidence/ft-vs-08/parity` does not include the generated per-case tree and run the normal-startup regression.
+  - **Branch/commit**: `feature/v1-implementation--003-t054-parity-evidence`; `test(evidence): close unrestricted parity accounting`.

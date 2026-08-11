@@ -3,6 +3,7 @@
   font-size: var(--preview-font-size);
   line-height: var(--preview-line-height);
   overflow-wrap: anywhere;
+  padding: var(--preview-content-padding);
 }
 
 .preview h1 {
@@ -44,11 +45,32 @@
 
 .preview :is(h1, h2, h3, h4, h5, h6) {
   line-height: var(--preview-heading-line-height);
-  margin-block: var(--preview-block-spacing) var(--preview-inline-spacing);
+}
+
+.preview h1 {
+  margin: 0 0 12px;
+}
+
+.preview h2 {
+  margin: 20px 0 9px;
 }
 
 .preview :is(p, ul, ol, pre, blockquote, table) {
   margin-block: var(--preview-block-spacing);
+}
+
+.preview p,
+.preview ul,
+.preview ol {
+  margin: 9px 0;
+}
+
+.preview li {
+  margin: 5px 0;
+}
+
+.preview blockquote {
+  margin: 12px 0;
 }
 
 .preview :is(ul, ol) {

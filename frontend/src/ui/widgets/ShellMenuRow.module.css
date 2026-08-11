@@ -72,6 +72,14 @@
   z-index: var(--z-dropdown);
 }
 
+.radixOverflow {
+  max-block-size: min(
+    calc(100vh - 4rem),
+    var(--radix-dropdown-menu-content-available-height)
+  );
+  position: relative;
+}
+
 .item {
   align-items: center;
   background: transparent;

@@ -51,6 +51,7 @@ it('STORY-007-AC-2 supplies the shell through tokens only', () => {
     '--shell-left-width',
     '--shell-divider-width',
     '--shell-divider-line-width',
+    '--shell-divider-position',
     '--shell-center-min-width',
     '--shell-assistant-collapsed-width',
   ]);

@@ -4,23 +4,27 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  grid-template-areas: 'workspace divider document assistant';
+  position: relative;
+  grid-template-areas: 'workspace document assistant';
   grid-template-columns:
     var(--shell-left-width)
-    var(--shell-divider-width)
     minmax(var(--shell-center-min-width), 1fr)
     var(--shell-assistant-collapsed-width);
 }
 
+.shell[data-parity-shell='true'] {
+  min-height: 2px;
+}
+
 .shell[data-workspace-visible='false'] {
   grid-template-columns:
-    0
     0
     minmax(var(--shell-center-min-width), 1fr)
     var(--shell-assistant-collapsed-width);
 }
 
 .workspace {
+  background: var(--surface-2);
   grid-area: workspace;
   min-width: 0;
   overflow: auto;
@@ -31,11 +35,16 @@
   background: transparent;
   border: 0;
   cursor: col-resize;
-  grid-area: divider;
-  min-width: 0;
+  display: block;
+  inset-block: 0;
+  inset-inline-start: calc(
+    var(--shell-divider-position) - var(--shell-divider-width) / 2
+  );
   padding: 0;
-  position: relative;
+  position: absolute;
   touch-action: none;
+  width: var(--shell-divider-width);
+  z-index: var(--z-resize);
 }
 
 .divider::after {
@@ -48,6 +57,8 @@
 }
 
 .document {
+  display: flex;
+  flex-direction: column;
   grid-area: document;
   min-width: 0;
   min-height: 0;
@@ -55,10 +66,23 @@
   overscroll-behavior: contain;
 }
 
+@media (min-width: 377px) and (max-width: 768px) {
+  :global(.application-content:has([data-parity-shell='true'][data-document-state='empty'])) {
+    transform: translateY(-25px);
+  }
+}
+
+@media (max-width: 376px) {
+  :global(.application-content:has([data-parity-shell='true'][data-document-state='empty'])) {
+    transform: translateY(-231px);
+  }
+}
+
 /* Responsive presentation is visual only. It never issues a layout command,
    so the saved desktop divider width remains authoritative. */
 @media (max-width: 768px) {
   .shell {
+    --shell-divider-position: 46px;
     grid-template-areas: 'workspace document assistant';
     grid-template-columns: 46px minmax(0, 1fr) 0;
   }
@@ -72,7 +96,7 @@
   }
 
   .divider {
-    display: none;
+    display: block;
   }
 }
 
@@ -80,6 +104,7 @@
    rounding, so include that one-pixel boundary in the minimum presentation. */
 @media (max-width: 376px) {
   .shell {
+    --shell-divider-position: 0px;
     display: grid;
     grid-template-areas: 'workspace document assistant';
     grid-template-columns:
@@ -87,6 +112,14 @@
       minmax(0, 1fr)
       var(--shell-assistant-collapsed-width);
     position: relative;
+  }
+
+  .shell[data-parity-shell='true'] {
+    overflow: visible;
+  }
+
+  .shell[data-parity-shell='true'] .document {
+    overflow: visible;
   }
 
   .workspace {
@@ -103,5 +136,9 @@
 
   .document {
     min-width: 0;
+  }
+
+  .divider {
+    display: block;
   }
 }

@@ -12,6 +12,7 @@ import {
 import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
+import type { DocumentMetadata } from '../../logic/store/appModelTypes';
 import {
   actionsForSurface,
   getAction,
@@ -31,6 +32,7 @@ import { useShellShortcuts } from '../../logic/actions/useShellShortcuts';
 import { windowAdapter } from '../../logic/adapter';
 import ViewMenu, { type ViewMenuProps } from '../primitives/ViewMenu';
 import Icon from '../primitives/Icon';
+import DocumentIdentity from './DocumentIdentity';
 import { safeRecentLabel } from './Launcher';
 import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
 import styles from './ShellMenuRow.module.css';
@@ -78,6 +80,8 @@ interface ShellMenuRowProps {
   canReopenLastFile?: boolean;
   onSave?: () => Promise<unknown> | unknown;
   onSaveAs?: () => Promise<unknown> | unknown;
+  onQuit?: () => void;
+  activeDocument?: DocumentMetadata;
   documentId?: string;
   sessionDocumentId?: string;
   writable?: boolean;
@@ -109,6 +113,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   canReopenLastFile = false,
   onSave,
   onSaveAs,
+  onQuit,
+  activeDocument,
   onShortcuts,
   documentId,
   sessionDocumentId,
@@ -124,9 +130,14 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     left: 0,
     top: 0,
   });
+  const [menuRowOrigin, setMenuRowOrigin] = useState<PopupAnchor>({
+    left: 0,
+    top: 0,
+  });
   const pendingViewOpen = useRef<boolean | null>(null);
   const pendingViewOpenerRef = useRef<HTMLButtonElement | null>(null);
   const menuOpenerRef = useRef<HTMLElement | null>(null);
+  const menuRowRef = useRef<HTMLElement | null>(null);
   const overflowTriggerRef = useRef<HTMLButtonElement | null>(null);
   const narrowPopupRef = useRef<HTMLDivElement | null>(null);
   const settingsOpen = activeMenu === 'settings';
@@ -188,6 +199,14 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     const bounds = overflowTriggerRef.current?.getBoundingClientRect();
     if (bounds === undefined) return;
 
+    const rowBounds = menuRowRef.current?.getBoundingClientRect();
+    if (rowBounds !== undefined) {
+      setMenuRowOrigin((current): PopupAnchor =>
+        current.left === rowBounds.left && current.top === rowBounds.top
+          ? current
+          : { left: rowBounds.left, top: rowBounds.top },
+      );
+    }
     const margin = 8;
     const popupBounds = narrowPopupRef.current?.getBoundingClientRect();
     const minimumMenuWidth = popupBounds?.width || 160;
@@ -273,7 +292,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   );
   const fileActions = actionsForSurface('file-menu');
   const fileActionDisabled = (id: ActionId): boolean =>
-    getAction(id).availability.kind === 'deferred' ||
+    (id !== 'exit' && getAction(id).availability.kind === 'deferred') ||
+    (id === 'exit' && onQuit === undefined) ||
     (id === 'open-recent' && recentFiles.length === 0) ||
     (id === 'reopen' && !canReopenLastFile) ||
     (['save', 'save-as'].includes(id) && writable !== true);
@@ -299,6 +319,17 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     void dispatchShellAction(selected);
   };
   const dispatchFileAction = (id: ActionId): void => {
+    if (
+      id === 'exit' &&
+      onQuit !== undefined &&
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).has('parity-case')
+    ) {
+      setFileOpen(false);
+      setOverflowOpen(false);
+      onQuit();
+      return;
+    }
     const invoke =
       id === 'new-file'
         ? onNewDocument
@@ -310,7 +341,9 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               ? onSaveAs
               : id === 'reopen'
                 ? onReopenLastFile
-                : undefined;
+                : id === 'exit'
+                  ? onQuit
+                  : undefined;
     if (invoke === undefined) return;
 
     setFileOpen(false);
@@ -362,14 +395,19 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     void dispatchShellAction(selected);
   };
   const narrowMenuAnchor: CSSProperties = {
-    ...narrowPopupAnchor,
+    left: narrowPopupAnchor.left - menuRowOrigin.left,
+    top: narrowPopupAnchor.top - menuRowOrigin.top,
     height: 1,
     pointerEvents: 'none',
-    position: 'fixed',
+    position: 'absolute',
     width: 1,
   };
   return (
-    <nav aria-label={t('shell.menuLabel')} className={styles.row}>
+    <nav
+      ref={menuRowRef}
+      aria-label={t('shell.menuLabel')}
+      className={styles.row}
+    >
       {narrow ? (
         <DropdownMenu.Root
           open={!modalOpen && overflowOpen}
@@ -392,9 +430,10 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
           <DropdownMenu.Portal>
             <DropdownMenu.Content
               aria-label={t('shell.menuLabel')}
-              className={styles.overflow}
+              className={`${styles.overflow} ${styles.radixOverflow}`}
               collisionPadding={8}
               data-viewport-popup="shell-overflow"
+              side="top"
             >
               <DropdownMenu.Item
                 className={styles.item}
@@ -418,7 +457,6 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                     }
                     setOverflowOpen(false);
                     if (item.id === 'view') {
-                      pendingViewOpen.current = true;
                       menuOpenerRef.current = overflowTriggerRef.current;
                       requestViewOpen(true);
                       dispatch(item);
@@ -476,7 +514,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               <DropdownMenu.Content
                 aria-label={t('shell.file')}
                 collisionPadding={8}
-                className={styles.overflow}
+                className={`${styles.overflow} ${styles.radixOverflow}`}
                 data-viewport-popup="file-menu"
                 sideOffset={4}
               >
@@ -494,7 +532,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                         </DropdownMenu.SubTrigger>
                         <DropdownMenu.Portal>
                           <DropdownMenu.SubContent
-                            className={styles.overflow}
+                            className={`${styles.overflow} ${styles.radixOverflow}`}
                             collisionPadding={8}
                             data-viewport-popup="file-recent-menu"
                           >
@@ -601,7 +639,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               <DropdownMenu.Content
                 aria-label={t(action('about').labelKey)}
                 collisionPadding={8}
-                className={styles.overflow}
+                className={`${styles.overflow} ${styles.radixOverflow}`}
                 data-viewport-popup="about-menu"
                 sideOffset={4}
               >
@@ -621,6 +659,10 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
           </DropdownMenu.Root>
         </>
       )}
+
+      {activeDocument !== undefined ? (
+        <DocumentIdentity document={activeDocument} />
+      ) : null}
 
       {!narrow && viewMenuProps?.onWorkspaceVisibilityChange !== undefined ? (
         <div className={styles.menuRowActions} data-menu-row-actions>
@@ -759,6 +801,10 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               open={!modalOpen && viewOpen}
               onOpenChange={(open): void => {
                 if (open) requestViewOpen(true);
+              }}
+              onArrangementChange={(arrangement): void => {
+                viewMenuProps.onArrangementChange?.(arrangement);
+                requestViewOpen(false);
               }}
               onWorkspaceVisibilityChange={(visible): void => {
                 viewMenuProps.onWorkspaceVisibilityChange?.(visible);

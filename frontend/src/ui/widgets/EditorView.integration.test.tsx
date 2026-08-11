@@ -105,6 +105,14 @@ function resetMockMonaco(): void {
     getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
     getSelection: jest.fn(() => mockRuntime.selection),
     layout: jest.fn(),
+    setSelection: jest.fn((selection: IRange): void => {
+      mockRuntime.selection = {
+        selectionStartLineNumber: selection.startLineNumber,
+        selectionStartColumn: selection.startColumn,
+        positionLineNumber: selection.endLineNumber,
+        positionColumn: selection.endColumn,
+      } as ISelection;
+    }),
     onDidBlurEditorText: jest.fn(() => ({ dispose: jest.fn() })),
     onDidChangeCursorPosition: jest.fn(
       (listener: (event: editor.ICursorPositionChangedEvent) => void) => {
@@ -121,8 +129,26 @@ function resetMockMonaco(): void {
     ),
     onDidScrollChange: jest.fn(() => ({ dispose: jest.fn() })),
     pushUndoStop: jest.fn(),
-    restoreViewState: jest.fn(),
-    saveViewState: jest.fn(() => mockRuntime.viewState),
+    restoreViewState: jest.fn(
+      (viewState: editor.ICodeEditorViewState | null): void => {
+        const selection = (viewState as (editor.ICodeEditorViewState & {
+          selection?: ISelection;
+        }) | null)?.selection;
+        if (selection !== undefined) {
+          mockRuntime.selection = { ...selection } as ISelection;
+        }
+      },
+    ),
+    saveViewState: jest.fn((): editor.ICodeEditorViewState => {
+      const viewState = mockRuntime.viewState as editor.ICodeEditorViewState & {
+        selection?: ISelection;
+      };
+      viewState.selection =
+        mockRuntime.selection === null
+          ? undefined
+          : { ...mockRuntime.selection };
+      return viewState;
+    }),
   } as unknown as editor.IStandaloneCodeEditor;
   mockRuntime.props = null;
 }
@@ -294,11 +320,12 @@ async function renderStatusEditor(
 
   mockedAdapter.getState.mockResolvedValue(initialState);
   await bootstrapAppModelProjection(appModelAdapter);
+  const { default: AppShell } = await import('./AppShell');
 
   render(
     <Provider store={store}>
       <EditorSessionContext.Provider value={initialState.activeBuffer}>
-        <EditorView />
+        <AppShell />
       </EditorSessionContext.Provider>
     </Provider>,
   );
@@ -597,7 +624,7 @@ it('STORY-016-AC-2 displays live one-based cursor position without Redux truth',
   const workingCopy = 'Monaco-only working copy';
   await renderStatusEditor(statusDocument(), workingCopy);
 
-  const status = await screen.findByRole('contentinfo', {
+  const status = await screen.findByRole('status', {
     name: 'Document status',
   });
   expect(status).toHaveTextContent('Ln 1, Col 1');
@@ -626,7 +653,7 @@ it('STORY-016-AC-3 renders higher-revision backend word count without Monaco or 
   const document = statusDocument({ wordCount: 0 });
   await renderStatusEditor(document, workingCopy);
 
-  const status = await screen.findByRole('contentinfo', {
+  const status = await screen.findByRole('status', {
     name: 'Document status',
   });
   expect(status).toHaveTextContent('0 words');
@@ -652,7 +679,7 @@ it('STORY-016-AC-4 reflects a backend Preview-only view patch in the status bar'
   const document = statusDocument();
   await renderStatusEditor(document, '# Backend preview');
 
-  const status = await screen.findByRole('contentinfo', {
+  const status = await screen.findByRole('status', {
     name: 'Document status',
   });
   expect(status).toHaveTextContent('Split');
@@ -692,7 +719,7 @@ it('STORY-016-AC-5 formats Phase-01 canonical wire metadata labels', async () =>
     'Untitled buffer',
   );
 
-  const status = await screen.findByRole('contentinfo', {
+  const status = await screen.findByRole('status', {
     name: 'Document status',
   });
 
@@ -757,6 +784,37 @@ it('STORY-017-AC-4 keeps preview text outside Redux', () => {
   expect(JSON.stringify(store.getState())).not.toContain(
     'Ignored after cleanup',
   );
+});
+
+it('T045 keeps the editor region in binding content order without an extra wrapper', async () => {
+  await renderStatusEditor(
+    statusDocument({
+      view: {
+        arrangement: 'split',
+        editorVisible: true,
+        previewVisible: true,
+        cursor: { line: 1, column: 1 },
+        selection: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 1 },
+        },
+        scroll: { editor: 0, preview: 0 },
+      },
+    }),
+    '# Release Notes — v2.1',
+  );
+
+  const editorRegion = screen.getByRole('region', { name: 'Editor view' });
+  expect(editorRegion.querySelector(':scope > header')).toBeNull();
+  expect(
+    editorRegion.querySelector(':scope > [role="tablist"]'),
+  ).not.toBeNull();
+  expect(
+    editorRegion.querySelector(':scope > [role="toolbar"]'),
+  ).not.toBeNull();
+  expect(
+    editorRegion.querySelector(':scope > [class*="panes"]'),
+  ).not.toBeNull();
 });
 
 it('STORY-017-AC-5 renders accepted GFM within the debounce target', async () => {

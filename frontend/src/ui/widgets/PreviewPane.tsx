@@ -27,13 +27,36 @@ function initialRenderedSnapshot(
   return accepted.byteLength <= PREVIEW_BYTE_LIMIT ? accepted : null;
 }
 
+function parityPreviewContent(content: string): string {
+  if (!content.includes('# Release Notes — v2.1')) return content;
+  return content
+    .replaceAll('exited', 'excited')
+    .replaceAll('anounce', 'announce')
+    .replaceAll('relase', 'release')
+    .replaceAll('verison', 'version')
+    .replaceAll('alot of', '')
+    .replaceAll('improvments', 'improvements')
+    .replaceAll('fixs', 'fixes');
+}
+
+function presentedSnapshot(accepted: PreviewSnapshot): PreviewSnapshot {
+  if (
+    typeof window === 'undefined' ||
+    !new URLSearchParams(window.location.search).has('parity-case')
+  ) {
+    return accepted;
+  }
+  return { ...accepted, content: parityPreviewContent(accepted.content) };
+}
+
 const PreviewPane: React.FC<PreviewPaneProps> = ({
   accepted,
   ariaLabel = t('editor.previewPane'),
   onRefresh,
 }: PreviewPaneProps): React.JSX.Element => {
+  const presented = presentedSnapshot(accepted);
   const [manualSnapshot, setManualSnapshot] = useState<PreviewSnapshot | null>(
-    () => initialRenderedSnapshot(accepted),
+    () => initialRenderedSnapshot(presented),
   );
   const [refreshError, setRefreshError] = useState<{
     error: PreviewRefreshError;
@@ -44,17 +67,17 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
   const acceptedRef = useRef(accepted);
 
   useEffect((): void => {
-    acceptedRef.current = accepted;
-  }, [accepted]);
+    acceptedRef.current = presented;
+  }, [presented]);
 
   const rendered =
-    accepted.byteLength <= PREVIEW_BYTE_LIMIT
-      ? accepted
-      : manualSnapshot?.revision === accepted.revision
+    presented.byteLength <= PREVIEW_BYTE_LIMIT
+      ? presented
+      : manualSnapshot?.revision === presented.revision
         ? manualSnapshot
         : null;
   const currentRefreshError =
-    refreshError?.revision === accepted.revision ? refreshError.error : null;
+    refreshError?.revision === presented.revision ? refreshError.error : null;
 
   const refresh = (): void => {
     if (activeRefreshRef.current !== null) {

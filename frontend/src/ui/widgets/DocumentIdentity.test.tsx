@@ -88,3 +88,20 @@ it('identity heading keeps at most one parent segment', () => {
     1,
   );
 });
+
+it('identity heading does not add an empty parent to an untitled document', () => {
+  render(
+    <DocumentIdentity
+      document={{
+        ...documentFor('not-saved'),
+        title: 'Untitled',
+        path: '',
+        displayName: undefined,
+        parentName: undefined,
+      }}
+    />,
+  );
+
+  expect(screen.getByRole('heading')).toHaveTextContent('Untitled');
+  expect(screen.getByRole('heading')).not.toHaveTextContent('/');
+});

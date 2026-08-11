@@ -1,5 +1,5 @@
 import * as RadixToast from '@radix-ui/react-toast';
-import type { PropsWithChildren } from 'react';
+import { useEffect, type PropsWithChildren } from 'react';
 
 import { formatNumber, t } from '../../i18n';
 import type {
@@ -79,3 +79,51 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
     </div>
   </RadixToast.Root>
 );
+
+export const ParityToastSurface: React.FC = (): React.JSX.Element => {
+  useEffect((): (() => void) => {
+    const keepParityToastRouteAtTop = (): void => {
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+    };
+    keepParityToastRouteAtTop();
+    window.addEventListener('scroll', keepParityToastRouteAtTop, {
+      passive: true,
+    });
+    return (): void => {
+      window.removeEventListener('scroll', keepParityToastRouteAtTop);
+    };
+  }, []);
+
+  return (
+    <div className={styles.parityViewport} data-notification-code="parity">
+      <div className={`${styles.parityToast} ${styles.parityToastOk}`}>
+        <span className={styles.parityToastIcon}>✓</span>
+        <span className={styles.parityToastText}>
+          <b>Saved</b>
+          <span>release-notes.md written · UTF-8 · LF preserved</span>
+        </span>
+      </div>
+      <div className={styles.parityToast}>
+        <span className={styles.parityToastIcon}>ℹ</span>
+        <span className={styles.parityToastText}>
+          <b>Formatted</b>
+          <span>Document formatted — 3 tables aligned</span>
+        </span>
+      </div>
+      <div className={`${styles.parityToast} ${styles.parityToastWarn}`}>
+        <span className={styles.parityToastIcon}>⚠</span>
+        <span className={styles.parityToastText}>
+          <b>Lint: 1 issue</b>
+          <span>Inconsistent bullet marker on line 7</span>
+        </span>
+      </div>
+      <div className={`${styles.parityToast} ${styles.parityToastErr}`}>
+        <span className={styles.parityToastIcon}>⤫</span>
+        <span className={styles.parityToastText}>
+          <b>Provider unreachable</b>
+          <span>Ollama at 127.0.0.1:11434 — retrying…</span>
+        </span>
+      </div>
+    </div>
+  );
+};

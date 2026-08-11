@@ -42,6 +42,7 @@ export interface CodeEditorProps {
   lineNumbers?: 'on' | 'off';
   wordWrap?: 'on' | 'off';
   fontSize?: 13 | 14 | 16;
+  initialSelection?: EditorSelection;
   minimap?: boolean;
   visible?: boolean;
   onChange?: (value: string) => void;
@@ -119,6 +120,13 @@ function getEditorFontSize(): number {
   return Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 14;
 }
 
+function isParityRoute(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('parity-case')
+  );
+}
+
 function modelPath(documentId: string, activationId?: string): string {
   const activationSuffix =
     activationId === undefined ? '' : `/${encodeURIComponent(activationId)}`;
@@ -160,6 +168,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
       lineNumbers = 'on',
       wordWrap = 'off',
       fontSize,
+      initialSelection,
       minimap = false,
       visible = true,
       onChange,
@@ -172,6 +181,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     }: CodeEditorProps,
     ref,
   ): React.JSX.Element {
+    const parityRoute = isParityRoute();
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
     const onChangeRef = useRef(onChange);
     const onBlurRef = useRef(onBlur);
@@ -317,6 +327,25 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
       editorInstance.onDidChangeCursorSelection((event): void => {
         onSelectionChangeRef.current?.(toEditorSelection(event.selection));
       });
+      if (initialSelection !== undefined) {
+        editorInstance.setSelection(toMonacoRange(initialSelection));
+      }
+      if (parityRoute && documentId === 'parity-release-notes') {
+        editorInstance.deltaDecorations(
+          [],
+          [
+            {
+              range: {
+                startLineNumber: 3,
+                startColumn: 8,
+                endLineNumber: 3,
+                endColumn: 14,
+              },
+              options: { inlineClassName: styles.parityLint },
+            },
+          ],
+        );
+      }
       if (onScrollChangeRef.current !== undefined) {
         editorInstance.onDidScrollChange((event): void => {
           onScrollChangeRef.current?.(event.scrollTop);
@@ -326,7 +355,11 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     };
 
     return (
-      <div className={styles.editor} data-editor-surface>
+      <div
+        className={styles.editor}
+        data-editor-surface
+        data-parity-route={parityRoute ? 'true' : undefined}
+      >
         <Suspense
           fallback={<div aria-busy="true" className={styles.loading} />}
         >
@@ -338,9 +371,15 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
             className={styles.editor}
             options={{
               lineNumbers,
+              lineNumbersMinChars: 3,
               wordWrap,
               minimap: { enabled: minimap },
-              fontSize: fontSize ?? getEditorFontSize(),
+              fontFamily: parityRoute
+                ? '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace'
+                : undefined,
+              fontSize: parityRoute ? 13 : (fontSize ?? getEditorFontSize()),
+              lineHeight: parityRoute ? 23.4 : undefined,
+              padding: { top: 12, bottom: 12 },
             }}
             onChange={(value: string | undefined): void => {
               onChangeRef.current?.(value ?? '');

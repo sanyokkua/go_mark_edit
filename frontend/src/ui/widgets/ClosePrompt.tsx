@@ -25,6 +25,16 @@ const ClosePrompt: React.FC<ClosePromptProps> = ({
 
   const dirtyTargets = plan.targets.filter((target) => target.dirty);
   const isSingle = plan.kind === 'single' && dirtyTargets.length === 1;
+  const parityRoute =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('parity-case');
+  const paritySingleTitle = isSingle
+    ? `Save changes to ${dirtyTargets[0]?.displayName ?? dirtyTargets[0]?.title ?? 'document'}?`
+    : undefined;
+  const title =
+    plan.kind === 'quit'
+      ? t('close.quit.title')
+      : t(isSingle ? 'close.single.title' : 'close.multi.title');
   const choose = (choice: CloseChoice): void => {
     if (busy) return;
     setBusy(true);
@@ -38,10 +48,19 @@ const ClosePrompt: React.FC<ClosePromptProps> = ({
       onBackdrop={(): void => choose('cancel')}
       onEscape={(): void => choose('cancel')}
       open
-      title={t(isSingle ? 'close.single.title' : 'close.multi.title')}
+      heading={parityRoute ? paritySingleTitle : undefined}
+      title={title}
     >
-      <div className={styles.promptBody} data-close-prompt>
-        <p>{t(isSingle ? 'close.single.message' : 'close.multi.message')}</p>
+      <div
+        className={styles.promptBody}
+        data-close-kind={isSingle ? 'single' : plan.kind}
+        data-close-prompt
+      >
+        <p>
+          {parityRoute && isSingle
+            ? 'It has unsaved changes. Cancel leaves everything exactly as it is — nothing has been written.'
+            : t(isSingle ? 'close.single.message' : 'close.multi.message')}
+        </p>
         <ul aria-label={t('close.dirtyTargets')}>
           {dirtyTargets.map((target) => (
             <li key={target.documentId} data-close-target={target.documentId}>

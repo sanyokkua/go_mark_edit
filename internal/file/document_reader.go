@@ -70,6 +70,10 @@ const (
 // must not retry the write against either half of this read.
 var ErrUnstableRead = errors.New("document changed while being read")
 
+// stableReadBeforeHashHook is nil in production. Tests use it to make a
+// growth race deterministic between classification and the bounded hash read.
+var stableReadBeforeHashHook func(string)
+
 // StableClassifiedRead is the complete, version-bound source snapshot used by
 // Open, Reload, and external-change decisions.
 type StableClassifiedRead struct {
@@ -132,6 +136,7 @@ func (service *DocumentFileService) ReadClassifiedStable(path string, maxBytes i
 }
 
 func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, error) {
+	maxBytes = normalizedReadLimit(maxBytes)
 	before, err := CurrentDiskVersion(path)
 	if err != nil {
 		return StableClassifiedRead{}, err
@@ -144,9 +149,24 @@ func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, er
 		return StableClassifiedRead{Read: read, Version: before}, err
 	}
 	if read.Error != nil {
-		return StableClassifiedRead{Read: read, Version: before, Stable: true}, nil
+		after, err := CurrentDiskVersion(path)
+		if err != nil {
+			return StableClassifiedRead{Read: read, Version: before}, err
+		}
+		result := StableClassifiedRead{
+			Read:    read,
+			Version: after,
+			Stable:  before.Equal(after),
+		}
+		if !result.Stable {
+			return result, ErrUnstableRead
+		}
+		return result, nil
 	}
-	raw, err := os.ReadFile(path)
+	if stableReadBeforeHashHook != nil {
+		stableReadBeforeHashHook(path)
+	}
+	raw, err := readRawBytesBounded(path, maxBytes)
 	if err != nil {
 		return StableClassifiedRead{Read: read, Version: before}, err
 	}
@@ -165,9 +185,7 @@ func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, er
 // ReadClassified reads no more than the configured cap and refuses an over-limit file before
 // allocating or inserting any document state.
 func ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
-	if maxBytes <= 0 || maxBytes > MaxClassifiedReadBytes {
-		maxBytes = MaxClassifiedReadBytes
-	}
+	maxBytes = normalizedReadLimit(maxBytes)
 	canonical, err := CanonicalizeDocumentPath(path)
 	if err != nil {
 		return ClassifiedRead{Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationCancel)}, nil
@@ -199,13 +217,33 @@ func ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
 	}
 	defer func() { _ = file.Close() }()
-	data, err := io.ReadAll(io.LimitReader(file, maxBytes))
+	data, err := readBounded(file, maxBytes)
 	if err != nil {
 		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, BytesRead: int64(len(data)), Error: classifiedReadError(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
 	}
 	classified := classifyDocumentBytes(canonical, info, data)
 	classified.BytesRead = int64(len(data))
 	return classified, nil
+}
+
+func normalizedReadLimit(maxBytes int64) int64 {
+	if maxBytes <= 0 || maxBytes > MaxClassifiedReadBytes {
+		return MaxClassifiedReadBytes
+	}
+	return maxBytes
+}
+
+func readRawBytesBounded(path string, maxBytes int64) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = file.Close() }()
+	return readBounded(file, maxBytes)
+}
+
+func readBounded(reader io.Reader, maxBytes int64) ([]byte, error) {
+	return io.ReadAll(io.LimitReader(reader, normalizedReadLimit(maxBytes)))
 }
 
 func ReadClassifiedDocument(path string) (ClassifiedRead, error) {

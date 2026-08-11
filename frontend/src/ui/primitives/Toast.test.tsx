@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
-import { NotificationToast, ToastProvider } from './Toast';
+import { NotificationToast, ParityToastSurface, ToastProvider } from './Toast';
 
 afterEach((): void => {
   jest.useRealTimers();
@@ -156,4 +156,27 @@ it('T015 renders one explicit save confirmation with its localized safe filename
     'data-notification-code',
     'save-success',
   );
+});
+
+it('T045 keeps the parity toast surface at the reference scroll origin', () => {
+  const originalScrollY = window.scrollY;
+  const scrollTo = jest
+    .spyOn(window, 'scrollTo')
+    .mockImplementation((): void => undefined);
+  Object.defineProperty(window, 'scrollY', {
+    configurable: true,
+    value: 61,
+  });
+
+  try {
+    render(<ParityToastSurface />);
+    fireEvent.scroll(window);
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+  } finally {
+    scrollTo.mockRestore();
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: originalScrollY,
+    });
+  }
 });

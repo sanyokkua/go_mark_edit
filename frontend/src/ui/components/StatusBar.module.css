@@ -7,6 +7,7 @@
   flex-wrap: nowrap;
   gap: var(--status-bar-gap);
   height: var(--status-bar-min-height);
+  flex: 0 0 var(--status-bar-min-height);
   min-height: var(--status-bar-min-height);
   max-height: var(--status-bar-min-height);
   padding-inline: var(--status-bar-padding-inline);

@@ -2,11 +2,53 @@ package file
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestReadClassifiedStableBoundsRawHashAndDetectsGrowth(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "stable.md")
+	if err := os.WriteFile(path, []byte("abc"), 0o644); err != nil {
+		t.Fatalf("write initial file: %v", err)
+	}
+
+	stable, err := ReadClassifiedStable(path, 4)
+	if err != nil {
+		t.Fatalf("stable read: %v", err)
+	}
+	if !stable.Stable || stable.RawHash == "" {
+		t.Fatalf("stable read = %+v, want stable bounded hash", stable)
+	}
+
+	previousHook := stableReadBeforeHashHook
+	stableReadBeforeHashHook = func(path string) {
+		if err := os.WriteFile(path, []byte("abcde"), 0o644); err != nil {
+			t.Fatalf("grow file during stable read: %v", err)
+		}
+	}
+	defer func() { stableReadBeforeHashHook = previousHook }()
+
+	unstable, err := ReadClassifiedStable(path, 4)
+	if !errors.Is(err, ErrUnstableRead) || unstable.Stable {
+		t.Fatalf("growth race = result=%+v err=%v, want ErrUnstableRead and unstable", unstable, err)
+	}
+}
+
+func TestReadBoundedDoesNotConsumeBeyondLimit(t *testing.T) {
+	const limit int64 = 4
+	input := bytes.NewReader([]byte("0123456789"))
+	raw, err := readBounded(input, limit)
+	if err != nil {
+		t.Fatalf("bounded read: %v", err)
+	}
+	if string(raw) != "0123" {
+		t.Fatalf("bounded bytes = %q, want first %d bytes", raw, limit)
+	}
+}
 
 func TestReadClassifiedDocument(t *testing.T) {
 	root := t.TempDir()

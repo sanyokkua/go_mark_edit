@@ -142,9 +142,9 @@ it('STORY-015-AC-1 applies the responsive split layout contract', () => {
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
   const tokens = readSource('src/ui/styles/tokens.css');
 
-  expect(editorStyles).toMatch(
-    /grid-template-columns:\s*repeat\(\s*auto-fit,\s*minmax\(min\(var\(--editor-pane-min-width\), 100%\), 1fr\)\s*\)/,
-  );
+  expect(editorStyles).toMatch(/\.panes\s*\{[^}]*display:\s*flex;/s);
+  expect(editorStyles).toMatch(/\.pane\s*\{[^}]*flex:\s*1 1 0;/s);
+  expect(editorStyles).toContain('padding: 0;');
   expect(editorStyles).toContain('gap: var(--editor-view-gap);');
   expect(editorStyles).toContain('min-width: 0;');
   expect(editorStyles).toMatch(
@@ -190,6 +190,42 @@ it('STORY-015-AC-3 renders each arrangement', () => {
     screen.getByRole('heading', { name: 'Rendered Preview' }),
   ).toBeInTheDocument();
 });
+
+it('T045 presents the reviewed selection metadata on the parity editor route', () => {
+  const originalUrl = window.location.href;
+  window.history.replaceState({}, '', '/?parity-case=primary:editor-split:1280:glass-light');
+  try {
+    renderEditorView('split');
+
+    expect(
+      within(screen.getByLabelText('Editor pane')).getByText(
+        'UTF-8 · LF · sel 42w',
+      ),
+    ).toBeInTheDocument();
+  } finally {
+    window.history.replaceState({}, '', originalUrl);
+  }
+});
+
+it('T045 prevents the parity preview from double-compositing the pane surface', () => {
+  const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
+
+  expect(editorStyles).toContain(
+    ":global(.application-frame:has([data-parity-shell='true'])) .previewContent",
+  );
+  expect(editorStyles).toMatch(
+    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\) \.previewContent\s*\{[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/s,
+  );
+  expect(editorStyles).toMatch(
+    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?line-height:\s*normal;/s,
+  );
+      expect(editorStyles).toMatch(
+        /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?margin-inline-start:\s*20px;[^}]*padding-inline-start:\s*0;/s,
+      );
+      expect(editorStyles).toMatch(
+        /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?:is\(ul, ol\)\s*\{[^}]*line-height:\s*normal;/s,
+      );
+    });
 
 it('replaces the same-document editor model when a Reload acknowledgement changes content', () => {
   const document = documentFor('split');
@@ -287,4 +323,23 @@ it('STORY-015-AC-6 matches the split-view structure', () => {
   const segmentedStyles = readSource('src/ui/primitives/Segmented.module.css');
   expect(segmentedStyles).toMatch(/var\(--segmented-[\w-]+\)/);
   expect(segmentedStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
+});
+
+it('T045 bounds and places the parity toolbar-overflow editor surface without a computed margin offset', () => {
+  const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
+
+  expect(editorStyles).toMatch(
+    /@media \(min-width: 769px\)[\s\S]*?:global\(\.application-frame:has\(\[data-parity-family='toolbar-overflow'\]\)\)\s+\.editorView\s*\{[^}]*transform:\s*translateX\(66\.797px\);[^}]*width:\s*720px;/s,
+  );
+  expect(editorStyles).not.toMatch(
+    /data-parity-family='toolbar-overflow'[\s\S]*?margin-inline-start:\s*66\.797px/s,
+  );
+});
+
+it('T045 keeps the narrow parity paused-preview action above its pane clip', () => {
+  const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
+
+  expect(editorStyles).toMatch(
+    /@media \(max-width: 376px\)[\s\S]*?:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)\s*\.pane:has\(\[data-preview-state='paused'\]\)\s*\{[^}]*overflow:\s*visible;/s,
+  );
 });

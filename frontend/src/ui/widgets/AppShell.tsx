@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -9,6 +10,7 @@ import {
 import { t } from '../../i18n';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { setWorkspaceWidth } from '../../logic/store/uiLayoutCommands';
+import { useEditorSettings } from '../../logic/settings/editorSettings';
 import type {
   ClosePlanKind,
   DocumentTransitionResult,
@@ -17,7 +19,8 @@ import type {
 import styles from './AppShell.module.css';
 
 import EditorView from './EditorView';
-import DocumentIdentity from './DocumentIdentity';
+import StatusBar from '../components/StatusBar';
+import DocumentTabs from './DocumentTabs';
 import Launcher from './Launcher';
 
 export interface AppShellProps {
@@ -46,7 +49,18 @@ const AppShell: React.FC<AppShellProps> = ({
   onCloseDocument,
   onOpenRecentFile,
 }: AppShellProps): React.JSX.Element => {
+  const parityRoute =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('parity-case');
+  const parityCase =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('parity-case')
+      : null;
+  const parityFamily = parityCase?.startsWith('primary:toolbar-overflow:')
+    ? 'toolbar-overflow'
+    : undefined;
   const dispatch = useAppDispatch();
+  const { fileSettings } = useEditorSettings();
   const workspaceVisible = useAppSelector(
     (state) => state.ui.layout.sidebarVisible ?? true,
   );
@@ -60,6 +74,10 @@ const AppShell: React.FC<AppShellProps> = ({
       ? state.documents.byId[state.documents.activeDocumentId]
       : undefined,
   );
+  const [liveCursor, setLiveCursor] = useState({
+    lineNumber: activeDocument?.view.cursor.line ?? 1,
+    column: activeDocument?.view.cursor.column ?? 1,
+  });
   const recentFiles = useAppSelector(
     (state) => state.documents.recentFiles ?? [],
   );
@@ -67,11 +85,27 @@ const AppShell: React.FC<AppShellProps> = ({
     onNewDocument !== undefined ||
     onOpenDocument !== undefined ||
     recentFiles.length > 0;
+  const showParityEmptyChrome = parityRoute && !hasActiveDocument;
+
+  useLayoutEffect((): (() => void) | undefined => {
+    if (!showParityEmptyChrome || window.innerWidth > 376) return undefined;
+    const keepParityEmptyRouteAtTop = (): void => {
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+    };
+    keepParityEmptyRouteAtTop();
+    window.addEventListener('scroll', keepParityEmptyRouteAtTop, {
+      passive: true,
+    });
+    return (): void => {
+      window.removeEventListener('scroll', keepParityEmptyRouteAtTop);
+    };
+  }, [showParityEmptyChrome]);
+
   const tabSetRevision = useAppSelector(
     (state) => state.documents.tabSetRevision,
   );
   const acknowledgedWorkspaceWidth = useAppSelector(
-    (state) => state.ui.layout.sidebarWidth ?? 256,
+    (state) => state.ui.layout.sidebarWidth ?? 216,
   );
   const latestLayoutFailure = useAppSelector((state) => {
     const layoutFailures = [
@@ -174,6 +208,8 @@ const AppShell: React.FC<AppShellProps> = ({
       className={styles.shell}
       data-testid="application-shell"
       data-document-state={hasActiveDocument ? 'active' : 'empty'}
+      data-parity-family={parityFamily}
+      data-parity-shell={parityRoute ? 'true' : undefined}
       data-workspace-visible={String(workspaceVisible)}
       style={shellStyle}
     >
@@ -215,9 +251,10 @@ const AppShell: React.FC<AppShellProps> = ({
         />
       ) : null}
       <main aria-label={t('shell.document')} className={styles.document}>
-        {hasActiveDocument ? (
-          <DocumentIdentity document={activeDocument} />
-        ) : showLauncher ? (
+        {showParityEmptyChrome ? (
+          <DocumentTabs onNewDocument={onNewDocument} />
+        ) : null}
+        {!hasActiveDocument && showLauncher ? (
           <Launcher
             recentFiles={recentFiles}
             onNewDocument={
@@ -242,7 +279,36 @@ const AppShell: React.FC<AppShellProps> = ({
           onNewDocument={onNewDocument}
           onActivateDocument={onActivateDocument}
           onCloseDocument={onCloseDocument}
+          onLiveCursorChange={setLiveCursor}
         />
+        {hasActiveDocument && activeDocument !== undefined ? (
+          <StatusBar
+            arrangement={
+              activeDocument.view.arrangement === 'split'
+                ? 'split'
+                : activeDocument.view.previewVisible
+                  ? 'preview'
+                  : 'editor'
+            }
+            cursor={liveCursor}
+            encoding={activeDocument.encoding}
+            lineEnding={activeDocument.lineEnding}
+            status={activeDocument.status}
+            writeInFlight={activeDocument.writeInFlight}
+            wordCount={activeDocument.wordCount}
+            autosave={fileSettings.autosave}
+          />
+        ) : showParityEmptyChrome ? (
+          <StatusBar
+            arrangement="editor"
+            cursor={{ lineNumber: 1, column: 1 }}
+            encoding="utf-8"
+            lineEnding="lf"
+            status="not-saved"
+            wordCount={0}
+            autosave={fileSettings.autosave}
+          />
+        ) : null}
       </main>
     </div>
   );

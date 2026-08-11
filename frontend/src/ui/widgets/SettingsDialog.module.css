@@ -50,6 +50,217 @@
   padding: 8px 14px;
 }
 
+.parityOverlay {
+  align-items: center;
+  background: rgba(6, 8, 16, 0.42);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+  backdrop-filter: blur(3px);
+}
+
+@media (max-width: 376px) {
+  .parityOverlay {
+    position: fixed;
+  }
+}
+
+.parityContent {
+  background: var(--elevated);
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  box-shadow: var(--win-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 88%;
+  max-width: 760px;
+  overflow: hidden;
+  padding: 0;
+  inset: auto;
+  position: relative;
+  transform: none;
+  width: 94%;
+}
+
+.parityHeader {
+  align-items: center;
+  border-bottom: 1px solid var(--stroke-soft);
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.parityHeader h1 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.parityClose {
+  background: var(--surface-2);
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  height: 30px;
+  width: 30px;
+}
+
+.parityBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.parityTabs {
+  border-inline-end: 1px solid var(--stroke-soft);
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
+  overflow: auto;
+  padding: 10px 8px;
+  width: 172px;
+}
+
+.parityTab,
+.parityTabActive {
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  text-align: start;
+}
+
+.parityTabActive {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.parityPane {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 14px 18px;
+}
+
+.parityGroupHeading {
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin: 14px 0 6px;
+  text-transform: uppercase;
+}
+
+.paritySetting {
+  align-items: center;
+  border-bottom: 1px solid var(--stroke-soft);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 9px 0;
+}
+
+.paritySetting > div:first-child {
+  font-size: 13px;
+}
+
+.paritySetting small {
+  color: var(--faint);
+  display: block;
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+
+.parityPick {
+  background: var(--surface-2);
+  border: 1px solid var(--stroke-soft);
+  border-radius: 9px;
+  display: flex;
+  gap: 0;
+  padding: 3px;
+}
+
+.parityPick button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 11px;
+}
+
+.parityPick .paritySelected {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+
+:global(:root[data-theme='glass']) .paritySelected {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+:global(:root[data-theme='glass']) .parityContent {
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+}
+
+.paritySelect {
+  background: var(--surface-2);
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 6px 10px;
+}
+
+.parityToggleOn,
+.parityToggleOff {
+  background: var(--accent);
+  border-radius: 12px;
+  display: inline-block;
+  flex: none;
+  height: 18px;
+  position: relative;
+  width: 32px;
+}
+
+.parityToggleOff {
+  background: var(--surface-3);
+}
+
+.parityToggleOn::after,
+.parityToggleOff::after {
+  background: var(--accent-contrast);
+  border-radius: 50%;
+  content: '';
+  height: 14px;
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  width: 14px;
+}
+
+.parityToggleOff::after {
+  background: var(--muted);
+  left: 2px;
+  right: auto;
+}
+
 .label {
   display: grid;
   gap: var(--control-gap);

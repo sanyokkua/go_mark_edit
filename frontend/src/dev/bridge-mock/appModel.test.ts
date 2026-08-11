@@ -1,10 +1,12 @@
 import {
+  ActivateDocument,
   AuthorizeKeepMine,
   CheckExternalChanges,
   CancelConflict,
   GetState,
   NewDocument,
   OpenDocument,
+  PrepareClose,
   Save,
   SaveAs,
   SkipConflict,
@@ -19,6 +21,137 @@ import { EventsOn } from './runtime';
 
 beforeEach(() => {
   resetMockAppModel();
+});
+
+it('seeds the deterministic two-document fixture only on the parity route', async () => {
+  const originalSearch = window.location.search;
+  window.history.replaceState({}, '', '/?parity-case=fixture');
+  try {
+    resetMockAppModel();
+    const result = await GetState();
+    expect(result.data?.snapshot.orderedDocumentIds).toEqual([
+      'parity-release-notes',
+      'parity-spec-draft',
+    ]);
+    expect(result.data?.snapshot.activeDocumentId).toBe('parity-release-notes');
+    expect(result.data?.snapshot.documents).toEqual(
+      expect.objectContaining({
+        'parity-release-notes': expect.objectContaining({
+          title: 'release-notes.md',
+          path: '/tmp/Notes/projects/release-notes.md',
+          dirty: true,
+          status: 'autosaved',
+          wordCount: 42,
+        }),
+        'parity-spec-draft': expect.objectContaining({
+          title: 'spec-draft.md',
+          path: '/tmp/Notes/projects/spec-draft.md',
+        }),
+      }),
+    );
+    expect(
+      result.data?.snapshot.documents['parity-release-notes'].view.selection,
+    ).toEqual({
+      start: { line: 4, column: 1 },
+      end: {
+        line: 5,
+        column: 'improvments and fixs users asked for.'.length + 1,
+      },
+    });
+    expect(result.data?.activeBuffer?.content).toContain('# Release Notes');
+  } finally {
+    window.history.replaceState({}, '', `/${originalSearch}`);
+    resetMockAppModel();
+  }
+});
+
+it('maps parity state IDs to deterministic bridge fixtures without changing startup', async () => {
+  const originalSearch = window.location.search;
+  const state = (stateId: string): void => {
+    window.history.replaceState(
+      {},
+      '',
+      `/?parity-case=state:${stateId}:minimal-light`,
+    );
+    resetMockAppModel();
+  };
+  try {
+    state('status-saved');
+    expect(
+      (await GetState()).data?.snapshot.documents['parity-release-notes'],
+    ).toEqual(expect.objectContaining({ dirty: false, status: 'saved' }));
+
+    state('status-read-only');
+    expect(
+      (await GetState()).data?.snapshot.documents['parity-release-notes'],
+    ).toEqual(
+      expect.objectContaining({ capability: 'read-only', status: 'read-only' }),
+    );
+
+    state('preview-paused');
+    expect(
+      (await GetState()).data?.activeBuffer?.content.length,
+    ).toBeGreaterThan(2_097_152);
+
+    state('tab-40-document');
+    expect((await GetState()).data?.snapshot.orderedDocumentIds).toHaveLength(
+      40,
+    );
+
+    state('launcher-six-file');
+    expect((await GetState()).data?.snapshot.recentFiles).toHaveLength(6);
+
+    window.history.replaceState({}, '', `/${originalSearch}`);
+    resetMockAppModel();
+    const normal = await GetState();
+    expect(normal.data?.snapshot.orderedDocumentIds).toEqual(['mock-document']);
+    expect(normal.data?.activeBuffer?.content).toBe('');
+  } finally {
+    window.history.replaceState({}, '', `/${originalSearch}`);
+    resetMockAppModel();
+  }
+});
+
+it('exposes parity-only close-plan fixtures for normalization and conflict states', async () => {
+  const originalSearch = window.location.search;
+  try {
+    window.history.replaceState(
+      {},
+      '',
+      '/?close-plan&parity-case=state:prompt-normalization:minimal-light',
+    );
+    resetMockAppModel();
+    const initial = await GetState();
+    const prepared = await PrepareClose(
+      'single',
+      ['parity-release-notes'],
+      initial.data!.snapshot.tabSetRevision,
+    );
+    expect(prepared.data?.targets[0]).toEqual(
+      expect.objectContaining({
+        normalizationToken: 'parity-normalization-token',
+        proposedEnding: 'lf',
+      }),
+    );
+
+    window.history.replaceState(
+      {},
+      '',
+      '/?ft-vs-04&parity-case=state:conflict-read-only:minimal-light',
+    );
+    resetMockAppModel();
+    const conflictState = await GetState();
+    const conflict = await ActivateDocument(
+      'parity-spec-draft',
+      conflictState.data!.snapshot.tabSetRevision,
+    );
+    expect(conflict.conflict).toEqual(
+      expect.objectContaining({ readOnly: true }),
+    );
+  } finally {
+    window.history.replaceState({}, '', `/${originalSearch}`);
+    resetMockAppModel();
+  }
 });
 
 it('STORY-012-AC-6 mirrors the app-model bridge contract', async () => {

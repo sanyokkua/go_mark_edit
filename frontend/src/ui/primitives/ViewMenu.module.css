@@ -24,7 +24,7 @@
   min-inline-size: var(--popup-min-width);
   overflow: auto;
   padding: var(--popup-padding);
-  position: fixed;
+  position: relative;
   z-index: var(--z-dropdown);
 }
 

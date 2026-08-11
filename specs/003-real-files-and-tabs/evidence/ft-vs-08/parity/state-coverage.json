@@ -1,0 +1,4402 @@
+{
+  "tab-active": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "tab-inactive": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "tab-dirty": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "tab-autosave-in-flight": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "tab-read-only": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "tab-detached": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "tab-blocked-conflict": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "tab-identical-basename": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "tab-adjacent-after-close": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "label-short": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "tab-contained-overflow": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "tab-40-document": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "label-long-localized": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "path-hostile-disambiguated": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "identity-not-saved": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "status-saved": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "status-autosaved": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "status-unsaved-changes": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "status-read-only": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "status-mixed-ending": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "status-large-file": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "launcher-first-run": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "launcher-six-file": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "control-enabled": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "control-checked": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "control-selected": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "control-focused": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "control-hovered": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "control-unavailable": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "tab-menu-move-left-unavailable": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "tab-menu-move-right-unavailable": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": true
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": true
+    }
+  ],
+  "preview-paused": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "preview-refreshing": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "preview-refresh-failed": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "prompt-normalization": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "conflict-content-truncated": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "conflict-metadata-only": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "conflict-read-only": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "resync-recovery": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ],
+  "quit-discard-newer": [
+    {
+      "palette": "glass-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "glass-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "material-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-light",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 1,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 2,
+      "status": "failed",
+      "comparisonCompleted": false
+    },
+    {
+      "palette": "minimal-dark",
+      "repetition": 3,
+      "status": "failed",
+      "comparisonCompleted": false
+    }
+  ]
+}

@@ -43,6 +43,7 @@ it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', (
   );
 
   expect(chromeStyles).toContain('gap: var(--toolbar-gap)');
+  expect(chromeStyles).toContain('block-size: var(--toolbar-row-height)');
   expect(chromeStyles).toContain('block-size: var(--toolbar-action-height)');
   expect(chromeStyles).toContain(
     'min-inline-size: var(--toolbar-action-min-width)',
@@ -57,6 +58,54 @@ it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', (
   expect(chromeStyles).toContain(":global(:root[data-theme='glass'])");
   expect(chromeStyles).toContain(":global(:root[data-theme='material'])");
   expect(chromeStyles).toContain(":global(:root[data-theme='minimal'])");
+});
+
+it('T045 retains the reference text glyphs for parity deferred actions', () => {
+  const chromeStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    'utf8',
+  );
+
+  expect(chromeStyles).toMatch(
+    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\[data-action-id='format'\]::before[\s\S]*?content:\s*'⌁ '/s,
+  );
+  expect(chromeStyles).toMatch(
+    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\[data-action-id='compact'\]::before[\s\S]*?content:\s*'⇥ '/s,
+  );
+  expect(chromeStyles).toMatch(
+    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\[data-action-id='lint'\]::before[\s\S]*?content:\s*'✓ '/s,
+  );
+});
+
+it('T045 keeps the parity toolbar overflow trigger available at 1280px', () => {
+  const chromeStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    'utf8',
+  );
+
+  expect(chromeStyles).toMatch(
+    /@media \(min-width: 769px\)[\s\S]*?:global\(\.application-frame:has\(\[data-parity-family='toolbar-overflow'\]\)\)\s+\.toolbar\s+\.overflow\s*\{[^}]*display:\s*block;/s,
+  );
+});
+
+it('T045 renders the reviewed parity toolbar overflow inventory', () => {
+  const chromeSource = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.tsx'),
+    'utf8',
+  );
+  const chromeStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    'utf8',
+  );
+
+  expect(chromeSource).toContain("'primary:toolbar-overflow:'");
+  expect(chromeSource).toContain('parityOverflowItem');
+  expect(chromeStyles).toMatch(
+    /\.parityOverflowContent\s*\{[^}]*inline-size:\s*212px;[^}]*padding:\s*6px;/s,
+  );
+  expect(chromeStyles).toMatch(
+    /\.parityOverflowItem\s*\{[^}]*min-height:\s*29px;[^}]*padding:\s*7px 10px;/s,
+  );
 });
 
 it('T068 uses icon-first toolbar controls while retaining localized accessible names', () => {

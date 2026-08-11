@@ -32,6 +32,11 @@ frontend/package.json.md5
 frontend/playwright-report/
 frontend/test-results/
 
+# Feature 003 parity runs retain full per-case evidence locally, but the generated
+# family/repetition image and raw-artifact tree is not source-controlled. Keep the
+# compact top-level reports available for review and commit when appropriate.
+/specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/*/*
+
 # Go workspace file
 go.work
 go.work.sum

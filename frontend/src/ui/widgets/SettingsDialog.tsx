@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
 import type { AppearanceChoice, Theme } from '../../logic/theme/theme';
@@ -28,6 +29,209 @@ const modeOptions: readonly SegmentedOption<AppearanceChoice>[] = [
   { label: t('appearance.mode.dark'), value: 'dark' },
 ];
 
+type ParitySettingsTab = 'appearance' | 'editor' | 'markdown';
+
+function paritySettingsTab(): ParitySettingsTab | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const key = new URLSearchParams(window.location.search).get('parity-case');
+  if (key === null) return undefined;
+  if (key.includes(':settings-editor:')) return 'editor';
+  if (key.includes(':settings-markdown:')) return 'markdown';
+  if (key.includes(':settings-appearance:')) return 'appearance';
+  return undefined;
+}
+
+const paritySettingsTabs: readonly [ParitySettingsTab, string][] = [
+  ['appearance', 'Appearance'],
+  ['editor', 'Editor'],
+  ['markdown', 'Markdown'],
+];
+
+function ParitySettingsPane({
+  mode,
+  onModeChange,
+  onThemeChange,
+  tab,
+  theme,
+}: {
+  mode: AppearanceChoice;
+  onModeChange: (mode: AppearanceChoice) => void;
+  onThemeChange: (theme: Theme) => void;
+  tab: ParitySettingsTab;
+  theme: Theme;
+}): React.JSX.Element {
+  const parityAppearance = tab === 'appearance';
+
+  if (tab === 'editor') {
+    return (
+      <>
+        <div className={styles.parityGroupHeading}>Editor</div>
+        <div className={styles.paritySetting}>
+          <div>
+            Autosave
+            <small>Save existing files automatically</small>
+          </div>
+          <span className={styles.parityToggleOn} />
+        </div>
+        <div className={styles.paritySetting}>
+          <div>
+            Live preview
+            <small>Debounced for very large files</small>
+          </div>
+          <span className={styles.parityToggleOn} />
+        </div>
+        <div className={styles.paritySetting}>
+          <div>Line numbers</div>
+          <span className={styles.parityToggleOn} />
+        </div>
+        <div className={styles.paritySetting}>
+          <div>Word wrap</div>
+          <span className={styles.parityToggleOff} />
+        </div>
+        <div className={styles.paritySetting}>
+          <div>Default action scope</div>
+          <div className={styles.parityPick}>
+            <button className={styles.paritySelected} type="button">
+              Whole document
+            </button>
+            <button type="button">Selection</button>
+          </div>
+        </div>
+        <div className={styles.paritySetting}>
+          <div>Font size</div>
+          <select
+            aria-label="Font size"
+            className={styles.paritySelect}
+            defaultValue="14"
+          >
+            <option value="13">13 px</option>
+            <option value="14">14 px</option>
+            <option value="16">16 px</option>
+          </select>
+        </div>
+      </>
+    );
+  }
+
+  if (tab === 'markdown') {
+    return (
+      <>
+        <div className={styles.parityGroupHeading}>Markdown</div>
+        <div className={styles.paritySetting}>
+          <div>
+            Standard
+            <small>Parsing + rendering feature set</small>
+          </div>
+          <div className={styles.parityPick}>
+            <button type="button">Minimal</button>
+            <button className={styles.paritySelected} type="button">
+              GFM
+            </button>
+            <button type="button">Full</button>
+          </div>
+        </div>
+        <div className={styles.paritySetting}>
+          <div>Format on save</div>
+          <span className={styles.parityToggleOff} />
+        </div>
+        <div className={styles.paritySetting}>
+          <div>Lint on save</div>
+          <span className={styles.parityToggleOn} />
+        </div>
+        <div className={styles.paritySetting}>
+          <div>Bullet marker</div>
+          <div className={styles.parityPick}>
+            <button className={styles.paritySelected} type="button">
+              -
+            </button>
+            <button type="button">*</button>
+            <button type="button">+</button>
+          </div>
+        </div>
+        <div className={styles.paritySetting}>
+          <div>Emphasis</div>
+          <div className={styles.parityPick}>
+            <button className={styles.paritySelected} type="button">
+              _ _
+            </button>
+            <button type="button">* *</button>
+          </div>
+        </div>
+        <div className={styles.paritySetting}>
+          <div>Heading style</div>
+          <select
+            aria-label="Heading style"
+            className={styles.paritySelect}
+            defaultValue="atx"
+          >
+            <option value="atx">ATX (#)</option>
+            <option value="setext">Setext</option>
+          </select>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className={styles.parityGroupHeading}>Appearance</div>
+      <div className={styles.paritySetting}>
+        <div>Theme</div>
+        <div className={styles.parityPick}>
+          {(['glass', 'material', 'minimal'] as const).map((choice) => (
+            <button
+              className={
+                choice === (parityAppearance ? 'material' : theme)
+                  ? styles.paritySelected
+                  : undefined
+              }
+              key={choice}
+              type="button"
+              onClick={(): void => onThemeChange(choice)}
+            >
+              {choice[0].toUpperCase() + choice.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className={styles.paritySetting}>
+        <div>Color mode</div>
+        <div className={styles.parityPick}>
+          {(['auto', 'light', 'dark'] as const).map((choice) => (
+            <button
+              className={
+                choice === (parityAppearance ? 'light' : mode)
+                  ? styles.paritySelected
+                  : undefined
+              }
+              key={choice}
+              type="button"
+              onClick={(): void => onModeChange(choice)}
+            >
+              {choice[0].toUpperCase() + choice.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className={styles.paritySetting}>
+        <div>
+          Default open mode
+          <small>
+            How files open from the file system (association, drag-and-drop,
+            tree, Open dialog)
+          </small>
+        </div>
+        <div className={styles.parityPick}>
+          <button type="button">Reading (Viewer)</button>
+          <button className={styles.paritySelected} type="button">
+            Editor
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function focusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(
     container.querySelectorAll<HTMLElement>(
@@ -48,6 +252,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
 }: SettingsDialogProps): React.JSX.Element | null => {
   const dialogRef = useRef<HTMLElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  const parityTab = paritySettingsTab();
+  const narrowParityRoute =
+    typeof window !== 'undefined' && window.innerWidth <= 376;
 
   useEffect((): void | (() => void) => {
     if (!open) return;
@@ -107,6 +314,77 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
   if (!open) {
     return null;
+  }
+
+  if (parityTab !== undefined) {
+    const paritySurface = (
+      <div
+        className={`${styles.overlay} ${styles.parityOverlay}`}
+        data-viewport-popup="settings-menu"
+      >
+        <section
+          ref={dialogRef}
+          aria-labelledby="settings-dialog-title"
+          aria-modal="true"
+          className={`${styles.content} ${styles.parityContent}`}
+          role="dialog"
+          tabIndex={-1}
+        >
+          <header className={styles.parityHeader}>
+            <h1 id="settings-dialog-title">Settings</h1>
+            <button
+              aria-label="Close settings"
+              className={styles.parityClose}
+              type="button"
+              onClick={(): void => onOpenChange(false)}
+            >
+              ×
+            </button>
+          </header>
+          <div className={styles.parityBody}>
+            <nav aria-label="Settings sections" className={styles.parityTabs}>
+              {paritySettingsTabs.map(([value, label]) => (
+                <button
+                  className={
+                    value === parityTab
+                      ? styles.parityTabActive
+                      : styles.parityTab
+                  }
+                  key={value}
+                  type="button"
+                >
+                  {label}
+                </button>
+              ))}
+              {[
+                'Export',
+                'AI · Providers',
+                'AI · Context',
+                'Content & privacy',
+                'Diagnostics',
+                'Language',
+              ].map((label) => (
+                <button className={styles.parityTab} key={label} type="button">
+                  {label}
+                </button>
+              ))}
+            </nav>
+            <main className={styles.parityPane}>
+              <ParitySettingsPane
+                mode={mode}
+                onModeChange={onModeChange}
+                onThemeChange={onThemeChange}
+                tab={parityTab}
+                theme={theme}
+              />
+            </main>
+          </div>
+        </section>
+      </div>
+    );
+    return narrowParityRoute
+      ? createPortal(paritySurface, document.body)
+      : paritySurface;
   }
 
   return (

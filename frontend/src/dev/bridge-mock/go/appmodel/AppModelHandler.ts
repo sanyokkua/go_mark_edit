@@ -65,6 +65,7 @@ interface DocumentMetadata {
   documentId: string;
   title: string;
   path: string;
+  displayName?: string;
   dirty: boolean;
   encoding: string;
   lineEnding: string;
@@ -73,6 +74,8 @@ interface DocumentMetadata {
   status?: string;
   detached?: boolean;
   conflictBlocked?: boolean;
+  writeInFlight?: boolean;
+  sizeClass?: string;
   view: DocView;
 }
 
@@ -236,6 +239,28 @@ interface RecentlyClosedMockDocument {
 }
 
 const initialDocumentId = 'mock-document';
+const parityReleaseDocumentId = 'parity-release-notes';
+const paritySpecDocumentId = 'parity-spec-draft';
+const parityLargeFileContent = `# Large parity document\n${'large-file-content '.repeat(140_000)}\n`;
+const parityReleaseContent = [
+  '# Release Notes — v2.1',
+  '',
+  'We are exited to anounce the new',
+  'relase. This verison brings alot of',
+  'improvments and fixs users asked for.',
+  '',
+  '## Highlights',
+  '- Faster startup',
+  '- KaTeX math: $E = mc^2$',
+  '- ![flow](./assets/flow.png)',
+  '',
+  '> Tip: press Ctrl+S to save.',
+  '',
+  '```mermaid',
+  'graph LR; A-->B; B-->C;',
+  '```',
+  '',
+].join('\n');
 const e2eRecentFiles = [
   '/tmp/t032-recent-07.md',
   '/tmp/t032-recent-06.md',
@@ -247,16 +272,47 @@ const e2eRecentFiles = [
 ];
 
 function seededRecentFiles(): string[] {
-  return typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('ft-vs-07')
-    ? [...e2eRecentFiles]
-    : [];
+  if (typeof window === 'undefined') return [];
+  const query = new URLSearchParams(window.location.search);
+  if (parityStateId() === 'launcher-first-run') {
+    return [];
+  }
+  if (parityStateId() === 'launcher-six-file') {
+    return e2eRecentFiles.slice(0, 6);
+  }
+  return query.has('ft-vs-07') ? [...e2eRecentFiles] : [];
+}
+
+function parityFixtureEnabled(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('parity-case')
+  );
+}
+
+function parityStateId(): string | undefined {
+  if (!parityFixtureEnabled()) return undefined;
+  const key = new URLSearchParams(window.location.search).get('parity-case');
+  if (key === null || !key.startsWith('state:')) return undefined;
+  return key.split(':')[1];
 }
 
 let revision = 0;
 let tabSetRevision = 0;
-let orderedDocumentIds: string[] = [initialDocumentId];
-let activeDocumentId = initialDocumentId;
+function initialDocumentIds(): string[] {
+  if (parityStateId() === 'tab-40-document') {
+    return [
+      parityReleaseDocumentId,
+      ...Array.from({ length: 39 }, (_, index) => `parity-tab-${index + 1}`),
+    ];
+  }
+  return parityFixtureEnabled()
+    ? [parityReleaseDocumentId, paritySpecDocumentId]
+    : [initialDocumentId];
+}
+
+let orderedDocumentIds: string[] = initialDocumentIds();
+let activeDocumentId = orderedDocumentIds[0] ?? initialDocumentId;
 let recentFiles: string[] = seededRecentFiles();
 let recentlyClosed: RecentlyClosedMockDocument[] = [];
 let nextUntitledNumber = 2;
@@ -309,7 +365,154 @@ function newDocumentMetadata(
   };
 }
 
+function configureParityFixture(
+  releaseNotes: DocumentMetadata,
+  specDraft: DocumentMetadata,
+): void {
+  const state = parityStateId();
+  switch (state) {
+    case 'status-saved':
+      releaseNotes.dirty = false;
+      releaseNotes.status = 'saved';
+      break;
+    case 'status-unsaved-changes':
+    case 'tab-dirty':
+      releaseNotes.dirty = true;
+      releaseNotes.status = 'unsaved-changes';
+      break;
+    case 'status-read-only':
+    case 'tab-read-only':
+      releaseNotes.capability = 'read-only';
+      releaseNotes.status = 'read-only';
+      break;
+    case 'tab-detached':
+      releaseNotes.detached = true;
+      releaseNotes.capability = 'read-only';
+      releaseNotes.status = 'read-only';
+      break;
+    case 'tab-autosave-in-flight':
+      releaseNotes.dirty = true;
+      releaseNotes.status = 'autosaved';
+      releaseNotes.writeInFlight = true;
+      break;
+    case 'tab-identical-basename':
+      releaseNotes.title = 'notes.md';
+      releaseNotes.path = '/tmp/projects/alpha/notes.md';
+      specDraft.title = 'notes.md';
+      specDraft.path = '/tmp/projects/beta/notes.md';
+      break;
+    case 'tab-contained-overflow':
+      releaseNotes.title =
+        'release-notes-with-a-deliberately-contained-tab-label.md';
+      releaseNotes.path = `/tmp/projects/${releaseNotes.title}`;
+      specDraft.title = 'spec-draft-with-a-deliberately-contained-tab-label.md';
+      specDraft.path = `/tmp/projects/${specDraft.title}`;
+      break;
+    case 'tab-40-document':
+      break;
+    case 'label-short':
+      releaseNotes.title = 'a.md';
+      releaseNotes.path = '/tmp/a.md';
+      break;
+    case 'label-long-localized':
+      releaseNotes.title =
+        'release-notes-for-the-localized-document-identity-preview.md';
+      releaseNotes.path = `/tmp/projects/${releaseNotes.title}`;
+      break;
+    case 'path-hostile-disambiguated':
+      releaseNotes.title = 'notes.md';
+      releaseNotes.path = '/tmp/projects/alpha/notes\u202E.md';
+      specDraft.title = 'notes.md';
+      specDraft.path = '/tmp/projects/beta/notes.md';
+      break;
+    case 'identity-not-saved':
+      releaseNotes.title = 'Untitled';
+      releaseNotes.path = '';
+      releaseNotes.dirty = false;
+      releaseNotes.status = 'not-saved';
+      break;
+    case 'status-mixed-ending':
+      releaseNotes.lineEnding = 'mixed';
+      break;
+    case 'status-large-file':
+    case 'preview-paused':
+    case 'preview-refreshing':
+    case 'preview-refresh-failed':
+      releaseNotes.sizeClass = 'large';
+      releaseNotes.wordCount = 420_000;
+      break;
+    case 'quit-discard-newer':
+      releaseNotes.dirty = true;
+      releaseNotes.status = 'unsaved-changes';
+      break;
+    case 'prompt-normalization':
+    case 'resync-recovery':
+      releaseNotes.dirty = true;
+      releaseNotes.status = 'unsaved-changes';
+      releaseNotes.lineEnding = 'crlf';
+      break;
+    default:
+      break;
+  }
+}
+
 function initialDocuments(): Record<string, MockDocument> {
+  if (parityFixtureEnabled()) {
+    const releaseNotes = newDocumentMetadata(
+      parityReleaseDocumentId,
+      'release-notes.md',
+      '/tmp/Notes/projects/release-notes.md',
+    );
+    releaseNotes.dirty = true;
+    releaseNotes.status = 'autosaved';
+    releaseNotes.wordCount = 42;
+    releaseNotes.view.selection = {
+      start: { line: 4, column: 1 },
+      end: {
+        line: 5,
+        column: 'improvments and fixs users asked for.'.length + 1,
+      },
+    };
+    const specDraft = newDocumentMetadata(
+      paritySpecDocumentId,
+      'spec-draft.md',
+      '/tmp/Notes/projects/spec-draft.md',
+    );
+    specDraft.status = 'saved';
+    configureParityFixture(releaseNotes, specDraft);
+    const fixture: Record<string, MockDocument> = {
+      [parityReleaseDocumentId]: {
+        metadata: releaseNotes,
+        content:
+          parityStateId() === 'status-large-file' ||
+          parityStateId()?.startsWith('preview-') === true
+            ? parityLargeFileContent
+            : parityReleaseContent,
+        documentRevision: 1,
+      },
+      [paritySpecDocumentId]: {
+        metadata: specDraft,
+        content: '# Specification draft\n',
+        documentRevision: 1,
+      },
+    };
+    if (parityStateId() === 'tab-40-document') {
+      for (let index = 1; index <= 39; index += 1) {
+        const documentId = `parity-tab-${index}`;
+        const title = `document-${index + 1}.md`;
+        fixture[documentId] = {
+          metadata: newDocumentMetadata(
+            documentId,
+            title,
+            `/tmp/projects/${title}`,
+          ),
+          content: `# ${title}\n`,
+          documentRevision: 1,
+        };
+      }
+    }
+    return fixture;
+  }
   return {
     [initialDocumentId]: {
       metadata: newDocumentMetadata(initialDocumentId, 'Untitled'),
@@ -389,11 +592,20 @@ function cloneView(view: DocView): DocView {
 function e2eConflictEnabled(): boolean {
   return (
     typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('ft-vs-04')
+    (new URLSearchParams(window.location.search).has('ft-vs-04') ||
+      parityStateId() === 'tab-blocked-conflict' ||
+      parityStateId() === 'conflict-content-truncated' ||
+      parityStateId() === 'conflict-metadata-only' ||
+      parityStateId() === 'conflict-read-only')
   );
 }
 
 function e2eConflictPreview(document: MockDocument): MockConflictPreview {
+  const state = parityStateId();
+  const truncatedText = Array.from(
+    { length: 13 },
+    (_, index) => `line ${index + 1} ${'x'.repeat(420)}`,
+  ).join('\n');
   return {
     contentRevision: document.documentRevision,
     detectedDiskVersion: {
@@ -405,18 +617,20 @@ function e2eConflictPreview(document: MockDocument): MockConflictPreview {
     displayName: document.metadata.title,
     documentId: document.metadata.documentId,
     onDisk: {
-      byteCount: 6,
-      lineCount: 1,
-      text: 'disk\n',
-      truncated: false,
+      byteCount: state === 'conflict-content-truncated' ? 5_500 : 6,
+      lineCount: state === 'conflict-content-truncated' ? 13 : 1,
+      text: state === 'conflict-content-truncated' ? truncatedText : 'disk\n',
+      truncated: state === 'conflict-content-truncated',
     },
     path: document.metadata.path || undefined,
-    readOnly: false,
+    metadataDifferences:
+      state === 'conflict-metadata-only' ? ['file mode changed'] : undefined,
+    readOnly: state === 'conflict-read-only',
     yours: {
-      byteCount: 6,
-      lineCount: 1,
-      text: 'mine\n',
-      truncated: false,
+      byteCount: state === 'conflict-content-truncated' ? 5_500 : 6,
+      lineCount: state === 'conflict-content-truncated' ? 13 : 1,
+      text: state === 'conflict-content-truncated' ? truncatedText : 'mine\n',
+      truncated: state === 'conflict-content-truncated',
     },
   };
 }
@@ -477,8 +691,8 @@ export function resetMockAppModel(): void {
   }
   revision = 0;
   tabSetRevision = 0;
-  orderedDocumentIds = [initialDocumentId];
-  activeDocumentId = initialDocumentId;
+  orderedDocumentIds = initialDocumentIds();
+  activeDocumentId = orderedDocumentIds[0] ?? initialDocumentId;
   recentFiles = seededRecentFiles();
   recentlyClosed = [];
   nextUntitledNumber = 2;
@@ -935,6 +1149,12 @@ export function PrepareClose(
         dirty: document.metadata.dirty,
         capability: 'writable',
         status: document.metadata.status,
+        normalizationToken:
+          parityStateId() === 'prompt-normalization'
+            ? 'parity-normalization-token'
+            : undefined,
+        proposedEnding:
+          parityStateId() === 'prompt-normalization' ? 'lf' : undefined,
       };
     });
   const dirtyTargetIds = targets

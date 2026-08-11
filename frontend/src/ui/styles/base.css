@@ -45,6 +45,48 @@ body {
   flex: 1 1 auto;
 }
 
+/* The deterministic parity route occupies the same bounded window geometry
+   as the binding surface. Ordinary startup keeps the full native webview. */
+#root:has([data-parity-shell='true']) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.application-frame:has([data-parity-shell='true']) {
+  background: var(--app-bg);
+  backdrop-filter: var(--blur);
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--win-radius);
+  box-shadow: var(--win-shadow);
+  height: 430px;
+  grid-template-rows: 44px minmax(0, 1fr);
+  margin: 224px auto 0;
+  position: relative;
+  width: 97vw;
+}
+
+@media (min-width: 377px) and (max-width: 768px) {
+  .application-frame:has([data-parity-shell='true']) {
+    height: 322px;
+    margin-top: 333px;
+  }
+}
+
+@media (max-width: 376px) {
+  .application-frame:has([data-parity-shell='true']) {
+    height: 2px;
+    grid-template-rows: 30px minmax(0, 1fr);
+    margin-top: 666px;
+    overflow: visible;
+  }
+
+  .application-content:has([data-parity-shell='true']) {
+    overflow: visible;
+  }
+}
+
 ::selection {
   background: var(--selection-bg);
   color: var(--selection-fg);

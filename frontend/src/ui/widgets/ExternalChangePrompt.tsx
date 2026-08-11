@@ -41,7 +41,10 @@ const ExternalChangePrompt: React.FC<ExternalChangePromptProps> = ({
     setBusy(true);
     void Promise.resolve(onDecision(decision)).finally(() => setBusy(false));
   };
-  const contentDiffers = preview.onDisk.text !== preview.yours.text;
+  const contentDiffers =
+    preview.onDisk.text !== preview.yours.text ||
+    preview.onDisk.truncated === true ||
+    preview.yours.truncated === true;
   const title = t('conflict.title');
   const initialFocusRef = preview.readOnly ? cancelRef : skipRef;
 

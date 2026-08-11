@@ -61,3 +61,24 @@ it('ClosePrompt gathers one multi-target choice and maps Escape to Cancel', asyn
   fireEvent.keyDown(dialog, { key: 'Escape' });
   await waitFor(() => expect(onChoice).toHaveBeenCalledWith('cancel'));
 });
+
+it('T045 keeps the parity close prompt locator name while showing the reviewed heading', () => {
+  const originalUrl = window.location.href;
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=state:tab-adjacent-after-close:material-light',
+  );
+  try {
+    render(<ClosePrompt onChoice={jest.fn()} open plan={plan()} />);
+
+    expect(
+      screen.getByRole('dialog', { name: 'Save changes before closing?' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Save changes to notes.md?' }),
+    ).toBeVisible();
+  } finally {
+    window.history.replaceState({}, '', originalUrl);
+  }
+});

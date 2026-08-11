@@ -1,19 +1,18 @@
 just go-archtest
 go test -run TestArchitecture -count=1 ./internal/... .
-ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	0.238s
-ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.352s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	0.591s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	0.756s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/db	1.972s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	0.223s
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.378s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	1.422s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	0.537s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	0.862s [no tests to run]
 ?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
-ok  	github.com/sanyokkua/go_mark_edit/internal/file	1.744s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/gate	0.933s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/logging	2.176s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/settings	1.578s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit	1.370s
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	1.051s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	1.860s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	1.603s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	2.105s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit	2.513s
 just cgo-free-check
 CGO_ENABLED=0 go build ./...
-go: writing stat cache: open /Users/ok/go/pkg/mod/cache/download/github.com/sanyokkua/go_mark_edit/@v/v0.0.0-20260809071658-068fed7ae591.info27644385.tmp: operation not permitted
 just migration-immutability-check
 migrations: no committed file modified in place
 just frontend-archtest

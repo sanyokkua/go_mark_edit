@@ -84,12 +84,20 @@
 
 .toolbar {
   align-items: center;
+  block-size: var(--toolbar-row-height);
+  backdrop-filter: var(--blur);
+  border-bottom: var(--control-border-width) solid var(--stroke-soft);
   display: flex;
+  flex: 0 0 var(--toolbar-row-height);
   flex-wrap: nowrap;
   gap: var(--toolbar-gap);
   min-width: 0;
-  overflow: visible;
+  overflow: hidden;
   padding: var(--toolbar-row-padding);
+}
+
+:global(:root[data-theme='glass']) .toolbar {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .utilityGroup {
@@ -150,21 +158,245 @@
 }
 
 .group {
-  background: var(--surface-raised);
-  backdrop-filter: var(--blur);
-  border: var(--control-border-width) solid var(--border);
+  background: var(--surface-2);
+  border: 0;
   border-radius: var(--toolbar-group-radius);
   padding: var(--toolbar-group-padding);
 }
 
 .arrangement {
+  border: var(--control-border-width) solid var(--stroke-soft);
   border-radius: var(--arrangement-radius);
 }
 
 .arrangement .action {
+  block-size: auto;
   border-radius: var(--arrangement-option-radius);
   font-size: 11.5px;
   padding: var(--arrangement-option-padding);
+}
+
+.group:not(.arrangement) .action[data-icon='bold'],
+.group:not(.arrangement) .action[data-icon='italic'],
+.group:not(.arrangement) .action[data-icon='strike'],
+.group:not(.arrangement) .action[data-icon='bullet-list'],
+.group:not(.arrangement) .action[data-icon='numbered-list'],
+.group:not(.arrangement) .action[data-icon='task-list'],
+.group:not(.arrangement) .action[data-icon='quote'],
+.group:not(.arrangement) .action[data-icon='table'] {
+  inline-size: 30px;
+  padding-inline: 0;
+}
+
+.group:not(.arrangement) .action[data-icon='inline-code'] {
+  inline-size: 36px;
+  padding-inline: 0;
+}
+
+.group:not(.arrangement) .action[data-icon='heading-1'],
+.group:not(.arrangement) .action[data-icon='heading-2'],
+.group:not(.arrangement) .action[data-icon='heading-3'] {
+  inline-size: 34px;
+  padding-inline: 0;
+}
+
+.group:not(.arrangement) .action[data-icon='link'],
+.group:not(.arrangement) .action[data-icon='image'] {
+  inline-size: 33px;
+  padding-inline: 0;
+}
+
+/* The binding parity route retains the production action registry and
+   accessible labels, but its in-scope toolbar uses the binding's compact
+   glyph treatment and right-anchored arrangement segment. Ordinary startup
+   keeps the product icon treatment and responsive grouping above. */
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon] {
+  font-family: Arial, sans-serif;
+  font-size: 12.5px;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='bold']
+  .actionIcon,
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='italic']
+  .actionIcon,
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='strike']
+  .actionIcon,
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='inline-code']
+  .actionIcon,
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon^='heading-']
+  .actionIcon,
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='bullet-list']
+  .actionIcon,
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='numbered-list']
+  .actionIcon,
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='task-list']
+  .actionIcon,
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='quote']
+  .actionIcon,
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='table']
+  .actionIcon {
+  display: none;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='bold']::after {
+  content: 'B';
+  font-weight: 700;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='italic']::after {
+  content: 'I';
+  font-style: italic;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='strike']::after {
+  content: 'S';
+  text-decoration: line-through;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='inline-code']::after {
+  content: '</>';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='heading-1']::after {
+  content: 'H1';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='heading-2']::after {
+  content: 'H2';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='heading-3']::after {
+  content: 'H3';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='bullet-list']::after {
+  content: '•';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='numbered-list']::after {
+  content: '1.';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='task-list']::after {
+  content: '☑';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='quote']::after {
+  content: '❝';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .action[data-icon='table']::after {
+  content: '▦';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  [data-action-id='format']::before {
+  content: '⌁ ';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  [data-action-id='compact']::before {
+  content: '⇥ ';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  [data-action-id='lint']::before {
+  content: '✓ ';
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  > .group:has([data-action-id='format']) {
+  background: transparent;
+  gap: 4px;
+  padding: 0;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  > .group:has([data-action-id='format'])
+  .action {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  > .group:has([data-action-id='format'])
+  [data-action-id='format'] {
+  inline-size: 66.5625px;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  > .group:has([data-action-id='format'])
+  [data-action-id='compact'] {
+  inline-size: 81.359375px;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  > .group:has([data-action-id='format'])
+  [data-action-id='lint'] {
+  inline-size: 49.859375px;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .arrangement {
+  box-sizing: border-box;
+  flex: 0 0 181.28125px;
+  gap: 0;
+  inline-size: 181.28125px;
+  margin-inline-start: auto;
+  padding: 3px;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .arrangement
+  .action {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  block-size: 23px;
+  font-family: Arial, sans-serif;
+  font-size: 11.5px;
+  padding: 0;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .arrangement
+  [data-action-id='editor'] {
+  inline-size: 58.0625px;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .arrangement
+  [data-action-id='split'] {
+  inline-size: 48.453125px;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+  .arrangement
+  [data-action-id='preview'] {
+  inline-size: 66.765625px;
 }
 
 .overflow {
@@ -204,6 +436,45 @@
   z-index: var(--z-dropdown);
 }
 
+.parityOverflowContent {
+  backdrop-filter: none;
+  border-radius: 11px;
+  display: block;
+  gap: 0;
+  inline-size: 212px;
+  min-inline-size: 212px;
+  padding: 6px;
+}
+
+.parityOverflowItems {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.parityOverflowItem {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  display: flex;
+  font: inherit;
+  font-size: 12px;
+  gap: 10px;
+  justify-content: space-between;
+  line-height: normal;
+  min-height: 29px;
+  padding: 7px 10px;
+  text-align: start;
+  width: 100%;
+}
+
+.parityOverflowItem span {
+  color: var(--faint);
+  margin-inline-start: auto;
+  white-space: nowrap;
+}
+
 .overflowAt768,
 .overflowAt375 {
   display: contents;
@@ -219,7 +490,7 @@
 
 :global(:root[data-theme='material']) .group {
   background: var(--surface-2);
-  border-color: var(--stroke);
+  border-color: transparent;
 }
 
 :global(:root[data-theme='minimal']) .group {
@@ -232,7 +503,11 @@
 :global(:root[data-theme='glass']) .tabItem {
   backdrop-filter: var(--blur);
   background: var(--surface-2);
-  border-color: var(--stroke);
+  border-color: transparent;
+}
+
+:global(:root[data-theme='glass']) .arrangement {
+  border-color: var(--stroke-soft);
 }
 
 @media (max-width: 768px) {
@@ -248,6 +523,14 @@
 @media (min-width: 769px) {
   .overflow {
     display: none;
+  }
+}
+
+@media (min-width: 769px) {
+  :global(.application-frame:has([data-parity-family='toolbar-overflow']))
+    .toolbar
+    .overflow {
+    display: block;
   }
 }
 

@@ -1,7 +1,20 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import * as actionDispatcher from '../../logic/actions/actionDispatcher';
 import ViewMenu from './ViewMenu';
+
+it('T045 keeps the Radix view popup in the Popper positioning flow', (): void => {
+  const viewStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/primitives/ViewMenu.module.css'),
+    'utf8',
+  );
+
+  expect(viewStyles).toMatch(
+    /\.content\s*\{[^}]*position:\s*relative;/s,
+  );
+});
 
 it('renders synchronized pane toggles without an unlisted view-cycle shortcut', (): void => {
   const onEditorVisibilityChange = jest.fn();

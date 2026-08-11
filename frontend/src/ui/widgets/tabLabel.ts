@@ -31,6 +31,10 @@ function normalizedPath(document: DocumentMetadata): string {
   return document.path.replaceAll('\\', '/');
 }
 
+function disambiguationBasename(document: DocumentMetadata): string {
+  return rawBasename(document).replace(/[\p{Cc}\p{Cf}]/gu, '');
+}
+
 export function escapeUnsafeText(value: string): string {
   let escaped = '';
   for (const character of value) {
@@ -82,7 +86,7 @@ export function tabLabelFor(
   const basename = rawBasename(document);
   const matching = documents.filter(
     (candidate) =>
-      rawBasename(candidate) === basename &&
+      disambiguationBasename(candidate) === disambiguationBasename(document) &&
       normalizedPath(candidate) !== '' &&
       candidate.documentId !== document.documentId,
   );

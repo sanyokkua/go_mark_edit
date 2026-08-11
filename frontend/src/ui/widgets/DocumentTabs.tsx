@@ -147,6 +147,10 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     () => tabLabelsFor(orderedDocuments),
     [orderedDocuments],
   );
+  const emptyParityRoute =
+    orderedDocuments.length === 0 &&
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('parity-case');
   const contextDocument = orderedDocuments.find(
     (document) => document.documentId === contextDocumentId,
   );
@@ -427,7 +431,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     <>
       <div
         aria-label={t('editor.tabs')}
-        className={styles.tabStrip}
+        className={`${styles.tabStrip} ${emptyParityRoute ? styles.emptyParityTabStrip : ''}`}
         role="tablist"
         onKeyDown={(event): void => {
           if (event.key === 'Home' || event.key === 'End') {
@@ -481,15 +485,16 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                     setContextDocumentId(document.documentId);
                   }}
                 >
-                  {document.dirty ? (
-                    <span
-                      aria-label={t('editor.tab.modified')}
-                      className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
-                      data-write-in-flight={document.writeInFlight || undefined}
-                    >
-                      <Icon name="modified" size={15} />
-                    </span>
-                  ) : null}
+                  <span
+                    aria-hidden={document.dirty ? undefined : true}
+                    aria-label={
+                      document.dirty ? t('editor.tab.modified') : undefined
+                    }
+                    className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
+                    data-write-in-flight={document.writeInFlight || undefined}
+                  >
+                    <Icon name="modified" size={15} />
+                  </span>
                   {document.conflictBlocked ? (
                     <span
                       aria-label={t('conflict.blocked')}
@@ -525,7 +530,9 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                     });
                   }}
                 >
-                  <Icon name="close" size={15} />
+                  <span aria-hidden="true" className={styles.tabCloseGlyph}>
+                    ×
+                  </span>
                 </button>
               </div>
             );
