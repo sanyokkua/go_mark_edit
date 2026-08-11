@@ -80,7 +80,11 @@ it('ModalShell sends backdrop requests only for the backdrop surface', () => {
 
 it('T045 maps the parity dialog to its bounded scrim while retaining the inner focus surface', () => {
   const originalUrl = window.location.href;
-  window.history.replaceState({}, '', '/?parity-case=primary:save-prompt:1280:glass-light');
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=primary:save-prompt:1280:glass-light',
+  );
   try {
     render(
       <ModalShell
@@ -115,7 +119,9 @@ it('T045 keeps narrow parity modal scrims viewport-owned', () => {
   expect(styles).toMatch(
     /@media \(max-width: 376px\) \{\s*\.parityOverlay\s*\{[^}]*position:\s*fixed;/s,
   );
-  expect(styles).toMatch(/\.parityOverlay\s*\{[^}]*backdrop-filter:\s*blur\(3px\);/s);
+  expect(styles).toMatch(
+    /\.parityOverlay\s*\{[^}]*backdrop-filter:\s*blur\(3px\);/s,
+  );
   expect(styles).toMatch(
     /@media \(min-width: 377px\)[\s\S]*?\.parityReloadOverlay\s*\{[^}]*inset-block-start:\s*-44px;[^}]*height:\s*calc\(100% \+ 44px\);/s,
   );
@@ -127,7 +133,11 @@ it('T045 keeps narrow parity modal scrims viewport-owned', () => {
 it('T045 portals narrow parity modal scrims outside blurred app frames', () => {
   const originalUrl = window.location.href;
   const originalWidth = window.innerWidth;
-  window.history.replaceState({}, '', '/?parity-case=primary:save-prompt:375:glass-light');
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=primary:save-prompt:375:glass-light',
+  );
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
     value: 375,

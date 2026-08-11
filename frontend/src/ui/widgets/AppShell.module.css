@@ -67,14 +67,22 @@
 }
 
 @media (min-width: 377px) and (max-width: 768px) {
-  :global(.application-content:has([data-parity-shell='true'][data-document-state='empty'])) {
-    transform: translateY(-25px);
+  :global(
+    .application-content:has(
+      [data-parity-shell='true'][data-document-state='empty']
+    )
+  ) {
+    transform: translateY(29px);
   }
 }
 
 @media (max-width: 376px) {
-  :global(.application-content:has([data-parity-shell='true'][data-document-state='empty'])) {
-    transform: translateY(-231px);
+  :global(
+    .application-content:has(
+      [data-parity-shell='true'][data-document-state='empty']
+    )
+  ) {
+    transform: translateY(-109px);
   }
 }
 
@@ -120,6 +128,10 @@
 
   .shell[data-parity-shell='true'] .document {
     overflow: visible;
+  }
+
+  .shell[data-parity-shell='true'] .workspace {
+    pointer-events: none;
   }
 
   .workspace {

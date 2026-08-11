@@ -146,9 +146,9 @@
 @media (min-width: 769px) {
   :global(.application-frame:has([data-parity-family='toolbar-overflow']))
     .editorView {
-      transform: translateX(66.797px);
-      width: 720px;
-    }
+    transform: translateX(66.797px);
+    width: 720px;
+  }
 }
 
 :global(.application-frame:has([data-parity-shell='true']))
@@ -160,9 +160,9 @@
 
 :global(.application-frame:has([data-parity-shell='true']))
   .previewContent
-      :global(.gme-preview)
-      :is(ul, ol) {
-      line-height: normal;
-      margin-inline-start: 20px;
-      padding-inline-start: 0;
-    }
+  :global(.gme-preview)
+  :is(ul, ol) {
+  line-height: normal;
+  margin-inline-start: 20px;
+  padding-inline-start: 0;
+}

@@ -78,15 +78,15 @@ function parityRoute(): boolean {
 function parityLabel(actionId: TabContextAction): string {
   switch (actionId) {
     case 'close-tab':
-      return 'Close';
+      return t('editor.tab.context.close');
     case 'close-others':
-      return 'Close others';
+      return t('editor.tab.context.closeOthers');
     case 'close-right':
-      return 'Close to the right';
+      return t('editor.tab.context.closeRight');
     case 'copy-path':
-      return 'Copy path';
+      return t('editor.tab.context.copyPath');
     case 'reveal-in-file-manager':
-      return 'Reveal in file manager';
+      return t('editor.tab.context.reveal');
     default:
       return '';
   }
@@ -218,7 +218,9 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
           >
             {isParityRoute ? parityLabel(actionId) : t(entry.labelKey)}
             {isParityRoute && actionId === 'close-tab' ? (
-              <span className={styles.parityAccelerator}>Ctrl W</span>
+              <span className={styles.parityAccelerator}>
+                {t('editor.tab.context.closeAccelerator')}
+              </span>
             ) : null}
           </button>
         );

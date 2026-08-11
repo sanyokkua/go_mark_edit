@@ -144,17 +144,14 @@ it('T045 keeps the parity shell route bounded to the binding window geometry', (
   expect(shellSource).toContain(
     "data-parity-shell={parityRoute ? 'true' : undefined}",
   );
-  expect(shellSource).toContain("data-parity-family={parityFamily}");
+  expect(shellSource).toContain('data-parity-family={parityFamily}');
   expect(baseStyles).toMatch(
     /\.application-frame:has\(\[data-parity-shell='true'\]\)/,
   );
   expect(baseStyles).toContain('width: 97vw;');
-  expect(baseStyles).toContain('height: 430px;');
-  expect(baseStyles).toContain('margin: 224px auto 0;');
-  expect(baseStyles).toContain('height: 322px;');
-  expect(baseStyles).toContain('margin-top: 333px;');
-  expect(baseStyles).toContain('height: 2px;');
-  expect(baseStyles).toContain('margin-top: 666px;');
+  expect(baseStyles).toContain('height: min(792px, 86vh);');
+  expect(baseStyles).toContain('margin: 130px auto 0;');
+  expect(baseStyles).toContain('flex: 0 0 min(792px, 86vh);');
   expect(baseStyles).toMatch(
     /\.application-content:has\(\[data-parity-shell='true'\]\)\s*\{[^}]*overflow:\s*visible;/s,
   );
@@ -178,10 +175,13 @@ it('T045 preserves the overflowing empty parity bands at narrow widths', () => {
 
   expect(shellSource).toContain('window.scrollTo(0, 0)');
   expect(shellStyles).toMatch(
-    /@media \(min-width: 377px\) and \(max-width: 768px\)[\s\S]*?application-content:has\(\[data-parity-shell='true'\]\[data-document-state='empty'\]\)[\s\S]*?transform:\s*translateY\(-25px\);/s,
+    /@media \(min-width: 377px\) and \(max-width: 768px\)[\s\S]*?:global\(\s*\.application-content:has\(\s*\[data-parity-shell='true'\]\[data-document-state='empty'\]\s*\)\s*\)\s*\{[\s\S]*?transform:\s*translateY\(29px\);/s,
   );
   expect(shellStyles).toMatch(
-    /@media \(max-width: 376px\)[\s\S]*?application-content:has\(\[data-parity-shell='true'\]\[data-document-state='empty'\]\)[\s\S]*?transform:\s*translateY\(-231px\);/s,
+    /@media \(max-width: 376px\)[\s\S]*?:global\(\s*\.application-content:has\(\s*\[data-parity-shell='true'\]\[data-document-state='empty'\]\s*\)\s*\)\s*\{[\s\S]*?transform:\s*translateY\(-109px\);/s,
+  );
+  expect(shellStyles).toMatch(
+    /@media \(max-width: 376px\)[\s\S]*?\.shell\[data-parity-shell='true'\] \.workspace\s*\{[\s\S]*?pointer-events:\s*none;/s,
   );
 });
 
@@ -430,13 +430,9 @@ it('T045 keeps the parity empty launcher between the tab and status bands', () =
     </Provider>,
   );
 
-  expect(
-    screen.getByRole('tablist', { name: 'Document tabs' }),
-  ).toBeVisible();
+  expect(screen.getByRole('tablist', { name: 'Document tabs' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'New tab' })).toBeVisible();
-  expect(
-    screen.getByRole('status', { name: 'Document status' }),
-  ).toBeVisible();
+  expect(screen.getByRole('status', { name: 'Document status' })).toBeVisible();
   expect(screen.getByTestId('document-launcher')).toBeVisible();
 
   window.history.pushState({}, '', '/');

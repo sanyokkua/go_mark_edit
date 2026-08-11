@@ -131,9 +131,13 @@ function resetMockMonaco(): void {
     pushUndoStop: jest.fn(),
     restoreViewState: jest.fn(
       (viewState: editor.ICodeEditorViewState | null): void => {
-        const selection = (viewState as (editor.ICodeEditorViewState & {
-          selection?: ISelection;
-        }) | null)?.selection;
+        const selection = (
+          viewState as
+            | (editor.ICodeEditorViewState & {
+                selection?: ISelection;
+              })
+            | null
+        )?.selection;
         if (selection !== undefined) {
           mockRuntime.selection = { ...selection } as ISelection;
         }

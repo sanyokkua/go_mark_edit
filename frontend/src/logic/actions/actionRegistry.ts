@@ -245,7 +245,7 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
   entry('reveal-in-file-manager', 'document', ['tab-context'], {
     surfaceOrder: { 'tab-context': 6 },
   }),
-  entry('exit', 'application', ['file-menu'], { availability: fileDeferred }),
+  entry('exit', 'application', ['file-menu'], { availability: available() }),
 
   entry('settings', 'application', ['settings-menu'], { shortcut: 'Mod+,' }),
   entry('appearance', 'application', ['settings-menu']),

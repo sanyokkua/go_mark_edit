@@ -99,29 +99,29 @@ export const ParityToastSurface: React.FC = (): React.JSX.Element => {
       <div className={`${styles.parityToast} ${styles.parityToastOk}`}>
         <span className={styles.parityToastIcon}>✓</span>
         <span className={styles.parityToastText}>
-          <b>Saved</b>
-          <span>release-notes.md written · UTF-8 · LF preserved</span>
+          <b>{t('parity.toast.saved.title')}</b>
+          <span>{t('parity.toast.saved.message')}</span>
         </span>
       </div>
       <div className={styles.parityToast}>
         <span className={styles.parityToastIcon}>ℹ</span>
         <span className={styles.parityToastText}>
-          <b>Formatted</b>
-          <span>Document formatted — 3 tables aligned</span>
+          <b>{t('parity.toast.formatted.title')}</b>
+          <span>{t('parity.toast.formatted.message')}</span>
         </span>
       </div>
       <div className={`${styles.parityToast} ${styles.parityToastWarn}`}>
         <span className={styles.parityToastIcon}>⚠</span>
         <span className={styles.parityToastText}>
-          <b>Lint: 1 issue</b>
-          <span>Inconsistent bullet marker on line 7</span>
+          <b>{t('parity.toast.lint.title')}</b>
+          <span>{t('parity.toast.lint.message')}</span>
         </span>
       </div>
       <div className={`${styles.parityToast} ${styles.parityToastErr}`}>
         <span className={styles.parityToastIcon}>⤫</span>
         <span className={styles.parityToastText}>
-          <b>Provider unreachable</b>
-          <span>Ollama at 127.0.0.1:11434 — retrying…</span>
+          <b>{t('parity.toast.provider.title')}</b>
+          <span>{t('parity.toast.provider.message')}</span>
         </span>
       </div>
     </div>

@@ -60,7 +60,7 @@
 }
 
 @media (min-width: 377px) {
-.parityReloadOverlay {
+  .parityReloadOverlay {
     inset-block-start: -44px;
     height: calc(100% + 44px);
   }

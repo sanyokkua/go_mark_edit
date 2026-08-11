@@ -104,6 +104,9 @@ const documentsSlice = createSlice({
         if (action.payload.activeDocument !== undefined) {
           state.activeDocumentId = action.payload.activeDocument;
         }
+        if (state.orderedIds.length === 0) {
+          state.activeDocumentId = null;
+        }
         state.recentFiles = [...(action.payload.recentFiles ?? [])];
         state.canReopenLastFile = action.payload.canReopenLastFile ?? false;
       })
@@ -136,6 +139,9 @@ const documentsSlice = createSlice({
           state.activeDocumentId = patch.activeDocument.present
             ? (patch.activeDocument.documentId ?? null)
             : null;
+        }
+        if (state.orderedIds.length === 0) {
+          state.activeDocumentId = null;
         }
         if (patch.recentFiles !== undefined) {
           state.recentFiles = [...patch.recentFiles];

@@ -111,6 +111,15 @@ it('T009 dispatches New and Open as focused application commands', async () => {
   expect(invoke).toHaveBeenCalledTimes(2);
 });
 
+it('T030 dispatches Exit as a focused application command', async () => {
+  const invoke = jest.fn(async () => undefined);
+
+  await expect(
+    dispatchAction('exit', { applicationFocused: true, invoke }),
+  ).resolves.toMatchObject({ status: 'mutated', actionId: 'exit' });
+  expect(invoke).toHaveBeenCalledTimes(1);
+});
+
 it('T009 dispatches Refresh preview as an available window action without a shortcut', async () => {
   const invoke = jest.fn(async () => undefined);
 

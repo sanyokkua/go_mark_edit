@@ -355,9 +355,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
     );
   };
 
-  const parityOverflowItem = (
-    id: ActionEntry['id'],
-  ): React.JSX.Element => {
+  const parityOverflowItem = (id: ActionEntry['id']): React.JSX.Element => {
     const entry = action(id);
     const unavailable = entry.availability.kind === 'deferred';
     return (
@@ -473,13 +471,9 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
             >
               {toolbarOverflowParity ? (
                 <div className={styles.parityOverflowItems}>
-                  {(
-                    [
-                      ...listActions,
-                      ...insertActions,
-                      'compact',
-                    ] as const
-                  ).map((id) => parityOverflowItem(id))}
+                  {([...listActions, ...insertActions, 'compact'] as const).map(
+                    (id) => parityOverflowItem(id),
+                  )}
                   <div className={styles.parityOverflowItem}>
                     {`${t('action.view.label')}: ${t('action.editor.label')} · ${t('action.split.label')} · ${t('action.preview.label')}`}
                   </div>

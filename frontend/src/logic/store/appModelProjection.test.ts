@@ -179,6 +179,27 @@ it('projects optional active state', async () => {
   });
 });
 
+it('clears a stale active identity when the last ordered document is removed', async () => {
+  const state = appState(9);
+  const adapter = createAdapter(async (): Promise<AppModelState> => state);
+
+  await expect(bootstrapAppModelProjection(adapter)).resolves.toMatchObject({
+    status: 'ready',
+  });
+
+  adapter.emitPatch({
+    revision: 10,
+    orderedDocumentIds: [],
+    documents: { remove: [documentMetadata.documentId] },
+  });
+
+  expect(store.getState().documents).toMatchObject({
+    orderedIds: [],
+    byId: {},
+    activeDocumentId: null,
+  });
+});
+
 it('FR-WS-009 hydrates backend-acknowledged native geometry without a browser-owned substitute', async () => {
   const state = appState(3);
   state.snapshot.ui = {

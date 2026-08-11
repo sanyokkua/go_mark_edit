@@ -3,8 +3,10 @@ import {
   REFERENCE_ADAPTER_HASH,
   REFERENCE_ADAPTER_VERSION,
   REFERENCE_ZERO_ASSISTANT_CLASS,
+  referenceStateCondition,
   referenceVariantRules,
   referenceVariants,
+  unresolvedReferenceStateConditions,
 } from './reference-adapter';
 
 const bindingHtml =
@@ -43,4 +45,18 @@ it('reference adapter exposes only the reviewed variant boundary', () => {
   expect(() => adaptReferenceHtml(bindingHtml, 'workspace' as never)).toThrow(
     'Unsupported reference variant',
   );
+});
+
+it('documents normalization as unresolved instead of reusing the save prompt', () => {
+  expect(referenceStateCondition('prompt-normalization')).toEqual({
+    status: 'unresolved',
+    reason:
+      'The immutable binding mockup has no source-backed Normalize line endings? condition.',
+  });
+  expect(unresolvedReferenceStateConditions).toHaveProperty(
+    'prompt-normalization',
+  );
+  expect(referenceStateCondition('resync-recovery')).toEqual({
+    status: 'supported',
+  });
 });

@@ -3743,109 +3743,109 @@
     {
       "palette": "glass-light",
       "repetition": 1,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "glass-light",
       "repetition": 2,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "glass-light",
       "repetition": 3,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "glass-dark",
       "repetition": 1,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "glass-dark",
       "repetition": 2,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "glass-dark",
       "repetition": 3,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "material-light",
       "repetition": 1,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "material-light",
       "repetition": 2,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "material-light",
       "repetition": 3,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "material-dark",
       "repetition": 1,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "material-dark",
       "repetition": 2,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "material-dark",
       "repetition": 3,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "minimal-light",
       "repetition": 1,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "minimal-light",
       "repetition": 2,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "minimal-light",
       "repetition": 3,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "minimal-dark",
       "repetition": 1,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "minimal-dark",
       "repetition": 2,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     },
     {
       "palette": "minimal-dark",
       "repetition": 3,
-      "status": "failed",
+      "status": "unresolved",
       "comparisonCompleted": false
     }
   ],

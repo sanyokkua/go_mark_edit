@@ -42,9 +42,9 @@ function paritySettingsTab(): ParitySettingsTab | undefined {
 }
 
 const paritySettingsTabs: readonly [ParitySettingsTab, string][] = [
-  ['appearance', 'Appearance'],
-  ['editor', 'Editor'],
-  ['markdown', 'Markdown'],
+  ['appearance', 'settings.menu.appearance'],
+  ['editor', 'settings.menu.editor'],
+  ['markdown', 'settings.menu.markdown'],
 ];
 
 function ParitySettingsPane({
@@ -65,48 +65,50 @@ function ParitySettingsPane({
   if (tab === 'editor') {
     return (
       <>
-        <div className={styles.parityGroupHeading}>Editor</div>
+        <div className={styles.parityGroupHeading}>
+          {t('settings.menu.editor')}
+        </div>
         <div className={styles.paritySetting}>
           <div>
-            Autosave
-            <small>Save existing files automatically</small>
+            {t('settings.autosave')}
+            <small>{t('settings.autosave.description')}</small>
           </div>
           <span className={styles.parityToggleOn} />
         </div>
         <div className={styles.paritySetting}>
           <div>
-            Live preview
-            <small>Debounced for very large files</small>
+            {t('settings.livePreview')}
+            <small>{t('settings.livePreview.description')}</small>
           </div>
           <span className={styles.parityToggleOn} />
         </div>
         <div className={styles.paritySetting}>
-          <div>Line numbers</div>
+          <div>{t('settings.editor.lineNumbers')}</div>
           <span className={styles.parityToggleOn} />
         </div>
         <div className={styles.paritySetting}>
-          <div>Word wrap</div>
+          <div>{t('settings.editor.wordWrap')}</div>
           <span className={styles.parityToggleOff} />
         </div>
         <div className={styles.paritySetting}>
-          <div>Default action scope</div>
+          <div>{t('settings.actionScope')}</div>
           <div className={styles.parityPick}>
             <button className={styles.paritySelected} type="button">
-              Whole document
+              {t('settings.actionScope.document')}
             </button>
-            <button type="button">Selection</button>
+            <button type="button">{t('settings.actionScope.selection')}</button>
           </div>
         </div>
         <div className={styles.paritySetting}>
-          <div>Font size</div>
+          <div>{t('settings.editor.fontSize.short')}</div>
           <select
-            aria-label="Font size"
+            aria-label={t('settings.editor.fontSize.short')}
             className={styles.paritySelect}
             defaultValue="14"
           >
-            <option value="13">13 px</option>
-            <option value="14">14 px</option>
-            <option value="16">16 px</option>
+            <option value="13">{t('settings.fontSize.13')}</option>
+            <option value="14">{t('settings.fontSize.14')}</option>
+            <option value="16">{t('settings.fontSize.16')}</option>
           </select>
         </div>
       </>
@@ -116,56 +118,62 @@ function ParitySettingsPane({
   if (tab === 'markdown') {
     return (
       <>
-        <div className={styles.parityGroupHeading}>Markdown</div>
+        <div className={styles.parityGroupHeading}>
+          {t('settings.menu.markdown')}
+        </div>
         <div className={styles.paritySetting}>
           <div>
-            Standard
-            <small>Parsing + rendering feature set</small>
+            {t('settings.markdown.standard')}
+            <small>{t('settings.markdown.standard.description')}</small>
           </div>
           <div className={styles.parityPick}>
-            <button type="button">Minimal</button>
+            <button type="button">{t('settings.markdown.minimal')}</button>
             <button className={styles.paritySelected} type="button">
-              GFM
+              {t('settings.markdown.gfm')}
             </button>
-            <button type="button">Full</button>
+            <button type="button">{t('settings.markdown.full')}</button>
           </div>
         </div>
         <div className={styles.paritySetting}>
-          <div>Format on save</div>
+          <div>{t('settings.formatOnSave')}</div>
           <span className={styles.parityToggleOff} />
         </div>
         <div className={styles.paritySetting}>
-          <div>Lint on save</div>
+          <div>{t('settings.lintOnSave')}</div>
           <span className={styles.parityToggleOn} />
         </div>
         <div className={styles.paritySetting}>
-          <div>Bullet marker</div>
+          <div>{t('settings.markdown.bullet')}</div>
           <div className={styles.parityPick}>
             <button className={styles.paritySelected} type="button">
-              -
+              {t('settings.markdown.bullet.dash')}
             </button>
-            <button type="button">*</button>
-            <button type="button">+</button>
+            <button type="button">
+              {t('settings.markdown.bullet.asterisk')}
+            </button>
+            <button type="button">{t('settings.markdown.bullet.plus')}</button>
           </div>
         </div>
         <div className={styles.paritySetting}>
-          <div>Emphasis</div>
+          <div>{t('settings.markdown.emphasis')}</div>
           <div className={styles.parityPick}>
             <button className={styles.paritySelected} type="button">
-              _ _
+              {t('settings.markdown.emphasis.underscore')}
             </button>
-            <button type="button">* *</button>
+            <button type="button">
+              {t('settings.markdown.emphasis.asterisk')}
+            </button>
           </div>
         </div>
         <div className={styles.paritySetting}>
-          <div>Heading style</div>
+          <div>{t('settings.markdown.heading')}</div>
           <select
-            aria-label="Heading style"
+            aria-label={t('settings.markdown.heading')}
             className={styles.paritySelect}
             defaultValue="atx"
           >
-            <option value="atx">ATX (#)</option>
-            <option value="setext">Setext</option>
+            <option value="atx">{t('settings.markdown.atx.parity')}</option>
+            <option value="setext">{t('settings.markdown.setext')}</option>
           </select>
         </div>
       </>
@@ -174,9 +182,9 @@ function ParitySettingsPane({
 
   return (
     <>
-      <div className={styles.parityGroupHeading}>Appearance</div>
+      <div className={styles.parityGroupHeading}>{t('appearance.title')}</div>
       <div className={styles.paritySetting}>
-        <div>Theme</div>
+        <div>{t('appearance.theme.label')}</div>
         <div className={styles.parityPick}>
           {(['glass', 'material', 'minimal'] as const).map((choice) => (
             <button
@@ -189,13 +197,13 @@ function ParitySettingsPane({
               type="button"
               onClick={(): void => onThemeChange(choice)}
             >
-              {choice[0].toUpperCase() + choice.slice(1)}
+              {t(`appearance.theme.short.${choice}`)}
             </button>
           ))}
         </div>
       </div>
       <div className={styles.paritySetting}>
-        <div>Color mode</div>
+        <div>{t('appearance.mode.parityLabel')}</div>
         <div className={styles.parityPick}>
           {(['auto', 'light', 'dark'] as const).map((choice) => (
             <button
@@ -208,23 +216,20 @@ function ParitySettingsPane({
               type="button"
               onClick={(): void => onModeChange(choice)}
             >
-              {choice[0].toUpperCase() + choice.slice(1)}
+              {t(`appearance.mode.short.${choice}`)}
             </button>
           ))}
         </div>
       </div>
       <div className={styles.paritySetting}>
         <div>
-          Default open mode
-          <small>
-            How files open from the file system (association, drag-and-drop,
-            tree, Open dialog)
-          </small>
+          {t('settings.openMode')}
+          <small>{t('settings.openMode.description')}</small>
         </div>
         <div className={styles.parityPick}>
-          <button type="button">Reading (Viewer)</button>
+          <button type="button">{t('settings.openMode.reading')}</button>
           <button className={styles.paritySelected} type="button">
-            Editor
+            {t('settings.openMode.editor')}
           </button>
         </div>
       </div>
@@ -331,19 +336,22 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
           tabIndex={-1}
         >
           <header className={styles.parityHeader}>
-            <h1 id="settings-dialog-title">Settings</h1>
+            <h1 id="settings-dialog-title">{t('shell.settings')}</h1>
             <button
-              aria-label="Close settings"
+              aria-label={t('appearance.close')}
               className={styles.parityClose}
               type="button"
               onClick={(): void => onOpenChange(false)}
             >
-              ×
+              {t('settings.parity.closeGlyph')}
             </button>
           </header>
           <div className={styles.parityBody}>
-            <nav aria-label="Settings sections" className={styles.parityTabs}>
-              {paritySettingsTabs.map(([value, label]) => (
+            <nav
+              aria-label={t('settings.menu.label')}
+              className={styles.parityTabs}
+            >
+              {paritySettingsTabs.map(([value, labelKey]) => (
                 <button
                   className={
                     value === parityTab
@@ -353,19 +361,23 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   key={value}
                   type="button"
                 >
-                  {label}
+                  {t(labelKey)}
                 </button>
               ))}
               {[
-                'Export',
-                'AI · Providers',
-                'AI · Context',
-                'Content & privacy',
-                'Diagnostics',
-                'Language',
-              ].map((label) => (
-                <button className={styles.parityTab} key={label} type="button">
-                  {label}
+                'settings.parity.export',
+                'settings.parity.aiProviders',
+                'settings.parity.aiContext',
+                'settings.parity.contentPrivacy',
+                'settings.parity.diagnostics',
+                'settings.parity.language',
+              ].map((labelKey) => (
+                <button
+                  className={styles.parityTab}
+                  key={labelKey}
+                  type="button"
+                >
+                  {t(labelKey)}
                 </button>
               ))}
             </nav>

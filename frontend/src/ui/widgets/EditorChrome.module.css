@@ -97,7 +97,7 @@
 }
 
 :global(:root[data-theme='glass']) .toolbar {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
 
 .utilityGroup {
@@ -210,131 +210,159 @@
    accessible labels, but its in-scope toolbar uses the binding's compact
    glyph treatment and right-anchored arrangement segment. Ordinary startup
    keeps the product icon treatment and responsive grouping above. */
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon] {
   font-family: Arial, sans-serif;
   font-size: 12.5px;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='bold']
   .actionIcon,
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='italic']
   .actionIcon,
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='strike']
   .actionIcon,
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='inline-code']
   .actionIcon,
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon^='heading-']
   .actionIcon,
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='bullet-list']
   .actionIcon,
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='numbered-list']
   .actionIcon,
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='task-list']
   .actionIcon,
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='quote']
   .actionIcon,
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='table']
   .actionIcon {
   display: none;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='bold']::after {
   content: 'B';
   font-weight: 700;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='italic']::after {
   content: 'I';
   font-style: italic;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='strike']::after {
   content: 'S';
   text-decoration: line-through;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='inline-code']::after {
   content: '</>';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='heading-1']::after {
   content: 'H1';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='heading-2']::after {
   content: 'H2';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='heading-3']::after {
   content: 'H3';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='bullet-list']::after {
   content: '•';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='numbered-list']::after {
   content: '1.';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='task-list']::after {
   content: '☑';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='quote']::after {
   content: '❝';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .action[data-icon='table']::after {
   content: '▦';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   [data-action-id='format']::before {
   content: '⌁ ';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   [data-action-id='compact']::before {
   content: '⇥ ';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   [data-action-id='lint']::before {
   content: '✓ ';
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   > .group:has([data-action-id='format']) {
   background: transparent;
   gap: 4px;
   padding: 0;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   > .group:has([data-action-id='format'])
   .action {
   box-sizing: border-box;
@@ -342,25 +370,29 @@
   padding: 0;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   > .group:has([data-action-id='format'])
   [data-action-id='format'] {
   inline-size: 66.5625px;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   > .group:has([data-action-id='format'])
   [data-action-id='compact'] {
   inline-size: 81.359375px;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   > .group:has([data-action-id='format'])
   [data-action-id='lint'] {
   inline-size: 49.859375px;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .arrangement {
   box-sizing: border-box;
   flex: 0 0 181.28125px;
@@ -370,7 +402,8 @@
   padding: 3px;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .arrangement
   .action {
   box-sizing: border-box;
@@ -381,19 +414,22 @@
   padding: 0;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .arrangement
   [data-action-id='editor'] {
   inline-size: 58.0625px;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .arrangement
   [data-action-id='split'] {
   inline-size: 48.453125px;
 }
 
-:global(.application-frame:has([data-parity-shell='true'])) .toolbar
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
   .arrangement
   [data-action-id='preview'] {
   inline-size: 66.765625px;

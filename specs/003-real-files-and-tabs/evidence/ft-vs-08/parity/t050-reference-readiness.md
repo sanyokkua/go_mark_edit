@@ -6,12 +6,13 @@ Date: 2026-08-11
 
 - Focused navigation probe: passed (`T050 reference navigation reaches every mapped probe before capture`).
 - Parity unit suites: 4 suites, 15 tests passed.
-- Unrestricted command: `npm --prefix frontend run verify:ui -- e2e/real-files-parity.test.ts --workers=1`.
-- Unrestricted result: exit 1 after 14.6 minutes because the final pixel-parity assertion remains red.
+- Unrestricted command: `npm --prefix frontend run verify:ui -- e2e/real-files-parity.test.ts`.
+- Unrestricted result: exit 1 after 15.7 minutes because the final pixel-parity assertion remains red.
 - Final compact report: 546 logical cases, 3 repetitions, 1,638 attempted, 1,620 comparisons completed, 0 passed,
-  1,638 failed, and 18 incomplete rows.
-- The 18 incomplete rows are actual-page `save-prompt` selector fixture failures; no reference-selector readiness wait
-  remains. The prior 738 reference-selector waits are eliminated. The remaining actual fixture gap is outside T050.
+  1,620 failed, and 18 unresolved rows.
+- The 18 unresolved rows are the `prompt-normalization` state. The real page reaches `Normalize line endings?`,
+  but the immutable mockup has no source-backed normalization condition; the harness records `referenceReady: false`,
+  `actualReady: true`, and does not count those rows as parity. The prior 738 reference-selector waits are eliminated.
 
 ## Authority checks
 

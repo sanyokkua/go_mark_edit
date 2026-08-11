@@ -28,6 +28,7 @@ import {
   bootstrapAppModelProjection,
   type AppModelBootstrapResult,
 } from './logic/store/appModelProjection';
+import { hydrateProjection } from './logic/store/appModelProjectionActions';
 import type {
   ActiveBuffer,
   ClassifiedError,
@@ -512,6 +513,15 @@ const AppContents: React.FC = (): React.JSX.Element => {
       ) {
         setActiveBuffer(null);
       }
+      if (
+        result.error === undefined &&
+        result.orderedDocumentIds.length === 0
+      ) {
+        const reconciled = await appModelAdapter.getState();
+        if ((reconciled.snapshot.orderedDocumentIds ?? []).length === 0) {
+          dispatch(hydrateProjection(reconciled.snapshot));
+        }
+      }
       if (isNativeClose && result.error === undefined) {
         try {
           await nativeLifecycleAdapter.authorizeQuit();
@@ -527,6 +537,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
     [
       cancelNativeClose,
       clearCloseState,
+      dispatch,
       reportNativeCloseError,
       reportWriteError,
     ],
@@ -1358,17 +1369,17 @@ const AppContents: React.FC = (): React.JSX.Element => {
             </ModalShell>
             {bootstrapStatus === 'ready' && parityToasts ? (
               <ParityToastSurface />
-            ) : bootstrapStatus === 'ready'
-              ? notifications.map((notification) => (
-                  <NotificationToast
-                    key={`${notification.id}:${notification.refreshGeneration}`}
-                    notification={notification}
-                    onDismiss={(id: number): void => {
-                      dispatch(dismissNotification(id));
-                    }}
-                  />
-                ))
-              : null}
+            ) : bootstrapStatus === 'ready' ? (
+              notifications.map((notification) => (
+                <NotificationToast
+                  key={`${notification.id}:${notification.refreshGeneration}`}
+                  notification={notification}
+                  onDismiss={(id: number): void => {
+                    dispatch(dismissNotification(id));
+                  }}
+                />
+              ))
+            ) : null}
           </div>
         </EditorSessionProvider>
       </ModalStateProvider>

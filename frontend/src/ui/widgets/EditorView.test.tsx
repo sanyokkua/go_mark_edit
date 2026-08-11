@@ -193,7 +193,11 @@ it('STORY-015-AC-3 renders each arrangement', () => {
 
 it('T045 presents the reviewed selection metadata on the parity editor route', () => {
   const originalUrl = window.location.href;
-  window.history.replaceState({}, '', '/?parity-case=primary:editor-split:1280:glass-light');
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=primary:editor-split:1280:glass-light',
+  );
   try {
     renderEditorView('split');
 
@@ -219,13 +223,13 @@ it('T045 prevents the parity preview from double-compositing the pane surface', 
   expect(editorStyles).toMatch(
     /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?line-height:\s*normal;/s,
   );
-      expect(editorStyles).toMatch(
-        /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?margin-inline-start:\s*20px;[^}]*padding-inline-start:\s*0;/s,
-      );
-      expect(editorStyles).toMatch(
-        /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?:is\(ul, ol\)\s*\{[^}]*line-height:\s*normal;/s,
-      );
-    });
+  expect(editorStyles).toMatch(
+    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?margin-inline-start:\s*20px;[^}]*padding-inline-start:\s*0;/s,
+  );
+  expect(editorStyles).toMatch(
+    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?:is\(ul, ol\)\s*\{[^}]*line-height:\s*normal;/s,
+  );
+});
 
 it('replaces the same-document editor model when a Reload acknowledgement changes content', () => {
   const document = documentFor('split');

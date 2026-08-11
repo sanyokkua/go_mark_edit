@@ -11,9 +11,7 @@ it('T045 keeps the Radix view popup in the Popper positioning flow', (): void =>
     'utf8',
   );
 
-  expect(viewStyles).toMatch(
-    /\.content\s*\{[^}]*position:\s*relative;/s,
-  );
+  expect(viewStyles).toMatch(/\.content\s*\{[^}]*position:\s*relative;/s);
 });
 
 it('renders synchronized pane toggles without an unlisted view-cycle shortcut', (): void => {

@@ -533,7 +533,23 @@ it('T027 native close requests complete a clean plan before authorizing one quit
   act((): void => disposeAppModelProjection());
   store.dispatch(resetProjection());
   mockedAppModelAdapter.getState.mockReset();
-  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  const readyState = bootstrapState('draft', 12);
+  const zeroDocumentState: AppModelState = {
+    ...readyState,
+    snapshot: {
+      ...readyState.snapshot,
+      revision: 13,
+      documents: {},
+      orderedDocumentIds: [],
+      activeDocumentId: null,
+      activeDocument: null,
+    },
+    activeBuffer: null,
+  };
+  mockedAppModelAdapter.getState
+    .mockResolvedValueOnce(readyState)
+    .mockResolvedValueOnce(readyState)
+    .mockResolvedValueOnce(zeroDocumentState);
   mockedAppModelAdapter.subscribeStatePatches.mockReset();
   mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
   mockedClosePlanAdapter.prepareClose.mockResolvedValue({
@@ -582,6 +598,12 @@ it('T027 native close requests complete a clean plan before authorizing one quit
       0,
     );
     expect(mockedNativeLifecycleAdapter.authorizeQuit).toHaveBeenCalledTimes(1);
+  });
+  expect(mockedAppModelAdapter.getState).toHaveBeenCalledTimes(3);
+  expect(store.getState().documents).toMatchObject({
+    orderedIds: [],
+    byId: {},
+    activeDocumentId: null,
   });
   expect(mockedClosePlanAdapter.resolveClosePlan).toHaveBeenCalledWith(
     'native-close-plan',

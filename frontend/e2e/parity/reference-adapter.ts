@@ -14,6 +14,33 @@ export const referenceVariants = [
 
 export type ReferenceVariant = (typeof referenceVariants)[number];
 
+export type ReferenceStateCondition = Readonly<{
+  readonly status: 'supported' | 'unresolved';
+  readonly reason?: string;
+}>;
+
+/**
+ * The historical mockup has a generic save prompt but no distinct
+ * normalization prompt. Keep this contract explicit so a behavior-owned
+ * state cannot accidentally reuse that neighboring reference capture.
+ */
+export const unresolvedReferenceStateConditions = Object.freeze({
+  'prompt-normalization': Object.freeze({
+    status: 'unresolved',
+    reason:
+      'The immutable binding mockup has no source-backed Normalize line endings? condition.',
+  }),
+} satisfies Readonly<Record<string, ReferenceStateCondition>>);
+
+export function referenceStateCondition(
+  stateId: string,
+): ReferenceStateCondition {
+  const conditions = unresolvedReferenceStateConditions as Readonly<
+    Record<string, ReferenceStateCondition>
+  >;
+  return conditions[stateId] ?? { status: 'supported' };
+}
+
 type VariantRule = Readonly<{
   readonly allowedRegions: readonly string[];
   readonly excludedRegions: readonly string[];

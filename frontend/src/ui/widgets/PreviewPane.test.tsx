@@ -30,7 +30,11 @@ function deferred<T>(): {
 
 it('T045 presents the reviewed corrected copy on the parity preview route', () => {
   const originalUrl = window.location.href;
-  window.history.replaceState({}, '', '/?parity-case=primary:editor-split:1280:glass-light');
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=primary:editor-split:1280:glass-light',
+  );
   try {
     render(
       <PreviewPane
@@ -56,7 +60,11 @@ it('T045 presents the reviewed corrected copy on the parity preview route', () =
 
 it('T045 removes the split fixture typo across source line wrapping', () => {
   const originalUrl = window.location.href;
-  window.history.replaceState({}, '', '/?parity-case=primary:editor-split:1280:glass-light');
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=primary:editor-split:1280:glass-light',
+  );
   try {
     render(
       <PreviewPane

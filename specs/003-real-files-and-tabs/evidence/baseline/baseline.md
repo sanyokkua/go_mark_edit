@@ -4,10 +4,10 @@ Captured by `just baseline 003-real-files-and-tabs`. Do not edit by hand.
 
 | | |
 |---|---|
-| commit | `7744cc8` (`7744cc824388e3685c434948822d6e32e6b2edea`) |
-| captured | 2026-08-09 12:27 UTC |
+| commit | `b87f6c7d` (`b87f6c7d1786df26493418dfc7ff5eb222fa0cb5`) |
+| captured | 2026-08-11 10:25 UTC |
 | working tree | **dirty — uncommitted changes are part of this baseline** |
-| coverage | 63.7% (mean of 11 packages) |
+| coverage | 64.0% (mean of 11 packages) |
 
 ## Gates
 
@@ -19,7 +19,7 @@ later diff against it would pass whatever is written.
 |---|---|---|---|---|
 | lint | `just lint` | 0 | clean | 2 |
 | test | `just test` | 0 | clean | 0 |
-| fmt-check | `just fmt-check` | 1 | failing | 0 |
+| fmt-check | `just fmt-check` | 0 | clean | 0 |
 | typecheck | `just typecheck` | 0 | clean | 0 |
 | archtest | `just archtest` | 0 | clean | 0 |
 | frontend-build | `just frontend-build` | 0 | clean | 0 |

@@ -370,7 +370,9 @@ it('renders bounded conflict content even when both retained texts compare equal
 
   fireEvent.click(screen.getByRole('tab', { name: /two\.md/iu }));
   await waitFor(() =>
-    expect(screen.getByRole('dialog', { name: 'File changed on disk' })).toBeVisible(),
+    expect(
+      screen.getByRole('dialog', { name: 'File changed on disk' }),
+    ).toBeVisible(),
   );
   expect(
     document.querySelector('[data-conflict-truncated="onDisk"]'),

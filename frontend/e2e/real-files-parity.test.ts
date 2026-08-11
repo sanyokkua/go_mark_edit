@@ -16,6 +16,7 @@ import {
   adaptReferenceHtml,
   REFERENCE_ADAPTER_HASH,
   REFERENCE_ZERO_ASSISTANT_CLASS,
+  referenceStateCondition,
   referenceVariantRules,
   type ReferenceVariant,
 } from './parity/reference-adapter';
@@ -298,7 +299,9 @@ type CaptureRecord = Readonly<{
   readonly referenceHash?: string;
   readonly actualHash?: string;
   readonly comparisonCompleted: boolean;
-  readonly status: 'passed' | 'failed';
+  readonly status: 'passed' | 'failed' | 'unresolved';
+  readonly referenceReady: boolean;
+  readonly actualReady: boolean;
   readonly error?: string;
 }>;
 
@@ -311,7 +314,12 @@ type FailureRecord = Readonly<{
   readonly comparison?: PngComparison;
   readonly referenceMetrics?: SurfaceMetrics;
   readonly actualMetrics?: SurfaceMetrics;
+  readonly status: 'failed' | 'unresolved';
 }>;
+
+class UnresolvedReferenceConditionError extends Error {
+  readonly code = 'unresolved-reference-condition';
+}
 
 function sha256(value: string | Uint8Array): string {
   return createHash('sha256').update(value).digest('hex');
@@ -1175,14 +1183,14 @@ async function writeFailureArtifacts(
   await writeFile(
     join(directory, 'status.json'),
     JSON.stringify(
-      { status: 'failed', exitStatus: 1, error: failure.error },
+      { status: failure.status, exitStatus: 1, error: failure.error },
       null,
       2,
     ),
   );
   await writeFile(
     join(directory, 'raw-status.log'),
-    `status=failed\nexit_status=1\nmanifest_key=${failure.entry.key}\nrepetition=${failure.repetition}\nerror=${failure.error}\n`,
+    `status=${failure.status}\nexit_status=1\nmanifest_key=${failure.entry.key}\nrepetition=${failure.repetition}\nerror=${failure.error}\n`,
   );
   await writeFile(
     join(directory, 'artifact-status.json'),
@@ -1193,7 +1201,9 @@ async function writeFailureArtifacts(
         actual: failure.actualBytes === undefined ? 'not-captured' : 'retained',
         diff: failure.comparison === undefined ? 'not-captured' : 'retained',
         reason:
-          'A setup or selector failure cannot truthfully produce a mapped image triplet; the missing artifacts are recorded explicitly.',
+          failure.status === 'unresolved'
+            ? 'No source-backed reference condition exists; the state is recorded as unresolved without counting it as parity.'
+            : 'A setup or selector failure cannot truthfully produce a mapped image triplet; the missing artifacts are recorded explicitly.',
       },
       null,
       2,
@@ -1227,11 +1237,17 @@ async function writeRunReports(
           logical: PARITY_MANIFEST.length,
           repetitions: PARITY_REPETITIONS,
           attempted: captures.length,
+          referenceReady: captures.filter(
+            ({ referenceReady }) => referenceReady,
+          ).length,
+          actualReady: captures.filter(({ actualReady }) => actualReady).length,
           comparisons: captures.filter(
             ({ comparisonCompleted }) => comparisonCompleted,
           ).length,
           passed: captures.filter(({ status }) => status === 'passed').length,
           failed: captures.filter(({ status }) => status === 'failed').length,
+          unresolved: captures.filter(({ status }) => status === 'unresolved')
+            .length,
         },
         captures,
       },
@@ -1380,6 +1396,8 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
     comparisons.filter(({ manifestKey }) => manifestKey === entry.key),
   );
   let preparedManifestKey: string | undefined;
+  let preparedReferenceReady = false;
+  let preparedActualReady = false;
 
   try {
     for (const expected of expectedComparisons) {
@@ -1398,9 +1416,25 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
       let actualMetrics: SurfaceMetrics | undefined;
       try {
         if (preparedManifestKey !== entry.key) {
+          preparedReferenceReady = false;
+          preparedActualReady = false;
           await setupReference(referencePage, entry, referenceSourceHash);
+          preparedReferenceReady =
+            stateIdForEntry(entry) === undefined ||
+            referenceStateCondition(stateIdForEntry(entry) as string).status ===
+              'supported';
           await setupActual(page, entry);
+          preparedActualReady = true;
           preparedManifestKey = entry.key;
+        }
+        const stateId = stateIdForEntry(entry);
+        if (stateId !== undefined) {
+          const condition = referenceStateCondition(stateId);
+          if (condition.status === 'unresolved') {
+            throw new UnresolvedReferenceConditionError(
+              `Unresolved reference condition for ${stateId}: ${condition.reason ?? 'no source-backed reference condition'}`,
+            );
+          }
         }
         await assertSameOrigin(page, actualOrigin);
         await freezeParityPixels(page);
@@ -1442,6 +1476,10 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
           error instanceof Error
             ? (error.stack ?? error.message)
             : String(error);
+        const status =
+          error instanceof UnresolvedReferenceConditionError
+            ? 'unresolved'
+            : 'failed';
         failures.push({
           entry,
           repetition: expected.repetition,
@@ -1451,6 +1489,7 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
           comparison,
           referenceMetrics,
           actualMetrics,
+          status,
         });
       }
 
@@ -1464,7 +1503,12 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
         referenceHash,
         actualHash,
         comparisonCompleted: comparison !== undefined,
-        status: caseError === undefined ? 'passed' : 'failed',
+        status:
+          caseError === undefined
+            ? 'passed'
+            : failures[failures.length - 1].status,
+        referenceReady: preparedReferenceReady,
+        actualReady: preparedActualReady,
         error: caseError,
       });
       if (caseError !== undefined) {

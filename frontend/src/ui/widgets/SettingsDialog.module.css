@@ -52,7 +52,7 @@
 
 .parityOverlay {
   align-items: center;
-  background: rgba(6, 8, 16, 0.42);
+  background: var(--parity-overlay);
   display: flex;
   inset: 0;
   justify-content: center;

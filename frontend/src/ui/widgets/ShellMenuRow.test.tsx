@@ -343,7 +343,9 @@ it('T045 closes the narrow View menu after choosing an arrangement', async () =>
   fireEvent.keyDown(overflow, { key: 'ArrowDown' });
   fireEvent.click(screen.getByRole('menuitem', { name: 'View' }));
   const viewMenu = screen.getByRole('menu', { name: 'View options' });
-  fireEvent.click(within(viewMenu).getByRole('menuitemradio', { name: 'Preview' }));
+  fireEvent.click(
+    within(viewMenu).getByRole('menuitemradio', { name: 'Preview' }),
+  );
 
   expect(onArrangementChange).toHaveBeenCalledWith('preview');
   await waitFor(() =>

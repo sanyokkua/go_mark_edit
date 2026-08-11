@@ -190,7 +190,5 @@ it('T045 retains the reference picker flex geometry on parity routes', () => {
       resolve(process.cwd(), 'src/ui/widgets/SettingsDialog.module.css'),
       'utf8',
     ),
-  ).not.toMatch(
-    /\.parityPick\s*\{[^}]*flex:\s*none;/s,
-  );
+  ).not.toMatch(/\.parityPick\s*\{[^}]*flex:\s*none;/s);
 });
