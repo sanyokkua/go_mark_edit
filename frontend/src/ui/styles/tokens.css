@@ -61,7 +61,11 @@
   --control-gap: 0.25rem;
   --control-border-width: 1px;
   --menu-row-height: 44px;
+  --menu-row-menu-offset: 177.125px;
+  --menu-row-padding: 0 12px;
+  --menu-row-gap: 12px;
   --menu-trigger-font-size: 13px;
+  --menu-trigger-height: 28px;
   --menu-trigger-padding: 6px 10px;
   --menu-trigger-radius: 7px;
   --icon-size: 15px;

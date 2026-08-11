@@ -550,13 +550,58 @@ it('T033 keeps menu and popup geometry on the binding metric tokens', () => {
     'utf8',
   );
 
-  expect(shellStyles).toContain('min-height: var(--menu-row-height)');
+  expect(shellStyles).toContain('height: var(--menu-row-height)');
   expect(shellStyles).toContain('padding: var(--menu-trigger-padding)');
   expect(shellStyles).toContain('border-radius: var(--menu-trigger-radius)');
   expect(shellStyles).toContain('min-width: var(--popup-min-width)');
   expect(shellStyles).toContain('padding: var(--popup-padding)');
   expect(shellStyles).toContain('padding: var(--popup-row-padding)');
   expect(shellStyles).toContain('font-size: var(--popup-row-font-size)');
+});
+
+it('T041 keeps the in-app row on the binding titlebar geometry without native chrome', () => {
+  const shellStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    'utf8',
+  );
+
+  const rowRule = shellStyles.match(/\.row\s*\{([^}]*)\}/)?.[1];
+  expect(rowRule).toBeDefined();
+  expect(rowRule).toContain('height: var(--menu-row-height)');
+  expect(rowRule).toContain('padding: var(--menu-row-padding)');
+  expect(rowRule).toContain('gap: var(--menu-row-gap)');
+  expect(rowRule).toContain('background: transparent');
+  expect(rowRule).toContain('overflow: visible');
+  expect(rowRule).toContain('white-space: normal');
+  expect(rowRule).toContain('min-width: revert');
+  expect(rowRule).toContain('min-height: revert');
+});
+
+it('T058 keeps the implemented desktop menubar grouped and keyboard-reachable', () => {
+  render(
+    <ShellMenuRow
+      modalOpen={false}
+      onAbout={jest.fn()}
+      settingsMenuProps={settingsMenuProps}
+      viewMenuProps={viewMenuProps}
+    />,
+  );
+
+  const navigation = screen.getByRole('navigation', {
+    name: 'Application actions',
+  });
+  const menu = navigation.querySelector('[data-shell-menu]');
+  expect(menu).not.toBeNull();
+  expect(
+    within(menu as HTMLElement)
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual(['File', 'Settings', 'View', 'About']);
+  expect(
+    within(menu as HTMLElement)
+      .getAllByRole('button')
+      .every((button) => button.tabIndex >= 0),
+  ).toBe(true);
 });
 
 it('T089 registers each desktop menu label as a Radix popup anchor', () => {

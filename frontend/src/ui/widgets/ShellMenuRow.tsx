@@ -472,7 +472,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       ) : (
-        <>
+        <div className={styles.menu} data-shell-menu>
           <DropdownMenu.Root
             modal={false}
             open={!modalOpen && fileOpen}
@@ -657,7 +657,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
-        </>
+        </div>
       )}
 
       {activeDocument !== undefined ? (

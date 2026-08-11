@@ -161,16 +161,33 @@ async function prepareActual(
   });
   await settings.click();
   const menu = page.getByRole('menu', { name: 'Settings menu' });
-  await menu.getByRole('radio', { name: 'Minimal', exact: true }).click();
+  const themeLabel =
+    entry.palette.theme === 'glass'
+      ? 'Liquid Glass'
+      : entry.palette.theme.charAt(0).toUpperCase() +
+        entry.palette.theme.slice(1);
+  const modeLabel =
+    entry.palette.mode.charAt(0).toUpperCase() + entry.palette.mode.slice(1);
+  await menu.getByRole('radio', { name: themeLabel, exact: true }).click();
   const refreshedMenu = page.locator('[data-viewport-popup="settings-menu"]');
   await refreshedMenu.waitFor({ state: 'visible' });
   await refreshedMenu
-    .getByRole('radio', { name: 'Light', exact: true })
+    .getByRole('radio', { name: modeLabel, exact: true })
     .click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'minimal');
-  await expect(page.locator('html')).toHaveAttribute('data-mode', 'light');
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-theme',
+    entry.palette.theme,
+  );
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-mode',
+    entry.palette.mode,
+  );
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-viewport-popup]')).toHaveCount(0);
+  await page.evaluate(() => {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) active.blur();
+  });
   await freezeParityPixels(page);
 }
 
@@ -255,6 +272,8 @@ function metricDifferences(
 async function assertActualMenubarStructure(page: Page): Promise<void> {
   const menubar = page.locator('nav[aria-label="Application actions"]');
   await expect(menubar).toBeVisible();
+  const rowMetrics = await surfaceMetrics(menubar);
+  expect(rowMetrics.bounds.height).toBe(44);
   for (const action of ['File', 'Settings', 'View', 'About']) {
     const button = menubar.getByRole('button', { name: action, exact: true });
     await expect(button).toBeVisible();
@@ -263,13 +282,22 @@ async function assertActualMenubarStructure(page: Page): Promise<void> {
       await button.evaluate((element) => element.tabIndex),
     ).toBeGreaterThanOrEqual(0);
   }
+  const identity = page.locator('header[aria-label="Document identity"]');
+  await expect(identity).toBeVisible();
   await expect(menubar.getByRole('heading', { level: 1 })).toHaveCount(1);
+  const identityBounds = await identity.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom };
+  });
+  expect(identityBounds.top).toBeGreaterThanOrEqual(rowMetrics.bounds.top);
+  expect(identityBounds.bottom).toBeLessThanOrEqual(rowMetrics.bounds.bottom);
   const editor = page.getByRole('main', { name: 'Document area' });
   await expect(editor).toBeVisible();
 }
 
 async function writeTargetedArtifacts(input: {
   readonly entry: TargetedParityEntry;
+  readonly evidenceRoot: string;
   readonly reference: SemanticSignature;
   readonly actual: SemanticSignature;
   readonly status: TargetedStatus;
@@ -282,9 +310,9 @@ async function writeTargetedArtifacts(input: {
   readonly actualBytes?: Uint8Array;
   readonly error?: string;
 }): Promise<void> {
-  await mkdir(EVIDENCE_ROOT, { recursive: true });
+  await mkdir(input.evidenceRoot, { recursive: true });
   await writeFile(
-    join(EVIDENCE_ROOT, 'semantic.json'),
+    join(input.evidenceRoot, 'semantic.json'),
     JSON.stringify(
       {
         entry: input.entry,
@@ -299,7 +327,7 @@ async function writeTargetedArtifacts(input: {
     ),
   );
   await writeFile(
-    join(EVIDENCE_ROOT, 'metrics.json'),
+    join(input.evidenceRoot, 'metrics.json'),
     JSON.stringify(
       {
         region: input.entry.regionId,
@@ -313,19 +341,22 @@ async function writeTargetedArtifacts(input: {
     ),
   );
   if (input.referenceBytes !== undefined) {
-    await writeFile(join(EVIDENCE_ROOT, 'reference.png'), input.referenceBytes);
+    await writeFile(
+      join(input.evidenceRoot, 'reference.png'),
+      input.referenceBytes,
+    );
   }
   if (input.actualBytes !== undefined) {
-    await writeFile(join(EVIDENCE_ROOT, 'actual.png'), input.actualBytes);
+    await writeFile(join(input.evidenceRoot, 'actual.png'), input.actualBytes);
   }
   if (input.comparison !== undefined) {
     await writeFile(
-      join(EVIDENCE_ROOT, 'diff.png'),
+      join(input.evidenceRoot, 'diff.png'),
       input.comparison.diff.bytes,
     );
   }
   await writeFile(
-    join(EVIDENCE_ROOT, 'status.json'),
+    join(input.evidenceRoot, 'status.json'),
     JSON.stringify(
       {
         status: input.status,
@@ -340,7 +371,7 @@ async function writeTargetedArtifacts(input: {
     ),
   );
   await writeFile(
-    join(EVIDENCE_ROOT, 'raw-status.log'),
+    join(input.evidenceRoot, 'raw-status.log'),
     [
       `status=${input.status}`,
       `comparison_attempted=${input.comparisonAttempted}`,
@@ -351,111 +382,120 @@ async function writeTargetedArtifacts(input: {
   );
 }
 
-test('T056 state-pairs one closed menubar slice before exact comparison', async ({
-  page,
-  context,
-}) => {
-  test.setTimeout(120_000);
-  assertTargetedManifestIntegrity();
-  const entry = TARGETED_MANIFEST[0];
-  if (entry === undefined) throw new Error('T056 targeted entry is missing');
-  const referenceSource = await readFile(REFERENCE_PATH);
-  const referenceSourceHash = hashReferenceSource(referenceSource);
-  const captureContext = contextForTargetedEntry(entry, referenceSourceHash);
-  const referencePage = await context.newPage();
-  let referenceSignature: SemanticSignature | undefined;
-  let actualSignature: SemanticSignature | undefined;
-  let editorTopEdge = { reference: -1, actual: -1 };
+for (const entry of TARGETED_MANIFEST) {
+  test(`T058 state-pairs the closed menubar in ${entry.palette.id}`, async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(120_000);
+    assertTargetedManifestIntegrity();
+    const referenceSource = await readFile(REFERENCE_PATH);
+    const referenceSourceHash = hashReferenceSource(referenceSource);
+    const captureContext = contextForTargetedEntry(entry, referenceSourceHash);
+    const evidenceRoot = join(EVIDENCE_ROOT, entry.palette.id);
+    const referencePage = await context.newPage();
+    let referenceSignature: SemanticSignature | undefined;
+    let actualSignature: SemanticSignature | undefined;
+    let editorTopEdge = { reference: -1, actual: -1 };
 
-  try {
-    await prepareReference(referencePage, entry, referenceSourceHash);
-    await prepareActual(page, entry);
-    await assertActualMenubarStructure(page);
-    referenceSignature = await captureSemanticSignature(
-      referencePage,
-      captureContext,
-      'reference',
-    );
-    actualSignature = await captureSemanticSignature(
-      page,
-      captureContext,
-      'actual',
-    );
     try {
-      assertSemanticPairing(referenceSignature, actualSignature);
-    } catch (error) {
-      const message =
-        error instanceof Error ? (error.stack ?? error.message) : String(error);
+      await prepareReference(referencePage, entry, referenceSourceHash);
+      await prepareActual(page, entry);
+      await assertActualMenubarStructure(page);
+      referenceSignature = await captureSemanticSignature(
+        referencePage,
+        captureContext,
+        'reference',
+      );
+      actualSignature = await captureSemanticSignature(
+        page,
+        captureContext,
+        'actual',
+      );
+      try {
+        assertSemanticPairing(referenceSignature, actualSignature);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? (error.stack ?? error.message)
+            : String(error);
+        await writeTargetedArtifacts({
+          entry,
+          evidenceRoot,
+          reference: referenceSignature,
+          actual: actualSignature,
+          status: 'pairing-mismatch',
+          comparisonAttempted: false,
+          comparisonCompleted: false,
+          editorTopEdge,
+          error: message,
+        });
+        if (error instanceof SemanticPairingMismatchError) throw error;
+        throw new Error(message, { cause: error });
+      }
+
+      const referenceEditor = await captureSurface(
+        referencePage,
+        entry.editorReferenceSelector,
+        'reference editor surface',
+      );
+      const actualEditor = await captureSurface(
+        page,
+        entry.editorActualSelector,
+        'actual editor surface',
+      );
+      editorTopEdge = {
+        reference: referenceEditor.metrics.bounds.top,
+        actual: actualEditor.metrics.bounds.top,
+      };
+      expect(editorTopEdge.actual).toBe(editorTopEdge.reference);
+      const referenceSurface = await captureSurface(
+        referencePage,
+        entry.referenceSelector,
+        'reference closed menubar',
+      );
+      const actualSurface = await captureSurface(
+        page,
+        entry.actualSelector,
+        'actual closed menubar',
+      );
+      const comparison = comparePng(
+        referenceSurface.bytes,
+        actualSurface.bytes,
+      );
+      const differences = metricDifferences(
+        referenceSurface.metrics,
+        actualSurface.metrics,
+      );
+      const error =
+        differences.length === 0 && comparison.passed
+          ? undefined
+          : [
+              ...differences,
+              ...(comparison.passed
+                ? []
+                : [
+                    `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
+                  ]),
+            ].join('\n');
       await writeTargetedArtifacts({
         entry,
+        evidenceRoot,
         reference: referenceSignature,
         actual: actualSignature,
-        status: 'pairing-mismatch',
-        comparisonAttempted: false,
-        comparisonCompleted: false,
+        status: error === undefined ? 'passed' : 'production-ui-drift',
+        comparisonAttempted: true,
+        comparisonCompleted: true,
+        metricDifferences: differences,
         editorTopEdge,
-        error: message,
+        comparison,
+        referenceBytes: referenceSurface.bytes,
+        actualBytes: actualSurface.bytes,
+        error,
       });
-      if (error instanceof SemanticPairingMismatchError) throw error;
-      throw new Error(message, { cause: error });
+      if (error !== undefined) throw new Error(error);
+    } finally {
+      await referencePage.close();
     }
-
-    const referenceEditor = await captureSurface(
-      referencePage,
-      entry.editorReferenceSelector,
-      'reference editor surface',
-    );
-    const actualEditor = await captureSurface(
-      page,
-      entry.editorActualSelector,
-      'actual editor surface',
-    );
-    editorTopEdge = {
-      reference: referenceEditor.metrics.bounds.top,
-      actual: actualEditor.metrics.bounds.top,
-    };
-    const referenceSurface = await captureSurface(
-      referencePage,
-      entry.referenceSelector,
-      'reference closed menubar',
-    );
-    const actualSurface = await captureSurface(
-      page,
-      entry.actualSelector,
-      'actual closed menubar',
-    );
-    const comparison = comparePng(referenceSurface.bytes, actualSurface.bytes);
-    const differences = metricDifferences(
-      referenceSurface.metrics,
-      actualSurface.metrics,
-    );
-    const error =
-      differences.length === 0 && comparison.passed
-        ? undefined
-        : [
-            ...differences,
-            ...(comparison.passed
-              ? []
-              : [
-                  `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
-                ]),
-          ].join('\n');
-    await writeTargetedArtifacts({
-      entry,
-      reference: referenceSignature,
-      actual: actualSignature,
-      status: error === undefined ? 'passed' : 'production-ui-drift',
-      comparisonAttempted: true,
-      comparisonCompleted: true,
-      metricDifferences: differences,
-      editorTopEdge,
-      comparison,
-      referenceBytes: referenceSurface.bytes,
-      actualBytes: actualSurface.bytes,
-      error,
-    });
-    if (error !== undefined) throw new Error(error);
-  } finally {
-    await referencePage.close();
-  }
-});
+  });
+}
