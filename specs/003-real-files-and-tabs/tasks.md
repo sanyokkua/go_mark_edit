@@ -720,7 +720,7 @@ in T039 without rewriting that task.
   - **Tests/evidence**: `npm --prefix frontend test -- --runInBand`; named StatusBar and EditorView tests; exact computed-style and bounding-box assertions for `status-saved`, `status-autosaved`, `status-unsaved-changes`, `status-read-only`, `status-mixed-ending`, and `status-large-file`.
   - **Branch/commit**: `feature/v1-implementation--003-t042-status-placement`; `feat(ui): place status below editor content`.
 
-- [ ] T043 [US5] Complete deterministic actual-state preparation for all 40 additional parity IDs in `frontend/e2e/real-files-parity.test.ts`, `frontend/e2e/parity/manifest.ts`, `frontend/e2e/parity/reference-server.ts`, `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`, `frontend/src/dev/bridge-mock/appModel.test.ts`, and `specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/`. Replace every unexposed actual-state failure with an explicit state-to-fixture transition; keep populated multi-document seed data restricted to the parity route and assert that ordinary startup remains unchanged. Each state MUST be mapped and captured independently without hiding production drift through masks or tolerance changes.
+- [X] T043 [US5] Complete deterministic actual-state preparation for all 40 additional parity IDs in `frontend/e2e/real-files-parity.test.ts`, `frontend/e2e/parity/manifest.ts`, `frontend/e2e/parity/reference-server.ts`, `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`, `frontend/src/dev/bridge-mock/appModel.test.ts`, and `specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/`. Replace every unexposed actual-state failure with an explicit state-to-fixture transition; keep populated multi-document seed data restricted to the parity route and assert that ordinary startup remains unchanged. Each state MUST be mapped and captured independently without hiding production drift through masks or tolerance changes.
   - **Outcome**: T035 can execute the unrestricted 546-case matrix with actual state for every additional ID, exactly 1,638 comparisons, and retained failure triplets; normal startup still uses its existing empty/untitled behavior.
   - **Prerequisites**: T040, T041, T042, and T034; blocks T035 rerun.
   - **Primary ownership**: CL-17 and CL-18; supporting proof for FR-FT-049, FR-FT-051, FR-FT-054, FR-FT-055, and FR-FT-056.
@@ -745,7 +745,7 @@ in T039 without rewriting that task.
   - **Tests/evidence**: Add or update exact computed-style and bounding-box assertions for 1280/768/375, run the relevant unrestricted parity families, then run unrestricted `npm --prefix frontend run verify:ui -- e2e/real-files-parity.test.ts`; inspect the retained editor-family triplets without normalizing geometry.
   - **Branch/commit**: `feature/v1-implementation--003-t045-parity-geometry`; `fix(ui): converge fixed parity geometry`.
 
-- [ ] T046 [US5] Repair deterministic actual-state preparation and reference navigation for every T035 setup failure per FR-FT-051, FR-FT-054, FR-FT-055, FR-FT-056, and CL-17–CL-18 (`partial`). Make the 375px Settings overflow transition and 1280px toast Save transition operate through real controls, ensure repeated reference navigation verifies the immutable source without false missing-header failures, and retain independent per-state coverage for all 40 additional IDs. Keep populated multi-document data parity-route-only and preserve ordinary startup unchanged; do not change the fixed mappings, mockup, masks, tolerances, or comparator.
+- [X] T046 [US5] Repair deterministic actual-state preparation and reference navigation for every T035 setup failure per FR-FT-051, FR-FT-054, FR-FT-055, FR-FT-056, and CL-17–CL-18 (`partial`). Make the 375px Settings overflow transition and 1280px toast Save transition operate through real controls, ensure repeated reference navigation verifies the immutable source without false missing-header failures, and retain independent per-state coverage for all 40 additional IDs. Keep populated multi-document data parity-route-only and preserve ordinary startup unchanged; do not change the fixed mappings, mockup, masks, tolerances, or comparator.
   - **Outcome**: Every assigned state reaches a truthful mapped capture, the report distinguishes planned, attempted, completed, passed, and failed comparisons, and an unrestricted run records exactly 546 logical cases and 1,638 comparisons with retained failure artifacts when applicable.
   - **Prerequisites**: T043, T045, and T034.
   - **Primary ownership**: FR-FT-051, FR-FT-054–056; remediation for CL-17–CL-18 and T035.
@@ -796,21 +796,21 @@ coordinate handling, reviewed masks, pixel tolerance, and comparator remain immu
   - **Tests/evidence**: Add focused navigation tests for every `ReferenceVariant` and mapped screen class at 1280, 768, and 375 where assigned; run the unrestricted parity test and inspect that the 738 incomplete rows are gone while all source, adapter, manifest, and mapping hashes remain unchanged.
   - **Branch/commit**: `feature/v1-implementation--003-t050-reference-readiness`; `test(ui): stabilize parity reference readiness`.
 
-- [ ] T051 [US5] Isolate the parity-only launcher fixture in `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`, `frontend/src/dev/bridge-mock/appModel.test.ts`, `frontend/e2e/real-files-and-tabs.test.ts`, and `frontend/e2e/real-files-parity.test.ts`. Ensure the primary empty route does not inherit the FT-VS-07 `t032-recent-*` seed or emit a stale `not_found` notification; define deterministic file-only recent entries for the binding launcher, plus separate first-run and maximum-six state setup, while keeping Open Folder unavailable, recent folders absent, and ordinary startup unchanged.
+- [X] T051 [US5] Isolate the parity-only launcher fixture in `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`, `frontend/src/dev/bridge-mock/appModel.test.ts`, `frontend/e2e/real-files-and-tabs.test.ts`, and `frontend/e2e/real-files-parity.test.ts`. Ensure the primary empty route does not inherit the FT-VS-07 `t032-recent-*` seed or emit a stale `not_found` notification; define deterministic file-only recent entries for the binding launcher, plus separate first-run and maximum-six state setup, while keeping Open Folder unavailable, recent folders absent, and ordinary startup unchanged.
   - **Outcome**: `empty`, `launcher-first-run`, and `launcher-six-file` each reach their assigned truthful fixture through the parity route, with no cross-test recent-file leakage, stale notification, or automatic document restore; the retained launcher evidence has the expected file-only state and overflow metrics.
   - **Prerequisites**: T050, T043, and T034.
   - **Primary ownership**: FR-FT-042, FR-FT-049, FR-FT-054, and FR-FT-056; remediation for the launcher portion of T046.
   - **Tests/evidence**: Extend bridge tests for route-scoped recent seeds and reset isolation; run the FT-VS-07 normal-startup regression and the three launcher assignments across six palettes, inspecting recent labels, notification absence, Open Folder unavailability, and retained reference/actual/difference artifacts.
   - **Branch/commit**: `feature/v1-implementation--003-t051-launcher-fixture`; `test(ui): isolate parity launcher fixtures`.
 
-- [ ] T052 [US5] Complete the real-control transitions and behavior-owned fixtures for settings overflow, toast Save, preview, and recovery prompts in `frontend/e2e/real-files-parity.test.ts`, `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`, `frontend/src/dev/bridge-mock/appModel.test.ts`, and the affected browser regression tests. Drive the 375px Settings path through its overflow menu, drive the 1280px toast state through Save, and seed/assert the correct active `release-notes.md` document, large-file preview state, normalization/resync close plan, quit-discard-newer state, and editable/truncated/metadata-only/read-only disk conflicts before capture.
+- [X] T052 [US5] Complete the real-control transitions and behavior-owned fixtures for settings overflow, toast Save, preview, and recovery prompts in `frontend/e2e/real-files-parity.test.ts`, `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`, `frontend/src/dev/bridge-mock/appModel.test.ts`, and the affected browser regression tests. Drive the 375px Settings path through its overflow menu, drive the 1280px toast state through Save, and seed/assert the correct active `release-notes.md` document, large-file preview state, normalization/resync close plan, quit-discard-newer state, and editable/truncated/metadata-only/read-only disk conflicts before capture.
   - **Outcome**: Every named transition is reached through an actual accessible control, the target state is asserted before the mapped screenshot, prompt text and buttons describe the intended document/conflict variant, preview controls expose the assigned paused/busy/failed state, and toast content is produced by the real Save outcome rather than a leftover notification.
   - **Prerequisites**: T050, T051, T043, and T045.
   - **Primary ownership**: FR-FT-051, FR-FT-054, and FR-FT-056; remediation for the explicit transition and behavior-fixture portions of T046.
   - **Tests/evidence**: Add focused bridge/harness tests for each transition and each recovery variant; run the assigned 375px/1280px state cases in the unrestricted matrix and inspect the active document identity, conflict metadata/content bounds, preview state, toast code, and failure artifacts.
   - **Branch/commit**: `feature/v1-implementation--003-t052-parity-transitions`; `test(ui): complete parity control transitions`.
 
-- [ ] T053 [US5] Complete state-aware reference/actual pairing for all 40 additional IDs in `frontend/e2e/real-files-parity.test.ts`, `frontend/e2e/parity/manifest.ts`, `frontend/e2e/parity/reference-server.ts`, and the parity fixture tests without changing the fixed `SURFACES` region mapping or the immutable mockup. Give each assigned state an explicit readiness assertion on both pages, use only existing mockup controls and reviewed adapter variants for reference state preparation, and fail closed when a state has no source-supported reference condition instead of reusing a neighboring state or silently comparing a base screen. Preserve the one-capture/one-state rule.
+- [X] T053 [US5] Complete state-aware reference/actual pairing for all 40 additional IDs in `frontend/e2e/real-files-parity.test.ts`, `frontend/e2e/parity/manifest.ts`, `frontend/e2e/parity/reference-server.ts`, and the parity fixture tests without changing the fixed `SURFACES` region mapping or the immutable mockup. Give each assigned state an explicit readiness assertion on both pages, use only existing mockup controls and reviewed adapter variants for reference state preparation, and fail closed when a state has no source-supported reference condition instead of reusing a neighboring state or silently comparing a base screen. Preserve the one-capture/one-state rule.
   - **Outcome**: All 40 state IDs have six palette rows at their assigned width, each reference and actual page is demonstrably in the named state, no additional state is represented by a duplicate or stale base capture, and any unsupported reference condition is reported as an explicit unresolved contract rather than counted as parity.
   - **Prerequisites**: T050–T052 and T034.
   - **Primary ownership**: FR-FT-051, FR-FT-054–056 and SC-FT-009; remediation for the remaining per-state portion of T046.
@@ -830,3 +830,104 @@ coordinate handling, reviewed masks, pixel tolerance, and comparator remain immu
   - **Primary ownership**: FR-FT-041–043 and FR-FT-052; production correction for the real-control audit of T031/T032.
   - **Tests/evidence**: Focused App T027 close-plan regression, stale-active-identity projection regression, focused Exit dispatcher regression, unrestricted frontend suite (72 suites/437 tests), typecheck, architecture gate, rebuilt native binary, live final-tab launcher/New File walkthrough, and live File → Exit process termination.
   - **Branch/commit**: `feature/v1-implementation--003-t055-zero-state-and-quit`; `fix(ui): reconcile final close and native quit`.
+
+## Phase 16: Convergence — targeted state-paired UI slices
+
+**Purpose**: Replace broad diagnostic parity reruns with dependency-ordered, state-paired slices. This phase does not
+rewrite the historical task ledger and does not relax exact comparison. Every slice must prove that the reference and
+actual pages represent the same named state before interpreting a pixel difference as production drift.
+
+**Evidence rule**: Targeted runs are diagnostic and may use one assigned viewport/palette at a time, but they MUST keep
+the existing reference source, selector mapping, coordinate handling, masks, pixel tolerance, and comparator unchanged.
+The unchanged unrestricted matrix remains the final release gate in T054/T035.
+
+- [X] T056 [US5] Add a state-contract and targeted-slice runner in `frontend/e2e/parity/state-contract.ts`, `frontend/e2e/parity/state-contract.test.ts`, `frontend/e2e/targeted-parity.test.ts`, and `frontend/e2e/targeted-manifest.ts` that records the reference and actual semantic signature before every focused capture. The signature MUST include the reference variant/source hash, theme/mode, viewport, family, active screen, visible menu/dialog state, implemented action availability, launcher recents/Open Folder state, active tabs, document identity, and status detail; a pairing mismatch MUST fail before pixel comparison and MUST NOT be counted as production UI drift.
+  - **Outcome**: A focused run can answer separately whether state pairing, bounds/styles, and pixels passed; it produces a small retained before/after artifact for one slice and never changes the unrestricted runner's 546-key/1,638-comparison accounting.
+  - **Prerequisites**: T050–T054 and T034.
+  - **Primary ownership**: FR-FT-051, FR-FT-054–056, SC-FT-009, and SC-FT-012; diagnostic correction for the incomplete state contract exposed by T053/T054 (partial).
+  - **Tests/evidence**: Unit-test the signature and fail-closed pairing rules, run one closed-menubar case at 1280px/Minimal Light, retain semantic JSON plus reference/actual/metrics artifacts, and verify the existing unrestricted test files are unchanged in behavior.
+  - **Branch/commit**: `feature/v1-implementation--003-t056-state-contract`; `test(ui): add state-paired targeted parity diagnostics`.
+
+- [ ] T057 [US5] Make the `file-only` reference/actual launcher contract source-backed in `frontend/e2e/parity/reference-adapter.ts`, `frontend/e2e/parity/reference-adapter.test.ts`, `frontend/e2e/real-files-parity.test.ts`, `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`, and the launcher fixture tests. The contract MUST explicitly define file recents, unavailable Open Folder, and the supported empty/first-run/six-file variants; it MUST fail closed when the immutable reference cannot express the requested state instead of comparing a populated reference to an empty actual or disabling a control only in the actual page.
+  - **Outcome**: The `primary:empty` and launcher variants are semantically paired before capture, the reference source hash remains unchanged, and any unsupported historical reference state is reported as an explicit unresolved contract rather than a false production pixel failure.
+  - **Prerequisites**: T056 and T051–T053.
+  - **Primary ownership**: FR-FT-042, FR-FT-049, FR-FT-051, and FR-FT-056; correction for the remaining launcher state-pairing gap (partial).
+  - **Tests/evidence**: Add adapter and browser assertions for recent count, recent labels, Open Folder availability, notification absence, source hash, and variant; run only the empty and three launcher cases at one assigned width/palette and retain paired semantic artifacts.
+  - **Branch/commit**: `feature/v1-implementation--003-t057-launcher-state-pairing`; `fix(test): pair file-only launcher reference state`.
+
+- [ ] T058 [US5] Validate and converge the closed shell menubar as one focused slice in `frontend/src/ui/widgets/ShellMenuRow.tsx`, its module styles/tests, `frontend/e2e/targeted-parity.test.ts`, and the targeted evidence directory. Capture only the closed menubar at 1280px/Minimal Light first, asserting identity placement, menu-row height, focusability, accessible names, and editor top edge before exact comparison; expand to the six palettes only after the representative slice is green.
+  - **Outcome**: The closed menubar is either exact or has a production-owned, evidence-backed correction; menu and document actions remain functional and no failure is attributed to a state-pairing mismatch.
+  - **Prerequisites**: T056–T057 and T040–T042.
+  - **Primary ownership**: CL-15–CL-17, FR-FT-043–045, FR-FT-047, and FR-FT-052; targeted remediation for T040/T041/T045 (partial).
+  - **Tests/evidence**: Focused browser semantic/bounds/computed-style/pixel report, ShellMenuRow component tests, `git diff --check`, and the relevant frontend typecheck/architecture checks.
+  - **Branch/commit**: `feature/v1-implementation--003-t058-menubar-slice`; `fix(ui): converge targeted menubar slice`.
+
+- [ ] T059 [US5] Validate the File popup as a separate focused slice in `frontend/src/ui/widgets/ShellMenuRow.tsx`, `frontend/src/logic/actions/actionRegistry.ts`, action tests, and `frontend/e2e/targeted-parity.test.ts`. Open the popup through the real accessible menubar control, compare only implemented actions and their truthful disabled/unavailable states, and record deferred or OS-owned items as explicit semantic exclusions rather than hiding them with masks.
+  - **Outcome**: File popup geometry, labels, keyboard behavior, action availability, and dismissal are exact for the assigned state while New/Open/Save/Save As/Exit continue to dispatch through the real bridge.
+  - **Prerequisites**: T058.
+  - **Primary ownership**: FR-FT-006–015, FR-FT-041–042, FR-FT-046–047, and SC-FT-013; targeted remediation for T030/T031 (partial).
+  - **Tests/evidence**: Focused File-popup run at 1280px/Minimal Light, action-dispatch tests for each implemented item, keyboard Escape/outside-click checks, and retained semantic plus exact comparison artifacts.
+  - **Branch/commit**: `feature/v1-implementation--003-t059-file-menu-slice`; `fix(ui): converge targeted File menu slice`.
+
+- [ ] T060 [US5] Validate the Settings popup and its 375px overflow path in `frontend/src/ui/widgets/ShellMenuRow.tsx`, settings widgets and styles/tests, `frontend/e2e/real-files-parity.test.ts`, and `frontend/e2e/targeted-parity.test.ts`. Exercise the real control at 1280px and the real overflow control at 375px, and verify theme, autosave, and editor/view controls are paired with their acknowledged backend state.
+  - **Outcome**: Settings popup/overflow geometry, focus/backdrop/keyboard behavior, and On/Off control states are exact for implemented settings; T047's autosave projection remains visible and truthful.
+  - **Prerequisites**: T059 and T047.
+  - **Primary ownership**: FR-FT-017–018, FR-FT-044, FR-FT-046–047, and SC-FT-009/013; targeted remediation for T022/T024/T047 (partial).
+  - **Tests/evidence**: Focused 1280px and 375px cases, settings projection/component tests, autosave status assertions, and retained state/bounds/style/pixel results without a full matrix run.
+  - **Branch/commit**: `feature/v1-implementation--003-t060-settings-menu-slice`; `fix(ui): converge targeted Settings menu slice`.
+
+- [ ] T061 [US5] Validate the remaining implemented View and About popups individually in `frontend/src/ui/widgets/ShellMenuRow.tsx`, their action definitions/tests, and `frontend/e2e/targeted-parity.test.ts`. Each popup MUST be opened through a real control and compared with its own semantic signature, including selected view/arrangement state, unavailable items, accessible labels, dismissal, and no accidental document mutation.
+  - **Outcome**: View and About popup states are independently exact or have isolated production corrections; a failure in one popup cannot be obscured by a combined menu screenshot.
+  - **Prerequisites**: T060.
+  - **Primary ownership**: FR-FT-046–047, FR-FT-052, and SC-FT-013; targeted remediation for T030/T031 (partial).
+  - **Tests/evidence**: One focused run per implemented popup at 1280px/Minimal Light, action/keyboard tests, semantic-state report, and exact retained comparison artifacts.
+  - **Branch/commit**: `feature/v1-implementation--003-t061-view-about-menu-slices`; `fix(ui): converge targeted View and About menus`.
+
+- [ ] T062 [US5] Validate tabs, document identity, and editor toolbar as one interaction slice in `frontend/src/ui/widgets/TabBar.tsx`, `frontend/src/ui/widgets/DocumentIdentity.tsx`, `frontend/src/ui/widgets/EditorChrome.tsx`, related styles/tests, and `frontend/e2e/targeted-parity.test.ts`. Cover selected/unselected tabs, dirty marker, close/reorder/copy/reveal actions, hostile-safe labels, tooltip/accessibility state, and the top-row identity without changing file lifecycle behavior.
+  - **Outcome**: Real tab navigation and actions are exact and accessible in the assigned representative state, and identity/tab mismatches are reported separately from editor-content mismatches.
+  - **Prerequisites**: T061 and T040–T041.
+  - **Primary ownership**: FR-FT-021–029, FR-FT-043, FR-FT-046–047, and SC-FT-013; targeted remediation for T016–T018/T041/T045 (partial).
+  - **Tests/evidence**: Focused tab interaction regression, exact tab/identity semantic and geometry checks at 1280px/Minimal Light, and retained comparison artifacts for selected, dirty, long-label, and multi-tab states.
+  - **Branch/commit**: `feature/v1-implementation--003-t062-tabs-toolbar-slice`; `fix(ui): converge targeted tabs and toolbar slice`.
+
+- [ ] T063 [US5] Validate the editor pane and bottom status row in `frontend/src/ui/widgets/EditorView.tsx`, `frontend/src/ui/components/StatusBar.tsx`, their styles/tests, and `frontend/e2e/targeted-parity.test.ts`. Compare the editor boundary, status height/placement, encoding, line-ending, autosave, read-only, cursor, and no-wrap detail states independently from preview and launcher content.
+  - **Outcome**: Editor/status geometry and visible status semantics are exact for each assigned state, with backend-authoritative save/conflict/autosave information preserved and no whole-pane masking.
+  - **Prerequisites**: T062 and T042/T047.
+  - **Primary ownership**: FR-FT-044–046, FR-FT-052, and SC-FT-009/013; targeted remediation for T042/T045/T047 (partial).
+  - **Tests/evidence**: Focused status cases for saved, autosaved, unsaved, read-only, mixed-ending, and large-file states at 1280px/Minimal Light, component tests, and exact semantic/bounds/style/pixel artifacts.
+  - **Branch/commit**: `feature/v1-implementation--003-t063-editor-status-slice`; `fix(ui): converge targeted editor status slice`.
+
+- [ ] T064 [US5] Validate the paused preview and preview controls in `frontend/src/ui/widgets/MarkdownView.tsx`, preview-related controls/styles/tests, and `frontend/e2e/targeted-parity.test.ts`. Use the real arrangement/view controls, assert paused/busy/failed state before capture, and compare preview chrome/typography only within the feature's in-scope basic preview boundary.
+  - **Outcome**: Preview state, arrangement, controls, and mapped chrome are exact without adding rich rendering or masking content/layout drift outside the approved boundary.
+  - **Prerequisites**: T063 and T060.
+  - **Primary ownership**: FR-FT-032–040, FR-FT-046, FR-FT-052, and SC-FT-013; targeted remediation for T009/T018/T024/T045 (partial).
+  - **Tests/evidence**: Focused editor/preview and preview-only cases at 1280px/Minimal Light, control-transition tests, and retained semantic plus exact comparison artifacts.
+  - **Branch/commit**: `feature/v1-implementation--003-t064-preview-slice`; `fix(ui): converge targeted preview slice`.
+
+- [ ] T065 [US5] Validate launcher, conflict/recovery prompts, close prompts, notifications, and Save/Save As outcomes as separate state-paired slices in `frontend/src/ui/widgets/Launcher.tsx`, prompt/notification components, `frontend/e2e/real-files-and-tabs.test.ts`, `frontend/e2e/real-files-parity.test.ts`, and `frontend/e2e/targeted-parity.test.ts`. Exercise only implemented controls and assert exact button labels, unavailable behavior, focus/backdrop/keyboard handling, conflict metadata, normalization flow, and post-save state before capture.
+  - **Outcome**: Every prompt/notification slice proves the real action outcome that produced it; Reload/Keep mine/Skip, Save/Discard/Cancel, New/Open, Save As, recents, and Reopen last file are not conflated with neighboring states.
+  - **Prerequisites**: T057 and T063–T064.
+  - **Primary ownership**: FR-FT-006–020, FR-FT-030–031, FR-FT-041–047, FR-FT-054–056, and SC-FT-009/013; targeted remediation for T009/T014/T015/T019/T020/T026/T029–T032 (partial).
+  - **Tests/evidence**: Focused one-state browser runs for launcher, conflict, close, save notification, and normalization cases; native walkthrough evidence only for behavior confirmation; exact retained comparison artifacts for browser-owned UI.
+  - **Branch/commit**: `feature/v1-implementation--003-t065-prompts-launcher-slices`; `fix(ui): converge targeted prompts and launcher slices`.
+
+- [ ] T066 [US5] Validate theme and style-token consistency for the already-converged targeted slices in `frontend/src/ui/styles/tokens.css`, the affected widget module styles, token/architecture tests, and `frontend/e2e/targeted-parity.test.ts`. Check one representative closed/open slice per palette after Minimal Light passes, ensuring every color, border, shadow, focus ring, disabled state, and typography token is source-backed and no literal-color or palette-specific regression is hidden.
+  - **Outcome**: All six theme/mode combinations preserve the exact geometry and semantic states established by T058–T065; token/style changes are production-only and do not alter comparator thresholds or reference assets.
+  - **Prerequisites**: T058–T065.
+  - **Primary ownership**: FR-FT-045, FR-FT-052, SC-FT-009, and the constitution token rule; targeted remediation for T033/T045 (partial).
+  - **Tests/evidence**: Token/architecture gates, one focused representative per completed slice across all six palettes, and retained compact theme evidence rather than a full matrix run.
+  - **Branch/commit**: `feature/v1-implementation--003-t066-theme-token-slices`; `fix(ui): converge targeted theme tokens`.
+
+- [ ] T067 [US5] Validate responsive behavior for the completed targeted slices at 768px and 375px in the affected production widgets/styles and `frontend/e2e/targeted-parity.test.ts`. Re-run only the named menubar, overflow menu, tabs/toolbar, editor/status, preview, launcher, and prompt states assigned to narrow widths, asserting control reachability, drop order, overlay behavior, and no unintended scroll or wrapping.
+  - **Outcome**: Narrow-width behavior is exact for implemented controls and preserves the functional lifecycle contract; any remaining failure is tied to one named widget/state and retains its artifacts.
+  - **Prerequisites**: T060–T066.
+  - **Primary ownership**: FR-FT-045–047, FR-FT-052, SC-FT-009, and SC-FT-013; targeted remediation for T018/T020/T024/T026/T030/T031/T040–T042/T045 (partial).
+  - **Tests/evidence**: Focused 768px and 375px runs per named slice, keyboard/focus checks, exact semantic/bounds/style/pixel reports, and the normal-startup regression.
+  - **Branch/commit**: `feature/v1-implementation--003-t067-responsive-slices`; `fix(ui): converge targeted responsive slices`.
+
+- [ ] T068 [US5] Reconcile the targeted-slice evidence with T040–T046 and close the unrestricted evidence contract in `frontend/e2e/real-files-parity.test.ts`, `frontend/e2e/parity/evidence.ts`, and `specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/`. Run the unchanged three-repetition 546-key/1,638-comparison matrix only after T056–T067 are green; preserve separate planned/attempted/ready/completed/passed/failed/unresolved counts and fail closed on any unpaired state.
+  - **Outcome**: The final exact run proves zero unexplained pixel differences, deterministic hashes, no unapproved masks/tolerance/baseline changes, and complete release evidence; a non-green result leaves T054/T035 open with the first failing targeted slice named.
+  - **Prerequisites**: T056–T067, T044–T046, and T054.
+  - **Primary ownership**: FR-FT-051, FR-FT-054–056, SC-FT-009, SC-FT-012, and SC-FT-013; final evidence remediation for T035/T054 (partial).
+  - **Tests/evidence**: Three unchanged unrestricted repetitions, compact manifest/state/hash reports, retained failure triplets, `just verify 003-real-files-and-tabs`, full functional regression, and current-host/native evidence without running `just package`.
+  - **Branch/commit**: `feature/v1-implementation--003-t068-final-exact-evidence`; `test(evidence): prove targeted slices and exact parity closure`.
