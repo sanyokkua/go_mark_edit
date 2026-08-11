@@ -31,6 +31,19 @@ it('uses a query navigation token so repeated fragment changes receive headers',
   expect(first).not.toBe(second);
 });
 
+it('carries the explicit file-only launcher state through the reference URL', () => {
+  const url = referenceNavigationUrl(
+    'http://127.0.0.1:4184',
+    'file-only',
+    'minimal-light',
+    'empty',
+    3,
+    'six-file',
+  );
+
+  expect(new URL(url).searchParams.get('file-only-state')).toBe('six-file');
+});
+
 it('serves the reviewed zero-Assistant adapter while preserving the raw source hash', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'gomarkedit-reference-'));
   const referencePath = join(directory, 'mockup.html');

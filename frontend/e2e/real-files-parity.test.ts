@@ -18,6 +18,7 @@ import {
   REFERENCE_ZERO_ASSISTANT_CLASS,
   referenceStateCondition,
   referenceVariantRules,
+  type FileOnlyReferenceState,
   type ReferenceVariant,
 } from './parity/reference-adapter';
 import {
@@ -331,6 +332,16 @@ let referenceNavigationToken = 0;
 
 function stateIdForEntry(entry: ManifestEntry): ParityStateId | undefined {
   return 'stateId' in entry ? entry.stateId : undefined;
+}
+
+function fileOnlyStateForEntry(
+  entry: ManifestEntry,
+): FileOnlyReferenceState | undefined {
+  if (entry.family !== 'empty') return undefined;
+  const stateId = stateIdForEntry(entry);
+  if (stateId === 'launcher-six-file') return 'six-file';
+  if (stateId === 'launcher-first-run') return 'first-run';
+  return 'empty';
 }
 
 function documentStatus(page: Page): Locator {
@@ -1050,6 +1061,7 @@ async function setupReference(
 ): Promise<void> {
   const screen = screenForEntry(entry);
   const mapping = SURFACES[entry.family];
+  const fileOnlyState = fileOnlyStateForEntry(entry);
   await page.setViewportSize({ width: entry.width, height: PARITY_HEIGHT });
   const response = await page.goto(
     referenceNavigationUrl(
@@ -1058,6 +1070,7 @@ async function setupReference(
       entry.palette.id,
       screen,
       referenceNavigationToken++,
+      fileOnlyState,
     ),
   );
   await waitForParityReady(page);
@@ -1079,10 +1092,22 @@ async function setupReference(
       `reference variant mismatch: served ${servedVariant ?? '<cached>'}, expected ${mapping.referenceVariant}`,
     );
   }
+  if (
+    response?.headers()['x-reference-file-only-state'] !==
+    (fileOnlyState ?? undefined)
+  ) {
+    throw new Error(
+      'reference file-only state mismatch for ' +
+        entry.key +
+        ': expected ' +
+        (fileOnlyState ?? '<none>'),
+    );
+  }
   const source = await readFile(REFERENCE_PATH);
   const adapted = adaptReferenceHtml(
     source.toString('utf8'),
     SURFACES[entry.family].referenceVariant,
+    fileOnlyState,
   );
   if (adapted.sourceHash !== referenceSourceHash) {
     throw new Error('reference adapter did not hash the served source');
@@ -1124,6 +1149,31 @@ async function setupReference(
   // geometry in the first capture even though the class is present.
   await ensureReferenceZeroAssistant(page);
   await assertReferenceReady(page, entry, screen);
+  if (entry.family === 'empty') {
+    const launcher = page.locator('#app .launcher');
+    await expect(
+      launcher.locator('.acts button').filter({ hasText: 'Open folder…' }),
+    ).toBeDisabled();
+    const expectedRecentCount = fileOnlyState === 'six-file' ? 6 : 1;
+    await expect(launcher.locator('.rec .r')).toHaveCount(expectedRecentCount);
+    await expect(launcher.locator('.rec use[href="#i-folder"]')).toHaveCount(
+      0,
+    );
+    if (fileOnlyState === 'six-file') {
+      await expect(launcher.locator('.rec .r')).toContainText([
+        'parity-recent-06.md',
+        'parity-recent-05.md',
+        'parity-recent-04.md',
+        'parity-recent-03.md',
+        'parity-recent-02.md',
+        'parity-recent-01.md',
+      ]);
+    } else {
+      await expect(
+        launcher.locator('[data-no-recent-files="true"]'),
+      ).toHaveCount(1);
+    }
+  }
 }
 
 async function captureSurface(
@@ -1358,6 +1408,65 @@ test('T050 reference navigation reaches every mapped probe before capture', asyn
     await expect(
       page.locator(SURFACES[entry.family].referenceSelector),
     ).toBeVisible();
+  }
+});
+
+test('T057 pairs file-only launcher variants before any screenshot comparison', async ({
+  page,
+  context,
+}) => {
+  const sourceHash = hashReferenceSource(await readFile(REFERENCE_PATH));
+  const referencePage = await context.newPage();
+  const entries = PARITY_MANIFEST.filter(
+    (entry): boolean =>
+      entry.family === 'empty' &&
+      entry.palette.id === 'minimal-light' &&
+      (entry.width === 1280 || entry.width === 375),
+  );
+  expect(entries).toHaveLength(4);
+
+  try {
+    for (const entry of entries) {
+      const state = fileOnlyStateForEntry(entry);
+      await setupReference(referencePage, entry, sourceHash);
+      await setupActual(page, entry);
+
+      const expectedLabels =
+        state === 'six-file'
+          ? [
+              'parity-recent-06.md',
+              'parity-recent-05.md',
+              'parity-recent-04.md',
+              'parity-recent-03.md',
+              'parity-recent-02.md',
+              'parity-recent-01.md',
+            ]
+          : [];
+      const referenceLauncher = referencePage.locator('#app .launcher');
+      const actualLauncher = page.getByTestId('document-launcher');
+      await expect(
+        referenceLauncher.locator('.acts button').filter({
+          hasText: 'Open folder…',
+        }),
+      ).toBeDisabled();
+      await expect(
+        actualLauncher.getByRole('button', { name: 'Open Folder' }),
+      ).toBeDisabled();
+      await expect(
+        referenceLauncher.locator('[data-no-recent-files="true"]'),
+      ).toHaveCount(expectedLabels.length === 0 ? 1 : 0);
+      await expect(actualLauncher.getByRole('listitem')).toHaveCount(
+        expectedLabels.length,
+      );
+      await expect(actualLauncher.getByRole('listitem')).toContainText(
+        expectedLabels,
+      );
+      await expect(
+        page.locator('[data-notification-code="not_found"]'),
+      ).toHaveCount(0);
+    }
+  } finally {
+    await referencePage.close();
   }
 });
 

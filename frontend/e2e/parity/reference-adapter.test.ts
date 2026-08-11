@@ -3,6 +3,8 @@ import {
   REFERENCE_ADAPTER_HASH,
   REFERENCE_ADAPTER_VERSION,
   REFERENCE_ZERO_ASSISTANT_CLASS,
+  fileOnlyReferenceRecentFiles,
+  fileOnlyReferenceStates,
   referenceStateCondition,
   referenceVariantRules,
   referenceVariants,
@@ -11,6 +13,18 @@ import {
 
 const bindingHtml =
   '<html><body><div class="app" id="app"><main>binding</main></div></body></html>';
+const launcherHtml = [
+  '<html><body><div class="app" id="app">',
+  '<div class="launcher"><div class="lc">',
+  '<div class="acts"><button>New file</button><button>Open file…</button><button>Open folder…</button></div>',
+  '<div class="rec"><div class="lbl">Recent</div>',
+  '<div class="r"><svg class="ic"><use href="#i-file"/></svg>release-notes.md<small>~/Notes/projects</small></div>',
+  '<div class="r"><svg class="ic"><use href="#i-file"/></svg>spec-draft.md<small>~/Notes/projects</small></div>',
+  '<div class="r"><svg class="ic"><use href="#i-file"/></svg>readme.md<small>~/Notes/archive</small></div>',
+  '<div class="r"><svg class="ic"><use href="#i-folder"/></svg>Notes<small>~/</small></div>',
+  '</div></div></div></div>',
+  '</body></html>',
+].join('');
 
 it('reference adapter hash is stable and bounded', () => {
   const first = adaptReferenceHtml(bindingHtml, 'file-only');
@@ -59,4 +73,31 @@ it('documents normalization as unresolved instead of reusing the save prompt', (
   expect(referenceStateCondition('resync-recovery')).toEqual({
     status: 'supported',
   });
+});
+
+it('adapts the file-only launcher from source-backed file rows and unavailable Open Folder', () => {
+  expect(fileOnlyReferenceStates).toEqual(['empty', 'first-run', 'six-file']);
+
+  const empty = adaptReferenceHtml(launcherHtml, 'file-only', 'first-run');
+  expect(empty.html.match(/class="r"/gu)).toHaveLength(1);
+  expect(empty.html).toContain('data-no-recent-files="true"');
+  expect(empty.html).toContain(
+    'disabled aria-disabled="true" data-availability="deferred"',
+  );
+  expect(empty.fileOnlyState).toBe('first-run');
+
+  const six = adaptReferenceHtml(launcherHtml, 'file-only', 'six-file');
+  expect(six.html.match(/class="r"/gu)).toHaveLength(6);
+  expect(six.html).not.toContain('#i-folder');
+  expect(
+    [...six.html.matchAll(/>(parity-recent-\d{2}\.md)<small>/gu)].map(
+      ([, name]) => name,
+    ),
+  ).toEqual(fileOnlyReferenceRecentFiles.map(([name]) => name));
+});
+
+it('rejects a file-only state on a non-file-only reference variant', () => {
+  expect(() =>
+    adaptReferenceHtml(bindingHtml, 'base', 'empty'),
+  ).toThrow('requires the file-only variant');
 });

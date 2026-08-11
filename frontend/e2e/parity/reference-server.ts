@@ -4,7 +4,9 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import {
   adaptReferenceHtml,
+  fileOnlyReferenceStates,
   referenceVariants,
+  type FileOnlyReferenceState,
   type ReferenceVariant,
   // @ts-expect-error Node's strip-types CLI requires the explicit TypeScript extension.
 } from './reference-adapter.ts';
@@ -34,10 +36,14 @@ export function referenceNavigationUrl(
   palette: string,
   screen: string,
   navigationToken: number,
+  fileOnlyState?: FileOnlyReferenceState,
 ): string {
   const url = new URL('/', origin);
   url.searchParams.set('variant', variant);
   url.searchParams.set('navigation', String(navigationToken));
+  if (fileOnlyState !== undefined) {
+    url.searchParams.set('file-only-state', fileOnlyState);
+  }
   url.hash = `${palette}/${screen}`;
   return url.toString();
 }
@@ -101,15 +107,41 @@ export async function startReferenceServer(
       response.end(`Unsupported reference variant: ${requestedVariant}`);
       return;
     }
+    const requestedFileOnlyState =
+      requestUrl.searchParams.get('file-only-state') ?? undefined;
+    if (
+      requestedFileOnlyState !== undefined &&
+      !fileOnlyReferenceStates.includes(
+        requestedFileOnlyState as FileOnlyReferenceState,
+      )
+    ) {
+      response.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
+      response.end(
+        'Unsupported file-only reference state: ' + requestedFileOnlyState,
+      );
+      return;
+    }
+    if (
+      requestedFileOnlyState !== undefined &&
+      requestedVariant !== 'file-only'
+    ) {
+      response.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
+      response.end('File-only state requires the file-only reference variant');
+      return;
+    }
     const adapted = adaptReferenceHtml(
       source.toString('utf8'),
       requestedVariant as ReferenceVariant,
+      requestedFileOnlyState as FileOnlyReferenceState | undefined,
     );
     response.writeHead(200, {
       'cache-control': 'no-store',
       'content-type': 'text/html; charset=utf-8',
       'x-reference-source-sha256': sourceHash,
       'x-reference-variant': requestedVariant,
+      ...(adapted.fileOnlyState === undefined
+        ? {}
+        : { 'x-reference-file-only-state': adapted.fileOnlyState }),
     });
     response.end(adapted.html);
   });
