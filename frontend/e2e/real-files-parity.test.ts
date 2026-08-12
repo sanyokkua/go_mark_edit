@@ -100,6 +100,28 @@ const STATE_SCREEN_OVERRIDES: Readonly<Partial<Record<ParityStateId, string>>> =
     'preview-refresh-failed': 'paused-preview',
   };
 
+/**
+ * A reviewed region exclusion, authorised by the Session 2026-08-13
+ * clarification. It is not a mask: it names a component this feature does not
+ * own, its bounds and computed styles are still asserted exactly on both pages,
+ * and the surrounding shell stays compared. It may never be used for a surface
+ * Feature 003 owns.
+ */
+type ReviewedRegionExclusion = Readonly<{
+  readonly owner: string;
+  readonly reason: string;
+  readonly referenceSelector: string;
+  readonly actualSelector: string;
+}>;
+
+const MONACO_EDITOR_INTERIOR: ReviewedRegionExclusion = Object.freeze({
+  owner: 'Feature 002',
+  reason:
+    'Monaco owns its own text raster, gutter metrics and internal layout; the mockup renders a hand-written .code block that no reference variant can reproduce.',
+  referenceSelector: '#app.no-assistant .content .body #pane-editor .editor',
+  actualSelector: 'section[aria-label="Editor view"] [data-editor-surface]',
+});
+
 type SurfaceMapping = Readonly<{
   readonly family: ParityFamily;
   readonly regionId: string;
@@ -107,6 +129,7 @@ type SurfaceMapping = Readonly<{
   readonly actualSelector: string;
   readonly referenceVariant: ReferenceVariant;
   readonly allowMappedHorizontalOverflow?: boolean;
+  readonly regionExclusion?: ReviewedRegionExclusion;
 }>;
 
 /**
@@ -122,6 +145,7 @@ const SURFACES: Readonly<Record<ParityFamily, SurfaceMapping>> = {
     referenceSelector: '#app.no-assistant .content',
     actualSelector: 'section[aria-label="Editor view"]',
     referenceVariant: 'base',
+    regionExclusion: MONACO_EDITOR_INTERIOR,
   },
   'editor-only': {
     family: 'editor-only',
@@ -129,6 +153,7 @@ const SURFACES: Readonly<Record<ParityFamily, SurfaceMapping>> = {
     referenceSelector: '#app.no-assistant .content',
     actualSelector: 'section[aria-label="Editor view"]',
     referenceVariant: 'base',
+    regionExclusion: MONACO_EDITOR_INTERIOR,
   },
   'preview-only': {
     family: 'preview-only',
@@ -178,6 +203,7 @@ const SURFACES: Readonly<Record<ParityFamily, SurfaceMapping>> = {
     referenceSelector: '#app.no-assistant .content',
     actualSelector: 'section[aria-label="Editor view"]',
     referenceVariant: 'base',
+    regionExclusion: MONACO_EDITOR_INTERIOR,
   },
   empty: {
     family: 'empty',
@@ -322,6 +348,51 @@ type FailureRecord = Readonly<{
 
 class UnresolvedReferenceConditionError extends Error {
   readonly code = 'unresolved-reference-condition';
+}
+
+/**
+ * Count differing pixels that fall inside a reviewed region exclusion, in the
+ * captured region's own pixel coordinates.
+ */
+function countDifferencesInside(
+  comparison: PngComparison,
+  rect: Readonly<{
+    readonly left: number;
+    readonly top: number;
+    readonly width: number;
+    readonly height: number;
+  }>,
+): number {
+  const reference = comparison.reference.decoded;
+  const actual = comparison.actual.decoded;
+  if (reference.width !== actual.width || reference.height !== actual.height) {
+    return 0;
+  }
+  let inside = 0;
+  const right = rect.left + rect.width - 1;
+  const bottom = rect.top + rect.height - 1;
+  for (
+    let y = Math.max(0, rect.top);
+    y <= Math.min(reference.height - 1, bottom);
+    y += 1
+  ) {
+    for (
+      let x = Math.max(0, rect.left);
+      x <= Math.min(reference.width - 1, right);
+      x += 1
+    ) {
+      const offset = (y * reference.width + x) * 4;
+      for (let channel = 0; channel < 4; channel += 1) {
+        if (
+          reference.pixels[offset + channel] !== actual.pixels[offset + channel]
+        ) {
+          inside += 1;
+          break;
+        }
+      }
+    }
+  }
+  return inside;
 }
 
 function sha256(value: string | Uint8Array): string {
@@ -1599,9 +1670,53 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
           actualMetrics,
           mapping.allowMappedHorizontalOverflow === true,
         );
-        if (!comparison.passed) {
+        /*
+         * A reviewed region exclusion still asserts the excluded component's
+         * bounds and computed styles exactly on both pages; only its interior
+         * pixels are not counted, because another feature owns them.
+         */
+        let excludedRegionPixels = 0;
+        if (mapping.regionExclusion !== undefined) {
+          const exclusion = mapping.regionExclusion;
+          const referenceRegion = await metricsFor(
+            await oneVisibleLocator(
+              referencePage,
+              exclusion.referenceSelector,
+              `reference ${mapping.regionId} exclusion`,
+            ),
+          );
+          const actualRegion = await metricsFor(
+            await oneVisibleLocator(
+              page,
+              exclusion.actualSelector,
+              `actual ${mapping.regionId} exclusion`,
+            ),
+          );
           metricDifferencesForCapture.push(
-            `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
+            ...metricDifferences(referenceRegion, actualRegion, false).map(
+              (difference) => `${exclusion.owner} region: ${difference}`,
+            ),
+          );
+          excludedRegionPixels = countDifferencesInside(comparison, {
+            left: Math.round(
+              referenceRegion.bounds.left - reference.metrics.bounds.left,
+            ),
+            top: Math.round(
+              referenceRegion.bounds.top - reference.metrics.bounds.top,
+            ),
+            width: Math.round(
+              referenceRegion.bounds.right - referenceRegion.bounds.left,
+            ),
+            height: Math.round(
+              referenceRegion.bounds.bottom - referenceRegion.bounds.top,
+            ),
+          });
+        }
+        const unexplainedPixels =
+          comparison.metrics.differentPixelCount - excludedRegionPixels;
+        if (unexplainedPixels > 0) {
+          metricDifferencesForCapture.push(
+            `zero-tolerance pixel drift: ${unexplainedPixels} unexplained pixels`,
           );
         }
         diagnostics = metricDifferencesForCapture;

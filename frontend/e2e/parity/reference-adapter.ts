@@ -156,6 +156,57 @@ function adaptFileMenu(
   return html.slice(0, open + 1) + adapted + html.slice(end);
 }
 
+/**
+ * Session 2026-08-13 clarification. The mockup's preview pane demonstrates
+ * deferred rich-rendering expansion — a remote-content banner, an image
+ * placeholder, KaTeX math and an inline Mermaid diagram. Those are excluded
+ * rather than reproduced, so the Feature 003 reference variant carries the same
+ * in-scope basic-preview content the application renders for the parity
+ * document, expressed only through the mockup's own `.preview-in` primitives.
+ *
+ * The binding typography (`.preview h1/h2/p/ul/li/blockquote/pre`) is untouched
+ * and remains the comparison target; only the demonstration content changes.
+ */
+export const IN_SCOPE_PREVIEW_CONTENT = [
+  '<h1>Release Notes — v2.1</h1>',
+  '<p>We are excited to announce the new release. This version brings improvements and fixes users asked for.</p>',
+  '<h2>Highlights</h2>',
+  '<ul><li>Faster startup</li><li>KaTeX math: $E = mc^2$</li><li><em>flow</em></li></ul>',
+  '<blockquote><p>Tip: press Ctrl+S to save.</p></blockquote>',
+  '<pre><code>graph LR; A--&gt;B; B--&gt;C;\n</code></pre>',
+].join('\n              ');
+
+function adaptPreviewPane(html: string): string {
+  // A source without the preview pane at all is not a parity reference; leave
+  // it untouched so unit fixtures can exercise the other variants in isolation.
+  if (!html.includes('id="pane-preview"')) return html;
+  const open = html.indexOf('<div class="preview-in">');
+  if (open < 0) {
+    throw new Error('Preview reference requires the source preview-in region');
+  }
+  const end = html.indexOf('\n            </div>', open);
+  if (end < 0) {
+    throw new Error('Preview reference source region is malformed');
+  }
+  for (const required of [
+    'class="imgph"',
+    'class="mermaid"',
+    'class="katex"',
+  ]) {
+    if (!html.slice(open, end).includes(required)) {
+      throw new Error(
+        `Preview reference source lost the deferred widget marker: ${required}`,
+      );
+    }
+  }
+  return (
+    html.slice(0, open) +
+    '<div class="preview-in">\n              ' +
+    IN_SCOPE_PREVIEW_CONTENT +
+    html.slice(end)
+  );
+}
+
 export type ReferenceStateCondition = Readonly<{
   readonly status: 'supported' | 'unresolved';
   readonly reason?: string;
@@ -230,6 +281,7 @@ export const REFERENCE_ADAPTER_HASH = hash(
     fileOnlyReferenceRecentFiles,
     fileMenuReferenceAccelerators,
     FILE_MENU_UNAVAILABLE_OPACITY,
+    IN_SCOPE_PREVIEW_CONTENT,
     variantRules,
   }),
 );
@@ -328,10 +380,11 @@ export function adaptReferenceHtml(
     variant === 'file-only' && fileOnlyState !== undefined
       ? adaptFileOnlyLauncher(withZeroAssistant, fileOnlyState)
       : withZeroAssistant;
+  const withInScopePreview = adaptPreviewPane(withFileOnly);
   const adaptedHtml =
     variant === 'file-menu'
-      ? adaptFileMenu(withFileOnly, fileMenuPlatform ?? 'other')
-      : withFileOnly;
+      ? adaptFileMenu(withInScopePreview, fileMenuPlatform ?? 'other')
+      : withInScopePreview;
   return {
     adapterHash: REFERENCE_ADAPTER_HASH,
     sourceHash: hash(html),

@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import {
   adaptReferenceHtml,
+  IN_SCOPE_PREVIEW_CONTENT,
   REFERENCE_ADAPTER_HASH,
   REFERENCE_ADAPTER_VERSION,
   REFERENCE_ZERO_ASSISTANT_CLASS,
@@ -99,5 +103,50 @@ it('adapts the file-only launcher from source-backed file rows and unavailable O
 it('rejects a file-only state on a non-file-only reference variant', () => {
   expect(() => adaptReferenceHtml(bindingHtml, 'base', 'empty')).toThrow(
     'requires the file-only variant',
+  );
+});
+
+it('T045 carries in-scope preview content and drops deferred rich rendering', () => {
+  const source = readFileSync(
+    resolve(process.cwd(), '../docs/delivery/spec/surface/mockup.html'),
+    'utf8',
+  );
+  const adapted = adaptReferenceHtml(source, 'base');
+
+  // The immutable source still demonstrates every deferred widget.
+  expect(source).toContain('class="imgph"');
+  expect(source).toContain('class="mermaid"');
+  expect(source).toContain('class="katex"');
+
+  // The reference the parity run serves carries only in-scope basic preview.
+  expect(adapted.html).toContain(IN_SCOPE_PREVIEW_CONTENT);
+  const previewRegion = adapted.html.slice(
+    adapted.html.indexOf('<div class="preview-in">'),
+    adapted.html.indexOf('<div class="preview-in">') + 900,
+  );
+  expect(previewRegion).not.toContain('class="imgph"');
+  expect(previewRegion).not.toContain('class="mermaid"');
+  expect(previewRegion).not.toContain('class="katex"');
+
+  // The binding typography and the raw source hash are untouched.
+  expect(adapted.html).toContain('.preview h1{font-size:25px');
+  expect(adapted.html).toContain('.preview-in{padding:20px 26px}');
+  expect(adapted.sourceHash).toBe(
+    adaptReferenceHtml(source, 'base').sourceHash,
+  );
+});
+
+it('T045 refuses a source whose preview region lost a deferred widget marker', () => {
+  const broken = [
+    '<html><body><div class="app" id="app">',
+    '<div class="pane" id="pane-preview"><div class="preview">',
+    '<div class="preview-in">',
+    '<h1>Release Notes</h1>',
+    '\n            </div>',
+    '</div></div></div></body></html>',
+  ].join('');
+
+  expect(() => adaptReferenceHtml(broken, 'base')).toThrow(
+    /lost the deferred widget marker/u,
   );
 });

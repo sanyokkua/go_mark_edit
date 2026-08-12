@@ -587,8 +587,10 @@
   border-color: transparent;
 }
 
-/* Binding source: mockup.html `body[data-theme="minimal"] .tgrp{background:none;padding:0}`. */
-:global(:root[data-theme='minimal']) .group {
+/* Binding source: mockup.html `body[data-theme="minimal"] .tgrp{background:none;padding:0}`.
+   The arrangement segment is `.seg`, which the binding does not override under
+   Minimal, so it keeps its surface, border and 3px padding. */
+:global(:root[data-theme='minimal']) .group:not(.arrangement) {
   background: transparent;
   border-color: transparent;
   backdrop-filter: none;

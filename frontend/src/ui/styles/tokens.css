@@ -139,7 +139,10 @@
   --editor-view-gap: var(--pane-gap);
   --editor-view-padding: var(--pane-body-padding-block);
   --preview-block-spacing: 1rem;
-  --preview-code-block-padding: 0.75rem;
+  --preview-code-block-padding: 12px 14px;
+  --preview-code-block-radius: 10px;
+  --preview-code-block-margin: 12px;
+  --preview-code-block-font-size: 12px;
   --preview-code-font-family: var(--mono);
   --preview-code-inline-padding: 0.25rem;
   --preview-font-family: var(--font);

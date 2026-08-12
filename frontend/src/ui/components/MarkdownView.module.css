@@ -98,9 +98,23 @@
   padding-inline: var(--preview-code-inline-padding);
 }
 
+/* Binding source: mockup.html `.preview pre`. */
 .preview pre {
+  background: var(--surface-2);
+  border: var(--control-border-width) solid var(--stroke-soft);
+  border-radius: var(--preview-code-block-radius);
+  color: var(--code-fg);
+  font-size: var(--preview-code-block-font-size);
+  margin: var(--preview-code-block-margin) 0;
   overflow-x: auto;
   padding: var(--preview-code-block-padding);
+}
+
+/* The binding block already carries the monospaced treatment; the nested code
+   element must not add a second inline padding step. */
+.preview pre code {
+  background: none;
+  padding-inline: 0;
 }
 
 .preview input[disabled] {
