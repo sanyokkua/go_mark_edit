@@ -30,6 +30,7 @@ import {
   TARGETED_FILE_MENU_MANIFEST,
   TARGETED_MANIFEST,
   TARGETED_SETTINGS_MANIFEST,
+  TARGETED_TAB_MANIFEST,
   TARGETED_VIEW_ABOUT_MANIFEST,
   type TargetedParityEntry,
 } from './targeted-manifest';
@@ -1019,6 +1020,7 @@ for (const entry of [
   ...TARGETED_MANIFEST,
   ...TARGETED_FILE_MENU_MANIFEST,
   ...TARGETED_SETTINGS_MANIFEST,
+  ...TARGETED_TAB_MANIFEST,
   ...TARGETED_VIEW_ABOUT_MANIFEST,
 ]) {
   test(
@@ -1028,6 +1030,8 @@ for (const entry of [
         ? 'T060 state-pairs the Settings popup in Minimal Light'
         : entry.openSurface === 'settings-overflow'
           ? 'T060 state-pairs the 375px Settings overflow in Minimal Light'
+          : entry.openSurface === 'tab-strip'
+            ? 'T062 state-pairs tabs and toolbar in Minimal Light'
           : entry.openSurface === 'view-menu'
             ? 'T061 state-pairs the View popup in Minimal Light'
             : entry.openSurface === 'about-menu'
@@ -1057,6 +1061,8 @@ for (const entry of [
           ? 'overflow-375'
           : entry.openSurface === 'view-menu' || entry.openSurface === 'about-menu'
             ? entry.openSurface
+            : entry.openSurface === 'tab-strip'
+              ? 'tab-strip'
             : '',
       );
       const referencePage = await context.newPage();

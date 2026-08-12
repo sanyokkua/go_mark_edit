@@ -34,6 +34,7 @@ export type TargetedParityEntry = Readonly<{
     | '#m-settings'
     | '#m-view'
     | '#m-about'
+    | '#app.no-assistant .tabs'
     | '#app .ovf-menu';
   readonly actualSelector:
     | '[data-shell-menu]'
@@ -41,6 +42,7 @@ export type TargetedParityEntry = Readonly<{
     | '[data-viewport-popup="settings-menu"]'
     | '[data-viewport-popup="view-menu"]'
     | '[data-viewport-popup="about-menu"]'
+    | '[role="tablist"]'
     | '[data-viewport-popup="shell-overflow"]'
     | '[data-viewport-popup="editor-overflow"]';
   readonly editorReferenceSelector: '#app.no-assistant .content';
@@ -51,14 +53,16 @@ export type TargetedParityEntry = Readonly<{
     | 'settings-menu'
     | 'settings-overflow'
     | 'view-menu'
-    | 'about-menu';
+    | 'about-menu'
+    | 'tab-strip';
   readonly openSurface:
     | 'closed-menubar'
     | 'file-menu'
     | 'settings-menu'
     | 'settings-overflow'
     | 'view-menu'
-    | 'about-menu';
+    | 'about-menu'
+    | 'tab-strip';
   readonly implementedActionIds: readonly ['file', 'settings', 'view', 'about'];
 }>;
 
@@ -204,6 +208,30 @@ export const TARGETED_VIEW_ABOUT_MANIFEST: readonly TargetedParityEntry[] =
     }),
   ]);
 
+export const TARGETED_TAB_MANIFEST: readonly TargetedParityEntry[] =
+  Object.freeze([
+    Object.freeze({
+      key: 'targeted:tab-strip:1280:minimal-light',
+      family: 'editor-split',
+      width: 1280,
+      height: 720,
+      palette: Object.freeze({
+        id: 'minimal-light',
+        theme: 'minimal',
+        mode: 'light',
+      }),
+      activeScreen: 'editor-split',
+      referenceVariant: 'base',
+      referenceSelector: '#app.no-assistant .tabs',
+      actualSelector: '[role="tablist"]',
+      editorReferenceSelector: '#app.no-assistant .content',
+      editorActualSelector: 'section[aria-label="Editor view"]',
+      regionId: 'tab-strip',
+      openSurface: 'tab-strip',
+      implementedActionIds: ['file', 'settings', 'view', 'about'] as const,
+    }),
+  ]);
+
 export function contextForTargetedEntry(
   entry: TargetedParityEntry,
   referenceSourceHash: string,
@@ -274,6 +302,16 @@ export function assertTargetedManifestIntegrity(): void {
     if (PARITY_MANIFEST.some(({ key }) => key === entry.key)) {
       throw new Error(
         'T061 targeted case must not enter the unrestricted manifest',
+      );
+    }
+  }
+  if (TARGETED_TAB_MANIFEST.length !== 1) {
+    throw new Error('T062 targeted tab manifest must contain one case');
+  }
+  for (const entry of TARGETED_TAB_MANIFEST) {
+    if (PARITY_MANIFEST.some(({ key }) => key === entry.key)) {
+      throw new Error(
+        'T062 targeted case must not enter the unrestricted manifest',
       );
     }
   }
