@@ -1259,143 +1259,145 @@ const AppContents: React.FC = (): React.JSX.Element => {
             value={setRequestedApplicationMenu}
           >
             <div className="application-frame">
-            <div className="application-menu">
-              <ApplicationMenuContext.Provider value={applicationMenuState}>
-                <AppearanceControls
-                  visible={bootstrapStatus === 'ready'}
-                  settingsOpen={settingsOpen}
-                  onSettingsOpenChange={setSettingsOpen}
-                  settingsMenuRenderer={ApplicationShellMenu}
-                />
-              </ApplicationMenuContext.Provider>
-            </div>
-            <div className="application-content">
-              {bootstrapStatus === 'failed' ? (
-                <StartupFailure
-                  isRetrying={isRetrying}
-                  onRetry={(): void => {
-                    runBootstrap(true);
-                  }}
-                />
-              ) : bootstrapStatus === 'ready' ? (
-                <>
-                  {banners.map((notification) => (
-                    <NotificationBanner
-                      key={`${notification.id}:${notification.refreshGeneration}`}
-                      notification={notification}
-                    />
-                  ))}
-                  {recoverySurface !== null ? (
-                    <section aria-label={t('recovery.title')} role="alert">
-                      <p>{recoverySurface.message}</p>
-                      <button type="button" onClick={requestRecoveryQuit}>
-                        {t('recovery.quit.action')}
-                      </button>
-                    </section>
-                  ) : null}
-                  <AppShell
-                    onNewDocument={onNewDocument}
-                    onOpenDocument={onOpenDocument}
-                    onOpenRecentFile={(
-                      path,
-                      expectedTabSetRevision,
-                    ): Promise<unknown> =>
-                      onOpenRecentFile(path, expectedTabSetRevision)
-                    }
-                    onActivateDocument={onActivateDocument}
-                    onCloseDocument={onCloseDocument}
+              <div className="application-menu">
+                <ApplicationMenuContext.Provider value={applicationMenuState}>
+                  <AppearanceControls
+                    visible={bootstrapStatus === 'ready'}
+                    settingsOpen={settingsOpen}
+                    onSettingsOpenChange={setSettingsOpen}
+                    settingsMenuRenderer={ApplicationShellMenu}
                   />
-                </>
-              ) : null}
-            </div>
-            <AboutDialog
-              open={bootstrapStatus === 'ready' && aboutOpen}
-              onOpenChange={setAboutOpen}
-              version={version}
-            />
-            <ShortcutsDialog
-              open={bootstrapStatus === 'ready' && shortcutsOpen}
-              onOpenChange={setShortcutsOpen}
-            />
-            <NormalizationPrompt
-              filename={normalization?.filename ?? ''}
-              onCancel={(): void => setNormalization(null)}
-              onConfirm={onNormalizeConfirm}
-              open={bootstrapStatus === 'ready' && normalization !== null}
-              proposedEnding={normalization?.proposedEnding ?? 'lf'}
-            />
-            <ClosePrompt
-              onChoice={onClosePlanChoice}
-              open={
-                bootstrapStatus === 'ready' &&
-                closePlan !== null &&
-                closeNormalization === null &&
-                closeConflict === null &&
-                closePlan.status === 'collecting'
-              }
-              plan={closePlan ?? undefined}
-            />
-            <NormalizationPrompt
-              filename={closeNormalization?.filename ?? ''}
-              onCancel={(): void => {
-                void onCloseNormalizationDecision(false);
-              }}
-              onConfirm={(): void => {
-                void onCloseNormalizationDecision(true);
-              }}
-              open={bootstrapStatus === 'ready' && closeNormalization !== null}
-              proposedEnding={closeNormalization?.proposedEnding ?? 'lf'}
-            />
-            <ExternalChangePrompt
-              onDecision={onExternalConflictDecision}
-              open={bootstrapStatus === 'ready' && externalConflict !== null}
-              preview={externalConflict?.preview}
-              valid={externalConflictValid}
-            />
-            <ExternalChangePrompt
-              onDecision={onCloseConflictDecision}
-              open={bootstrapStatus === 'ready' && closeConflict !== null}
-              preview={closeConflict?.preview}
-              valid={closeConflictValid}
-            />
-            <ModalShell
-              initialFocusRef={recoveryQuitCancelRef}
-              labelledBy="recovery-quit-title"
-              onBackdrop={onRecoveryQuitCancel}
-              onEscape={onRecoveryQuitCancel}
-              open={bootstrapStatus === 'ready' && recoveryQuitConfirmOpen}
-              title={t('recovery.quit.title')}
-            >
-              <p>{t('recovery.quit.message')}</p>
-              {recoverySurface?.message !== undefined ? (
-                <p>{recoverySurface.message}</p>
-              ) : null}
-              <div>
-                <button
-                  ref={recoveryQuitCancelRef}
-                  type="button"
-                  onClick={onRecoveryQuitCancel}
-                >
-                  {t('recovery.quit.cancel')}
-                </button>
-                <button type="button" onClick={onRecoveryQuitConfirm}>
-                  {t('recovery.quit.confirm')}
-                </button>
+                </ApplicationMenuContext.Provider>
               </div>
-            </ModalShell>
-            {bootstrapStatus === 'ready' && parityToasts ? (
-              <ParityToastSurface />
-            ) : bootstrapStatus === 'ready' ? (
-              notifications.map((notification) => (
-                <NotificationToast
-                  key={`${notification.id}:${notification.refreshGeneration}`}
-                  notification={notification}
-                  onDismiss={(id: number): void => {
-                    dispatch(dismissNotification(id));
-                  }}
-                />
-              ))
-            ) : null}
+              <div className="application-content">
+                {bootstrapStatus === 'failed' ? (
+                  <StartupFailure
+                    isRetrying={isRetrying}
+                    onRetry={(): void => {
+                      runBootstrap(true);
+                    }}
+                  />
+                ) : bootstrapStatus === 'ready' ? (
+                  <>
+                    {banners.map((notification) => (
+                      <NotificationBanner
+                        key={`${notification.id}:${notification.refreshGeneration}`}
+                        notification={notification}
+                      />
+                    ))}
+                    {recoverySurface !== null ? (
+                      <section aria-label={t('recovery.title')} role="alert">
+                        <p>{recoverySurface.message}</p>
+                        <button type="button" onClick={requestRecoveryQuit}>
+                          {t('recovery.quit.action')}
+                        </button>
+                      </section>
+                    ) : null}
+                    <AppShell
+                      onNewDocument={onNewDocument}
+                      onOpenDocument={onOpenDocument}
+                      onOpenRecentFile={(
+                        path,
+                        expectedTabSetRevision,
+                      ): Promise<unknown> =>
+                        onOpenRecentFile(path, expectedTabSetRevision)
+                      }
+                      onActivateDocument={onActivateDocument}
+                      onCloseDocument={onCloseDocument}
+                    />
+                  </>
+                ) : null}
+              </div>
+              <AboutDialog
+                open={bootstrapStatus === 'ready' && aboutOpen}
+                onOpenChange={setAboutOpen}
+                version={version}
+              />
+              <ShortcutsDialog
+                open={bootstrapStatus === 'ready' && shortcutsOpen}
+                onOpenChange={setShortcutsOpen}
+              />
+              <NormalizationPrompt
+                filename={normalization?.filename ?? ''}
+                onCancel={(): void => setNormalization(null)}
+                onConfirm={onNormalizeConfirm}
+                open={bootstrapStatus === 'ready' && normalization !== null}
+                proposedEnding={normalization?.proposedEnding ?? 'lf'}
+              />
+              <ClosePrompt
+                onChoice={onClosePlanChoice}
+                open={
+                  bootstrapStatus === 'ready' &&
+                  closePlan !== null &&
+                  closeNormalization === null &&
+                  closeConflict === null &&
+                  closePlan.status === 'collecting'
+                }
+                plan={closePlan ?? undefined}
+              />
+              <NormalizationPrompt
+                filename={closeNormalization?.filename ?? ''}
+                onCancel={(): void => {
+                  void onCloseNormalizationDecision(false);
+                }}
+                onConfirm={(): void => {
+                  void onCloseNormalizationDecision(true);
+                }}
+                open={
+                  bootstrapStatus === 'ready' && closeNormalization !== null
+                }
+                proposedEnding={closeNormalization?.proposedEnding ?? 'lf'}
+              />
+              <ExternalChangePrompt
+                onDecision={onExternalConflictDecision}
+                open={bootstrapStatus === 'ready' && externalConflict !== null}
+                preview={externalConflict?.preview}
+                valid={externalConflictValid}
+              />
+              <ExternalChangePrompt
+                onDecision={onCloseConflictDecision}
+                open={bootstrapStatus === 'ready' && closeConflict !== null}
+                preview={closeConflict?.preview}
+                valid={closeConflictValid}
+              />
+              <ModalShell
+                initialFocusRef={recoveryQuitCancelRef}
+                labelledBy="recovery-quit-title"
+                onBackdrop={onRecoveryQuitCancel}
+                onEscape={onRecoveryQuitCancel}
+                open={bootstrapStatus === 'ready' && recoveryQuitConfirmOpen}
+                title={t('recovery.quit.title')}
+              >
+                <p>{t('recovery.quit.message')}</p>
+                {recoverySurface?.message !== undefined ? (
+                  <p>{recoverySurface.message}</p>
+                ) : null}
+                <div>
+                  <button
+                    ref={recoveryQuitCancelRef}
+                    type="button"
+                    onClick={onRecoveryQuitCancel}
+                  >
+                    {t('recovery.quit.cancel')}
+                  </button>
+                  <button type="button" onClick={onRecoveryQuitConfirm}>
+                    {t('recovery.quit.confirm')}
+                  </button>
+                </div>
+              </ModalShell>
+              {bootstrapStatus === 'ready' && parityToasts ? (
+                <ParityToastSurface />
+              ) : bootstrapStatus === 'ready' ? (
+                notifications.map((notification) => (
+                  <NotificationToast
+                    key={`${notification.id}:${notification.refreshGeneration}`}
+                    notification={notification}
+                    onDismiss={(id: number): void => {
+                      dispatch(dismissNotification(id));
+                    }}
+                  />
+                ))
+              ) : null}
             </div>
           </ApplicationMenuRequestContext.Provider>
         </EditorSessionProvider>

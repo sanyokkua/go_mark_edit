@@ -132,7 +132,8 @@
 
 /* The popup is positioned by the binding coordinates above, so the portal
    wrapper must not contribute collision-aware placement of its own. */
-:global(.application-frame) > :global([data-radix-popper-content-wrapper]):has(.fileMenu) {
+:global(.application-frame)
+  > :global([data-radix-popper-content-wrapper]):has(.fileMenu) {
   inset: 0 auto auto 0 !important;
   position: absolute !important;
   transform: none !important;

@@ -90,7 +90,9 @@ it('T045 keeps Markdown Standard visible but unavailable without persistence', a
     'GFM',
     'Full (+ math, footnotes…)',
   ]) {
-    const option = screen.getByRole('menuitem', { name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u') });
+    const option = screen.getByRole('menuitem', {
+      name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'),
+    });
     expect(option).toBeVisible();
     expect(option).toHaveAttribute('aria-disabled', 'true');
   }

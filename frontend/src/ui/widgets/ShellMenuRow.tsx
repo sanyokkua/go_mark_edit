@@ -190,20 +190,45 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     );
   };
 
+  /*
+   * A menu request arriving as a prop is state derived from that prop, so it is
+   * adjusted during render rather than in an effect: opening a menu from an
+   * effect schedules a second render pass for every request.
+   */
+  const [handledMenuRequest, setHandledMenuRequest] =
+    useState<ApplicationMenuTarget | null>(requestedMenu);
+  const pendingMenuOpener =
+    requestedMenu !== handledMenuRequest &&
+    requestedMenu !== null &&
+    !modalOpen &&
+    typeof document !== 'undefined' &&
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+  if (requestedMenu !== handledMenuRequest) {
+    setHandledMenuRequest(requestedMenu);
+    if (requestedMenu !== null && !modalOpen) {
+      setOverflowOpen(false);
+      setActiveMenu(requestedMenu);
+    }
+  }
+
   useEffect((): void => {
     if (requestedMenu === null || modalOpen) return;
+    // The opener is captured from the element focused when the request arrived,
+    // before the menu takes focus; in the narrow shell the overflow trigger owns
+    // the restoration target.
     menuOpenerRef.current = narrow
       ? overflowTriggerRef.current
-      : document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-    setOverflowOpen(false);
-    setSettingsOpen(requestedMenu === 'settings');
-    setViewOpen(requestedMenu === 'view');
-    setFileOpen(requestedMenu === 'file');
-    setAboutOpen(requestedMenu === 'about');
+      : (pendingMenuOpener ?? menuOpenerRef.current);
     onRequestedMenuHandled?.();
-  }, [modalOpen, narrow, onRequestedMenuHandled, requestedMenu]);
+  }, [
+    modalOpen,
+    narrow,
+    onRequestedMenuHandled,
+    pendingMenuOpener,
+    requestedMenu,
+  ]);
 
   useEffect((): (() => void) => {
     const onResize = (): void => setNarrow(isNarrowViewport());

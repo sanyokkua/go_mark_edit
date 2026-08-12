@@ -56,6 +56,7 @@ The mockup HTML/CSS is not edited; the raw source hash is unchanged and is still
 asserted on every navigation.
 
 **Production — converged to the binding dropdown.**
+
 - The popup is portalled into `.application-frame` and anchored at the binding
   coordinates `left:96px; top:42px` (`#m-file{left:96px}` + `.dropdown{top:42px}`),
   replacing collision-aware placement and the tuned `--file-menu-popup-offset`.
@@ -76,12 +77,12 @@ asserted on every navigation.
 
 ## Measured result
 
-| Run | Unexplained pixels | Notes |
-|---|---:|---|
-| Before (bypass removed, nothing else) | 10,155 | whole popup never previously compared |
-| After reference variant + row pairing | 4,343 | inventory and heights match |
-| After binding coordinates and row flow | 1,031 | all bounds and computed styles match |
-| After bounded-rectangle exception accounting | **218** | see below |
+| Run                                          | Unexplained pixels | Notes                                 |
+| -------------------------------------------- | -----------------: | ------------------------------------- |
+| Before (bypass removed, nothing else)        |             10,155 | whole popup never previously compared |
+| After reference variant + row pairing        |              4,343 | inventory and heights match           |
+| After binding coordinates and row flow       |              1,031 | all bounds and computed styles match  |
+| After bounded-rectangle exception accounting |            **218** | see below                             |
 
 Bounds and all 24 compared computed-style properties match exactly. Per-row
 differences: none. Accepted platform exceptions: 4 (`⌘N`, `⌘O`, `⌘S`, `⌘⇧S`).
@@ -117,13 +118,26 @@ Dev application at `http://127.0.0.1:4173/?parity-case=primary:menu-file:1280:mi
 1280x720. Opened the File popup through the real menubar control:
 
 ```json
-{"relLeft":96,"relTop":42,"w":250,"h":427,
- "items":[{"t":"New File","d":false,"s":"⌘N"},{"t":"New Window","d":true,"s":null},
-          {"t":"Open File…","d":false,"s":"⌘O"},{"t":"Open Folder…","d":true,"s":null},
-          {"t":"release-notes.md","d":false,"s":null},{"t":"spec-draft.md","d":false,"s":null},
-          {"t":"↺ Reopen last file","d":true,"s":"⌘⇧⌥T"},{"t":"Save","d":false,"s":"⌘S"},
-          {"t":"Save As…","d":false,"s":"⌘⇧S"},{"t":"Export to PDF…","d":true,"s":null},
-          {"t":"Close Tab","d":false,"s":"⌘W"},{"t":"Exit","d":false,"s":null}]}
+{
+  "relLeft": 96,
+  "relTop": 42,
+  "w": 250,
+  "h": 427,
+  "items": [
+    { "t": "New File", "d": false, "s": "⌘N" },
+    { "t": "New Window", "d": true, "s": null },
+    { "t": "Open File…", "d": false, "s": "⌘O" },
+    { "t": "Open Folder…", "d": true, "s": null },
+    { "t": "release-notes.md", "d": false, "s": null },
+    { "t": "spec-draft.md", "d": false, "s": null },
+    { "t": "↺ Reopen last file", "d": true, "s": "⌘⇧⌥T" },
+    { "t": "Save", "d": false, "s": "⌘S" },
+    { "t": "Save As…", "d": false, "s": "⌘⇧S" },
+    { "t": "Export to PDF…", "d": true, "s": null },
+    { "t": "Close Tab", "d": false, "s": "⌘W" },
+    { "t": "Exit", "d": false, "s": null }
+  ]
+}
 ```
 
 The popup resolves to exactly the binding `left:96px; top:42px` inside the

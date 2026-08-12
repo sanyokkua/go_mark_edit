@@ -573,7 +573,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
             </div>,
             narrowToolbarOverflow
               ? (document.querySelector<HTMLElement>('.application-frame') ??
-                document.body)
+                  document.body)
               : document.body,
           )
         : null}

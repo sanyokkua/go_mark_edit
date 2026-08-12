@@ -51,7 +51,9 @@ it('T060 exposes real application-menu controls from the narrow toolbar overflow
   );
 
   try {
-    render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+    render(
+      <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+    );
 
     fireEvent.click(screen.getByLabelText('More actions'));
 

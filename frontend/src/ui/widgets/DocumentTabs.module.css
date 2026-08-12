@@ -300,8 +300,7 @@
   font-weight: 500;
 }
 
-:global(:root[data-theme='minimal'])
-  .tabItem:has(.tab[aria-selected='true']) {
+:global(:root[data-theme='minimal']) .tabItem:has(.tab[aria-selected='true']) {
   position: relative;
 }
 

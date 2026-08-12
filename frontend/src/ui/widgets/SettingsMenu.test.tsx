@@ -3,7 +3,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import catalogue from '../../i18n/locales/en.json';
 import SettingsMenu from './SettingsMenu';
 
-const catalogueValues = new Set(Object.values(catalogue as Record<string, string>));
+const catalogueValues = new Set(
+  Object.values(catalogue as Record<string, string>),
+);
 
 const props = {
   mode: 'auto' as const,
@@ -147,7 +149,9 @@ it('T069 keeps the binding popup labels, roles, and acknowledged state', () => {
   expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeVisible();
   expect(screen.getByRole('radiogroup', { name: 'Appearance' })).toBeVisible();
   expect(screen.getByRole('checkbox', { name: 'Autosave' })).not.toBeChecked();
-  expect(screen.getByRole('checkbox', { name: 'Format on save' })).toBeChecked();
+  expect(
+    screen.getByRole('checkbox', { name: 'Format on save' }),
+  ).toBeChecked();
   expect(
     screen.getByRole('checkbox', { name: 'Lint on save' }),
   ).not.toBeChecked();

@@ -1174,9 +1174,7 @@ async function setupReference(
     ).toBeDisabled();
     const expectedRecentCount = fileOnlyState === 'six-file' ? 6 : 1;
     await expect(launcher.locator('.rec .r')).toHaveCount(expectedRecentCount);
-    await expect(launcher.locator('.rec use[href="#i-folder"]')).toHaveCount(
-      0,
-    );
+    await expect(launcher.locator('.rec use[href="#i-folder"]')).toHaveCount(0);
     if (fileOnlyState === 'six-file') {
       await expect(launcher.locator('.rec .r')).toContainText([
         'parity-recent-06.md',

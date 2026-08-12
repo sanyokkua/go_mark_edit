@@ -126,16 +126,16 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
           data-preview-paused-bar="true"
           role="status"
         >
-        <svg
-          aria-hidden="true"
-          className={styles.pausedIcon}
-          fill="none"
-          focusable="false"
-          viewBox="0 0 24 24"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <path d="M14 2v6h6M8 13h8M8 17h5" />
-        </svg>
+          <svg
+            aria-hidden="true"
+            className={styles.pausedIcon}
+            fill="none"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6M8 13h8M8 17h5" />
+          </svg>
           <p className={styles.pausedMessage}>{t('preview.paused')}</p>
           {currentRefreshError === null ? null : (
             <p

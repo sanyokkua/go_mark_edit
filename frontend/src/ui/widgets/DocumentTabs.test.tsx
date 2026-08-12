@@ -175,7 +175,9 @@ it('T062 makes the tablist the direct tab-and-add layout surface', () => {
   renderTabs();
 
   const tablist = screen.getByRole('tablist');
-  expect(tablist).toContainElement(screen.getByRole('tab', { name: /one\.md/u }));
+  expect(tablist).toContainElement(
+    screen.getByRole('tab', { name: /one\.md/u }),
+  );
   expect(tablist).toContainElement(
     screen.getByRole('button', { name: 'New tab' }),
   );

@@ -278,14 +278,18 @@ async function prepareActual(
       .hover();
   } else if (entry.openSurface === 'view-menu') {
     await page.getByRole('button', { name: 'View', exact: true }).click();
-    await expect(page.locator('[data-viewport-popup="view-menu"]')).toBeVisible();
+    await expect(
+      page.locator('[data-viewport-popup="view-menu"]'),
+    ).toBeVisible();
     await page.evaluate(() => {
       const active = document.activeElement;
       if (active instanceof HTMLElement) active.blur();
     });
   } else if (entry.openSurface === 'about-menu') {
     await page.getByRole('button', { name: 'About', exact: true }).click();
-    await expect(page.locator('[data-viewport-popup="about-menu"]')).toBeVisible();
+    await expect(
+      page.locator('[data-viewport-popup="about-menu"]'),
+    ).toBeVisible();
     await page.evaluate(() => {
       const active = document.activeElement;
       if (active instanceof HTMLElement) active.blur();
@@ -296,7 +300,9 @@ async function prepareActual(
       page.getByRole('menuitemradio', { name: 'Split', exact: true }),
     ).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press('Escape');
-    await expect(page.locator('[data-preview-paused-bar="true"]')).toBeVisible();
+    await expect(
+      page.locator('[data-preview-paused-bar="true"]'),
+    ).toBeVisible();
   }
 }
 
@@ -951,7 +957,10 @@ function unexplainedPopupPixels(
       if (!different) continue;
       const excused = accepted.some(
         (rect) =>
-          x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom,
+          x >= rect.left &&
+          x <= rect.right &&
+          y >= rect.top &&
+          y <= rect.bottom,
       );
       if (!excused) unexplained += 1;
     }
@@ -1173,13 +1182,13 @@ for (const entry of [
           ? 'T060 state-pairs the 375px Settings overflow in Minimal Light'
           : entry.openSurface === 'tab-strip'
             ? 'T062 state-pairs tabs and toolbar in Minimal Light'
-          : entry.openSurface === 'view-menu'
-            ? 'T061 state-pairs the View popup in Minimal Light'
-          : entry.openSurface === 'about-menu'
-              ? 'T061 state-pairs the About popup in Minimal Light'
-          : entry.openSurface === 'preview-paused'
-              ? 'T064 state-pairs the paused preview in Minimal Light'
-          : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
+            : entry.openSurface === 'view-menu'
+              ? 'T061 state-pairs the View popup in Minimal Light'
+              : entry.openSurface === 'about-menu'
+                ? 'T061 state-pairs the About popup in Minimal Light'
+                : entry.openSurface === 'preview-paused'
+                  ? 'T064 state-pairs the paused preview in Minimal Light'
+                  : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
     async ({ page, context }) => {
       test.setTimeout(120_000);
       assertTargetedManifestIntegrity();
@@ -1200,24 +1209,25 @@ for (const entry of [
               ? VIEW_ABOUT_EVIDENCE_ROOT
               : entry.openSurface === 'preview-paused'
                 ? PREVIEW_EVIDENCE_ROOT
-            : EVIDENCE_ROOT,
+                : EVIDENCE_ROOT,
         entry.palette.id,
         entry.openSurface === 'settings-overflow'
           ? 'overflow-375'
-          : entry.openSurface === 'view-menu' || entry.openSurface === 'about-menu'
+          : entry.openSurface === 'view-menu' ||
+              entry.openSurface === 'about-menu'
             ? entry.openSurface
             : entry.openSurface === 'tab-strip'
               ? 'tab-strip'
-            : entry.openSurface === 'preview-paused'
-              ? 'paused'
-            : '',
+              : entry.openSurface === 'preview-paused'
+                ? 'paused'
+                : '',
       );
       const referencePage = await context.newPage();
       let referenceSignature: SemanticSignature | undefined;
       let actualSignature: SemanticSignature | undefined;
       let editorTopEdge = { reference: -1, actual: -1 };
       let filePopupVisual: FilePopupVisualEvidence | undefined;
-      let actualScroll: ParityScrollOffset = { x: 0, y: 0 };
+      let actualScroll: ParityScrollOffset | undefined;
 
       try {
         await prepareReference(referencePage, entry, referenceSourceHash);
@@ -1263,7 +1273,9 @@ for (const entry of [
           throw new Error(message, { cause: error });
         }
 
-        await restoreParityScroll(page, actualScroll);
+        if (actualScroll !== undefined) {
+          await restoreParityScroll(page, actualScroll);
+        }
         const referenceEditor = await captureSurface(
           referencePage,
           entry.editorReferenceSelector,
@@ -1327,7 +1339,9 @@ for (const entry of [
             if (active instanceof HTMLElement) active.blur();
           });
         }
-        await restoreParityScroll(page, actualScroll);
+        if (actualScroll !== undefined) {
+          await restoreParityScroll(page, actualScroll);
+        }
         const referenceSurface = await captureSurface(
           referencePage,
           entry.referenceSelector,
@@ -1447,7 +1461,10 @@ test('T063 captures backend-authoritative editor-status states at 1280px Minimal
   for (const statusCase of T063_STATUS_CASES) {
     await prepareActualStatusCase(page, statusCase.stateId);
     const status = page.getByRole('status', { name: 'Document status' });
-    await expect(status).toHaveAttribute('data-status-state', statusCase.status);
+    await expect(status).toHaveAttribute(
+      'data-status-state',
+      statusCase.status,
+    );
     await expect(status).toContainText(statusCase.text);
     await expect(status.locator('[data-status-item="cursor"]')).toContainText(
       'Ln',
@@ -1457,9 +1474,9 @@ test('T063 captures backend-authoritative editor-status states at 1280px Minimal
     );
     const expectedEnding =
       statusCase.stateId === 'status-mixed-ending' ? 'Mixed' : 'LF';
-    await expect(
-      status.locator('[data-status-item="line-ending"]'),
-    ).toHaveText(expectedEnding);
+    await expect(status.locator('[data-status-item="line-ending"]')).toHaveText(
+      expectedEnding,
+    );
     if (statusCase.stateId === 'status-large-file') {
       await expect(status.locator('[data-status-item="count"]')).toContainText(
         '420,000',
@@ -1500,8 +1517,12 @@ test('T063 captures backend-authoritative editor-status states at 1280px Minimal
           stateId: statusCase.stateId,
           status: statusCase.status,
           visibleText: await status.innerText(),
-          editorVisible: await page.locator('[aria-label="Editor pane"]').isVisible(),
-          previewVisible: await page.locator('[aria-label="Preview pane"]').count(),
+          editorVisible: await page
+            .locator('[aria-label="Editor pane"]')
+            .isVisible(),
+          previewVisible: await page
+            .locator('[aria-label="Preview pane"]')
+            .count(),
         },
         null,
         2,

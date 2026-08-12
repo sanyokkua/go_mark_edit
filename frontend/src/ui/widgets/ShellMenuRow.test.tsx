@@ -506,12 +506,8 @@ it('T070 anchors the File popup at the binding dropdown coordinates', () => {
   expect(shellStyles).toMatch(
     /\.fileMenu\s*\{[^}]*inset:\s*var\(--file-menu-popup-top\) auto auto var\(--file-menu-popup-left\);/s,
   );
-  expect(shellStyles).toMatch(
-    /\.fileMenu\s*\{[^}]*position:\s*absolute;/s,
-  );
-  expect(shellStyles).toMatch(
-    /\.fileMenu\s*\{[^}]*width:\s*max-content;/s,
-  );
+  expect(shellStyles).toMatch(/\.fileMenu\s*\{[^}]*position:\s*absolute;/s);
+  expect(shellStyles).toMatch(/\.fileMenu\s*\{[^}]*width:\s*max-content;/s);
   // The popup is portalled into the frame so those coordinates resolve against
   // the same box the binding dropdown uses.
   expect(shellSource).toContain(

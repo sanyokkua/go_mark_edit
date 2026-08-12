@@ -20,8 +20,7 @@ export const fileOnlyReferenceStates = [
   'six-file',
 ] as const;
 
-export type FileOnlyReferenceState =
-  (typeof fileOnlyReferenceStates)[number];
+export type FileOnlyReferenceState = (typeof fileOnlyReferenceStates)[number];
 
 export const fileOnlyReferenceRecentFiles = Object.freeze([
   ['parity-recent-06.md', '~/Notes/archive'],
@@ -115,7 +114,10 @@ function adaptFileMenu(
     throw new Error('File-menu reference requires the source #m-file region');
   }
   const open = html.indexOf('>', start);
-  const end = html.indexOf('</div>\n    <div class="dropdown" id="m-settings"', open);
+  const end = html.indexOf(
+    '</div>\n    <div class="dropdown" id="m-settings"',
+    open,
+  );
   if (open < 0 || end < 0) {
     throw new Error('File-menu reference source region is malformed');
   }
@@ -337,7 +339,8 @@ export function adaptReferenceHtml(
     html: adaptedHtml,
     rules,
     fileOnlyState,
-    fileMenuPlatform: variant === 'file-menu' ? (fileMenuPlatform ?? 'other') : undefined,
+    fileMenuPlatform:
+      variant === 'file-menu' ? (fileMenuPlatform ?? 'other') : undefined,
   };
 }
 

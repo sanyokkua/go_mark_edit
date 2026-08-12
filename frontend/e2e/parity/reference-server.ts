@@ -145,7 +145,8 @@ export async function startReferenceServer(
     ) {
       response.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
       response.end(
-        'Unsupported file-menu reference platform: ' + requestedFileMenuPlatform,
+        'Unsupported file-menu reference platform: ' +
+          requestedFileMenuPlatform,
       );
       return;
     }

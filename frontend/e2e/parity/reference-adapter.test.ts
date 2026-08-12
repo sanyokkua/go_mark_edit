@@ -97,7 +97,7 @@ it('adapts the file-only launcher from source-backed file rows and unavailable O
 });
 
 it('rejects a file-only state on a non-file-only reference variant', () => {
-  expect(() =>
-    adaptReferenceHtml(bindingHtml, 'base', 'empty'),
-  ).toThrow('requires the file-only variant');
+  expect(() => adaptReferenceHtml(bindingHtml, 'base', 'empty')).toThrow(
+    'requires the file-only variant',
+  );
 });

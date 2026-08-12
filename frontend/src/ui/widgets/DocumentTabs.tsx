@@ -24,7 +24,6 @@ import {
 } from '../../logic/actions/shortcutRegistry';
 import { t } from '../../i18n';
 import LiveRegion from '../primitives/LiveRegion';
-import Icon from '../primitives/Icon';
 import ExternalChangePrompt, {
   type ExternalChangeDecision,
 } from './ExternalChangePrompt';
@@ -490,9 +489,9 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                     aria-label={
                       document.dirty ? t('editor.tab.modified') : undefined
                     }
-                  className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
-                  data-write-in-flight={document.writeInFlight || undefined}
-                />
+                    className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
+                    data-write-in-flight={document.writeInFlight || undefined}
+                  />
                   {document.conflictBlocked ? (
                     <span
                       aria-label={t('conflict.blocked')}

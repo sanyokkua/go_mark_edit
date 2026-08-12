@@ -317,9 +317,8 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
       const margin = 8;
       const anchorBounds = anchor.getBoundingClientRect();
       const popupBounds = content.getBoundingClientRect();
-      const applicationFrame = anchor.closest<HTMLElement>(
-        '.application-frame',
-      );
+      const applicationFrame =
+        anchor.closest<HTMLElement>('.application-frame');
       if (applicationFrame !== null) {
         if (window.innerWidth > 376) {
           setPopupPosition({ left: 150, top: 42 });

@@ -325,7 +325,9 @@ export function assertTargetedManifestIntegrity(): void {
     }
   }
   if (TARGETED_VIEW_ABOUT_MANIFEST.length !== 2) {
-    throw new Error('T061 targeted View and About manifest must contain two cases');
+    throw new Error(
+      'T061 targeted View and About manifest must contain two cases',
+    );
   }
   for (const entry of TARGETED_VIEW_ABOUT_MANIFEST) {
     if (PARITY_MANIFEST.some(({ key }) => key === entry.key)) {

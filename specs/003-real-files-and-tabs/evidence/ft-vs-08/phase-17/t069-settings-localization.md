@@ -65,7 +65,12 @@ Dev application at `http://127.0.0.1:4173`, 1280x720, Material Dark.
 3. Pressed `Escape`. Authoritative root attributes and focus read back as:
 
 ```json
-{"popupOpen":false,"focused":"Settings","rootTheme":"material","rootMode":"dark"}
+{
+  "popupOpen": false,
+  "focused": "Settings",
+  "rootTheme": "material",
+  "rootMode": "dark"
+}
 ```
 
 Roles, keyboard operation, acknowledged state, and the source-backed layout are
