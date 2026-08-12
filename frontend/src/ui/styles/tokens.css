@@ -62,6 +62,8 @@
   --control-border-width: 1px;
   --menu-row-height: 44px;
   --menu-row-menu-offset: 177.125px;
+  --file-menu-popup-offset: 21.203px;
+  --file-menu-popup-width: 269.5625px;
   --menu-row-padding: 0 12px;
   --menu-row-gap: 12px;
   --menu-trigger-font-size: 13px;

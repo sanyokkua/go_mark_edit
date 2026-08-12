@@ -204,9 +204,11 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
   }),
   entry('open-file', 'application', ['file-menu'], {
     shortcut: 'Mod+O',
+    surfaceLabelKeys: { 'file-menu': 'action.open-file.file-menu.label' },
     availability: available(),
   }),
   entry('open-folder', 'application', ['file-menu'], {
+    surfaceLabelKeys: { 'file-menu': 'action.open-folder.file-menu.label' },
     availability: fileDeferred,
   }),
   entry('open-recent', 'application', ['file-menu']),
@@ -216,8 +218,10 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
   entry('save', 'document', ['file-menu'], { shortcut: 'Mod+S' }),
   entry('save-as', 'document', ['file-menu'], {
     shortcut: 'Mod+Shift+S',
+    surfaceLabelKeys: { 'file-menu': 'action.save-as.file-menu.label' },
   }),
   entry('export-pdf', 'document', ['file-menu'], {
+    surfaceLabelKeys: { 'file-menu': 'action.export-pdf.file-menu.label' },
     availability: fileDeferred,
   }),
   entry('close-tab', 'document', ['file-menu', 'tab-context'], {

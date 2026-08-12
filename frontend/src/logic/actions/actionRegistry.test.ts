@@ -140,3 +140,34 @@ it('T043 derives the exact context surface order from the canonical registry', (
     'command-palette',
   ]);
 });
+
+it('T059 keeps File popup actions ordered and classifies deferred items explicitly', () => {
+  expect(actionsForSurface('file-menu').map(({ id }) => id)).toEqual([
+    'new-file',
+    'new-window',
+    'open-file',
+    'open-folder',
+    'open-recent',
+    'reopen',
+    'save',
+    'save-as',
+    'export-pdf',
+    'close-tab',
+    'exit',
+  ]);
+  for (const actionId of [
+    'new-file',
+    'open-file',
+    'save',
+    'save-as',
+    'close-tab',
+    'exit',
+  ] as const) {
+    expect(getAction(actionId).availability.kind).toBe('available');
+  }
+  for (const actionId of ['new-window', 'open-folder', 'export-pdf'] as const) {
+    expect(getAction(actionId).availability).toMatchObject({
+      kind: 'deferred',
+    });
+  }
+});

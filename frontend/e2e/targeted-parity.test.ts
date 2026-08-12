@@ -27,6 +27,7 @@ import {
 import {
   assertTargetedManifestIntegrity,
   contextForTargetedEntry,
+  TARGETED_FILE_MENU_MANIFEST,
   TARGETED_MANIFEST,
   type TargetedParityEntry,
 } from './targeted-manifest';
@@ -43,6 +44,10 @@ const REFERENCE_PATH = resolve(
 const EVIDENCE_ROOT = resolve(
   REPOSITORY_ROOT,
   '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/targeted/closed-menubar',
+);
+const FILE_MENU_EVIDENCE_ROOT = resolve(
+  REPOSITORY_ROOT,
+  '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/targeted/file-menu',
 );
 const PARITY_HEIGHT = 720;
 const METRIC_PROPERTIES = [
@@ -189,6 +194,16 @@ async function prepareActual(
     if (active instanceof HTMLElement) active.blur();
   });
   await freezeParityPixels(page);
+  if (entry.regionId === 'file-menu') {
+    await page.getByRole('button', { name: 'File', exact: true }).click();
+    await expect(
+      page.locator('[data-viewport-popup="file-menu"]'),
+    ).toBeVisible();
+    await page.evaluate(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) active.blur();
+    });
+  }
 }
 
 async function oneVisibleLocator(
@@ -295,6 +310,511 @@ async function assertActualMenubarStructure(page: Page): Promise<void> {
   await expect(editor).toBeVisible();
 }
 
+type FilePopupItem = Readonly<{
+  readonly actionId: string | null;
+  readonly label: string;
+  readonly shortcut: string | null;
+  readonly availability: 'enabled' | 'disabled';
+}>;
+
+type FilePopupPairing = Readonly<{
+  readonly comparedActionIds: readonly string[];
+  readonly referenceItems: readonly FilePopupItem[];
+  readonly actualItems: readonly FilePopupItem[];
+  readonly exclusions: readonly Readonly<{
+    readonly actionId: string;
+    readonly reason: string;
+    readonly reference: FilePopupItem | null;
+    readonly actual: FilePopupItem | null;
+  }>[];
+  readonly acceleratorExclusions: readonly Readonly<{
+    readonly actionId: string;
+    readonly reason: string;
+    readonly reference: string | null;
+    readonly actual: string | null;
+  }>[];
+  readonly differences: readonly string[];
+}>;
+
+type FilePopupPixelException = Readonly<{
+  readonly actionId: string;
+  readonly kind: 'macos-accelerator-glyphs' | 'os-owned-accelerator';
+  readonly reason: string;
+  readonly referenceShortcut: string | null;
+  readonly actualShortcut: string | null;
+  readonly differentPixelCount: number;
+  readonly differenceBounds: Readonly<{
+    readonly left: number;
+    readonly top: number;
+    readonly right: number;
+    readonly bottom: number;
+  }> | null;
+}>;
+
+type FilePopupVisualRow = Readonly<{
+  readonly actionId: string;
+  readonly referenceMetrics: SurfaceMetrics;
+  readonly actualMetrics: SurfaceMetrics;
+  readonly comparison: PngComparison;
+  readonly acceptedPixelException: FilePopupPixelException | null;
+}>;
+
+type FilePopupVisualEvidence = Readonly<{
+  readonly rows: readonly FilePopupVisualRow[];
+  readonly differences: readonly string[];
+  readonly platformExceptions: readonly FilePopupPixelException[];
+  readonly bytes: Readonly<
+    Record<
+      string,
+      Readonly<{
+        readonly reference: Uint8Array;
+        readonly actual: Uint8Array;
+        readonly diff: Uint8Array;
+      }>
+    >
+  >;
+}>;
+
+const FILE_POPUP_LABELS: Readonly<Record<string, string>> = {
+  'New File': 'new-file',
+  'New Window': 'new-window',
+  'Open File': 'open-file',
+  'Open Folder': 'open-folder',
+  'Open Recent': 'open-recent',
+  'Reopen last file': 'reopen',
+  Save: 'save',
+  'Save As': 'save-as',
+  'Export to PDF': 'export-pdf',
+  'Close Tab': 'close-tab',
+  Exit: 'exit',
+};
+
+const FILE_POPUP_IMPLEMENTED = Object.freeze([
+  'new-file',
+  'open-file',
+  'save',
+  'save-as',
+  'close-tab',
+  'exit',
+] as const);
+
+const FILE_POPUP_SHORTCUT_BINDINGS: Readonly<Record<string, string>> = {
+  'new-file': 'Mod+N',
+  'open-file': 'Mod+O',
+  save: 'Mod+S',
+  'save-as': 'Mod+Shift+S',
+  'close-tab': 'Mod+W',
+};
+
+const FILE_POPUP_ACCELERATOR_EXCLUSIONS = Object.freeze([
+  [
+    'exit',
+    'native quit ownership; the canonical Exit action intentionally has no registry shortcut',
+  ],
+] as const);
+
+const FILE_POPUP_EXCLUSIONS = Object.freeze([
+  ['new-window', 'deferred OS window creation'],
+  ['open-folder', 'deferred folder picker ownership'],
+  ['open-recent', 'recents are not seeded for this focused state'],
+  ['reopen', 'reopen is unavailable without a recent file'],
+  ['export-pdf', 'deferred export ownership'],
+] as const);
+
+function normalizeFilePopupLabel(value: string): string {
+  return value
+    .replace(/\s+/gu, ' ')
+    .replace(/…/gu, '')
+    .replace(/^↺\s*/u, '')
+    .replace(/\s*\/ folder$/u, '')
+    .trim();
+}
+
+function normalizeShortcutBinding(value: string | null): string | null {
+  return value === null
+    ? null
+    : value
+        .replace(/\s+/gu, '')
+        .replace(/\+/gu, '')
+        .replace(/⌘/gu, 'Mod')
+        .replace(/Ctrl/gu, 'Mod')
+        .replace(/⇧/gu, 'Shift')
+        .replace(/⌥/gu, 'Alt');
+}
+
+async function captureFilePopupItems(
+  page: Page,
+  pageKind: 'reference' | 'actual',
+): Promise<readonly FilePopupItem[]> {
+  const selector =
+    pageKind === 'reference' ? '#m-file' : '[data-viewport-popup="file-menu"]';
+  const locator = await oneVisibleLocator(
+    page,
+    selector,
+    `${pageKind} File popup`,
+  );
+  return locator.evaluate(
+    (element, input) => {
+      const normalize = (value: string): string =>
+        value
+          .replace(/\s+/gu, ' ')
+          .replace(/…/gu, '')
+          .replace(/^↺\s*/u, '')
+          .replace(/\s*\/ folder$/u, '')
+          .trim();
+      const elements =
+        input.kind === 'reference'
+          ? Array.from(
+              element.querySelectorAll<HTMLElement>(':scope > .mi'),
+            ).filter(
+              (item) =>
+                !item.classList.contains('sub') ||
+                item.textContent?.includes('Reopen') === true,
+            )
+          : Array.from(
+              element.querySelectorAll<HTMLElement>(
+                ':scope > [role="menuitem"]',
+              ),
+            );
+      return elements.map((item) => {
+        const shortcut = item.querySelector<HTMLElement>('.k');
+        const shortcutText =
+          shortcut?.textContent?.replace(/\s+/gu, ' ').trim() ??
+          item.getAttribute('data-shortcut');
+        const label = normalize(
+          shortcut === null
+            ? (item.textContent ?? '')
+            : (item.textContent ?? '').replace(shortcut.textContent ?? '', ''),
+        );
+        const disabled =
+          (item as HTMLButtonElement).disabled ||
+          item.getAttribute('aria-disabled') === 'true' ||
+          item.getAttribute('data-disabled') === 'true';
+        return {
+          actionId: input.labels[label] ?? null,
+          label,
+          shortcut: shortcutText,
+          availability: disabled ? 'disabled' : 'enabled',
+        } satisfies FilePopupItem;
+      });
+    },
+    { kind: pageKind, labels: FILE_POPUP_LABELS },
+  );
+}
+
+function filePopupPairing(
+  referenceItems: readonly FilePopupItem[],
+  actualItems: readonly FilePopupItem[],
+): FilePopupPairing {
+  const referenceById = new Map(
+    referenceItems
+      .filter((item) => item.actionId !== null)
+      .map((item) => [item.actionId as string, item]),
+  );
+  const actualById = new Map(
+    actualItems
+      .filter((item) => item.actionId !== null)
+      .map((item) => [item.actionId as string, item]),
+  );
+  const differences: string[] = [];
+  for (const actionId of FILE_POPUP_IMPLEMENTED) {
+    const reference = referenceById.get(actionId);
+    const actual = actualById.get(actionId);
+    if (reference === undefined || actual === undefined) {
+      differences.push(
+        `${actionId}: implemented File action is missing from reference or actual popup`,
+      );
+      continue;
+    }
+    if (reference.label !== actual.label) {
+      differences.push(
+        `${actionId}: labels differ: ${reference.label} != ${actual.label}`,
+      );
+    }
+    if (reference.availability !== 'enabled') {
+      differences.push(`${actionId}: reference action is not enabled`);
+    }
+    if (actual.availability !== 'enabled') {
+      differences.push(`${actionId}: actual action is not enabled`);
+    }
+    const expectedShortcut = FILE_POPUP_SHORTCUT_BINDINGS[actionId];
+    if (expectedShortcut !== undefined) {
+      const expectedBinding = normalizeShortcutBinding(expectedShortcut);
+      if (normalizeShortcutBinding(reference.shortcut) !== expectedBinding) {
+        differences.push(
+          `${actionId}: reference shortcut ${JSON.stringify(reference.shortcut)} does not represent ${expectedShortcut}`,
+        );
+      }
+      if (normalizeShortcutBinding(actual.shortcut) !== expectedBinding) {
+        differences.push(
+          `${actionId}: actual shortcut ${JSON.stringify(actual.shortcut)} does not represent ${expectedShortcut}`,
+        );
+      }
+    }
+  }
+  const exclusions = FILE_POPUP_EXCLUSIONS.map(([actionId, reason]) => ({
+    actionId,
+    reason,
+    reference: referenceById.get(actionId) ?? null,
+    actual: actualById.get(actionId) ?? null,
+  }));
+  for (const exclusion of exclusions) {
+    if (exclusion.actionId !== 'open-recent' && exclusion.reference === null) {
+      differences.push(
+        `${exclusion.actionId}: excluded File action is missing from reference popup`,
+      );
+    }
+    if (exclusion.actionId !== 'open-recent' && exclusion.actual === null) {
+      differences.push(
+        `${exclusion.actionId}: excluded File action is missing from actual popup`,
+      );
+    }
+    if (
+      exclusion.actionId !== 'new-window' &&
+      exclusion.actionId !== 'open-folder' &&
+      exclusion.actionId !== 'export-pdf' &&
+      exclusion.actual?.availability !== 'disabled'
+    ) {
+      differences.push(
+        `${exclusion.actionId}: state-specific exclusion is not disabled in actual popup`,
+      );
+    }
+    if (
+      (exclusion.actionId === 'new-window' ||
+        exclusion.actionId === 'open-folder' ||
+        exclusion.actionId === 'export-pdf') &&
+      exclusion.actual?.availability !== 'disabled'
+    ) {
+      differences.push(
+        `${exclusion.actionId}: deferred exclusion is not disabled in actual popup`,
+      );
+    }
+  }
+  const acceleratorExclusions = FILE_POPUP_ACCELERATOR_EXCLUSIONS.map(
+    ([actionId, reason]) => ({
+      actionId,
+      reason,
+      reference: referenceById.get(actionId)?.shortcut ?? null,
+      actual: actualById.get(actionId)?.shortcut ?? null,
+    }),
+  );
+  return {
+    comparedActionIds: [...FILE_POPUP_IMPLEMENTED],
+    referenceItems,
+    actualItems,
+    exclusions,
+    acceleratorExclusions,
+    differences,
+  };
+}
+
+async function filePopupItemLocator(
+  page: Page,
+  pageKind: 'reference' | 'actual',
+  actionId: string,
+): Promise<Locator> {
+  const popupSelector =
+    pageKind === 'reference' ? '#m-file' : '[data-viewport-popup="file-menu"]';
+  const popup = await oneVisibleLocator(
+    page,
+    popupSelector,
+    `${pageKind} File popup`,
+  );
+  const itemSelector =
+    pageKind === 'reference' ? ':scope > .mi' : ':scope > [role="menuitem"]';
+  const items = popup.locator(itemSelector);
+  for (let index = 0; index < (await items.count()); index += 1) {
+    const item = items.nth(index);
+    const shortcut = item.locator('.k');
+    const shortcutText =
+      (await shortcut.count()) === 1
+        ? ((await shortcut.textContent()) ?? '')
+        : '';
+    const label = normalizeFilePopupLabel(
+      ((await item.textContent()) ?? '').replace(shortcutText, ''),
+    );
+    if (FILE_POPUP_LABELS[label] === actionId) return item;
+  }
+  throw new Error(
+    `${pageKind} File popup is missing implemented action ${actionId}`,
+  );
+}
+
+type PixelRect = Readonly<{
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}>;
+
+function relativePixelRect(
+  rowBox: Readonly<{ x: number; y: number }>,
+  shortcutBox: Readonly<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>,
+): PixelRect {
+  return {
+    left: Math.max(0, Math.floor(shortcutBox.x - rowBox.x)),
+    top: Math.max(0, Math.floor(shortcutBox.y - rowBox.y)),
+    right: Math.ceil(shortcutBox.x - rowBox.x + shortcutBox.width) - 1,
+    bottom: Math.ceil(shortcutBox.y - rowBox.y + shortcutBox.height) - 1,
+  };
+}
+
+function allPixelDifferencesWithin(
+  comparison: PngComparison,
+  allowed: PixelRect,
+): boolean {
+  const reference = comparison.reference.decoded;
+  const actual = comparison.actual.decoded;
+  if (reference.width !== actual.width || reference.height !== actual.height) {
+    return false;
+  }
+  for (let y = 0; y < reference.height; y += 1) {
+    for (let x = 0; x < reference.width; x += 1) {
+      const offset = (y * reference.width + x) * 4;
+      let different = false;
+      for (let channel = 0; channel < 4; channel += 1) {
+        if (
+          reference.pixels[offset + channel] !== actual.pixels[offset + channel]
+        ) {
+          different = true;
+          break;
+        }
+      }
+      if (
+        different &&
+        (x < allowed.left ||
+          x > allowed.right ||
+          y < allowed.top ||
+          y > allowed.bottom)
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+async function classifyFilePopupPixelException(
+  actionId: string,
+  reference: Locator,
+  actual: Locator,
+  comparison: PngComparison,
+  actualPlatform: string,
+): Promise<FilePopupPixelException | null> {
+  if (comparison.passed) return null;
+  const referenceShortcut =
+    (await reference.locator('.k').textContent())
+      ?.replace(/\s+/gu, ' ')
+      .trim() ?? null;
+  const actualShortcut = await actual.getAttribute('data-shortcut');
+  const shortcutBox = await reference.locator('.k').boundingBox();
+  const rowBox = await reference.boundingBox();
+  if (shortcutBox === null || rowBox === null) return null;
+  const allowed = relativePixelRect(rowBox, shortcutBox);
+  if (!allPixelDifferencesWithin(comparison, allowed)) return null;
+
+  const expectedShortcut = FILE_POPUP_SHORTCUT_BINDINGS[actionId];
+  const isMacOS = /Mac|iPhone|iPad/u.test(actualPlatform);
+  if (
+    isMacOS &&
+    expectedShortcut !== undefined &&
+    actualShortcut?.startsWith('⌘') === true &&
+    normalizeShortcutBinding(referenceShortcut) ===
+      normalizeShortcutBinding(expectedShortcut) &&
+    normalizeShortcutBinding(actualShortcut) ===
+      normalizeShortcutBinding(expectedShortcut)
+  ) {
+    return {
+      actionId,
+      kind: 'macos-accelerator-glyphs',
+      reason:
+        'T059 explicit platform exception: native macOS accelerator glyphs differ from the immutable Ctrl-text reference',
+      referenceShortcut,
+      actualShortcut,
+      differentPixelCount: comparison.metrics.differentPixelCount,
+      differenceBounds: comparison.metrics.differenceBounds,
+    };
+  }
+  if (actionId === 'exit' && actualShortcut === null) {
+    return {
+      actionId,
+      kind: 'os-owned-accelerator',
+      reason:
+        'T059 semantic exclusion: native quit ownership leaves Exit without a registry accelerator',
+      referenceShortcut,
+      actualShortcut,
+      differentPixelCount: comparison.metrics.differentPixelCount,
+      differenceBounds: comparison.metrics.differenceBounds,
+    };
+  }
+  return null;
+}
+
+async function captureFilePopupVisualEvidence(
+  referencePage: Page,
+  actualPage: Page,
+): Promise<FilePopupVisualEvidence> {
+  const rows: FilePopupVisualRow[] = [];
+  const differences: string[] = [];
+  const platformExceptions: FilePopupPixelException[] = [];
+  const actualPlatform = await actualPage.evaluate(() => navigator.platform);
+  const bytes: Record<
+    string,
+    { reference: Uint8Array; actual: Uint8Array; diff: Uint8Array }
+  > = {};
+  for (const actionId of FILE_POPUP_IMPLEMENTED) {
+    const reference = await filePopupItemLocator(
+      referencePage,
+      'reference',
+      actionId,
+    );
+    const actual = await filePopupItemLocator(actualPage, 'actual', actionId);
+    const referenceBytes = await reference.screenshot({
+      animations: 'disabled',
+    });
+    const actualBytes = await actual.screenshot({ animations: 'disabled' });
+    const referenceMetrics = await surfaceMetrics(reference);
+    const actualMetrics = await surfaceMetrics(actual);
+    const comparison = comparePng(referenceBytes, actualBytes);
+    const rowDifferences = metricDifferences(referenceMetrics, actualMetrics);
+    differences.push(
+      ...rowDifferences.map((difference) => `${actionId}: ${difference}`),
+    );
+    const acceptedPixelException = await classifyFilePopupPixelException(
+      actionId,
+      reference,
+      actual,
+      comparison,
+      actualPlatform,
+    );
+    if (acceptedPixelException !== null) {
+      platformExceptions.push(acceptedPixelException);
+    } else if (!comparison.passed) {
+      differences.push(
+        `${actionId}: zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
+      );
+    }
+    rows.push({
+      actionId,
+      referenceMetrics,
+      actualMetrics,
+      comparison,
+      acceptedPixelException,
+    });
+    bytes[actionId] = {
+      reference: referenceBytes,
+      actual: actualBytes,
+      diff: comparison.diff.bytes,
+    };
+  }
+  return { rows, differences, platformExceptions, bytes };
+}
+
 async function writeTargetedArtifacts(input: {
   readonly entry: TargetedParityEntry;
   readonly evidenceRoot: string;
@@ -308,6 +828,8 @@ async function writeTargetedArtifacts(input: {
   readonly comparison?: PngComparison;
   readonly referenceBytes?: Uint8Array;
   readonly actualBytes?: Uint8Array;
+  readonly filePopup?: FilePopupPairing;
+  readonly filePopupVisual?: FilePopupVisualEvidence;
   readonly error?: string;
 }): Promise<void> {
   await mkdir(input.evidenceRoot, { recursive: true });
@@ -326,14 +848,59 @@ async function writeTargetedArtifacts(input: {
       2,
     ),
   );
+  if (input.filePopup !== undefined) {
+    await writeFile(
+      join(input.evidenceRoot, 'file-menu.json'),
+      JSON.stringify(input.filePopup, null, 2),
+    );
+  }
+  if (input.filePopupVisual !== undefined) {
+    await writeFile(
+      join(input.evidenceRoot, 'file-rows.json'),
+      JSON.stringify(
+        {
+          rows: input.filePopupVisual.rows.map((row) => ({
+            actionId: row.actionId,
+            referenceMetrics: row.referenceMetrics,
+            actualMetrics: row.actualMetrics,
+            comparison: row.comparison.metrics,
+            exact: row.comparison.passed,
+            accepted:
+              row.comparison.passed || row.acceptedPixelException !== null,
+            acceptedPixelException: row.acceptedPixelException,
+          })),
+          differences: input.filePopupVisual.differences,
+          platformExceptions: input.filePopupVisual.platformExceptions,
+          exact: input.filePopupVisual.differences.length === 0,
+        },
+        null,
+        2,
+      ),
+    );
+    for (const [actionId, row] of Object.entries(input.filePopupVisual.bytes)) {
+      const rowRoot = join(input.evidenceRoot, 'rows', actionId);
+      await mkdir(rowRoot, { recursive: true });
+      await writeFile(join(rowRoot, 'reference.png'), row.reference);
+      await writeFile(join(rowRoot, 'actual.png'), row.actual);
+      await writeFile(join(rowRoot, 'diff.png'), row.diff);
+    }
+  }
   await writeFile(
     join(input.evidenceRoot, 'metrics.json'),
     JSON.stringify(
       {
         region: input.entry.regionId,
         editorTopEdge: input.editorTopEdge,
-        differences: input.metricDifferences ?? [],
-        boundsAndStylesPassed: (input.metricDifferences ?? []).length === 0,
+        differences:
+          input.filePopupVisual?.differences ?? input.metricDifferences ?? [],
+        platformExceptions: input.filePopupVisual?.platformExceptions ?? [],
+        boundsAndStylesPassed:
+          (input.filePopupVisual?.differences ?? input.metricDifferences ?? [])
+            .length === 0,
+        wholePopup: {
+          differences: input.metricDifferences ?? [],
+          boundsAndStylesPassed: (input.metricDifferences ?? []).length === 0,
+        },
         comparison: input.comparison?.metrics ?? null,
       },
       null,
@@ -362,8 +929,8 @@ async function writeTargetedArtifacts(input: {
         status: input.status,
         comparisonAttempted: input.comparisonAttempted,
         comparisonCompleted: input.comparisonCompleted,
-        productionUiDrift:
-          input.status === 'production-ui-drift' || input.status === 'passed',
+        productionUiDrift: input.status === 'production-ui-drift',
+        platformExceptions: input.filePopupVisual?.platformExceptions ?? [],
         error: input.error ?? null,
       },
       null,
@@ -376,126 +943,181 @@ async function writeTargetedArtifacts(input: {
       `status=${input.status}`,
       `comparison_attempted=${input.comparisonAttempted}`,
       `comparison_completed=${input.comparisonCompleted}`,
+      `platform_exception_count=${input.filePopupVisual?.platformExceptions.length ?? 0}`,
       `error=${input.error ?? ''}`,
       '',
     ].join('\n'),
   );
 }
 
-for (const entry of TARGETED_MANIFEST) {
-  test(`T058 state-pairs the closed menubar in ${entry.palette.id}`, async ({
-    page,
-    context,
-  }) => {
-    test.setTimeout(120_000);
-    assertTargetedManifestIntegrity();
-    const referenceSource = await readFile(REFERENCE_PATH);
-    const referenceSourceHash = hashReferenceSource(referenceSource);
-    const captureContext = contextForTargetedEntry(entry, referenceSourceHash);
-    const evidenceRoot = join(EVIDENCE_ROOT, entry.palette.id);
-    const referencePage = await context.newPage();
-    let referenceSignature: SemanticSignature | undefined;
-    let actualSignature: SemanticSignature | undefined;
-    let editorTopEdge = { reference: -1, actual: -1 };
+for (const entry of [...TARGETED_MANIFEST, ...TARGETED_FILE_MENU_MANIFEST]) {
+  test(
+    entry.regionId === 'file-menu'
+      ? 'T059 state-pairs the File popup in Minimal Light'
+      : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
+    async ({ page, context }) => {
+      test.setTimeout(120_000);
+      assertTargetedManifestIntegrity();
+      const referenceSource = await readFile(REFERENCE_PATH);
+      const referenceSourceHash = hashReferenceSource(referenceSource);
+      const captureContext = contextForTargetedEntry(
+        entry,
+        referenceSourceHash,
+      );
+      const evidenceRoot = join(
+        entry.regionId === 'file-menu'
+          ? FILE_MENU_EVIDENCE_ROOT
+          : EVIDENCE_ROOT,
+        entry.palette.id,
+      );
+      const referencePage = await context.newPage();
+      let referenceSignature: SemanticSignature | undefined;
+      let actualSignature: SemanticSignature | undefined;
+      let editorTopEdge = { reference: -1, actual: -1 };
+      let filePopupVisual: FilePopupVisualEvidence | undefined;
 
-    try {
-      await prepareReference(referencePage, entry, referenceSourceHash);
-      await prepareActual(page, entry);
-      await assertActualMenubarStructure(page);
-      referenceSignature = await captureSemanticSignature(
-        referencePage,
-        captureContext,
-        'reference',
-      );
-      actualSignature = await captureSemanticSignature(
-        page,
-        captureContext,
-        'actual',
-      );
       try {
-        assertSemanticPairing(referenceSignature, actualSignature);
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? (error.stack ?? error.message)
-            : String(error);
+        await prepareReference(referencePage, entry, referenceSourceHash);
+        await prepareActual(page, entry);
+        await assertActualMenubarStructure(page);
+        referenceSignature = await captureSemanticSignature(
+          referencePage,
+          captureContext,
+          'reference',
+        );
+        actualSignature = await captureSemanticSignature(
+          page,
+          captureContext,
+          'actual',
+        );
+        try {
+          assertSemanticPairing(referenceSignature, actualSignature);
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? (error.stack ?? error.message)
+              : String(error);
+          await writeTargetedArtifacts({
+            entry,
+            evidenceRoot,
+            reference: referenceSignature,
+            actual: actualSignature,
+            status: 'pairing-mismatch',
+            comparisonAttempted: false,
+            comparisonCompleted: false,
+            editorTopEdge,
+            error: message,
+          });
+          if (error instanceof SemanticPairingMismatchError) throw error;
+          throw new Error(message, { cause: error });
+        }
+
+        const referenceEditor = await captureSurface(
+          referencePage,
+          entry.editorReferenceSelector,
+          'reference editor surface',
+        );
+        const actualEditor = await captureSurface(
+          page,
+          entry.editorActualSelector,
+          'actual editor surface',
+        );
+        editorTopEdge = {
+          reference: referenceEditor.metrics.bounds.top,
+          actual: actualEditor.metrics.bounds.top,
+        };
+        expect(editorTopEdge.actual).toBe(editorTopEdge.reference);
+        const filePopup =
+          entry.regionId === 'file-menu'
+            ? filePopupPairing(
+                await captureFilePopupItems(referencePage, 'reference'),
+                await captureFilePopupItems(page, 'actual'),
+              )
+            : undefined;
+        if (entry.regionId === 'file-menu') {
+          filePopupVisual = await captureFilePopupVisualEvidence(
+            referencePage,
+            page,
+          );
+          await page.keyboard.press('Escape');
+          await expect(
+            page.locator('[data-viewport-popup="file-menu"]'),
+          ).toHaveCount(0);
+          await page.getByRole('button', { name: 'File', exact: true }).click();
+          await expect(
+            page.locator('[data-viewport-popup="file-menu"]'),
+          ).toBeVisible();
+          await page
+            .getByRole('main', { name: 'Document area' })
+            .click({ position: { x: 16, y: 16 } });
+          await expect(
+            page.locator('[data-viewport-popup="file-menu"]'),
+          ).toHaveCount(0);
+          await page.getByRole('button', { name: 'File', exact: true }).click();
+          await expect(
+            page.locator('[data-viewport-popup="file-menu"]'),
+          ).toBeVisible();
+          await page.evaluate(() => {
+            const active = document.activeElement;
+            if (active instanceof HTMLElement) active.blur();
+          });
+        }
+        const referenceSurface = await captureSurface(
+          referencePage,
+          entry.referenceSelector,
+          `reference ${entry.regionId}`,
+        );
+        const actualSurface = await captureSurface(
+          page,
+          entry.actualSelector,
+          `actual ${entry.regionId}`,
+        );
+        const comparison = comparePng(
+          referenceSurface.bytes,
+          actualSurface.bytes,
+        );
+        const differences = metricDifferences(
+          referenceSurface.metrics,
+          actualSurface.metrics,
+        );
+        const error =
+          (entry.regionId === 'file-menu'
+            ? (filePopupVisual?.differences.length ?? 0) === 0
+            : differences.length === 0 && comparison.passed) &&
+          (filePopup?.differences.length ?? 0) === 0
+            ? undefined
+            : [
+                ...(entry.regionId === 'file-menu'
+                  ? (filePopupVisual?.differences ?? [])
+                  : differences),
+                ...(filePopup?.differences ?? []),
+                ...(entry.regionId === 'file-menu' || comparison.passed
+                  ? []
+                  : [
+                      `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
+                    ]),
+              ].join('\n');
         await writeTargetedArtifacts({
           entry,
           evidenceRoot,
           reference: referenceSignature,
           actual: actualSignature,
-          status: 'pairing-mismatch',
-          comparisonAttempted: false,
-          comparisonCompleted: false,
+          status: error === undefined ? 'passed' : 'production-ui-drift',
+          comparisonAttempted: true,
+          comparisonCompleted: true,
+          metricDifferences: differences,
           editorTopEdge,
-          error: message,
+          comparison,
+          filePopup,
+          filePopupVisual,
+          referenceBytes: referenceSurface.bytes,
+          actualBytes: actualSurface.bytes,
+          error,
         });
-        if (error instanceof SemanticPairingMismatchError) throw error;
-        throw new Error(message, { cause: error });
+        if (error !== undefined) throw new Error(error);
+      } finally {
+        await referencePage.close();
       }
-
-      const referenceEditor = await captureSurface(
-        referencePage,
-        entry.editorReferenceSelector,
-        'reference editor surface',
-      );
-      const actualEditor = await captureSurface(
-        page,
-        entry.editorActualSelector,
-        'actual editor surface',
-      );
-      editorTopEdge = {
-        reference: referenceEditor.metrics.bounds.top,
-        actual: actualEditor.metrics.bounds.top,
-      };
-      expect(editorTopEdge.actual).toBe(editorTopEdge.reference);
-      const referenceSurface = await captureSurface(
-        referencePage,
-        entry.referenceSelector,
-        'reference closed menubar',
-      );
-      const actualSurface = await captureSurface(
-        page,
-        entry.actualSelector,
-        'actual closed menubar',
-      );
-      const comparison = comparePng(
-        referenceSurface.bytes,
-        actualSurface.bytes,
-      );
-      const differences = metricDifferences(
-        referenceSurface.metrics,
-        actualSurface.metrics,
-      );
-      const error =
-        differences.length === 0 && comparison.passed
-          ? undefined
-          : [
-              ...differences,
-              ...(comparison.passed
-                ? []
-                : [
-                    `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
-                  ]),
-            ].join('\n');
-      await writeTargetedArtifacts({
-        entry,
-        evidenceRoot,
-        reference: referenceSignature,
-        actual: actualSignature,
-        status: error === undefined ? 'passed' : 'production-ui-drift',
-        comparisonAttempted: true,
-        comparisonCompleted: true,
-        metricDifferences: differences,
-        editorTopEdge,
-        comparison,
-        referenceBytes: referenceSurface.bytes,
-        actualBytes: actualSurface.bytes,
-        error,
-      });
-      if (error !== undefined) throw new Error(error);
-    } finally {
-      await referencePage.close();
-    }
-  });
+    },
+  );
 }

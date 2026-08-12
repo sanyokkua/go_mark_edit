@@ -58,7 +58,14 @@ function menuDecoration(id: ActionId): React.JSX.Element | null {
   return (
     <>
       {fileMenuSeparators.has(id) ? (
-        <div aria-hidden="true" className={styles.separator} />
+        <div
+          aria-hidden="true"
+          className={`${styles.separator} ${
+            id === 'export-pdf' || id === 'close-tab'
+              ? styles.fileMenuLateSeparator
+              : ''
+          }`}
+        />
       ) : null}
       {id === 'open-recent' ? (
         <div aria-hidden="true" className={styles.groupLabel}>
@@ -291,6 +298,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       (action.id !== 'view' || viewMenuProps !== undefined),
   );
   const fileActions = actionsForSurface('file-menu');
+  const fileActionLabel = (item: (typeof fileActions)[number]): string =>
+    t(item.surfaceLabelKeys?.['file-menu'] ?? item.labelKey);
   const fileActionDisabled = (id: ActionId): boolean =>
     (id !== 'exit' && getAction(id).availability.kind === 'deferred') ||
     (id === 'exit' && onQuit === undefined) ||
@@ -514,51 +523,69 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               <DropdownMenu.Content
                 aria-label={t('shell.file')}
                 collisionPadding={8}
-                className={`${styles.overflow} ${styles.radixOverflow}`}
+                className={`${styles.overflow} ${styles.radixOverflow} ${styles.fileMenu}`}
                 data-viewport-popup="file-menu"
-                sideOffset={4}
+                alignOffset={21.203}
+                sideOffset={6}
               >
                 {fileActions.map((item) => (
                   <Fragment key={item.id}>
                     {menuDecoration(item.id)}
                     {item.id === 'open-recent' ? (
-                      <DropdownMenu.Sub>
-                        <DropdownMenu.SubTrigger
-                          className={styles.item}
-                          data-shortcut={shortcutForMenuItem(item.shortcut)}
-                          disabled={fileActionDisabled(item.id)}
-                        >
-                          {t(item.labelKey)}
-                        </DropdownMenu.SubTrigger>
-                        <DropdownMenu.Portal>
-                          <DropdownMenu.SubContent
-                            className={`${styles.overflow} ${styles.radixOverflow}`}
-                            collisionPadding={8}
-                            data-viewport-popup="file-recent-menu"
+                      <>
+                        <DropdownMenu.Sub>
+                          <DropdownMenu.SubTrigger
+                            aria-label={t(item.labelKey)}
+                            className={styles.item}
+                            data-shortcut={shortcutForMenuItem(item.shortcut)}
+                            disabled={fileActionDisabled(item.id)}
                           >
-                            {displayedRecentFiles.map((path) => (
+                            {fileActionLabel(item)}
+                          </DropdownMenu.SubTrigger>
+                          <DropdownMenu.Portal>
+                            <DropdownMenu.SubContent
+                              className={`${styles.overflow} ${styles.radixOverflow}`}
+                              collisionPadding={8}
+                              data-viewport-popup="file-recent-menu"
+                            >
+                              {displayedRecentFiles.map((path) => (
+                                <DropdownMenu.Item
+                                  className={styles.item}
+                                  disabled={recentFiles.length === 0}
+                                  key={path}
+                                  onSelect={(): void =>
+                                    dispatchRecentFile(path)
+                                  }
+                                >
+                                  {recentFiles.length === 0
+                                    ? path
+                                    : safeRecentLabel(path)}
+                                </DropdownMenu.Item>
+                              ))}
+                            </DropdownMenu.SubContent>
+                          </DropdownMenu.Portal>
+                        </DropdownMenu.Sub>
+                        {recentFiles.length === 0
+                          ? displayedRecentFiles.map((path) => (
                               <DropdownMenu.Item
                                 className={styles.item}
-                                disabled={recentFiles.length === 0}
-                                key={path}
-                                onSelect={(): void => dispatchRecentFile(path)}
+                                disabled
+                                key={`parity-recent-${path}`}
                               >
-                                {recentFiles.length === 0
-                                  ? path
-                                  : safeRecentLabel(path)}
+                                {path}
                               </DropdownMenu.Item>
-                            ))}
-                          </DropdownMenu.SubContent>
-                        </DropdownMenu.Portal>
-                      </DropdownMenu.Sub>
+                            ))
+                          : null}
+                      </>
                     ) : (
                       <DropdownMenu.Item
+                        aria-label={t(item.labelKey)}
                         className={styles.item}
                         data-shortcut={shortcutForMenuItem(item.shortcut)}
                         disabled={fileActionDisabled(item.id)}
                         onSelect={(): void => dispatchFileAction(item.id)}
                       >
-                        {t(item.labelKey)}
+                        {fileActionLabel(item)}
                       </DropdownMenu.Item>
                     )}
                   </Fragment>
@@ -708,6 +735,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                       {item.id === 'open-recent' ? (
                         <div aria-label={t(item.labelKey)} role="group">
                           <button
+                            aria-label={t(item.labelKey)}
                             aria-haspopup="menu"
                             className={styles.item}
                             data-shortcut={shortcutForMenuItem(item.shortcut)}
@@ -715,7 +743,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                             role="menuitem"
                             type="button"
                           >
-                            {t(item.labelKey)}
+                            {fileActionLabel(item)}
                           </button>
                           <div
                             aria-label={t('file.recent.label')}
@@ -740,6 +768,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                         </div>
                       ) : (
                         <button
+                          aria-label={t(item.labelKey)}
                           className={styles.item}
                           data-shortcut={shortcutForMenuItem(item.shortcut)}
                           disabled={fileActionDisabled(item.id)}
@@ -747,7 +776,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                           type="button"
                           onClick={(): void => dispatchFileAction(item.id)}
                         >
-                          {t(item.labelKey)}
+                          {fileActionLabel(item)}
                         </button>
                       )}
                     </Fragment>

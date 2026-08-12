@@ -173,6 +173,16 @@
   the editor region to `#app.no-assistant .content`; it MUST NOT change production Assistant behavior, masks,
   pixel tolerance, coordinate handling, comparator, or the mockup source.
 
+### Session 2026-08-12
+
+- Q: Should T059 preserve canonical macOS accelerator glyphs or require the mockup's literal `Ctrl` text on macOS?
+  → A: Preserve native platform labels in production: macOS File-menu accelerators render `⌘N`, `⌘O`, `⌘S`, and
+  `⌘⇧S`; Windows and Linux retain their platform-correct labels. T059 records an explicit, task-local visual
+  evidence exception for the macOS accelerator glyph text when the immutable mockup uses `Ctrl` text. The exception
+  covers only those accelerator glyph pixels. It does not waive popup geometry, row or label placement, action
+  availability, focus, keyboard behavior, semantic shortcut values, or any other comparison, and it MUST NOT change
+  the mockup, masks, tolerance, comparator, or coordinate handling.
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Open, edit, and safely save a real file (Priority: P1)
@@ -624,6 +634,13 @@ state IDs merely because both happen to be visible.
 The 306 primary and 240 additional entries form exactly 546 logical manifest cases. Three deterministic repetitions
 execute 1,638 comparisons but MUST NOT create additional manifest keys. Direct metric assertions and unaffected
 regression suites attach to cases and do not increase either count.
+
+T059 platform evidence decision: production File-menu accelerator labels remain platform-correct, including the
+macOS glyphs `⌘N`, `⌘O`, `⌘S`, and `⌘⇧S`. If the immutable reference presents literal `Ctrl` text for that case, the
+focused evidence MUST record the difference as the explicit T059 macOS accelerator-glyph exception rather than an
+unexplained production drift. The exception is limited to accelerator glyph pixels and MUST still assert the
+semantic shortcut values, visible labels, popup geometry, action availability, focus, keyboard behavior, and
+dismissal. It is not a mask or tolerance change, and no protected parity control may be modified.
 
 The following binding metrics are direct acceptance values rather than planning suggestions:
 

@@ -117,6 +117,33 @@
   position: relative;
 }
 
+.fileMenu {
+  display: block;
+  gap: normal;
+  min-width: var(--popup-min-width);
+  overflow: visible;
+  position: relative;
+  transform: translateX(var(--file-menu-popup-offset));
+  width: var(--file-menu-popup-width);
+}
+
+.fileMenu .item {
+  border: 0;
+  border-radius: 8px;
+  gap: 22px;
+  min-height: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+.fileMenu .groupLabel {
+  padding-block-start: 7px;
+}
+
+.fileMenu .fileMenuLateSeparator {
+  margin: 5px 4px;
+}
+
 .item {
   align-items: center;
   background: transparent;

@@ -98,6 +98,15 @@ it('T002 resolves platform labels without changing the binding', () => {
   expect(formatShortcut('Mod+Shift+F', 'linux')).toBe('Ctrl+Shift+F');
 });
 
+it('T059 keeps native macOS File accelerators while preserving canonical bindings', () => {
+  expect(formatShortcut('Mod+N', 'darwin')).toBe('⌘N');
+  expect(formatShortcut('Mod+O', 'darwin')).toBe('⌘O');
+  expect(formatShortcut('Mod+S', 'darwin')).toBe('⌘S');
+  expect(formatShortcut('Mod+Shift+S', 'darwin')).toBe('⌘⇧S');
+  expect(formatShortcut('Mod+N', 'linux')).toBe('Ctrl+N');
+  expect(formatShortcut('Mod+N', 'win32')).toBe('Ctrl+N');
+});
+
 it('T002 matches a keyboard event to the platform-neutral binding', () => {
   expect(
     shortcutForKeyEvent(

@@ -21,13 +21,14 @@ export type TargetedParityEntry = Readonly<{
     readonly theme: 'glass' | 'material' | 'minimal';
     readonly mode: 'light' | 'dark';
   }>;
-  readonly activeScreen: 'editor-split';
+  readonly activeScreen: 'editor-split' | 'menu-file';
   readonly referenceVariant: 'base';
-  readonly referenceSelector: '#app.no-assistant .menu';
-  readonly actualSelector: '[data-shell-menu]';
+  readonly referenceSelector: '#app.no-assistant .menu' | '#m-file';
+  readonly actualSelector:
+    '[data-shell-menu]' | '[data-viewport-popup="file-menu"]';
   readonly editorReferenceSelector: '#app.no-assistant .content';
   readonly editorActualSelector: 'section[aria-label="Editor view"]';
-  readonly regionId: 'closed-menubar';
+  readonly regionId: 'closed-menubar' | 'file-menu';
   readonly implementedActionIds: readonly ['file', 'settings', 'view', 'about'];
 }>;
 
@@ -60,6 +61,29 @@ export const TARGETED_MANIFEST: readonly TargetedParityEntry[] = Object.freeze(
   ),
 );
 
+export const TARGETED_FILE_MENU_MANIFEST: readonly TargetedParityEntry[] =
+  Object.freeze([
+    Object.freeze({
+      key: 'targeted:file-menu:1280:minimal-light',
+      family: 'editor-split',
+      width: 1280,
+      height: 720,
+      palette: Object.freeze({
+        id: 'minimal-light',
+        theme: 'minimal',
+        mode: 'light',
+      }),
+      activeScreen: 'menu-file',
+      referenceVariant: 'base',
+      referenceSelector: '#m-file',
+      actualSelector: '[data-viewport-popup="file-menu"]',
+      editorReferenceSelector: '#app.no-assistant .content',
+      editorActualSelector: 'section[aria-label="Editor view"]',
+      regionId: 'file-menu',
+      implementedActionIds: ['file', 'settings', 'view', 'about'] as const,
+    }),
+  ]);
+
 export function contextForTargetedEntry(
   entry: TargetedParityEntry,
   referenceSourceHash: string,
@@ -91,5 +115,25 @@ export function assertTargetedManifestIntegrity(): void {
   }
   if (PARITY_MANIFEST.length !== LOGICAL_CASE_COUNT) {
     throw new Error('T058 must preserve the unrestricted logical case count');
+  }
+  if (TARGETED_FILE_MENU_MANIFEST.length !== 1) {
+    throw new Error('T059 targeted manifest must contain one File popup case');
+  }
+  const fileMenuEntry = TARGETED_FILE_MENU_MANIFEST[0];
+  if (
+    fileMenuEntry === undefined ||
+    fileMenuEntry.regionId !== 'file-menu' ||
+    fileMenuEntry.palette.id !== 'minimal-light'
+  ) {
+    throw new Error('T059 targeted File popup case is malformed');
+  }
+  if (
+    PARITY_MANIFEST.some(({ key }) =>
+      TARGETED_FILE_MENU_MANIFEST.some((entry) => entry.key === key),
+    )
+  ) {
+    throw new Error(
+      'T059 targeted case must not enter the unrestricted manifest',
+    );
   }
 }
