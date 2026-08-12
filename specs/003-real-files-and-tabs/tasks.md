@@ -898,7 +898,7 @@ The unchanged unrestricted matrix remains the final release gate in T054/T035.
   - **Tests/evidence**: Focused status cases for saved, autosaved, unsaved, read-only, mixed-ending, and large-file states at 1280px/Minimal Light, component tests, and exact semantic/bounds/style/pixel artifacts.
   - **Branch/commit**: `feature/v1-implementation--003-t063-editor-status-slice`; `fix(ui): converge targeted editor status slice`.
 
-- [ ] T064 [US5] Validate the paused preview and preview controls in `frontend/src/ui/widgets/MarkdownView.tsx`, preview-related controls/styles/tests, and `frontend/e2e/targeted-parity.test.ts`. Use the real arrangement/view controls, assert paused/busy/failed state before capture, and compare preview chrome/typography only within the feature's in-scope basic preview boundary.
+- [X] T064 [US5] Validate the paused preview and preview controls in `frontend/src/ui/widgets/MarkdownView.tsx`, preview-related controls/styles/tests, and `frontend/e2e/targeted-parity.test.ts`. Use the real arrangement/view controls, assert paused/busy/failed state before capture, and compare preview chrome/typography only within the feature's in-scope basic preview boundary.
   - **Outcome**: Preview state, arrangement, controls, and mapped chrome are exact without adding rich rendering or masking content/layout drift outside the approved boundary.
   - **Prerequisites**: T063 and T060.
   - **Primary ownership**: FR-FT-032–040, FR-FT-046, FR-FT-052, and SC-FT-013; targeted remediation for T009/T018/T024/T045 (partial).

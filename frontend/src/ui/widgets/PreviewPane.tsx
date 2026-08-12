@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { t } from '../../i18n';
 import MarkdownView from '../components/MarkdownView';
+import styles from './PreviewPane.module.css';
 
 export const PREVIEW_BYTE_LIMIT = 2_097_152;
 
@@ -120,8 +121,22 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
       data-preview-state={isPaused ? 'paused' : 'rendered'}
     >
       {isPaused ? (
-        <div role="status">
-          <p>{t('preview.paused')}</p>
+        <div
+          className={styles.pausedStatus}
+          data-preview-paused-bar="true"
+          role="status"
+        >
+        <svg
+          aria-hidden="true"
+          className={styles.pausedIcon}
+          fill="none"
+          focusable="false"
+          viewBox="0 0 24 24"
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <path d="M14 2v6h6M8 13h8M8 17h5" />
+        </svg>
+          <p className={styles.pausedMessage}>{t('preview.paused')}</p>
           {currentRefreshError === null ? null : (
             <p
               aria-live="assertive"
@@ -132,6 +147,7 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
             </p>
           )}
           <button
+            className={styles.refreshButton}
             aria-busy={isRefreshing}
             disabled={isRefreshing}
             type="button"

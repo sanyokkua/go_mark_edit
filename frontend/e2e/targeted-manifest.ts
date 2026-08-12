@@ -7,7 +7,7 @@ import type { SemanticCaptureContext } from './parity/state-contract';
 
 export type TargetedParityEntry = Readonly<{
   readonly key: string;
-  readonly family: Extract<ParityFamily, 'editor-split'>;
+  readonly family: Extract<ParityFamily, 'editor-split' | 'preview-only'>;
   readonly width: 1280 | 375;
   readonly height: 720;
   readonly palette: Readonly<{
@@ -26,7 +26,8 @@ export type TargetedParityEntry = Readonly<{
     | 'menu-file'
     | 'menu-settings'
     | 'menu-view'
-    | 'menu-about';
+    | 'menu-about'
+    | 'paused-preview';
   readonly referenceVariant: 'base';
   readonly referenceSelector:
     | '#app.no-assistant .menu'
@@ -35,7 +36,8 @@ export type TargetedParityEntry = Readonly<{
     | '#m-view'
     | '#m-about'
     | '#app.no-assistant .tabs'
-    | '#app .ovf-menu';
+    | '#app .ovf-menu'
+    | '#app .pausedbar';
   readonly actualSelector:
     | '[data-shell-menu]'
     | '[data-viewport-popup="file-menu"]'
@@ -44,7 +46,8 @@ export type TargetedParityEntry = Readonly<{
     | '[data-viewport-popup="about-menu"]'
     | '[role="tablist"]'
     | '[data-viewport-popup="shell-overflow"]'
-    | '[data-viewport-popup="editor-overflow"]';
+    | '[data-viewport-popup="editor-overflow"]'
+    | '[data-preview-state="paused"] [role="status"]';
   readonly editorReferenceSelector: '#app.no-assistant .content';
   readonly editorActualSelector: 'section[aria-label="Editor view"]';
   readonly regionId:
@@ -54,7 +57,8 @@ export type TargetedParityEntry = Readonly<{
     | 'settings-overflow'
     | 'view-menu'
     | 'about-menu'
-    | 'tab-strip';
+    | 'tab-strip'
+    | 'preview-paused';
   readonly openSurface:
     | 'closed-menubar'
     | 'file-menu'
@@ -62,7 +66,8 @@ export type TargetedParityEntry = Readonly<{
     | 'settings-overflow'
     | 'view-menu'
     | 'about-menu'
-    | 'tab-strip';
+    | 'tab-strip'
+    | 'preview-paused';
   readonly implementedActionIds: readonly ['file', 'settings', 'view', 'about'];
 }>;
 
@@ -232,6 +237,30 @@ export const TARGETED_TAB_MANIFEST: readonly TargetedParityEntry[] =
     }),
   ]);
 
+export const TARGETED_PREVIEW_MANIFEST: readonly TargetedParityEntry[] =
+  Object.freeze([
+    Object.freeze({
+      key: 'state:preview-paused:1280:minimal-light',
+      family: 'editor-split',
+      width: 1280,
+      height: 720,
+      palette: Object.freeze({
+        id: 'minimal-light',
+        theme: 'minimal',
+        mode: 'light',
+      }),
+      activeScreen: 'paused-preview',
+      referenceVariant: 'base',
+      referenceSelector: '#app .pausedbar',
+      actualSelector: '[data-preview-state="paused"] [role="status"]',
+      editorReferenceSelector: '#app.no-assistant .content',
+      editorActualSelector: 'section[aria-label="Editor view"]',
+      regionId: 'preview-paused',
+      openSurface: 'preview-paused',
+      implementedActionIds: ['file', 'settings', 'view', 'about'] as const,
+    }),
+  ]);
+
 export function contextForTargetedEntry(
   entry: TargetedParityEntry,
   referenceSourceHash: string,
@@ -312,6 +341,16 @@ export function assertTargetedManifestIntegrity(): void {
     if (PARITY_MANIFEST.some(({ key }) => key === entry.key)) {
       throw new Error(
         'T062 targeted case must not enter the unrestricted manifest',
+      );
+    }
+  }
+  if (TARGETED_PREVIEW_MANIFEST.length !== 1) {
+    throw new Error('T064 targeted preview manifest must contain one case');
+  }
+  for (const entry of TARGETED_PREVIEW_MANIFEST) {
+    if (PARITY_MANIFEST.some(({ key }) => key === entry.key)) {
+      throw new Error(
+        'T064 targeted case must not enter the unrestricted manifest',
       );
     }
   }

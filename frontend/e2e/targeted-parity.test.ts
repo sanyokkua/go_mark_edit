@@ -29,6 +29,7 @@ import {
   contextForTargetedEntry,
   TARGETED_FILE_MENU_MANIFEST,
   TARGETED_MANIFEST,
+  TARGETED_PREVIEW_MANIFEST,
   TARGETED_SETTINGS_MANIFEST,
   TARGETED_TAB_MANIFEST,
   TARGETED_VIEW_ABOUT_MANIFEST,
@@ -63,6 +64,10 @@ const VIEW_ABOUT_EVIDENCE_ROOT = resolve(
 const EDITOR_STATUS_EVIDENCE_ROOT = resolve(
   REPOSITORY_ROOT,
   '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/targeted/editor-status',
+);
+const PREVIEW_EVIDENCE_ROOT = resolve(
+  REPOSITORY_ROOT,
+  '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/targeted/preview',
 );
 const PARITY_HEIGHT = 720;
 const METRIC_PROPERTIES = [
@@ -264,6 +269,13 @@ async function prepareActual(
       const active = document.activeElement;
       if (active instanceof HTMLElement) active.blur();
     });
+  } else if (entry.openSurface === 'preview-paused') {
+    await page.getByRole('button', { name: 'View', exact: true }).click();
+    await expect(
+      page.getByRole('menuitemradio', { name: 'Split', exact: true }),
+    ).toHaveAttribute('aria-checked', 'true');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-preview-paused-bar="true"]')).toBeVisible();
   }
 }
 
@@ -1026,6 +1038,7 @@ for (const entry of [
   ...TARGETED_SETTINGS_MANIFEST,
   ...TARGETED_TAB_MANIFEST,
   ...TARGETED_VIEW_ABOUT_MANIFEST,
+  ...TARGETED_PREVIEW_MANIFEST,
 ]) {
   test(
     entry.openSurface === 'file-menu'
@@ -1036,6 +1049,8 @@ for (const entry of [
           ? 'T060 state-pairs the 375px Settings overflow in Minimal Light'
           : entry.openSurface === 'tab-strip'
             ? 'T062 state-pairs tabs and toolbar in Minimal Light'
+          : entry.openSurface === 'preview-paused'
+            ? 'T064 state-pairs the paused preview in Minimal Light'
           : entry.openSurface === 'view-menu'
             ? 'T061 state-pairs the View popup in Minimal Light'
             : entry.openSurface === 'about-menu'
@@ -1059,6 +1074,8 @@ for (const entry of [
             : entry.openSurface === 'view-menu' ||
                 entry.openSurface === 'about-menu'
               ? VIEW_ABOUT_EVIDENCE_ROOT
+            : entry.openSurface === 'preview-paused'
+              ? PREVIEW_EVIDENCE_ROOT
             : EVIDENCE_ROOT,
         entry.palette.id,
         entry.openSurface === 'settings-overflow'
@@ -1067,6 +1084,8 @@ for (const entry of [
             ? entry.openSurface
             : entry.openSurface === 'tab-strip'
               ? 'tab-strip'
+            : entry.openSurface === 'preview-paused'
+              ? 'paused'
             : '',
       );
       const referencePage = await context.newPage();
@@ -1179,23 +1198,18 @@ for (const entry of [
           referenceSurface.metrics,
           actualSurface.metrics,
         );
-        const error =
-          (entry.openSurface === 'file-menu'
-            ? (filePopupVisual?.differences.length ?? 0) === 0
-            : true) &&
-          (filePopup?.differences.length ?? 0) === 0
-            ? undefined
+        const errors = [
+          ...(entry.openSurface === 'file-menu'
+            ? (filePopupVisual?.differences ?? [])
+            : differences),
+          ...(filePopup?.differences ?? []),
+          ...(entry.regionId === 'file-menu' || comparison.passed
+            ? []
             : [
-                ...(entry.openSurface === 'file-menu'
-                  ? (filePopupVisual?.differences ?? [])
-                  : differences),
-                ...(filePopup?.differences ?? []),
-                ...(entry.regionId === 'file-menu' || comparison.passed
-                  ? []
-                  : [
-                      `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
-                    ]),
-              ].join('\n');
+                `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
+              ]),
+        ];
+        const error = errors.length === 0 ? undefined : errors.join('\n');
         await writeTargetedArtifacts({
           entry,
           evidenceRoot,

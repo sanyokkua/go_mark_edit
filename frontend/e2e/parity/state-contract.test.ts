@@ -169,3 +169,24 @@ it('T056 keeps the focused manifest separate from the unrestricted accounting', 
     ),
   ).toBe(false);
 });
+
+it('T064 recognizes the source-backed paused-preview state before capture', () => {
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=state:preview-paused:1280:minimal-light',
+  );
+  document.body.innerHTML =
+    '<section aria-label="Editor pane"></section>' +
+    '<section aria-label="Preview pane">' +
+    '<section data-preview-state="paused"><div role="status">Preview paused</div></section>' +
+    '</section>';
+
+  expect(
+    readSemanticDomSnapshot({
+      pageKind: 'actual',
+      implementedActionIds: context.implementedActionIds,
+      viewport: { width: 1280, height: 720 },
+    }).activeScreen,
+  ).toBe('paused-preview');
+});

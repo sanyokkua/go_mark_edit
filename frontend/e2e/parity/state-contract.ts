@@ -159,6 +159,10 @@ export function readSemanticDomSnapshot(
     const preview = document.querySelector('[aria-label="Preview pane"]');
     const editorVisible = isVisible(editor);
     const previewVisible = isVisible(preview);
+    const parityCase = new URLSearchParams(window.location.search).get('parity-case');
+    if (parityCase?.startsWith('state:preview-paused:')) {
+      return 'paused-preview';
+    }
     if (editorVisible && previewVisible) return 'editor-split';
     if (editorVisible) return 'editor-only';
     if (previewVisible) return 'preview-only';

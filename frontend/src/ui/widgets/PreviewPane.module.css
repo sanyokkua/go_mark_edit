@@ -1,0 +1,37 @@
+.pausedStatus {
+  align-items: center;
+  background: var(--surface-2);
+  border-bottom: var(--control-border-width) solid var(--stroke-soft);
+  box-sizing: border-box;
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  gap: 10px;
+  height: var(--preview-paused-bar-height);
+  padding: 8px 12px;
+}
+
+.pausedIcon {
+  display: inline-block;
+  flex: none;
+  height: 15px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+  vertical-align: -2px;
+  width: 15px;
+}
+
+.pausedMessage {
+  margin: 0;
+}
+
+.refreshButton {
+  background: var(--surface);
+  border: var(--control-border-width) solid var(--stroke);
+  border-radius: 7px;
+  font-size: 11.5px;
+  margin-inline-start: auto;
+  padding: 4px 10px;
+}

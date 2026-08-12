@@ -46,7 +46,7 @@
   "editor.editorTitle": "Editor · {title}",
   "editor.preview.live": "● Preview · live",
   "editor.preview.flavour": "GFM",
-  "preview.paused": "Preview paused for documents above 2 MiB.",
+  "preview.paused": "Live preview is paused — this document is over 2 MB.",
   "preview.refresh": "Refresh preview",
   "preview.retry": "Retry",
   "preview.refreshFailed": "Preview refresh failed.",

@@ -28,6 +28,43 @@
   padding: var(--pane-body-padding-block) var(--pane-body-padding-inline);
 }
 
+.panes:has([data-preview-paused-bar='true']) {
+  column-gap: var(--editor-view-gap);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: var(--preview-paused-bar-height) minmax(0, 1fr);
+  padding-inline: 0;
+  padding-top: 0;
+  position: relative;
+  row-gap: 0;
+}
+
+.panes:has([data-preview-paused-bar='true']) > .pane:first-child {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.panes:has([data-preview-paused-bar='true']) > .pane:last-child,
+.panes:has([data-preview-paused-bar='true']) > .pane:last-child .previewContent,
+.panes:has([data-preview-paused-bar='true'])
+  > .pane:last-child
+  [data-preview-state='paused'] {
+  display: contents;
+}
+
+.panes:has([data-preview-paused-bar='true']) > .pane:last-child .paneHeader {
+  display: none;
+}
+
+.panes [data-preview-paused-bar='true'] {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-height: auto;
+  min-width: auto;
+  position: static;
+  width: auto;
+}
+
 @media (max-width: 376px) {
   .panes {
     flex-direction: column;

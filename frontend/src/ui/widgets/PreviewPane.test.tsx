@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 
 import PreviewPane, {
   PREVIEW_BYTE_LIMIT,
@@ -110,10 +116,28 @@ it('renders at the inclusive 2 MiB boundary and pauses above it', async () => {
   );
 
   await waitFor(() => {
-    expect(screen.getByText(/preview paused/i)).toBeInTheDocument();
+    expect(screen.getByText(/live preview is paused/i)).toBeInTheDocument();
   });
   expect(screen.getByRole('button', { name: 'Refresh preview' })).toBeVisible();
   expect(screen.queryByText('over 2 MiB')).not.toBeInTheDocument();
+});
+
+it('T064 presents source-backed paused preview chrome above the pane content', () => {
+  render(
+    <PreviewPane
+      accepted={snapshot(2, '# over 2 MiB', PREVIEW_BYTE_LIMIT + 1)}
+      onRefresh={jest.fn(async () => snapshot(2, '', PREVIEW_BYTE_LIMIT + 1))}
+    />,
+  );
+
+  const paused = screen.getByRole('status');
+  expect(paused).toHaveAttribute('data-preview-paused-bar', 'true');
+  expect(paused.textContent).toContain(
+    'Live preview is paused — this document is over 2\u00a0MB.',
+  );
+  expect(
+    within(paused).getByRole('button', { name: 'Refresh preview' }),
+  ).toBeEnabled();
 });
 
 it('renders the accepted revision once and coalesces duplicate refresh requests', async () => {
@@ -129,6 +153,8 @@ it('renders the accepted revision once and coalesces duplicate refresh requests'
 
   const refreshButton = screen.getByRole('button', { name: 'Refresh preview' });
   fireEvent.click(refreshButton);
+  expect(refreshButton).toHaveAttribute('aria-busy', 'true');
+  expect(refreshButton).toBeDisabled();
   fireEvent.click(refreshButton);
   expect(refresh).toHaveBeenCalledTimes(1);
 
@@ -169,7 +195,7 @@ it('re-pauses after the next accepted edit above the limit', async () => {
   );
 
   await waitFor(() => {
-    expect(screen.getByText(/preview paused/i)).toBeInTheDocument();
+    expect(screen.getByText(/live preview is paused/i)).toBeInTheDocument();
   });
   expect(screen.queryByText('accepted revision 21')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Refresh preview' })).toBeVisible();
@@ -224,7 +250,7 @@ it('does not render a stale refresh result for a newer accepted revision', async
   pending.resolve(snapshot(41, '# stale revision', PREVIEW_BYTE_LIMIT + 1));
 
   await waitFor(() => {
-    expect(screen.getByText(/preview paused/i)).toBeInTheDocument();
+    expect(screen.getByText(/live preview is paused/i)).toBeInTheDocument();
   });
   expect(screen.queryByText('stale revision')).not.toBeInTheDocument();
   expect(screen.queryByText('current revision')).not.toBeInTheDocument();
