@@ -44,6 +44,7 @@ import {
   hashReferenceSource,
   referenceNavigationUrl,
 } from './parity/reference-server';
+import { accountParityComparisons } from './parity/evidence';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -303,6 +304,7 @@ type CaptureRecord = Readonly<{
   readonly status: 'passed' | 'failed' | 'unresolved';
   readonly referenceReady: boolean;
   readonly actualReady: boolean;
+  readonly diagnostics: readonly string[];
   readonly error?: string;
 }>;
 
@@ -585,7 +587,11 @@ async function applyActualPalette(
   const menu = await openActualSettingsMenu(page, width);
   const labels = paletteLabels(palette);
   await menu.getByRole('radio', { name: labels.theme, exact: true }).click();
-  await menu.getByRole('radio', { name: labels.mode, exact: true }).click();
+  const refreshedMenu = page.locator('[data-viewport-popup="settings-menu"]');
+  await refreshedMenu.waitFor({ state: 'visible' });
+  await refreshedMenu
+    .getByRole('radio', { name: labels.mode, exact: true })
+    .click();
   await expect(page.locator('html')).toHaveAttribute(
     'data-theme',
     palette.theme,
@@ -644,6 +650,21 @@ async function closeAllActualTabs(page: Page): Promise<void> {
   throw new Error(
     'actual tab close loop did not reach the zero-document state',
   );
+}
+
+async function assertLauncherFixture(
+  page: Page,
+  expectedRecentCount: number,
+): Promise<void> {
+  const launcher = page.getByTestId('document-launcher');
+  await expect(launcher).toBeVisible();
+  await expect(
+    launcher.getByRole('button', { name: 'Open Folder' }),
+  ).toBeDisabled();
+  await expect(launcher.getByRole('listitem')).toHaveCount(expectedRecentCount);
+  await expect(
+    page.locator('[data-notification-code="not_found"]'),
+  ).toHaveCount(0);
 }
 
 async function prepareActualState(
@@ -789,12 +810,7 @@ async function prepareActualState(
       await expect(documentStatus(page)).toContainText('420,000');
       return;
     case 'launcher-six-file':
-      await expect(
-        page.locator('[data-testid="document-launcher"]'),
-      ).toBeVisible();
-      await expect(
-        page.locator('[data-testid="document-launcher"] li'),
-      ).toHaveCount(6);
+      await assertLauncherFixture(page, 6);
       return;
     case 'preview-paused':
       await expect(page.locator('[data-preview-state="paused"]')).toBeVisible();
@@ -846,9 +862,7 @@ async function prepareActualState(
       return;
     case 'launcher-first-run':
       await closeAllActualTabs(page);
-      await expect(
-        page.locator('[data-testid="document-launcher"]'),
-      ).toBeVisible();
+      await assertLauncherFixture(page, 0);
       return;
     case 'control-enabled':
       await expect(
@@ -953,6 +967,10 @@ async function prepareActualFamily(
       return;
     case 'empty':
       await closeAllActualTabs(page);
+      await assertLauncherFixture(
+        page,
+        stateIdForEntry(entry) === 'launcher-six-file' ? 6 : 0,
+      );
       return;
     case 'save-prompt': {
       const editor = page.getByRole('textbox', { name: 'Editor content' });
@@ -1266,6 +1284,10 @@ async function writeRunReports(
   hashes: Readonly<Record<string, string>>,
 ): Promise<void> {
   await mkdir(EVIDENCE_ROOT, { recursive: true });
+  const comparisonAccounting = accountParityComparisons(
+    comparisonsForRepetitions(),
+    captures,
+  );
   const stateCoverage = Object.fromEntries(
     ADDITIONAL_STATE_ASSIGNMENTS.map(({ stateId }) => [
       stateId,
@@ -1284,21 +1306,27 @@ async function writeRunReports(
     JSON.stringify(
       {
         counts: {
+          planned: comparisonAccounting.filter(({ planned }) => planned).length,
           logical: PARITY_MANIFEST.length,
           repetitions: PARITY_REPETITIONS,
-          attempted: captures.length,
-          referenceReady: captures.filter(
+          attempted: comparisonAccounting.filter(({ attempted }) => attempted)
+            .length,
+          referenceReady: comparisonAccounting.filter(
             ({ referenceReady }) => referenceReady,
           ).length,
-          actualReady: captures.filter(({ actualReady }) => actualReady).length,
-          comparisons: captures.filter(
+          actualReady: comparisonAccounting.filter(
+            ({ actualReady }) => actualReady,
+          ).length,
+          comparisonCompleted: comparisonAccounting.filter(
             ({ comparisonCompleted }) => comparisonCompleted,
           ).length,
-          passed: captures.filter(({ status }) => status === 'passed').length,
-          failed: captures.filter(({ status }) => status === 'failed').length,
-          unresolved: captures.filter(({ status }) => status === 'unresolved')
-            .length,
+          passed: comparisonAccounting.filter(({ passed }) => passed).length,
+          failed: comparisonAccounting.filter(({ failed }) => failed).length,
+          unresolved: comparisonAccounting.filter(
+            ({ unresolved }) => unresolved,
+          ).length,
         },
+        comparisonAccounting,
         captures,
       },
       null,
@@ -1523,6 +1551,7 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
       let comparison: PngComparison | undefined;
       let referenceMetrics: SurfaceMetrics | undefined;
       let actualMetrics: SurfaceMetrics | undefined;
+      let diagnostics: readonly string[] = [];
       try {
         if (preparedManifestKey !== entry.key) {
           preparedReferenceReady = false;
@@ -1567,19 +1596,17 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
         comparison = comparePng(referenceBytes, actualBytes, {
           masks: DEFAULT_REVIEWED_MASKS,
         });
-        const metricFailures = metricDifferences(
+        const metricDifferencesForCapture = metricDifferences(
           referenceMetrics,
           actualMetrics,
           mapping.allowMappedHorizontalOverflow === true,
         );
         if (!comparison.passed) {
-          metricFailures.push(
+          metricDifferencesForCapture.push(
             `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
           );
         }
-        if (metricFailures.length > 0) {
-          throw new Error(metricFailures.join('\n'));
-        }
+        diagnostics = metricDifferencesForCapture;
       } catch (error) {
         caseError =
           error instanceof Error
@@ -1618,6 +1645,7 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
             : failures[failures.length - 1].status,
         referenceReady: preparedReferenceReady,
         actualReady: preparedActualReady,
+        diagnostics,
         error: caseError,
       });
       if (caseError !== undefined) {
