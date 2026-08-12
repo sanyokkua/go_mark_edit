@@ -1049,12 +1049,12 @@ for (const entry of [
           ? 'T060 state-pairs the 375px Settings overflow in Minimal Light'
           : entry.openSurface === 'tab-strip'
             ? 'T062 state-pairs tabs and toolbar in Minimal Light'
-          : entry.openSurface === 'preview-paused'
-            ? 'T064 state-pairs the paused preview in Minimal Light'
           : entry.openSurface === 'view-menu'
             ? 'T061 state-pairs the View popup in Minimal Light'
-            : entry.openSurface === 'about-menu'
+          : entry.openSurface === 'about-menu'
               ? 'T061 state-pairs the About popup in Minimal Light'
+          : entry.openSurface === 'preview-paused'
+              ? 'T064 state-pairs the paused preview in Minimal Light'
           : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
     async ({ page, context }) => {
       test.setTimeout(120_000);
@@ -1074,8 +1074,8 @@ for (const entry of [
             : entry.openSurface === 'view-menu' ||
                 entry.openSurface === 'about-menu'
               ? VIEW_ABOUT_EVIDENCE_ROOT
-            : entry.openSurface === 'preview-paused'
-              ? PREVIEW_EVIDENCE_ROOT
+              : entry.openSurface === 'preview-paused'
+                ? PREVIEW_EVIDENCE_ROOT
             : EVIDENCE_ROOT,
         entry.palette.id,
         entry.openSurface === 'settings-overflow'

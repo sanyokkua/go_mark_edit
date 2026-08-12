@@ -99,13 +99,44 @@ it('maps parity state IDs to deterministic bridge fixtures without changing star
     );
 
     state('launcher-six-file');
-    expect((await GetState()).data?.snapshot.recentFiles).toHaveLength(6);
+    expect((await GetState()).data?.snapshot.recentFiles).toEqual([
+      '/tmp/parity-recent-06.md',
+      '/tmp/parity-recent-05.md',
+      '/tmp/parity-recent-04.md',
+      '/tmp/parity-recent-03.md',
+      '/tmp/parity-recent-02.md',
+      '/tmp/parity-recent-01.md',
+    ]);
+
+    state('launcher-first-run');
+    expect((await GetState()).data?.snapshot.recentFiles).toEqual([]);
+    expect((await GetState()).data?.snapshot.canReopenLastFile).toBe(false);
 
     window.history.replaceState({}, '', `/${originalSearch}`);
     resetMockAppModel();
     const normal = await GetState();
     expect(normal.data?.snapshot.orderedDocumentIds).toEqual(['mock-document']);
     expect(normal.data?.activeBuffer?.content).toBe('');
+  } finally {
+    window.history.replaceState({}, '', `/${originalSearch}`);
+    resetMockAppModel();
+  }
+});
+
+it('does not leak FT-VS-07 recents into the primary parity empty route', async () => {
+  const originalSearch = window.location.search;
+  try {
+    window.history.replaceState(
+      {},
+      '',
+      '/?ft-vs-07&parity-case=primary:empty:1280:glass-light',
+    );
+    resetMockAppModel();
+
+    const result = await GetState();
+
+    expect(result.data?.snapshot.recentFiles).toEqual([]);
+    expect(result.data?.snapshot.canReopenLastFile).toBe(false);
   } finally {
     window.history.replaceState({}, '', `/${originalSearch}`);
     resetMockAppModel();

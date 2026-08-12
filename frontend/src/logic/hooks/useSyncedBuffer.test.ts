@@ -85,3 +85,48 @@ it('STORY-019-AC-4 separates live cursor display from restorable view synchroniz
   expect(setDocView).toHaveBeenCalledTimes(1);
   jest.useRealTimers();
 });
+
+it('does not publish a queued view update after the editor session unmounts', async () => {
+  jest.useFakeTimers();
+  const setDocView = jest.fn(
+    async (documentId: string, nextView: unknown): Promise<object> => {
+      void documentId;
+      void nextView;
+      return {};
+    },
+  );
+  const adapter = createAppModelAdapter(
+    {
+      getState: async () => ({
+        data: {
+          snapshot: {
+            revision: 1,
+            documents: {},
+            activeDocumentId: '',
+            ui: {},
+          },
+          activeBuffer: { documentId: '', content: '' },
+        },
+      }),
+      updateBuffer: async (): Promise<object> => ({}),
+      setDocView,
+      setUILayout: async (): Promise<object> => ({}),
+    },
+    { eventsOn: (): (() => void) => (): void => undefined },
+  );
+  const { result, unmount } = renderHook(() =>
+    useSyncedBuffer('document-1', view, adapter),
+  );
+
+  act(() => {
+    result.current.onCursorPositionChange({ lineNumber: 4, column: 2 });
+  });
+  unmount();
+
+  await act(async (): Promise<void> => {
+    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+  });
+
+  expect(setDocView).not.toHaveBeenCalled();
+  jest.useRealTimers();
+});

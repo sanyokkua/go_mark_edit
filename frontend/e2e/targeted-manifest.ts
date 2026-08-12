@@ -23,11 +23,11 @@ export type TargetedParityEntry = Readonly<{
   }>;
   readonly activeScreen:
     | 'editor-split'
+    | 'paused-preview'
     | 'menu-file'
     | 'menu-settings'
     | 'menu-view'
-    | 'menu-about'
-    | 'paused-preview';
+    | 'menu-about';
   readonly referenceVariant: 'base';
   readonly referenceSelector:
     | '#app.no-assistant .menu'

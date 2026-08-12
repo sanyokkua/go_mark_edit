@@ -1607,6 +1607,20 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
           );
         }
         diagnostics = metricDifferencesForCapture;
+        if (diagnostics.length > 0) {
+          caseError = diagnostics.join('\n');
+          failures.push({
+            entry,
+            repetition: expected.repetition,
+            error: caseError,
+            referenceBytes,
+            actualBytes,
+            comparison,
+            referenceMetrics,
+            actualMetrics,
+            status: 'failed',
+          });
+        }
       } catch (error) {
         caseError =
           error instanceof Error

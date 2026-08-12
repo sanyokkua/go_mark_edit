@@ -235,7 +235,7 @@
   --surface: rgba(255, 255, 255, 0.62);
   --surface-raised: rgba(255, 255, 255, 0.78);
   --text: #10213e;
-  --text-muted: #536278;
+  --text-muted: #515a78;
   --border: rgba(76, 99, 145, 0.28);
 }
 :root[data-theme='glass'][data-mode='dark'] {

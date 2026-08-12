@@ -155,12 +155,19 @@ it('T056 fails closed on a semantic pairing mismatch before image comparison', (
 
 it('T056 keeps the focused manifest separate from the unrestricted accounting', () => {
   expect(() => assertTargetedManifestIntegrity()).not.toThrow();
-  expect(TARGETED_MANIFEST).toHaveLength(1);
-  expect(TARGETED_MANIFEST[0]).toMatchObject({
-    key: 'targeted:closed-menubar:1280:minimal-light',
+  expect(TARGETED_MANIFEST).toHaveLength(6);
+  expect(TARGETED_MANIFEST.map(({ key }) => key)).toEqual([
+    'targeted:closed-menubar:1280:glass-light',
+    'targeted:closed-menubar:1280:glass-dark',
+    'targeted:closed-menubar:1280:material-light',
+    'targeted:closed-menubar:1280:material-dark',
+    'targeted:closed-menubar:1280:minimal-light',
+    'targeted:closed-menubar:1280:minimal-dark',
+  ]);
+  expect(TARGETED_MANIFEST.at(-1)).toMatchObject({
     family: 'editor-split',
     width: 1280,
-    palette: { id: 'minimal-light', theme: 'minimal', mode: 'light' },
+    palette: { id: 'minimal-dark', theme: 'minimal', mode: 'dark' },
   });
   expect(PARITY_MANIFEST).toHaveLength(LOGICAL_CASE_COUNT);
   expect(
@@ -168,6 +175,35 @@ it('T056 keeps the focused manifest separate from the unrestricted accounting', 
       ({ key }) => key === 'targeted:closed-menubar:1280:minimal-light',
     ),
   ).toBe(false);
+});
+
+it('T059 pairs the source and actual File popup identity', () => {
+  referenceMarkup();
+  document
+    .querySelector('#app')
+    ?.insertAdjacentHTML(
+      'beforeend',
+      '<div class="dropdown show" id="m-file">New File</div>',
+    );
+  window.history.replaceState({}, '', '/#minimal-light/menu-file');
+  const reference = signatureFromReferenceMarkup();
+
+  document.body.innerHTML =
+    '<nav aria-label="Application actions"><button>File</button></nav>' +
+    '<div data-viewport-popup="file-menu" role="menu">New File</div>';
+  const actual = createSemanticSignature(
+    readSemanticDomSnapshot({
+      pageKind: 'actual',
+      implementedActionIds: context.implementedActionIds,
+      viewport: { width: 1280, height: 720 },
+    }),
+    { ...context, activeScreen: 'menu-file' },
+  );
+
+  expect(reference.activeScreen).toBe('menu-file');
+  expect(reference.visibleMenuDialog).toEqual(['file-menu']);
+  expect(actual.activeScreen).toBe('menu-file');
+  expect(actual.visibleMenuDialog).toEqual(['file-menu']);
 });
 
 it('T064 recognizes the source-backed paused-preview state before capture', () => {

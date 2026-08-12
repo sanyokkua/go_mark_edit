@@ -57,6 +57,7 @@ export type SemanticCaptureContext = Readonly<{
   readonly family: string;
   readonly activeScreen: string;
   readonly implementedActionIds: readonly string[];
+  readonly viewport?: SemanticViewport;
 }>;
 
 export type SemanticPageKind = 'reference' | 'actual';
@@ -145,6 +146,25 @@ export function readSemanticDomSnapshot(
       const hash = window.location.hash.replace(/^#/u, '');
       return hash.split('/').at(-1) || 'unknown';
     }
+    const parityCase = new URLSearchParams(window.location.search).get(
+      'parity-case',
+    );
+    if (parityCase?.startsWith('state:preview-paused:')) {
+      return 'paused-preview';
+    }
+    const popupScreens = [
+      ['file-menu', 'menu-file'],
+      ['settings-menu', 'menu-settings'],
+      ['view-menu', 'menu-view'],
+      ['about-menu', 'menu-about'],
+    ] as const;
+    for (const [popup, screen] of popupScreens) {
+      if (
+        isVisible(document.querySelector(`[data-viewport-popup="${popup}"]`))
+      ) {
+        return screen;
+      }
+    }
     const launcher = document.querySelector(
       '[data-testid="document-launcher"]',
     );
@@ -159,10 +179,6 @@ export function readSemanticDomSnapshot(
     const preview = document.querySelector('[aria-label="Preview pane"]');
     const editorVisible = isVisible(editor);
     const previewVisible = isVisible(preview);
-    const parityCase = new URLSearchParams(window.location.search).get('parity-case');
-    if (parityCase?.startsWith('state:preview-paused:')) {
-      return 'paused-preview';
-    }
     if (editorVisible && previewVisible) return 'editor-split';
     if (editorVisible) return 'editor-only';
     if (previewVisible) return 'preview-only';
@@ -170,18 +186,29 @@ export function readSemanticDomSnapshot(
   };
   const visibleMenuDialog = Array.from(
     document.querySelectorAll<HTMLElement>(
-      '[role="menu"], [role="dialog"], [data-viewport-popup], .dropdown.show, .modal.show',
+      '[role="menu"], [role="dialog"], [data-viewport-popup], .dropdown.show, .modal.show, .ovf-menu',
     ),
   )
     .filter(isVisible)
-    .map((element) =>
-      normalized(
-        element.getAttribute('aria-label') ??
-          element.getAttribute('data-viewport-popup') ??
-          element.id ??
+    .map((element) => {
+      const label =
+        [
+          element.getAttribute('data-viewport-popup'),
+          element.getAttribute('aria-label'),
+          element.id,
           element.getAttribute('role'),
-      ),
-    )
+          element.classList.contains('ovf-menu') ? 'shell-overflow' : null,
+        ]
+          .map(normalized)
+          .find((value) => value.length > 0) ?? '';
+      if (input.pageKind === 'reference' && /^m-[a-z-]+$/u.test(label)) {
+        return `${label.slice(2)}-menu`;
+      }
+      if (label === 'editor-overflow' || label === 'shell-overflow') {
+        return 'toolbar-overflow';
+      }
+      return label;
+    })
     .filter(
       (label, index, labels) =>
         label.length > 0 && labels.indexOf(label) === index,
@@ -192,12 +219,18 @@ export function readSemanticDomSnapshot(
         document.querySelectorAll<HTMLElement>('[data-menu]'),
       ).find((element) => element.getAttribute('data-menu') === actionId);
       const actualElement = Array.from(
-        document.querySelectorAll<HTMLElement>('nav button'),
+        document.querySelectorAll<HTMLElement>(
+          'nav button, [data-viewport-popup="shell-overflow"] [role="menuitem"], [data-application-overflow-action]',
+        ),
       ).find(
         (element) =>
           normalized(
-            element.getAttribute('aria-label') ?? element.textContent,
-          ).toLowerCase() === actionId.toLowerCase(),
+            element.getAttribute('data-application-overflow-action') ??
+              element.getAttribute('aria-label') ??
+              element.textContent,
+          ).toLowerCase() === actionId.toLowerCase() ||
+          normalized(element.textContent).toLowerCase() ===
+            actionId.toLowerCase(),
       );
       return [
         actionId,
@@ -389,6 +422,7 @@ export async function captureSemanticSignature(
   const snapshot = await page.evaluate(readSemanticDomSnapshot, {
     pageKind,
     implementedActionIds: context.implementedActionIds,
+    viewport: context.viewport,
   });
   return createSemanticSignature(snapshot, context);
 }

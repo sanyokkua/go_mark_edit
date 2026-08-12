@@ -270,15 +270,27 @@ const e2eRecentFiles = [
   '/tmp/t032-recent-02.md',
   '/tmp/t032-recent-01.md',
 ];
+const parityLauncherRecentFiles = [
+  '/tmp/parity-recent-06.md',
+  '/tmp/parity-recent-05.md',
+  '/tmp/parity-recent-04.md',
+  '/tmp/parity-recent-03.md',
+  '/tmp/parity-recent-02.md',
+  '/tmp/parity-recent-01.md',
+];
 
 function seededRecentFiles(): string[] {
   if (typeof window === 'undefined') return [];
   const query = new URLSearchParams(window.location.search);
-  if (parityStateId() === 'launcher-first-run') {
+  const state = parityStateId();
+  if (state === 'launcher-first-run') {
     return [];
   }
-  if (parityStateId() === 'launcher-six-file') {
-    return e2eRecentFiles.slice(0, 6);
+  if (state === 'launcher-six-file') {
+    return [...parityLauncherRecentFiles];
+  }
+  if (query.has('parity-case')) {
+    return [];
   }
   return query.has('ft-vs-07') ? [...e2eRecentFiles] : [];
 }

@@ -263,3 +263,33 @@ test('FT-VS-07 proves recents, reopen, launcher, and responsive status controls'
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(375);
 });
+
+test('T051 keeps parity launchers isolated from the FT-VS-07 recent seed', async ({
+  page,
+}) => {
+  await page.goto('/?ft-vs-07&parity-case=primary:empty:1280:glass-light');
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const tab = page.getByRole('tab').first();
+    await tab
+      .locator('..')
+      .getByRole('button', { name: /^Close /u })
+      .click();
+    const prompt = page.getByRole('dialog', {
+      name: 'Save changes before closing?',
+    });
+    if (await prompt.isVisible()) {
+      await prompt.getByRole('button', { name: 'Discard' }).click();
+    }
+  }
+
+  const launcher = page.getByTestId('document-launcher');
+  await expect(launcher).toBeVisible();
+  await expect(launcher.getByRole('listitem')).toHaveCount(0);
+  await expect(
+    page.locator('[data-notification-code="not_found"]'),
+  ).toHaveCount(0);
+  await expect(
+    launcher.getByRole('button', { name: 'Open Folder' }),
+  ).toBeDisabled();
+});

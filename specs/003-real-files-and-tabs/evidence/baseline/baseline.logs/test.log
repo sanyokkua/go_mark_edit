@@ -10,7 +10,7 @@ ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
-ok  	github.com/sanyokkua/go_mark_edit	6.053s
+ok  	github.com/sanyokkua/go_mark_edit	(cached)
 just frontend-test
 npm --prefix frontend test -- --passWithNoTests
 
@@ -25,16 +25,16 @@ npm --prefix frontend test -- --passWithNoTests
 > frontend@0.0.0 test
 > node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --passWithNoTests
 
-✔ applies only a current valid startup mirror before application code (2.716833ms)
-✔ resolves a current Auto mirror from the operating-system preference (0.638209ms)
-✔ runs the blocking bootstrap before the application module (0.088333ms)
-✔ generates six complete named Monaco themes from palette values (2.697417ms)
-✔ converts CSS rgba palette values to Monaco-compatible hex (0.70325ms)
-✔ shares each fenced-language value by appearance across themes (0.872875ms)
-✔ rejects a palette missing a required Monaco token (0.335917ms)
-✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.549708ms)
-✔ rejects duplicate, unresolved, and unsupported palette sources (0.296709ms)
-✔ emits inactive highlight rules for every generated syntax token (0.631791ms)
+✔ applies only a current valid startup mirror before application code (3.204583ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.622042ms)
+✔ runs the blocking bootstrap before the application module (0.111042ms)
+✔ generates six complete named Monaco themes from palette values (3.134875ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.795791ms)
+✔ shares each fenced-language value by appearance across themes (0.89925ms)
+✔ rejects a palette missing a required Monaco token (0.341208ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.651083ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.407042ms)
+✔ emits inactive highlight rules for every generated syntax token (0.757833ms)
 ℹ tests 10
 ℹ suites 0
 ℹ pass 10
@@ -42,10 +42,10 @@ npm --prefix frontend test -- --passWithNoTests
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 74.749833
+ℹ duration_ms 82.463708
 
 Test Suites: 72 passed, 72 total
-Tests:       434 passed, 434 total
+Tests:       437 passed, 437 total
 Snapshots:   0 total
-Time:        8.9 s, estimated 9 s
+Time:        9.541 s, estimated 10 s
 Ran all test suites.

@@ -33,6 +33,7 @@ export interface EditorSynchronizationAdapter {
     documentId: string,
     view: DocViewInput,
   ) => Promise<void>;
+  cancelPendingSession?: (documentId: string) => void;
 }
 
 export interface SyncedBufferCallbacks {
@@ -106,6 +107,7 @@ export function useSyncedBuffer(
   const contentRef = useRef(initialContent);
   const selectionRef = useRef(view.selection);
   const scrollRef = useRef(view.scroll);
+  const sessionActiveRef = useRef(true);
   const [liveCursor, setLiveCursor] = useState<EditorPosition>(() =>
     toEditorPosition(view.cursor.line, view.cursor.column),
   );
@@ -122,6 +124,14 @@ export function useSyncedBuffer(
       setLiveCursor(cursor);
     }
   }, [documentId, initialContent, view]);
+
+  useEffect((): (() => void) => {
+    sessionActiveRef.current = true;
+    return (): void => {
+      sessionActiveRef.current = false;
+      adapter.cancelPendingSession?.(documentId);
+    };
+  }, [adapter, documentId]);
 
   const lifecycleBarrier = useMemo(
     () =>
@@ -158,6 +168,7 @@ export function useSyncedBuffer(
   );
 
   const updateDocView = useCallback((): void => {
+    if (!sessionActiveRef.current) return;
     const update = adapter.updateLocalDocView ?? adapter.updateDocView;
     void update(
       documentId,
@@ -172,6 +183,7 @@ export function useSyncedBuffer(
 
   const onChange = useCallback(
     (content: string): void => {
+      if (!sessionActiveRef.current) return;
       contentRef.current = content;
       void adapter.updateBuffer(documentId, content);
     },
@@ -215,6 +227,7 @@ export function useSyncedBuffer(
   );
 
   const onBlur = useCallback((): void => {
+    if (!sessionActiveRef.current) return;
     void flushActiveSession(documentId, activation.token).catch(
       (): void => undefined,
     );
