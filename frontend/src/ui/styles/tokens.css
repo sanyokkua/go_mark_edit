@@ -63,6 +63,9 @@
   --menu-row-height: 44px;
   --menu-row-menu-offset: 177.125px;
   --file-menu-popup-left: 96px;
+  --view-menu-popup-left: 196px;
+  --about-menu-popup-left: 240px;
+  --menu-popup-top: 42px;
   --file-menu-popup-top: 42px;
   --file-menu-popup-width: 269.5625px;
   --theme-glass-swatch: linear-gradient(135deg, #7aa2ff, #c58bff);

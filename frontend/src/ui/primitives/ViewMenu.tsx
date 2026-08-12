@@ -7,6 +7,17 @@ import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import type { ViewArrangement } from '../../logic/store/appModelTypes';
 import styles from './ViewMenu.module.css';
 
+/*
+ * The binding View dropdown is absolutely positioned inside the application
+ * frame at `#m-view{left:196px}` with `.dropdown{top:42px}`. Portal into that
+ * frame so the popup shares the frame's containing block instead of being
+ * placed by collision-aware viewport coordinates.
+ */
+function applicationFrame(): HTMLElement | undefined {
+  if (typeof document === 'undefined') return undefined;
+  return document.querySelector<HTMLElement>('.application-frame') ?? undefined;
+}
+
 export interface ViewMenuProps {
   editorVisible: boolean;
   onEditorVisibilityChange: (visible: boolean) => void;
@@ -109,14 +120,13 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
           <span aria-hidden="true" style={anchorStyle} />
         </DropdownMenu.Trigger>
       ) : null}
-      <DropdownMenu.Portal>
+      <DropdownMenu.Portal container={applicationFrame()}>
         <DropdownMenu.Content
           aria-label={t('view.menu.label')}
           aria-labelledby={showTrigger ? undefined : ''}
-          className={styles.content}
+          className={`${styles.content} ${anchorStyle === undefined ? styles.bindingAnchored : ''}`}
           collisionPadding={8}
           data-viewport-popup="view-menu"
-          sideOffset={-6}
         >
           {arrangement === undefined || onArrangementChange === undefined ? (
             <>

@@ -139,11 +139,21 @@
   transform: none !important;
 }
 
+/* Binding source: mockup.html `#m-about{left:240px}` with `.dropdown{top:42px}`. */
 .aboutMenu {
   display: block;
   gap: normal;
+  inset: var(--menu-popup-top) auto auto var(--about-menu-popup-left);
   overflow: visible;
-  position: relative;
+  position: absolute;
+  width: max-content;
+}
+
+:global(.application-frame)
+  > :global([data-radix-popper-content-wrapper]):has(.aboutMenu) {
+  inset: 0 auto auto 0 !important;
+  position: absolute !important;
+  transform: none !important;
 }
 
 .aboutMenu .item {

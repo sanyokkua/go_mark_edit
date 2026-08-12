@@ -716,13 +716,12 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                 {t('shell.about')}
               </button>
             </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
+            <DropdownMenu.Portal container={applicationFrame()}>
               <DropdownMenu.Content
                 aria-label={t(action('about').labelKey)}
                 collisionPadding={8}
                 className={`${styles.overflow} ${styles.radixOverflow} ${styles.aboutMenu}`}
                 data-viewport-popup="about-menu"
-                sideOffset={4}
               >
                 {aboutActions.map((item) => (
                   <Fragment key={item.id}>
