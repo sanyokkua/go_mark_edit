@@ -1,19 +1,23 @@
 .tabStrip {
   align-items: center;
   block-size: var(--tabs-row-height);
-  backdrop-filter: var(--blur);
   border-bottom: var(--control-border-width) solid var(--tabs-border-color);
   box-sizing: border-box;
   display: flex;
-  gap: 8px;
-  min-width: 0;
+  gap: 5px;
+  min-width: auto;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   overscroll-behavior-inline: contain;
   padding: var(--tabs-row-padding);
-  position: relative;
   scrollbar-width: thin;
+}
+
+@media (max-width: 376px) {
+  .tabStrip {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
 }
 
 .emptyParityTabStrip {
@@ -103,14 +107,11 @@
 }
 
 .tabAdd {
-  min-inline-size: var(--tab-add-size);
-}
-
-.tabAdd {
-  align-items: center;
-  display: inline-flex;
-  justify-content: center;
+  display: block;
+  font-family: Arial;
   padding: 0;
+  text-align: center;
+  white-space: normal;
 }
 
 .tabClose {
@@ -119,6 +120,8 @@
   justify-content: center;
   min-inline-size: 0;
   padding: 0;
+  position: relative;
+  top: -1px;
 }
 
 .tabCloseGlyph {
@@ -133,6 +136,8 @@
 
 .modifiedDot {
   align-items: center;
+  background: transparent;
+  border-radius: 50%;
   color: var(--accent);
   display: inline-flex;
   height: 6px;
@@ -140,13 +145,16 @@
   width: 6px;
 }
 
-.modifiedDot :global(svg) {
-  height: 6px;
-  width: 6px;
+.modifiedDot:not([aria-hidden='true']) {
+  background: var(--accent);
 }
 
 .modifiedDotMuted {
   opacity: var(--disabled-opacity);
+}
+
+.modifiedDot[aria-hidden='true'] {
+  visibility: hidden;
 }
 
 .tab:focus-visible,
@@ -267,6 +275,7 @@
   background: transparent;
   border: 0;
   border-radius: 0;
+  padding-inline-end: 12px;
   padding-inline-start: 0;
 }
 
@@ -276,11 +285,34 @@
   border-bottom: 2px solid transparent;
   border-radius: 0;
   box-shadow: none;
+  padding-inline-end: 0;
 }
 
 :global(:root[data-theme='minimal']) .tab[aria-selected='true'] {
   border-bottom-color: transparent;
   box-shadow: none;
+  font-weight: 500;
+}
+
+:global(:root[data-theme='minimal'])
+  .tabItem:has(.tab[aria-selected='true'])
+  .tabCloseGlyph {
+  font-weight: 500;
+}
+
+:global(:root[data-theme='minimal'])
+  .tabItem:has(.tab[aria-selected='true']) {
+  position: relative;
+}
+
+:global(:root[data-theme='minimal'])
+  .tabItem:has(.tab[aria-selected='true'])::after {
+  background: var(--text);
+  bottom: 0;
+  content: '';
+  height: 2px;
+  inset-inline: 0;
+  position: absolute;
 }
 
 :global(:root[data-theme='minimal']) .tabItem:has(.tab[aria-selected='true']) {
@@ -292,6 +324,10 @@
 :global(:root[data-theme='glass']) .tabItem,
 :global(:root[data-theme='glass']) .tab {
   backdrop-filter: none;
+}
+
+:global(:root[data-theme='glass']) .tabStrip {
+  backdrop-filter: var(--blur);
 }
 
 :global(.application-frame:has([data-parity-shell='true'])) .tabAdd {

@@ -112,6 +112,17 @@ it('T033 keeps the shell as a contained, tokenized surface across palettes', () 
   expect(baseStyles).toContain('prefers-reduced-motion: reduce');
 });
 
+it('T062 renders the Minimal workspace boundary inside the workspace track', () => {
+  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
+
+  expect(shellStyles).toMatch(
+    /:global\(:root\[data-theme='minimal'\]\) \.workspace\s*\{[^}]*border-inline-end:\s*var\(--control-border-width\) solid var\(--border\);/s,
+  );
+  expect(shellStyles).toMatch(
+    /:global\(:root\[data-theme='minimal'\]\) \.divider::after\s*\{[^}]*background:\s*transparent;/s,
+  );
+});
+
 it('FR-WS-007 preserves the zero-width Assistant track at the 375px breakpoint', () => {
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
   const narrowShellRule = shellStyles.match(
@@ -152,6 +163,9 @@ it('T045 keeps the parity shell route bounded to the binding window geometry', (
   expect(baseStyles).toContain('height: min(792px, 86vh);');
   expect(baseStyles).toContain('margin: 130px auto 0;');
   expect(baseStyles).toContain('flex: 0 0 min(792px, 86vh);');
+  expect(baseStyles).toMatch(
+    /\.application-frame:has\(\[data-parity-shell='true'\]\)\s*\{[^}]*border:\s*1px solid var\(--stroke\);/s,
+  );
   expect(baseStyles).toMatch(
     /\.application-content:has\(\[data-parity-shell='true'\]\)\s*\{[^}]*overflow:\s*visible;/s,
   );

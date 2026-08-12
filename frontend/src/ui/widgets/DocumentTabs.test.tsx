@@ -159,6 +159,43 @@ it('T045 restores the parity new-tab control surface', () => {
   );
 });
 
+it('T062 renders tab glyphs with the binding-compatible text and CSS primitives', () => {
+  hydrate([documentFor('one', '/repo/one.md', true)]);
+  renderTabs();
+
+  const tab = screen.getByRole('tab', { name: /one\.md/u });
+  expect(tab.querySelector('[aria-label="Modified"] svg')).toBeNull();
+  expect(screen.getByRole('button', { name: 'New tab' })).toHaveTextContent(
+    '+',
+  );
+});
+
+it('T062 makes the tablist the direct tab-and-add layout surface', () => {
+  hydrate([documentFor('one', '/repo/one.md', true)]);
+  renderTabs();
+
+  const tablist = screen.getByRole('tablist');
+  expect(tablist).toContainElement(screen.getByRole('tab', { name: /one\.md/u }));
+  expect(tablist).toContainElement(
+    screen.getByRole('button', { name: 'New tab' }),
+  );
+  expect(tablist.children).toHaveLength(2);
+});
+
+it('T062 keeps the minimal new-tab control as a block text control', () => {
+  const tabStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+    'utf8',
+  );
+
+  expect(tabStyles).toMatch(
+    /\.tabAdd\s*\{[^}]*display:\s*block;[^}]*text-align:\s*center;/s,
+  );
+  expect(tabStyles).toMatch(/\.tabAdd\s*\{[^}]*font-family:\s*Arial;/s);
+  expect(tabStyles).toMatch(/\.tabAdd\s*\{[^}]*white-space:\s*normal;/s);
+  expect(tabStyles).not.toMatch(/\.tabAdd\s*\{[^}]*min-inline-size:/s);
+});
+
 it('T045 raises the parity tab strip above the compressed shell menu hit area', () => {
   const tabStyles = readFileSync(
     resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),

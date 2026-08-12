@@ -30,6 +30,14 @@
   overflow: auto;
 }
 
+:global(:root[data-theme='minimal']) .workspace {
+  border-inline-end: var(--control-border-width) solid var(--border);
+}
+
+:global(:root[data-theme='minimal']) .divider::after {
+  background: transparent;
+}
+
 .divider {
   appearance: none;
   background: transparent;

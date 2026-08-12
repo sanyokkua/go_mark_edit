@@ -457,7 +457,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
           if (target !== undefined) void activateDocument(target.documentId);
         }}
       >
-        <div className={styles.tabs}>
+        <>
           {orderedDocuments.map((document) => {
             const label = labels.get(document.documentId) as TabLabel;
             const active = document.documentId === activeDocumentId;
@@ -490,11 +490,9 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                     aria-label={
                       document.dirty ? t('editor.tab.modified') : undefined
                     }
-                    className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
-                    data-write-in-flight={document.writeInFlight || undefined}
-                  >
-                    <Icon name="modified" size={15} />
-                  </span>
+                  className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
+                  data-write-in-flight={document.writeInFlight || undefined}
+                />
                   {document.conflictBlocked ? (
                     <span
                       aria-label={t('conflict.blocked')}
@@ -548,9 +546,9 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                 : adapter.newDocument?.(tabSetRevision));
             }}
           >
-            <Icon name="add" size={15} />
+            +
           </button>
-        </div>
+        </>
       </div>
       {contextDocument !== undefined && contextIndex >= 0 ? (
         <TabContextMenu
