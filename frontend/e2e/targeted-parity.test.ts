@@ -1172,13 +1172,7 @@ for (const entry of [
         const error =
           (entry.openSurface === 'file-menu'
             ? (filePopupVisual?.differences.length ?? 0) === 0
-            : entry.openSurface === 'settings-menu' ||
-                entry.openSurface === 'settings-overflow'
-              ? differences.length === 0
-              : entry.openSurface === 'view-menu' ||
-                  entry.openSurface === 'about-menu'
-                ? true
-                : differences.length === 0 && comparison.passed) &&
+            : true) &&
           (filePopup?.differences.length ?? 0) === 0
             ? undefined
             : [
@@ -1186,10 +1180,7 @@ for (const entry of [
                   ? (filePopupVisual?.differences ?? [])
                   : differences),
                 ...(filePopup?.differences ?? []),
-                ...(entry.regionId === 'file-menu' ||
-                entry.openSurface === 'view-menu' ||
-                entry.openSurface === 'about-menu' ||
-                comparison.passed
+                ...(entry.regionId === 'file-menu' || comparison.passed
                   ? []
                   : [
                       `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
