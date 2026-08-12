@@ -183,6 +183,26 @@
   availability, focus, keyboard behavior, semantic shortcut values, or any other comparison, and it MUST NOT change
   the mockup, masks, tolerance, comparator, or coordinate handling.
 
+### Session 2026-08-13
+
+- Q: The reviewed editor-region mapping compares `#app.no-assistant .content`, which contains the mockup's
+  deferred rich-rendering widgets and its hand-written editor text, while this specification requires those
+  regions to be excluded rather than reproduced. How is that contradiction resolved? → A: Keep the whole mapped
+  region compared and extend the Feature 003 reference variant so the reference's Editor and Preview panes carry
+  the same in-scope document content the application renders, using only the mockup's own pane, gutter, code and
+  basic-preview primitives. Deferred rich-rendering widgets — remote assets, math, image placeholders, Mermaid,
+  and the remote-content banner — are removed from the reference rather than manufactured in production, and
+  Monaco's own text raster is not reproduced by the mockup. The immutable mockup HTML/CSS and its raw source hash
+  stay unchanged, the mapping keeps naming the adapted region explicitly, and no mask, pixel tolerance,
+  comparator, coordinate handling, or manifest count changes.
+- Q: The `status-saved`, `status-autosaved`, `status-unsaved-changes`, `status-read-only`, `status-mixed-ending`
+  and `status-large-file` manifest IDs require paired reference states, but the immutable mockup contains only the
+  static `Autosave: On` status condition. How is that resolved? → A: Permit exactly six reviewed Feature 003
+  reference-adapter status variants built from the mockup's own status-bar primitives. The fixed 546 logical-case
+  and 1,638-comparison contract is preserved, the raw immutable mockup source hash is preserved, the mockup
+  HTML/CSS is never edited, and a production-only `comparisonAttempted: false` artifact MUST NOT be counted as a
+  visual-parity pass.
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Open, edit, and safely save a real file (Priority: P1)
@@ -513,9 +533,11 @@ reference, actual, and difference images together with exact computed-style and 
   A successful Reveal restores that focus only when the application regains foreground focus from the file manager.
 - The application launches with no restored tab set, working copy, or prior document content.
 - A binding screenshot includes the obsolete custom titlebar, populated workspace, Assistant, provider state,
-  or rich-rendering result: those regions are excluded rather than reproduced. The comparison still covers the
-  webview-owned row below the native frame, tabs, toolbar, pane chrome, basic preview typography, settings,
-  status, prompts, launcher, menus, and notifications.
+  or rich-rendering result: those regions are excluded rather than reproduced. Exclusion is performed on the
+  reference side by the Feature 003 reference variant, which removes the deferred widget from the mockup using
+  the mockup's own primitives, rather than by masking the application or by manufacturing the widget in
+  production. The comparison still covers the webview-owned row below the native frame, tabs, toolbar, pane
+  chrome, basic preview typography, settings, status, prompts, launcher, menus, and notifications.
 - A deterministic screenshot differs only because of a blinking caret or another explicitly named dynamic
   pixel: the capture must first freeze the dynamic state. A mask is permitted only when freezing is impossible,
   must be the smallest reviewed rectangle, and must not cover component geometry, text, icons, focus, or state.
@@ -566,9 +588,9 @@ mockup/application comparisons before the additional state fixtures below are co
 
 | Family                | Required mapped region and Feature 003 adaptation                                                                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `editor-split`        | In-app row, real tabs, full toolbar, arrangement segment, both pane shells, basic preview typography, and status; Monaco identity and editor-size behavior remain Feature 002-owned. |
+| `editor-split`        | In-app row, real tabs, full toolbar, arrangement segment, both pane shells, basic preview typography, and status; Monaco identity and editor-size behavior remain Feature 002-owned and the reference variant carries the application's in-scope pane content. |
 | `editor-only`         | The same shared chrome with the Editor pane filling the owned document region.                                                                                                       |
-| `preview-only`        | The same shared chrome with the Preview pane filling the owned document region; remote assets, math, Mermaid, and other rich-rendering expansion remain excluded.                    |
+| `preview-only`        | The same shared chrome with the Preview pane filling the owned document region; remote assets, math, Mermaid, and other rich-rendering expansion are removed from the reference variant rather than reproduced.                    |
 | `menu-file`           | Binding menu geometry with Feature 003 file actions, at most six recent files, and downstream actions visibly unavailable. Recent folders remain absent.                             |
 | `menu-settings`       | Binding compact menu, swatches, rows, separators, indicators, switches, and All settings entry; only previously owned or Feature 003 settings may act.                               |
 | `menu-view`           | Binding menu geometry, grouping, indicators, switches, and accelerators without changing Feature 002 action behavior.                                                                |
@@ -1042,13 +1064,22 @@ table, safe-subject only, remediated only from that row's vocabulary.
   replacing the reference with the current application, or accepting a baseline solely to make a gate pass is
   prohibited. A Feature 003 reference adapter MAY activate an existing mockup class that expresses the approved
   zero-Assistant boundary, provided it preserves the immutable source hash and does not alter the mockup's
-  HTML/CSS values; the reviewed mapping MUST name that adapted region explicitly.
+  HTML/CSS values; the reviewed mapping MUST name that adapted region explicitly. The same adapter MAY also
+  replace the mockup's document-pane content with the in-scope content the application renders and remove the
+  deferred rich-rendering widgets, under the same conditions: only the mockup's own primitives may be used, the
+  raw source hash MUST stay unchanged, and no mask, tolerance, comparator, coordinate handling, or manifest count
+  may change.
 - **FR-FT-056**: Behavior-owned differences from the historical mockup MUST be rendered as explicit Feature 003
   reference variants using the same binding primitives: the launcher contains file recents only and an unavailable
-  Open Folder action; the File menu contains no recent folder; the tab menu adds Move tab left and Move tab right
-  between its close-action and path-action groups; mixed-ending normalization is an additional `save-prompt` state;
-  and `reload-prompt` includes bounded/truncated editable, metadata-only, and read-only variants with their specified
-  buttons. These differences MUST be compared rather than broadly masked.
+  Open Folder action; the File menu contains no recent folder, renders `Reopen last file`, marks its deferred
+  actions visibly unavailable, and carries Feature 003's own accelerators; the tab menu adds Move tab left and
+  Move tab right between its close-action and path-action groups; mixed-ending normalization is an additional
+  `save-prompt` state; `reload-prompt` includes bounded/truncated editable, metadata-only, and read-only variants
+  with their specified buttons; the Editor and Preview panes carry the in-scope document content the application
+  renders, without the deferred rich-rendering widgets and without reproducing Monaco's own text raster; and the
+  status row expresses each of the six Feature 003 save-status states. These differences MUST be compared rather
+  than broadly masked, and a production-only artifact that records `comparisonAttempted: false` MUST NOT be
+  counted as a visual-parity pass.
 - **FR-FT-057**: Every accepted screenshot or style-baseline change MUST map to an explicit Feature 003 visual
   requirement and MUST preserve unaffected Feature 001/002 baselines and behavior. Exact same-browser parity MUST
   be complemented by actual-control browser journeys, local real-bridge interaction, and a freshly built
