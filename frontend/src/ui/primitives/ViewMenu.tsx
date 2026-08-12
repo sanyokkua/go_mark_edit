@@ -116,6 +116,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
           className={styles.content}
           collisionPadding={8}
           data-viewport-popup="view-menu"
+          sideOffset={-6}
         >
           {arrangement === undefined || onArrangementChange === undefined ? (
             <>

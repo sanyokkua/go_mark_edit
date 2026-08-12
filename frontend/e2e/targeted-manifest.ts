@@ -21,22 +21,44 @@ export type TargetedParityEntry = Readonly<{
     readonly theme: 'glass' | 'material' | 'minimal';
     readonly mode: 'light' | 'dark';
   }>;
-  readonly activeScreen: 'editor-split' | 'menu-file' | 'menu-settings';
+  readonly activeScreen:
+    | 'editor-split'
+    | 'menu-file'
+    | 'menu-settings'
+    | 'menu-view'
+    | 'menu-about';
   readonly referenceVariant: 'base';
   readonly referenceSelector:
-    '#app.no-assistant .menu' | '#m-file' | '#m-settings' | '#app .ovf-menu';
+    | '#app.no-assistant .menu'
+    | '#m-file'
+    | '#m-settings'
+    | '#m-view'
+    | '#m-about'
+    | '#app .ovf-menu';
   readonly actualSelector:
     | '[data-shell-menu]'
     | '[data-viewport-popup="file-menu"]'
     | '[data-viewport-popup="settings-menu"]'
+    | '[data-viewport-popup="view-menu"]'
+    | '[data-viewport-popup="about-menu"]'
     | '[data-viewport-popup="shell-overflow"]'
     | '[data-viewport-popup="editor-overflow"]';
   readonly editorReferenceSelector: '#app.no-assistant .content';
   readonly editorActualSelector: 'section[aria-label="Editor view"]';
   readonly regionId:
-    'closed-menubar' | 'file-menu' | 'settings-menu' | 'settings-overflow';
+    | 'closed-menubar'
+    | 'file-menu'
+    | 'settings-menu'
+    | 'settings-overflow'
+    | 'view-menu'
+    | 'about-menu';
   readonly openSurface:
-    'closed-menubar' | 'file-menu' | 'settings-menu' | 'settings-overflow';
+    | 'closed-menubar'
+    | 'file-menu'
+    | 'settings-menu'
+    | 'settings-overflow'
+    | 'view-menu'
+    | 'about-menu';
   readonly implementedActionIds: readonly ['file', 'settings', 'view', 'about'];
 }>;
 
@@ -138,6 +160,50 @@ export const TARGETED_SETTINGS_MANIFEST: readonly TargetedParityEntry[] =
     }),
   ]);
 
+export const TARGETED_VIEW_ABOUT_MANIFEST: readonly TargetedParityEntry[] =
+  Object.freeze([
+    Object.freeze({
+      key: 'targeted:view-menu:1280:minimal-light',
+      family: 'editor-split',
+      width: 1280,
+      height: 720,
+      palette: Object.freeze({
+        id: 'minimal-light',
+        theme: 'minimal',
+        mode: 'light',
+      }),
+      activeScreen: 'menu-view',
+      referenceVariant: 'base',
+      referenceSelector: '#m-view',
+      actualSelector: '[data-viewport-popup="view-menu"]',
+      editorReferenceSelector: '#app.no-assistant .content',
+      editorActualSelector: 'section[aria-label="Editor view"]',
+      regionId: 'view-menu',
+      openSurface: 'view-menu',
+      implementedActionIds: ['file', 'settings', 'view', 'about'] as const,
+    }),
+    Object.freeze({
+      key: 'targeted:about-menu:1280:minimal-light',
+      family: 'editor-split',
+      width: 1280,
+      height: 720,
+      palette: Object.freeze({
+        id: 'minimal-light',
+        theme: 'minimal',
+        mode: 'light',
+      }),
+      activeScreen: 'menu-about',
+      referenceVariant: 'base',
+      referenceSelector: '#m-about',
+      actualSelector: '[data-viewport-popup="about-menu"]',
+      editorReferenceSelector: '#app.no-assistant .content',
+      editorActualSelector: 'section[aria-label="Editor view"]',
+      regionId: 'about-menu',
+      openSurface: 'about-menu',
+      implementedActionIds: ['file', 'settings', 'view', 'about'] as const,
+    }),
+  ]);
+
 export function contextForTargetedEntry(
   entry: TargetedParityEntry,
   referenceSourceHash: string,
@@ -198,6 +264,16 @@ export function assertTargetedManifestIntegrity(): void {
     if (PARITY_MANIFEST.some(({ key }) => key === entry.key)) {
       throw new Error(
         'T060 targeted case must not enter the unrestricted manifest',
+      );
+    }
+  }
+  if (TARGETED_VIEW_ABOUT_MANIFEST.length !== 2) {
+    throw new Error('T061 targeted View and About manifest must contain two cases');
+  }
+  for (const entry of TARGETED_VIEW_ABOUT_MANIFEST) {
+    if (PARITY_MANIFEST.some(({ key }) => key === entry.key)) {
+      throw new Error(
+        'T061 targeted case must not enter the unrestricted manifest',
       );
     }
   }

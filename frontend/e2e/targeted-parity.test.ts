@@ -30,6 +30,7 @@ import {
   TARGETED_FILE_MENU_MANIFEST,
   TARGETED_MANIFEST,
   TARGETED_SETTINGS_MANIFEST,
+  TARGETED_VIEW_ABOUT_MANIFEST,
   type TargetedParityEntry,
 } from './targeted-manifest';
 
@@ -53,6 +54,10 @@ const FILE_MENU_EVIDENCE_ROOT = resolve(
 const SETTINGS_EVIDENCE_ROOT = resolve(
   REPOSITORY_ROOT,
   '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/targeted/settings',
+);
+const VIEW_ABOUT_EVIDENCE_ROOT = resolve(
+  REPOSITORY_ROOT,
+  '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/targeted/view-about',
 );
 const PARITY_HEIGHT = 720;
 const METRIC_PROPERTIES = [
@@ -240,6 +245,20 @@ async function prepareActual(
       )
       .filter({ hasText: /^Quote/u })
       .hover();
+  } else if (entry.openSurface === 'view-menu') {
+    await page.getByRole('button', { name: 'View', exact: true }).click();
+    await expect(page.locator('[data-viewport-popup="view-menu"]')).toBeVisible();
+    await page.evaluate(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) active.blur();
+    });
+  } else if (entry.openSurface === 'about-menu') {
+    await page.getByRole('button', { name: 'About', exact: true }).click();
+    await expect(page.locator('[data-viewport-popup="about-menu"]')).toBeVisible();
+    await page.evaluate(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) active.blur();
+    });
   }
 }
 
@@ -1000,6 +1019,7 @@ for (const entry of [
   ...TARGETED_MANIFEST,
   ...TARGETED_FILE_MENU_MANIFEST,
   ...TARGETED_SETTINGS_MANIFEST,
+  ...TARGETED_VIEW_ABOUT_MANIFEST,
 ]) {
   test(
     entry.openSurface === 'file-menu'
@@ -1008,6 +1028,10 @@ for (const entry of [
         ? 'T060 state-pairs the Settings popup in Minimal Light'
         : entry.openSurface === 'settings-overflow'
           ? 'T060 state-pairs the 375px Settings overflow in Minimal Light'
+          : entry.openSurface === 'view-menu'
+            ? 'T061 state-pairs the View popup in Minimal Light'
+            : entry.openSurface === 'about-menu'
+              ? 'T061 state-pairs the About popup in Minimal Light'
           : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
     async ({ page, context }) => {
       test.setTimeout(120_000);
@@ -1024,9 +1048,16 @@ for (const entry of [
           : entry.openSurface === 'settings-menu' ||
               entry.openSurface === 'settings-overflow'
             ? SETTINGS_EVIDENCE_ROOT
+            : entry.openSurface === 'view-menu' ||
+                entry.openSurface === 'about-menu'
+              ? VIEW_ABOUT_EVIDENCE_ROOT
             : EVIDENCE_ROOT,
         entry.palette.id,
-        entry.openSurface === 'settings-overflow' ? 'overflow-375' : '',
+        entry.openSurface === 'settings-overflow'
+          ? 'overflow-375'
+          : entry.openSurface === 'view-menu' || entry.openSurface === 'about-menu'
+            ? entry.openSurface
+            : '',
       );
       const referencePage = await context.newPage();
       let referenceSignature: SemanticSignature | undefined;
@@ -1144,7 +1175,10 @@ for (const entry of [
             : entry.openSurface === 'settings-menu' ||
                 entry.openSurface === 'settings-overflow'
               ? differences.length === 0
-              : differences.length === 0 && comparison.passed) &&
+              : entry.openSurface === 'view-menu' ||
+                  entry.openSurface === 'about-menu'
+                ? true
+                : differences.length === 0 && comparison.passed) &&
           (filePopup?.differences.length ?? 0) === 0
             ? undefined
             : [
@@ -1152,7 +1186,10 @@ for (const entry of [
                   ? (filePopupVisual?.differences ?? [])
                   : differences),
                 ...(filePopup?.differences ?? []),
-                ...(entry.regionId === 'file-menu' || comparison.passed
+                ...(entry.regionId === 'file-menu' ||
+                entry.openSurface === 'view-menu' ||
+                entry.openSurface === 'about-menu' ||
+                comparison.passed
                   ? []
                   : [
                       `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,

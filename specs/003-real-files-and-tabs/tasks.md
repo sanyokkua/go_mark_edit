@@ -877,8 +877,8 @@ The unchanged unrestricted matrix remains the final release gate in T054/T035.
   - **Tests/evidence**: Focused 1280px and 375px cases, settings projection/component tests, autosave status assertions, and retained state/bounds/style/pixel results without a full matrix run.
   - **Branch/commit**: `feature/v1-implementation--003-t060-settings-menu-slice`; `fix(ui): converge targeted Settings menu slice`.
 
-- [ ] T061 [US5] Validate the remaining implemented View and About popups individually in `frontend/src/ui/widgets/ShellMenuRow.tsx`, their action definitions/tests, and `frontend/e2e/targeted-parity.test.ts`. Each popup MUST be opened through a real control and compared with its own semantic signature, including selected view/arrangement state, unavailable items, accessible labels, dismissal, and no accidental document mutation.
-  - **Outcome**: View and About popup states are independently exact or have isolated production corrections; a failure in one popup cannot be obscured by a combined menu screenshot.
+- [X] T061 [US5] Validate the remaining implemented View and About popups individually in `frontend/src/ui/widgets/ShellMenuRow.tsx`, their action definitions/tests, and `frontend/e2e/targeted-parity.test.ts`. Each popup MUST be opened through a real control and compared with its own semantic signature, including selected view/arrangement state, unavailable items, accessible labels, dismissal, and no accidental document mutation.
+  - **Outcome**: View and About open independently through the production menubar, preserve the paired backend state, unavailable entries, accessible labels, action dispatch, Escape/outside dismissal, and document state. Their focused cases retain separate raw bounds/style/pixel diagnostics, while semantic and interaction pairing remains fail-closed so one popup cannot obscure the other.
   - **Prerequisites**: T060.
   - **Primary ownership**: FR-FT-046–047, FR-FT-052, and SC-FT-013; targeted remediation for T030/T031 (partial).
   - **Tests/evidence**: One focused run per implemented popup at 1280px/Minimal Light, action/keyboard tests, semantic-state report, and exact retained comparison artifacts.

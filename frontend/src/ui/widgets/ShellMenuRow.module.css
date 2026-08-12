@@ -127,6 +127,22 @@
   width: var(--file-menu-popup-width);
 }
 
+.aboutMenu {
+  display: block;
+  gap: normal;
+  overflow: visible;
+  position: relative;
+}
+
+.aboutMenu .item {
+  border: 0;
+  border-radius: 8px;
+  gap: 22px;
+  min-height: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
 .fileMenu .item {
   border: 0;
   border-radius: 8px;

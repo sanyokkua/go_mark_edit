@@ -49,6 +49,8 @@ const fileMenuSeparators = new Set<ActionId>([
   'close-tab',
 ]);
 
+const aboutMenuSeparators = new Set<ActionId>(['open-logs', 'about']);
+
 function shortcutForMenuItem(shortcut: string | undefined): string | undefined {
   return shortcut === undefined
     ? undefined
@@ -687,20 +689,27 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               <DropdownMenu.Content
                 aria-label={t(action('about').labelKey)}
                 collisionPadding={8}
-                className={`${styles.overflow} ${styles.radixOverflow}`}
+                className={`${styles.overflow} ${styles.radixOverflow} ${styles.aboutMenu}`}
                 data-viewport-popup="about-menu"
                 sideOffset={4}
               >
                 {aboutActions.map((item) => (
-                  <DropdownMenu.Item
-                    className={styles.item}
-                    data-shortcut={shortcutForMenuItem(item.shortcut)}
-                    disabled={item.availability.kind === 'deferred'}
-                    key={item.id}
-                    onSelect={(): void => selectAboutAction(item.id)}
-                  >
-                    {t(item.labelKey)}
-                  </DropdownMenu.Item>
+                  <Fragment key={item.id}>
+                    {aboutMenuSeparators.has(item.id) ? (
+                      <DropdownMenu.Separator
+                        aria-hidden="true"
+                        className={styles.separator}
+                      />
+                    ) : null}
+                    <DropdownMenu.Item
+                      className={styles.item}
+                      data-shortcut={shortcutForMenuItem(item.shortcut)}
+                      disabled={item.availability.kind === 'deferred'}
+                      onSelect={(): void => selectAboutAction(item.id)}
+                    >
+                      {t(item.labelKey)}
+                    </DropdownMenu.Item>
+                  </Fragment>
                 ))}
               </DropdownMenu.Content>
             </DropdownMenu.Portal>

@@ -1,7 +1,7 @@
 .trigger,
 .item {
-  border: var(--segmented-border-width) solid transparent;
-  border-radius: var(--segmented-option-radius);
+  border: 0;
+  border-radius: 8px;
   background: transparent;
   color: var(--segmented-option-color);
   font: inherit;
@@ -15,38 +15,35 @@
 
 .content {
   backdrop-filter: var(--blur);
-  background: var(--surface-raised);
-  border: var(--segmented-border-width) solid var(--segmented-border-color);
+  background: var(--elevated);
+  border: var(--control-border-width) solid var(--stroke);
   border-radius: var(--popup-radius);
-  display: grid;
-  gap: 0;
-  max-block-size: calc(100vh - 4rem);
+  box-shadow: var(--win-shadow);
+  display: block;
   min-inline-size: var(--popup-min-width);
-  overflow: auto;
+  overflow: visible;
   padding: var(--popup-padding);
   position: relative;
   z-index: var(--z-dropdown);
 }
 
 .item {
+  align-items: center;
   display: flex;
   justify-content: space-between;
-  gap: var(--control-gap);
+  gap: 22px;
+  min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   padding: var(--popup-row-padding);
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
   cursor: pointer;
   font-size: var(--popup-row-font-size);
 }
 
 .item[data-highlighted] {
-  background: var(--surface);
-  border-color: var(--segmented-border-color);
-  box-shadow: var(--focus-ring);
-  outline: 0;
-  outline-offset: var(--segmented-focus-outline-offset);
+  background: var(--hover);
 }
 
 .item[data-disabled] {
