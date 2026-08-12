@@ -72,6 +72,26 @@ it('T015 renders the authoritative saved status beside document metadata', () =>
   expect(screen.getByRole('status')).toHaveTextContent('Saved');
 });
 
+it('T063 exposes the backend-authoritative status state on the status landmark', () => {
+  render(
+    <StatusBar
+      arrangement="editor"
+      autosave
+      cursor={{ lineNumber: 4, column: 2 }}
+      encoding="utf-8"
+      lineEnding="mixed"
+      status="read-only"
+      readOnly
+      wordCount={3}
+    />,
+  );
+
+  expect(screen.getByRole('status')).toHaveAttribute(
+    'data-status-state',
+    'read-only',
+  );
+});
+
 it('shows the write-in-flight state without replacing the authoritative dirty status', () => {
   render(
     <StatusBar

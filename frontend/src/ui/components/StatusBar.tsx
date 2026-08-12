@@ -43,6 +43,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
     <footer
       aria-label={t('status.ariaLabel')}
       className={styles.statusBar}
+      data-status-state={status}
       role="status"
     >
       <span className={styles.responsiveItem} data-status-item="cursor">

@@ -60,6 +60,10 @@ const VIEW_ABOUT_EVIDENCE_ROOT = resolve(
   REPOSITORY_ROOT,
   '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/targeted/view-about',
 );
+const EDITOR_STATUS_EVIDENCE_ROOT = resolve(
+  REPOSITORY_ROOT,
+  '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/targeted/editor-status',
+);
 const PARITY_HEIGHT = 720;
 const METRIC_PROPERTIES = [
   'display',
@@ -1216,3 +1220,147 @@ for (const entry of [
     },
   );
 }
+
+const T063_STATUS_CASES = [
+  { stateId: 'status-saved', status: 'saved', text: 'Saved' },
+  { stateId: 'status-autosaved', status: 'autosaved', text: 'Autosaved' },
+  {
+    stateId: 'status-unsaved-changes',
+    status: 'unsaved-changes',
+    text: 'Unsaved changes',
+  },
+  { stateId: 'status-read-only', status: 'read-only', text: 'Read-only' },
+  { stateId: 'status-mixed-ending', status: 'autosaved', text: 'Autosaved' },
+  { stateId: 'status-large-file', status: 'autosaved', text: 'Autosaved' },
+] as const;
+
+async function prepareActualStatusCase(
+  page: Page,
+  stateId: (typeof T063_STATUS_CASES)[number]['stateId'],
+): Promise<void> {
+  await page.setViewportSize({ width: 1280, height: PARITY_HEIGHT });
+  await page.goto(`/?parity-case=state:${stateId}:minimal-light`);
+  await waitForParityReady(page, {
+    readySelector: '[data-testid="application-shell"]',
+  });
+  await expect(page.getByRole('tab')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const menu = page.getByRole('menu', { name: 'Settings menu' });
+  await menu.getByRole('radio', { name: 'Minimal', exact: true }).click();
+  await page
+    .locator('[data-viewport-popup="settings-menu"]')
+    .getByRole('radio', { name: 'Light', exact: true })
+    .click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await page
+    .getByRole('menuitemradio', { name: 'Editor', exact: true })
+    .click();
+  await expect(page.locator('[aria-label="Editor pane"]')).toBeVisible();
+  await expect(page.locator('[aria-label="Preview pane"]')).toHaveCount(0);
+  await freezeParityPixels(page);
+}
+
+test('T063 captures backend-authoritative editor-status states at 1280px Minimal Light', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  for (const statusCase of T063_STATUS_CASES) {
+    await prepareActualStatusCase(page, statusCase.stateId);
+    const status = page.getByRole('status', { name: 'Document status' });
+    await expect(status).toHaveAttribute('data-status-state', statusCase.status);
+    await expect(status).toContainText(statusCase.text);
+    await expect(status.locator('[data-status-item="cursor"]')).toContainText(
+      'Ln',
+    );
+    await expect(status.locator('[data-status-item="encoding"]')).toHaveText(
+      'UTF-8',
+    );
+    const expectedEnding =
+      statusCase.stateId === 'status-mixed-ending' ? 'Mixed' : 'LF';
+    await expect(
+      status.locator('[data-status-item="line-ending"]'),
+    ).toHaveText(expectedEnding);
+    if (statusCase.stateId === 'status-large-file') {
+      await expect(status.locator('[data-status-item="count"]')).toContainText(
+        '420,000',
+      );
+    }
+    if (statusCase.stateId === 'status-read-only') {
+      await status.getByRole('button', { name: 'Document details' }).click();
+      await expect(
+        status.getByRole('region', { name: 'Document details' }),
+      ).toContainText('Read-only');
+    }
+    const metrics = await surfaceMetrics(status);
+    const shellBottom = await page
+      .getByTestId('application-shell')
+      .evaluate((element) => element.getBoundingClientRect().bottom);
+    expect(metrics.bounds.height).toBe(28);
+    expect(metrics.bounds.bottom).toBe(Number(shellBottom.toFixed(3)));
+    expect(metrics.styles['white-space']).toBe('normal');
+    const noWrap = await status.evaluate((element) => ({
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth,
+      wrappedItems: Array.from(
+        element.querySelectorAll<HTMLElement>('[data-status-item]'),
+      ).filter((item) => getComputedStyle(item).whiteSpace !== 'nowrap').length,
+    }));
+    expect(noWrap.scrollWidth).toBeLessThanOrEqual(noWrap.clientWidth);
+    expect(noWrap.wrappedItems).toBe(0);
+    const evidenceRoot = join(
+      EDITOR_STATUS_EVIDENCE_ROOT,
+      'minimal-light',
+      statusCase.stateId,
+    );
+    await mkdir(evidenceRoot, { recursive: true });
+    await writeFile(
+      join(evidenceRoot, 'semantic.json'),
+      JSON.stringify(
+        {
+          stateId: statusCase.stateId,
+          status: statusCase.status,
+          visibleText: await status.innerText(),
+          editorVisible: await page.locator('[aria-label="Editor pane"]').isVisible(),
+          previewVisible: await page.locator('[aria-label="Preview pane"]').count(),
+        },
+        null,
+        2,
+      ),
+    );
+    await writeFile(
+      join(evidenceRoot, 'metrics.json'),
+      JSON.stringify({ metrics, noWrap }, null, 2),
+    );
+    await writeFile(
+      join(evidenceRoot, 'actual.png'),
+      await status.screenshot({ animations: 'disabled' }),
+    );
+    await writeFile(
+      join(evidenceRoot, 'status.json'),
+      JSON.stringify(
+        {
+          status: 'production-state-verified',
+          verificationScope: 'production-only-backend-authoritative-status',
+          comparisonAttempted: false,
+          comparisonCompleted: false,
+          reason:
+            'The immutable mockup has only the static Autosave: On status condition; this state has no source-backed reference condition.',
+        },
+        null,
+        2,
+      ),
+    );
+    await writeFile(
+      join(evidenceRoot, 'raw-status.log'),
+      [
+        'status=production-state-verified',
+        'verification_scope=production-only-backend-authoritative-status',
+        'comparison_attempted=false',
+        'comparison_completed=false',
+        'reason=immutable_mockup_has_no_source_backed_status_state',
+        '',
+      ].join('\n'),
+    );
+  }
+});
