@@ -587,10 +587,12 @@
   border-color: transparent;
 }
 
+/* Binding source: mockup.html `body[data-theme="minimal"] .tgrp{background:none;padding:0}`. */
 :global(:root[data-theme='minimal']) .group {
   background: transparent;
   border-color: transparent;
   backdrop-filter: none;
+  padding: 0;
 }
 
 :global(:root[data-theme='glass']) .group,
@@ -642,4 +644,16 @@
   .overflowAt375 {
     display: none;
   }
+}
+
+/* Binding source: mockup.html `.seg button{border:0}` and
+   `.seg button.active{font-weight:600}`. The segment options carry no border
+   of their own, and only the selected option is semibold. */
+.arrangement .action {
+  border-width: 0;
+  font-weight: 400;
+}
+
+.arrangement .action[aria-checked='true'] {
+  font-weight: 600;
 }

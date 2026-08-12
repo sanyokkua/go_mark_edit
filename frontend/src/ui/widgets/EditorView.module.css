@@ -143,6 +143,8 @@
   border-radius: 0;
 }
 
+/* Binding source: mockup.html `body[data-theme="minimal"] .body{gap:0;padding:0}`
+   — Minimal panes are flush, separated only where two panes meet. */
 @media (min-width: 377px) {
   :global(:root[data-theme='minimal']) .editorView {
     padding: 0;
@@ -150,16 +152,19 @@
 
   :global(:root[data-theme='minimal']) .panes {
     gap: 0;
+    padding: 0;
   }
 }
 
+/* Binding source: `body[data-theme="minimal"] .pane+.pane{border-left:1px solid var(--stroke)}`. */
 :global(:root[data-theme='minimal']) .pane + .pane {
-  border-inline-start: var(--control-border-width) solid var(--border);
+  border-inline-start: var(--control-border-width) solid var(--stroke);
 }
 
+/* Binding source: `.pane-h{border-bottom:1px solid var(--stroke-soft)}`. */
 :global(:root[data-theme='minimal']) .paneHeader {
   background: transparent;
-  border-bottom-color: var(--border);
+  border-bottom-color: var(--stroke-soft);
 }
 
 :global(:root[data-theme='material']) .pane {
