@@ -8,6 +8,7 @@ export type IconName =
   | 'bullet-list'
   | 'close'
   | 'editor'
+  | 'file'
   | 'heading-1'
   | 'heading-2'
   | 'heading-3'
@@ -47,6 +48,19 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
   ),
   close: <path d="m3.5 3.5 8 8m0-8-8 8" />,
   editor: <path d="M2.5 2.5h10v10h-10zm2.5 2.5h5m-5 2.5h5m-5 2.5h3" />,
+  /*
+   * The binding source draws the document glyph in a 24-unit box
+   * (mockup.html #i-file) and renders it at 15px, so its stroke resolves to
+   * 1.75 * 15/24. Keeping the source viewBox reproduces those pixels exactly
+   * instead of approximating the path in the 15-unit space.
+   */
+  file: (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="M8 13h8M8 17h5" />
+    </>
+  ),
   'heading-1': <path d="M2.5 3v9m0-4.5h4M6.5 3v9m3-7.5 2-1.5v9" />,
   'heading-2': (
     <path d="M2.5 3v9m0-4.5h4M6.5 3v9m3 1c0-3.5 3-3 3-5.2 0-1.8-2.5-2.3-3-.4" />
@@ -119,6 +133,10 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
   ),
 };
 
+const iconViewBoxes: Partial<Record<IconName, string>> = {
+  file: '0 0 24 24',
+};
+
 const Icon: React.FC<IconProps> = ({
   name,
   size = 15,
@@ -131,7 +149,7 @@ const Icon: React.FC<IconProps> = ({
     data-icon-name={name}
     focusable="false"
     height={size}
-    viewBox="0 0 15 15"
+    viewBox={iconViewBoxes[name] ?? '0 0 15 15'}
     width={size}
     {...props}
   >

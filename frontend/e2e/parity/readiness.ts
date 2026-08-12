@@ -42,6 +42,41 @@ export async function freezeParityPixels(page: Page): Promise<void> {
   });
 }
 
+export type ParityScrollOffset = Readonly<{ x: number; y: number }>;
+
+/**
+ * FR-FT-054 requires the reference and the application to be captured under an
+ * identical scroll state. Both documents are taller than the 720px parity
+ * viewport, so any interactive step that brings an element into view (opening a
+ * menu, clicking the document area) silently moves every subsequent
+ * page-coordinate measurement, and a mid-test scroll reads back as production
+ * geometry drift.
+ *
+ * Record the offset once the page has reached its prepared state, then restore
+ * exactly that offset before each capture. This makes the scroll deterministic
+ * without changing where either page places its content.
+ */
+export async function readParityScroll(
+  page: Page,
+): Promise<ParityScrollOffset> {
+  return page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
+}
+
+export async function restoreParityScroll(
+  page: Page,
+  offset: ParityScrollOffset,
+): Promise<void> {
+  const applied = await page.evaluate((target) => {
+    window.scrollTo(target.x, target.y);
+    return { x: window.scrollX, y: window.scrollY };
+  }, offset);
+  if (applied.x !== offset.x || applied.y !== offset.y) {
+    throw new Error(
+      `Parity capture could not restore scroll ${offset.x},${offset.y}; page reports ${applied.x},${applied.y}`,
+    );
+  }
+}
+
 export async function assertSameOrigin(
   page: Page,
   expectedOrigin: string,

@@ -72,7 +72,7 @@ function menuDecoration(id: ActionId): React.JSX.Element | null {
       ) : null}
       {id === 'open-recent' ? (
         <div aria-hidden="true" className={styles.groupLabel}>
-          {t('file.recent.label')}
+          {t('file.menu.recent.label')}
         </div>
       ) : null}
     </>
@@ -101,6 +101,17 @@ interface ShellMenuRowProps {
   viewMenuProps?: ViewMenuProps;
   requestedMenu?: ApplicationMenuTarget | null;
   onRequestedMenuHandled?: () => void;
+}
+
+/*
+ * The binding File dropdown is absolutely positioned inside the application
+ * frame at `left:96px; top:42px`. Portal into that frame so the popup shares
+ * the frame's containing block instead of being placed by collision-aware
+ * viewport coordinates.
+ */
+function applicationFrame(): HTMLElement | undefined {
+  if (typeof document === 'undefined') return undefined;
+  return document.querySelector<HTMLElement>('.application-frame') ?? undefined;
 }
 
 function isNarrowViewport(): boolean {
@@ -542,64 +553,59 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                 {t('shell.file')}
               </button>
             </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
+            <DropdownMenu.Portal container={applicationFrame()}>
               <DropdownMenu.Content
                 aria-label={t('shell.file')}
                 collisionPadding={8}
                 className={`${styles.overflow} ${styles.radixOverflow} ${styles.fileMenu}`}
                 data-viewport-popup="file-menu"
-                alignOffset={21.203}
-                sideOffset={6}
               >
                 {fileActions.map((item) => (
                   <Fragment key={item.id}>
                     {menuDecoration(item.id)}
                     {item.id === 'open-recent' ? (
-                      <>
-                        <DropdownMenu.Sub>
-                          <DropdownMenu.SubTrigger
-                            aria-label={t(item.labelKey)}
-                            className={styles.item}
-                            data-shortcut={shortcutForMenuItem(item.shortcut)}
-                            disabled={fileActionDisabled(item.id)}
-                          >
-                            {fileActionLabel(item)}
-                          </DropdownMenu.SubTrigger>
-                          <DropdownMenu.Portal>
-                            <DropdownMenu.SubContent
-                              className={`${styles.overflow} ${styles.radixOverflow}`}
-                              collisionPadding={8}
-                              data-viewport-popup="file-recent-menu"
-                            >
-                              {displayedRecentFiles.map((path) => (
-                                <DropdownMenu.Item
-                                  className={styles.item}
-                                  disabled={recentFiles.length === 0}
-                                  key={path}
-                                  onSelect={(): void =>
-                                    dispatchRecentFile(path)
-                                  }
-                                >
-                                  {recentFiles.length === 0
-                                    ? path
-                                    : safeRecentLabel(path)}
-                                </DropdownMenu.Item>
-                              ))}
-                            </DropdownMenu.SubContent>
-                          </DropdownMenu.Portal>
-                        </DropdownMenu.Sub>
-                        {recentFiles.length === 0
-                          ? displayedRecentFiles.map((path) => (
-                              <DropdownMenu.Item
-                                className={styles.item}
-                                disabled
-                                key={`parity-recent-${path}`}
-                              >
-                                {path}
-                              </DropdownMenu.Item>
-                            ))
-                          : null}
-                      </>
+                      /*
+                       * The binding File menu presents recents as the group
+                       * label plus one indented row per file. There is no
+                       * separate Open Recent trigger row, so the canonical
+                       * open-recent command is dispatched from the rows
+                       * themselves.
+                       */
+                      displayedRecentFiles.map((path) => (
+                        <DropdownMenu.Item
+                          className={`${styles.item} ${styles.subItem}`}
+                          disabled={recentFiles.length === 0}
+                          key={`recent-${path}`}
+                          onSelect={(): void => dispatchRecentFile(path)}
+                        >
+                          <Icon
+                            aria-hidden="true"
+                            className={styles.subItemIcon}
+                            name="file"
+                          />
+                          <span className={styles.subItemLabel}>
+                            {recentFiles.length === 0
+                              ? path
+                              : safeRecentLabel(path)}
+                          </span>
+                        </DropdownMenu.Item>
+                      ))
+                    ) : item.id === 'reopen' ? (
+                      <DropdownMenu.Item
+                        aria-label={t(item.labelKey)}
+                        className={`${styles.item} ${styles.subItem}`}
+                        data-shortcut={shortcutForMenuItem(item.shortcut)}
+                        disabled={fileActionDisabled(item.id)}
+                        onSelect={(): void => dispatchFileAction(item.id)}
+                      >
+                        {/* The binding row is one text run: `↺ Reopen last
+                            file`. Keeping the glyph inside the label span keeps
+                            the row at two flex items so the accelerator alone
+                            takes the trailing edge. */}
+                        <span className={styles.subItemLabel}>
+                          {`↺ ${fileActionLabel(item)}`}
+                        </span>
+                      </DropdownMenu.Item>
                     ) : (
                       <DropdownMenu.Item
                         aria-label={t(item.labelKey)}

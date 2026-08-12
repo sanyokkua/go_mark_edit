@@ -117,14 +117,25 @@
   position: relative;
 }
 
+/* The binding dropdown is `min-width:250px` and shrink-to-fit: its rendered
+   width follows the widest row. Pinning a width here would freeze the popup at
+   whatever the widest row happened to be when the width was measured. */
 .fileMenu {
   display: block;
   gap: normal;
+  inset: var(--file-menu-popup-top) auto auto var(--file-menu-popup-left);
   min-width: var(--popup-min-width);
   overflow: visible;
-  position: relative;
-  transform: translateX(var(--file-menu-popup-offset));
-  width: var(--file-menu-popup-width);
+  position: absolute;
+  width: max-content;
+}
+
+/* The popup is positioned by the binding coordinates above, so the portal
+   wrapper must not contribute collision-aware placement of its own. */
+:global(.application-frame) > :global([data-radix-popper-content-wrapper]):has(.fileMenu) {
+  inset: 0 auto auto 0 !important;
+  position: absolute !important;
+  transform: none !important;
 }
 
 .aboutMenu {
@@ -156,6 +167,32 @@
   padding-block-start: 7px;
 }
 
+/* Binding source: mockup.html `.mi.sub`. The indented recent and reopen rows
+   are muted, one step smaller, and push their trailing content to the row end
+   through the same space-between flow the binding `.mi` uses. */
+.fileMenu .subItem {
+  color: var(--muted);
+  font-size: var(--popup-sub-row-font-size);
+  justify-content: space-between;
+  padding: var(--popup-sub-row-padding);
+}
+
+.subItemIcon {
+  color: inherit;
+}
+
+.subItemLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reopenGlyph {
+  font-size: var(--popup-sub-row-font-size);
+  line-height: 1;
+}
+
 .fileMenu .fileMenuLateSeparator {
   margin: 5px 4px;
 }
@@ -179,8 +216,16 @@
   white-space: nowrap;
 }
 
+/* A row with no accelerator has no trailing box in the binding menu. Emitting
+   an empty pseudo-element would add a third flex item whose auto margin
+   absorbs the free space and defeats the row's space-between flow. */
+.item:not([data-shortcut])::after {
+  content: none;
+}
+
+/* Binding source: mockup.html `.mi .k`. */
 .item::after {
-  color: var(--text-muted);
+  color: var(--faint);
   content: attr(data-shortcut);
   font-family: var(--mono);
   font-size: var(--popup-accelerator-font-size);
@@ -188,19 +233,21 @@
   padding-inline-start: 16px;
 }
 
+/* Binding source: mockup.html `.lab`. */
 .groupLabel {
-  color: var(--text-muted);
+  color: var(--faint);
   font-size: var(--popup-group-font-size);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.09em;
   padding: 5px 10px 3px;
   text-transform: uppercase;
 }
 
+/* Binding source: mockup.html `.sep`. */
 .separator {
-  background: var(--border);
-  block-size: var(--control-border-width);
-  margin: 4px 0;
+  background: var(--stroke-soft);
+  block-size: 1px;
+  margin: 5px 4px;
 }
 
 .item:hover,

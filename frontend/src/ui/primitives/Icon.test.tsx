@@ -11,6 +11,7 @@ const iconNames: IconName[] = [
   'bullet-list',
   'close',
   'editor',
+  'file',
   'heading-1',
   'heading-2',
   'heading-3',
@@ -55,7 +56,7 @@ it('keeps the icon catalogue finite and covered by the local sprite source', () 
   for (const name of iconNames) {
     expect(sprite).toContain(`id="icon-${name}"`);
   }
-  expect(iconNames).toHaveLength(23);
+  expect(iconNames).toHaveLength(24);
   expect(sprite).toContain('stroke="currentColor"');
   expect(sprite).toContain('stroke-width="1.75"');
   expect(sprite.replace('http://www.w3.org/2000/svg', '')).not.toMatch(

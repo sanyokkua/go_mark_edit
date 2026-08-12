@@ -3,6 +3,7 @@
   <symbol id="icon-bold" viewBox="0 0 15 15"><path d="M4 2.5h3.7a2.5 2.5 0 0 1 .5 4.95H4m4.2 0A2.55 2.55 0 0 1 8 12.5H4v-10"/></symbol>
   <symbol id="icon-bullet-list" viewBox="0 0 15 15"><circle cx="2.5" cy="4" r=".75" fill="currentColor" stroke="none"/><circle cx="2.5" cy="7.5" r=".75" fill="currentColor" stroke="none"/><circle cx="2.5" cy="11" r=".75" fill="currentColor" stroke="none"/><path d="M5.5 4h7M5.5 7.5h7M5.5 11h7"/></symbol>
   <symbol id="icon-close" viewBox="0 0 15 15"><path d="m3.5 3.5 8 8m0-8-8 8"/></symbol>
+  <symbol id="icon-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></symbol>
   <symbol id="icon-editor" viewBox="0 0 15 15"><path d="M2.5 2.5h10v10h-10zm2.5 2.5h5m-5 2.5h5m-5 2.5h3"/></symbol>
   <symbol id="icon-heading-1" viewBox="0 0 15 15"><path d="M2.5 3v9m0-4.5h4M6.5 3v9m3-7.5 2-1.5v9"/></symbol>
   <symbol id="icon-heading-2" viewBox="0 0 15 15"><path d="M2.5 3v9m0-4.5h4M6.5 3v9m3 1c0-3.5 3-3 3-5.2 0-1.8-2.5-2.3-3-.4"/></symbol>

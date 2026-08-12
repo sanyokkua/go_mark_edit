@@ -270,6 +270,15 @@ const e2eRecentFiles = [
   '/tmp/t032-recent-02.md',
   '/tmp/t032-recent-01.md',
 ];
+/*
+ * The binding File menu lists exactly two recent files under its Open Recent
+ * group label. The parity File-menu case seeds those so the compared popup
+ * shows real, dispatchable recent entries rather than disabled placeholders.
+ */
+const parityFileMenuRecentFiles = [
+  '/tmp/release-notes.md',
+  '/tmp/spec-draft.md',
+];
 const parityLauncherRecentFiles = [
   '/tmp/parity-recent-06.md',
   '/tmp/parity-recent-05.md',
@@ -288,6 +297,13 @@ function seededRecentFiles(): string[] {
   }
   if (state === 'launcher-six-file') {
     return [...parityLauncherRecentFiles];
+  }
+  const parityCase = query.get('parity-case');
+  if (
+    parityCase?.startsWith('primary:menu-file:') === true ||
+    parityCase?.startsWith('targeted:file-menu:') === true
+  ) {
+    return [...parityFileMenuRecentFiles];
   }
   if (query.has('parity-case')) {
     return [];

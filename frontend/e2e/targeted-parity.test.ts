@@ -8,11 +8,15 @@ import { comparePng, type PngComparison } from './parity/comparator';
 import {
   adaptReferenceHtml,
   REFERENCE_ZERO_ASSISTANT_CLASS,
+  type FileMenuReferencePlatform,
 } from './parity/reference-adapter';
 import {
   assertSameOrigin,
   freezeParityPixels,
+  readParityScroll,
+  restoreParityScroll,
   waitForParityReady,
+  type ParityScrollOffset,
 } from './parity/readiness';
 import {
   captureSemanticSignature,
@@ -41,6 +45,13 @@ test.describe.configure({ mode: 'serial' });
 const REFERENCE_ORIGIN =
   process.env.PARITY_REFERENCE_ORIGIN ?? 'http://127.0.0.1:4174';
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+/**
+ * The Feature 003 File-menu reference variant expresses this feature's own
+ * accelerators, so it must be built for the host the application is running on.
+ * The browser and the test share that host.
+ */
+const REFERENCE_FILE_MENU_PLATFORM: FileMenuReferencePlatform =
+  process.platform === 'darwin' ? 'darwin' : 'other';
 const REFERENCE_PATH = resolve(
   REPOSITORY_ROOT,
   '../docs/delivery/spec/surface/mockup.html',
@@ -135,6 +146,10 @@ async function prepareReference(
       entry.palette.id,
       entry.activeScreen,
       Date.now(),
+      undefined,
+      entry.referenceVariant === 'file-menu'
+        ? REFERENCE_FILE_MENU_PLATFORM
+        : undefined,
     ),
   );
   await waitForParityReady(page);
@@ -146,8 +161,14 @@ async function prepareReference(
   );
   const source = await readFile(REFERENCE_PATH);
   expect(
-    adaptReferenceHtml(source.toString('utf8'), entry.referenceVariant)
-      .sourceHash,
+    adaptReferenceHtml(
+      source.toString('utf8'),
+      entry.referenceVariant,
+      undefined,
+      entry.referenceVariant === 'file-menu'
+        ? REFERENCE_FILE_MENU_PLATFORM
+        : undefined,
+    ).sourceHash,
   ).toBe(sourceHash);
   await page
     .locator(`#themeSwitch button[data-theme="${entry.palette.theme}"]`)
@@ -431,6 +452,8 @@ type FilePopupPixelException = Readonly<{
     readonly right: number;
     readonly bottom: number;
   }> | null;
+  /** The accelerator glyph rectangle in whole-popup coordinates. */
+  readonly popupRect: PixelRect | null;
 }>;
 
 type FilePopupVisualRow = Readonly<{
@@ -495,12 +518,35 @@ const FILE_POPUP_ACCELERATOR_EXCLUSIONS = Object.freeze([
   ],
 ] as const);
 
+/**
+ * T070: the reviewed platform pixel exception is limited to these four rows.
+ * Every other row — including Close Tab and Exit — is compared exactly, and the
+ * Feature 003 file-menu reference variant expresses their Feature 003
+ * accelerators so there is nothing left to except.
+ */
+const FILE_POPUP_ACCELERATOR_GLYPH_EXCEPTION_ACTIONS = Object.freeze([
+  'new-file',
+  'open-file',
+  'save',
+  'save-as',
+] as const);
+
 const FILE_POPUP_EXCLUSIONS = Object.freeze([
   ['new-window', 'deferred OS window creation'],
   ['open-folder', 'deferred folder picker ownership'],
-  ['open-recent', 'recents are not seeded for this focused state'],
   ['reopen', 'reopen is unavailable without a recent file'],
   ['export-pdf', 'deferred export ownership'],
+] as const);
+
+/*
+ * The binding File menu has no separate Open Recent trigger: the group label
+ * heads one indented row per recent file. These rows are part of the compared
+ * popup, so they are paired by ordered label and availability rather than by
+ * action id.
+ */
+const FILE_POPUP_RECENT_LABELS = Object.freeze([
+  'release-notes.md',
+  'spec-draft.md',
 ] as const);
 
 function normalizeFilePopupLabel(value: string): string {
@@ -546,13 +592,7 @@ async function captureFilePopupItems(
           .trim();
       const elements =
         input.kind === 'reference'
-          ? Array.from(
-              element.querySelectorAll<HTMLElement>(':scope > .mi'),
-            ).filter(
-              (item) =>
-                !item.classList.contains('sub') ||
-                item.textContent?.includes('Reopen') === true,
-            )
+          ? Array.from(element.querySelectorAll<HTMLElement>(':scope > .mi'))
           : Array.from(
               element.querySelectorAll<HTMLElement>(
                 ':scope > [role="menuitem"]',
@@ -634,6 +674,30 @@ function filePopupPairing(
       }
     }
   }
+  const referenceRows = referenceItems.map(
+    (item) => `${item.label}|${item.availability}`,
+  );
+  const actualRows = actualItems.map(
+    (item) => `${item.label}|${item.availability}`,
+  );
+  if (referenceRows.join(' / ') !== actualRows.join(' / ')) {
+    differences.push(
+      `File popup row inventory differs:\n  reference: ${referenceRows.join(' / ')}\n  actual:    ${actualRows.join(' / ')}`,
+    );
+  }
+  for (const [side, items] of [
+    ['reference', referenceItems],
+    ['actual', actualItems],
+  ] as const) {
+    const recents = items
+      .filter((item) => item.actionId === null)
+      .map((item) => item.label);
+    if (recents.join(' / ') !== FILE_POPUP_RECENT_LABELS.join(' / ')) {
+      differences.push(
+        `${side} recent rows are ${JSON.stringify(recents)}, expected ${JSON.stringify(FILE_POPUP_RECENT_LABELS)}`,
+      );
+    }
+  }
   const exclusions = FILE_POPUP_EXCLUSIONS.map(([actionId, reason]) => ({
     actionId,
     reason,
@@ -641,12 +705,12 @@ function filePopupPairing(
     actual: actualById.get(actionId) ?? null,
   }));
   for (const exclusion of exclusions) {
-    if (exclusion.actionId !== 'open-recent' && exclusion.reference === null) {
+    if (exclusion.reference === null) {
       differences.push(
         `${exclusion.actionId}: excluded File action is missing from reference popup`,
       );
     }
-    if (exclusion.actionId !== 'open-recent' && exclusion.actual === null) {
+    if (exclusion.actual === null) {
       differences.push(
         `${exclusion.actionId}: excluded File action is missing from actual popup`,
       );
@@ -787,8 +851,20 @@ async function classifyFilePopupPixelException(
   actual: Locator,
   comparison: PngComparison,
   actualPlatform: string,
+  popupBox: Readonly<{ x: number; y: number }> | null,
 ): Promise<FilePopupPixelException | null> {
   if (comparison.passed) return null;
+  /*
+   * T070: only the four reviewed rows may claim the platform exception. Every
+   * other row fails closed, so it is never inspected for an accelerator here.
+   */
+  if (
+    !(
+      FILE_POPUP_ACCELERATOR_GLYPH_EXCEPTION_ACTIONS as readonly string[]
+    ).includes(actionId)
+  ) {
+    return null;
+  }
   const referenceShortcut =
     (await reference.locator('.k').textContent())
       ?.replace(/\s+/gu, ' ')
@@ -799,10 +875,29 @@ async function classifyFilePopupPixelException(
   if (shortcutBox === null || rowBox === null) return null;
   const allowed = relativePixelRect(rowBox, shortcutBox);
   if (!allPixelDifferencesWithin(comparison, allowed)) return null;
+  /*
+   * Translate the validated row-relative rectangle by the row's integer offset
+   * inside the popup capture. Recomputing it from the popup origin would round
+   * against a different fractional grid and leave a one-pixel antialiased seam
+   * outside the accepted rectangle.
+   */
+  const popupRect =
+    popupBox === null
+      ? null
+      : {
+          left: allowed.left + Math.round(rowBox.x - popupBox.x),
+          right: allowed.right + Math.round(rowBox.x - popupBox.x),
+          top: allowed.top + Math.round(rowBox.y - popupBox.y),
+          bottom: allowed.bottom + Math.round(rowBox.y - popupBox.y),
+        };
 
   const expectedShortcut = FILE_POPUP_SHORTCUT_BINDINGS[actionId];
   const isMacOS = /Mac|iPhone|iPad/u.test(actualPlatform);
+  const exceptionPermitted = (
+    FILE_POPUP_ACCELERATOR_GLYPH_EXCEPTION_ACTIONS as readonly string[]
+  ).includes(actionId);
   if (
+    exceptionPermitted &&
     isMacOS &&
     expectedShortcut !== undefined &&
     actualShortcut?.startsWith('⌘') === true &&
@@ -820,27 +915,55 @@ async function classifyFilePopupPixelException(
       actualShortcut,
       differentPixelCount: comparison.metrics.differentPixelCount,
       differenceBounds: comparison.metrics.differenceBounds,
-    };
-  }
-  if (actionId === 'exit' && actualShortcut === null) {
-    return {
-      actionId,
-      kind: 'os-owned-accelerator',
-      reason:
-        'T059 semantic exclusion: native quit ownership leaves Exit without a registry accelerator',
-      referenceShortcut,
-      actualShortcut,
-      differentPixelCount: comparison.metrics.differentPixelCount,
-      differenceBounds: comparison.metrics.differenceBounds,
+      popupRect,
     };
   }
   return null;
+}
+
+/**
+ * Count whole-popup differing pixels that fall outside every reviewed
+ * accelerator-glyph rectangle. Subtracting per-row totals would be an
+ * approximation; this is the exact bounded-pixel accounting T070 requires.
+ */
+function unexplainedPopupPixels(
+  comparison: PngComparison,
+  accepted: readonly PixelRect[],
+): number {
+  const reference = comparison.reference.decoded;
+  const actual = comparison.actual.decoded;
+  if (reference.width !== actual.width || reference.height !== actual.height) {
+    return comparison.metrics.differentPixelCount;
+  }
+  let unexplained = 0;
+  for (let y = 0; y < reference.height; y += 1) {
+    for (let x = 0; x < reference.width; x += 1) {
+      const offset = (y * reference.width + x) * 4;
+      let different = false;
+      for (let channel = 0; channel < 4; channel += 1) {
+        if (
+          reference.pixels[offset + channel] !== actual.pixels[offset + channel]
+        ) {
+          different = true;
+          break;
+        }
+      }
+      if (!different) continue;
+      const excused = accepted.some(
+        (rect) =>
+          x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom,
+      );
+      if (!excused) unexplained += 1;
+    }
+  }
+  return unexplained;
 }
 
 async function captureFilePopupVisualEvidence(
   referencePage: Page,
   actualPage: Page,
 ): Promise<FilePopupVisualEvidence> {
+  const popupBox = await referencePage.locator('#m-file').boundingBox();
   const rows: FilePopupVisualRow[] = [];
   const differences: string[] = [];
   const platformExceptions: FilePopupPixelException[] = [];
@@ -873,6 +996,7 @@ async function captureFilePopupVisualEvidence(
       actual,
       comparison,
       actualPlatform,
+      popupBox,
     );
     if (acceptedPixelException !== null) {
       platformExceptions.push(acceptedPixelException);
@@ -1093,10 +1217,19 @@ for (const entry of [
       let actualSignature: SemanticSignature | undefined;
       let editorTopEdge = { reference: -1, actual: -1 };
       let filePopupVisual: FilePopupVisualEvidence | undefined;
+      let actualScroll: ParityScrollOffset = { x: 0, y: 0 };
 
       try {
         await prepareReference(referencePage, entry, referenceSourceHash);
         await prepareActual(page, entry);
+        /*
+         * Both pages are taller than the 720px parity viewport, so every later
+         * screenshot scrolls its own element into view. Record the prepared
+         * scroll state once and restore it before each measurement so page
+         * coordinates stay comparable and a scroll can never read back as
+         * production geometry drift.
+         */
+        actualScroll = await readParityScroll(page);
         await assertActualMenubarStructure(page, entry.width);
         referenceSignature = await captureSemanticSignature(
           referencePage,
@@ -1130,6 +1263,7 @@ for (const entry of [
           throw new Error(message, { cause: error });
         }
 
+        await restoreParityScroll(page, actualScroll);
         const referenceEditor = await captureSurface(
           referencePage,
           entry.editorReferenceSelector,
@@ -1165,9 +1299,22 @@ for (const entry of [
           await expect(
             page.locator('[data-viewport-popup="file-menu"]'),
           ).toBeVisible();
-          await page
-            .getByRole('main', { name: 'Document area' })
-            .click({ position: { x: 16, y: 16 } });
+          /*
+           * Dismiss by clicking a point proven to be outside the popup. The
+           * popup now sits at the binding coordinates inside the application
+           * frame, so a fixed offset inside the document area can fall under
+           * it and would silently test nothing.
+           */
+          const popupBox = await page
+            .locator('[data-viewport-popup="file-menu"]')
+            .boundingBox();
+          expect(popupBox).not.toBeNull();
+          const outside = {
+            x: Math.round((popupBox?.x ?? 0) + (popupBox?.width ?? 0) + 40),
+            y: Math.round((popupBox?.y ?? 0) + 40),
+          };
+          expect(outside.x).toBeLessThan(entry.width);
+          await page.mouse.click(outside.x, outside.y);
           await expect(
             page.locator('[data-viewport-popup="file-menu"]'),
           ).toHaveCount(0);
@@ -1180,6 +1327,7 @@ for (const entry of [
             if (active instanceof HTMLElement) active.blur();
           });
         }
+        await restoreParityScroll(page, actualScroll);
         const referenceSurface = await captureSurface(
           referencePage,
           entry.referenceSelector,
@@ -1198,15 +1346,32 @@ for (const entry of [
           referenceSurface.metrics,
           actualSurface.metrics,
         );
+        /*
+         * T070: the File popup fails closed on whole-popup geometry, computed
+         * styles, and pixels exactly like every other slice. The per-row
+         * evidence is additional, not a substitute: the only accepted pixel
+         * difference is the reviewed macOS accelerator-glyph exception for
+         * New File, Open File, Save, and Save As, and that exception is
+         * subtracted from the whole-popup count by bounded rectangle rather
+         * than by skipping the comparison.
+         */
+        const acceptedRects = (filePopupVisual?.platformExceptions ?? [])
+          .map((exception) => exception.popupRect)
+          .filter((rect): rect is PixelRect => rect !== null);
+        const unexplainedPixelCount =
+          acceptedRects.length === 0
+            ? comparison.metrics.differentPixelCount
+            : unexplainedPopupPixels(comparison, acceptedRects);
         const errors = [
+          ...differences,
           ...(entry.openSurface === 'file-menu'
             ? (filePopupVisual?.differences ?? [])
-            : differences),
+            : []),
           ...(filePopup?.differences ?? []),
-          ...(entry.regionId === 'file-menu' || comparison.passed
+          ...(comparison.passed || unexplainedPixelCount === 0
             ? []
             : [
-                `zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
+                `zero-tolerance pixel drift: ${unexplainedPixelCount} unexplained pixels`,
               ]),
         ];
         const error = errors.length === 0 ? undefined : errors.join('\n');

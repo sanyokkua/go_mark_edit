@@ -4,8 +4,10 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import {
   adaptReferenceHtml,
+  fileMenuReferencePlatforms,
   fileOnlyReferenceStates,
   referenceVariants,
+  type FileMenuReferencePlatform,
   type FileOnlyReferenceState,
   type ReferenceVariant,
   // @ts-expect-error Node's strip-types CLI requires the explicit TypeScript extension.
@@ -37,12 +39,16 @@ export function referenceNavigationUrl(
   screen: string,
   navigationToken: number,
   fileOnlyState?: FileOnlyReferenceState,
+  fileMenuPlatform?: FileMenuReferencePlatform,
 ): string {
   const url = new URL('/', origin);
   url.searchParams.set('variant', variant);
   url.searchParams.set('navigation', String(navigationToken));
   if (fileOnlyState !== undefined) {
     url.searchParams.set('file-only-state', fileOnlyState);
+  }
+  if (fileMenuPlatform !== undefined) {
+    url.searchParams.set('file-menu-platform', fileMenuPlatform);
   }
   url.hash = `${palette}/${screen}`;
   return url.toString();
@@ -129,10 +135,35 @@ export async function startReferenceServer(
       response.end('File-only state requires the file-only reference variant');
       return;
     }
+    const requestedFileMenuPlatform =
+      requestUrl.searchParams.get('file-menu-platform') ?? undefined;
+    if (
+      requestedFileMenuPlatform !== undefined &&
+      !fileMenuReferencePlatforms.includes(
+        requestedFileMenuPlatform as FileMenuReferencePlatform,
+      )
+    ) {
+      response.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
+      response.end(
+        'Unsupported file-menu reference platform: ' + requestedFileMenuPlatform,
+      );
+      return;
+    }
+    if (
+      requestedFileMenuPlatform !== undefined &&
+      requestedVariant !== 'file-menu'
+    ) {
+      response.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
+      response.end(
+        'File-menu platform requires the file-menu reference variant',
+      );
+      return;
+    }
     const adapted = adaptReferenceHtml(
       source.toString('utf8'),
       requestedVariant as ReferenceVariant,
       requestedFileOnlyState as FileOnlyReferenceState | undefined,
+      requestedFileMenuPlatform as FileMenuReferencePlatform | undefined,
     );
     response.writeHead(200, {
       'cache-control': 'no-store',
@@ -142,6 +173,9 @@ export async function startReferenceServer(
       ...(adapted.fileOnlyState === undefined
         ? {}
         : { 'x-reference-file-only-state': adapted.fileOnlyState }),
+      ...(adapted.fileMenuPlatform === undefined
+        ? {}
+        : { 'x-reference-file-menu-platform': adapted.fileMenuPlatform }),
     });
     response.end(adapted.html);
   });

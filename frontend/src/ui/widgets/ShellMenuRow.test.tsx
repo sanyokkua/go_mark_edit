@@ -151,10 +151,11 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
     'New Window',
     'Open File…',
     'Open Folder…',
-    'Open Recent',
     'release-notes.md',
     'spec-draft.md',
-    'Reopen last file',
+    // Binding source: mockup.html renders the reopen row as `↺ Reopen last
+    // file`; the accessible name stays the plain action label.
+    '↺ Reopen last file',
     'Save',
     'Save As…',
     'Export to PDF…',
@@ -474,12 +475,47 @@ it('T045 keeps Radix shell popups in the Popper positioning flow', () => {
     'utf8',
   );
 
-  expect(shellSource.match(/styles\.radixOverflow/g)).toHaveLength(4);
+  // The overflow, File and About popups keep the Radix content class; the
+  // recent-files submenu was replaced by the binding's inline recent rows.
+  expect(shellSource.match(/styles\.radixOverflow/g)).toHaveLength(3);
   expect(shellStyles).toMatch(
     /\.radixOverflow\s*\{[^}]*position:\s*relative;/s,
   );
   expect(shellStyles).toContain(
     'var(--radix-dropdown-menu-content-available-height)',
+  );
+});
+
+it('T070 anchors the File popup at the binding dropdown coordinates', () => {
+  const shellSource = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    'utf8',
+  );
+  const shellStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    'utf8',
+  );
+  const tokens = readFileSync(
+    resolve(process.cwd(), 'src/ui/styles/tokens.css'),
+    'utf8',
+  );
+
+  // Binding source: mockup.html `#m-file{left:96px}` with `.dropdown{top:42px}`.
+  expect(tokens).toContain('--file-menu-popup-left: 96px;');
+  expect(tokens).toContain('--file-menu-popup-top: 42px;');
+  expect(shellStyles).toMatch(
+    /\.fileMenu\s*\{[^}]*inset:\s*var\(--file-menu-popup-top\) auto auto var\(--file-menu-popup-left\);/s,
+  );
+  expect(shellStyles).toMatch(
+    /\.fileMenu\s*\{[^}]*position:\s*absolute;/s,
+  );
+  expect(shellStyles).toMatch(
+    /\.fileMenu\s*\{[^}]*width:\s*max-content;/s,
+  );
+  // The popup is portalled into the frame so those coordinates resolve against
+  // the same box the binding dropdown uses.
+  expect(shellSource).toContain(
+    '<DropdownMenu.Portal container={applicationFrame()}>',
   );
 });
 

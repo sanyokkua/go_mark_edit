@@ -62,7 +62,8 @@
   --control-border-width: 1px;
   --menu-row-height: 44px;
   --menu-row-menu-offset: 177.125px;
-  --file-menu-popup-offset: 21.203px;
+  --file-menu-popup-left: 96px;
+  --file-menu-popup-top: 42px;
   --file-menu-popup-width: 269.5625px;
   --theme-glass-swatch: linear-gradient(135deg, #7aa2ff, #c58bff);
   --theme-material-swatch: #4f6bed;
@@ -82,6 +83,8 @@
   --popup-row-font-size: 13px;
   --popup-accelerator-font-size: 11px;
   --popup-group-font-size: 10px;
+  --popup-sub-row-font-size: 12.5px;
+  --popup-sub-row-padding: 7px 10px 7px 22px;
   --tabs-row-padding: 7px 10px;
   --tabs-row-height: 48px;
   --tabs-border-color: var(--stroke-soft);

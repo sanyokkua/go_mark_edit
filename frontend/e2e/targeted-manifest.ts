@@ -28,7 +28,7 @@ export type TargetedParityEntry = Readonly<{
     | 'menu-settings'
     | 'menu-view'
     | 'menu-about';
-  readonly referenceVariant: 'base';
+  readonly referenceVariant: 'base' | 'file-menu';
   readonly referenceSelector:
     | '#app.no-assistant .menu'
     | '#m-file'
@@ -114,7 +114,7 @@ export const TARGETED_FILE_MENU_MANIFEST: readonly TargetedParityEntry[] =
         mode: 'light',
       }),
       activeScreen: 'menu-file',
-      referenceVariant: 'base',
+      referenceVariant: 'file-menu',
       referenceSelector: '#m-file',
       actualSelector: '[data-viewport-popup="file-menu"]',
       editorReferenceSelector: '#app.no-assistant .content',
