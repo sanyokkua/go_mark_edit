@@ -60,7 +60,7 @@ let settings: Settings = {
   markdown: {
     standard: 'gfm',
     formatOnSave: false,
-    lintOnSave: false,
+    lintOnSave: true,
     bulletMarker: '-',
     emphasisMarker: '*',
     headingStyle: 'atx',

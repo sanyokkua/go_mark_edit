@@ -48,7 +48,9 @@ it('renders the acknowledged autosave control and leaves deferred save actions u
   fireEvent.click(autosave);
   expect(onFileSettingsChange).toHaveBeenCalledWith({ autosave: false });
   expect(
-    screen.getByRole('menuitem', { name: 'Format on save' }),
-  ).toBeDisabled();
-  expect(screen.getByRole('menuitem', { name: 'Lint on save' })).toBeDisabled();
+    screen.getByRole('checkbox', { name: 'Format on save' }),
+  ).not.toBeDisabled();
+  expect(
+    screen.getByRole('checkbox', { name: 'Lint on save' }),
+  ).not.toBeDisabled();
 });

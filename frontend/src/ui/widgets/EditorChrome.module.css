@@ -474,6 +474,17 @@
 
 .parityOverflowContent {
   backdrop-filter: none;
+  border-color: var(--stroke);
+  border-radius: 11px;
+  display: block;
+  gap: 0;
+  inline-size: 212px;
+  min-inline-size: 212px;
+  padding: 6px;
+}
+
+.narrowOverflowContent {
+  backdrop-filter: none;
   border-radius: 11px;
   display: block;
   gap: 0;
@@ -492,6 +503,8 @@
   align-items: center;
   background: transparent;
   border: 0;
+  border-radius: 8px;
+  box-sizing: border-box;
   color: var(--text);
   display: flex;
   font: inherit;
@@ -511,9 +524,54 @@
   white-space: nowrap;
 }
 
+.applicationOverflowItems {
+  display: none;
+  margin-block-start: 4px;
+  padding-block-start: 0;
+  height: 119px;
+}
+
+.applicationOverflowItem,
+.applicationOverflowItemFirst {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: var(--text);
+  display: flex;
+  font: inherit;
+  font-size: 12px;
+  line-height: normal;
+  min-height: 29px;
+  padding: 7px 10px;
+  text-align: start;
+  width: 100%;
+  -webkit-appearance: none;
+}
+
+.applicationOverflowItemFirst {
+  border-block-start: var(--control-border-width) solid var(--stroke-soft);
+  min-height: 32px;
+  padding-block: 9px 7px;
+}
+
+.parityOverflowItem:hover,
+.applicationOverflowItem:hover,
+.applicationOverflowItemFirst:hover {
+  background: var(--hover);
+}
+
 .overflowAt768,
 .overflowAt375 {
   display: contents;
+}
+
+@media (max-width: 376px) {
+  .applicationOverflowItems {
+    display: block;
+  }
 }
 
 .overflowArrangement {

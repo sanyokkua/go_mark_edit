@@ -123,10 +123,10 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
   expect(settingsMenu).toHaveAttribute('data-viewport-popup', 'settings-menu');
   expect(
     within(settingsMenu).getByRole('menuitem', { name: 'Reading (Viewer)' }),
-  ).toBeDisabled();
+  ).toHaveAttribute('aria-disabled', 'true');
   expect(
     within(settingsMenu).getByRole('menuitem', { name: 'Editor' }),
-  ).toBeDisabled();
+  ).toHaveAttribute('aria-disabled', 'true');
   fireEvent.click(within(menu).getByRole('button', { name: 'Settings' }));
 
   fireEvent.keyDown(within(menu).getByRole('button', { name: 'View' }), {
@@ -633,7 +633,7 @@ it('T061 dispatches Settings Appearance and About actions through the canonical 
   );
 
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Appearance' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
   await waitFor(() =>
     expect(dispatch).toHaveBeenCalledWith(
       'appearance',

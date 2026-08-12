@@ -66,6 +66,10 @@ import AppShell from './ui/widgets/AppShell';
 import AboutDialog from './ui/widgets/AboutDialog';
 import AppearanceControls from './ui/widgets/AppearanceControls';
 import ShellMenuRow from './ui/widgets/ShellMenuRow';
+import {
+  ApplicationMenuRequestContext,
+  type ApplicationMenuTarget,
+} from './ui/widgets/applicationMenuRequest';
 import type { SettingsMenuProps } from './ui/widgets/SettingsMenu';
 import { EditorSessionProvider } from './ui/widgets/editorSession';
 import StartupFailure from './ui/widgets/StartupFailure';
@@ -177,6 +181,8 @@ interface ApplicationMenuState {
   sessionDocumentId?: string;
   writable?: boolean;
   onShortcuts: () => void;
+  requestedMenu: ApplicationMenuTarget | null;
+  onRequestedMenuHandled: () => void;
 }
 
 const ApplicationMenuContext = createContext<ApplicationMenuState | null>(null);
@@ -234,6 +240,8 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
       recentFiles={recentFiles}
       canReopenLastFile={canReopenLastFile}
       onShortcuts={menuState.onShortcuts}
+      requestedMenu={menuState.requestedMenu}
+      onRequestedMenuHandled={menuState.onRequestedMenuHandled}
       settingsMenuProps={{
         ...settingsMenuProps,
         editorSettings: editorSettings.settings,
@@ -308,6 +316,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
     useState<BootstrapStatus>('loading');
   const [isRetrying, setIsRetrying] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [requestedApplicationMenu, setRequestedApplicationMenu] =
+    useState<ApplicationMenuTarget | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [normalization, setNormalization] = useState<{
@@ -1142,6 +1152,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
         activeDocument.capability !== 'read-only' &&
         activeDocument.detached !== true,
       onShortcuts: (): void => setShortcutsOpen(true),
+      requestedMenu: requestedApplicationMenu,
+      onRequestedMenuHandled: (): void => setRequestedApplicationMenu(null),
     }),
     [
       activeBuffer?.documentId,
@@ -1154,6 +1166,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       onSaveAs,
       onQuit,
       modalOpen,
+      requestedApplicationMenu,
     ],
   );
 
@@ -1242,7 +1255,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
     <ToastProvider>
       <ModalStateProvider modalOpen={modalOpen}>
         <EditorSessionProvider activeBuffer={activeBuffer}>
-          <div className="application-frame">
+          <ApplicationMenuRequestContext.Provider
+            value={setRequestedApplicationMenu}
+          >
+            <div className="application-frame">
             <div className="application-menu">
               <ApplicationMenuContext.Provider value={applicationMenuState}>
                 <AppearanceControls
@@ -1380,7 +1396,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
                 />
               ))
             ) : null}
-          </div>
+            </div>
+          </ApplicationMenuRequestContext.Provider>
         </EditorSessionProvider>
       </ModalStateProvider>
     </ToastProvider>

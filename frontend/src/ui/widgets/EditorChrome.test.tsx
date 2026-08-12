@@ -6,6 +6,7 @@ import {
   fireEvent,
   render as rtlRender,
   screen,
+  within,
 } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
@@ -34,6 +35,46 @@ it('T018 renders the complete toolbar groups and a real tab surface', () => {
   ).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Table' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Format' })).toBeDisabled();
+});
+
+it('T060 exposes real application-menu controls from the narrow toolbar overflow', () => {
+  const originalWidth = window.innerWidth;
+  const originalUrl = window.location.href;
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: 375,
+  });
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=targeted:settings-overflow:375:minimal-light',
+  );
+
+  try {
+    render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+
+    fireEvent.click(screen.getByLabelText('More actions'));
+
+    const overflow = screen.getByRole('menu', { name: 'More actions' });
+    expect(
+      within(overflow).getByRole('button', { name: 'File' }),
+    ).toBeEnabled();
+    expect(
+      within(overflow).getByRole('button', { name: 'Settings' }),
+    ).toBeEnabled();
+    expect(
+      within(overflow).getByRole('button', { name: 'View' }),
+    ).toBeEnabled();
+    expect(
+      within(overflow).getByRole('button', { name: 'About' }),
+    ).toBeEnabled();
+  } finally {
+    window.history.replaceState({}, '', originalUrl);
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: originalWidth,
+    });
+  }
 });
 
 it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', () => {

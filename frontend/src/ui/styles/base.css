@@ -27,6 +27,7 @@ body {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .application-menu,
@@ -57,7 +58,7 @@ body {
   background: var(--app-bg);
   backdrop-filter: var(--blur);
   box-sizing: border-box;
-  border: 1px solid var(--border);
+  border: 1px solid var(--stroke);
   border-radius: var(--win-radius);
   box-shadow: var(--win-shadow);
   flex: 0 0 min(792px, 86vh);

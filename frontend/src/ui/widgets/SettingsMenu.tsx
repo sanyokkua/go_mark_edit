@@ -9,17 +9,17 @@ import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
-import { getAction, type ActionId } from '../../logic/actions/actionRegistry';
+import { type ActionId } from '../../logic/actions/actionRegistry';
 import type {
   EditorSettings,
   FileSettings,
   MarkdownSettings,
 } from '../../logic/adapter';
 import type { AppearanceChoice, Theme } from '../../logic/theme/theme';
-import Segmented, { type SegmentedOption } from '../primitives/Segmented';
 import styles from './SettingsMenu.module.css';
 
 export interface SettingsMenuProps {
+  defaultOpenMode?: 'reading' | 'editor';
   mode: AppearanceChoice;
   onModeChange: (mode: AppearanceChoice) => void;
   onOpenAppearance: (opener?: HTMLElement | null) => void;
@@ -39,13 +39,16 @@ export interface SettingsMenuProps {
   onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
 }
 
-const themeOptions: readonly SegmentedOption<Theme>[] = [
+const themeOptions: readonly { label: string; value: Theme }[] = [
   { label: t('appearance.theme.glass'), value: 'glass' },
   { label: t('appearance.theme.material'), value: 'material' },
   { label: t('appearance.theme.minimal'), value: 'minimal' },
 ];
 
-const modeOptions: readonly SegmentedOption<AppearanceChoice>[] = [
+const modeOptions: readonly {
+  label: string;
+  value: AppearanceChoice;
+}[] = [
   { label: t('appearance.mode.auto'), value: 'auto' },
   { label: t('appearance.mode.light'), value: 'light' },
   { label: t('appearance.mode.dark'), value: 'dark' },
@@ -57,7 +60,189 @@ const markdownStandardOptions = [
   { label: t('settings.markdown.full'), value: 'full' },
 ] as const;
 
+interface CompactSettingsContentProps {
+  defaultOpenMode?: 'reading' | 'editor';
+  fileSettings?: FileSettings;
+  markdownSettings?: MarkdownSettings;
+  mode: AppearanceChoice;
+  onFileSettingsChange?: (patch: Partial<FileSettings>) => void;
+  onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
+  onModeChange: (mode: AppearanceChoice) => void;
+  onOpenAppearance: () => void;
+  onThemeChange: (theme: Theme) => void;
+  theme: Theme;
+}
+
+const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
+  defaultOpenMode = 'editor',
+  fileSettings,
+  markdownSettings,
+  mode,
+  onFileSettingsChange,
+  onMarkdownSettingsChange,
+  onModeChange,
+  onOpenAppearance,
+  onThemeChange,
+  theme,
+}: CompactSettingsContentProps): React.JSX.Element => {
+  const tick = (selected: boolean): React.JSX.Element => (
+    <span
+      aria-hidden="true"
+      className={`${styles.tick} ${selected ? '' : styles.tickOff}`}
+    >
+      ✓
+    </span>
+  );
+
+  const toggle = (
+    label: string,
+    checked: boolean,
+    onChange: (checked: boolean) => void,
+    disabled = false,
+  ): React.JSX.Element => (
+    <div
+      aria-disabled={disabled}
+      className={styles.menuItem}
+      data-settings-row={label}
+    >
+      <span>{label}</span>
+      <span
+        className={styles.toggle}
+        data-checked={checked}
+        data-settings-toggle={label}
+      >
+        <input
+          aria-label={label}
+          checked={checked}
+          disabled={disabled}
+          type="checkbox"
+          onChange={(event): void => onChange(event.target.checked)}
+        />
+      </span>
+    </div>
+  );
+
+  return (
+    <div className={styles.settingsBody} data-settings-content>
+      <div className={styles.label}>Theme</div>
+      <div aria-label="Theme" className={styles.swatches} role="radiogroup">
+        {themeOptions.map((option) => (
+          <i
+            key={option.value}
+            aria-checked={theme === option.value}
+            aria-label={option.label}
+            className={`${styles.swatch} ${theme === option.value ? styles.swatchSelected : ''}`}
+            data-theme={option.value}
+            role="radio"
+            tabIndex={theme === option.value ? 0 : -1}
+            onKeyDown={(event): void => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onThemeChange(option.value);
+              }
+            }}
+            onClick={(): void => onThemeChange(option.value)}
+          />
+        ))}
+      </div>
+      <div className={styles.label}>Appearance</div>
+      <div aria-label="Appearance" className={styles.options} role="radiogroup">
+        {modeOptions.map((option) => (
+          <div
+            key={option.value}
+            aria-checked={mode === option.value}
+            className={styles.menuItem}
+            role="radio"
+            tabIndex={0}
+            onClick={(): void => onModeChange(option.value)}
+            onKeyDown={(event): void => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onModeChange(option.value);
+              }
+            }}
+          >
+            <span>
+              {option.value === 'auto' ? 'Auto (system)' : option.label}
+            </span>
+            {tick(mode === option.value)}
+          </div>
+        ))}
+      </div>
+      <div className={styles.separator} />
+      <div className={styles.label}>Default open mode</div>
+      {(['reading', 'editor'] as const).map((openMode) => (
+        <div
+          aria-disabled="true"
+          className={styles.menuItem}
+          key={openMode}
+          role="menuitem"
+        >
+          <span>{openMode === 'reading' ? 'Reading (Viewer)' : 'Editor'}</span>
+          {tick(defaultOpenMode === openMode)}
+        </div>
+      ))}
+      <div className={styles.separator} />
+      <div className={styles.label}>Markdown</div>
+      {markdownStandardOptions.map((option) => (
+        <div
+          aria-disabled="true"
+          className={styles.menuItem}
+          key={option.value}
+          role="menuitem"
+        >
+          <span>
+            {option.value === 'minimal'
+              ? 'Minimal (CommonMark)'
+              : option.value === 'full'
+                ? 'Full (+ math, footnotes…)'
+                : 'GFM'}
+          </span>
+          {tick((markdownSettings?.standard ?? 'gfm') === option.value)}
+        </div>
+      ))}
+      <div className={styles.separator} />
+      {toggle(
+        'Autosave',
+        fileSettings?.autosave ?? true,
+        (checked): void => onFileSettingsChange?.({ autosave: checked }),
+        onFileSettingsChange === undefined,
+      )}
+      {toggle(
+        'Format on save',
+        markdownSettings?.formatOnSave ?? false,
+        (checked): void =>
+          onMarkdownSettingsChange?.({ formatOnSave: checked }),
+        onMarkdownSettingsChange === undefined,
+      )}
+      {toggle(
+        'Lint on save',
+        markdownSettings?.lintOnSave ?? true,
+        (checked): void => onMarkdownSettingsChange?.({ lintOnSave: checked }),
+        onMarkdownSettingsChange === undefined,
+      )}
+      <div className={styles.separator} />
+      <div
+        className={styles.menuItem}
+        role="menuitem"
+        tabIndex={0}
+        onClick={onOpenAppearance}
+        onKeyDown={(event): void => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onOpenAppearance();
+          }
+        }}
+      >
+        <span>All settings…</span>
+        <span className={styles.shortcut}>Ctrl ,</span>
+      </div>
+    </div>
+  );
+};
+
 const SettingsMenu: React.FC<SettingsMenuProps> = ({
+  defaultOpenMode,
   mode,
   onModeChange,
   onOpenAppearance,
@@ -69,8 +254,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   showTrigger = true,
   triggerLabel = t('settings.menu.trigger'),
   anchorRef,
-  editorSettings,
-  onEditorSettingsChange,
   fileSettings,
   onFileSettingsChange,
   markdownSettings,
@@ -104,19 +287,30 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   };
 
   useLayoutEffect((): (() => void) | undefined => {
-    if (!open) {
-      return undefined;
-    }
+    if (!open) return undefined;
 
     const positionPopup = (): void => {
       const anchor = anchorRef?.current ?? triggerRef.current;
       const content = contentRef.current;
-      if (anchor === null || anchor === undefined || content === null) {
-        return;
-      }
+      if (anchor === null || anchor === undefined || content === null) return;
       const margin = 8;
       const anchorBounds = anchor.getBoundingClientRect();
       const popupBounds = content.getBoundingClientRect();
+      const applicationFrame = anchor.closest<HTMLElement>(
+        '.application-frame',
+      );
+      if (applicationFrame !== null) {
+        if (window.innerWidth > 376) {
+          setPopupPosition({ left: 150, top: 42 });
+          return;
+        }
+        const frameBounds = applicationFrame.getBoundingClientRect();
+        setPopupPosition({
+          left: anchorBounds.left - frameBounds.left,
+          top: anchorBounds.bottom - frameBounds.top,
+        });
+        return;
+      }
       const maximumLeft = Math.max(
         margin,
         window.innerWidth - popupBounds.width - margin,
@@ -171,6 +365,12 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
     };
   }, [anchorRef, open, setOpen]);
 
+  const openAllSettings = (): void => {
+    const opener = anchorRef?.current ?? triggerRef.current;
+    setOpen(false);
+    dispatchSettingsAction('appearance', () => onOpenAppearance(opener));
+  };
+
   const popup = open
     ? createPortal(
         <div
@@ -191,232 +391,38 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
               : { left: popupPosition.left, top: popupPosition.top }
           }
         >
-          <Segmented
-            aria-label={t('appearance.theme.label')}
-            options={themeOptions}
-            value={theme}
-            onValueChange={(nextTheme): void =>
+          <CompactSettingsContent
+            defaultOpenMode={defaultOpenMode}
+            fileSettings={fileSettings}
+            markdownSettings={markdownSettings}
+            mode={mode}
+            onFileSettingsChange={(patch): void =>
+              dispatchSettingsAction('autosave', () =>
+                onFileSettingsChange?.(patch),
+              )
+            }
+            onMarkdownSettingsChange={(patch): void =>
+              dispatchSettingsAction(
+                patch.formatOnSave === undefined
+                  ? 'lint-on-save'
+                  : 'format-on-save',
+                () => onMarkdownSettingsChange?.(patch),
+              )
+            }
+            onModeChange={(nextMode): void =>
+              dispatchSettingsAction('appearance', () => onModeChange(nextMode))
+            }
+            onOpenAppearance={openAllSettings}
+            onThemeChange={(nextTheme): void =>
               dispatchSettingsAction('appearance', () =>
                 onThemeChange(nextTheme),
               )
             }
+            theme={theme}
           />
-          <Segmented
-            aria-label={t('appearance.mode.label')}
-            options={modeOptions}
-            value={mode}
-            onValueChange={(nextMode): void =>
-              dispatchSettingsAction('appearance', () => onModeChange(nextMode))
-            }
-          />
-          <fieldset className={styles.group}>
-            <legend>{t('settings.menu.general')}</legend>
-            <span className={styles.settingLabel}>
-              {t(getAction('default-open-mode').labelKey)}
-            </span>
-            {(['reading', 'editor'] as const).map((mode) => (
-              <button
-                className={styles.item}
-                disabled
-                key={mode}
-                role="menuitem"
-                type="button"
-              >
-                {t(`settings.openMode.${mode}`)}
-              </button>
-            ))}
-          </fieldset>
-          <fieldset className={styles.group}>
-            <legend>{t('settings.menu.markdown')}</legend>
-            <button
-              aria-label={t('settings.markdown.standard')}
-              className={styles.item}
-              disabled
-              role="menuitem"
-              type="button"
-            >
-              {t(getAction('markdown-standard').labelKey)}:{' '}
-              {markdownStandardOptions.find(
-                (option) => option.value === markdownSettings?.standard,
-              )?.label ?? t('settings.markdown.gfm')}{' '}
-              (
-              {markdownStandardOptions
-                .map((option) => option.label)
-                .join(' · ')}
-              )
-            </button>
-            {markdownSettings === undefined ||
-            onMarkdownSettingsChange === undefined ? null : (
-              <>
-                <label className={styles.selectLabel}>
-                  <span>{t('settings.markdown.bullet')}</span>
-                  <select
-                    aria-label={t('settings.markdown.bullet')}
-                    value={markdownSettings.bulletMarker}
-                    onChange={(event): void =>
-                      dispatchSettingsAction('editor-settings', () =>
-                        onMarkdownSettingsChange({
-                          bulletMarker: event.target.value,
-                        }),
-                      )
-                    }
-                  >
-                    <option value="-">-</option>
-                    <option value="*">*</option>
-                    <option value="+">+</option>
-                  </select>
-                </label>
-                <label className={styles.selectLabel}>
-                  <span>{t('settings.markdown.emphasis')}</span>
-                  <select
-                    aria-label={t('settings.markdown.emphasis')}
-                    value={markdownSettings.emphasisMarker}
-                    onChange={(event): void =>
-                      dispatchSettingsAction('editor-settings', () =>
-                        onMarkdownSettingsChange({
-                          emphasisMarker: event.target.value,
-                        }),
-                      )
-                    }
-                  >
-                    <option value="*">*</option>
-                    <option value="_">_</option>
-                  </select>
-                </label>
-                <label className={styles.selectLabel}>
-                  <span>{t('settings.markdown.heading')}</span>
-                  <select
-                    aria-label={t('settings.markdown.heading')}
-                    value={markdownSettings.headingStyle}
-                    onChange={(event): void =>
-                      dispatchSettingsAction('editor-settings', () =>
-                        onMarkdownSettingsChange({
-                          headingStyle: event.target.value,
-                        }),
-                      )
-                    }
-                  >
-                    <option value="atx">{t('settings.markdown.atx')}</option>
-                  </select>
-                </label>
-              </>
-            )}
-          </fieldset>
-          <fieldset className={styles.group}>
-            <legend>{t('settings.menu.save')}</legend>
-            {(['autosave', 'format-on-save', 'lint-on-save'] as const).map(
-              (id: ActionId) =>
-                id === 'autosave' &&
-                fileSettings !== undefined &&
-                onFileSettingsChange !== undefined ? (
-                  <label className={styles.checkbox} key={id}>
-                    <input
-                      aria-label={t(getAction(id).labelKey)}
-                      checked={fileSettings.autosave}
-                      type="checkbox"
-                      onChange={(event): void =>
-                        dispatchSettingsAction(id, () =>
-                          onFileSettingsChange({
-                            autosave: event.target.checked,
-                          }),
-                        )
-                      }
-                    />
-                    {t(getAction(id).labelKey)}
-                  </label>
-                ) : (
-                  <button
-                    className={styles.item}
-                    disabled
-                    role="menuitem"
-                    key={id}
-                    type="button"
-                  >
-                    {t(getAction(id).labelKey)}
-                  </button>
-                ),
-            )}
-          </fieldset>
-          {editorSettings !== undefined &&
-          onEditorSettingsChange !== undefined ? (
-            <fieldset className={styles.group}>
-              <legend>{t('settings.menu.editor')}</legend>
-              <label className={styles.checkbox}>
-                <input
-                  checked={editorSettings.lineNumbers}
-                  type="checkbox"
-                  onChange={(event): void =>
-                    dispatchSettingsAction('editor-settings', () =>
-                      onEditorSettingsChange({
-                        lineNumbers: event.target.checked,
-                      }),
-                    )
-                  }
-                />
-                {t('settings.editor.lineNumbers')}
-              </label>
-              <label className={styles.checkbox}>
-                <input
-                  checked={editorSettings.wordWrap}
-                  type="checkbox"
-                  onChange={(event): void =>
-                    dispatchSettingsAction('editor-settings', () =>
-                      onEditorSettingsChange({
-                        wordWrap: event.target.checked,
-                      }),
-                    )
-                  }
-                />
-                {t('settings.editor.wordWrap')}
-              </label>
-              <label className={styles.selectLabel}>
-                <span>{t('settings.editor.fontSize')}</span>
-                <select
-                  aria-label={t('settings.editor.fontSize')}
-                  value={editorSettings.fontSize}
-                  onChange={(event): void =>
-                    dispatchSettingsAction('editor-settings', () =>
-                      onEditorSettingsChange({
-                        fontSize: Number(
-                          event.target.value,
-                        ) as EditorSettings['fontSize'],
-                      }),
-                    )
-                  }
-                >
-                  {[13, 14, 16].map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </fieldset>
-          ) : null}
-          <button
-            className={styles.item}
-            disabled
-            role="menuitem"
-            type="button"
-          >
-            {t(getAction('all-settings').labelKey)}
-          </button>
-          <button
-            className={styles.item}
-            role="menuitem"
-            type="button"
-            onClick={(): void => {
-              const opener = anchorRef?.current ?? triggerRef.current;
-              dispatchSettingsAction('appearance', () => {
-                setOpen(false);
-                onOpenAppearance(opener);
-              });
-            }}
-          >
-            {t('settings.menu.appearance')}
-          </button>
         </div>,
-        document.body,
+        document.querySelector<HTMLElement>('.application-frame') ??
+          document.body,
       )
     : null;
 
@@ -425,6 +431,8 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
       {showTrigger ? (
         <button
           ref={triggerRef}
+          aria-expanded={open}
+          aria-haspopup="menu"
           className={styles.trigger}
           data-settings-opener
           type="button"

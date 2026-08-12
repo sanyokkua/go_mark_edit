@@ -31,6 +31,7 @@ import Icon, { type IconName } from '../primitives/Icon';
 import styles from './EditorChrome.module.css';
 import { useModalState } from './modalStateContext';
 import DocumentTabs, { type DocumentTabsProps } from './DocumentTabs';
+import { ApplicationMenuRequestContext } from './applicationMenuRequest';
 
 export interface EditorChromeProps {
   arrangement: ViewArrangement;
@@ -69,6 +70,17 @@ const parityOverflowShortcuts: Partial<Record<ActionEntry['id'], string>> = {
   table: 'Ctrl ⇧ T',
   compact: '⌥⇧C',
 };
+
+const applicationOverflowLabels = {
+  about: t('shell.about'),
+  file: t('shell.file'),
+  settings: t('shell.settings'),
+  view: t('action.view.label'),
+} as const;
+
+function isNarrowToolbarViewport(): boolean {
+  return typeof window !== 'undefined' && window.innerWidth <= 376;
+}
 
 function action(id: ActionEntry['id']): ActionEntry {
   return getAction(id);
@@ -136,6 +148,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
   const commands = useContext(DocumentCommandContext);
   const activeBuffer = useContext(EditorSessionContext);
   const modalOpen = useModalState();
+  const requestApplicationMenu = useContext(ApplicationMenuRequestContext);
   const { markdownSettings } = useEditorSettings();
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDetailsElement | null>(null);
@@ -148,11 +161,22 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
     left: number;
     top: number;
   } | null>(null);
+  const parityCase =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('parity-case')
+      : null;
+  const [narrowToolbarOverflow, setNarrowToolbarOverflow] = useState(
+    isNarrowToolbarViewport,
+  );
   const toolbarOverflowParity =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search)
-      .get('parity-case')
-      ?.startsWith('primary:toolbar-overflow:');
+    parityCase?.startsWith('primary:toolbar-overflow:') === true ||
+    narrowToolbarOverflow;
+  useEffect((): (() => void) => {
+    const onResize = (): void =>
+      setNarrowToolbarOverflow(isNarrowToolbarViewport());
+    window.addEventListener('resize', onResize);
+    return (): void => window.removeEventListener('resize', onResize);
+  }, []);
   const onActivate = useCallback(
     (entry: ActionEntry): void => {
       const formatActionId = formatActionIds[entry.id];
@@ -292,12 +316,22 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
       below + popupBounds.height <= window.innerHeight - margin
         ? below
         : Math.max(margin, above);
-    const left = calculatedLeft + (toolbarOverflowParity ? -6 : 0);
-    const top = calculatedTop + (toolbarOverflowParity ? -18 : 0);
+    const applicationFrame = narrowToolbarOverflow
+      ? document.querySelector<HTMLElement>('.application-frame')
+      : null;
+    const frameBounds = applicationFrame?.getBoundingClientRect();
+    const left =
+      narrowToolbarOverflow && frameBounds !== undefined
+        ? frameBounds.width - 18 - popupBounds.width
+        : calculatedLeft + (toolbarOverflowParity ? -6 : 0);
+    const top =
+      narrowToolbarOverflow && frameBounds !== undefined
+        ? Math.round(calculatedTop - 19 - frameBounds.top)
+        : calculatedTop + (toolbarOverflowParity ? -18 : 0);
     setOverflowPosition((current) =>
       current?.left === left && current.top === top ? current : { left, top },
     );
-  }, [toolbarOverflowParity]);
+  }, [narrowToolbarOverflow, toolbarOverflowParity]);
 
   useLayoutEffect((): (() => void) | undefined => {
     if (!overflowOpen) return undefined;
@@ -362,6 +396,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
       <button
         className={styles.parityOverflowItem}
         data-action-id={entry.id}
+        data-parity-overflow-item
         disabled={unavailable}
         key={entry.id}
         type="button"
@@ -456,15 +491,17 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
               aria-label={t('editor.moreActions')}
               className={`${styles.overflowContent} ${
                 toolbarOverflowParity ? styles.parityOverflowContent : ''
-              }`}
+              } ${narrowToolbarOverflow ? styles.narrowOverflowContent : ''}`}
               data-viewport-popup="editor-overflow"
               role="menu"
               style={
                 overflowPosition === null
                   ? { position: 'fixed', visibility: 'hidden' }
                   : {
+                      borderRadius: '12px',
+                      gap: 'normal',
                       left: overflowPosition.left,
-                      position: 'fixed',
+                      position: narrowToolbarOverflow ? 'absolute' : 'fixed',
                       top: overflowPosition.top,
                     }
               }
@@ -511,8 +548,33 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
                   </div>
                 </>
               )}
+              <div className={styles.applicationOverflowItems}>
+                {(['file', 'settings', 'view', 'about'] as const).map(
+                  (target, index) => (
+                    <button
+                      className={
+                        index === 0
+                          ? styles.applicationOverflowItemFirst
+                          : styles.applicationOverflowItem
+                      }
+                      data-application-overflow-action={target}
+                      key={target}
+                      type="button"
+                      onClick={(): void => {
+                        requestApplicationMenu(target);
+                        closeOverflow();
+                      }}
+                    >
+                      {applicationOverflowLabels[target]}
+                    </button>
+                  ),
+                )}
+              </div>
             </div>,
-            document.body,
+            narrowToolbarOverflow
+              ? (document.querySelector<HTMLElement>('.application-frame') ??
+                document.body)
+              : document.body,
           )
         : null}
     </>

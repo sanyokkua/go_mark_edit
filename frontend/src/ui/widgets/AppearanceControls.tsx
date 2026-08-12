@@ -156,6 +156,7 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
   }
 
   const settingsMenuProps: SettingsMenuProps = {
+    defaultOpenMode: appearance.defaultOpenMode as 'reading' | 'editor',
     mode: appearance.mode,
     theme: appearance.theme,
     onModeChange: (mode): void => {

@@ -35,6 +35,7 @@ import Icon from '../primitives/Icon';
 import DocumentIdentity from './DocumentIdentity';
 import { safeRecentLabel } from './Launcher';
 import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
+import type { ApplicationMenuTarget } from './applicationMenuRequest';
 import styles from './ShellMenuRow.module.css';
 
 /*
@@ -96,6 +97,8 @@ interface ShellMenuRowProps {
   settingsMenuProps: SettingsMenuProps;
   toggleFullscreen?: () => Promise<boolean>;
   viewMenuProps?: ViewMenuProps;
+  requestedMenu?: ApplicationMenuTarget | null;
+  onRequestedMenuHandled?: () => void;
 }
 
 function isNarrowViewport(): boolean {
@@ -129,6 +132,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   settingsMenuProps,
   toggleFullscreen = windowAdapter.toggleFullscreen,
   viewMenuProps,
+  requestedMenu = null,
+  onRequestedMenuHandled,
 }: ShellMenuRowProps): React.JSX.Element => {
   const [activeMenu, setActiveMenu] = useState<ActiveMenu>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -171,6 +176,21 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       open ? 'about' : current === 'about' ? null : current,
     );
   };
+
+  useEffect((): void => {
+    if (requestedMenu === null || modalOpen) return;
+    menuOpenerRef.current = narrow
+      ? overflowTriggerRef.current
+      : document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setOverflowOpen(false);
+    setSettingsOpen(requestedMenu === 'settings');
+    setViewOpen(requestedMenu === 'view');
+    setFileOpen(requestedMenu === 'file');
+    setAboutOpen(requestedMenu === 'about');
+    onRequestedMenuHandled?.();
+  }, [modalOpen, narrow, onRequestedMenuHandled, requestedMenu]);
 
   useEffect((): (() => void) => {
     const onResize = (): void => setNarrow(isNarrowViewport());
@@ -419,6 +439,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     >
       {narrow ? (
         <DropdownMenu.Root
+          modal={false}
           open={!modalOpen && overflowOpen}
           onOpenChange={(open): void => {
             if (open) updateNarrowPopupAnchor();

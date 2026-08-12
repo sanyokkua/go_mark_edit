@@ -29,6 +29,7 @@ import {
   contextForTargetedEntry,
   TARGETED_FILE_MENU_MANIFEST,
   TARGETED_MANIFEST,
+  TARGETED_SETTINGS_MANIFEST,
   type TargetedParityEntry,
 } from './targeted-manifest';
 
@@ -48,6 +49,10 @@ const EVIDENCE_ROOT = resolve(
 const FILE_MENU_EVIDENCE_ROOT = resolve(
   REPOSITORY_ROOT,
   '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/targeted/file-menu',
+);
+const SETTINGS_EVIDENCE_ROOT = resolve(
+  REPOSITORY_ROOT,
+  '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/targeted/settings',
 );
 const PARITY_HEIGHT = 720;
 const METRIC_PROPERTIES = [
@@ -107,6 +112,7 @@ async function prepareReference(
   entry: TargetedParityEntry,
   sourceHash: string,
 ): Promise<void> {
+  await page.setViewportSize({ width: entry.width, height: entry.height });
   const response = await page.goto(
     referenceNavigationUrl(
       REFERENCE_ORIGIN,
@@ -138,6 +144,10 @@ async function prepareReference(
   await page
     .locator(`#screenNav button[data-screen="${entry.activeScreen}"]`)
     .click();
+  if (entry.openSurface === 'settings-overflow') {
+    await page.locator('#app .tg-over button[title="More"]').click();
+    await expect(page.locator('#app .ovf-menu')).toBeVisible();
+  }
   await freezeParityPixels(page);
   await page.locator('#app').evaluate((app, assistantClass) => {
     app.classList.add(assistantClass);
@@ -159,12 +169,19 @@ async function prepareActual(
   await waitForParityReady(page, {
     readySelector: '[data-testid="application-shell"]',
   });
+  if (entry.width === 375) {
+    await expect(page.locator('[data-settings-overflow]')).toBeVisible();
+  }
   await expect(page.getByRole('tab')).toHaveCount(2);
-  const settings = page.getByRole('button', {
-    name: 'Settings',
-    exact: true,
-  });
-  await settings.click();
+  if (entry.width === 375) {
+    await page.locator('[data-settings-overflow]').click();
+    await page
+      .locator('[data-viewport-popup="shell-overflow"]')
+      .getByRole('menuitem', { name: /^Settings/ })
+      .click();
+  } else {
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  }
   const menu = page.getByRole('menu', { name: 'Settings menu' });
   const themeLabel =
     entry.palette.theme === 'glass'
@@ -194,7 +211,7 @@ async function prepareActual(
     if (active instanceof HTMLElement) active.blur();
   });
   await freezeParityPixels(page);
-  if (entry.regionId === 'file-menu') {
+  if (entry.openSurface === 'file-menu') {
     await page.getByRole('button', { name: 'File', exact: true }).click();
     await expect(
       page.locator('[data-viewport-popup="file-menu"]'),
@@ -203,6 +220,26 @@ async function prepareActual(
       const active = document.activeElement;
       if (active instanceof HTMLElement) active.blur();
     });
+  } else if (entry.openSurface === 'settings-menu') {
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await expect(
+      page.locator('[data-viewport-popup="settings-menu"]'),
+    ).toBeVisible();
+    await page.evaluate(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) active.blur();
+    });
+  } else if (entry.openSurface === 'settings-overflow') {
+    await page.locator('summary[aria-label="More actions"]').click();
+    await expect(
+      page.locator('[data-viewport-popup="editor-overflow"]'),
+    ).toBeVisible();
+    await page
+      .locator(
+        '[data-viewport-popup="editor-overflow"] [data-parity-overflow-item]',
+      )
+      .filter({ hasText: /^Quote/u })
+      .hover();
   }
 }
 
@@ -284,22 +321,31 @@ function metricDifferences(
   return differences;
 }
 
-async function assertActualMenubarStructure(page: Page): Promise<void> {
+async function assertActualMenubarStructure(
+  page: Page,
+  width: 1280 | 375,
+): Promise<void> {
   const menubar = page.locator('nav[aria-label="Application actions"]');
   await expect(menubar).toBeVisible();
   const rowMetrics = await surfaceMetrics(menubar);
   expect(rowMetrics.bounds.height).toBe(44);
-  for (const action of ['File', 'Settings', 'View', 'About']) {
-    const button = menubar.getByRole('button', { name: action, exact: true });
-    await expect(button).toBeVisible();
-    await expect(button).toHaveAttribute('type', 'button');
-    expect(
-      await button.evaluate((element) => element.tabIndex),
-    ).toBeGreaterThanOrEqual(0);
+  if (width === 1280) {
+    for (const action of ['File', 'Settings', 'View', 'About']) {
+      const button = menubar.getByRole('button', { name: action, exact: true });
+      await expect(button).toBeVisible();
+      await expect(button).toHaveAttribute('type', 'button');
+      expect(
+        await button.evaluate((element) => element.tabIndex),
+      ).toBeGreaterThanOrEqual(0);
+    }
+  } else {
+    const overflow = page.locator('[data-settings-overflow]');
+    await expect(overflow).toBeVisible();
+    await expect(overflow).toHaveAttribute('type', 'button');
   }
   const identity = page.locator('header[aria-label="Document identity"]');
   await expect(identity).toBeVisible();
-  await expect(menubar.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(menubar.locator('h1')).toHaveCount(1);
   const identityBounds = await identity.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return { top: rect.top, bottom: rect.bottom };
@@ -950,11 +996,19 @@ async function writeTargetedArtifacts(input: {
   );
 }
 
-for (const entry of [...TARGETED_MANIFEST, ...TARGETED_FILE_MENU_MANIFEST]) {
+for (const entry of [
+  ...TARGETED_MANIFEST,
+  ...TARGETED_FILE_MENU_MANIFEST,
+  ...TARGETED_SETTINGS_MANIFEST,
+]) {
   test(
-    entry.regionId === 'file-menu'
+    entry.openSurface === 'file-menu'
       ? 'T059 state-pairs the File popup in Minimal Light'
-      : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
+      : entry.openSurface === 'settings-menu'
+        ? 'T060 state-pairs the Settings popup in Minimal Light'
+        : entry.openSurface === 'settings-overflow'
+          ? 'T060 state-pairs the 375px Settings overflow in Minimal Light'
+          : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
     async ({ page, context }) => {
       test.setTimeout(120_000);
       assertTargetedManifestIntegrity();
@@ -965,10 +1019,14 @@ for (const entry of [...TARGETED_MANIFEST, ...TARGETED_FILE_MENU_MANIFEST]) {
         referenceSourceHash,
       );
       const evidenceRoot = join(
-        entry.regionId === 'file-menu'
+        entry.openSurface === 'file-menu'
           ? FILE_MENU_EVIDENCE_ROOT
-          : EVIDENCE_ROOT,
+          : entry.openSurface === 'settings-menu' ||
+              entry.openSurface === 'settings-overflow'
+            ? SETTINGS_EVIDENCE_ROOT
+            : EVIDENCE_ROOT,
         entry.palette.id,
+        entry.openSurface === 'settings-overflow' ? 'overflow-375' : '',
       );
       const referencePage = await context.newPage();
       let referenceSignature: SemanticSignature | undefined;
@@ -979,7 +1037,7 @@ for (const entry of [...TARGETED_MANIFEST, ...TARGETED_FILE_MENU_MANIFEST]) {
       try {
         await prepareReference(referencePage, entry, referenceSourceHash);
         await prepareActual(page, entry);
-        await assertActualMenubarStructure(page);
+        await assertActualMenubarStructure(page, entry.width);
         referenceSignature = await captureSemanticSignature(
           referencePage,
           captureContext,
@@ -1028,13 +1086,13 @@ for (const entry of [...TARGETED_MANIFEST, ...TARGETED_FILE_MENU_MANIFEST]) {
         };
         expect(editorTopEdge.actual).toBe(editorTopEdge.reference);
         const filePopup =
-          entry.regionId === 'file-menu'
+          entry.openSurface === 'file-menu'
             ? filePopupPairing(
                 await captureFilePopupItems(referencePage, 'reference'),
                 await captureFilePopupItems(page, 'actual'),
               )
             : undefined;
-        if (entry.regionId === 'file-menu') {
+        if (entry.openSurface === 'file-menu') {
           filePopupVisual = await captureFilePopupVisualEvidence(
             referencePage,
             page,
@@ -1081,13 +1139,16 @@ for (const entry of [...TARGETED_MANIFEST, ...TARGETED_FILE_MENU_MANIFEST]) {
           actualSurface.metrics,
         );
         const error =
-          (entry.regionId === 'file-menu'
+          (entry.openSurface === 'file-menu'
             ? (filePopupVisual?.differences.length ?? 0) === 0
-            : differences.length === 0 && comparison.passed) &&
+            : entry.openSurface === 'settings-menu' ||
+                entry.openSurface === 'settings-overflow'
+              ? differences.length === 0
+              : differences.length === 0 && comparison.passed) &&
           (filePopup?.differences.length ?? 0) === 0
             ? undefined
             : [
-                ...(entry.regionId === 'file-menu'
+                ...(entry.openSurface === 'file-menu'
                   ? (filePopupVisual?.differences ?? [])
                   : differences),
                 ...(filePopup?.differences ?? []),

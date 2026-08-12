@@ -64,6 +64,9 @@
   --menu-row-menu-offset: 177.125px;
   --file-menu-popup-offset: 21.203px;
   --file-menu-popup-width: 269.5625px;
+  --theme-glass-swatch: linear-gradient(135deg, #7aa2ff, #c58bff);
+  --theme-material-swatch: #4f6bed;
+  --theme-minimal-swatch: #10b981;
   --menu-row-padding: 0 12px;
   --menu-row-gap: 12px;
   --menu-trigger-font-size: 13px;

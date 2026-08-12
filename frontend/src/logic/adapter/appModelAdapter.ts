@@ -116,6 +116,7 @@ export interface AppModelAdapter {
   ) => Promise<void>;
   updateDocView: (documentId: string, view: DocViewInput) => Promise<void>;
   updateLocalDocView: (documentId: string, view: DocViewInput) => Promise<void>;
+  cancelPendingSession?: (documentId: string) => void;
   flushDocView: (documentId: string) => Promise<void>;
   setUILayout: (layout: UILayout) => Promise<void>;
   reconcileCommittedWrite: (
@@ -625,6 +626,26 @@ export function createAppModelAdapter(
       const record = viewRecord(documentId);
       queueDocView(record, view, undefined, true);
       scheduleDocView(documentId);
+    },
+    cancelPendingSession(documentId: string): void {
+      const buffer = bufferRecords.get(documentId);
+      if (buffer?.timer !== undefined) {
+        clearTimeout(buffer.timer);
+        buffer.timer = undefined;
+      }
+      if (buffer !== undefined) {
+        buffer.pending = undefined;
+      }
+
+      const view = viewRecords.get(documentId);
+      if (view?.timer !== undefined) {
+        clearTimeout(view.timer);
+        view.timer = undefined;
+      }
+      if (view !== undefined) {
+        view.pending = undefined;
+        view.latestView = undefined;
+      }
     },
     async flushDocView(documentId: string): Promise<void> {
       assertCommandsAvailable();

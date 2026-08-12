@@ -2,91 +2,170 @@
   position: relative;
 }
 
-.trigger,
-.item {
+.trigger {
   background: transparent;
-  color: var(--text);
-  font: inherit;
-}
-
-.group {
-  border: 0;
-  display: grid;
-  gap: 0.35rem;
-  margin: 0;
-  min-inline-size: 0;
-  padding: 0.35rem 0;
-}
-
-.group legend {
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-  padding: 0;
-}
-
-.settingLabel {
-  color: var(--text-muted);
-  padding: 0.3rem 0.4rem;
-}
-
-.checkbox,
-.selectLabel {
-  align-items: center;
-  display: flex;
-  gap: 0.5rem;
-  justify-content: space-between;
-  padding: 0.3rem 0.4rem;
-}
-
-.selectLabel select {
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-
-.trigger,
-.item {
   border: var(--control-border-width) solid transparent;
   border-radius: var(--menu-trigger-radius);
+  color: var(--text);
+  font: inherit;
   padding: var(--menu-trigger-padding);
 }
 
 .content {
   backdrop-filter: var(--blur);
-  background: var(--surface-raised);
-  border: var(--control-border-width) solid var(--border);
-  box-sizing: border-box;
+  background: var(--elevated);
+  border: var(--control-border-width) solid var(--stroke);
   border-radius: var(--popup-radius);
   box-shadow: var(--win-shadow);
-  display: grid;
-  gap: 0;
-  inline-size: min(30rem, calc(100vw - 2 * var(--control-gap)));
+  color: var(--text);
+  display: block;
   min-inline-size: var(--popup-min-width);
-  max-block-size: calc(100vh - 4rem);
-  overflow: auto;
   padding: var(--popup-padding);
-  position: fixed;
+  position: absolute;
   z-index: var(--z-dropdown);
 }
 
-.content > [role='radiogroup'] {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  inline-size: 100%;
+.settingsBody {
+  display: block;
+  width: 100%;
 }
 
-.item {
+.label {
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  padding: 7px 10px 3px;
+  text-transform: uppercase;
+}
+
+.swatches {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.swatch {
+  background: transparent;
+  border: var(--control-border-width) solid var(--stroke);
+  border-radius: 6px;
   cursor: pointer;
-  inline-size: 100%;
-  font-size: var(--popup-row-font-size);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  height: 22px;
+  padding: 0;
+  width: 22px;
 }
 
-.item:hover,
-.item:focus-visible {
-  background: var(--surface);
-  border-color: var(--border);
+.swatch[data-theme='glass'] {
+  background: var(--theme-glass-swatch);
+}
+
+.swatch[data-theme='material'] {
+  background: var(--theme-material-swatch);
+}
+
+.swatch[data-theme='minimal'] {
+  background: var(--theme-minimal-swatch);
+}
+
+.swatchSelected {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.options {
+  display: grid;
+}
+
+.menuItem {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text);
+  display: flex;
+  font: inherit;
+  font-size: var(--popup-row-font-size);
+  gap: 22px;
+  justify-content: space-between;
+  padding: var(--popup-row-padding);
+  text-align: start;
+  width: 100%;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+div.menuItem[aria-disabled='true'] {
+  cursor: default;
+}
+
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: var(--hover);
+}
+
+.separator {
+  background: var(--stroke-soft);
+  block-size: var(--control-border-width);
+  margin: 5px 4px;
+}
+
+.tick {
+  color: var(--accent-ink);
+  text-align: center;
+  width: 14px;
+}
+
+.tickOff {
+  color: transparent;
+}
+
+.shortcut {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: var(--popup-accelerator-font-size);
+}
+
+.toggle {
+  background: var(--surface-3);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  cursor: pointer;
+  flex: none;
+  height: 19px;
+  position: relative;
+  width: 34px;
+}
+
+.toggle::after {
+  background: var(--muted);
+  border-radius: 50%;
+  content: '';
+  height: 14px;
+  left: 1.5px;
+  position: absolute;
+  top: 1.5px;
+  width: 14px;
+}
+
+.toggle[data-checked='true'] {
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.toggle[data-checked='true']::after {
+  background: var(--accent-contrast);
+  left: 16px;
+}
+
+.toggle input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.toggle input:disabled,
+.menuItem[aria-disabled='true'] {
+  cursor: default;
 }
