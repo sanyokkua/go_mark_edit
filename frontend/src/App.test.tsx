@@ -430,7 +430,7 @@ it('T018 keeps the feature shell ordered and future behavior explicitly bounded 
   ]);
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(
-    screen.getByRole('menuitem', { name: 'Appearance' }),
+    screen.getByRole('menuitem', { name: /All settings/u }),
   ).toBeInTheDocument();
   assertFutureSurfacesBounded();
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
@@ -1032,7 +1032,7 @@ it('FR-WS-020 keeps the existing document consumer while every future shell facs
   ).not.toBeEmptyDOMElement();
 
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Appearance' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
   const dialog = screen.getByRole('dialog', { name: 'Settings' });
   expect(dialog.querySelectorAll('h2')).toHaveLength(1);
   expect(dialog).toHaveTextContent('Appearance');

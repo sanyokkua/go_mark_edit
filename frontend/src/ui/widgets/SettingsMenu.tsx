@@ -45,20 +45,39 @@ const themeOptions: readonly { label: string; value: Theme }[] = [
   { label: t('appearance.theme.minimal'), value: 'minimal' },
 ];
 
+/**
+ * The compact popup reproduces the binding mockup's `#m-settings` label text,
+ * which differs from the full Settings dialog wording for the same choices.
+ * Both come from the catalogue; neither is written into the component.
+ */
 const modeOptions: readonly {
   label: string;
   value: AppearanceChoice;
 }[] = [
-  { label: t('appearance.mode.auto'), value: 'auto' },
-  { label: t('appearance.mode.light'), value: 'light' },
-  { label: t('appearance.mode.dark'), value: 'dark' },
+  { label: t('settings.menu.appearance.auto'), value: 'auto' },
+  { label: t('settings.menu.appearance.light'), value: 'light' },
+  { label: t('settings.menu.appearance.dark'), value: 'dark' },
+];
+
+const openModeOptions: readonly {
+  label: string;
+  value: 'reading' | 'editor';
+}[] = [
+  { label: t('settings.openMode.reading'), value: 'reading' },
+  { label: t('settings.openMode.editor'), value: 'editor' },
 ];
 
 const markdownStandardOptions = [
-  { label: t('settings.markdown.minimal'), value: 'minimal' },
-  { label: t('settings.markdown.gfm'), value: 'gfm' },
-  { label: t('settings.markdown.full'), value: 'full' },
+  { label: t('settings.menu.markdown.minimal'), value: 'minimal' },
+  { label: t('settings.menu.markdown.gfm'), value: 'gfm' },
+  { label: t('settings.menu.markdown.full'), value: 'full' },
 ] as const;
+
+const saveToggleLabels = {
+  autosave: t('settings.autosave'),
+  formatOnSave: t('settings.formatOnSave'),
+  lintOnSave: t('settings.lintOnSave'),
+} as const;
 
 interface CompactSettingsContentProps {
   defaultOpenMode?: 'reading' | 'editor';
@@ -124,8 +143,12 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
 
   return (
     <div className={styles.settingsBody} data-settings-content>
-      <div className={styles.label}>Theme</div>
-      <div aria-label="Theme" className={styles.swatches} role="radiogroup">
+      <div className={styles.label}>{t('settings.menu.theme')}</div>
+      <div
+        aria-label={t('settings.menu.theme')}
+        className={styles.swatches}
+        role="radiogroup"
+      >
         {themeOptions.map((option) => (
           <i
             key={option.value}
@@ -145,8 +168,12 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
           />
         ))}
       </div>
-      <div className={styles.label}>Appearance</div>
-      <div aria-label="Appearance" className={styles.options} role="radiogroup">
+      <div className={styles.label}>{t('appearance.mode.label')}</div>
+      <div
+        aria-label={t('appearance.mode.label')}
+        className={styles.options}
+        role="radiogroup"
+      >
         {modeOptions.map((option) => (
           <div
             key={option.value}
@@ -162,28 +189,26 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
               }
             }}
           >
-            <span>
-              {option.value === 'auto' ? 'Auto (system)' : option.label}
-            </span>
+            <span>{option.label}</span>
             {tick(mode === option.value)}
           </div>
         ))}
       </div>
       <div className={styles.separator} />
-      <div className={styles.label}>Default open mode</div>
-      {(['reading', 'editor'] as const).map((openMode) => (
+      <div className={styles.label}>{t('settings.openMode')}</div>
+      {openModeOptions.map((option) => (
         <div
           aria-disabled="true"
           className={styles.menuItem}
-          key={openMode}
+          key={option.value}
           role="menuitem"
         >
-          <span>{openMode === 'reading' ? 'Reading (Viewer)' : 'Editor'}</span>
-          {tick(defaultOpenMode === openMode)}
+          <span>{option.label}</span>
+          {tick(defaultOpenMode === option.value)}
         </div>
       ))}
       <div className={styles.separator} />
-      <div className={styles.label}>Markdown</div>
+      <div className={styles.label}>{t('settings.menu.markdown')}</div>
       {markdownStandardOptions.map((option) => (
         <div
           aria-disabled="true"
@@ -191,32 +216,26 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
           key={option.value}
           role="menuitem"
         >
-          <span>
-            {option.value === 'minimal'
-              ? 'Minimal (CommonMark)'
-              : option.value === 'full'
-                ? 'Full (+ math, footnotes…)'
-                : 'GFM'}
-          </span>
+          <span>{option.label}</span>
           {tick((markdownSettings?.standard ?? 'gfm') === option.value)}
         </div>
       ))}
       <div className={styles.separator} />
       {toggle(
-        'Autosave',
+        saveToggleLabels.autosave,
         fileSettings?.autosave ?? true,
         (checked): void => onFileSettingsChange?.({ autosave: checked }),
         onFileSettingsChange === undefined,
       )}
       {toggle(
-        'Format on save',
+        saveToggleLabels.formatOnSave,
         markdownSettings?.formatOnSave ?? false,
         (checked): void =>
           onMarkdownSettingsChange?.({ formatOnSave: checked }),
         onMarkdownSettingsChange === undefined,
       )}
       {toggle(
-        'Lint on save',
+        saveToggleLabels.lintOnSave,
         markdownSettings?.lintOnSave ?? true,
         (checked): void => onMarkdownSettingsChange?.({ lintOnSave: checked }),
         onMarkdownSettingsChange === undefined,
@@ -234,8 +253,10 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
           }
         }}
       >
-        <span>All settings…</span>
-        <span className={styles.shortcut}>Ctrl ,</span>
+        <span>{t('settings.menu.allSettings')}</span>
+        <span className={styles.shortcut}>
+          {t('settings.menu.allSettings.accelerator')}
+        </span>
       </div>
     </div>
   );
