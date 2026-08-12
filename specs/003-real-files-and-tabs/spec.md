@@ -188,13 +188,16 @@
 - Q: The reviewed editor-region mapping compares `#app.no-assistant .content`, which contains the mockup's
   deferred rich-rendering widgets and its hand-written editor text, while this specification requires those
   regions to be excluded rather than reproduced. How is that contradiction resolved? → A: Keep the whole mapped
-  region compared and extend the Feature 003 reference variant so the reference's Editor and Preview panes carry
-  the same in-scope document content the application renders, using only the mockup's own pane, gutter, code and
-  basic-preview primitives. Deferred rich-rendering widgets — remote assets, math, image placeholders, Mermaid,
-  and the remote-content banner — are removed from the reference rather than manufactured in production, and
-  Monaco's own text raster is not reproduced by the mockup. The immutable mockup HTML/CSS and its raw source hash
-  stay unchanged, the mapping keeps naming the adapted region explicitly, and no mask, pixel tolerance,
-  comparator, coordinate handling, or manifest count changes.
+  region compared and split the two pane interiors by owner. **Preview pane:** the Feature 003 reference variant
+  carries the same in-scope basic-preview content the application renders, built only from the mockup's own
+  `.preview-in` primitives, and the deferred rich-rendering widgets — remote-content banner, image placeholder,
+  math, and Mermaid — are removed from the reference rather than manufactured in production. **Editor pane:**
+  Monaco owns its own text raster, gutter metrics and internal layout under Feature 002, so the editor pane's
+  interior is a named reviewed region exclusion rather than a pixel comparison; its position, size, and computed
+  styles are still asserted exactly, and the pane shell, header and metadata remain fully compared. The exclusion
+  is declared in the reviewed mapping, is bounded to that one component, and is not a mask, a tolerance change,
+  or a comparator change. The immutable mockup HTML/CSS and its raw source hash stay unchanged, and the manifest
+  count does not change.
 - Q: The `status-saved`, `status-autosaved`, `status-unsaved-changes`, `status-read-only`, `status-mixed-ending`
   and `status-large-file` manifest IDs require paired reference states, but the immutable mockup contains only the
   static `Autosave: On` status condition. How is that resolved? → A: Permit exactly six reviewed Feature 003
@@ -588,8 +591,8 @@ mockup/application comparisons before the additional state fixtures below are co
 
 | Family                | Required mapped region and Feature 003 adaptation                                                                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `editor-split`        | In-app row, real tabs, full toolbar, arrangement segment, both pane shells, basic preview typography, and status; Monaco identity and editor-size behavior remain Feature 002-owned and the reference variant carries the application's in-scope pane content. |
-| `editor-only`         | The same shared chrome with the Editor pane filling the owned document region.                                                                                                       |
+| `editor-split`        | In-app row, real tabs, full toolbar, arrangement segment, both pane shells, basic preview typography, and status; the reference variant carries the application's in-scope preview content, and the Monaco editor pane interior is a named Feature 002-owned region exclusion whose bounds and computed styles are still asserted. |
+| `editor-only`         | The same shared chrome with the Editor pane filling the owned document region; its Monaco interior is the same named Feature 002-owned region exclusion.                             |
 | `preview-only`        | The same shared chrome with the Preview pane filling the owned document region; remote assets, math, Mermaid, and other rich-rendering expansion are removed from the reference variant rather than reproduced.                    |
 | `menu-file`           | Binding menu geometry with Feature 003 file actions, at most six recent files, and downstream actions visibly unavailable. Recent folders remain absent.                             |
 | `menu-settings`       | Binding compact menu, swatches, rows, separators, indicators, switches, and All settings entry; only previously owned or Feature 003 settings may act.                               |
@@ -1065,10 +1068,13 @@ table, safe-subject only, remediated only from that row's vocabulary.
   prohibited. A Feature 003 reference adapter MAY activate an existing mockup class that expresses the approved
   zero-Assistant boundary, provided it preserves the immutable source hash and does not alter the mockup's
   HTML/CSS values; the reviewed mapping MUST name that adapted region explicitly. The same adapter MAY also
-  replace the mockup's document-pane content with the in-scope content the application renders and remove the
+  replace the mockup's basic-preview content with the in-scope content the application renders and remove the
   deferred rich-rendering widgets, under the same conditions: only the mockup's own primitives may be used, the
   raw source hash MUST stay unchanged, and no mask, tolerance, comparator, coordinate handling, or manifest count
-  may change.
+  may change. A region owned by another feature MAY be declared as a named reviewed exclusion in the mapping when
+  this feature cannot own its pixels — currently only the Monaco editor pane interior. Such an exclusion MUST name
+  the owning feature, MUST still assert the excluded region's bounds and computed styles exactly, MUST leave the
+  surrounding shell compared, and MUST NOT be used for any surface this feature owns.
 - **FR-FT-056**: Behavior-owned differences from the historical mockup MUST be rendered as explicit Feature 003
   reference variants using the same binding primitives: the launcher contains file recents only and an unavailable
   Open Folder action; the File menu contains no recent folder, renders `Reopen last file`, marks its deferred
