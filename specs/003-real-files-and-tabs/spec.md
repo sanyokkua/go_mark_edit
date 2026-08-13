@@ -1254,6 +1254,78 @@ completed feature already owns their behavior.
   Feature 003 requirement, and zero populated workspace, Assistant/provider, custom native-frame, or deferred
   rich-rendering surface appears in order to manufacture parity.
 
+## Deferred Work — recorded 2026-08-13
+
+Sixteen tasks remain open at the close of Phase 18. Each is recorded here with
+what it actually needs, so none is left as an unexplained `[ ]`. **None is
+deferred because it is hard; each is deferred because it is blocked, out of
+session scope, or waiting on a decision this session was not authorised to
+take.**
+
+### Blocked on a specification decision
+
+- **T072** — the View popup and the Glass menubar residuals are fully
+  attributed (`residual-attribution.md`). The **About popup is not**: 1,402 of
+  its 1,489 pixels are two solid text bands at deltas up to 116 — production
+  draws real version and build metadata where the immutable mockup carries fixed
+  placeholders. This is a content difference no style convergence can close. It
+  needs either a reviewed Feature 003 reference variant carrying production's
+  in-scope About content, built from the mockup's own `.mi` primitives exactly as
+  the File and View menus already are, or an explicit decision that the About
+  metadata rows are a named reviewed region exclusion. Either is a clarification,
+  not an implementation.
+- **T075** — the six paired `status-*` states. The clarification permitting six
+  reviewed reference-adapter status variants is already recorded (Session
+  2026-08-13), and removing the duplicated save status from the status bar in
+  Phase 18 makes production's row carry the binding's item inventory, which is
+  the precondition. What remains is implementation, and it is larger than it
+  looks: reference variants are Node-side string transforms, and adding these
+  six requires widening seven closed union types across six files plus the
+  hand-maintained `REFERENCE_ADAPTER_HASH`. It was **not started** rather than
+  half-built, per the session rule that each piece is either complete and green
+  or fully reverted. `phase-18/t075-machinery.md` records the complete map.
+
+### Blocked on T075 or on the matrix
+
+- **T068** — explicitly requires T056–T067 green before running the
+  three-repetition matrix. T072 and T075 are not green.
+- **T035** — the 546-case matrix was executed this session; its result is
+  recorded in `phase-18/t035-run.md`. The task requires every one of the 40
+  additional state IDs to pass, which cannot hold while T075's six status states
+  have no paired reference.
+- **T054** — the evidence-contract task for the matrix run; it reports counts
+  the matrix must first produce.
+
+### Requires coverage this session did not complete
+
+- **T045** — the editor region is measured at **182 unexplained pixels, all
+  characterised**, but only at 1280px Minimal Light. The task requires 1280,
+  768 and 375 across all six palettes — 18 combinations, 17 unmeasured.
+- **T065, T066, T067** — validation sweeps over launcher/prompt states, the six
+  palettes, and the two narrow widths for slices that are not all green yet.
+- **T073, T074** — state-paired tab/identity/toolbar and preview evidence. The
+  toolbar half gained its comparison region this session (T077); the state
+  pairing did not.
+
+### Requires a by-hand walkthrough and a full release run
+
+- **T036, T037, T038, T039, T044** — the release-evidence stack. `just build`
+  produces a runnable binary and it was verified to start and shut down cleanly,
+  but the by-hand walkthrough of the primary journeys on the built application
+  could not be performed in an unattended session: it needs interactive control
+  of a native macOS window, which requires the operator to grant application
+  access. Everything else in these tasks depends on that walkthrough or on the
+  matrix.
+
+### One finding that belongs to no task yet
+
+`editor-stage.test.ts` and `window-shell.test.ts` fail **106 cases** on a clean
+tree, and have done so since at least four earlier convergences landed, because
+`just check` never runs Playwright. All 106 reduce to four stale locators; in
+every cluster production matches the binding and the test describes the
+pre-convergence surface. This is diagnosed in full in
+`phase-18/e2e-baseline-failures.md` and needs its own task.
+
 ## Assumptions
 
 - The four supported file suffixes and native file dialogs are the complete direct file-entry surface for this
