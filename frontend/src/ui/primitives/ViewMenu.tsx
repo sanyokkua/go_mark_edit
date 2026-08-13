@@ -42,6 +42,12 @@ export interface ViewMenuProps {
   triggerLabel?: string;
   arrangement?: ViewArrangement;
   onArrangementChange?: (arrangement: ViewArrangement) => void;
+  /*
+   * The menu is always present, because a menu that disappears gives the user
+   * nothing to read. With no document open the rows whose values come from the
+   * active document are drawn unavailable instead.
+   */
+  documentOpen?: boolean;
   lineNumbers?: boolean;
   onLineNumbersChange?: (enabled: boolean) => void;
   wordWrap?: boolean;
@@ -67,6 +73,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
   triggerLabel = t('view.menu.trigger'),
   arrangement,
   onArrangementChange,
+  documentOpen = true,
   lineNumbers,
   onLineNumbersChange,
   wordWrap,
@@ -241,7 +248,10 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
               {(['editor', 'split', 'preview'] as const).map((value) => (
                 <DropdownMenu.RadioItem
                   className={menu.row}
+                  data-availability={documentOpen ? 'enabled' : 'unavailable'}
+                  disabled={!documentOpen}
                   key={value}
+                  title={documentOpen ? undefined : t('view.menu.noDocument')}
                   value={value}
                 >
                   {t(getAction(value).labelKey)}

@@ -29,6 +29,7 @@
   "view.menu.showEditor": "Show Editor",
   "view.menu.showPreview": "Show Preview",
   "view.menu.showWorkspace": "Show Workspace",
+  "view.menu.noDocument": "Open a document to change the view arrangement.",
   "editor.view": "Editor view",
   "editor.toolbar": "Document toolbar",
   "editor.tabs": "Document tabs",

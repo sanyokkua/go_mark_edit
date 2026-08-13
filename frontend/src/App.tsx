@@ -253,53 +253,59 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
           void editorSettings.updateFile(patch).catch((): void => undefined);
         },
       }}
-      viewMenuProps={
-        activeDocument === undefined
-          ? undefined
-          : {
-              arrangement: activeDocument.view.arrangement as ViewArrangement,
-              editorVisible: activeDocument.view.editorVisible,
-              lineNumbers: editorSettings.settings.lineNumbers,
-              previewVisible: activeDocument.view.previewVisible,
-              onArrangementChange: (arrangement): void => {
-                void dispatch(setViewArrangement(arrangement));
-              },
-              onEditorVisibilityChange: (visible): void => {
-                void dispatch(setEditorPaneVisible(visible));
-              },
-              onFullscreen: (): void => {
-                void import('./logic/adapter').then(({ windowAdapter }) => {
-                  void windowAdapter.toggleFullscreen();
-                });
-              },
-              onLineNumbersChange: (enabled): void => {
-                void editorSettings.update({ lineNumbers: enabled });
-              },
-              onPreviewVisibilityChange: (visible): void => {
-                void dispatch(setPreviewPaneVisible(visible));
-              },
-              onWordWrapChange: (enabled): void => {
-                void editorSettings.update({ wordWrap: enabled });
-              },
-              wordWrap: editorSettings.settings.wordWrap,
-              workspaceVisible,
-              /*
-               * The backend owns workspace visibility, so this issues the
-               * command and waits for the acknowledged projection rather than
-               * writing the projection itself. What it must not do is discard
-               * the rejection: a refused command would otherwise leave the
-               * control inert with nothing reported anywhere, which is
-               * indistinguishable from a dead button.
-               */
-              onWorkspaceVisibilityChange: (visible): void => {
-                void dispatch(setWorkspaceVisible(visible))
-                  .unwrap()
-                  .catch((error: unknown): void => {
-                    dispatch(notifyError(parseError(error)));
-                  });
-              },
-            }
-      }
+      /*
+       * The View menu is always offered. With no document open its arrangement
+       * rows are drawn unavailable — the values behind them come from the
+       * active document — while the rows backed by editor settings, layout
+       * state and the window adapter keep working. Removing the whole menu
+       * left the user with nothing to read and no way to see what View even
+       * contains.
+       */
+      viewMenuProps={{
+        documentOpen: activeDocument !== undefined,
+        arrangement: (activeDocument?.view.arrangement ??
+          'split') as ViewArrangement,
+        editorVisible: activeDocument?.view.editorVisible ?? true,
+        lineNumbers: editorSettings.settings.lineNumbers,
+        previewVisible: activeDocument?.view.previewVisible ?? true,
+        onArrangementChange: (arrangement): void => {
+          void dispatch(setViewArrangement(arrangement));
+        },
+        onEditorVisibilityChange: (visible): void => {
+          void dispatch(setEditorPaneVisible(visible));
+        },
+        onFullscreen: (): void => {
+          void import('./logic/adapter').then(({ windowAdapter }) => {
+            void windowAdapter.toggleFullscreen();
+          });
+        },
+        onLineNumbersChange: (enabled): void => {
+          void editorSettings.update({ lineNumbers: enabled });
+        },
+        onPreviewVisibilityChange: (visible): void => {
+          void dispatch(setPreviewPaneVisible(visible));
+        },
+        onWordWrapChange: (enabled): void => {
+          void editorSettings.update({ wordWrap: enabled });
+        },
+        wordWrap: editorSettings.settings.wordWrap,
+        workspaceVisible,
+        /*
+         * The backend owns workspace visibility, so this issues the
+         * command and waits for the acknowledged projection rather than
+         * writing the projection itself. What it must not do is discard
+         * the rejection: a refused command would otherwise leave the
+         * control inert with nothing reported anywhere, which is
+         * indistinguishable from a dead button.
+         */
+        onWorkspaceVisibilityChange: (visible): void => {
+          void dispatch(setWorkspaceVisible(visible))
+            .unwrap()
+            .catch((error: unknown): void => {
+              dispatch(notifyError(parseError(error)));
+            });
+        },
+      }}
     />
   );
 };

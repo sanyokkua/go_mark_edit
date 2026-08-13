@@ -309,6 +309,48 @@ it('STORY-001-AC-2 renders the blank application root', async () => {
   act((): void => disposeAppModelProjection());
 });
 
+// The View menu used to be removed entirely whenever no document was open, so
+// the shell showed three menus instead of four and the user could not see what
+// View contained. It is now always offered, with only the rows whose values
+// come from the active document drawn unavailable.
+it('FR-ED-004 offers all four menus with no document open', async () => {
+  render(<App />);
+
+  const actions = await screen.findByRole('navigation', {
+    name: 'Application actions',
+  });
+  act((): void => {
+    store.dispatch(resetProjection());
+    store.dispatch(
+      hydrateProjection({
+        revision: 41,
+        documents: {},
+        activeDocumentId: '',
+        ui: { sidebarVisible: true },
+      }),
+    );
+  });
+  expect(store.getState().documents.activeDocumentId).toBeNull();
+
+  expect(
+    within(actions)
+      .getAllByRole('button')
+      .map((button) => button.getAttribute('aria-label') ?? button.textContent),
+  ).toEqual(expect.arrayContaining(['File', 'Settings', 'View', 'About']));
+
+  fireEvent.keyDown(within(actions).getByRole('button', { name: 'View' }), {
+    key: 'ArrowDown',
+  });
+  const viewMenu = await screen.findByRole('menu', { name: 'View options' });
+  for (const label of ['Editor', 'Split', 'Preview']) {
+    expect(
+      within(viewMenu).getByRole('menuitemradio', { name: label }),
+    ).toHaveAttribute('data-availability', 'unavailable');
+  }
+  fireEvent.keyDown(viewMenu, { key: 'Escape' });
+  act((): void => disposeAppModelProjection());
+});
+
 it('T058 includes the Shortcuts dialog in the shared modal suppression state', () => {
   const source = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8');
 
