@@ -162,6 +162,13 @@ because `/speckit-converge` must still determine whether the implementation matc
   walking the real `just build` binary before calling a story done.
 - **`just package` exits non-zero on purpose** until Phase 08 introduces it — don't report that
   as broken.
+- **Everything under `frontend/wailsjs/` is committed executable (`100755`), because that is the
+  only mode the generator writes.** Wails writes every generated file through
+  `MustWriteString`, which hardcodes `0o755` (`internal/fs/fs.go:161`) with no platform branch.
+  "Tidying" those files back to `644` does not survive the next `wails generate module`, and it
+  breaks `just gen-check` for everyone afterwards — `git diff --exit-code` fails on the mode bit
+  alone, with zero content difference, which reads as generated-code drift when nothing drifted.
+  Three of the ten files were stored at `644` and did exactly that.
 - **Never assume the reader knows what an identifier means.** Restate a rule, anchor, or story ID
   in the same message with one concrete example — go find the fact rather than asking about it.
 - **`.claude/skills/speckit-*` and `.agents/skills/speckit-*` look like duplicate mirrors — they
