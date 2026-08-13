@@ -95,7 +95,47 @@ Two consequences:
    hover, focus or open state. That gap is closed separately; see
    `interactive-state-coverage.md`.
 
-## Status: recorded, not fixed
+## Repair progress — 2026-08-13
+
+Three of the four root causes are fixed, all by correcting the test to the
+surface the binding actually specifies. Production was the correct side in every
+case; nothing in production changed.
+
+| Fix | Cases |
+|---|---:|
+| `editor-stage.test.ts:5` — the appearance modes constant now spells the compact popup's `Auto (system)` (`mockup.html:615`) instead of the Settings **dialog**'s `Follows system`. Two surfaces, two catalogue keys; these cases drive the popup. | — |
+| `editor-stage.test.ts` — the plain `/` route opens an `Untitled` document; `release-notes.md` is a parity-fixture name that route never produces. | — |
+| `window-shell.test.ts` — `openSettings` clicked a menuitem named `Appearance`, but the binding opens the settings screen from its `All settings…` row (`mockup.html:624`); `Appearance` is the popup's group label and its radiogroup name, not an item. | — |
+| **Combined** | **39 fixed** |
+
+| Suite | Before | After |
+|---|---:|---:|
+| `editor-stage.test.ts` | 78 failed / 30 passed | **45 failed / 63 passed** |
+| `window-shell.test.ts` | 28 failed / 2 passed | **22 failed / 8 passed** |
+| **Total** | **106 failed / 32 passed** | **67 failed / 71 passed** |
+
+## The 67 that remain, and why they were not repaired here
+
+They are not more of the same. Each needs a judgement about the test's *intent*
+that should not be rushed:
+
+- **T069 × 27** ("retains the mockup chrome hierarchy") asserts the document
+  tabs are `toBeDisabled()`. That was correct when the shell was a static mock —
+  but **Feature 003's entire purpose was making those tabs real**, and a real
+  tab is enabled. Deciding what this test should now assert is a question about
+  what "retains the mockup chrome hierarchy" means once the chrome became
+  functional, not a locator rename.
+- **T055 375px × 9** drives Bold from the editor overflow popup. Focusing the
+  editor now dismisses that popup, so it must be reopened first. Reopening it
+  was attempted and the popup did not become visible again in that state, which
+  needs its own investigation — it may be a real defect in the narrow toolbar
+  overflow rather than a stale test.
+- **T019 375px × 9**, plus the remaining `window-shell` cases, are unexamined.
+
+Repairing these properly is its own unit of work. Guessing at their intent to
+drive a number down would be exactly the failure this whole phase is about.
+
+## Status of the remainder: recorded, not fixed
 
 The 106 stale cases are **deliberately not repaired in Phase 18**, and this is a
 scope decision rather than an oversight:

@@ -50,7 +50,12 @@ async function openAction(page: Page, label: string): Promise<void> {
 
 async function openSettings(page: Page): Promise<void> {
   await openAction(page, 'Settings');
-  await page.getByRole('menuitem', { name: 'Appearance' }).click();
+  /*
+   * The binding's compact popup opens the settings screen from its
+   * `All settings…` row (`mockup.html:624`); `Appearance` is the popup's group
+   * label and its radiogroup name, not a menu item.
+   */
+  await page.getByRole('menuitem', { name: /All settings/u }).click();
   await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
 }
 
@@ -502,7 +507,7 @@ for (const width of widths) {
     await dark.focus();
     await dark.press('Space');
     await expect(dark).toBeChecked();
-    const appearance = popup.getByRole('menuitem', { name: 'Appearance' });
+    const appearance = popup.getByRole('menuitem', { name: /All settings/u });
     await appearance.focus();
     await appearance.press('Enter');
     await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();

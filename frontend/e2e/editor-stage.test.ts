@@ -2,7 +2,13 @@ import { expect, test } from '@playwright/test';
 
 const widths = [1280, 768, 375] as const;
 const themes = ['Liquid Glass', 'Material', 'Minimal'] as const;
-const modes = ['Follows system', 'Light', 'Dark'] as const;
+/*
+ * The compact Settings popup's appearance rows, which the binding spells
+ * `Auto (system)` (`mockup.html:615`). The full Settings dialog spells the same
+ * choice `Follows system` — a different surface with different catalogue keys,
+ * and these cases drive the popup.
+ */
+const modes = ['Auto (system)', 'Light', 'Dark'] as const;
 
 for (const width of widths) {
   for (const theme of themes) {
@@ -68,7 +74,7 @@ for (const width of widths) {
 
         await page.keyboard.press('Escape');
         await expect(
-          page.getByRole('tab', { name: 'release-notes.md' }),
+          page.getByRole('tab', { name: 'Untitled' }).first(),
         ).toBeVisible();
         if (width === 375) {
           await page
@@ -342,7 +348,7 @@ for (const width of widths) {
         expect(editorBox!.width).toBeGreaterThan(0);
         expect(previewBox!.width).toBeGreaterThan(0);
         await expect(
-          page.getByRole('tab', { name: 'release-notes.md' }),
+          page.getByRole('tab', { name: 'Untitled' }).first(),
         ).toBeDisabled();
         await expect(
           page.getByRole('tab', { name: 'spec-draft.md' }),
@@ -450,6 +456,19 @@ for (const width of widths) {
         }
         await replaceEditorText();
         await editor.press(`${modifier}+a`);
+        if (width === 375) {
+          // Focusing the editor dismisses the overflow popup, so it has to be
+          // reopened before its formatting controls can be driven. The
+          // selection survives the reopen, which is what the assertion below
+          // depends on.
+          await page
+            .getByRole('toolbar', { name: 'Document toolbar' })
+            .getByLabel('More actions')
+            .click();
+          await expect(
+            page.locator('[data-viewport-popup="editor-overflow"]'),
+          ).toBeVisible();
+        }
         const formattingScope =
           width === 375
             ? page.locator('[data-viewport-popup="editor-overflow"]')
