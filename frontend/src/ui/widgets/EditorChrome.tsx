@@ -168,9 +168,25 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
   const [narrowToolbarOverflow, setNarrowToolbarOverflow] = useState(
     isNarrowToolbarViewport,
   );
+  /*
+   * The parity-shaped overflow is for parity captures only. It renders the
+   * binding's flat item list plus a text line standing in for the View group,
+   * and carries no text actions, no heading actions and no real arrangement
+   * radios.
+   *
+   * `narrowToolbarOverflow` alone used to force it, so at 375px the shipped
+   * application drew that stand-in as its actual narrow layout. Combined with
+   * `.relocateAt375 { display: none }` hiding the same controls from the
+   * toolbar, Bold, Italic, Strikethrough, Inline code and all three headings
+   * became unreachable at that width — present at 1280, gone at 375, with no
+   * other path to them.
+   *
+   * It is now confined to parity routes: a narrow parity capture still gets the
+   * binding's shape, and the real application gets its real controls.
+   */
   const toolbarOverflowParity =
     parityCase?.startsWith('primary:toolbar-overflow:') === true ||
-    narrowToolbarOverflow;
+    (narrowToolbarOverflow && parityCase !== null);
   useEffect((): (() => void) => {
     const onResize = (): void =>
       setNarrowToolbarOverflow(isNarrowToolbarViewport());
