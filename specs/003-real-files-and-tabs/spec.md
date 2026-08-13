@@ -1271,6 +1271,21 @@ completed feature already owns their behavior.
   result: 1,489 → 87 differing pixels, all of them the popup's antialiased outer boundary at a maximum
   channel delta of 4, with the interior at exactly zero.
 
+- Q: The editor region's computed styles differ from the binding on eight properties — the binding wants
+  `JetBrains Mono 13px/23.4px` with `overflow: auto`, production draws `Inter 16px/normal` with
+  `overflow: hidden` — and those eight assertions fail in 432 of the 1,638 matrix comparisons, worth roughly
+  23,000 raw differing pixels per editor-family case against 177 for the preview family over the identical
+  region and palette. It is the largest single lever remaining on the matrix. Does Feature 003 change it? →
+  A: **No.** The editor's typeface, type scale and scrolling model are Feature 002's decision and are owned
+  by that feature's specification; Feature 003 may not silently redefine another feature's approved surface
+  to improve its own numbers, and doing so would change the shipped editing experience as a side effect of a
+  parity metric. The difference is instead measured precisely and handed forward:
+  `evidence/ft-vs-08/phase-18/t035-run.md` records the eight properties with both sides' values, the 432
+  affected comparisons, and the per-case pixel weight, together with the preview-family control that isolates
+  the editor's own raster as the cause. **T035 cannot reach a full pass until Feature 002 resolves it**, and
+  that dependency is stated rather than worked around. No mask, tolerance, comparator or manifest change is
+  made in its place.
+
 ## Deferred Work — recorded 2026-08-13
 
 Sixteen tasks remain open at the close of Phase 18. Each is recorded here with
