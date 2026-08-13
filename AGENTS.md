@@ -179,6 +179,16 @@ because `/speckit-converge` must still determine whether the implementation matc
   container costs ~332 deterministic pixels confined to glyphs, because Chromium composites
   scrollable areas and drops LCD subpixel antialiasing. Check determinism and composited-layer
   ancestry before chasing a style fix that does not exist.
+- **The parity reference server is reused across runs, so it serves a stale adaptation.**
+  `frontend/playwright.config.ts` sets `reuseExistingServer: !process.env.CI` for the server on
+  port 4174. A server started before you edit `frontend/e2e/parity/reference-adapter.ts` keeps
+  serving the **old** HTML for the rest of the session, and the measurement fails in the direction
+  that looks like production drift — the Settings popup reported 2,554 pixels instead of 709 until
+  the port-4174 process was killed. Kill it after every adapter change.
+- **`git add -A` can silently regress `frontend/wailsjs/**` to mode 644**, especially after a
+  `git stash` cycle, which fails `just gen-check` on the mode bit alone with zero content
+  difference. Check `git ls-files -s frontend/wailsjs/runtime/` before committing anything that
+  used `add -A`.
 - **`just package` exits non-zero on purpose** until Phase 08 introduces it — don't report that
   as broken.
 - **Everything under `frontend/wailsjs/` is committed executable (`100755`), because that is the
