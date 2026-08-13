@@ -1314,15 +1314,15 @@ take.**
   toolbar half gained its comparison region this session (T077); the state
   pairing did not.
 
-### Requires a by-hand walkthrough and a full release run
+### Requires a full release run
 
-- **T036, T037, T038, T039, T044** — the release-evidence stack. `just build`
-  produces a runnable binary and it was verified to start and shut down cleanly,
-  but the by-hand walkthrough of the primary journeys on the built application
-  could not be performed in an unattended session: it needs interactive control
-  of a native macOS window, which requires the operator to grant application
-  access. Everything else in these tasks depends on that walkthrough or on the
-  matrix.
+- **T036, T037, T038, T039, T044** — the release-evidence stack. The by-hand
+  walkthrough is **done** and recorded in `evidence/ft-ev-09/current-host-walkthrough.md`:
+  the built binary was driven through startup, edit, settings, the autosave
+  toggle, the View menu, a theme switch, fifteen tabs, tab switching, closing a
+  tab, the abandoned-close-plan sequence, and quit. What remains in these tasks
+  is the unrestricted gate stack and the coverage ledger, which depend on the
+  matrix and therefore on T075.
 
 ### One finding that belongs to no task yet
 
