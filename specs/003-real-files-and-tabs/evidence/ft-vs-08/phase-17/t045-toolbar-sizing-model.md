@@ -125,3 +125,56 @@ T063, T064. Unchanged failures: T058 glass-light 6,187, glass-dark 6,380, T059
 181, T060 Settings 709, T060 overflow 205, T061 About 1,489, T061 View
 `bounds.bottom: 455 != 457` with 9,036 pixels — the View pixel count was
 measured against a stashed tree to confirm it predates this change.
+
+## Follow-up: the arrangement segment was missing its spacer
+
+**Reported from the running application:** the Editor/Split/Preview segment sat
+immediately after Format/Compact/Lint, where the binding holds it against the
+toolbar's trailing edge.
+
+The binding does that with an empty element, not with alignment:
+
+```html
+<button class="tbtn txt" title="Lint — ⌥⇧L">✓ Lint</button>
+<div class="tgrp tg-over"><button class="tbtn" title="More">»</button></div>
+<div class="tsp"></div>                                     <!-- mockup.html:673 -->
+<div class="seg" id="viewseg">…</div>
+```
+
+with `.tsp{flex:1}` (`:289`) and `.app[data-w="375"] .tsp{display:none}` (`:61`).
+
+Production had no spacer at all, and its order put the segment *before* the
+overflow trigger rather than after it. Both are now corrected: the toolbar ends
+`… deferred actions → overflow → spacer → segment`, matching the binding's own
+order, and `.spacer` carries `flex: 1` with the same 376px collapse.
+
+Two dead classes were removed in the same pass. `.utilityGroup` and
+`.rightGroup` were declared in `EditorChrome.module.css` and applied to nothing;
+`.rightGroup` was a half-built `margin-inline-start: auto` version of exactly
+this. The binding's mechanism is a spacer, so the spacer replaces them rather
+than sitting beside them.
+
+### Verified
+
+| | Reference | Production |
+|---|---|---|
+| spacer `flex-grow` | `1` (`.tsp`) | `1` (`.spacer`) |
+| segment is the toolbar's last child | yes | yes |
+| segment inset from trailing edge at 1280px | — | 10px, exactly the toolbar's `padding-right` |
+| at 375px | `.tsp` `display:none` | spacer and segment `display:none`, overflow trigger shown |
+
+`EditorChrome.test.tsx` locks the order structurally — the segment is the
+toolbar's last child, the spacer sits between it and the overflow trigger, and
+`.spacer` declares `flex: 1`. Asserted as order rather than computed layout
+because jsdom does not lay flexbox out.
+
+### What could not certify this
+
+The paired pixel comparison could not, because it is uniformly red for unrelated
+reasons. A full `T035` run measured here took 30.6 minutes and reported
+**0 passed, 1620 failed** of 1638 attempted, with the whole-shell case alone at
+309,525 unexplained pixels and Feature 002 region diagnostics (font-family,
+font-size, overflow) dominating. That is the mid-convergence state Phase 17 is
+working through, not a consequence of this change; the toolbar has no targeted
+slice of its own in `targeted-manifest.ts`, whose regions are the menus, the tab
+strip and the paused preview.

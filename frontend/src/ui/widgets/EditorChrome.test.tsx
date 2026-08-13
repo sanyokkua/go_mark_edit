@@ -37,6 +37,39 @@ it('T018 renders the complete toolbar groups and a real tab surface', () => {
   expect(screen.getByRole('button', { name: 'Format' })).toBeDisabled();
 });
 
+/*
+ * The binding holds the arrangement segment against the toolbar's trailing edge
+ * with an empty `.tsp{flex:1}` between the overflow group and the segment
+ * (mockup.html:672–673). Production had no spacer and drew the segment
+ * immediately after Format/Compact/Lint, so it sat mid-toolbar.
+ *
+ * Asserted as order rather than as computed layout, because jsdom does not lay
+ * flexbox out: the segment must be the toolbar's last child, and the spacer must
+ * sit between the overflow trigger and it.
+ */
+it('T033 holds the arrangement segment at the toolbar trailing edge', () => {
+  const { container } = render(
+    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+  );
+
+  const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
+  const children = Array.from(toolbar.children);
+  const segment = screen.getByRole('radiogroup', { name: 'View arrangement' });
+  const overflow = container.querySelector('details');
+  const spacer = toolbar.querySelector(':scope > div[aria-hidden="true"]');
+
+  expect(children.at(-1)).toBe(segment);
+  expect(spacer).not.toBeNull();
+  expect(children.indexOf(spacer as Element)).toBe(children.length - 2);
+  expect(children.indexOf(overflow as Element)).toBe(children.length - 3);
+
+  const chromeStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    'utf8',
+  );
+  expect(chromeStyles).toMatch(/\.spacer\s*\{[^}]*flex:\s*1;/);
+});
+
 it('T060 exposes real application-menu controls from the narrow toolbar overflow', () => {
   const originalWidth = window.innerWidth;
   const originalUrl = window.location.href;

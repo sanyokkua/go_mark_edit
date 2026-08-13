@@ -453,15 +453,6 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
           deferredActions.map((id) => action(id).id),
           onActivate,
         )}
-        <div
-          aria-label={t('editor.arrangement')}
-          className={`${styles.group} ${styles.arrangement} ${styles.relocateAt375}`}
-          role="radiogroup"
-        >
-          {arrangementButton('editor')}
-          {arrangementButton('split')}
-          {arrangementButton('preview')}
-        </div>
         <details
           ref={overflowRef}
           className={styles.overflow}
@@ -483,6 +474,19 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
             <Icon name="more" size={15} />
           </summary>
         </details>
+        {/* Binding source: mockup.html `.tsp` (:673). The arrangement segment
+            follows the spacer, and the overflow trigger precedes it, so the
+            segment sits against the toolbar's trailing edge. */}
+        <div aria-hidden="true" className={styles.spacer} />
+        <div
+          aria-label={t('editor.arrangement')}
+          className={`${styles.group} ${styles.arrangement} ${styles.relocateAt375}`}
+          role="radiogroup"
+        >
+          {arrangementButton('editor')}
+          {arrangementButton('split')}
+          {arrangementButton('preview')}
+        </div>
       </div>
       {overflowOpen
         ? createPortal(

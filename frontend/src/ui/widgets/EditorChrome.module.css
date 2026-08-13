@@ -45,13 +45,28 @@
   box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
 
-.utilityGroup {
-  flex: 0 1 auto;
+/*
+ * Binding source: mockup.html `.tsp{flex:1}` (:289), the empty element sitting
+ * between the overflow group and the arrangement segment (:672–:673). It is what
+ * holds the segment against the toolbar's trailing edge; without it the segment
+ * packs against the Format/Compact/Lint buttons.
+ *
+ * Two earlier classes here, `.utilityGroup` and `.rightGroup`, were never
+ * applied to anything — `.rightGroup` was a half-built `margin-inline-start:
+ * auto` version of this. A spacer is the binding's own mechanism, so it replaces
+ * them rather than sitting beside them.
+ */
+.spacer {
+  flex: 1;
 }
 
-.rightGroup {
-  flex: 0 1 auto;
-  margin-inline-start: auto;
+/* Binding source: mockup.html `.app[data-w="375"] .tsp{display:none}` (:61).
+   The narrow layout relocates the segment into the overflow popup, so there is
+   nothing left to hold right and the remaining controls pack together. */
+@media (max-width: 376px) {
+  .spacer {
+    display: none;
+  }
 }
 
 .group {
