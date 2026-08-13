@@ -2,8 +2,9 @@
 
 **Requirement**: FR-FT-045, FR-FT-053, FR-FT-055, the `menu-view` family row
 (`spec.md:610`), and FR-ED-004 (Feature 002, consumed).
-**Status**: **five of six changes implemented.** The sixth is blocked on a
-specification decision and is now the only structural difference left.
+**Status**: **converged.** All six changes implemented; the sixth through an
+approved reference variant. `bounds` now match exactly and 163 of the 165
+remaining pixels are on the popup's own outer boundary.
 **Branch**: `feature/v1-implementation--003-t071-settings-parity`.
 
 ## What was implemented
@@ -31,7 +32,11 @@ Word wrap are now 33px where every other text row is 30px — exactly the
 binding's own two heights — because the 19px pill drives the row box. It is
 geometry, not decoration.
 
-## Measured, 1280px Minimal Light
+## Measured after the presentation work, before the variant
+
+This is the intermediate state, and it is what isolated the one remaining
+divergence. The reference column is the unadapted `#m-view`; the variant below
+brings it to production's inventory and its height to 312.
 
 | Reference `#m-view` (h **282**) | y | h | Production (h **312**) | y | h |
 |---|---:|---:|---|---:|---:|
@@ -50,7 +55,7 @@ geometry, not decoration.
 Every row that exists on both sides now has the same height, and the first four
 sit at identical offsets. The whole 30px height difference is one extra row.
 
-## The blocked change, and why
+## The divergence this isolated
 
 The previous note proposed switching the three arrangement radios to the
 binding's two `Show Editor ✓` / `Show Preview ✓` checkboxes, and asked for
@@ -81,23 +86,74 @@ Two secondary differences are the same class and were also left alone:
   is the pattern FR-FT-056 already grants the File menu, and that this session's
   clarification extended to the toolbar.
 
-All three point at one resolution — a Feature 003 reference variant for
-`#m-view`, built from the mockup's own `.mi` primitives, exactly as
-`adaptFileMenu` does for `#m-file`. FR-FT-056's enumerated list does not cover
-the View menu, so that is recorded as a decision rather than taken unilaterally.
+All three pointed at one resolution — a Feature 003 reference variant for
+`#m-view` — which was raised as a decision rather than taken unilaterally, and
+approved. The next section records it.
 
-## Slice result — honest movement
+## The decision, and the variant that resolved it
 
-`T061 state-pairs the View popup` moved from `bounds.height: 282 != 284` with
-9,036 pixels to `bounds.height: 282 != 312` with **15,330** pixels.
+Approved: keep FR-ED-004's inventory in production and express the difference as
+a Feature 003 reference variant for `#m-view`, exactly as `adaptFileMenu` does
+for `#m-file`. Recorded as the fourth entry under `## Clarifications` →
+**Session 2026-08-13** in `spec.md`, and encoded in FR-FT-056 and the
+`menu-view` family row.
 
-The pixel count rose because the extra arrangement row now displaces every row
-below it by 30px, so rows that previously happened to overlap no longer do. The
-previous 2px height agreement was a coincidence — nine uniform 30px rows
+`adaptViewMenu` in `frontend/e2e/parity/reference-adapter.ts` rebuilds the
+region from the mockup's own `.mi`, `.sep`, `.k`, `.tick`/`.tick.off` and
+`.tgl`/`.tgl.on` primitives, covering all three behaviour-owned differences at
+once:
+
+1. Editor / Split / Preview replace `Show Editor` / `Show Preview`. The mockup
+   draws both of its rows ticked, which *is* the split arrangement, so Split
+   carries the tick and the other two carry `.tick.off` — the 14px box keeps its
+   width either way, so no row moves.
+2. `Toggle Assistant` and `Distraction-free reading` carry the reviewed
+   unavailable opacity and no accelerator, because both are deferred and neither
+   has a Feature 003 registry shortcut.
+3. Accelerators are formatted for the host, so `Toggle Sidebar` reads `⌘\` on
+   this macOS host where the mockup writes `Ctrl \`.
+
+Verified: the raw mockup source hash is unchanged, and the switch states are the
+source's own (Line numbers on, Word wrap off).
+
+## One production defect the variant exposed
+
+With the reference dimmed, production's two deferred rows were still drawn at
+full strength — `ViewMenu.module.css` had `.item[data-disabled]` set
+`cursor: not-allowed` but no opacity, so the menu refused to activate those rows
+while showing them as available. The File popup already dims its deferred rows
+through `--disabled-opacity` (`ShellMenuRow.module.css:272`); the View menu now
+does the same. That single rule accounted for **1,404** of the residual pixels.
+
+## Slice result
+
+| Step | Bounds | Unexplained pixels |
+|---|---|---:|
+| Session start | `height: 282 != 284` | 9,036 |
+| Binding order, grouping, indicators, switches, accelerators | `height: 282 != 312` | 15,330 |
+| Reference variant for `#m-view` | **match** | 1,569 |
+| Production's deferred rows dimmed | **match** | **165** |
+
+The intermediate rise is not a regression: the extra arrangement row displaced
+every row below it, so rows that previously happened to overlap no longer did.
+The original 2px height agreement was a coincidence — nine uniform 30px rows
 totalling 2px more than the binding's mixed 30/33/1px rows — and it concealed
-five missing presentation requirements. The current number measures one named,
-recorded divergence instead of hiding five. It falls as soon as that divergence
-is resolved.
+five missing presentation requirements.
+
+## What remains — 165 px, 163 of them boundary
+
+| Location | Pixels | Cause |
+|---|---:|---|
+| Popup outer boundary (`x ≤ 11`, `x ≥ 238`, `y ≤ 11`, `y ≥ 300`) | **163** | the popup's own antialiased edge and 12px corners, plus the single column of content beside it that the fractional bounding box includes |
+| Line numbers toggle, right edge (`x 232`, `y 183–184`) | **2** | max channel delta 8 on the accent pill's rounded edge |
+
+The boundary pixels are the pattern already recorded for the File and Settings
+popups: an opaque popup blending with the chrome behind it. They close when that
+chrome converges, cannot be closed by changing the popup, and are not masked.
+
+Determinism was checked before calling either residual drift, per
+`t062-renderer-determinism.md`: six captures of the popup on each page produced
+exactly **one** raster per page.
 
 ## Gates
 

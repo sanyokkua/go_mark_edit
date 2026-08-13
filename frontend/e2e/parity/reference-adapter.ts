@@ -130,6 +130,110 @@ const DEFERRED_TOOLBAR_CONTROL_TITLES = Object.freeze([
   'Lint — ⌥⇧L',
 ] as const);
 
+/**
+ * Session 2026-08-13 clarification, FR-FT-056. FR-ED-004 requires the View menu
+ * to expose Editor, Split and Preview "in the original mockup order and
+ * grouping", but the mockup's `#m-view` has `Show Editor` and `Show Preview`
+ * instead — so the two halves of that requirement cannot both hold against the
+ * binding. Production keeps FR-ED-004's inventory and the difference is
+ * expressed here, exactly as `adaptFileMenu` does for `#m-file`.
+ *
+ * Three differences, all from the same cause — Feature 003 owns this menu's
+ * behaviour while the mockup predates it:
+ *
+ *   1. The arrangement rows are Editor / Split / Preview, not Show Editor /
+ *      Show Preview. The mockup draws both of its rows ticked, which is the
+ *      split arrangement, so Split carries the tick and the other two carry the
+ *      binding's own `.tick.off` — the box keeps its width either way.
+ *   2. `Toggle Assistant` and `Distraction-free reading` are deferred, so they
+ *      carry no registry shortcut and production draws them visibly
+ *      unavailable. The mockup gives both an accelerator at full opacity.
+ *   3. Accelerators are Feature 003's own and are formatted for the host, so
+ *      `Toggle Sidebar` reads `⌘\` on macOS where the mockup writes `Ctrl \`.
+ *
+ * Only the mockup's own primitives are used: `.mi`, `.sep`, `.k`, `.tick`,
+ * `.tick.off` and `.tgl`/`.tgl.on`. The switch states are the source's own —
+ * Line numbers on, Word wrap off. No HTML/CSS value in
+ * `docs/delivery/spec/surface/mockup.html` is edited and the raw source hash is
+ * unchanged.
+ */
+const viewMenuReferenceAccelerators: Readonly<
+  Record<FileMenuReferencePlatform, Readonly<Record<string, string | null>>>
+> = {
+  darwin: {
+    'toggle-sidebar': '⌘\\',
+    'toggle-assistant': null,
+    'distraction-free-reading': null,
+    fullscreen: 'F11',
+  },
+  other: {
+    'toggle-sidebar': 'Ctrl+\\',
+    'toggle-assistant': null,
+    'distraction-free-reading': null,
+    fullscreen: 'F11',
+  },
+};
+
+const VIEW_MENU_SOURCE_MARKER = '<div class="dropdown" id="m-view"';
+
+/**
+ * Feature 003 owns its accelerators, so they are formatted for the host the
+ * application is actually running on — the same rule the File menu already
+ * follows, and the same host the browser under test runs on. The File menu
+ * receives its platform explicitly because the manifest pins it per case; the
+ * View menu appears in every variant, so it defaults to the host here.
+ */
+function hostReferencePlatform(): FileMenuReferencePlatform {
+  return process.platform === 'darwin' ? 'darwin' : 'other';
+}
+
+function tickSpan(selected: boolean): string {
+  return `<span class="tick${selected ? '' : ' off'}">✓</span>`;
+}
+
+function adaptViewMenu(
+  html: string,
+  platform: FileMenuReferencePlatform,
+): string {
+  // A source without the View menu at all is not a parity reference; leave it
+  // untouched so unit fixtures can exercise the other variants in isolation,
+  // exactly as `adaptPreviewPane` does.
+  const start = html.indexOf(VIEW_MENU_SOURCE_MARKER);
+  if (start < 0) return html;
+  const open = html.indexOf('>', start);
+  const end = html.indexOf(
+    '</div>\n    <div class="dropdown" id="m-about"',
+    open,
+  );
+  if (end < 0) {
+    throw new Error('View-menu reference source region is malformed');
+  }
+  for (const required of ['class="tick"', 'class="tgl on"', 'class="sep"']) {
+    if (!html.slice(open, end).includes(required)) {
+      throw new Error(
+        `View-menu reference source lost the required primitive: ${required}`,
+      );
+    }
+  }
+  const shortcut = viewMenuReferenceAccelerators[platform];
+  const adapted = [
+    '',
+    `<div class="mi"><span>Toggle Sidebar</span>${acceleratorSpan(shortcut['toggle-sidebar'])}</div>`,
+    `<div class="mi"${deferredAttributes()}><span>Toggle Assistant</span>${acceleratorSpan(shortcut['toggle-assistant'])}</div>`,
+    `<div class="mi"><span>Editor</span>${tickSpan(false)}</div>`,
+    `<div class="mi"><span>Split</span>${tickSpan(true)}</div>`,
+    `<div class="mi"><span>Preview</span>${tickSpan(false)}</div>`,
+    '<div class="sep"></div>',
+    '<div class="mi"><span>Line numbers</span><span class="tgl on"></span></div>',
+    '<div class="mi"><span>Word wrap</span><span class="tgl"></span></div>',
+    '<div class="sep"></div>',
+    `<div class="mi"${deferredAttributes()}><span>Distraction-free reading</span>${acceleratorSpan(shortcut['distraction-free-reading'])}</div>`,
+    `<div class="mi"><span>Full screen</span>${acceleratorSpan(shortcut['fullscreen'])}</div>`,
+    '',
+  ].join('\n      ');
+  return html.slice(0, open + 1) + adapted + html.slice(end);
+}
+
 const TOOLBAR_SOURCE_MARKER = '<div class="toolbar">';
 
 function adaptDeferredToolbarControls(html: string): string {
@@ -343,6 +447,7 @@ export const REFERENCE_ADAPTER_HASH = hash(
     fileMenuReferenceAccelerators,
     REFERENCE_UNAVAILABLE_OPACITY,
     DEFERRED_TOOLBAR_CONTROL_TITLES,
+    viewMenuReferenceAccelerators,
     IN_SCOPE_PREVIEW_CONTENT,
     variantRules,
   }),
@@ -444,10 +549,14 @@ export function adaptReferenceHtml(
       : withZeroAssistant;
   const withInScopePreview = adaptPreviewPane(withFileOnly);
   const withDeferredToolbar = adaptDeferredToolbarControls(withInScopePreview);
+  const withViewMenu = adaptViewMenu(
+    withDeferredToolbar,
+    fileMenuPlatform ?? hostReferencePlatform(),
+  );
   const adaptedHtml =
     variant === 'file-menu'
-      ? adaptFileMenu(withDeferredToolbar, fileMenuPlatform ?? 'other')
-      : withDeferredToolbar;
+      ? adaptFileMenu(withViewMenu, fileMenuPlatform ?? 'other')
+      : withViewMenu;
   return {
     adapterHash: REFERENCE_ADAPTER_HASH,
     sourceHash: hash(html),

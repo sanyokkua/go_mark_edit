@@ -46,8 +46,15 @@
   background: var(--hover);
 }
 
+/* A deferred View row is drawn visibly unavailable at the same
+   `--disabled-opacity` the File popup already uses for its deferred rows
+   (`ShellMenuRow.module.css`), which is the single reviewed unavailable opacity
+   the Feature 003 reference variant carries. Without the opacity this menu drew
+   `Toggle Assistant` and `Distraction-free reading` at full strength while
+   refusing to activate them. */
 .item[data-disabled] {
   cursor: not-allowed;
+  opacity: var(--disabled-opacity);
 }
 
 /* Binding source: mockup.html `.mi .k` (:241), rendered from the registry

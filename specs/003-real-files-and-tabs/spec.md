@@ -216,6 +216,18 @@
   003 may not change any deferred outcome. The immutable mockup HTML/CSS and its raw source hash stay unchanged,
   no mask, tolerance, comparator, coordinate handling or manifest count changes, and this treatment is confined
   to controls the action registry marks deferred.
+- Q: FR-ED-004 requires the View menu to expose Editor, Split, and Preview "in the original mockup order and
+  grouping", but the mockup's `#m-view` has `Show Editor` and `Show Preview` instead, so the two halves of that
+  requirement cannot both hold against the binding. Production also draws `Toggle Assistant` and
+  `Distraction-free reading` visibly unavailable with no accelerator, where the mockup gives both an accelerator
+  at full opacity, and formats accelerators for the host platform. How is that resolved? → A: Keep FR-ED-004's
+  inventory in production and express the difference as a Feature 003 reference variant for `#m-view`, exactly as
+  the File menu already does for `#m-file`. The variant carries the Editor, Split, and Preview rows in place of
+  `Show Editor` and `Show Preview`, marks the two deferred rows visibly unavailable at the single reviewed
+  unavailable opacity, drops the accelerators Feature 003 does not own, and is built for the host platform — all
+  from the mockup's own `.mi`, `.tick`, `.sep`, and `.k` primitives. Binding order, grouping, indicators, and
+  switches remain production's target and stay compared. The immutable mockup HTML/CSS and its raw source hash
+  stay unchanged, and no mask, tolerance, comparator, coordinate handling, or manifest count changes.
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -607,7 +619,7 @@ mockup/application comparisons before the additional state fixtures below are co
 | `preview-only`        | The same shared chrome with the Preview pane filling the owned document region; remote assets, math, Mermaid, and other rich-rendering expansion are removed from the reference variant rather than reproduced.                    |
 | `menu-file`           | Binding menu geometry with Feature 003 file actions, at most six recent files, and downstream actions visibly unavailable. Recent folders remain absent.                             |
 | `menu-settings`       | Binding compact menu, swatches, rows, separators, indicators, switches, and All settings entry; only previously owned or Feature 003 settings may act.                               |
-| `menu-view`           | Binding menu geometry, grouping, indicators, switches, and accelerators without changing Feature 002 action behavior.                                                                |
+| `menu-view`           | Binding menu geometry, grouping, indicators, switches, and accelerators without changing Feature 002 action behavior; the reference variant carries FR-ED-004's Editor/Split/Preview rows, the deferred rows visibly unavailable, and Feature 003's own accelerators. |
 | `menu-about`          | Binding geometry, separators, labels, and accelerator column without changing owned About behavior.                                                                                  |
 | `tab-menu`            | Binding tab-menu shape with the exact Feature 003 action inventory and untitled-path unavailable states.                                                                             |
 | `toolbar-overflow`    | Binding flat menu-row presentation and responsive relocation, retaining Feature 002 action identities and deferred outcomes.                                                         |
@@ -1091,7 +1103,10 @@ table, safe-subject only, remediated only from that row's vocabulary.
   Open Folder action; the File menu contains no recent folder, renders `Reopen last file`, marks its deferred
   actions visibly unavailable, and carries Feature 003's own accelerators; the toolbar marks its deferred
   controls — `image`, `format`, `compact`, and `lint` — visibly unavailable at the same single reviewed
-  unavailable opacity, so their geometry, labels and spacing stay compared; the tab menu adds Move tab left and
+  unavailable opacity, so their geometry, labels and spacing stay compared; the View menu carries the Editor,
+  Split, and Preview arrangement rows FR-ED-004 requires in place of the mockup's `Show Editor` and `Show Preview`
+  rows, marks its deferred `Toggle Assistant` and `Distraction-free reading` rows visibly unavailable, and carries
+  Feature 003's own accelerators; the tab menu adds Move tab left and
   Move tab right between its close-action and path-action groups; mixed-ending normalization is an additional
   `save-prompt` state; `reload-prompt` includes bounded/truncated editable, metadata-only, and read-only variants
   with their specified buttons; the Editor and Preview panes carry the in-scope document content the application
