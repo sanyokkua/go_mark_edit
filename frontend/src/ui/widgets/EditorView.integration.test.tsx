@@ -683,10 +683,14 @@ it('STORY-016-AC-4 reflects a backend Preview-only view patch in the status bar'
   const document = statusDocument();
   await renderStatusEditor(document, '# Backend preview');
 
-  const status = await screen.findByRole('status', {
-    name: 'Document status',
-  });
-  expect(status).toHaveTextContent('Split');
+  await screen.findByRole('status', { name: 'Document status' });
+  // The arrangement is read off the panes themselves; the status row no longer
+  // repeats the label the Editor/Split/Preview switch already carries.
+  expect(screen.getByLabelText('Editor pane')).not.toHaveAttribute(
+    'aria-hidden',
+    'true',
+  );
+  expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
 
   act((): void => {
     mockStatePatchListener?.({
@@ -707,7 +711,6 @@ it('STORY-016-AC-4 reflects a backend Preview-only view patch in the status bar'
     });
   });
 
-  expect(status).toHaveTextContent('Preview');
   expect(screen.getByLabelText('Editor pane')).toHaveAttribute(
     'aria-hidden',
     'true',

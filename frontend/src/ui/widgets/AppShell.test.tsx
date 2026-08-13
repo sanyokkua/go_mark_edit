@@ -338,7 +338,9 @@ it('T042 places the 28px status surface below editor content in the shell region
   const status = within(documentArea).getByRole('status', {
     name: 'Document status',
   });
-  expect(status).toHaveTextContent('Saved');
+  // The row no longer prints the save status — the title bar owns it — so the
+  // backend projection is asserted on the authoritative attribute instead.
+  expect(status).toHaveAttribute('data-status-state', 'saved');
   expect(status.parentElement).toBe(documentArea);
 });
 

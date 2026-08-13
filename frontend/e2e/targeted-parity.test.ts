@@ -1473,7 +1473,12 @@ test('T063 captures backend-authoritative editor-status states at 1280px Minimal
       'data-status-state',
       statusCase.status,
     );
-    await expect(status).toContainText(statusCase.text);
+    // The status row draws no save status — the binding puts it in the title
+    // bar (`mockup.html` `.doc-name`, :594), so that is where it is asserted.
+    await expect(
+      page.locator('header[aria-label="Document identity"]'),
+    ).toContainText(statusCase.text);
+    await expect(status).not.toContainText(statusCase.text);
     await expect(status.locator('[data-status-item="cursor"]')).toContainText(
       'Ln',
     );

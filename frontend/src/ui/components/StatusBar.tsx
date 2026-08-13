@@ -1,15 +1,11 @@
 import { useState } from 'react';
 
 import type { EditorPosition } from './CodeEditor';
-import type {
-  SaveStatus,
-  ViewArrangement,
-} from '../../logic/store/appModelTypes';
+import type { SaveStatus } from '../../logic/store/appModelTypes';
 import { formatNumber, t } from '../../i18n';
 import styles from './StatusBar.module.css';
 
 export interface StatusBarProps {
-  arrangement: ViewArrangement;
   cursor: EditorPosition;
   encoding: string;
   lineEnding: string;
@@ -26,7 +22,6 @@ function translationKey(prefix: string, value: string): string {
 }
 
 const StatusBar: React.FC<StatusBarProps> = ({
-  arrangement,
   cursor,
   encoding,
   lineEnding,
@@ -73,25 +68,23 @@ const StatusBar: React.FC<StatusBarProps> = ({
       <span className={styles.responsiveItem} data-status-item="line-ending">
         {lineEndingLabel}
       </span>
-      <span
-        className={styles.responsiveItem}
-        data-status-item="standard"
-        data-write-in-flight={writeInFlight || undefined}
-      >
-        {saveStatus}
-        {writeInFlight ? ` · ${t('status.writeInFlight')}` : ''}
-      </span>
+      {/* The binding draws no save status here: `mockup.html` puts it in the
+          title bar instead (`.doc-name` … `· autosaved`, :594), which
+          `DocumentIdentity` renders. Only the transient write is reported here,
+          and only while it is in flight, so the row at rest carries the same
+          items as the binding. */}
+      {writeInFlight ? (
+        <span
+          className={styles.responsiveItem}
+          data-status-item="standard"
+          data-write-in-flight="true"
+        >
+          {t('status.writeInFlight')}
+        </span>
+      ) : null}
       {/* Binding source: mockup.html `.sb-autosave` (:841). */}
       <span className={styles.responsiveItem} data-status-item="autosave">
         {t(autosave ? 'status.autosave.on' : 'status.autosave.off')}
-      </span>
-      {/* Binding source: mockup.html `.pill` (:386) — the trailing controls are
-          rounded chips, not bare labels. */}
-      <span
-        className={`${styles.responsiveItem} ${styles.pill}`}
-        data-status-item="arrangement"
-      >
-        {t(translationKey('arrangement', arrangement))}
       </span>
       <button
         aria-controls="document-status-details"

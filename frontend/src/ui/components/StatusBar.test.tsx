@@ -26,7 +26,6 @@ it('T033 keeps the status surface at one exact 28px row with accessible details'
 it('STORY-016-AC-1 renders initial untitled metadata', () => {
   render(
     <StatusBar
-      arrangement="split"
       cursor={{ lineNumber: 1, column: 1 }}
       encoding="utf-8"
       lineEnding="lf"
@@ -40,13 +39,11 @@ it('STORY-016-AC-1 renders initial untitled metadata', () => {
   expect(within(status).getByText('0 words')).toBeVisible();
   expect(within(status).getByText('UTF-8')).toBeVisible();
   expect(within(status).getByText('LF')).toBeVisible();
-  expect(within(status).getByText('Split')).toBeVisible();
 });
 
 it('T042 exposes the shell status row as a status landmark', () => {
   render(
     <StatusBar
-      arrangement="editor"
       cursor={{ lineNumber: 1, column: 1 }}
       encoding="utf-8"
       lineEnding="lf"
@@ -57,10 +54,13 @@ it('T042 exposes the shell status row as a status landmark', () => {
   expect(screen.getByRole('status', { name: 'Document status' })).toBeVisible();
 });
 
-it('T015 renders the authoritative saved status beside document metadata', () => {
+// The binding draws no save status and no arrangement label in this row: the
+// save status belongs to the title bar (`mockup.html` `.doc-name` … `·
+// autosaved`, :594) and the arrangement to the Editor/Split/Preview switch.
+// Drawing either here duplicated a control the user already has.
+it('T015 keeps the save status out of the row and inside Document details', () => {
   render(
     <StatusBar
-      arrangement="editor"
       cursor={{ lineNumber: 4, column: 2 }}
       encoding="utf-8"
       lineEnding="lf"
@@ -69,13 +69,38 @@ it('T015 renders the authoritative saved status beside document metadata', () =>
     />,
   );
 
-  expect(screen.getByRole('status')).toHaveTextContent('Saved');
+  const status = screen.getByRole('status');
+  expect(status).not.toHaveTextContent('Saved');
+  expect(status.querySelector('[data-status-item="standard"]')).toBeNull();
+
+  fireEvent.click(
+    within(status).getByRole('button', { name: 'Document details' }),
+  );
+  expect(
+    within(status).getByRole('region', { name: 'Document details' }),
+  ).toHaveTextContent('Saved');
+});
+
+it('T015 draws no arrangement label, which the view switch already owns', () => {
+  render(
+    <StatusBar
+      cursor={{ lineNumber: 1, column: 1 }}
+      encoding="utf-8"
+      lineEnding="lf"
+      wordCount={0}
+    />,
+  );
+
+  const status = screen.getByRole('status');
+  expect(status.querySelector('[data-status-item="arrangement"]')).toBeNull();
+  expect(status).not.toHaveTextContent('Editor');
+  expect(status).not.toHaveTextContent('Split');
+  expect(status).not.toHaveTextContent('Preview');
 });
 
 it('T063 exposes the backend-authoritative status state on the status landmark', () => {
   render(
     <StatusBar
-      arrangement="editor"
       autosave
       cursor={{ lineNumber: 4, column: 2 }}
       encoding="utf-8"
@@ -92,10 +117,9 @@ it('T063 exposes the backend-authoritative status state on the status landmark',
   );
 });
 
-it('shows the write-in-flight state without replacing the authoritative dirty status', () => {
-  render(
+it('reports the transient write, and only while it is in flight', () => {
+  const { rerender } = render(
     <StatusBar
-      arrangement="editor"
       cursor={{ lineNumber: 4, column: 2 }}
       encoding="utf-8"
       lineEnding="lf"
@@ -106,15 +130,27 @@ it('shows the write-in-flight state without replacing the authoritative dirty st
   );
 
   const status = screen.getByRole('status');
-  expect(status).toHaveTextContent('Unsaved changes');
   expect(status).toHaveTextContent('Saving');
   expect(status.querySelector('[data-write-in-flight="true"]')).not.toBeNull();
+
+  // At rest the item leaves the row entirely, so the row carries the same
+  // items as the binding — which is what parity captures.
+  rerender(
+    <StatusBar
+      cursor={{ lineNumber: 4, column: 2 }}
+      encoding="utf-8"
+      lineEnding="lf"
+      status="unsaved-changes"
+      wordCount={3}
+    />,
+  );
+  expect(status).not.toHaveTextContent('Saving');
+  expect(status.querySelector('[data-status-item="standard"]')).toBeNull();
 });
 
 it('StatusBar responsive detail keeps dropped file facts accessible', () => {
   render(
     <StatusBar
-      arrangement="split"
       autosave
       cursor={{ lineNumber: 2, column: 4 }}
       encoding="utf-8"

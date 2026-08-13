@@ -42,9 +42,12 @@ test('FT-VS-02 flushes the latest edit and reports one explicit Save confirmatio
   await expect(
     page.locator('[data-notification-code="save-success"]'),
   ).toHaveCount(1);
-  await expect(page.locator('footer').filter({ hasText: 'Saved' })).toHaveCount(
-    1,
-  );
+  // The committed status shows in the title bar, where the binding draws it.
+  await expect(
+    page
+      .locator('header[aria-label="Document identity"]')
+      .filter({ hasText: 'Saved' }),
+  ).toHaveCount(1);
 });
 
 test('FT-VS-03 exposes real tabs, backend-confirmed menu moves, and exact navigation', async ({
@@ -126,7 +129,12 @@ test('FT-VS-05 exposes acknowledged autosave control and truthful save status wi
     menu.getByRole('menuitem', { name: 'Lint on save' }),
   ).toBeDisabled();
 
-  await expect(page.locator('footer')).toContainText('Not saved');
+  // The save status lives in the title bar, where the binding draws it; the
+  // status row carries no copy of it.
+  await expect(
+    page.locator('header[aria-label="Document identity"]'),
+  ).toContainText('Not saved');
+  await expect(page.locator('footer')).not.toContainText('Not saved');
   await expect(page.locator('[data-write-in-flight="true"]')).toHaveCount(0);
   await expect(
     page.locator('[data-notification-code="automatic-save"]'),

@@ -309,13 +309,6 @@ const AppShell: React.FC<AppShellProps> = ({
         />
         {hasActiveDocument && activeDocument !== undefined ? (
           <StatusBar
-            arrangement={
-              activeDocument.view.arrangement === 'split'
-                ? 'split'
-                : activeDocument.view.previewVisible
-                  ? 'preview'
-                  : 'editor'
-            }
             cursor={liveCursor}
             encoding={activeDocument.encoding}
             lineEnding={activeDocument.lineEnding}
@@ -327,7 +320,6 @@ const AppShell: React.FC<AppShellProps> = ({
           />
         ) : showParityEmptyChrome ? (
           <StatusBar
-            arrangement="editor"
             cursor={{ lineNumber: 1, column: 1 }}
             encoding="utf-8"
             lineEnding="lf"
