@@ -92,8 +92,22 @@ it('T033 keeps popup accelerators, group labels, separators, and viewport sizing
   expect(surfaceStyles).toContain('font-size: var(--popup-row-font-size)');
   expect(surfaceStyles).toContain('content: attr(data-shortcut)');
   expect(surfaceStyles).toContain('opacity: var(--disabled-opacity)');
-  expect(settingsStyles).toContain('border-radius: var(--popup-radius)');
-  expect(settingsStyles).toContain('min-inline-size: var(--popup-min-width)');
+  /*
+   * The Settings popup now draws its surface from MenuSurface, so the radius and
+   * min-width are asserted against their single owner rather than against a copy
+   * in the per-menu file — the rule this test's own comment states.
+   */
+  expect(surfaceStyles).toContain('border-radius: var(--popup-radius)');
+  /*
+   * What is left in the Settings stylesheet is menu-specific by that same rule:
+   * the accelerator span the shared `::after` cannot express readably.
+   */
+  expect(settingsStyles).toContain(
+    'font-size: var(--popup-accelerator-font-size)',
+  );
+  expect(settingsStyles).not.toContain(
+    'min-inline-size: var(--popup-min-width)',
+  );
 });
 
 afterEach(() => {

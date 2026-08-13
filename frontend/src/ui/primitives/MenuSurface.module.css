@@ -71,6 +71,28 @@
   opacity: var(--disabled-opacity);
 }
 
+/*
+ * `aria-disabled` carries two different meanings here, and one row class must
+ * not flatten them into one appearance.
+ *
+ * On File and View it marks a *deferred action* — a row whose command is not
+ * built yet — and the rule above draws it visibly unavailable, which is the
+ * missing line that once cost the View menu 1,404 pixels.
+ *
+ * On Settings it marks a row that *reports the current value* of a setting
+ * chosen elsewhere: the open-mode and Markdown-standard lists show a tick
+ * against the active option and are not actions at all. Nothing is being
+ * withheld, so they keep full strength and the ordinary cursor, matching the
+ * binding, which draws `.mi` (mockup.html:239) with no disabled state.
+ *
+ * Rows marked this way still carry `aria-disabled`: they are genuinely not
+ * activatable, and assistive technology should say so.
+ */
+.row.stateRow[aria-disabled='true'] {
+  cursor: default;
+  opacity: 1;
+}
+
 /* Binding source: mockup.html `.mi .k` (:241). Rows carry their accelerator in
    `data-shortcut`; a row whose action has no registry shortcut draws no
    trailing box at all, so it keeps the two flex children the row expects. */
@@ -101,13 +123,16 @@
   margin: 5px 4px;
 }
 
-/* Binding source: mockup.html `.lab`. */
+/* Binding source: mockup.html `.lab` (:244), which is
+   `padding:7px 10px 3px`. This owner had 5px, and the File menu carried a
+   `.fileMenu .groupLabel{padding-block-start:7px}` override to put it back —
+   a local correction of the shared primitive is how drift announces itself. */
 .groupLabel {
   color: var(--faint);
   font-size: var(--popup-group-font-size);
   font-weight: 700;
   letter-spacing: 0.09em;
-  padding: 5px 10px 3px;
+  padding: 7px 10px 3px;
   text-transform: uppercase;
 }
 
@@ -131,6 +156,7 @@
   background: var(--surface-3);
   border: var(--control-border-width) solid var(--stroke);
   border-radius: 12px;
+  cursor: pointer;
   flex: none;
   height: 19px;
   position: relative;

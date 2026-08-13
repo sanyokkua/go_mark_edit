@@ -16,6 +16,7 @@ import type {
   MarkdownSettings,
 } from '../../logic/adapter';
 import type { AppearanceChoice, Theme } from '../../logic/theme/theme';
+import menu from '../primitives/MenuSurface.module.css';
 import styles from './SettingsMenu.module.css';
 
 export interface SettingsMenuProps {
@@ -107,7 +108,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
   const tick = (selected: boolean): React.JSX.Element => (
     <span
       aria-hidden="true"
-      className={`${styles.tick} ${selected ? '' : styles.tickOff}`}
+      className={`${menu.tick} ${selected ? '' : menu.tickOff}`}
     >
       ✓
     </span>
@@ -121,18 +122,19 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
   ): React.JSX.Element => (
     <div
       aria-disabled={disabled}
-      className={styles.menuItem}
+      className={menu.row}
       data-settings-row={label}
     >
       <span>{label}</span>
       <span
-        className={styles.toggle}
+        className={menu.toggle}
         data-checked={checked}
         data-settings-toggle={label}
       >
         <input
           aria-label={label}
           checked={checked}
+          className={styles.toggleInput}
           disabled={disabled}
           type="checkbox"
           onChange={(event): void => onChange(event.target.checked)}
@@ -143,7 +145,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
 
   return (
     <div className={styles.settingsBody} data-settings-content>
-      <div className={styles.label}>{t('settings.menu.theme')}</div>
+      <div className={menu.groupLabel}>{t('settings.menu.theme')}</div>
       <div
         aria-label={t('settings.menu.theme')}
         className={styles.swatches}
@@ -168,7 +170,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
           />
         ))}
       </div>
-      <div className={styles.label}>{t('appearance.mode.label')}</div>
+      <div className={menu.groupLabel}>{t('appearance.mode.label')}</div>
       <div
         aria-label={t('appearance.mode.label')}
         className={styles.options}
@@ -178,7 +180,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
           <div
             key={option.value}
             aria-checked={mode === option.value}
-            className={styles.menuItem}
+            className={menu.row}
             role="radio"
             tabIndex={0}
             onClick={(): void => onModeChange(option.value)}
@@ -194,12 +196,12 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
           </div>
         ))}
       </div>
-      <div className={styles.separator} />
-      <div className={styles.label}>{t('settings.openMode')}</div>
+      <div className={menu.separator} />
+      <div className={menu.groupLabel}>{t('settings.openMode')}</div>
       {openModeOptions.map((option) => (
         <div
           aria-disabled="true"
-          className={styles.menuItem}
+          className={`${menu.row} ${menu.stateRow}`}
           key={option.value}
           role="menuitem"
         >
@@ -207,12 +209,12 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
           {tick(defaultOpenMode === option.value)}
         </div>
       ))}
-      <div className={styles.separator} />
-      <div className={styles.label}>{t('settings.menu.markdown')}</div>
+      <div className={menu.separator} />
+      <div className={menu.groupLabel}>{t('settings.menu.markdown')}</div>
       {markdownStandardOptions.map((option) => (
         <div
           aria-disabled="true"
-          className={styles.menuItem}
+          className={`${menu.row} ${menu.stateRow}`}
           key={option.value}
           role="menuitem"
         >
@@ -220,7 +222,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
           {tick((markdownSettings?.standard ?? 'gfm') === option.value)}
         </div>
       ))}
-      <div className={styles.separator} />
+      <div className={menu.separator} />
       {toggle(
         saveToggleLabels.autosave,
         fileSettings?.autosave ?? true,
@@ -240,9 +242,9 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
         (checked): void => onMarkdownSettingsChange?.({ lintOnSave: checked }),
         onMarkdownSettingsChange === undefined,
       )}
-      <div className={styles.separator} />
+      <div className={menu.separator} />
       <div
-        className={styles.menuItem}
+        className={menu.row}
         role="menuitem"
         tabIndex={0}
         onClick={onOpenAppearance}
@@ -396,7 +398,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
         <div
           ref={contentRef}
           aria-label={t('settings.menu.label')}
-          className={styles.content}
+          className={`${menu.surface} ${styles.anchored}`}
           data-viewport-popup="settings-menu"
           onKeyDown={(event): void => {
             if (event.key === 'Escape') {

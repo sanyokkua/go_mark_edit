@@ -98,3 +98,60 @@ The 375px overflow slice (205 pixels) has not been split this way yet.
 warnings), `just typecheck`, `just frontend-test` (74 suites / 466 tests),
 `just archtest` — all green. No file was changed for this investigation; the
 measurement ran in a temporary probe that was removed.
+
+## Follow-up: the Settings popup now draws from the shared menu surface
+
+`SettingsMenu.module.css` had been re-declaring the popup surface, rows, group
+labels, separators, ticks and switches that `MenuSurface.module.css` exists to
+own once. It now consumes them. What is left in the per-menu file is
+menu-specific by the rule the T033 test states: the trigger, the theme swatches,
+the portal anchoring, the real checkbox input, and the accelerator span.
+
+**The primitive was the drifted one, not the consumer.** Two of its declarations
+disagreed with the binding, and converting without fixing them would have
+imported the drift:
+
+| Declaration | Binding | `MenuSurface` before | `SettingsMenu` before |
+|---|---|---|---|
+| `.lab` / `.groupLabel` padding | `7px 10px 3px` (`mockup.html:244`) | `5px 10px 3px` | `7px 10px 3px` |
+| `.tgl` / `.toggle` cursor | `pointer` (`mockup.html:248`) | *(absent)* | `pointer` |
+
+`ShellMenuRow.module.css` carried `.fileMenu .groupLabel{padding-block-start:7px}`
+— a per-menu correction of the shared primitive back to the binding, which is
+how the drift announced itself. `MenuSurface.groupLabel` had no consumer at the
+time, so aligning it to the binding moved no existing pixel.
+
+**The two meanings of `aria-disabled` are now distinct.** The shared `.row`
+draws `aria-disabled` as a deferred action — `cursor: not-allowed` and
+`--disabled-opacity` — which is the line whose absence once cost the View menu
+1,404 pixels. The Settings open-mode and Markdown-standard rows use it for the
+opposite reason: they report the value in force, chosen elsewhere. Swapping them
+onto the bare `.row` would have dimmed them to 0.48. `MenuSurface` gained an
+explicit `.stateRow` modifier for that case (`cursor: default`, full opacity);
+the rows keep `aria-disabled`, because they genuinely cannot be activated and
+assistive technology should say so.
+
+**The accelerator stayed a DOM node.** Moving "All settings…" to the shared
+`data-shortcut`/`::after` mechanism removed the text from `textContent`, which
+`SettingsMenu.test.tsx` caught. Pseudo-element content is unevenly exposed to
+assistive technology, and this is the one actionable row in the popup, so it
+keeps a real span and a local `.shortcut` rule.
+
+**No regression, measured both ways:**
+
+| Slice | Before | After |
+|---|---:|---:|
+| T060 Settings popup, 1280px Minimal Light | 709 | **709** |
+| T060 Settings overflow, 375px Minimal Light | 205 | **205** |
+
+Both are unchanged, so the interior stays at the zero recorded above and the
+conversion introduced no production style difference. The 709 and 205 remain
+open for the reasons already given — neither is closable by editing this popup.
+
+Verified in the real `wails dev` application, not only under the mock bridge:
+the popup measures 250px wide with `border-radius: 12px` from
+`--popup-radius`, and an open-mode row computes `cursor: default` at
+`opacity: 1`.
+
+`just frontend-test` is now 74 suites / 470 tests — the four added tests are the
+projection regression cases recorded in `toggle-sidebar-projection.md`.

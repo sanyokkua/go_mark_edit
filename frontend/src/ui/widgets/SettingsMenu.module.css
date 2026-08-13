@@ -1,7 +1,21 @@
+/*
+ * The popup surface, rows, group labels, separators, ticks and switches all
+ * come from `MenuSurface.module.css`, which is the single owner of menu
+ * styling. Only what is specific to the Settings menu lives here: its menubar
+ * trigger, the theme swatches, and the two things the shared surface cannot
+ * know about — where this popup is anchored, and its real checkbox input.
+ *
+ * The rows that report the open mode and the Markdown standard use the shared
+ * `.stateRow` modifier: they carry `aria-disabled` because they cannot be
+ * activated, but they are reporting a value rather than withholding an action,
+ * so they must not be drawn at the deferred-action opacity.
+ */
+
 .menu {
   position: relative;
 }
 
+/* Binding source: mockup.html `.menu>button` (:229). */
 .trigger {
   background: transparent;
   border: var(--control-border-width) solid transparent;
@@ -11,32 +25,18 @@
   padding: var(--menu-trigger-padding);
 }
 
-.content {
-  backdrop-filter: var(--blur);
-  background: var(--elevated);
-  border: var(--control-border-width) solid var(--stroke);
-  border-radius: var(--popup-radius);
-  box-shadow: var(--win-shadow);
-  color: var(--text);
-  display: block;
-  min-inline-size: var(--popup-min-width);
-  padding: var(--popup-padding);
+/*
+ * The popup is portalled and positioned from measured anchor coordinates, so it
+ * takes `position: absolute` where the shared surface is `relative`. Composed
+ * after `.surface` on the element for that one property.
+ */
+.anchored {
   position: absolute;
-  z-index: var(--z-dropdown);
 }
 
 .settingsBody {
   display: block;
   width: 100%;
-}
-
-.label {
-  color: var(--faint);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  padding: 7px 10px 3px;
-  text-transform: uppercase;
 }
 
 .swatches {
@@ -45,6 +45,7 @@
   padding: 6px 10px;
 }
 
+/* Binding source: mockup.html `.swatches i` (:247). */
 .swatch {
   background: transparent;
   border: var(--control-border-width) solid var(--stroke);
@@ -76,96 +77,36 @@
   display: grid;
 }
 
-.menuItem {
-  align-items: center;
-  appearance: none;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  color: var(--text);
-  display: flex;
-  font: inherit;
-  font-size: var(--popup-row-font-size);
-  gap: 22px;
-  justify-content: space-between;
-  padding: var(--popup-row-padding);
-  text-align: start;
-  width: 100%;
-  -webkit-appearance: none;
-  cursor: pointer;
-}
-
-div.menuItem[aria-disabled='true'] {
-  cursor: default;
-}
-
-.menuItem:hover,
-.menuItem:focus-visible {
-  background: var(--hover);
-}
-
-.separator {
-  background: var(--stroke-soft);
-  block-size: var(--control-border-width);
-  margin: 5px 4px;
-}
-
-.tick {
-  color: var(--accent-ink);
-  text-align: center;
-  width: 14px;
-}
-
-.tickOff {
-  color: transparent;
-}
-
+/*
+ * Binding source: mockup.html `.mi .k` (:241) — the accelerator is a child
+ * element there, and it stays one here.
+ *
+ * The shared surface draws accelerators from a `data-shortcut` attribute
+ * through `.row::after`, which suits the File and View menus. This row keeps a
+ * real node: pseudo-element content is not part of `textContent` and is
+ * unevenly exposed to assistive technology, and "All settings…" is the one
+ * Settings row that is actually actionable, so its accelerator has to be
+ * readable. `.row:not([data-shortcut])::after` already resolves to
+ * `content: none`, so the shared rule and this span do not both render.
+ */
 .shortcut {
   color: var(--faint);
   font-family: var(--mono);
   font-size: var(--popup-accelerator-font-size);
 }
 
-.toggle {
-  background: var(--surface-3);
-  border: 1px solid var(--stroke);
-  border-radius: 12px;
-  cursor: pointer;
-  flex: none;
-  height: 19px;
-  position: relative;
-  width: 34px;
-}
-
-.toggle::after {
-  background: var(--muted);
-  border-radius: 50%;
-  content: '';
-  height: 14px;
-  left: 1.5px;
-  position: absolute;
-  top: 1.5px;
-  width: 14px;
-}
-
-.toggle[data-checked='true'] {
-  background: var(--accent);
-  border-color: transparent;
-}
-
-.toggle[data-checked='true']::after {
-  background: var(--accent-contrast);
-  left: 16px;
-}
-
-.toggle input {
+/*
+ * Settings drives its switches from a real checkbox so the control is operable
+ * and labelled; the View menu's switch is decorative. The input is taken out of
+ * the flow rather than hidden, so it stays focusable and keyboard-operable.
+ */
+.toggleInput {
   height: 1px;
   opacity: 0;
   position: absolute;
   width: 1px;
 }
 
-.toggle input:disabled,
-.menuItem[aria-disabled='true'] {
+.toggleInput:disabled {
   cursor: default;
 }
