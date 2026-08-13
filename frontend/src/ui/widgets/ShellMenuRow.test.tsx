@@ -67,8 +67,13 @@ it('T033 keeps popup accelerators, group labels, separators, and viewport sizing
     resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
     'utf8',
   );
-  const viewStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/primitives/ViewMenu.module.css'),
+  /*
+   * The popup surface, rows, accelerators and separators are owned once by
+   * MenuSurface.module.css, so the shared assertions read that file. A rule that
+   * still lives in a per-menu stylesheet is menu-specific by definition.
+   */
+  const surfaceStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/primitives/MenuSurface.module.css'),
     'utf8',
   );
   const settingsStyles = readFileSync(
@@ -83,8 +88,10 @@ it('T033 keeps popup accelerators, group labels, separators, and viewport sizing
   expect(menuSource).toContain('menuDecoration(item.id)');
   expect(menuSource).toContain('data-shortcut={shortcutForMenuItem');
   expect(menuSource).toContain("'open-recent'");
-  expect(viewStyles).toContain('min-inline-size: var(--popup-min-width)');
-  expect(viewStyles).toContain('font-size: var(--popup-row-font-size)');
+  expect(surfaceStyles).toContain('min-inline-size: var(--popup-min-width)');
+  expect(surfaceStyles).toContain('font-size: var(--popup-row-font-size)');
+  expect(surfaceStyles).toContain('content: attr(data-shortcut)');
+  expect(surfaceStyles).toContain('opacity: var(--disabled-opacity)');
   expect(settingsStyles).toContain('border-radius: var(--popup-radius)');
   expect(settingsStyles).toContain('min-inline-size: var(--popup-min-width)');
 });
