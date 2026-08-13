@@ -90,7 +90,7 @@ three terms is closable by editing the Settings popup:
 - 286 are a gradient dither phase set by layerisation.
 - 4 are the same at two isolated points.
 
-The 375px overflow slice (205 pixels) has not been split this way yet.
+The 375px overflow slice is now split the same way — see the section below.
 
 ## Gates
 
@@ -155,3 +155,81 @@ the popup measures 250px wide with `border-radius: 12px` from
 
 `just frontend-test` is now 74 suites / 470 tests — the four added tests are the
 projection regression cases recorded in `toggle-sidebar-projection.md`.
+
+---
+
+# The 375px overflow slice — split (Phase 18)
+
+**Measured**: 2026-08-13, on freshly regenerated artifacts, with the same
+per-pixel classifier used to reproduce the 1280 split above.
+
+| Location | Pixels | Max channel delta |
+|---|---:|---:|
+| Popup outer boundary (within 12px of any edge) | **205** | 216 |
+| Everything in the popup interior | **0** | 0 |
+| **Total** | **205** | |
+
+**The 375px residual is entirely the popup's own antialiased outer boundary.**
+The interior differs by exactly zero pixels — cleaner than the 1280 case, which
+additionally carries the Liquid Glass swatch's gradient dither because that
+swatch is not drawn in the overflow layout.
+
+## The classifier was validated before being trusted
+
+The same tool was run against the 1280 artifacts, whose split was already
+recorded independently earlier in this document. It reproduced them exactly:
+
+```
+region 251x549
+total 709  boundary(<=12px) 416  interior 293  maxDelta 216
+  y  34- 55  x  18-100   n=289   <- the Liquid Glass gradient swatch
+  y 417-418  x 232-232   n=  2   maxDelta=8
+  y 483-484  x 232-232   n=  2   maxDelta=4
+```
+
+709 = 416 boundary + 293 interior, with the two stray pairs at y417-418 and
+y483-484 landing on the exact coordinates recorded above. A classifier that
+reproduces an independently-measured split is trustworthy for the one that had
+not been measured.
+
+## Both slices, complete
+
+| Slice | Total | Boundary | Interior | Interior cause |
+|---|---:|---:|---:|---|
+| Settings popup, 1280 | 709 | 416 | 293 | 289 on the Liquid Glass swatch's gradient dither (±1/channel); 4 at two isolated points; the two solid swatches differ by zero |
+| Settings overflow, 375 | **205** | **205** | **0** | — |
+
+Every one of the 914 pixels across both slices now has a written, proven cause,
+and none is closable by editing the Settings popup:
+
+- **621 boundary pixels** (416 + 205) are the popup's antialiased rounded
+  corners and the fractional column of chrome beside them, where an opaque popup
+  blends with the content behind it. They close when that chrome converges, and
+  they must not be masked.
+- **289 gradient-dither pixels** are Chromium's dither phase, set by
+  layerisation: production's popup is portalled into `.application-frame`, the
+  reference's is a plain absolutely-positioned `.dropdown`. Identical geometry,
+  identical computed style, sub-perceptual delta. The two solid swatches — which
+  need no dithering — are byte-identical, which is the control that makes this a
+  diagnosis rather than a guess.
+- **4 pixels** at two isolated points, same family.
+
+## Status against the amended task
+
+T071's wording was amended on 2026-08-13 to require **no unattributed pixels**
+rather than a literal zero, per the recorded clarification on what a visual
+parity check means. Against that standard both slices are complete: 914 of 914
+pixels attributed, zero masks, zero tolerance changes, zero comparator changes,
+and the immutable mockup and its source hash untouched.
+
+## A trap this measurement uncovered
+
+The first re-measurement of the Settings popup reported **2,554** pixels, not
+709. The cause was not production: `playwright.config.ts` sets
+`reuseExistingServer: !process.env.CI` for the reference server on port 4174, so
+a server started before a `reference-adapter.ts` edit keeps serving the **old**
+adaptation for the rest of the session.
+
+Killing the port-4174 process and re-running returned 709 and 205 exactly. Any
+measurement taken after an adapter change, without restarting that server, is
+invalid — and it fails in the direction that looks like production drift.

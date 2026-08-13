@@ -261,6 +261,21 @@ function adaptViewMenu(
   return html.slice(0, open + 1) + adapted + html.slice(end);
 }
 
+/*
+ * `format-on-save` and `lint-on-save` are `laterDeferred` in the action
+ * registry, so production draws both rows visibly unavailable. The binding has
+ * no disabled state anywhere, so without this the comparison would collapse
+ * into an opacity difference instead of measuring the row geometry — exactly
+ * what FR-FT-056 already grants the File menu and the deferred toolbar
+ * controls.
+ */
+const DEFERRED_SETTINGS_ROW_LABELS = Object.freeze([
+  'Format on save',
+  'Lint on save',
+] as const);
+
+const SETTINGS_SOURCE_MARKER = '<div class="dropdown" id="m-settings"';
+
 const TOOLBAR_SOURCE_MARKER = '<div class="toolbar">';
 
 function adaptDeferredToolbarControls(html: string): string {
@@ -295,6 +310,37 @@ function adaptDeferredToolbarControls(html: string): string {
       toolbar.slice(closedAt);
   }
   return html.slice(0, start) + toolbar + html.slice(end);
+}
+
+function adaptDeferredSettingsRows(html: string): string {
+  // A source without the Settings popup is not a parity reference; leave it
+  // untouched so unit fixtures can exercise the other variants in isolation.
+  const start = html.indexOf(SETTINGS_SOURCE_MARKER);
+  if (start < 0) return html;
+  const end = html.indexOf('</div>', html.indexOf('All settings', start));
+  if (end < 0) {
+    throw new Error('Settings reference source region is malformed');
+  }
+  let settings = html.slice(start, end);
+  for (const label of DEFERRED_SETTINGS_ROW_LABELS) {
+    const marker = `<span>${label}</span>`;
+    const at = settings.indexOf(marker);
+    if (at < 0) {
+      throw new Error(
+        `Settings reference source lost the deferred row: ${label}`,
+      );
+    }
+    const openedAt = settings.lastIndexOf('<div class="mi"', at);
+    if (openedAt < 0) {
+      throw new Error(`Settings deferred row is not a .mi primitive: ${label}`);
+    }
+    const closedAt = settings.indexOf('>', openedAt);
+    settings =
+      settings.slice(0, closedAt) +
+      deferredAttributes() +
+      settings.slice(closedAt);
+  }
+  return html.slice(0, start) + settings + html.slice(end);
 }
 
 function adaptFileMenu(
@@ -474,6 +520,7 @@ export const REFERENCE_ADAPTER_HASH = hash(
     fileMenuReferenceAccelerators,
     REFERENCE_UNAVAILABLE_OPACITY,
     DEFERRED_TOOLBAR_CONTROL_TITLES,
+    DEFERRED_SETTINGS_ROW_LABELS,
     viewMenuReferenceAccelerators,
     LIGHTS_SOURCE_MARKUP,
     IN_SCOPE_PREVIEW_CONTENT,
@@ -578,8 +625,9 @@ export function adaptReferenceHtml(
   const withNativeFrame = adaptNativeFrameControls(withFileOnly);
   const withInScopePreview = adaptPreviewPane(withNativeFrame);
   const withDeferredToolbar = adaptDeferredToolbarControls(withInScopePreview);
+  const withDeferredSettings = adaptDeferredSettingsRows(withDeferredToolbar);
   const withViewMenu = adaptViewMenu(
-    withDeferredToolbar,
+    withDeferredSettings,
     fileMenuPlatform ?? hostReferencePlatform(),
   );
   const adaptedHtml =
