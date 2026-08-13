@@ -664,7 +664,16 @@ func closePlanSummaryResult(plan *closePlan) apperr.ClosePlanResult {
 		return closePlanRefused(apperr.ClassifiedNotFound, "close plan", "The close plan is no longer active.", apperr.RemediationRetry)
 	}
 	summary := plan.summary
-	summary.Targets = append([]apperr.CloseTarget(nil), plan.summary.Targets...)
+	/*
+	 * Copied into a non-nil slice, not `append([]CloseTarget(nil), …)`, which
+	 * returns nil for an empty plan and marshals to `null`. `targets` carries no
+	 * `omitempty` and the frontend declares it `CloseTarget[]`, so a null there
+	 * threw while the plan was being normalised — and because the native close
+	 * had already been vetoed, the caught throw cancelled the quit and left a
+	 * window that could only be killed. A plan with nothing to close is an
+	 * ordinary plan, so it puts an empty array on the wire.
+	 */
+	summary.Targets = append(make([]apperr.CloseTarget, 0, len(plan.summary.Targets)), plan.summary.Targets...)
 	summary.DirtyTargetIDs = append([]string(nil), plan.summary.DirtyTargetIDs...)
 	return apperr.ClosePlanResult{Data: &summary}
 }

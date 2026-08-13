@@ -162,7 +162,15 @@ function normalizeClosePlanResult(result: ClosePlanResult): ClosePlanResult {
             ...result.data,
             kind: result.data.kind as ClosePlanSummary['kind'],
             status: result.data.status as ClosePlanSummary['status'],
-            targets: result.data.targets.map(normalizeCloseTarget),
+            /*
+             * Guarded because this reducer of the wire runs before anything can
+             * inspect the plan: a null here threw, the native-close handler
+             * caught it and cancelled a quit the frontend had already been asked
+             * to authorise, and the window could then only be killed. The
+             * backend no longer sends null, and a malformed plan now degrades to
+             * an empty target list instead of taking the close path down.
+             */
+            targets: (result.data.targets ?? []).map(normalizeCloseTarget),
           },
   };
 }

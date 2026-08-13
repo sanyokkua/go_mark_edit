@@ -256,3 +256,47 @@ it('ClosePlan complete-plan bridge preserves choices and exact arity', async () 
     },
   ]);
 });
+
+/*
+ * Quitting with no documents open left the window impossible to close.
+ *
+ * `apperr.ClosePlanSummary.Targets` is tagged without `omitempty`, so a plan
+ * with no targets arrives as `targets: null` — a value `ClosePlanSummary`
+ * declares as `CloseTarget[]`. Normalising it threw
+ * `TypeError: Cannot read properties of null (reading 'map')`, the native-close
+ * handler caught that and cancelled the quit, and Wails had already vetoed the
+ * native close. Every later attempt repeated it, so the process had to be
+ * killed.
+ */
+it('FR-FT-034 tolerates a plan whose empty target list arrives as null', async () => {
+  const prepareClose: ClosePlanBindings['prepareClose'] = jest.fn(
+    async (
+      kind: ClosePlanKind,
+      ids: string[],
+      revision: number,
+    ): Promise<ClosePlanResult> => {
+      void kind;
+      void ids;
+      void revision;
+      return {
+        data: {
+          id: 'plan-empty',
+          kind: 'quit',
+          status: 'ready',
+          tabSetRevision: 1,
+          targets: null,
+        },
+      } as unknown as ClosePlanResult;
+    },
+  );
+  const adapter = createClosePlanAdapter({
+    prepareClose,
+    resolveClosePlan: jest.fn(),
+    executeClosePlan: jest.fn(),
+  } as unknown as ClosePlanBindings);
+
+  const prepared = await adapter.prepareClose('quit', [], 1);
+
+  expect(prepared.data?.status).toBe('ready');
+  expect(prepared.data?.targets).toEqual([]);
+});

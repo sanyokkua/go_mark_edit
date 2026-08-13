@@ -2,9 +2,11 @@ package appmodel
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -330,4 +332,59 @@ func writeMixedDocument(t *testing.T, service *AppModelService, content string) 
 		t.Fatalf("OpenPath mixed = %+v", opened)
 	}
 	return path, opened.DocumentID
+}
+
+// Proves: FR-FT-034
+// A quit plan with nothing to close must put an empty JSON array on the wire.
+//
+// `ClosePlanSummary.Targets` is tagged without `omitempty` and the frontend
+// declares it `CloseTarget[]`, so a nil slice marshals to `null` and normalising
+// it throws. The native close handler caught that throw and cancelled the quit
+// while Wails had already vetoed the close, leaving a window that could only be
+// killed. Quitting with every tab closed is the ordinary way to reach it.
+func TestPrepareCloseWithNoTargetsMarshalsAnEmptyTargetArray(t *testing.T) {
+	service := NewAppModelService(&recordingEmitter{})
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+
+	// Reach the state a user reaches by closing every tab: the clean Untitled
+	// document the service starts with is closed, leaving nothing to target.
+	opening := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, state.Snapshot.OrderedDocumentIDs, state.Snapshot.TabSetRevision)
+	if opening.Data == nil {
+		t.Fatalf("prepare initial close: %+v", opening.Error)
+	}
+	if resolved := service.ResolveClosePlan(context.Background(), opening.Data.ID, nil); resolved.Error != nil {
+		t.Fatalf("resolve initial close: %+v", resolved.Error)
+	}
+	if closed := service.ExecuteClosePlan(context.Background(), opening.Data.ID); closed.Error != nil {
+		t.Fatalf("execute initial close: %+v", closed.Error)
+	}
+	state, err = service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState after closing every tab: %v", err)
+	}
+	if len(state.Snapshot.OrderedDocumentIDs) != 0 {
+		t.Fatalf("documents still open: %v", state.Snapshot.OrderedDocumentIDs)
+	}
+
+	plan := service.PrepareClose(context.Background(), apperr.ClosePlanQuit, nil, state.Snapshot.TabSetRevision)
+
+	if plan.Error != nil {
+		t.Fatalf("PrepareClose returned an error: %+v", plan.Error)
+	}
+	if plan.Data == nil {
+		t.Fatal("PrepareClose returned no plan")
+	}
+	if plan.Data.Targets == nil {
+		t.Fatal("plan targets are nil; want a non-nil empty slice so the wire carries []")
+	}
+	encoded, err := json.Marshal(plan.Data)
+	if err != nil {
+		t.Fatalf("marshal plan: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"targets":[]`) {
+		t.Fatalf("plan JSON = %s; want it to carry \"targets\":[]", encoded)
+	}
 }
