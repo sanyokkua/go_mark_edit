@@ -1,29 +1,3 @@
-.chrome {
-  display: grid;
-  gap: 0;
-  min-width: 0;
-  overflow: visible;
-  position: relative;
-}
-
-.tabStrip {
-  backdrop-filter: var(--blur);
-  min-width: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-inline: contain;
-  scrollbar-width: thin;
-}
-
-.tabs {
-  display: inline-flex;
-  gap: var(--tabs-gap);
-  min-inline-size: max-content;
-  padding: var(--tabs-row-padding);
-}
-
-.tabItem,
 .group,
 .overflowArrangement {
   align-items: center;
@@ -32,17 +6,6 @@
   min-width: 0;
 }
 
-.tabItem {
-  backdrop-filter: var(--blur);
-  background: var(--surface-raised);
-  border: var(--control-border-width) solid var(--border);
-  border-radius: var(--control-radius);
-  padding-inline-start: var(--control-padding);
-}
-
-.tab,
-.tabClose,
-.tabAdd,
 .action,
 .overflow summary {
   background: var(--surface-raised);
@@ -51,9 +14,6 @@
   font: inherit;
 }
 
-.tab,
-.tabClose,
-.tabAdd,
 .action {
   cursor: pointer;
   padding: var(--control-padding);
@@ -65,21 +25,6 @@
   display: inline-flex;
   justify-content: center;
   min-inline-size: var(--icon-size);
-}
-
-.tab {
-  border: 0;
-  padding-inline-start: 0;
-}
-
-.tabClose,
-.tabAdd {
-  border: 0;
-}
-
-.modifiedDot {
-  color: var(--accent);
-  padding-inline-end: var(--control-gap);
 }
 
 .toolbar {
@@ -132,18 +77,12 @@
   font-size: var(--toolbar-text-label-font-size);
 }
 
-.action:disabled,
-.tab:disabled,
-.tabClose:disabled,
-.tabAdd:disabled {
+.action:disabled {
   cursor: not-allowed;
   opacity: var(--disabled-opacity);
 }
 
 .action:focus-visible,
-.tab:focus-visible,
-.tabClose:focus-visible,
-.tabAdd:focus-visible,
 .overflow summary:focus-visible {
   box-shadow: var(--focus-ring);
   outline: 0;

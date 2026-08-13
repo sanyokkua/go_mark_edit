@@ -97,7 +97,17 @@ it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', (
   expect(chromeStyles).toContain('border-radius: var(--toolbar-group-radius)');
   expect(chromeStyles).toContain('font-size: 11.5px');
   expect(chromeStyles).toContain('min-inline-size: var(--popup-min-width)');
-  expect(chromeStyles).toContain('min-inline-size: max-content');
+  /*
+   * The tab strip is DocumentTabs' surface, not EditorChrome's — EditorChrome
+   * never referenced the tab classes that used to sit in its stylesheet. The
+   * assertion follows the component that actually owns the rule.
+   */
+  expect(
+    readFileSync(
+      resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+      'utf8',
+    ),
+  ).toContain('min-inline-size: max-content');
   expect(chromeStyles).toContain(":global(:root[data-theme='glass'])");
   expect(chromeStyles).toContain(":global(:root[data-theme='material'])");
   expect(chromeStyles).toContain(":global(:root[data-theme='minimal'])");
