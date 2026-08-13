@@ -388,3 +388,134 @@ func TestPrepareCloseWithNoTargetsMarshalsAnEmptyTargetArray(t *testing.T) {
 		t.Fatalf("plan JSON = %s; want it to carry \"targets\":[]", encoded)
 	}
 }
+
+// An abandoned prompt used to leave activeClosePlan set for the life of the
+// process, which refused every later close: the window became impossible to
+// close. The newest close request now supersedes a plan that is only waiting on
+// a human.
+func TestPrepareCloseSupersedesAnAbandonedPlan(t *testing.T) {
+	service := NewAppModelService(&recordingEmitter{})
+	_, firstID := openAutosaveDocument(t, service, "first base\n")
+	_, secondID := openAutosaveDocument(t, service, "second base\n")
+	if err := service.UpdateBuffer(context.Background(), firstID, "first edited\n"); err != nil {
+		t.Fatalf("first edit: %v", err)
+	}
+	if err := service.UpdateBuffer(context.Background(), secondID, "second edited\n"); err != nil {
+		t.Fatalf("second edit: %v", err)
+	}
+	service.SetAutosaveEnabled(false)
+
+	state, _ := service.GetState(context.Background())
+	abandoned := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{firstID}, state.Snapshot.TabSetRevision)
+	if abandoned.Error != nil || abandoned.Data == nil || abandoned.Data.Status != apperr.ClosePlanCollecting {
+		t.Fatalf("first PrepareClose = %+v, want a collecting plan", abandoned)
+	}
+
+	// The user walks away from the prompt: no ResolveClosePlan ever arrives.
+	quit := service.PrepareClose(context.Background(), apperr.ClosePlanQuit, []string{firstID, secondID}, state.Snapshot.TabSetRevision)
+	if quit.Error != nil || quit.Data == nil {
+		t.Fatalf("quit PrepareClose = %+v, want the newest request to win", quit)
+	}
+	if quit.Data.ID == abandoned.Data.ID {
+		t.Fatal("quit PrepareClose reused the abandoned plan instead of superseding it")
+	}
+	if len(quit.Data.Targets) != 2 {
+		t.Fatalf("quit plan targets = %d, want both documents", len(quit.Data.Targets))
+	}
+
+	// The superseded plan must be dead, not merely shadowed.
+	stale := service.ResolveClosePlan(context.Background(), abandoned.Data.ID, []apperr.ClosePlanDecision{{DocumentID: firstID, Choice: apperr.CloseChoiceDiscard}})
+	if stale.Error == nil {
+		t.Fatalf("superseded plan is still resolvable: %+v", stale)
+	}
+
+	// And quit is reachable again, which is the behaviour the trap denied.
+	resolved := service.ResolveClosePlan(context.Background(), quit.Data.ID, []apperr.ClosePlanDecision{{Choice: apperr.CloseChoiceDiscardAll}})
+	if resolved.Error != nil || resolved.Data == nil || resolved.Data.Status != apperr.ClosePlanReady {
+		t.Fatalf("ResolveClosePlan = %+v", resolved)
+	}
+	if transition := service.ExecuteClosePlan(context.Background(), quit.Data.ID); transition.Error != nil {
+		t.Fatalf("ExecuteClosePlan = %+v", transition)
+	}
+	state, _ = service.GetState(context.Background())
+	if len(state.Snapshot.OrderedDocumentIDs) != 0 {
+		t.Fatalf("documents still open after quit: %v", state.Snapshot.OrderedDocumentIDs)
+	}
+}
+
+// Superseding must not throw away choices the user already answered, so an
+// identical repeat of the same request returns the plan already collecting.
+func TestPrepareCloseRepeatedIdenticallyKeepsTheCollectingPlan(t *testing.T) {
+	service := NewAppModelService(&recordingEmitter{})
+	_, documentID := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	service.SetAutosaveEnabled(false)
+
+	state, _ := service.GetState(context.Background())
+	first := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{documentID}, state.Snapshot.TabSetRevision)
+	if first.Error != nil || first.Data == nil || first.Data.Status != apperr.ClosePlanCollecting {
+		t.Fatalf("first PrepareClose = %+v", first)
+	}
+	second := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{documentID}, state.Snapshot.TabSetRevision)
+	if second.Error != nil || second.Data == nil {
+		t.Fatalf("repeated PrepareClose = %+v", second)
+	}
+	if second.Data.ID != first.Data.ID {
+		t.Fatalf("repeated PrepareClose minted %s, want the collecting plan %s", second.Data.ID, first.Data.ID)
+	}
+}
+
+// ExecuteClosePlan runs its saves with the mutex released, so a plan that is
+// already writing is the one plan a newer request must not supersede.
+func TestPrepareCloseRefusesWhileAnotherPlanIsSaving(t *testing.T) {
+	service := NewAppModelService(&recordingEmitter{})
+	_, firstID := openAutosaveDocument(t, service, "first base\n")
+	_, secondID := openAutosaveDocument(t, service, "second base\n")
+	if err := service.UpdateBuffer(context.Background(), firstID, "first edited\n"); err != nil {
+		t.Fatalf("first edit: %v", err)
+	}
+	if err := service.UpdateBuffer(context.Background(), secondID, "second edited\n"); err != nil {
+		t.Fatalf("second edit: %v", err)
+	}
+	service.SetAutosaveEnabled(false)
+
+	writing := make(chan struct{})
+	release := make(chan struct{})
+	var once sync.Once
+	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		once.Do(func() { close(writing) })
+		<-release
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.encodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+		return replaced.Version, err
+	})
+
+	state, _ := service.GetState(context.Background())
+	revision := state.Snapshot.TabSetRevision
+	plan := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{firstID}, revision)
+	if plan.Error != nil || plan.Data == nil {
+		t.Fatalf("PrepareClose = %+v", plan)
+	}
+	resolved := service.ResolveClosePlan(context.Background(), plan.Data.ID, []apperr.ClosePlanDecision{{DocumentID: firstID, Choice: apperr.CloseChoiceSave}})
+	if resolved.Error != nil || resolved.Data == nil || resolved.Data.Status != apperr.ClosePlanReady {
+		t.Fatalf("ResolveClosePlan = %+v", resolved)
+	}
+
+	executed := make(chan apperr.TabTransitionResult, 1)
+	go func() { executed <- service.ExecuteClosePlan(context.Background(), plan.Data.ID) }()
+	<-writing
+
+	refused := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{secondID}, revision)
+	if refused.Error == nil {
+		t.Fatalf("PrepareClose during a save = %+v, want a refusal that protects the write", refused)
+	}
+	if refused.Error.Category != apperr.ClassifiedConflict {
+		t.Fatalf("refusal category = %s, want %s", refused.Error.Category, apperr.ClassifiedConflict)
+	}
+
+	close(release)
+	if transition := <-executed; transition.Error != nil {
+		t.Fatalf("ExecuteClosePlan = %+v", transition)
+	}
+}

@@ -49,13 +49,30 @@ func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.Cl
 		return closePlanRefused(apperr.ClassifiedNotFound, "close plan", err.Error(), apperr.RemediationCancel)
 	}
 	if service.activeClosePlan != "" {
-		if existing := service.closePlans[service.activeClosePlan]; existing != nil && existing.summary.TabSetRevision == expectedTabSetRevision && existing.summary.Kind == kind && sameStringSlice(closePlanTargetIDs(existing.summary), requested) {
+		existing := service.closePlans[service.activeClosePlan]
+		switch {
+		case existing == nil:
+			// An active id with no plan behind it can only be a bug, and leaving
+			// it set refuses every later close for the life of the process.
+			service.activeClosePlan = ""
+		case existing.summary.TabSetRevision == expectedTabSetRevision && existing.summary.Kind == kind && sameStringSlice(closePlanTargetIDs(existing.summary), requested):
+			// The same request repeated. Returning the plan already collecting
+			// keeps the choices the user has answered so far.
 			result := closePlanSummaryResult(existing)
 			service.mu.Unlock()
 			return result
+		case existing.summary.Status == apperr.ClosePlanExecuting:
+			// ExecuteClosePlan runs its saves with the mutex released, so this is
+			// the one plan whose work is genuinely in flight. Superseding it would
+			// abandon a write mid-commit.
+			service.mu.Unlock()
+			return closePlanRefused(apperr.ClassifiedConflict, "close plan", "A close is already saving; wait for it to finish.", apperr.RemediationRetry)
+		default:
+			// The newest close request wins. A plan waiting on a prompt the user
+			// walked away from must never make the window impossible to close.
+			service.invalidateClosePlanLocked(existing, apperr.ClosePlanCancelled)
+			delete(service.closePlans, existing.summary.ID)
 		}
-		service.mu.Unlock()
-		return closePlanRefused(apperr.ClassifiedConflict, "close plan", "Another close plan is already collecting choices.", apperr.RemediationRetry)
 	}
 	service.mu.Unlock()
 
