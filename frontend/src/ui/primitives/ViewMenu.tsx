@@ -10,6 +10,7 @@ import {
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import type { ViewArrangement } from '../../logic/store/appModelTypes';
 import menu from './MenuSurface.module.css';
+import MenuTrigger from './MenuTrigger';
 import styles from './ViewMenu.module.css';
 
 /*
@@ -120,33 +121,22 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
 
   const separator = <DropdownMenu.Separator className={menu.separator} />;
   const trigger = (
-    <button
-      className={styles.trigger}
+    <MenuTrigger
       data-view-trigger
-      type="button"
+      expanded={open ?? false}
       onClick={(event): void => {
         if (onTrigger === undefined) return;
         event.preventDefault();
         onTrigger();
       }}
+      onOpen={(): void => onTrigger?.()}
       onPointerDown={(event): void => {
         onTriggerPointerDown?.(event.currentTarget);
         if (onTrigger !== undefined) event.preventDefault();
       }}
-      onKeyDown={(event): void => {
-        if (
-          onTrigger !== undefined &&
-          (event.key === 'ArrowDown' ||
-            event.key === 'Enter' ||
-            event.key === ' ')
-        ) {
-          event.preventDefault();
-          onTrigger();
-        }
-      }}
     >
       {triggerLabel}
-    </button>
+    </MenuTrigger>
   );
 
   return (

@@ -33,6 +33,7 @@ import { windowAdapter } from '../../logic/adapter';
 import AppBrand from '../primitives/AppBrand';
 import ViewMenu, { type ViewMenuProps } from '../primitives/ViewMenu';
 import Icon from '../primitives/Icon';
+import MenuTrigger from '../primitives/MenuTrigger';
 import DocumentIdentity from './DocumentIdentity';
 import { safeRecentLabel } from './Launcher';
 import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
@@ -487,15 +488,14 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
           }}
         >
           <DropdownMenu.Trigger asChild>
-            <button
+            <MenuTrigger
               ref={overflowTriggerRef}
               aria-label={t('shell.overflow')}
-              className={styles.trigger}
               data-settings-overflow
-              type="button"
+              expanded={overflowOpen}
             >
               <Icon name="more" size={15} />
-            </button>
+            </MenuTrigger>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content
@@ -549,11 +549,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
             onOpenChange={setFileOpen}
           >
             <DropdownMenu.Trigger asChild>
-              <button
-                aria-expanded={fileOpen}
-                aria-haspopup="menu"
-                className={styles.trigger}
-                type="button"
+              <MenuTrigger
+                expanded={fileOpen}
                 onClick={(event): void => {
                   event.preventDefault();
                   menuOpenerRef.current = event.currentTarget;
@@ -562,15 +559,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   setAboutOpen(false);
                   setFileOpen(true);
                 }}
-                onKeyDown={(event): void => {
-                  if (
-                    event.key !== 'ArrowDown' &&
-                    event.key !== 'Enter' &&
-                    event.key !== ' '
-                  )
-                    return;
-                  event.preventDefault();
-                  menuOpenerRef.current = event.currentTarget;
+                onOpen={(trigger): void => {
+                  menuOpenerRef.current = trigger;
                   setSettingsOpen(false);
                   setViewOpen(false);
                   setAboutOpen(false);
@@ -578,7 +568,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                 }}
               >
                 {t('shell.file')}
-              </button>
+              </MenuTrigger>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal container={applicationFrame()}>
               <DropdownMenu.Content
@@ -687,11 +677,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
             onOpenChange={setAboutOpen}
           >
             <DropdownMenu.Trigger asChild>
-              <button
-                aria-expanded={aboutOpen}
-                aria-haspopup="menu"
-                className={styles.trigger}
-                type="button"
+              <MenuTrigger
+                expanded={aboutOpen}
                 onClick={(event): void => {
                   event.preventDefault();
                   menuOpenerRef.current = event.currentTarget;
@@ -700,15 +687,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   setFileOpen(false);
                   setAboutOpen(true);
                 }}
-                onKeyDown={(event): void => {
-                  if (
-                    event.key !== 'ArrowDown' &&
-                    event.key !== 'Enter' &&
-                    event.key !== ' '
-                  )
-                    return;
-                  event.preventDefault();
-                  menuOpenerRef.current = event.currentTarget;
+                onOpen={(trigger): void => {
+                  menuOpenerRef.current = trigger;
                   setSettingsOpen(false);
                   setViewOpen(false);
                   setFileOpen(false);
@@ -716,7 +696,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                 }}
               >
                 {t('shell.about')}
-              </button>
+              </MenuTrigger>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal container={applicationFrame()}>
               <DropdownMenu.Content

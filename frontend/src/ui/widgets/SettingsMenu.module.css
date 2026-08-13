@@ -15,16 +15,6 @@
   position: relative;
 }
 
-/* Binding source: mockup.html `.menu>button` (:229). */
-.trigger {
-  background: transparent;
-  border: var(--control-border-width) solid transparent;
-  border-radius: var(--menu-trigger-radius);
-  color: var(--text);
-  font: inherit;
-  padding: var(--menu-trigger-padding);
-}
-
 /*
  * The popup is portalled and positioned from measured anchor coordinates, so it
  * takes `position: absolute` where the shared surface is `relative`. Composed

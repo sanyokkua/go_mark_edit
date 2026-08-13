@@ -14,7 +14,6 @@
   white-space: normal;
 }
 
-.trigger,
 .item,
 .rowAction {
   background: transparent;
@@ -32,51 +31,31 @@
   gap: 1px;
 }
 
-.menu [data-settings-opener] {
-  border: 0;
-  box-sizing: border-box;
-  color: var(--text-muted);
-  font-size: var(--menu-trigger-font-size);
-  height: var(--menu-trigger-height);
-  min-height: 0;
-}
+/*
+ * The menubar triggers — File, Settings, View, About and the narrow overflow —
+ * are drawn by `MenuTrigger`, which owns their styling, ARIA and keyboard
+ * contract in one place. The two patches that used to live here,
+ * `.menu [data-settings-opener]` and `.menu [data-view-trigger]`, existed only
+ * because Settings and View declared their own triggers and drifted; a parent
+ * reaching in to correct a child's styling is the symptom, not the fix.
+ */
 
-.menu [data-view-trigger] {
-  border: 0;
-  box-sizing: border-box;
-  color: var(--text-muted);
-  font-size: var(--menu-trigger-font-size);
-  height: var(--menu-trigger-height);
-  min-height: 0;
-}
-
-.trigger,
 .rowAction {
-  border: 0;
+  border: var(--control-border-width) solid transparent;
   border-radius: var(--menu-trigger-radius);
-  font-size: var(--menu-trigger-font-size);
-  line-height: var(--menu-trigger-line-height);
-  padding: var(--menu-trigger-padding);
   cursor: pointer;
+  font-size: var(--menu-trigger-font-size);
   height: var(--menu-trigger-height);
+  line-height: var(--menu-trigger-line-height);
   max-width: 100%;
   min-height: 0;
   overflow: hidden;
+  padding: var(--menu-trigger-padding);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.trigger {
-  color: var(--text-muted);
-}
-
-.rowAction {
-  border: var(--control-border-width) solid transparent;
-}
-
-.trigger:hover,
 .rowAction:hover,
-.trigger:focus-visible,
 .rowAction:focus-visible {
   background: var(--surface);
   box-shadow: var(--focus-ring);

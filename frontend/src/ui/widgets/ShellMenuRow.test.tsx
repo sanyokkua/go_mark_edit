@@ -117,6 +117,68 @@ afterEach(() => {
   });
 });
 
+/*
+ * File, Settings, View and About had three trigger implementations between them:
+ * ShellMenuRow's own for File and About, and one each inside SettingsMenu and
+ * ViewMenu that this file then patched through `[data-settings-opener]` and
+ * `[data-view-trigger]`. Only the first declared a hover rule, so File and About
+ * lit up under the pointer while Settings and View sat inert; View also carried
+ * an 8px radius against the binding's 7px, and Settings never opened on
+ * ArrowDown.
+ *
+ * They now all render `MenuTrigger`. Asserted through the shared class name and
+ * the shared contract rather than through computed colour, because jsdom applies
+ * no stylesheet — what is provable here is that one owner draws all of them.
+ */
+it('T018 draws every menubar trigger from one owner', () => {
+  render(
+    <ShellMenuRow
+      modalOpen={false}
+      onAbout={jest.fn()}
+      settingsMenuProps={settingsMenuProps}
+      toggleFullscreen={jest.fn(async () => true)}
+      viewMenuProps={viewMenuProps}
+    />,
+  );
+
+  const menu = screen.getByRole('navigation', { name: 'Application actions' });
+  const triggers = ['File', 'Settings', 'View', 'About'].map((name) =>
+    within(menu).getByRole('button', { name }),
+  );
+
+  expect(new Set(triggers.map((trigger) => trigger.className)).size).toBe(1);
+  for (const trigger of triggers) {
+    expect(trigger).toHaveAttribute('type', 'button');
+    expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  }
+});
+
+it.each(['File', 'Settings', 'View', 'About'])(
+  'T018 opens the %s menu from ArrowDown like every other menubar trigger',
+  (name) => {
+    render(
+      <ShellMenuRow
+        modalOpen={false}
+        onAbout={jest.fn()}
+        settingsMenuProps={settingsMenuProps}
+        toggleFullscreen={jest.fn(async () => true)}
+        viewMenuProps={viewMenuProps}
+      />,
+    );
+
+    const menu = screen.getByRole('navigation', {
+      name: 'Application actions',
+    });
+    const trigger = within(menu).getByRole('button', { name });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' });
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  },
+);
+
 it('T018 renders File, Settings, View, About in binding order with exact deferred inventories', async () => {
   const onAbout = jest.fn();
   render(

@@ -14,6 +14,52 @@
  * to add a local rule.
  */
 
+/*
+ * Binding source: mockup.html `.menu>button` (:229) and its state rule
+ * `.menu>button:hover,.menu>button.open{background:var(--hover);color:var(--text)}`
+ * (:230). One rule dresses all four menubar buttons there.
+ *
+ * Production had three: File and About took `ShellMenuRow`'s local `.trigger`,
+ * Settings and View each declared their own and were then patched from the
+ * parent through `[data-settings-opener]` and `[data-view-trigger]`. Only the
+ * first carried a hover rule, so File and About lit up under the pointer and
+ * Settings and View did not — the same drift that cost the View popup its
+ * unavailable opacity, on the trigger side.
+ *
+ * The binding gives hover and open the same treatment, so they share it here.
+ * `:focus-visible` is production's own and stays a separate state: a focus ring
+ * answers the keyboard, not the pointer.
+ */
+.trigger {
+  background: none;
+  block-size: var(--menu-trigger-height);
+  border: 0;
+  border-radius: var(--menu-trigger-radius);
+  box-sizing: border-box;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--menu-trigger-font-size);
+  line-height: var(--menu-trigger-line-height);
+  max-width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--menu-trigger-padding);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trigger:hover,
+.trigger[aria-expanded='true'] {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.trigger:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+
 /* Binding source: mockup.html `.dropdown` (:237). */
 .surface {
   backdrop-filter: var(--blur);

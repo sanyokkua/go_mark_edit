@@ -17,6 +17,7 @@ import type {
 } from '../../logic/adapter';
 import type { AppearanceChoice, Theme } from '../../logic/theme/theme';
 import menu from '../primitives/MenuSurface.module.css';
+import MenuTrigger from '../primitives/MenuTrigger';
 import styles from './SettingsMenu.module.css';
 
 export interface SettingsMenuProps {
@@ -451,13 +452,10 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   return (
     <div className={styles.menu} data-settings-menu-root>
       {showTrigger ? (
-        <button
+        <MenuTrigger
           ref={triggerRef}
-          aria-expanded={open}
-          aria-haspopup="menu"
-          className={styles.trigger}
           data-settings-opener
-          type="button"
+          expanded={open}
           onClick={(event): void => {
             openerRef.current = event.currentTarget;
             if (onTrigger === undefined) {
@@ -466,9 +464,17 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
               onTrigger();
             }
           }}
+          onOpen={(trigger): void => {
+            openerRef.current = trigger;
+            if (onTrigger === undefined) {
+              setOpen(true);
+            } else {
+              onTrigger();
+            }
+          }}
         >
           {triggerLabel}
-        </button>
+        </MenuTrigger>
       ) : null}
       {popup}
     </div>
