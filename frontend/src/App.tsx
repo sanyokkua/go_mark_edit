@@ -283,8 +283,20 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
               },
               wordWrap: editorSettings.settings.wordWrap,
               workspaceVisible,
+              /*
+               * The backend owns workspace visibility, so this issues the
+               * command and waits for the acknowledged projection rather than
+               * writing the projection itself. What it must not do is discard
+               * the rejection: a refused command would otherwise leave the
+               * control inert with nothing reported anywhere, which is
+               * indistinguishable from a dead button.
+               */
               onWorkspaceVisibilityChange: (visible): void => {
-                void dispatch(setWorkspaceVisible(visible));
+                void dispatch(setWorkspaceVisible(visible))
+                  .unwrap()
+                  .catch((error: unknown): void => {
+                    dispatch(notifyError(parseError(error)));
+                  });
               },
             }
       }

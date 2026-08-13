@@ -596,9 +596,13 @@ All the time, when UI changes are made, they should be compared with screenshots
 consistency of the style, theme, widget, sizes, and other aspects of the UI/UX. Screenshots are in the
 folder: "specs/003-real-files-and-tabs/surface".
 
-The completed operating-system-managed frame supersedes the mockup's obsolete custom traffic lights, brand,
-drag region, resize zones, and outer window shadow. The in-app row below that native frame remains in scope and
-inherits the mockup row's webview-owned metrics and state styling. Native Open/Save dialogs are behavior evidence,
+The completed operating-system-managed frame supersedes the mockup's obsolete custom traffic lights, drag
+region, resize zones, and outer window shadow. It does **not** supersede the brand: the application mark and
+name remain part of the in-app row, at the binding's own `.brand` metrics, because the operating system's title
+bar is a separate row above and identifying the application inside the menu row is still this feature's. The
+reference variant removes only `.lights`, so both pages derive the rest of the row's positions from the same
+layout. The in-app row below that native frame remains in scope and inherits the mockup row's webview-owned
+metrics and state styling. Native Open/Save dialogs are behavior evidence,
 not screenshot-parity regions.
 
 Workspace enumeration, folder trees, Open Folder behavior, drag-and-drop, operating-system file associations,
