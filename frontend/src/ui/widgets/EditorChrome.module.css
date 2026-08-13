@@ -323,14 +323,16 @@
 /* Binding source: mockup.html `.seg{display:flex;padding:3px}` (:290). The
    segment is right-anchored by the binding's `.tsp{flex:1}` spacer; production
    reaches the same edge with an auto inline-start margin. Its width is the sum
-   of its own options, never a pinned figure. */
+   of its own options, never a pinned figure. It is held against that edge by the
+   binding's own `.tsp` spacer, which both routes share — a second
+   `margin-inline-start: auto` here would be a parity-only mechanism doing the
+   same job, and the two would drift the moment either moved. */
 :global(.application-frame:has([data-parity-shell='true']))
   .toolbar
   .arrangement {
   box-sizing: border-box;
   flex: 0 0 auto;
   gap: 0;
-  margin-inline-start: auto;
   padding: var(--toolbar-group-padding);
 }
 
