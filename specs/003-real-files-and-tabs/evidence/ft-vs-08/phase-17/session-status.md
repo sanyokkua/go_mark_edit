@@ -2,7 +2,7 @@
 
 ## Decisions encoded
 
-`spec.md` Clarifications, **Session 2026-08-13** — two entries, both integrated
+`spec.md` Clarifications, **Session 2026-08-13** — three entries, integrated
 into FR-FT-055, FR-FT-056, the edge-case bullet on excluded regions, and the
 `editor-split` / `editor-only` / `preview-only` family rows:
 
@@ -15,13 +15,20 @@ into FR-FT-055, FR-FT-056, the edge-case bullet on excluded regions, and the
    permitted, preserving the fixed 546-case / 1,638-comparison contract and the
    raw mockup source hash, and forbidding any production-only
    `comparisonAttempted: false` artifact from counting as a parity pass.
+3. **Deferred toolbar controls.** `image`, `format`, `compact` and `lint` are
+   deferred, so production draws them visibly unavailable while the mockup has
+   no disabled state at all — 751 of the toolbar region's 965 differing pixels
+   were that dimming alone. The reference variant now renders those four
+   controls at the same single reviewed unavailable opacity FR-FT-056 already
+   grants the File menu, so the comparison keeps measuring geometry.
+   `t045-deferred-toolbar-controls.md` records it in full.
 
 ## Task status
 
 | Task | Status |
 |---|---|
 | T069 Settings localization | **complete** |
-| T045 editor-region geometry | decision implemented; 6,116 unexplained px remain |
+| T045 editor-region geometry | 6,116 → **182** unexplained px; every one characterised |
 | T070 File-popup fail-closed parity | 181 unexplained px |
 | T072 Glass menubar + View/About | positioning converged; View inventory and Glass drift remain |
 | T071 Settings waiver removal | waiver removed and gating; 709 unexplained px remain |
@@ -76,31 +83,38 @@ should be struck from the T045 chrome residual list below.
 | Binding Minimal pane and toolbar rules | 104,189 | 17,481 | 6,609 | 80,099 | 86,708 |
 | Reference preview variant + Monaco exclusion | 42,575 | 17,481 | 6,577 | 18,517 | 25,094 |
 | Binding preview code-block styling | 27,490 | 17,481 | 6,577 | 3,432 | 10,009 |
-| Arrangement segment keeps its binding surface | 23,597 | 17,481 | 2,683 | 3,433 | **6,116** |
+| Arrangement segment keeps its binding surface | 23,597 | 17,481 | 2,683 | 3,433 | 6,116 |
+| Content-derived toolbar widths + segment `--muted` | — | — | 965 | 3,433 | 4,398 |
+| Preview line-height, inner `code` family, emphasis | — | — | 965 | 5 | 1,190 |
+| Deferred toolbar controls in the reference variant | — | — | **177** | **5** | **182** |
 
-Remaining, all Feature 003-owned and none masked — see
-`t045-editor-chrome.md` for the per-element measurements:
+Monaco's own raster is the named reviewed exclusion and is not comparable
+between runs, so only the Unexplained column is meaningful across rows.
 
-- **Closed to zero pixels:** the `SEL 42W` and `● PREVIEW · LIVE` pane
-  metadata. Both needed the binding's `--accent-ink`, which production rendered
-  as `--faint`.
-- **Improved, still open:** the Link icon (139 → 41 px) and Image icon
-  (151 → 127 px), now drawn from the binding's 24-unit box; the
-  Format/Compact/Lint labels (276/422/211 → 240/342/181 px), now carrying the
-  binding's UA form-control family and `--muted`.
-- **Newly diagnosed, the dominant remaining cause:** production pins measured
-  integer control widths where the binding derives fractional ones from text
-  metrics, so a 0.03125px error accumulates across the toolbar and shifts every
-  glyph after group 1. Closing it means adopting the binding's sizing model,
-  not retuning the pinned numbers.
-- **Untouched:** the preview code block's text position, and the image-fallback
-  emphasis colour.
+**All 182 remaining pixels are characterised, none masked** — see
+`t045-toolbar-sizing-model.md`, `t045-preview-typography.md` and
+`t045-deferred-toolbar-controls.md` for the per-element measurements:
+
+- **Closed to zero pixels:** the `SEL 42W` and `● PREVIEW · LIVE` pane metadata;
+  the whole tab strip; the toolbar's group and segment geometry, now exact in
+  x and width including the weight-600 widening of the selected arrangement
+  option; the preview code block; the image-fallback emphasis colour.
+- **Open, cause identified, 65 px:** the Format and Lint marker glyphs. The
+  binding draws `⌁ Format` as one text run; production's `::before` marker makes
+  it two inline boxes, which Chromium rounds separately — measured at exactly
+  +1/64px per label. Closing it needs the marker inside the label's own text
+  node, which a pseudo-element cannot be.
+- **Open, cause identified, 41 px:** the Link icon path approximation.
+- **Open, cause NOT identified, 71 px:** the arrangement segment's corner arcs,
+  ≤5 channel steps, with every compared bound, computed style and ancestor
+  compositing property identical. Ruled out by measurement: nondeterminism (one
+  raster per page over six captures) and position-dependent rasterisation (one
+  raster over four scroll offsets on the reference alone). **This is the one
+  genuinely unexplained residual left in the region.**
+- **Open, cause identified, 5 px:** one preview list bullet marker.
 
 **The tab-strip add control is struck from this list.** It was renderer noise,
-not drift — see the determinism section above. This table has not been re-run
-since `--disable-partial-raster` landed, so the 6,116 figure is an upper bound
-that still contains an unknown amount of the same noise, and it predates the
-pane-metadata and icon fixes.
+not drift — see the determinism section above.
 
 ## Analysis of the residual popup pixels
 
