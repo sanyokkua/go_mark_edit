@@ -205,6 +205,17 @@
   and 1,638-comparison contract is preserved, the raw immutable mockup source hash is preserved, the mockup
   HTML/CSS is never edited, and a production-only `comparisonAttempted: false` artifact MUST NOT be counted as a
   visual-parity pass.
+- Q: The toolbar's `image`, `format`, `compact` and `lint` actions are deferred, so production renders them
+  visibly unavailable, but the immutable mockup draws no disabled state anywhere. Measured at 1280px Minimal
+  Light, that collapses 751 of the toolbar region's 965 differing pixels into an opacity difference instead of
+  measuring geometry. How is that resolved? → A: Extend the same reviewed treatment FR-FT-056 already grants the
+  File menu. The Feature 003 reference variant renders those four toolbar controls at the single reviewed
+  unavailable opacity used for the File menu's deferred rows, built from the mockup's own `.tbtn` primitive, so
+  the comparison keeps measuring geometry, labels and spacing rather than collapsing into a colour difference.
+  Production's deferred outcomes are unchanged — the controls stay disabled and non-activating — because Feature
+  003 may not change any deferred outcome. The immutable mockup HTML/CSS and its raw source hash stay unchanged,
+  no mask, tolerance, comparator, coordinate handling or manifest count changes, and this treatment is confined
+  to controls the action registry marks deferred.
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -591,7 +602,7 @@ mockup/application comparisons before the additional state fixtures below are co
 
 | Family                | Required mapped region and Feature 003 adaptation                                                                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `editor-split`        | In-app row, real tabs, full toolbar, arrangement segment, both pane shells, basic preview typography, and status; the reference variant carries the application's in-scope preview content, and the Monaco editor pane interior is a named Feature 002-owned region exclusion whose bounds and computed styles are still asserted. |
+| `editor-split`        | In-app row, real tabs, full toolbar, arrangement segment, both pane shells, basic preview typography, and status; the reference variant carries the application's in-scope preview content and marks the toolbar's deferred controls visibly unavailable, and the Monaco editor pane interior is a named Feature 002-owned region exclusion whose bounds and computed styles are still asserted. |
 | `editor-only`         | The same shared chrome with the Editor pane filling the owned document region; its Monaco interior is the same named Feature 002-owned region exclusion.                             |
 | `preview-only`        | The same shared chrome with the Preview pane filling the owned document region; remote assets, math, Mermaid, and other rich-rendering expansion are removed from the reference variant rather than reproduced.                    |
 | `menu-file`           | Binding menu geometry with Feature 003 file actions, at most six recent files, and downstream actions visibly unavailable. Recent folders remain absent.                             |
@@ -1078,7 +1089,9 @@ table, safe-subject only, remediated only from that row's vocabulary.
 - **FR-FT-056**: Behavior-owned differences from the historical mockup MUST be rendered as explicit Feature 003
   reference variants using the same binding primitives: the launcher contains file recents only and an unavailable
   Open Folder action; the File menu contains no recent folder, renders `Reopen last file`, marks its deferred
-  actions visibly unavailable, and carries Feature 003's own accelerators; the tab menu adds Move tab left and
+  actions visibly unavailable, and carries Feature 003's own accelerators; the toolbar marks its deferred
+  controls — `image`, `format`, `compact`, and `lint` — visibly unavailable at the same single reviewed
+  unavailable opacity, so their geometry, labels and spacing stay compared; the tab menu adds Move tab left and
   Move tab right between its close-action and path-action groups; mixed-ending normalization is an additional
   `save-prompt` state; `reload-prompt` includes bounded/truncated editable, metadata-only, and read-only variants
   with their specified buttons; the Editor and Preview panes carry the in-scope document content the application

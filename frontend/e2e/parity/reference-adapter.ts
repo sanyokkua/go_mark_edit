@@ -96,13 +96,74 @@ function acceleratorSpan(value: string | null): string {
   return value === null ? '' : `<span class="k">${value}</span>`;
 }
 
-export const FILE_MENU_UNAVAILABLE_OPACITY = '0.48';
+/**
+ * The single reviewed unavailable opacity, shared by every surface that draws a
+ * Feature 003 deferred action. It matches production's `--disabled-opacity`.
+ */
+export const REFERENCE_UNAVAILABLE_OPACITY = '0.48';
 
 function deferredAttributes(): string {
   return (
     ' aria-disabled="true" data-availability="deferred"' +
-    ` style="opacity:${FILE_MENU_UNAVAILABLE_OPACITY}"`
+    ` style="opacity:${REFERENCE_UNAVAILABLE_OPACITY}"`
   );
+}
+
+/**
+ * Session 2026-08-13 clarification, FR-FT-056. `image`, `format`, `compact` and
+ * `lint` are deferred in the action registry, so production draws them visibly
+ * unavailable — and Feature 003 may not change a deferred outcome. The mockup
+ * has no disabled state anywhere, so without this the toolbar comparison stops
+ * measuring geometry and collapses into an opacity difference: measured at
+ * 1280px Minimal Light, 751 of the region's 965 differing pixels were nothing
+ * but the dimming.
+ *
+ * This applies the same reviewed treatment `adaptFileMenu` already gives the
+ * File menu's deferred rows, to the mockup's own `.tbtn` primitive, and to
+ * exactly those four controls. It adds no rule the File menu variant does not
+ * already carry, changes no geometry, and leaves the raw source hash untouched.
+ */
+const DEFERRED_TOOLBAR_CONTROL_TITLES = Object.freeze([
+  'Image',
+  'Format — ⌥⇧F',
+  'Compact — ⌥⇧C',
+  'Lint — ⌥⇧L',
+] as const);
+
+const TOOLBAR_SOURCE_MARKER = '<div class="toolbar">';
+
+function adaptDeferredToolbarControls(html: string): string {
+  // A source without the toolbar at all is not a parity reference; leave it
+  // untouched so unit fixtures can exercise the other variants in isolation.
+  const start = html.indexOf(TOOLBAR_SOURCE_MARKER);
+  if (start < 0) return html;
+  const end = html.indexOf('</div>\n      </div>', start);
+  if (end < 0) {
+    throw new Error('Toolbar reference source region is malformed');
+  }
+  let toolbar = html.slice(start, end);
+  for (const title of DEFERRED_TOOLBAR_CONTROL_TITLES) {
+    const button = `<button class="tbtn`;
+    const marker = `title="${title}"`;
+    const at = toolbar.indexOf(marker);
+    if (at < 0) {
+      throw new Error(
+        `Toolbar reference source lost the deferred control: ${title}`,
+      );
+    }
+    const openedAt = toolbar.lastIndexOf(button, at);
+    if (openedAt < 0) {
+      throw new Error(
+        `Toolbar deferred control is not a .tbtn primitive: ${title}`,
+      );
+    }
+    const closedAt = toolbar.indexOf('>', at);
+    toolbar =
+      toolbar.slice(0, closedAt) +
+      deferredAttributes() +
+      toolbar.slice(closedAt);
+  }
+  return html.slice(0, start) + toolbar + html.slice(end);
 }
 
 function adaptFileMenu(
@@ -146,7 +207,7 @@ function adaptFileMenu(
     '<div class="sep"></div><div class="lab">Open Recent</div>',
     `<div class="mi sub">${fileIcon} release-notes.md</div>`,
     `<div class="mi sub">${fileIcon} spec-draft.md</div>`,
-    `<div class="mi sub" aria-disabled="true" style="opacity:${FILE_MENU_UNAVAILABLE_OPACITY}">↺ Reopen last file${acceleratorSpan(shortcut['reopen'])}</div>`,
+    `<div class="mi sub" aria-disabled="true" style="opacity:${REFERENCE_UNAVAILABLE_OPACITY}">↺ Reopen last file${acceleratorSpan(shortcut['reopen'])}</div>`,
     '<div class="sep"></div>',
     '<div class="mi">Save<span class="k">Ctrl S</span></div><div class="mi">Save As…<span class="k">Ctrl ⇧ S</span></div>',
     `<div class="sep"></div><div class="mi"${deferredAttributes()}>Export to PDF…${acceleratorSpan(shortcut['export-pdf'])}</div>`,
@@ -280,7 +341,8 @@ export const REFERENCE_ADAPTER_HASH = hash(
     fileOnlyReferenceStates,
     fileOnlyReferenceRecentFiles,
     fileMenuReferenceAccelerators,
-    FILE_MENU_UNAVAILABLE_OPACITY,
+    REFERENCE_UNAVAILABLE_OPACITY,
+    DEFERRED_TOOLBAR_CONTROL_TITLES,
     IN_SCOPE_PREVIEW_CONTENT,
     variantRules,
   }),
@@ -381,10 +443,11 @@ export function adaptReferenceHtml(
       ? adaptFileOnlyLauncher(withZeroAssistant, fileOnlyState)
       : withZeroAssistant;
   const withInScopePreview = adaptPreviewPane(withFileOnly);
+  const withDeferredToolbar = adaptDeferredToolbarControls(withInScopePreview);
   const adaptedHtml =
     variant === 'file-menu'
-      ? adaptFileMenu(withInScopePreview, fileMenuPlatform ?? 'other')
-      : withInScopePreview;
+      ? adaptFileMenu(withDeferredToolbar, fileMenuPlatform ?? 'other')
+      : withDeferredToolbar;
   return {
     adapterHash: REFERENCE_ADAPTER_HASH,
     sourceHash: hash(html),
