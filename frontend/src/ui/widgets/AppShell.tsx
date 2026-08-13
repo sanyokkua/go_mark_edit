@@ -9,7 +9,10 @@ import {
 
 import { t } from '../../i18n';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
-import { setWorkspaceWidth } from '../../logic/store/uiLayoutCommands';
+import {
+  WORKSPACE_BINDING_WIDTH,
+  setWorkspaceWidth,
+} from '../../logic/store/uiLayoutCommands';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import type {
   ClosePlanKind,
@@ -105,7 +108,7 @@ const AppShell: React.FC<AppShellProps> = ({
     (state) => state.documents.tabSetRevision,
   );
   const acknowledgedWorkspaceWidth = useAppSelector(
-    (state) => state.ui.layout.sidebarWidth ?? 216,
+    (state) => state.ui.layout.sidebarWidth ?? WORKSPACE_BINDING_WIDTH,
   );
   const latestLayoutFailure = useAppSelector((state) => {
     const layoutFailures = [
@@ -153,6 +156,29 @@ const AppShell: React.FC<AppShellProps> = ({
     },
     [dispatch],
   );
+
+  /*
+   * A hidden workspace has no in-flight width intent. Without this, the last
+   * optimistic value from the drag that collapsed it — 0, or whatever the
+   * pointer passed through on the way — outranks the acknowledged width when it
+   * is shown again, and the restored binding width would never render.
+   */
+  useEffect((): void => {
+    if (workspaceVisible) {
+      return;
+    }
+    /*
+     * The divider unmounts with the workspace, but the drag listens on the
+     * window: without releasing it here a pointer still held down after
+     * collapsing to zero keeps issuing the same hide command on every move.
+     */
+    drag.current = null;
+    if (pendingWorkspaceWidthRef.current === undefined) {
+      return;
+    }
+    pendingWorkspaceWidthRef.current = undefined;
+    setPendingWorkspaceWidth(undefined);
+  }, [workspaceVisible]);
 
   useEffect((): void => {
     if (

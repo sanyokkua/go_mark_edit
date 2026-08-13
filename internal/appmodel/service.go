@@ -487,6 +487,13 @@ func (service *AppModelService) SetUILayout(ctx context.Context, layout apperr.U
 		WindowHeight: layout.WindowHeight,
 		SidebarWidth: layout.SidebarWidth,
 	}
+	// A width arriving with a visibility change is one discrete intent — restoring
+	// a workspace that was put away — not the stream a drag produces, which is
+	// what the debounce exists to coalesce. Holding it back would show the
+	// workspace at its old width and widen it a quarter of a second later.
+	if layout.SidebarVisible != nil {
+		continuous.SidebarWidth = nil
+	}
 	if continuous.WindowWidth != nil || continuous.WindowHeight != nil || continuous.SidebarWidth != nil {
 		service.mu.Lock()
 		if service.pending == nil {
@@ -520,7 +527,11 @@ func (service *AppModelService) SetUILayout(ctx context.Context, layout apperr.U
 		})
 		layout.WindowWidth = nil
 		layout.WindowHeight = nil
-		layout.SidebarWidth = nil
+		// Only clear what was actually queued, so a width held back above still
+		// reaches the acknowledged apply below.
+		if continuous.SidebarWidth != nil {
+			layout.SidebarWidth = nil
+		}
 	}
 	if layout.WindowMaximized == nil && layout.SidebarVisible == nil && layout.ViewArrangement == nil {
 		return nil

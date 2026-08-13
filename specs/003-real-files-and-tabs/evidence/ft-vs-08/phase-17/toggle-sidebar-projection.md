@@ -182,7 +182,71 @@ press 3: backend rev 17 sidebarVisible true  → data-workspace-visible "true"  
 Every patch still arrived carrying `orderedDocumentIds: null`; the backend was
 not changed and remains authoritative.
 
-## A second, separate observation — still open
+## A second, separate observation — decided and closed
+
+**Decision (product owner, this session):** dragging the divider to zero *means
+hide*, and showing the workspace again uses the binding width. A workspace that
+is visible at zero width is not a state the application should be able to reach.
+
+Both halves are implemented as single backend commands, in
+`frontend/src/logic/store/uiLayoutCommands.ts`:
+
+- `setWorkspaceWidth(0)` sends `{sidebarVisible: false, sidebarWidth: 0}`. The
+  divider clamps at 0 and the separator advertises `aria-valuemin={0}`, so zero
+  stays reachable — it now reads as "put the workspace away" rather than
+  producing a pane nobody can see.
+- `setWorkspaceVisible(true)` sends `{sidebarVisible: true, sidebarWidth: 216}`
+  when the acknowledged width is 0, and `{sidebarVisible: true}` otherwise. A
+  workspace that has never been sized carries no acknowledged width at all and
+  is left alone — the shell already renders that case at the binding width.
+
+216 is the binding's own value (`mockup.html:254`, `.sidebar{width:216px…}`),
+now exported once as `WORKSPACE_BINDING_WIDTH` and consumed by both the shell's
+fallback and the restore, so the two cannot drift apart. The alternative —
+restoring the width the user had before collapsing — was declined; it would need
+a "previous width" the backend does not store.
+
+### Why the backend changed too
+
+`SetUILayout` debounces continuous fields by 250ms and applies discrete ones at
+once, so the combined command opened the workspace at its old width of 0 and
+widened it a quarter of a second later — a weak reprise of the symptom the
+restore exists to remove. A width arriving *with* a visibility change is one
+discrete intent, not the stream a drag produces, so it is no longer held back
+(`internal/appmodel/service.go`). A width sent on its own is still debounced,
+which the existing `TestSetUILayoutDebouncesWorkspaceWidthUntilAcknowledged`
+continues to prove.
+
+### Verified against the real backend
+
+Starting from the recorded broken state (`layout.workspace.visible=false`,
+`layout.workspace.width=0`):
+
+```
+collapse: 216 → 200 → 136 → 72 → 8 → at 0 the workspace hides
+          backend: sidebarVisible false, sidebarWidth 0
+
+show:     one patch at 7ms: { sidebarVisible: true, sidebarWidth: 216 }
+          DOM: data-workspace-visible "true", --shell-left-width 216px
+```
+
+One patch carrying both fields, so there is no interval at which the workspace
+is visible with no width.
+
+### How the zero got there
+
+Worth recording, because it changes what the case is. The persisted `0` was
+*dragged*, not shipped: the dev database held
+`layout.workspace.width = {value: 0, sequence: 426}`, and a sequence that high is
+what a long drag produces, one write per debounced step. The production database
+held `255` at sequence 249. So this was an ordinary user action reaching a state
+the spec had not considered, not a bad default.
+
+The backend already had the habit this decision generalises: `restoreLayout`
+discards a persisted window width below 375 and a height below 480, letting the
+default apply. Only the workspace width accepted `>= 0`.
+
+## The original observation, as recorded before the decision
 
 The persisted `sidebarWidth` in this environment is `0`, so even with visibility
 restored the workspace renders zero-wide. Verified after the fix: the grid stays
