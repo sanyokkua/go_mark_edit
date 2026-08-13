@@ -120,7 +120,13 @@ const documentsSlice = createSlice({
         if (patch.tabSetRevision !== undefined) {
           state.tabSetRevision = patch.tabSetRevision;
         }
-        if (patch.orderedDocumentIds !== undefined) {
+        /*
+         * Tested against the shape, not against `undefined`. The bridge already
+         * drops a wire null, and this reducer shares a dispatch with every other
+         * slice: were a malformed tab order to reach it, throwing here would
+         * discard the `ui` section of the same patch rather than just this field.
+         */
+        if (Array.isArray(patch.orderedDocumentIds)) {
           state.orderedIds = [...patch.orderedDocumentIds];
         }
         if (patch.documents !== undefined) {

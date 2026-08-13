@@ -2,8 +2,11 @@
 
 **Requirement**: FR-WS-011, FR-WS-012, Constitution — the Go backend owns the
 application model and the store is a projection.
-**Status**: **root cause localised and reproduced against the real backend.** Not
-yet fixed; the fix needs a decision about the projection's revision guard.
+**Status**: **fixed and verified against the real backend.** The cause was not
+the revision guard. A fifth measurement, holding the revision fixed and varying
+only the payload shape, refuted that hypothesis and localised the defect to the
+patch's `orderedDocumentIds: null`. Both recorded resolutions were dropped
+unapplied; the revision guard is unchanged and correct.
 **Branch**: `feature/v1-implementation--003-t071-settings-parity`.
 
 Reported from the running application: pressing Toggle Sidebar does nothing.
@@ -66,27 +69,64 @@ The subscription, the reducer, the selector and the render are all working. The
 real patch at revision **5** was discarded and the synthetic one at **9999** was
 not.
 
-## The line
+## Measurement 5 refutes the revision hypothesis
 
-`frontend/src/logic/store/uiSlice.ts`:
+Measurements 1–4 are sound observations, but 4 compared a real patch against a
+synthetic one that differed in **two** ways — its revision *and* its payload
+shape — and attributed the difference to the revision. Holding the revision
+fixed and varying only the shape reverses the conclusion.
 
-```ts
-.addCase(applyStatePatch, (state, action) => {
-  const patch = action.payload;
-  if (patch.revision <= state.revision) return;   // ← drops the real patch
+Against the running backend, three patches emitted in sequence:
+
+```
+{revision: 20, ui:{sidebarWidth:320}}                          → applied   (320px)
+{revision: 21, ui:{sidebarWidth:321}, orderedDocumentIds:null} → THREW, not applied
+{revision: 22, ui:{sidebarWidth:322}}                          → applied   (322px)
+
+TypeError: patch.orderedDocumentIds is not iterable
 ```
 
-`uiSlice` keeps its own `revision` and advances it on **every** patch, not only
-UI-bearing ones, and `hydrateProjection` seeds it from the snapshot. The backend
-increments one shared counter for document and layout patches alike, and the
-window emits debounced geometry writes of its own (`windowWidth: 1279`,
-`windowHeight: 711` were both persisted here). So the counter `uiSlice` compares
-against is advanced by traffic that carries no `ui` at all, and a genuine layout
-patch can arrive already at or below it — at which point the control is inert and
-nothing anywhere reports a problem.
+Revision 21 is strictly greater than the store's revision and is still lost,
+while 20 and 22 apply. The revision guard is not involved. Independently: after
+a fresh load the store's `ui.revision` and the backend's revision agree exactly,
+and a synthetic patch at the *same* revision as a dropped real one applies.
 
-This is not specific to the sidebar. Any UI-layout patch can be lost the same
-way; the sidebar is simply the one with a visible control.
+## The line
+
+`frontend/src/logic/store/documentsSlice.ts`:
+
+```ts
+if (patch.orderedDocumentIds !== undefined) {
+  state.orderedIds = [...patch.orderedDocumentIds];   // ← throws on null
+}
+```
+
+`apperr.AppStatePatch` is the one patch field tagged without `omitempty`:
+
+```go
+OrderedDocumentIDs []string `json:"orderedDocumentIds"`
+```
+
+so every layout-only patch really does arrive carrying `orderedDocumentIds:
+null` — a value the TypeScript `AppStatePatch` declares impossible. `null`
+passes a `!== undefined` guard, and spreading it throws.
+
+The throw is what makes this invisible. All slice reducers share one dispatch,
+so an exception in `documentsSlice` aborts the whole action and the `ui` section
+travelling in the same patch never reaches `uiSlice`. A documents-shaped field
+silently discards a layout change, and nothing anywhere reports a problem.
+
+This is not specific to the sidebar. Any patch carrying `ui` alongside a null
+tab order is lost the same way; the sidebar is simply the one with a visible
+control.
+
+## Why `just dev-ui` could never show this, precisely
+
+The mock bridge always sends `orderedDocumentIds: [...]` — an array, never null
+(`frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts`). The defect
+needs the real wire shape, so no amount of mock-bridge testing could surface it.
+This is a concrete instance of the divergence recorded in
+`docs/delivery/plan/KNOWN_ISSUES.md`.
 
 ## What was fixed here, and what was not
 
@@ -97,25 +137,76 @@ path now surfaces a refusal through `notifyError`. That is correct hardening and
 was requested, but **it is not the cause here** — the command resolves; the patch
 is simply dropped afterwards.
 
-**Not fixed:** the revision guard. Two candidate resolutions, and choosing
-between them is a design decision about the projection contract rather than a
-local edit:
+**Fixed:** the wire shape is normalised at the bridge, in
+`frontend/src/logic/adapter/appModelAdapter.ts` — the one module architecturally
+permitted to see the wire, and the module that already null-normalises command
+results (`orderedDocumentIds: [...(result.orderedDocumentIds ?? [])]`). Patches
+were the asymmetry: they were forwarded raw. A patch's optional fields that the
+declared type never admits as null are now dropped when the wire nulls them, so
+the declared `AppStatePatch` shape is true for every consumer. An empty array is
+preserved — that is the last document closing, not an absent field.
+`activeDocumentId` is excluded, because null is its documented way of saying
+there is no active document.
 
-1. **Track revisions per slice section.** `uiSlice` advances its own revision only
-   when a patch actually carries `ui`, so unrelated document traffic cannot
-   overtake it.
-2. **Make the guard a staleness check on the payload, not the envelope.** Apply
-   any patch carrying `ui` whose revision exceeds the last revision *that carried
-   ui*, keeping the envelope revision purely for ordering.
+`documentsSlice` additionally tests the shape (`Array.isArray`) rather than
+`!== undefined`, so a malformed tab order degrades to "field absent" instead of
+taking every other slice's share of the dispatch down with it.
 
-Option 1 is the smaller change and keeps the backend authoritative. Both need the
-same question answered for `documentsSlice` and `settings`, which share the
-counter, so the fix should be made once for all sections rather than patched into
-`uiSlice` alone.
+**Dropped, not applied:** both recorded resolutions to the revision guard. They
+addressed a mechanism measurement 5 rules out. The premise behind them — that
+the shared counter lets a genuine layout patch arrive at or below `uiSlice`'s
+revision — is false: the backend stamps every patch from one monotonic counter
+that it increments before each emit (`documentPatchLocked` increments inside the
+patch builder, which is why a call-site count of `publishLocked` against
+`revision++` misleads), so a later patch always carries a strictly higher
+revision. Changing the guard would have altered a correct invariant without
+touching the defect.
 
-## A second, separate observation
+**Not changed:** the settings projection. It does not consume `applyStatePatch`
+at all — `AppStatePatch` has no settings field, and `settingsSlice` is
+bootstrapped by a direct adapter call and updated through `acknowledge*`
+actions. It shares no revision counter and cannot exhibit this defect, so there
+was no site to fix there.
+
+## Verified against the real backend
+
+`wails dev`, four presses of the real control, alternating:
+
+```
+press 0: backend rev 14 sidebarVisible false → data-workspace-visible "false"  agrees
+press 1: backend rev 15 sidebarVisible true  → data-workspace-visible "true"   agrees
+press 2: backend rev 16 sidebarVisible false → data-workspace-visible "false"  agrees
+press 3: backend rev 17 sidebarVisible true  → data-workspace-visible "true"   agrees
+```
+
+Every patch still arrived carrying `orderedDocumentIds: null`; the backend was
+not changed and remains authoritative.
+
+## A second, separate observation — still open
 
 The persisted `sidebarWidth` in this environment is `0`, so even with visibility
-restored the workspace renders zero-wide. That is consistent state, not a bug,
-but it means "make it visible" and "give it width" are two different commands —
-worth confirming the control's intent covers both before the guard is changed.
+restored the workspace renders zero-wide. Verified after the fix: the grid stays
+`0px 1280px 0px` and `--shell-left-width` stays `0px` while
+`data-workspace-visible` correctly flips.
+
+What the authorities say:
+
+- The spec treats the two as independent persisted properties:
+  "`Ctrl/Cmd+\` shows and hides the sidebar" and "the edge is draggable and the
+  width is persisted" (`docs/delivery/spec/product/a-folder-of-notes.md`,
+  *The sidebar's visibility and width persist*). It is silent on visible-at-zero.
+- The binding fixes the sidebar's own width at **216px**
+  (`docs/delivery/spec/surface/mockup.html:254`, `.sidebar{width:216px…}`), which
+  is the same value `AppShell` already falls back to (`sidebarWidth ?? 216`).
+  That fallback is nullish-only, so a *persisted* `0` beats it.
+- Zero is reachable by design, not corruption: the divider drag clamps with
+  `Math.max(0, …)` and the separator advertises `aria-valuemin={0}`.
+
+So making Toggle Sidebar also write a width would be inventing behaviour the
+spec does not license, and is left undone pending a decision. Recommended
+default if one is wanted: on restoring visibility to a workspace whose
+acknowledged width is `0`, issue the existing `setWorkspaceWidth` command with
+the binding's 216px, so the restore is still one backend-owned command and the
+projection stays a projection. The alternative — a presentation-only floor in
+`AppShell` — is cheaper but would make the rendered width disagree with the
+acknowledged state, which is the failure mode this whole document is about.

@@ -171,6 +171,48 @@ function isAppStatePatch(payload: unknown): payload is AppStatePatch {
   );
 }
 
+/*
+ * Fields `AppStatePatch` declares as optional and never null, so a null on the
+ * wire means "absent" and must not survive into the projection.
+ *
+ * `activeDocumentId` is deliberately absent from this list: null is its
+ * documented way of saying there is no active document.
+ */
+const absentWhenNull = [
+  'tabSetRevision',
+  'orderedDocumentIds',
+  'documents',
+  'activeDocument',
+  'recentFiles',
+  'canReopenLastFile',
+  'ui',
+] as const;
+
+/*
+ * The bridge is the only module that sees the wire, so it is the only place
+ * that can make the declared patch shape true.
+ *
+ * `apperr.AppStatePatch` tags `OrderedDocumentIDs` without `omitempty`, so
+ * every layout-only patch the backend emits really arrives carrying
+ * `orderedDocumentIds: null`. Spreading that in `documentsSlice` threw, and a
+ * throw in one slice aborts the whole dispatch — so a documents-shaped field
+ * silently discarded the `ui` section travelling beside it, and Toggle Sidebar
+ * did nothing while the backend, the command and the patch were all correct.
+ *
+ * An empty array is preserved: that is the last document closing, not an
+ * absent field.
+ */
+function normalizeStatePatch(patch: AppStatePatch): AppStatePatch {
+  const normalized = { ...patch };
+  for (const field of absentWhenNull) {
+    const value: unknown = normalized[field];
+    if (value === null) {
+      delete normalized[field];
+    }
+  }
+  return normalized;
+}
+
 export function createAppModelAdapter(
   bindings: AppModelBindings,
   runtime: AppModelRuntime,
@@ -722,12 +764,13 @@ export function createAppModelAdapter(
             if (!isAppStatePatch(payload)) {
               return;
             }
+            const patch = normalizeStatePatch(payload);
             greatestProjectionRevision = Math.max(
               greatestProjectionRevision,
-              payload.revision,
+              patch.revision,
             );
             for (const listener of statePatchListeners) {
-              listener(payload);
+              listener(patch);
             }
           },
         );

@@ -347,6 +347,56 @@ it('STORY-012-AC-3 reconciles revisioned content-free state patches', async () =
   expect(JSON.stringify(projection)).not.toContain('Canonical content');
 });
 
+/*
+ * Toggle Sidebar was inert against the real backend while the backend, the
+ * command and the emitted patch were all correct.
+ *
+ * The layout patch really arrives as `{revision, orderedDocumentIds: null, ui}`.
+ * `documentsSlice` guarded that field with `!== undefined`, so null passed the
+ * guard and spreading it threw. A throw in one slice aborts the whole dispatch,
+ * so the `ui` section of the same patch never reached `uiSlice` — a documents
+ * field silently killing a layout change. The revision guard was never
+ * involved: a synthetic patch at the same revision applied.
+ */
+it('FR-WS-011 applies the layout section of a patch carrying a null tab order', async () => {
+  const state = appState(5);
+  state.snapshot.ui = { sidebarVisible: false, sidebarWidth: 0 };
+  const adapter = createAdapter(async (): Promise<AppModelState> => state);
+
+  await expect(bootstrapAppModelProjection(adapter)).resolves.toMatchObject({
+    status: 'ready',
+  });
+
+  expect((): void => {
+    adapter.emitPatch({
+      revision: 6,
+      orderedDocumentIds: null,
+      ui: { sidebarVisible: true },
+    } as unknown as AppStatePatch);
+  }).not.toThrow();
+
+  expect(store.getState().ui).toEqual({
+    revision: 6,
+    layout: { sidebarVisible: true, sidebarWidth: 0 },
+  });
+  expect(store.getState().documents.orderedIds).toEqual([
+    documentMetadata.documentId,
+  ]);
+});
+
+it('FR-WS-011 still empties the tab order when the patch carries one', async () => {
+  const state = appState(5);
+  const adapter = createAdapter(async (): Promise<AppModelState> => state);
+
+  await expect(bootstrapAppModelProjection(adapter)).resolves.toMatchObject({
+    status: 'ready',
+  });
+
+  adapter.emitPatch({ revision: 6, orderedDocumentIds: [] });
+
+  expect(store.getState().documents.orderedIds).toEqual([]);
+});
+
 it('STORY-027-AC-2 isolates stale listeners queued patches and partial projection', async () => {
   let rejectFirst: ((error: Error) => void) | undefined;
   const failedAttempt = createAdapter(

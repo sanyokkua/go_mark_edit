@@ -955,3 +955,73 @@ it('fans out state patches with independent disposal', () => {
   repeatedDispose();
   expect(unsubscribe).toHaveBeenCalledTimes(1);
 });
+
+/*
+ * The bridge is the only place that sees the wire, so it is the only place that
+ * can make the declared patch shape true.
+ *
+ * `apperr.AppStatePatch.OrderedDocumentIDs` is the one field tagged without
+ * `omitempty`, so every layout-only patch the real backend emits arrives as
+ * `orderedDocumentIds: null` — a value `AppStatePatch` declares impossible.
+ * `just dev-ui` cannot show this: the mock bridge always sends an array.
+ */
+it('FR-WS-011 drops a null tab order at the bridge so the declared patch shape holds', () => {
+  let eventCallback: ((payload: unknown) => void) | undefined;
+  const runtime: AppModelRuntime = {
+    eventsOn(_eventName, callback): () => void {
+      eventCallback = callback;
+      return (): void => {
+        eventCallback = undefined;
+      };
+    },
+  };
+  const adapter = createAppModelAdapter(
+    {
+      getState: async () => ({ data: state }),
+      updateBuffer: async () => ({}),
+      setDocView: async () => ({}),
+      setUILayout: async () => ({}),
+    },
+    runtime,
+  );
+  const received = jest.fn<void, [AppStatePatch]>();
+  adapter.subscribeStatePatches(received);
+
+  eventCallback?.({
+    revision: 7,
+    orderedDocumentIds: null,
+    ui: { sidebarVisible: true },
+  });
+
+  expect(received).toHaveBeenCalledTimes(1);
+  const [patch] = received.mock.calls[0];
+  expect(patch.ui).toEqual({ sidebarVisible: true });
+  expect(Object.hasOwn(patch, 'orderedDocumentIds')).toBe(false);
+});
+
+it('FR-WS-011 keeps an empty tab order, which is the last document closing', () => {
+  let eventCallback: ((payload: unknown) => void) | undefined;
+  const runtime: AppModelRuntime = {
+    eventsOn(_eventName, callback): () => void {
+      eventCallback = callback;
+      return (): void => {
+        eventCallback = undefined;
+      };
+    },
+  };
+  const adapter = createAppModelAdapter(
+    {
+      getState: async () => ({ data: state }),
+      updateBuffer: async () => ({}),
+      setDocView: async () => ({}),
+      setUILayout: async () => ({}),
+    },
+    runtime,
+  );
+  const received = jest.fn<void, [AppStatePatch]>();
+  adapter.subscribeStatePatches(received);
+
+  eventCallback?.({ revision: 8, orderedDocumentIds: [] });
+
+  expect(received.mock.calls[0][0].orderedDocumentIds).toEqual([]);
+});
