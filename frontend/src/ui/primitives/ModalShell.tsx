@@ -76,43 +76,60 @@ const ModalShell: React.FC<ModalShellProps> = ({
     (initial ?? focusableElements(dialog)[0] ?? dialog).focus();
   }, [initialFocusRef, open]);
 
-  const trapFocus = useCallback(
-    (event: React.KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onEscape();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const dialog = dialogRef.current;
-      if (dialog === null) return;
-      const focusable = focusableElements(dialog);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable.at(-1) as HTMLElement;
-      const currentIndex = focusable.indexOf(
-        document.activeElement as HTMLElement,
-      );
-      if (currentIndex >= 0) {
-        event.preventDefault();
-        const nextIndex =
-          (currentIndex + (event.shiftKey ? -1 : 1) + focusable.length) %
-          focusable.length;
-        focusable[nextIndex].focus();
-      } else if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    },
-    [onEscape],
-  );
+  const trapFocus = useCallback((event: React.KeyboardEvent): void => {
+    // Escape is handled on the document instead — see the effect below.
+    if (event.key !== 'Tab') return;
+    const dialog = dialogRef.current;
+    if (dialog === null) return;
+    const focusable = focusableElements(dialog);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable.at(-1) as HTMLElement;
+    const currentIndex = focusable.indexOf(
+      document.activeElement as HTMLElement,
+    );
+    if (currentIndex >= 0) {
+      event.preventDefault();
+      const nextIndex =
+        (currentIndex + (event.shiftKey ? -1 : 1) + focusable.length) %
+        focusable.length;
+      focusable[nextIndex].focus();
+    } else if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }, []);
+
+  /*
+   * Escape is bound to the document, not to the dialog. Clicking any
+   * non-focusable area — the backdrop, or a gap between controls — moves focus
+   * to <body> *without* firing `focusin`, so the `keepFocusInside` guard below
+   * never runs and the dialog's own key handler stops receiving anything. The
+   * box then cannot be dismissed from the keyboard at all, which is what was
+   * observed on the built application.
+   */
+  const escapeRef = useRef(onEscape);
+  useEffect((): void => {
+    escapeRef.current = onEscape;
+  }, [onEscape]);
+  useEffect((): (() => void) | undefined => {
+    if (!open) return undefined;
+    const onDocumentKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      escapeRef.current();
+    };
+    document.addEventListener('keydown', onDocumentKeyDown);
+    return (): void =>
+      document.removeEventListener('keydown', onDocumentKeyDown);
+  }, [open]);
 
   useEffect((): (() => void) | undefined => {
     if (!open) return undefined;

@@ -320,3 +320,32 @@ test('T051 keeps parity launchers isolated from the FT-VS-07 recent seed', async
     launcher.getByRole('button', { name: 'Open Folder' }),
   ).toBeDisabled();
 });
+
+test('FT-VS-08 keeps the close prompt until an explicit choice is made', async ({
+  page,
+}) => {
+  await page.goto('/?close-plan');
+
+  const editor = page.getByRole('textbox', { name: 'Editor content' });
+  await editor.press('ControlOrMeta+A');
+  await page.keyboard.type('dirty before close');
+  const tabItem = page.getByRole('tab').first().locator('..');
+  await tabItem.getByRole('button', { name: /^Close /u }).click();
+
+  const prompt = page.getByRole('dialog', {
+    name: 'Save changes before closing?',
+  });
+  await expect(prompt).toBeVisible();
+  // Cancel takes focus, so the box is answerable from the keyboard immediately.
+  await expect(prompt.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+  // A stray click outside must not answer a question about unsaved work.
+  await page.mouse.click(20, 400);
+  await expect(prompt).toBeVisible();
+  await expect(page.getByRole('tab')).toHaveCount(1);
+
+  // Escape is the deliberate keyboard dismissal, and it cancels.
+  await page.keyboard.press('Escape');
+  await expect(prompt).toHaveCount(0);
+  await expect(page.getByRole('tab')).toHaveCount(1);
+});

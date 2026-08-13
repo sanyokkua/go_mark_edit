@@ -45,7 +45,14 @@ const ClosePrompt: React.FC<ClosePromptProps> = ({
     <ModalShell
       initialFocusRef={cancelRef}
       labelledBy="close-prompt-title"
-      onBackdrop={(): void => choose('cancel')}
+      /*
+       * A click outside deliberately does nothing. This box asks whether to
+       * keep unsaved work, and a stray click is the least deliberate gesture a
+       * user can make — it should not be the one that answers the question.
+       * Escape still cancels, so the box is dismissable by keyboard, and Cancel
+       * takes focus when it opens.
+       */
+      onBackdrop={(): void => undefined}
       onEscape={(): void => choose('cancel')}
       open
       heading={parityRoute ? paritySingleTitle : undefined}
