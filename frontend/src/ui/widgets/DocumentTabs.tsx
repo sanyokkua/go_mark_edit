@@ -142,6 +142,8 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     useState<ConflictPreview | null>(null);
   const [conflictBusy, setConflictBusy] = useState(false);
   const tabRefs = useRef(new Map<string, HTMLButtonElement>());
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const [tabsOverflowing, setTabsOverflowing] = useState(false);
   const labels = useMemo(
     () => tabLabelsFor(orderedDocuments),
     [orderedDocuments],
@@ -179,6 +181,31 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     }
     document.querySelector<HTMLButtonElement>('[data-tab-new="true"]')?.focus();
   }, [activeDocumentId, focusDocument]);
+
+  /*
+   * The strip becomes a scroll container only once its tabs no longer fit.
+   * Chromium composites a scrollable area and drops LCD subpixel antialiasing
+   * inside it, so declaring `overflow-x: auto` unconditionally re-rendered every
+   * glyph in the row against the binding. A strip with nothing to scroll has no
+   * reason to be promoted, and this also keeps its computed `overflow` matching
+   * the binding at the widths the targeted comparator comes in at.
+   *
+   * Measured rather than counted: how many tabs fit depends on the window width
+   * and on the filenames, so nothing here may assume a number of them.
+   */
+  useEffect((): (() => void) | undefined => {
+    const strip = stripRef.current;
+    if (strip === null || typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+    const measure = (): void => {
+      setTabsOverflowing(strip.scrollWidth > strip.clientWidth);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(strip);
+    return (): void => observer.disconnect();
+  }, [orderedDocuments]);
 
   const announce = useCallback((message: string): void => {
     setAnnouncement('');
@@ -429,7 +456,9 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   return (
     <>
       <div
+        ref={stripRef}
         aria-label={t('editor.tabs')}
+        data-tabs-overflowing={tabsOverflowing ? 'true' : undefined}
         className={`${styles.tabStrip} ${emptyParityRoute ? styles.emptyParityTabStrip : ''}`}
         role="tablist"
         onKeyDown={(event): void => {

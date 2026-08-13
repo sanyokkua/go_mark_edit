@@ -1,3 +1,29 @@
+/*
+ * Spec: "Overflowing tabs scroll" (working-in-tabs.md #tab-overflow-scrolls) —
+ * "the strip scrolls. The layout does not break, and tabs do not shrink to
+ * unreadable", whose counter-example, "tabs compressed to 30 px each", was the
+ * shipped behaviour: 23 tabs at 1280px gave a 49px tab box and a 13px label,
+ * leaving nothing to click but the close control.
+ *
+ * The strip becomes a scroll container only once its tabs stop fitting.
+ * Chromium composites a scrollable area and drops LCD subpixel antialiasing
+ * inside it, so declaring `overflow-x: auto` unconditionally re-rendered every
+ * glyph in the row against the binding — identical bounds, identical computed
+ * styles, 332 deterministically differing pixels confined to the tab labels and
+ * the add control. A strip with nothing to scroll has no reason to be promoted,
+ * which also keeps its computed `overflow` matching the binding at the widths
+ * the comparator captures.
+ *
+ * `scrollbar-width: none` follows the binding's own scrolling strip
+ * (`mockup.html:72`): no gutter is reserved in a row the binding sizes exactly.
+ */
+.tabStrip[data-tabs-overflowing='true'] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
 .tabStrip {
   align-items: center;
   block-size: var(--tabs-row-height);
@@ -5,19 +31,10 @@
   box-sizing: border-box;
   display: flex;
   gap: 5px;
-  min-width: auto;
   max-width: 100%;
+  min-width: auto;
   overflow: visible;
-  overscroll-behavior-inline: contain;
   padding: var(--tabs-row-padding);
-  scrollbar-width: thin;
-}
-
-@media (max-width: 376px) {
-  .tabStrip {
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
 }
 
 .emptyParityTabStrip {
@@ -54,8 +71,15 @@
   display: flex;
   font-size: var(--tab-label-font-size);
   gap: var(--tab-gap);
+  /*
+   * Binding source: mockup.html `.app[data-w="375"] .tab{flex:none}` (:74). A
+   * tab keeps its own width and the strip scrolls; it never shrinks to fit.
+   * `flex: 0 1 auto` against `min-width: 0` is what compressed every tab.
+   * `max-width` still truncates one long filename at the binding's 190px, which
+   * is not the same thing as compressing all of them.
+   */
+  flex: none;
   max-width: var(--tab-max-width);
-  min-width: 0;
   padding: var(--tab-padding);
 }
 
