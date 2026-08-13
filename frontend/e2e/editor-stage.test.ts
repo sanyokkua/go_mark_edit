@@ -213,9 +213,22 @@ for (const width of widths) {
             'data-workspace-visible',
             workspaceVisible ?? '',
           );
-          await expect(
-            page.getByRole('complementary', { name: 'Workspace' }),
-          ).toBeHidden();
+          /*
+           * The workspace starts closed on a narrow window, where it is an
+           * overlay that would otherwise cover the tab strip, and open on a
+           * wide one. So the toggle is asserted relative to where it started
+           * rather than assuming it began visible — what matters is that it
+           * flips both ways and the panel follows.
+           */
+          const startedVisible = workspaceVisible === 'true';
+          const workspacePanel = page.getByRole('complementary', {
+            name: 'Workspace',
+          });
+          if (startedVisible) {
+            await expect(workspacePanel).toBeHidden();
+          } else {
+            await expect(workspacePanel).toBeVisible();
+          }
           await openShellItem('View');
           await view
             .getByRole('menuitemcheckbox', { name: 'Toggle Sidebar' })
@@ -224,9 +237,11 @@ for (const width of widths) {
             'data-workspace-visible',
             workspaceVisible ?? '',
           );
-          await expect(
-            page.getByRole('complementary', { name: 'Workspace' }),
-          ).toBeVisible();
+          if (startedVisible) {
+            await expect(workspacePanel).toBeVisible();
+          } else {
+            await expect(workspacePanel).toBeHidden();
+          }
         }
 
         if (width !== 375) {
