@@ -35,25 +35,33 @@
   padding: 0;
 }
 
+/* Binding source: mockup.html `.tab{display:flex;align-items:center;gap:8px;
+   padding:7px 12px;border-radius:9px;font-size:12.5px;border:1px solid
+   transparent;max-width:190px}` (:272). `.tabItem` IS that box: the dot, the
+   label and the close control are its three flex children, so the box's own
+   12px padding is what keeps the close control off the trailing edge. Putting
+   the padding on the inner label button instead — and leaving the close control
+   at `padding: 0` — is what pinned the × against the edge.
+
+   Every tab carries the border and radius; `.tab.active` (:274) only fills it
+   in, so a tab does not change size when it becomes active. */
 .tabItem {
   align-items: center;
   background: transparent;
-  border: 0;
-  border-radius: 0;
+  border: var(--control-border-width) solid transparent;
+  border-radius: var(--tab-radius);
+  box-sizing: border-box;
   display: flex;
-  gap: 8px;
+  font-size: var(--tab-label-font-size);
+  gap: var(--tab-gap);
+  max-width: var(--tab-max-width);
   min-width: 0;
-  padding-inline-start: 0;
+  padding: var(--tab-padding);
 }
 
 .tabItem:has(.tab[aria-selected='true']) {
   background: var(--accent-soft);
-  border: var(--control-border-width) solid var(--stroke-soft);
-  border-radius: 9px;
-}
-
-.tabItem:not(:has(.tab[aria-selected='true'])) .tab {
-  block-size: 33px;
+  border-color: var(--stroke-soft);
 }
 
 .tab,
@@ -71,33 +79,36 @@
 .tabAdd,
 .contextMenuItem {
   cursor: pointer;
-  padding: var(--tab-padding);
   white-space: nowrap;
 }
 
+.contextMenuItem {
+  padding: var(--tab-padding);
+}
+
+/* The label is a bare flex child of the tab box above — the box owns the
+   padding, the border and the radius. */
 .tab {
   align-items: center;
-  block-size: var(--tab-row-height);
-  border: var(--control-border-width) solid transparent;
+  border: 0;
   display: inline-flex;
-  gap: 8px;
+  gap: var(--tab-gap);
   min-width: 0;
   overflow: hidden;
-  font-size: var(--tab-label-font-size);
+  padding: 0;
   text-align: start;
   text-overflow: ellipsis;
 }
 
 .tabLabel {
   display: inline-block;
-  max-width: 190px;
+  max-width: var(--tab-max-width);
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: bottom;
 }
 
 .tab[aria-selected='true'] {
-  border: 0;
   color: var(--text);
   box-shadow: none;
 }
@@ -120,8 +131,6 @@
   justify-content: center;
   min-inline-size: 0;
   padding: 0;
-  position: relative;
-  top: -1px;
 }
 
 .tabCloseGlyph {
@@ -247,77 +256,54 @@
   font-size: var(--popup-row-font-size);
 }
 
-:global(:root[data-theme='material']) .tabItem {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding-inline-start: 0;
-}
+/* The binding themes the tab box and nothing else, with one rule per theme and
+   one for its active state. Because `.tabItem` is that box, each of these is a
+   direct transcription — no inner element needs a matching override, and the
+   Minimal underline is a real border rather than a pseudo-element standing in
+   for one. */
 
-:global(:root[data-theme='material']) .tab {
+/* Binding source: mockup.html
+   `body[data-theme="material"] .tab{border-radius:18px;padding:8px 15px}`
+   (:282). */
+:global(:root[data-theme='material']) .tabItem {
   border-radius: 18px;
   padding: 8px 15px;
+}
+
+:global(:root[data-theme='material']) .tabItem:has(.tab[aria-selected='true']) {
+  background: var(--accent);
+  border-color: transparent;
 }
 
 :global(:root[data-theme='material']) .tab[aria-selected='true'] {
   background: transparent;
   box-shadow: none;
-  color: var(--text);
+  color: var(--accent-contrast);
 }
 
-:global(:root[data-theme='material']) .tabItem:has(.tab[aria-selected='true']) {
-  background: var(--accent);
-  border: 0;
-  border-radius: 18px;
-}
-
+/* Binding source: mockup.html
+   `body[data-theme="minimal"] .tab{border-radius:0;border:0;
+   border-bottom:2px solid transparent;background:none;padding:8px 12px}`
+   (:280). */
 :global(:root[data-theme='minimal']) .tabItem {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding-inline-end: 12px;
-  padding-inline-start: 0;
-}
-
-:global(:root[data-theme='minimal']) .tab {
-  background: transparent;
+  background: none;
   border: 0;
   border-bottom: 2px solid transparent;
   border-radius: 0;
-  box-shadow: none;
-  padding-inline-end: 0;
+  padding: 8px 12px;
+}
+
+/* Binding source: mockup.html
+   `body[data-theme="minimal"] .tab.active{background:none;
+   border-bottom-color:var(--text);font-weight:500}` (:281). */
+:global(:root[data-theme='minimal']) .tabItem:has(.tab[aria-selected='true']) {
+  background: none;
+  border-bottom-color: var(--text);
+  font-weight: 500;
 }
 
 :global(:root[data-theme='minimal']) .tab[aria-selected='true'] {
-  border-bottom-color: transparent;
   box-shadow: none;
-  font-weight: 500;
-}
-
-:global(:root[data-theme='minimal'])
-  .tabItem:has(.tab[aria-selected='true'])
-  .tabCloseGlyph {
-  font-weight: 500;
-}
-
-:global(:root[data-theme='minimal']) .tabItem:has(.tab[aria-selected='true']) {
-  position: relative;
-}
-
-:global(:root[data-theme='minimal'])
-  .tabItem:has(.tab[aria-selected='true'])::after {
-  background: var(--text);
-  bottom: 0;
-  content: '';
-  height: 2px;
-  inset-inline: 0;
-  position: absolute;
-}
-
-:global(:root[data-theme='minimal']) .tabItem:has(.tab[aria-selected='true']) {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
 }
 
 :global(:root[data-theme='glass']) .tabItem,

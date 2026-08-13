@@ -30,6 +30,7 @@ import {
 } from '../../logic/actions/shellActions';
 import { useShellShortcuts } from '../../logic/actions/useShellShortcuts';
 import { windowAdapter } from '../../logic/adapter';
+import AppBrand from '../primitives/AppBrand';
 import ViewMenu, { type ViewMenuProps } from '../primitives/ViewMenu';
 import Icon from '../primitives/Icon';
 import DocumentIdentity from './DocumentIdentity';
@@ -475,6 +476,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       aria-label={t('shell.menuLabel')}
       className={styles.row}
     >
+      <AppBrand />
       {narrow ? (
         <DropdownMenu.Root
           modal={false}
@@ -746,6 +748,11 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
           </DropdownMenu.Root>
         </div>
       )}
+
+      {/* Binding source: mockup.html `.sp{flex:1}` (:231). One spacer, always
+          present, is what pushes the identity and the window controls to the
+          trailing edge — whether or not a document is open. */}
+      <div aria-hidden="true" className={styles.spacer} />
 
       {activeDocument !== undefined ? (
         <DocumentIdentity document={activeDocument} />

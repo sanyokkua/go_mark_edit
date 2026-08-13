@@ -22,17 +22,50 @@
   flex: 1 1 auto;
 }
 
+/* Binding source: mockup.html `.statusbar .b{display:inline-flex;
+   align-items:center;gap:5px}` (:384). Every status item is one inline row. */
 .responsiveItem {
+  align-items: center;
+  display: inline-flex;
   flex: 0 0 auto;
+  gap: var(--status-bar-item-gap);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Binding source: mockup.html `.dotk{width:6px;height:6px;border-radius:50%;
+   background:var(--accent);display:inline-block}` (:385). */
+.dot {
+  background: var(--accent);
+  block-size: var(--status-bar-dot-size);
+  border-radius: 50%;
+  flex: none;
+  inline-size: var(--status-bar-dot-size);
+}
+
+/* Binding source: mockup.html `.pill{padding:2px 9px;border-radius:16px;
+   background:var(--surface-2);border:1px solid var(--stroke-soft)}` (:386),
+   with `body[data-theme="minimal"] .pill{background:none;border:0}` (:387). */
+.pill {
+  background: var(--surface-2);
+  border: var(--control-border-width) solid var(--stroke-soft);
+  border-radius: var(--status-bar-pill-radius);
+  padding: var(--status-bar-pill-padding);
+}
+
+:global(:root[data-theme='minimal']) .pill {
+  background: none;
+  border-color: transparent;
+}
+
 .detailsTrigger {
+  align-items: center;
+  color: inherit;
+  display: inline-flex;
   flex: 0 0 auto;
-  padding: var(--control-padding);
+  font: inherit;
   white-space: nowrap;
 }
 

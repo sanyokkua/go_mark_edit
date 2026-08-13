@@ -92,7 +92,15 @@ it('T033 applies the contained tab-strip metrics and fixed add-control size', ()
     /\.tab\s*\{[^}]*align-items:\s*center;[^}]*display:\s*inline-flex;/s,
   );
   expect(tabStyles).toContain('block-size: var(--tabs-row-height)');
-  expect(tabStyles).toContain('max-width: 190px');
+  /*
+   * The binding's `.tab` bounds (`mockup.html:272`) are tokens like every other
+   * binding metric, so the label cap and the tab box are asserted through the
+   * token rather than as a literal repeated in the stylesheet. `tokens.css`
+   * owns the value.
+   */
+  expect(tabStyles).toContain('max-width: var(--tab-max-width)');
+  expect(tabStyles).toContain('border-radius: var(--tab-radius)');
+  expect(tabStyles).toContain('gap: var(--tab-gap)');
   expect(tabStyles).toContain('block-size: var(--tab-add-size)');
   expect(tabStyles).toContain('inline-size: var(--tab-add-size)');
   expect(tabStyles).toMatch(/overflow-x:\s*auto/);

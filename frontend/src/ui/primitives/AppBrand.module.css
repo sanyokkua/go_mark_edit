@@ -1,0 +1,43 @@
+/* Binding source: mockup.html
+   `.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px}`
+   (:226). */
+.brand {
+  align-items: center;
+  display: flex;
+  flex: none;
+  font-size: var(--brand-font-size);
+  font-weight: var(--brand-font-weight);
+  gap: var(--brand-gap);
+}
+
+/* Binding source: mockup.html
+   `.brand .logo{width:19px;height:19px;border-radius:6px;
+   background:linear-gradient(135deg,var(--accent),var(--accent2));
+   color:var(--accent-contrast);display:grid;place-items:center;font-size:11px;
+   font-weight:700}` (:227). */
+.logo {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  block-size: var(--brand-logo-size);
+  border-radius: var(--brand-logo-radius);
+  color: var(--accent-contrast);
+  display: grid;
+  flex: none;
+  font-size: var(--brand-logo-font-size);
+  font-weight: var(--brand-logo-font-weight);
+  inline-size: var(--brand-logo-size);
+  place-items: center;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Binding source: mockup.html `.app[data-w="375"] .brand-name{display:none}`
+   (:63). The mark stays; only the word is dropped at the narrow width. */
+@media (max-width: 376px) {
+  .name {
+    display: none;
+  }
+}

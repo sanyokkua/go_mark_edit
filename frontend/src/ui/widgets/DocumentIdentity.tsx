@@ -49,6 +49,7 @@ const DocumentIdentity: React.FC<DocumentIdentityProps> = (
   const status = statusLabel(props.status ?? props.document?.status);
   return (
     <header aria-label={t('identity.ariaLabel')} className={styles.identity}>
+      <span aria-hidden="true" className={styles.saveDot} />
       <h1 className={styles.heading}>
         {parent === undefined ? filename : `${parent} / ${filename}`}
       </h1>

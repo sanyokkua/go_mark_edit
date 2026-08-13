@@ -174,6 +174,33 @@ const viewMenuReferenceAccelerators: Readonly<
   },
 };
 
+/**
+ * `spec.md:599`: "The completed operating-system-managed frame supersedes the
+ * mockup's obsolete custom traffic lights, drag region, resize zones, and outer
+ * window shadow."
+ *
+ * The traffic lights are the only part of the title bar's leading run that the
+ * operating system draws for us, so they are not part of the Feature 003
+ * contract and the application does not reproduce them. Removing them here is
+ * what lets the rest of the row — the brand, the menu, the identity — sit at a
+ * position both pages derive from their own layout. The alternative, leaving
+ * them in and giving production a 52px + 12px reservation to compensate, would
+ * put dead space in the shipped window for a control that lives in the
+ * operating system's own title bar.
+ *
+ * Only the mockup's own markup is touched: the `.lights` element is removed
+ * whole. No HTML/CSS value is edited and the raw source hash is unchanged.
+ */
+const LIGHTS_SOURCE_MARKUP =
+  '<div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>';
+
+function adaptNativeFrameControls(html: string): string {
+  // A source without the title bar at all is not a parity reference; leave it
+  // untouched so unit fixtures can exercise the other variants in isolation.
+  if (!html.includes(LIGHTS_SOURCE_MARKUP)) return html;
+  return html.replace(LIGHTS_SOURCE_MARKUP, '');
+}
+
 const VIEW_MENU_SOURCE_MARKER = '<div class="dropdown" id="m-view"';
 
 /**
@@ -448,6 +475,7 @@ export const REFERENCE_ADAPTER_HASH = hash(
     REFERENCE_UNAVAILABLE_OPACITY,
     DEFERRED_TOOLBAR_CONTROL_TITLES,
     viewMenuReferenceAccelerators,
+    LIGHTS_SOURCE_MARKUP,
     IN_SCOPE_PREVIEW_CONTENT,
     variantRules,
   }),
@@ -547,7 +575,8 @@ export function adaptReferenceHtml(
     variant === 'file-only' && fileOnlyState !== undefined
       ? adaptFileOnlyLauncher(withZeroAssistant, fileOnlyState)
       : withZeroAssistant;
-  const withInScopePreview = adaptPreviewPane(withFileOnly);
+  const withNativeFrame = adaptNativeFrameControls(withFileOnly);
+  const withInScopePreview = adaptPreviewPane(withNativeFrame);
   const withDeferredToolbar = adaptDeferredToolbarControls(withInScopePreview);
   const withViewMenu = adaptViewMenu(
     withDeferredToolbar,

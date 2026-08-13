@@ -60,8 +60,25 @@
   --control-padding: 0.375rem 0.625rem;
   --control-gap: 0.25rem;
   --control-border-width: 1px;
+  /* Binding source: mockup.html `.statusbar .b` (:384), `.dotk` (:385) and
+     `.pill` (:386). */
+  --status-bar-item-gap: 5px;
+  --status-bar-dot-size: 6px;
+  --status-bar-pill-padding: 2px 9px;
+  --status-bar-pill-radius: 16px;
+  /* Binding source: mockup.html `.doc-name` (:232) and `.save-dot` (:233). */
+  --identity-font-size: 12px;
+  --identity-gap: 7px;
+  --identity-dot-size: 7px;
+  /* Binding source: mockup.html `.brand` (:226) and `.brand .logo` (:227). */
+  --brand-gap: 8px;
+  --brand-font-size: 13px;
+  --brand-font-weight: 600;
+  --brand-logo-size: 19px;
+  --brand-logo-radius: 6px;
+  --brand-logo-font-size: 11px;
+  --brand-logo-font-weight: 700;
   --menu-row-height: 44px;
-  --menu-row-menu-offset: 177.125px;
   --file-menu-popup-left: 96px;
   --view-menu-popup-left: 196px;
   --about-menu-popup-left: 240px;
@@ -93,6 +110,9 @@
   --tabs-border-color: var(--stroke-soft);
   --tabs-gap: 5px;
   --tab-padding: 7px 12px;
+  --tab-gap: 8px;
+  --tab-radius: 9px;
+  --tab-max-width: 190px;
   --tab-row-height: 31px;
   --tab-label-font-size: 12.5px;
   --tab-add-size: 28px;

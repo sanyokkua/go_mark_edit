@@ -18,6 +18,7 @@ export interface StatusBarProps {
   wordCount: number;
   autosave?: boolean;
   readOnly?: boolean;
+  markdownStandard?: string;
 }
 
 function translationKey(prefix: string, value: string): string {
@@ -34,6 +35,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   wordCount,
   autosave = false,
   readOnly = status === 'read-only',
+  markdownStandard = 'gfm',
 }: StatusBarProps): React.JSX.Element => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const saveStatus = t(translationKey('saveStatus', status));
@@ -46,6 +48,15 @@ const StatusBar: React.FC<StatusBarProps> = ({
       data-status-state={status}
       role="status"
     >
+      {/* Binding source: mockup.html `.statusbar` (:838) — the row opens with
+          the document standard behind an accent dot (`.dotk`, :385), then the
+          caret position and the word count. */}
+      <span className={styles.responsiveItem} data-status-item="standard-kind">
+        <span aria-hidden="true" className={styles.dot} />
+        {t('status.markdown', {
+          standard: t(translationKey('markdownStandard', markdownStandard)),
+        })}
+      </span>
       <span className={styles.responsiveItem} data-status-item="cursor">
         {t('status.cursor', {
           column: cursor.column,
@@ -70,13 +81,22 @@ const StatusBar: React.FC<StatusBarProps> = ({
         {saveStatus}
         {writeInFlight ? ` · ${t('status.writeInFlight')}` : ''}
       </span>
-      <span className={styles.responsiveItem}>
+      {/* Binding source: mockup.html `.sb-autosave` (:841). */}
+      <span className={styles.responsiveItem} data-status-item="autosave">
+        {t(autosave ? 'status.autosave.on' : 'status.autosave.off')}
+      </span>
+      {/* Binding source: mockup.html `.pill` (:386) — the trailing controls are
+          rounded chips, not bare labels. */}
+      <span
+        className={`${styles.responsiveItem} ${styles.pill}`}
+        data-status-item="arrangement"
+      >
         {t(translationKey('arrangement', arrangement))}
       </span>
       <button
         aria-controls="document-status-details"
         aria-expanded={detailsOpen}
-        className={styles.detailsTrigger}
+        className={`${styles.detailsTrigger} ${styles.pill}`}
         type="button"
         onClick={(): void => setDetailsOpen((open) => !open)}
       >

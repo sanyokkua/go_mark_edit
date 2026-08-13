@@ -60,7 +60,7 @@ const AppShell: React.FC<AppShellProps> = ({
     ? 'toolbar-overflow'
     : undefined;
   const dispatch = useAppDispatch();
-  const { fileSettings } = useEditorSettings();
+  const { fileSettings, markdownSettings } = useEditorSettings();
   const workspaceVisible = useAppSelector(
     (state) => state.ui.layout.sidebarVisible ?? true,
   );
@@ -297,6 +297,7 @@ const AppShell: React.FC<AppShellProps> = ({
             writeInFlight={activeDocument.writeInFlight}
             wordCount={activeDocument.wordCount}
             autosave={fileSettings.autosave}
+            markdownStandard={markdownSettings.standard}
           />
         ) : showParityEmptyChrome ? (
           <StatusBar
@@ -307,6 +308,7 @@ const AppShell: React.FC<AppShellProps> = ({
             status="not-saved"
             wordCount={0}
             autosave={fileSettings.autosave}
+            markdownStandard={markdownSettings.standard}
           />
         ) : null}
       </main>
