@@ -2,7 +2,7 @@
 
 ## Decisions encoded
 
-`spec.md` Clarifications, **Session 2026-08-13** — three entries, integrated
+`spec.md` Clarifications, **Session 2026-08-13** — four entries, integrated
 into FR-FT-055, FR-FT-056, the edge-case bullet on excluded regions, and the
 `editor-split` / `editor-only` / `preview-only` family rows:
 
@@ -22,6 +22,13 @@ into FR-FT-055, FR-FT-056, the edge-case bullet on excluded regions, and the
    controls at the same single reviewed unavailable opacity FR-FT-056 already
    grants the File menu, so the comparison keeps measuring geometry.
    `t045-deferred-toolbar-controls.md` records it in full.
+4. **View menu inventory.** FR-ED-004 requires the View menu to expose Editor,
+   Split and Preview "in the original mockup order and grouping", but `#m-view`
+   has `Show Editor` and `Show Preview` — the two halves cannot both hold
+   against the binding. Production keeps FR-ED-004's inventory and the
+   difference is a Feature 003 reference variant, which also covers the two
+   deferred rows and Feature 003's host-formatted accelerators.
+   `t072-view-presentation.md` records it in full.
 
 ## Task status
 
@@ -30,7 +37,8 @@ into FR-FT-055, FR-FT-056, the edge-case bullet on excluded regions, and the
 | T069 Settings localization | **complete** |
 | T045 editor-region geometry | 6,116 → **182** unexplained px; every one characterised |
 | T070 File-popup fail-closed parity | 181 unexplained px |
-| T072 Glass menubar + View/About | positioning converged; View inventory and Glass drift remain |
+| T072 View popup | **converged** — 9,036 → 165 px, bounds match; see `t072-view-presentation.md` |
+| T072 Glass menubar | **diagnosed, not closed** — cause is the compositing backdrop, not the menubar; see `t072-glass-compositing.md` |
 | T071 Settings waiver removal | waiver removed and gating; 709 unexplained px remain |
 | T073, T074, T075 | not started |
 | T065, T066, T067, T068 | not started |
@@ -49,12 +57,12 @@ rest and "not reached" never meant "passing".
 | T058 closed menubar, minimal-dark | **passed** |
 | T058 closed menubar, material-light | **passed** |
 | T058 closed menubar, material-dark | **passed** |
-| T058 closed menubar, glass-light | 6,187 unexplained px |
-| T058 closed menubar, glass-dark | 6,380 unexplained px |
+| T058 closed menubar, glass-light | 6,187 unexplained px — backdrop compositing, diagnosed |
+| T058 closed menubar, glass-dark | 6,380 unexplained px — every pixel of the 220×29 region |
 | T059 File popup | 181 unexplained px |
 | T060 Settings popup | 709 unexplained px |
 | T060 Settings overflow, 375px | 205 unexplained px |
-| T061 View popup | `bounds.bottom: 455 != 457` |
+| T061 View popup | **165 unexplained px**, bounds match (was `bounds.bottom: 455 != 457` with 9,036) |
 | T061 About popup | 1,489 unexplained px |
 | T062 tabs and toolbar | **passed** |
 | T063 editor-status states | **passed** |
