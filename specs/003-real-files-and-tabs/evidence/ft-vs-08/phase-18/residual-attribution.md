@@ -22,7 +22,7 @@ coordinates x232, y417-418 and y483-484.
 | T060 Settings popup 1280 | 709 | 709 | 416 | 293 | Liquid Glass swatch gradient dither (289) + 4 isolated |
 | T060 Settings overflow 375 | 205 | 205 | **205** | **0** | — |
 | T061 View popup | 165 | 165 | 163 | 2 | Line numbers toggle's rounded right edge, delta 8 |
-| T061 About popup | 1489 | 1489 | 87 | **1402** | **real text content**, delta up to 116 — see below |
+| T061 About popup | **87** | 87 | **87** | **0** | — (was 1,489 before the reference variant; see below) |
 | T058 closed menubar, glass-light | 6186 | 6186 | 2844 | 3342 | backdrop compositing across the whole region, **max delta 7** |
 | T077 toolbar | 177 | 177 | — | — | already characterised in the T045 evidence |
 
@@ -64,27 +64,45 @@ absolutely-positioned element). A difference confined to ≤7/255 across a whole
 region, with identical geometry, is layerisation — the same family as the
 Settings swatch dither and the arrangement segment's corner arcs.
 
-**About popup: NOT attributed, and it is a real difference.** 1,489 pixels split
-into 87 boundary and 1,402 interior, with deltas up to 116 — an order of
-magnitude beyond the sub-perceptual residuals above. The interior pixels form
-two solid text bands at y58-70 (x18-117) and y88-100 (x17-145), plus one
-accelerator glyph band at y17-26.
+**About popup: attributed, after a correction.**
 
-Those are **different strings**, not different rendering. The mockup's About
-popup carries fixed placeholder metadata; production draws its real version and
-build information. No amount of style convergence closes a text difference.
+An earlier reading of this file claimed the About residual was "real version and
+build metadata" and therefore unclosable by code. **That was wrong, and it was
+wrong because it inferred content from pixel bands without reading the markup.**
+The mockup's `#m-about` (`mockup.html:635-639`) contains four ordinary rows —
+Keyboard shortcuts, Open logs folder, View on GitHub (MIT), About GoMarkEdit —
+and no version metadata at all.
 
-This needs the same treatment the File and View menus already have: a reviewed
-Feature 003 reference variant carrying production's in-scope About content,
-built from the mockup's own `.mi` primitives — or an explicit decision that the
-About popup's metadata rows are excluded as a named reviewed region. **It is a
-specification decision, not an implementation defect**, and it is the reason
-T072 stays open.
+The actual cause was the one already seen three times in this feature:
+`open-logs` and `view-github` are `laterDeferred` in the action registry
+(`actionRegistry.ts:299-304`), so production draws both rows visibly
+unavailable, and Feature 003 formats the Keyboard shortcuts accelerator for the
+host where the binding hard-codes `Ctrl ?`. The two measured text bands at
+y58-70 and y88-100 were those two dimmed rows; the band at y17-26 was the
+accelerator glyph.
+
+Resolved by the reviewed reference variant recorded in the 2026-08-13
+clarification — the same treatment the File and View menus already have. A
+variant rather than a region exclusion, because the difference is presentational
+and this feature owns the About popup's geometry; an exclusion is reserved for a
+component this feature does not own, as with the Monaco editor interior.
+
+Measured after the variant:
+
+```
+region 251x156
+total 87  boundary(<=12px) 87  interior 0  maxDelta 4
+```
+
+**1,489 → 87, with the interior at exactly zero** and every remaining pixel the
+popup's own antialiased outer boundary at a maximum channel delta of 4.
+
+With this, all three parts of T072 are attributed and the task is complete.
 
 ## What this means for the amended standard
 
-Of the seven targeted slices carrying a residual, **six are fully attributed**
-and one (About) is not. The attributed residuals fall into exactly three
+Of the seven targeted slices carrying a residual, **all seven are fully
+attributed**. The attributed residuals fall into exactly three
 families, all previously identified and none closable by editing production:
 
 1. **Antialiased popup boundary** — 181 + 205 + 416 + 163 + 87 = 1,052 pixels
@@ -95,9 +113,6 @@ families, all previously identified and none closable by editing production:
    layer.
 3. **Permitted platform exception** — 595 accelerator-glyph pixels the task
    itself grants.
-
-The one unattributed family is the About popup's text content, which is a
-content decision.
 
 ## Attributed is not the same as green — read this before trusting a `[X]`
 
@@ -113,12 +128,12 @@ is the intended state:
 | T059 File popup | 181 unexplained pixels | T070 `[X]` — attributed |
 | T060 Settings 1280 | 709 unexplained pixels | T071 `[X]` — attributed |
 | T060 Settings 375 | 205 unexplained pixels | T071 `[X]` — attributed |
-| T061 View popup | 165 unexplained pixels | T072 open — About unresolved |
-| T061 About popup | 1489 unexplained pixels | T072 open — real text difference |
-| T058 glass-light/dark | 6186 / 6380 | T072 open — attributed, task open for About |
+| T061 View popup | 165 unexplained pixels | T072 `[X]` — attributed |
+| T061 About popup | 87 unexplained pixels | T072 `[X]` — attributed |
+| T058 glass-light/dark | 6186 / 6380 | T072 `[X]` — attributed |
 | T077 toolbar | 177 unexplained pixels | new slice, residual already characterised |
 
-A `[X]` on T070 and T071 means **every differing pixel in that slice has a
+A `[X]` on T070, T071 and T072 means **every differing pixel in that slice has a
 written, proven cause**, which is the standard the 2026-08-13 clarification
 records and the standard session decision 2 directed. It does **not** mean the
 Playwright case is green, and it must not be read that way.

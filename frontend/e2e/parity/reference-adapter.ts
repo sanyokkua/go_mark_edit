@@ -157,6 +157,23 @@ const DEFERRED_TOOLBAR_CONTROL_TITLES = Object.freeze([
  * `docs/delivery/spec/surface/mockup.html` is edited and the raw source hash is
  * unchanged.
  */
+/*
+ * `open-logs` and `view-github` are `laterDeferred` in the action registry, so
+ * production draws both rows visibly unavailable, and Feature 003 formats the
+ * Keyboard shortcuts accelerator for the host. The binding draws no disabled
+ * state and hard-codes `Ctrl ?`, so without this the comparison collapses into
+ * an opacity-and-glyph difference instead of measuring the row geometry —
+ * exactly the treatment FR-FT-056 already grants the File and View menus.
+ */
+const aboutMenuReferenceAccelerators: Readonly<
+  Record<FileMenuReferencePlatform, Readonly<Record<string, string | null>>>
+> = {
+  darwin: { 'keyboard-shortcuts': '⌘?' },
+  other: { 'keyboard-shortcuts': 'Ctrl+?' },
+};
+
+const ABOUT_MENU_SOURCE_MARKER = '<div class="dropdown" id="m-about"';
+
 const viewMenuReferenceAccelerators: Readonly<
   Record<FileMenuReferencePlatform, Readonly<Record<string, string | null>>>
 > = {
@@ -256,6 +273,43 @@ function adaptViewMenu(
     '<div class="sep"></div>',
     `<div class="mi"${deferredAttributes()}><span>Distraction-free reading</span>${acceleratorSpan(shortcut['distraction-free-reading'])}</div>`,
     `<div class="mi"><span>Full screen</span>${acceleratorSpan(shortcut['fullscreen'])}</div>`,
+    '',
+  ].join('\n      ');
+  return html.slice(0, open + 1) + adapted + html.slice(end);
+}
+
+function adaptAboutMenu(
+  html: string,
+  platform: FileMenuReferencePlatform,
+): string {
+  // A source without the About menu is not a parity reference; leave it
+  // untouched so unit fixtures can exercise the other variants in isolation.
+  const start = html.indexOf(ABOUT_MENU_SOURCE_MARKER);
+  if (start < 0) return html;
+  const open = html.indexOf('>', start);
+  // Point at the `</div>` that closes `#m-about` itself, not at the one closing
+  // its last row — otherwise the replacement leaves an unbalanced tag and the
+  // whole document collapses.
+  const end = html.indexOf('\n    </div>\n  </div>', open);
+  if (end < 0) {
+    throw new Error('About-menu reference source region is malformed');
+  }
+  for (const required of ['class="k"', 'class="sep"', 'class="mi"']) {
+    if (!html.slice(open, end).includes(required)) {
+      throw new Error(
+        `About-menu reference source lost the required primitive: ${required}`,
+      );
+    }
+  }
+  const shortcut = aboutMenuReferenceAccelerators[platform];
+  const adapted = [
+    '',
+    `<div class="mi"><span>Keyboard shortcuts</span>${acceleratorSpan(shortcut['keyboard-shortcuts'])}</div>`,
+    '<div class="sep"></div>',
+    `<div class="mi"${deferredAttributes()}><span>Open logs folder</span></div>`,
+    `<div class="mi"${deferredAttributes()}><span>View on GitHub (MIT)</span></div>`,
+    '<div class="sep"></div>',
+    '<div class="mi"><span>About GoMarkEdit</span></div>',
     '',
   ].join('\n      ');
   return html.slice(0, open + 1) + adapted + html.slice(end);
@@ -522,6 +576,7 @@ export const REFERENCE_ADAPTER_HASH = hash(
     DEFERRED_TOOLBAR_CONTROL_TITLES,
     DEFERRED_SETTINGS_ROW_LABELS,
     viewMenuReferenceAccelerators,
+    aboutMenuReferenceAccelerators,
     LIGHTS_SOURCE_MARKUP,
     IN_SCOPE_PREVIEW_CONTENT,
     variantRules,
@@ -630,10 +685,14 @@ export function adaptReferenceHtml(
     withDeferredSettings,
     fileMenuPlatform ?? hostReferencePlatform(),
   );
+  const withAboutMenu = adaptAboutMenu(
+    withViewMenu,
+    fileMenuPlatform ?? hostReferencePlatform(),
+  );
   const adaptedHtml =
     variant === 'file-menu'
-      ? adaptFileMenu(withViewMenu, fileMenuPlatform ?? 'other')
-      : withViewMenu;
+      ? adaptFileMenu(withAboutMenu, fileMenuPlatform ?? 'other')
+      : withAboutMenu;
   return {
     adapterHash: REFERENCE_ADAPTER_HASH,
     sourceHash: hash(html),

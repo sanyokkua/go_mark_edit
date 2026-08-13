@@ -1254,6 +1254,23 @@ completed feature already owns their behavior.
   Feature 003 requirement, and zero populated workspace, Assistant/provider, custom native-frame, or deferred
   rich-rendering surface appears in order to manufacture parity.
 
+- Q: The About popup's `open-logs` and `view-github` rows are `laterDeferred` in the action registry, so
+  production draws both visibly unavailable, and Feature 003 formats the Keyboard shortcuts accelerator for
+  the host. The immutable mockup draws no disabled state anywhere and hard-codes `Ctrl ?`. Measured at 1280px
+  Minimal Light that collapsed 1,402 of the About region's 1,489 differing pixels into an opacity-and-glyph
+  difference instead of measuring row geometry. How is that resolved? → A: Extend the same reviewed treatment
+  FR-FT-056 already grants the File and View menus. The Feature 003 reference variant renders `Open logs
+  folder` and `View on GitHub (MIT)` at the single reviewed unavailable opacity, and carries the
+  host-formatted Keyboard shortcuts accelerator, all built from the mockup's own `.mi`, `.sep` and `.k`
+  primitives. Production's deferred outcomes are unchanged — the rows stay disabled and non-activating —
+  because Feature 003 may not change any deferred outcome. **A reference variant is chosen over a named
+  region exclusion** because the difference is presentational, not ownership: this feature owns the About
+  popup's geometry and must keep measuring it, whereas an exclusion is reserved for a component this feature
+  does not own, as with the Monaco editor interior. The immutable mockup HTML/CSS and its raw source hash
+  stay unchanged, and no mask, tolerance, comparator, coordinate handling or manifest count changes. Measured
+  result: 1,489 → 87 differing pixels, all of them the popup's antialiased outer boundary at a maximum
+  channel delta of 4, with the interior at exactly zero.
+
 ## Deferred Work — recorded 2026-08-13
 
 Sixteen tasks remain open at the close of Phase 18. Each is recorded here with
@@ -1264,16 +1281,6 @@ take.**
 
 ### Blocked on a specification decision
 
-- **T072** — the View popup and the Glass menubar residuals are fully
-  attributed (`residual-attribution.md`). The **About popup is not**: 1,402 of
-  its 1,489 pixels are two solid text bands at deltas up to 116 — production
-  draws real version and build metadata where the immutable mockup carries fixed
-  placeholders. This is a content difference no style convergence can close. It
-  needs either a reviewed Feature 003 reference variant carrying production's
-  in-scope About content, built from the mockup's own `.mi` primitives exactly as
-  the File and View menus already are, or an explicit decision that the About
-  metadata rows are a named reviewed region exclusion. Either is a clarification,
-  not an implementation.
 - **T075** — the six paired `status-*` states. The clarification permitting six
   reviewed reference-adapter status variants is already recorded (Session
   2026-08-13), and removing the duplicated save status from the status bar in
