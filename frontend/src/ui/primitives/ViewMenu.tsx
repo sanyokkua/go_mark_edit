@@ -3,6 +3,10 @@ import type { CSSProperties } from 'react';
 
 import { t } from '../../i18n';
 import { getAction, type ActionId } from '../../logic/actions/actionRegistry';
+import {
+  currentPlatform,
+  formatShortcut,
+} from '../../logic/actions/shortcutRegistry';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import type { ViewArrangement } from '../../logic/store/appModelTypes';
 import styles from './ViewMenu.module.css';
@@ -80,6 +84,40 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
   const editorToggleDisabled = editorVisible && !previewVisible;
   const previewToggleDisabled = previewVisible && !editorVisible;
   const assistantAction = getAction('toggle-assistant');
+
+  /*
+   * Binding source: mockup.html `.mi .k` (:241), rendered through the same
+   * `data-shortcut` attribute the File popup already uses. Deriving it from the
+   * registry keeps the accelerator the menu shows and the one the keyboard
+   * handler honours the same value. A deferred action carries no registry
+   * shortcut, so its row simply has no accelerator.
+   */
+  const acceleratorFor = (id: ActionId): string | undefined => {
+    const { shortcut } = getAction(id);
+    return shortcut === undefined
+      ? undefined
+      : formatShortcut(shortcut, currentPlatform());
+  };
+
+  /* Binding source: mockup.html `.tick` (:245). The 14px box is reserved even
+     when off, so a selected and an unselected row stay the same width. */
+  const tick = (selected: boolean): React.JSX.Element => (
+    <span
+      aria-hidden="true"
+      className={`${styles.tick} ${selected ? '' : styles.tickOff}`}
+    >
+      ✓
+    </span>
+  );
+
+  /* Binding source: mockup.html `.tgl` (:248–:250). The 19px pill is what makes
+     these two rows 33px tall rather than 30px, so it carries the row geometry
+     and is not decoration. */
+  const toggle = (checked: boolean): React.JSX.Element => (
+    <span aria-hidden="true" className={styles.toggle} data-checked={checked} />
+  );
+
+  const separator = <DropdownMenu.Separator className={styles.separator} />;
   const trigger = (
     <button
       className={styles.trigger}
@@ -128,6 +166,43 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
           collisionPadding={8}
           data-viewport-popup="view-menu"
         >
+          {/* Binding order, mockup.html `#m-view` (:626–:633): the two window
+              toggles lead, then the visibility rows, then a separator, the two
+              switch rows, a second separator, and finally the two window-state
+              rows. */}
+          {workspaceVisible === undefined ||
+          onWorkspaceVisibilityChange === undefined ? null : (
+            <DropdownMenu.CheckboxItem
+              checked={workspaceVisible}
+              className={styles.item}
+              data-shortcut={acceleratorFor('toggle-sidebar')}
+              onCheckedChange={(visible): void =>
+                dispatchWindowAction('toggle-sidebar', () =>
+                  onWorkspaceVisibilityChange(visible),
+                )
+              }
+            >
+              {t(
+                arrangement === undefined
+                  ? 'view.menu.showWorkspace'
+                  : getAction('toggle-sidebar').labelKey,
+              )}
+            </DropdownMenu.CheckboxItem>
+          )}
+          <DropdownMenu.Item
+            className={styles.item}
+            data-action-id={assistantAction.id}
+            data-availability={assistantAction.availability.kind}
+            data-shortcut={acceleratorFor(assistantAction.id)}
+            disabled={assistantAction.availability.kind === 'deferred'}
+            title={
+              assistantAction.availability.kind === 'deferred'
+                ? t('action.unavailable')
+                : undefined
+            }
+          >
+            {t(assistantAction.labelKey)}
+          </DropdownMenu.Item>
           {arrangement === undefined || onArrangementChange === undefined ? (
             <>
               <DropdownMenu.CheckboxItem
@@ -141,6 +216,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                 }
               >
                 {t('view.menu.showEditor')}
+                {tick(editorVisible)}
               </DropdownMenu.CheckboxItem>
               <DropdownMenu.CheckboxItem
                 checked={previewVisible}
@@ -153,6 +229,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                 }
               >
                 {t('view.menu.showPreview')}
+                {tick(previewVisible)}
               </DropdownMenu.CheckboxItem>
             </>
           ) : (
@@ -177,41 +254,12 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                   value={value}
                 >
                   {t(getAction(value).labelKey)}
+                  {tick(arrangement === value)}
                 </DropdownMenu.RadioItem>
               ))}
             </DropdownMenu.RadioGroup>
           )}
-          {workspaceVisible === undefined ||
-          onWorkspaceVisibilityChange === undefined ? null : (
-            <DropdownMenu.CheckboxItem
-              checked={workspaceVisible}
-              className={styles.item}
-              onCheckedChange={(visible): void =>
-                dispatchWindowAction('toggle-sidebar', () =>
-                  onWorkspaceVisibilityChange(visible),
-                )
-              }
-            >
-              {t(
-                arrangement === undefined
-                  ? 'view.menu.showWorkspace'
-                  : getAction('toggle-sidebar').labelKey,
-              )}
-            </DropdownMenu.CheckboxItem>
-          )}
-          <DropdownMenu.Item
-            className={styles.item}
-            data-action-id={assistantAction.id}
-            data-availability={assistantAction.availability.kind}
-            disabled={assistantAction.availability.kind === 'deferred'}
-            title={
-              assistantAction.availability.kind === 'deferred'
-                ? t('action.unavailable')
-                : undefined
-            }
-          >
-            {t(assistantAction.labelKey)}
-          </DropdownMenu.Item>
+          {separator}
           {lineNumbers === undefined ||
           onLineNumbersChange === undefined ? null : (
             <DropdownMenu.CheckboxItem
@@ -224,6 +272,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
               }
             >
               {t(getAction('line-numbers').labelKey)}
+              {toggle(lineNumbers)}
             </DropdownMenu.CheckboxItem>
           )}
           {wordWrap === undefined || onWordWrapChange === undefined ? null : (
@@ -237,14 +286,21 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
               }
             >
               {t(getAction('word-wrap').labelKey)}
+              {toggle(wordWrap)}
             </DropdownMenu.CheckboxItem>
           )}
-          <DropdownMenu.Item className={styles.item} disabled>
+          {separator}
+          <DropdownMenu.Item
+            className={styles.item}
+            data-shortcut={acceleratorFor('distraction-free-reading')}
+            disabled
+          >
             {t(getAction('distraction-free-reading').labelKey)}
           </DropdownMenu.Item>
           {onFullscreen === undefined ? null : (
             <DropdownMenu.Item
               className={styles.item}
+              data-shortcut={acceleratorFor('fullscreen')}
               onSelect={(): void =>
                 dispatchWindowAction('fullscreen', onFullscreen)
               }

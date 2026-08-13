@@ -50,6 +50,76 @@
   cursor: not-allowed;
 }
 
+/* Binding source: mockup.html `.mi .k` (:241), rendered from the registry
+   through `data-shortcut` exactly as the File popup does. A row whose action
+   carries no registry shortcut draws no accelerator at all, so it stays at the
+   two flex items the binding's `justify-content: space-between` expects. */
+.item:not([data-shortcut])::after {
+  content: none;
+}
+
+.item::after {
+  color: var(--faint);
+  content: attr(data-shortcut);
+  font-family: var(--mono);
+  font-size: var(--popup-accelerator-font-size);
+  margin-inline-start: auto;
+  padding-inline-start: 16px;
+}
+
+/* Binding source: mockup.html `.sep` (:243). */
+.separator {
+  background: var(--stroke-soft);
+  block-size: var(--control-border-width);
+  margin: 5px 4px;
+}
+
+/* Binding source: mockup.html `.tick` and `.tick.off` (:245). The box keeps its
+   width when off so the rows above and below stay aligned. */
+.tick {
+  color: var(--accent-ink);
+  text-align: center;
+  width: 14px;
+}
+
+.tickOff {
+  color: transparent;
+}
+
+/* Binding source: mockup.html `.tgl` (:248), `.tgl::after` (:249) and
+   `.tgl.on` (:250). The 19px block size is what lifts a switch row from the
+   binding's 30px text row to 33px. */
+.toggle {
+  background: var(--surface-3);
+  border: var(--control-border-width) solid var(--stroke);
+  border-radius: 12px;
+  flex: none;
+  height: 19px;
+  position: relative;
+  width: 34px;
+}
+
+.toggle::after {
+  background: var(--muted);
+  border-radius: 50%;
+  content: '';
+  height: 14px;
+  left: 1.5px;
+  position: absolute;
+  top: 1.5px;
+  width: 14px;
+}
+
+.toggle[data-checked='true'] {
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.toggle[data-checked='true']::after {
+  background: var(--accent-contrast);
+  left: 16px;
+}
+
 /* Binding source: mockup.html `#m-view{left:196px}` with `.dropdown{top:42px}`.
    The popup is positioned by those coordinates, so the portal wrapper must not
    contribute collision-aware placement of its own. */
