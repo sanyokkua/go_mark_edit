@@ -160,6 +160,25 @@ because `/speckit-converge` must still determine whether the implementation matc
   against a mock bridge, and every Playwright run uses that mock — a known divergence
   (`docs/delivery/plan/KNOWN_ISSUES.md`). A live check against `dev-ui` never substitutes for
   walking the real `just build` binary before calling a story done.
+- **`just check` never runs Playwright.** It is exactly `gen-check, frontend-build, fmt-check,
+  lint, typecheck, frontend-test, go-vet, archtest, go-test` (`justfile:145`); the e2e suites run
+  only under `just e2e-test` / `just verify-ui`, and `just baseline` does not capture them either.
+  A green `just check` says nothing about interface behaviour. On 2026-08-13 it was green while
+  `real-files-and-tabs.test.ts` was 2 failed / 6 passed — a dead Settings toggle and a test still
+  describing a superseded File menu. Run `just e2e-test` explicitly, and diff it, before calling
+  any interface work done.
+- **Availability comes from the action registry, never from whether a handler happens to be
+  wired.** `SettingsMenu` computed it as `onMarkdownSettingsChange === undefined` and shipped
+  `Format on save` and `Lint on save` enabled while `actionRegistry.ts` marked both
+  `laterDeferred`. Read `getAction(id).availability.kind`.
+- **A pixel difference with no style or bounds difference is usually layerisation, not drift.**
+  The comparator's compared-property list is `METRIC_PROPERTIES` in
+  `frontend/e2e/targeted-parity.test.ts` (~line 84): `flex` and `max-width` are not compared,
+  `min-width` is — and `min-width: auto` computes to `auto` only for a flex item, so a plain block
+  wrapper makes a child compute `0px` and reads as drift. Separately, making an element a scroll
+  container costs ~332 deterministic pixels confined to glyphs, because Chromium composites
+  scrollable areas and drops LCD subpixel antialiasing. Check determinism and composited-layer
+  ancestry before chasing a style fix that does not exist.
 - **`just package` exits non-zero on purpose** until Phase 08 introduces it — don't report that
   as broken.
 - **Everything under `frontend/wailsjs/` is committed executable (`100755`), because that is the

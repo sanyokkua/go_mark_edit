@@ -36,7 +36,6 @@
   flex: 0 0 var(--toolbar-row-height);
   flex-wrap: nowrap;
   gap: var(--toolbar-gap);
-  min-width: 0;
   overflow: hidden;
   padding: var(--toolbar-row-padding);
 }

@@ -117,11 +117,20 @@ test('FT-VS-05 exposes acknowledged autosave control and truthful save status wi
   await page.getByRole('button', { name: 'Settings' }).click();
   const menu = page.getByRole('menu', { name: 'Settings menu' });
   const autosave = menu.getByRole('checkbox', { name: 'Autosave' });
+  // Drive the visible switch, which is what the pointer actually lands on: the
+  // checkbox itself is 1px and transparent. Clicking the input directly would
+  // exercise a control no user can reach.
+  const autosaveSwitch = menu.locator('[data-settings-toggle="Autosave"]');
   await expect(autosave).toBeChecked();
-  await autosave.uncheck();
+  await expect(autosaveSwitch).toHaveAttribute('data-checked', 'true');
+
+  await autosaveSwitch.click();
   await expect(autosave).not.toBeChecked();
-  await autosave.check();
+  await expect(autosaveSwitch).toHaveAttribute('data-checked', 'false');
+
+  await autosaveSwitch.click();
   await expect(autosave).toBeChecked();
+  await expect(autosaveSwitch).toHaveAttribute('data-checked', 'true');
   await expect(
     menu.getByRole('menuitem', { name: 'Format on save' }),
   ).toBeDisabled();
@@ -184,22 +193,32 @@ test('FT-VS-07 proves recents, reopen, launcher, and responsive status controls'
   const file = page.getByRole('button', { name: 'File' });
   await file.click();
   const menu = page.getByRole('menu', { name: 'File' });
-  const openRecent = menu.getByRole('menuitem', { name: 'Open Recent' });
-  await expect(openRecent).toBeEnabled();
-  await openRecent.hover();
-
-  const recentMenu = page.getByRole('menu', { name: 'Open Recent' });
-  await expect(recentMenu).toBeVisible();
-  const recentItems = recentMenu.getByRole('menuitem');
-  await expect(recentItems).toHaveCount(6);
-  await expect(recentItems).toHaveText([
+  /*
+   * The binding File popup presents recents as indented rows inside the popup
+   * itself (`mockup.html:604`, `.mi.sub`), not behind an Open Recent submenu.
+   * Asserting the whole ordered row list proves both the six entries and the
+   * grouping the binding places them in.
+   */
+  await expect(menu.getByRole('menuitem')).toHaveText([
+    'New File',
+    'New Window',
+    'Open File…',
+    'Open Folder…',
     't032-recent-07.md',
     't032-recent-06.md',
     't032-recent-05.md',
     't032-recent-04.md',
     't032-recent-03.md',
     't032-recent-02.md',
+    '↺ Reopen last file',
+    'Save',
+    'Save As…',
+    'Export to PDF…',
+    'Close Tab',
+    'Exit',
   ]);
+  const recentItems = menu.getByRole('menuitem', { name: /^t032-recent-/u });
+  await expect(recentItems).toHaveCount(6);
   await recentItems.nth(3).click();
   await expect(
     page.locator('[aria-label="Document identity"] h1'),

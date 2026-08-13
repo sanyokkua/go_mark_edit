@@ -36,6 +36,7 @@ import {
   TARGETED_PREVIEW_MANIFEST,
   TARGETED_SETTINGS_MANIFEST,
   TARGETED_TAB_MANIFEST,
+  TARGETED_TOOLBAR_MANIFEST,
   TARGETED_VIEW_ABOUT_MANIFEST,
   type TargetedParityEntry,
 } from './targeted-manifest';
@@ -1178,6 +1179,7 @@ for (const entry of [
   ...TARGETED_FILE_MENU_MANIFEST,
   ...TARGETED_SETTINGS_MANIFEST,
   ...TARGETED_TAB_MANIFEST,
+  ...TARGETED_TOOLBAR_MANIFEST,
   ...TARGETED_VIEW_ABOUT_MANIFEST,
   ...TARGETED_PREVIEW_MANIFEST,
 ]) {
@@ -1190,13 +1192,15 @@ for (const entry of [
           ? 'T060 state-pairs the 375px Settings overflow in Minimal Light'
           : entry.openSurface === 'tab-strip'
             ? 'T062 state-pairs tabs and toolbar in Minimal Light'
-            : entry.openSurface === 'view-menu'
-              ? 'T061 state-pairs the View popup in Minimal Light'
-              : entry.openSurface === 'about-menu'
-                ? 'T061 state-pairs the About popup in Minimal Light'
-                : entry.openSurface === 'preview-paused'
-                  ? 'T064 state-pairs the paused preview in Minimal Light'
-                  : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
+            : entry.openSurface === 'toolbar'
+              ? 'T077 state-pairs the document toolbar in Minimal Light'
+              : entry.openSurface === 'view-menu'
+                ? 'T061 state-pairs the View popup in Minimal Light'
+                : entry.openSurface === 'about-menu'
+                  ? 'T061 state-pairs the About popup in Minimal Light'
+                  : entry.openSurface === 'preview-paused'
+                    ? 'T064 state-pairs the paused preview in Minimal Light'
+                    : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
     async ({ page, context }) => {
       test.setTimeout(120_000);
       assertTargetedManifestIntegrity();
@@ -1226,9 +1230,11 @@ for (const entry of [
             ? entry.openSurface
             : entry.openSurface === 'tab-strip'
               ? 'tab-strip'
-              : entry.openSurface === 'preview-paused'
-                ? 'paused'
-                : '',
+              : entry.openSurface === 'toolbar'
+                ? 'toolbar'
+                : entry.openSurface === 'preview-paused'
+                  ? 'paused'
+                  : '',
       );
       const referencePage = await context.newPage();
       let referenceSignature: SemanticSignature | undefined;

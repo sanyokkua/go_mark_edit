@@ -228,6 +228,20 @@
   from the mockup's own `.mi`, `.tick`, `.sep`, and `.k` primitives. Binding order, grouping, indicators, and
   switches remain production's target and stay compared. The immutable mockup HTML/CSS and its raw source hash
   stay unchanged, and no mask, tolerance, comparator, coordinate handling, or manifest count changes.
+- Q: Several targeted slices retain a small pixel residual that no production edit can close — Chromium gradient
+  dithering whose phase is set by layerisation, antialiased popup boundaries that only resolve when unrelated
+  chrome converges, and backdrop compositing under the Glass palette. Tasks worded "zero unexplained pixels"
+  therefore state an acceptance criterion the implementation cannot satisfy. How is that resolved? → A: A visual
+  parity check **passes when every differing pixel has a written, proven cause**, not when the count is literally
+  zero. "Proven" means: the region's bounds and every compared computed style match exactly; the difference is
+  shown to be stable rather than renderer noise by capturing each side repeatedly; and the residual is attributed
+  to a named term with its pixel count and maximum channel delta recorded in the feature evidence. An
+  unattributed pixel is still a failure and still fails the slice closed. **This changes only what counts as
+  proven, and nothing about how the measurement is taken**: no mask, no tolerance change, no comparator change,
+  no coordinate-handling change, no manifest count change, and no change to the immutable mockup or its raw
+  source hash. A production-only `comparisonAttempted: false` artifact remains forbidden as a parity pass. This
+  supersedes the "zero unexplained pixels" wording in T060, T070, T071 and T072, whose task text is amended to
+  match.
 
 ## User Scenarios & Testing _(mandatory)_
 

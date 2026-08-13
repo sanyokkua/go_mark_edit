@@ -52,12 +52,13 @@ it('renders the acknowledged autosave control and leaves deferred save actions u
   expect(autosave).toBeChecked();
   fireEvent.click(autosave);
   expect(onFileSettingsChange).toHaveBeenCalledWith({ autosave: false });
+  // `format-on-save` and `lint-on-save` are `laterDeferred` in the action
+  // registry, which is the canonical authority for availability. The previous
+  // assertion said the opposite of this test's own name, and of the registry.
   expect(
     screen.getByRole('checkbox', { name: 'Format on save' }),
-  ).not.toBeDisabled();
-  expect(
-    screen.getByRole('checkbox', { name: 'Lint on save' }),
-  ).not.toBeDisabled();
+  ).toBeDisabled();
+  expect(screen.getByRole('checkbox', { name: 'Lint on save' })).toBeDisabled();
 });
 
 it('T069 draws every visible Settings popup string from the catalogue', () => {

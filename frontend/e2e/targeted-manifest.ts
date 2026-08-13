@@ -36,6 +36,7 @@ export type TargetedParityEntry = Readonly<{
     | '#m-view'
     | '#m-about'
     | '#app.no-assistant .tabs'
+    | '#app.no-assistant .toolbar'
     | '#app .ovf-menu'
     | '#app .pausedbar';
   readonly actualSelector:
@@ -45,6 +46,7 @@ export type TargetedParityEntry = Readonly<{
     | '[data-viewport-popup="view-menu"]'
     | '[data-viewport-popup="about-menu"]'
     | '[role="tablist"]'
+    | '[role="toolbar"][aria-label="Document toolbar"]'
     | '[data-viewport-popup="shell-overflow"]'
     | '[data-viewport-popup="editor-overflow"]'
     | '[data-preview-state="paused"] [role="status"]';
@@ -58,6 +60,7 @@ export type TargetedParityEntry = Readonly<{
     | 'view-menu'
     | 'about-menu'
     | 'tab-strip'
+    | 'toolbar'
     | 'preview-paused';
   readonly openSurface:
     | 'closed-menubar'
@@ -67,6 +70,7 @@ export type TargetedParityEntry = Readonly<{
     | 'view-menu'
     | 'about-menu'
     | 'tab-strip'
+    | 'toolbar'
     | 'preview-paused';
   readonly implementedActionIds: readonly ['file', 'settings', 'view', 'about'];
 }>;
@@ -237,6 +241,36 @@ export const TARGETED_TAB_MANIFEST: readonly TargetedParityEntry[] =
     }),
   ]);
 
+/*
+ * The toolbar was never compared. T062 is named "tabs and toolbar" but its
+ * region is `.tabs` / `[role="tablist"]` alone, so the toolbar's own geometry —
+ * including where the arrangement segment sits in it — had no comparison at
+ * all. That is the region the mispositioned arrangement segment hid in.
+ */
+export const TARGETED_TOOLBAR_MANIFEST: readonly TargetedParityEntry[] =
+  Object.freeze([
+    Object.freeze({
+      key: 'targeted:toolbar:1280:minimal-light',
+      family: 'editor-split',
+      width: 1280,
+      height: 720,
+      palette: Object.freeze({
+        id: 'minimal-light',
+        theme: 'minimal',
+        mode: 'light',
+      }),
+      activeScreen: 'editor-split',
+      referenceVariant: 'base',
+      referenceSelector: '#app.no-assistant .toolbar',
+      actualSelector: '[role="toolbar"][aria-label="Document toolbar"]',
+      editorReferenceSelector: '#app.no-assistant .content',
+      editorActualSelector: 'section[aria-label="Editor view"]',
+      regionId: 'toolbar',
+      openSurface: 'toolbar',
+      implementedActionIds: ['file', 'settings', 'view', 'about'] as const,
+    }),
+  ]);
+
 export const TARGETED_PREVIEW_MANIFEST: readonly TargetedParityEntry[] =
   Object.freeze([
     Object.freeze({
@@ -288,6 +322,16 @@ export function assertTargetedManifestIntegrity(): void {
     if (entry.implementedActionIds.length !== 4) {
       throw new Error(
         'T058 closed menubar must declare four implemented actions',
+      );
+    }
+  }
+  if (TARGETED_TOOLBAR_MANIFEST.length !== 1) {
+    throw new Error('T077 toolbar slice must declare exactly one case');
+  }
+  for (const entry of TARGETED_TOOLBAR_MANIFEST) {
+    if (PARITY_MANIFEST.some(({ key }) => key === entry.key)) {
+      throw new Error(
+        'T077 toolbar case must not enter the unrestricted manifest',
       );
     }
   }

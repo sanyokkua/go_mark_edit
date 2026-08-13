@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
-import { type ActionId } from '../../logic/actions/actionRegistry';
+import { getAction, type ActionId } from '../../logic/actions/actionRegistry';
 import type {
   EditorSettings,
   FileSettings,
@@ -115,19 +115,42 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
     </span>
   );
 
+  /*
+   * Availability comes from the canonical registry, not from whether a handler
+   * happened to be wired. `format-on-save` and `lint-on-save` are `laterDeferred`
+   * there, but this menu computed availability from `onMarkdownSettingsChange
+   * === undefined` alone — and AppearanceControls does supply that handler, so
+   * both rows shipped enabled while the registry said deferred.
+   */
+  const settingUnavailable = (id: ActionId): boolean =>
+    getAction(id).availability.kind === 'deferred';
+
   const toggle = (
     label: string,
     checked: boolean,
     onChange: (checked: boolean) => void,
     disabled = false,
+    /*
+     * `role="menuitem"` matches the open-mode and Markdown rows above. Without
+     * it these rows were plain divs inside `role="menu"`, so they were not
+     * exposed as menu children at all and assistive technology never announced
+     * them as part of the menu.
+     */
   ): React.JSX.Element => (
     <div
       aria-disabled={disabled}
       className={menu.row}
       data-settings-row={label}
+      role="menuitem"
     >
       <span>{label}</span>
-      <span
+      {/*
+        A label, not a span. The real checkbox is 1px and transparent, so the
+        visible switch is what the pointer lands on — and `.toggle` declares
+        `cursor: pointer`, promising it is clickable. As a span it was inert:
+        the click hit the switch, never reached the input, and nothing changed.
+      */}
+      <label
         className={menu.toggle}
         data-checked={checked}
         data-settings-toggle={label}
@@ -140,7 +163,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
           type="checkbox"
           onChange={(event): void => onChange(event.target.checked)}
         />
-      </span>
+      </label>
     </div>
   );
 
@@ -235,13 +258,15 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
         markdownSettings?.formatOnSave ?? false,
         (checked): void =>
           onMarkdownSettingsChange?.({ formatOnSave: checked }),
-        onMarkdownSettingsChange === undefined,
+        settingUnavailable('format-on-save') ||
+          onMarkdownSettingsChange === undefined,
       )}
       {toggle(
         saveToggleLabels.lintOnSave,
         markdownSettings?.lintOnSave ?? true,
         (checked): void => onMarkdownSettingsChange?.({ lintOnSave: checked }),
-        onMarkdownSettingsChange === undefined,
+        settingUnavailable('lint-on-save') ||
+          onMarkdownSettingsChange === undefined,
       )}
       <div className={menu.separator} />
       <div
