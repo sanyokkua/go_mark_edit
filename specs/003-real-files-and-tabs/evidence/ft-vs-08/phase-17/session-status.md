@@ -39,7 +39,7 @@ into FR-FT-055, FR-FT-056, the edge-case bullet on excluded regions, and the
 | T070 File-popup fail-closed parity | 181 unexplained px |
 | T072 View popup | **converged** — 9,036 → 165 px, bounds match; see `t072-view-presentation.md` |
 | T072 Glass menubar | **diagnosed, not closed** — cause is the compositing backdrop, not the menubar; see `t072-glass-compositing.md` |
-| T071 Settings waiver removal | waiver removed and gating; 709 unexplained px remain |
+| T071 Settings waiver removal | waiver removed and gating; 709 px **fully attributed** — see `t071-settings-residual.md` |
 | T073, T074, T075 | not started |
 | T065, T066, T067, T068 | not started |
 | T035–T039, T044, T054 | not started |
@@ -126,12 +126,21 @@ not drift — see the determinism section above.
 
 ## Analysis of the residual popup pixels
 
-The File and Settings popup residuals are concentrated on each popup's own
-antialiased outer boundary — rounded corners and the fractional right-edge
-column — where an opaque popup blends with the content behind it. For the
-Settings popup, 401 of 824 were outer-edge and 423 were the three theme
-swatches. Those boundary pixels close when the chrome behind them converges;
-they cannot be closed by changing the popup itself, and must not be masked.
+The File, Settings and View popup residuals are concentrated on each popup's own
+antialiased outer boundary — rounded corners and the fractional edge column —
+where an opaque popup blends with the content behind it. Those boundary pixels
+close when the chrome behind them converges; they cannot be closed by changing
+the popup itself, and must not be masked.
+
+Exact splits, replacing the earlier estimates:
+
+| Popup | Total | Boundary | Interior | Interior cause |
+|---|---:|---:|---:|---|
+| Settings, 1280 | 709 | 416 | 293 | 286 on the Liquid Glass swatch's gradient dither (±1/channel); the two solid swatches differ by zero |
+| View, 1280 | 165 | 163 | 2 | the Line numbers toggle's rounded right edge, delta 8 |
+
+`t071-settings-residual.md` records the Settings split in full, including the
+control that proves the swatch term is dither phase and not a style difference.
 
 ## Gate state
 
