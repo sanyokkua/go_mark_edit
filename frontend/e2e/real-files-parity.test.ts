@@ -1164,6 +1164,13 @@ async function setupReference(
   );
   await waitForParityReady(page);
   await prepareReferenceHarness(page);
+  /*
+   * Freeze before driving any harness switch — see the same note in
+   * targeted-parity.test.ts. The binding animates `.sidebar` and `.assistant`
+   * width over `--dur-slow`, so freezing only after the width and screen
+   * clicks leaves a transition running into the first capture.
+   */
+  await freezeParityPixels(page);
   await assertSameOrigin(page, REFERENCE_ORIGIN);
   const servedHash = response?.headers()['x-reference-source-sha256'];
   const servedVariant = response?.headers()['x-reference-variant'];

@@ -154,6 +154,14 @@ async function prepareReference(
   );
   await waitForParityReady(page);
   await prepareReferenceHarness(page);
+  /*
+   * Freeze before driving any harness switch, not after. The binding animates
+   * `.sidebar` and `.assistant` width over `--dur-slow` (300ms, mockup.html
+   * :254 and :337), so a width or screen click starts a transition that the
+   * later freeze can only snap mid-flight. Freezing first means no transition
+   * ever starts, so no capture can read a partially advanced width.
+   */
+  await freezeParityPixels(page);
   await assertSameOrigin(page, REFERENCE_ORIGIN);
   expect(response?.headers()['x-reference-source-sha256']).toBe(sourceHash);
   expect(response?.headers()['x-reference-variant']).toBe(
