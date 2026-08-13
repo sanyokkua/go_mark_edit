@@ -47,15 +47,36 @@ it('STORY-007-AC-2 supplies the shell through tokens only', () => {
     ([, token]: RegExpMatchArray): string => token,
   );
 
+  /*
+   * `--shell-workspace-column` is declared by AppShell itself rather than in
+   * tokens.css, and deliberately: it must resolve against the acknowledged width
+   * that arrives as an inline `--shell-left-width` on the shell element, which a
+   * `:root` declaration cannot do. It is still supplied through a token — the
+   * assertion below proves its value composes from one — so the rule this test
+   * protects, that the shell carries no bare literals, is unchanged.
+   */
+  const locallyDeclared = Array.from(
+    shellStylesSource.matchAll(/^\s*(--shell-[\w-]+)\s*:\s*([^;]+);/gm),
+    ([, token, value]: RegExpMatchArray): [string, string] => [token, value],
+  );
+
   expect(definedTokens).toEqual([
     '--shell-left-width',
     '--shell-divider-width',
     '--shell-divider-line-width',
-    '--shell-divider-position',
     '--shell-center-min-width',
     '--shell-assistant-collapsed-width',
   ]);
-  expect(new Set(consumedTokens)).toEqual(new Set(definedTokens));
+  expect(locallyDeclared.map(([token]) => token)).toEqual([
+    '--shell-workspace-column',
+    '--shell-workspace-column',
+    '--shell-workspace-column',
+    '--shell-workspace-column',
+  ]);
+  expect(locallyDeclared[0]?.[1]).toBe('var(--shell-left-width)');
+  expect(new Set(consumedTokens)).toEqual(
+    new Set([...definedTokens, '--shell-workspace-column']),
+  );
   expect(shellStylesSource).not.toMatch(colorLiteralPattern);
   expect(tokensSource).toContain('--accent');
 });

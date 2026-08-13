@@ -1,4 +1,15 @@
+/*
+ * `--shell-workspace-column` is the single source of truth for how wide the
+ * workspace is: the grid track reads it and so does the divider, so the handle
+ * cannot come adrift from the edge it drags. It is declared here rather than in
+ * `tokens.css` because the responsive presentations below must be able to
+ * override it, and the acknowledged desktop width arrives as an inline
+ * `--shell-left-width` on this element — an inline value would outrank a media
+ * query, so the two are deliberately separate variables.
+ */
 .shell {
+  --shell-workspace-column: var(--shell-left-width);
+
   display: grid;
   height: 100%;
   min-height: 0;
@@ -7,7 +18,7 @@
   position: relative;
   grid-template-areas: 'workspace document assistant';
   grid-template-columns:
-    var(--shell-left-width)
+    var(--shell-workspace-column)
     minmax(var(--shell-center-min-width), 1fr)
     var(--shell-assistant-collapsed-width);
 }
@@ -17,10 +28,7 @@
 }
 
 .shell[data-workspace-visible='false'] {
-  grid-template-columns:
-    0
-    minmax(var(--shell-center-min-width), 1fr)
-    var(--shell-assistant-collapsed-width);
+  --shell-workspace-column: 0px;
 }
 
 .workspace {
@@ -46,7 +54,7 @@
   display: block;
   inset-block: 0;
   inset-inline-start: calc(
-    var(--shell-divider-position) - var(--shell-divider-width) / 2
+    var(--shell-workspace-column) - var(--shell-divider-width) / 2
   );
   padding: 0;
   position: absolute;
@@ -98,13 +106,9 @@
    so the saved desktop divider width remains authoritative. */
 @media (max-width: 768px) {
   .shell {
-    --shell-divider-position: 46px;
-    grid-template-areas: 'workspace document assistant';
-    grid-template-columns: 46px minmax(0, 1fr) 0;
-  }
+    --shell-workspace-column: 46px;
 
-  .shell[data-workspace-visible='false'] {
-    grid-template-columns: 0 minmax(0, 1fr) 0;
+    grid-template-areas: 'workspace document assistant';
   }
 
   .workspace {
@@ -120,13 +124,10 @@
    rounding, so include that one-pixel boundary in the minimum presentation. */
 @media (max-width: 376px) {
   .shell {
-    --shell-divider-position: 0px;
+    --shell-workspace-column: 0px;
+
     display: grid;
     grid-template-areas: 'workspace document assistant';
-    grid-template-columns:
-      0
-      minmax(0, 1fr)
-      var(--shell-assistant-collapsed-width);
     position: relative;
   }
 

@@ -134,8 +134,14 @@ it('FR-WS-007 preserves the zero-width Assistant track at the 375px breakpoint',
   expect(narrowShellRule).toMatch(
     /grid-template-areas:\s*['"]workspace document assistant['"]/,
   );
-  expect(narrowShellRule).toMatch(
-    /grid-template-columns:\s*0\s+minmax\(0,\s*1fr\)\s+var\(--shell-assistant-collapsed-width\)/,
+  /*
+   * The narrow presentation collapses the workspace by setting the shared
+   * column variable to zero; the Assistant track keeps its token because the
+   * base grid declaration is the only one, and it is inherited here.
+   */
+  expect(narrowShellRule).toMatch(/--shell-workspace-column:\s*0px/);
+  expect(shellStyles).toMatch(
+    /grid-template-columns:\s*var\(--shell-workspace-column\)\s+minmax\(var\(--shell-center-min-width\),\s*1fr\)\s+var\(--shell-assistant-collapsed-width\)/,
   );
 });
 
@@ -265,8 +271,16 @@ it('FR-WS-017 keeps the workspace divider keyboard reachable and requests fixed 
 it('T040 overlays the resizable divider without adding a layout column at every parity width', () => {
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
 
+  /*
+   * The grid track and the divider read the same variable, so the handle cannot
+   * come adrift from the edge it drags — which is what this test is protecting
+   * when it says the divider overlays rather than occupying a column.
+   */
   expect(shellStyles).toMatch(
-    /grid-template-columns:\s*var\(--shell-left-width\)\s+minmax\(var\(--shell-center-min-width\),\s*1fr\)\s+var\(--shell-assistant-collapsed-width\)/,
+    /grid-template-columns:\s*var\(--shell-workspace-column\)\s+minmax\(var\(--shell-center-min-width\),\s*1fr\)\s+var\(--shell-assistant-collapsed-width\)/,
+  );
+  expect(shellStyles).toMatch(
+    /\.divider\s*\{[\s\S]*inset-inline-start:\s*calc\(\s*var\(--shell-workspace-column\)/,
   );
   expect(shellStyles).not.toMatch(
     /grid-template-columns:[^;]*var\(--shell-divider-width\)/,
@@ -275,10 +289,10 @@ it('T040 overlays the resizable divider without adding a layout column at every 
     /\.divider\s*\{[\s\S]*inset-block:\s*0;[\s\S]*position:\s*absolute;[\s\S]*z-index:\s*var\(--z-resize\)/,
   );
   expect(shellStyles).toMatch(
-    /@media \(max-width:\s*768px\)[\s\S]*--shell-divider-position:\s*46px[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/,
+    /@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/,
   );
   expect(shellStyles).toMatch(
-    /@media \(max-width:\s*376px\)[\s\S]*--shell-divider-position:\s*0px[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/,
+    /@media \(max-width:\s*376px\)[\s\S]*--shell-workspace-column:\s*0px[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/,
   );
 });
 
@@ -472,7 +486,7 @@ it('FR-WS-008 uses exact responsive presentations without durable responsive wri
   const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
   const baseStyles = readSource('src/ui/styles/base.css');
   expect(shellStyles).toMatch(
-    /@media \(max-width:\s*768px\)[\s\S]*grid-template-columns:\s*46px/,
+    /@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px/,
   );
   expect(shellStyles).toMatch(
     /@media \(max-width:\s*376px\)[\s\S]*width:\s*230px/,

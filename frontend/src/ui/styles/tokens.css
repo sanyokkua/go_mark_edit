@@ -180,7 +180,6 @@
   --shell-left-width: 13.5rem;
   --shell-divider-width: 0.75rem;
   --shell-divider-line-width: 1px;
-  --shell-divider-position: var(--shell-left-width);
   --shell-center-min-width: 0;
   --shell-assistant-collapsed-width: 0;
   --status-bar-border-color: var(--border);
