@@ -201,11 +201,17 @@ it('T045 presents the reviewed selection metadata on the parity editor route', (
   try {
     renderEditorView('split');
 
-    expect(
-      within(screen.getByLabelText('Editor pane')).getByText(
-        'UTF-8 · LF · sel 42w',
-      ),
-    ).toBeInTheDocument();
+    /*
+     * The binding nests the selection metric in its own span so it can carry
+     * accent ink against the header's faint text (mockup.html:726). The
+     * metadata therefore still reads as one line, but `sel 42w` is a distinct
+     * element rather than a bare text fragment — assert both.
+     */
+    const selection = within(screen.getByLabelText('Editor pane')).getByText(
+      'sel 42w',
+    );
+    expect(selection).toBeInTheDocument();
+    expect(selection.parentElement).toHaveTextContent('UTF-8 · LF · sel 42w');
   } finally {
     window.history.replaceState({}, '', originalUrl);
   }

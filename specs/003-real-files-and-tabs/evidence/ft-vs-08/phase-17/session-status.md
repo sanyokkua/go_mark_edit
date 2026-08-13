@@ -78,15 +78,29 @@ should be struck from the T045 chrome residual list below.
 | Binding preview code-block styling | 27,490 | 17,481 | 6,577 | 3,432 | 10,009 |
 | Arrangement segment keeps its binding surface | 23,597 | 17,481 | 2,683 | 3,433 | **6,116** |
 
-Remaining, all Feature 003-owned and none masked: the Link and Image toolbar
-icons, the Format/Compact/Lint label glyph prefixes, the `SEL 42W` and
-`● PREVIEW · LIVE` pane metadata, the preview code block's text position, and
-the image-fallback emphasis colour.
+Remaining, all Feature 003-owned and none masked — see
+`t045-editor-chrome.md` for the per-element measurements:
+
+- **Closed to zero pixels:** the `SEL 42W` and `● PREVIEW · LIVE` pane
+  metadata. Both needed the binding's `--accent-ink`, which production rendered
+  as `--faint`.
+- **Improved, still open:** the Link icon (139 → 41 px) and Image icon
+  (151 → 127 px), now drawn from the binding's 24-unit box; the
+  Format/Compact/Lint labels (276/422/211 → 240/342/181 px), now carrying the
+  binding's UA form-control family and `--muted`.
+- **Newly diagnosed, the dominant remaining cause:** production pins measured
+  integer control widths where the binding derives fractional ones from text
+  metrics, so a 0.03125px error accumulates across the toolbar and shifts every
+  glyph after group 1. Closing it means adopting the binding's sizing model,
+  not retuning the pinned numbers.
+- **Untouched:** the preview code block's text position, and the image-fallback
+  emphasis colour.
 
 **The tab-strip add control is struck from this list.** It was renderer noise,
 not drift — see the determinism section above. This table has not been re-run
 since `--disable-partial-raster` landed, so the 6,116 figure is an upper bound
-that still contains an unknown amount of the same noise.
+that still contains an unknown amount of the same noise, and it predates the
+pane-metadata and icon fixes.
 
 ## Analysis of the residual popup pixels
 

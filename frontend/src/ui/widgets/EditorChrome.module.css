@@ -217,6 +217,25 @@
   font-size: 12.5px;
 }
 
+/* The binding's `.tbtn` (mockup.html:287) sets a size but never a family, so a
+   `<button>` keeps Chromium's UA form-control family — Arial. Production sets
+   `font: inherit` on `.action`, which is the better product choice, so the
+   binding family is scoped to the parity route exactly like the glyph
+   treatment above. `.tbtn.txt` (mockup.html:288) also carries `--muted`, which
+   `.action`'s `--text` would otherwise override. */
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
+  .action[data-action-id='format'],
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
+  .action[data-action-id='compact'],
+:global(.application-frame:has([data-parity-shell='true']))
+  .toolbar
+  .action[data-action-id='lint'] {
+  color: var(--muted);
+  font-family: Arial, sans-serif;
+}
+
 :global(.application-frame:has([data-parity-shell='true']))
   .toolbar
   .action[data-icon='bold']

@@ -238,7 +238,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
   return (
     <section aria-label={t('editor.previewPane')} className={styles.pane}>
       <header className={styles.paneHeader}>
-        <span>{t('editor.preview.live')}</span>
+        <span className={styles.paneLive}>{t('editor.preview.live')}</span>
         <span className={styles.paneMeta}>{t('editor.preview.flavour')}</span>
       </header>
       <div
@@ -366,7 +366,16 @@ const EditorView: React.FC<EditorViewProps> = ({
                 encoding: localizedEncoding,
                 lineEnding: localizedLineEnding,
               })}
-              {parityRoute ? ' · sel 42w' : ''}
+              {parityRoute ? (
+                <>
+                  {' · '}
+                  <span className={styles.paneSelection}>
+                    {t('editor.metadata.selection')}
+                  </span>
+                </>
+              ) : (
+                ''
+              )}
             </span>
           </header>
           <EditorContextMenu>

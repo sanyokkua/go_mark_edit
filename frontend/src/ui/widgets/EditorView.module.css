@@ -128,6 +128,16 @@
   white-space: nowrap;
 }
 
+/* Binding source: mockup.html `.pane-h .live{color:var(--accent-ink)}` (:301)
+   and the nested `<span style="color:var(--accent-ink)">sel 42w</span>` inside
+   the editor pane's metadata (:726). Both read as accent ink against the
+   header's `--faint`; without this they inherit `--faint` and the pane header
+   loses the binding's only emphasis. */
+.paneLive,
+.paneSelection {
+  color: var(--accent-ink);
+}
+
 .previewContent {
   background: var(--surface);
   flex: 1 1 0;

@@ -68,11 +68,17 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
   'heading-3': (
     <path d="M2.5 3v9m0-4.5h4M6.5 3v9m3 1h1.6c1.1 0 1.6-.7 1.6-1.6S12.2 11 11 11h-.6m.6 0c1.2 0 1.8-.6 1.8-1.5S12.1 8 11 8H9.5" />
   ),
+  /*
+   * Binding source: mockup.html #i-image, drawn in a 24-unit box and rendered
+   * at 15px. Same reasoning as `file` above — keeping the source viewBox
+   * reproduces the binding's pixels instead of approximating the path in the
+   * 15-unit space.
+   */
   image: (
     <>
-      <rect x="2" y="2.5" width="11" height="10" rx="1" />
-      <circle cx="5.25" cy="5.5" r="1" />
-      <path d="m3 11 3-3 2 2 1.5-1.5 3.5 3.5" />
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="9" cy="9" r="1.6" />
+      <path d="m21 15-5-5L5 21" />
     </>
   ),
   'inline-code': (
@@ -82,10 +88,11 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
     </>
   ),
   italic: <path d="M6 2.5h5M4 12.5h5m-2-10-2 10" />,
+  /* Binding source: mockup.html #i-link, drawn in a 24-unit box — see `image`. */
   link: (
     <>
-      <path d="M6.2 9.8 5 11a2.5 2.5 0 0 1-3.5-3.5l2-2A2.5 2.5 0 0 1 7 5m1.8.2L10 4a2.5 2.5 0 0 1 3.5 3.5l-2 2A2.5 2.5 0 0 1 8 9" />
-      <path d="m5.5 7.5 4-0.1" />
+      <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+      <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
     </>
   ),
   more: (
@@ -135,6 +142,8 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
 
 const iconViewBoxes: Partial<Record<IconName, string>> = {
   file: '0 0 24 24',
+  image: '0 0 24 24',
+  link: '0 0 24 24',
 };
 
 const Icon: React.FC<IconProps> = ({

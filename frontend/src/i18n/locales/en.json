@@ -51,6 +51,7 @@
   "preview.retry": "Retry",
   "preview.refreshFailed": "Preview refresh failed.",
   "editor.metadata": "{encoding} · {lineEnding}",
+  "editor.metadata.selection": "sel 42w",
   "editor.untitled": "Untitled",
   "identity.ariaLabel": "Document identity",
   "launcher.title": "Start a document",
