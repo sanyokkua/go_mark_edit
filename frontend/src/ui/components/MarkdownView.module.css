@@ -90,6 +90,18 @@
   text-align: start;
 }
 
+/* Binding source: mockup.html `.preview strong{color:var(--md-strong)}` and
+   `.preview em{color:var(--md-emphasis)}` (:313). Without these both inherit
+   the surrounding `--muted`, which is the only difference the binding draws
+   between emphasised and ordinary body text. */
+.preview strong {
+  color: var(--md-strong);
+}
+
+.preview em {
+  color: var(--md-emphasis);
+}
+
 .preview :is(code, pre) {
   font-family: var(--preview-code-font-family);
 }
@@ -98,22 +110,34 @@
   padding-inline: var(--preview-code-inline-padding);
 }
 
-/* Binding source: mockup.html `.preview pre`. */
+/* Binding source: mockup.html `.preview pre` (:324). The binding sets no
+   line-height here, and `.preview` (:310) sets none either, so the block
+   resolves to `normal` — roughly 14px at this 12px size. `.preview`'s own
+   1.5 would otherwise cascade in as 18px and push every code line 2px down. */
 .preview pre {
   background: var(--surface-2);
   border: var(--control-border-width) solid var(--stroke-soft);
   border-radius: var(--preview-code-block-radius);
   color: var(--code-fg);
   font-size: var(--preview-code-block-font-size);
+  line-height: normal;
   margin: var(--preview-code-block-margin) 0;
   overflow-x: auto;
   padding: var(--preview-code-block-padding);
 }
 
 /* The binding block already carries the monospaced treatment; the nested code
-   element must not add a second inline padding step. */
+   element must not add a second inline padding step.
+
+   The family is deliberately the generic keyword. The binding names
+   `var(--mono)` on `.preview pre` (:324) and on `.preview .kbd` (:325) — the
+   primitive production's inline code maps onto — but nowhere on a `code`
+   inside a `pre`. The UA rule `code{font-family:monospace}` therefore wins
+   there over the ancestor's family, and the binding renders the block's text
+   in the platform's generic monospace. */
 .preview pre code {
   background: none;
+  font-family: monospace;
   padding-inline: 0;
 }
 
@@ -121,6 +145,11 @@
   opacity: 1;
 }
 
+/* The Feature 003 reference variant expresses the discarded image as the
+   binding's own emphasis primitive (`<em>`, mockup.html:313), so the fallback
+   must carry the whole of that treatment — the italic and the emphasis colour.
+   Italic alone leaves it inheriting `--muted` from the list. */
 .preview :global(.gme-preview-image-fallback) {
+  color: var(--md-emphasis);
   font-style: italic;
 }

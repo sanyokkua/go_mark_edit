@@ -176,35 +176,13 @@
   padding: var(--arrangement-option-padding);
 }
 
-.group:not(.arrangement) .action[data-icon='bold'],
-.group:not(.arrangement) .action[data-icon='italic'],
-.group:not(.arrangement) .action[data-icon='strike'],
-.group:not(.arrangement) .action[data-icon='bullet-list'],
-.group:not(.arrangement) .action[data-icon='numbered-list'],
-.group:not(.arrangement) .action[data-icon='task-list'],
-.group:not(.arrangement) .action[data-icon='quote'],
-.group:not(.arrangement) .action[data-icon='table'] {
-  inline-size: 30px;
-  padding-inline: 0;
-}
-
-.group:not(.arrangement) .action[data-icon='inline-code'] {
-  inline-size: 36px;
-  padding-inline: 0;
-}
-
-.group:not(.arrangement) .action[data-icon='heading-1'],
-.group:not(.arrangement) .action[data-icon='heading-2'],
-.group:not(.arrangement) .action[data-icon='heading-3'] {
-  inline-size: 34px;
-  padding-inline: 0;
-}
-
-.group:not(.arrangement) .action[data-icon='link'],
-.group:not(.arrangement) .action[data-icon='image'] {
-  inline-size: 33px;
-  padding-inline: 0;
-}
+/* Binding source: mockup.html `.tbtn{min-width:30px;height:30px;padding:0 8px}`
+   (:287). Every toolbar control derives its width from its own content inside
+   that box — a 30px floor, 8px of inline padding either side, and the 1px
+   transparent border the same rule declares. Nothing here may pin a measured
+   width: the binding's widths are fractional (`</>` is 36.078125px, `H1` is
+   33.984375px), a pinned integer is wrong in the fractional tail, and the error
+   accumulates left to right across the row. */
 
 /* The binding parity route retains the production action registry and
    accessible labels, but its in-scope toolbar uses the binding's compact
@@ -386,72 +364,41 @@
   .action {
   box-sizing: border-box;
   flex: 0 0 auto;
-  padding: 0;
 }
 
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  > .group:has([data-action-id='format'])
-  [data-action-id='format'] {
-  inline-size: 66.5625px;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  > .group:has([data-action-id='format'])
-  [data-action-id='compact'] {
-  inline-size: 81.359375px;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  > .group:has([data-action-id='format'])
-  [data-action-id='lint'] {
-  inline-size: 49.859375px;
-}
-
+/* Binding source: mockup.html `.seg{display:flex;padding:3px}` (:290). The
+   segment is right-anchored by the binding's `.tsp{flex:1}` spacer; production
+   reaches the same edge with an auto inline-start margin. Its width is the sum
+   of its own options, never a pinned figure. */
 :global(.application-frame:has([data-parity-shell='true']))
   .toolbar
   .arrangement {
   box-sizing: border-box;
-  flex: 0 0 181.28125px;
+  flex: 0 0 auto;
   gap: 0;
-  inline-size: 181.28125px;
   margin-inline-start: auto;
-  padding: 3px;
+  padding: var(--toolbar-group-padding);
 }
 
+/* Binding source: mockup.html `.seg button{font:inherit;font-size:11.5px;
+   padding:5px 12px}` (:291). The segment options carry `data-icon`, so the
+   glyph rule above would otherwise give them the UA form-control family; this
+   restores the theme family the binding's `font: inherit` resolves to.
+   It restores the *family* only, deliberately. The `font` shorthand also
+   resets `font-weight`, which would defeat `.arrangement .action[aria-checked]`
+   below — production's mirror of `.seg button.active{font-weight:600}`
+   (mockup.html:292) — and freeze every option at 400. The selected option is
+   semibold and therefore wider, so the segment's width is only correct while
+   the weight still follows the selection. */
 :global(.application-frame:has([data-parity-shell='true']))
   .toolbar
   .arrangement
   .action {
   box-sizing: border-box;
   flex: 0 0 auto;
-  block-size: 23px;
-  font-family: Arial, sans-serif;
+  font-family: inherit;
   font-size: 11.5px;
-  padding: 0;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .arrangement
-  [data-action-id='editor'] {
-  inline-size: 58.0625px;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .arrangement
-  [data-action-id='split'] {
-  inline-size: 48.453125px;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .arrangement
-  [data-action-id='preview'] {
-  inline-size: 66.765625px;
+  padding: var(--arrangement-option-padding);
 }
 
 .overflow {
@@ -667,14 +614,21 @@
   }
 }
 
-/* Binding source: mockup.html `.seg button{border:0}` and
-   `.seg button.active{font-weight:600}`. The segment options carry no border
-   of their own, and only the selected option is semibold. */
+/* Binding source: mockup.html `.seg button{border:0;color:var(--muted)}`
+   (:291) and `.seg button.active{color:var(--accent-contrast);
+   font-weight:600}` (:292). The segment options carry no border of their own,
+   and only the selected option is semibold and drawn on the accent. The
+   unselected options are muted — `.action`'s `--text` is the toolbar default
+   and is wrong here. */
 .arrangement .action {
   border-width: 0;
+  color: var(--muted);
   font-weight: 400;
 }
 
+/* The muted colour above outranks `.action[aria-checked='true']` on source
+   order, so the selected option restates the accent foreground here. */
 .arrangement .action[aria-checked='true'] {
+  color: var(--accent-contrast);
   font-weight: 600;
 }
