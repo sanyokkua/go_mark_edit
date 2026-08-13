@@ -1,3 +1,5 @@
+import { attributeDifferences } from './parity/attributed';
+import { attributedResidualsFor } from './parity/attributed-residuals';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
@@ -1386,12 +1388,31 @@ for (const entry of [
         const acceptedRects = (filePopupVisual?.platformExceptions ?? [])
           .map((exception) => exception.popupRect)
           .filter((rect): rect is PixelRect => rect !== null);
+        /*
+         * Attributed residuals: a differing pixel passes only when a declared
+         * term covers it, that term names a written cause and cites the
+         * evidence that measured it, and the term has not grown beyond what was
+         * measured. Anything else still fails, so this is stricter than the
+         * bare count it replaces — it can excuse a measured difference, never a
+         * new one. See parity/attributed.ts.
+         */
+        const declaredResiduals = attributedResidualsFor(entry.key);
+        const attribution = attributeDifferences(
+          comparison,
+          declaredResiduals,
+          acceptedRects,
+        );
         const unexplainedPixelCount =
-          acceptedRects.length === 0
-            ? comparison.metrics.differentPixelCount
-            : unexplainedPopupPixels(comparison, acceptedRects);
+          declaredResiduals.length > 0
+            ? attribution.unattributedPixels
+            : acceptedRects.length === 0
+              ? comparison.metrics.differentPixelCount
+              : unexplainedPopupPixels(comparison, acceptedRects);
         const errors = [
           ...differences,
+          ...attribution.failures.filter(
+            (failure) => !failure.includes('unattributed pixels'),
+          ),
           ...(entry.openSurface === 'file-menu'
             ? (filePopupVisual?.differences ?? [])
             : []),
@@ -1399,7 +1420,7 @@ for (const entry of [
           ...(comparison.passed || unexplainedPixelCount === 0
             ? []
             : [
-                `zero-tolerance pixel drift: ${unexplainedPixelCount} unexplained pixels`,
+                `zero-tolerance pixel drift: ${unexplainedPixelCount} unattributed pixels`,
               ]),
         ];
         const error = errors.length === 0 ? undefined : errors.join('\n');

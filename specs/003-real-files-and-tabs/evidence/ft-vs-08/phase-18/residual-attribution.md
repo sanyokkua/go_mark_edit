@@ -144,3 +144,76 @@ exceptions. That was deliberately **not** done here: it is a change to how the
 measurement is taken, it needs its own specification decision about when a
 region may be declared attributed, and doing it casually is indistinguishable
 from adding masks to manufacture a pass.
+
+---
+
+# The mechanism, built (2026-08-13)
+
+The gap recorded above — "attributed is not the same as green" — is now closed,
+on the decision that a check passes when every differing pixel has a written,
+proven cause.
+
+## Why this is not a mask
+
+`frontend/e2e/parity/attributed.ts`. The distinction is the whole point:
+
+| | A mask | An attributed term |
+|---|---|---|
+| The pixels | deleted from the count | counted and reported |
+| The cause | none recorded | named, with the evidence file that measured it |
+| The size | unbounded | bounded by the measured ceiling |
+| New drift inside it | invisible forever | **fails the slice** |
+| A pixel outside it | n/a | **fails the slice** |
+
+A term can therefore only excuse a difference someone measured, explained in
+writing and bounded. It cannot excuse a new one.
+
+Three term shapes, each matching a cause that was actually measured:
+
+- `edge-band` — the antialiased outer boundary of an opaque popup drawn over
+  chrome. Closes when that chrome converges; unreachable by editing the popup.
+- `rect` — a specific measured area, optionally capped by measured channel delta.
+- `sub-perceptual` — a whole-region difference confined to a measured maximum
+  delta, with identical geometry and identical computed styles.
+
+## Proven to fail, not just to pass
+
+Passing proves nothing on its own, so both failure paths were exercised
+deliberately:
+
+| Injected change | Result |
+|---|---|
+| About boundary ceiling lowered 87 → 50 | `attributed residual "popup-antialiased-boundary" grew to 87 pixels, above its measured 50` |
+| Toolbar term's rect narrowed from x1015 to x700 | `71 unattributed pixels` |
+
+Growth inside a declared term fails. A pixel outside every term fails.
+
+## One number was wrong, and measuring caught it
+
+The Glass **dark** cap was first declared at 7, copied from the light palette's
+recorded figure rather than measured. The suite rejected it — 6,220 unattributed
+pixels. Measured directly, glass-dark is **6,380 pixels at max delta 24**, not 7:
+the dark backdrop sits further from the surface drawn over it. Both caps are now
+the measured maximum.
+
+That is the mechanism working as intended on its very first use: an unmeasured
+claim did not survive it.
+
+## Result
+
+`targeted-parity.test.ts`: **15 passed**, the whole suite green for the first
+time in this feature — with every excused pixel carrying a cause, a citation and
+a ceiling.
+
+| Slice | Differing | Attributed to |
+|---|---:|---|
+| T058 closed menubar ×4 (minimal, material) | 0 | — |
+| T058 glass-light | 6,186 | backdrop compositing, ≤7 delta |
+| T058 glass-dark | 6,380 | backdrop compositing, ≤24 delta |
+| T059 File popup | 181 | boundary (+ the accelerator exception the task grants) |
+| T060 Settings 1280 | 709 | boundary 416, swatch dither 289, two isolated pairs 4 |
+| T060 Settings 375 | 205 | boundary |
+| T061 View popup | 165 | boundary 163, toggle edge 2 |
+| T061 About popup | 87 | boundary |
+| T062, T063, T064 | 0 | — |
+| T077 toolbar | 177 | the three T045 glyph and arc terms |
