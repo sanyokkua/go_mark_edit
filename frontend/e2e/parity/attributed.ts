@@ -12,11 +12,41 @@ import type { PngComparison } from './comparator';
  *   - An attributed term COUNTS its pixels, names its cause, cites the evidence
  *     file that measured it, and carries the measured ceiling. A pixel outside
  *     every term still fails the slice. A term that grows beyond what was
- *     measured still fails the slice.
+ *     measured still fails the slice, and so does one that SHRINKS well below it.
  *
  * So this can only ever excuse a difference that someone measured, explained in
  * writing, and bounded. It cannot excuse a new one.
+ *
+ * The shrink rule exists because a stale ceiling is a hiding place. A term
+ * recorded at 416 pixels that now needs 100 leaves 316 pixels of room for new
+ * drift to sit inside, fully attributed, reported as a pass. Growth was always
+ * caught; shrinkage used to pass silently. Both directions now force the number
+ * back to what was actually measured.
  */
+
+/*
+ * How far a term may drift below its recorded size before the ceiling is
+ * treated as stale. The band has to absorb a renderer nudge without breaking
+ * the build, so it is the LARGER of a quarter of the recorded size and a flat
+ * few pixels — the flat part is what stops a two-pixel term firing every time
+ * an arc quantises one step differently.
+ */
+export const RESIDUAL_SHRINK_RATIO = 0.25;
+export const RESIDUAL_SHRINK_GRACE_PIXELS = 8;
+
+/**
+ * The smallest count a term may report before its recorded ceiling is stale.
+ * Exported so the evidence and the tests quote one definition rather than two.
+ */
+export function shrinkFloorFor(measuredPixels: number): number {
+  return (
+    measuredPixels -
+    Math.max(
+      RESIDUAL_SHRINK_GRACE_PIXELS,
+      Math.ceil(measuredPixels * RESIDUAL_SHRINK_RATIO),
+    )
+  );
+}
 
 export type AttributedTerm =
   /*
@@ -58,6 +88,8 @@ export interface AttributedTermResult {
   readonly id: string;
   readonly pixels: number;
   readonly measuredPixels: number;
+  /** The count below which the recorded ceiling is treated as stale. */
+  readonly shrinkFloor: number;
 }
 
 export interface AttributionResult {
@@ -114,8 +146,10 @@ function matchesTerm(
 
 /**
  * Assign every differing pixel to the first residual that covers it. Pixels no
- * residual covers are unattributed and fail the slice, and a residual whose
- * pixels exceed its recorded measurement fails the slice too.
+ * residual covers are unattributed and fail the slice; a residual whose pixels
+ * exceed its recorded measurement fails the slice; and so does one that has
+ * shrunk far enough below it that the recorded ceiling has become a hiding
+ * place.
  */
 export function attributeDifferences(
   comparison: PngComparison,
@@ -182,6 +216,7 @@ export function attributeDifferences(
     id: residual.id,
     pixels: counts[index],
     measuredPixels: residual.measuredPixels,
+    shrinkFloor: shrinkFloorFor(residual.measuredPixels),
   }));
 
   if (unattributed > 0) {
@@ -193,6 +228,24 @@ export function attributeDifferences(
     if (term.pixels > term.measuredPixels) {
       failures.push(
         `attributed residual "${term.id}" grew to ${term.pixels} pixels, above its measured ${term.measuredPixels} (${residuals[index].evidence})`,
+      );
+      continue;
+    }
+    if (term.measuredPixels === 0) continue;
+    /*
+     * A term contributing nothing is not a smaller difference, it is a closed
+     * one. Deleting the entry is the correct response, and leaving it declared
+     * keeps a licence alive for a difference that no longer exists.
+     */
+    if (term.pixels === 0) {
+      failures.push(
+        `attributed residual "${term.id}" no longer contributes any pixels but is still declared at ${term.measuredPixels}: the difference closed, so remove the entry (${residuals[index].evidence})`,
+      );
+      continue;
+    }
+    if (term.pixels < term.shrinkFloor) {
+      failures.push(
+        `attributed residual "${term.id}" shrank to ${term.pixels} pixels, below the ${term.shrinkFloor} floor for its measured ${term.measuredPixels}: tighten the recorded ceiling, because the ${term.measuredPixels - term.pixels} pixel gap is room for undetected drift (${residuals[index].evidence})`,
       );
     }
   }
