@@ -549,9 +549,13 @@ test('STORY-018-AC-3 matches the approved split-view reference', async ({
   const previewPane = page.getByLabel('Preview pane', { exact: true });
   await expect(previewPane).toContainText('● Preview · live');
   await expect(previewPane).toContainText('GFM');
-  await expect(
-    page.getByLabel('Document status', { exact: true }),
-  ).toContainText('Split');
+  /*
+   * The arrangement is asserted on the View arrangement radiogroup above, not
+   * here: the binding's status row draws no arrangement label
+   * (`mockup.html:837-845` is standard-kind, caret, count, spacer, encoding,
+   * EOL, autosave, warnings, provider, Reading pill), and production stopped
+   * duplicating it there when the row converged on that inventory.
+   */
   await expectCollapsedAssistant(page);
 
   const [
@@ -590,7 +594,22 @@ test('STORY-018-AC-3 matches the approved split-view reference', async ({
   ) {
     throw new Error('Core editor layout bounds are unavailable');
   }
-  expect(documentBounds.x).toBe(dividerBounds.x + dividerBounds.width);
+  /*
+   * FR-FT-046: the divider overlays the boundary "without consuming layout
+   * width". So it straddles the document's leading edge rather than sitting
+   * entirely before it — `AppShell.module.css` places it absolutely at
+   * `calc(var(--shell-workspace-column) - var(--shell-divider-width) / 2)`.
+   * Asserting `documentBounds.x === dividerBounds.x + dividerBounds.width`
+   * described the older divider that took a column of its own.
+   */
+  expect(dividerBounds.x + dividerBounds.width / 2).toBeCloseTo(
+    documentBounds.x,
+    1,
+  );
+  expect(dividerBounds.x).toBeLessThan(documentBounds.x);
+  expect(dividerBounds.x + dividerBounds.width).toBeGreaterThan(
+    documentBounds.x,
+  );
   expect(documentBounds.y + documentBounds.height).toBe(viewportHeight);
   expect(editorBounds.y).toBeGreaterThanOrEqual(
     toolbarBounds.y + toolbarBounds.height,
@@ -614,9 +633,16 @@ test('STORY-032-AC-3 presents deterministic 1280x720 candidate for owner approva
   await expect(page.getByRole('main', { name: 'Document area' })).toBeVisible();
   await expect(page.getByLabel('Editor pane', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Preview pane', { exact: true })).toBeVisible();
+  /*
+   * Split is asserted on the control that owns it. The binding's status row
+   * carries no arrangement label (`mockup.html:837-845`), so reading it back
+   * from there asserted a surface that no longer exists.
+   */
   await expect(
-    page.getByLabel('Document status', { exact: true }),
-  ).toContainText('Split');
+    page
+      .getByRole('radiogroup', { name: 'View arrangement' })
+      .getByRole('radio', { name: 'Split' }),
+  ).toBeChecked();
   await page.screenshot({
     path: 'test-results/phase01-owner-candidate-1280x720.png',
     fullPage: false,

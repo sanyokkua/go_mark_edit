@@ -487,9 +487,30 @@ for (const width of widths) {
     expect(popupBounds!.x + popupBounds!.width).toBeLessThanOrEqual(width);
     expect(popupBounds!.y).toBeGreaterThanOrEqual(0);
     expect(popupBounds!.y + popupBounds!.height).toBeLessThanOrEqual(480);
+    /*
+     * The popup must escape its trigger's subtree so no ancestor can clip it.
+     * It is portalled into `.application-frame` rather than `document.body`
+     * (`SettingsMenu.tsx:513`) so it shares the frame's containing block
+     * instead of being placed by collision-aware viewport coordinates —
+     * asserting `document.body` described the portal target before that
+     * convergence. The invariant the case actually needs is unchanged: the
+     * popup is a direct child of the top-level frame, and is not nested inside
+     * the menu root that owns the trigger.
+     */
     await expect
       .poll(() =>
-        popup.evaluate((element) => element.parentElement === document.body),
+        popup.evaluate(
+          (element) =>
+            element.parentElement ===
+            (document.querySelector('.application-frame') ?? document.body),
+        ),
+      )
+      .toBe(true);
+    await expect
+      .poll(() =>
+        popup.evaluate(
+          (element) => element.closest('[data-settings-menu-root]') === null,
+        ),
       )
       .toBe(true);
     await expect

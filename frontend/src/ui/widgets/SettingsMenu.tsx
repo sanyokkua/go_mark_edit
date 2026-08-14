@@ -315,6 +315,15 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   const [popupPosition, setPopupPosition] = useState<{
     left: number;
     top: number;
+    /*
+     * Set only when the popup would otherwise run past the bottom of the
+     * window. Leaving it undefined is not a detail: applying a height bound
+     * makes the surface a scroll container, and Chromium drops LCD subpixel
+     * antialiasing inside one, which costs ~332 deterministic pixels against
+     * the immutable reference. At the 720px parity height the popup fits, so
+     * this stays undefined there and the captures are unaffected.
+     */
+    maxBlockSize?: number;
   } | null>(null);
   const open = controlledOpen ?? internalOpen;
   const setOpen = useCallback(
@@ -347,15 +356,38 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
       const popupBounds = content.getBoundingClientRect();
       const applicationFrame =
         anchor.closest<HTMLElement>('.application-frame');
+      /*
+       * FR-FT-052: a popup must stay at least 8 logical pixels inside the
+       * viewport. The window minimum is 375x480 (`main.go:104-105`) and this
+       * popup's own content is taller than 480, so at the smallest supported
+       * size the save toggles and the `All settings…` row that opens the full
+       * dialog fell off the bottom with no page scroll to reach them. Bound the
+       * height to what is actually available instead of moving the surface: the
+       * frame-relative position is the binding's (`top: 42`), and shifting it
+       * would trade one defect for a parity failure.
+       */
+      const boundToViewport = (
+        frameTop: number,
+        top: number,
+      ): number | undefined => {
+        const available = window.innerHeight - margin - (frameTop + top);
+        return content.scrollHeight > available ? available : undefined;
+      };
       if (applicationFrame !== null) {
+        const frameBounds = applicationFrame.getBoundingClientRect();
         if (window.innerWidth > 376) {
-          setPopupPosition({ left: 150, top: 42 });
+          setPopupPosition({
+            left: 150,
+            top: 42,
+            maxBlockSize: boundToViewport(frameBounds.top, 42),
+          });
           return;
         }
-        const frameBounds = applicationFrame.getBoundingClientRect();
+        const narrowTop = anchorBounds.bottom - frameBounds.top;
         setPopupPosition({
           left: anchorBounds.left - frameBounds.left,
-          top: anchorBounds.bottom - frameBounds.top,
+          top: narrowTop,
+          maxBlockSize: boundToViewport(frameBounds.top, narrowTop),
         });
         return;
       }
@@ -373,7 +405,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
         below + popupBounds.height <= window.innerHeight - margin
           ? below
           : Math.max(margin, above);
-      setPopupPosition({ left, top });
+      setPopupPosition({ left, top, maxBlockSize: boundToViewport(0, top) });
     };
 
     positionPopup();
@@ -436,7 +468,16 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
           style={
             popupPosition === null
               ? { visibility: 'hidden' }
-              : { left: popupPosition.left, top: popupPosition.top }
+              : {
+                  left: popupPosition.left,
+                  top: popupPosition.top,
+                  ...(popupPosition.maxBlockSize === undefined
+                    ? {}
+                    : {
+                        maxBlockSize: popupPosition.maxBlockSize,
+                        overflowY: 'auto' as const,
+                      }),
+                }
           }
         >
           <CompactSettingsContent
