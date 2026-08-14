@@ -37,10 +37,37 @@ export default defineConfig({
     launchOptions: { args: ['--disable-partial-raster'] },
     viewport: { width: 1280, height: 720 },
   },
+  /*
+   * SC-FT-012 requires that "three consecutive deterministic local runs MUST
+   * produce identical reference and actual image hashes for every unchanged one
+   * of the 14 component keys and identical assertion lists for every one of the
+   * 36 behaviour keys". That is a different guarantee from `captureWhenStable`,
+   * which settles a *single* capture by taking it until three consecutive hashes
+   * match; nothing was re-executing a case three times. `repeatEach: 3` on a
+   * parity-only project is what supplies it.
+   *
+   * It is scoped to `targeted-parity.test.ts` alone, deliberately. That file
+   * owns both halves of the contract SC-FT-012 names. Repeating the behavioural
+   * suites would triple `offline-and-controls.test.ts`, whose FR-FT-048 case
+   * watches a live application for five continuous minutes, and buy nothing.
+   *
+   * The image-hash half needs no separate assertion: every component case
+   * compares against the immutable reference at zero tolerance, so three passes
+   * mean the actual matched the same reference three times. The assertion-list
+   * half is compared explicitly in T063 against the list the previous run left
+   * on disk.
+   */
   projects: [
     {
       name: 'chromium',
       use: { browserName: 'chromium' },
+      testIgnore: 'e2e/targeted-parity.test.ts',
+    },
+    {
+      name: 'parity',
+      use: { browserName: 'chromium' },
+      testMatch: 'e2e/targeted-parity.test.ts',
+      repeatEach: 3,
     },
   ],
   webServer: [

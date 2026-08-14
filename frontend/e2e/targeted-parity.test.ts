@@ -1716,8 +1716,31 @@ for (const palette of PARITY_PALETTES) {
         join(evidenceRoot, 'actual.png'),
         await status.screenshot({ animations: 'disabled' }),
       );
+      /*
+       * SC-FT-012's assertion-list half. `repeatEach: 3` on the parity project
+       * runs this case three times; this is what actually compares the results,
+       * against the list the previous run left on disk. Reading from disk rather
+       * than from process memory means it also spans separate `playwright test`
+       * invocations, which is the stricter reading of "three consecutive local
+       * runs" — and it survives Playwright distributing the repeats across
+       * workers, which in-memory state would not.
+       */
+      const statusPath = join(evidenceRoot, 'status.json');
+      const previousStatus = await readFile(statusPath, 'utf8').catch(
+        () => null,
+      );
+      if (previousStatus !== null) {
+        const priorAssertions = (
+          JSON.parse(previousStatus) as { assertions?: readonly string[] }
+        ).assertions;
+        expect(
+          priorAssertions,
+          `${statusPath} recorded a different assertion list on the previous run. If T063's assertions changed on purpose, delete that file and re-run; otherwise this is exactly the run-to-run nondeterminism SC-FT-012 exists to catch.`,
+        ).toEqual(assertions);
+      }
+
       await writeFile(
-        join(evidenceRoot, 'status.json'),
+        statusPath,
         JSON.stringify(
           {
             status: 'behaviour-verified',
