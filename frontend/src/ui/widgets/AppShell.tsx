@@ -22,6 +22,7 @@ import type {
 import styles from './AppShell.module.css';
 
 import EditorView from './EditorView';
+import { useMinimumWindow } from './minimumWindow';
 import StatusBar from '../components/StatusBar';
 import DocumentTabs from './DocumentTabs';
 import Launcher from './Launcher';
@@ -67,6 +68,18 @@ const AppShell: React.FC<AppShellProps> = ({
   const workspaceVisible = useAppSelector(
     (state) => state.ui.layout.sidebarVisible ?? true,
   );
+  /*
+   * At the native minimum window there is no room for a workspace column, so
+   * the panel and its divider are not rendered at all. Two other shapes were
+   * tried and reverted: overriding `workspaceVisible` here splits the source of
+   * truth, because App.tsx hands the raw preference to the View menu's toggle
+   * and the two then disagree; dispatching a hide on mount writes a persisted
+   * preference, so one narrow launch would hide the workspace on every later
+   * wide one. Not rendering owns no second "is it open" state and writes
+   * nothing — `data-workspace-visible` below still reports the stored
+   * preference, which keeps governing the wide layout untouched.
+   */
+  const minimumWindow = useMinimumWindow();
   const hasActiveDocument = useAppSelector(
     (state) =>
       state.documents.activeDocumentId !== null &&
@@ -239,12 +252,14 @@ const AppShell: React.FC<AppShellProps> = ({
       data-workspace-visible={String(workspaceVisible)}
       style={shellStyle}
     >
-      <aside
-        aria-label={t('shell.workspace')}
-        className={styles.workspace}
-        hidden={!workspaceVisible}
-      />
-      {workspaceVisible ? (
+      {minimumWindow ? null : (
+        <aside
+          aria-label={t('shell.workspace')}
+          className={styles.workspace}
+          hidden={!workspaceVisible}
+        />
+      )}
+      {workspaceVisible && !minimumWindow ? (
         <div
           aria-label={t('shell.workspace.resize')}
           aria-orientation="vertical"

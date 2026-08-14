@@ -51,6 +51,13 @@ function pointerEvent(
   return event;
 }
 
+function setViewportWidth(width: number): void {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: width,
+  });
+}
+
 function renderShell(layout: UILayout = {}): void {
   store.dispatch(
     hydrateProjection({
@@ -200,9 +207,15 @@ it('T045 preserves the overflowing empty parity bands at narrow widths', () => {
   expect(shellStyles).toMatch(
     /@media \(max-width: 376px\)[\s\S]*?:global\(\s*\.application-content:has\(\s*\[data-parity-shell='true'\]\[data-document-state='empty'\]\s*\)\s*\)\s*\{[\s\S]*?transform:\s*translateY\(-109px\);/s,
   );
-  expect(shellStyles).toMatch(
-    /@media \(max-width: 376px\)[\s\S]*?\.shell\[data-parity-shell='true'\] \.workspace\s*\{[\s\S]*?pointer-events:\s*none;/s,
-  );
+  /*
+   * This used to require `.shell[data-parity-shell='true'] .workspace {
+   * pointer-events: none }`. That rule existed only to stop the narrow
+   * workspace overlay from swallowing pointers meant for the tab strip
+   * underneath it. The minimum window no longer renders a workspace at all, so
+   * there is no overlay left to make transparent — the rule would style an
+   * element that is never in the tree.
+   */
+  expect(shellStyles).not.toMatch(/pointer-events:\s*none/);
 });
 
 it('FR-WS-008 renders an immediate non-durable divider width while sending the durable intent to Go', () => {
@@ -268,6 +281,74 @@ it('FR-WS-017 keeps the workspace divider keyboard reachable and requests fixed 
   expect(setUILayout).toHaveBeenLastCalledWith({ sidebarWidth: 288 });
 });
 
+/*
+ * The native minimum window is 375x480 (`main.go:104-105`), and frame rounding
+ * can expose 376 CSS pixels at that size, so both widths are the minimum
+ * window.
+ */
+for (const width of [375, 376]) {
+  it(`T077 renders no workspace panel and no divider at ${width}px`, () => {
+    setViewportWidth(width);
+    try {
+      renderShell({ sidebarVisible: true, sidebarWidth: 288 });
+
+      expect(
+        screen.queryByRole('complementary', { name: 'Workspace' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('separator', { name: 'Resize workspace' }),
+      ).not.toBeInTheDocument();
+      /*
+       * The stored preference is the single source of truth and it is
+       * untouched: App.tsx hands the same value to the View menu's toggle, so
+       * if the collapse owned a second "is it open" state this would read
+       * `false` and the toggle would stop agreeing with the panel. Nothing is
+       * written either — the preference still governs the wide layout.
+       */
+      expect(screen.getByTestId('application-shell')).toHaveAttribute(
+        'data-workspace-visible',
+        'true',
+      );
+      expect(setUILayout).not.toHaveBeenCalled();
+    } finally {
+      setViewportWidth(1024);
+    }
+  });
+}
+
+it('T077 keeps the workspace panel and divider one pixel above the minimum window', () => {
+  setViewportWidth(377);
+  try {
+    renderShell({ sidebarVisible: true, sidebarWidth: 288 });
+
+    expect(
+      screen.getByRole('complementary', { name: 'Workspace' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('separator', { name: 'Resize workspace' }),
+    ).toBeInTheDocument();
+  } finally {
+    setViewportWidth(1024);
+  }
+});
+
+it('T077 still reports a stored hidden workspace at the minimum window', () => {
+  setViewportWidth(375);
+  try {
+    renderShell({ sidebarVisible: false, sidebarWidth: 288 });
+
+    expect(
+      screen.queryByRole('complementary', { name: 'Workspace' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('application-shell')).toHaveAttribute(
+      'data-workspace-visible',
+      'false',
+    );
+  } finally {
+    setViewportWidth(1024);
+  }
+});
+
 it('T040 overlays the resizable divider without adding a layout column at every parity width', () => {
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
 
@@ -291,9 +372,17 @@ it('T040 overlays the resizable divider without adding a layout column at every 
   expect(shellStyles).toMatch(
     /@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/,
   );
-  expect(shellStyles).toMatch(
-    /@media \(max-width:\s*376px\)[\s\S]*--shell-workspace-column:\s*0px[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/,
+  /*
+   * The 376px block used to declare `.divider { display: block }` as well. The
+   * minimum window renders neither the workspace nor the divider, so the block
+   * now keeps only the collapsed column — the grid still declares a
+   * `workspace` area at that width, and it must stay at zero.
+   */
+  const minimumWindowBlock = shellStyles.slice(
+    shellStyles.lastIndexOf('@media (max-width: 376px)'),
   );
+  expect(minimumWindowBlock).toMatch(/--shell-workspace-column:\s*0px/);
+  expect(minimumWindowBlock).not.toMatch(/\.divider/);
 });
 
 it('T042 places the 28px status surface below editor content in the shell region', () => {
@@ -490,9 +579,16 @@ it('FR-WS-008 uses exact responsive presentations without durable responsive wri
   expect(shellStyles).toMatch(
     /@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px/,
   );
+  /*
+   * This used to require the 376px block present the workspace as a 230px
+   * absolutely-positioned overlay. The minimum window drops the workspace
+   * instead of overlaying it, so the presentation the block owns is the
+   * collapsed column, and no `width: 230px` overlay survives anywhere.
+   */
   expect(shellStyles).toMatch(
-    /@media \(max-width:\s*376px\)[\s\S]*width:\s*230px/,
+    /@media \(max-width:\s*376px\)[\s\S]*--shell-workspace-column:\s*0px/,
   );
+  expect(shellStyles).not.toMatch(/width:\s*230px/);
   expect(editorStyles).toMatch(
     /@media \(max-width:\s*376px\)[\s\S]*flex-direction:\s*column/,
   );

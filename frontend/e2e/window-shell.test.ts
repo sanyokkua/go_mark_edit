@@ -373,10 +373,25 @@ for (const width of widths) {
         .click();
 
       const workspace = page.getByRole('complementary', { name: 'Workspace' });
-      await expect(workspace).toBeVisible();
-      await expect
-        .poll(async () => (await workspace.boundingBox())?.width)
-        .toBe(width === 375 ? 230 : width === 768 ? 46 : 256);
+      if (width === 375) {
+        /*
+         * The minimum window renders no workspace at all: there is no room for
+         * a column, and the 230px overlay this used to measure covered the tab
+         * strip and intercepted pointers meant for it.
+         */
+        await expect(workspace).toHaveCount(0);
+      } else {
+        await expect(workspace).toBeVisible();
+        await expect
+          .poll(async () => (await workspace.boundingBox())?.width)
+          /*
+           * 216 is the binding's own sidebar width (`mockup.html:254`
+           * `.sidebar{width:216px}`), exported as `WORKSPACE_BINDING_WIDTH` in
+           * `src/logic/store/uiLayoutCommands.ts:12`. The 256 this asserted
+           * before matched neither the binding nor the shipped default.
+           */
+          .toBe(width === 768 ? 46 : 216);
+      }
       await expect(
         page.getByRole('main', { name: 'Document area' }),
       ).toBeVisible();
@@ -394,8 +409,14 @@ for (const width of widths) {
         await expect(
           page.getByRole('button', { name: 'More actions' }),
         ).toBeVisible();
+        /*
+         * The minimum window carries one pane. This used to measure the editor
+         * and the preview stacked one above the other; Split now collapses to
+         * the editor and the preview is removed from the tree, so the editor is
+         * the whole pane row and the viewer is not there to measure.
+         */
         const editor = await page.getByLabel('Editor pane').boundingBox();
-        const preview = await page.getByLabel('Preview pane').boundingBox();
+        await expect(page.getByLabel('Preview pane')).toHaveCount(0);
         const document = page.getByRole('main', { name: 'Document area' });
         const documentBounds = await document.boundingBox();
         const toolbarBounds = await toolbar.boundingBox();
@@ -405,7 +426,6 @@ for (const width of widths) {
           .boundingBox();
         await page.keyboard.press('Escape');
         expect(editor).not.toBeNull();
-        expect(preview).not.toBeNull();
         expect(documentBounds).not.toBeNull();
         expect(toolbarBounds).not.toBeNull();
         expect(arrangementBounds).not.toBeNull();
@@ -423,8 +443,15 @@ for (const width of widths) {
         expect(
           arrangementBounds!.x + arrangementBounds!.width,
         ).toBeLessThanOrEqual(toolbarBounds!.x + toolbarBounds!.width);
-        expect(preview!.y).toBeGreaterThan(editor!.y);
-        expect(Math.abs(preview!.x - editor!.x)).toBeLessThanOrEqual(1);
+        /*
+         * The surviving pane fills the region: it starts inside the document
+         * area and runs to its trailing edge, with nothing beside it.
+         */
+        expect(editor!.x).toBeGreaterThanOrEqual(documentBounds!.x);
+        expect(editor!.x + editor!.width).toBeLessThanOrEqual(
+          documentBounds!.x + documentBounds!.width,
+        );
+        expect(editor!.width).toBeGreaterThan(documentBounds!.width / 2);
       } else {
         await expect(
           page.getByRole('button', { name: 'More actions' }),
@@ -455,17 +482,33 @@ for (const width of widths) {
   }
 }
 
-test('T039 native minimum frame rounding keeps the workspace off-canvas', async ({
+test('T039 native minimum frame rounding drops the workspace entirely', async ({
   page,
 }) => {
+  /*
+   * The native minimum window is 375x480 (`main.go:104-105`); frame rounding
+   * can expose this 376px CSS viewport at that size, so it is the minimum
+   * window too. The workspace used to be presented here as a 230px overlay —
+   * off-canvas in name only, since it painted over the tab strip and
+   * intercepted its pointers. It is no longer rendered at this width.
+   */
   await page.setViewportSize({ width: 376, height: 480 });
   await page.goto('/');
 
-  const workspace = page.getByRole('complementary', { name: 'Workspace' });
-  await expect(workspace).toBeVisible();
-  await expect
-    .poll(async () => Math.round((await workspace.boundingBox())?.width ?? -1))
-    .toBe(230);
+  await expect(
+    page.getByRole('complementary', { name: 'Workspace' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('separator', { name: 'Resize workspace' }),
+  ).toHaveCount(0);
+  /*
+   * The stored preference is untouched, so the shell still reports it — the
+   * collapse owns no second "is it open" state.
+   */
+  await expect(page.getByTestId('application-shell')).toHaveAttribute(
+    'data-workspace-visible',
+    'true',
+  );
   await expect(
     page.getByRole('button', { name: 'More actions' }),
   ).toBeVisible();

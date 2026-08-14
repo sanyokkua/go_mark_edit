@@ -214,21 +214,16 @@ for (const width of widths) {
             workspaceVisible ?? '',
           );
           /*
-           * The workspace starts closed on a narrow window, where it is an
-           * overlay that would otherwise cover the tab strip, and open on a
-           * wide one. So the toggle is asserted relative to where it started
-           * rather than assuming it began visible — what matters is that it
-           * flips both ways and the panel follows.
+           * The minimum window renders no workspace panel at either setting —
+           * there is no room for a column and an overlay would cover the tab
+           * strip. What the toggle still does at this width is move the stored
+           * preference, which is what governs the wide layout, so the attribute
+           * is asserted to flip both ways while the panel stays absent.
            */
-          const startedVisible = workspaceVisible === 'true';
           const workspacePanel = page.getByRole('complementary', {
             name: 'Workspace',
           });
-          if (startedVisible) {
-            await expect(workspacePanel).toBeHidden();
-          } else {
-            await expect(workspacePanel).toBeVisible();
-          }
+          await expect(workspacePanel).toHaveCount(0);
           await openShellItem('View');
           await view
             .getByRole('menuitemcheckbox', { name: 'Toggle Sidebar' })
@@ -237,11 +232,7 @@ for (const width of widths) {
             'data-workspace-visible',
             workspaceVisible ?? '',
           );
-          if (startedVisible) {
-            await expect(workspacePanel).toBeVisible();
-          } else {
-            await expect(workspacePanel).toBeHidden();
-          }
+          await expect(workspacePanel).toHaveCount(0);
         }
 
         if (width !== 375) {
@@ -345,35 +336,48 @@ for (const width of widths) {
         const preview = page.getByRole('region', { name: 'Preview pane' });
         const status = page.getByLabel('Document status', { exact: true });
 
-        const [
-          navigationBox,
-          tabsBox,
-          toolbarBox,
-          editorBox,
-          previewBox,
-          statusBox,
-        ] = await Promise.all([
-          navigation.boundingBox(),
-          tabs.boundingBox(),
-          toolbar.boundingBox(),
-          editor.boundingBox(),
-          preview.boundingBox(),
-          status.boundingBox(),
-        ]);
+        /*
+         * The minimum window carries one pane: Split collapses to the editor
+         * and the preview is removed from the tree, so there is no viewer to
+         * measure at 375. Above that width both panes are laid out and the
+         * hierarchy is asserted against each of them.
+         */
+        const minimumWindow = width === 375;
+        if (minimumWindow) {
+          await expect(preview).toHaveCount(0);
+        }
+        const [navigationBox, tabsBox, toolbarBox, editorBox, statusBox] =
+          await Promise.all([
+            navigation.boundingBox(),
+            tabs.boundingBox(),
+            toolbar.boundingBox(),
+            editor.boundingBox(),
+            status.boundingBox(),
+          ]);
+        const previewBox = minimumWindow ? null : await preview.boundingBox();
         expect(navigationBox).not.toBeNull();
         expect(tabsBox).not.toBeNull();
         expect(toolbarBox).not.toBeNull();
         expect(editorBox).not.toBeNull();
-        expect(previewBox).not.toBeNull();
         expect(statusBox).not.toBeNull();
         expect(navigationBox!.y).toBeLessThan(tabsBox!.y);
         expect(tabsBox!.y).toBeLessThan(toolbarBox!.y);
         expect(toolbarBox!.y).toBeLessThan(editorBox!.y);
-        expect(toolbarBox!.y).toBeLessThan(previewBox!.y);
         expect(statusBox!.y).toBeGreaterThan(editorBox!.y);
-        expect(statusBox!.y).toBeGreaterThan(previewBox!.y);
         expect(editorBox!.width).toBeGreaterThan(0);
-        expect(previewBox!.width).toBeGreaterThan(0);
+        if (minimumWindow) {
+          /*
+           * The surviving pane fills the region rather than sharing it: only
+           * the pane row's own inline padding is taken off the viewport, where
+           * a stacked or side-by-side split would leave it near half.
+           */
+          expect(editorBox!.width).toBeGreaterThan(width * 0.8);
+        } else {
+          expect(previewBox).not.toBeNull();
+          expect(toolbarBox!.y).toBeLessThan(previewBox!.y);
+          expect(statusBox!.y).toBeGreaterThan(previewBox!.y);
+          expect(previewBox!.width).toBeGreaterThan(0);
+        }
         /*
          * These two assertions used to require the tabs be `toBeDisabled()`,
          * and to name `spec-draft.md`. Both were written when the shell was a
@@ -390,16 +394,15 @@ for (const width of widths) {
           'true',
         );
         /*
-         * At 375 the workspace opens as an overlay and sits on top of the tab
-         * strip, so the new-tab control is present and visible but cannot be
-         * clicked until the sidebar is dismissed — Playwright reports the
-         * `<aside aria-label="Workspace">` intercepting the pointer. That is
-         * recorded as a narrow-width finding in the Phase 18 evidence; the tab
-         * strip's behaviour is exercised here at the widths where it is
-         * reachable, and its enabled/selected state at every width above.
+         * The new-tab control is exercised at every width, 375 included. It
+         * used to be skipped there: the workspace opened as an overlay sitting
+         * on top of the tab strip, and Playwright reported the
+         * `<aside aria-label="Workspace">` intercepting the pointer. The
+         * minimum window renders no workspace at all, so nothing covers the
+         * strip and the control is reachable on first sight.
          */
         const newTab = page.getByRole('button', { name: 'New tab' });
-        if (width !== 375 && (await newTab.isVisible())) {
+        if (await newTab.isVisible()) {
           const initialTabs = await documentTabs.count();
           await newTab.click();
           await expect(documentTabs).toHaveCount(initialTabs + 1);

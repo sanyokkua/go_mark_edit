@@ -36,6 +36,7 @@ import Icon from '../primitives/Icon';
 import MenuTrigger from '../primitives/MenuTrigger';
 import DocumentIdentity from './DocumentIdentity';
 import { safeRecentLabel } from './Launcher';
+import { isMinimumWindow } from './minimumWindow';
 import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
 import type { ApplicationMenuTarget } from './applicationMenuRequest';
 import styles from './ShellMenuRow.module.css';
@@ -116,9 +117,12 @@ function applicationFrame(): HTMLElement | undefined {
   return document.querySelector<HTMLElement>('.application-frame') ?? undefined;
 }
 
-function isNarrowViewport(): boolean {
-  return typeof window !== 'undefined' && window.innerWidth <= 376;
-}
+/*
+ * Deliberately the static read, not `useMinimumWindow`: the menu row samples
+ * the width to place its popups, and re-rendering the row on every resize
+ * would move an open popup out from under the pointer.
+ */
+const isNarrowViewport = isMinimumWindow;
 
 type ActiveMenu = 'settings' | 'view' | 'file' | 'about' | null;
 

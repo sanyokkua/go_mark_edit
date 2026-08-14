@@ -121,7 +121,11 @@
 }
 
 /* The native 375 px minimum can expose a 376 px CSS viewport after frame
-   rounding, so include that one-pixel boundary in the minimum presentation. */
+   rounding, so include that one-pixel boundary in the minimum presentation.
+
+   The workspace and its divider are not rendered at this width at all, so this
+   block carries no presentation for either. The grid still declares a
+   `workspace` area, so the column stays collapsed here. */
 @media (max-width: 376px) {
   .shell {
     --shell-workspace-column: 0px;
@@ -139,27 +143,7 @@
     overflow: visible;
   }
 
-  .shell[data-parity-shell='true'] .workspace {
-    pointer-events: none;
-  }
-
-  .workspace {
-    background: var(--surface-raised);
-    inset: 0 auto 0 0;
-    position: absolute;
-    width: 230px;
-    z-index: var(--z-dropdown);
-  }
-
-  .shell[data-workspace-visible='false'] .workspace {
-    display: none;
-  }
-
   .document {
     min-width: 0;
-  }
-
-  .divider {
-    display: block;
   }
 }

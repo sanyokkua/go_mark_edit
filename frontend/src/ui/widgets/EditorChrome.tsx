@@ -30,6 +30,7 @@ import { useEditorSettings } from '../../logic/settings/editorSettings';
 import Icon, { type IconName } from '../primitives/Icon';
 import styles from './EditorChrome.module.css';
 import { useModalState } from './modalStateContext';
+import { isMinimumWindow } from './minimumWindow';
 import DocumentTabs, { type DocumentTabsProps } from './DocumentTabs';
 import { ApplicationMenuRequestContext } from './applicationMenuRequest';
 
@@ -78,9 +79,12 @@ const applicationOverflowLabels = {
   view: t('action.view.label'),
 } as const;
 
-function isNarrowToolbarViewport(): boolean {
-  return typeof window !== 'undefined' && window.innerWidth <= 376;
-}
+/*
+ * Deliberately the static read, not `useMinimumWindow`: this drives where the
+ * overflow popup is portalled and positioned, and it is already resynchronized
+ * by the toolbar's own resize listener below.
+ */
+const isNarrowToolbarViewport = isMinimumWindow;
 
 function action(id: ActionEntry['id']): ActionEntry {
   return getAction(id);

@@ -34,6 +34,7 @@ import {
   EditorSessionContext,
   useEditorSessionAttachment,
 } from './editorSession';
+import { useMinimumWindow } from './minimumWindow';
 import PreviewPane from './PreviewPane';
 import EditorChrome from './EditorChrome';
 import type { DocumentTabsProps } from './DocumentTabs';
@@ -293,6 +294,7 @@ const EditorView: React.FC<EditorViewProps> = ({
 }: EditorViewProps): React.JSX.Element | null => {
   const dispatch = useAppDispatch();
   const activeBuffer = useContext(EditorSessionContext);
+  const minimumWindow = useMinimumWindow();
   const activeEditorRef = useRef<ActiveEditorHandle | null>(null);
   const previewScrollHandlerRef = useRef<((scrollTop: number) => void) | null>(
     null,
@@ -330,6 +332,21 @@ const EditorView: React.FC<EditorViewProps> = ({
   }
 
   const view = activeDocument?.view ?? fallbackView();
+  /*
+   * At the native minimum window the region carries one pane. Preview mode
+   * keeps the viewer; Editor mode and Split both keep the editor, because this
+   * is a Markdown editor and typing is the primary job — a fixed answer means
+   * nobody has to guess which half of a Split they will be handed.
+   *
+   * This is presentation only. `arrangement` below still reads the stored view,
+   * so the toolbar and the View menu keep reporting Split while the panes are
+   * collapsed, nothing is dispatched, and widening the window restores both
+   * panes with no user action.
+   */
+  const previewVisible = minimumWindow
+    ? view.previewVisible && !view.editorVisible
+    : view.previewVisible;
+  const editorVisible = minimumWindow ? !previewVisible : view.editorVisible;
   const arrangement = arrangementFor(view);
   const title = activeDocument?.title ?? t('editor.untitled');
   const encoding = activeDocument?.encoding ?? 'utf-8';
@@ -353,11 +370,9 @@ const EditorView: React.FC<EditorViewProps> = ({
       />
       <div className={styles.panes}>
         <section
-          aria-hidden={!view.editorVisible}
+          aria-hidden={!editorVisible}
           aria-label={t('editor.editorPane')}
-          className={`${styles.pane} ${
-            view.editorVisible ? '' : styles.paneHidden
-          }`}
+          className={`${styles.pane} ${editorVisible ? '' : styles.paneHidden}`}
         >
           <header className={styles.paneHeader}>
             <span>{t('editor.editorTitle', { title })}</span>
@@ -385,7 +400,7 @@ const EditorView: React.FC<EditorViewProps> = ({
               adapter={adapter}
               activeBuffer={activeBuffer}
               view={view}
-              visible={view.editorVisible}
+              visible={editorVisible}
               onLiveCursorChange={onLiveCursorChange}
               onPreviewScrollHandler={onPreviewScrollHandler}
             />
@@ -395,7 +410,7 @@ const EditorView: React.FC<EditorViewProps> = ({
           key={`${activeBuffer.documentId}:${activeBuffer.content}`}
           activeBuffer={activeBuffer}
           adapter={adapter}
-          visible={view.previewVisible}
+          visible={previewVisible}
           onScrollChange={(scrollTop: number): void => {
             previewScrollHandlerRef.current?.(scrollTop);
           }}

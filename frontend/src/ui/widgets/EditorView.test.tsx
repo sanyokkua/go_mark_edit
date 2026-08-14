@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -111,6 +112,59 @@ function renderEditorView(arrangement: ViewArrangement): void {
   );
 }
 
+function setViewportWidth(width: number): void {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: width,
+  });
+}
+
+/*
+ * jsdom has no `matchMedia`, so the minimum-window hook falls back to
+ * `window.innerWidth` for its first read and is never reactive here. A test
+ * that has to prove the collapse follows a resize installs this instead: a
+ * query whose `matches` it controls and whose change listeners it can fire.
+ */
+function installMinimumWindowQuery(): {
+  emit: (matches: boolean) => void;
+  restore: () => void;
+} {
+  const listeners = new Set<(event: { matches: boolean }) => void>();
+  let matches = false;
+  const query = {
+    get matches(): boolean {
+      return matches;
+    },
+    addEventListener: (
+      _type: string,
+      listener: (event: { matches: boolean }) => void,
+    ): void => {
+      listeners.add(listener);
+    },
+    removeEventListener: (
+      _type: string,
+      listener: (event: { matches: boolean }) => void,
+    ): void => {
+      listeners.delete(listener);
+    },
+  };
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (): typeof query => query,
+  });
+  return {
+    emit: (next: boolean): void => {
+      matches = next;
+      act((): void => {
+        for (const listener of listeners) listener({ matches: next });
+      });
+    },
+    restore: (): void => {
+      delete (window as { matchMedia?: unknown }).matchMedia;
+    },
+  };
+}
+
 beforeEach((): void => {
   store.dispatch(resetProjection());
   mockSetDocView.mockClear();
@@ -189,6 +243,108 @@ it('STORY-015-AC-3 renders each arrangement', () => {
   expect(
     screen.getByRole('heading', { name: 'Rendered Preview' }),
   ).toBeInTheDocument();
+});
+
+it('T078 keeps only the editor at the minimum window in Editor mode', () => {
+  setViewportWidth(375);
+  try {
+    renderEditorView('editor');
+
+    const editorPane = screen.getByLabelText('Editor pane');
+    expect(editorPane).not.toHaveClass('paneHidden');
+    expect(editorPane).toHaveAttribute('aria-hidden', 'false');
+    expect(screen.queryAllByLabelText('Preview pane')).toHaveLength(0);
+    expect(editorPane.parentElement?.children).toHaveLength(1);
+  } finally {
+    setViewportWidth(1024);
+  }
+});
+
+it('T078 keeps only the viewer at the minimum window in Preview mode', () => {
+  setViewportWidth(375);
+  try {
+    renderEditorView('preview');
+
+    const previewPane = screen.getByLabelText('Preview pane');
+    expect(previewPane).toHaveClass('pane');
+    expect(previewPane).not.toHaveClass('paneHidden');
+    expect(
+      within(previewPane).getByRole('heading', { name: 'Rendered Preview' }),
+    ).toBeInTheDocument();
+    /*
+     * The editor element stays mounted so its model and view state survive the
+     * round trip, exactly as it does in Preview mode on a wide window — but it
+     * is `display: none` and out of the accessibility tree, so the viewer is
+     * the only pane laid out in the region.
+     */
+    const editorPane = screen.getByLabelText('Editor pane');
+    expect(editorPane).toHaveClass('paneHidden');
+    expect(editorPane).toHaveAttribute('aria-hidden', 'true');
+  } finally {
+    setViewportWidth(1024);
+  }
+});
+
+it('T078 collapses Split to the editor at the minimum window and removes the preview', () => {
+  setViewportWidth(375);
+  try {
+    renderEditorView('split');
+
+    const editorPane = screen.getByLabelText('Editor pane');
+    expect(editorPane).toHaveClass('pane');
+    expect(editorPane).not.toHaveClass('paneHidden');
+    expect(editorPane).toHaveAttribute('aria-hidden', 'false');
+    /*
+     * Removed from the tree, not merely zero-width: a preview that is still
+     * rendered still costs a render pass and can still be reached by a
+     * screen reader, and the region is supposed to carry one pane.
+     */
+    expect(screen.queryAllByLabelText('Preview pane')).toHaveLength(0);
+    expect(editorPane.parentElement?.children).toHaveLength(1);
+
+    /*
+     * The surviving pane fills the region: it is the only child of the pane
+     * row, and `.pane` is a fully flexible item.
+     */
+    const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
+    expect(editorStyles).toMatch(/\.pane\s*\{[^}]*flex:\s*1 1 0;/s);
+    expect(editorStyles).toMatch(/\.paneHidden\s*\{[^}]*display:\s*none;/s);
+
+    /*
+     * The recorded mode is still Split. The collapse is a presentation of the
+     * current width, so the toolbar keeps reporting what the document stores.
+     */
+    expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+  } finally {
+    setViewportWidth(1024);
+  }
+});
+
+it('T079 restores Split when the window widens again without writing an arrangement', () => {
+  const minimumWindowQuery = installMinimumWindowQuery();
+  try {
+    renderEditorView('split');
+
+    expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
+    expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+
+    minimumWindowQuery.emit(true);
+    expect(screen.getByLabelText('Editor pane')).not.toHaveClass('paneHidden');
+    expect(screen.queryAllByLabelText('Preview pane')).toHaveLength(0);
+
+    // No user action in between — only the window got wider again.
+    minimumWindowQuery.emit(false);
+    expect(screen.getByLabelText('Editor pane')).not.toHaveClass('paneHidden');
+    expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+
+    expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+    const storedView = store.getState().documents.byId['document-1']?.view;
+    expect(storedView?.editorVisible).toBe(true);
+    expect(storedView?.previewVisible).toBe(true);
+    expect(mockSetDocView).not.toHaveBeenCalled();
+  } finally {
+    minimumWindowQuery.restore();
+  }
 });
 
 it('T045 presents the reviewed selection metadata on the parity editor route', () => {
