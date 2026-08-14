@@ -126,7 +126,11 @@
   excluded failures. Promote recents transactionally against the latest committed six-entry list, using SQLite commit
   order across instances and explicit display refresh. Define 40 additional state IDs, each in all six palettes at one
   assigned width: 240 additional plus 306 primary equals 546 logical cases; three repetitions equal 1,638 executions
-  without changing the manifest count.
+  without changing the manifest count. **Superseded 2026-08-14** — only the visual-state-matrix half of this answer
+  is withdrawn. The 306/240/546 expansion and the 1,638-execution count belong to the whole-screen contract retired
+  by Session 2026-08-14 and FR-FT-051, which replaces them with 14 pixel-compared component keys and 36
+  behaviour-verified keys. The autosave-timing and cross-instance recent-file-ordering halves of this answer stand
+  unchanged.
 - Q: Which complete behavior should Copy path and Reveal in file manager use? → A: Copy the exact canonical absolute
   path for any path-backed document, including detached documents, and announce `Copied path for {safe filename}` in
   a transient polite notification. Reveal revalidates existence, requests native exact-file selection where
@@ -204,7 +208,12 @@
   reference-adapter status variants built from the mockup's own status-bar primitives. The fixed 546 logical-case
   and 1,638-comparison contract is preserved, the raw immutable mockup source hash is preserved, the mockup
   HTML/CSS is never edited, and a production-only `comparisonAttempted: false` artifact MUST NOT be counted as a
-  visual-parity pass.
+  visual-parity pass. **Superseded 2026-08-14** — this is the six-variant answer that Session 2026-08-14 supersedes
+  twice: first to a two-compared split, then to all six `status-*` states behaviour-verified. The 546 logical-case
+  and 1,638-comparison contract named here is withdrawn with FR-FT-051. Two of the six reviewed variants are
+  retained and still unit-tested, because measuring through them is what proved the pairing impossible. The
+  prohibition on counting a production-only `comparisonAttempted: false` artifact as a parity pass stands, and is
+  strengthened: that artifact is now forbidden outright rather than merely uncountable.
 - Q: The toolbar's `image`, `format`, `compact` and `lint` actions are deferred, so production renders them
   visibly unavailable, but the immutable mockup draws no disabled state anywhere. Measured at 1280px Minimal
   Light, that collapses 751 of the toolbar region's 965 differing pixels into an opacity difference instead of
