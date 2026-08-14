@@ -1,3 +1,5 @@
+import { PARITY_REPETITION_COUNT } from './parity/accounting';
+import { recordParityCapture } from './parity/accounting-io';
 import { attributeDifferences } from './parity/attributed';
 import { attributedResidualsFor } from './parity/attributed-residuals';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -1058,6 +1060,7 @@ async function captureFilePopupVisualEvidence(
 
 async function writeTargetedArtifacts(input: {
   readonly entry: TargetedParityEntry;
+  readonly repetition: number;
   readonly evidenceRoot: string;
   readonly reference: SemanticSignature;
   readonly actual: SemanticSignature;
@@ -1189,6 +1192,26 @@ async function writeTargetedArtifacts(input: {
       '',
     ].join('\n'),
   );
+  /*
+   * T054's per-key accounting. Both signatures were read before this point on
+   * either path, so reference and actual were ready; what differs is whether the
+   * comparison then ran. A pairing mismatch is `unresolved`, not `failed` — the
+   * comparison never happened, and recording it as a failure would claim a
+   * measurement that was never taken.
+   */
+  await recordParityCapture({
+    manifestKey: input.entry.key,
+    repetition: input.repetition,
+    referenceReady: true,
+    actualReady: true,
+    comparisonCompleted: input.comparisonCompleted,
+    status:
+      input.status === 'passed'
+        ? 'passed'
+        : input.comparisonCompleted
+          ? 'failed'
+          : 'unresolved',
+  });
 }
 
 for (const entry of [
@@ -1218,9 +1241,18 @@ for (const entry of [
                   : entry.openSurface === 'preview-paused'
                     ? 'T064 state-pairs the paused preview in Minimal Light'
                     : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
-    async ({ page, context }) => {
+    async ({ page, context }, testInfo) => {
       test.setTimeout(120_000);
       assertTargetedManifestIntegrity();
+      /*
+       * The authoritative check that the accounting's planned set matches what
+       * Playwright is actually running. `testInfo.project.repeatEach` is the
+       * resolved value, not what the config file happens to say, so a `--repeat-each`
+       * override or a renamed project fails here rather than silently producing a
+       * report whose planned total no longer means anything.
+       */
+      expect(testInfo.project.repeatEach).toBe(PARITY_REPETITION_COUNT);
+      const repetition = testInfo.repeatEachIndex + 1;
       const referenceSource = await readFile(REFERENCE_PATH);
       const referenceSourceHash = hashReferenceSource(referenceSource);
       const captureContext = contextForTargetedEntry(
@@ -1291,6 +1323,7 @@ for (const entry of [
               : String(error);
           await writeTargetedArtifacts({
             entry,
+            repetition,
             evidenceRoot,
             reference: referenceSignature,
             actual: actualSignature,
@@ -1441,6 +1474,7 @@ for (const entry of [
         const error = errors.length === 0 ? undefined : errors.join('\n');
         await writeTargetedArtifacts({
           entry,
+          repetition,
           evidenceRoot,
           reference: referenceSignature,
           actual: actualSignature,
@@ -1549,9 +1583,10 @@ const T063_BEHAVIOUR_VERIFICATION_REASON =
 for (const palette of PARITY_PALETTES) {
   test(`T063 verifies the six backend-authoritative editor-status states at 1280px ${paletteLabels(palette).title}`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     test.setTimeout(240_000);
     assertTargetedManifestIntegrity();
+    const repetition = testInfo.repeatEachIndex + 1;
     /*
      * The split is read from the manifest, not written out here: every state this
      * test covers must be one the manifest counts as behaviour-verified, and the
@@ -1765,6 +1800,22 @@ for (const palette of PARITY_PALETTES) {
           '',
         ].join('\n'),
       );
+      /*
+       * T054's per-key accounting for the behaviour half. `referenceReady` is
+       * false and that is the honest value, not a gap: a behaviour-verified key
+       * never loads a reference page, because the whole finding is that no
+       * picture of the binding's status row can pair with production's. The
+       * report tallies the two methods separately so this reads as
+       * "not applicable" rather than "not ready" — see `methodNotes`.
+       */
+      await recordParityCapture({
+        manifestKey: `state:${statusCase.stateId}:${palette.id}`,
+        repetition,
+        referenceReady: false,
+        actualReady: true,
+        comparisonCompleted: true,
+        status: 'passed',
+      });
     }
   });
 }

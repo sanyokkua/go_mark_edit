@@ -14,6 +14,14 @@ export default defineConfig({
    */
   testMatch: 'e2e/*.test.ts',
   outputDir: 'test-results',
+  /*
+   * T054's per-key accounting. Setup truncates the run's capture log; teardown
+   * turns it into `evidence/ft-vs-08/parity/accounting-report.json`. The report
+   * is only written when the run actually recorded parity captures — see
+   * `accounting-global.ts`.
+   */
+  globalSetup: './e2e/parity/accounting-setup.ts',
+  globalTeardown: './e2e/parity/accounting-teardown.ts',
   snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}{ext}',
   use: {
     baseURL: 'http://127.0.0.1:4173',

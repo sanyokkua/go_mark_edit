@@ -318,7 +318,7 @@ export function contextForTargetedEntry(
   };
 }
 
-function allTargetedEntries(): readonly TargetedParityEntry[] {
+export function allTargetedEntries(): readonly TargetedParityEntry[] {
   return [
     ...TARGETED_MANIFEST,
     ...TARGETED_FILE_MENU_MANIFEST,
