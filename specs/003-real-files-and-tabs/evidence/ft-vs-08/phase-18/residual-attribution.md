@@ -217,3 +217,37 @@ a ceiling.
 | T061 About popup | 87 | boundary |
 | T062, T063, T064 | 0 | — |
 | T077 toolbar | 177 | the three T045 glyph and arc terms |
+
+## Re-measured: T060 Settings 375 boundary, 205 → 217
+
+`d0e63414` implemented the approved minimum-window behaviour (T076/T078): at a
+`(max-width: 376px)` viewport the application draws exactly one pane and Split
+collapses to the editor. The binding stacks both panes at that width
+(`mockup.html:54-55`), so the 375 slice stopped pairing at all —
+`activeScreen: reference="editor-split" actual="editor-only"` and
+`statusDetail.arrangement: reference="split" actual="editor"` — and the residual
+could not be measured again until the reference matched. It now does, through
+the `editor-split-375` reference variant, which hides the non-selected pane with
+the binding's own `#pane-preview{display:none}` declaration (`mockup.html:299`).
+
+Both pages therefore draw a different backdrop behind the overflow popup than
+when 205 was recorded, and the boundary term is what blends with that backdrop.
+Re-measured through the real slice:
+
+| | |
+|---|---:|
+| region | 213 × 398 (84,774 compared pixels) |
+| differing | **217** |
+| attributed to `popup-antialiased-boundary` | 217 |
+| unattributed | 0 |
+| max channel delta | 219 |
+| difference bounds | left 9, top 16, right 212, bottom 397 |
+| compared bounds and computed styles | identical (`differences: []`) |
+| determinism | 217 in 3 of 3 consecutive runs, identical bounds and delta |
+
+The cause is unchanged — the popup's own antialiased rounded corners and the
+fractional edge column, where an opaque surface blends with what is behind it.
+Every one of the 217 pixels still falls inside the same 12px inset edge band the
+term declares; none is unattributed. What changed is only what sits behind that
+band, on both pages, and the ceiling that predated `d0e63414` was stale from the
+moment it landed. The recorded value is now the measured one.

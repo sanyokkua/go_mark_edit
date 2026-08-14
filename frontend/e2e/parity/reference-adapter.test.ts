@@ -2,16 +2,23 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
+  adaptNarrowSinglePane,
   adaptReferenceHtml,
+  adaptStatusBar,
   IN_SCOPE_PREVIEW_CONTENT,
+  REFERENCE_NARROW_HIDDEN_PANE_STYLE,
   REFERENCE_ADAPTER_HASH,
   REFERENCE_ADAPTER_VERSION,
+  REFERENCE_STATUS_ITEM_CONTAINMENT,
   REFERENCE_ZERO_ASSISTANT_CLASS,
   fileOnlyReferenceRecentFiles,
   fileOnlyReferenceStates,
   referenceStateCondition,
   referenceVariantRules,
   referenceVariants,
+  statusReferenceStateFor,
+  statusReferenceStates,
+  STATUS_REFERENCE_PRODUCTIONS,
   unresolvedReferenceStateConditions,
 } from './reference-adapter';
 
@@ -55,6 +62,9 @@ it('reference adapter exposes only the reviewed variant boundary', () => {
     'file-menu',
     'conflict',
     'move-tab',
+    'status-mixed-ending',
+    'status-large-file',
+    'editor-split-375',
   ]);
   expect(referenceVariantRules('move-tab').allowedRegions).toEqual([
     'tab-menu',
@@ -134,6 +144,171 @@ it('T045 carries in-scope preview content and drops deferred rich rendering', ()
   expect(adapted.sourceHash).toBe(
     adaptReferenceHtml(source, 'base').sourceHash,
   );
+});
+
+function statusBarRegion(html: string): string {
+  const start = html.indexOf('<div class="statusbar">');
+  expect(start).toBeGreaterThan(-1);
+  const end = html.indexOf('\n  </div>', start);
+  expect(end).toBeGreaterThan(start);
+  return html.slice(start, end);
+}
+
+it('T063 exposes only the two status conditions the binding can express', () => {
+  expect(statusReferenceStates).toEqual(['mixed-ending', 'large-file']);
+  expect(statusReferenceStateFor('status-mixed-ending')).toBe('mixed-ending');
+  expect(statusReferenceStateFor('status-large-file')).toBe('large-file');
+  expect(statusReferenceStateFor('base')).toBeUndefined();
+  expect(statusReferenceStateFor('file-menu')).toBeUndefined();
+  expect(referenceVariantRules('status-mixed-ending')).toEqual({
+    allowedRegions: ['status-bar'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+  });
+  expect(referenceVariantRules('status-large-file')).toEqual({
+    allowedRegions: ['status-bar'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+  });
+});
+
+it('T063 status variants rewrite only their own span and leave the rest byte-identical', () => {
+  const source = readFileSync(
+    resolve(process.cwd(), '../docs/delivery/spec/surface/mockup.html'),
+    'utf8',
+  );
+  const base = statusBarRegion(adaptReferenceHtml(source, 'base').html);
+
+  // The immutable source still carries both binding conditions verbatim.
+  expect(base).toContain('<span class="b sb-eol">LF</span>');
+  expect(base).toContain('<span class="b sb-count">231 words</span>');
+
+  for (const [variant, state] of [
+    ['status-mixed-ending', 'mixed-ending'],
+    ['status-large-file', 'large-file'],
+  ] as const) {
+    const production = STATUS_REFERENCE_PRODUCTIONS[state];
+    const sourceSpan = `<span class="b ${production.itemClass}">${production.sourceText}</span>`;
+    const adaptedSpan =
+      `<span class="b ${production.itemClass}"` +
+      ` style="${REFERENCE_STATUS_ITEM_CONTAINMENT}">` +
+      `${production.productionText}</span>`;
+    const adapted = adaptReferenceHtml(source, variant);
+
+    expect(adapted.statusState).toBe(state);
+    // Every other byte of the binding's status row is unchanged: the whole
+    // region equals the base region with exactly this one span replaced.
+    expect(statusBarRegion(adapted.html)).toBe(
+      base.replace(sourceSpan, adaptedSpan),
+    );
+    expect(statusBarRegion(adapted.html)).toContain(adaptedSpan);
+    expect(statusBarRegion(adapted.html)).not.toContain(sourceSpan);
+    // The raw immutable source hash is untouched by the adaptation.
+    expect(adapted.sourceHash).toBe(
+      adaptReferenceHtml(source, 'base').sourceHash,
+    );
+  }
+
+  // Each variant leaves the other condition exactly as the binding writes it.
+  expect(
+    statusBarRegion(adaptReferenceHtml(source, 'status-mixed-ending').html),
+  ).toContain('<span class="b sb-count">231 words</span>');
+  expect(
+    statusBarRegion(adaptReferenceHtml(source, 'status-large-file').html),
+  ).toContain('<span class="b sb-eol">LF</span>');
+});
+
+it('T063 refuses a status source that lost the binding condition it adapts', () => {
+  const withoutLineEnding = [
+    '<html><body><div class="app" id="app">',
+    '  <div class="statusbar">',
+    '    <span class="b sb-count">231 words</span>',
+    '\n  </div>',
+    '</div></body></html>',
+  ].join('');
+  expect(() => adaptStatusBar(withoutLineEnding, 'mixed-ending')).toThrow(
+    /lost the required primitive: class="b sb-eol"/u,
+  );
+
+  const withRewrittenCount = [
+    '<html><body><div class="app" id="app">',
+    '  <div class="statusbar">',
+    '    <span class="b sb-eol">LF</span>',
+    '<span class="b sb-count">99 words</span>',
+    '\n  </div>',
+    '</div></body></html>',
+  ].join('');
+  expect(() => adaptStatusBar(withRewrittenCount, 'large-file')).toThrow(
+    /lost the large-file condition/u,
+  );
+
+  // A fixture with no status bar at all is not a parity reference.
+  expect(adaptStatusBar(bindingHtml, 'mixed-ending')).toBe(bindingHtml);
+});
+
+it('T076 hides the non-selected pane at the minimum window, and nothing else', () => {
+  const source = readFileSync(
+    resolve(process.cwd(), '../docs/delivery/spec/surface/mockup.html'),
+    'utf8',
+  );
+  const base = adaptReferenceHtml(source, 'base');
+  const narrow = adaptReferenceHtml(source, 'editor-split-375');
+
+  // The binding stacks both panes at 375 and draws neither hidden.
+  expect(source).toContain('.app[data-w="375"] .body{');
+  expect(source).toContain('<div class="pane" id="pane-preview">');
+  expect(base.html).toContain('<div class="pane" id="pane-preview">');
+
+  // The variant hides exactly the preview pane, using the binding's own
+  // `.app.only-editor #pane-preview{display:none}` declaration (mockup.html:299).
+  expect(source).toContain('.app.only-editor #pane-preview');
+  expect(REFERENCE_NARROW_HIDDEN_PANE_STYLE).toBe('display:none');
+  expect(narrow.html).toContain(
+    `<div class="pane" id="pane-preview" style="${REFERENCE_NARROW_HIDDEN_PANE_STYLE}">`,
+  );
+  expect(narrow.html).toContain('<div class="pane" id="pane-editor">');
+
+  // Every other byte is the base adaptation: the whole document equals the base
+  // document with exactly that one opening tag rewritten.
+  expect(narrow.html).toBe(
+    base.html
+      .replace(
+        'data-reference-variant="base"',
+        'data-reference-variant="editor-split-375"',
+      )
+      .replace(
+        '<div class="pane" id="pane-preview">',
+        `<div class="pane" id="pane-preview" style="${REFERENCE_NARROW_HIDDEN_PANE_STYLE}">`,
+      ),
+  );
+  expect(narrow.sourceHash).toBe(base.sourceHash);
+  expect(referenceVariantRules('editor-split-375').excludedRegions).toEqual([
+    'workspace',
+    'assistant',
+    'rich-rendering',
+  ]);
+});
+
+it('T076 refuses a source whose preview pane is no longer a .pane primitive', () => {
+  const renamedPane = [
+    '<html><body><div class="app" id="app">',
+    '<div class="pane" id="pane-editor"></div>',
+    '<div class="panel" id="pane-preview"></div>',
+    '</div></body></html>',
+  ].join('');
+  expect(() => adaptNarrowSinglePane(renamedPane)).toThrow(
+    'Narrow single-pane reference requires the source #pane-preview element',
+  );
+
+  const missingEditor = [
+    '<html><body><div class="app" id="app">',
+    '<div class="pane" id="pane-preview"></div>',
+    '</div></body></html>',
+  ].join('');
+  expect(() => adaptNarrowSinglePane(missingEditor)).toThrow(
+    'Narrow single-pane reference requires the source #pane-editor element',
+  );
+
+  // A fixture with no panes at all is not a parity reference.
+  expect(adaptNarrowSinglePane(bindingHtml)).toBe(bindingHtml);
 });
 
 it('T045 refuses a source whose preview region lost a deferred widget marker', () => {

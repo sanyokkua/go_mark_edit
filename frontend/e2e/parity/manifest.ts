@@ -3,7 +3,55 @@ export const PARITY_REPETITIONS = 3 as const;
 export const PRIMARY_CASE_COUNT = 306 as const;
 export const ADDITIONAL_CASE_COUNT = 240 as const;
 export const LOGICAL_CASE_COUNT = 546 as const;
+/**
+ * Three repetitions of all 546 logical keys. This is the fixed verification
+ * total, not the comparison total — see `PIXEL_COMPARISON_COUNT` and
+ * `BEHAVIOUR_VERIFICATION_COUNT` below, which split it honestly.
+ */
 export const COMPARISON_COUNT = 1638 as const;
+export const VERIFICATION_COUNT = COMPARISON_COUNT;
+
+/**
+ * spec.md, Session 2026-08-14. No `editor-status` state can be pixel-compared,
+ * and the reason is structural rather than a matter of finding the right
+ * reference condition.
+ *
+ * Four of the six (`saved`, `autosaved`, `unsaved-changes`, `read-only`) differ
+ * only in a save status the binding never draws in its status row at all — it
+ * puts it in the title bar (`mockup.html:594`).
+ *
+ * The other two do name a condition the binding's row draws (`.sb-eol` for the
+ * line ending, `.sb-count` for the size), and reviewed reference variants for
+ * both exist in `reference-adapter.ts`. Measuring through them is what proved
+ * they still cannot pair on absolute bounds: the binding's row carries a
+ * Problems badge, an AI-provider readout and a Reading pill, while production
+ * carries a `Document details` disclosure the binding lacks. Production may not
+ * add the provider readout (FR-FT-049 defers Assistant/provider behaviour), and
+ * writing a Details pill into the reference would fabricate binding content
+ * rather than adapt it. The binding also draws `.statusbar` full width beneath
+ * the sidebar while production draws it inside the document area, which is the
+ * approved T042 placement. Measured at 1280 Minimal Light: 115.531px and
+ * 207.453px horizontally, and a 46px frame-height difference vertically. Those
+ * offsets are permanent, so every status item lands on a different sub-pixel
+ * grid and no picture of one can be compared to a picture of the other.
+ *
+ * All six are still logical manifest keys and still run once per palette. What
+ * changes is only how each is verified, and the two halves are counted and
+ * reported separately so nothing claims a picture it never took.
+ */
+export const BEHAVIOUR_VERIFIED_STATE_IDS = Object.freeze([
+  'status-saved',
+  'status-autosaved',
+  'status-unsaved-changes',
+  'status-read-only',
+  'status-mixed-ending',
+  'status-large-file',
+] as const);
+
+export const PIXEL_COMPARED_CASE_COUNT = 510 as const;
+export const BEHAVIOUR_VERIFIED_CASE_COUNT = 36 as const;
+export const PIXEL_COMPARISON_COUNT = 1530 as const;
+export const BEHAVIOUR_VERIFICATION_COUNT = 108 as const;
 
 export const PARITY_WIDTHS = Object.freeze([1280, 768, 375] as const);
 
@@ -166,6 +214,23 @@ export const PARITY_MANIFEST = Object.freeze([
   ...ADDITIONAL_MANIFEST,
 ]);
 
+/**
+ * A logical key is behaviour-verified when its state ID names one of the six
+ * editor-status states. Everything else — every primary key and every other
+ * state key — is pixel-compared.
+ */
+export const isBehaviourVerifiedEntry = (entry: ManifestEntry): boolean =>
+  entry.kind === 'additional' &&
+  (BEHAVIOUR_VERIFIED_STATE_IDS as readonly string[]).includes(entry.stateId);
+
+export const BEHAVIOUR_VERIFIED_MANIFEST = Object.freeze(
+  PARITY_MANIFEST.filter(isBehaviourVerifiedEntry),
+);
+
+export const PIXEL_COMPARED_MANIFEST = Object.freeze(
+  PARITY_MANIFEST.filter((entry) => !isBehaviourVerifiedEntry(entry)),
+);
+
 export const PARITY_COUNTS = Object.freeze({
   families: PRIMARY_FAMILIES.length,
   widths: PARITY_WIDTHS.length,
@@ -174,8 +239,14 @@ export const PARITY_COUNTS = Object.freeze({
   stateIds: ADDITIONAL_STATE_ASSIGNMENTS.length,
   additional: ADDITIONAL_MANIFEST.length,
   logical: PARITY_MANIFEST.length,
+  pixelCompared: PIXEL_COMPARED_MANIFEST.length,
+  behaviourVerified: BEHAVIOUR_VERIFIED_MANIFEST.length,
   repetitions: PARITY_REPETITIONS,
   comparisons: PARITY_MANIFEST.length * PARITY_REPETITIONS,
+  verifications: PARITY_MANIFEST.length * PARITY_REPETITIONS,
+  pixelComparisons: PIXEL_COMPARED_MANIFEST.length * PARITY_REPETITIONS,
+  behaviourVerifications:
+    BEHAVIOUR_VERIFIED_MANIFEST.length * PARITY_REPETITIONS,
 });
 
 const unique = <T>(values: readonly T[]): Set<T> => new Set(values);
@@ -340,4 +411,33 @@ invariant(
     PARITY_COUNTS.logical === LOGICAL_CASE_COUNT &&
     PARITY_COUNTS.comparisons === COMPARISON_COUNT,
   'parity manifest arithmetic is not exact',
+);
+/**
+ * The verification split is self-asserted from the manifest itself, so the
+ * declared 522/24 and 1,566/72 numbers cannot drift away from what the manifest
+ * actually contains, and the fixed 546/1,638 totals are still exact.
+ */
+invariant(
+  BEHAVIOUR_VERIFIED_STATE_IDS.length === 6 &&
+    new Set(BEHAVIOUR_VERIFIED_STATE_IDS).size === 6 &&
+    BEHAVIOUR_VERIFIED_STATE_IDS.every((stateId) =>
+      ADDITIONAL_STATE_ASSIGNMENTS.some(
+        (assignment) => assignment.stateId === stateId,
+      ),
+    ),
+  'behaviour-verified state IDs are not six distinct manifest state IDs',
+);
+invariant(
+  PARITY_COUNTS.behaviourVerified === BEHAVIOUR_VERIFIED_CASE_COUNT &&
+    PARITY_COUNTS.pixelCompared === PIXEL_COMPARED_CASE_COUNT &&
+    PARITY_COUNTS.pixelCompared + PARITY_COUNTS.behaviourVerified ===
+      LOGICAL_CASE_COUNT,
+  'parity verification split does not reconstruct 546 logical keys',
+);
+invariant(
+  PARITY_COUNTS.pixelComparisons === PIXEL_COMPARISON_COUNT &&
+    PARITY_COUNTS.behaviourVerifications === BEHAVIOUR_VERIFICATION_COUNT &&
+    PARITY_COUNTS.pixelComparisons + PARITY_COUNTS.behaviourVerifications ===
+      VERIFICATION_COUNT,
+  'parity verification split does not reconstruct 1638 verifications',
 );

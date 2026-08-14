@@ -62,10 +62,87 @@ export type SemanticCaptureContext = Readonly<{
 
 export type SemanticPageKind = 'reference' | 'actual';
 
+/**
+ * The reference↔production selector mapping for the binding's status row.
+ *
+ * The binding draws each status item as one `.statusbar .b` span identified by
+ * its own class (`mockup.html:838-841`); production draws each as one
+ * `[data-status-item]` span (`frontend/src/ui/components/StatusBar.tsx:49-70`).
+ * Only `.sb-enc` and `.sb-eol` were ever paired, and only inside the serialized
+ * snapshot reader below — nothing declared the pairing for `.sb-count`, so the
+ * two status conditions the binding can actually express
+ * (`.sb-eol` → `status-mixed-ending`, `.sb-count` → `status-large-file`,
+ * spec.md Session 2026-08-14) had no mapped production counterpart to compare
+ * against. This table is that declaration, and `targeted-manifest.ts` asserts
+ * that the compared status regions are built from it rather than from selectors
+ * invented at the call site.
+ *
+ * `readSemanticDomSnapshot` keeps its own inline copies of the two selectors it
+ * needs because Playwright serializes that function into the page, where module
+ * scope does not exist; `assertStatusItemSelectorContract` below checks the two
+ * copies still agree with this table.
+ */
+export const STATUS_ITEM_SELECTORS = Object.freeze({
+  count: Object.freeze({
+    reference: '.sb-count',
+    actual: '[data-status-item="count"]',
+  }),
+  encoding: Object.freeze({
+    reference: '.sb-enc',
+    actual: '[data-status-item="encoding"]',
+  }),
+  'line-ending': Object.freeze({
+    reference: '.sb-eol',
+    actual: '[data-status-item="line-ending"]',
+  }),
+});
+
+export type StatusItemId = keyof typeof STATUS_ITEM_SELECTORS;
+
+export function statusItemSelector(
+  item: StatusItemId,
+  pageKind: SemanticPageKind,
+): string {
+  return STATUS_ITEM_SELECTORS[item][pageKind];
+}
+
+/**
+ * The native minimum window is 375x480 (`main.go:104-105`), and frame rounding
+ * can expose a 376px CSS viewport at that size — the same bound production
+ * spells as `MINIMUM_WINDOW_MAX_WIDTH` in
+ * `frontend/src/ui/widgets/minimumWindow.ts:10`.
+ */
+export const MINIMUM_WINDOW_MAX_WIDTH = 376;
+
 export type SemanticDomReadInput = Readonly<{
   readonly pageKind: SemanticPageKind;
   readonly implementedActionIds: readonly string[];
   readonly viewport?: SemanticViewport;
+  /**
+   * The reviewed screen this capture is of, from the manifest entry.
+   *
+   * The reference reports its screen by name — the harness owns one — while the
+   * application has no screen concept, so the reader infers one from which
+   * panes are drawn. At the minimum window that inference has a hole: T078
+   * collapses Split to a single editor pane while the stored arrangement stays
+   * split, so "editor drawn, preview not" is true of `editor-split` and
+   * `editor-only` alike and the reader cannot tell them apart from the DOM.
+   *
+   * Supplying the declared screen resolves that one ambiguity and nothing else:
+   * it is honoured only below `MINIMUM_WINDOW_MAX_WIDTH`, only when exactly one
+   * pane is drawn, and only when the drawn pane is the one the declared screen
+   * requires. A capture that draws the wrong pane still reports the inferred
+   * screen and still fails the pairing.
+   */
+  readonly declaredScreen?: string;
+  /**
+   * The minimum-window bound, carried in because Playwright serializes the
+   * reader into the page where module scope does not exist. A caller that
+   * declares no bound gets no minimum-window resolution at all: the comparison
+   * below reads `0`, so no viewport ever qualifies and the plain pane inference
+   * stands.
+   */
+  readonly minimumWindowMaxWidth?: number;
 }>;
 
 export type SemanticDomSnapshot = Readonly<{
@@ -180,6 +257,23 @@ export function readSemanticDomSnapshot(
     const editorVisible = isVisible(editor);
     const previewVisible = isVisible(preview);
     if (editorVisible && previewVisible) return 'editor-split';
+    /*
+     * T078: at the minimum window Split draws the editor alone, so one drawn
+     * pane no longer identifies the screen. Resolve that one ambiguity with the
+     * declared screen — and only when the pane actually drawn is the one that
+     * screen requires, so a capture showing the wrong pane still fails.
+     */
+    const minimumWindow =
+      window.innerWidth <= (input.minimumWindowMaxWidth ?? 0);
+    const declared = input.declaredScreen;
+    if (minimumWindow && editorVisible && !previewVisible) {
+      if (declared === 'editor-split' || declared === 'editor-only') {
+        return declared;
+      }
+    }
+    if (minimumWindow && previewVisible && !editorVisible) {
+      if (declared === 'preview-only') return declared;
+    }
     if (editorVisible) return 'editor-only';
     if (previewVisible) return 'preview-only';
     return 'unknown';
@@ -384,6 +478,33 @@ export function readSemanticDomSnapshot(
   };
 }
 
+/**
+ * The status items `readSemanticDomSnapshot` pairs with its own inline copies of
+ * the selectors. Playwright serializes that function into the page, so it cannot
+ * read `STATUS_ITEM_SELECTORS` from module scope — this keeps the copies honest
+ * instead of letting the table and the reader drift apart silently.
+ */
+const READER_PAIRED_STATUS_ITEMS: readonly StatusItemId[] = [
+  'encoding',
+  'line-ending',
+];
+
+export function assertStatusItemSelectorContract(): void {
+  const source = String(readSemanticDomSnapshot);
+  for (const item of READER_PAIRED_STATUS_ITEMS) {
+    for (const pageKind of ['reference', 'actual'] as const) {
+      const selector = statusItemSelector(item, pageKind);
+      if (!source.includes(selector)) {
+        throw new Error(
+          `status item ${item} lost its ${pageKind} selector ${selector} in readSemanticDomSnapshot`,
+        );
+      }
+    }
+  }
+}
+
+assertStatusItemSelectorContract();
+
 export function createSemanticSignature(
   snapshot: SemanticDomSnapshot,
   context: SemanticCaptureContext,
@@ -423,6 +544,8 @@ export async function captureSemanticSignature(
     pageKind,
     implementedActionIds: context.implementedActionIds,
     viewport: context.viewport,
+    declaredScreen: context.activeScreen,
+    minimumWindowMaxWidth: MINIMUM_WINDOW_MAX_WIDTH,
   });
   return createSemanticSignature(snapshot, context);
 }

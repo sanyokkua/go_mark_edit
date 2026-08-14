@@ -1,4 +1,5 @@
 import {
+  BEHAVIOUR_VERIFIED_STATE_IDS,
   LOGICAL_CASE_COUNT,
   PARITY_MANIFEST,
   type ParityFamily,
@@ -28,7 +29,7 @@ export type TargetedParityEntry = Readonly<{
     | 'menu-settings'
     | 'menu-view'
     | 'menu-about';
-  readonly referenceVariant: 'base' | 'file-menu';
+  readonly referenceVariant: 'base' | 'file-menu' | 'editor-split-375';
   readonly referenceSelector:
     | '#app.no-assistant .menu'
     | '#m-file'
@@ -162,7 +163,15 @@ export const TARGETED_SETTINGS_MANIFEST: readonly TargetedParityEntry[] =
         mode: 'light',
       }),
       activeScreen: 'editor-split',
-      referenceVariant: 'base',
+      /*
+       * T076/T078 (spec.md, Clarifications, Session 2026-08-14): at the native
+       * minimum window the application shows exactly one pane and Split
+       * collapses to the editor, while the binding stacks both panes
+       * (`mockup.html:54-55`). The reference variant hides the non-selected
+       * pane using the binding's own `#pane-preview{display:none}` declaration
+       * (`mockup.html:299`), so both pages draw the editor alone.
+       */
+      referenceVariant: 'editor-split-375',
       referenceSelector: '#app .ovf-menu',
       actualSelector: '[data-viewport-popup="editor-overflow"]',
       editorReferenceSelector: '#app.no-assistant .content',
@@ -309,6 +318,18 @@ export function contextForTargetedEntry(
   };
 }
 
+function allTargetedEntries(): readonly TargetedParityEntry[] {
+  return [
+    ...TARGETED_MANIFEST,
+    ...TARGETED_FILE_MENU_MANIFEST,
+    ...TARGETED_SETTINGS_MANIFEST,
+    ...TARGETED_TAB_MANIFEST,
+    ...TARGETED_TOOLBAR_MANIFEST,
+    ...TARGETED_VIEW_ABOUT_MANIFEST,
+    ...TARGETED_PREVIEW_MANIFEST,
+  ];
+}
+
 export function assertTargetedManifestIntegrity(): void {
   if (TARGETED_MANIFEST.length !== TARGETED_PALETTES.length) {
     throw new Error('T058 targeted manifest must cover six palettes');
@@ -397,6 +418,40 @@ export function assertTargetedManifestIntegrity(): void {
     if (PARITY_MANIFEST.some(({ key }) => key === entry.key)) {
       throw new Error(
         'T064 targeted case must not enter the unrestricted manifest',
+      );
+    }
+  }
+  /*
+   * T063: no editor-status state pixel-compares, so none of them may appear as
+   * a targeted comparison case. They are behaviour-verified in
+   * `targeted-parity.test.ts` against `data-status-state` and the title bar.
+   */
+  for (const entry of allTargetedEntries()) {
+    for (const stateId of BEHAVIOUR_VERIFIED_STATE_IDS) {
+      if (entry.key.startsWith(`state:${stateId}:`)) {
+        throw new Error(
+          `T063 behaviour-verified state ${stateId} must not be a targeted comparison case`,
+        );
+      }
+    }
+  }
+  /*
+   * T076/T078: at the native minimum window the application shows one pane and
+   * Split collapses to the editor, while the binding stacks both panes
+   * (`mockup.html:54-55`). Every `editor-split` capture at 375 therefore has to
+   * run against the reference variant that hides the non-selected pane.
+   */
+  for (const entry of allTargetedEntries()) {
+    const narrowEditorSplit = entry.family === 'editor-split' &&
+      entry.width === 375;
+    if (narrowEditorSplit && entry.referenceVariant !== 'editor-split-375') {
+      throw new Error(
+        `T076 editor-split case ${entry.key} at 375 must use the editor-split-375 reference variant`,
+      );
+    }
+    if (!narrowEditorSplit && entry.referenceVariant === 'editor-split-375') {
+      throw new Error(
+        `T076 reference variant editor-split-375 is only for editor-split at 375, not ${entry.key}`,
       );
     }
   }

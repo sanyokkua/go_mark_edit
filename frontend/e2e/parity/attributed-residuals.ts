@@ -97,8 +97,18 @@ export const ATTRIBUTED_RESIDUALS: Readonly<
     popupBoundary(416, T071_EVIDENCE),
   ]),
 
+  /*
+   * Re-measured after T076/T078 (`d0e63414`) collapsed the minimum window to a
+   * single pane and the `editor-split-375` reference variant hid the binding's
+   * non-selected pane to match. Both pages now draw a different backdrop behind
+   * the popup than when 205 was recorded, and this term is what blends with it.
+   * The cause is unchanged and all 217 pixels still fall inside the same 12px
+   * edge band with zero unattributed, identical bounds and identical computed
+   * styles; 217 in 3 of 3 consecutive runs. The 205 ceiling was stale from the
+   * moment d0e63414 landed. See phase-18/residual-attribution.md.
+   */
   'targeted:settings-overflow:375:minimal-light': Object.freeze([
-    popupBoundary(205, T071_EVIDENCE),
+    popupBoundary(217, PHASE_18),
   ]),
 
   'targeted:view-menu:1280:minimal-light': Object.freeze([

@@ -2,19 +2,28 @@ import {
   ADDITIONAL_MANIFEST,
   ADDITIONAL_STATE_ASSIGNMENTS,
   ADDITIONAL_CASE_COUNT,
+  BEHAVIOUR_VERIFICATION_COUNT,
+  BEHAVIOUR_VERIFIED_CASE_COUNT,
+  BEHAVIOUR_VERIFIED_MANIFEST,
+  BEHAVIOUR_VERIFIED_STATE_IDS,
   COMPARISON_COUNT,
   comparisonsForRepetitions,
   assertManifestIntegrity,
   assertNoCaptureSatisfiesTwoStates,
+  isBehaviourVerifiedEntry,
   LOGICAL_CASE_COUNT,
   PARITY_COUNTS,
   PARITY_MANIFEST,
   PARITY_PALETTES,
   PARITY_REPETITIONS,
   PARITY_WIDTHS,
+  PIXEL_COMPARED_CASE_COUNT,
+  PIXEL_COMPARED_MANIFEST,
+  PIXEL_COMPARISON_COUNT,
   PRIMARY_CASE_COUNT,
   PRIMARY_FAMILIES,
   PRIMARY_MANIFEST,
+  VERIFICATION_COUNT,
 } from './manifest';
 
 const unique = <T>(values: readonly T[]) => new Set(values);
@@ -146,6 +155,70 @@ it('three repetitions execute exactly 1638 comparisons without new keys', () => 
       comparisons.filter(({ manifestKey }) => manifestKey === key),
     ).toHaveLength(3);
   }
+});
+
+it('splits the 546 logical keys into 510 pixel-compared and 36 behaviour-verified', () => {
+  expect(BEHAVIOUR_VERIFIED_STATE_IDS).toEqual([
+    'status-saved',
+    'status-autosaved',
+    'status-unsaved-changes',
+    'status-read-only',
+    'status-mixed-ending',
+    'status-large-file',
+  ]);
+
+  // No editor-status state is pixel-compared: the binding's status row and
+  // production's cannot pair on absolute bounds at all.
+  for (const stateId of BEHAVIOUR_VERIFIED_STATE_IDS) {
+    expect(
+      PIXEL_COMPARED_MANIFEST.filter(
+        (entry) => entry.kind === 'additional' && entry.stateId === stateId,
+      ),
+    ).toHaveLength(0);
+    expect(
+      BEHAVIOUR_VERIFIED_MANIFEST.filter(
+        (entry) => entry.kind === 'additional' && entry.stateId === stateId,
+      ),
+    ).toHaveLength(6);
+  }
+
+  expect(BEHAVIOUR_VERIFIED_MANIFEST).toHaveLength(
+    BEHAVIOUR_VERIFIED_CASE_COUNT,
+  );
+  expect(BEHAVIOUR_VERIFIED_CASE_COUNT).toBe(6 * 6);
+  expect(PIXEL_COMPARED_MANIFEST).toHaveLength(PIXEL_COMPARED_CASE_COUNT);
+  expect(PIXEL_COMPARED_CASE_COUNT).toBe(510);
+  expect(PIXEL_COMPARED_CASE_COUNT + BEHAVIOUR_VERIFIED_CASE_COUNT).toBe(
+    LOGICAL_CASE_COUNT,
+  );
+
+  // Every logical key is verified exactly once, by exactly one method.
+  expect(
+    unique([
+      ...PIXEL_COMPARED_MANIFEST.map(({ key }) => key),
+      ...BEHAVIOUR_VERIFIED_MANIFEST.map(({ key }) => key),
+    ]).size,
+  ).toBe(LOGICAL_CASE_COUNT);
+  expect(PARITY_MANIFEST.filter(isBehaviourVerifiedEntry)).toHaveLength(
+    BEHAVIOUR_VERIFIED_CASE_COUNT,
+  );
+  expect(PRIMARY_MANIFEST.some(isBehaviourVerifiedEntry)).toBe(false);
+
+  expect(PARITY_COUNTS.pixelCompared).toBe(510);
+  expect(PARITY_COUNTS.behaviourVerified).toBe(36);
+});
+
+it('three repetitions execute 1530 pixel comparisons plus 108 behaviour verifications', () => {
+  expect(PIXEL_COMPARISON_COUNT).toBe(510 * 3);
+  expect(BEHAVIOUR_VERIFICATION_COUNT).toBe(36 * 3);
+  expect(PIXEL_COMPARISON_COUNT + BEHAVIOUR_VERIFICATION_COUNT).toBe(
+    VERIFICATION_COUNT,
+  );
+  expect(VERIFICATION_COUNT).toBe(COMPARISON_COUNT);
+  expect(VERIFICATION_COUNT).toBe(1638);
+  expect(PARITY_COUNTS.pixelComparisons).toBe(1530);
+  expect(PARITY_COUNTS.behaviourVerifications).toBe(108);
+  expect(PARITY_COUNTS.verifications).toBe(1638);
 });
 
 it('each additional state ID uses its assigned family and width', () => {

@@ -10,9 +10,73 @@ export const referenceVariants = [
   'file-menu',
   'conflict',
   'move-tab',
+  'status-mixed-ending',
+  'status-large-file',
+  'editor-split-375',
 ] as const;
 
 export type ReferenceVariant = (typeof referenceVariants)[number];
+
+/**
+ * Session 2026-08-14 clarification, superseding the 2026-08-13 six-variant
+ * answer. The immutable binding's status row (`mockup.html:837-845`) carries
+ * exactly one condition, and it draws no save status at all — the binding puts
+ * that in the title bar (`.doc-name … · autosaved`, `mockup.html:594`). Of the
+ * six `status-*` manifest state IDs, only two name something the binding's own
+ * status row expresses:
+ *
+ *   - `status-mixed-ending` — the line ending, drawn by `.sb-eol` (`LF`)
+ *   - `status-large-file`   — the document size, drawn by `.sb-count`
+ *     (`231 words`)
+ *
+ * Those two get a reference variant here. The remaining four
+ * (`status-saved`, `status-autosaved`, `status-unsaved-changes`,
+ * `status-read-only`) differ only in a save status the binding never draws, so
+ * they are behaviour-verified against `data-status-state` and the title bar in
+ * `targeted-parity.test.ts` instead of being given a fabricated picture.
+ */
+export const statusReferenceStates = ['mixed-ending', 'large-file'] as const;
+
+export type StatusReferenceState = (typeof statusReferenceStates)[number];
+
+/**
+ * Each status variant rewrites exactly one of the binding's own status spans to
+ * the text production renders for that state, and nothing else. `sourceText` is
+ * the immutable source's own value, so a source that stops carrying it fails
+ * loudly instead of silently adapting nothing.
+ */
+export const STATUS_REFERENCE_PRODUCTIONS = Object.freeze({
+  'mixed-ending': Object.freeze({
+    itemClass: 'sb-eol',
+    sourceText: 'LF',
+    productionText: 'Mixed',
+  }),
+  'large-file': Object.freeze({
+    itemClass: 'sb-count',
+    sourceText: '231 words',
+    productionText: '420,000 words',
+  }),
+} satisfies Readonly<
+  Record<
+    StatusReferenceState,
+    Readonly<{ itemClass: string; sourceText: string; productionText: string }>
+  >
+>);
+
+const STATUS_REFERENCE_VARIANT_STATES = Object.freeze({
+  'status-mixed-ending': 'mixed-ending',
+  'status-large-file': 'large-file',
+} satisfies Readonly<Partial<Record<ReferenceVariant, StatusReferenceState>>>);
+
+export function statusReferenceStateFor(
+  variant: ReferenceVariant,
+): StatusReferenceState | undefined {
+  return (
+    STATUS_REFERENCE_VARIANT_STATES as Readonly<
+      Record<string, StatusReferenceState | undefined>
+    >
+  )[variant];
+}
 
 export const fileOnlyReferenceStates = [
   'empty',
@@ -397,6 +461,75 @@ function adaptDeferredSettingsRows(html: string): string {
   return html.slice(0, start) + settings + html.slice(end);
 }
 
+/**
+ * Feature 003's reviewed status-item containment, matching production's
+ * `.responsiveItem` (`frontend/src/ui/components/StatusBar.module.css:27-36`).
+ *
+ * spec.md:1152 requires the status row never to grow, and spec.md:261 requires
+ * it to shorten in the binding's own fixed drop order; T063 asserts that no
+ * status item wraps and that the row never overflows its own client width. The
+ * binding expresses none of that on `.statusbar .b` — it relies on width-scoped
+ * `display:none` rules (`mockup.html:82-83`) and on its demonstration strings
+ * being short. Without this the two status comparisons collapse into a
+ * containment-style difference instead of measuring the glyphs, which is the
+ * same failure mode the reviewed deferred-opacity treatment already prevents
+ * for the File menu, the View menu and the toolbar.
+ *
+ * It has no rendering effect on either compared span — neither `Mixed` nor
+ * `420,000 words` can wrap or overflow at any compared width — so it changes
+ * what is measured, never what is drawn.
+ */
+export const REFERENCE_STATUS_ITEM_CONTAINMENT =
+  'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+
+const STATUS_BAR_SOURCE_MARKER = '<div class="statusbar">';
+
+/**
+ * Rewrite exactly one of the binding's own status spans to the text production
+ * renders for `state`, leaving every other byte of `.statusbar` untouched. This
+ * is a Node-side string transform on the immutable source, in the same shape as
+ * `adaptDeferredToolbarControls`, `adaptViewMenu` and `adaptFileMenu`: no
+ * HTML/CSS value in `docs/delivery/spec/surface/mockup.html` is edited and the
+ * raw source hash is unchanged.
+ */
+export function adaptStatusBar(
+  html: string,
+  state: StatusReferenceState,
+): string {
+  // A source without the status bar at all is not a parity reference; leave it
+  // untouched so unit fixtures can exercise the other variants in isolation.
+  const start = html.indexOf(STATUS_BAR_SOURCE_MARKER);
+  if (start < 0) return html;
+  const end = html.indexOf('\n  </div>', start);
+  if (end < 0) {
+    throw new Error('Status-bar reference source region is malformed');
+  }
+  const statusBar = html.slice(start, end);
+  for (const required of ['class="b sb-eol"', 'class="b sb-count"']) {
+    if (!statusBar.includes(required)) {
+      throw new Error(
+        `Status-bar reference source lost the required primitive: ${required}`,
+      );
+    }
+  }
+  const production = STATUS_REFERENCE_PRODUCTIONS[state];
+  const sourceSpan = `<span class="b ${production.itemClass}">${production.sourceText}</span>`;
+  if (!statusBar.includes(sourceSpan)) {
+    throw new Error(
+      `Status-bar reference source lost the ${state} condition: ${sourceSpan}`,
+    );
+  }
+  const adaptedSpan =
+    `<span class="b ${production.itemClass}"` +
+    ` style="${REFERENCE_STATUS_ITEM_CONTAINMENT}">` +
+    `${production.productionText}</span>`;
+  return (
+    html.slice(0, start) +
+    statusBar.replace(sourceSpan, adaptedSpan) +
+    html.slice(end)
+  );
+}
+
 function adaptFileMenu(
   html: string,
   platform: FileMenuReferencePlatform,
@@ -499,6 +632,61 @@ function adaptPreviewPane(html: string): string {
   );
 }
 
+/**
+ * spec.md, Clarifications, Session 2026-08-14 (T076/T078). At the native
+ * minimum window — 375x480, `main.go:104-105`, a `(max-width: 376px)` viewport —
+ * the application draws exactly one pane, and the Split arrangement collapses
+ * to the editor because this is a Markdown editor and typing is the primary
+ * job. The stored arrangement is untouched: the toolbar and the View menu keep
+ * reporting Split while the panes are collapsed, and widening restores both
+ * with no user action.
+ *
+ * The binding predates that decision and stacks both panes at 375
+ * (`mockup.html:54` `.app[data-w="375"] .body{flex-direction:column}` with `:55`
+ * `.pane{min-height:0;flex:1}`). So the `editor-split` family cannot be
+ * captured at 375 against the unmodified binding at all — the reference draws
+ * two panes where production draws one.
+ *
+ * The variant hides the non-selected pane with the binding's own declaration:
+ * `mockup.html:299` is `.app.only-editor #pane-preview{display:none}`, and the
+ * harness's own `setView('edit')` (`mockup.html:1034-1035`) writes exactly
+ * `display:none` onto that element. Nothing else changes — the arrangement
+ * segment still shows Split selected, matching what production reports — and
+ * `showScreen('editor-split')` never calls `setView`, so the inline value
+ * survives the harness's screen click.
+ *
+ * This is the treatment FR-FT-056 already grants the File menu, the View menu
+ * and the toolbar: only the mockup's own primitives are used, no HTML/CSS value
+ * in `docs/delivery/spec/surface/mockup.html` is edited, the raw source hash is
+ * unchanged, and no mask, tolerance, comparator or coordinate handling moves.
+ */
+const NARROW_HIDDEN_PANE_SOURCE_MARKER = '<div class="pane" id="pane-preview">';
+
+export const REFERENCE_NARROW_HIDDEN_PANE_STYLE = 'display:none';
+
+export function adaptNarrowSinglePane(html: string): string {
+  // A source without the preview pane at all is not a parity reference; leave
+  // it untouched so unit fixtures can exercise the other variants in isolation.
+  const at = html.indexOf(NARROW_HIDDEN_PANE_SOURCE_MARKER);
+  if (at < 0) {
+    if (html.includes('id="pane-preview"')) {
+      throw new Error(
+        'Narrow single-pane reference requires the source #pane-preview element',
+      );
+    }
+    return html;
+  }
+  if (!html.includes('<div class="pane" id="pane-editor">')) {
+    throw new Error(
+      'Narrow single-pane reference requires the source #pane-editor element',
+    );
+  }
+  return html.replace(
+    NARROW_HIDDEN_PANE_SOURCE_MARKER,
+    `<div class="pane" id="pane-preview" style="${REFERENCE_NARROW_HIDDEN_PANE_STYLE}">`,
+  );
+}
+
 export type ReferenceStateCondition = Readonly<{
   readonly status: 'supported' | 'unresolved';
   readonly reason?: string;
@@ -549,6 +737,18 @@ const variantRules: Readonly<Record<ReferenceVariant, VariantRule>> = {
     allowedRegions: ['tab-menu', 'tabs'],
     excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
   },
+  'status-mixed-ending': {
+    allowedRegions: ['status-bar'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+  },
+  'status-large-file': {
+    allowedRegions: ['status-bar'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+  },
+  'editor-split-375': {
+    allowedRegions: ['editor-pane', 'toolbar', 'tabs', 'settings-overflow'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+  },
 };
 
 export interface ReferenceAdapterResult {
@@ -559,6 +759,7 @@ export interface ReferenceAdapterResult {
   readonly rules: VariantRule;
   readonly fileOnlyState?: FileOnlyReferenceState;
   readonly fileMenuPlatform?: FileMenuReferencePlatform;
+  readonly statusState?: StatusReferenceState;
 }
 
 function hash(value: string): string {
@@ -579,6 +780,12 @@ export const REFERENCE_ADAPTER_HASH = hash(
     aboutMenuReferenceAccelerators,
     LIGHTS_SOURCE_MARKUP,
     IN_SCOPE_PREVIEW_CONTENT,
+    statusReferenceStates,
+    STATUS_REFERENCE_PRODUCTIONS,
+    STATUS_REFERENCE_VARIANT_STATES,
+    REFERENCE_STATUS_ITEM_CONTAINMENT,
+    NARROW_HIDDEN_PANE_SOURCE_MARKER,
+    REFERENCE_NARROW_HIDDEN_PANE_STYLE,
     variantRules,
   }),
 );
@@ -689,10 +896,19 @@ export function adaptReferenceHtml(
     withViewMenu,
     fileMenuPlatform ?? hostReferencePlatform(),
   );
-  const adaptedHtml =
+  const withFileMenu =
     variant === 'file-menu'
       ? adaptFileMenu(withAboutMenu, fileMenuPlatform ?? 'other')
       : withAboutMenu;
+  const statusState = statusReferenceStateFor(variant);
+  const withStatusBar =
+    statusState === undefined
+      ? withFileMenu
+      : adaptStatusBar(withFileMenu, statusState);
+  const adaptedHtml =
+    variant === 'editor-split-375'
+      ? adaptNarrowSinglePane(withStatusBar)
+      : withStatusBar;
   return {
     adapterHash: REFERENCE_ADAPTER_HASH,
     sourceHash: hash(html),
@@ -702,6 +918,7 @@ export function adaptReferenceHtml(
     fileOnlyState,
     fileMenuPlatform:
       variant === 'file-menu' ? (fileMenuPlatform ?? 'other') : undefined,
+    statusState,
   };
 }
 

@@ -305,6 +305,35 @@
   `frontend/e2e/parity/attributed-residuals.ts` MUST be updated whenever the rule fires. This changes only the
   bookkeeping around an already-measured residual: no mask, tolerance, comparator, coordinate-handling,
   manifest-count, or immutable-source change.
+- Q: The answer above kept `status-mixed-ending` and `status-large-file` on the pixel-compared path, on the
+  premise that production's status row carries the binding's item inventory exactly. Measurement shows that
+  premise is false. How is that resolved? → A: **All six `status-*` states become behaviour-verified**, and
+  this supersedes the two-compared split recorded earlier the same day. The measurement: the binding's row
+  carries a Problems badge, an AI-provider readout and a Reading pill; production carries a `Document details`
+  disclosure the binding does not have. Production **may not** add the provider readout — FR-FT-049 forbids
+  Assistant and provider behaviour — and writing a Details pill into the reference would be fabricating
+  binding content rather than adapting it. Separately, the binding draws `.statusbar` full-width beneath the
+  sidebar while production draws it inside the document area, which is the approved T042 placement. The
+  resulting offsets are structural and permanent: `.sb-eol` 115.531 px and `.sb-count` 207.453 px
+  horizontally, and a 46 px frame-height difference vertically. No status item can pair on absolute bounds, so
+  the criterion was unsatisfiable for all six rather than for four. The honest split is **510 pixel-compared
+  keys** and **36 behaviour-verified keys** (6 states × 6 palettes); three repetitions execute **1,530 pixel
+  comparisons plus 108 behaviour verifications = 1,638 verifications**, and the 546 logical keys and 1,638
+  total are both preserved. The two reviewed reference variants built for the compared attempt are retained
+  and still unit-tested, because they are what made the measurement possible. A production-only
+  `comparisonAttempted: false` artifact remains forbidden; each state records a declared `verificationMethod`
+  and its assertions instead.
+- Q: The approved minimum-window behaviour shows one pane at ≤376px while the binding stacks both, so the
+  `editor-split` family cannot pair at 375. What does its reference variant change, and does the semantic
+  signature still distinguish the families there? → A: The variant hides the non-selected pane using the
+  declaration the mockup already applies for that condition — `mockup.html:299`
+  `.app.only-editor #pane-preview{display:none}` — so it is the binding's own primitive, the raw source hash
+  is unchanged, and the arrangement segment still shows Split selected, matching what production reports while
+  its panes are collapsed. The signature needed one repair: it derived the active screen from which panes are
+  visible, and "editor drawn, preview not" is true of `editor-split` and `editor-only` alike once the collapse
+  applies. Below the minimum-window width the capture may therefore declare its screen, honoured only when
+  exactly one pane is drawn and only when that pane is the one the declared screen requires — a capture
+  showing the wrong pane still fails. Above that width nothing changes.
 
 ## User Scenarios & Testing _(mandatory)_
 
