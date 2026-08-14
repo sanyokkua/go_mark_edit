@@ -520,11 +520,18 @@ it('T084 activates the adjacent tab with ArrowRight and ArrowLeft and clamps at 
   const tablist = screen.getByRole('tablist');
   fireEvent.keyDown(tablist, { key: 'ArrowRight' });
   await waitFor(() => expect(activateDocument).toHaveBeenCalledWith('two', 4));
+  /*
+   * Focus moves with the arrow, not just selection — the WAI-ARIA tabs
+   * pattern. Activating alone left the caret on a tab the roving tabIndex had
+   * just set to -1, so the next Tab press escaped from an invisible place.
+   */
+  expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveFocus();
 
   fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
   await waitFor(() =>
     expect(activateDocument).toHaveBeenNthCalledWith(2, 'one', 4),
   );
+  expect(screen.getByRole('tab', { name: /one\.md/u })).toHaveFocus();
 
   // At the first tab ArrowLeft clamps onto the same document rather than
   // wrapping round to the last one.

@@ -482,7 +482,19 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
               ? Math.max(0, current - 1)
               : Math.min(orderedDocuments.length - 1, current + 1);
           const target = orderedDocuments[next];
-          if (target !== undefined) void activateDocument(target.documentId);
+          if (target === undefined) return;
+          /*
+           * Focus moves with the arrow, then selection follows it — the
+           * WAI-ARIA tabs pattern. Activating without moving focus left the
+           * caret on a tab that the roving `tabIndex` had just set to -1 while
+           * the newly selected tab became the only tab stop, so the next Tab
+           * press escaped from somewhere the user could not see. Focus is a
+           * pure UI concern and moves immediately; activation is a command the
+           * backend may still refuse, and a focused non-selected tab is a
+           * legitimate resting state if it does.
+           */
+          focusDocument(target.documentId);
+          void activateDocument(target.documentId);
         }}
       >
         <>
