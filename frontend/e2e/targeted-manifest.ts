@@ -330,6 +330,13 @@ function allTargetedEntries(): readonly TargetedParityEntry[] {
   ];
 }
 
+/**
+ * Substrings that identify the Monaco editor interior in a selector. `monaco`
+ * covers `.monaco-editor` and its descendants; the other two catch interior
+ * pieces that can be selected without naming Monaco at all.
+ */
+const MONACO_INTERIOR_PATTERNS = ['monaco', '.view-lines', 'widgetid'] as const;
+
 export function assertTargetedManifestIntegrity(): void {
   if (TARGETED_MANIFEST.length !== TARGETED_PALETTES.length) {
     throw new Error('T058 targeted manifest must cover six palettes');
@@ -432,6 +439,26 @@ export function assertTargetedManifestIntegrity(): void {
         throw new Error(
           `T063 behaviour-verified state ${stateId} must not be a targeted comparison case`,
         );
+      }
+    }
+  }
+  /*
+   * FR-FT-055 names the Monaco editor interior a Feature 002-owned region
+   * exclusion. The `referenceSelector`/`actualSelector` unions already close the
+   * comparable set at compile time, but a union is one edit away from being
+   * widened, and "named exclusion" should be enforced by the artifact rather
+   * than asserted only in prose. `editorReferenceSelector` and
+   * `editorActualSelector` are deliberately NOT checked: they name the pane
+   * wrapper, whose bounds FR-FT-055 still requires asserted, not the interior.
+   */
+  for (const entry of allTargetedEntries()) {
+    for (const selector of [entry.referenceSelector, entry.actualSelector]) {
+      for (const pattern of MONACO_INTERIOR_PATTERNS) {
+        if (selector.toLowerCase().includes(pattern)) {
+          throw new Error(
+            `FR-FT-055: ${entry.key} compares ${selector}, which reaches the Monaco editor interior — a named Feature 002-owned exclusion`,
+          );
+        }
       }
     }
   }

@@ -719,35 +719,45 @@ type VariantRule = Readonly<{
   readonly excludedRegions: readonly string[];
 }>;
 
+/**
+ * `excludedRegions` is matched as a substring against a mapping's `regionId`, so
+ * each name here must not appear inside a region that is legitimately compared.
+ * `monaco` names the Feature 002-owned editor interior that FR-FT-055 excludes;
+ * it is deliberately not spelled `editor`, because `editor-pane` is an allowed
+ * region of `editor-split-375` and `editor` is a live `regionId` in
+ * `real-files-parity.test.ts`, so the shorter name would exclude the very
+ * mappings the contract requires. The exclusion is universal — it appears on
+ * `base` too — because no variant may ever compare the editor interior.
+ */
 const variantRules: Readonly<Record<ReferenceVariant, VariantRule>> = {
-  base: { allowedRegions: [], excludedRegions: [] },
+  base: { allowedRegions: [], excludedRegions: ['monaco'] },
   'file-only': {
     allowedRegions: ['launcher', 'file-menu', 'tabs'],
-    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering', 'monaco'],
   },
   'file-menu': {
     allowedRegions: ['file-menu', 'tabs'],
-    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering', 'monaco'],
   },
   conflict: {
     allowedRegions: ['reload-prompt', 'tabs'],
-    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering', 'monaco'],
   },
   'move-tab': {
     allowedRegions: ['tab-menu', 'tabs'],
-    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering', 'monaco'],
   },
   'status-mixed-ending': {
     allowedRegions: ['status-bar'],
-    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering', 'monaco'],
   },
   'status-large-file': {
     allowedRegions: ['status-bar'],
-    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering', 'monaco'],
   },
   'editor-split-375': {
     allowedRegions: ['editor-pane', 'toolbar', 'tabs', 'settings-overflow'],
-    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering', 'monaco'],
   },
 };
 

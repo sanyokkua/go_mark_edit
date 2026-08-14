@@ -51,6 +51,7 @@ it('reference adapter hash is stable and bounded', () => {
     'workspace',
     'assistant',
     'rich-rendering',
+    'monaco',
   ]);
   expect(REFERENCE_ADAPTER_VERSION).toBe('feature-003-reference-adapter-v2');
 });
@@ -162,11 +163,11 @@ it('T063 exposes only the two status conditions the binding can express', () => 
   expect(statusReferenceStateFor('file-menu')).toBeUndefined();
   expect(referenceVariantRules('status-mixed-ending')).toEqual({
     allowedRegions: ['status-bar'],
-    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering', 'monaco'],
   });
   expect(referenceVariantRules('status-large-file')).toEqual({
     allowedRegions: ['status-bar'],
-    excludedRegions: ['workspace', 'assistant', 'rich-rendering'],
+    excludedRegions: ['workspace', 'assistant', 'rich-rendering', 'monaco'],
   });
 });
 
@@ -284,6 +285,7 @@ it('T076 hides the non-selected pane at the minimum window, and nothing else', (
     'workspace',
     'assistant',
     'rich-rendering',
+    'monaco',
   ]);
 });
 
