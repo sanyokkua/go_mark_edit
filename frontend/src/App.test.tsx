@@ -50,6 +50,12 @@ jest.mock('./i18n', () => ({
   t: (key: string, values: Record<string, string> = {}): string => {
     const copy: Record<string, string> = {
       'recovery.title': 'Editor recovery needed',
+      'recovery.quit.action': 'Quit and discard newer unsaved changes',
+      'recovery.quit.cancel': 'Cancel',
+      'recovery.quit.confirm': 'Quit and discard',
+      'recovery.quit.message':
+        'The file was saved on disk, but editor-state recovery failed. Quit and discard newer unsaved changes for the affected documents?',
+      'recovery.quit.title': 'Confirm quit and discard',
       'save.readOnly': 'This document is read-only and cannot be saved.',
       'save.success.message': 'Saved {filename} · {encoding} · {lineEnding}',
       'save.success.title': 'Saved',
@@ -233,7 +239,11 @@ import {
   documentWriteAdapter,
   nativeLifecycleAdapter,
 } from './logic/adapter';
-import type { AppModelState } from './logic/store/appModelTypes';
+import type {
+  AppModelState,
+  AppStatePatch,
+  DocumentMetadata,
+} from './logic/store/appModelTypes';
 import AppShell from './ui/widgets/AppShell';
 import ShellMenuRow from './ui/widgets/ShellMenuRow';
 import type { SettingsMenuProps } from './ui/widgets/SettingsMenu';
@@ -761,6 +771,304 @@ it('Save reports exactly one confirmation', async () => {
     0,
     '',
   );
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+/*
+ * T084 gap 7 — routing (ShellMenuRow.test.tsx:331), bridge shape
+ * (logic/adapter/services.test.ts:57) and mock-model adoption
+ * (dev/bridge-mock/appModel.test.ts:402) were each asserted, but nothing asserted the
+ * UI *after* a committed Save As. The confirmation must name the adopted target rather
+ * than the pre-Save-As filename, and the identity heading must follow the adopted path.
+ * The tab half of the same outcome is asserted in DocumentTabs.test.tsx.
+ */
+it('T084 adopts the Save As target path in the confirmation and the identity heading', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  let emitPatch: ((patch: AppStatePatch) => void) | undefined;
+  mockedAppModelAdapter.subscribeStatePatches.mockImplementation((listener) => {
+    emitPatch = listener;
+    return jest.fn();
+  });
+  mockedAppModelAdapter.reconcileCommittedWrite.mockResolvedValue(
+    bootstrapState('draft', 13),
+  );
+  mockedDocumentWriteAdapter.save.mockReset();
+  mockedDocumentWriteAdapter.saveAs.mockReset().mockResolvedValue({
+    status: 'committed',
+    data: {
+      documentId: 'document-1',
+      writtenContentRevision: 2,
+      committedProjectionRevision: 13,
+      targetPath: '/notes/renamed.md',
+      targetPathAdopted: true,
+      lineEndingOutcome: 'preserved-lf',
+      bomOutcome: 'absent',
+      resyncRequired: false,
+    },
+  });
+
+  render(<App />);
+  expect(
+    await screen.findByRole('heading', { name: 'documents / one.md' }),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save As' }));
+
+  await waitFor(() =>
+    expect(mockedDocumentWriteAdapter.saveAs).toHaveBeenCalledWith(
+      'document-1',
+      0,
+      '',
+    ),
+  );
+  expect(mockedDocumentWriteAdapter.save).not.toHaveBeenCalled();
+  await waitFor(() =>
+    expect(screen.getByText('Saved renamed.md · UTF-8 · LF')).toBeVisible(),
+  );
+  expect(screen.getAllByText('Saved renamed.md · UTF-8 · LF')).toHaveLength(1);
+  expect(
+    screen.queryByText('Saved one.md · UTF-8 · LF'),
+  ).not.toBeInTheDocument();
+
+  /*
+   * The store is a projection: Go owns the adopted identity and publishes it as a
+   * `state:patch`, so the heading has to follow the patch rather than any local write.
+   */
+  const adopted: DocumentMetadata = {
+    ...bootstrapState('draft', 13).snapshot.documents['document-1'],
+    path: '/notes/renamed.md',
+    title: 'renamed.md',
+    status: 'saved',
+  };
+  act((): void => {
+    emitPatch?.({
+      revision: 13,
+      documents: { upsert: { 'document-1': adopted } },
+    });
+  });
+
+  expect(
+    screen.getByRole('heading', { name: 'notes / renamed.md' }),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole('heading', { name: 'documents / one.md' }),
+  ).not.toBeInTheDocument();
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+/*
+ * T084 gap 8 — the `resync-recovery` parity state only proves a close dialog is
+ * visible. The recovery prompt is a distinct surface with its own copy and its own
+ * outcome: it discards newer unsaved changes wholesale instead of collecting a
+ * per-document close choice.
+ */
+it('T084 confirms a resync recovery quit with its own copy and discards newer changes', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.reconcileCommittedWrite.mockReset().mockResolvedValue({
+    persistent: true,
+    savedOnDisk: true,
+    commandsBlocked: true,
+    closeBlocked: true,
+    message: 'The file was saved on disk, but editor-state recovery failed.',
+  });
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'committed',
+    data: {
+      documentId: 'document-1',
+      writtenContentRevision: 2,
+      committedProjectionRevision: 14,
+      targetPath: '/documents/one.md',
+      targetPathAdopted: false,
+      lineEndingOutcome: 'preserved-lf',
+      bomOutcome: 'absent',
+      resyncRequired: true,
+    },
+  });
+  mockedClosePlanAdapter.prepareClose.mockReset().mockResolvedValue({
+    data: {
+      id: 'recovery-close-plan',
+      kind: 'quit',
+      tabSetRevision: 0,
+      status: 'collecting',
+      targets: [
+        {
+          documentId: 'document-1',
+          title: 'One',
+          displayName: 'one.md',
+          contentRevision: 1,
+          dirty: true,
+        },
+      ],
+    },
+  });
+  mockedClosePlanAdapter.resolveClosePlan.mockReset().mockResolvedValue({
+    data: {
+      id: 'recovery-close-plan',
+      kind: 'quit',
+      tabSetRevision: 0,
+      status: 'ready',
+      targets: [],
+    },
+  });
+  mockedClosePlanAdapter.executeClosePlan.mockReset().mockResolvedValue({
+    status: 'closed',
+    orderedDocumentIds: [],
+  });
+  mockedNativeLifecycleAdapter.onCloseRequested.mockReset();
+  mockedNativeLifecycleAdapter.requestQuit.mockReset();
+  mockedNativeLifecycleAdapter.authorizeQuit.mockReset().mockResolvedValue();
+  mockedNativeLifecycleAdapter.cancelQuit.mockReset().mockResolvedValue();
+  let requestListener: (() => void) | undefined;
+  mockedNativeLifecycleAdapter.onCloseRequested.mockImplementation(
+    (listener) => {
+      requestListener = listener;
+      return jest.fn();
+    },
+  );
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+
+  const recovery = await screen.findByRole('alert', {
+    name: 'Editor recovery needed',
+  });
+  expect(recovery).toHaveTextContent(
+    'The file was saved on disk, but editor-state recovery failed.',
+  );
+  fireEvent.click(
+    within(recovery).getByRole('button', {
+      name: 'Quit and discard newer unsaved changes',
+    }),
+  );
+  expect(mockedNativeLifecycleAdapter.requestQuit).toHaveBeenCalledTimes(1);
+
+  await waitFor(() => expect(requestListener).toBeDefined());
+  act((): void => {
+    requestListener?.();
+  });
+
+  const confirm = await screen.findByRole('dialog', {
+    name: 'Confirm quit and discard',
+  });
+  expect(
+    within(confirm).getByText(
+      'The file was saved on disk, but editor-state recovery failed. Quit and discard newer unsaved changes for the affected documents?',
+    ),
+  ).toBeVisible();
+  expect(within(confirm).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  expect(
+    within(confirm).getByRole('button', { name: 'Quit and discard' }),
+  ).toBeVisible();
+  // The recovery route replaces the per-document close question, it does not precede it.
+  expect(
+    screen.queryByRole('dialog', { name: 'Save changes before closing?' }),
+  ).not.toBeInTheDocument();
+
+  fireEvent.click(
+    within(confirm).getByRole('button', { name: 'Quit and discard' }),
+  );
+
+  await waitFor(() =>
+    expect(mockedNativeLifecycleAdapter.authorizeQuit).toHaveBeenCalledTimes(1),
+  );
+  expect(mockedClosePlanAdapter.resolveClosePlan).toHaveBeenCalledTimes(1);
+  expect(mockedClosePlanAdapter.resolveClosePlan).toHaveBeenCalledWith(
+    'recovery-close-plan',
+    [{ choice: 'discard-all' }],
+  );
+  expect(mockedClosePlanAdapter.executeClosePlan).toHaveBeenCalledWith(
+    'recovery-close-plan',
+  );
+  expect(mockedNativeLifecycleAdapter.cancelQuit).not.toHaveBeenCalled();
+  expect(
+    screen.queryByRole('dialog', { name: 'Confirm quit and discard' }),
+  ).not.toBeInTheDocument();
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+/*
+ * T084 gap 8 — Cancel on the recovery confirmation must abandon the quit and leave the
+ * recovery surface standing, not fall through to the ordinary close plan.
+ */
+it('T084 cancels a resync recovery quit without preparing a close plan', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.reconcileCommittedWrite.mockReset().mockResolvedValue({
+    persistent: true,
+    savedOnDisk: true,
+    commandsBlocked: true,
+    closeBlocked: true,
+    message: 'The file was saved on disk, but editor-state recovery failed.',
+  });
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'committed',
+    data: {
+      documentId: 'document-1',
+      writtenContentRevision: 2,
+      committedProjectionRevision: 14,
+      targetPath: '/documents/one.md',
+      targetPathAdopted: false,
+      lineEndingOutcome: 'preserved-lf',
+      bomOutcome: 'absent',
+      resyncRequired: true,
+    },
+  });
+  mockedClosePlanAdapter.prepareClose.mockReset();
+  mockedNativeLifecycleAdapter.onCloseRequested.mockReset();
+  mockedNativeLifecycleAdapter.cancelQuit.mockReset().mockResolvedValue();
+  let requestListener: (() => void) | undefined;
+  mockedNativeLifecycleAdapter.onCloseRequested.mockImplementation(
+    (listener) => {
+      requestListener = listener;
+      return jest.fn();
+    },
+  );
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+  await screen.findByRole('alert', { name: 'Editor recovery needed' });
+
+  await waitFor(() => expect(requestListener).toBeDefined());
+  act((): void => {
+    requestListener?.();
+  });
+
+  const confirm = await screen.findByRole('dialog', {
+    name: 'Confirm quit and discard',
+  });
+  fireEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() =>
+    expect(mockedNativeLifecycleAdapter.cancelQuit).toHaveBeenCalledTimes(1),
+  );
+  expect(mockedClosePlanAdapter.prepareClose).not.toHaveBeenCalled();
+  expect(
+    screen.queryByRole('dialog', { name: 'Confirm quit and discard' }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('alert', { name: 'Editor recovery needed' }),
+  ).toBeVisible();
   store.dispatch(resetNotifications());
   act((): void => disposeAppModelProjection());
 });
