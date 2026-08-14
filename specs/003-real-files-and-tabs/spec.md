@@ -1440,6 +1440,46 @@ every cluster production matches the binding and the test describes the
 pre-convergence surface. This is diagnosed in full in
 `phase-18/e2e-baseline-failures.md` and needs its own task.
 
+### Update — 2026-08-14
+
+**Sixteen of those tasks are now closed; nine remain.** The record above is kept as written; this
+supersedes its counts.
+
+Closed: T065, T066, T067, T073, T074 (the coverage sweeps, rescoped by measurement to the 17
+genuinely-open states of 61 and then closed); T075 and T082 (the six `status-*` states, resolved
+as behaviour-verified once measurement showed none of the six can pair on absolute bounds);
+T076–T080 (the minimum-window behaviour); T081 (all 26 failing e2e cases, each with a recorded
+verdict); T083, T084, T085.
+
+Still open: **T035, T036, T037, T038, T039, T044, T045, T054, T068** — the matrix, the regression
+sweep, the offline/actual-control proof, the gate stack, the current-host walkthrough, the
+coverage ledger, the editor-region geometry, and the two evidence-contract tasks.
+
+**Four production defects were found and fixed** while closing the above, none of which any gate
+was catching: the Settings popup escaping the 375×480 minimum window by ~111px (FR-FT-052); the
+workspace panel overlaying the tab strip so the new-tab control could not be clicked; the status
+row reading `--text-muted` where the binding reads `--faint` (`mockup.html:382`), 47 per channel
+on every glyph; and the tab strip's arrow keys moving selection without moving focus, leaving the
+caret on a `tabindex="-1"` element.
+
+**What now blocks each remaining task is recorded, not assumed:**
+
+- `evidence/ft-vs-08/phase-18/blocking-decisions.md` — the two owner decisions: the Feature 002
+  editor term, and 25 screenshot baselines written before this feature's specification existed.
+- `evidence/ft-vs-08/phase-18/t035-run-2026-08-14.md` — where the matrix's 1,638 actually go, and
+  the finding that **31% of production captures were non-deterministic** while the reference was
+  stable in all 450 keys, so an unknown share of the recorded pixel drift was never a measurement.
+- `evidence/ft-vs-08/phase-18/t045-three-combinations.md` — the editor region measured per colour
+  family for the first time: Minimal 182 pixels, Material 72,996, Glass 309,561. Every earlier
+  conclusion rested on the best of the three.
+- `evidence/ft-vs-08/regressions/baseline-provenance.md` — Feature 003 accepted **zero** baseline
+  changes; all 25 committed images are unchanged and now stale.
+
+Two capture-integrity defects were also fixed in the harness: captures now settle before being
+compared (`captureWhenStable`), and Monaco's caret is frozen as FR-FT-054 requires. The first
+immediately exposed a wrong attribution — 155 of 217 pixels recorded as "the popup's antialiased
+boundary", with a written cause and an evidence citation, were the region still being painted.
+
 ## Assumptions
 
 - The four supported file suffixes and native file dialogs are the complete direct file-entry surface for this
