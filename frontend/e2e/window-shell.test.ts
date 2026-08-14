@@ -80,26 +80,47 @@ async function expectEditorStageFixtures(
     ]);
     await page.keyboard.press('Escape');
   } else {
-    expect(await actionBar.getByRole('button').allTextContents()).toEqual([
+    /*
+     * Accessible names, not glyph text. The sidebar and assistant controls were
+     * `☰` and `✦` text spans until `ca124e41` replaced them with `<Icon>` SVGs
+     * to meet FR-FT-052's binding monochrome size/stroke treatment, so
+     * `allTextContents()` reads two empty strings. (The `☰` never matched the
+     * binding either: `mockup.html:595` draws `▤` for toggle-sidebar.)
+     */
+    for (const name of [
       'File',
       'Settings',
       'View',
       'About',
-      '☰',
-      '✦',
-    ]);
+      'Toggle Sidebar',
+      'Toggle Assistant',
+    ]) {
+      await expect(
+        actionBar.getByRole('button', { name, exact: true }),
+      ).toBeVisible();
+    }
+    await expect(actionBar.getByRole('button')).toHaveCount(6);
     await expect(
       actionBar.getByRole('button', { name: 'Toggle Assistant' }),
     ).toBeDisabled();
   }
 
+  /*
+   * This helper used to assert the whole chrome was inert — disabled tabs, a
+   * disabled New tab, a disabled New File. That was correct while the shell was
+   * a static mock, and Feature 003's entire purpose was making it real, so a
+   * blanket `toBeDisabled()` now asserts the opposite of the requirement. What
+   * it checks instead is the inventory plus availability as the action registry
+   * defines it: enabled where this feature made it real, unavailable only where
+   * something is genuinely deferred.
+   */
   const tabs = page.getByRole('tablist', { name: 'Document tabs' });
   await expect(tabs).toBeVisible();
-  await expect(
-    tabs.getByRole('tab', { name: 'release-notes.md' }),
-  ).toBeDisabled();
-  await expect(tabs.getByRole('tab', { name: 'spec-draft.md' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'New tab' })).toBeDisabled();
+  /* The plain `/` route seeds one Untitled document; `release-notes.md` and
+     `spec-draft.md` are parity fixtures it never produces. */
+  await expect(tabs.getByRole('tab')).toHaveCount(1);
+  await expect(tabs.getByRole('tab', { name: /Untitled/u })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'New tab' })).toBeEnabled();
 
   const toolbar = page.getByRole('toolbar', { name: 'Document toolbar' });
   await expect(
@@ -111,21 +132,58 @@ async function expectEditorStageFixtures(
   if (width <= 768) {
     await toolbar.getByLabel('More actions').click();
   }
-  await expect(toolbar.getByRole('button', { name: 'Image' })).toBeDisabled();
-  if (width <= 376) {
+  /*
+   * At 375 the overflow popup is portalled into `.application-frame` so it can
+   * share the frame's containing block, which puts it outside the toolbar
+   * element — scoping the lookup to `toolbar` found nothing there. Image is
+   * still rendered and still unavailable; only where it lives changed.
+   */
+  const overflowPopup = page.locator('[data-viewport-popup="editor-overflow"]');
+  const usesOverflow = width <= 768;
+  const narrowOverflow = width <= 376;
+  const imageControl = usesOverflow
+    ? overflowPopup.getByRole('button', { name: 'Image' })
+    : toolbar.getByRole('button', { name: 'Image' });
+  await expect(imageControl).toBeDisabled();
+  if (narrowOverflow) {
     await expect(
-      toolbar.getByRole('radiogroup', { name: 'View arrangement' }),
+      overflowPopup.getByRole('radiogroup', { name: 'View arrangement' }),
     ).toBeVisible();
   }
   await page.keyboard.press('Escape');
 
   await openAction(page, 'File');
-  const fileMenu = page.getByRole('menu', { name: 'File' });
+  /* `exact` matters: the narrow popup nests a `Recent files` submenu, and
+     Playwright's accessible-name match is substring and case-insensitive, so a
+     loose `File` resolves to both menus and trips strict mode. */
+  const fileMenu = page.getByRole('menu', { name: 'File', exact: true });
+  /* `actionRegistry.ts:198` marks new-file `available()` — Feature 003 made it
+     real, so asserting it disabled asserted the opposite of the requirement. */
   await expect(
     fileMenu.getByRole('menuitem', { name: 'New File' }),
-  ).toBeDisabled();
+  ).toBeEnabled();
+  /*
+   * Recents are presented differently by width, and both are correct. Wide, the
+   * binding puts them as indented rows under an `Open Recent` group label
+   * (`mockup.html:604`, `.mi.sub`) with no trigger row of its own, so there
+   * `Open Recent` is a label and never a `menuitem` — the same shape as
+   * `Appearance`, which is a radiogroup name rather than an item. Narrow, the
+   * popup uses an `Open Recent` trigger plus a nested submenu
+   * (`ShellMenuRow.tsx:786-802`). This route seeds no recent files
+   * (`AppModelHandler.ts:311`), so either way the rows are disabled
+   * placeholders carrying the binding's two names.
+   */
+  if (width <= 376) {
+    await expect(
+      fileMenu.getByRole('menuitem', { name: 'Open Recent' }),
+    ).toBeDisabled();
+  } else {
+    await expect(fileMenu).toContainText('Open Recent');
+  }
+  const recentRows = page.getByRole('menuitem', { name: 'release-notes.md' });
+  await expect(recentRows).toBeDisabled();
   await expect(
-    fileMenu.getByRole('menuitem', { name: 'Open Recent' }),
+    page.getByRole('menuitem', { name: 'spec-draft.md' }),
   ).toBeDisabled();
   await page.keyboard.press('Escape');
 
