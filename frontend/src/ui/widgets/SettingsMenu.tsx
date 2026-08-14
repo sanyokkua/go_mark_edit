@@ -366,28 +366,31 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
        * frame-relative position is the binding's (`top: 42`), and shifting it
        * would trade one defect for a parity failure.
        */
-      const boundToViewport = (
-        frameTop: number,
-        top: number,
-      ): number | undefined => {
-        const available = window.innerHeight - margin - (frameTop + top);
-        return content.scrollHeight > available ? available : undefined;
-      };
+      const boundToHeight = (available: number): number | undefined =>
+        content.scrollHeight > available ? available : undefined;
       if (applicationFrame !== null) {
         const frameBounds = applicationFrame.getBoundingClientRect();
+        /*
+         * Inside a frame the bound is the FRAME's height, not the browser
+         * window's. `.application-frame` is the application window; the
+         * parity harness draws it inset inside a taller page, so measuring
+         * against `window.innerHeight` there would clamp a popup that fits its
+         * own window perfectly well — and a clamp creates a scroll container,
+         * which costs ~332 antialiasing pixels against the immutable
+         * reference. Measured: at the 720px parity height the frame is 619px
+         * tall, so 42 + 549 fits with room to spare and nothing is applied.
+         */
+        const inFrame = (top: number): number | undefined =>
+          boundToHeight(frameBounds.height - margin - top);
         if (window.innerWidth > 376) {
-          setPopupPosition({
-            left: 150,
-            top: 42,
-            maxBlockSize: boundToViewport(frameBounds.top, 42),
-          });
+          setPopupPosition({ left: 150, top: 42, maxBlockSize: inFrame(42) });
           return;
         }
         const narrowTop = anchorBounds.bottom - frameBounds.top;
         setPopupPosition({
           left: anchorBounds.left - frameBounds.left,
           top: narrowTop,
-          maxBlockSize: boundToViewport(frameBounds.top, narrowTop),
+          maxBlockSize: inFrame(narrowTop),
         });
         return;
       }
@@ -405,7 +408,12 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
         below + popupBounds.height <= window.innerHeight - margin
           ? below
           : Math.max(margin, above);
-      setPopupPosition({ left, top, maxBlockSize: boundToViewport(0, top) });
+      /* No frame: the browser viewport is the window. */
+      setPopupPosition({
+        left,
+        top,
+        maxBlockSize: boundToHeight(window.innerHeight - margin - top),
+      });
     };
 
     positionPopup();

@@ -1,7 +1,11 @@
 .statusBar {
   box-sizing: border-box;
   background: var(--surface-raised);
-  color: var(--text-muted);
+  /* Binding source: mockup.html `.statusbar` (:382) — `color: var(--faint)`.
+     This row was the only surface in `src/ui/` reading `--text-muted` where
+     the binding reads `--faint`. Measured at minimal-light, the two tokens
+     differ by 47 per channel, so every glyph in the row was off. */
+  color: var(--faint);
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
@@ -95,10 +99,16 @@
   }
 }
 
+/* Binding source: mockup.html :82-83, which hides `.sb-provider`,
+   `.sb-autosave`, `.sb-enc`, `.sb-eol` and `.sb-count` at the 375 width.
+   `autosave` was omitted here while the other three dropped, so the narrow row
+   carried one item the binding drops. (`.sb-provider` has no production
+   counterpart — the AI provider readout is out of this feature's scope.) */
 @media (max-width: 376px) {
   .responsiveItem[data-status-item='count'],
   .responsiveItem[data-status-item='encoding'],
-  .responsiveItem[data-status-item='line-ending'] {
+  .responsiveItem[data-status-item='line-ending'],
+  .responsiveItem[data-status-item='autosave'] {
     display: none;
   }
 }
