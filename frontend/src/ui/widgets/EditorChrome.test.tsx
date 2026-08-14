@@ -221,6 +221,108 @@ it('T072 scopes overflow relocation to the documented 768 and 375 width groups',
   expect(screen.getAllByRole('button', { name: 'Link' })).toHaveLength(2);
 });
 
+/*
+ * T072 above proves the two width buckets *exist*. It never proved which
+ * toolbar groups land in each, and that is the hole Bold, Italic,
+ * Strikethrough, Inline code and all three headings fell through:
+ * `.relocateAt375 { display: none }` (`EditorChrome.module.css:556-559`) took
+ * them out of the toolbar row at 375, while the parity-shaped overflow — which
+ * carries no text group and no heading group — was what the shipped
+ * application drew there. Present at 1280, absent at 375, with no other route
+ * to them.
+ *
+ * Whole sets are compared rather than membership, so removing an action from a
+ * bucket fails here instead of silently shrinking the narrow surface. jsdom
+ * lays nothing out and applies no media query, so this pins the *assignment*;
+ * `e2e/narrow-width.test.ts` pins what is actually reachable at each width.
+ */
+it('T084 assigns every toolbar group to the overflow bucket its width owns', () => {
+  const { container } = render(
+    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+  );
+  fireEvent.click(
+    container.querySelector('summary[aria-label="More actions"]')!,
+  );
+
+  const overflow = screen.getByRole('menu', { name: 'More actions' });
+  const idsIn = (selector: string): string[] =>
+    Array.from(
+      overflow.querySelectorAll<HTMLElement>(`${selector} [data-action-id]`),
+    ).map((element) => element.getAttribute('data-action-id') ?? '');
+
+  // Relocated first, at 768: the list group then the insert group.
+  expect(idsIn('.overflowAt768')).toEqual([
+    'bullet-list',
+    'numbered-list',
+    'task-list',
+    'quote',
+    'link',
+    'image',
+    'table',
+  ]);
+  // Relocated second, at 375: the text group, the heading group, and the
+  // arrangement segment, which the inline toolbar no longer shows at that width.
+  expect(idsIn('.overflowAt375')).toEqual([
+    'bold',
+    'italic',
+    'strike',
+    'inline-code',
+    'heading-1',
+    'heading-2',
+    'heading-3',
+    'editor',
+    'split',
+    'preview',
+  ]);
+
+  // And the row's own drop order is the other half of the same contract: each
+  // group carries exactly the relocation class for the width that drops it, and
+  // the deferred group carries none because it never leaves the row.
+  const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
+  const rowGroups = Array.from(
+    toolbar.querySelectorAll<HTMLElement>(':scope > div[class*="group"]'),
+  ).map((group) => ({
+    ids: Array.from(group.querySelectorAll('[data-action-id]')).map((element) =>
+      element.getAttribute('data-action-id'),
+    ),
+    relocatesAt: group.className.includes('relocateAt375')
+      ? 375
+      : group.className.includes('relocateAt768')
+        ? 768
+        : null,
+  }));
+  expect(rowGroups).toEqual([
+    { ids: ['bold', 'italic', 'strike', 'inline-code'], relocatesAt: 375 },
+    { ids: ['heading-1', 'heading-2', 'heading-3'], relocatesAt: 375 },
+    {
+      ids: ['bullet-list', 'numbered-list', 'task-list', 'quote'],
+      relocatesAt: 768,
+    },
+    { ids: ['link', 'image', 'table'], relocatesAt: 768 },
+    { ids: ['format', 'compact', 'lint'], relocatesAt: null },
+    { ids: ['editor', 'split', 'preview'], relocatesAt: 375 },
+  ]);
+
+  /*
+   * Availability is the registry's answer, never a wiring accident:
+   * `actionRegistry.ts:349` marks `image` deferred
+   * (`image-lifecycle-deferred`), and `:356`, `:367`, `:373` do the same for
+   * `format`, `compact` and `lint`. Nothing else in the toolbar is deferred, at
+   * either width.
+   */
+  const disabled = Array.from(
+    document.body.querySelectorAll<HTMLButtonElement>('[data-action-id]'),
+  )
+    .filter((element) => element.disabled)
+    .map((element) => element.getAttribute('data-action-id'));
+  expect([...new Set(disabled)].sort()).toEqual([
+    'compact',
+    'format',
+    'image',
+    'lint',
+  ]);
+});
+
 it('T070 closes the toolbar overflow on Escape and outside pointer input', () => {
   const { container } = render(
     <>

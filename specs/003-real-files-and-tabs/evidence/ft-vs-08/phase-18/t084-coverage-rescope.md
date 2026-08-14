@@ -61,7 +61,7 @@ Two structural facts the accounting depends on:
 | Recents list | `e2e/real-files-and-tabs.test.ts:188`; `e2e/launcher-binding.test.ts:152` `'T057 draws the launcher recents list from the binding'` |
 | Open Folder unavailable | `src/ui/widgets/Launcher.test.tsx:30`; `e2e/real-files-and-tabs.test.ts:188` and `:294` |
 
-**Open (2):**
+**Closed 2026-08-14** in `frontend/src/App.test.tsx` and `frontend/src/ui/widgets/DocumentTabs.test.tsx`:
 1. **Save As outcome** — routing, bridge shape and mock-model adoption are asserted
    (`ShellMenuRow.test.tsx:331`, `logic/adapter/services.test.ts:57`,
    `dev/bridge-mock/appModel.test.ts:402`), but **nothing asserts the post-commit UI**: the
@@ -81,7 +81,9 @@ Two structural facts the accounting depends on:
 | Focus ring tokens | `src/ui/styles/tokens.test.ts:310` and `:139`; `e2e/window-shell.test.ts:605`; `e2e/interactive-states.test.ts:60` |
 | Absence of literal colours | `scripts/archtest.mjs:69-127` (`archtest (frontend) — colour literals`); `src/ui/styles/tokens.test.ts:359` and `:40` |
 
-**Open (3):** each is the same defect — a token asserted in **one** palette where the
+**Closed 2026-08-14** in `frontend/src/ui/styles/tokens.test.ts`, which now gates all four tokens across
+all six palettes, asserts elevation and typeface differ per family (FR-FT-053) and asserts the
+unavailable opacity does not (FR-FT-056). Each was the same defect — a token asserted in **one** palette where the
 all-six-palette gate would catch a palette-specific regression:
 3. **Shadow tokens** — `--win-shadow` / `--context-menu-shadow` are absent from
    `requiredPaletteTokens`; the exact value is asserted for `material` only
@@ -108,7 +110,8 @@ all-six-palette gate would catch a palette-specific regression:
 | Overlay behaviour | `e2e/editor-stage.test.ts:138`; `e2e/window-shell.test.ts:519` `T041 …restores the connected ${width}px Settings opener` |
 | No unintended page scroll | `e2e/editor-stage.test.ts:16`, `:320`, `:442`; `e2e/appearance.test.ts:49` |
 
-**Open (5):**
+**Closed 2026-08-14** by `frontend/e2e/narrow-width.test.ts` (20 tests) and one added case in
+`frontend/src/ui/widgets/EditorChrome.test.tsx`:
 6. **Prompts at 768** — every prompt parity state is assigned width 375; nothing exercises a
    prompt at 768.
 7. **Launcher at 768** — asserted as a CSS media-query *string* (`Launcher.test.tsx:11`), never
@@ -121,6 +124,21 @@ all-six-palette gate would catch a palette-specific regression:
    overflow entirely.
 10. **No unintended wrapping** — asserted at 1280 for the status bar only
     (`targeted-parity.test.ts:1492`); not at 768/375, not for other rows.
+
+Item 9 was the one that mattered most, and it is now mutation-proven: deleting the text and heading
+groups from `.overflowAt375` — the exact regression that shipped — fails both new tests with the
+precise seven missing ids. The 768 bucket was measured live rather than assumed:
+`bullet-list, numbered-list, task-list, quote, link, image, table`, with no arrangement radios and no
+application menus, because `.overflowAt375` and `.applicationOverflowItems` are `display: none` above
+376px.
+
+Four measured facts recorded while closing these, none of them defects: `New tab` and the overflow
+`<summary>` compute `white-space: normal` and have no break opportunity, so the no-wrap rule is
+applied only to labels longer than one character; parity routes re-lay-out the close prompt
+(`position: absolute; max-height: none`), so containment is asserted on the ordinary route instead; a
+paused preview pane has no box at all, because `EditorView.module.css:47-53` gives it
+`display: contents` while the paused bar spans the grid; and the close prompt's DOM order is
+`Cancel, Discard, Save`, deliberately placing the dismissing choice where focus lands.
 
 ---
 
@@ -143,7 +161,8 @@ all-six-palette gate would catch a palette-specific regression:
 | Hostile / long labels | `src/ui/widgets/tabLabel.test.ts:37`, `:48`, `:56`; T035 `label-long-localized`, `path-hostile-disambiguated`, `label-short` |
 | Document identity not-saved | `src/ui/widgets/DocumentIdentity.test.tsx:52` and `:92`; T035 `identity-not-saved` |
 
-**Open (7 — the largest cluster, and the only NOT COVERED item in the feature):**
+**Closed 2026-08-14** in `frontend/src/ui/widgets/DocumentTabs.test.tsx` (10 new tests). This was the
+largest cluster and held the feature's only NOT COVERED item:
 11. **Focus / roving tabindex in the tab strip** — **NOT COVERED.**
     `src/ui/widgets/DocumentTabs.tsx:505` sets `tabIndex={active ? 0 : -1}`; no test anywhere
     asserts tab `tabindex` or focus movement within the tablist.
