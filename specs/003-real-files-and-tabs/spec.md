@@ -243,6 +243,69 @@
   supersedes the "zero unexplained pixels" wording in T060, T070, T071 and T072, whose task text is amended to
   match.
 
+### Session 2026-08-14
+
+- Q: At the 375×480 minimum window (`main.go:104-105`) the binding stacks both panes
+  (`mockup.html:54` `.app[data-w="375"] .body{flex-direction:column}` with `:55` `.pane{flex:1}`) and keeps the
+  sidebar present as a closed slide-over (`:51-53`). Neither is what the application should do at its smallest
+  supported size. How is that resolved? → A: At widths at or below the 375-pixel minimum window the application
+  shows **exactly one pane, matching the selected mode**: Editor mode shows the editor, Preview mode shows the
+  viewer, and **Split collapses to the editor** — this is a Markdown editor, typing is its primary job, and a
+  fixed answer means nobody has to guess which pane they get. The hidden pane MUST be removed from the tree,
+  not merely sized to zero. The collapse is **view-only**: widening the window past the minimum restores Split
+  without the user re-selecting it, and the collapse MUST NOT write the stored arrangement preference, because
+  shrinking a window is not a mode change. The **workspace panel is not rendered at all** at that width — at
+  375 it is an overlay that covers the tab strip and makes the new-tab control unreachable, and not rendering
+  it means there is no second "is it open" state to own at that size while the stored preference continues to
+  govern wide layout untouched. Retained at that width: the menu row, the tab strip, the toolbar with its
+  overflow menu, and the status bar shortened in the binding's own fixed drop order (`mockup.html:82-83`).
+  Dropped at that width: the workspace panel, the Assistant, and the Editor/Split/Preview switch — the last of
+  these already matches the binding (`mockup.html:76` `#viewseg{display:none}`), so the mode is changed through
+  the View menu, which MUST remain operable there. Every toolbar action MUST stay reachable through the
+  overflow menu. **Parity consequence:** the `editor-split` family cannot show two panes at 375, so its 375
+  captures — and the four additional state IDs assigned to `editor-split` at 375 (`tab-contained-overflow`,
+  `tab-40-document`, `label-long-localized`, `path-hostile-disambiguated`) — use a Feature 003 reference
+  variant that hides the non-selected `.pane`, exactly as FR-FT-056 already grants the File menu, the View
+  menu and the toolbar. The variant is built only from the mockup's own primitives, the immutable mockup
+  HTML/CSS and its raw source hash stay unchanged, and no mask, tolerance, comparator, coordinate handling or
+  manifest count changes.
+- Q: The `status-saved`, `status-autosaved`, `status-unsaved-changes`, `status-read-only`, `status-mixed-ending`
+  and `status-large-file` IDs were granted six reviewed reference variants on 2026-08-13, but the binding's
+  status row contains exactly one condition that distinguishes them (`.sb-eol` for line ending, `.sb-count` for
+  size); the remaining four differ only in a save status the binding does not draw at all. Six paired reference
+  conditions therefore cannot be built from the mockup's own primitives. How is that resolved? → A: **This
+  supersedes the 2026-08-13 six-variant answer**, which stated an acceptance criterion the immutable source
+  cannot satisfy. Compare only the two states the binding can express — `status-mixed-ending` through `.sb-eol`
+  and `status-large-file` through `.sb-count`. Prove the other four (`saved`, `autosaved`, `unsaved-changes`,
+  `read-only`) with behaviour assertions on the authoritative `data-status-state` attribute and the title bar
+  rather than with pictures. The manifest keeps **546 logical keys**; the honest split is **522 pixel-compared
+  keys** and **24 behaviour-verified keys** (4 states × 6 palettes), and three repetitions execute **1,566
+  pixel comparisons plus 72 behaviour verifications = 1,638 verifications**, so the fixed total is preserved
+  and each half is reported separately. A production-only `comparisonAttempted: false` artifact remains
+  forbidden and MUST be removed wherever it is retained; a behaviour-verified key is an explicitly declared
+  verification method with its own assertions, not an attempted comparison that did not happen.
+- Q: T045 requires the fixed editor-region geometry to be reconciled across 18 width/palette combinations, but
+  one combination is measured and fully attributed at 182 pixels carrying the Feature 002 editor font and
+  scrolling difference, which every other combination carries identically. Is running the other 17 required? →
+  A: No. Reduce T045 to **3 representative combinations at 1280 pixels — one per colour family** (`glass`,
+  `material`, `minimal`). The 17 dropped runs would all report the same already-attributed Feature 002 term and
+  add no signal; three combinations still catch a palette-specific mistake, which is the only failure mode a
+  wider sweep could find. The reduction and this reason MUST be recorded in the feature evidence.
+- Q: The coverage sweeps T065, T066, T067, T073 and T074 were written without checking their cost, and overlap
+  heavily with tests that already exist. How much of each is required? → A: Cover each state **once, where it
+  can genuinely look or behave differently**, and skip combinations that only repeat an existing check. **Every
+  skip MUST be logged with the specific test that already covers it** — a silent reduction reads as full
+  coverage when it is not, which is the failure mode this whole convergence exists to prevent. A skip with no
+  named covering test is not a skip; it is a gap, and it fails the task closed.
+- Q: The attributed-residual mechanism fails when a term grows beyond its recorded `measuredPixels`, but a term
+  that shrinks passes silently. A term recorded at 416 pixels that now needs 100 leaves 316 pixels of room for
+  new drift to hide inside it. How is that resolved? → A: **Fail when a term drops well below its recorded
+  size**, so the recorded ceiling is tightened instead of quietly rotting. The tolerance band MUST be wide
+  enough that a harmless renderer nudge does not break the build, and the declared ceilings in
+  `frontend/e2e/parity/attributed-residuals.ts` MUST be updated whenever the rule fires. This changes only the
+  bookkeeping around an already-measured residual: no mask, tolerance, comparator, coordinate-handling,
+  manifest-count, or immutable-source change.
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Open, edit, and safely save a real file (Priority: P1)
