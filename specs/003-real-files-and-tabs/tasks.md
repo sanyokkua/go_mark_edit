@@ -1030,6 +1030,11 @@ measurement is `evidence/ft-vs-08/phase-18/t035-run-after-repair.md`.
   - **Tests/evidence**: `npx playwright test --project=parity` — **60 passed** (1.0m). **The guard was proven to bite rather than assumed to**: tampering with `assertions[0]` in `evidence/…/editor-status/material-dark/status-saved/status.json` failed all three repeats with the intended diagnostic naming the file and the remedy; restoring it returned 3/3 green. `npx tsc --noEmit` 0, `npx eslint e2e/` clean, `just fmt-check` 0, `just check` exit 0.
   - **Prerequisites**: T091.
 
+- [X] T093 Bring `specs/003-real-files-and-tabs/checklists/requirements.md` to the amended contract, closing finding C6. Two of its 25 items were unticked, and one of them could never be ticked truthfully: "the finite in-scope parity manifest and its 17-family × 18-combination = 306 paired comparisons are enumerated" describes the whole-screen contract withdrawn on 2026-08-14, so leaving it open read as outstanding work when the work had been cancelled. It is struck through with a supersession note naming what actually replaced it — 14 pixel-compared component keys in `targeted-manifest.ts` and 36 behaviour-verified keys in `parity/manifest.ts` — rather than deleted, per Constitution I. The second item, Feature 003 launcher and Reload-prompt variants defined without broad screenshot masks, was already satisfied and simply never ticked: the variants live in `reference-adapter.ts` and are paired by the passing T057, which asserts Open folder disabled on both pages and the recent-file list on each, with no mask involved.
+  - **Outcome**: The checklist reads 25 of 25, and neither tick is a claim about the withdrawn contract.
+  - **Tests/evidence**: `grep -cE '^\s*- \[[ xX]\]'` = 25 total with 0 incomplete; `just fmt-check` 0, `just check` exit 0. No test changed.
+  - **Prerequisites**: T092.
+
 ### Rescoped from the withdrawn contract
 
 - **T035** — was "execute and enforce the complete 546-case matrix". **Rescoped**: the contract it enforced no longer exists. Its replacement obligation is the 14 component keys plus 36 behaviour keys, which `targeted-parity.test.ts` already executes green (15/15). Closes when T088 lands and that suite is the named gate.

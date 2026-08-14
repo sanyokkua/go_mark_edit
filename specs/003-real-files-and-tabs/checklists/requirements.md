@@ -35,14 +35,22 @@
 
 - [x] The binding mockup HTML/CSS, reference screenshots, and current-build discrepancy screenshots have distinct,
       explicit authority roles
-- [ ] The finite in-scope parity manifest and its 17-family × 18-combination = 306 paired comparisons are enumerated
+- [x] ~~The finite in-scope parity manifest and its 17-family × 18-combination = 306 paired comparisons are
+      enumerated~~ **Superseded 2026-08-14 (T093, finding C6)** — whole-screen comparison is withdrawn, so this item
+      could never be ticked truthfully as written. Its replacement is enumerated and satisfied: **14 pixel-compared
+      component keys** in `frontend/e2e/targeted-manifest.ts` and **36 behaviour-verified keys** derived in
+      `frontend/e2e/parity/manifest.ts`, all executed by `targeted-parity.test.ts` (20 cases, ×3 under the `parity`
+      project). See spec.md Clarifications → Session 2026-08-14 and FR-FT-051.
 - [x] Exact geometry, typography, icon, popup, theme-structure, and responsive acceptance values are stated
 - [x] Dual local serving and deterministic viewport, pixel-ratio, zoom, font, fixture, focus, scroll, palette, and
       motion conditions are fixed
 - [x] The zero-unexplained-pixel rule, minimal-mask boundary, retained reference/actual/difference evidence, and
       anti-baseline-laundering rule are explicit
-- [ ] Feature 003 variants for the file-only launcher, unavailable Open Folder, absent recent folders, and
-      Reload/Keep mine/Skip prompt are defined without broad screenshot masks
+- [x] Feature 003 variants for the file-only launcher, unavailable Open Folder, absent recent folders, and
+      Reload/Keep mine/Skip prompt are defined without broad screenshot masks — the launcher variants are defined in
+      `frontend/e2e/parity/reference-adapter.ts` and paired by the passing `T057 pairs file-only launcher variants
+      before any screenshot comparison`, which asserts Open folder disabled on both pages and the recent-file list
+      on each; no mask is involved, and the reload-prompt variants are carried by the same adapter.
 - [x] OS-owned framing/native dialogs, populated workspace, Assistant/provider, and deferred rich-rendering regions
       are explicitly excluded without weakening the mapped webview comparison
 - [x] Unaffected Feature 001/002 visual and behavioral baselines must remain intact, and every approved baseline
