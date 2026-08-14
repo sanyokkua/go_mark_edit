@@ -17,7 +17,11 @@ covers it) or **open** (and therefore real work). Nothing is dropped without a n
 ## Result
 
 **61 states across the five sweeps: 44 already covered outright, 16 partially covered,
-1 not covered at all.** The five sweeps are rescoped to the **17 open items**.
+1 not covered at all.** The five sweeps were rescoped to those **17 open items**.
+
+**All 17 were closed on 2026-08-14** — see the "Closed 2026-08-14" note in each section for the
+files and tests that closed them. The tables below are kept as written, because the value of this
+document is the named covering test behind each of the 44 skips, and that record does not change.
 
 | Sweep | Area | States | Covered | Partial | Not covered |
 |---|---|---:|---:|---:|---:|
@@ -27,6 +31,8 @@ covers it) or **open** (and therefore real work). Nothing is dropped without a n
 | T073 | tabs / identity / toolbar | 20 | 13 | 6 | 1 |
 | T074 | preview | 6 | 6 | 0 | 0 |
 | **Total** | | **61** | **44** | **16** | **1** |
+
+_Post-closure: 61 covered, 0 partial, 0 uncovered._
 
 Two structural facts the accounting depends on:
 
