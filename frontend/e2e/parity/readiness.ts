@@ -42,6 +42,90 @@ export async function freezeParityPixels(page: Page): Promise<void> {
   });
 }
 
+export interface StableCaptureOptions {
+  /** Identical consecutive captures required. FR-FT-054 names three. */
+  readonly consecutive?: number;
+  readonly intervalMs?: number;
+  readonly timeoutMs?: number;
+}
+
+export interface StableCaptureResult {
+  readonly buffer: Buffer;
+  readonly hash: string;
+  readonly attempts: number;
+  readonly settleMs: number;
+  /** Every distinct hash seen, oldest first. One entry means it never moved. */
+  readonly observedHashes: readonly string[];
+}
+
+/**
+ * Capture a region only once it has stopped changing.
+ *
+ * FR-FT-054 requires that "three consecutive unchanged captures MUST produce
+ * identical image hashes". The harness asserted that *after* the fact, across
+ * the three repetitions of a case, and reported a failure when it did not hold.
+ * That is the wrong end: measured 2026-08-14, the editor region changes **four
+ * times over the first ~1.2 seconds** after readiness — `data-status-state` and
+ * `data-preview-state` constant throughout, so it is the renderer settling
+ * (progressive layout, tokenisation and font measurement), not the application
+ * changing state. Whichever raster the capture happened to land on became the
+ * measurement, and 138 of 450 manifest keys — 31% — hashed differently across
+ * repetitions as a result, while the immutable reference was stable in all 450.
+ *
+ * A comparison taken against a moving capture cannot distinguish drift from
+ * noise, so waiting for stability is a precondition for the measurement being
+ * meaningful at all. This changes no tolerance, no mask, no comparator and no
+ * coordinate handling: it decides *when* to look, not what counts as a match.
+ */
+export async function captureWhenStable(
+  locator: import('@playwright/test').Locator,
+  options: StableCaptureOptions = {},
+): Promise<StableCaptureResult> {
+  const consecutive = options.consecutive ?? 3;
+  const intervalMs = options.intervalMs ?? 120;
+  const timeoutMs = options.timeoutMs ?? 10_000;
+  const { createHash } = await import('node:crypto');
+  const startedAt = Date.now();
+  const observedHashes: string[] = [];
+
+  let buffer = await locator.screenshot({ animations: 'disabled' });
+  let hash = createHash('sha256').update(buffer).digest('hex');
+  observedHashes.push(hash);
+  let run = 1;
+  let attempts = 1;
+
+  while (run < consecutive) {
+    if (Date.now() - startedAt > timeoutMs) {
+      throw new Error(
+        `capture never stabilised within ${timeoutMs}ms after ${attempts} attempts; ` +
+          `distinct hashes seen: ${observedHashes.length} (${observedHashes
+            .map((value) => value.slice(0, 10))
+            .join(' -> ')})`,
+      );
+    }
+    await locator.page().waitForTimeout(intervalMs);
+    const next = await locator.screenshot({ animations: 'disabled' });
+    attempts += 1;
+    const nextHash = createHash('sha256').update(next).digest('hex');
+    if (nextHash === hash) {
+      run += 1;
+      continue;
+    }
+    observedHashes.push(nextHash);
+    buffer = next;
+    hash = nextHash;
+    run = 1;
+  }
+
+  return {
+    buffer,
+    hash,
+    attempts,
+    settleMs: Date.now() - startedAt,
+    observedHashes,
+  };
+}
+
 export type ParityScrollOffset = Readonly<{ x: number; y: number }>;
 
 /**
