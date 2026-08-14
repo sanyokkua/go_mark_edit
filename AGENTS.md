@@ -167,6 +167,27 @@ because `/speckit-converge` must still determine whether the implementation matc
   `real-files-and-tabs.test.ts` was 2 failed / 6 passed — a dead Settings toggle and a test still
   describing a superseded File menu. Run `just e2e-test` explicitly, and diff it, before calling
   any interface work done.
+- **Two test runners can claim the same files, and the loser dies at collection.** `just e2e-test`
+  could not run *at all* from T034 until 2026-08-14: `playwright.config.ts` matched
+  `e2e/**/*.test.ts`, which swallowed the seven Jest unit tests under `e2e/parity/` that
+  `jest.config.js` explicitly owns, and `playwright test` with no arguments died with
+  `ReferenceError: it is not defined` before one browser case ran. Running a single file
+  (`npx playwright test e2e/window-shell.test.ts`) always worked, which is why nobody noticed.
+  The config now matches `e2e/*.test.ts` — top level only, one owner per file. **When you add a
+  test under `e2e/`, check which runner claims it.**
+- **`.application-frame` is the application window; `window.innerHeight` is not.** Popups portal
+  into that frame so they share its containing block, and the parity harness draws the frame inset
+  inside a taller page. Clamping a popup against the browser viewport therefore fires at the 720px
+  parity height — where the frame is only 619px — creating a scroll container that costs ~332
+  antialiasing pixels against the immutable reference. Measure the frame. (The same portalling
+  means a control that has relocated into the toolbar overflow at ≤768px is **outside** the
+  `toolbar` element: `toolbar.getByRole('button', {name: 'Image'})` finds nothing, and
+  `[data-viewport-popup="editor-overflow"]` is where it lives.)
+- **Fixing a stale assertion reveals the next one.** Playwright stops a case at its first failure,
+  so a failing-case count understates the work by construction. On 2026-08-14 the Settings-popup
+  viewport assertion hid a stale portal-target assertion; a status-row arrangement assertion hid a
+  divider-bounds assertion; and every repaired assertion in the shell matrix hid its screenshot
+  comparison. Budget for the second layer.
 - **Availability comes from the action registry, never from whether a handler happens to be
   wired.** `SettingsMenu` computed it as `onMarkdownSettingsChange === undefined` and shipped
   `Format on save` and `Lint on save` enabled while `actionRegistry.ts` marked both
