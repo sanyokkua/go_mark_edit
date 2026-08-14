@@ -1,0 +1,4 @@
+wails generate module
+[31;107m[31;107m ♥  [0m[0m [92m[92mIf Wails is useful to you or your company, please consider sponsoring the project:[0m[0m
+https://github.com/sponsors/leaanthony
+git diff --exit-code -- frontend/wailsjs/
