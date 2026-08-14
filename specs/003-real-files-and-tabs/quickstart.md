@@ -66,7 +66,8 @@ npm run verify:ui -- e2e/real-files-parity.test.ts
 ```
 
 The parity manifest must account for all 17 primary visual families at 1280, 768, and 375 logical pixels in
-all six palettes: 306 primary reference/application pairs. Each mapped in-scope region requires zero unexplained
+all six palettes. **Revised 2026-08-14**: the 306-pair whole-screen expansion is withdrawn; the contract is 14
+pixel-compared component keys and 36 behaviour-verified keys. Each mapped in-scope region requires zero unexplained
 pixels plus exact computed-style and bounding-box assertions. Retain reference, application, diff, dimensions,
 font/zoom/pixel-ratio metadata, and source hashes. The ordinary OS frame and native dialogs are excluded from
 pixel comparison, not from real-application verification.
@@ -128,7 +129,8 @@ failures. Include:
 
 - baseline and full raw gate logs with exit status;
 - focused Go/Jest/architecture reports;
-- the 306-entry parity manifest, source hashes, image triplets, and metric assertions;
+- the component parity manifest (14 pixel-compared + 36 behaviour-verified keys), source hashes, image triplets,
+  and metric assertions;
 - actual-control browser traces and screenshots;
 - real-file byte/permission comparisons and native dialog/close notes;
 - the five-minute request-denial log; and

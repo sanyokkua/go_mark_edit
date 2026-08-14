@@ -594,10 +594,10 @@ reference, actual, and difference images together with exact computed-style and 
    commit in an interleaved order, **Then** each transaction removes the canonical duplicate, prepends its path, and
    truncates the latest committed list to six. SQLite commit order defines global recency, and either instance sees
    the result when its recent surface explicitly refreshes without polling.
-7. **Given** the exact parity manifest is validated, **When** its primary and additional cases are counted, **Then** it
-   contains exactly 306 primary cases and 40 additional state IDs expanded across six palettes at one assigned width
-   for 240 additional and 546 total logical cases. Three unchanged repetitions execute 1,638 comparisons without
-   creating extra manifest keys.
+7. **Given** the parity manifest is validated, **When** its component and behaviour keys are counted, **Then** it
+   contains exactly 14 pixel-compared component keys and 36 behaviour-verified keys, each key run in three
+   unchanged repetitions without creating extra manifest keys. (**Revised 2026-08-14**: the 306 + 240 = 546
+   whole-screen expansion this scenario previously asserted is withdrawn.)
 
 ### Edge Cases
 
@@ -755,9 +755,15 @@ outside this feature.
 
 #### Exact visual-parity contract
 
-The finite parity manifest contains the following 17 screen families. Each family MUST be checked at 1280,
-768, and 375 logical pixels in all six resolved theme/appearance palettes, producing exactly 306 paired
-mockup/application comparisons before the additional state fixtures below are counted.
+> **Superseded 2026-08-14.** The family and state tables in this section are retained as the record of what
+> was attempted; they are **no longer the contract**. Whole-screen comparison against the binding is withdrawn
+> because the mockup depicts the product's final state while this feature delivers a subset — its own sidebar,
+> Assistant and provider readout displace every element inside a screen. The contract is now **14
+> pixel-compared component keys** and **36 behaviour-verified keys**; every other state below is verified by
+> behaviour assertion. See Clarifications → Session 2026-08-14, FR-FT-051 and FR-FT-055.
+
+The manifest below contains the following 17 screen families, formerly checked at 1280, 768, and 375 logical
+pixels in all six resolved theme/appearance palettes for 306 paired mockup/application comparisons.
 
 | Family                | Required mapped region and Feature 003 adaptation                                                                                                                                                                                                                                                                                                                                                |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -780,7 +786,8 @@ mockup/application comparisons before the additional state fixtures below are co
 | `settings-markdown`   | Binding settings-shell geometry with only already-owned or explicitly unavailable Markdown/file-save choices.                                                                                                                                                                                                                                                                                    |
 
 The additional manifest contains exactly these 40 state IDs. Each row has one assigned family and width and MUST run
-once in each of the six palettes, producing exactly 240 additional logical comparisons. A capture MUST NOT satisfy two
+once in each of the six palettes for 240 additional logical comparisons (**withdrawn 2026-08-14**; see the note at
+the head of this section). A capture MUST NOT satisfy two
 state IDs merely because both happen to be visible.
 
 | Category        | State ID                          | Assigned family | Width |
@@ -826,8 +833,11 @@ state IDs merely because both happen to be visible.
 | Prompt/recovery | `resync-recovery`                 | `save-prompt`   |   375 |
 | Prompt/recovery | `quit-discard-newer`              | `quit-prompt`   |   375 |
 
-The 306 primary and 240 additional entries form exactly 546 logical manifest cases. Three deterministic repetitions
-execute 1,638 comparisons but MUST NOT create additional manifest keys. Direct metric assertions and unaffected
+~~The 306 primary and 240 additional entries form exactly 546 logical manifest cases. Three deterministic
+repetitions execute 1,638 comparisons.~~ **Superseded 2026-08-14** — see the note at the head of this section.
+The keys that remain pixel-compared are the 14 component keys; the six `status-*` states are behaviour-verified;
+every other state above is verified by behaviour assertion. Three deterministic repetitions
+MUST NOT create additional manifest keys. Direct metric assertions and unaffected
 regression suites attach to cases and do not increase either count.
 
 T059 platform evidence decision: production File-menu accelerator labels remain platform-correct, including the

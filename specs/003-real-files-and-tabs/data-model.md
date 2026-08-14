@@ -129,12 +129,12 @@ then last application arrangement, then Split. New always enters Editor.
 
 One coordinator exists per document:
 
-| Field                         | Type                               | Rule                                                                     |
-| ----------------------------- | ---------------------------------- | ------------------------------------------------------------------------ |
-| `inFlight`                    | optional immutable `WriteSnapshot` | At most one replacement for the document.                                |
-| `scheduledAutosaveGeneration` | optional uint64                    | Replaced by newer accepted content; cancelled when autosave turns off.   |
-| `explicitWaiter`              | optional request                   | Coalesces with/awaits in-flight autosave without concurrent replacement. |
-| `lastFailureKey`              | optional `documentId` + `ClassifiedError.category` | Updates one repeated notification count instead of stacking.    |
+| Field                         | Type                                               | Rule                                                                     |
+| ----------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------ |
+| `inFlight`                    | optional immutable `WriteSnapshot`                 | At most one replacement for the document.                                |
+| `scheduledAutosaveGeneration` | optional uint64                                    | Replaced by newer accepted content; cancelled when autosave turns off.   |
+| `explicitWaiter`              | optional request                                   | Coalesces with/awaits in-flight autosave without concurrent replacement. |
+| `lastFailureKey`              | optional `documentId` + `ClassifiedError.category` | Updates one repeated notification count instead of stacking.             |
 
 The global appmodel mutex is never held across a native dialog or filesystem I/O.
 
@@ -142,12 +142,12 @@ The global appmodel mutex is never held across a native dialog or filesystem I/O
 
 Every failure and nonfatal warning returned on an `apperr.*Result` envelope carries this shape:
 
-| Field         | Type                                                                                                                                     | Rule                                                                                                    |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `category`    | `not-found`, `permission-denied`, `io-failure`, `conflict`, `capacity-limit`, `unsupported-input`, `system-command-failure`, `persistence-warning` | Exactly one of spec.md's eight classified categories; the sole discriminator for remediation.           |
-| `safeSubject` | string                                                                                                                                    | Basename or the document's shortest-unique disambiguated tab label only; never a full path, OS detail, or stack cause. |
-| `remediation` | subset of `Retry`, `Reload from disk`, `Keep mine`, `Skip`, `Save to recreate`, `Copy path`, `Cancel`, or empty (message-only)               | The valid subset for the category and current document state; the frontend renders only what is returned. |
-| `limit`       | optional integer                                                                                                                          | Populated only for `capacity-limit`.                                                                     |
+| Field         | Type                                                                                                                                               | Rule                                                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `category`    | `not-found`, `permission-denied`, `io-failure`, `conflict`, `capacity-limit`, `unsupported-input`, `system-command-failure`, `persistence-warning` | Exactly one of spec.md's eight classified categories; the sole discriminator for remediation.                          |
+| `safeSubject` | string                                                                                                                                             | Basename or the document's shortest-unique disambiguated tab label only; never a full path, OS detail, or stack cause. |
+| `remediation` | subset of `Retry`, `Reload from disk`, `Keep mine`, `Skip`, `Save to recreate`, `Copy path`, `Cancel`, or empty (message-only)                     | The valid subset for the category and current document state; the frontend renders only what is returned.              |
+| `limit`       | optional integer                                                                                                                                   | Populated only for `capacity-limit`.                                                                                   |
 
 Copy path and Reveal in file manager resolve the target document's `canonicalPath`/`detached` fields (no new
 Document fields needed) and return either success or one `ClassifiedError` of category `not-found` (known-missing
@@ -278,7 +278,9 @@ transient command boundaries, not projection state.
 | `variant`                               | Base or explicit Feature 003 file-only/File/conflict variant.   |
 | `masks`                                 | Empty by default; smallest reviewed unfreezable rectangle only. |
 
-The Cartesian primary manifest has exactly 306 cases before additional states.
+~~The Cartesian primary manifest has exactly 306 cases before additional states.~~ **Superseded 2026-08-14**:
+the whole-screen expansion is withdrawn; the contract is 14 pixel-compared component keys and 36
+behaviour-verified keys. See `spec.md` Clarifications → Session 2026-08-14.
 
 ### VisualParityArtifact
 

@@ -252,7 +252,9 @@ components without creating another label, shortcut, or availability registry. R
 substitutes with local binding-derived monochrome SVG primitives.
 
 Create a manifest with exactly 17 unique families × 3 widths × 6 resolved palettes = 306 primary pairs,
-plus the named state fixtures. A second local server exposes the unchanged binding mockup. A versioned
+plus the named state fixtures. **Superseded 2026-08-14**: whole-screen comparison is withdrawn and the
+contract is 14 pixel-compared component keys plus 36 behaviour-verified keys; the decision below about
+harness construction still stands, only its scope changed. A second local server exposes the unchanged binding mockup. A versioned
 test adapter supplies only the required file-only launcher/File/conflict variants using binding
 primitives. Capture reference and application regions in the same Chromium engine at DPR 1 and zero
 tolerance; assert exact computed metrics, readiness, three-run hashes, and retain reference/actual/diff

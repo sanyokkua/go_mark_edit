@@ -10,6 +10,24 @@ no second parent branch is created and `master` is never committed to)
 constitution, consumed Feature 001/002 contracts, accepted file/document ADRs, and the specification's
 Owned/Consumed/Deferred source matrix.
 
+## Plan currency — brought up to date 2026-08-14
+
+**This plan was written on 2026-08-07 and not touched again until 2026-08-14**, while the specification
+accumulated 42 clarifications across five sessions and the work went through nineteen convergence phases.
+A cross-artifact check found it stating a contract the specification had withdrawn, so it is corrected here.
+What changed, and where the authority for each lives:
+
+| Area                              | Was                                                                                | Now                                                                                                                       | Authority                                                                                 |
+| --------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Visual-parity contract            | 546 logical cases (306 primary + 240 additional), 1,638 comparisons, whole screens | **14 pixel-compared component keys + 36 behaviour-verified keys**; whole-screen comparison withdrawn                      | `spec.md` Clarifications → Session 2026-08-14; FR-FT-051, FR-FT-054, SC-FT-009, SC-FT-012 |
+| Editor pane interior              | compared as part of the editor families                                            | **named region exclusion owned by Feature 002**                                                                           | Session 2026-08-13; FR-FT-055                                                             |
+| Six `status-*` states             | six paired reference comparisons                                                   | **behaviour-verified** against `data-status-state` and the title bar                                                      | Session 2026-08-14; FR-FT-056                                                             |
+| Minimum window (≤376px)           | not planned                                                                        | **one pane matching the selected mode, Split collapsing to the editor, workspace panel not rendered, collapse view-only** | Session 2026-08-14; FR-FT-051, FR-FT-055                                                  |
+| Whole-window screenshot baselines | 25 committed images                                                                | **deleted**; visual regression rests on the component keys, the token gate and structural assertions                      | Session 2026-08-14; SC-FT-012, SC-FT-013                                                  |
+
+The functional plan below — slices FT-VS-01 to FT-VS-07, the Go and adapter architecture, the data and
+storage decisions, and the requirement ownership — is unchanged and was delivered as written.
+
 ## Summary
 
 Deliver a trustworthy local-file editor lifecycle through the existing Go/Wails, adapter, Redux
@@ -19,12 +37,14 @@ recovery, transactional close/shutdown, six persisted recent files, a 40-entry p
 closed history, and a genuine zero-document launcher.
 
 Feature 002's canonical action registry and formatting/editor behavior remain intact while its File/tab
-fixtures become real. The binding mockup remains exact shape/style authority. Every touched surface is
-converged against the live read-only mockup, and final proof covers all **546 logical visual cases**
-(306 primary family pairs plus 240 additional named-state pairs) executed as **exactly 1,638 comparisons**
-across three deterministic repetitions, plus actual controls, real files, the real Wails bridge, and a
-fresh current-host release build. Workspace, folder, file-association, packaging, rich-rendering expansion,
-search/tidy/export, session recovery, and Assistant behavior remain deferred.
+fixtures become real. The binding mockup remains exact shape/style authority **for what each component
+looks like** — it is not compared as whole screens, because it depicts the product's final state while this
+feature delivers a subset. Final visual proof covers **14 pixel-compared component keys** and **36
+behaviour-verified keys**, each compared in its own region across three deterministic repetitions, plus
+actual controls, real files, the real Wails bridge, and a fresh current-host release build. Workspace,
+folder, file-association, packaging, rich-rendering expansion, search/tidy/export, session recovery, and
+Assistant behavior remain deferred — and it is precisely those deferrals that make a whole screen
+unmatchable, since the mockup's own sidebar, Assistant and provider readout displace everything inside it.
 
 ## Technical Context
 
@@ -47,7 +67,8 @@ contains no source text. No schema migration, session restore, swap file, or doc
 **Testing**: Go unit/service/handler/repository tests with temporary real files, injected clocks/timers,
 pre/post-commit failure ports, and platform replacement tests; Jest/Testing Library adapter, projection,
 session, prompt, registry, component, and dev-bridge parity tests; Playwright actual-control journeys and
-the 546-case exact comparison manifest; architecture/offline/binding/sqlc gates; real bridge and fresh
+the component parity contract (14 pixel-compared keys, 36 behaviour-verified);
+architecture/offline/binding/sqlc gates; real bridge and fresh
 current-host Wails walkthrough with retained raw evidence. **Mock-bridge Playwright (`verify:ui`) never
 substitutes for disk, timing, or native evidence** (constitution VII).
 
@@ -90,23 +111,23 @@ registry; localized strings; token-only colors; exact mockup metrics; zero unexp
 and no production placeholder, stub, no-op, custom native frame, or deferred behavior.
 
 **Scale/Scope**: 57 functional requirements; 13 success criteria; five user stories; 36 specification edge
-cases; 11 current source problems; 17 primary visual families; **306 primary + 240 additional = 546 logical
-manifest cases executed as exactly 1,638 comparisons**; four supported suffixes; three widths; six palettes;
+cases; 11 current source problems; **14 pixel-compared component keys and 36 behaviour-verified keys**
+(superseding the withdrawn 306 + 240 = 546 whole-screen expansion); four supported suffixes; three widths; six palettes;
 real manual/automatic writes, native close, and independent-window conflicts
 
 ## Constitution Check
 
 _GATE: PASS before Phase 0 research. Re-checked and PASS after Phase 1 design._
 
-| Principle                                      | Planning application                                                                                                                                                                                                                                                | Result |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| I. Normative specification is the authority    | The active `spec.md` owns behavior and explicit Feature 003 variants; the binding HTML/CSS owns mapped webview shape/style; Feature 001/002 and accepted ADRs are consumed without editing `docs/delivery/`. No threshold, count, or gate is weakened by this plan.  | PASS   |
-| II. Self-contained vertical slices             | Eight ordered functional/conformance slices name exact dependencies, requirement owners, paths, and proving evidence. The clarified-clause ledger (below, and expanded in `tasks.md`) assigns every clarification clause an owner so none defers to cleanup.         | PASS   |
-| III. Backend authority and explicit boundaries | `internal/appmodel` remains canonical; filesystem/dialog/clipboard/reveal/persistence dependencies are injected ports; Redux stays content-free; Monaco is active-only; Wails results remain typed and imports adapter-only.                                        | PASS   |
-| IV. Offline, private, and safe                 | All file operations are local and bounded; paths/errors are separated by the eight-category classified contract; unsafe bytes are read-only; request guards and a five-minute observation prove zero outbound behavior.                                             | PASS   |
-| V. Data and cross-platform operation           | Same-directory atomic replacement, permission/encoding preservation, external-version checks, multi-instance WAL with transactional latest-value promotion, process-local identity reservations, single-use authorizations, dirty-close protection, numeric MiB bounds, and build-tagged Windows replacement are explicit. | PASS   |
-| VI. Accessible, tokenized, coherent interfaces | Registry-derived actions (including Move tab left/right and Refresh preview), localized copy, polite live-region announcements, focus containment, keyboard/pointer parity, hostile/long-label fixtures, reduced motion, SVG icons, six palettes, and exact 1280/768/375 behavior are owned requirements. | PASS   |
-| VII. Evidence before completion                | Implementation begins from a reliable baseline; named focused tests, architecture, the 546-case exact browser manifest, actual controls, real files/bridge, five-minute offline observation, and a **harness-driven real-binary** SC-FT-007 measurement remain separate gates. Mock-bridge results never stand in for disk or timing proof. | PASS   |
+| Principle                                      | Planning application                                                                                                                                                                                                                                                                                                                  | Result |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| I. Normative specification is the authority    | The active `spec.md` owns behavior and explicit Feature 003 variants; the binding HTML/CSS owns mapped webview shape/style; Feature 001/002 and accepted ADRs are consumed without editing `docs/delivery/`. No threshold, count, or gate is weakened by this plan.                                                                   | PASS   |
+| II. Self-contained vertical slices             | Eight ordered functional/conformance slices name exact dependencies, requirement owners, paths, and proving evidence. The clarified-clause ledger (below, and expanded in `tasks.md`) assigns every clarification clause an owner so none defers to cleanup.                                                                          | PASS   |
+| III. Backend authority and explicit boundaries | `internal/appmodel` remains canonical; filesystem/dialog/clipboard/reveal/persistence dependencies are injected ports; Redux stays content-free; Monaco is active-only; Wails results remain typed and imports adapter-only.                                                                                                          | PASS   |
+| IV. Offline, private, and safe                 | All file operations are local and bounded; paths/errors are separated by the eight-category classified contract; unsafe bytes are read-only; request guards and a five-minute observation prove zero outbound behavior.                                                                                                               | PASS   |
+| V. Data and cross-platform operation           | Same-directory atomic replacement, permission/encoding preservation, external-version checks, multi-instance WAL with transactional latest-value promotion, process-local identity reservations, single-use authorizations, dirty-close protection, numeric MiB bounds, and build-tagged Windows replacement are explicit.            | PASS   |
+| VI. Accessible, tokenized, coherent interfaces | Registry-derived actions (including Move tab left/right and Refresh preview), localized copy, polite live-region announcements, focus containment, keyboard/pointer parity, hostile/long-label fixtures, reduced motion, SVG icons, six palettes, and exact 1280/768/375 behavior are owned requirements.                             | PASS   |
+| VII. Evidence before completion                | Implementation begins from a reliable baseline; named focused tests, architecture, the component parity contract, actual controls, real files/bridge, five-minute offline observation, and a **harness-driven real-binary** SC-FT-007 measurement remain separate gates. Mock-bridge results never stand in for disk or timing proof. | PASS   |
 
 No constitutional exception or unresolved clarification remains. Plain `os.Rename` is not accepted as
 cross-platform proof; the Windows platform port is a required part of the atomic-write slice. SC-FT-007 is
@@ -167,7 +188,7 @@ frontend/src/ui/widgets/             # real File menu/tabs/context menu/launcher
 frontend/src/ui/styles/              # exact palette-specific binding tokens/metrics/responsive structures
 frontend/src/i18n/locales/           # every file/tab/status/prompt/error/announcement/unavailable string
 frontend/src/dev/bridge-mock/        # deterministic lifecycle, disk/conflict and close-plan contract parity
-frontend/e2e/                        # real-files journeys, 546-case parity manifest, reference adapter
+frontend/e2e/                        # real-files journeys, component parity slices, reference adapter
 frontend/playwright.config.ts        # concurrent app + read-only mockup servers and deterministic conditions
 ```
 
@@ -201,7 +222,8 @@ Research is consolidated in [research.md](research.md). The resolved decisions a
 10. Veto first native close, collect/execute one backend close plan, then consume a one-shot permit on the
     programmatic second close before ordered shutdown.
 11. Promote existing registry actions only, keep downstream actions unavailable, and compare the live immutable
-    mockup and app through a finite zero-tolerance 546-case manifest.
+    mockup and app **component by component** through a finite zero-tolerance contract — never as whole screens,
+    which the deferrals above make unmatchable.
 12. Preserve reliable baseline, focused, browser, real-bridge, offline-duration, and current-host evidence as
     distinct proof layers; run SC-FT-002's two fixed fixtures with launcher-ready-to-save-confirmed timing and a
     bounded before/after parent-directory inventory as part of that evidence.
@@ -392,7 +414,7 @@ lifecycle flush/projection barrier. The slice does not merge ahead of either dep
   selection/scroll, disambiguate equal basenames, expose full paths only in approved affordances, and preserve
   adjacent activation after close.
 - **Implement the disambiguated tab label contract in full** (FR-FT-035): `basename — shortest unique canonical
-  parent suffix`, using the fewest trailing parent segments that distinguish every open matching basename under
+parent suffix`, using the fewest trailing parent segments that distinguish every open matching basename under
   host-filesystem canonical identity comparison, recomputed after open, close, or Save As — including the case
   where identical basenames also share identical immediate parent names. **C0 control characters, DEL, and
   bidirectional-formatting controls render as visible `\uXXXX` escapes**, remaining user-supplied path text is
@@ -411,7 +433,7 @@ lifecycle flush/projection barrier. The slice does not merge ahead of either dep
   **unavailable at their respective strip edges**, reorder the targeted tab from the menu and the active tab on
   **`Ctrl/Cmd+Shift+PageUp` / `Ctrl/Cmd+Shift+PageDown`**, **wait for backend confirmation before projecting
   order**, keep the document active and focus unchanged, announce `Moved {filename} to position {position} of
-  {count}` through a polite live region, and treat a move past an edge as a **successful no-op that does not
+{count}` through a polite live region, and treat a move past an edge as a **successful no-op that does not
   increment the tab-set revision**.
 - Implement Copy path and Reveal in file manager as appmodel-level commands over the injected clipboard-write and
   reveal ports (Decision 14): resolve the canonical path, refuse untitled documents, revalidate existence before
@@ -609,13 +631,26 @@ surfaces land; this slice owns the complete finite matrix and cross-surface conv
 - Add the immutable mockup server, hashed Feature 003 reference-variant adapter, reviewed selector/region/mask
   manifest, deterministic readiness, metric/bounding-box assertions, zero-tolerance PNG comparison, and retained
   reference/actual/diff/JSON/raw-status artifacts.
-- **Execute the complete finite manifest**: 17 families × 3 widths × 6 palettes = **exactly 306 primary cases**,
-  plus the **40 named additional state IDs** each run once in each of the six palettes at its **assigned family and
-  width** = **exactly 240 additional cases**, for **exactly 546 logical manifest cases**. A capture MUST NOT
-  satisfy two state IDs merely because both happen to be visible. **Three deterministic repetitions execute exactly
-  1,638 comparisons and MUST NOT create additional manifest keys**; direct metric assertions and unaffected
-  regression suites attach to cases and do not increase either count. Duplicate, missing, extra, or multiply
-  counted manifest keys fail. Any dynamic pixel is frozen first; any unavoidable mask is minimal and reviewed.
+- **Execute the finite component contract** (**revised 2026-08-14**; the whole-screen expansion of 306 primary +
+  240 additional = 546 logical cases and 1,638 comparisons is withdrawn): **exactly 14 pixel-compared component
+  keys** — the closed menubar in all six palettes, plus the File, Settings, View and About popups, the 375
+  Settings overflow, the tab strip, the toolbar and the paused preview at their assigned width and palette —
+  each compared **in its own region**, asserting exact bounds and every compared computed style before comparing
+  pixels at zero tolerance. Plus **exactly 36 behaviour-verified keys**: the six `status-*` states across six
+  palettes, proven against the authoritative `data-status-state` attribute and the title bar, because the
+  binding's status row carries a Problems badge, an AI-provider readout and a Reading pill while production
+  carries a Document details disclosure, and FR-FT-049 forbids production the provider readout. Every remaining
+  state is verified by behaviour assertion, and a state with no covering assertion fails closed. A capture MUST
+  NOT satisfy two state IDs merely because both happen to be visible; duplicate, missing, extra or multiply
+  counted keys fail. **A capture is taken only once the region has stopped changing** — three consecutive
+  identical hashes as a precondition — and the frozen conditions include a caret, which must cover an editor
+  drawing its own cursor element rather than a native one. Any unavoidable mask is minimal and reviewed.
+- **The Monaco editor pane interior is a named region exclusion owned by Feature 002.** Its bounds and computed
+  styles are still asserted; its raster is not this feature's to match.
+- **At the ≤376px minimum window** the application shows exactly one pane matching the selected mode, Split
+  collapses to the editor, the workspace panel is not rendered at all, and the collapse is view-only — widening
+  restores Split without writing the stored preference. This diverges from the binding, which stacks both panes
+  there, and is covered by a reviewed reference variant.
 - Preserve every unaffected Feature 001/002 baseline and map each approved change to one FR-FT requirement. Run
   actual-control browser journeys, real bridge interaction, a five-minute zero-outbound observation, and separate
   host-renderer/native-frame evidence without waiving same-browser drift.
@@ -624,10 +659,11 @@ surfaces land; this slice owns the complete finite matrix and cross-surface conv
 `real-files-parity.test.ts`, parity manifest/helpers/reference adapter; Playwright config; existing Feature 001/002
 E2E/snapshots; production-network guards; Feature 003 evidence directory.
 
-**Proof**: manifest uniqueness/count tests asserting 306 + 240 = 546 and 3 × 546 = 1,638 with no extra keys; all 546
-exact pairs; named state/long-label/hostile-path/control fixtures; direct metrics; three-run hashes; no unexplained
-pixels/masks/tolerance/reference replacement; no page overflow/custom frame; unaffected regression suites; actual
-controls; five-minute request observation; real Wails screenshots recorded separately.
+**Proof**: manifest uniqueness/count tests asserting the 14 pixel-compared and 36 behaviour-verified keys with no
+extra keys; all 14 exact component pairs and all 36 behaviour verifications; named state/long-label/hostile-path/
+control fixtures; direct metrics; three-run hashes; no unexplained pixels/masks/tolerance/reference replacement; no
+page overflow/custom frame; unaffected regression suites; actual controls; five-minute request observation; real
+Wails screenshots recorded separately.
 
 ### FT-EV-09 — Full implementation and current-host release evidence
 
@@ -643,7 +679,7 @@ between the two distributions reopens T024.
 - Preserve the reliable pre-edit baseline, every raw exit status/log, focused result, parity manifest/artifact,
   actual-control journey, real-bridge observation, and current-host limitation under the feature evidence tree.
 - Run `just gen-check`, `just archtest`, focused tests, full `just e2e-test`, `just verify
-  003-real-files-and-tabs`, `just check`, and a fresh `just build`; inspect named tests rather than trusting labels.
+003-real-files-and-tabs`, `just check`, and a fresh `just build`; inspect named tests rather than trusting labels.
 - Walk the freshly built Wails application through real Open/Save/permissions/tabs/close/conflict/autosave and the
   exact **10 MiB (10,485,760 bytes)**, **50 MiB (52,428,800 bytes)**, and 40-document boundaries; record
   demonstrated/deferred/unverified behavior and same-browser versus host-renderer comparison separately.
@@ -685,22 +721,22 @@ FR-number ownership alone cannot detect a clause added by clarification that no 
 below is a clarification outcome that must reach `tasks.md` with a named test; `tasks.md` carries the
 authoritative task-level version of this table.
 
-| Clarified clause                                                                         | Inside FR                 | Owning slice     |
-| ---------------------------------------------------------------------------------------- | ------------------------- | ---------------- |
-| Exact-inclusive binary MiB boundaries and 52,428,801-byte read cap                       | FR-FT-005, SC-FT-004      | FT-VS-01         |
-| `none` writable / lone-CR read-only / NEL, U+2028, U+2029 ordinary content                | FR-FT-007                 | FT-VS-01         |
-| Refresh preview: registry-derived, no shortcut, one revision, coalesced, re-pauses        | FR-FT-005                 | FT-VS-01         |
-| Process-local canonical identity reservation, pending slots, concurrent join, release     | FR-FT-004, 013, 038       | FT-VS-01/02      |
-| Two-phase Open ordering: select → prepare → flush → revalidate → one transition            | FR-FT-004                 | FT-VS-01         |
-| Five-value status precedence and per-baseline originating kind                            | FR-FT-014                 | FT-VS-02         |
-| Rehydration at 250 ms and 1 s, persistent Retry surface, twice-confirmed discard-quit     | FR-FT-016, 027            | FT-VS-02/06      |
-| Stable re-read: metadata-equal resume, unstable re-read writes nothing                    | FR-FT-020                 | FT-VS-04         |
-| Foreground-only checks; one modal at a time; waiting tabs visibly blocked by conflict     | FR-FT-020, 021            | FT-VS-04         |
-| Move tab left/right: menu placement, edge unavailability, `Mod+Shift+PageUp/Down`, announce | FR-FT-034, 037            | FT-VS-03/07      |
-| `\uXXXX` escaping, directional isolation, ellipsis retains distinguishing suffix          | FR-FT-035                 | FT-VS-03         |
-| Two-instance transactional promotion, commit order, `persistence-warning` on failure      | FR-FT-039, SC-FT-008      | FT-VS-07         |
-| 306 + 240 = 546 logical cases; 3 × 546 = 1,638 comparisons; no extra manifest keys        | FR-FT-051, 054, SC-FT-009/012 | FT-VS-08     |
-| SC-FT-007: 20 warmups, 100 trials, 4 sizes, ≥95 ≤ 5,000 ms, harness-driven real binary   | SC-FT-007                 | FT-VS-05/FT-EV-09 |
+| Clarified clause                                                                            | Inside FR                     | Owning slice      |
+| ------------------------------------------------------------------------------------------- | ----------------------------- | ----------------- |
+| Exact-inclusive binary MiB boundaries and 52,428,801-byte read cap                          | FR-FT-005, SC-FT-004          | FT-VS-01          |
+| `none` writable / lone-CR read-only / NEL, U+2028, U+2029 ordinary content                  | FR-FT-007                     | FT-VS-01          |
+| Refresh preview: registry-derived, no shortcut, one revision, coalesced, re-pauses          | FR-FT-005                     | FT-VS-01          |
+| Process-local canonical identity reservation, pending slots, concurrent join, release       | FR-FT-004, 013, 038           | FT-VS-01/02       |
+| Two-phase Open ordering: select → prepare → flush → revalidate → one transition             | FR-FT-004                     | FT-VS-01          |
+| Five-value status precedence and per-baseline originating kind                              | FR-FT-014                     | FT-VS-02          |
+| Rehydration at 250 ms and 1 s, persistent Retry surface, twice-confirmed discard-quit       | FR-FT-016, 027                | FT-VS-02/06       |
+| Stable re-read: metadata-equal resume, unstable re-read writes nothing                      | FR-FT-020                     | FT-VS-04          |
+| Foreground-only checks; one modal at a time; waiting tabs visibly blocked by conflict       | FR-FT-020, 021                | FT-VS-04          |
+| Move tab left/right: menu placement, edge unavailability, `Mod+Shift+PageUp/Down`, announce | FR-FT-034, 037                | FT-VS-03/07       |
+| `\uXXXX` escaping, directional isolation, ellipsis retains distinguishing suffix            | FR-FT-035                     | FT-VS-03          |
+| Two-instance transactional promotion, commit order, `persistence-warning` on failure        | FR-FT-039, SC-FT-008          | FT-VS-07          |
+| 14 pixel-compared + 36 behaviour-verified keys; no extra keys (supersedes 306 + 240 = 546)  | FR-FT-051, 054, SC-FT-009/012 | FT-VS-08          |
+| SC-FT-007: 20 warmups, 100 trials, 4 sizes, ≥95 ≤ 5,000 ms, harness-driven real binary      | SC-FT-007                     | FT-VS-05/FT-EV-09 |
 
 ## Current problem ledger folded into dependency order
 
@@ -731,8 +767,8 @@ exclusions, mask discipline, provenance and evidence integrity in FT-VS-08/FT-EV
 
 | Source                                                                                                                                                                   | Disposition in this plan                                                                                                                     |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Active `spec.md`, including clarified Skip/reopen/reorder/reservation/manifest/performance requirements                                                                   | Owned exactly by FT-VS-01–08 and FT-EV-09 as mapped above.                                                                                   |
-| `docs/delivery/plan/phase-05-real-files.md` and opening/saving/tab product files                                                                                          | Read-only migrated reference; file/tab lifecycle and named debt are fully represented, while newer active-spec values win.                   |
+| Active `spec.md`, including clarified Skip/reopen/reorder/reservation/manifest/performance requirements                                                                  | Owned exactly by FT-VS-01–08 and FT-EV-09 as mapped above.                                                                                   |
+| `docs/delivery/plan/phase-05-real-files.md` and opening/saving/tab product files                                                                                         | Read-only migrated reference; file/tab lifecycle and named debt are fully represented, while newer active-spec values win.                   |
 | Binding `docs/delivery/spec/surface/mockup.html` and README                                                                                                              | Read-only exact shape/style authority; served live and adapted only through versioned Feature 003 test variants.                             |
 | Feature 001 application-state, command-boundary, shell and persistence contracts                                                                                         | Consumed: backend authority, typed handlers, adapter-only bridge, optional zero state, offline/native frame/multi-instance rules.            |
 | Feature 002 action/formatting/editor-session implementation and artifacts                                                                                                | Consumed and visually converged: promote File/tab actions only; preserve formatting, Table binding, arrangements and every deferred outcome. |
@@ -760,8 +796,9 @@ exclusions, mask discipline, provenance and evidence integrity in FT-VS-08/FT-EV
 3. After DTO/query changes, run generated-binding drift and sqlc checks; generated outputs are never hand-edited.
 4. Run `just archtest` green outright, including adapter-only imports, handler shape, identity, CGO-free, offline,
    migration immutability, localization and token constraints.
-5. Run adapter/dev-bridge parity, component integration, actual-control browser journeys, and the full 546-case
-   exact manifest; retain failures rather than changing tolerance/reference/masks.
+5. Run adapter/dev-bridge parity, component integration, actual-control browser journeys, and the full component
+   parity contract; retain failures rather than changing tolerance/reference/masks. **`just check` never runs
+   Playwright — run `just e2e-test` explicitly and diff it before calling any interface work done.**
 6. Run real bridge/disk/native-dialog/close observation, the five-minute zero-outbound case, and target-host
    platform replacement tests.
 7. Run full `just e2e-test`, `just verify 003-real-files-and-tabs`, and `just check`; a later isolated pass does not
@@ -792,7 +829,7 @@ _PASS after Phase 1 design._
   re-read, single-use authorizations, the single-modal conflict queue, autosave serialization, projection
   convergence with its 250 ms/1 s retry schedule, close planning, and native shutdown.
 - [file-surfaces-and-parity.md](contracts/file-surfaces-and-parity.md) fixes registry/surface ownership, responsive
-  metrics, the finite 546-case/1,638-comparison exact comparison, and evidence provenance.
+  metrics, the finite component comparison (14 pixel-compared + 36 behaviour-verified keys), and evidence provenance.
 - [data-model.md](data-model.md) assigns every field and transition to one authority without putting source in Redux.
 - [quickstart.md](quickstart.md) names runnable focused, aggregate, exact-browser, real-bridge and real-build proof.
 
