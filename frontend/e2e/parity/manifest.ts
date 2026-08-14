@@ -81,9 +81,10 @@ export const BEHAVIOUR_VERIFIED_STATE_IDS = Object.freeze([
 ] as const);
 
 /**
- * FR-FT-051 declares 36 behaviour-verified keys — the six states above across
- * the six palettes. This is the declared contract; T063 currently executes the
- * `minimal-light` column of it.
+ * FR-FT-051, SC-FT-009 and SC-FT-012 each declare 36 behaviour-verified keys —
+ * the six states above across the six palettes. `targeted-parity.test.ts` T063
+ * executes all 36, one test per palette, and writes a semantic/metrics/status
+ * evidence set per key under `evidence/ft-vs-08/parity/targeted/editor-status/`.
  */
 export const BEHAVIOUR_VERIFIED_CASE_COUNT = 36 as const;
 

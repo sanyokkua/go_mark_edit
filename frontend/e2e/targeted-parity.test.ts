@@ -28,7 +28,11 @@ import {
   statusItemSelector,
   type SemanticSignature,
 } from './parity/state-contract';
-import { BEHAVIOUR_VERIFIED_STATE_IDS } from './parity/manifest';
+import {
+  BEHAVIOUR_VERIFIED_STATE_IDS,
+  PARITY_PALETTES,
+  type ParityPalette,
+} from './parity/manifest';
 import {
   hashReferenceSource,
   referenceNavigationUrl,
@@ -1473,10 +1477,28 @@ const T063_STATUS_CASES = [
   { stateId: 'status-large-file', status: 'autosaved', text: 'Autosaved' },
 ] as const;
 
+/**
+ * The Settings menu is the only way to resolve a palette — the parity route does
+ * not read one out of the case key — so the labels are derived here exactly as
+ * the six-palette T058 slice derives them.
+ */
+const paletteLabels = (
+  palette: ParityPalette,
+): { theme: string; mode: string; title: string } => {
+  const theme =
+    palette.theme === 'glass'
+      ? 'Liquid Glass'
+      : palette.theme.charAt(0).toUpperCase() + palette.theme.slice(1);
+  const mode = palette.mode.charAt(0).toUpperCase() + palette.mode.slice(1);
+  return { theme, mode, title: `${theme} ${mode}` };
+};
+
 async function prepareActualStatusCase(
   page: Page,
   parityCaseKey: string,
+  palette: ParityPalette,
 ): Promise<void> {
+  const labels = paletteLabels(palette);
   await page.setViewportSize({ width: 1280, height: PARITY_HEIGHT });
   await page.goto(`/?parity-case=${encodeURIComponent(parityCaseKey)}`);
   await waitForParityReady(page, {
@@ -1485,11 +1507,17 @@ async function prepareActualStatusCase(
   await expect(page.getByRole('tab')).toHaveCount(2);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const menu = page.getByRole('menu', { name: 'Settings menu' });
-  await menu.getByRole('radio', { name: 'Minimal', exact: true }).click();
-  await page
-    .locator('[data-viewport-popup="settings-menu"]')
-    .getByRole('radio', { name: 'Light', exact: true })
+  await menu.getByRole('radio', { name: labels.theme, exact: true }).click();
+  const refreshedMenu = page.locator('[data-viewport-popup="settings-menu"]');
+  await refreshedMenu.waitFor({ state: 'visible' });
+  await refreshedMenu
+    .getByRole('radio', { name: labels.mode, exact: true })
     .click();
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-theme',
+    palette.theme,
+  );
+  await expect(page.locator('html')).toHaveAttribute('data-mode', palette.mode);
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'View', exact: true }).click();
   await page
@@ -1513,196 +1541,207 @@ const T063_BEHAVIOUR_VERIFICATION_METHOD =
 const T063_BEHAVIOUR_VERIFICATION_REASON =
   'No editor-status state can be pixel-compared. Four of the six differ only in a save status the binding never draws in its status row — it puts it in the title bar (mockup.html:594). The other two do name a condition the binding draws (.sb-eol, .sb-count) and reviewed reference variants exist for both; measuring through them proved they still cannot pair on absolute bounds, because the binding row carries a Problems badge, an AI-provider readout and a Reading pill while production carries a Document details disclosure the binding lacks, and because the binding draws .statusbar full width beneath the sidebar while production draws it inside the document area. Measured at 1280 Minimal Light: 115.531px and 207.453px horizontally and a 46px frame-height difference vertically, so every status item lands on a different sub-pixel grid. All six are therefore proven against the authoritative data-status-state attribute, the title bar that carries the status, the status-item text each state changes, and the binding colour token the row reads.';
 
-test('T063 verifies the six backend-authoritative editor-status states at 1280px Minimal Light', async ({
-  page,
-}) => {
-  test.setTimeout(240_000);
-  assertTargetedManifestIntegrity();
-  /*
-   * The split is read from the manifest, not written out here: every state this
-   * test covers must be one the manifest counts as behaviour-verified, and the
-   * manifest must count no others.
-   */
-  expect(T063_STATUS_CASES.map(({ stateId }) => stateId)).toEqual([
-    ...BEHAVIOUR_VERIFIED_STATE_IDS,
-  ]);
-
-  for (const statusCase of T063_STATUS_CASES) {
-    await prepareActualStatusCase(
-      page,
-      `state:${statusCase.stateId}:minimal-light`,
-    );
-    const status = page.getByRole('status', { name: 'Document status' });
-    const assertions: string[] = [];
-    await expect(status).toHaveAttribute(
-      'data-status-state',
-      statusCase.status,
-    );
-    assertions.push(
-      `[role="status"][aria-label="Document status"] has data-status-state="${statusCase.status}"`,
-    );
-    // The status row draws no save status — the binding puts it in the title
-    // bar (`mockup.html` `.doc-name`, :594), so that is where it is asserted.
-    await expect(
-      page.locator('header[aria-label="Document identity"]'),
-    ).toContainText(statusCase.text);
-    assertions.push(
-      `header[aria-label="Document identity"] contains "${statusCase.text}"`,
-    );
-    await expect(status).not.toContainText(statusCase.text);
-    assertions.push(
-      `the status row does not duplicate "${statusCase.text}", matching the binding's own status row`,
-    );
-    await expect(status.locator('[data-status-item="cursor"]')).toContainText(
-      'Ln',
-    );
-    assertions.push('the status row reports the caret position');
-    await expect(
-      status.locator(statusItemSelector('encoding', 'actual')),
-    ).toHaveText('UTF-8');
-    assertions.push(
-      `${statusItemSelector('encoding', 'actual')} reads "UTF-8"`,
-    );
-    const expectedEnding =
-      statusCase.stateId === 'status-mixed-ending' ? 'Mixed' : 'LF';
-    await expect(
-      status.locator(statusItemSelector('line-ending', 'actual')),
-    ).toHaveText(expectedEnding);
-    assertions.push(
-      `${statusItemSelector('line-ending', 'actual')} reads "${expectedEnding}"`,
-    );
-    if (statusCase.stateId === 'status-large-file') {
-      await expect(
-        status.locator(statusItemSelector('count', 'actual')),
-      ).toContainText('420,000');
-      assertions.push(
-        `${statusItemSelector('count', 'actual')} reports the large-file word count`,
-      );
-    }
-    if (statusCase.stateId === 'status-read-only') {
-      await status.getByRole('button', { name: 'Document details' }).click();
-      await expect(
-        status.getByRole('region', { name: 'Document details' }),
-      ).toContainText('Read-only');
-      assertions.push(
-        'the Document details region reports Read-only for the read-only capability',
-      );
-    }
-    const metrics = await surfaceMetrics(status);
-    const shellBottom = await page
-      .getByTestId('application-shell')
-      .evaluate((element) => element.getBoundingClientRect().bottom);
-    expect(metrics.bounds.height).toBe(28);
-    expect(metrics.bounds.bottom).toBe(Number(shellBottom.toFixed(3)));
-    expect(metrics.styles['white-space']).toBe('normal');
-    assertions.push(
-      'the status row is 28px tall and sits on the application shell bottom edge',
-    );
-    const noWrap = await status.evaluate((element) => ({
-      scrollWidth: element.scrollWidth,
-      clientWidth: element.clientWidth,
-      wrappedItems: Array.from(
-        element.querySelectorAll<HTMLElement>('[data-status-item]'),
-      ).filter((item) => getComputedStyle(item).whiteSpace !== 'nowrap').length,
-    }));
-    expect(noWrap.scrollWidth).toBeLessThanOrEqual(noWrap.clientWidth);
-    expect(noWrap.wrappedItems).toBe(0);
-    assertions.push('no status item wraps and the row never overflows');
+/*
+ * Six states in each of the six palettes is the whole 36-key behaviour contract
+ * FR-FT-051, SC-FT-009 and SC-FT-012 declare. One test per palette rather than
+ * one test for all 36, so a palette-specific failure names itself.
+ */
+for (const palette of PARITY_PALETTES) {
+  test(`T063 verifies the six backend-authoritative editor-status states at 1280px ${paletteLabels(palette).title}`, async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    assertTargetedManifestIntegrity();
     /*
-     * The binding's status row reads `--faint` (`mockup.html:382`
-     * `.statusbar{…color:var(--faint)…}`). Measuring the two source-backed
-     * conditions through their reference variants is what found production
-     * reading `--text-muted` instead — every glyph pixel differed at a maximum
-     * channel delta of 47. The pixel comparison is gone, so this is the check
-     * that keeps that colour honest: it resolves the binding token in the page
-     * and asserts the row and every item read exactly it, rather than pinning a
-     * literal that would drift with the palette.
+     * The split is read from the manifest, not written out here: every state this
+     * test covers must be one the manifest counts as behaviour-verified, and the
+     * manifest must count no others.
      */
-    const colour = await status.evaluate((element) => {
-      const probe = document.createElement('span');
-      probe.style.color = 'var(--faint)';
-      probe.style.display = 'none';
-      element.appendChild(probe);
-      const bindingFaint = getComputedStyle(probe).color;
-      probe.remove();
-      return {
-        bindingFaint,
-        row: getComputedStyle(element).color,
-        items: Array.from(
+    expect(T063_STATUS_CASES.map(({ stateId }) => stateId)).toEqual([
+      ...BEHAVIOUR_VERIFIED_STATE_IDS,
+    ]);
+
+    for (const statusCase of T063_STATUS_CASES) {
+      await prepareActualStatusCase(
+        page,
+        `state:${statusCase.stateId}:${palette.id}`,
+        palette,
+      );
+      const status = page.getByRole('status', { name: 'Document status' });
+      const assertions: string[] = [];
+      await expect(status).toHaveAttribute(
+        'data-status-state',
+        statusCase.status,
+      );
+      assertions.push(
+        `[role="status"][aria-label="Document status"] has data-status-state="${statusCase.status}"`,
+      );
+      // The status row draws no save status — the binding puts it in the title
+      // bar (`mockup.html` `.doc-name`, :594), so that is where it is asserted.
+      await expect(
+        page.locator('header[aria-label="Document identity"]'),
+      ).toContainText(statusCase.text);
+      assertions.push(
+        `header[aria-label="Document identity"] contains "${statusCase.text}"`,
+      );
+      await expect(status).not.toContainText(statusCase.text);
+      assertions.push(
+        `the status row does not duplicate "${statusCase.text}", matching the binding's own status row`,
+      );
+      await expect(status.locator('[data-status-item="cursor"]')).toContainText(
+        'Ln',
+      );
+      assertions.push('the status row reports the caret position');
+      await expect(
+        status.locator(statusItemSelector('encoding', 'actual')),
+      ).toHaveText('UTF-8');
+      assertions.push(
+        `${statusItemSelector('encoding', 'actual')} reads "UTF-8"`,
+      );
+      const expectedEnding =
+        statusCase.stateId === 'status-mixed-ending' ? 'Mixed' : 'LF';
+      await expect(
+        status.locator(statusItemSelector('line-ending', 'actual')),
+      ).toHaveText(expectedEnding);
+      assertions.push(
+        `${statusItemSelector('line-ending', 'actual')} reads "${expectedEnding}"`,
+      );
+      if (statusCase.stateId === 'status-large-file') {
+        await expect(
+          status.locator(statusItemSelector('count', 'actual')),
+        ).toContainText('420,000');
+        assertions.push(
+          `${statusItemSelector('count', 'actual')} reports the large-file word count`,
+        );
+      }
+      if (statusCase.stateId === 'status-read-only') {
+        await status.getByRole('button', { name: 'Document details' }).click();
+        await expect(
+          status.getByRole('region', { name: 'Document details' }),
+        ).toContainText('Read-only');
+        assertions.push(
+          'the Document details region reports Read-only for the read-only capability',
+        );
+      }
+      const metrics = await surfaceMetrics(status);
+      const shellBottom = await page
+        .getByTestId('application-shell')
+        .evaluate((element) => element.getBoundingClientRect().bottom);
+      expect(metrics.bounds.height).toBe(28);
+      expect(metrics.bounds.bottom).toBe(Number(shellBottom.toFixed(3)));
+      expect(metrics.styles['white-space']).toBe('normal');
+      assertions.push(
+        'the status row is 28px tall and sits on the application shell bottom edge',
+      );
+      const noWrap = await status.evaluate((element) => ({
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+        wrappedItems: Array.from(
           element.querySelectorAll<HTMLElement>('[data-status-item]'),
-        ).map(
-          (item) =>
-            [
-              item.dataset.statusItem ?? '',
-              getComputedStyle(item).color,
-            ] as const,
-        ),
+        ).filter((item) => getComputedStyle(item).whiteSpace !== 'nowrap')
+          .length,
+      }));
+      expect(noWrap.scrollWidth).toBeLessThanOrEqual(noWrap.clientWidth);
+      expect(noWrap.wrappedItems).toBe(0);
+      assertions.push('no status item wraps and the row never overflows');
+      /*
+       * The binding's status row reads `--faint` (`mockup.html:382`
+       * `.statusbar{…color:var(--faint)…}`). Measuring the two source-backed
+       * conditions through their reference variants is what found production
+       * reading `--text-muted` instead — every glyph pixel differed at a maximum
+       * channel delta of 47. The pixel comparison is gone, so this is the check
+       * that keeps that colour honest: it resolves the binding token in the page
+       * and asserts the row and every item read exactly it, rather than pinning a
+       * literal that would drift with the palette.
+       */
+      const colour = await status.evaluate((element) => {
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--faint)';
+        probe.style.display = 'none';
+        element.appendChild(probe);
+        const bindingFaint = getComputedStyle(probe).color;
+        probe.remove();
+        return {
+          bindingFaint,
+          row: getComputedStyle(element).color,
+          items: Array.from(
+            element.querySelectorAll<HTMLElement>('[data-status-item]'),
+          ).map(
+            (item) =>
+              [
+                item.dataset.statusItem ?? '',
+                getComputedStyle(item).color,
+              ] as const,
+          ),
+        };
+      });
+      expect(colour.row).toBe(colour.bindingFaint);
+      for (const [item, value] of colour.items) {
+        expect(value, `status item ${item} must read the binding colour`).toBe(
+          colour.bindingFaint,
+        );
+      }
+      expect(colour.items.length).toBeGreaterThan(0);
+      assertions.push(
+        `the status row and all ${colour.items.length} items read the binding's --faint token (${colour.bindingFaint}), per mockup.html:382`,
+      );
+
+      const evidenceRoot = join(
+        EDITOR_STATUS_EVIDENCE_ROOT,
+        palette.id,
+        statusCase.stateId,
+      );
+      await mkdir(evidenceRoot, { recursive: true });
+      const productionState = {
+        stateId: statusCase.stateId,
+        status: statusCase.status,
+        visibleText: await status.innerText(),
+        editorVisible: await page
+          .locator('[aria-label="Editor pane"]')
+          .isVisible(),
+        previewVisible: await page
+          .locator('[aria-label="Preview pane"]')
+          .count(),
       };
-    });
-    expect(colour.row).toBe(colour.bindingFaint);
-    for (const [item, value] of colour.items) {
-      expect(value, `status item ${item} must read the binding colour`).toBe(
-        colour.bindingFaint,
+
+      await writeFile(
+        join(evidenceRoot, 'semantic.json'),
+        JSON.stringify(productionState, null, 2),
+      );
+      await writeFile(
+        join(evidenceRoot, 'metrics.json'),
+        JSON.stringify({ metrics, noWrap }, null, 2),
+      );
+      await writeFile(
+        join(evidenceRoot, 'actual.png'),
+        await status.screenshot({ animations: 'disabled' }),
+      );
+      await writeFile(
+        join(evidenceRoot, 'status.json'),
+        JSON.stringify(
+          {
+            status: 'behaviour-verified',
+            verificationMethod: T063_BEHAVIOUR_VERIFICATION_METHOD,
+            assertions,
+            reason: T063_BEHAVIOUR_VERIFICATION_REASON,
+          },
+          null,
+          2,
+        ),
+      );
+      await writeFile(
+        join(evidenceRoot, 'raw-status.log'),
+        [
+          'status=behaviour-verified',
+          `verification_method=${T063_BEHAVIOUR_VERIFICATION_METHOD}`,
+          `assertion_count=${assertions.length}`,
+          ...assertions.map(
+            (assertion, index) => `assertion_${index + 1}=${assertion}`,
+          ),
+          'reason=no_editor_status_state_can_pair_on_absolute_bounds',
+          '',
+        ].join('\n'),
       );
     }
-    expect(colour.items.length).toBeGreaterThan(0);
-    assertions.push(
-      `the status row and all ${colour.items.length} items read the binding's --faint token (${colour.bindingFaint}), per mockup.html:382`,
-    );
-
-    const evidenceRoot = join(
-      EDITOR_STATUS_EVIDENCE_ROOT,
-      'minimal-light',
-      statusCase.stateId,
-    );
-    await mkdir(evidenceRoot, { recursive: true });
-    const productionState = {
-      stateId: statusCase.stateId,
-      status: statusCase.status,
-      visibleText: await status.innerText(),
-      editorVisible: await page
-        .locator('[aria-label="Editor pane"]')
-        .isVisible(),
-      previewVisible: await page.locator('[aria-label="Preview pane"]').count(),
-    };
-
-    await writeFile(
-      join(evidenceRoot, 'semantic.json'),
-      JSON.stringify(productionState, null, 2),
-    );
-    await writeFile(
-      join(evidenceRoot, 'metrics.json'),
-      JSON.stringify({ metrics, noWrap }, null, 2),
-    );
-    await writeFile(
-      join(evidenceRoot, 'actual.png'),
-      await status.screenshot({ animations: 'disabled' }),
-    );
-    await writeFile(
-      join(evidenceRoot, 'status.json'),
-      JSON.stringify(
-        {
-          status: 'behaviour-verified',
-          verificationMethod: T063_BEHAVIOUR_VERIFICATION_METHOD,
-          assertions,
-          reason: T063_BEHAVIOUR_VERIFICATION_REASON,
-        },
-        null,
-        2,
-      ),
-    );
-    await writeFile(
-      join(evidenceRoot, 'raw-status.log'),
-      [
-        'status=behaviour-verified',
-        `verification_method=${T063_BEHAVIOUR_VERIFICATION_METHOD}`,
-        `assertion_count=${assertions.length}`,
-        ...assertions.map(
-          (assertion, index) => `assertion_${index + 1}=${assertion}`,
-        ),
-        'reason=no_editor_status_state_can_pair_on_absolute_bounds',
-        '',
-      ].join('\n'),
-    );
-  }
-});
+  });
+}
