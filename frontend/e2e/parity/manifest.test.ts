@@ -2,28 +2,19 @@ import {
   ADDITIONAL_MANIFEST,
   ADDITIONAL_STATE_ASSIGNMENTS,
   ADDITIONAL_CASE_COUNT,
-  BEHAVIOUR_VERIFICATION_COUNT,
   BEHAVIOUR_VERIFIED_CASE_COUNT,
   BEHAVIOUR_VERIFIED_MANIFEST,
   BEHAVIOUR_VERIFIED_STATE_IDS,
-  COMPARISON_COUNT,
-  comparisonsForRepetitions,
   assertManifestIntegrity,
   assertNoCaptureSatisfiesTwoStates,
   isBehaviourVerifiedEntry,
   LOGICAL_CASE_COUNT,
-  PARITY_COUNTS,
   PARITY_MANIFEST,
   PARITY_PALETTES,
-  PARITY_REPETITIONS,
   PARITY_WIDTHS,
-  PIXEL_COMPARED_CASE_COUNT,
-  PIXEL_COMPARED_MANIFEST,
-  PIXEL_COMPARISON_COUNT,
   PRIMARY_CASE_COUNT,
   PRIMARY_FAMILIES,
   PRIMARY_MANIFEST,
-  VERIFICATION_COUNT,
 } from './manifest';
 
 const unique = <T>(values: readonly T[]) => new Set(values);
@@ -105,7 +96,7 @@ it('manifest contains exactly 306 primary keys', () => {
   expect(unique(PRIMARY_MANIFEST.map(({ key }) => key)).size).toBe(
     PRIMARY_CASE_COUNT,
   );
-  expect(PARITY_COUNTS.primary).toBe(17 * 3 * 6);
+  expect(PRIMARY_CASE_COUNT).toBe(17 * 3 * 6);
 });
 
 it('manifest contains exactly 240 additional keys across 40 state IDs', () => {
@@ -126,38 +117,64 @@ it('manifest contains exactly 240 additional keys across 40 state IDs', () => {
     expect(unique(cases.map(({ palette }) => palette.id)).size).toBe(6);
   }
 
-  expect(PARITY_COUNTS.additional).toBe(40 * 6);
+  expect(ADDITIONAL_CASE_COUNT).toBe(40 * 6);
 });
 
-it('manifest contains exactly 546 logical keys', () => {
+it('manifest contains exactly 546 reference-navigation keys', () => {
   expect(PARITY_MANIFEST).toHaveLength(LOGICAL_CASE_COUNT);
   expect(unique(PARITY_MANIFEST.map(({ key }) => key)).size).toBe(
     LOGICAL_CASE_COUNT,
   );
-  expect(PARITY_COUNTS.logical).toBe(306 + 240);
+  expect(LOGICAL_CASE_COUNT).toBe(306 + 240);
   expect(() => assertManifestIntegrity()).not.toThrow();
 });
 
-it('three repetitions execute exactly 1638 comparisons without new keys', () => {
-  const comparisons = comparisonsForRepetitions(PARITY_REPETITIONS);
-  const logicalKeys = unique(PARITY_MANIFEST.map(({ key }) => key));
-  const comparisonKeys = unique(
-    comparisons.map(({ manifestKey }) => manifestKey),
-  );
-
-  expect(comparisons).toHaveLength(COMPARISON_COUNT);
-  expect(comparisonKeys).toEqual(logicalKeys);
-  expect(comparisonKeys.size).toBe(LOGICAL_CASE_COUNT);
-  expect(PARITY_COUNTS.comparisons).toBe(3 * 546);
-
-  for (const key of logicalKeys) {
-    expect(
-      comparisons.filter(({ manifestKey }) => manifestKey === key),
-    ).toHaveLength(3);
+/*
+ * The 546 keys are an index that T050 and T057 navigate by, not a comparison
+ * contract — spec.md Session 2026-08-14 withdrew the whole-screen contract and
+ * f9a34a7b removed its runner. These are the two lookups that still read the
+ * index, asserted here on shape rather than by duplicating the Playwright
+ * probe tables, so the surviving key count is justified by what consumes it.
+ */
+it('resolves every entry T050 and T057 navigate by', () => {
+  // T050 resolves a primary entry from (family, width, palette) and throws when
+  // the lookup misses. A duplicate would be worse than a miss: `find` would take
+  // the first and the probe would navigate somewhere unintended without failing.
+  for (const family of PRIMARY_FAMILIES) {
+    for (const width of PARITY_WIDTHS) {
+      for (const palette of PARITY_PALETTES) {
+        expect(
+          PARITY_MANIFEST.filter(
+            (entry) =>
+              entry.kind === 'primary' &&
+              entry.family === family &&
+              entry.width === width &&
+              entry.palette.id === palette.id,
+          ),
+        ).toHaveLength(1);
+      }
+    }
   }
+
+  // T057 filters the file-only launcher pairs out of the same index and asserts
+  // it got four. Two are primary and two are launcher state assignments, so both
+  // halves of the expansion have to survive for that filter to hold.
+  expect(
+    PARITY_MANIFEST.filter(
+      (entry) =>
+        entry.family === 'empty' &&
+        entry.palette.id === 'minimal-light' &&
+        (entry.width === 1280 || entry.width === 375),
+    ).map(({ key }) => key),
+  ).toEqual([
+    'primary:empty:1280:minimal-light',
+    'primary:empty:375:minimal-light',
+    'state:launcher-first-run:minimal-light',
+    'state:launcher-six-file:minimal-light',
+  ]);
 });
 
-it('splits the 546 logical keys into 510 pixel-compared and 36 behaviour-verified', () => {
+it('declares 36 behaviour-verified keys and no editor-status pixel comparison', () => {
   expect(BEHAVIOUR_VERIFIED_STATE_IDS).toEqual([
     'status-saved',
     'status-autosaved',
@@ -167,14 +184,9 @@ it('splits the 546 logical keys into 510 pixel-compared and 36 behaviour-verifie
     'status-large-file',
   ]);
 
-  // No editor-status state is pixel-compared: the binding's status row and
+  // No editor-status state can be pixel-compared: the binding's status row and
   // production's cannot pair on absolute bounds at all.
   for (const stateId of BEHAVIOUR_VERIFIED_STATE_IDS) {
-    expect(
-      PIXEL_COMPARED_MANIFEST.filter(
-        (entry) => entry.kind === 'additional' && entry.stateId === stateId,
-      ),
-    ).toHaveLength(0);
     expect(
       BEHAVIOUR_VERIFIED_MANIFEST.filter(
         (entry) => entry.kind === 'additional' && entry.stateId === stateId,
@@ -186,39 +198,10 @@ it('splits the 546 logical keys into 510 pixel-compared and 36 behaviour-verifie
     BEHAVIOUR_VERIFIED_CASE_COUNT,
   );
   expect(BEHAVIOUR_VERIFIED_CASE_COUNT).toBe(6 * 6);
-  expect(PIXEL_COMPARED_MANIFEST).toHaveLength(PIXEL_COMPARED_CASE_COUNT);
-  expect(PIXEL_COMPARED_CASE_COUNT).toBe(510);
-  expect(PIXEL_COMPARED_CASE_COUNT + BEHAVIOUR_VERIFIED_CASE_COUNT).toBe(
-    LOGICAL_CASE_COUNT,
-  );
-
-  // Every logical key is verified exactly once, by exactly one method.
-  expect(
-    unique([
-      ...PIXEL_COMPARED_MANIFEST.map(({ key }) => key),
-      ...BEHAVIOUR_VERIFIED_MANIFEST.map(({ key }) => key),
-    ]).size,
-  ).toBe(LOGICAL_CASE_COUNT);
   expect(PARITY_MANIFEST.filter(isBehaviourVerifiedEntry)).toHaveLength(
     BEHAVIOUR_VERIFIED_CASE_COUNT,
   );
   expect(PRIMARY_MANIFEST.some(isBehaviourVerifiedEntry)).toBe(false);
-
-  expect(PARITY_COUNTS.pixelCompared).toBe(510);
-  expect(PARITY_COUNTS.behaviourVerified).toBe(36);
-});
-
-it('three repetitions execute 1530 pixel comparisons plus 108 behaviour verifications', () => {
-  expect(PIXEL_COMPARISON_COUNT).toBe(510 * 3);
-  expect(BEHAVIOUR_VERIFICATION_COUNT).toBe(36 * 3);
-  expect(PIXEL_COMPARISON_COUNT + BEHAVIOUR_VERIFICATION_COUNT).toBe(
-    VERIFICATION_COUNT,
-  );
-  expect(VERIFICATION_COUNT).toBe(COMPARISON_COUNT);
-  expect(VERIFICATION_COUNT).toBe(1638);
-  expect(PARITY_COUNTS.pixelComparisons).toBe(1530);
-  expect(PARITY_COUNTS.behaviourVerifications).toBe(108);
-  expect(PARITY_COUNTS.verifications).toBe(1638);
 });
 
 it('each additional state ID uses its assigned family and width', () => {

@@ -1,15 +1,45 @@
+/**
+ * This manifest is a **reference-navigation index**, not a comparison contract.
+ *
+ * The whole-screen contract these keys once expressed — 306 primary
+ * family/width/palette cases plus 240 additional state cases, repeated three
+ * times for 1,638 comparisons — was withdrawn by spec.md Clarifications →
+ * Session 2026-08-14 and the amended FR-FT-051, because the binding depicts the
+ * product's final state while this feature delivers a subset. The runner that
+ * consumed the pixel-compared half was removed in f9a34a7b. Nothing compares 510
+ * keys any more, so every declaration that described only that run is gone with
+ * it: `PARITY_REPETITIONS`, `COMPARISON_COUNT`, `VERIFICATION_COUNT`,
+ * `PIXEL_COMPARED_CASE_COUNT`, `PIXEL_COMPARISON_COUNT`,
+ * `BEHAVIOUR_VERIFICATION_COUNT`, `PIXEL_COMPARED_MANIFEST`, `PARITY_COUNTS`,
+ * `comparisonsForRepetitions` and the `ParityComparison` type. Repetition is now
+ * a capture precondition rather than a suite-level loop — FR-FT-054's three
+ * identical hashes are enforced by `captureWhenStable` in `readiness.ts`.
+ *
+ * The contract that replaced it lives elsewhere: the 14 pixel-compared component
+ * keys in `../targeted-manifest.ts`, and the behaviour-verified status keys
+ * declared below.
+ *
+ * **Why the 546-key expansion survives.** Two live Playwright tests read entries
+ * out of it, and between them they need both halves of the product:
+ *
+ *   - `real-files-parity.test.ts` T050 looks up 14 **primary** entries by
+ *     `(family, width, palette)` to drive reference navigation to every mapped
+ *     screen before capture — spanning all three widths and all six palettes,
+ *     so the full Cartesian expansion is what makes those lookups resolve.
+ *   - `real-files-parity.test.ts` T057 filters the four `empty`-family entries
+ *     at `minimal-light`: two primary (1280 and 375) plus the two **additional**
+ *     launcher assignments (`launcher-first-run`, `launcher-six-file`). The
+ *     40-row state table is therefore load-bearing too, not just the primaries.
+ *
+ * So 306, 240 and 546 are the sizes of an index that is still navigated — not a
+ * claim that 546 screens are compared. `LOGICAL_CASE_COUNT` is additionally read
+ * by `../targeted-manifest.ts` and `./state-contract.test.ts`, which prove that
+ * no targeted comparison key has leaked into this index.
+ */
 export const PARITY_HEIGHT = 720 as const;
-export const PARITY_REPETITIONS = 3 as const;
 export const PRIMARY_CASE_COUNT = 306 as const;
 export const ADDITIONAL_CASE_COUNT = 240 as const;
 export const LOGICAL_CASE_COUNT = 546 as const;
-/**
- * Three repetitions of all 546 logical keys. This is the fixed verification
- * total, not the comparison total — see `PIXEL_COMPARISON_COUNT` and
- * `BEHAVIOUR_VERIFICATION_COUNT` below, which split it honestly.
- */
-export const COMPARISON_COUNT = 1638 as const;
-export const VERIFICATION_COUNT = COMPARISON_COUNT;
 
 /**
  * spec.md, Session 2026-08-14. No `editor-status` state can be pixel-compared,
@@ -35,9 +65,11 @@ export const VERIFICATION_COUNT = COMPARISON_COUNT;
  * offsets are permanent, so every status item lands on a different sub-pixel
  * grid and no picture of one can be compared to a picture of the other.
  *
- * All six are still logical manifest keys and still run once per palette. What
- * changes is only how each is verified, and the two halves are counted and
- * reported separately so nothing claims a picture it never took.
+ * All six are proven by behaviour assertion instead. `targeted-manifest.ts`
+ * reads this list to fail any targeted comparison case that names one of them,
+ * and `targeted-parity.test.ts` T063 is the test that asserts them against
+ * `data-status-state`, the title bar, the status-item text and the binding
+ * colour token.
  */
 export const BEHAVIOUR_VERIFIED_STATE_IDS = Object.freeze([
   'status-saved',
@@ -48,10 +80,12 @@ export const BEHAVIOUR_VERIFIED_STATE_IDS = Object.freeze([
   'status-large-file',
 ] as const);
 
-export const PIXEL_COMPARED_CASE_COUNT = 510 as const;
+/**
+ * FR-FT-051 declares 36 behaviour-verified keys — the six states above across
+ * the six palettes. This is the declared contract; T063 currently executes the
+ * `minimal-light` column of it.
+ */
 export const BEHAVIOUR_VERIFIED_CASE_COUNT = 36 as const;
-export const PIXEL_COMPARISON_COUNT = 1530 as const;
-export const BEHAVIOUR_VERIFICATION_COUNT = 108 as const;
 
 export const PARITY_WIDTHS = Object.freeze([1280, 768, 375] as const);
 
@@ -216,8 +250,7 @@ export const PARITY_MANIFEST = Object.freeze([
 
 /**
  * A logical key is behaviour-verified when its state ID names one of the six
- * editor-status states. Everything else — every primary key and every other
- * state key — is pixel-compared.
+ * editor-status states.
  */
 export const isBehaviourVerifiedEntry = (entry: ManifestEntry): boolean =>
   entry.kind === 'additional' &&
@@ -226,28 +259,6 @@ export const isBehaviourVerifiedEntry = (entry: ManifestEntry): boolean =>
 export const BEHAVIOUR_VERIFIED_MANIFEST = Object.freeze(
   PARITY_MANIFEST.filter(isBehaviourVerifiedEntry),
 );
-
-export const PIXEL_COMPARED_MANIFEST = Object.freeze(
-  PARITY_MANIFEST.filter((entry) => !isBehaviourVerifiedEntry(entry)),
-);
-
-export const PARITY_COUNTS = Object.freeze({
-  families: PRIMARY_FAMILIES.length,
-  widths: PARITY_WIDTHS.length,
-  palettes: PARITY_PALETTES.length,
-  primary: PRIMARY_MANIFEST.length,
-  stateIds: ADDITIONAL_STATE_ASSIGNMENTS.length,
-  additional: ADDITIONAL_MANIFEST.length,
-  logical: PARITY_MANIFEST.length,
-  pixelCompared: PIXEL_COMPARED_MANIFEST.length,
-  behaviourVerified: BEHAVIOUR_VERIFIED_MANIFEST.length,
-  repetitions: PARITY_REPETITIONS,
-  comparisons: PARITY_MANIFEST.length * PARITY_REPETITIONS,
-  verifications: PARITY_MANIFEST.length * PARITY_REPETITIONS,
-  pixelComparisons: PIXEL_COMPARED_MANIFEST.length * PARITY_REPETITIONS,
-  behaviourVerifications:
-    BEHAVIOUR_VERIFIED_MANIFEST.length * PARITY_REPETITIONS,
-});
 
 const unique = <T>(values: readonly T[]): Set<T> => new Set(values);
 
@@ -297,9 +308,11 @@ export const assertNoCaptureSatisfiesTwoStates = (
 };
 
 /**
- * Validate the immutable manifest's exact reviewed shape. This is called at
- * module load and remains exported so later parity stages can validate any
- * derived manifest before they capture it.
+ * Validate the navigation index's exact reviewed shape. FR-FT-051 requires that
+ * duplicate, missing, extra or multiply counted keys fail, and T050/T057 resolve
+ * their entries by lookup — a missing or duplicated key would make a probe
+ * silently navigate to the wrong screen. Called at module load, and exported so
+ * a derived index can be validated before it is navigated.
  */
 export const assertManifestIntegrity = (
   manifest: readonly ManifestEntry[] = PARITY_MANIFEST,
@@ -374,49 +387,7 @@ export const assertManifestIntegrity = (
   );
 };
 
-export type ParityComparison = Readonly<{
-  manifestKey: ManifestEntry['key'];
-  entry: ManifestEntry;
-  repetition: number;
-}>;
-
-/**
- * Expand execution repetitions without mutating or extending the logical
- * manifest. Every comparison retains the same manifest key as its source case.
- */
-export const comparisonsForRepetitions = (
-  repetitions: number = PARITY_REPETITIONS,
-): readonly ParityComparison[] => {
-  if (repetitions !== PARITY_REPETITIONS) {
-    throw new RangeError('parity manifest requires exactly three repetitions');
-  }
-
-  return Object.freeze(
-    Array.from({ length: repetitions }, (_, repetitionIndex) =>
-      PARITY_MANIFEST.map((entry) =>
-        Object.freeze({
-          manifestKey: entry.key,
-          entry,
-          repetition: repetitionIndex + 1,
-        }),
-      ),
-    ).flat(),
-  );
-};
-
 assertManifestIntegrity();
-invariant(
-  PARITY_COUNTS.primary === PRIMARY_CASE_COUNT &&
-    PARITY_COUNTS.additional === ADDITIONAL_CASE_COUNT &&
-    PARITY_COUNTS.logical === LOGICAL_CASE_COUNT &&
-    PARITY_COUNTS.comparisons === COMPARISON_COUNT,
-  'parity manifest arithmetic is not exact',
-);
-/**
- * The verification split is self-asserted from the manifest itself, so the
- * declared 510/36 and 1,530/108 numbers cannot drift away from what the manifest
- * actually contains, and the fixed 546/1,638 totals are still exact.
- */
 invariant(
   BEHAVIOUR_VERIFIED_STATE_IDS.length === 6 &&
     new Set(BEHAVIOUR_VERIFIED_STATE_IDS).size === 6 &&
@@ -428,16 +399,6 @@ invariant(
   'behaviour-verified state IDs are not six distinct manifest state IDs',
 );
 invariant(
-  PARITY_COUNTS.behaviourVerified === BEHAVIOUR_VERIFIED_CASE_COUNT &&
-    PARITY_COUNTS.pixelCompared === PIXEL_COMPARED_CASE_COUNT &&
-    PARITY_COUNTS.pixelCompared + PARITY_COUNTS.behaviourVerified ===
-      LOGICAL_CASE_COUNT,
-  'parity verification split does not reconstruct 546 logical keys',
-);
-invariant(
-  PARITY_COUNTS.pixelComparisons === PIXEL_COMPARISON_COUNT &&
-    PARITY_COUNTS.behaviourVerifications === BEHAVIOUR_VERIFICATION_COUNT &&
-    PARITY_COUNTS.pixelComparisons + PARITY_COUNTS.behaviourVerifications ===
-      VERIFICATION_COUNT,
-  'parity verification split does not reconstruct 1638 verifications',
+  BEHAVIOUR_VERIFIED_MANIFEST.length === BEHAVIOUR_VERIFIED_CASE_COUNT,
+  'behaviour-verified keys are not six states across six palettes',
 );
