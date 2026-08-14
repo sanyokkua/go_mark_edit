@@ -251,3 +251,36 @@ Every one of the 217 pixels still falls inside the same 12px inset edge band the
 term declares; none is unattributed. What changed is only what sits behind that
 band, on both pages, and the ceiling that predated `d0e63414` was stale from the
 moment it landed. The recorded value is now the measured one.
+
+---
+
+## 2026-08-14 — an attributed term that was 72% capture noise
+
+`targeted:settings-overflow:375:minimal-light`, `popup-antialiased-boundary`:
+
+| Recorded | Measured after `captureWhenStable` | Determinism |
+|---:|---:|---|
+| 217 | **62** | 62 in 3 of 3 consecutive runs |
+
+**155 of the 217 pixels were never antialiasing.** They were the region still
+being painted when the capture was taken. They had been recorded with a written
+cause, an evidence citation and a measured ceiling — every property the
+attribution mechanism requires — and the cause was wrong.
+
+Two mechanisms caught it between them:
+
+- `captureWhenStable` (`e2e/parity/readiness.ts`) settles the capture before
+  comparing, which is what changed the number.
+- The **T085 shrink rule** is what refused to let the change pass. Under the
+  previous bookkeeping a term that shrank passed silently, so a 217 ceiling
+  would have stayed in place over a term needing 62 — 155 pixels of room for new
+  drift to hide inside an explained residual. This is the rule's first firing,
+  and it fired on an improvement rather than a regression, which is precisely
+  the case it was written for.
+
+**The lesson for every other declared term: an attributed residual is only as
+good as the capture underneath it.** A term measured on an unsettled capture can
+be stable across repetitions — the noise reproduces if the cadence does — and
+still be measuring the wrong thing. The other eight declared terms all pass
+inside their bands after this change, but any future re-measurement should
+settle the capture first.
