@@ -16,7 +16,15 @@ async function chooseArrangement(
     if (!isOpen) {
       await overflow.click();
     }
-    await toolbar
+    /*
+     * The overflow popup is portalled into `.application-frame` so it shares
+     * the frame's containing block, which puts the relocated arrangement radios
+     * outside the toolbar element — scoping to `toolbar` found nothing. The
+     * inline switch is hidden at this width (`mockup.html:76` `#viewseg`), so
+     * the popup is the only place these radios exist.
+     */
+    await page
+      .locator('[data-viewport-popup="editor-overflow"]')
       .getByRole('radiogroup', { name: 'View arrangement' })
       .getByRole('radio', { name: arrangement })
       .last()
@@ -265,7 +273,19 @@ test('STORY-022-AC-5 round trips an edit through Preview responsively', async ({
     );
     await input.press(`${modifier}+z`);
     await chooseArrangement(page, 'Split');
-    await expect(previewPane).toBeVisible();
+    if (width <= 376) {
+      /*
+       * At the minimum window Split collapses to the editor and the preview is
+       * removed from the tree, per the approved 2026-08-14 clarification. The
+       * round trip still has to be provable, so it is checked through Preview
+       * mode — the assertion's purpose, not its old surface.
+       */
+      await expect(previewPane).toHaveCount(0);
+      await expect(editorPane).toBeVisible();
+      await chooseArrangement(page, 'Preview');
+    } else {
+      await expect(previewPane).toBeVisible();
+    }
     await expect(previewPane).not.toContainText(source);
     await expect
       .poll(() =>
