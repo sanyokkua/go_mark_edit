@@ -152,3 +152,58 @@ scope decision rather than an oversight:
 
 They are carried forward as named follow-up work, with this file as the
 specification for it.
+
+---
+
+## Update, 2026-08-14 — the gate could not run, not merely was not run
+
+This file's title turns out to be literally true, and for a second reason the
+original investigation did not reach.
+
+`frontend/playwright.config.ts` set `testMatch: 'e2e/**/*.test.ts'`. That glob
+captured the seven Jest unit tests under `frontend/e2e/parity/`, which
+`jest.config.js` explicitly owns (`<rootDir>/e2e/parity/` recursively). Those
+files use bare `describe`/`it`, which Playwright does not provide, so:
+
+```
+$ npx playwright test --list
+ReferenceError: it is not defined
+   at e2e/parity/reference-server.test.ts:12
+```
+
+`playwright test` **with no arguments** is exactly what `npm run verify:ui`
+runs, which is what `just verify-ui` runs, which is what `just e2e-test` runs.
+So the command this file recommends running — "`just e2e-test` must be run and
+diffed explicitly before anything touching the interface is called done" — died
+during collection, before a single browser case executed.
+
+### How long
+
+| Commit | What it did |
+|---|---|
+| `c7771c8b` (STORY-018) | set `testMatch: 'e2e/**/*.test.ts'`; never narrowed afterwards |
+| `7744cc82` (T034) | added `e2e/parity/*.test.ts`, the first Jest tests under `e2e/` |
+
+From T034 onward the two globs overlapped. Every individual-file run
+(`npx playwright test e2e/window-shell.test.ts`) worked, which is how the 106
+failing cases were measured at all — but the aggregate gate did not.
+
+### Why this compounds the original finding
+
+The original finding was that `just check` does not include Playwright. The
+mitigation recorded in `AGENTS.md` was to run `just e2e-test` separately. **That
+mitigation was itself inoperative.** Both halves of the interface gate were dark
+simultaneously, which is a better explanation than "nobody ran it" for how 106
+stale cases survived four convergences.
+
+### Fixed
+
+`a17c49f9` narrows the Playwright glob to `e2e/*.test.ts`, giving each file one
+owner. Nothing is excluded from verification: `npx jest e2e/parity --listTests`
+still returns all seven files, and `npx playwright test --list` now collects
+**191 tests in 10 files**.
+
+Two further no-op files were found on the same gate path. `zz-probe.test.ts` —
+one test, zero assertions, a `console.log` walk of the 375px overflow left
+behind by `b5bc99b8` — is removed in `5d3026af`. A second, `zz-status-measure.test.ts`,
+is untracked scratch and must not be committed.
