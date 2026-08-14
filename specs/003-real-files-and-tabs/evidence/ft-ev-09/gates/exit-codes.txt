@@ -1,37 +1,39 @@
 # Feature 003 release gate stack
-commit: 7eff3a33
+commit: 3befc43e
 host:   Darwin arm64, go go1.26.6, node v24.18.0
-start:  2026-08-14T13:57:49Z
+start:  2026-08-14T21:22:40Z
 
-just gen-check                  exit=0
-just archtest                   exit=0
-just check                      exit=0
-just build                      exit=0
-go test -race (4 pkgs)          exit=0
-npm test --runInBand            exit=0
-just verify 003-real-files-and-tabsexit=0
+just gen-check                         exit=0
+just archtest                          exit=0
+just check                             exit=0
+go test -race ./internal/... .         exit=0
+npm test --runInBand                   exit=0
+just e2e-test                          exit=0
+just verify 003-real-files-and-tabs    exit=0
+just build                             exit=0
 
-just e2e-test                   NOT GREEN — see e2e-status.md
-end:    2026-08-14T14:05Z (approx)
+end:    2026-08-14T21:29:48Z
 
 Notes
 -----
-`just verify 003-real-files-and-tabs` reports M1-M6 PASS against the recorded
-baseline and no new findings. It also states what it does NOT cover: M7 new code
-is tested, M8 no placeholders, M11 docs current, M13 scope declared, and the
-walkthrough — all owed by a person.
+Re-recorded 2026-08-14 by T096 (Phase 20 finding). The previous record was taken at
+commit 7eff3a33 — twenty commits back, before the whole of Phase 19 — and it recorded
+`just e2e-test  NOT GREEN — see e2e-status.md`. That file did not exist anywhere in the
+repository, so the stack's one red entry pointed at an explanation nobody could read.
 
-`just e2e-test` is the one gate not green. It is NOT broken and it is NOT
-unreliable: it collects and runs (191 tests in 10 files, after a17c49f9 gave
-each e2e file one runner). Every behavioural assertion in it passes. It is red
-on exactly two things, both recorded with their evidence:
+`just e2e-test` is now green: 256 passed in 5.2m, retained unabridged in `e2e-test.log`,
+which the previous stack did not keep at all. The count rose from 211 because T091 widened
+the editor-status contract from one palette to six, and T092 added the `parity` Playwright
+project running `targeted-parity.test.ts` three times per SC-FT-012.
 
-  1. 25 committed screenshot baselines written 2026-08-06, before this feature's
-     specification existed, with 48 shell-surface commits since. Re-approval is
-     an owner action; FR-FT-055 forbids accepting a baseline to make a gate pass.
-     See ft-vs-08/regressions/baseline-provenance.md.
-  2. The unrestricted 546-case matrix (T035), whose failures are measured in
-     ft-vs-08/phase-18/t035-run-2026-08-14.md.
+Gate order follows AGENTS.md: gen-check first, build last. `just build` rewrites
+frontend/wailsjs/runtime/ at mode 644, so gen-check is run once more afterwards to
+regenerate them at 755 and leave the tree clean. That trailing run is cleanup, not a gate
+result, and is not listed above.
 
-A gate that runs and reports a real, explained failure is doing its job. This is
-recorded as red rather than waived.
+`just package` is deliberately not run — it exits non-zero on purpose until Phase 08.
+
+`just verify 003-real-files-and-tabs` reports M1-M6 PASS against the recorded baseline. It
+states plainly what it does not cover, and that list is unchanged: M7 new code is tested,
+M8 no placeholders, M11 descriptive docs current, M13 scope declared, and the walkthrough —
+all owed by a person. The walkthrough is tracked as T097.

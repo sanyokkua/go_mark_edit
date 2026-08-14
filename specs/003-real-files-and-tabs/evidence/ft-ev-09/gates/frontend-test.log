@@ -10,16 +10,16 @@
 > frontend@0.0.0 test
 > node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --runInBand
 
-✔ applies only a current valid startup mirror before application code (2.7945ms)
-✔ resolves a current Auto mirror from the operating-system preference (0.603792ms)
-✔ runs the blocking bootstrap before the application module (0.091375ms)
-✔ generates six complete named Monaco themes from palette values (2.449583ms)
-✔ converts CSS rgba palette values to Monaco-compatible hex (0.668708ms)
-✔ shares each fenced-language value by appearance across themes (0.7895ms)
-✔ rejects a palette missing a required Monaco token (0.269625ms)
-✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.512875ms)
-✔ rejects duplicate, unresolved, and unsupported palette sources (0.282166ms)
-✔ emits inactive highlight rules for every generated syntax token (0.531334ms)
+✔ applies only a current valid startup mirror before application code (2.9715ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.621667ms)
+✔ runs the blocking bootstrap before the application module (0.092792ms)
+✔ generates six complete named Monaco themes from palette values (2.615ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.657292ms)
+✔ shares each fenced-language value by appearance across themes (0.854875ms)
+✔ rejects a palette missing a required Monaco token (0.335291ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.551542ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.310208ms)
+✔ emits inactive highlight rules for every generated syntax token (0.557209ms)
 ℹ tests 10
 ℹ suites 0
 ℹ pass 10
@@ -27,10 +27,10 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 66.355875
+ℹ duration_ms 72.690291
 
-Test Suites: 76 passed, 76 total
-Tests:       527 passed, 527 total
+Test Suites: 77 passed, 77 total
+Tests:       529 passed, 529 total
 Snapshots:   0 total
-Time:        15.415 s, estimated 29 s
+Time:        16.317 s, estimated 32 s
 Ran all test suites.

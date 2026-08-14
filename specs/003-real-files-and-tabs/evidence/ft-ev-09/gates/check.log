@@ -40,7 +40,7 @@ dist/assets/monacoSetup-Dc6CV6ye.js      2,294.41 kB │ gzip: 592.24 kB
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.38s
+✓ built in 3.53s
 
 > frontend@0.0.0 postbuild
 > node scripts/ensure-dist-placeholder.mjs && node scripts/check-production-network.mjs --source-root src --source-root public --source-root wailsjs/go --bundle-root dist --require-bundle
@@ -96,16 +96,16 @@ npm --prefix frontend test -- --passWithNoTests
 > frontend@0.0.0 test
 > node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --passWithNoTests
 
-✔ applies only a current valid startup mirror before application code (2.763ms)
-✔ resolves a current Auto mirror from the operating-system preference (0.5735ms)
-✔ runs the blocking bootstrap before the application module (0.094167ms)
-✔ generates six complete named Monaco themes from palette values (2.8195ms)
-✔ converts CSS rgba palette values to Monaco-compatible hex (0.876208ms)
-✔ shares each fenced-language value by appearance across themes (0.93675ms)
-✔ rejects a palette missing a required Monaco token (0.345666ms)
-✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.563375ms)
-✔ rejects duplicate, unresolved, and unsupported palette sources (0.293208ms)
-✔ emits inactive highlight rules for every generated syntax token (0.5645ms)
+✔ applies only a current valid startup mirror before application code (3.755875ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.582916ms)
+✔ runs the blocking bootstrap before the application module (0.091042ms)
+✔ generates six complete named Monaco themes from palette values (3.361292ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.868625ms)
+✔ shares each fenced-language value by appearance across themes (1.142708ms)
+✔ rejects a palette missing a required Monaco token (0.457917ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.591917ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.383459ms)
+✔ emits inactive highlight rules for every generated syntax token (0.737875ms)
 ℹ tests 10
 ℹ suites 0
 ℹ pass 10
@@ -113,29 +113,29 @@ npm --prefix frontend test -- --passWithNoTests
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 71.224292
+ℹ duration_ms 80.39375
 
-Test Suites: 76 passed, 76 total
-Tests:       527 passed, 527 total
+Test Suites: 77 passed, 77 total
+Tests:       529 passed, 529 total
 Snapshots:   0 total
-Time:        9.493 s
+Time:        10.014 s, estimated 11 s
 Ran all test suites.
 just go-vet
 go vet ./internal/... .
 just archtest
 just go-archtest
 go test -run TestArchitecture -count=1 ./internal/... .
-ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	0.281s
-ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.468s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	0.684s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	0.905s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/db	1.294s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	0.276s
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.443s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	0.673s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	1.359s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	1.166s [no tests to run]
 ?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
-ok  	github.com/sanyokkua/go_mark_edit/internal/file	1.079s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/gate	1.671s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/logging	2.186s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/settings	1.515s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit	2.058s
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	1.605s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	0.837s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	1.783s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	2.018s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit	2.315s
 just cgo-free-check
 CGO_ENABLED=0 go build ./...
 just migration-immutability-check
@@ -150,8 +150,8 @@ archtest (frontend): ok
 just go-test
 go test -race ./internal/... .
 ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	(cached)
-ok  	github.com/sanyokkua/go_mark_edit/internal/application	1.805s
-ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	3.861s
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	1.782s
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/db	(cached)
 ?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
@@ -159,4 +159,4 @@ ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
-ok  	github.com/sanyokkua/go_mark_edit	7.650s
+ok  	github.com/sanyokkua/go_mark_edit	7.837s
