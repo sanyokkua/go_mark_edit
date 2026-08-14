@@ -104,11 +104,18 @@ export const ATTRIBUTED_RESIDUALS: Readonly<
    * the popup than when 205 was recorded, and this term is what blends with it.
    * The cause is unchanged and all 217 pixels still fall inside the same 12px
    * edge band with zero unattributed, identical bounds and identical computed
-   * styles; 217 in 3 of 3 consecutive runs. The 205 ceiling was stale from the
-   * moment d0e63414 landed. See phase-18/residual-attribution.md.
+   * styles. See phase-18/residual-attribution.md.
+   *
+   * Re-measured a second time once `captureWhenStable` began settling the
+   * capture before comparing: **217 -> 62**, deterministic at 62 in 3 of 3
+   * consecutive runs. So 155 of the 217 were never antialiasing at all — they
+   * were the region still being painted when the old capture was taken. The
+   * shrink rule added in T085 is what caught it: the 217 ceiling passed
+   * silently under the old bookkeeping and would have left 155 pixels of room
+   * for new drift to hide inside a term that no longer needed it.
    */
   'targeted:settings-overflow:375:minimal-light': Object.freeze([
-    popupBoundary(217, PHASE_18),
+    popupBoundary(62, PHASE_18),
   ]),
 
   'targeted:view-menu:1280:minimal-light': Object.freeze([

@@ -14,6 +14,7 @@ import {
 } from './parity/reference-adapter';
 import {
   assertSameOrigin,
+  captureWhenStable,
   freezeParityPixels,
   readParityScroll,
   restoreParityScroll,
@@ -362,8 +363,16 @@ async function captureSurface(
   label: string,
 ): Promise<{ readonly bytes: Uint8Array; readonly metrics: SurfaceMetrics }> {
   const locator = await oneVisibleLocator(page, selector, label);
+  /*
+   * Capture only once the region has stopped changing. These slices are chrome
+   * popups and have been stable in practice, unlike the editor-backed regions
+   * in the unrestricted runner where 31% of captures hashed differently across
+   * repetitions — but "stable in practice" is not a guarantee, and settling
+   * first costs a hash. See `captureWhenStable` for the measurement behind it.
+   */
+  const stable = await captureWhenStable(locator);
   return {
-    bytes: await locator.screenshot({ animations: 'disabled' }),
+    bytes: stable.buffer,
     metrics: await surfaceMetrics(locator),
   };
 }
