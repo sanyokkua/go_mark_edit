@@ -1,0 +1,13 @@
+# Non-recursive listing of the fixture directory BEFORE any save
+# date: 2026-08-14T21:31:35Z
+# command: ls -la /Users/ok/Documents/gomarkedit-walkthrough
+
+total 245912
+drwxr-xr-x@  8 ok  staff       256 Aug 14 23:17 .
+drwx------@ 21 ok  staff       672 Aug 14 23:17 ..
+-rw-r--r--@  1 ok  staff  10485760 Aug 14 23:17 boundary-10mib-exact.md
+-rw-r--r--@  1 ok  staff  10485761 Aug 14 23:17 boundary-10mib-plus-one.md
+-rw-r--r--@  1 ok  staff  52428800 Aug 14 23:17 boundary-50mib-exact.md
+-rw-r--r--@  1 ok  staff  52428801 Aug 14 23:17 boundary-50mib-plus-one.md
+-rw-r--r--@  1 ok  staff        96 Aug 14 23:17 fixture-a.md
+-rw-r--r--@  1 ok  staff     62826 Aug 14 23:17 fixture-b.md
