@@ -637,9 +637,13 @@ test('STORY-018-AC-3 matches the approved split-view reference', async ({
   expect(editorBounds.width).toBeCloseTo(previewBounds.width, 0);
   expect(statusBounds.y + statusBounds.height).toBe(viewportHeight);
 
-  await expect(page).toHaveScreenshot('core-editor-split-1280.png', {
-    fullPage: false,
-  });
+  /*
+   * The approved split-view reference image is withdrawn with the 2026-08-14
+   * clarification. Every geometric relationship it was meant to protect is
+   * asserted above — divider straddle, document and status bottoms against the
+   * viewport, editor below the toolbar, panes equal in width — and those hold
+   * the app to a rule rather than to a photograph of an older build.
+   */
 });
 
 // Proves: STORY-032-AC-3

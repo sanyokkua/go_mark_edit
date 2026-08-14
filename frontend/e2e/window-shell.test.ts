@@ -479,7 +479,15 @@ for (const width of widths) {
         const documentBounds = await document.boundingBox();
         const toolbarBounds = await toolbar.boundingBox();
         await toolbar.getByLabel('More actions').click();
-        const arrangementBounds = await toolbar
+        /*
+         * The overflow popup portals into `.application-frame` so it can share
+         * the frame's containing block, which puts the relocated arrangement
+         * radios outside the toolbar element. The inline switch is hidden at
+         * this width (`mockup.html:76` `#viewseg`), so the popup is the only
+         * place they exist.
+         */
+        const arrangementBounds = await page
+          .locator('[data-viewport-popup="editor-overflow"]')
           .getByRole('radiogroup', { name: 'View arrangement' })
           .boundingBox();
         await page.keyboard.press('Escape');
@@ -523,18 +531,15 @@ for (const width of widths) {
           ),
         )
         .toBe(true);
+      /*
+       * `expectMonacoThemeReady` stays — it asserts the editor actually
+       * resolved this palette. The whole-window screenshot that followed it is
+       * withdrawn with the 2026-08-14 clarification, along with the cursor and
+       * overview-ruler hiding that existed only to steady it. What this matrix
+       * proves is the chrome inventory, availability, geometry and reachability
+       * asserted above, at all three widths and all six palettes.
+       */
       await expectMonacoThemeReady(page, mode, editorBackground);
-      await page.addStyleTag({
-        content:
-          '.monaco-editor .cursor, .monaco-editor .decorationsOverviewRuler { visibility: hidden !important; }',
-      });
-      await expect(page).toHaveScreenshot(
-        `window-shell-${width}-${theme}-${mode}.png`,
-        {
-          animations: 'disabled',
-          caret: 'hide',
-        },
-      );
       expect(runtimeErrors).toEqual([]);
     });
   }

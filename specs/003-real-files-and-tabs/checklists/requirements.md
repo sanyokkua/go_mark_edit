@@ -35,13 +35,13 @@
 
 - [x] The binding mockup HTML/CSS, reference screenshots, and current-build discrepancy screenshots have distinct,
       explicit authority roles
-- [x] The finite in-scope parity manifest and its 17-family × 18-combination = 306 paired comparisons are enumerated
+- [ ] The finite in-scope parity manifest and its 17-family × 18-combination = 306 paired comparisons are enumerated
 - [x] Exact geometry, typography, icon, popup, theme-structure, and responsive acceptance values are stated
 - [x] Dual local serving and deterministic viewport, pixel-ratio, zoom, font, fixture, focus, scroll, palette, and
       motion conditions are fixed
 - [x] The zero-unexplained-pixel rule, minimal-mask boundary, retained reference/actual/difference evidence, and
       anti-baseline-laundering rule are explicit
-- [x] Feature 003 variants for the file-only launcher, unavailable Open Folder, absent recent folders, and
+- [ ] Feature 003 variants for the file-only launcher, unavailable Open Folder, absent recent folders, and
       Reload/Keep mine/Skip prompt are defined without broad screenshot masks
 - [x] OS-owned framing/native dialogs, populated workspace, Assistant/provider, and deferred rich-rendering regions
       are explicitly excluded without weakening the mapped webview comparison
