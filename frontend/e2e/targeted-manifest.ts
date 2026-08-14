@@ -442,8 +442,8 @@ export function assertTargetedManifestIntegrity(): void {
    * run against the reference variant that hides the non-selected pane.
    */
   for (const entry of allTargetedEntries()) {
-    const narrowEditorSplit = entry.family === 'editor-split' &&
-      entry.width === 375;
+    const narrowEditorSplit =
+      entry.family === 'editor-split' && entry.width === 375;
     if (narrowEditorSplit && entry.referenceVariant !== 'editor-split-375') {
       throw new Error(
         `T076 editor-split case ${entry.key} at 375 must use the editor-split-375 reference variant`,
