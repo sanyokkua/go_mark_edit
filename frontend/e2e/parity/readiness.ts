@@ -1,5 +1,25 @@
 import type { Page } from '@playwright/test';
 
+/*
+ * FR-FT-054 lists a **frozen caret** among the conditions a deterministic
+ * capture must hold fixed, alongside loaded fonts, resolved palette, fixture
+ * data, focus, scroll and overlay state.
+ *
+ * `caret-color: transparent` freezes the *native* caret and was assumed to
+ * cover it. It does not cover Monaco, which draws `div.cursor` and blinks it by
+ * toggling `visibility` **from JavaScript** — measured 2026-08-14:
+ * `animationName: none`, `animationDuration: 0s`, and `visibility` alternating
+ * in lockstep with the region hash. So `animation-duration: 0ms` has nothing to
+ * freeze and `caret-color` does not apply. The oscillation is 46 pixels, a
+ * 2×23 block, and it made `tab-dirty` and `tab-autosave-in-flight` capture a
+ * coin-flip raster on every repetition — those states type into the editor,
+ * which focuses it and starts the blink.
+ *
+ * Hiding it is **not a mask**: a mask conceals a difference between the two
+ * pages, whereas this holds fixed a condition the requirement names, on the one
+ * page that has a caret at all. The binding has no editor and no caret, so
+ * there is nothing on the reference side to conceal.
+ */
 export const PARITY_FREEZE_STYLE = `
   *, *::before, *::after {
     animation-delay: 0s !important;
@@ -8,6 +28,9 @@ export const PARITY_FREEZE_STYLE = `
     scroll-behavior: auto !important;
     transition-delay: 0s !important;
     transition-duration: 0ms !important;
+  }
+  .monaco-editor .cursor {
+    visibility: hidden !important;
   }
 `;
 

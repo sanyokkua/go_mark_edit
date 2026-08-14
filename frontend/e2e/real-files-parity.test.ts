@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
@@ -25,11 +25,20 @@ import {
   ADDITIONAL_STATE_ASSIGNMENTS,
   assertManifestIntegrity,
   assertNoCaptureSatisfiesTwoStates,
+  BEHAVIOUR_VERIFICATION_COUNT,
+  BEHAVIOUR_VERIFIED_CASE_COUNT,
+  BEHAVIOUR_VERIFIED_MANIFEST,
+  BEHAVIOUR_VERIFIED_STATE_IDS,
   comparisonsForRepetitions,
   COMPARISON_COUNT,
+  isBehaviourVerifiedEntry,
+  LOGICAL_CASE_COUNT,
   PARITY_HEIGHT,
   PARITY_MANIFEST,
   PARITY_REPETITIONS,
+  PIXEL_COMPARED_CASE_COUNT,
+  PIXEL_COMPARED_MANIFEST,
+  PIXEL_COMPARISON_COUNT,
   type ManifestEntry,
   type ParityFamily,
   type ParityPalette,
@@ -37,6 +46,7 @@ import {
 } from './parity/manifest';
 import {
   assertSameOrigin,
+  captureWhenStable,
   freezeParityPixels,
   waitForParityReady,
 } from './parity/readiness';
@@ -44,6 +54,7 @@ import {
   hashReferenceSource,
   referenceNavigationUrl,
 } from './parity/reference-server';
+import { statusItemSelector } from './parity/state-contract';
 import { accountParityComparisons } from './parity/evidence';
 
 test.describe.configure({ mode: 'serial' });
@@ -64,6 +75,23 @@ const EVIDENCE_ROOT = resolve(
   'specs/003-real-files-and-tabs/evidence/ft-vs-08/parity',
 );
 const MAPPED_SELECTOR_TIMEOUT_MS = 1_500;
+/*
+ * A settled region reaches three identical rasters in ~400ms, so six seconds is
+ * ten times the observed cost and still fails a region that never settles fast
+ * enough to be worth waiting on.
+ */
+const CAPTURE_SETTLE_TIMEOUT_MS = 6_000;
+/*
+ * The once-per-key preparation settle: a ~900ms quiet window, long enough to
+ * observe the single late transition measured at ~565ms (see
+ * `settleMappedRegion`), and bounded so an oscillating region is reported
+ * rather than waited on.
+ */
+const PREPARED_REGION_SETTLE = Object.freeze({
+  consecutive: 5,
+  intervalMs: 150,
+  timeoutMs: 6_000,
+});
 const MATRIX_NAVIGATION_TIMEOUT_MS = 5_000;
 const MATRIX_ACTION_TIMEOUT_MS = 5_000;
 
@@ -317,22 +345,50 @@ type SurfaceMetrics = Readonly<{
   }>;
 }>;
 
-type CaptureRecord = Readonly<{
+type VerificationRecordBase = Readonly<{
   readonly manifestKey: string;
   readonly repetition: number;
   readonly kind: ManifestEntry['kind'];
   readonly stateId?: ParityStateId;
   readonly palette: ParityPalette['id'];
   readonly captureKey: string;
-  readonly referenceHash?: string;
-  readonly actualHash?: string;
-  readonly comparisonCompleted: boolean;
   readonly status: 'passed' | 'failed' | 'unresolved';
-  readonly referenceReady: boolean;
   readonly actualReady: boolean;
   readonly diagnostics: readonly string[];
   readonly error?: string;
 }>;
+
+/**
+ * One of the 1,530 pixel comparisons: a reference capture, a production
+ * capture, and the zero-tolerance comparison between them.
+ */
+type PixelComparisonRecord = VerificationRecordBase &
+  Readonly<{
+    readonly verification: 'pixel-comparison';
+    readonly referenceHash?: string;
+    readonly actualHash?: string;
+    readonly comparisonCompleted: boolean;
+    readonly referenceReady: boolean;
+    readonly referenceStability?: CaptureStability;
+    readonly actualStability?: CaptureStability;
+    readonly preparationSettle?: RegionSettle;
+  }>;
+
+/**
+ * One of the 108 behaviour verifications. It carries a declared
+ * `verificationMethod` and the assertions that method ran; it deliberately has
+ * no comparison fields at all, so it can never be read as an attempted-and-
+ * failed pixel comparison, and no `comparisonAttempted: false` artifact can
+ * stand in for a parity result (spec.md, Session 2026-08-14).
+ */
+type BehaviourVerificationRecord = VerificationRecordBase &
+  Readonly<{
+    readonly verification: 'behaviour';
+    readonly verificationMethod: string;
+    readonly assertions: readonly string[];
+  }>;
+
+type CaptureRecord = PixelComparisonRecord | BehaviourVerificationRecord;
 
 type FailureRecord = Readonly<{
   readonly entry: ManifestEntry;
@@ -343,6 +399,9 @@ type FailureRecord = Readonly<{
   readonly comparison?: PngComparison;
   readonly referenceMetrics?: SurfaceMetrics;
   readonly actualMetrics?: SurfaceMetrics;
+  readonly referenceStability?: CaptureStability;
+  readonly actualStability?: CaptureStability;
+  readonly preparationSettle?: RegionSettle;
   readonly status: 'failed' | 'unresolved';
 }>;
 
@@ -419,6 +478,54 @@ function fileOnlyStateForEntry(
 
 function documentStatus(page: Page): Locator {
   return page.getByRole('status', { name: 'Document status' });
+}
+
+function documentIdentity(page: Page): Locator {
+  return page.locator('header[aria-label="Document identity"]');
+}
+
+/**
+ * The save status the backend reports, and the human-readable label the title
+ * bar draws for it.
+ *
+ * The status row draws no save status at all, by design: the binding puts it in
+ * the title bar (`mockup.html:594`, the `.doc-name` element), and production
+ * stopped duplicating it in the status row when that row converged on the
+ * binding's exact item inventory (`mockup.html:837-845` — standard-kind, caret,
+ * count, spacer, encoding, EOL, autosave, warnings, provider, Reading pill; no
+ * save status). The authoritative machine-readable source is the
+ * `data-status-state` attribute on the status element
+ * (`frontend/src/ui/components/StatusBar.tsx:43`), so that is what these cases
+ * assert, exactly as `targeted-parity.test.ts`'s T063 does.
+ */
+const SAVE_STATUS_LABELS = Object.freeze({
+  saved: 'Saved',
+  autosaved: 'Autosaved',
+  'unsaved-changes': 'Unsaved changes',
+  'read-only': 'Read-only',
+} as const);
+
+type SaveStatusId = keyof typeof SAVE_STATUS_LABELS;
+
+/**
+ * Assert one save status where it is actually drawn, and assert that it is not
+ * drawn where the binding does not draw it. Returns the assertions performed so
+ * a behaviour-verified record can declare them.
+ */
+async function assertSaveStatusPlacement(
+  page: Page,
+  status: SaveStatusId,
+): Promise<string[]> {
+  const text = SAVE_STATUS_LABELS[status];
+  const row = documentStatus(page);
+  await expect(row).toHaveAttribute('data-status-state', status);
+  await expect(documentIdentity(page)).toContainText(text);
+  await expect(row).not.toContainText(text);
+  return [
+    `[role="status"][aria-label="Document status"] has data-status-state="${status}"`,
+    `header[aria-label="Document identity"] contains "${text}"`,
+    `the status row does not duplicate "${text}", matching the binding's own status row`,
+  ];
 }
 
 function screenForEntry(entry: ManifestEntry): string {
@@ -789,25 +896,30 @@ async function prepareActualState(
       await expect(page.locator('[data-conflict-blocked]')).toHaveCount(1);
       return;
     case 'status-saved':
-      await expect(documentStatus(page)).toContainText('Saved');
+      await assertSaveStatusPlacement(page, 'saved');
       return;
     case 'status-autosaved':
-      await expect(documentStatus(page)).toContainText('Autosaved');
+      await assertSaveStatusPlacement(page, 'autosaved');
       return;
     case 'status-unsaved-changes':
-      await page.getByRole('textbox', { name: 'Editor content' }).press('End');
-      await page.keyboard.type(' modified');
-      await expect(documentStatus(page)).toContainText('Unsaved changes');
+      /*
+       * The fixture already reports the state: `configureParityFixture` sets
+       * `dirty` and `status: 'unsaved-changes'` for this parity case
+       * (`src/dev/bridge-mock/go/appmodel/AppModelHandler.ts:403-406`). Typing
+       * into the editor to provoke it was both unnecessary and destructive —
+       * it changed the very document the capture then photographed.
+       */
+      await assertSaveStatusPlacement(page, 'unsaved-changes');
       return;
     case 'status-read-only':
-      await expect(documentStatus(page)).toContainText('Read-only');
+      await assertSaveStatusPlacement(page, 'read-only');
       return;
     case 'tab-read-only':
       await expect(page.getByRole('tab').first()).toHaveAttribute(
         'aria-label',
         /release-notes\.md/u,
       );
-      await expect(documentStatus(page)).toContainText('Read-only');
+      await assertSaveStatusPlacement(page, 'read-only');
       return;
     case 'tab-detached':
       await expect(page.getByRole('tab').first()).toHaveAttribute(
@@ -1033,9 +1145,37 @@ async function prepareActualFamily(
         .first()
         .click({ button: 'right', force: true });
       return;
-    case 'toolbar-overflow':
-      await page.locator('summary[aria-label="More actions"]').click();
+    case 'toolbar-overflow': {
+      /*
+       * The overflow trigger is the toolbar's own `<summary>`
+       * (`EditorChrome.tsx:480-483`), scoped to the toolbar because the
+       * application action row carries a second `More actions` control.
+       *
+       * It is opened from the keyboard, not by a pointer click, and that is
+       * not a workaround for a flaky locator. Measured at 1280 on
+       * `primary:toolbar-overflow:1280:minimal-light`: the toolbar is pinned to
+       * the binding's 720px width for this family
+       * (`EditorView.module.css:199`) and the deferred-action group's buttons
+       * overflow their own group box — the group measures 655.578→786.969
+       * while its `compact` button measures 726.156→807.531 and `lint` reaches
+       * further still, so both paint on top of the trigger at 790.969→823.969.
+       * `elementFromPoint` returns the disabled `compact` button at every point
+       * inside the trigger, and a pointer click can never reach it. Keyboard
+       * activation is a real user interaction that paint order cannot
+       * intercept; the overlap itself stays visible to the pixel comparison
+       * this setup step exists to enable.
+       */
+      const trigger = page
+        .getByRole('toolbar', { name: 'Document toolbar' })
+        .getByLabel('More actions');
+      await expect(trigger).toHaveCount(1);
+      await trigger.focus();
+      await trigger.press('Enter');
+      await page
+        .locator('[data-viewport-popup="editor-overflow"]')
+        .waitFor({ state: 'visible' });
       return;
+    }
     case 'empty':
       await closeAllActualTabs(page);
       await assertLauncherFixture(
@@ -1089,17 +1229,29 @@ async function prepareActualFamily(
     }
     case 'settings-appearance':
     case 'settings-editor':
-    case 'settings-markdown':
-      await (
-        await openActualSettingsMenu(page, entry.width)
-      )
-        .getByRole('menuitem', { name: 'Appearance', exact: true })
-        .click();
+    case 'settings-markdown': {
+      /*
+       * The binding opens the full settings screen from the compact popup's
+       * `All settings…` row (`mockup.html:624`), which is what this step wants:
+       * it then waits for the settings dialog. `Appearance` is never a menu
+       * item — it is the popup's group label and the accessible name of its
+       * appearance radiogroup (`SettingsMenu.tsx:195-201`, `appearance.mode.label`
+       * = "Appearance"). Measured on this build, the popup exposes zero
+       * `menuitem`s named `Appearance` and two radiogroups, `Theme` and
+       * `Appearance`. The same stale locator was already corrected in
+       * `window-shell.test.ts` (`openSettings`, ~line 51) and
+       * `editor-stage.test.ts`; the settings screen picks its own tab from the
+       * parity case key (`SettingsDialog.tsx:34-42`), so no tab click is
+       * needed here.
+       */
+      const menu = await openActualSettingsMenu(page, entry.width);
+      await menu.getByRole('menuitem', { name: /All settings/u }).click();
       await page
         .locator('[data-viewport-popup="settings-menu"]')
         .filter({ has: page.getByRole('dialog', { name: 'Settings' }) })
         .waitFor({ state: 'visible' });
       return;
+    }
     default: {
       const exhaustive: never = entry.family;
       throw new Error(`unhandled parity family ${exhaustive}`);
@@ -1141,6 +1293,129 @@ async function setupActual(page: Page, entry: ManifestEntry): Promise<void> {
   await applyActualPalette(page, entry.palette, entry.width);
   await prepareActualFamily(page, entry);
   await prepareActualState(page, entry);
+}
+
+/**
+ * The six editor-status states and the save status each of them reports. The
+ * table is checked against the manifest's own split below, so it cannot drift
+ * away from what `PIXEL_COMPARED_MANIFEST` excludes.
+ */
+const BEHAVIOUR_VERIFIED_STATUS_CASES = Object.freeze({
+  'status-saved': 'saved',
+  'status-autosaved': 'autosaved',
+  'status-unsaved-changes': 'unsaved-changes',
+  'status-read-only': 'read-only',
+  'status-mixed-ending': 'autosaved',
+  'status-large-file': 'autosaved',
+} as const satisfies Readonly<Record<string, SaveStatusId>>);
+
+/**
+ * The declared method every behaviour-verified state is proven by. It is a
+ * method with its own assertions, not a comparison that did not happen.
+ */
+const BEHAVIOUR_VERIFICATION_METHOD =
+  'data-status-state attribute, title bar, status-item text and binding colour-token assertions';
+
+const BEHAVIOUR_VERIFICATION_REASON =
+  'No editor-status state can be pixel-compared. Four of the six differ only in a save status the binding never draws in its status row — it puts it in the title bar (mockup.html:594). The other two do name a condition the binding draws (.sb-eol, .sb-count) and reviewed reference variants exist for both; measuring through them proved they still cannot pair on absolute bounds, because the binding row carries a Problems badge, an AI-provider readout and a Reading pill while production carries a Document details disclosure the binding lacks, and because the binding draws .statusbar full width beneath the sidebar while production draws it inside the document area. Measured at 1280 Minimal Light: 115.531px and 207.453px horizontally and a 46px frame-height difference vertically, so every status item lands on a different sub-pixel grid. All six are therefore proven against the authoritative data-status-state attribute, the title bar that carries the status, the status-item text each state changes, and the binding colour token the row reads.';
+
+/**
+ * Verify one behaviour-verified state and return the assertions performed, so
+ * the record and its artifact can declare exactly what proved it. Every
+ * assertion is non-mutating: the page is prepared once per logical key and then
+ * verified three times, so a verification that changed the page would make the
+ * three repetitions describe different things.
+ */
+async function verifyBehaviourState(
+  page: Page,
+  entry: ManifestEntry,
+): Promise<readonly string[]> {
+  const stateId = stateIdForEntry(entry);
+  if (stateId === undefined || !(stateId in BEHAVIOUR_VERIFIED_STATUS_CASES)) {
+    throw new Error(
+      `behaviour verification requested for a non-behaviour case: ${entry.key}`,
+    );
+  }
+  const status =
+    BEHAVIOUR_VERIFIED_STATUS_CASES[
+      stateId as keyof typeof BEHAVIOUR_VERIFIED_STATUS_CASES
+    ];
+  const row = documentStatus(page);
+  const assertions = await assertSaveStatusPlacement(page, status);
+
+  await expect(row.locator('[data-status-item="cursor"]')).toContainText('Ln');
+  assertions.push('the status row reports the caret position');
+  await expect(
+    row.locator(statusItemSelector('encoding', 'actual')),
+  ).toHaveText('UTF-8');
+  assertions.push(`${statusItemSelector('encoding', 'actual')} reads "UTF-8"`);
+  const expectedEnding = stateId === 'status-mixed-ending' ? 'Mixed' : 'LF';
+  await expect(
+    row.locator(statusItemSelector('line-ending', 'actual')),
+  ).toHaveText(expectedEnding);
+  assertions.push(
+    `${statusItemSelector('line-ending', 'actual')} reads "${expectedEnding}"`,
+  );
+  if (stateId === 'status-large-file') {
+    await expect(
+      row.locator(statusItemSelector('count', 'actual')),
+    ).toContainText('420,000');
+    assertions.push(
+      `${statusItemSelector('count', 'actual')} reports the large-file word count`,
+    );
+  }
+
+  const noWrap = await row.evaluate((element) => ({
+    scrollWidth: element.scrollWidth,
+    clientWidth: element.clientWidth,
+    wrappedItems: Array.from(
+      element.querySelectorAll<HTMLElement>('[data-status-item]'),
+    ).filter((item) => getComputedStyle(item).whiteSpace !== 'nowrap').length,
+  }));
+  expect(noWrap.scrollWidth).toBeLessThanOrEqual(noWrap.clientWidth);
+  expect(noWrap.wrappedItems).toBe(0);
+  assertions.push('no status item wraps and the row never overflows');
+
+  /*
+   * The binding's status row reads `--faint` (`mockup.html:382`,
+   * `.statusbar{…color:var(--faint)…}`). With no pixel comparison to catch a
+   * wrong token, this is the check that keeps the colour honest: it resolves
+   * the binding token in the page under test and asserts the row and every item
+   * read exactly it, so it holds in all six palettes without pinning a literal.
+   */
+  const colour = await row.evaluate((element) => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--faint)';
+    probe.style.display = 'none';
+    element.appendChild(probe);
+    const bindingFaint = getComputedStyle(probe).color;
+    probe.remove();
+    return {
+      bindingFaint,
+      row: getComputedStyle(element).color,
+      items: Array.from(
+        element.querySelectorAll<HTMLElement>('[data-status-item]'),
+      ).map(
+        (item) =>
+          [
+            item.dataset.statusItem ?? '',
+            getComputedStyle(item).color,
+          ] as const,
+      ),
+    };
+  });
+  expect(colour.row).toBe(colour.bindingFaint);
+  for (const [item, value] of colour.items) {
+    expect(value, `status item ${item} must read the binding colour`).toBe(
+      colour.bindingFaint,
+    );
+  }
+  expect(colour.items.length).toBeGreaterThan(0);
+  assertions.push(
+    `the status row and all ${colour.items.length} items read the binding's --faint token (${colour.bindingFaint}), per mockup.html:382`,
+  );
+
+  return assertions;
 }
 
 async function setupReference(
@@ -1270,15 +1545,120 @@ async function setupReference(
   }
 }
 
+/**
+ * How long a region took to stop changing, and how many rasters it went
+ * through getting there. Recorded per capture so "did it settle" is a number
+ * the next run can be watched against, not an assumption.
+ */
+type CaptureStability = Readonly<{
+  readonly attempts: number;
+  readonly settleMs: number;
+  readonly distinctHashes: number;
+  readonly observedHashes: readonly string[];
+}>;
+
+type SurfaceCapture = Readonly<{
+  readonly bytes: Uint8Array;
+  readonly metrics: SurfaceMetrics;
+  readonly stability: CaptureStability;
+}>;
+
 async function captureSurface(
   page: Page,
   selector: string,
   label: string,
-): Promise<{ readonly bytes: Uint8Array; readonly metrics: SurfaceMetrics }> {
+): Promise<SurfaceCapture> {
   const locator = await oneVisibleLocator(page, selector, label);
-  const metrics = await metricsFor(locator);
-  const bytes = await locator.screenshot({ animations: 'disabled' });
-  return { bytes, metrics };
+  /*
+   * Capture only once the region has stopped changing, on both pages. FR-FT-054
+   * requires three consecutive unchanged captures to hash identically; this
+   * applies that rule as a precondition instead of checking it after the fact.
+   * Measured 2026-08-14, the editor region changed four times over the first
+   * ~1.2s after readiness with `data-status-state` and `data-preview-state`
+   * constant throughout — the renderer settling, not the application changing
+   * state — and 138 of 450 keys hashed differently across repetitions because
+   * of it, while the immutable reference was stable in all 450. The reference
+   * is settled too, for one extra hash, so both sides are captured under the
+   * same rule if the reference ever gains a dynamic element.
+   *
+   * The metrics are read after the settled capture, not before it, so the
+   * bounds and computed styles describe the raster that was actually
+   * photographed.
+   */
+  const stable = await captureWhenStable(locator, {
+    timeoutMs: CAPTURE_SETTLE_TIMEOUT_MS,
+  });
+  return {
+    bytes: stable.buffer,
+    metrics: await metricsFor(locator),
+    stability: {
+      attempts: stable.attempts,
+      settleMs: stable.settleMs,
+      distinctHashes: stable.observedHashes.length,
+      observedHashes: stable.observedHashes,
+    },
+  };
+}
+
+/**
+ * Whether a mapped region reached a final raster during preparation, and what
+ * it cost to get there.
+ */
+type RegionSettle = Readonly<{
+  readonly settled: boolean;
+  readonly attempts: number | null;
+  readonly settleMs: number | null;
+  readonly distinctRasters: number | null;
+  readonly detail?: string;
+}>;
+
+/**
+ * Settle the production region once per logical key, before its three
+ * repetitions are captured.
+ *
+ * `captureSurface`'s own three-consecutive check is not enough on its own here,
+ * and that is a measurement, not a guess. On
+ * `primary:editor-only:1280:minimal-light`, prepared and then captured three
+ * times with the default settle, every capture reported three identical rasters
+ * — and the three repetitions still produced two different images, because the
+ * region has a single late transition that the ~400ms default window closes
+ * before. Sampled at 60ms: the raster changes once at ~565ms after preparation
+ * and never again over the next 3.2 seconds. The 2,398 differing pixels sit in
+ * an 11px-wide strip at x1012-1022, which is Monaco's
+ * `canvas.decorationsOverviewRuler` drawing itself a second time; the canvas
+ * element and its attributes never change, so no DOM condition can be waited
+ * on. A ~900ms quiet window observes that transition and restarts, and the
+ * three repetitions then agree.
+ *
+ * Deliberately best-effort. A region that never settles is a finding, not a
+ * reason to abort preparation: it is recorded here and the capture path then
+ * reports it in the terms it fails in.
+ */
+async function settleMappedRegion(
+  page: Page,
+  selector: string,
+  label: string,
+): Promise<RegionSettle> {
+  try {
+    const stable = await captureWhenStable(
+      page.locator(selector),
+      PREPARED_REGION_SETTLE,
+    );
+    return {
+      settled: true,
+      attempts: stable.attempts,
+      settleMs: stable.settleMs,
+      distinctRasters: stable.observedHashes.length,
+    };
+  } catch (error) {
+    return {
+      settled: false,
+      attempts: null,
+      settleMs: null,
+      distinctRasters: null,
+      detail: `${label}: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }
 
 function safeArtifactPart(value: string): string {
@@ -1294,6 +1674,14 @@ async function writeFailureArtifacts(
     safeArtifactPart(failure.entry.key),
     `repetition-${failure.repetition}`,
   );
+  /*
+   * Each (key, repetition) is visited exactly once per run, so the directory is
+   * rebuilt rather than merged into. A previous run's artifacts describing a
+   * different outcome — an image triplet where this run took no picture, or a
+   * behaviour artifact where this run compared pixels — would otherwise sit
+   * beside this run's and contradict it.
+   */
+  await rm(directory, { recursive: true, force: true });
   await mkdir(directory, { recursive: true });
   if (failure.referenceBytes !== undefined) {
     await writeFile(join(directory, 'reference.png'), failure.referenceBytes);
@@ -1315,6 +1703,11 @@ async function writeFailureArtifacts(
         actual: failure.actualMetrics ?? null,
         comparison: failure.comparison?.metrics ?? null,
         masks: failure.comparison?.masks ?? DEFAULT_REVIEWED_MASKS,
+        stability: {
+          reference: failure.referenceStability ?? null,
+          actual: failure.actualStability ?? null,
+          preparation: failure.preparationSettle ?? null,
+        },
       },
       null,
       2,
@@ -1347,11 +1740,96 @@ async function writeFailureArtifacts(
         reason:
           failure.status === 'unresolved'
             ? 'No source-backed reference condition exists; the state is recorded as unresolved without counting it as parity.'
-            : 'A setup or selector failure cannot truthfully produce a mapped image triplet; the missing artifacts are recorded explicitly.',
+            : isBehaviourVerifiedEntry(failure.entry)
+              ? 'A behaviour verification is not a pixel comparison and produces no image triplet; the assertion that failed is recorded instead.'
+              : 'A setup or selector failure cannot truthfully produce a mapped image triplet; the missing artifacts are recorded explicitly.',
       },
       null,
       2,
     ),
+  );
+}
+
+/**
+ * The positive artifact for a behaviour verification. It declares the method
+ * and every assertion that ran. It never writes `comparisonAttempted: false`,
+ * and its production image is named for what it is — a picture of production
+ * alone, not half of a comparison triplet — so nothing here can be mistaken for
+ * a parity pass that was never measured.
+ */
+async function writeBehaviourArtifacts(
+  page: Page,
+  record: BehaviourVerificationRecord,
+  hashes: Readonly<Record<string, string>>,
+): Promise<void> {
+  const directory = join(
+    EVIDENCE_ROOT,
+    safeArtifactPart(record.manifestKey),
+    `repetition-${record.repetition}`,
+  );
+  await rm(directory, { recursive: true, force: true });
+  await mkdir(directory, { recursive: true });
+  const row = documentStatus(page);
+  /*
+   * Illustrative evidence, not a measurement: nothing compares this image and
+   * no count reads it, so it is taken plainly rather than through
+   * `captureWhenStable`. Settling matters where a raster becomes a result; here
+   * the result is the assertion list below.
+   */
+  await writeFile(
+    join(directory, 'production-status-row.png'),
+    await row.screenshot({ animations: 'disabled' }),
+  );
+  await writeFile(
+    join(directory, 'semantic.json'),
+    JSON.stringify(
+      {
+        manifestKey: record.manifestKey,
+        repetition: record.repetition,
+        stateId: record.stateId ?? null,
+        palette: record.palette,
+        dataStatusState: await row.getAttribute('data-status-state'),
+        statusRowText: await row.innerText(),
+        documentIdentityText: await documentIdentity(page).innerText(),
+      },
+      null,
+      2,
+    ),
+  );
+  await writeFile(
+    join(directory, 'source-hashes.json'),
+    JSON.stringify(hashes, null, 2),
+  );
+  await writeFile(
+    join(directory, 'status.json'),
+    JSON.stringify(
+      {
+        status: 'behaviour-verified',
+        exitStatus: 0,
+        pixelCompared: false,
+        verificationMethod: record.verificationMethod,
+        assertions: record.assertions,
+        reason: BEHAVIOUR_VERIFICATION_REASON,
+      },
+      null,
+      2,
+    ),
+  );
+  await writeFile(
+    join(directory, 'raw-status.log'),
+    [
+      'status=behaviour-verified',
+      'exit_status=0',
+      `manifest_key=${record.manifestKey}`,
+      `repetition=${record.repetition}`,
+      `verification_method=${record.verificationMethod}`,
+      `assertion_count=${record.assertions.length}`,
+      ...record.assertions.map(
+        (assertion, index) => `assertion_${index + 1}=${assertion}`,
+      ),
+      'reason=no_editor_status_state_can_pair_on_absolute_bounds',
+      '',
+    ].join('\n'),
   );
 }
 
@@ -1360,9 +1838,51 @@ async function writeRunReports(
   hashes: Readonly<Record<string, string>>,
 ): Promise<void> {
   await mkdir(EVIDENCE_ROOT, { recursive: true });
+  const planned = comparisonsForRepetitions();
+  const plannedPixelComparisons = planned.filter(
+    ({ entry }) => !isBehaviourVerifiedEntry(entry),
+  );
+  const plannedBehaviourVerifications = planned.filter(({ entry }) =>
+    isBehaviourVerifiedEntry(entry),
+  );
+  const pixelRecords = captures.filter(
+    (capture): capture is PixelComparisonRecord =>
+      capture.verification === 'pixel-comparison',
+  );
+  const behaviourRecords = captures.filter(
+    (capture): capture is BehaviourVerificationRecord =>
+      capture.verification === 'behaviour',
+  );
   const comparisonAccounting = accountParityComparisons(
-    comparisonsForRepetitions(),
-    captures,
+    plannedPixelComparisons,
+    pixelRecords,
+  );
+  /*
+   * The behaviour half is accounted separately and with its own field names. It
+   * has no `referenceReady` and no `comparisonCompleted` because no reference
+   * was paired and no comparison was taken — writing those fields as `false`
+   * would describe a comparison that was attempted and lost, which is exactly
+   * what the specification forbids these states from claiming.
+   */
+  const behaviourAccounting = plannedBehaviourVerifications.map(
+    ({ manifestKey, repetition }) => {
+      const record = behaviourRecords.find(
+        (candidate) =>
+          candidate.manifestKey === manifestKey &&
+          candidate.repetition === repetition,
+      );
+      return {
+        manifestKey,
+        repetition,
+        planned: true,
+        attempted: record !== undefined,
+        actualReady: record?.actualReady ?? false,
+        verified: record?.status === 'passed',
+        failed: record?.status === 'failed',
+        verificationMethod: record?.verificationMethod ?? null,
+        assertionCount: record?.assertions.length ?? 0,
+      };
+    },
   );
   const stateCoverage = Object.fromEntries(
     ADDITIONAL_STATE_ASSIGNMENTS.map(({ stateId }) => [
@@ -1373,36 +1893,159 @@ async function writeRunReports(
           palette: capture.palette,
           repetition: capture.repetition,
           status: capture.status,
-          comparisonCompleted: capture.comparisonCompleted,
+          verification: capture.verification,
+          comparisonCompleted:
+            capture.verification === 'pixel-comparison'
+              ? capture.comparisonCompleted
+              : null,
+          verificationMethod:
+            capture.verification === 'behaviour'
+              ? capture.verificationMethod
+              : null,
         })),
     ]),
   );
+  const count = <T>(rows: readonly T[], of: (row: T) => boolean): number =>
+    rows.filter(of).length;
+  /*
+   * Capture settling, as a number rather than an assumption. `unsettled` is the
+   * count the next run has to keep at zero; `neededSettling` says how much work
+   * `captureWhenStable` is doing, which is what would have been silent
+   * non-determinism before.
+   */
+  const stabilitySummary = (
+    side: 'referenceStability' | 'actualStability',
+  ): Readonly<Record<string, number>> => {
+    const observed = pixelRecords
+      .map((record) => record[side])
+      .filter((value): value is CaptureStability => value !== undefined);
+    return {
+      captures: observed.length,
+      neededSettling: count(observed, ({ attempts }) => attempts > 3),
+      sawMoreThanOneRaster: count(
+        observed,
+        ({ distinctHashes }) => distinctHashes > 1,
+      ),
+      maxAttempts: observed.reduce(
+        (highest, { attempts }) => Math.max(highest, attempts),
+        0,
+      ),
+      maxSettleMs: observed.reduce(
+        (highest, { settleMs }) => Math.max(highest, settleMs),
+        0,
+      ),
+      totalSettleMs: observed.reduce(
+        (total, { settleMs }) => total + settleMs,
+        0,
+      ),
+    };
+  };
+  /**
+   * A logical key whose three repetitions did not produce one hash. This is the
+   * measurement the settle-before-capture change exists to drive to zero.
+   */
+  const unstableKeys = PIXEL_COMPARED_MANIFEST.filter((entry) => {
+    const cases = pixelRecords.filter(
+      ({ manifestKey }) => manifestKey === entry.key,
+    );
+    return (
+      new Set(cases.map(({ actualHash }) => actualHash).filter(Boolean)).size >
+        1 ||
+      new Set(cases.map(({ referenceHash }) => referenceHash).filter(Boolean))
+        .size > 1
+    );
+  }).map(({ key }) => key);
   await writeFile(
     join(EVIDENCE_ROOT, 'manifest-report.json'),
     JSON.stringify(
       {
         counts: {
-          planned: comparisonAccounting.filter(({ planned }) => planned).length,
           logical: PARITY_MANIFEST.length,
           repetitions: PARITY_REPETITIONS,
-          attempted: comparisonAccounting.filter(({ attempted }) => attempted)
-            .length,
-          referenceReady: comparisonAccounting.filter(
-            ({ referenceReady }) => referenceReady,
-          ).length,
-          actualReady: comparisonAccounting.filter(
-            ({ actualReady }) => actualReady,
-          ).length,
-          comparisonCompleted: comparisonAccounting.filter(
-            ({ comparisonCompleted }) => comparisonCompleted,
-          ).length,
-          passed: comparisonAccounting.filter(({ passed }) => passed).length,
-          failed: comparisonAccounting.filter(({ failed }) => failed).length,
-          unresolved: comparisonAccounting.filter(
-            ({ unresolved }) => unresolved,
-          ).length,
+          planned: planned.length,
+          attempted:
+            count(comparisonAccounting, ({ attempted }) => attempted) +
+            count(behaviourAccounting, ({ attempted }) => attempted),
+          pixelComparison: {
+            logical: PIXEL_COMPARED_MANIFEST.length,
+            planned: plannedPixelComparisons.length,
+            attempted: count(
+              comparisonAccounting,
+              ({ attempted }) => attempted,
+            ),
+            referenceReady: count(
+              comparisonAccounting,
+              ({ referenceReady }) => referenceReady,
+            ),
+            actualReady: count(
+              comparisonAccounting,
+              ({ actualReady }) => actualReady,
+            ),
+            comparisonCompleted: count(
+              comparisonAccounting,
+              ({ comparisonCompleted }) => comparisonCompleted,
+            ),
+            passed: count(comparisonAccounting, ({ passed }) => passed),
+            failed: count(comparisonAccounting, ({ failed }) => failed),
+            unresolved: count(
+              comparisonAccounting,
+              ({ unresolved }) => unresolved,
+            ),
+          },
+          behaviourVerification: {
+            logical: BEHAVIOUR_VERIFIED_MANIFEST.length,
+            planned: plannedBehaviourVerifications.length,
+            attempted: count(behaviourAccounting, ({ attempted }) => attempted),
+            actualReady: count(
+              behaviourAccounting,
+              ({ actualReady }) => actualReady,
+            ),
+            verified: count(behaviourAccounting, ({ verified }) => verified),
+            failed: count(behaviourAccounting, ({ failed }) => failed),
+            stateIds: [...BEHAVIOUR_VERIFIED_STATE_IDS],
+            verificationMethod: BEHAVIOUR_VERIFICATION_METHOD,
+            reason: BEHAVIOUR_VERIFICATION_REASON,
+          },
+        },
+        stability: {
+          reference: stabilitySummary('referenceStability'),
+          actual: stabilitySummary('actualStability'),
+          unstableLogicalKeys: unstableKeys.length,
+          unstableLogicalKeyList: unstableKeys,
+          preparation: {
+            settled: new Set(
+              pixelRecords
+                .filter(({ preparationSettle }) => preparationSettle?.settled)
+                .map(({ manifestKey }) => manifestKey),
+            ).size,
+            neverSettled: [
+              ...new Set(
+                pixelRecords
+                  .filter(
+                    ({ preparationSettle }) =>
+                      preparationSettle !== undefined &&
+                      !preparationSettle.settled,
+                  )
+                  .map(({ manifestKey }) => manifestKey),
+              ),
+            ],
+            maxSettleMs: pixelRecords.reduce(
+              (highest, { preparationSettle }) =>
+                Math.max(highest, preparationSettle?.settleMs ?? 0),
+              0,
+            ),
+          },
+        },
+        legend: {
+          totals:
+            'logical = pixelComparison.logical + behaviourVerification.logical = 546. planned = pixelComparison.planned + behaviourVerification.planned = 1638.',
+          passed:
+            'pixelComparison.passed counts completed zero-tolerance comparisons only. A behaviour verification is never counted there; it is counted as behaviourVerification.verified, against the declared verificationMethod.',
+          stability:
+            'Every capture waits for three consecutive identical rasters before it is taken (captureWhenStable). attempts is the number of rasters taken; three means it never moved. unstableLogicalKeys must be zero: it counts keys whose three repetitions still did not agree on a hash.',
         },
         comparisonAccounting,
+        behaviourAccounting,
         captures,
       },
       null,
@@ -1419,15 +2062,48 @@ async function writeRunReports(
       {
         source: hashes,
         cases: Object.fromEntries(
-          PARITY_MANIFEST.map((entry) => [
+          PIXEL_COMPARED_MANIFEST.map((entry) => [
             entry.key,
-            captures
+            pixelRecords
               .filter(({ manifestKey }) => manifestKey === entry.key)
-              .map(({ repetition, referenceHash, actualHash, status }) => ({
+              .map(
+                ({
+                  repetition,
+                  referenceHash,
+                  actualHash,
+                  status,
+                  referenceStability,
+                  actualStability,
+                }) => ({
+                  repetition,
+                  referenceHash: referenceHash ?? null,
+                  actualHash: actualHash ?? null,
+                  status,
+                  referenceAttempts: referenceStability?.attempts ?? null,
+                  referenceSettleMs: referenceStability?.settleMs ?? null,
+                  referenceObservedHashes:
+                    referenceStability?.observedHashes ?? null,
+                  actualAttempts: actualStability?.attempts ?? null,
+                  actualSettleMs: actualStability?.settleMs ?? null,
+                  actualObservedHashes: actualStability?.observedHashes ?? null,
+                }),
+              ),
+          ]),
+        ),
+        /*
+         * The behaviour-verified keys take no picture to hash. Their
+         * determinism is the determinism of their assertions, listed here so
+         * the report still accounts for all 546 logical keys.
+         */
+        behaviourVerifiedCases: Object.fromEntries(
+          BEHAVIOUR_VERIFIED_MANIFEST.map((entry) => [
+            entry.key,
+            behaviourRecords
+              .filter(({ manifestKey }) => manifestKey === entry.key)
+              .map(({ repetition, status, assertions }) => ({
                 repetition,
-                referenceHash: referenceHash ?? null,
-                actualHash: actualHash ?? null,
                 status,
+                assertions,
               })),
           ]),
         ),
@@ -1439,10 +2115,10 @@ async function writeRunReports(
 }
 
 function deterministicHashFailures(
-  captures: readonly CaptureRecord[],
+  captures: readonly PixelComparisonRecord[],
 ): string[] {
   const failures: string[] = [];
-  for (const entry of PARITY_MANIFEST) {
+  for (const entry of PIXEL_COMPARED_MANIFEST) {
     const cases = captures.filter(
       ({ manifestKey }) => manifestKey === entry.key,
     );
@@ -1461,6 +2137,43 @@ function deterministicHashFailures(
     }
     if (actualHashes.size !== 1) {
       failures.push(`${entry.key} actual hashes are not deterministic`);
+    }
+  }
+  return failures;
+}
+
+/**
+ * The behaviour half's determinism check. A behaviour-verified key must run
+ * three times and prove the same assertions each time — the same requirement
+ * the hash check makes of a pixel-compared key, expressed in the terms that
+ * half is actually verified in.
+ */
+function behaviourVerificationDrift(
+  records: readonly BehaviourVerificationRecord[],
+): string[] {
+  const failures: string[] = [];
+  for (const entry of BEHAVIOUR_VERIFIED_MANIFEST) {
+    const cases = records.filter(
+      ({ manifestKey }) => manifestKey === entry.key,
+    );
+    if (cases.length !== PARITY_REPETITIONS) {
+      failures.push(`${entry.key} verified ${cases.length} times`);
+      continue;
+    }
+    const declared = new Set(
+      cases.map(({ verificationMethod }) => verificationMethod),
+    );
+    const proven = new Set(
+      cases.map(({ assertions }) => assertions.join('\n')),
+    );
+    if (declared.size !== 1 || declared.has('')) {
+      failures.push(`${entry.key} does not declare one verification method`);
+    }
+    if (proven.size !== 1) {
+      failures.push(`${entry.key} assertions are not deterministic`);
+    }
+    if (cases.some(({ assertions }) => assertions.length === 0)) {
+      failures.push(`${entry.key} recorded a verification with no assertions`);
     }
   }
   return failures;
@@ -1583,6 +2296,26 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
   // final cases on the current local runner.
   test.setTimeout(2 * 60 * 60 * 1000);
   assertManifestIntegrity();
+  /*
+   * The verification split is read from the manifest, never written out here:
+   * 546 logical keys are 510 pixel-compared plus 36 behaviour-verified, and
+   * 1,638 verifications are 1,530 pixel comparisons plus 108 behaviour
+   * verifications. The six behaviour-verified state IDs must all be states this
+   * runner actually knows how to verify, and no others.
+   */
+  expect(PIXEL_COMPARED_MANIFEST).toHaveLength(PIXEL_COMPARED_CASE_COUNT);
+  expect(BEHAVIOUR_VERIFIED_MANIFEST).toHaveLength(
+    BEHAVIOUR_VERIFIED_CASE_COUNT,
+  );
+  expect(PIXEL_COMPARED_CASE_COUNT + BEHAVIOUR_VERIFIED_CASE_COUNT).toBe(
+    LOGICAL_CASE_COUNT,
+  );
+  expect(PIXEL_COMPARISON_COUNT + BEHAVIOUR_VERIFICATION_COUNT).toBe(
+    COMPARISON_COUNT,
+  );
+  expect(Object.keys(BEHAVIOUR_VERIFIED_STATUS_CASES)).toEqual([
+    ...BEHAVIOUR_VERIFIED_STATE_IDS,
+  ]);
   const referenceSource = await readFile(REFERENCE_PATH);
   const referenceSourceHash = hashReferenceSource(referenceSource);
   const actualOrigin = new URL(ACTUAL_ORIGIN).origin;
@@ -1611,6 +2344,7 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
   let preparedManifestKey: string | undefined;
   let preparedReferenceReady = false;
   let preparedActualReady = false;
+  let preparedSettle: RegionSettle | undefined;
 
   try {
     for (const expected of expectedComparisons) {
@@ -1619,6 +2353,64 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
       if (entry.key !== expected.manifestKey) {
         throw new Error(`comparison manifest key drifted for ${entry.key}`);
       }
+
+      /*
+       * The behaviour half never enters the capture path. No reference page is
+       * navigated for it, no screenshot is taken of either page, and no
+       * comparison is constructed — so it cannot be recorded as a pixel
+       * comparison that was attempted and lost. It is proven by the declared
+       * method's assertions and recorded with that method named.
+       */
+      if (isBehaviourVerifiedEntry(entry)) {
+        let assertions: readonly string[] = [];
+        let behaviourError: string | undefined;
+        try {
+          if (preparedManifestKey !== entry.key) {
+            preparedReferenceReady = false;
+            preparedActualReady = false;
+            await setupActual(page, entry);
+            preparedActualReady = true;
+            preparedManifestKey = entry.key;
+          }
+          await assertSameOrigin(page, actualOrigin);
+          await freezeParityPixels(page);
+          assertions = await verifyBehaviourState(page, entry);
+        } catch (error) {
+          behaviourError =
+            error instanceof Error
+              ? (error.stack ?? error.message)
+              : String(error);
+          failures.push({
+            entry,
+            repetition: expected.repetition,
+            error: behaviourError,
+            status: 'failed',
+          });
+        }
+        const behaviourRecord: BehaviourVerificationRecord = {
+          manifestKey: entry.key,
+          repetition: expected.repetition,
+          kind: entry.kind,
+          verification: 'behaviour',
+          stateId: stateIdForEntry(entry),
+          palette: entry.palette.id,
+          captureKey: entry.captureKey,
+          status: behaviourError === undefined ? 'passed' : 'failed',
+          actualReady: preparedActualReady,
+          diagnostics: [],
+          error: behaviourError,
+          verificationMethod: BEHAVIOUR_VERIFICATION_METHOD,
+          assertions,
+        };
+        captures.push(behaviourRecord);
+        if (behaviourError === undefined) {
+          await writeBehaviourArtifacts(page, behaviourRecord, hashes);
+        } else {
+          await writeFailureArtifacts(failures[failures.length - 1], hashes);
+        }
+        continue;
+      }
+
       let referenceHash: string | undefined;
       let actualHash: string | undefined;
       let caseError: string | undefined;
@@ -1627,11 +2419,14 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
       let comparison: PngComparison | undefined;
       let referenceMetrics: SurfaceMetrics | undefined;
       let actualMetrics: SurfaceMetrics | undefined;
+      let referenceStability: CaptureStability | undefined;
+      let actualStability: CaptureStability | undefined;
       let diagnostics: readonly string[] = [];
       try {
         if (preparedManifestKey !== entry.key) {
           preparedReferenceReady = false;
           preparedActualReady = false;
+          preparedSettle = undefined;
           await setupReference(referencePage, entry, referenceSourceHash);
           preparedReferenceReady =
             stateIdForEntry(entry) === undefined ||
@@ -1639,6 +2434,18 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
               'supported';
           await setupActual(page, entry);
           preparedActualReady = true;
+          /*
+           * Only the production region is settled here. The immutable reference
+           * was stable in all 450 keys that produced a hash in the previous
+           * run, and it has no Monaco; `captureSurface` still settles both
+           * sides on every capture, so the two are captured under the same
+           * rule.
+           */
+          preparedSettle = await settleMappedRegion(
+            page,
+            mapping.actualSelector,
+            `actual ${mapping.regionId}`,
+          );
           preparedManifestKey = entry.key;
         }
         const stateId = stateIdForEntry(entry);
@@ -1667,6 +2474,8 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
         actualBytes = actual.bytes;
         referenceMetrics = reference.metrics;
         actualMetrics = actual.metrics;
+        referenceStability = reference.stability;
+        actualStability = actual.stability;
         referenceHash = hashPng(referenceBytes);
         actualHash = hashPng(actualBytes);
         comparison = comparePng(referenceBytes, actualBytes, {
@@ -1738,6 +2547,9 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
             comparison,
             referenceMetrics,
             actualMetrics,
+            referenceStability,
+            actualStability,
+            preparationSettle: preparedSettle,
             status: 'failed',
           });
         }
@@ -1759,6 +2571,9 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
           comparison,
           referenceMetrics,
           actualMetrics,
+          referenceStability,
+          actualStability,
+          preparationSettle: preparedSettle,
           status,
         });
       }
@@ -1767,6 +2582,7 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
         manifestKey: entry.key,
         repetition: expected.repetition,
         kind: entry.kind,
+        verification: 'pixel-comparison',
         stateId: 'stateId' in entry ? entry.stateId : undefined,
         palette: entry.palette.id,
         captureKey: entry.captureKey,
@@ -1779,6 +2595,9 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
             : failures[failures.length - 1].status,
         referenceReady: preparedReferenceReady,
         actualReady: preparedActualReady,
+        referenceStability,
+        actualStability,
+        preparationSettle: preparedSettle,
         diagnostics,
         error: caseError,
       });
@@ -1796,7 +2615,39 @@ test('T035 proves all 546 binding comparisons across three unchanged repetitions
     PARITY_MANIFEST.length,
   );
   expect(captures.every(({ status }) => status === 'passed')).toBe(true);
-  expect(deterministicHashFailures(captures)).toEqual([]);
+
+  const pixelCaptures = captures.filter(
+    (capture): capture is PixelComparisonRecord =>
+      capture.verification === 'pixel-comparison',
+  );
+  const behaviourCaptures = captures.filter(
+    (capture): capture is BehaviourVerificationRecord =>
+      capture.verification === 'behaviour',
+  );
+  /*
+   * The two halves reconstruct the fixed 1,638 total exactly, and each half
+   * covers exactly its own logical keys. Neither can borrow from the other.
+   */
+  expect(pixelCaptures).toHaveLength(PIXEL_COMPARISON_COUNT);
+  expect(behaviourCaptures).toHaveLength(BEHAVIOUR_VERIFICATION_COUNT);
+  expect(pixelCaptures.length + behaviourCaptures.length).toBe(
+    COMPARISON_COUNT,
+  );
+  expect(
+    new Set(pixelCaptures.map(({ manifestKey }) => manifestKey)).size,
+  ).toBe(PIXEL_COMPARED_MANIFEST.length);
+  expect(
+    new Set(behaviourCaptures.map(({ manifestKey }) => manifestKey)).size,
+  ).toBe(BEHAVIOUR_VERIFIED_MANIFEST.length);
+  expect(
+    behaviourCaptures.every(
+      ({ verificationMethod, assertions }) =>
+        verificationMethod === BEHAVIOUR_VERIFICATION_METHOD &&
+        assertions.length > 0,
+    ),
+  ).toBe(true);
+  expect(deterministicHashFailures(pixelCaptures)).toEqual([]);
+  expect(behaviourVerificationDrift(behaviourCaptures)).toEqual([]);
 
   const stateCaptures = captures.filter(({ stateId }) => stateId !== undefined);
   assertNoCaptureSatisfiesTwoStates(

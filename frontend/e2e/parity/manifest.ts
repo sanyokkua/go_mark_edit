@@ -414,7 +414,7 @@ invariant(
 );
 /**
  * The verification split is self-asserted from the manifest itself, so the
- * declared 522/24 and 1,566/72 numbers cannot drift away from what the manifest
+ * declared 510/36 and 1,530/108 numbers cannot drift away from what the manifest
  * actually contains, and the fixed 546/1,638 totals are still exact.
  */
 invariant(
