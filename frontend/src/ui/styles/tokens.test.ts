@@ -305,6 +305,17 @@ const requiredPaletteTokens = [
   '--dur-fast',
   '--dur-base',
   '--dur-slow',
+  /*
+   * These four were asserted in one palette each and so could regress in the
+   * other five without any gate noticing. `--win-shadow` and `--font` are
+   * redefined per theme family (`tokens.css:224-243` and the six palette
+   * blocks from :327), which is exactly why presence has to be checked in all
+   * six rather than in the one that happened to be sampled.
+   */
+  '--win-shadow',
+  '--context-menu-shadow',
+  '--font',
+  '--disabled-opacity',
 ] as const;
 
 it('suppliesEveryAppearanceContractTokenAcrossAllSixPalettes', (): void => {
@@ -313,6 +324,44 @@ it('suppliesEveryAppearanceContractTokenAcrossAllSixPalettes', (): void => {
       expect(appliedToken(theme, mode, token)).not.toBe('');
     }
   }
+});
+
+/*
+ * FR-FT-053: the three families must stay structurally distinguishable, "not
+ * merely recolored". Presence alone cannot prove that — a family that silently
+ * inherited the root shadow or typeface would still pass the gate above while
+ * the structural difference disappeared. These two assert the distinction
+ * itself.
+ */
+it('keepsTheElevationAndTypefaceDistinctPerThemeFamily', (): void => {
+  const shadows = new Set(
+    ['glass', 'material', 'minimal'].map((theme) =>
+      appliedToken(theme, 'light', '--win-shadow'),
+    ),
+  );
+  expect(shadows.size).toBe(3);
+
+  const fonts = new Set(
+    ['glass', 'material', 'minimal'].map((theme) =>
+      appliedToken(theme, 'light', '--font'),
+    ),
+  );
+  expect(fonts.size).toBe(3);
+});
+
+/*
+ * The inverse of the rule above. FR-FT-056 grants the reference variants a
+ * "single reviewed unavailable opacity", so this one value must NOT vary by
+ * palette — a per-theme override would make the deferred File, View and
+ * toolbar rows compare differently in one palette than in another.
+ */
+it('usesOneReviewedUnavailableOpacityInEveryPalette', (): void => {
+  const opacities = new Set(
+    palettes.map(([theme, mode]) =>
+      appliedToken(theme, mode, '--disabled-opacity'),
+    ),
+  );
+  expect([...opacities]).toEqual(['0.48']);
 });
 
 it('sharesSyntaxTokensByResolvedAppearance', (): void => {
