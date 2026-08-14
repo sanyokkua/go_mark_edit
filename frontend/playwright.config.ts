@@ -1,7 +1,18 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testMatch: 'e2e/**/*.test.ts',
+  /*
+   * The `e2e/parity` directory belongs to Jest by explicit declaration: its
+   * `jest.config.js` testMatch entry names that directory recursively. Those
+   * files are pure unit tests of the manifest, adapter, comparator and state
+   * contract, and they use bare `describe`/`it`, which Playwright does not
+   * provide. A recursive glob here captured them as well, so `playwright test`
+   * with no arguments — exactly what `just e2e-test` runs — died with
+   * `ReferenceError: it is not defined` during collection, before a single
+   * browser case executed. Matching only the top level gives each file one
+   * owner; nothing is excluded from verification.
+   */
+  testMatch: 'e2e/*.test.ts',
   outputDir: 'test-results',
   snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}{ext}',
   use: {
