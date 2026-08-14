@@ -206,6 +206,11 @@ because `/speckit-converge` must still determine whether the implementation matc
   serving the **old** HTML for the rest of the session, and the measurement fails in the direction
   that looks like production drift — the Settings popup reported 2,554 pixels instead of 709 until
   the port-4174 process was killed. Kill it after every adapter change.
+- **`just build` leaves `frontend/wailsjs/runtime/` at mode 644.** Three files show as modified with
+  **zero content difference** — only the mode bit. `just gen-check` runs `wails generate module`,
+  which rewrites them at 755 and cleans the tree, so the fix is to run gen-check *after* build.
+  The release gate order (gen-check first, build last) therefore ends with a dirty tree; that is
+  expected, not drift.
 - **`git add -A` can silently regress `frontend/wailsjs/**` to mode 644**, especially after a
   `git stash` cycle, which fails `just gen-check` on the mode bit alone with zero content
   difference. Check `git ls-files -s frontend/wailsjs/runtime/` before committing anything that
