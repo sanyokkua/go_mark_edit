@@ -48,6 +48,11 @@ func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger
 		SettingsService: settingsService,
 		AppModelService: appModelService,
 	}
+	// The join the 2026-08-14 walkthrough found missing. Settings owns the
+	// autosave preference and the document model owns the scheduler; this is the
+	// only place that holds both, so it is where the preference becomes a
+	// command rather than a projection.
+	settingsService.SetAutosaveObserver(appModelService.SetAutosaveEnabled)
 	holder.SettingsHandler = settings.NewSettingsHandler(settingsService, appLogger, holder.Context)
 	holder.AppModelHandler = appmodel.NewAppModelHandler(appModelService, appLogger, holder.Context)
 	holder.NativeWindowService = NewNativeWindowService(appModelService, nil)
@@ -118,9 +123,25 @@ func (holder *ApplicationContextHolder) Init(ctx context.Context) error {
 	holder.AppModelService.SetFileMetadataRepository(appmodel.NewSqliteFileMetadataRepository(database))
 	holder.AppModelService.SetRecentFilesRepository(appmodel.NewSqliteRecentFilesRepository(database))
 	holder.DB = database
+	holder.applyPersistedAutosavePreference(ctx)
 	holder.startupErr = nil
 	holder.AppModelService.SetStartupError(nil)
 	return nil
+}
+
+// applyPersistedAutosavePreference pushes the stored preference into the
+// document model once at startup. Without it the observer only fires when the
+// user toggles the switch, so a preference of "off" would silently come back on
+// at every launch.
+//
+// An unreadable store is not a reason to change behaviour: autosave stays at its
+// documented default rather than being disabled by a failure to read.
+func (holder *ApplicationContextHolder) applyPersistedAutosavePreference(ctx context.Context) {
+	stored, err := holder.SettingsService.Get(ctx)
+	if err != nil {
+		return
+	}
+	holder.AppModelService.SetAutosaveEnabled(stored.File.Autosave)
 }
 
 func (holder *ApplicationContextHolder) StartupReady() bool {

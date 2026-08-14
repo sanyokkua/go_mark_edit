@@ -8,10 +8,36 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 )
 
+// AutosaveObserver is notified whenever the persisted autosave preference is
+// written. Settings owns the preference; it does not own the document model, so
+// it must not import it. The composition root supplies this so the preference
+// reaches the scheduler instead of stopping at the database and the status bar —
+// the exact gap the 2026-08-14 walkthrough found.
+type AutosaveObserver func(enabled bool)
+
 // SettingsService contains settings validation and stored-value normalization.
 type SettingsService struct {
-	mu         sync.RWMutex
-	repository SettingsRepositoryAPI
+	mu               sync.RWMutex
+	repository       SettingsRepositoryAPI
+	autosaveObserver AutosaveObserver
+}
+
+// SetAutosaveObserver wires the composition root's document-model command.
+func (service *SettingsService) SetAutosaveObserver(observer AutosaveObserver) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+
+	service.autosaveObserver = observer
+}
+
+func (service *SettingsService) notifyAutosave(enabled bool) {
+	service.mu.RLock()
+	observer := service.autosaveObserver
+	service.mu.RUnlock()
+
+	if observer != nil {
+		observer(enabled)
+	}
 }
 
 // NewSettingsService creates the phase-one service. The repository is nil
@@ -76,6 +102,9 @@ func (service *SettingsService) UpdateFile(ctx context.Context, fileSettings app
 	if err := repository.UpdateFile(nonNilContext(ctx), fileSettings); err != nil {
 		return apperr.IO("update settings", err)
 	}
+	// Only after the write succeeds: a preference that failed to persist must
+	// not change what the document model does.
+	service.notifyAutosave(fileSettings.Autosave)
 	return nil
 }
 

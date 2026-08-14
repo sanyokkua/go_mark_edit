@@ -32,6 +32,17 @@ type autosaveTimerEntry struct {
 	timer      AutosaveTimer
 }
 
+// AutosaveEnabled reports whether the scheduler will debounce further writes.
+// The preference is owned by settings and pushed in here by the composition
+// root; this reads back what the document model is actually doing, which is the
+// only thing worth asserting after the 2026-08-14 walkthrough found the switch
+// and the behaviour disagreeing.
+func (service *AppModelService) AutosaveEnabled() bool {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	return service.autosaveEnabled
+}
+
 func (service *AppModelService) SetAutosaveEnabled(enabled bool) {
 	service.mu.Lock()
 	defer service.mu.Unlock()

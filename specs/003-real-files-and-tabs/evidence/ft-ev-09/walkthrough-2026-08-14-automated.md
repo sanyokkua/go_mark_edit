@@ -98,3 +98,70 @@ Producing it honestly needs one of:
 The Autosave switch was returned to `on`, the state it was found in. `fixture-a.md` is left at
 165 bytes containing the walkthrough's edits; it is a throwaway fixture outside the repository.
 The application was left running.
+
+---
+
+# Addendum — T104 fixed and re-verified on the real binary
+
+Date: 2026-08-15. Binary rebuilt from the fix; same fixtures; same method.
+
+## A correction to the root cause above
+
+The section above says `SetAutosaveEnabled` "has no Wails binding" and "no frontend code calls
+it". Both statements are true of that method, but read together they suggest the switch was not
+wired to the backend at all, and that is wrong. Tracing it properly:
+
+- The Settings switch **does** reach Go. `App.tsx` calls `editorSettings.updateFile`, which
+  reaches `SettingsHandler.UpdateFile`, a bound handler that already exists.
+- The preference **is** persisted, under the `file.autosave` key.
+
+What was missing was narrower and easier to overlook: **the join between the two services.**
+Settings wrote the preference to SQLite and the status bar read it back, while
+`AppModelService`, which owns the autosave scheduler, was never told. `SetAutosaveEnabled` had
+zero production callers — that part stands, and it is the precise defect.
+
+## The fix
+
+`SettingsService` gained an `AutosaveObserver`, fired only after a successful write, because a
+preference that failed to persist must not change what the document model does. Settings does not
+import the document model; the composition root supplies the observer, since
+`ApplicationContextHolder` is the only place holding both services. `Init` additionally pushes the
+stored preference in once at startup — without that, an "off" preference would silently come back
+on at every launch — and leaves autosave at its documented default if the store cannot be read,
+rather than letting a read failure disable it.
+
+## Re-verification on the real binary
+
+| Step | Result |
+| --- | --- |
+| Open `fixture-a.md` (96 bytes), Autosave `on` | Opens; status bar `Autosave on` |
+| Toggle Autosave off | Status bar `Autosave off` |
+| Edit, then wait **8 seconds**, no explicit save | Title bar stays `Unsaved changes`. **On disk: size 96 and mtime `1786744610.459748`, both byte-identical to before the edit.** Before the fix this wrote the file. |
+| File → Save | Title bar reads **`Saved`**, not `Autosaved`; file grows 96 → 122 bytes with the edit |
+| Temp files after the save | None |
+
+**The second symptom resolved with the first, as predicted rather than assumed.** With autosave
+genuinely stopped, the explicit save is the operation that establishes the clean baseline, so
+`SaveOriginExplicitSave` is what `saveStatusForDocument` sees and the status reads `Saved`. No
+change was made to `save_status.go`; it was correct throughout. There is no second defect to file.
+
+## Covering tests
+
+Five, and each was checked to fail before the fix rather than assumed to:
+
+- `TestAutosaveDisabledWritesNothingToDisk` — the assertion the coverage never had: bytes, size
+  **and mtime** unchanged on disk, plus no timer scheduled and none firing.
+- `TestAutosaveReEnabledResumesWriting` — so the fix cannot be "never autosave".
+- `TestUpdateFilePropagatesAutosavePreferenceToDocumentModel` — fails without the observer with
+  "document model still autosaving after the preference was turned off".
+- `TestPersistedAutosavePreferenceSurvivesRestart` — drives two real `Init` cycles against one
+  SQLite file; fails without the startup push with "autosave came back on at the next launch".
+  It deliberately goes through `Init` rather than calling the startup helper, because a helper
+  nothing calls is the same defect class being fixed here.
+- `TestStartupLeavesAutosaveEnabledWhenTheStoreCannotBeRead` — an unreadable store must not
+  disable autosave.
+
+## Still owed
+
+Unchanged by this fix: T105 (a method that can actually measure SC-FT-002's timings) and T106
+(the boundary pairs, the 40-document limit, and Fixture B). The fixtures remain built.
