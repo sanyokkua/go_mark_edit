@@ -126,7 +126,6 @@
   "settings.menu.markdown.gfm": "GFM",
   "settings.menu.markdown.full": "Full (+ math, footnotes…)",
   "settings.menu.allSettings": "All settings…",
-  "settings.menu.allSettings.accelerator": "Ctrl ,",
   "appearance.title": "Appearance",
   "appearance.help": "Choose the app theme and appearance.",
   "appearance.theme.label": "Theme",

@@ -430,7 +430,39 @@ function adaptDeferredToolbarControls(html: string): string {
   return html.slice(0, start) + toolbar + html.slice(end);
 }
 
-function adaptDeferredSettingsRows(html: string): string {
+/**
+ * T112. Feature 003 owns its accelerators, so the Settings popup's one
+ * accelerator is formatted for the host the application is running on — exactly
+ * the rule `adaptViewMenu` and `adaptAboutMenu` already follow, and the same
+ * host the browser under test runs on.
+ *
+ * This is deliberately a reference *variant* rather than a fifth entry in the
+ * reviewed macOS glyph exception. FR-FT-056 requires behavior-owned differences
+ * from the historical mockup to be "compared rather than masked", and the
+ * exception list is capped at the four rows the T059 decision preserves as
+ * literal `Ctrl` reference text. Expressing the real accelerator here keeps the
+ * `All settings…` row measured exactly — glyphs, spacing and geometry — instead
+ * of adding a rectangle the comparator is told to forgive.
+ *
+ * The mockup writes `Ctrl ,` here (`mockup.html:624`), which was correct for a
+ * platform-blind reference and is wrong on macOS, where `⌘,` is the key that
+ * dispatches. Production reads the binding from the action registry; so does
+ * this. Only the mockup's own `.k` primitive is used, and no HTML/CSS value in
+ * `docs/delivery/spec/surface/mockup.html` is edited.
+ */
+const settingsMenuReferenceAccelerators: Readonly<
+  Record<FileMenuReferencePlatform, string>
+> = {
+  darwin: '⌘,',
+  other: 'Ctrl+,',
+};
+
+const SETTINGS_ACCELERATOR_SOURCE_MARKUP = '<span class="k">Ctrl ,</span>';
+
+function adaptDeferredSettingsRows(
+  html: string,
+  platform: FileMenuReferencePlatform,
+): string {
   // A source without the Settings popup is not a parity reference; leave it
   // untouched so unit fixtures can exercise the other variants in isolation.
   const start = html.indexOf(SETTINGS_SOURCE_MARKER);
@@ -440,6 +472,15 @@ function adaptDeferredSettingsRows(html: string): string {
     throw new Error('Settings reference source region is malformed');
   }
   let settings = html.slice(start, end);
+  if (!settings.includes(SETTINGS_ACCELERATOR_SOURCE_MARKUP)) {
+    throw new Error(
+      'Settings reference source lost the All settings accelerator',
+    );
+  }
+  settings = settings.replace(
+    SETTINGS_ACCELERATOR_SOURCE_MARKUP,
+    acceleratorSpan(settingsMenuReferenceAccelerators[platform]),
+  );
   for (const label of DEFERRED_SETTINGS_ROW_LABELS) {
     const marker = `<span>${label}</span>`;
     const at = settings.indexOf(marker);
@@ -786,6 +827,8 @@ export const REFERENCE_ADAPTER_HASH = hash(
     REFERENCE_UNAVAILABLE_OPACITY,
     DEFERRED_TOOLBAR_CONTROL_TITLES,
     DEFERRED_SETTINGS_ROW_LABELS,
+    settingsMenuReferenceAccelerators,
+    SETTINGS_ACCELERATOR_SOURCE_MARKUP,
     viewMenuReferenceAccelerators,
     aboutMenuReferenceAccelerators,
     LIGHTS_SOURCE_MARKUP,
@@ -897,7 +940,10 @@ export function adaptReferenceHtml(
   const withNativeFrame = adaptNativeFrameControls(withFileOnly);
   const withInScopePreview = adaptPreviewPane(withNativeFrame);
   const withDeferredToolbar = adaptDeferredToolbarControls(withInScopePreview);
-  const withDeferredSettings = adaptDeferredSettingsRows(withDeferredToolbar);
+  const withDeferredSettings = adaptDeferredSettingsRows(
+    withDeferredToolbar,
+    fileMenuPlatform ?? hostReferencePlatform(),
+  );
   const withViewMenu = adaptViewMenu(
     withDeferredSettings,
     fileMenuPlatform ?? hostReferencePlatform(),

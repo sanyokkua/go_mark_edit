@@ -10,6 +10,10 @@ import { createPortal } from 'react-dom';
 import { t } from '../../i18n';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import { getAction, type ActionId } from '../../logic/actions/actionRegistry';
+import {
+  currentPlatform,
+  formatShortcut,
+} from '../../logic/actions/shortcutRegistry';
 import type {
   EditorSettings,
   FileSettings,
@@ -39,6 +43,17 @@ export interface SettingsMenuProps {
   onFileSettingsChange?: (patch: Partial<FileSettings>) => void;
   markdownSettings?: MarkdownSettings;
   onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
+}
+
+/*
+ * The same derivation `ShellMenuRow.shortcutForMenuItem` uses, so every menu in
+ * the shell advertises the accelerator from one source — the action registry.
+ */
+function settingsAccelerator(): string {
+  const binding = getAction('settings').shortcut;
+  return binding === undefined
+    ? ''
+    : formatShortcut(binding, currentPlatform());
 }
 
 const themeOptions: readonly { label: string; value: Theme }[] = [
@@ -282,9 +297,15 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
         }}
       >
         <span>{t('settings.menu.allSettings')}</span>
-        <span className={styles.shortcut}>
-          {t('settings.menu.allSettings.accelerator')}
-        </span>
+        {/*
+         * Derived from the registry, never a catalogue literal: the binding
+         * `useShellShortcuts` matches is `getAction('settings').shortcut`, so
+         * reading it here is what keeps the advertised text and the dispatched
+         * key from drifting apart. A hardcoded string renders whatever platform
+         * it was written for — this row said `Ctrl ,` on macOS while `⌘,` was
+         * the key that worked.
+         */}
+        <span className={styles.shortcut}>{settingsAccelerator()}</span>
       </div>
     </div>
   );

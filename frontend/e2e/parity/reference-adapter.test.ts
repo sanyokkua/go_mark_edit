@@ -327,3 +327,55 @@ it('T045 refuses a source whose preview region lost a deferred widget marker', (
     /lost the deferred widget marker/u,
   );
 });
+
+/*
+ * T112. The Settings popup's one accelerator is a Feature 003 accelerator, so
+ * the reference expresses it for the host rather than keeping the mockup's
+ * platform-blind `Ctrl ,`. This is a variant, not a fifth glyph exception:
+ * FR-FT-056 wants behavior-owned differences compared rather than masked, and
+ * the reviewed exception stays capped at the four File rows the T059 decision
+ * preserves as literal `Ctrl` text.
+ */
+it('T112 expresses the Settings accelerator for the host in the reference variant', () => {
+  const source = readFileSync(
+    resolve(process.cwd(), '../docs/delivery/spec/surface/mockup.html'),
+    'utf8',
+  );
+  const { html } = adaptReferenceHtml(source, 'base');
+  const expected = process.platform === 'darwin' ? '⌘,' : 'Ctrl+,';
+
+  /*
+   * Scoped to the Settings dropdown deliberately. The mockup also writes
+   * `Ctrl ,` in its keyboard-shortcuts cheat-sheet screen (`mockup.html:917`),
+   * which is a different surface, is not in the targeted manifest, and is not
+   * this task's contract — asserting over the whole document would quietly
+   * widen T112's scope to a screen nothing compares.
+   */
+  const start = html.indexOf('<div class="dropdown" id="m-settings"');
+  const settings = html.slice(
+    start,
+    html.indexOf('</div>', html.indexOf('All settings', start)),
+  );
+  expect(start).toBeGreaterThan(-1);
+
+  expect(settings).toContain(`<span class="k">${expected}</span>`);
+  // The platform-blind source text must not survive in the compared popup.
+  expect(settings).not.toContain('<span class="k">Ctrl ,</span>');
+  // Only the accelerator changes — the row and its label are untouched.
+  expect(settings).toContain('<span>All settings…</span>');
+});
+
+it('T112 fails closed when the source loses the Settings accelerator', () => {
+  const source = readFileSync(
+    resolve(process.cwd(), '../docs/delivery/spec/surface/mockup.html'),
+    'utf8',
+  );
+  const withoutAccelerator = source.replace(
+    '<span class="k">Ctrl ,</span>',
+    '',
+  );
+
+  expect(() => adaptReferenceHtml(withoutAccelerator, 'base')).toThrow(
+    'Settings reference source lost the All settings accelerator',
+  );
+});
