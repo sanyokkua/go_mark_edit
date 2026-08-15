@@ -1,11 +1,16 @@
 {
-  "version": "0.14.4",
+  "version": "0.16.4",
   "integration_state_schema": 1,
   "installed_integrations": [
-    "codex"
+    "codex",
+    "claude"
   ],
   "integration_settings": {
     "codex": {
+      "script": "sh",
+      "invoke_separator": "-"
+    },
+    "claude": {
       "script": "sh",
       "invoke_separator": "-"
     }
