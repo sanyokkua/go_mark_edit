@@ -238,6 +238,56 @@ func TestSaveUsesStableDocumentIdentity(t *testing.T) {
 }
 
 // Proves: FR-FT-006 (partial — the pre-disk write refusal; editing/format/lint unavailability is unproven; T157)
+// Proves: FR-FT-035
+func TestRefusedWriteNamesTheFileNotTheDocumentID(t *testing.T) {
+	/*
+	 * The classified error contract requires every message to "name only the safe
+	 * basename or the document's shortest-unique disambiguated tab label", and the
+	 * frontend renders `error.safeSubject` as the notification title
+	 * (`classifiedNotification.ts:63`). `refusedWrite` passed `documentID` as the
+	 * subject, and `NewClassifiedError`'s `filepath.Base` is a no-op on a minted
+	 * id, so the title was `doc-0000000000000003`.
+	 *
+	 * It was invisible until T117: the write path went through `notifyError`,
+	 * whose `localizedErrorCopy` replaced the title with catalogue copy. Now that
+	 * the backend's own title survives, the synthetic id reaches the user.
+	 */
+	document := &openDocument{metadata: apperr.DocumentMetadata{DocumentID: mintDocumentID(), Path: "/repo/notes/release-notes.md", DisplayName: "release-notes.md", Capability: string(file.CapabilityUnsafeReadOnly)}, content: "content", baseline: "old"}
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	service.state.documents[document.metadata.DocumentID] = document
+	service.state.orderedDocumentIDs = []string{document.metadata.DocumentID}
+	service.state.activeDocumentID = document.metadata.DocumentID
+
+	result := service.Save(context.Background(), document.metadata.DocumentID, 0, "")
+	if result.Error == nil {
+		t.Fatalf("read-only Save = %+v, want a refusal", result)
+	}
+	if result.Error.SafeSubject != "release-notes.md" {
+		t.Fatalf("refusal names %q, want the safe basename release-notes.md", result.Error.SafeSubject)
+	}
+	if strings.HasPrefix(result.Error.SafeSubject, "doc-") {
+		t.Fatalf("refusal leaked the internal document id %q to the user", result.Error.SafeSubject)
+	}
+}
+
+// Proves: FR-FT-035
+func TestRefusedWriteFallsBackToUntitledForAPathlessDocument(t *testing.T) {
+	// An untitled document has no basename to show. It must still not show the id.
+	document := &openDocument{metadata: apperr.DocumentMetadata{DocumentID: mintDocumentID(), Title: "Untitled", Capability: string(file.CapabilityUnsafeReadOnly)}, content: "content", baseline: "old"}
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	service.state.documents[document.metadata.DocumentID] = document
+	service.state.orderedDocumentIDs = []string{document.metadata.DocumentID}
+	service.state.activeDocumentID = document.metadata.DocumentID
+
+	result := service.Save(context.Background(), document.metadata.DocumentID, 0, "")
+	if result.Error == nil {
+		t.Fatalf("read-only Save = %+v, want a refusal", result)
+	}
+	if result.Error.SafeSubject != "Untitled" {
+		t.Fatalf("pathless refusal names %q, want Untitled", result.Error.SafeSubject)
+	}
+}
+
 func TestSaveValidationRefusesReadOnlyBeforeDiskAccess(t *testing.T) {
 	document := &openDocument{metadata: apperr.DocumentMetadata{DocumentID: "read-only", Path: "/missing/file.md", Capability: string(file.CapabilityUnsafeReadOnly)}, content: "content", baseline: "old"}
 	service := NewEmptyAppModelService(&recordingEmitter{})

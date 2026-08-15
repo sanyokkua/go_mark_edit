@@ -78,6 +78,9 @@ func NewClassifiedError(category ClassifiedErrorCategory, subject, message strin
 	if safeSubject == "." || safeSubject == "/" {
 		safeSubject = ""
 	}
+	if isInternalIdentifier(safeSubject) {
+		safeSubject = genericSubject
+	}
 	result := ClassifiedError{
 		Category:    category,
 		SafeSubject: safeSubject,
@@ -87,6 +90,42 @@ func NewClassifiedError(category ClassifiedErrorCategory, subject, message strin
 	}
 	result.DedupKey = result.DeduplicationKey()
 	return result
+}
+
+// genericSubject is what a classified error shows when no safe label exists. A
+// word is a small failure; an internal identifier is a contract violation.
+const genericSubject = "document"
+
+/*
+ * The last line of defence for "name only the safe basename or the disambiguated
+ * tab label".
+ *
+ * Callers should pass a real label, and the write and external-change paths now do.
+ * But `mintDocumentID` produces every synthetic id in the application — documents,
+ * close plans and open reservations alike — and `filepath.Base` is a no-op on one,
+ * so any of the ~46 helper call sites could put `doc-0000000000000003` in front of a
+ * user. It stayed hidden while `localizedErrorCopy` overwrote the title; T117 made
+ * the backend's subject the rendered title, and the leak became visible.
+ *
+ * Rejecting the shape here means a future call site cannot reintroduce it, which a
+ * per-call-site fix alone would not prevent.
+ */
+func isInternalIdentifier(subject string) bool {
+	const prefix = "doc-"
+	if !strings.HasPrefix(subject, prefix) {
+		return false
+	}
+	digits := strings.TrimPrefix(subject, prefix)
+	if digits == "" {
+		return false
+	}
+	for _, character := range digits {
+		isHex := (character >= '0' && character <= '9') || (character >= 'a' && character <= 'f')
+		if !isHex {
+			return false
+		}
+	}
+	return true
 }
 
 func (classified ClassifiedError) DeduplicationKey() string {

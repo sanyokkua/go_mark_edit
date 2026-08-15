@@ -366,12 +366,12 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 func (service *AppModelService) executeClosePlanSaveAs(ctx context.Context, target closePlanTarget) apperr.WriteResult {
 	currentVersion, err := file.CurrentDiskVersion(target.savePath)
 	if err != nil || !currentVersion.Equal(target.expectedVersion) {
-		return conflictWrite(target.documentID, "The Save As target changed before the close-plan write.")
+		return service.conflictWrite(target.documentID, "The Save As target changed before the close-plan write.")
 	}
 	if target.expectedRawHash != "" {
 		currentHash, hashErr := rawBytesHash(target.savePath)
 		if hashErr != nil || currentHash != target.expectedRawHash {
-			return conflictWrite(target.documentID, "The Save As target bytes changed before the close-plan write.")
+			return service.conflictWrite(target.documentID, "The Save As target bytes changed before the close-plan write.")
 		}
 	}
 	snapshot, result := service.snapshotForWrite(target.documentID, target.contentRevision, target.normalizationToken, target.savePath, true)

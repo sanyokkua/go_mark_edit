@@ -265,7 +265,7 @@ func (handler *AppModelHandler) SetUILayout(layout apperr.UILayout) (res apperr.
 func (handler *AppModelHandler) Save(documentID string, contentRevision uint64, decisionToken string) (res apperr.WriteResult) {
 	defer func() {
 		if recover() != nil {
-			res = refusedWrite(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be saved.", apperr.RemediationRetry)
+			res = refusedWriteLabelled("document", documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be saved.", apperr.RemediationRetry)
 		}
 	}()
 	return handler.service.Save(handler.context(), documentID, contentRevision, decisionToken)
@@ -275,7 +275,7 @@ func (handler *AppModelHandler) Save(documentID string, contentRevision uint64, 
 func (handler *AppModelHandler) SaveAs(documentID string, contentRevision uint64, decisionToken string) (res apperr.WriteResult) {
 	defer func() {
 		if recover() != nil {
-			res = refusedWrite(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be saved under a new name.", apperr.RemediationRetry)
+			res = refusedWriteLabelled("document", documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be saved under a new name.", apperr.RemediationRetry)
 		}
 	}()
 	return handler.service.SaveAs(handler.context(), documentID, contentRevision, decisionToken)
@@ -285,7 +285,7 @@ func (handler *AppModelHandler) SaveAs(documentID string, contentRevision uint64
 func (handler *AppModelHandler) CheckExternalChanges(documentID string) (res apperr.ConflictResult) {
 	defer func() {
 		if recover() != nil {
-			res = conflictRefused(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be checked for external changes.", apperr.RemediationRetry)
+			res = conflictRefusedLabelled(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be checked for external changes.", apperr.RemediationRetry)
 		}
 	}()
 	return handler.service.CheckExternalChanges(handler.context(), documentID)
@@ -295,7 +295,7 @@ func (handler *AppModelHandler) CheckExternalChanges(documentID string) (res app
 func (handler *AppModelHandler) ReloadFromDisk(documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) (res apperr.ConflictResult) {
 	defer func() {
 		if recover() != nil {
-			res = conflictRefused(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be reloaded.", apperr.RemediationRetry)
+			res = conflictRefusedLabelled(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be reloaded.", apperr.RemediationRetry)
 		}
 	}()
 	return handler.service.ReloadFromDisk(handler.context(), documentID, contentRevision, detectedVersion)
@@ -305,7 +305,7 @@ func (handler *AppModelHandler) ReloadFromDisk(documentID string, contentRevisio
 func (handler *AppModelHandler) AuthorizeKeepMine(documentID string, contentRevision uint64, path string, detectedVersion apperr.DiskVersion) (res apperr.ConflictResult) {
 	defer func() {
 		if recover() != nil {
-			res = conflictRefused(documentID, apperr.ClassifiedSystemCommandFailure, "The overwrite decision could not be prepared.", apperr.RemediationRetry)
+			res = conflictRefusedLabelled(documentID, apperr.ClassifiedSystemCommandFailure, "The overwrite decision could not be prepared.", apperr.RemediationRetry)
 		}
 	}()
 	return handler.service.AuthorizeKeepMine(handler.context(), documentID, contentRevision, path, detectedVersion)
@@ -315,7 +315,7 @@ func (handler *AppModelHandler) AuthorizeKeepMine(documentID string, contentRevi
 func (handler *AppModelHandler) SkipConflict(documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) (res apperr.ConflictResult) {
 	defer func() {
 		if recover() != nil {
-			res = conflictRefused(documentID, apperr.ClassifiedSystemCommandFailure, "The conflict decision could not be cancelled.", apperr.RemediationRetry)
+			res = conflictRefusedLabelled(documentID, apperr.ClassifiedSystemCommandFailure, "The conflict decision could not be cancelled.", apperr.RemediationRetry)
 		}
 	}()
 	return handler.service.SkipConflict(handler.context(), documentID, contentRevision, detectedVersion)
@@ -325,7 +325,7 @@ func (handler *AppModelHandler) SkipConflict(documentID string, contentRevision 
 func (handler *AppModelHandler) CancelConflict(documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) (res apperr.ConflictResult) {
 	defer func() {
 		if recover() != nil {
-			res = conflictRefused(documentID, apperr.ClassifiedSystemCommandFailure, "The conflict decision could not be cancelled.", apperr.RemediationRetry)
+			res = conflictRefusedLabelled(documentID, apperr.ClassifiedSystemCommandFailure, "The conflict decision could not be cancelled.", apperr.RemediationRetry)
 		}
 	}()
 	return handler.service.CancelConflict(handler.context(), documentID, contentRevision, detectedVersion)
