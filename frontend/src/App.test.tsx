@@ -221,6 +221,7 @@ import {
 import { store } from './logic/store';
 import {
   dismissNotification,
+  notifyToast,
   resetNotifications,
 } from './logic/store/notificationsSlice';
 import type { WireError } from './logic/utils/parseError';
@@ -243,6 +244,7 @@ import type {
   AppModelState,
   AppStatePatch,
   DocumentMetadata,
+  PathCommandResult,
 } from './logic/store/appModelTypes';
 import AppShell from './ui/widgets/AppShell';
 import ShellMenuRow from './ui/widgets/ShellMenuRow';
@@ -781,6 +783,67 @@ it('flushes the active editor session before File Open invokes the native comman
   );
   expect(calls).toEqual(['flush:document-1', 'open']);
   mockedAppModelAdapter.openDocument = undefined;
+  act((): void => disposeAppModelProjection());
+});
+
+// Proves: FR-FT-037
+it('T116 renders the classified remediation and runs the command it names', async () => {
+  /*
+   * The whole fixed remediation vocabulary was unreachable. `Toast.tsx:65` renders
+   * the button only when `onRemediate !== undefined`, and the sole production
+   * render site passed `notification` and `onDismiss` only — so every remediation
+   * `reportClassifiedError` built was constructed and discarded.
+   *
+   * Nothing caught it because every covering test supplied the missing half
+   * itself: `Toast.test.tsx` hand-constructs `onRemediate`, and
+   * `DocumentTabs.test.tsx:684-720` asserts the *dispatched* object and never
+   * renders a toast. This drives the seam between them — the store already holds
+   * exactly the object a Reveal failure puts there, and the assertion is that the
+   * application renders it and honours it.
+   */
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.copyPath = jest.fn(
+    async (): Promise<PathCommandResult> => ({ status: 'copied' }),
+  );
+
+  render(<App />);
+  await screen.findByRole('button', { name: 'File' });
+  act((): void => {
+    store.dispatch(
+      notifyToast({
+        code: 'system-command-failure',
+        message: 'The file manager could not reveal the document.',
+        remediation: {
+          action: 'copy-path',
+          documentId: 'document-1',
+          intent: 'copy-path',
+          labelKey: 'action.copy-path.label',
+        },
+        severity: 'error',
+        subject: 'reveal:document-1',
+        title: 'one.md',
+      }),
+    );
+  });
+
+  const remediate = await screen.findByRole('button', { name: 'Copy path' });
+  fireEvent.click(remediate);
+
+  await waitFor(() => {
+    expect(mockedAppModelAdapter.copyPath).toHaveBeenCalledWith('document-1');
+  });
+  // A resolved failure must not keep sitting on screen: an error toast has an
+  // infinite duration, so nothing else would ever remove it.
+  await waitFor(() => {
+    expect(store.getState().notifications.items).toHaveLength(0);
+  });
+  mockedAppModelAdapter.copyPath = undefined;
   act((): void => disposeAppModelProjection());
 });
 

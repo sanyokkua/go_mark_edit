@@ -14,7 +14,16 @@ type ToastProviderProps = PropsWithChildren;
 interface NotificationToastProps {
   notification: Notification;
   onDismiss: (id: number) => void;
-  onRemediate?: (remediation: NotificationRemediation) => void;
+  /**
+   * Required, not optional, and that is the point.
+   *
+   * While it was optional the remediation button rendered only when a caller
+   * happened to pass it, the one production render site did not, and the entire
+   * fixed remediation vocabulary was unreachable in the running application
+   * without a single test going red. An optional prop lets the next render site
+   * reintroduce exactly that defect; a required one cannot.
+   */
+  onRemediate: (remediation: NotificationRemediation) => void;
 }
 
 const durations: Record<NotificationSeverity, number> = {
@@ -62,11 +71,13 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       {notification.message}
     </RadixToast.Description>
     <div className={styles.actions}>
-      {notification.remediation !== undefined && onRemediate !== undefined ? (
+      {notification.remediation !== undefined ? (
         <button
           className={styles.action}
           type="button"
-          onClick={(): void => onRemediate(notification.remediation!)}
+          onClick={(): void => {
+            onRemediate(notification.remediation as NotificationRemediation);
+          }}
         >
           {t(notification.remediation.labelKey)}
         </button>

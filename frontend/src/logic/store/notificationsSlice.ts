@@ -5,8 +5,28 @@ import type { WireError } from '../utils/parseError';
 
 export type NotificationSeverity = 'error' | 'info' | 'success' | 'warning';
 
+/**
+ * The control a classified failure offers, and the command that control runs.
+ *
+ * `action` and `intent` are unions rather than strings on purpose. A remediation
+ * whose command nobody implemented is the defect this type exists to prevent:
+ * the button used to render from a free-form string and call nothing, so a new
+ * value could be added and silently do nothing. Both fields are now exhaustively
+ * switched in `App.tsx`, so an unhandled one fails the build instead.
+ *
+ * `intent` is what makes the button honest — `action` says what the label reads,
+ * `intent` says which command re-runs. `reportClassifiedError` attaches a
+ * remediation only when its caller declares an intent it can actually honour, so
+ * a control that would do nothing is never constructed in the first place.
+ */
+export type NotificationRemediationAction = 'copy-path' | 'retry';
+
+export type NotificationRemediationIntent = 'copy-path';
+
 export interface NotificationRemediation {
-  action: string;
+  action: NotificationRemediationAction;
+  documentId?: string;
+  intent: NotificationRemediationIntent;
   labelKey: string;
 }
 

@@ -340,6 +340,31 @@ function parityFixtureEnabled(): boolean {
   );
 }
 
+/**
+ * Make the host refuse Reveal, so a browser run can reach a classified failure
+ * that carries a remediation.
+ *
+ * `setMockRevealResult` cannot serve this: it is a module-scoped ES export that
+ * nothing attaches to `window`, so a Playwright page has no way to call it. The
+ * consequence was that the remediation half of the classified-error contract
+ * could not be driven end to end from a browser at all, which is part of why
+ * T116 survived — the only tests that could reach a remediation were unit tests
+ * that hand-built the object.
+ *
+ * A URL flag rather than a production branch, following `?rejectAppearance=1`
+ * (`bridge-mock/go/settings/SettingsHandler.ts:111`). The whole bridge mock is
+ * installed only when `vite.config.ts` resolves mock mode, so this cannot exist
+ * in the shipped bundle, and the production render path is identical with and
+ * without it — only the value the backend returns differs, which is a backend
+ * fixture doing its job rather than the DOM-branching defect T138 records.
+ */
+function revealRefusalEnabled(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('refuseReveal')
+  );
+}
+
 function parityStateId(): string | undefined {
   if (!parityFixtureEnabled()) return undefined;
   const key = new URLSearchParams(window.location.search).get('parity-case');
@@ -1457,6 +1482,26 @@ export function RevealInFileManager(
   }
   if (mockRevealResult !== undefined) return Promise.resolve(mockRevealResult);
   const document = documents[requestedDocumentId];
+  if (revealRefusalEnabled()) {
+    // Built inline rather than through `classifiedError`, which names no
+    // subject, carries no document id and hardcodes `Retry` for everything it
+    // builds. The contract remediates a Reveal failure with Copy path
+    // (FR-FT-037), and a remediation with no document id has nothing to act on.
+    return Promise.resolve({
+      status: 'refused',
+      error: {
+        category: 'system-command-failure',
+        safeSubject:
+          (document.metadata.path || document.metadata.title)
+            .split(/[\\/]/u)
+            .pop() ?? document.metadata.title,
+        message: 'The file manager could not reveal the document.',
+        remediation: 'Copy path',
+        documentId: requestedDocumentId,
+        dedupKey: `reveal:${requestedDocumentId}`,
+      },
+    });
+  }
   if (document.metadata.path === '' || document.metadata.detached === true) {
     return Promise.resolve({ status: 'unavailable' });
   }

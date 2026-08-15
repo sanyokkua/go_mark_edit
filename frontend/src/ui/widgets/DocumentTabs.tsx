@@ -347,10 +347,14 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       if (action === 'copy-path') {
         const result = await adapter.copyPath?.(document.documentId);
         if (result?.error !== undefined) {
+          // A clipboard refusal is `system-command-failure`, which the contract
+          // remediates with Retry — and retrying means running this same command
+          // again, so the intent is honourable rather than decorative.
           reportClassifiedError(
             dispatch,
             result.error,
             'The path could not be copied.',
+            { intent: 'copy-path' },
           );
         } else if (result?.status === 'copied') {
           announce(
@@ -367,11 +371,14 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       if (action === 'reveal-in-file-manager') {
         const result = await adapter.revealInFileManager?.(document.documentId);
         if (result?.error !== undefined) {
+          // FR-FT-037 pairs a Reveal failure with Copy path, and this is the one
+          // caller that can honour it: the document is known, so the fallback is
+          // a real command rather than a control with nothing behind it.
           reportClassifiedError(
             dispatch,
             result.error,
             'The file manager could not reveal the document.',
-            true,
+            { intent: 'copy-path', reveal: true },
           );
         }
         return result;

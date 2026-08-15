@@ -641,7 +641,12 @@ it('FR-FT-037 reports a Copy path clipboard failure as system-command-failure wi
   expect(store.getState().notifications.items[0]).toEqual(
     expect.objectContaining({
       code: 'system-command-failure',
-      remediation: { action: 'retry', labelKey: 'action.retry.label' },
+      remediation: {
+        action: 'retry',
+        documentId: 'one',
+        intent: 'copy-path',
+        labelKey: 'action.retry.label',
+      },
       severity: 'error',
       subject: 'copy-path:one',
       title: 'one.md',
@@ -708,7 +713,12 @@ it('FR-FT-037 offers Copy path remediation when Reveal fails', async () => {
   expect(store.getState().notifications.items[0]).toEqual(
     expect.objectContaining({
       code: 'system-command-failure',
-      remediation: { action: 'copy-path', labelKey: 'action.copy-path.label' },
+      remediation: {
+        action: 'copy-path',
+        documentId: 'one',
+        intent: 'copy-path',
+        labelKey: 'action.copy-path.label',
+      },
       severity: 'error',
       subject: 'reveal:one',
       title: 'one.md',

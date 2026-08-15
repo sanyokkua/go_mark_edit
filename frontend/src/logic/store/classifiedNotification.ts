@@ -1,6 +1,10 @@
 import type { AppDispatch } from './index';
 import type { ClassifiedError } from './appModelTypes';
-import { notifyToast } from './notificationsSlice';
+import {
+  notifyToast,
+  type NotificationRemediation,
+  type NotificationRemediationIntent,
+} from './notificationsSlice';
 
 /**
  * The notification `code` a classified category is deduplicated and styled by.
@@ -46,22 +50,57 @@ export function reportClassifiedError(
   dispatch: AppDispatch,
   error: ClassifiedError | undefined,
   fallback: string,
-  reveal = false,
+  options: ClassifiedReportOptions = {},
 ): void {
   if (error === undefined) return;
   dispatch(
     notifyToast({
       code: classifiedErrorCode(error.category),
       message: error.message || fallback,
-      remediation:
-        error.remediation === 'Copy path' && reveal
-          ? { action: 'copy-path', labelKey: 'action.copy-path.label' }
-          : error.remediation === 'Retry'
-            ? { action: 'retry', labelKey: 'action.retry.label' }
-            : undefined,
+      remediation: remediationFor(error, options),
       severity: 'error',
       subject: error.dedupKey,
       title: error.safeSubject ?? fallback,
     }),
   );
+}
+
+export interface ClassifiedReportOptions {
+  /** Offer `Copy path` where the contract pairs it with a reveal failure. */
+  reveal?: boolean;
+  /**
+   * The command the remediation control re-runs.
+   *
+   * Omitting it is the deliberate way to say "this caller cannot re-issue what
+   * failed", and the notification then carries no remediation at all. That is
+   * what keeps the rendered button honest: until T116 nothing passed
+   * `onRemediate`, so every remediation was built and discarded, and a control
+   * that renders without a command behind it is the same defect wearing a
+   * button. A caller earns the control by naming the command.
+   */
+  intent?: NotificationRemediationIntent;
+}
+
+function remediationFor(
+  error: ClassifiedError,
+  options: ClassifiedReportOptions,
+): NotificationRemediation | undefined {
+  if (options.intent === undefined) return undefined;
+  if (error.remediation === 'Copy path' && options.reveal === true) {
+    return {
+      action: 'copy-path',
+      documentId: error.documentId,
+      intent: options.intent,
+      labelKey: 'action.copy-path.label',
+    };
+  }
+  if (error.remediation === 'Retry') {
+    return {
+      action: 'retry',
+      documentId: error.documentId,
+      intent: options.intent,
+      labelKey: 'action.retry.label',
+    };
+  }
+  return undefined;
 }

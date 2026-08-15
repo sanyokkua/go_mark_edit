@@ -17,6 +17,7 @@ import {
   notifyError,
   notifyToast,
   resetNotifications,
+  type NotificationRemediation,
 } from './logic/store/notificationsSlice';
 import { store, useAppDispatch, useAppSelector } from './logic/store';
 import { reportClassifiedError } from './logic/store/classifiedNotification';
@@ -63,6 +64,7 @@ import {
   ToastProvider,
 } from './ui/primitives/Toast';
 import NotificationBanner from './ui/primitives/Banner';
+import LiveRegion from './ui/primitives/LiveRegion';
 import AppShell from './ui/widgets/AppShell';
 import AboutDialog from './ui/widgets/AboutDialog';
 import AppearanceControls from './ui/widgets/AppearanceControls';
@@ -365,6 +367,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       : state.documents.byId[state.documents.activeDocumentId],
   );
   const [activeBuffer, setActiveBuffer] = useState<ActiveBuffer | null>(null);
+  const [remediationAnnouncement, setRemediationAnnouncement] = useState('');
   const [bootstrapStatus, setBootstrapStatus] =
     useState<BootstrapStatus>('loading');
   const [isRetrying, setIsRetrying] = useState(false);
@@ -1107,6 +1110,66 @@ const AppContents: React.FC = (): React.JSX.Element => {
   );
   const onSave = useCallback(() => beginWrite('save'), [beginWrite]);
   const onSaveAs = useCallback(() => beginWrite('save-as'), [beginWrite]);
+  /*
+   * FR-FT-037 wants Copy path announced in a *transient polite* live region, not
+   * an assertive one, so this cannot ride the toast surface — a toast root is
+   * `aria-live="assertive"`. Same clear/set/clear shape as the tab strip's own
+   * announcer (`DocumentTabs.tsx:168-172`) so a repeat of the same string still
+   * re-announces.
+   */
+  const announceRemediation = useCallback((message: string): void => {
+    setRemediationAnnouncement('');
+    window.setTimeout((): void => setRemediationAnnouncement(message), 0);
+    window.setTimeout((): void => setRemediationAnnouncement(''), 3000);
+  }, []);
+  /*
+   * The command behind a classified failure's remediation control.
+   *
+   * The control itself was unreachable until now — `Toast.tsx` rendered it only
+   * when a caller passed `onRemediate`, and this render site never did, so every
+   * remediation `reportClassifiedError` built was constructed and discarded.
+   * Wiring it is only half the fix: a button that renders and calls nothing is
+   * the same defect with a control attached. `remediation.intent` is what a
+   * caller must name to earn the button, and the switch below is exhaustive, so
+   * a new intent that names no command fails the build.
+   */
+  const onRemediate = useCallback(
+    async (
+      remediation: NotificationRemediation,
+      notificationId: number,
+      safeSubject: string,
+    ): Promise<void> => {
+      switch (remediation.intent) {
+        case 'copy-path': {
+          const documentId = remediation.documentId;
+          if (documentId === undefined) return;
+          const result = await appModelAdapter.copyPath?.(documentId);
+          if (result?.error !== undefined) {
+            // A failed remediation is itself a classified failure, and it keeps
+            // its own Copy path so a transient clipboard refusal stays retryable.
+            reportClassifiedError(
+              dispatch,
+              result.error,
+              t('notification.error.io.title'),
+              { intent: 'copy-path', reveal: true },
+            );
+            return;
+          }
+          if (result?.status !== 'copied') return;
+          dispatch(dismissNotification(notificationId));
+          announceRemediation(
+            t('editor.tab.copiedPath', { filename: safeSubject }),
+          );
+          return;
+        }
+        default: {
+          const unhandledIntent: never = remediation.intent;
+          return unhandledIntent;
+        }
+      }
+    },
+    [announceRemediation, dispatch],
+  );
   const onQuit = useCallback((): void => {
     if (parityQuitPrompt) {
       // The browser bridge cannot authorize a native Wails quit request. Keep
@@ -1499,9 +1562,19 @@ const AppContents: React.FC = (): React.JSX.Element => {
                     onDismiss={(id: number): void => {
                       dispatch(dismissNotification(id));
                     }}
+                    onRemediate={(
+                      remediation: NotificationRemediation,
+                    ): void => {
+                      void onRemediate(
+                        remediation,
+                        notification.id,
+                        notification.title,
+                      );
+                    }}
                   />
                 ))
               ) : null}
+              <LiveRegion message={remediationAnnouncement} />
             </div>
           </ApplicationMenuRequestContext.Provider>
         </EditorSessionProvider>

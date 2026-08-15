@@ -33,6 +33,7 @@ it('STORY-006-AC-3 presents an accessible error toast without automatic dismissa
           },
         }}
         onDismiss={onDismiss}
+        onRemediate={jest.fn()}
       />
     </ToastProvider>,
   );
@@ -70,6 +71,7 @@ it.each([
           message: 'The operation finished.',
         }}
         onDismiss={onDismiss}
+        onRemediate={jest.fn()}
       />
     </ToastProvider>,
   );
@@ -93,7 +95,11 @@ it('offers only the localized remediation label and keeps toasts above dialogs',
           id: 91,
           message: 'The operation can be tried again.',
           refreshGeneration: 0,
-          remediation: { action: 'retry-operation', labelKey: 'startup.retry' },
+          remediation: {
+            action: 'retry',
+            intent: 'copy-path',
+            labelKey: 'action.retry.label',
+          },
           severity: 'warning',
           subject: 'operation',
           title: 'Operation paused',
@@ -106,8 +112,9 @@ it('offers only the localized remediation label and keeps toasts above dialogs',
 
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   expect(onRemediate).toHaveBeenCalledWith({
-    action: 'retry-operation',
-    labelKey: 'startup.retry',
+    action: 'retry',
+    intent: 'copy-path',
+    labelKey: 'action.retry.label',
   });
 
   const tokens = readFileSync(
@@ -146,6 +153,7 @@ it('T015 renders one explicit save confirmation with its localized safe filename
           title: 'Saved',
         }}
         onDismiss={jest.fn()}
+        onRemediate={jest.fn()}
       />
     </ToastProvider>,
   );

@@ -84,6 +84,69 @@ test('FT-VS-03 exposes real tabs, backend-confirmed menu moves, and exact naviga
   );
 });
 
+test('FR-FT-037 offers an actionable Copy path when Reveal fails, and paints it', async ({
+  page,
+}) => {
+  /*
+   * T116. The fixed remediation vocabulary was unreachable in the running
+   * application: `Toast.tsx` rendered the control only when a caller passed
+   * `onRemediate`, and the one production render site did not — so `Retry`,
+   * `Copy path` and the rest were built by `reportClassifiedError` and thrown
+   * away. Every covering test supplied the missing half itself, which is why
+   * nothing went red.
+   *
+   * `expectPainted` rather than `toBeVisible`: this is the first layout
+   * assertion on any error toast in the suite, and T113 is the defect proving
+   * `toBeVisible()` passes on an element an ancestor has clipped to nothing.
+   * `toContainText` would be worse still — it never consults layout at all.
+   */
+  await page.goto('/?refuseReveal=1');
+
+  // Path actions are correctly unavailable for an untitled document, and the
+  // startup document is untitled. Save As is what adopts a path, so this is also
+  // the shortest real journey to a document Reveal can be invoked on at all.
+  await page.getByRole('button', { name: 'File' }).click();
+  await page
+    .getByRole('menu', { name: 'File' })
+    // `Save As` not `Save As…`: the row carries aria-label="Save As", and an
+    // accessible name from aria-label wins over the visible text's ellipsis.
+    .getByRole('menuitem', { name: 'Save As', exact: true })
+    .click();
+  await expect(
+    page.locator('[data-notification-code="save-success"]'),
+  ).toHaveCount(1);
+
+  await page.getByRole('tab').first().click({ button: 'right' });
+  await page
+    .getByRole('menu', { name: 'Tab actions' })
+    .getByRole('menuitem', { name: 'Reveal in file manager' })
+    .click();
+
+  const errorToast = page.locator('[data-severity="error"]');
+  await expect(errorToast).toHaveCount(1);
+  await expect(errorToast).toHaveAttribute(
+    'data-notification-code',
+    'system-command-failure',
+  );
+  // The backend's own message survived, and no private path came with it.
+  await expect(errorToast).toContainText(
+    'The file manager could not reveal the document.',
+  );
+  await expect(page.getByText(/private|https?:\/\//iu)).toHaveCount(0);
+
+  const remediate = errorToast.getByRole('button', { name: 'Copy path' });
+  await expect(remediate).toBeEnabled();
+  await expectPainted(remediate, 'the Reveal failure Copy path remediation');
+
+  await remediate.click();
+  // FR-FT-037 wants the confirmation in a polite live region, and the resolved
+  // failure must not keep sitting there — an error toast never expires on its own.
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Copied path for' }),
+  ).toHaveCount(1);
+  await expect(errorToast).toHaveCount(0);
+});
+
 test('FT-VS-04 shows the bounded external-change prompt and safe Skip decision', async ({
   page,
 }) => {
