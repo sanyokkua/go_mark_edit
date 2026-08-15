@@ -430,14 +430,23 @@ function configureParityFixture(
       releaseNotes.dirty = true;
       releaseNotes.status = 'unsaved-changes';
       break;
+    /*
+     * `read-only` is a save *status*, never a capability: Go emits exactly
+     * `writable`, `unsafe-read-only`, `large-read-only` or `refused`
+     * (`internal/file/document_reader.go:25-28`), and collapses the read-only
+     * ones onto the single status in `save_status.go:28-31`. Seeding the
+     * impossible value here meant no browser case could reach the capability
+     * branch that FR-FT-005's visible reason is derived from — the
+     * test-double-fidelity class recorded against T104 and T107.
+     */
     case 'status-read-only':
     case 'tab-read-only':
-      releaseNotes.capability = 'read-only';
+      releaseNotes.capability = 'unsafe-read-only';
       releaseNotes.status = 'read-only';
       break;
     case 'tab-detached':
       releaseNotes.detached = true;
-      releaseNotes.capability = 'read-only';
+      releaseNotes.capability = 'unsafe-read-only';
       releaseNotes.status = 'read-only';
       break;
     case 'tab-autosave-in-flight':

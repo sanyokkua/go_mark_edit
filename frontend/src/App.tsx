@@ -1055,7 +1055,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (documentId === undefined) return undefined;
       if (
         activeDocument?.status === 'read-only' ||
-        activeDocument?.capability === 'read-only' ||
+        // Go emits `large-read-only`/`unsafe-read-only`, never the bare
+        // `read-only` this used to compare against, so the clause never fired.
+        // Harmless — `status` already collapses every one of them
+        // (`save_status.go:28-31`) — but it read as a capability check that
+        // was not one. Mirrors Go's own predicate now.
+        (activeDocument?.capability !== undefined &&
+          activeDocument.capability !== 'writable') ||
         activeDocument?.detached === true
       ) {
         reportWriteError(
@@ -1243,7 +1249,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
       writable:
         activeDocument !== undefined &&
         activeDocument.status !== 'read-only' &&
-        activeDocument.capability !== 'read-only' &&
+        // Same correction as in `beginWrite`: the bare `read-only` literal is
+        // not a value Go ever emits for `capability`.
+        (activeDocument.capability === undefined ||
+          activeDocument.capability === 'writable') &&
         activeDocument.detached !== true,
       onShortcuts: (): void => setShortcutsOpen(true),
       requestedMenu: requestedApplicationMenu,

@@ -328,6 +328,7 @@ const AppShell: React.FC<AppShellProps> = ({
             encoding={activeDocument.encoding}
             lineEnding={activeDocument.lineEnding}
             status={activeDocument.status}
+            capability={activeDocument.capability}
             writeInFlight={activeDocument.writeInFlight}
             wordCount={activeDocument.wordCount}
             autosave={fileSettings.autosave}

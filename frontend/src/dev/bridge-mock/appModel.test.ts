@@ -85,7 +85,18 @@ it('maps parity state IDs to deterministic bridge fixtures without changing star
     expect(
       (await GetState()).data?.snapshot.documents['parity-release-notes'],
     ).toEqual(
-      expect.objectContaining({ capability: 'read-only', status: 'read-only' }),
+      /*
+       * T108: `read-only` is a save status, never a capability. Go emits
+       * exactly writable / unsafe-read-only / large-read-only / refused
+       * (`internal/file/document_reader.go:25-28`). This assertion pinned the
+       * impossible value the mock used to seed, which is what kept every
+       * browser case away from the capability branch FR-FT-005's visible
+       * reason is derived from.
+       */
+      expect.objectContaining({
+        capability: 'unsafe-read-only',
+        status: 'read-only',
+      }),
     );
 
     state('preview-paused');

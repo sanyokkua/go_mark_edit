@@ -105,3 +105,27 @@ it('identity heading does not add an empty parent to an untitled document', () =
   expect(screen.getByRole('heading')).toHaveTextContent('Untitled');
   expect(screen.getByRole('heading')).not.toHaveTextContent('/');
 });
+
+it('T108 keeps the title-bar status to the bare state, without the reason', () => {
+  /*
+   * Pins a decision rather than a behaviour, because the obvious change here is
+   * wrong and was tried. Appending FR-FT-005's reason to this status rendered
+   * correctly from the real Go `capability` on the packaged binary and then
+   * ellipsised to `Read-only · over t…` at full window width: `.identity` is
+   * capped at the binding's own `max-width: 40ch` (`mockup.html:70`), which the
+   * filename and parent already compete for, and the cap drops to `16ch` at
+   * ≤376px — narrow enough to truncate `Read-only` itself. The reason lives in
+   * the status bar's `Document details` region; this surface must keep showing
+   * the state whole.
+   */
+  const document = {
+    ...documentFor('read-only'),
+    capability: 'large-read-only',
+    sizeClass: 'large',
+  };
+  render(<DocumentIdentity document={document} />);
+
+  const identity = screen.getByRole('banner', { name: 'Document identity' });
+  expect(identity).toHaveTextContent('Read-only');
+  expect(identity).not.toHaveTextContent('10 MiB');
+});

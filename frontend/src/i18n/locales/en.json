@@ -19,6 +19,8 @@
   "status.autosave.on": "Autosave on",
   "status.autosave.off": "Autosave off",
   "status.readOnlyWarning": "Read-only",
+  "status.readOnlyReason.large": "over the 10 MiB editing limit",
+  "status.readOnlyReason.unsafe": "its contents cannot be rewritten safely",
   "status.arrangement.editor": "Editor",
   "status.arrangement.split": "Split",
   "status.arrangement.preview": "Preview",

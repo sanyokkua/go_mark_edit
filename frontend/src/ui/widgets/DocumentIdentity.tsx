@@ -47,6 +47,18 @@ const DocumentIdentity: React.FC<DocumentIdentityProps> = (
   const filename = filenameFor(props);
   const parent = parentFor(props);
   const status = statusLabel(props.status ?? props.document?.status);
+  /*
+   * FR-FT-005's "visible reason" deliberately does NOT go here, and this note
+   * exists so nobody tries again. It was tried: the suffix rendered correctly
+   * from the real Go `capability` on the packaged binary, and then ellipsised
+   * to `Read-only · over t…` even with the window at full width. `.identity` is
+   * capped at `max-width: 40ch` — the binding's own value, `mockup.html:70` —
+   * which the filename and its parent already compete for, and the cap drops to
+   * `16ch` at ≤376px (`DocumentIdentity.module.css`), narrow enough to truncate
+   * the word `Read-only` itself. A surface that can lose the status is a worse
+   * home for the reason than one that shows it on request, so the reason lives
+   * in the status bar's `Document details` region instead.
+   */
   return (
     <header aria-label={t('identity.ariaLabel')} className={styles.identity}>
       <span aria-hidden="true" className={styles.saveDot} />

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { EditorPosition } from './CodeEditor';
 import type { SaveStatus } from '../../logic/store/appModelTypes';
 import { formatNumber, t } from '../../i18n';
+import { readOnlyReason } from './readOnlyReason';
 import styles from './StatusBar.module.css';
 
 export interface StatusBarProps {
@@ -14,6 +15,13 @@ export interface StatusBarProps {
   wordCount: number;
   autosave?: boolean;
   readOnly?: boolean;
+  /*
+   * The backend's read capability, not the save status. `save_status.go:28-31`
+   * collapses every non-writable capability onto `read-only`, so the status
+   * cannot say *why* a document is read-only and this is the only field that
+   * can (T108, FR-FT-005).
+   */
+  capability?: string;
   markdownStandard?: string;
 }
 
@@ -30,8 +38,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
   wordCount,
   autosave = false,
   readOnly = status === 'read-only',
+  capability,
   markdownStandard = 'gfm',
 }: StatusBarProps): React.JSX.Element => {
+  const readOnlyDetail = readOnlyReason(capability);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const saveStatus = t(translationKey('saveStatus', status));
   const encodingLabel = t(translationKey('encoding', encoding));
@@ -108,7 +118,13 @@ const StatusBar: React.FC<StatusBarProps> = ({
           <span>
             {t(autosave ? 'status.autosave.on' : 'status.autosave.off')}
           </span>
-          {readOnly ? <span>{t('status.readOnlyWarning')}</span> : null}
+          {readOnly ? (
+            <span>
+              {readOnlyDetail === undefined
+                ? t('status.readOnlyWarning')
+                : `${t('status.readOnlyWarning')} · ${readOnlyDetail}`}
+            </span>
+          ) : null}
         </div>
       ) : null}
     </footer>

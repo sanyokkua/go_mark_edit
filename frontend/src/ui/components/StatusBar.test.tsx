@@ -175,3 +175,54 @@ it('StatusBar responsive detail keeps dropped file facts accessible', () => {
   expect(details).toHaveTextContent('Autosave on');
   expect(details).toHaveTextContent('Read-only');
 });
+
+it('T108 names why a large document is read-only, per FR-FT-005', () => {
+  /*
+   * FR-FT-005: a file over 10 MiB and no larger than 50 MiB opens read-only
+   * "with a visible reason". Both surfaces rendered the bare word `Read-only`,
+   * and the discriminator — `capability` — was projected all the way into the
+   * store and read by nothing. The status cannot carry it: `save_status.go`
+   * collapses every non-writable capability onto the one status.
+   */
+  render(
+    <StatusBar
+      capability="large-read-only"
+      cursor={{ lineNumber: 1, column: 1 }}
+      encoding="utf-8"
+      lineEnding="lf"
+      status="read-only"
+      wordCount={420_000}
+    />,
+  );
+
+  const status = screen.getByRole('status', { name: 'Document status' });
+  fireEvent.click(
+    within(status).getByRole('button', { name: 'Document details' }),
+  );
+  const details = within(status).getByRole('region', {
+    name: 'Document details',
+  });
+  expect(details).toHaveTextContent('Read-only');
+  expect(details).toHaveTextContent('over the 10 MiB editing limit');
+});
+
+it('T108 leaves the reason out when the document is writable', () => {
+  render(
+    <StatusBar
+      capability="writable"
+      cursor={{ lineNumber: 1, column: 1 }}
+      encoding="utf-8"
+      lineEnding="lf"
+      status="saved"
+      wordCount={12}
+    />,
+  );
+
+  const status = screen.getByRole('status', { name: 'Document status' });
+  fireEvent.click(
+    within(status).getByRole('button', { name: 'Document details' }),
+  );
+  expect(
+    within(status).getByRole('region', { name: 'Document details' }),
+  ).not.toHaveTextContent('10 MiB');
+});
