@@ -191,3 +191,35 @@ it('T030 returns deterministic availability outcomes before invoking a command',
   ).resolves.toMatchObject({ status: 'unavailable', reason: 'edge' });
   expect(invoke).not.toHaveBeenCalled();
 });
+
+it('T109 reports a refused invocation as refused and carries its classified error', async () => {
+  /*
+   * Every backend carrier in appModelTypes.ts pairs a `refused` status with an
+   * optional ClassifiedError, but the dispatcher matched only the literal
+   * 'unavailable', so a refusal fell through to `mutated` — a command that was
+   * turned down reported as a mutation that happened, with the backend's
+   * message dropped on the floor.
+   */
+  const error = {
+    category: 'capacity-limit',
+    message: 'The window already contains 40 documents.',
+    remediation: 'Cancel',
+    documentId: 'doc-1',
+    dedupKey: 'doc-1:capacity-limit',
+    safeSubject: 'doc-1',
+  };
+  const invoke = jest.fn(async () => ({ status: 'refused', error }));
+
+  await expect(
+    dispatchAction('close-tab', {
+      applicationFocused: true,
+      documentId: 'doc-1',
+      invoke,
+    }),
+  ).resolves.toMatchObject({
+    status: 'refused',
+    actionId: 'close-tab',
+    error: { message: 'The window already contains 40 documents.' },
+  });
+  expect(invoke).toHaveBeenCalledTimes(1);
+});

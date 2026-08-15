@@ -22,7 +22,10 @@ import {
   currentPlatform,
   formatShortcut,
 } from '../../logic/actions/shortcutRegistry';
-import { dispatchAction } from '../../logic/actions/actionDispatcher';
+import {
+  dispatchAction,
+  type ActionResult,
+} from '../../logic/actions/actionDispatcher';
 import {
   createShellActionCatalogue,
   dispatchShellAction,
@@ -126,6 +129,13 @@ interface ShellMenuRowProps {
   viewMenuProps?: ViewMenuProps;
   requestedMenu?: ApplicationMenuTarget | null;
   onRequestedMenuHandled?: () => void;
+  /*
+   * T109: the File surfaces' dispatch results, handed to whoever owns a store
+   * dispatch rather than reported here. Keeping the row free of `logic/store`
+   * follows `EditorContextMenu`'s existing `onActionResult` prop, and means the
+   * row's own tests need no Provider.
+   */
+  onActionResult?: (result: ActionResult) => void;
 }
 
 /*
@@ -176,6 +186,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   viewMenuProps,
   requestedMenu = null,
   onRequestedMenuHandled,
+  onActionResult,
 }: ShellMenuRowProps): React.JSX.Element => {
   const [activeMenu, setActiveMenu] = useState<ActiveMenu>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -457,6 +468,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               invoke,
               isAvailable: (): boolean =>
                 !modalOpen && !fileActionDisabled(item.id),
+              onResult: (result: ActionResult): void =>
+                onActionResult?.(result),
               shortcut,
             },
           ];
@@ -467,6 +480,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       fileActionDisabled,
       fileActionInvoker,
       modalOpen,
+      onActionResult,
       sessionDocumentId,
       writable,
     ],
@@ -550,7 +564,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       invoke,
       sessionDocumentId,
       writable,
-    });
+    }).then((result): void => onActionResult?.(result));
   };
   const dispatchRecentFile = (path: string): void => {
     if (onOpenRecentFile === undefined) return;

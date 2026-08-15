@@ -1,3 +1,5 @@
+import type { ClassifiedError } from '../store/appModelTypes';
+
 import {
   getAction,
   getActionAvailability,
@@ -8,6 +10,22 @@ import {
 
 export type ActionResult =
   | { status: 'mutated'; actionId: ActionId; documentId?: string }
+  /*
+   * T109: the backend's own refusal, carried rather than flattened. Every
+   * carrier type in `appModelTypes.ts` — WriteResult, OpenResult,
+   * TabTransitionResult, ConflictResult, PathCommandResult — pairs a `refused`
+   * status with an optional ClassifiedError, and the dispatcher used to match
+   * only the literal 'unavailable', so a refusal fell through and was reported
+   * as a mutation that happened. The error travels on the result so that a
+   * caller holding a dispatch can report it; the dispatcher itself has no store
+   * access and must stay a pure function.
+   */
+  | {
+      status: 'refused';
+      actionId: ActionId;
+      documentId?: string;
+      error?: ClassifiedError;
+    }
   | {
       status: 'unavailable';
       actionId: ActionId;
@@ -141,6 +159,22 @@ export async function dispatchAction(
       reason:
         invocationReason ??
         (action.scope === 'editor' ? 'no-editor' : 'unsupported'),
+    };
+  }
+  if (
+    typeof invocation === 'object' &&
+    invocation !== null &&
+    'status' in invocation &&
+    invocation.status === 'refused'
+  ) {
+    return {
+      status: 'refused',
+      actionId,
+      documentId: context.documentId,
+      error:
+        'error' in invocation
+          ? (invocation.error as ClassifiedError | undefined)
+          : undefined,
     };
   }
   return { status: 'mutated', actionId, documentId: context.documentId };

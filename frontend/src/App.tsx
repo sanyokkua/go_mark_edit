@@ -252,6 +252,22 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
               )
       }
       onQuit={menuState.onQuit}
+      /*
+       * T109: the File menu's refusals reach a store dispatch here rather than
+       * inside the row. A refused command used to report as `mutated` and its
+       * classified error was dropped; both surfaces — the click and the
+       * accelerator — now route through this one handler, which passes the
+       * backend's message through verbatim exactly as the entry paths do.
+       */
+      onActionResult={(result): void => {
+        if (result.status === 'refused') {
+          reportClassifiedError(
+            dispatch,
+            result.error,
+            t('notification.error.io.title'),
+          );
+        }
+      }}
       activeDocument={activeDocument}
       documentId={menuState.documentId}
       sessionDocumentId={menuState.sessionDocumentId}
