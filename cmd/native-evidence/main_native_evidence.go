@@ -27,11 +27,12 @@ import (
 )
 
 var (
-	nativeEvidenceAssetsDir   string
-	nativeEvidenceDatabaseDir string
-	nativeEvidenceInstance    = "native-evidence"
-	nativeEvidenceScenario    string
-	nativeEvidenceAutosave    *autosaveLatencyScenario
+	nativeEvidenceAssetsDir    string
+	nativeEvidenceDatabaseDir  string
+	nativeEvidenceInstance     = "native-evidence"
+	nativeEvidenceScenario     string
+	nativeEvidenceAutosave     *autosaveLatencyScenario
+	nativeEvidenceExplicitSave *explicitSaveLatencyScenario
 )
 
 func main() {
@@ -52,6 +53,12 @@ func main() {
 	if err := wails.Run(nativeEvidenceOptions(holder, paths)); err != nil {
 		fmt.Fprintf(os.Stderr, "native evidence run: %v\n", err)
 		os.Exit(1)
+	}
+	if nativeEvidenceExplicitSave != nil {
+		if err := nativeEvidenceExplicitSave.failure(); err != nil {
+			fmt.Fprintf(os.Stderr, "explicit-save-latency FAILED: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -89,6 +96,7 @@ func validateNativeEvidenceConfiguration() error {
 
 func configureNativeEvidenceDependencies(holder *application.ApplicationContextHolder, scenario string) {
 	nativeEvidenceAutosave = nil
+	nativeEvidenceExplicitSave = nil
 	var timer nativeEvidenceLayoutTimer = systemNativeEvidenceTimer{}
 	switch scenario {
 	case "pending-close", "stale-close-old":
@@ -101,6 +109,12 @@ func configureNativeEvidenceDependencies(holder *application.ApplicationContextH
 			panic(err)
 		}
 		nativeEvidenceAutosave = latencyScenario
+	case explicitSaveScenarioName:
+		explicitScenario, err := newExplicitSaveLatencyScenario(nativeEvidenceDatabaseDir)
+		if err != nil {
+			panic(err)
+		}
+		nativeEvidenceExplicitSave = explicitScenario
 	}
 
 	model := appmodel.NewAppModelServiceWithLayoutRepositoryAndTimer(
@@ -112,6 +126,11 @@ func configureNativeEvidenceDependencies(holder *application.ApplicationContextH
 	if nativeEvidenceAutosave != nil {
 		model.SetDocumentOpenDialog(nativeEvidenceAutosave)
 		model.SetWriteCommitObserver(nativeEvidenceAutosave.recordCommit)
+	}
+	if nativeEvidenceExplicitSave != nil {
+		nativeEvidenceExplicitSave.attachModel(model)
+		model.SetDocumentSaveDialog(nativeEvidenceExplicitSave)
+		model.SetWriteCommitObserver(nativeEvidenceExplicitSave.recordCommit)
 	}
 	holder.AppModelHandler = appmodel.NewAppModelHandler(model, nil, holder.Context)
 	holder.NativeWindowService = application.NewNativeWindowService(model, nil)
@@ -147,12 +166,18 @@ func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *
 				wailsruntime.EventsOn(ctx, autosaveInputEvent, nativeEvidenceAutosave.recordInput)
 				wailsruntime.EventsOn(ctx, autosaveMissEvent, nativeEvidenceAutosave.recordMiss)
 			}
+			if nativeEvidenceExplicitSave != nil {
+				nativeEvidenceExplicitSave.attachContext(ctx)
+			}
 			if err := holder.Init(ctx); err != nil {
 				wailsruntime.WindowShow(ctx)
 				return
 			}
 			if err := holder.RestoreNativeWindow(ctx); err != nil {
 				wailsruntime.WindowShow(ctx)
+			}
+			if nativeEvidenceExplicitSave != nil {
+				startNativeEvidenceExplicitSave(ctx)
 			}
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
@@ -173,6 +198,23 @@ func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *
 
 func nativeEvidenceMenuForPlatform(platform string) *menu.Menu {
 	return application.NativeMenuForPlatform(platform)
+}
+
+// startNativeEvidenceExplicitSave stamps SC-FT-002's ready-for-input instant the
+// moment startup finished, walks both fixtures off the UI thread, then quits so
+// the JSON report is the run's only outcome. The exit code is decided after
+// wails.Run returns, from the recorded walkthrough failure.
+func startNativeEvidenceExplicitSave(ctx context.Context) {
+	scenario := nativeEvidenceExplicitSave
+	scenario.markReady()
+	go func() {
+		if err := scenario.run(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "explicit-save-latency FAILED: %v\n", err)
+		} else {
+			fmt.Printf("explicit-save-latency PASS report=%s\n", scenario.reportPath)
+		}
+		wailsruntime.Quit(ctx)
+	}()
 }
 
 type nativeEvidencePaths struct {

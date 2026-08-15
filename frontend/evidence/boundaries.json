@@ -27,5 +27,10 @@
     "AppModelAdapter.updateBuffer",
     "nativeEvidenceRuntime input acknowledgement",
     "native-evidence autosave commit event"
+  ],
+  "explicit-save-latency": [
+    "AppModelService.Save and SaveAs",
+    "appmodel DocumentSaveDialog",
+    "appmodel write-commit observer"
   ]
 }

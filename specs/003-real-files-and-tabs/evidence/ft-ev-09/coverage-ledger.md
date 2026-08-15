@@ -3,8 +3,9 @@
 **Produced**: 2026-08-15. **Owner tasks**: T044 (reconciliation) and T098 (this artifact).
 **Scope**: aggregate traceability only. This ledger takes over no FR or SC.
 
-T044 requires this ledger to make five claims. Four are proved below. **The fifth cannot be made
-as worded**, and saying so is the reconciliation — see "The 18-clause claim".
+T044 requires this ledger to make five claims. Four are proved below. The fifth — a clarified-clause
+count — **could not be made as originally worded**, because the mandated figure was never accurate;
+measuring it and getting the wording corrected was the reconciliation. See "The clause count".
 
 ---
 
@@ -116,11 +117,11 @@ Reconciled against the current task state rather than the state when T044 was wr
 | CL-17 empty workspace, zero-width Assistant | Held — Claim 1. |
 | CL-18 unchanged normal startup | Held — Claim 2. |
 | Deferred-surface boundary | Held — `offline-and-controls.test.ts:194`, passing. |
-| Stale aggregate counts | **Two remain.** See below. |
+| Stale aggregate counts | **Two found, both corrected 2026-08-15.** See below. |
 
 ---
 
-## The 18-clause claim — why it cannot be made as worded
+## The clause count — why the mandated figure had to be corrected first
 
 T044 requires this ledger to "report 18 clarified clauses". **No measurement of this specification
 has ever produced 18.**
@@ -138,14 +139,15 @@ So the two mandated figures disagree with each other (14 vs 18) and neither matc
 when it was written. T044's own Outcome clause says a **"stale aggregate count"** prevents
 completion. That clause is self-applying here: the stale count is the one T044 itself mandates.
 
-**This ledger therefore reports the measured figure, 42, and does not assert 18.** Reporting 18
-would be writing a number to satisfy a checklist — the precise failure this feature has already
-been bitten by more than once.
+**This ledger reports the measured figure, 42, and never asserted 18.** Reporting 18 would have
+been writing a number to satisfy a checklist — the precise failure this feature has already been
+bitten by more than once.
 
-**Recommended resolution (owner decision, not taken here)**: amend T044's wording and
-`plan.md:836` to state the clause count as measured, or replace both with a rule that the ledger
-reports the count it measures. Until one of those happens, T044 cannot be closed on this claim,
-and it is left open for that reason alone.
+**Resolved 2026-08-15, by owner decision**: both figures were corrected to the measured count.
+T044 now requires "the **measured** clarified-clause count (**42** at 2026-08-15)" and
+`plan.md:836` reads 42, each carrying a note that the number is re-measured rather than
+incremented by hand and that 14/18/26/42 never agreed. This ledger's claim is therefore now
+**42, measured**, and the claim is satisfied.
 
 ---
 
@@ -157,9 +159,11 @@ Named so that nothing here reads as broader than it is.
   for the walkthrough was requested on 2026-08-15 and **declined**, so no host capture was taken
   and none was obtained by any other route. The offline and deferred-boundary halves of T037 are
   genuinely proven and retained; the separation note and screenshots are not.
-- **SC-FT-002 timings** (T105) — the explicit-save measurement is owed and is being produced by the
-  native-evidence harness rather than by screen automation, which cannot measure it.
-- **Fixture B's timing** (T106) depends on that harness. Every other T106 obligation is closed:
+- **SC-FT-002 timings** (T105) — **produced 2026-08-15** by the `explicit-save-latency`
+  native-evidence scenario: Fixture A 14.114 ms, Fixture B 9.647 ms against a 30,000 ms budget.
+  What that harness excludes is stated in
+  `sc-ft-002/explicit-save-timings-2026-08-15.md` and in the report's own metadata.
+- **Fixture B's timing** (T106) is covered by that harness. Every other T106 obligation is closed:
   all four size boundaries on the real binary (`sc-ft-002/boundaries-2026-08-15.md`) and the
   40-document limit at the interface (`sc-ft-002/capacity-refusals-2026-08-15.md`).
 - **`just verify 003-real-files-and-tabs` after T035–T037 are green** — T035 and T036 are green;

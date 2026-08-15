@@ -833,5 +833,11 @@ _PASS after Phase 1 design._
 - [data-model.md](data-model.md) assigns every field and transition to one authority without putting source in Redux.
 - [quickstart.md](quickstart.md) names runnable focused, aggregate, exact-browser, real-bridge and real-build proof.
 
-All 57 FRs, 13 SCs, 14 clarified clauses, user scenarios, 36 edge cases, 11 current source debts, explicit
+All 57 FRs, 13 SCs, 42 clarified clauses, user scenarios, 36 edge cases, 11 current source debts, explicit
 exclusions, and source dispositions have a dependency-ordered owner. `tasks.md` carries the task-level expansion.
+
+The clause count is **measured**, not carried forward: 42 `- Q:` entries across five Clarifications
+sessions (2026-08-07: 21, 2026-08-09: 5, 2026-08-12: 1, 2026-08-13: 5, 2026-08-14: 10). It read `14`
+here and `18` in T044 until 2026-08-15, and neither figure ever matched the document — the spec held
+26 when the `18` was written. Re-measure it when a session is added rather than incrementing it by
+hand; `evidence/ft-ev-09/coverage-ledger.md` records how the two stale figures were found.

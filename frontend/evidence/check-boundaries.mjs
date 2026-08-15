@@ -175,6 +175,11 @@ const requiredEvidence = {
     'onAutosaveCommit',
     'appModelAdapter.updateBuffer',
   ],
+  'explicit-save-latency': [
+    'newExplicitSaveLatencyScenario',
+    'SetDocumentSaveDialog',
+    'SetWriteCommitObserver',
+  ],
 };
 
 for (const [scenario, expectedBoundaries] of Object.entries(boundaries)) {

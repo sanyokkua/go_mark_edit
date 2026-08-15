@@ -92,6 +92,17 @@ async function runNativeEvidenceScenario(selected: string): Promise<void> {
     case 'autosave-latency':
       await runAutosaveLatency();
       return;
+    case 'explicit-save-latency':
+      // Go drives this walkthrough end to end. SC-FT-002's interval stops at
+      // the explicit-save confirmation, and a webview round trip inside that
+      // interval would be measured instead of the application. The frontend
+      // only proves the real shell mounted, then waits for Go to quit.
+      await waitForApplicationState();
+      reportEvidence(`scenario=${selected} status=go-driven`);
+      nativeEvidenceRuntime.logInfo(
+        JSON.stringify({ scenario: selected, status: 'go-driven' }),
+      );
+      return;
     default:
       throw new Error(`Unknown native evidence scenario: ${selected}`);
   }
