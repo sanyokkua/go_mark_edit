@@ -36,13 +36,41 @@ _Post-closure: 61 covered, 0 partial, 0 uncovered._
 
 Two structural facts the accounting depends on:
 
-- `frontend/e2e/real-files-parity.test.ts:1577`
-  `test('T035 proves all 546 binding comparisons across three unchanged repetitions')` is a
-  **single** test iterating `PARITY_MANIFEST`. Each of the additional state IDs
-  (`frontend/e2e/parity/manifest.ts:54-92`) runs at all six palettes at its assigned width and
-  has a guard assertion in the `establishState` switch (`real-files-parity.test.ts:745-960`)
-  before its capture. "Covered by T035" therefore means state established + semantic guard
-  asserted + three pixel comparisons against the binding.
+- **Superseded 2026-08-15 by T120. The original bullet is preserved below because Constitution I
+  requires a superseded record to be marked rather than silently rewritten — but every citation in
+  it was stale, and the claim it grounded was false.**
+
+  > `frontend/e2e/real-files-parity.test.ts:1577`
+  > `test('T035 proves all 546 binding comparisons across three unchanged repetitions')` is a
+  > **single** test iterating `PARITY_MANIFEST`. Each of the additional state IDs
+  > (`frontend/e2e/parity/manifest.ts:54-92`) runs at all six palettes at its assigned width and
+  > has a guard assertion in the `establishState` switch (`real-files-parity.test.ts:745-960`)
+  > before its capture. "Covered by T035" therefore means state established + semantic guard
+  > asserted + three pixel comparisons against the binding.
+
+  What was actually true when T120 measured it:
+
+  - **The cited test did not exist.** `real-files-parity.test.ts` is 1,159 lines, so there is no
+    `:1577`, and it declared exactly two tests — `T050` and `T057`. T035's case had been removed by
+    T088; the whole-screen runner it belonged to went with commit `f9a34a7b`. The only `T035` string
+    left in `frontend/e2e/` is a prose comment in `parity/reference-adapter.ts`.
+  - **The cited switch did not exist under that name.** There is no `establishState` identifier in
+    the file. The per-state switch is `prepareActualState`, and `manifest.ts:54-92` is now the
+    behaviour-verified comment block — the assignments moved to `:137-178`.
+  - **The coverage claim was false.** `prepareActualState` had one caller, `setupActual`, which had
+    one caller: T057's loop over four `empty`-family entries, two of which carry a `stateId`. So
+    **2 of the 40** additional states ever executed. The other 38 were unreachable, and one of the
+    38 (`control-hovered`) asserted nothing at all — it drove a hover and returned.
+
+  Nothing about this could go red, which is the point FR-FT-051 makes: "a state with no covering
+  assertion MUST fail closed." The enforcement was this document.
+
+- **Replaced by an executing gate (T120).** `real-files-parity.test.ts` now drives all 40 states
+  through `prepareActualState`, each case returns the **name** of the assertion it ran, and
+  `parity/accounting-teardown.ts` fails the run on any planned state with no recorded assertion.
+  Both failure modes are proven to go red: an assertion that throws, and a case that names nothing.
+  A state is covered when an assertion ran and said what it proved — not when a table says so.
+
 - `frontend/scripts/archtest.mjs` has no `it()` names; its gates are the banner strings at
   `:158-162`.
 

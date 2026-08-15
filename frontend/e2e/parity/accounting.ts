@@ -4,7 +4,10 @@ import {
   type ParityComparisonAccounting,
   type PlannedParityComparison,
 } from './evidence';
-import { BEHAVIOUR_VERIFIED_MANIFEST } from './manifest';
+import {
+  ADDITIONAL_STATE_ASSIGNMENTS,
+  BEHAVIOUR_VERIFIED_MANIFEST,
+} from './manifest';
 import { allTargetedEntries } from '../targeted-manifest';
 
 /**
@@ -55,6 +58,60 @@ export function plannedParityVerifications(): readonly PlannedParityComparison[]
       repetition: index + 1,
     })),
   );
+}
+
+/**
+ * FR-FT-051's other half: "Every remaining state in the contract MUST be
+ * verified by behaviour assertion, and a state with no covering assertion MUST
+ * fail closed."
+ *
+ * Nothing enforced it. The enforcement was a markdown table, and that table's
+ * evidence had evaporated — `evidence/ft-vs-08/phase-18/t084-coverage-rescope.md`
+ * grounded a 61-of-61 claim on a `T035` test in `real-files-parity.test.ts` that
+ * no longer exists, and on an `establishState` switch under a name that appears
+ * nowhere in the file. Meanwhile the real switch was reachable for **two** of
+ * forty states. A document cannot fail a build.
+ *
+ * Planned per **state id**, not per manifest key. The existing dimension is
+ * `manifestKey × repetition`; these forty ids expand across six palettes, so
+ * folding them in would plan 720 verifications for a contract that needs one
+ * covering assertion per state. They are separate dimensions of the same run and
+ * are accounted separately.
+ */
+export const plannedStateCoverage = (): readonly string[] =>
+  ADDITIONAL_STATE_ASSIGNMENTS.map(({ stateId }) => stateId);
+
+export type CoveredParityState = Readonly<{
+  stateId: string;
+  /** The assertion that actually ran, named by the case that ran it. */
+  assertion: string;
+}>;
+
+export type ParityStateCoverageReport = Readonly<{
+  planned: number;
+  covered: number;
+  uncovered: readonly string[];
+  rows: readonly CoveredParityState[];
+}>;
+
+export function buildParityStateCoverageReport(
+  records: readonly CoveredParityState[],
+): ParityStateCoverageReport {
+  const planned = plannedStateCoverage();
+  const byState = new Map<string, CoveredParityState>();
+  for (const record of records) {
+    if (record.assertion.trim().length === 0) continue;
+    byState.set(record.stateId, record);
+  }
+  const uncovered = planned.filter((stateId) => !byState.has(stateId));
+  return {
+    planned: planned.length,
+    covered: planned.length - uncovered.length,
+    uncovered,
+    rows: planned
+      .map((stateId) => byState.get(stateId))
+      .filter((row): row is CoveredParityState => row !== undefined),
+  };
 }
 
 export type ParityAccountingReport = Readonly<{

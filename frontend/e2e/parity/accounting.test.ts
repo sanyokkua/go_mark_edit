@@ -1,10 +1,13 @@
 import {
   behaviourVerifiedKeys,
+  buildParityStateCoverageReport,
   PARITY_REPETITION_COUNT,
   pixelComparedKeys,
   plannedParityVerifications,
+  plannedStateCoverage,
   verificationMethodForKey,
 } from './accounting';
+import { ADDITIONAL_STATE_ASSIGNMENTS } from './manifest';
 
 /*
  * `PARITY_REPETITION_COUNT` describes the runner rather than restating a number,
@@ -66,4 +69,64 @@ it('classifies every planned key by exactly one verification method', () => {
   expect(
     verificationMethodForKey('primary:editor-split:1280:glass-light'),
   ).toBe(undefined);
+});
+
+/*
+ * T120. FR-FT-051 requires a state with no covering assertion to fail closed,
+ * and until now the enforcement was a markdown table whose own evidence cited a
+ * deleted test. These pin the two ways a state can lack an assertion, because a
+ * gate that cannot go red is the defect being fixed.
+ */
+// Proves: FR-FT-051
+it('FR-FT-051 plans every additional state exactly once', () => {
+  const planned = plannedStateCoverage();
+  expect(planned).toHaveLength(ADDITIONAL_STATE_ASSIGNMENTS.length);
+  expect(new Set(planned).size).toBe(planned.length);
+  expect([...planned].sort()).toEqual(
+    [...ADDITIONAL_STATE_ASSIGNMENTS.map(({ stateId }) => stateId)].sort(),
+  );
+});
+
+// Proves: FR-FT-051
+it('FR-FT-051 reports a state whose assertion never ran as uncovered', () => {
+  const planned = plannedStateCoverage();
+  const covered = planned
+    .slice(1)
+    .map((stateId) => ({ stateId, assertion: `asserted ${stateId}` }));
+
+  const report = buildParityStateCoverageReport(covered);
+
+  expect(report.planned).toBe(planned.length);
+  expect(report.covered).toBe(planned.length - 1);
+  expect(report.uncovered).toEqual([planned[0]]);
+});
+
+// Proves: FR-FT-051
+it('FR-FT-051 refuses a state that names no assertion', () => {
+  // The `control-hovered` shape: the case ran, drove a hover and proved nothing.
+  // A record with an empty name must not count as coverage.
+  const planned = plannedStateCoverage();
+  const covered = planned.map((stateId, index) => ({
+    stateId,
+    assertion: index === 0 ? '   ' : `asserted ${stateId}`,
+  }));
+
+  const report = buildParityStateCoverageReport(covered);
+
+  expect(report.uncovered).toEqual([planned[0]]);
+  expect(report.covered).toBe(planned.length - 1);
+});
+
+// Proves: FR-FT-051
+it('FR-FT-051 reports full coverage only when every state named an assertion', () => {
+  const covered = plannedStateCoverage().map((stateId) => ({
+    stateId,
+    assertion: `asserted ${stateId}`,
+  }));
+
+  const report = buildParityStateCoverageReport(covered);
+
+  expect(report.uncovered).toEqual([]);
+  expect(report.covered).toBe(report.planned);
+  expect(report.rows).toHaveLength(report.planned);
 });

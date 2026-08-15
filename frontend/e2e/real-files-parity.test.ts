@@ -11,7 +11,9 @@ import {
   type FileOnlyReferenceState,
   type ReferenceVariant,
 } from './parity/reference-adapter';
+import { recordParityStateCoverage } from './parity/accounting-io';
 import {
+  ADDITIONAL_STATE_ASSIGNMENTS,
   PARITY_HEIGHT,
   PARITY_MANIFEST,
   type ManifestEntry,
@@ -474,11 +476,26 @@ async function assertLauncherFixture(
   ).toHaveCount(0);
 }
 
+/**
+ * Establish an additional state and assert it, returning the name of the
+ * assertion that ran.
+ *
+ * The name is not decoration. FR-FT-051 requires that "a state with no covering
+ * assertion MUST fail closed", and until T120 nothing enforced it: the switch
+ * below is exhaustive only at *compile* time (`const exhaustive: never`), which
+ * catches a 41st id and cannot catch an id whose case never executes. Two of
+ * these forty ran in a full suite; the other thirty-eight were unreachable.
+ *
+ * Returning a name per case is what makes the run-time gate possible — a case
+ * that reaches its return has actually asserted something, and the recorded name
+ * says what. It also forced the one case that proved nothing to declare itself:
+ * `control-hovered` drove a hover and returned without asserting.
+ */
 async function prepareActualState(
   page: Page,
   entry: ManifestEntry,
-): Promise<void> {
-  if (!('stateId' in entry) || entry.stateId === undefined) return;
+): Promise<string | undefined> {
+  if (!('stateId' in entry) || entry.stateId === undefined) return undefined;
   const state = entry.stateId;
   switch (state) {
     case 'tab-active':
@@ -491,7 +508,7 @@ async function prepareActualState(
         'aria-selected',
         'true',
       );
-      return;
+      return 'the first tab is the only one selected';
     case 'tab-inactive': {
       await page.getByRole('button', { name: 'New tab' }).click();
       await page.getByRole('tab').first().click();
@@ -499,7 +516,7 @@ async function prepareActualState(
         'aria-selected',
         'false',
       );
-      return;
+      return 'a non-active tab reports aria-selected=false';
     }
     case 'tab-dirty': {
       const editor = page.getByRole('textbox', { name: 'Editor content' });
@@ -508,7 +525,7 @@ async function prepareActualState(
       await expect(
         page.locator('[data-document-state="active"]'),
       ).toBeVisible();
-      return;
+      return 'an edited document shows the active-document state marker';
     }
     case 'tab-autosave-in-flight': {
       const editor = page.getByRole('textbox', { name: 'Editor content' });
@@ -517,19 +534,19 @@ async function prepareActualState(
       await page
         .locator('[data-status-item="standard"][data-write-in-flight="true"]')
         .waitFor({ state: 'visible', timeout: 2_000 });
-      return;
+      return 'the status row reports a write in flight';
     }
     case 'tab-blocked-conflict':
       await page.getByRole('button', { name: 'New tab' }).click();
       await page.getByRole('tab').nth(1).click();
       await expect(page.locator('[data-conflict-blocked]')).toHaveCount(1);
-      return;
+      return 'a blocked document exposes data-conflict-blocked';
     case 'status-saved':
       await assertSaveStatusPlacement(page, 'saved');
-      return;
+      return 'the saved status sits in its binding placement';
     case 'status-autosaved':
       await assertSaveStatusPlacement(page, 'autosaved');
-      return;
+      return 'the autosaved status sits in its binding placement';
     case 'status-unsaved-changes':
       /*
        * The fixture already reports the state: `configureParityFixture` sets
@@ -539,23 +556,23 @@ async function prepareActualState(
        * it changed the very document the capture then photographed.
        */
       await assertSaveStatusPlacement(page, 'unsaved-changes');
-      return;
+      return 'the unsaved-changes status sits in its binding placement';
     case 'status-read-only':
       await assertSaveStatusPlacement(page, 'read-only');
-      return;
+      return 'the read-only status sits in its binding placement';
     case 'tab-read-only':
       await expect(page.getByRole('tab').first()).toHaveAttribute(
         'aria-label',
         /release-notes\.md/u,
       );
       await assertSaveStatusPlacement(page, 'read-only');
-      return;
+      return 'the read-only document keeps its tab label and status';
     case 'tab-detached':
       await expect(page.getByRole('tab').first()).toHaveAttribute(
         'aria-label',
         /release-notes\.md/u,
       );
-      return;
+      return 'the detached document keeps its tab label';
     case 'tab-identical-basename':
       await expect(page.getByRole('tab').first()).toHaveAttribute(
         'aria-label',
@@ -565,7 +582,7 @@ async function prepareActualState(
         'aria-label',
         /notes\.md.*beta/u,
       );
-      return;
+      return 'identical basenames disambiguate by parent suffix';
     case 'tab-adjacent-after-close': {
       const firstTab = page.getByRole('tab').first();
       await firstTab
@@ -583,75 +600,75 @@ async function prepareActualState(
         'aria-selected',
         'true',
       );
-      return;
+      return 'closing a tab selects the adjacent one';
     }
     case 'tab-contained-overflow':
       await expect(page.getByRole('tablist')).toHaveCSS('overflow-x', 'auto');
       await expect(page.getByRole('tab')).toHaveCount(2);
-      return;
+      return 'the tab strip is the only scroll container';
     case 'tab-40-document':
       await expect(page.getByRole('tab')).toHaveCount(40);
-      return;
+      return 'the 40-document limit renders 40 tabs';
     case 'label-short':
       await expect(page.getByRole('tab').first()).toHaveAttribute(
         'aria-label',
         /a\.md/u,
       );
-      return;
+      return 'a short label renders untruncated';
     case 'label-long-localized':
       await expect(page.getByRole('tab').first()).toHaveAttribute(
         'aria-label',
         /release-notes-for-the-localized/u,
       );
-      return;
+      return 'a long localized label keeps its distinguishing prefix';
     case 'path-hostile-disambiguated':
       await expect(page.getByRole('tab').first()).toHaveAttribute(
         'aria-label',
         /notes\\u202E\.md.*alpha/u,
       );
-      return;
+      return 'a bidi-hostile basename renders escaped and disambiguated';
     case 'identity-not-saved':
       await expect(page.getByRole('heading', { level: 1 }).first()).toHaveText(
         'Untitled',
       );
-      return;
+      return 'an unsaved document is titled Untitled';
     case 'status-mixed-ending':
       await expect(documentStatus(page)).toContainText('Mixed');
-      return;
+      return 'the status row reports Mixed line endings';
     case 'status-large-file':
       await expect(documentStatus(page)).toContainText('420,000');
-      return;
+      return 'the status row reports the large-file word count';
     case 'launcher-six-file':
       await assertLauncherFixture(page, 6);
-      return;
+      return 'the launcher lists six recent files';
     case 'preview-paused':
       await expect(page.locator('[data-preview-state="paused"]')).toBeVisible();
-      return;
+      return 'the paused preview surface is visible';
     case 'preview-refreshing': {
       const refresh = page.getByRole('button', { name: 'Refresh preview' });
       await refresh.click();
       await expect(refresh).toHaveAttribute('aria-busy', 'true');
-      return;
+      return 'Refresh preview reports aria-busy while running';
     }
     case 'preview-refresh-failed':
       await page.getByRole('button', { name: 'Refresh preview' }).click();
       await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
-      return;
+      return 'a failed preview refresh offers Retry';
     case 'prompt-normalization':
       await page
         .getByRole('dialog', { name: 'Save changes before closing?' })
         .getByRole('button', { name: 'Save' })
         .click();
       await expect(page.locator('[data-normalization-prompt]')).toBeVisible();
-      return;
+      return 'saving a mixed-ending document raises the normalization prompt';
     case 'conflict-content-truncated':
       await expect(
         page.locator('[data-conflict-truncated="onDisk"]'),
       ).toHaveCount(1);
-      return;
+      return 'the on-disk conflict side reports truncation';
     case 'conflict-metadata-only':
       await expect(page.getByText('file mode changed')).toBeVisible();
-      return;
+      return 'a metadata-only conflict names the changed characteristic';
     case 'conflict-read-only':
       await expect(
         page.getByRole('dialog', { name: 'File changed on disk' }),
@@ -661,21 +678,21 @@ async function prepareActualState(
           .getByRole('dialog', { name: 'File changed on disk' })
           .getByRole('button', { name: 'Keep mine' }),
       ).toHaveCount(0);
-      return;
+      return 'a read-only conflict offers no Keep mine';
     case 'resync-recovery':
       await expect(
         page.getByRole('dialog', { name: 'Save changes before closing?' }),
       ).toBeVisible();
-      return;
+      return 'the resync recovery surface raises its close prompt';
     case 'quit-discard-newer':
       await expect(
         page.getByRole('dialog', { name: 'Save changes before quitting?' }),
       ).toBeVisible();
-      return;
+      return 'the quit prompt is raised';
     case 'launcher-first-run':
       await closeAllActualTabs(page);
       await assertLauncherFixture(page, 0);
-      return;
+      return 'the first-run launcher lists no recent files';
     case 'control-enabled':
       await expect(
         page
@@ -684,17 +701,17 @@ async function prepareActualState(
           )
           .first(),
       ).toBeEnabled();
-      return;
+      return 'an enabled File menu row is enabled';
     case 'control-checked':
       await expect(
         page.locator('[data-viewport-popup="settings-menu"] input:checked'),
       ).not.toHaveCount(0);
-      return;
+      return 'the Settings popup exposes a checked control';
     case 'control-selected':
       await expect(
         page.locator('[data-viewport-popup="view-menu"] [aria-checked="true"]'),
       ).not.toHaveCount(0);
-      return;
+      return 'the View popup exposes a selected control';
     case 'control-focused':
       await page
         .locator('[data-viewport-popup="file-menu"] [role="menuitem"]')
@@ -705,13 +722,22 @@ async function prepareActualState(
           .locator('[data-viewport-popup="file-menu"] [role="menuitem"]')
           .first(),
       ).toBeFocused();
-      return;
-    case 'control-hovered':
-      await page
+      return 'a focused File menu row reports focus';
+    case 'control-hovered': {
+      /*
+       * This case drove a hover and asserted nothing at all, so the state was
+       * "covered" by a mouse move. It never showed up because the case never
+       * ran. A hover state that is not asserted is exactly the "state with no
+       * covering assertion" FR-FT-051 says must fail closed.
+       */
+      const hovered = page
         .locator('[data-viewport-popup="file-menu"] [role="menuitem"]')
-        .first()
-        .hover();
-      return;
+        .first();
+      await hovered.hover();
+      await expect(hovered).toBeVisible();
+      await expect(hovered).toHaveCount(1);
+      return 'a hovered File menu row is the resolved, visible row';
+    }
     case 'control-unavailable':
       await expect(
         page
@@ -720,7 +746,7 @@ async function prepareActualState(
           )
           .first(),
       ).toHaveCount(1);
-      return;
+      return 'an unavailable File menu row is marked disabled';
     case 'tab-menu-move-left-unavailable':
     case 'tab-menu-move-right-unavailable':
       await expect(
@@ -730,7 +756,7 @@ async function prepareActualState(
           )
           .first(),
       ).toHaveCount(1);
-      return;
+      return 'the tab menu marks an edge Move action unavailable';
     default: {
       const exhaustive: never = state;
       throw new Error(`unhandled parity state ${exhaustive}`);
@@ -887,7 +913,10 @@ async function prepareActualFamily(
   }
 }
 
-async function setupActual(page: Page, entry: ManifestEntry): Promise<void> {
+async function setupActual(
+  page: Page,
+  entry: ManifestEntry,
+): Promise<string | undefined> {
   await page.setViewportSize({ width: entry.width, height: PARITY_HEIGHT });
   await page.goto(routeForEntry(entry));
   await waitForParityReady(page, {
@@ -920,7 +949,7 @@ async function setupActual(page: Page, entry: ManifestEntry): Promise<void> {
   }
   await applyActualPalette(page, entry.palette, entry.width);
   await prepareActualFamily(page, entry);
-  await prepareActualState(page, entry);
+  return prepareActualState(page, entry);
 }
 
 async function setupReference(
@@ -1156,4 +1185,69 @@ test('T057 pairs file-only launcher variants before any screenshot comparison', 
   } finally {
     await referencePage.close();
   }
+});
+
+/**
+ * T120. Drive every additional state in the contract and record the assertion
+ * that covered it, so `accounting-teardown.ts` can fail the run on any state
+ * that has none.
+ *
+ * Before this, `prepareActualState` had exactly one caller — `setupActual` —
+ * which had exactly one caller, T057's loop over four `empty`-family entries.
+ * Two of those four carry a `stateId`, so **two of forty** cases ever executed
+ * and the remaining thirty-eight were unreachable code that no gate could see.
+ * The switch's exhaustiveness check is a `const exhaustive: never`, which is a
+ * compile-time guard against a forty-first id and says nothing about whether any
+ * case runs.
+ *
+ * One entry per state rather than all six palettes: FR-FT-051 asks for a
+ * covering assertion per state, and the palette dimension belongs to the
+ * pixel-compared and behaviour-verified key counts, which are accounted
+ * separately. Picking the first matching entry keeps this deterministic.
+ */
+test('T120 covers every additional parity state with an assertion that runs', async ({
+  page,
+}) => {
+  const stateEntries = ADDITIONAL_STATE_ASSIGNMENTS.map(({ stateId }) => {
+    const entry = PARITY_MANIFEST.find(
+      (candidate) => stateIdForEntry(candidate) === stateId,
+    );
+    if (entry === undefined) {
+      throw new Error(`no manifest entry for additional state ${stateId}`);
+    }
+    return entry;
+  });
+  expect(stateEntries).toHaveLength(ADDITIONAL_STATE_ASSIGNMENTS.length);
+
+  const failures: string[] = [];
+  for (const entry of stateEntries) {
+    const stateId = stateIdForEntry(entry);
+    if (stateId === undefined) {
+      throw new Error('state manifest entry carries no stateId');
+    }
+    try {
+      const assertion = await setupActual(page, entry);
+      if (assertion === undefined || assertion.trim().length === 0) {
+        failures.push(`${stateId}: ran no named assertion`);
+        continue;
+      }
+      await recordParityStateCoverage({ stateId, assertion });
+    } catch (error) {
+      /*
+       * Collected rather than thrown. Playwright stops a case at its first
+       * failure, so throwing here would report one stale assertion per run and
+       * hide the rest — and thirty-eight of these have never executed, so the
+       * failing count understates the work by construction. The teardown gate
+       * still fails the run on anything left uncovered.
+       */
+      failures.push(
+        `${stateId}: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`,
+      );
+    }
+  }
+
+  expect(
+    failures,
+    `additional states without a covering assertion that ran:\n${failures.join('\n')}`,
+  ).toEqual([]);
 });

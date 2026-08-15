@@ -4,7 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 import {
   buildParityAccountingReport,
+  buildParityStateCoverageReport,
+  type CoveredParityState,
   type ParityAccountingReport,
+  type ParityStateCoverageReport,
 } from './accounting';
 import type { CapturedParityComparison } from './evidence';
 
@@ -42,9 +45,41 @@ export const ACCOUNTING_REPORT_PATH = resolve(
   '../specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/accounting-report.json',
 );
 
+/**
+ * The state-coverage half of the run log, kept in its own file so a run that
+ * exercises one dimension and not the other cannot be mistaken for a run that
+ * covered both.
+ */
+const STATE_COVERAGE_LOG = resolve(
+  REPOSITORY_ROOT,
+  'test-results/parity-state-coverage.jsonl',
+);
+
 export async function resetParityAccounting(): Promise<void> {
   await mkdir(dirname(CAPTURE_LOG), { recursive: true });
   await rm(CAPTURE_LOG, { force: true });
+  await rm(STATE_COVERAGE_LOG, { force: true });
+}
+
+export async function recordParityStateCoverage(
+  record: CoveredParityState,
+): Promise<void> {
+  await mkdir(dirname(STATE_COVERAGE_LOG), { recursive: true });
+  await appendFile(STATE_COVERAGE_LOG, `${JSON.stringify(record)}\n`, 'utf8');
+}
+
+export async function readRecordedStateCoverage(): Promise<
+  readonly CoveredParityState[]
+> {
+  const raw = await readFile(STATE_COVERAGE_LOG, 'utf8').catch(() => '');
+  return raw
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as CoveredParityState);
+}
+
+export async function buildRecordedStateCoverageReport(): Promise<ParityStateCoverageReport> {
+  return buildParityStateCoverageReport(await readRecordedStateCoverage());
 }
 
 export async function recordParityCapture(
