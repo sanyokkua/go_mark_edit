@@ -1474,3 +1474,53 @@ it('STORY-027-AC-4 renders an accessible localized token-only startup failure su
   expect(failureStyles).toMatch(/var\(--startup-failure-/);
   expect(failureStyles).not.toMatch(/#[0-9a-f]{3,8}\b|\brgb\(|\bhsl\(/i);
 });
+
+/*
+ * FR-FT-005 requires the >50 MiB refusal to carry "a message naming the 50 MiB
+ * limit", and the classified-error table remediates `capacity-limit`
+ * message-only, naming the limit. The backend already names it
+ * (`internal/file/document_reader.go:211` — "The document exceeds the 50 MiB
+ * limit."); until now `onOpenDocument` read only `result.activeBuffer`, so a
+ * refusal reached the user as silence.
+ */
+it('FR-FT-005 reports the 50 MiB open refusal with the limit named', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.flushActiveSession = jest.fn(async () => undefined);
+  const openDocument = jest.fn(async () => ({
+    status: 'refused' as const,
+    error: {
+      category: 'capacity-limit' as const,
+      safeSubject: 'boundary-50mib-plus-one.md',
+      message: 'The document exceeds the 50 MiB limit.',
+      remediation: 'Cancel' as const,
+      dedupKey: 'capacity-limit:boundary-50mib-plus-one.md',
+    },
+  }));
+  mockedAppModelAdapter.openDocument = openDocument;
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Open File' }));
+
+  await waitFor(() => expect(openDocument).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(store.getState().notifications.items).toHaveLength(1),
+  );
+  expect(store.getState().notifications.items[0]).toEqual(
+    expect.objectContaining({
+      code: 'capacity-limit',
+      message: 'The document exceeds the 50 MiB limit.',
+      severity: 'error',
+      subject: 'capacity-limit:boundary-50mib-plus-one.md',
+    }),
+  );
+
+  mockedAppModelAdapter.openDocument = undefined;
+  act((): void => disposeAppModelProjection());
+});

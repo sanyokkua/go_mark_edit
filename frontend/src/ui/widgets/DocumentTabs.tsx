@@ -7,7 +7,6 @@ import {
   type DocumentConflictAdapter,
 } from '../../logic/adapter';
 import type {
-  ClassifiedError,
   ClosePlanKind,
   ConflictPreview,
   ConflictResult,
@@ -16,7 +15,7 @@ import type {
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
-import { notifyToast } from '../../logic/store/notificationsSlice';
+import { reportClassifiedError } from '../../logic/store/classifiedNotification';
 import { actionsForSurface } from '../../logic/actions/actionRegistry';
 import {
   currentPlatform,
@@ -58,47 +57,6 @@ export interface DocumentTabsProps {
   ) => Promise<TabTransitionResult>;
   onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
   modalOpen?: boolean;
-}
-
-function errorCode(category: ClassifiedError['category'] | undefined): string {
-  switch (category) {
-    case 'not-found':
-      return 'not_found';
-    case 'permission-denied':
-      return 'permission';
-    case 'system-command-failure':
-      return 'system-command-failure';
-    case 'unsupported-input':
-      return 'unsupported';
-    case 'conflict':
-      return 'conflict';
-    default:
-      return 'io';
-  }
-}
-
-function reportClassifiedError(
-  dispatch: ReturnType<typeof useAppDispatch>,
-  error: ClassifiedError | undefined,
-  fallback: string,
-  reveal = false,
-): void {
-  if (error === undefined) return;
-  dispatch(
-    notifyToast({
-      code: errorCode(error.category),
-      message: error.message || fallback,
-      remediation:
-        error.remediation === 'Copy path' && reveal
-          ? { action: 'copy-path', labelKey: 'action.copy-path.label' }
-          : error.remediation === 'Retry'
-            ? { action: 'retry', labelKey: 'action.retry.label' }
-            : undefined,
-      severity: 'error',
-      subject: error.dedupKey,
-      title: error.safeSubject ?? fallback,
-    }),
-  );
 }
 
 function announcementName(
@@ -580,10 +538,27 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
             className={styles.tabAdd}
             data-tab-new="true"
             type="button"
+            /*
+             * The two branches are mutually exclusive, so each reports its own
+             * refusal and no path raises two toasts for one click. When the
+             * shell supplies `onNewDocument` it is the single funnel shared
+             * with the File menu and reports there; the adapter fallback is
+             * only reached when it does not, and reports here. Until now this
+             * handler discarded the result outright, so a `capacity-limit`
+             * refusal at 40 documents reached the user as silence.
+             */
             onClick={(): void => {
-              void (onNewDocument
-                ? onNewDocument(tabSetRevision)
-                : adapter.newDocument?.(tabSetRevision));
+              if (onNewDocument) {
+                void onNewDocument(tabSetRevision);
+                return;
+              }
+              void adapter.newDocument?.(tabSetRevision).then((result) => {
+                reportClassifiedError(
+                  dispatch,
+                  result.error,
+                  t('editor.tab.new'),
+                );
+              });
             }}
           >
             +

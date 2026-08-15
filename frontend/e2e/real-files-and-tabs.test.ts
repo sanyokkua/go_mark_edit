@@ -349,3 +349,73 @@ test('FT-VS-08 keeps the close prompt until an explicit choice is made', async (
   await expect(prompt).toHaveCount(0);
   await expect(page.getByRole('tab')).toHaveCount(1);
 });
+
+/*
+ * FR-FT-004 caps a window at 40 documents and requires the 41st distinct
+ * insertion to be refused before any partial state change; the classified-error
+ * table remediates `capacity-limit` "message-only, naming the limit".
+ *
+ * The cap itself is proven in Go by `TestOpenRefusesFortyFirstWithoutMutation`
+ * (`internal/appmodel/open_lifecycle_test.go:102`), which asserts the refusal
+ * carries `ClassifiedCapacityLimit`, leaves the document count and order
+ * unchanged, and emits no patch. This case is not a second proof of that. Under
+ * Playwright `vite.config.ts` substitutes the bridge mock for every
+ * `wailsjs/go/*` import, so no browser run can reach the Go cap at all; what is
+ * proven here is the half Go cannot prove — that the interface honours a
+ * refusal instead of discarding it, which is what it did until now.
+ *
+ * The count is read straight from the DOM, which is why this succeeds where the
+ * 2026-08-15 screen-automation attempt could not: the application surfaces no
+ * document total anywhere on screen
+ * (`evidence/ft-ev-09/sc-ft-002/boundaries-2026-08-15.md`).
+ */
+test('FT-VS-09 refuses the forty-first document and names the limit', async ({
+  page,
+}) => {
+  await page.goto('/?parity-case=state:tab-40-document:minimal-light');
+
+  const tabs = page.getByRole('tab');
+  await expect(tabs).toHaveCount(40);
+
+  await page.getByRole('button', { name: 'New tab' }).click();
+
+  const refusal = page.locator('[data-notification-code="capacity-limit"]');
+  await expect(refusal).toHaveCount(1);
+  await expect(refusal).toContainText('40 documents');
+  await expect(tabs).toHaveCount(40);
+});
+
+/*
+ * FR-FT-005: a file larger than 50 MiB MUST be refused before partial model
+ * insertion "with a message naming the 50 MiB limit". The 2026-08-15
+ * walkthrough confirmed the refusal on the real binary but saw no message
+ * across both a 4-second and a 25-second observation window, and recorded it as
+ * an observation rather than a defect. It was a defect: the backend writes the
+ * message (`internal/file/document_reader.go:211`) and every entry handler in
+ * `App.tsx` read only its success field, so the refusal reached the user as
+ * silence.
+ */
+test('FT-VS-09 refuses an over-50-MiB file and names the limit', async ({
+  page,
+}) => {
+  await page.goto('/?ft-vs-09');
+
+  /*
+   * Asserted rather than sampled: `count()` on a freshly navigated page can
+   * read 0 before the projection hydrates, which would make the
+   * "no tab was added" check below pass against the wrong baseline.
+   */
+  const tabs = page.getByRole('tab');
+  await expect(tabs).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'File' }).click();
+  await page
+    .getByRole('menu', { name: 'File' })
+    .getByRole('menuitem', { name: 'boundary-50mib-plus-one.md' })
+    .click();
+
+  const refusal = page.locator('[data-notification-code="capacity-limit"]');
+  await expect(refusal).toHaveCount(1);
+  await expect(refusal).toContainText('50 MiB');
+  await expect(tabs).toHaveCount(1);
+});

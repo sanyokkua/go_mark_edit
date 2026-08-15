@@ -19,6 +19,7 @@ import {
   resetNotifications,
 } from './logic/store/notificationsSlice';
 import { store, useAppDispatch, useAppSelector } from './logic/store';
+import { reportClassifiedError } from './logic/store/classifiedNotification';
 import {
   setEditorPaneVisible,
   setPreviewPaneVisible,
@@ -383,6 +384,24 @@ const AppContents: React.FC = (): React.JSX.Element => {
     if (activeDocumentId === undefined) return;
     await appModelAdapter.flushActiveSession?.(activeDocumentId);
   }, [activeDocumentId]);
+  /*
+   * FR-FT-005 and the classified-error table both require a refused entry to
+   * carry a message naming its limit, and the backend already writes one
+   * ("The document exceeds the 50 MiB limit.",
+   * `internal/file/document_reader.go:211`; "The window already contains 40
+   * documents.", `internal/appmodel/file_lifecycle.go:184`). Each handler below
+   * read only its success field, so every classified refusal on the entry paths
+   * was discarded — the save path had this right at `beginWrite` and the open
+   * path had no counterpart. `reportClassifiedError` is used rather than
+   * `reportWriteError` because it preserves the backend's message instead of
+   * substituting generic catalog copy.
+   */
+  const reportEntryError = useCallback(
+    (error: ClassifiedError | undefined): void => {
+      reportClassifiedError(dispatch, error, t('notification.error.io.title'));
+    },
+    [dispatch],
+  );
   const onNewDocument = useCallback(
     async (expectedTabSetRevision: number): Promise<unknown> => {
       await flushActiveDocument();
@@ -392,9 +411,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (result?.data !== undefined) {
         setActiveBuffer(result.data);
       }
+      reportEntryError(result?.error);
       return result;
     },
-    [flushActiveDocument],
+    [flushActiveDocument, reportEntryError],
   );
   const onOpenDocument = useCallback(
     async (expectedTabSetRevision: number): Promise<unknown> => {
@@ -405,9 +425,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (result?.activeBuffer !== undefined) {
         setActiveBuffer(result.activeBuffer);
       }
+      reportEntryError(result?.error);
       return result;
     },
-    [flushActiveDocument],
+    [flushActiveDocument, reportEntryError],
   );
   const onOpenRecentFile = useCallback(
     async (path: string, expectedTabSetRevision: number): Promise<unknown> => {
@@ -419,9 +440,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (result?.activeBuffer !== undefined) {
         setActiveBuffer(result.activeBuffer);
       }
+      reportEntryError(result?.error);
       return result;
     },
-    [flushActiveDocument],
+    [flushActiveDocument, reportEntryError],
   );
   const onReopenLastFile = useCallback(
     async (expectedTabSetRevision: number): Promise<unknown> => {
@@ -432,9 +454,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (result?.activeBuffer !== undefined) {
         setActiveBuffer(result.activeBuffer);
       }
+      reportEntryError(result?.error);
       return result;
     },
-    [flushActiveDocument],
+    [flushActiveDocument, reportEntryError],
   );
   const onActivateDocument = useCallback(
     async (

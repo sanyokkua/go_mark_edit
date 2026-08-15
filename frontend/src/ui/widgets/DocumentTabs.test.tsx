@@ -13,6 +13,7 @@ import { Provider } from 'react-redux';
 import type {
   ConflictPreview,
   DocumentMetadata,
+  DocumentTransitionResult,
   PathCommandResult,
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
@@ -818,4 +819,40 @@ it('queued conflict tabs render blocked-by-conflict', () => {
   expect(
     screen.getByRole('tab', { name: /two\.md.*Blocked by conflict/iu }),
   ).toBeVisible();
+});
+
+/*
+ * FR-FT-004 + the classified-error table: `capacity-limit` is remediated
+ * "message-only, naming the limit". The backend already names it
+ * (`internal/appmodel/file_lifecycle.go:184` — "The window already contains 40
+ * documents."); this asserts the new-tab control carries that message to the
+ * user instead of discarding the result, which is what it did until now.
+ */
+it('FR-FT-004 surfaces the 40-document refusal raised by the new-tab control', async () => {
+  hydrate([documentFor('one', '/repo/one.md')]);
+  store.dispatch(resetNotifications());
+  const newDocument = jest.fn(async (): Promise<DocumentTransitionResult> => ({
+    error: {
+      category: 'capacity-limit',
+      safeSubject: 'Untitled',
+      message: 'The window already contains 40 documents.',
+      remediation: 'Cancel',
+      dedupKey: 'capacity-limit:new',
+    },
+  }));
+  renderTabs({ newDocument });
+
+  fireEvent.click(screen.getByRole('button', { name: 'New tab' }));
+
+  await waitFor(() =>
+    expect(store.getState().notifications.items).toHaveLength(1),
+  );
+  expect(store.getState().notifications.items[0]).toEqual(
+    expect.objectContaining({
+      code: 'capacity-limit',
+      message: 'The window already contains 40 documents.',
+      severity: 'error',
+      subject: 'capacity-limit:new',
+    }),
+  );
 });

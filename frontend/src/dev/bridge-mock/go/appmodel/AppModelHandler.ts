@@ -261,6 +261,21 @@ const parityReleaseContent = [
   '```',
   '',
 ].join('\n');
+/**
+ * A path whose name stands in for a file over `MaxSupportedDocumentBytes`
+ * (52,428,800 — `internal/file/document_reader.go:18`).
+ *
+ * Go refuses on the stat'd size. The mock holds no bytes, so the fixture is
+ * recognised by name; that is a stand-in for the measurement, not the
+ * measurement itself, and the real boundary is verified on the built binary in
+ * `evidence/ft-ev-09/sc-ft-002/boundaries-2026-08-15.md`.
+ *
+ * Declared here, above `seededRecentFiles`, because that function runs during
+ * module initialization — a `const` further down the file is still in its
+ * temporal dead zone at that point and throws before the application mounts.
+ */
+const oversizeFixturePath =
+  '/Users/parity/Documents/boundary-50mib-plus-one.md';
 const e2eRecentFiles = [
   '/tmp/t032-recent-07.md',
   '/tmp/t032-recent-06.md',
@@ -307,6 +322,13 @@ function seededRecentFiles(): string[] {
   }
   if (query.has('parity-case')) {
     return [];
+  }
+  /*
+   * A dedicated flag rather than an extra entry in `e2eRecentFiles`, because
+   * FT-VS-07 asserts that list's exact contents and length.
+   */
+  if (query.has('ft-vs-09')) {
+    return [oversizeFixturePath];
   }
   return query.has('ft-vs-07') ? [...e2eRecentFiles] : [];
 }
@@ -792,6 +814,42 @@ function staleRevisionError(): ClassifiedErrorResult {
   );
 }
 
+/**
+ * The window document cap, mirroring `maxOpenDocuments`
+ * (`internal/appmodel/file_lifecycle.go:14`).
+ *
+ * The mock stands in for the backend under Playwright — `vite.config.ts`
+ * rewrites every `wailsjs/go/*` import here, so `window.go` never exists in a
+ * browser run. A case can therefore only prove that the interface honours a
+ * refusal, never that the cap exists; the cap itself is proven by
+ * `TestOpenRefusesFortyFirstWithoutMutation`
+ * (`internal/appmodel/open_lifecycle_test.go:102`). For that stand-in to be
+ * worth anything the refusal must be shaped exactly as Go shapes it, so the
+ * category, message and remediation below are copied from the Go source rather
+ * than invented.
+ */
+const maxOpenDocuments = 40;
+
+/**
+ * `capacity-limit` is remediated `Cancel`, not `Retry` — retrying an identical
+ * refusal cannot succeed. `classifiedError` hardcodes `Retry`, so this builds
+ * the result directly to stay faithful to
+ * `apperr.RemediationCancel` at the two Go refusal sites.
+ */
+function capacityLimitError(
+  message: string,
+  dedupKey: string,
+  safeSubject?: string,
+): ClassifiedErrorResult {
+  return {
+    category: 'capacity-limit',
+    message,
+    remediation: 'Cancel',
+    dedupKey,
+    ...(safeSubject === undefined ? {} : { safeSubject }),
+  };
+}
+
 function emitTabTransitionPatch(document: MockDocument): void {
   revision += 1;
   emitPatch({
@@ -812,6 +870,15 @@ export function NewDocument(
 ): Promise<DocumentTransitionResult> {
   if (!expectedRevisionMatches(expectedTabSetRevision)) {
     return Promise.resolve({ error: staleRevisionError() });
+  }
+  if (orderedDocumentIds.length >= maxOpenDocuments) {
+    return Promise.resolve({
+      error: capacityLimitError(
+        'The window already contains 40 documents.',
+        'capacity-limit:new',
+        'Untitled',
+      ),
+    });
   }
 
   const documentId = `mock-document-${nextUntitledNumber}`;
@@ -868,6 +935,34 @@ export function OpenDocument(
       documentId,
       projectionRevision: revision,
       activeBuffer: activeBuffer(existing),
+    });
+  }
+
+  /*
+   * Everything below is the distinct-insertion branch, which is the only branch
+   * the limit applies to. FR-FT-004 requires Open to canonicalize and
+   * deduplicate *before* applying the 40-document limit, so focusing an
+   * already-open identity stays valid at capacity — hence both guards sit after
+   * the `existing !== undefined` focus return above.
+   */
+  if (selection.path === oversizeFixturePath) {
+    return Promise.resolve({
+      status: 'refused',
+      error: capacityLimitError(
+        'The document exceeds the 50 MiB limit.',
+        `capacity-limit:${displayName}`,
+        displayName,
+      ),
+    });
+  }
+  if (orderedDocumentIds.length >= maxOpenDocuments) {
+    return Promise.resolve({
+      status: 'refused',
+      error: capacityLimitError(
+        'The window already contains 40 documents.',
+        `capacity-limit:${displayName}`,
+        displayName,
+      ),
     });
   }
 
