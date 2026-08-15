@@ -150,6 +150,18 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 		}
 		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)
 	}
+	// A missing path is not an error at either layer below, by design:
+	// `CurrentDiskVersion` reports absence as `DiskVersion{}, nil` so a permission
+	// or IO failure cannot be mistaken for deletion (`disk_version.go:31-32`), and
+	// `ReadClassifiedStable` short-circuits on `!before.Exists` so the conflict path
+	// can mark an open document detached without raising (`conflict.go:121,297`,
+	// FR-FT-023). Neither `readErr` nor `read.Error` therefore fires here, `identity`
+	// stays "", and the match loop below is satisfied by any untitled document — so
+	// an explicit stale choice focused an unrelated tab instead of refusing.
+	// FR-FT-040 requires the refusal, and it has to happen before identity is read.
+	if !stable.Version.Exists {
+		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedNotFound, "The file no longer exists.", apperr.RemediationCancel)
+	}
 	read := stable.Read
 	if read.Error != nil {
 		return OpenPreparation{}, read.Error

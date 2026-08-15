@@ -38,6 +38,33 @@ func TestReadClassifiedStableBoundsRawHashAndDetectsGrowth(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-023
+func TestReadClassifiedStableReportsAbsenceWithoutAnError(t *testing.T) {
+	/*
+	 * Absence is deliberately not an error here, and this pins that contract so a
+	 * later caller does not "fix" it. The conflict path relies on it to mark an
+	 * open document detached while keeping its buffer (`appmodel/conflict.go:121,297`,
+	 * FR-FT-023), which an error return would break.
+	 *
+	 * The consequence is that callers MUST read `Version.Exists` themselves: the
+	 * returned `Read` is zero-valued, so `Read.Error` is nil and
+	 * `Read.CanonicalPath.Identity` is "". `appmodel.PrepareOpen` failing to check it
+	 * is the FR-FT-040 defect this test's sibling covers.
+	 */
+	missing := filepath.Join(t.TempDir(), "never-written.md")
+
+	absent, err := ReadClassifiedStable(missing, MaxClassifiedReadBytes)
+	if err != nil {
+		t.Fatalf("stable read of a missing path = %v, want no error", err)
+	}
+	if absent.Version.Exists {
+		t.Fatalf("stable read of a missing path reports Exists = true: %+v", absent.Version)
+	}
+	if absent.Read.Error != nil || absent.Read.CanonicalPath.Identity != "" {
+		t.Fatalf("stable read of a missing path = %+v, want a zero-valued read that carries no classification", absent.Read)
+	}
+}
+
 func TestReadBoundedDoesNotConsumeBeyondLimit(t *testing.T) {
 	const limit int64 = 4
 	input := bytes.NewReader([]byte("0123456789"))

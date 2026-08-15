@@ -129,6 +129,58 @@ func TestOpenRefusesFortyFirstWithoutMutation(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-040
+func TestOpenStaleRecentEntryRefusesNotFoundWithoutMutation(t *testing.T) {
+	/*
+	 * A missing path returned no error through two layers. `CurrentDiskVersion`
+	 * reports absence as `DiskVersion{}, nil` (`internal/file/disk_version.go:39-42`)
+	 * and `ReadClassifiedStable` short-circuits on `!before.Exists`
+	 * (`document_reader.go:144-146`), so neither `readErr` nor `read.Error` fired
+	 * and `identity` was "". The match loop's `document.canonicalIdentity == identity`
+	 * is then satisfied by *any* untitled document, so the stale entry silently
+	 * focused an unrelated tab; with no untitled tab it minted a blank pathless
+	 * document and promoted "", surfacing `persistence-warning`.
+	 *
+	 * `NewAppModelService` is used rather than `NewEmptyAppModelService` precisely
+	 * because it seeds one untitled placeholder — that is the arm that produced the
+	 * wrong-tab focus, and an empty service would only exercise the blank-document
+	 * arm.
+	 */
+	missing := writeOpenFixture(t, "deleted-recent.md", "gone\n")
+	if err := os.Remove(missing); err != nil {
+		t.Fatalf("remove recent fixture: %v", err)
+	}
+
+	emitter := &recordingEmitter{}
+	service := NewAppModelService(emitter)
+	before, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState before Open: %v", err)
+	}
+	documentCount := len(before.Snapshot.Documents)
+	orderedCount := len(before.Snapshot.OrderedDocumentIDs)
+	patchCount := len(emitter.patches)
+
+	outcome := service.OpenPath(context.Background(), missing, before.Snapshot.TabSetRevision)
+	if outcome.Status != apperr.OpenStatusRefused || outcome.Error == nil || outcome.Error.Category != apperr.ClassifiedNotFound {
+		t.Fatalf("Open of a deleted recent entry = %+v, want a refused not-found", outcome)
+	}
+	if outcome.DocumentID != "" {
+		t.Fatalf("Open of a deleted recent entry resolved to document %q, want none", outcome.DocumentID)
+	}
+
+	after, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState after Open: %v", err)
+	}
+	if len(after.Snapshot.Documents) != documentCount || len(after.Snapshot.OrderedDocumentIDs) != orderedCount || len(emitter.patches) != patchCount {
+		t.Fatalf("refused Open mutated tab state = %+v", after.Snapshot)
+	}
+	if len(service.reservations) != 0 {
+		t.Fatalf("refused Open left %d open reservation(s)", len(service.reservations))
+	}
+}
+
 func TestPersistedArrangementPrecedence(t *testing.T) {
 	path := writeOpenFixture(t, "arrangement.md", "arrangement\n")
 	repository := &recordingFileMetadataRepository{arrangements: map[string]string{}}
