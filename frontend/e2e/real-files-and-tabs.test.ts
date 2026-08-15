@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { expectPainted } from './painted';
+
 test('FT-VS-01 operates New/Open from the real File menu and keeps the shell usable', async ({
   page,
 }) => {
@@ -282,9 +284,17 @@ test('FT-VS-07 proves recents, reopen, launcher, and responsive status controls'
   const details = page.getByRole('button', { name: 'Document details' });
   await expect(details).toBeVisible();
   await details.click();
-  await expect(
-    page.getByRole('region', { name: 'Document details' }),
-  ).toBeVisible();
+  const detailsRegion = page.getByRole('region', { name: 'Document details' });
+  await expect(detailsRegion).toBeVisible();
+  /*
+   * This assertion is why T113 was invisible to the whole suite. `toBeVisible`
+   * above passed for the entire time the panel was clipped to nothing by the
+   * status row's `overflow: hidden` — it only requires a non-empty bounding box
+   * and no `visibility: hidden`. The narrow width is exactly where the dropped
+   * status items are supposed to stay reachable, so this is the case that most
+   * needed to see paint rather than presence.
+   */
+  await expectPainted(detailsRegion, 'the Document details region at 375px');
   expect(await page.evaluate(() => window.innerWidth)).toBe(375);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),

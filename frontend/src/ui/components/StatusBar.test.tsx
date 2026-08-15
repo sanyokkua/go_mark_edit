@@ -76,8 +76,10 @@ it('T015 keeps the save status out of the row and inside Document details', () =
   fireEvent.click(
     within(status).getByRole('button', { name: 'Document details' }),
   );
+  // The region is a sibling of the row, not a child of it — T113. The row clips
+  // its own overflow, so nothing absolutely positioned inside it can be seen.
   expect(
-    within(status).getByRole('region', { name: 'Document details' }),
+    screen.getByRole('region', { name: 'Document details' }),
   ).toHaveTextContent('Saved');
 });
 
@@ -168,7 +170,7 @@ it('StatusBar responsive detail keeps dropped file facts accessible', () => {
   expect(detailsButton).toHaveAttribute('aria-expanded', 'false');
   fireEvent.click(detailsButton);
   expect(detailsButton).toHaveAttribute('aria-expanded', 'true');
-  const details = within(status).getByRole('region', {
+  const details = screen.getByRole('region', {
     name: 'Document details',
   });
   expect(details).toHaveTextContent('Mixed');
@@ -199,7 +201,7 @@ it('T108 names why a large document is read-only, per FR-FT-005', () => {
   fireEvent.click(
     within(status).getByRole('button', { name: 'Document details' }),
   );
-  const details = within(status).getByRole('region', {
+  const details = screen.getByRole('region', {
     name: 'Document details',
   });
   expect(details).toHaveTextContent('Read-only');
@@ -223,6 +225,58 @@ it('T108 leaves the reason out when the document is writable', () => {
     within(status).getByRole('button', { name: 'Document details' }),
   );
   expect(
-    within(status).getByRole('region', { name: 'Document details' }),
+    screen.getByRole('region', { name: 'Document details' }),
   ).not.toHaveTextContent('10 MiB');
+});
+
+/*
+ * T113. The disclosure used to be a child of the row and was clipped to nothing
+ * by the row's own `overflow: hidden` — it rendered, it was in the accessibility
+ * tree, and it painted nothing on every engine. jsdom has no layout, so this
+ * layer cannot see paint; what it can pin is the arrangement that makes paint
+ * possible, and the trigger relationship that now carries the disclosure
+ * semantics in place of DOM containment.
+ *
+ * The paint itself is proven in Playwright by `expectPainted` (`e2e/painted.ts`)
+ * at both `Document details` sites, because neither `toBeVisible()` nor
+ * `toContainText()` can see a clip.
+ */
+it('T113 docks the details region beside the row, outside the row that clips it', () => {
+  render(
+    <StatusBar
+      cursor={{ lineNumber: 1, column: 1 }}
+      encoding="utf-8"
+      lineEnding="lf"
+      status="saved"
+      wordCount={4}
+    />,
+  );
+
+  const status = screen.getByRole('status', { name: 'Document status' });
+  const trigger = within(status).getByRole('button', {
+    name: 'Document details',
+  });
+  fireEvent.click(trigger);
+
+  const details = screen.getByRole('region', { name: 'Document details' });
+  const dock = status.parentElement;
+
+  expect(dock).not.toBeNull();
+  expect(dock).toHaveAttribute('data-status-dock', 'true');
+  expect(details.parentElement).toBe(dock);
+  expect(status.contains(details)).toBe(false);
+
+  // The trigger is what states the relationship now that containment does not.
+  expect(trigger).toHaveAttribute('aria-controls', details.id);
+  expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+  // And the row must keep the clip that forced this arrangement: it is what
+  // makes the row shed status items instead of wrapping (`narrow-width` T084).
+  const statusStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/components/StatusBar.module.css'),
+    'utf8',
+  );
+  expect(statusStyles).toMatch(/\.statusBar\s*\{[^}]*overflow:\s*hidden/s);
+  expect(statusStyles).toMatch(/\.dock\s*\{[^}]*position:\s*relative/s);
+  expect(statusStyles).not.toMatch(/\.dock\s*\{[^}]*overflow:/s);
 });

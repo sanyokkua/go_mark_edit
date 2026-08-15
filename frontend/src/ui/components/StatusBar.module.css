@@ -1,3 +1,28 @@
+/*
+ * The status row's positioning context, and the only element between the row
+ * and the document column (T113).
+ *
+ * `.statusBar` below clips its own overflow, and that clip is load-bearing:
+ * `narrow-width.test.ts` T084 measures `scrollWidth <= clientWidth` on it at
+ * four widths to prove the row sheds items rather than wrapping. But an
+ * absolutely positioned element whose containing block is a clipping ancestor
+ * is clipped by it in every engine, so `.details` could not live inside the row
+ * and be seen — it rendered, sat in the accessibility tree, and painted
+ * nothing. The dock takes the positioning role instead, so the row keeps its
+ * clip and its exact measured box while the panel escapes it.
+ *
+ * A pass-through by construction: it is the flex item `.statusBar` used to be,
+ * exactly as tall, and it is a flex container itself so `.statusBar` stays a
+ * flex item and its `min-width: auto` still resolves the way it does today.
+ */
+.dock {
+  display: flex;
+  flex: 0 0 var(--status-bar-min-height);
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+
 .statusBar {
   box-sizing: border-box;
   background: var(--surface-raised);
@@ -83,9 +108,14 @@
   max-width: calc(100vw - 16px);
   min-width: min(250px, calc(100vw - 16px));
   flex-wrap: wrap;
+  /* Anchored to `.dock`, which spans exactly the status row, so the panel sits
+     flush on the row's top edge with no arithmetic. The rule this replaced was
+     `transform: translateY(calc(-100% - var(--status-bar-min-height)))` off the
+     static position, which left an accidental one-row gap above the row — and,
+     being a transform, could not escape the row's clip in any case. */
+  bottom: 100%;
   position: absolute;
   right: var(--status-bar-padding-inline);
-  transform: translateY(calc(-100% - var(--status-bar-min-height)));
   z-index: var(--z-popover);
 }
 

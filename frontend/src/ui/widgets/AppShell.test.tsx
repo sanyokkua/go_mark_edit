@@ -430,7 +430,17 @@ it('T042 places the 28px status surface below editor content in the shell region
   // The row no longer prints the save status — the title bar owns it — so the
   // backend projection is asserted on the authoritative attribute instead.
   expect(status).toHaveAttribute('data-status-state', 'saved');
-  expect(status.parentElement).toBe(documentArea);
+  /*
+   * The row sits one level down since T113: its own `overflow: hidden` clipped
+   * the `Document details` disclosure to nothing, so the panel moved out of the
+   * row and into a dock that wraps it. The T042 contract this test exists for is
+   * unchanged — the status surface is inside the document area, not full width
+   * beneath the sidebar — so it is asserted through the dock rather than
+   * loosened to a `contains` check.
+   */
+  const dock = status.parentElement;
+  expect(dock).toHaveAttribute('data-status-dock', 'true');
+  expect(dock?.parentElement).toBe(documentArea);
 });
 
 it('T047 projects an acknowledged autosave-on setting into status details', () => {
@@ -495,8 +505,10 @@ it('T047 projects an acknowledged autosave-on setting into status details', () =
   fireEvent.click(
     within(status).getByRole('button', { name: 'Document details' }),
   );
+  // Docked beside the row rather than inside it, so the row's clip cannot hide
+  // it — T113.
   expect(
-    within(status).getByRole('region', { name: 'Document details' }),
+    screen.getByRole('region', { name: 'Document details' }),
   ).toHaveTextContent('Autosave on');
 
   act(() => {
@@ -521,7 +533,7 @@ it('T047 projects an acknowledged autosave-on setting into status details', () =
     );
   });
   expect(
-    within(status).getByRole('region', { name: 'Document details' }),
+    screen.getByRole('region', { name: 'Document details' }),
   ).toHaveTextContent('Autosave off');
 });
 

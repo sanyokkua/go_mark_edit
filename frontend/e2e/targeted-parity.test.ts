@@ -9,6 +9,7 @@ import { dirname, join, resolve } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { comparePng, type PngComparison } from './parity/comparator';
+import { expectPainted } from './painted';
 import {
   adaptReferenceHtml,
   REFERENCE_ZERO_ASSISTANT_CLASS,
@@ -1651,11 +1652,26 @@ for (const palette of PARITY_PALETTES) {
       }
       if (statusCase.stateId === 'status-read-only') {
         await status.getByRole('button', { name: 'Document details' }).click();
-        await expect(
-          status.getByRole('region', { name: 'Document details' }),
-        ).toContainText('Read-only');
+        /*
+         * The region is queried from the page, not from `status`: T113 moved it
+         * out of the row and into the status dock, because an absolutely
+         * positioned child of the row's `overflow: hidden` box is clipped by it.
+         *
+         * `toContainText` was the only assertion here, and it passed for the
+         * whole time the panel painted nothing — it reads the text tree and
+         * never consults layout. `toBeVisible` would not have caught it either
+         * (a clipped box still has a bounding box). `expectPainted` is the one
+         * that hit-tests the painted output, so it is what proves FR-FT-005's
+         * reason is on screen rather than merely in the DOM.
+         */
+        const detailsRegion = page.getByRole('region', {
+          name: 'Document details',
+        });
+        await expect(detailsRegion).toBeVisible();
+        await expect(detailsRegion).toContainText('Read-only');
+        await expectPainted(detailsRegion, 'the Document details region');
         assertions.push(
-          'the Document details region reports Read-only for the read-only capability',
+          'the Document details region is painted, not merely present, and reports Read-only for the read-only capability',
         );
       }
       const metrics = await surfaceMetrics(status);
