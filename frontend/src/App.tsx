@@ -18,6 +18,7 @@ import {
   notifyToast,
   resetNotifications,
   type NotificationRemediation,
+  type NotificationRemediationIntent,
 } from './logic/store/notificationsSlice';
 import { store, useAppDispatch, useAppSelector } from './logic/store';
 import { reportClassifiedError } from './logic/store/classifiedNotification';
@@ -86,6 +87,27 @@ import { ModalStateProvider } from './ui/widgets/modalState';
 import ModalShell from './ui/primitives/ModalShell';
 
 let activeRetry: Promise<AppModelBootstrapResult> | undefined;
+
+/**
+ * Actions whose invoker already reported its own failure.
+ *
+ * `onSave`/`onSaveAs` return the `WriteResult`, so a refused write matched both
+ * the write path's reporter and the menu's `onActionResult` arm and was reported
+ * twice. Before T117 both reports rendered the same generic copy, so the only
+ * symptom was a `×2` on a single failure — indistinguishable from the contract's
+ * dedup count, which means a failure that genuinely repeated. It became visible
+ * when the second, intent-less report started erasing the Retry control the
+ * first had earned, because `refreshDuplicate` copies the incoming remediation
+ * wholesale.
+ *
+ * The dispatcher cannot infer this: it is a pure function with no store access
+ * and no knowledge of which invoker reports. Naming the ids here keeps that
+ * knowledge where the two reporters actually meet.
+ */
+const selfReportingActionIds: ReadonlySet<string> = new Set([
+  'save',
+  'save-as',
+]);
 
 function safeFilename(
   document: DocumentMetadata | undefined,
@@ -261,8 +283,24 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
        * accelerator — now route through this one handler, which passes the
        * backend's message through verbatim exactly as the entry paths do.
        */
+      /*
+       * `reported` guards a double-report T117 exposed. `onSave`/`onSaveAs`
+       * return the `WriteResult`, whose `status` is `refused` on a failed write,
+       * so the write path reported the failure once with its intent and this arm
+       * reported the identical error again without one. `refreshDuplicate`
+       * copies the incoming remediation wholesale, so the second report erased
+       * the Retry control the first had earned.
+       *
+       * It was invisible before: both reports produced the same generic copy, so
+       * the only symptom was a `×2` on a single failure — which reads like the
+       * contract's dedup count working, when that count means a failure that
+       * genuinely repeated.
+       */
       onActionResult={(result): void => {
-        if (result.status === 'refused') {
+        if (
+          result.status === 'refused' &&
+          !selfReportingActionIds.has(result.actionId)
+        ) {
           reportClassifiedError(
             dispatch,
             result.error,
@@ -515,32 +553,43 @@ const AppContents: React.FC = (): React.JSX.Element => {
     },
     [activeBuffer?.documentId],
   );
+  /*
+   * The write path's copy defect — T107's and T111's, third and last arrow.
+   *
+   * This dispatched `notifyError`, whose `prepare` runs `localizedErrorCopy` and
+   * replaces title and message with generic catalogue copy keyed by code. So the
+   * message Go built was discarded on every Save, Save As and conflict decision:
+   * the `title`, `message` and `retryable` assembled here were all dead, and a
+   * 50 MiB capacity refusal read exactly like an unrelated write failure —
+   * against FR-FT-005, which requires the refusal to name the limit.
+   *
+   * The eight-category ternary is gone rather than repaired. It ended
+   * `conflict ? 'io' : 'io'`, collapsing `conflict`, `capacity-limit` and
+   * `system-command-failure` onto one code, and `classifiedErrorCode` already
+   * maps all eight — rewriting it here would have duplicated that map.
+   *
+   * The `??` default is load-bearing and has no counterpart in T107/T111:
+   * `reportClassifiedError` returns early on `undefined`, whereas `notifyError`
+   * always produced a toast. Without it a refusal carrying no error would become
+   * silent, which is a worse defect than the one being fixed.
+   */
   const reportWriteError = useCallback(
-    (error: ClassifiedError | undefined, documentId: string): void => {
-      const category = error?.category ?? 'io-failure';
-      const code =
-        category === 'not-found'
-          ? 'not_found'
-          : category === 'permission-denied'
-            ? 'permission'
-            : category === 'unsupported-input'
-              ? 'unsupported'
-              : category === 'conflict'
-                ? 'io'
-                : 'io';
-      const subject = error?.dedupKey ?? documentId;
-      dispatch(
-        notifyError(
-          {
-            code,
-            title: error?.safeSubject ?? 'File operation failed',
-            message:
-              error?.message ?? 'The file operation could not be completed.',
-            retryable: error?.remediation === 'Retry',
-            details: { subject },
-          },
-          subject,
-        ),
+    (
+      error: ClassifiedError | undefined,
+      documentId: string,
+      intent?: NotificationRemediationIntent,
+    ): void => {
+      reportClassifiedError(
+        dispatch,
+        error ?? {
+          category: 'io-failure',
+          message: t('notification.error.io.message'),
+          remediation: '',
+          documentId,
+          dedupKey: `write:${documentId}`,
+        },
+        t('notification.error.io.title'),
+        { intent },
       );
     },
     [dispatch],
@@ -566,21 +615,29 @@ const AppContents: React.FC = (): React.JSX.Element => {
     },
     [dispatch],
   );
+  /*
+   * The one caller that must NOT move onto the classified path.
+   *
+   * Everything else `reportWriteError` backs carries a real `ClassifiedError`
+   * that Go built and sanitized. This does not: it wraps whatever the bridge
+   * threw, and `parseError` falls back to `String(error)` for anything that is
+   * not a `WireError` (`logic/utils/parseError.ts:65`) — raw JS or OS error text.
+   * The classified error contract says a user-facing message MUST NEVER include
+   * raw OS error text or a stack cause, so `localizedErrorCopy` substituting
+   * generic copy is protective here rather than lossy. Keeping the `io` code
+   * also keeps the strings the user already sees unchanged.
+   */
   const reportNativeCloseError = useCallback(
     (error: unknown): void => {
       const parsed = parseError(error);
-      reportWriteError(
-        {
-          category: 'io-failure',
-          message: parsed.message,
-          remediation: parsed.retryable ? 'Retry' : '',
-          documentId: 'native-close',
-          dedupKey: 'native-close:io-failure',
-        },
-        'native-close',
+      dispatch(
+        notifyError(
+          { ...parsed, code: 'io', details: { subject: 'native-close' } },
+          'native-close:io-failure',
+        ),
       );
     },
-    [reportWriteError],
+    [dispatch],
   );
   const cancelNativeClose = useCallback(async (): Promise<void> => {
     if (!nativeClosePendingRef.current) return;
@@ -1046,14 +1103,14 @@ const AppContents: React.FC = (): React.JSX.Element => {
           }),
         );
       } else if (result.status === 'conflict' || result.status === 'refused') {
-        reportWriteError(result.error, documentId);
+        reportWriteError(result.error, documentId, kind);
       }
       return result;
     },
     [activeDocument, dispatch, reportWriteError],
   );
   const beginWrite = useCallback(
-    async (kind: 'save' | 'save-as'): Promise<unknown> => {
+    async (kind: 'save' | 'save-as'): Promise<WriteResult | undefined> => {
       const documentId = activeDocument?.documentId ?? activeBuffer?.documentId;
       if (documentId === undefined) return undefined;
       if (
@@ -1072,6 +1129,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
             category: 'permission-denied',
             message: t('save.readOnly'),
             remediation: '',
+            // Without a subject the title falls back to the generic "File
+            // operation failed" once the message stops being overwritten.
+            safeSubject: safeFilename(activeDocument),
             documentId,
             dedupKey: `read-only:${documentId}`,
           },
@@ -1085,12 +1145,17 @@ const AppContents: React.FC = (): React.JSX.Element => {
         reportWriteError(
           {
             category: 'conflict',
-            message: 'The active document changed before Save could start.',
+            // Was a bare English literal. It was invisible while
+            // `localizedErrorCopy` overwrote it; now that the message survives,
+            // an untranslated string would reach the user (FR-FT-047).
+            message: t('save.activeDocumentChanged'),
             remediation: 'Retry',
+            safeSubject: safeFilename(activeDocument),
             documentId,
             dedupKey: `active-document:${documentId}`,
           },
           documentId,
+          kind,
         );
         return undefined;
       }
@@ -1162,13 +1227,27 @@ const AppContents: React.FC = (): React.JSX.Element => {
           );
           return;
         }
+        case 'save':
+        case 'save-as': {
+          /*
+           * `beginWrite`, not `finishWrite`. `finishWrite` would reuse the exact
+           * `contentRevision` and decision token the backend just refused, so it
+           * would deterministically refuse again. `beginWrite` re-flushes the
+           * session and re-reads the state first, which is what makes a retry
+           * after a conflict or a transient IO failure able to succeed at all.
+           */
+          const result = await beginWrite(remediation.intent);
+          if (result?.status !== 'committed') return;
+          dispatch(dismissNotification(notificationId));
+          return;
+        }
         default: {
           const unhandledIntent: never = remediation.intent;
           return unhandledIntent;
         }
       }
     },
-    [announceRemediation, dispatch],
+    [announceRemediation, beginWrite, dispatch],
   );
   const onQuit = useCallback((): void => {
     if (parityQuitPrompt) {

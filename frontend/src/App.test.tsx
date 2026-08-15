@@ -786,6 +786,153 @@ it('flushes the active editor session before File Open invokes the native comman
   act((): void => disposeAppModelProjection());
 });
 
+// Proves: FR-FT-015
+it('T117 surfaces the Save refusal with the backend message and its own code', async () => {
+  /*
+   * `reportWriteError` dispatched `notifyError`, whose `prepare` runs
+   * `localizedErrorCopy` and swaps title and message for generic catalogue copy
+   * keyed by code — so the message Go built was discarded on every write. This is
+   * exactly the defect T111 fixed for the close plan and explicitly scoped away
+   * from `reportWriteError`, which still backed Save and Save As.
+   *
+   * The category ternary compounded it: it ended `conflict ? 'io' : 'io'`, so
+   * `conflict`, `capacity-limit` and `system-command-failure` were
+   * indistinguishable, while `classifiedErrorCode` preserves all eight.
+   */
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'refused',
+    error: {
+      category: 'conflict',
+      safeSubject: 'one.md',
+      message: 'The document changed on disk while Save was preparing.',
+      remediation: 'Retry',
+      documentId: 'document-1',
+      dedupKey: 'save-conflict:document-1',
+    },
+  });
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+
+  await waitFor(() => {
+    expect(store.getState().notifications.items).toHaveLength(1);
+  });
+  expect(store.getState().notifications.items[0]).toMatchObject({
+    // Before: 'The file operation could not be completed.' and code 'io'.
+    code: 'conflict',
+    message: 'The document changed on disk while Save was preparing.',
+    severity: 'error',
+    title: 'one.md',
+  });
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+// Proves: FR-FT-015
+it('T117 reports one refused Save once, not twice with a count', async () => {
+  /*
+   * `onSave` returns the `WriteResult`, so a refused write matched both the
+   * write path's own reporter and the File menu's `onActionResult` arm and was
+   * reported twice. The contract's dedup count means a failure that *repeated*;
+   * a single failure showing `×2` misreports what happened.
+   *
+   * It was invisible until T117 because both reports rendered identical generic
+   * copy. It surfaced as a lost Retry control: `refreshDuplicate` copies the
+   * incoming remediation wholesale, and the second report carried no intent.
+   */
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'refused',
+    error: {
+      category: 'io-failure',
+      safeSubject: 'one.md',
+      message: 'The file could not be written.',
+      remediation: 'Retry',
+      documentId: 'document-1',
+      dedupKey: 'write:document-1',
+    },
+  });
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+
+  await waitFor(() => {
+    expect(store.getState().notifications.items).toHaveLength(1);
+  });
+  expect(store.getState().notifications.items[0]).toMatchObject({
+    count: 1,
+    remediation: {
+      action: 'retry',
+      documentId: 'document-1',
+      intent: 'save',
+      labelKey: 'action.retry.label',
+    },
+  });
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+// Proves: FR-FT-015
+it('T117 keeps each classified category on its own notification code', async () => {
+  /*
+   * The category ternary ended `category === 'conflict' ? 'io' : 'io'`, so three
+   * of the eight categories collapsed onto one code and became indistinguishable
+   * to dedup, styling and any assertion. `classifiedErrorCode` already preserved
+   * all eight; nothing routed the write path through it.
+   *
+   * A capacity-limit refusal is the sharpest case: FR-FT-005 requires the message
+   * to name the limit, and generic copy cannot.
+   */
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'refused',
+    error: {
+      category: 'capacity-limit',
+      safeSubject: 'one.md',
+      message: 'The document is larger than the 50 MiB limit.',
+      remediation: 'Cancel',
+      documentId: 'document-1',
+      dedupKey: 'capacity:document-1',
+    },
+  });
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+
+  await waitFor(() => {
+    expect(store.getState().notifications.items).toHaveLength(1);
+  });
+  expect(store.getState().notifications.items[0]).toMatchObject({
+    // Before: 'io', identical to an unrelated write failure.
+    code: 'capacity-limit',
+    message: 'The document is larger than the 50 MiB limit.',
+  });
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
 // Proves: FR-FT-037
 it('T116 renders the classified remediation and runs the command it names', async () => {
   /*

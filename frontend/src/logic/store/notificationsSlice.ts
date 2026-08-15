@@ -21,7 +21,7 @@ export type NotificationSeverity = 'error' | 'info' | 'success' | 'warning';
  */
 export type NotificationRemediationAction = 'copy-path' | 'retry';
 
-export type NotificationRemediationIntent = 'copy-path';
+export type NotificationRemediationIntent = 'copy-path' | 'save' | 'save-as';
 
 export interface NotificationRemediation {
   action: NotificationRemediationAction;

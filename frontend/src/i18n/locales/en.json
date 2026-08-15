@@ -170,6 +170,7 @@
   "save.success.title": "Saved",
   "save.success.message": "Saved {filename} · {encoding} · {lineEnding}",
   "save.readOnly": "This document is read-only and cannot be saved.",
+  "save.activeDocumentChanged": "The active document changed before Save could start.",
   "normalization.title": "Normalize line endings?",
   "normalization.message": "{filename} contains mixed line endings. Normalize every line ending to {ending} before saving?",
   "normalization.confirm": "Normalize and save",

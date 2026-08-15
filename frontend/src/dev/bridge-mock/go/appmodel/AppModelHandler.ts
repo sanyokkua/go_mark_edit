@@ -365,6 +365,25 @@ function revealRefusalEnabled(): boolean {
   );
 }
 
+/**
+ * Make the host refuse the next N writes, so a browser run can drive a *failing
+ * write* end to end — the case T116's evidence names and T117 makes carry a
+ * classified message and a remediation.
+ *
+ * A count rather than a boolean, deliberately: with an unconditional refusal a
+ * test could only prove the control renders and does not throw. Letting the
+ * second write commit is what proves the retry actually re-issued it.
+ */
+function initialRefusedWrites(): number {
+  if (typeof window === 'undefined') return 0;
+  const raw = new URLSearchParams(window.location.search).get('refuseSave');
+  if (raw === null) return 0;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : Number.POSITIVE_INFINITY;
+}
+
 function parityStateId(): string | undefined {
   if (!parityFixtureEnabled()) return undefined;
   const key = new URLSearchParams(window.location.search).get('parity-case');
@@ -395,6 +414,7 @@ let nextReopenDocumentNumber = 1;
 let openSelection: MockOpenSelection | null = null;
 let mockSaveResult: MockWriteResult | undefined;
 let mockSaveAsResult: MockWriteResult | undefined;
+let refusedWritesRemaining = initialRefusedWrites();
 let mockConflictResults: Partial<Record<ConflictMethod, MockConflictResult>> =
   {};
 let nextClosePlanNumber = 1;
@@ -786,6 +806,7 @@ export function resetMockAppModel(): void {
   openSelection = null;
   mockSaveResult = undefined;
   mockSaveAsResult = undefined;
+  refusedWritesRemaining = initialRefusedWrites();
   mockConflictResults = {};
   mockCopyPathResult = undefined;
   mockRevealResult = undefined;
@@ -1654,6 +1675,26 @@ function writeResultFor(
   }
   if (result !== undefined) {
     return result;
+  }
+  if (refusedWritesRemaining > 0) {
+    refusedWritesRemaining -= 1;
+    // Built inline rather than through `classifiedError`, which names no subject,
+    // carries no document id and hardcodes `Retry` for everything it builds.
+    return {
+      status: 'refused',
+      error: {
+        category: 'io-failure',
+        safeSubject:
+          (document.metadata.path || document.metadata.title)
+            .split(/[\\/]/u)
+            .pop() ?? document.metadata.title,
+        message:
+          'The file could not be written. The disk reported a temporary failure.',
+        remediation: 'Retry',
+        documentId: requestedDocumentId,
+        dedupKey: `write:${requestedDocumentId}`,
+      },
+    };
   }
 
   const targetPath =

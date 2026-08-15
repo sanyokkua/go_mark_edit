@@ -147,6 +147,55 @@ test('FR-FT-037 offers an actionable Copy path when Reveal fails, and paints it'
   await expect(errorToast).toHaveCount(0);
 });
 
+test('FR-FT-015 offers Retry on a refused Save and re-issues the write', async ({
+  page,
+}) => {
+  /*
+   * T117, and the half of T116's evidence that T116 could not produce on its own.
+   *
+   * `reportWriteError` dispatched `notifyError`, whose `localizedErrorCopy`
+   * replaced the message Go built with generic catalogue copy, and never set a
+   * remediation at all — so no failing write could ever show a control, however
+   * well `Toast.tsx` was wired.
+   *
+   * `?refuseSave=1` refuses exactly one write. That count is what makes this
+   * assertion worth making: an unconditional refusal could only prove the button
+   * renders and does not throw, whereas a committed second write can only happen
+   * if clicking Retry actually re-issued it.
+   */
+  await page.goto('/?refuseSave=1');
+
+  const editor = page.getByRole('textbox', { name: 'Editor content' });
+  await editor.press('ControlOrMeta+A');
+  await page.keyboard.type('a write the disk will refuse once');
+
+  const file = page.getByRole('button', { name: 'File' });
+  await file.click();
+  await page
+    .getByRole('menu', { name: 'File' })
+    .getByRole('menuitem')
+    .filter({ hasText: /^Save$/u })
+    .click();
+
+  const errorToast = page.locator('[data-severity="error"]');
+  await expect(errorToast).toHaveCount(1);
+  // Before T117: code 'io' and "The file operation could not be completed."
+  await expect(errorToast).toContainText(
+    'The disk reported a temporary failure',
+  );
+  await expect(page.getByText(/private|https?:\/\//iu)).toHaveCount(0);
+
+  const retry = errorToast.getByRole('button', { name: 'Retry' });
+  await expect(retry).toBeEnabled();
+  await expectPainted(retry, 'the refused Save Retry remediation');
+
+  await retry.click();
+  await expect(
+    page.locator('[data-notification-code="save-success"]'),
+  ).toHaveCount(1);
+  await expect(errorToast).toHaveCount(0);
+});
+
 test('FT-VS-04 shows the bounded external-change prompt and safe Skip decision', async ({
   page,
 }) => {
