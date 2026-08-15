@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// Proves: FR-FT-010
 func TestDocumentCodecRoundTrip(t *testing.T) {
 	tests := []struct {
 		name string

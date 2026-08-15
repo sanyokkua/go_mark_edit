@@ -1,5 +1,15 @@
 # FT-VS-05 — Autosave performance evidence
 
+**Proves: SC-FT-007** — partially. Added by T115, which found that SC-FT-007 was named nowhere in the
+evidence tree or the test suite, so no mechanical answer existed to "which evidence proves this?"
+even though the substance was measured here.
+
+The protocol below is SC-FT-007's exactly — 20 uncounted warmups, 100 measured autosaves across
+1 KiB / 256 KiB / 1 MiB / 2 MiB, monotonic timing from final input to atomic replacement. What it
+does **not** satisfy is SC-FT-007's "fresh current-host **release build**": this is the
+`native_evidence` build-tagged driver, and the substitution is stated at `:45` below. **T121 owns
+that reconciliation** and must not be considered closed by this link.
+
 ## Result
 
 The current-host native-evidence run passed the exact T024 protocol:

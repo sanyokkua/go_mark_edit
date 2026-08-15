@@ -150,6 +150,7 @@ it('reports the transient write, and only while it is in flight', () => {
   expect(status.querySelector('[data-status-item="standard"]')).toBeNull();
 });
 
+// Proves: FR-FT-044
 it('StatusBar responsive detail keeps dropped file facts accessible', () => {
   render(
     <StatusBar

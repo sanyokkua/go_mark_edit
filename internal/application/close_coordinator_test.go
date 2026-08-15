@@ -78,6 +78,7 @@ func TestOnBeforeCloseVetoAndOneShotPermit(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-027
 func TestDrainFailureCreatesNoPermit(t *testing.T) {
 	repository := &closeTestLayoutRepository{err: errors.New("layout write failed")}
 	model := appmodel.NewAppModelServiceWithLayoutRepositoryAndTimer(

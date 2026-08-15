@@ -6,6 +6,7 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 )
 
+// Proves: FR-FT-014
 func TestSaveStatusPrecedenceTable(t *testing.T) {
 	tests := []struct {
 		name string

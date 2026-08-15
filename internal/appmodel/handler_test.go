@@ -225,6 +225,7 @@ func (service *fakeAppModelService) ReopenLastFile(_ context.Context, _ uint64) 
 	return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
 }
 
+// Proves: FR-FT-002 (partial — only the cancellation half; the picker's suffix filter is unproven; T157)
 func TestOpenCancellationHasNoMutation(t *testing.T) {
 	emitter := &recordingEmitter{}
 	service := NewEmptyAppModelService(emitter)

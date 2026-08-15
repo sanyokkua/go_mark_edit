@@ -37,6 +37,7 @@ const launcherHtml = [
   '</body></html>',
 ].join('');
 
+// Proves: FR-FT-050 (partial — the immutable source hash; the rendered-value match is proven by targeted-parity.test.ts)
 it('reference adapter hash is stable and bounded', () => {
   const first = adaptReferenceHtml(bindingHtml, 'file-only');
   const second = adaptReferenceHtml(bindingHtml, 'file-only');
@@ -56,6 +57,7 @@ it('reference adapter hash is stable and bounded', () => {
   expect(REFERENCE_ADAPTER_VERSION).toBe('feature-003-reference-adapter-v2');
 });
 
+// Proves: FR-FT-056 (partial — the variant boundary; the comparisonAttempted rule is proven by evidence.test.ts)
 it('reference adapter exposes only the reviewed variant boundary', () => {
   expect(referenceVariants).toEqual([
     'base',

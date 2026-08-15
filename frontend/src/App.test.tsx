@@ -994,6 +994,7 @@ it('T116 renders the classified remediation and runs the command it names', asyn
   act((): void => disposeAppModelProjection());
 });
 
+// Proves: FR-FT-015 (partial — the explicit confirmation; "automatic success remains silent" is unproven; T157)
 it('Save reports exactly one confirmation', async () => {
   act((): void => disposeAppModelProjection());
   store.dispatch(resetProjection());

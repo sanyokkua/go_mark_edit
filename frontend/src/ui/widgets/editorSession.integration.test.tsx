@@ -406,6 +406,7 @@ it('STORY-030-AC-3 rejects active-tab and stale-identity mismatch', async () => 
   expect(mockEditorHandle.replaceAll).not.toHaveBeenCalled();
 });
 
+// Proves: FR-FT-030
 it('T017 rejects a late activation acknowledgement without installing content', () => {
   const document = documentFor(true, false);
   const acknowledgement = {

@@ -91,6 +91,7 @@ func (clock *fakeAutosaveClock) FireNextAsync() bool {
 	return true
 }
 
+// Proves: FR-FT-017 (partial — debounce and eligibility; "no success toast" is unproven; T157)
 func TestAutosaveDebounceAndEligibility(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
@@ -162,6 +163,7 @@ func TestAutosaveDebounceAndEligibility(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-018 (partial — cancellation and no catch-up on disk; "dirty documents stay dirty" is unproven as state; T157)
 func TestAutosaveOffHasNoCatchUp(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)

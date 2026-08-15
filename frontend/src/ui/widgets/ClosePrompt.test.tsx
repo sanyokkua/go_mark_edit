@@ -32,6 +32,7 @@ function plan(kind: ClosePlanSummary['kind'] = 'single'): ClosePlanSummary {
   };
 }
 
+// Proves: FR-FT-024 (partial — the dialog, Cancel focus and Save; the Discard choice is unproven; T157)
 it('ClosePrompt complete-plan focus and cancellation', async () => {
   const onChoice = jest.fn(async (): Promise<void> => undefined);
   render(<ClosePrompt onChoice={onChoice} open plan={plan()} />);

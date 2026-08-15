@@ -1215,6 +1215,12 @@ async function writeTargetedArtifacts(input: {
   });
 }
 
+// Proves: FR-FT-045
+// Proves: FR-FT-052 (partial — exact bounds and every compared computed style before
+//   pixels; the 8-logical-pixel viewport inset is unproven, T157)
+// Proves: FR-FT-054 (partial — the harness holds the deterministic conditions and each
+//   case captures only when settled; the three-consecutive-identical-hash rule and the
+//   DPR-1/frozen-caret conditions are exercised rather than asserted, T157)
 for (const entry of [
   ...TARGETED_MANIFEST,
   ...TARGETED_FILE_MENU_MANIFEST,

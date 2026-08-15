@@ -49,6 +49,7 @@ it('DocumentIdentity safe path display', () => {
   expect(screen.getByText('Saved')).toBeVisible();
 });
 
+// Proves: FR-FT-043 (partial — the five localized statuses; the parent-segment and placement clauses are proven by the siblings)
 it('DocumentIdentity renders all five status values', () => {
   const statuses: SaveStatus[] = [
     'not-saved',

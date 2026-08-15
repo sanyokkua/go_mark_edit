@@ -7,6 +7,7 @@ import {
   type ActionId,
 } from './actionRegistry';
 
+// Proves: FR-FT-047 (partial — registry and catalogue derivation; longer-text tolerance is unproven; T157)
 it('T002 exposes one localized registry entry for every Editor-stage identity', () => {
   const ids = actionRegistry.map((entry) => entry.id);
   expect(new Set(ids).size).toBe(ids.length);
@@ -141,6 +142,7 @@ it('T043 derives the exact context surface order from the canonical registry', (
   ]);
 });
 
+// Proves: FR-FT-041
 it('T059 keeps File popup actions ordered and classifies deferred items explicitly', () => {
   expect(actionsForSurface('file-menu').map(({ id }) => id)).toEqual([
     'new-file',

@@ -333,6 +333,7 @@ it('suppliesEveryAppearanceContractTokenAcrossAllSixPalettes', (): void => {
  * the structural difference disappeared. These two assert the distinction
  * itself.
  */
+// Proves: FR-FT-053 (partial — elevation and typeface distinctness; the named structural claims per family are unproven; T157)
 it('keepsTheElevationAndTypefaceDistinctPerThemeFamily', (): void => {
   const shadows = new Set(
     ['glass', 'material', 'minimal'].map((theme) =>

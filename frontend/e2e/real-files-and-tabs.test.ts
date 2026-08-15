@@ -24,6 +24,7 @@ test('FT-VS-01 operates New/Open from the real File menu and keeps the shell usa
   await expect(page.getByRole('main', { name: 'Document area' })).toBeVisible();
 });
 
+// Proves: FR-FT-008 (partial — flush then save then one confirmation; "never reads the visible editor widget" is unproven; T157)
 test('FT-VS-02 flushes the latest edit and reports one explicit Save confirmation', async ({
   page,
 }) => {
@@ -52,6 +53,7 @@ test('FT-VS-02 flushes the latest edit and reports one explicit Save confirmatio
   ).toHaveCount(1);
 });
 
+// Proves: FR-FT-034 (partial — the strip, menu Move, edge disable and announcement; middle-click close is unbuilt, see T141)
 test('FT-VS-03 exposes real tabs, backend-confirmed menu moves, and exact navigation', async ({
   page,
 }) => {

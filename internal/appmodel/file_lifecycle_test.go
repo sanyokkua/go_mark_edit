@@ -8,6 +8,7 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 )
 
+// Proves: FR-FT-001 (partial — the "regardless of the default open mode" clause is unproven; T157)
 func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 	emitter := &recordingEmitter{}
 	service := NewEmptyAppModelService(emitter)

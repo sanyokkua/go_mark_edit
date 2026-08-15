@@ -62,6 +62,7 @@ func TestActivateDocumentAcknowledgement(t *testing.T) {
 	_ = created
 }
 
+// Proves: FR-FT-033
 func TestStaleTabCommands(t *testing.T) {
 	emitter := &recordingEmitter{}
 	service := NewAppModelService(emitter)

@@ -49,6 +49,7 @@ func TestOpenPathLifecycle(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-004 (partial — canonical dedup and focus; the reservation and revalidation clauses are proven by the siblings below)
 func TestOpenFocusesCanonicalDuplicate(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "one", "note.md")
@@ -99,6 +100,7 @@ func TestOpenReplacesOnlyEmptyUntitled(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-038 (partial — the refusal with zero mutation; the duplicate-consumes-no-slot clauses are proven by the siblings below)
 func TestOpenRefusesFortyFirstWithoutMutation(t *testing.T) {
 	root := t.TempDir()
 	service := NewEmptyAppModelService(&recordingEmitter{})

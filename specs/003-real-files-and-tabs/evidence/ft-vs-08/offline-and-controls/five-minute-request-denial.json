@@ -1,160 +1,160 @@
 {
   "requirement": "FR-FT-048",
   "localOrigin": "http://127.0.0.1:4173",
-  "observedMs": 302743,
-  "observedMinutes": 5.05,
+  "observedMs": 303343,
+  "observedMinutes": 5.06,
   "sampleIntervalMs": 10000,
   "interactionsPerformed": 30,
   "deniedRequestCount": 0,
   "deniedRequests": [],
   "samples": [
     {
-      "atMs": 10895,
+      "atMs": 11450,
       "deniedSoFar": 0,
       "action": "idle"
     },
     {
-      "atMs": 20939,
+      "atMs": 21484,
       "deniedSoFar": 0,
       "action": "type"
     },
     {
-      "atMs": 31082,
+      "atMs": 31625,
       "deniedSoFar": 0,
       "action": "open-settings"
     },
     {
-      "atMs": 41151,
+      "atMs": 41692,
       "deniedSoFar": 0,
       "action": "switch-theme"
     },
     {
-      "atMs": 51234,
+      "atMs": 51764,
       "deniedSoFar": 0,
       "action": "open-view-menu"
     },
     {
-      "atMs": 61347,
+      "atMs": 61854,
       "deniedSoFar": 0,
       "action": "new-tab"
     },
     {
-      "atMs": 71349,
+      "atMs": 71857,
       "deniedSoFar": 0,
       "action": "idle"
     },
     {
-      "atMs": 81360,
+      "atMs": 81869,
       "deniedSoFar": 0,
       "action": "type"
     },
     {
-      "atMs": 91427,
+      "atMs": 91937,
       "deniedSoFar": 0,
       "action": "open-settings"
     },
     {
-      "atMs": 101510,
+      "atMs": 102015,
       "deniedSoFar": 0,
       "action": "switch-theme"
     },
     {
-      "atMs": 111578,
+      "atMs": 112075,
       "deniedSoFar": 0,
       "action": "open-view-menu"
     },
     {
-      "atMs": 121659,
+      "atMs": 122185,
       "deniedSoFar": 0,
       "action": "new-tab"
     },
     {
-      "atMs": 131667,
+      "atMs": 132194,
       "deniedSoFar": 0,
       "action": "idle"
     },
     {
-      "atMs": 141691,
+      "atMs": 142217,
       "deniedSoFar": 0,
       "action": "type"
     },
     {
-      "atMs": 151773,
+      "atMs": 152313,
       "deniedSoFar": 0,
       "action": "open-settings"
     },
     {
-      "atMs": 161865,
+      "atMs": 162412,
       "deniedSoFar": 0,
       "action": "switch-theme"
     },
     {
-      "atMs": 171952,
+      "atMs": 172490,
       "deniedSoFar": 0,
       "action": "open-view-menu"
     },
     {
-      "atMs": 182051,
+      "atMs": 182584,
       "deniedSoFar": 0,
       "action": "new-tab"
     },
     {
-      "atMs": 192056,
+      "atMs": 192590,
       "deniedSoFar": 0,
       "action": "idle"
     },
     {
-      "atMs": 202079,
+      "atMs": 202615,
       "deniedSoFar": 0,
       "action": "type"
     },
     {
-      "atMs": 212159,
+      "atMs": 212704,
       "deniedSoFar": 0,
       "action": "open-settings"
     },
     {
-      "atMs": 222251,
+      "atMs": 222798,
       "deniedSoFar": 0,
       "action": "switch-theme"
     },
     {
-      "atMs": 232322,
+      "atMs": 232870,
       "deniedSoFar": 0,
       "action": "open-view-menu"
     },
     {
-      "atMs": 242425,
+      "atMs": 242978,
       "deniedSoFar": 0,
       "action": "new-tab"
     },
     {
-      "atMs": 252412,
+      "atMs": 252984,
       "deniedSoFar": 0,
       "action": "idle"
     },
     {
-      "atMs": 262429,
+      "atMs": 263006,
       "deniedSoFar": 0,
       "action": "type"
     },
     {
-      "atMs": 272507,
+      "atMs": 273088,
       "deniedSoFar": 0,
       "action": "open-settings"
     },
     {
-      "atMs": 282590,
+      "atMs": 283191,
       "deniedSoFar": 0,
       "action": "switch-theme"
     },
     {
-      "atMs": 292641,
+      "atMs": 293243,
       "deniedSoFar": 0,
       "action": "open-view-menu"
     },
     {
-      "atMs": 302742,
+      "atMs": 303343,
       "deniedSoFar": 0,
       "action": "new-tab"
     }

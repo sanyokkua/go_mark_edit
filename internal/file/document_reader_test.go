@@ -77,6 +77,7 @@ func TestReadBoundedDoesNotConsumeBeyondLimit(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-005 (partial — the size thresholds and refusal; the preview pause is proven by PreviewPane.test.tsx)
 func TestReadClassifiedDocument(t *testing.T) {
 	root := t.TempDir()
 	write := func(name string, content []byte) string {
@@ -189,6 +190,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-007
 func TestLineEndingClassification(t *testing.T) {
 	root := t.TempDir()
 	cases := []struct {

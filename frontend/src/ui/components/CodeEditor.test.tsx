@@ -313,6 +313,7 @@ it('STORY-013-AC-4 seeds a model only for a new document identity', async () => 
   });
 });
 
+// Proves: FR-FT-029
 it('T017 creates a fresh activation model and drops prior undo identity', async () => {
   const { rerender } = render(
     <CodeEditor

@@ -48,6 +48,7 @@ func newSaveDocument(t *testing.T, service *AppModelService, content string) str
 	return created.Data.DocumentID
 }
 
+// Proves: FR-FT-012 (partial — the Save-As fallback and .md append; rejection of an unsupported suffix through SaveAs is unproven; T157)
 func TestSaveAndSaveAs(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "Untitled")
 	dialog := &saveDialogFixture{path: target, confirm: true}
@@ -79,6 +80,7 @@ func TestSaveAndSaveAs(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-011 (partial — the single-use authorization; the prompt's copy and focus are proven by NormalizationPrompt.test.tsx)
 func TestMixedEndingAuthorization(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "mixed.md")
@@ -112,6 +114,7 @@ func TestMixedEndingAuthorization(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-013
 func TestSaveAsCollisionAndTargetDrift(t *testing.T) {
 	root := t.TempDir()
 	sourcePath := filepath.Join(root, "source.md")
@@ -234,6 +237,7 @@ func TestSaveUsesStableDocumentIdentity(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-006 (partial — the pre-disk write refusal; editing/format/lint unavailability is unproven; T157)
 func TestSaveValidationRefusesReadOnlyBeforeDiskAccess(t *testing.T) {
 	document := &openDocument{metadata: apperr.DocumentMetadata{DocumentID: "read-only", Path: "/missing/file.md", Capability: string(file.CapabilityUnsafeReadOnly)}, content: "content", baseline: "old"}
 	service := NewEmptyAppModelService(&recordingEmitter{})

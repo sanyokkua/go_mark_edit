@@ -345,6 +345,7 @@ const CHROME_ROWS = [
 
 for (const width of [768, 375] as const) {
   for (const row of CHROME_ROWS) {
+    // Proves: FR-FT-046 (partial — 768 and 375 no-wrap and no page scroll; 1280 and the divider are covered by siblings)
     test(`T084 ${width}px keeps the ${row.name} on one unwrapped line`, async ({
       page,
     }) => {

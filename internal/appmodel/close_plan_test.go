@@ -15,6 +15,7 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
+// Proves: FR-FT-025
 func TestClosePlanCompletenessAndCancel(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	emitter := &recordingEmitter{}
@@ -51,6 +52,7 @@ func TestClosePlanCompletenessAndCancel(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-026 (partial — order and first-failure stop; conflict resolution before each save is unproven; T157)
 func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 	service := NewAppModelService(&recordingEmitter{})
 	firstPath, firstID := openAutosaveDocument(t, service, "first base\n")

@@ -1337,6 +1337,7 @@ it('STORY-022-AC-2 keeps Monaco mounted while preview-only is visible', async ()
   ).not.toHaveBeenCalled();
 });
 
+// Proves: FR-FT-032 (partial — the Monaco session and saved scroll; per-document dirty, Reading state and preview scroll are unproven; T157)
 it('STORY-022-AC-3 restores the exact Monaco session and saved scroll state without bootstrap reseeding', async () => {
   const document = statusDocument({
     view: {

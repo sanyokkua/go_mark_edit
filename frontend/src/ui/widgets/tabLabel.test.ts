@@ -24,6 +24,7 @@ function documentFor(documentId: string, path: string): DocumentMetadata {
   };
 }
 
+// Proves: FR-FT-035
 it('identical parents extend the suffix until unique', () => {
   const one = documentFor('one', '/repo/left/shared/readme.md');
   const two = documentFor('two', '/repo/right/shared/readme.md');

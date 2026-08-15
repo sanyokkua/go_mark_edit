@@ -1,5 +1,17 @@
 # Current-host walkthrough of the freshly built binary — 2026-08-15
 
+**Proves: SC-FT-011** — partially, and this is the closest single artifact to it. Added by T115,
+which found SC-FT-011 named nowhere in the evidence tree or the test suite despite the substance
+existing across several walkthroughs.
+
+Covered here: the 40-document boundary, the 41st-document refusal, the 50 MiB refusal, and the
+relaunch-without-session-restore claim. Covered in siblings rather than here: the 10 MiB pair
+(`sc-ft-002/boundaries-2026-08-15.md`), the tab, close and autosave journeys
+(`current-host-walkthrough.md`), and the default-open-mode journey
+(`default-open-mode-2026-08-15.md`). **No single walkthrough covers the whole criterion**, and
+SC-FT-011 also asks for preserved bytes and permissions after a real save and one resolved external
+change — see **T158**, which owns naming the artifact per clause.
+
 Binary: `build/bin/GoMarkEdit.app`, rebuilt at 10:57 from commit `790375fb` — after the T104
 autosave fix and after T107's classified-refusal fix. Host: darwin/arm64. Method: macOS screen
 automation against the packaged application, with window-ID-scoped captures.

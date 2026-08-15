@@ -66,6 +66,7 @@ func TestWriteCoordinator(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-016 (partial — resyncRequired and exactly-one-write; the recorded snapshot is not read back; T157)
 func TestCommittedWriteProjectionFailure(t *testing.T) {
 	var writes atomic.Int32
 	coordinator := NewDocumentWriteCoordinator(
@@ -110,6 +111,7 @@ func TestNewerEditRemainsDirty(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-019
 func TestExplicitSaveSerializesWithAutosave(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)

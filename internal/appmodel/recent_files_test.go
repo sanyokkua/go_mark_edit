@@ -13,6 +13,7 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
+// Proves: FR-FT-039 (partial — the cap, dedupe, order and prune; promotion on explicit Save and Save As is unproven; T157)
 func TestRecentFilesMRUPersistenceAndLazyPrune(t *testing.T) {
 	database, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "recents.db"))
 	if err != nil {
@@ -265,6 +266,7 @@ func TestAutosaveAndReloadDoNotChangeRecency(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-028 (partial — the 40-entry newest-first cap; "no untitled documents or source content retained" is unproven; T157)
 func TestRecentlyClosedHistory(t *testing.T) {
 	service := NewEmptyAppModelService(&recordingEmitter{})
 	for index := 0; index < 41; index++ {

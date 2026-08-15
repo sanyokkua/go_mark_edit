@@ -59,6 +59,26 @@ Tests passing against the wrong behaviour is not done.
 - Run the full gate, not module scope, whenever a change can open a dialog, block a thread, touch
   startup/the composition root, or alter a public interface.
 
+**Name the rule a test proves, in the test.** Constitution II makes this a MUST — "proving tests
+MUST identify the rule they exercise" — and one convention carries it in both languages:
+
+```go
+// Proves: FR-FT-023
+func TestReadClassifiedStableReportsAbsenceWithoutAnError(t *testing.T) {
+```
+
+```ts
+// Proves: FR-FT-015
+it('T117 surfaces the Save refusal with the backend message and its own code', async () => {
+```
+
+Go puts it above the `func`; TypeScript above the `it`/`test`. A task id may lead the title, but the
+requirement anchor goes in the comment, where it is greppable and cannot be mistaken for prose.
+
+**Never name a rule the test does not prove.** An anchor asserting a claim the body does not make is
+worse than no anchor — it converts a coverage gap into a false record of coverage. If no test proves
+a requirement, that is a gap to file as its own task, not a title to write.
+
 Closing checklist — evidence, not assertion:
 
 - [ ] Every acceptance criterion met, each named with the evidence that proves it

@@ -67,6 +67,7 @@ describe('T034 zero-tolerance PNG comparator', () => {
     expect(result.metrics.differenceBounds).toBeNull();
   });
 
+  // Proves: FR-FT-055 (partial — mask discipline; "the mapped region must be a component this feature built" is unproven; T157)
   it('keeps the default mask set empty and rejects masks outside the reviewed dynamic scope', () => {
     const reference = encodePng(image([1, 2, 3, 255, 4, 5, 6, 255]));
     const actual = encodePng(image([1, 2, 3, 255, 4, 5, 7, 255]));

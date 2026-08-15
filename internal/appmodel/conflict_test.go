@@ -13,6 +13,7 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
+// Proves: FR-FT-021 (partial — the backend decision cycle; the modal's title, bounds and button order are proven by ExternalChangePrompt.test.tsx)
 func TestExternalConflictDecision(t *testing.T) {
 	service, path, documentID := openConflictDocument(t, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
@@ -60,6 +61,7 @@ func TestExternalConflictDecision(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-020 (partial — the metadata-equal resume; the unstable re-read, foreground check and no-watcher clauses are proven by the siblings below)
 func TestStableRereadMetadataEqualResumesWrite(t *testing.T) {
 	service, path, documentID := openConflictDocument(t, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
@@ -191,6 +193,7 @@ func TestWaitingDocumentsProjectBlockedByConflict(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-022 (partial — only the edit and second-disk-change invalidators; reload, save, save-as, close and path change are unproven; T157)
 func TestKeepMineAuthorizationInvalidation(t *testing.T) {
 	service, path, documentID := openConflictDocument(t, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
@@ -254,6 +257,7 @@ func TestSkipCancelsOneWrite(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-023
 func TestMissingBackingFileDetaches(t *testing.T) {
 	service, path, documentID := openConflictDocument(t, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "recreate\n"); err != nil {

@@ -189,6 +189,7 @@ it('T017 routes imperative flush through the registered activation session', asy
   await adapter.flushActiveSession?.('document-1');
 });
 
+// Proves: FR-FT-031 (partial — the failure branch; the buffer-then-view flush ordering is proven by EditorView.integration.test.tsx)
 it('T017 failed outgoing flush keeps the current session installed', async () => {
   const failure = new Error('outgoing flush failed');
   const flushActiveSession = jest

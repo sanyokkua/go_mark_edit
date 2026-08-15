@@ -27,6 +27,7 @@ it('T045 keeps the parity launcher inside the reference content bands', () => {
   );
 });
 
+// Proves: FR-FT-042 (partial — every clause but "never restores prior tabs automatically"; T157)
 it('Launcher first-run and six recent files', () => {
   const onNewDocument = jest.fn();
   const onOpenDocument = jest.fn();
