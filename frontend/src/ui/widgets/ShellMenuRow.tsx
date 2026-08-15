@@ -28,7 +28,11 @@ import {
   dispatchShellAction,
   type ShellAction,
 } from '../../logic/actions/shellActions';
-import { useShellShortcuts } from '../../logic/actions/useShellShortcuts';
+import {
+  useShellShortcuts,
+  type ShellShortcutAction,
+  type ShortcutAction,
+} from '../../logic/actions/useShellShortcuts';
 import { windowAdapter } from '../../logic/adapter';
 import AppBrand from '../primitives/AppBrand';
 import ViewMenu, { type ViewMenuProps } from '../primitives/ViewMenu';
@@ -93,6 +97,7 @@ interface ShellMenuRowProps {
   canReopenLastFile?: boolean;
   onSave?: () => Promise<unknown> | unknown;
   onSaveAs?: () => Promise<unknown> | unknown;
+  onCloseDocument?: () => Promise<unknown> | unknown;
   onQuit?: () => void;
   activeDocument?: DocumentMetadata;
   documentId?: string;
@@ -142,6 +147,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   canReopenLastFile = false,
   onSave,
   onSaveAs,
+  onCloseDocument,
   onQuit,
   activeDocument,
   onShortcuts,
@@ -307,6 +313,52 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     };
   }, [activeMenu, narrow, updateNarrowPopupAnchor]);
 
+  /*
+   * One table behind three surfaces: the accelerator text drawn beside a File
+   * row, the row's click, and the keystroke. T110 existed because the first was
+   * read from the action registry while dispatch was read from a hand-written
+   * catalogue of shell ids — two lists that drifted apart with every test still
+   * green. Deriving all three from `fileActionInvoker` + `fileActionDisabled`
+   * makes advertising a shortcut and dispatching it the same act.
+   */
+  const fileActionInvoker = useCallback(
+    (id: ActionId): (() => Promise<unknown> | unknown) | undefined =>
+      id === 'new-file'
+        ? onNewDocument
+        : id === 'open-file'
+          ? onOpenDocument
+          : id === 'save'
+            ? onSave
+            : id === 'save-as'
+              ? onSaveAs
+              : id === 'close-tab'
+                ? onCloseDocument
+                : id === 'reopen'
+                  ? onReopenLastFile
+                  : id === 'exit'
+                    ? onQuit
+                    : undefined,
+    [
+      onCloseDocument,
+      onNewDocument,
+      onOpenDocument,
+      onQuit,
+      onReopenLastFile,
+      onSave,
+      onSaveAs,
+    ],
+  );
+  const recentFileCount = recentFiles.length;
+  const fileActionDisabled = useCallback(
+    (id: ActionId): boolean =>
+      (id !== 'exit' && getAction(id).availability.kind === 'deferred') ||
+      (id === 'exit' && onQuit === undefined) ||
+      (id === 'open-recent' && recentFileCount === 0) ||
+      (id === 'reopen' && !canReopenLastFile) ||
+      (['save', 'save-as'].includes(id) && writable !== true),
+    [canReopenLastFile, onQuit, recentFileCount, writable],
+  );
+
   const actions = useMemo(
     () =>
       createShellActionCatalogue({
@@ -340,7 +392,56 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       }),
     [modalOpen, onAbout, onShortcuts, toggleFullscreen, viewMenuProps],
   );
-  useShellShortcuts(actions);
+  /*
+   * Every File row that both declares a registry shortcut and has a handler
+   * becomes a real binding. `exit` self-excludes because it deliberately
+   * carries no registry shortcut — native quit owns it — and every deferred id
+   * self-excludes through `fileActionDisabled`.
+   *
+   * `isAvailable` must answer honestly rather than return a constant:
+   * `useShellShortcuts` calls preventDefault() only once it is true, so a
+   * hardcoded `true` would swallow Mod+S on a read-only document instead of
+   * letting the keystroke through. Gating on the same predicate that greys the
+   * menu row keeps the two surfaces agreeing.
+   */
+  const fileShortcutActions = useMemo(
+    (): readonly ShortcutAction[] =>
+      actionsForSurface('file-menu').flatMap(
+        (item): readonly ShortcutAction[] => {
+          const invoke = fileActionInvoker(item.id);
+          const { shortcut } = item;
+          if (invoke === undefined || shortcut === undefined) return [];
+          return [
+            {
+              dispatchContext: {
+                applicationFocused: true,
+                documentId,
+                sessionDocumentId,
+                writable,
+              },
+              id: item.id,
+              invoke,
+              isAvailable: (): boolean =>
+                !modalOpen && !fileActionDisabled(item.id),
+              shortcut,
+            },
+          ];
+        },
+      ),
+    [
+      documentId,
+      fileActionDisabled,
+      fileActionInvoker,
+      modalOpen,
+      sessionDocumentId,
+      writable,
+    ],
+  );
+  const shortcutActions = useMemo(
+    (): readonly ShellShortcutAction[] => [...actions, ...fileShortcutActions],
+    [actions, fileShortcutActions],
+  );
+  useShellShortcuts(shortcutActions);
 
   useEffect((): (() => void) => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -364,12 +465,6 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   const fileActions = actionsForSurface('file-menu');
   const fileActionLabel = (item: (typeof fileActions)[number]): string =>
     t(item.surfaceLabelKeys?.['file-menu'] ?? item.labelKey);
-  const fileActionDisabled = (id: ActionId): boolean =>
-    (id !== 'exit' && getAction(id).availability.kind === 'deferred') ||
-    (id === 'exit' && onQuit === undefined) ||
-    (id === 'open-recent' && recentFiles.length === 0) ||
-    (id === 'reopen' && !canReopenLastFile) ||
-    (['save', 'save-as'].includes(id) && writable !== true);
   const displayedRecentFiles =
     recentFiles.length === 0
       ? [t('file.recent.release'), t('file.recent.spec')]
@@ -403,20 +498,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       onQuit();
       return;
     }
-    const invoke =
-      id === 'new-file'
-        ? onNewDocument
-        : id === 'open-file'
-          ? onOpenDocument
-          : id === 'save'
-            ? onSave
-            : id === 'save-as'
-              ? onSaveAs
-              : id === 'reopen'
-                ? onReopenLastFile
-                : id === 'exit'
-                  ? onQuit
-                  : undefined;
+    const invoke = fileActionInvoker(id);
     if (invoke === undefined) return;
 
     setFileOpen(false);

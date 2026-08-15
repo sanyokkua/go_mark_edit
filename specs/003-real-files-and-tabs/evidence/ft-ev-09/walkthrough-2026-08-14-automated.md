@@ -47,6 +47,25 @@ What happens is that the un-stoppable autosave commits the baseline first with t
 origin; the subsequent `⌘S` finds the document clean and no-ops, leaving the earlier origin in
 place. Fixing the wiring should fix the label with it — worth re-checking rather than assuming.
 
+#### Correction 2026-08-15 (T110) — the mechanism above is wrong; the conclusion is not
+
+The re-check this paragraph asked for was done, and it found a simpler cause. There was no
+"subsequent `⌘S`" that found the document clean, because **`⌘S` did nothing at all**: no keyboard
+handler dispatched any File accelerator (T110). The label read `Autosaved` because the autosave had
+already committed the baseline with `SaveOriginAutosave` and nothing else ever ran.
+
+Measured rather than argued: with the T110 fix stashed, `FT-VS-10` in
+`frontend/e2e/real-files-and-tabs.test.ts` presses `⌘S` and
+`[data-notification-code="save-success"]` resolves to **0 elements**. A notification with that code
+is emitted only by the explicit write path (`App.tsx` `finishWrite`), so its absence means no
+explicit save was attempted — not that one was attempted and no-opped.
+
+What this changes and what it does not: T104's **root cause is unaffected** — `SetAutosaveEnabled`
+genuinely had no Wails binding and no frontend caller, and the disk measurement that proved it
+stands. Only the attribution of this second symptom moves, from the autosave race to the missing
+accelerator. The status logic in `save_status.go` was correct then and is untouched now, which the
+original paragraph got right.
+
 ### Why no existing test caught it
 
 The behavioural suites drive the deterministic parity route with seeded fixtures and assert the

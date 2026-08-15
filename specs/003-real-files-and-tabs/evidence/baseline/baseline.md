@@ -4,10 +4,10 @@ Captured by `just baseline 003-real-files-and-tabs`. Do not edit by hand.
 
 | | |
 |---|---|
-| commit | `28d5d3d8` (`28d5d3d8833273c4543211884aadd566f30ca7c1`) |
-| captured | 2026-08-14 11:42 UTC |
+| commit | `4e141037` (`4e141037beb8356bf1e6801b2490a611335285a9`) |
+| captured | 2026-08-15 10:36 UTC |
 | working tree | clean |
-| coverage | 63.5% (mean of 11 packages) |
+| coverage | 63.6% (mean of 11 packages) |
 
 ## Gates
 

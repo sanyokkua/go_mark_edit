@@ -419,3 +419,43 @@ test('FT-VS-09 refuses an over-50-MiB file and names the limit', async ({
   await expect(refusal).toContainText('50 MiB');
   await expect(tabs).toHaveCount(1);
 });
+
+/*
+ * T110: the File menu advertises an accelerator beside New File, Open File,
+ * Save, Save As and Close Tab, and no handler dispatched any of them. The
+ * unit suite proves ShellMenuRow hands the file actions to the keydown hook;
+ * this proves the keystroke reaches the running interface and changes it.
+ *
+ * The explicit Save leg is also T104's second symptom re-examined. A
+ * `save-success` notification is only ever emitted by the explicit write path,
+ * so asserting it discriminates a real explicit save from the autosave that
+ * would leave an `Autosaved` label behind on its own.
+ */
+test('FT-VS-10 dispatches the File accelerators the menu advertises', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  const editor = page.getByRole('textbox', { name: 'Editor content' });
+  await expect(editor).toBeVisible();
+  await editor.press('ControlOrMeta+A');
+  await page.keyboard.type('saved by the advertised accelerator');
+
+  await page.keyboard.press('ControlOrMeta+s');
+  await expect(
+    page.locator('[data-notification-code="save-success"]'),
+  ).toHaveCount(1);
+  await expect(
+    page
+      .locator('header[aria-label="Document identity"]')
+      .filter({ hasText: 'Saved' }),
+  ).toHaveCount(1);
+
+  const openedTabs = await page.getByRole('tab').count();
+
+  await page.keyboard.press('ControlOrMeta+n');
+  await expect(page.getByRole('tab')).toHaveCount(openedTabs + 1);
+
+  await page.keyboard.press('ControlOrMeta+w');
+  await expect(page.getByRole('tab')).toHaveCount(openedTabs);
+});

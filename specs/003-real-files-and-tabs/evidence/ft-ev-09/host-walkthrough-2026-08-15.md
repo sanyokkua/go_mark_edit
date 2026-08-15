@@ -103,6 +103,27 @@ with the editor focused and unfocused.
 Filed as **T110**. Not fixed in this session because the cause is not yet located and the fix
 belongs with whoever owns the shortcut registry.
 
+### Correction 2026-08-15 (T110) — the second of those three arguments was circular
+
+The middle argument above is withdrawn. It reasons that keystrokes reach the application "since
+the 2026-08-14 run drove an explicit `⌘S` that committed a write" — but that write is exactly the
+observation T110 asks to re-examine, and it was **not** an explicit save. `⌘S` had no listener
+either; the write was the one-second Go autosave, which is also why the label read `Autosaved`.
+Using it to prove keystroke delivery assumed the conclusion.
+
+The claim itself is nevertheless **true**, and is now proved by a key with no autosave confound.
+On the binary rebuilt from `4e141037` (built 12:33:29, process started 12:34:38, so not a stale
+instance), pressing `⌘,` opened the Settings menu and `⌘\` was likewise live, while seven `⌘N`
+presses in the same session produced no document. `⌘,` is an already-wired shell action in
+`createShellActionCatalogue`; `⌘N` was not in that catalogue. Same webview, same keyboard, same
+modifier — so `⌘`-modified keydown does reach JS, and the only difference between the two keys was
+whether anything listened. That retires the possibility that WKWebView was swallowing the modifier
+and confines the defect to the frontend.
+
+Corroborated independently in the browser: with the T110 fix stashed, `FT-VS-10` fails with
+`[data-notification-code="save-success"]` resolving to **0 elements** after `⌘S` — no explicit
+save is emitted at all. The first two and the third of the original arguments stand unchanged.
+
 ## What this walkthrough does not cover
 
 - Timings — see `sc-ft-002/explicit-save-timings-2026-08-15.md`.

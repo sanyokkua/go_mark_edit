@@ -177,6 +177,10 @@ interface ApplicationMenuState {
   onReopenLastFile: (expectedTabSetRevision: number) => Promise<unknown>;
   onSave: () => Promise<unknown>;
   onSaveAs: () => Promise<unknown>;
+  onCloseDocument: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<unknown>;
   onQuit: () => void;
   documentId?: string;
   sessionDocumentId?: string;
@@ -233,6 +237,20 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
       }
       onSave={menuState.onSave}
       onSaveAs={menuState.onSaveAs}
+      /*
+       * Bound to the active document here rather than in ShellMenuRow: the
+       * close plan needs the tab-set revision, and the menu row sits in the
+       * `.application-menu` subtree with no access to the tab state.
+       */
+      onCloseDocument={
+        activeDocument === undefined
+          ? undefined
+          : (): Promise<unknown> =>
+              menuState.onCloseDocument(
+                activeDocument.documentId,
+                tabSetRevision,
+              )
+      }
       onQuit={menuState.onQuit}
       activeDocument={activeDocument}
       documentId={menuState.documentId}
@@ -1184,6 +1202,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       onReopenLastFile,
       onSave,
       onSaveAs,
+      onCloseDocument,
       onQuit,
       documentId: activeDocument?.documentId,
       sessionDocumentId: activeBuffer?.documentId,
@@ -1199,6 +1218,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
     [
       activeBuffer?.documentId,
       activeDocument,
+      onCloseDocument,
       onNewDocument,
       onOpenDocument,
       onOpenRecentFile,

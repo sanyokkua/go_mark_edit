@@ -841,3 +841,198 @@ it('T093 makes the visible View control the Radix menu trigger', () => {
     'data-view-trigger',
   );
 });
+
+/*
+ * T110: the File menu advertises an accelerator beside every one of these rows,
+ * and until this suite existed nothing asserted that pressing one did anything.
+ * `actionRegistry.test.ts` proves the registry *declares* `Mod+N`, and
+ * `useShellShortcuts.test.tsx` proves the hook dispatches actions handed to it
+ * by a synthetic harness. Neither asks whether ShellMenuRow — the component
+ * that both renders the accelerator text and installs the only global keydown
+ * listener — passes the file actions to that hook. It did not.
+ *
+ * jsdom reports `navigator.platform === ''`, so `currentPlatform()` resolves to
+ * 'linux' and `Mod` binds to ctrlKey. That is the same convention already used
+ * by useShellShortcuts.test.tsx and DocumentTabs.test.tsx.
+ */
+interface FileAcceleratorCase {
+  readonly actionId: string;
+  readonly event: Partial<KeyboardEvent> & { key: string };
+  readonly label: string;
+  readonly prop:
+    | 'onNewDocument'
+    | 'onOpenDocument'
+    | 'onSave'
+    | 'onSaveAs'
+    | 'onCloseDocument'
+    | 'onReopenLastFile';
+}
+
+const fileAcceleratorCases: readonly FileAcceleratorCase[] = [
+  {
+    actionId: 'new-file',
+    event: { code: 'KeyN', ctrlKey: true, key: 'n' },
+    label: 'Mod+N',
+    prop: 'onNewDocument',
+  },
+  {
+    actionId: 'open-file',
+    event: { code: 'KeyO', ctrlKey: true, key: 'o' },
+    label: 'Mod+O',
+    prop: 'onOpenDocument',
+  },
+  {
+    actionId: 'save',
+    event: { code: 'KeyS', ctrlKey: true, key: 's' },
+    label: 'Mod+S',
+    prop: 'onSave',
+  },
+  {
+    actionId: 'save-as',
+    event: { code: 'KeyS', ctrlKey: true, key: 'S', shiftKey: true },
+    label: 'Mod+Shift+S',
+    prop: 'onSaveAs',
+  },
+  {
+    actionId: 'close-tab',
+    event: { code: 'KeyW', ctrlKey: true, key: 'w' },
+    label: 'Mod+W',
+    prop: 'onCloseDocument',
+  },
+  {
+    actionId: 'reopen',
+    event: {
+      altKey: true,
+      code: 'KeyT',
+      ctrlKey: true,
+      key: 'T',
+      shiftKey: true,
+    },
+    label: 'Mod+Shift+Alt+T',
+    prop: 'onReopenLastFile',
+  },
+];
+
+function renderMenuRowWithFileActions(
+  shell: { modalOpen?: boolean; writable?: boolean } = {},
+): Record<FileAcceleratorCase['prop'], jest.Mock> {
+  const callbacks: Record<FileAcceleratorCase['prop'], jest.Mock> = {
+    onCloseDocument: jest.fn(async () => undefined),
+    onNewDocument: jest.fn(async () => undefined),
+    onOpenDocument: jest.fn(async () => undefined),
+    onReopenLastFile: jest.fn(async () => undefined),
+    onSave: jest.fn(async () => undefined),
+    onSaveAs: jest.fn(async () => undefined),
+  };
+  render(
+    <ShellMenuRow
+      modalOpen={shell.modalOpen ?? false}
+      onAbout={jest.fn()}
+      onCloseDocument={callbacks.onCloseDocument}
+      onNewDocument={callbacks.onNewDocument}
+      onOpenDocument={callbacks.onOpenDocument}
+      onReopenLastFile={callbacks.onReopenLastFile}
+      onSave={callbacks.onSave}
+      onSaveAs={callbacks.onSaveAs}
+      canReopenLastFile
+      documentId="document-1"
+      sessionDocumentId="document-1"
+      writable={shell.writable ?? true}
+      settingsMenuProps={settingsMenuProps}
+      viewMenuProps={viewMenuProps}
+    />,
+  );
+  return callbacks;
+}
+
+describe.each(fileAcceleratorCases)(
+  'T110 dispatches the advertised File accelerator $label',
+  ({ actionId, event, prop }: FileAcceleratorCase) => {
+    it(`runs ${actionId} when the key is pressed at the window`, async () => {
+      const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
+      const callbacks = renderMenuRowWithFileActions();
+
+      const notPrevented = fireEvent.keyDown(window, event);
+
+      await waitFor(() => expect(callbacks[prop]).toHaveBeenCalledTimes(1));
+      expect(dispatch).toHaveBeenCalledWith(
+        actionId,
+        expect.objectContaining({ invoke: expect.any(Function) }),
+      );
+      /*
+       * The accelerator must claim the keystroke. Leaving it unclaimed is how
+       * the browser default would win on a surface that advertises the binding.
+       */
+      expect(notPrevented).toBe(false);
+      dispatch.mockRestore();
+    });
+  },
+);
+
+it('T110 leaves Save and Save As unclaimed on a document that is not writable', async () => {
+  const callbacks = renderMenuRowWithFileActions({ writable: false });
+
+  const saveNotPrevented = fireEvent.keyDown(window, {
+    code: 'KeyS',
+    ctrlKey: true,
+    key: 's',
+  });
+  const saveAsNotPrevented = fireEvent.keyDown(window, {
+    code: 'KeyS',
+    ctrlKey: true,
+    key: 'S',
+    shiftKey: true,
+  });
+
+  expect(callbacks.onSave).not.toHaveBeenCalled();
+  expect(callbacks.onSaveAs).not.toHaveBeenCalled();
+  /*
+   * Not merely "does nothing": the menu greys these rows out, so the keystroke
+   * must pass through rather than be swallowed. `useShellShortcuts` calls
+   * preventDefault() only after isAvailable() returns true, so a hardcoded
+   * `true` there would silently eat the key on a read-only document.
+   */
+  expect(saveNotPrevented).toBe(true);
+  expect(saveAsNotPrevented).toBe(true);
+});
+
+it('T110 leaves every File accelerator inert while a modal is open', async () => {
+  const callbacks = renderMenuRowWithFileActions({ modalOpen: true });
+
+  for (const { event } of fileAcceleratorCases) {
+    expect(fireEvent.keyDown(window, event)).toBe(true);
+  }
+
+  expect(callbacks.onNewDocument).not.toHaveBeenCalled();
+  expect(callbacks.onOpenDocument).not.toHaveBeenCalled();
+  expect(callbacks.onSave).not.toHaveBeenCalled();
+  expect(callbacks.onSaveAs).not.toHaveBeenCalled();
+  expect(callbacks.onCloseDocument).not.toHaveBeenCalled();
+  expect(callbacks.onReopenLastFile).not.toHaveBeenCalled();
+});
+
+it('T110 closes the active document when the File menu Close Tab row is clicked', async () => {
+  /*
+   * The row rendered enabled and its click was a silent no-op: dispatchFileAction
+   * had no `close-tab` arm, so `invoke` was undefined and it returned early.
+   * ShellMenuRow had no close callback in its props at all — the same missing
+   * prop the Mod+W accelerator needs.
+   */
+  const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
+  const callbacks = renderMenuRowWithFileActions();
+
+  fireEvent.click(screen.getByRole('button', { name: 'File' }));
+  const fileMenu = screen.getByRole('menu', { name: 'File' });
+  fireEvent.click(
+    within(fileMenu).getByRole('menuitem', { name: 'Close Tab' }),
+  );
+
+  await waitFor(() =>
+    expect(callbacks.onCloseDocument).toHaveBeenCalledTimes(1),
+  );
+  expect(dispatch).toHaveBeenCalledWith(
+    'close-tab',
+    expect.objectContaining({ documentId: 'document-1' }),
+  );
+  dispatch.mockRestore();
+});

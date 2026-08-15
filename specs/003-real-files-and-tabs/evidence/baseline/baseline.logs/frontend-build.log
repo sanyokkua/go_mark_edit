@@ -13,7 +13,7 @@ npm --prefix frontend run build
 
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 1068 modules transformed.
+✓ 1070 modules transformed.
 rendering chunks...
 [plugin vite:reporter] 
 (!) /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/adapter/index.ts is dynamically imported by /Users/ok/Development/GitHub/go_mark_edit/frontend/src/App.tsx, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/App.tsx, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/App.tsx but also statically imported by /Users/ok/Development/GitHub/go_mark_edit/frontend/src/App.tsx, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/hooks/useLivePreview.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/hooks/useSyncedBuffer.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/settings/editorSettings.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/store/docViewCommands.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/logic/store/uiLayoutCommands.ts, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/AppearanceControls.tsx, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/DocumentTabs.tsx, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/EditorView.tsx, /Users/ok/Development/GitHub/go_mark_edit/frontend/src/ui/widgets/ShellMenuRow.tsx, dynamic import will not move module into another chunk.
@@ -24,17 +24,17 @@ dist/assets/Roboto-Latin-DSCY9ty2.woff2     37.52 kB
 dist/assets/Inter-Latin-8kRkwJBP.woff2      48.43 kB
 dist/assets/editor.worker-CdtUXE0K.js      231.31 kB
 dist/assets/monacoSetup-DyX1CsEw.css        68.26 kB │ gzip:  11.14 kB
-dist/assets/index-CQboATKL.css              72.53 kB │ gzip:  13.51 kB
+dist/assets/index-C9DtacIk.css              72.26 kB │ gzip:  13.48 kB
 dist/assets/markdown-B811l8j2.js             3.65 kB │ gzip:   1.35 kB
-dist/assets/index-DL-RkVuD.js               14.57 kB │ gzip:   5.06 kB
-dist/assets/index-D38q0WLo.js              678.09 kB │ gzip: 206.85 kB
-dist/assets/monacoSetup-B5qCQQtb.js      2,294.41 kB │ gzip: 592.24 kB
+dist/assets/index-DYiNSDVI.js               14.57 kB │ gzip:   5.06 kB
+dist/assets/index-C5zrntss.js              679.09 kB │ gzip: 207.24 kB
+dist/assets/monacoSetup-CdYFmQlx.js      2,294.41 kB │ gzip: 592.24 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.77s
+✓ built in 4.02s
 
 > frontend@0.0.0 postbuild
 > node scripts/ensure-dist-placeholder.mjs && node scripts/check-production-network.mjs --source-root src --source-root public --source-root wailsjs/go --bundle-root dist --require-bundle
