@@ -155,10 +155,13 @@ incremented by hand and that 14/18/26/42 never agreed. This ledger's claim is th
 
 Named so that nothing here reads as broader than it is.
 
-- **Host screenshots and the real-bridge separation note** (T037, T100) do not exist. Screen access
-  for the walkthrough was requested on 2026-08-15 and **declined**, so no host capture was taken
-  and none was obtained by any other route. The offline and deferred-boundary halves of T037 are
-  genuinely proven and retained; the separation note and screenshots are not.
+- **Host screenshots and the real-bridge separation note** (T037, T100) **now exist**, produced
+  later the same day: `host-screenshots/` (three window-ID-scoped captures of the packaged binary,
+  classified in a README as native-host media no comparator reads) and
+  `../ft-vs-08/offline-and-controls/real-bridge-separation.md`. Claim 2 above is correspondingly
+  strengthened — CL-18 is no longer proved only from the mock's fixture gating: quitting the
+  packaged application with 40 documents open and relaunching returns **one** Untitled document,
+  while `Autosave off` and the Split arrangement do return. Session is not restored; settings are.
 - **SC-FT-002 timings** (T105) — **produced 2026-08-15** by the `explicit-save-latency`
   native-evidence scenario: Fixture A 14.114 ms, Fixture B 9.647 ms against a 30,000 ms budget.
   What that harness excludes is stated in
@@ -166,5 +169,10 @@ Named so that nothing here reads as broader than it is.
 - **Fixture B's timing** (T106) is covered by that harness. Every other T106 obligation is closed:
   all four size boundaries on the real binary (`sc-ft-002/boundaries-2026-08-15.md`) and the
   40-document limit at the interface (`sc-ft-002/capacity-refusals-2026-08-15.md`).
-- **`just verify 003-real-files-and-tabs` after T035–T037 are green** — T035 and T036 are green;
-  T037 is not, for the reason above.
+- **`just verify 003-real-files-and-tabs` after T035–T037 are green** — all three are green, and
+  `just verify` was run at commit `39ca0065` reporting M1–M6 PASS (`gates/verify.log`). What it
+  does not cover is unchanged and still owed by a person: M7, M8, M11, M13.
+- **Three defects found while producing this ledger remain open by design**: T108 (read-only opens
+  with no visible reason), T109 (`dispatchAction` reports a refused command as mutated — latent),
+  and T110 (every File-menu keyboard accelerator is advertised and unlistened). None blocks this
+  ledger's claims; each is filed with its root cause located.

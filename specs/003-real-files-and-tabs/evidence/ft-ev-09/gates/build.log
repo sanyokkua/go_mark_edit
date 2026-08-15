@@ -28,7 +28,7 @@ Race Detector     [90m[90m | [0m[0mfalse
   [90m[90m•[0m[0m [39m[39mCompiling application: [0m[0mDone.
   [90m[90m•[0m[0m [39m[39mPackaging application: [0m[0mDone.
   [90m[90m•[0m[0m [39m[39mSelf-signing application: [0m[0mDone.
-Built '/Users/ok/Development/GitHub/go_mark_edit/build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit' in 10.321s.
+Built '/Users/ok/Development/GitHub/go_mark_edit/build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit' in 22.498s.
 
 [31;107m[31;107m ♥  [0m[0m [92m[92mIf Wails is useful to you or your company, please consider sponsoring the project:[0m[0m
 https://github.com/sponsors/leaanthony
