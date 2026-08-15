@@ -519,3 +519,101 @@ func TestPrepareCloseRefusesWhileAnotherPlanIsSaving(t *testing.T) {
 		t.Fatalf("ExecuteClosePlan = %+v", transition)
 	}
 }
+
+// The two tests below cover PrepareClose's expected-tab-set-revision refusals.
+// Neither branch had a test before T111, and the frontend now renders both
+// messages verbatim, so the literals are asserted rather than the category
+// alone. Note that TestCloseReevaluatesRevisionAfterAutosaveDrain above asserts
+// the *matching*-revision path despite what its name suggests; the mismatching
+// one is covered here.
+
+func TestPrepareCloseRefusesAStaleTabSetRevision(t *testing.T) {
+	service := NewAppModelService(&recordingEmitter{})
+	_, documentID := openAutosaveDocument(t, service, "base\n")
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	stale := state.Snapshot.TabSetRevision
+
+	// Anything that bumps the tab set works; NewDocument is the cheapest.
+	if created := service.NewDocument(context.Background(), stale); created.Error != nil {
+		t.Fatalf("NewDocument = %+v", created)
+	}
+
+	refused := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{documentID}, stale)
+	if refused.Data != nil {
+		t.Fatalf("PrepareClose planned against a stale revision: %+v", refused.Data)
+	}
+	if refused.Error == nil {
+		t.Fatal("PrepareClose against a stale revision returned no error")
+	}
+	if refused.Error.Category != apperr.ClassifiedConflict {
+		t.Errorf("category = %q, want %q", refused.Error.Category, apperr.ClassifiedConflict)
+	}
+	if refused.Error.Message != "The tab set changed; close must be retried." {
+		t.Errorf("message = %q, want the literal the frontend renders", refused.Error.Message)
+	}
+	if refused.Error.Remediation != apperr.RemediationRetry {
+		t.Errorf("remediation = %q, want %q", refused.Error.Remediation, apperr.RemediationRetry)
+	}
+}
+
+func TestPrepareCloseRefusesARevisionThatMovedWhileAutosaveDrained(t *testing.T) {
+	clock := &fakeAutosaveClock{}
+	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	_, documentID := openAutosaveDocument(t, service, "base\n")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		close(started)
+		<-release
+		return file.DiskVersion{Exists: true, Size: int64(len(snapshot.encodedData))}, nil
+	})
+
+	// Schedule an autosave but deliberately do NOT fire the clock. That leaves
+	// flushAutosaveForClose on its `entry != nil && done == nil` branch
+	// (autosave.go:118), so PrepareClose itself runs the write — and the
+	// executor is therefore only reached once the first staleness check has
+	// already passed. Firing the clock here instead would make the executor
+	// call happen before PrepareClose, and bumping the tab set would then race
+	// the first check at close_plan.go:41 and assert the wrong branch.
+	if err := service.UpdateBuffer(context.Background(), documentID, "first\n"); err != nil {
+		t.Fatalf("first edit: %v", err)
+	}
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	expected := state.Snapshot.TabSetRevision
+	prepared := make(chan apperr.ClosePlanResult, 1)
+	go func() {
+		prepared <- service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{documentID}, expected)
+	}()
+
+	// The executor running is positive proof that PrepareClose is inside the
+	// drain, past close_plan.go:41, with service.mu released (autosave.go:132).
+	// That is the only window in which the second check can be reached.
+	<-started
+	if created := service.NewDocument(context.Background(), expected); created.Error != nil {
+		t.Fatalf("NewDocument during drain = %+v", created)
+	}
+	close(release)
+
+	refused := <-prepared
+	if refused.Data != nil {
+		t.Fatalf("PrepareClose planned against a revision that moved during the drain: %+v", refused.Data)
+	}
+	if refused.Error == nil {
+		t.Fatal("PrepareClose after a moved revision returned no error")
+	}
+	if refused.Error.Category != apperr.ClassifiedConflict {
+		t.Errorf("category = %q, want %q", refused.Error.Category, apperr.ClassifiedConflict)
+	}
+	if refused.Error.Message != "The tab set changed while autosave work drained." {
+		t.Errorf("message = %q, want the literal the frontend renders", refused.Error.Message)
+	}
+	if refused.Error.Remediation != apperr.RemediationRetry {
+		t.Errorf("remediation = %q, want %q", refused.Error.Remediation, apperr.RemediationRetry)
+	}
+}

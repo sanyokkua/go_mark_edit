@@ -1,5 +1,5 @@
 requirement=FR-FT-048
 local_origin=http://127.0.0.1:4173
-observed_ms=307004
+observed_ms=303622
 interactions=30
 denied_request_count=0

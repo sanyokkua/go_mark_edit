@@ -914,7 +914,17 @@ const fileAcceleratorCases: readonly FileAcceleratorCase[] = [
 ];
 
 function renderMenuRowWithFileActions(
-  shell: { modalOpen?: boolean; writable?: boolean } = {},
+  shell: {
+    modalOpen?: boolean;
+    writable?: boolean;
+    /*
+     * `App.tsx` passes `onCloseDocument` as `undefined` whenever there is no
+     * resolvable active document. That is the only asymmetry between the menu
+     * row and the Mod+W accelerator, so the harness has to be able to express
+     * it — T111 existed because nothing could.
+     */
+    closeDocument?: boolean;
+  } = {},
 ): Record<FileAcceleratorCase['prop'], jest.Mock> {
   const callbacks: Record<FileAcceleratorCase['prop'], jest.Mock> = {
     onCloseDocument: jest.fn(async () => undefined),
@@ -928,7 +938,9 @@ function renderMenuRowWithFileActions(
     <ShellMenuRow
       modalOpen={shell.modalOpen ?? false}
       onAbout={jest.fn()}
-      onCloseDocument={callbacks.onCloseDocument}
+      onCloseDocument={
+        (shell.closeDocument ?? true) ? callbacks.onCloseDocument : undefined
+      }
       onNewDocument={callbacks.onNewDocument}
       onOpenDocument={callbacks.onOpenDocument}
       onReopenLastFile={callbacks.onReopenLastFile}
@@ -1009,6 +1021,46 @@ it('T110 leaves every File accelerator inert while a modal is open', async () =>
   expect(callbacks.onSaveAs).not.toHaveBeenCalled();
   expect(callbacks.onCloseDocument).not.toHaveBeenCalled();
   expect(callbacks.onReopenLastFile).not.toHaveBeenCalled();
+});
+
+it('T111 disables the File menu Close Tab row when no close callback is bound', () => {
+  /*
+   * Reproduced on the real binary 2026-08-15: closing the last tab drops to the
+   * launcher, where `activeDocumentId` is null, so `App.tsx` passes
+   * `onCloseDocument` as undefined. The row still rendered enabled — brighter
+   * than Save and Save As beside it, which grey correctly — and its click was a
+   * silent no-op. Availability has to come from whether the row can act.
+   */
+  renderMenuRowWithFileActions({ closeDocument: false });
+
+  fireEvent.click(screen.getByRole('button', { name: 'File' }));
+  const row = within(screen.getByRole('menu', { name: 'File' })).getByRole(
+    'menuitem',
+    { name: 'Close Tab' },
+  );
+
+  // The same triple the parity harness reads, so the two instruments agree.
+  expect(
+    row.hasAttribute('disabled') ||
+      row.getAttribute('aria-disabled') === 'true' ||
+      row.getAttribute('data-disabled') === 'true',
+  ).toBe(true);
+});
+
+it('T111 leaves Mod+W unclaimed when no close callback is bound', () => {
+  /*
+   * Guard against a fix that greys the row by hardcoding availability:
+   * `useShellShortcuts` calls preventDefault() only once `isAvailable()` is
+   * true, so claiming the key while unable to act would swallow it instead of
+   * letting it fall through to the host. fireEvent.keyDown returns false when
+   * preventDefault was called.
+   */
+  const callbacks = renderMenuRowWithFileActions({ closeDocument: false });
+
+  expect(
+    fireEvent.keyDown(window, { code: 'KeyW', ctrlKey: true, key: 'w' }),
+  ).toBe(true);
+  expect(callbacks.onCloseDocument).not.toHaveBeenCalled();
 });
 
 it('T110 closes the active document when the File menu Close Tab row is clicked', async () => {

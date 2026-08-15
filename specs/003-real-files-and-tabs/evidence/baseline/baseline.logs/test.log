@@ -1,7 +1,7 @@
 just go-test
 go test -race ./internal/... .
 ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	(cached)
-ok  	github.com/sanyokkua/go_mark_edit/internal/application	1.876s
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/db	(cached)
@@ -10,7 +10,7 @@ ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
-ok  	github.com/sanyokkua/go_mark_edit	11.139s
+ok  	github.com/sanyokkua/go_mark_edit	(cached)
 just frontend-test
 npm --prefix frontend test -- --passWithNoTests
 
@@ -25,16 +25,16 @@ npm --prefix frontend test -- --passWithNoTests
 > frontend@0.0.0 test
 > node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --passWithNoTests
 
-✔ applies only a current valid startup mirror before application code (9.687125ms)
-✔ resolves a current Auto mirror from the operating-system preference (0.903584ms)
-✔ runs the blocking bootstrap before the application module (0.113625ms)
-✔ generates six complete named Monaco themes from palette values (7.0045ms)
-✔ converts CSS rgba palette values to Monaco-compatible hex (0.936042ms)
-✔ shares each fenced-language value by appearance across themes (3.786125ms)
-✔ rejects a palette missing a required Monaco token (0.454667ms)
-✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (1.524416ms)
-✔ rejects duplicate, unresolved, and unsupported palette sources (1.313167ms)
-✔ emits inactive highlight rules for every generated syntax token (1.302541ms)
+✔ applies only a current valid startup mirror before application code (3.145833ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.716542ms)
+✔ runs the blocking bootstrap before the application module (0.099875ms)
+✔ generates six complete named Monaco themes from palette values (2.787958ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.662083ms)
+✔ shares each fenced-language value by appearance across themes (0.921333ms)
+✔ rejects a palette missing a required Monaco token (0.315083ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.573417ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.328667ms)
+✔ emits inactive highlight rules for every generated syntax token (0.601708ms)
 ℹ tests 10
 ℹ suites 0
 ℹ pass 10
@@ -42,10 +42,10 @@ npm --prefix frontend test -- --passWithNoTests
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 151.279625
+ℹ duration_ms 72.25425
 
 Test Suites: 77 passed, 77 total
-Tests:       531 passed, 531 total
+Tests:       544 passed, 544 total
 Snapshots:   0 total
-Time:        25.734 s
+Time:        10.493 s, estimated 17 s
 Ran all test suites.

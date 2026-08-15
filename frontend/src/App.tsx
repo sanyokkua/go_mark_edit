@@ -526,6 +526,27 @@ const AppContents: React.FC = (): React.JSX.Element => {
     },
     [dispatch],
   );
+  /*
+   * The close plan is the entry paths' defect with a third arrow (T107, T111).
+   * Its refusals were reported, but through `notifyError`, whose
+   * `localizedErrorCopy` replaces title and message with generic copy keyed by
+   * code — and `conflict` has no catalog entry, so it collapses onto `io`. Go
+   * distinguishes its refusals precisely: "The tab set changed; close must be
+   * retried." (`internal/appmodel/close_plan.go:44`) and "The tab set changed
+   * while autosave work drained." (`:88`), each pinned by a test in
+   * `close_plan_test.go`. Both reached the user as "The file operation could
+   * not be completed." `reportClassifiedError` passes `error.message` through.
+   *
+   * Scoped to the three close-plan arms only. `reportWriteError`'s other
+   * callers — save, conflict resolution and native close — keep their copy
+   * contract.
+   */
+  const reportClosePlanError = useCallback(
+    (error: ClassifiedError | undefined): void => {
+      reportClassifiedError(dispatch, error, t('notification.error.io.title'));
+    },
+    [dispatch],
+  );
   const reportNativeCloseError = useCallback(
     (error: unknown): void => {
       const parsed = parseError(error);
@@ -572,7 +593,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       clearCloseState();
       if (result.error !== undefined) {
-        reportWriteError(result.error, result.error.documentId ?? planId);
+        reportClosePlanError(result.error);
         if (isNativeClose) await cancelNativeClose();
       } else if (result.activeBuffer !== undefined) {
         setActiveBuffer(result.activeBuffer);
@@ -607,8 +628,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
       cancelNativeClose,
       clearCloseState,
       dispatch,
+      reportClosePlanError,
       reportNativeCloseError,
-      reportWriteError,
     ],
   );
   const processClosePlanResult = useCallback(
@@ -617,7 +638,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
     ): Promise<TabTransitionResult | undefined> => {
       if (result.error !== undefined) {
         clearCloseState();
-        reportWriteError(result.error, result.error.documentId ?? 'close-plan');
+        reportClosePlanError(result.error);
         await cancelNativeClose();
         return undefined;
       }
@@ -652,10 +673,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
         ]);
         if (discarded.error !== undefined) {
           clearCloseState();
-          reportWriteError(
-            discarded.error,
-            discarded.error.documentId ?? summary.id,
-          );
+          reportClosePlanError(discarded.error);
           await cancelNativeClose();
           return undefined;
         }
@@ -705,7 +723,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       clearCloseState,
       completeClosePlan,
       recoverySurface,
-      reportWriteError,
+      reportClosePlanError,
     ],
   );
   const resolvePreparedClosePlan = useCallback(

@@ -664,6 +664,57 @@ it('T027 native close requests complete a clean plan before authorizing one quit
   act((): void => disposeAppModelProjection());
 });
 
+it('T111 surfaces the close plan refusal with the backend message intact', async () => {
+  /*
+   * The refusal was reported, but through `notifyError`, whose
+   * `localizedErrorCopy` swaps title and message for generic copy keyed by
+   * code. `conflict` has no catalog entry so it collapsed onto `io`, and both
+   * of Go's close-plan refusals — pinned by TestPrepareCloseRefuses* in
+   * `internal/appmodel/close_plan_test.go` — reached the user as "The file
+   * operation could not be completed." T107's treatment, third arrow.
+   */
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedClosePlanAdapter.prepareClose.mockReset().mockResolvedValue({
+    error: {
+      category: 'conflict',
+      message: 'The tab set changed; close must be retried.',
+      remediation: 'Retry',
+      documentId: 'close plan',
+      dedupKey: 'close plan:conflict',
+      safeSubject: 'close plan',
+    },
+  });
+  mockedNativeLifecycleAdapter.onCloseRequested.mockReset();
+  mockedNativeLifecycleAdapter.cancelQuit.mockReset().mockResolvedValue();
+  let requestListener: (() => void) | undefined;
+  mockedNativeLifecycleAdapter.onCloseRequested.mockImplementation(
+    (listener) => {
+      requestListener = listener;
+      return jest.fn();
+    },
+  );
+
+  render(<App />);
+  await waitFor(() => expect(requestListener).toBeDefined());
+  act(() => {
+    requestListener?.();
+  });
+
+  await waitFor(() => {
+    expect(store.getState().notifications.items).toHaveLength(1);
+  });
+  expect(store.getState().notifications.items[0]).toMatchObject({
+    message: 'The tab set changed; close must be retried.',
+    severity: 'error',
+  });
+  act((): void => disposeAppModelProjection());
+});
+
 it('T009 operates File New through the real menu and installs its acknowledged buffer', async () => {
   act((): void => disposeAppModelProjection());
   store.dispatch(resetProjection());

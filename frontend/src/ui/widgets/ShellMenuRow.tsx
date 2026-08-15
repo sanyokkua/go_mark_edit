@@ -58,6 +58,23 @@ const fileMenuSeparators = new Set<ActionId>([
 
 const aboutMenuSeparators = new Set<ActionId>(['open-logs', 'about']);
 
+/*
+ * Exactly the ids `fileActionInvoker` can resolve to a handler. Membership here
+ * means "this row is only real when its prop was supplied", which is what lets
+ * `fileActionDisabled` grey the row instead of letting it render enabled and
+ * inert. `open-recent` is absent on purpose: it has no invoker and its own
+ * recent-count rule governs it.
+ */
+const FILE_ACTIONS_WITH_INVOKERS: ReadonlySet<ActionId> = new Set<ActionId>([
+  'new-file',
+  'open-file',
+  'save',
+  'save-as',
+  'close-tab',
+  'reopen',
+  'exit',
+]);
+
 function shortcutForMenuItem(shortcut: string | undefined): string | undefined {
   return shortcut === undefined
     ? undefined
@@ -349,14 +366,31 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     ],
   );
   const recentFileCount = recentFiles.length;
+  /*
+   * T111: a row whose handler is absent must grey out, never render enabled and
+   * do nothing. `App.tsx` passes `onCloseDocument` as undefined whenever there
+   * is no active document — the launcher state, reached by closing the last tab
+   * — and `Close Tab` then advertised itself as available while its click died
+   * at the `invoke === undefined` return in `dispatchFileAction`. Observed on
+   * the real binary 2026-08-15 with Save and Save As correctly greyed beside it.
+   *
+   * The id set is deliberate rather than an unconditional invoker check:
+   * `fileActionInvoker` also returns undefined for `open-recent` and the
+   * deferred ids, whose own rules are below and must keep governing them.
+   *
+   * `exit` used to spell this rule for itself (`onQuit === undefined`). It is
+   * the same rule, so it is folded in — two spellings of one rule is the drift
+   * T110 existed to remove.
+   */
   const fileActionDisabled = useCallback(
     (id: ActionId): boolean =>
       (id !== 'exit' && getAction(id).availability.kind === 'deferred') ||
-      (id === 'exit' && onQuit === undefined) ||
+      (FILE_ACTIONS_WITH_INVOKERS.has(id) &&
+        fileActionInvoker(id) === undefined) ||
       (id === 'open-recent' && recentFileCount === 0) ||
       (id === 'reopen' && !canReopenLastFile) ||
       (['save', 'save-as'].includes(id) && writable !== true),
-    [canReopenLastFile, onQuit, recentFileCount, writable],
+    [canReopenLastFile, fileActionInvoker, recentFileCount, writable],
   );
 
   const actions = useMemo(
@@ -498,11 +532,18 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       onQuit();
       return;
     }
+    setFileOpen(false);
+    setOverflowOpen(false);
+    /*
+     * `fileActionDisabled` now greys every row whose invoker is absent, so this
+     * is a guard rather than a reachable branch. It still closes the popup
+     * first: the narrow render site is a plain button whose click does not
+     * dismiss the menu by itself, so returning above the close left the menu
+     * open with nothing having happened.
+     */
     const invoke = fileActionInvoker(id);
     if (invoke === undefined) return;
 
-    setFileOpen(false);
-    setOverflowOpen(false);
     void dispatchAction(id, {
       applicationFocused: true,
       documentId,
