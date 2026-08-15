@@ -100,7 +100,7 @@ func (service *AppModelService) ReloadFromDisk(ctx context.Context, documentID s
 		return service.conflictRefused(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
 	}
 	if path == "" {
-		return service.conflictRefused(documentID, apperr.ClassifiedUnsupportedInput, "This document does not have a file path.", apperr.RemediationCancel)
+		return service.conflictRefused(documentID, apperr.ClassifiedUnsupportedInput, "This document does not have a file path.", apperr.RemediationNone)
 	}
 	current, err := service.currentDiskVersion(path)
 	if err != nil {
@@ -170,7 +170,7 @@ func (service *AppModelService) AuthorizeKeepMine(ctx context.Context, documentI
 		return service.conflictRefused(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
 	}
 	if queued.preview.ReadOnly {
-		return service.conflictRefused(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be overwritten.", apperr.RemediationCancel)
+		return service.conflictRefused(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be overwritten.", apperr.RemediationNone)
 	}
 	if err != nil || !current.Equal(queued.version) {
 		before := service.snapshotLocked()
@@ -204,7 +204,7 @@ func (service *AppModelService) SkipConflict(ctx context.Context, documentID str
 		return service.conflictRefused(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
 	}
 	if queued.preview.ReadOnly {
-		return service.conflictRefused(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only; cancel the foreground check.", apperr.RemediationCancel)
+		return service.conflictRefused(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only; cancel the foreground check.", apperr.RemediationNone)
 	}
 	before := service.snapshotLocked()
 	service.removeConflictLocked(documentID)

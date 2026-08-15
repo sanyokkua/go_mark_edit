@@ -35,7 +35,7 @@ type closePlanTarget struct {
 // writes, discards, or removes a document as a consequence of planning.
 func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.ClosePlanKind, targetDocumentIDs []string, expectedTabSetRevision uint64) apperr.ClosePlanResult {
 	if !validClosePlanKind(kind) {
-		return closePlanRefused(apperr.ClassifiedUnsupportedInput, "close plan", "The close operation is not supported.", apperr.RemediationCancel)
+		return closePlanRefused(apperr.ClassifiedUnsupportedInput, "close plan", "The close operation is not supported.", apperr.RemediationNone)
 	}
 
 	service.mu.Lock()
@@ -440,7 +440,7 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 		selected += ".md"
 	}
 	if !file.IsSupportedDocumentSuffix(selected) {
-		return classifiedClosePlanError(apperr.ClassifiedUnsupportedInput, target.documentID, "The selected save name has an unsupported suffix.", apperr.RemediationCancel), false
+		return classifiedClosePlanError(apperr.ClassifiedUnsupportedInput, target.documentID, "The selected save name has an unsupported suffix.", apperr.RemediationNone), false
 	}
 	candidate, err := file.CanonicalizeCandidateDocumentPath(selected)
 	if err != nil {

@@ -58,6 +58,53 @@ var AllClassifiedRemediations = []ClassifiedRemediation{
 	RemediationCancel,
 }
 
+/*
+ * The contract's one-remediation-set-per-category table, made enforceable.
+ *
+ * `Validate` checked only that a remediation was in the *global* vocabulary, so
+ * any category could carry any action and nothing noticed. That was invisible
+ * while no remediation ever rendered; T116 wired the control, and a
+ * `permission-denied` save began offering a Retry that cannot succeed — the very
+ * reason the contract makes that row message-only.
+ *
+ * `RemediationNone` is allowed everywhere: message-only is always a valid outcome.
+ *
+ * **`ClassifiedConflict` deliberately allows `RemediationRetry`, and the
+ * specification does not.** The contract's conflict row enumerates the
+ * *external-change* actions (Reload from disk, Keep mine, Skip, and Cancel for a
+ * read-only change), but this codebase also classifies stale-tab-set and
+ * stale-revision refusals as `conflict`, where re-issuing the command against the
+ * fresh revision is the only sensible action and is what T156 will honour. That is
+ * a spec/code disagreement, not a licence: it is filed as T159 and must be
+ * resolved by amending the contract row or reclassifying those refusals — not by
+ * leaving this comment as the answer.
+ */
+var remediationsByCategory = map[ClassifiedErrorCategory][]ClassifiedRemediation{
+	ClassifiedNotFound:             {RemediationNone, RemediationSaveToRecreate, RemediationCopyPath},
+	ClassifiedPermissionDenied:     {RemediationNone},
+	ClassifiedIOFailure:            {RemediationNone, RemediationRetry},
+	ClassifiedConflict:             {RemediationNone, RemediationReload, RemediationKeepMine, RemediationSkip, RemediationCancel, RemediationRetry},
+	ClassifiedCapacityLimit:        {RemediationNone},
+	ClassifiedUnsupportedInput:     {RemediationNone},
+	ClassifiedSystemCommandFailure: {RemediationNone, RemediationRetry, RemediationCopyPath},
+	ClassifiedPersistenceWarning:   {RemediationNone},
+}
+
+// AllowedRemediations reports the remediations the contract permits for one
+// category. An unknown category allows nothing, so it cannot pass Validate.
+func AllowedRemediations(category ClassifiedErrorCategory) []ClassifiedRemediation {
+	return remediationsByCategory[category]
+}
+
+func remediationAllowedFor(category ClassifiedErrorCategory, remediation ClassifiedRemediation) bool {
+	for _, candidate := range remediationsByCategory[category] {
+		if candidate == remediation {
+			return true
+		}
+	}
+	return false
+}
+
 // ClassifiedError is the safe bridge shape shared by file, write, conflict,
 // reveal, and persistence outcomes. SafeSubject is normalized at construction
 // time and never contains a private path.
@@ -80,6 +127,13 @@ func NewClassifiedError(category ClassifiedErrorCategory, subject, message strin
 	}
 	if isInternalIdentifier(safeSubject) {
 		safeSubject = genericSubject
+	}
+	// Fail safe, in the same shape as the subject guard above: a remediation the
+	// category forbids degrades to message-only rather than offering the user an
+	// action that cannot work. Validate still reports it, so a wrong call site is
+	// caught by a test rather than hidden by this coercion.
+	if !remediationAllowedFor(category, remediation) {
+		remediation = RemediationNone
 	}
 	result := ClassifiedError{
 		Category:    category,
@@ -138,6 +192,9 @@ func (classified ClassifiedError) Validate() error {
 	}
 	if !containsClassifiedRemediation(classified.Remediation) {
 		return fmt.Errorf("unsupported classified error remediation %q", classified.Remediation)
+	}
+	if !remediationAllowedFor(classified.Category, classified.Remediation) {
+		return fmt.Errorf("category %q does not permit remediation %q", classified.Category, classified.Remediation)
 	}
 	if strings.ContainsAny(classified.SafeSubject, `/\\`) {
 		return fmt.Errorf("safeSubject must not contain a path separator")

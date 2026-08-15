@@ -23,7 +23,7 @@ func (service *AppModelService) ReorderDocument(ctx context.Context, documentID 
 		return service.tabTransitionSuccess(apperr.TabTransitionNoop, documentID)
 	}
 	if targetIndex < 0 || targetIndex >= len(service.state.orderedDocumentIDs) || targetIndex < index-1 || targetIndex > index+1 {
-		return tabTransitionFailure(apperr.ClassifiedUnsupportedInput, documentID, "The requested tab position is invalid.", apperr.RemediationCancel)
+		return tabTransitionFailure(apperr.ClassifiedUnsupportedInput, documentID, "The requested tab position is invalid.", apperr.RemediationNone)
 	}
 
 	before := service.snapshotLocked()

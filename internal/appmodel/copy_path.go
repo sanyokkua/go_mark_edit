@@ -25,7 +25,7 @@ func (service *AppModelService) CopyPath(_ context.Context, documentID string) a
 	service.mu.RUnlock()
 
 	if path == "" {
-		return pathCommandFailure(apperr.ClassifiedUnsupportedInput, documentID, subject, "This document does not have a file path.", apperr.RemediationCancel)
+		return pathCommandFailure(apperr.ClassifiedUnsupportedInput, documentID, subject, "This document does not have a file path.", apperr.RemediationNone)
 	}
 	if writer == nil {
 		return pathCommandFailure(apperr.ClassifiedSystemCommandFailure, documentID, subject, "The path could not be copied.", apperr.RemediationRetry)
@@ -53,7 +53,7 @@ func (service *AppModelService) RevealInFileManager(ctx context.Context, documen
 	service.mu.RUnlock()
 
 	if path == "" {
-		return revealFailure(apperr.ClassifiedUnsupportedInput, documentID, subject, "This document does not have a file path.", apperr.RemediationCancel)
+		return revealFailure(apperr.ClassifiedUnsupportedInput, documentID, subject, "This document does not have a file path.", apperr.RemediationNone)
 	}
 	if knownDetached {
 		return apperr.RevealResult{Status: apperr.PathCommandUnavailable}

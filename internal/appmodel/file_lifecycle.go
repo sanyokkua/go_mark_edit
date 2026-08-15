@@ -56,7 +56,8 @@ func (service *AppModelService) NewDocument(ctx context.Context, expectedTabSetR
 		return documentTransitionFailure(
 			apperr.ClassifiedCapacityLimit,
 			"The window already contains 40 documents.",
-			apperr.RemediationCancel,
+			// Message-only, naming the limit: no action makes a 41st document fit.
+			apperr.RemediationNone,
 		)
 	}
 
@@ -193,7 +194,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	}
 	novelReservations := countNovelReservations(service.reservations)
 	if existingDocumentID == "" && len(service.state.documents)+novelReservations >= maxOpenDocuments {
-		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedCapacityLimit, "The window already contains 40 documents.", apperr.RemediationCancel)
+		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedCapacityLimit, "The window already contains 40 documents.", apperr.RemediationNone)
 	}
 	reservationID := mintDocumentID()
 	service.reservations[reservationID] = &openReservation{

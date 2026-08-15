@@ -257,12 +257,19 @@ func newAtomicReplaceError(target string, committed bool, phase AtomicReplacePha
 	case apperr.ClassifiedPersistenceWarning:
 		message = "The document was saved, but its durability could not be confirmed."
 	}
-	remediation := apperr.RemediationRetry
+	/*
+	 * Per category, not a default plus exceptions. This defaulted every category to
+	 * Retry, so a permission-denied write carried an action the contract makes
+	 * message-only precisely because retrying the identical action cannot succeed.
+	 * `apperr` now refuses that pairing outright; naming each row here means the
+	 * refusal never has to fire.
+	 */
+	remediation := apperr.RemediationNone
 	switch category {
 	case apperr.ClassifiedConflict:
 		remediation = apperr.RemediationReload
-	case apperr.ClassifiedPersistenceWarning:
-		remediation = apperr.RemediationNone
+	case apperr.ClassifiedIOFailure:
+		remediation = apperr.RemediationRetry
 	}
 	classified := apperr.NewClassifiedError(category, target, message, remediation, "")
 	return &AtomicReplaceError{

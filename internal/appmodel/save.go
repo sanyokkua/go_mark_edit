@@ -58,7 +58,7 @@ func (service *AppModelService) Save(ctx context.Context, documentID string, exp
 	}
 	if document.metadata.Capability != string(file.CapabilityWritable) {
 		service.mu.RUnlock()
-		return service.refusedWrite(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationCancel)
+		return service.refusedWrite(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationNone)
 	}
 	path := document.metadata.Path
 	service.mu.RUnlock()
@@ -91,7 +91,7 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 	}
 	if document.metadata.Capability != string(file.CapabilityWritable) {
 		service.mu.RUnlock()
-		return service.refusedWrite(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationCancel)
+		return service.refusedWrite(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationNone)
 	}
 	if document.metadata.LineEnding == string(file.LineEndingMixed) {
 		authorization, authorized := service.normalizations[decisionToken]
@@ -132,7 +132,7 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		selected += ".md"
 	}
 	if !file.IsSupportedDocumentSuffix(selected) {
-		return service.refusedWrite(documentID, apperr.ClassifiedUnsupportedInput, "The selected save name has an unsupported suffix.", apperr.RemediationCancel)
+		return service.refusedWrite(documentID, apperr.ClassifiedUnsupportedInput, "The selected save name has an unsupported suffix.", apperr.RemediationNone)
 	}
 	candidate, err := file.CanonicalizeCandidateDocumentPath(selected)
 	if err != nil {
@@ -240,7 +240,7 @@ func (service *AppModelService) snapshotForWrite(documentID string, expectedCont
 		return writeSnapshot{}, service.refusedWrite(documentID, apperr.ClassifiedConflict, "The document changed before it could be saved.", apperr.RemediationRetry)
 	}
 	if document.metadata.Capability != string(file.CapabilityWritable) {
-		return writeSnapshot{}, service.refusedWrite(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationCancel)
+		return writeSnapshot{}, service.refusedWrite(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationNone)
 	}
 	if !targetPathAdopted && document.metadata.Path != targetPath {
 		return writeSnapshot{}, service.refusedWrite(documentID, apperr.ClassifiedConflict, "The document path changed before it could be saved.", apperr.RemediationRetry)
@@ -297,14 +297,19 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		service.setWriteInFlight(ctx, snapshot.documentID, false)
 		category := apperr.ClassifiedIOFailure
 		message := "The document could not be saved."
+		remediation := apperr.RemediationRetry
 		if atomicErr, ok := replaceErr.(*file.AtomicReplaceError); ok && atomicErr.Classified != nil {
 			category = atomicErr.Classified.Category
 			message = atomicErr.Classified.Message
+			// Carry the classification's own remediation rather than re-deciding it
+			// here. This hardcoded Retry for whatever category the atomic replace
+			// produced, which is how a permission-denied write came to offer one.
+			remediation = atomicErr.Classified.Remediation
 		}
 		if category == apperr.ClassifiedConflict {
 			return service.conflictWrite(snapshot.documentID, message)
 		}
-		return service.refusedWrite(snapshot.documentID, category, message, apperr.RemediationRetry)
+		return service.refusedWrite(snapshot.documentID, category, message, remediation)
 	}
 
 	service.mu.Lock()

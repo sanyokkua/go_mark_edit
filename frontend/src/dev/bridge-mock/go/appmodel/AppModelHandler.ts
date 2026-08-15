@@ -739,6 +739,27 @@ function e2eConflictPreview(document: MockDocument): MockConflictPreview {
   };
 }
 
+/**
+ * Mirror Go's per-category remediation table rather than hardcoding `Retry`.
+ *
+ * This returned `Retry` for every category it built. That was harmless while no
+ * remediation ever rendered, but T116 wired the control and T123 made the pairing
+ * a contract rule enforced in `apperr` — so a mock that still hands `Retry` to a
+ * message-only category would let exactly the defect T123 fixes sail through every
+ * browser test. A test double that is looser than the real backend makes the
+ * defects behind it unreachable.
+ */
+const MOCK_REMEDIATION_BY_CATEGORY: Readonly<Record<string, string>> = {
+  'not-found': '',
+  'permission-denied': '',
+  'io-failure': 'Retry',
+  conflict: 'Retry',
+  'capacity-limit': '',
+  'unsupported-input': '',
+  'system-command-failure': 'Retry',
+  'persistence-warning': '',
+};
+
 function classifiedError(
   category: string,
   message: string,
@@ -747,7 +768,7 @@ function classifiedError(
   return {
     category,
     message,
-    remediation: 'Retry',
+    remediation: MOCK_REMEDIATION_BY_CATEGORY[category] ?? '',
     dedupKey,
   };
 }

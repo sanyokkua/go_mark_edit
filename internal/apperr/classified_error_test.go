@@ -84,3 +84,74 @@ func TestNewClassifiedErrorKeepsRealNamesThatMerelyLookSimilar(t *testing.T) {
 		}
 	}
 }
+
+// Proves: FR-FT-015
+func TestClassifiedErrorRefusesARemediationItsCategoryForbids(t *testing.T) {
+	/*
+	 * The contract fixes one remediation set per category and nothing enforced it:
+	 * Validate checked only that the value was in the *global* vocabulary, so any
+	 * category could carry any action. permission-denied is message-only precisely
+	 * because "retrying the identical action cannot succeed", yet
+	 * newAtomicReplaceError defaulted every non-conflict category to Retry.
+	 *
+	 * Latent until T116 made remediations render. A permission-denied save now
+	 * shows a Retry button that can only fail again.
+	 */
+	forbidden := map[ClassifiedErrorCategory]ClassifiedRemediation{
+		ClassifiedPermissionDenied:   RemediationRetry,
+		ClassifiedCapacityLimit:      RemediationRetry,
+		ClassifiedUnsupportedInput:   RemediationRetry,
+		ClassifiedPersistenceWarning: RemediationRetry,
+		ClassifiedNotFound:           RemediationRetry,
+	}
+	for category, remediation := range forbidden {
+		invalid := ClassifiedError{Category: category, SafeSubject: "notes.md", Message: "m", Remediation: remediation}
+		if err := invalid.Validate(); err == nil {
+			t.Fatalf("Validate accepted %q for category %q, which the contract forbids", remediation, category)
+		}
+		// Defence in depth: the constructor must not be able to build one either.
+		built := NewClassifiedError(category, "notes.md", "m", remediation, "doc-1")
+		if built.Remediation != RemediationNone {
+			t.Fatalf("NewClassifiedError kept forbidden remediation %q for category %q, want message-only", built.Remediation, category)
+		}
+	}
+}
+
+// Proves: FR-FT-015
+func TestClassifiedErrorKeepsTheRemediationItsCategoryAllows(t *testing.T) {
+	allowed := []struct {
+		category    ClassifiedErrorCategory
+		remediation ClassifiedRemediation
+	}{
+		{ClassifiedIOFailure, RemediationRetry},
+		{ClassifiedSystemCommandFailure, RemediationRetry},
+		{ClassifiedSystemCommandFailure, RemediationCopyPath},
+		{ClassifiedNotFound, RemediationSaveToRecreate},
+		{ClassifiedNotFound, RemediationCopyPath},
+		{ClassifiedConflict, RemediationReload},
+		{ClassifiedConflict, RemediationKeepMine},
+		{ClassifiedConflict, RemediationSkip},
+		{ClassifiedPermissionDenied, RemediationNone},
+	}
+	for _, row := range allowed {
+		built := NewClassifiedError(row.category, "notes.md", "m", row.remediation, "doc-1")
+		if built.Remediation != row.remediation {
+			t.Fatalf("category %q dropped its allowed remediation %q", row.category, row.remediation)
+		}
+		if err := built.Validate(); err != nil {
+			t.Fatalf("category %q with %q failed validation: %v", row.category, row.remediation, err)
+		}
+	}
+}
+
+// Proves: FR-FT-015
+func TestEveryCategoryDeclaresItsAllowedRemediations(t *testing.T) {
+	// A category with no row would silently accept anything, which is the hole
+	// this table closes.
+	for _, category := range AllClassifiedErrorCategories {
+		allowed := AllowedRemediations(category)
+		if len(allowed) == 0 {
+			t.Fatalf("category %q declares no allowed remediation set", category)
+		}
+	}
+}

@@ -195,7 +195,7 @@ func ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 			CanonicalPath: canonical,
 			Outcome:       ReadOutcomeRefused,
 			Capability:    CapabilityRefused,
-			Error:         classifiedReadError(canonical.DisplayName, apperr.ClassifiedUnsupportedInput, "The selected file type is not supported.", apperr.RemediationCancel),
+			Error:         classifiedReadError(canonical.DisplayName, apperr.ClassifiedUnsupportedInput, "The selected file type is not supported.", apperr.RemediationNone),
 		}, nil
 	}
 	info, err := os.Stat(canonical.Path)
@@ -208,7 +208,7 @@ func ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 			Characteristics: FileCharacteristics{RawSizeBytes: info.Size(), Capability: CapabilityRefused, Mode: info.Mode()},
 			Outcome:         ReadOutcomeRefused,
 			Capability:      CapabilityRefused,
-			Error:           classifiedReadError(canonical.DisplayName, apperr.ClassifiedCapacityLimit, "The document exceeds the 50 MiB limit.", apperr.RemediationCancel),
+			Error:           classifiedReadError(canonical.DisplayName, apperr.ClassifiedCapacityLimit, "The document exceeds the 50 MiB limit.", apperr.RemediationNone),
 		}, nil
 	}
 
