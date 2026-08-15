@@ -15,11 +15,22 @@ import (
 // the exact gap the 2026-08-14 walkthrough found.
 type AutosaveObserver func(enabled bool)
 
+// DefaultOpenModeObserver is notified whenever the persisted default open mode is
+// written. Same reason as AutosaveObserver, and the same defect one setting over:
+// SetDefaultOpenMode had zero production callers, so the preference reached the
+// database and the Settings menu's tick and never the document model, which kept
+// opening every file in Editor for the process lifetime (FR-FT-003).
+//
+// One observer per setting rather than a generic registry, matching the shape
+// already established here.
+type DefaultOpenModeObserver func(mode string)
+
 // SettingsService contains settings validation and stored-value normalization.
 type SettingsService struct {
-	mu               sync.RWMutex
-	repository       SettingsRepositoryAPI
-	autosaveObserver AutosaveObserver
+	mu                      sync.RWMutex
+	repository              SettingsRepositoryAPI
+	autosaveObserver        AutosaveObserver
+	defaultOpenModeObserver DefaultOpenModeObserver
 }
 
 // SetAutosaveObserver wires the composition root's document-model command.
@@ -37,6 +48,24 @@ func (service *SettingsService) notifyAutosave(enabled bool) {
 
 	if observer != nil {
 		observer(enabled)
+	}
+}
+
+// SetDefaultOpenModeObserver wires the composition root's document-model command.
+func (service *SettingsService) SetDefaultOpenModeObserver(observer DefaultOpenModeObserver) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+
+	service.defaultOpenModeObserver = observer
+}
+
+func (service *SettingsService) notifyDefaultOpenMode(mode string) {
+	service.mu.RLock()
+	observer := service.defaultOpenModeObserver
+	service.mu.RUnlock()
+
+	if observer != nil {
+		observer(mode)
 	}
 }
 
@@ -135,6 +164,10 @@ func (service *SettingsService) UpdateAppearance(ctx context.Context, appearance
 	if err := repository.UpdateAppearance(nonNilContext(ctx), appearance); err != nil {
 		return apperr.IO("update settings", err)
 	}
+	// Only after the write succeeds, for the same reason as UpdateFile: a
+	// preference that failed to persist must not change what the document model
+	// does.
+	service.notifyDefaultOpenMode(appearance.DefaultOpenMode)
 	return nil
 }
 
@@ -146,6 +179,15 @@ func (service *SettingsService) ResetAppearance(ctx context.Context) error {
 	if err := repository.ResetAppearance(nonNilContext(ctx)); err != nil {
 		return apperr.IO("reset appearance", err)
 	}
+	// A reset that left the document model on the old value would put the store
+	// and the model in disagreement, with only the store visible in the interface.
+	// Read the reset value back rather than assuming it, so this stays correct if
+	// the default ever changes.
+	restored, err := repository.GetAppearance(nonNilContext(ctx))
+	if err != nil {
+		return nil
+	}
+	service.notifyDefaultOpenMode(restored.DefaultOpenMode)
 	return nil
 }
 

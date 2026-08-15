@@ -53,6 +53,12 @@ func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger
 	// only place that holds both, so it is where the preference becomes a
 	// command rather than a projection.
 	settingsService.SetAutosaveObserver(appModelService.SetAutosaveEnabled)
+	// The same join, one setting over (T119). SetDefaultOpenMode had zero
+	// production callers, so FR-FT-003's "acknowledged default open mode" never
+	// left the database. settings.OpenMode* and appmodel.OpenMode* are
+	// string-identical, so no conversion is needed — only this join, since
+	// settings must not import appmodel.
+	settingsService.SetDefaultOpenModeObserver(appModelService.SetDefaultOpenMode)
 	holder.SettingsHandler = settings.NewSettingsHandler(settingsService, appLogger, holder.Context)
 	holder.AppModelHandler = appmodel.NewAppModelHandler(appModelService, appLogger, holder.Context)
 	holder.NativeWindowService = NewNativeWindowService(appModelService, nil)
@@ -124,6 +130,7 @@ func (holder *ApplicationContextHolder) Init(ctx context.Context) error {
 	holder.AppModelService.SetRecentFilesRepository(appmodel.NewSqliteRecentFilesRepository(database))
 	holder.DB = database
 	holder.applyPersistedAutosavePreference(ctx)
+	holder.applyPersistedDefaultOpenMode(ctx)
 	holder.startupErr = nil
 	holder.AppModelService.SetStartupError(nil)
 	return nil
@@ -142,6 +149,21 @@ func (holder *ApplicationContextHolder) applyPersistedAutosavePreference(ctx con
 		return
 	}
 	holder.AppModelService.SetAutosaveEnabled(stored.File.Autosave)
+}
+
+// applyPersistedDefaultOpenMode pushes the stored preference into the document
+// model once at startup. The observer alone only fires when the setting is
+// written, so a stored preference of Reading would silently come back as Editor
+// at every launch — which is the half of T104's defect that a projection-only
+// test would not have caught either.
+//
+// An unreadable store leaves the documented default of Editor in place.
+func (holder *ApplicationContextHolder) applyPersistedDefaultOpenMode(ctx context.Context) {
+	stored, err := holder.SettingsService.Get(ctx)
+	if err != nil {
+		return
+	}
+	holder.AppModelService.SetDefaultOpenMode(stored.Appearance.DefaultOpenMode)
 }
 
 func (holder *ApplicationContextHolder) StartupReady() bool {

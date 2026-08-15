@@ -10,7 +10,7 @@ ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
-ok  	github.com/sanyokkua/go_mark_edit	(cached)
+ok  	github.com/sanyokkua/go_mark_edit	7.926s
 just frontend-test
 npm --prefix frontend test -- --passWithNoTests
 
@@ -25,16 +25,16 @@ npm --prefix frontend test -- --passWithNoTests
 > frontend@0.0.0 test
 > node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --passWithNoTests
 
-✔ applies only a current valid startup mirror before application code (3.145833ms)
-✔ resolves a current Auto mirror from the operating-system preference (0.716542ms)
-✔ runs the blocking bootstrap before the application module (0.099875ms)
-✔ generates six complete named Monaco themes from palette values (2.787958ms)
-✔ converts CSS rgba palette values to Monaco-compatible hex (0.662083ms)
-✔ shares each fenced-language value by appearance across themes (0.921333ms)
-✔ rejects a palette missing a required Monaco token (0.315083ms)
-✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.573417ms)
-✔ rejects duplicate, unresolved, and unsupported palette sources (0.328667ms)
-✔ emits inactive highlight rules for every generated syntax token (0.601708ms)
+✔ applies only a current valid startup mirror before application code (3.258083ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.652417ms)
+✔ runs the blocking bootstrap before the application module (0.092916ms)
+✔ generates six complete named Monaco themes from palette values (2.836416ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.702541ms)
+✔ shares each fenced-language value by appearance across themes (0.893375ms)
+✔ rejects a palette missing a required Monaco token (0.301041ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.536875ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.307916ms)
+✔ emits inactive highlight rules for every generated syntax token (0.544375ms)
 ℹ tests 10
 ℹ suites 0
 ℹ pass 10
@@ -42,10 +42,10 @@ npm --prefix frontend test -- --passWithNoTests
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 72.25425
+ℹ duration_ms 73.029583
 
 Test Suites: 77 passed, 77 total
-Tests:       544 passed, 544 total
+Tests:       552 passed, 552 total
 Snapshots:   0 total
-Time:        10.493 s, estimated 17 s
+Time:        10.371 s
 Ran all test suites.

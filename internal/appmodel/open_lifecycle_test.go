@@ -181,6 +181,46 @@ func TestOpenStaleRecentEntryRefusesNotFoundWithoutMutation(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-003
+func TestOpenInReadingModeOpensDirectlyIntoPreview(t *testing.T) {
+	/*
+	 * The behavioural half of T119. FR-FT-003 requires Open to apply the
+	 * acknowledged default open mode first, Reading opening directly in Reading.
+	 * `openArrangement` implemented it correctly and `SetDefaultOpenMode` fed it
+	 * correctly — and nothing called `SetDefaultOpenMode`, so the mode was pinned
+	 * to Editor for the process lifetime. No test exercised `OpenModeViewer` at
+	 * all, which is why the arithmetic looked complete.
+	 *
+	 * Reading also outranks a persisted arrangement: `PrepareOpen` consults the
+	 * per-path arrangement only when the mode is Editor.
+	 */
+	path := writeOpenFixture(t, "reading.md", "# Reading\n")
+	repository := &recordingFileMetadataRepository{arrangements: map[string]string{}}
+	canonical, err := file.CanonicalizeDocumentPath(path)
+	if err != nil {
+		t.Fatalf("canonicalize reading fixture: %v", err)
+	}
+	repository.arrangements[canonical.Path] = ArrangementSplit
+
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	service.SetFileMetadataRepository(repository)
+	service.SetDefaultOpenMode(OpenModeViewer)
+
+	state, _ := service.GetState(context.Background())
+	outcome := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
+	if outcome.Error != nil || outcome.Status != apperr.OpenStatusOpened {
+		t.Fatalf("Open in Reading = %+v", outcome)
+	}
+	opened, _ := service.GetState(context.Background())
+	metadata := opened.Snapshot.Documents[outcome.DocumentID]
+	if metadata.View.Arrangement != ArrangementPreview {
+		t.Fatalf("Open in Reading arranged %q, want %q", metadata.View.Arrangement, ArrangementPreview)
+	}
+	if metadata.View.EditorVisible || !metadata.View.PreviewVisible {
+		t.Fatalf("Open in Reading pane visibility = %+v, want preview only", metadata.View)
+	}
+}
+
 func TestPersistedArrangementPrecedence(t *testing.T) {
 	path := writeOpenFixture(t, "arrangement.md", "arrangement\n")
 	repository := &recordingFileMetadataRepository{arrangements: map[string]string{}}

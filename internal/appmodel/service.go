@@ -184,6 +184,16 @@ func (service *AppModelService) SetDefaultOpenMode(mode string) {
 	service.mu.Unlock()
 }
 
+// DefaultOpenMode reports the acknowledged setting Open applies before it resolves
+// a path's arrangement. It exists so the composition-root join can be asserted:
+// until T119 SetDefaultOpenMode had no production caller at all, and nothing could
+// observe that the stored preference never arrived.
+func (service *AppModelService) DefaultOpenMode() string {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	return service.defaultOpenMode
+}
+
 // SetDocumentOpenDialog injects the composition-root native picker without importing Wails here.
 func (service *AppModelService) SetDocumentOpenDialog(dialog DocumentOpenDialog) {
 	service.mu.Lock()

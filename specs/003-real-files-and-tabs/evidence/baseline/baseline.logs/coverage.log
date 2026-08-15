@@ -1,6 +1,6 @@
 ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	(cached)	coverage: 73.7% of statements
-ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.729s	coverage: 64.6% of statements
-ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	(cached)	coverage: 77.5% of statements
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	(cached)	coverage: 64.6% of statements
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	2.228s	coverage: 77.6% of statements
 ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	(cached)	coverage: 83.3% of statements
 ok  	github.com/sanyokkua/go_mark_edit/internal/db	(cached)	coverage: 58.7% of statements
 	github.com/sanyokkua/go_mark_edit/internal/db/store		coverage: 0.0% of statements
@@ -8,4 +8,4 @@ ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)	coverage: 72.5% of
 ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)	coverage: 100.0% of statements
 ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)	coverage: 69.4% of statements
 ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)	coverage: 73.9% of statements
-ok  	github.com/sanyokkua/go_mark_edit	6.026s	coverage: 25.5% of statements
+ok  	github.com/sanyokkua/go_mark_edit	5.429s	coverage: 25.5% of statements
