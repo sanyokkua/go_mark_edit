@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -357,4 +358,52 @@ func serviceTabRevision(t *testing.T, service *AppModelService) uint64 {
 
 func currentTabRevision(t *testing.T, service *AppModelService) uint64 {
 	return serviceTabRevision(t, service)
+}
+
+// Proves: FR-FT-021 — the clause that the conflict prompt "visibly identify
+// which side is truncated", which requires the reported count to describe the
+// text actually shown. The 12-line cap, the 4,096-byte cap and the
+// no-split-code-point rule are proved by TestConflictPreviewBoundsNeverSplitUTF8
+// and are unchanged.
+//
+// The budget-exhaustion branch returned lineCount+1 unconditionally. When the
+// byte budget lands exactly on a line boundary the inner rune guard breaks
+// before writing any byte of the next line, so the count claimed a line the
+// text does not contain.
+func TestConflictPreviewCountsOnlyTheLinesItActuallyRendered(t *testing.T) {
+	// Four 1,024-byte lines exhaust the 4,096-byte budget exactly, well inside
+	// the 12-line cap, so the fifth line is reached with a remaining budget of 0.
+	const lineLength = 1024
+	content := strings.Repeat(strings.Repeat("a", lineLength-1)+"\n", 4) + "fifth line\n"
+
+	side := boundedConflictSide(content)
+
+	rendered := strings.Count(side.Text, "\n")
+	if !side.Truncated {
+		t.Fatalf("side.Truncated = false, want a truncated side for %d bytes of input", len(content))
+	}
+	if side.ByteCount != maxConflictPreviewBytes {
+		t.Fatalf("side.ByteCount = %d, want the exhausted budget %d", side.ByteCount, maxConflictPreviewBytes)
+	}
+	if side.LineCount != rendered {
+		t.Fatalf("side.LineCount = %d but Text contains %d lines: the prompt would name a line the reader cannot see", side.LineCount, rendered)
+	}
+}
+
+// Proves: FR-FT-021 — the same accurate-count clause, for the case where the
+// budget runs out part-way through a line rather than exactly on its boundary.
+// That partially rendered line is visible, so it must still be counted; this
+// pins the fix to the zero-bytes-written case and stops it over-correcting.
+func TestConflictPreviewStillCountsAPartiallyRenderedLine(t *testing.T) {
+	const lineLength = 1024
+	content := strings.Repeat(strings.Repeat("a", lineLength-1)+"\n", 3) + strings.Repeat("b", 2000) + "\n"
+
+	side := boundedConflictSide(content)
+
+	if !side.Truncated || side.ByteCount != maxConflictPreviewBytes {
+		t.Fatalf("side = %+v, want a truncated side that used the whole budget", side)
+	}
+	if side.LineCount != 4 {
+		t.Fatalf("side.LineCount = %d, want 4: three whole lines plus the partly rendered fourth", side.LineCount)
+	}
 }

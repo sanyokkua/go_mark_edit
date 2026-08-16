@@ -519,6 +519,7 @@ func boundedConflictSide(content string) apperr.ConflictPreviewSide {
 			lineCount++
 			continue
 		}
+		rendered := 0
 		for _, runeValue := range line {
 			runeBytes := utf8.RuneLen(runeValue)
 			if runeBytes < 0 || runeBytes > remaining {
@@ -527,8 +528,17 @@ func boundedConflictSide(content string) apperr.ConflictPreviewSide {
 			builder.WriteRune(runeValue)
 			remaining -= runeBytes
 			byteCount += runeBytes
+			rendered += runeBytes
 		}
-		return apperr.ConflictPreviewSide{Text: builder.String(), LineCount: lineCount + 1, ByteCount: byteCount, Truncated: true}
+		// Count this line only if some of it is actually in Text. When the budget
+		// lands exactly on a line boundary, remaining is 0 and the guard above
+		// breaks before the first rune, so lineCount+1 would name a line the
+		// reader cannot see — and FR-FT-021 needs the count to describe what is
+		// displayed. A partly rendered line is visible and still counts.
+		if rendered > 0 {
+			lineCount++
+		}
+		return apperr.ConflictPreviewSide{Text: builder.String(), LineCount: lineCount, ByteCount: byteCount, Truncated: true}
 	}
 	return apperr.ConflictPreviewSide{Text: builder.String(), LineCount: lineCount, ByteCount: byteCount}
 }
