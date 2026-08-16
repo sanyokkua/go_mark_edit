@@ -384,6 +384,65 @@ async function captureSurface(
   };
 }
 
+/**
+ * FR-FT-052 requires every popup to stay "at least 8 logical pixels inside the
+ * viewport". The viewport that governs a popup here is the **application
+ * frame**, not the browser window: popups portal into `.application-frame`, so
+ * they share its containing block, and the parity harness draws that frame
+ * inset inside a taller page. Clamping against `window.innerHeight` instead
+ * fires at the 720px parity height — where the frame is only 619px — and
+ * creates a scroll container that costs ~332 antialiasing pixels against the
+ * immutable reference.
+ */
+const POPUP_VIEWPORT_INSET = 8;
+
+const POPUP_SURFACES = new Set([
+  'file-menu',
+  'settings-menu',
+  'settings-overflow',
+  'view-menu',
+  'about-menu',
+]);
+
+async function assertPopupStaysInsideTheApplicationFrame(
+  page: Page,
+  selector: string,
+  regionId: string,
+): Promise<void> {
+  const measured = await page.evaluate(
+    ({ popupSelector }) => {
+      const frame = document.querySelector('.application-frame');
+      const popup = document.querySelector(popupSelector);
+      if (frame === null || popup === null) return null;
+      const frameBox = frame.getBoundingClientRect();
+      const popupBox = popup.getBoundingClientRect();
+      return {
+        left: popupBox.left - frameBox.left,
+        top: popupBox.top - frameBox.top,
+        right: frameBox.right - popupBox.right,
+        bottom: frameBox.bottom - popupBox.bottom,
+        frame: { width: frameBox.width, height: frameBox.height },
+        popup: { width: popupBox.width, height: popupBox.height },
+      };
+    },
+    { popupSelector: selector },
+  );
+  expect(
+    measured,
+    `${regionId}: could not measure ${selector} against .application-frame`,
+  ).not.toBeNull();
+  if (measured === null) return;
+  for (const edge of ['left', 'top', 'right', 'bottom'] as const) {
+    expect(
+      measured[edge],
+      `FR-FT-052: the ${regionId} popup is ${measured[edge].toFixed(2)} logical pixels ` +
+        `from the application frame's ${edge} edge, which is less than the required ` +
+        `${POPUP_VIEWPORT_INSET}. Frame ${measured.frame.width}x${measured.frame.height}, ` +
+        `popup ${measured.popup.width}x${measured.popup.height}.`,
+    ).toBeGreaterThanOrEqual(POPUP_VIEWPORT_INSET);
+  }
+}
+
 function metricDifferences(
   reference: SurfaceMetrics,
   actual: SurfaceMetrics,
@@ -997,11 +1056,12 @@ async function writeTargetedArtifacts(input: {
 }
 
 // Proves: FR-FT-045
-// Proves: FR-FT-052 (partial — exact bounds and every compared computed style before
-//   pixels; the 8-logical-pixel viewport inset is unproven, T157)
+// Proves: FR-FT-052 — exact bounds and every compared computed style before pixels,
+//   and the 8-logical-pixel viewport inset for every popup surface
 // Proves: FR-FT-054 (partial — the harness holds the deterministic conditions and each
 //   case captures only when settled; the three-consecutive-identical-hash rule and the
-//   DPR-1/frozen-caret conditions are exercised rather than asserted, T157)
+//   frozen-caret condition are asserted by e2e/parity/readiness.test.ts, and
+//   device-pixel-ratio 1 by the `deviceScaleFactor: 1` assertion below)
 for (const entry of [
   ...TARGETED_MANIFEST,
   ...TARGETED_FILE_MENU_MANIFEST,
@@ -1040,6 +1100,14 @@ for (const entry of [
        * report whose planned total no longer means anything.
        */
       expect(testInfo.project.repeatEach).toBe(PARITY_REPETITION_COUNT);
+      /*
+       * FR-FT-054 names device-pixel ratio 1 among the conditions a capture
+       * must hold fixed. `playwright.config.ts` sets `deviceScaleFactor: 1`,
+       * and every case ran under it without anything asserting it — a config
+       * edit or a project-level `use` override would have silently doubled the
+       * raster of both pages and gone on comparing them to each other.
+       */
+      expect(await page.evaluate(() => window.devicePixelRatio)).toBe(1);
       const repetition = testInfo.repeatEachIndex + 1;
       const referenceSource = await readFile(REFERENCE_PATH);
       const referenceSourceHash = hashReferenceSource(referenceSource);
@@ -1203,6 +1271,13 @@ for (const entry of [
           entry.actualSelector,
           `actual ${entry.regionId}`,
         );
+        if (POPUP_SURFACES.has(entry.openSurface)) {
+          await assertPopupStaysInsideTheApplicationFrame(
+            page,
+            entry.actualSelector,
+            entry.regionId,
+          );
+        }
         const comparison = comparePng(
           referenceSurface.bytes,
           actualSurface.bytes,

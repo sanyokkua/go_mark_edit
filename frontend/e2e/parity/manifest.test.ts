@@ -291,3 +291,130 @@ it('T151 measures how much of the 546-key navigation index anything resolves', (
   expect(RESOLVED_MANIFEST_KEYS.size).toBe(58);
   expect(LOGICAL_CASE_COUNT - RESOLVED_MANIFEST_KEYS.size).toBe(488);
 });
+
+/*
+ * The 14 pixel-compared component keys live in `../targeted-manifest`, not in
+ * `./manifest`, so this file reaches one directory up for them. It stays here
+ * because Jest owns `e2e/parity/**` recursively while Playwright owns
+ * `e2e/*.test.ts` at the top level only: a mapping assertion placed beside
+ * `targeted-manifest.ts` would be collected by Playwright and take the whole
+ * browser run down with it at collection time.
+ */
+
+/** Selectors that reach a whole screen rather than one component's own region. */
+const WHOLE_SCREEN_SELECTORS = [
+  'body',
+  'html',
+  '#root',
+  '#app',
+  '.application-frame',
+  '[data-application-frame]',
+  'main',
+] as const;
+
+/**
+ * The distinguishing production token each mapped region's application-side
+ * selector is built from. If the region is a component this feature built, this
+ * token appears in the feature's own source.
+ */
+const REGION_PRODUCTION_TOKENS: Readonly<Record<string, string>> = {
+  'closed-menubar': 'data-shell-menu',
+  'file-menu': 'data-viewport-popup="file-menu"',
+  'settings-menu': 'data-viewport-popup="settings-menu"',
+  'settings-overflow': 'data-viewport-popup="editor-overflow"',
+  'view-menu': 'data-viewport-popup="view-menu"',
+  'about-menu': 'data-viewport-popup="about-menu"',
+  'tab-strip': 'role="tablist"',
+  // The toolbar's accessible name comes from the catalogue, not a literal, so
+  // the production token is the role and the English label is checked against
+  // the catalogue below.
+  toolbar: 'role="toolbar"',
+  // Rendered as an expression (`data-preview-state={isPaused ? …}`), so the
+  // attribute name is the token; the "paused" value is asserted by the
+  // behaviour-verified preview states.
+  'preview-paused': 'data-preview-state',
+};
+
+// Proves: FR-FT-055 — "**A mapped region MUST be a component this feature owns
+// and has fully built, compared in its own region** — not a whole screen."
+//
+// This is the clause the whole-screen contract was withdrawn over on
+// 2026-08-14, and it was the one part of FR-FT-055 with nothing behind it: the
+// mask-discipline clauses are proved in `comparator.test.ts` and
+// `attributed.test.ts`, and the Monaco-interior exclusion is enforced inside
+// `assertTargetedManifestIntegrity`. Nothing stopped a future entry mapping
+// `#app` — which is how the unclosable comparison arose in the first place,
+// because the mockup's own sidebar, Assistant and provider readout displace
+// every element inside a whole-screen region and no production work can close
+// the difference.
+//
+// "Has fully built" is checked against production source rather than asserted
+// in prose: a region whose selector matches nothing under `frontend/src/ui` is
+// a region this feature has not built, and mapping it would compare against an
+// element that never renders.
+it('T157 maps only components this feature built, each in its own region', async () => {
+  const { readFile, readdir } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const { allTargetedEntries } = await import('../targeted-manifest');
+
+  const entries = allTargetedEntries();
+  // 14 pixel-compared component keys: six palettes of the closed menubar plus
+  // the eight single-palette component slices.
+  expect(entries).toHaveLength(14);
+  expect(unique(entries.map(({ key }) => key)).size).toBe(14);
+
+  const regionIds = unique(entries.map(({ regionId }) => regionId));
+  expect([...regionIds].sort()).toEqual(
+    Object.keys(REGION_PRODUCTION_TOKENS).sort(),
+  );
+
+  for (const entry of entries) {
+    for (const selector of [entry.referenceSelector, entry.actualSelector]) {
+      const trimmed = selector.trim();
+      for (const wholeScreen of WHOLE_SCREEN_SELECTORS) {
+        expect(trimmed).not.toBe(wholeScreen);
+      }
+    }
+    // Each entry's own region, not a container that holds several of them.
+    if (entry.regionId === 'toolbar') {
+      // Selected by its accessible name, which the catalogue owns.
+      const catalogue = (await import('../../src/i18n/locales/en.json')) as {
+        readonly 'editor.toolbar': string;
+      };
+      expect(entry.actualSelector).toContain(
+        `aria-label="${catalogue['editor.toolbar']}"`,
+      );
+    } else {
+      expect(entry.actualSelector).toContain(
+        REGION_PRODUCTION_TOKENS[entry.regionId] ?? 'no such region',
+      );
+    }
+  }
+
+  const sources: string[] = [];
+  const walk = async (directory: string): Promise<void> => {
+    for (const item of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, item.name);
+      if (item.isDirectory()) {
+        await walk(path);
+        continue;
+      }
+      if (!/\.tsx?$/.test(item.name) || /\.test\.tsx?$/.test(item.name)) {
+        continue;
+      }
+      sources.push(await readFile(path, 'utf8'));
+    }
+  };
+  await walk(join(__dirname, '..', '..', 'src', 'ui'));
+  expect(sources.length).toBeGreaterThan(0);
+
+  for (const [regionId, token] of Object.entries(REGION_PRODUCTION_TOKENS)) {
+    if (!sources.some((source) => source.includes(token))) {
+      throw new Error(
+        `FR-FT-055: the mapped region ${regionId} is compared through ${token}, ` +
+          'which no production source under frontend/src/ui renders — a mapped ' +
+          'region must be a component this feature has fully built',
+      );
+    }
+  }
+});
