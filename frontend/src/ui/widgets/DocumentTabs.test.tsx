@@ -75,6 +75,29 @@ function hydrate(
   );
 }
 
+/*
+ * A conflict adapter that answers "nothing changed" to everything. T133 made
+ * `DocumentTabs` run FR-FT-020's foreground check on every window `focus`, so a
+ * test that dispatches one — the two T142 cases below do, to prove FR-FT-037's
+ * deferred focus restoration — otherwise falls through to the production
+ * adapter and calls a Wails bridge that cannot exist under jsdom. Passing this
+ * states the dependency instead of relying on the sweep's error handling to
+ * hide it.
+ */
+function quietConflictAdapter(): NonNullable<
+  Parameters<typeof DocumentTabs>[0]['conflictAdapter']
+> {
+  return {
+    authorizeKeepMine: jest.fn(async () => ({ status: 'authorized' as const })),
+    cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
+    checkExternalChanges: jest.fn(async () => ({
+      status: 'unchanged' as const,
+    })),
+    reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
+    skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
+  };
+}
+
 function renderTabs(
   adapter: Parameters<typeof DocumentTabs>[0]['adapter'] = {},
   conflictAdapter: Parameters<
@@ -905,7 +928,7 @@ it('T142 waits for the application to regain foreground focus before restoring t
   const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
     status: 'revealed',
   }));
-  renderTabs({ revealInFileManager });
+  renderTabs({ revealInFileManager }, quietConflictAdapter());
 
   const tab = screen.getByRole('tab', { name: /one\.md/u });
   fireEvent.contextMenu(tab);
@@ -948,7 +971,7 @@ it('T142 restores focus immediately when Reveal is refused, because nothing took
       dedupKey: 'reveal:one',
     },
   }));
-  renderTabs({ revealInFileManager });
+  renderTabs({ revealInFileManager }, quietConflictAdapter());
 
   const tab = screen.getByRole('tab', { name: /one\.md/u });
   fireEvent.contextMenu(tab);
@@ -1362,4 +1385,131 @@ it('T156 offers Retry on a refused activation, naming the tab it acted on', asyn
       labelKey: 'action.retry.label',
     },
   ]);
+});
+
+/*
+ * FR-FT-020 runs the foreground version check on three occasions: tab
+ * activation, "window focus or resume", and before any write — and forbids a
+ * background watcher or a polling timer as the means. Tab activation is a
+ * backend concern (`internal/appmodel/tab_session.go` attaches the check to
+ * every activation); focus and resume are only observable from the webview, so
+ * they are checked here. Every assertion below is paired with its negative: the
+ * check must not have run before the event, and time passing on its own must
+ * not run it at all.
+ */
+// Proves: FR-FT-020 (the "window focus or resume" occasion, and the
+// no-watcher/no-polling-timer constraint on how it is implemented). The "before
+// any write" occasion and the stable re-read rules are proved in Go, not here.
+it('T133 checks every path-backed document on window focus and on resume, and never on a timer', async () => {
+  jest.useFakeTimers();
+  try {
+    const withPath = documentFor('one', '/repo/one.md');
+    const readOnly = {
+      ...documentFor('two', '/repo/two.md'),
+      capability: 'read-only',
+    };
+    const untitled = documentFor('three', '');
+    hydrate([withPath, readOnly, untitled]);
+    const checkExternalChanges = jest.fn(async (documentId: string) => {
+      void documentId;
+      return { status: 'unchanged' as const };
+    });
+    renderTabs(
+      {},
+      {
+        authorizeKeepMine: jest.fn(async () => ({
+          status: 'authorized' as const,
+        })),
+        cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
+        checkExternalChanges,
+        reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
+        skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
+      },
+    );
+
+    // Mounting is not focusing, and no elapsed time is a check either: a run
+    // here would mean the check is armed on a timer rather than on the event.
+    expect(checkExternalChanges).not.toHaveBeenCalled();
+    await act(async (): Promise<void> => {
+      jest.advanceTimersByTime(120_000);
+    });
+    expect(checkExternalChanges).not.toHaveBeenCalled();
+
+    await act(async (): Promise<void> => {
+      window.dispatchEvent(new Event('focus'));
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(checkExternalChanges).toHaveBeenCalledTimes(2));
+    expect(checkExternalChanges.mock.calls.map((call) => call[0])).toEqual([
+      'one',
+      'two',
+    ]);
+
+    // Time alone still adds nothing once the listener is armed.
+    await act(async (): Promise<void> => {
+      jest.advanceTimersByTime(120_000);
+    });
+    expect(checkExternalChanges).toHaveBeenCalledTimes(2);
+
+    await act(async (): Promise<void> => {
+      globalThis.document.dispatchEvent(new Event('visibilitychange'));
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(checkExternalChanges).toHaveBeenCalledTimes(4));
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+// Proves: FR-FT-020 (partial — that a conflict the focus check detects for the
+// active document opens FR-FT-021's prompt. The prompt's own bounds and
+// decisions are proved by the tests above.)
+it('T133 opens the external-change prompt for a conflict the focus check finds', async () => {
+  const first = documentFor('one', '/repo/one.md');
+  const preview: ConflictPreview = {
+    contentRevision: 0,
+    detectedDiskVersion: {
+      exists: true,
+      mode: 0o644,
+      modifiedUnixNano: '9',
+      size: 12,
+    },
+    displayName: 'one.md',
+    documentId: 'one',
+    onDisk: { byteCount: 6, lineCount: 1, text: 'disk\n', truncated: false },
+    path: '/repo/one.md',
+    readOnly: false,
+    yours: { byteCount: 6, lineCount: 1, text: 'mine\n', truncated: false },
+  };
+  hydrate([first]);
+  renderTabs(
+    {},
+    {
+      authorizeKeepMine: jest.fn(async () => ({
+        status: 'authorized' as const,
+      })),
+      cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
+      checkExternalChanges: jest.fn(async () => ({
+        status: 'detected' as const,
+        documentId: 'one',
+        preview,
+      })),
+      reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
+      skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
+    },
+  );
+
+  expect(
+    screen.queryByRole('dialog', { name: 'File changed on disk' }),
+  ).not.toBeInTheDocument();
+  await act(async (): Promise<void> => {
+    window.dispatchEvent(new Event('focus'));
+    await Promise.resolve();
+  });
+
+  await waitFor(() =>
+    expect(
+      screen.getByRole('dialog', { name: 'File changed on disk' }),
+    ).toBeVisible(),
+  );
 });

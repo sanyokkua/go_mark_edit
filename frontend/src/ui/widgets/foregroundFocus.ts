@@ -52,3 +52,43 @@ export function whenApplicationRegainsForegroundFocus(
 
   return (): void => settle(false);
 }
+
+/**
+ * Run `enter` every time the application comes back to the foreground, for as
+ * long as the returned canceller has not been called.
+ *
+ * FR-FT-020 requires a foreground version check on "window focus or resume" and
+ * forbids Feature 003 from introducing "a background file watcher or polling
+ * timer", so both halves are events and neither is a clock: `focus` is the
+ * window regaining focus, and `visibilitychange` settling on `visible` is the
+ * resume the OS reports when the window is unminimised or its space comes back.
+ *
+ * This is deliberately not `whenApplicationRegainsForegroundFocus` re-armed in a
+ * loop. That helper is one-shot by design and carries a grace timer that fires
+ * when the foreground was never actually given away — re-arming it repeatedly
+ * would turn that floor into a check every second, which is the polling timer
+ * the requirement rules out. The two live in one module because they observe
+ * the same thing; they answer different questions about it.
+ *
+ * One resume can raise both events. Coalescing is left to the caller, which is
+ * the only party that knows whether its work is re-entrant.
+ */
+export function onApplicationForeground(enter: () => void): () => void {
+  if (typeof window === 'undefined') {
+    return (): void => undefined;
+  }
+
+  const controller = new AbortController();
+  window.addEventListener('focus', (): void => enter(), {
+    signal: controller.signal,
+  });
+  globalThis.document.addEventListener(
+    'visibilitychange',
+    (): void => {
+      if (globalThis.document.visibilityState === 'visible') enter();
+    },
+    { signal: controller.signal },
+  );
+
+  return (): void => controller.abort();
+}

@@ -39,8 +39,14 @@ func (service *AppModelService) ActivateDocument(ctx context.Context, documentID
 	return service.attachForegroundConflict(ctx, documentID, outcome)
 }
 
+// attachForegroundConflict is FR-FT-020's tab-activation occasion, which is why
+// it goes through CheckDocumentDisk: the requirement lists "tab activation and
+// window focus or resume" as separate events, and the two aliases exist so each
+// occasion reads as itself at its call site. Window focus and resume cannot be
+// observed here at all — Wails v2 exposes no such lifecycle hook — so that half
+// enters through the handler, which routes to ForegroundCheck.
 func (service *AppModelService) attachForegroundConflict(ctx context.Context, documentID string, outcome apperr.DocumentTransitionOutcome) apperr.DocumentTransitionOutcome {
-	checked := service.CheckExternalChanges(ctx, documentID)
+	checked := service.CheckDocumentDisk(ctx, documentID)
 	if checked.Status == apperr.ConflictStatusDetected {
 		outcome.Conflict = checked.Preview
 	}

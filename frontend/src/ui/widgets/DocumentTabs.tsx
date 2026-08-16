@@ -32,7 +32,10 @@ import TabContextMenu, {
   type TabContextCloseOptions,
 } from './TabContextMenu';
 import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
-import { whenApplicationRegainsForegroundFocus } from './foregroundFocus';
+import {
+  onApplicationForeground,
+  whenApplicationRegainsForegroundFocus,
+} from './foregroundFocus';
 import {
   tabLabelsFor,
   truncatedTabLabelParts,
@@ -255,6 +258,79 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       return result;
     },
     [adapter, dispatch, onActivateDocument, tabSetRevision],
+  );
+
+  /*
+   * FR-FT-020's second occasion: "Tab activation and window focus or resume
+   * MUST also run stable foreground version checks for path-backed documents,
+   * including read-only documents."
+   *
+   * Tab activation was already covered in Go — every `ActivateDocument` ends in
+   * `attachForegroundConflict` (`internal/appmodel/tab_session.go`). Focus and
+   * resume were covered nowhere: Wails v2's `options.App` has no focus or
+   * resume hook, so the webview is the only thing that can observe them, and
+   * the bound `CheckExternalChanges` had no application caller at all.
+   *
+   * Every path-backed document is checked, not just the active one, because
+   * that is what the clause says and because the value of checking is exactly
+   * for the tabs nobody is looking at: the backend records `conflictBlocked`
+   * per document, which is what paints the strip's blocked marker and what
+   * refuses a later write. A document with no path has no disk version to
+   * compare, so it is skipped rather than refused. Read-only documents are not
+   * skipped — the requirement names them.
+   *
+   * The prompt is opened only for the active document. `conflictPreview` is a
+   * single slot and FR-FT-021 describes one modal; a background tab's conflict
+   * is carried by its marker until the user activates it, and activation runs
+   * the same check again. A refusal is not toasted either: FR-FT-020 gives the
+   * foreground check no user-facing failure surface — an unstable read "MUST
+   * write nothing and retry only after a fresh foreground check" — and the
+   * write path re-runs the check and reports there, where the user asked for
+   * something.
+   *
+   * `foregroundCheckRunning` is the coalescer: one resume can raise `focus` and
+   * `visibilitychange` together, and a second sweep over the same documents
+   * while the first is still walking them would double the filesystem work for
+   * no new information.
+   */
+  const foregroundCheckRunning = useRef(false);
+  const runForegroundChecks = useCallback((): void => {
+    if (foregroundCheckRunning.current) return;
+    foregroundCheckRunning.current = true;
+    void (async (): Promise<void> => {
+      try {
+        /*
+         * The adapter throws rather than refuses while editor-state recovery
+         * holds the command surface (`assertCommandsAvailable`), and a focus
+         * event during recovery would otherwise leave an unhandled rejection.
+         * Abandoning the sweep is the right answer and not a swallow: a check
+         * that could not run leaves backend state untouched, and FR-FT-020
+         * already says the remedy for one is another foreground check — the
+         * next focus, or the one the write path runs before it commits.
+         */
+        for (const document of orderedDocuments) {
+          if (document.path === '') continue;
+          const result = await conflictAdapter.checkExternalChanges(
+            document.documentId,
+          );
+          if (
+            result.status === 'detected' &&
+            result.preview !== undefined &&
+            document.documentId === activeDocumentId
+          ) {
+            setConflictPreview(result.preview);
+          }
+        }
+      } catch {
+        // Deliberately terminal, for the reason stated above.
+      } finally {
+        foregroundCheckRunning.current = false;
+      }
+    })();
+  }, [activeDocumentId, conflictAdapter, orderedDocuments]);
+  useEffect(
+    (): (() => void) => onApplicationForeground(runForegroundChecks),
+    [runForegroundChecks],
   );
 
   const handleConflictDecision = useCallback(

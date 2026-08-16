@@ -29,6 +29,10 @@ type AppModelServiceAPI interface {
 	Save(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
 	SaveAs(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
 	CheckExternalChanges(ctx context.Context, documentID string) apperr.ConflictResult
+	// ForegroundCheck is CheckExternalChanges named for FR-FT-020's window
+	// focus or resume occasion; the bound handler below calls it so the
+	// occasion is legible from the wire inwards.
+	ForegroundCheck(ctx context.Context, documentID string) apperr.ConflictResult
 	ReloadFromDisk(ctx context.Context, documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) apperr.ConflictResult
 	AuthorizeKeepMine(ctx context.Context, documentID string, contentRevision uint64, path string, detectedVersion apperr.DiskVersion) apperr.ConflictResult
 	SkipConflict(ctx context.Context, documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) apperr.ConflictResult
@@ -282,13 +286,21 @@ func (handler *AppModelHandler) SaveAs(documentID string, contentRevision uint64
 }
 
 // CheckExternalChanges performs an explicit foreground-only version check.
+//
+// This is the bound surface for FR-FT-020's "window focus or resume" occasion,
+// and it delegates to ForegroundCheck to say so. Tab activation never reaches
+// here: the backend attaches its own check to every ActivateDocument through
+// attachForegroundConflict, which routes to CheckDocumentDisk. The webview is
+// the only party that can see focus or resume, because Wails v2 registers no
+// lifecycle hook for either, so the frontend calls this from its foreground
+// listener (frontend/src/ui/widgets/DocumentTabs.tsx).
 func (handler *AppModelHandler) CheckExternalChanges(documentID string) (res apperr.ConflictResult) {
 	defer func() {
 		if recover() != nil {
 			res = conflictRefusedLabelled(documentID, apperr.ClassifiedSystemCommandFailure, "The document could not be checked for external changes.", apperr.RemediationRetry)
 		}
 	}()
-	return handler.service.CheckExternalChanges(handler.context(), documentID)
+	return handler.service.ForegroundCheck(handler.context(), documentID)
 }
 
 // ReloadFromDisk applies one revision/version-bound external reload.

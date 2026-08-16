@@ -357,6 +357,14 @@ func (service *fakeAppModelService) CheckExternalChanges(_ context.Context, _ st
 	return apperr.ConflictResult{Status: apperr.ConflictStatusUnchanged}
 }
 
+// ForegroundCheck delegates the way the real service's alias does, so
+// TestHandlerConflictMethodsRecoverClassifiedErrors keeps exercising the panic
+// it arms under the name of the bound method, now that the handler reaches the
+// service through the alias.
+func (service *fakeAppModelService) ForegroundCheck(ctx context.Context, documentID string) apperr.ConflictResult {
+	return service.CheckExternalChanges(ctx, documentID)
+}
+
 func (service *fakeAppModelService) ReloadFromDisk(_ context.Context, _ string, _ uint64, _ apperr.DiskVersion) apperr.ConflictResult {
 	if service.panicOn == "ReloadFromDisk" {
 		panic("service panic")
