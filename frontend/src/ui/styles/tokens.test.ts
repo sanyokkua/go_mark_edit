@@ -333,7 +333,8 @@ it('suppliesEveryAppearanceContractTokenAcrossAllSixPalettes', (): void => {
  * the structural difference disappeared. These two assert the distinction
  * itself.
  */
-// Proves: FR-FT-053 (partial — elevation and typeface distinctness; the named structural claims per family are unproven; T157)
+// Proves: FR-FT-053 (partial — elevation and typeface distinctness; the named
+// per-family structural claims are proved by the sibling below)
 it('keepsTheElevationAndTypefaceDistinctPerThemeFamily', (): void => {
   const shadows = new Set(
     ['glass', 'material', 'minimal'].map((theme) =>
@@ -425,4 +426,103 @@ it('routes every current appearance surface through palette tokens', (): void =>
       expect(appliedToken(theme, mode, token)).not.toBe('');
     }
   }
+});
+
+const tabStyles = readSource('src/ui/widgets/DocumentTabs.module.css');
+const editorViewStyles = readSource('src/ui/widgets/EditorView.module.css');
+
+// Proves: FR-FT-053 — the three named per-family structural claims: "Liquid
+// Glass MUST preserve the binding continuous internal canvas, translucent
+// layers, blur, saturation, and highlight; Material MUST preserve its filled
+// hierarchy and pill tabs; Minimal MUST preserve its flat,
+// separator/underline-led structure."
+//
+// The sibling above proves the families differ in shadow and typeface, which is
+// the "not merely recolored" floor. It is not the requirement: three families
+// could each carry a distinct shadow and font and still all render as the
+// generic outlined card the last sentence of FR-FT-053 explicitly fails. Each
+// claim below is therefore asserted as the mechanism that produces it and, for
+// the tab treatment, as a difference from the other two families.
+it('T157 keeps each family the structure FR-FT-053 names for it', (): void => {
+  // Liquid Glass — blur with saturation, in both modes; none anywhere else.
+  for (const mode of ['light', 'dark']) {
+    const blur = appliedToken('glass', mode, '--blur');
+    expect(blur).toMatch(/blur\(\s*\d+/);
+    expect(blur).toMatch(/saturate\(\s*\d+/);
+    expect(appliedToken('material', mode, '--blur')).toBe('none');
+    expect(appliedToken('minimal', mode, '--blur')).toBe('none');
+  }
+
+  // Liquid Glass — a highlight the other families do not draw.
+  for (const mode of ['light', 'dark']) {
+    expect(appliedToken('glass', mode, '--glass-highlight')).not.toBe(
+      'transparent',
+    );
+    expect(appliedToken('material', mode, '--glass-highlight')).toBe(
+      'transparent',
+    );
+    expect(appliedToken('minimal', mode, '--glass-highlight')).toBe(
+      'transparent',
+    );
+  }
+
+  // Liquid Glass — translucent layers. An opaque hex surface would render the
+  // blur behind it invisible, so translucency is what makes the rest true.
+  for (const mode of ['light', 'dark']) {
+    for (const token of ['--surface', '--surface-2']) {
+      expect(appliedToken('glass', mode, token)).toMatch(/^rgba\(/);
+    }
+  }
+
+  // Liquid Glass — the continuous internal canvas: one painted ground for the
+  // whole frame, with the blur applied over it rather than per panel.
+  expect(baseStylesSource).toMatch(/background:\s*var\(--canvas\)/);
+  expect(baseStylesSource).toMatch(/backdrop-filter:\s*var\(--blur\)/);
+  expect(editorViewStyles).toMatch(
+    /:global\(:root\[data-theme='glass'\]\)[\s\S]{0,400}?box-shadow:\s*inset 0 1px 0 var\(--glass-highlight\)/,
+  );
+
+  // Material — filled hierarchy: every surface layer is an opaque fill, not an
+  // alpha wash over the canvas.
+  for (const mode of ['light', 'dark']) {
+    for (const token of [
+      '--surface',
+      '--surface-2',
+      '--surface-3',
+      '--elevated',
+    ]) {
+      expect(appliedToken('material', mode, token)).toMatch(/^#[\da-f]{3,8}$/i);
+    }
+  }
+
+  // Material — pill tabs, filled when selected.
+  const materialTab = tabStyles.match(
+    /:global\(:root\[data-theme='material'\]\)\s*\.tabItem\s*\{[^}]*\}/,
+  )?.[0];
+  expect(materialTab).toBeDefined();
+  expect(materialTab).toMatch(/border-radius:\s*18px/);
+  expect(tabStyles).toMatch(
+    /:global\(:root\[data-theme='material'\]\)[\s\S]{0,400}?background:\s*var\(--accent\)/,
+  );
+
+  // Minimal — flat and separator/underline-led: no rounding, no border box, an
+  // underline that carries the selection.
+  const minimalTab = tabStyles.match(
+    /:global\(:root\[data-theme='minimal'\]\)\s*\.tabItem\s*\{[^}]*\}/,
+  )?.[0];
+  expect(minimalTab).toBeDefined();
+  expect(minimalTab).toMatch(/border-radius:\s*0/);
+  expect(minimalTab).toMatch(/border-bottom:\s*2px solid transparent/);
+  expect(tabStyles).toMatch(
+    /:global\(:root\[data-theme='minimal'\]\)[\s\S]{0,600}?border-bottom-color:\s*var\(--text\)/,
+  );
+  // Minimal panes are separators, not cards.
+  expect(editorViewStyles).toMatch(
+    /\.pane \+ \.pane\s*\{[^}]*border-inline-start:/,
+  );
+
+  // And the three tab treatments are genuinely three, not one card restyled:
+  // the pill radius and the underline structure cannot both describe the same
+  // rule set.
+  expect(materialTab).not.toEqual(minimalTab);
 });

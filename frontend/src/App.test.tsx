@@ -1213,7 +1213,8 @@ it('T142 offers both Reveal remediations and re-runs Reveal from the Retry', asy
   act((): void => disposeAppModelProjection());
 });
 
-// Proves: FR-FT-015 (partial — the explicit confirmation; "automatic success remains silent" is unproven; T157)
+// Proves: FR-FT-015 (partial — the explicit confirmation; "automatic success
+// remains silent" is proved by the sibling below)
 it('Save reports exactly one confirmation', async () => {
   act((): void => disposeAppModelProjection());
   store.dispatch(resetProjection());
@@ -2543,5 +2544,146 @@ it('T140 refuses a switch whose outgoing flush fails and installs no incoming co
 
   mockedAppModelAdapter.activateDocument = undefined;
   mockedAppModelAdapter.flushActiveSession = jest.fn(async () => undefined);
+  act((): void => disposeAppModelProjection());
+});
+
+// Proves: FR-FT-015 — "Automatic success MUST remain silent."
+// Proves: FR-FT-017 — "never show a success toast."
+// One assertion covers both: they are the same rule stated from the save side
+// and the autosave side.
+//
+// Autosave never reaches the frontend as a command result. It arrives as an
+// ordinary state patch that flips the document's projected status to
+// `autosaved` (`internal/appmodel/save_status.go`), which is exactly why the
+// clause is easy to break by accident: the silence holds only as long as
+// nothing along the patch path decides an `autosaved` status deserves the same
+// confirmation an explicit Save gets. The sibling above proves the explicit
+// Save *does* toast, so this is the discriminating half — the pair is what says
+// "one, and only for the explicit write".
+it('T157 keeps an automatic save silent while an explicit one confirms', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  let publishStatePatch: ((patch: AppStatePatch) => void) | undefined;
+  mockedAppModelAdapter.subscribeStatePatches.mockImplementation((listener) => {
+    publishStatePatch = listener;
+    return jest.fn();
+  });
+
+  render(<App />);
+  await screen.findByRole('button', { name: 'File' });
+
+  const autosaved = bootstrapState('draft', 12).snapshot.documents[
+    'document-1'
+  ] as DocumentMetadata;
+  act((): void => {
+    publishStatePatch?.({
+      revision: 13,
+      documents: {
+        upsert: {
+          'document-1': {
+            ...autosaved,
+            contentRevision: 2,
+            dirty: false,
+            status: 'autosaved',
+          },
+        },
+      },
+    });
+  });
+
+  // The projection really did accept the automatic write — otherwise the
+  // silence below would prove only that nothing happened at all.
+  await waitFor(() => {
+    expect(store.getState().documents.byId['document-1']?.status).toBe(
+      'autosaved',
+    );
+  });
+
+  expect(store.getState().notifications.items).toEqual([]);
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.queryByText(/^Saved /)).toBeNull();
+
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+// Proves: FR-FT-042 (partial — "MUST never restore prior tabs automatically".
+// The launcher's own New/Open/six-recent contract and its first-run message are
+// proved by Launcher.test.tsx and ShellMenuRow.test.tsx; this file stubs
+// AppShell, so it can assert the restoration rule and not the launcher's
+// rendering.)
+//
+// The rule is about startup, and startup here is one call: `getState()`, whose
+// snapshot the store hydrates verbatim. A recent-files list is not a tab list,
+// and the failure mode the clause forbids is treating it as one — opening the
+// six remembered paths because they are remembered. So the fixture is the
+// tempting case: six recent files, zero documents, no active identity. Nothing
+// may be opened, activated or reopened, and the projection must stay empty.
+it('T157 opens no document at startup even with six remembered recent files', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+
+  const recentFiles = [
+    '/documents/one.md',
+    '/documents/two.md',
+    '/documents/three.md',
+    '/documents/four.md',
+    '/documents/five.md',
+    '/documents/six.md',
+  ];
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    snapshot: {
+      revision: 7,
+      applicationVersion: 'test-build',
+      documents: {},
+      orderedDocumentIds: [],
+      activeDocumentId: undefined,
+      recentFiles,
+      canReopenLastFile: true,
+      ui: { sidebarVisible: true },
+    },
+    activeBuffer: undefined,
+  } as unknown as AppModelState);
+
+  const openRecentFile = jest.fn();
+  const reopenLastFile = jest.fn();
+  const activateDocument = jest.fn();
+  const openDocument = jest.fn();
+  mockedAppModelAdapter.openRecentFile = openRecentFile;
+  mockedAppModelAdapter.reopenLastFile = reopenLastFile;
+  mockedAppModelAdapter.activateDocument = activateDocument;
+  mockedAppModelAdapter.openDocument = openDocument;
+
+  render(<App />);
+  await screen.findByLabelText('Document area');
+  await waitFor(() => {
+    expect(store.getState().documents.revision).toBe(7);
+  });
+
+  // The remembered list is present — the fixture is the one that tempts a
+  // restore, not an empty state that could not restore anything.
+  expect(store.getState().documents.recentFiles).toEqual(recentFiles);
+  // And nothing was opened from it.
+  expect(store.getState().documents.byId).toEqual({});
+  expect(store.getState().documents.orderedIds ?? []).toEqual([]);
+  expect(store.getState().documents.activeDocumentId ?? null).toBeNull();
+  expect(openRecentFile).not.toHaveBeenCalled();
+  expect(reopenLastFile).not.toHaveBeenCalled();
+  expect(activateDocument).not.toHaveBeenCalled();
+  expect(openDocument).not.toHaveBeenCalled();
+
+  mockedAppModelAdapter.openRecentFile = undefined;
+  mockedAppModelAdapter.reopenLastFile = undefined;
+  mockedAppModelAdapter.activateDocument = undefined;
+  mockedAppModelAdapter.openDocument = undefined;
   act((): void => disposeAppModelProjection());
 });

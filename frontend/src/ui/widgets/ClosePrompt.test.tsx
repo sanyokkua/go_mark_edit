@@ -32,7 +32,8 @@ function plan(kind: ClosePlanSummary['kind'] = 'single'): ClosePlanSummary {
   };
 }
 
-// Proves: FR-FT-024 (partial — the dialog, Cancel focus and Save; the Discard choice is unproven; T157)
+// Proves: FR-FT-024 (partial — the dialog, Cancel focus and Save; the Discard
+// choice is proved by the sibling below)
 it('ClosePrompt complete-plan focus and cancellation', async () => {
   const onChoice = jest.fn(async (): Promise<void> => undefined);
   render(<ClosePrompt onChoice={onChoice} open plan={plan()} />);
@@ -46,6 +47,32 @@ it('ClosePrompt complete-plan focus and cancellation', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await waitFor(() => expect(onChoice).toHaveBeenCalledWith('save'));
+});
+
+// Proves: FR-FT-024 — the Discard third of "Closing one modified document MUST
+// offer Save, Discard, and Cancel". Save and Cancel are proved by the sibling
+// above; nothing exercised Discard until T157.
+//
+// Discard is the only one of the three that destroys work, and it is the one
+// whose wiring is easiest to get subtly wrong: the button carries
+// `choose(isSingle ? 'discard' : 'discard-all')`, so a single modified document
+// answered with `discard-all` would ask the backend to throw away every dirty
+// document in the window rather than this one. The multi-target sibling below
+// covers the other side of that ternary, so the pair pins the branch.
+it('T157 answers a single modified document with the Discard choice', async () => {
+  const onChoice = jest.fn(async (): Promise<void> => undefined);
+  render(<ClosePrompt onChoice={onChoice} open plan={plan()} />);
+
+  const discard = screen.getByRole('button', { name: 'Discard' });
+  expect(discard).toBeVisible();
+  expect(discard).toHaveAttribute('data-close-choice', 'discard');
+  // The whole-window answer must not be on offer for a single document.
+  expect(screen.queryByRole('button', { name: 'Discard all' })).toBeNull();
+
+  fireEvent.click(discard);
+
+  await waitFor(() => expect(onChoice).toHaveBeenCalledWith('discard'));
+  expect(onChoice).toHaveBeenCalledTimes(1);
 });
 
 it('ClosePrompt gathers one multi-target choice and maps Escape to Cancel', async () => {

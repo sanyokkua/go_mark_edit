@@ -1337,7 +1337,9 @@ it('STORY-022-AC-2 keeps Monaco mounted while preview-only is visible', async ()
   ).not.toHaveBeenCalled();
 });
 
-// Proves: FR-FT-032 (partial — the Monaco session and saved scroll; per-document dirty, Reading state and preview scroll are unproven; T157)
+// Proves: FR-FT-032 (partial — the Monaco session, caret, selection and editor
+// view state; per-document dirty state and arrangement are proved by the T157
+// sibling at the end of this file)
 it('STORY-022-AC-3 restores the exact Monaco session and saved scroll state without bootstrap reseeding', async () => {
   const document = statusDocument({
     view: {
@@ -1689,3 +1691,190 @@ it('STORY-015-AC-5 keeps keyboard selection and focus backend-controlled', async
   expect(preview).toBeChecked();
   expect(preview).toHaveFocus();
 });
+
+// Proves: FR-FT-032 (partial — "Each document MUST preserve its own dirty
+// state, Editor/Split/Preview arrangement … across switches", plus the clause
+// that "the application arrangement remains fallback only for a document with
+// no saved view". Two of the requirement's items are NOT proved here because
+// neither exists to prove: **Reading state** has no per-document field at all —
+// `DocumentView` carries arrangement, cursor, selection and scroll and nothing
+// else, and `distraction-free-reading` is a window action, not document state —
+// and **preview scroll** is recorded to the backend by
+// `useSyncedBuffer.onPreviewScrollChange` but never restored into the preview
+// element, because no production code assigns `scrollTop` anywhere. Both are
+// filed as T178. Caret, selection and editor view state are proved by
+// 'STORY-022-AC-3 restores the exact Monaco session and saved scroll state'.)
+//
+// The failure this forbids is one document wearing another's state. The switch
+// path keeps its cursor, selection, scroll and arrangement in refs inside
+// `useSyncedBuffer`, and those refs are re-seeded from `view` when the
+// document changes (`useSyncedBuffer.ts:109-123`). Miss that re-seed and the
+// incoming document is projected with the outgoing document's arrangement and
+// scroll the first time anything calls `updateDocView` — silently, because both
+// values are plausible.
+it('T157 keeps each document its own dirty state and arrangement across a switch', async () => {
+  const first = {
+    ...statusDocument({
+      dirty: true,
+      status: 'unsaved-changes',
+      view: {
+        arrangement: 'split',
+        editorVisible: true,
+        previewVisible: true,
+        cursor: { line: 4, column: 2 },
+        selection: {
+          start: { line: 4, column: 2 },
+          end: { line: 4, column: 9 },
+        },
+        scroll: { editor: 120, preview: 40 },
+      },
+    }),
+    documentId: 'document-1',
+  };
+  const second = {
+    ...statusDocument({
+      title: 'Second document',
+      dirty: false,
+      status: 'saved',
+      view: {
+        arrangement: 'preview',
+        editorVisible: false,
+        previewVisible: true,
+        cursor: { line: 1, column: 1 },
+        selection: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 1 },
+        },
+        scroll: { editor: 0, preview: 260 },
+      },
+    }),
+    documentId: 'document-2',
+  };
+  const both = {
+    [first.documentId]: first,
+    [second.documentId]: second,
+  };
+
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: both,
+      activeDocumentId: first.documentId,
+      // A window arrangement that matches neither document, so a fallback
+      // applied where a saved view exists shows up rather than coinciding.
+      ui: { viewArrangement: 'editor' },
+    }),
+  );
+  const rendered = render(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: first.documentId, content: '# First' }}
+      >
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+
+  expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+
+  const scrollPreviewTo = (scrollTop: number): void => {
+    const preview = screen
+      .getByRole('region', { name: 'Preview pane' })
+      .querySelector('div[class*="previewContent"], div:not([class])');
+    if (preview === null) throw new Error('preview scroll container not found');
+    Object.defineProperty(preview, 'scrollTop', {
+      configurable: true,
+      value: scrollTop,
+    });
+    fireEvent.scroll(preview);
+  };
+
+  const switchTo = (
+    document: typeof first,
+    content: string,
+    revision: number,
+  ): void => {
+    act((): void => {
+      store.dispatch(
+        hydrateProjection({
+          revision,
+          documents: both,
+          activeDocumentId: document.documentId,
+          ui: { viewArrangement: 'editor' },
+        }),
+      );
+    });
+    rendered.rerender(
+      <Provider store={store}>
+        <EditorSessionContext.Provider
+          value={{ documentId: document.documentId, content }}
+        >
+          <EditorView />
+        </EditorSessionContext.Provider>
+      </Provider>,
+    );
+  };
+
+  scrollPreviewTo(55);
+  await waitFor((): void => {
+    expect(lastDocViewFor(first.documentId)?.scroll).toEqual({
+      editor: 120,
+      preview: 55,
+    });
+  });
+
+  switchTo(second, '# Second', 2);
+  await waitFor((): void => {
+    expect(screen.getByRole('radio', { name: 'Preview' })).toBeChecked();
+  });
+
+  /*
+   * The incoming document's own scroll must be the base the next update is
+   * built on. With the re-seed in `useSyncedBuffer` removed, this call carries
+   * `editor: 120` — the outgoing document's editor offset — while the preview
+   * offset is the new one, and the second document is projected scrolled to a
+   * position it was never at.
+   */
+  scrollPreviewTo(300);
+  await waitFor((): void => {
+    expect(lastDocViewFor(second.documentId)?.scroll).toEqual({
+      editor: 0,
+      preview: 300,
+    });
+  });
+
+  switchTo(first, '# First', 3);
+  await waitFor((): void => {
+    expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+  });
+
+  const projected = store.getState().documents.byId;
+  expect(projected[first.documentId]?.dirty).toBe(true);
+  expect(projected[first.documentId]?.view.arrangement).toBe('split');
+  expect(projected[first.documentId]?.view.scroll).toEqual({
+    editor: 120,
+    preview: 40,
+  });
+  expect(projected[second.documentId]?.dirty).toBe(false);
+  expect(projected[second.documentId]?.view.arrangement).toBe('preview');
+  expect(projected[second.documentId]?.view.scroll).toEqual({
+    editor: 0,
+    preview: 260,
+  });
+});
+
+/**
+ * The most recent view this document was projected with, or undefined.
+ *
+ * View updates go through `updateLocalDocView` when the adapter exposes it
+ * (`useSyncedBuffer.ts:172`), which is a different mock from `setDocView`.
+ */
+function lastDocViewFor(
+  documentId: string,
+): { scroll?: { editor: number; preview: number } } | undefined {
+  const updates = (appModelAdapter as jest.Mocked<typeof appModelAdapter>)
+    .updateLocalDocView as unknown as jest.Mock;
+  const calls = updates.mock.calls.filter((call) => call[0] === documentId);
+  return calls.at(-1)?.[1] as
+    { scroll?: { editor: number; preview: number } } | undefined;
+}

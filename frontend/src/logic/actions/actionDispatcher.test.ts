@@ -223,3 +223,30 @@ it('T109 reports a refused invocation as refused and carries its classified erro
   });
   expect(invoke).toHaveBeenCalledTimes(1);
 });
+
+// Proves: FR-FT-006 — the same clause at the dispatcher, which is the seam a
+// keyboard shortcut reaches. Availability describes a control; the dispatcher
+// is what refuses to run the command when something bypasses the control, and
+// FR-FT-006 says the commands must be unavailable, not merely dimmed.
+it('T157 refuses to dispatch a write command for an unsafe-read-only document', async () => {
+  const projectedState = {
+    activeDocumentId: 'unsafe',
+    orderedDocumentIds: ['unsafe'],
+    documents: {
+      unsafe: { capability: 'unsafe-read-only', path: '/documents/broken.md' },
+    },
+    canReopenLastFile: false,
+  };
+
+  for (const id of ['save', 'save-as'] as const) {
+    const invoke = jest.fn();
+    await expect(
+      dispatchAction(id, { projectedState, documentId: 'unsafe', invoke }),
+    ).resolves.toMatchObject({
+      status: 'unavailable',
+      actionId: id,
+      reason: 'no-document',
+    });
+    expect(invoke).not.toHaveBeenCalled();
+  }
+});

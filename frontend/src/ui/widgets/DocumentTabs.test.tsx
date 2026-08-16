@@ -254,7 +254,10 @@ it('T045 raises the parity tab strip above the compressed shell menu hit area', 
   );
 });
 
-// Proves: FR-FT-037 (partial — the exact seven-item order; focus restoration after a successful Reveal is unproven; T157)
+// Proves: FR-FT-037 (partial — the exact seven-item order. Focus restoration
+// after a successful Reveal is proved by
+// 'T142 waits for the application to regain foreground focus before restoring
+// the tab' below and by foregroundFocus.test.ts.)
 it('Move tab actions sit between close and path groups', () => {
   const first = documentFor('one', '/repo/one.md');
   const second = documentFor('two', '/repo/two.md');

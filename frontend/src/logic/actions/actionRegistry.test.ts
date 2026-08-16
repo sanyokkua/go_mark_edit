@@ -7,7 +7,8 @@ import {
   type ActionId,
 } from './actionRegistry';
 
-// Proves: FR-FT-047 (partial — registry and catalogue derivation; longer-text tolerance is unproven; T157)
+// Proves: FR-FT-047 (partial — registry and catalogue derivation; longer-text
+// tolerance is proved by the two T157 cases at the end of ShellMenuRow.test.tsx)
 it('T002 exposes one localized registry entry for every Editor-stage identity', () => {
   const ids = actionRegistry.map((entry) => entry.id);
   expect(new Set(ids).size).toBe(ids.length);
@@ -171,5 +172,56 @@ it('T059 keeps File popup actions ordered and classifies deferred items explicit
     expect(getAction(actionId).availability).toMatchObject({
       kind: 'deferred',
     });
+  }
+});
+
+// Proves: FR-FT-006 (partial — "document formatting or lint commands, Save,
+// Save As, and autosave MUST be unavailable" for an `unsafe-read-only`
+// document. The requirement's first item, **editing**, is NOT proved here and
+// is not built: no production code makes the editor read-only for a
+// capability — `CodeEditor.tsx` and `EditorView.tsx` contain no `readOnly`
+// option and no capability branch — and `getActionAvailability` applies no
+// capability rule to `editor`-scope actions. Filed as T178.
+// The pre-disk write refusal is proved in Go by
+// `TestRefusedWriteNamesTheFileNotTheDocumentID`.)
+//
+// `unsafe-read-only` is the capability Go actually emits (`file.Capability*`,
+// projected through `save_status.go`), and until now nothing in the frontend
+// tested against it. The one capability case in this file used `'read-only'` —
+// a value `App.tsx:1260-1264` documents as one Go never sends — so the branch
+// that has to hold for a NUL-bearing or invalid-UTF-8 file was exercised only
+// through a string the backend cannot produce.
+it('T157 makes Save, Save As, format and lint unavailable for an unsafe-read-only document', () => {
+  const projectedState = {
+    activeDocumentId: 'unsafe',
+    orderedDocumentIds: ['unsafe', 'writable'],
+    documents: {
+      unsafe: { capability: 'unsafe-read-only', path: '/documents/broken.md' },
+      writable: { capability: 'writable', path: '/documents/fine.md' },
+    },
+    canReopenLastFile: false,
+  };
+
+  for (const id of ['save', 'save-as'] as const) {
+    expect(
+      getActionAvailability(id, { projectedState, documentId: 'unsafe' }),
+    ).toMatchObject({ kind: 'unavailable' });
+    // The same action on a writable document stays available, so the refusal
+    // above is the capability and not a broken fixture.
+    expect(
+      getActionAvailability(id, { projectedState, documentId: 'writable' }),
+    ).toEqual({ kind: 'available' });
+  }
+
+  // Formatting and lint are unavailable for every document today, because both
+  // are registry-deferred to a later slice. That satisfies FR-FT-006 for an
+  // unsafe-read-only document, and the assertion says which reason it is so a
+  // future slice that makes them available cannot quietly make them available
+  // here too.
+  for (const id of ['format', 'lint'] as const) {
+    expect(getAction(id).availability.kind).toBe('deferred');
+    expect(
+      getActionAvailability(id, { projectedState, documentId: 'unsafe' }),
+    ).toMatchObject({ kind: 'unavailable', reason: 'deferred' });
   }
 });

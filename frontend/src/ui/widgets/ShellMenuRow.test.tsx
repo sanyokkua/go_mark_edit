@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { t } from '../../i18n';
+import englishCatalog from '../../i18n/locales/en.json';
 import * as actionDispatcher from '../../logic/actions/actionDispatcher';
 import type { DocumentMetadata } from '../../logic/store/appModelTypes';
 import type { SettingsMenuProps } from './SettingsMenu';
@@ -1104,4 +1105,117 @@ it('T110 closes the active document when the File menu Close Tab row is clicked'
     expect.objectContaining({ documentId: 'document-1' }),
   );
   dispatch.mockRestore();
+});
+
+/*
+ * A German-length stand-in for the menubar labels. Roughly five times the
+ * English string, which is past the worst real case and is the point: the row
+ * must tolerate it rather than be tuned to one language's measurements.
+ */
+const LONG_LABELS: Readonly<Record<string, string>> = {
+  'shell.file': 'Dateiverwaltungsbefehle und Dokumentenaktionen',
+  // Settings and View draw their trigger label from the action registry
+  // (`t(action('settings').labelKey)`), not from a `shell.*` key.
+  'action.settings.label': 'Anwendungseinstellungen und Erscheinungsbild',
+  'action.view.label': 'Ansichtsanordnung und Anzeigeoptionen',
+  'shell.about': 'Informationen über diese Anwendung',
+};
+
+// Proves: FR-FT-047 (partial — "tolerate longer text". The registry/catalogue
+// derivation, roles and accessible names, focus visibility and modal focus
+// containment, reduced motion and centralized tokens are proved by the other
+// FR-FT-047 anchors across this file, EditorChrome.test.tsx, ClosePrompt.test.tsx
+// and SettingsMenu.test.tsx.)
+//
+// The catalogue object the shim hands `createTranslator` is the one this test
+// mutates, so `t` really does return longer strings for the duration — this is
+// a substituted translation, not a stubbed component.
+//
+// Two things have to hold and they pull in opposite directions. The complete
+// label must survive as the accessible name, because a screen reader reads the
+// name and not the ellipsis; and the row must not restructure itself because a
+// translation grew, because the responsive contract moves controls into the
+// overflow at 375 pixels and nowhere else. A row that switched to overflow when
+// a label got long would be "tolerating" longer text by hiding it.
+it('T157 keeps every menubar action reachable and named in full under a much longer translation', () => {
+  const catalogue = englishCatalog as unknown as Record<string, string>;
+  const originals = new Map<string, string>();
+  for (const [key, value] of Object.entries(LONG_LABELS)) {
+    originals.set(key, catalogue[key] as string);
+    catalogue[key] = value;
+  }
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: 1280,
+  });
+
+  try {
+    expect(t('shell.file')).toBe(LONG_LABELS['shell.file']);
+
+    render(
+      <ShellMenuRow
+        modalOpen={false}
+        onAbout={jest.fn()}
+        settingsMenuProps={settingsMenuProps}
+        toggleFullscreen={jest.fn(async () => true)}
+        viewMenuProps={viewMenuProps}
+      />,
+    );
+
+    const menu = screen.getByRole('navigation', {
+      name: 'Application actions',
+    });
+    for (const key of Object.keys(LONG_LABELS)) {
+      const trigger = within(menu).getByRole('button', {
+        name: LONG_LABELS[key] as string,
+      });
+      // The complete translation is the accessible name; only the painted text
+      // may be shortened.
+      expect(trigger).toHaveAccessibleName(LONG_LABELS[key] as string);
+      expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+    }
+
+    // Length alone must not restructure the row. The overflow control belongs
+    // to the 375-pixel state, which 'FR-WS-008 switches to the keyboard-
+    // reachable overflow only at the 375-pixel state' pins from the other side.
+    expect(within(menu).queryByRole('button', { name: 'More' })).toBeNull();
+    expect(document.querySelector('[data-shell-overflow]')).toBeNull();
+  } finally {
+    for (const [key, value] of originals) {
+      catalogue[key] = value;
+    }
+  }
+});
+
+// Proves: FR-FT-047 — the mechanism that makes the clause above survivable in a
+// real browser, which jsdom cannot measure: the shared trigger clips and
+// ellipsises rather than growing the row, and the row's spacer may shrink to
+// nothing so a long trigger cannot force horizontal overflow. Asserted as
+// declared CSS because `*.module.css` is mapped to a style mock under Jest, so
+// no computed style exists to read — the same technique the surrounding
+// geometry tests in this file use.
+it('T157 clips a long menubar label instead of growing the row', () => {
+  const triggerStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/primitives/MenuSurface.module.css'),
+    'utf8',
+  );
+  const shellStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    'utf8',
+  );
+
+  const trigger = triggerStyles.match(/\.trigger\s*\{[^}]*\}/)?.[0];
+  expect(trigger).toBeDefined();
+  expect(trigger).toMatch(/overflow:\s*hidden/);
+  expect(trigger).toMatch(/text-overflow:\s*ellipsis/);
+  expect(trigger).toMatch(/white-space:\s*nowrap/);
+  expect(trigger).toMatch(/max-width:\s*100%/);
+
+  const spacer = shellStyles.match(/\.spacer\s*\{[^}]*\}/)?.[0];
+  expect(spacer).toBeDefined();
+  expect(spacer).toMatch(/min-width:\s*0/);
+
+  // The row's own height stays on the binding token, so a taller translation
+  // cannot push the mapped editor content downward.
+  expect(shellStyles).toContain('height: var(--menu-row-height)');
 });
