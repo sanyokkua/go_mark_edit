@@ -411,3 +411,74 @@ func TestArchitectureDocumentsHaveAnIdentityAndAContentAccessor(t *testing.T) {
 			"the content accessor is the seam every later feature reads through")
 	}
 }
+
+// Proves: FR-FT-008 — the clause that Save "MUST never read the value directly
+// from the visible editor widget". The other half of the requirement, "first
+// accept the newest pending identity-bound working copy, then write only the
+// backend's canonical content", is proved behaviourally by
+// `frontend/e2e/real-files-and-tabs.test.ts` and by the write-path tests in
+// `internal/appmodel`.
+//
+// "Never" is a seam rule, and a seam rule can only be checked where the seam
+// is: the shape of the bridge. This asserts that the webview has exactly one
+// way to hand document text to Go — `UpdateBuffer`, the flush command — and
+// that no write command has a parameter it could smuggle editor text through.
+// A `Save(documentID, content)` binding would make the rule unenforceable by
+// any amount of care in the frontend, because the widget's value would be an
+// argument the backend is handed rather than a value it owns.
+//
+// Behaviour cannot substitute for this. A Save that happened to write the
+// backend's canonical content would pass every content assertion while the
+// binding still accepted the widget's text, and the next caller would use it.
+func TestArchitectureOnlyTheFlushCommandCarriesDocumentContent(t *testing.T) {
+	t.Parallel()
+
+	// Parameter names that carry a document's text across the bridge. Names are
+	// what a binding exposes to the webview, so names are what is checked.
+	contentParameters := map[string]bool{"content": true, "text": true, "value": true, "buffer": true, "source": true, "body": true}
+	// The one command whose entire purpose is to accept the working copy.
+	const flushCommand = "UpdateBuffer"
+
+	root := repositoryRoot(t)
+	carriers := map[string][]string{}
+	sawFlushCommand := false
+	sawSave := false
+
+	for path, functions := range boundMethods(t, root) {
+		for _, function := range functions {
+			switch function.Name.Name {
+			case flushCommand:
+				sawFlushCommand = true
+			case "Save", "SaveAs":
+				sawSave = true
+			}
+			if function.Type.Params == nil {
+				continue
+			}
+			for _, parameter := range function.Type.Params.List {
+				for _, name := range parameter.Names {
+					if !contentParameters[strings.ToLower(name.Name)] {
+						continue
+					}
+					if function.Name.Name == flushCommand {
+						continue
+					}
+					carriers[function.Name.Name] = append(carriers[function.Name.Name],
+						filepath.Base(path)+": "+name.Name)
+				}
+			}
+		}
+	}
+
+	if !sawFlushCommand {
+		t.Fatalf("no bound %s command found — this test is scanning the wrong surface", flushCommand)
+	}
+	if !sawSave {
+		t.Fatal("no bound Save or SaveAs command found — this test is scanning the wrong surface")
+	}
+	for command, parameters := range carriers {
+		t.Errorf("bound command %s accepts document content across the bridge (%v) — "+
+			"FR-FT-008 makes %s the only command that may carry a working copy, so that a write "+
+			"can only ever use the backend's canonical content", command, parameters, flushCommand)
+	}
+}

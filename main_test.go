@@ -687,3 +687,60 @@ func (utils *failingStartupFileUtils) GetAppDatabaseFilePath() (string, error) {
 }
 
 var _ file.FileUtilsServiceAPI = (*failingStartupFileUtils)(nil)
+
+// Proves: FR-FT-002 (partial — "filtered … to `.md`, `.markdown`, `.mdown`, and
+// `.txt`" and the same set for FR-FT-012's Save As picker. The
+// "case-insensitively" clause is **not** proved here: `main.go` still offers a
+// single lowercase glob, and correcting it is T148's, which owns the decision
+// to add the case variants. When T148 lands, the loop below gains the uppercase
+// and mixed-case forms and this parenthetical goes.)
+//
+// The cancellation half of FR-FT-002 is proved by
+// `internal/appmodel/handler_test.go`.
+//
+// The filter set and the backend's accepted set are two lists that must stay
+// equal, and until this test they were three lists — two identical literals in
+// `main()` plus `file.IsSupportedDocumentSuffix`. `paths_test.go` proves the
+// predicate, and nothing proved the pickers agreed with it, so a suffix could be
+// offered in the dialog and refused after selection, or accepted by the backend
+// and impossible to reach through the picker.
+func TestNativePickersFilterExactlyTheSupportedSuffixes(t *testing.T) {
+	filters := documentFileFilters()
+	if len(filters) != 1 {
+		t.Fatalf("document file filters = %d, want one 'Markdown and text' group", len(filters))
+	}
+
+	globs := strings.Split(filters[0].Pattern, ";")
+	offered := make(map[string]bool, len(globs))
+	for _, glob := range globs {
+		if !strings.HasPrefix(glob, "*.") {
+			t.Fatalf("picker glob %q is not a suffix pattern", glob)
+		}
+		suffix := strings.TrimPrefix(glob, "*")
+		if offered[suffix] {
+			t.Fatalf("picker offers %q twice", suffix)
+		}
+		offered[suffix] = true
+		if !file.IsSupportedDocumentSuffix("document" + suffix) {
+			t.Errorf("the picker offers %q, which the backend refuses after selection", suffix)
+		}
+	}
+
+	for _, suffix := range []string{".md", ".markdown", ".mdown", ".txt"} {
+		if !offered[suffix] {
+			t.Errorf("the picker does not offer %q, which FR-FT-002 names and the backend accepts", suffix)
+		}
+	}
+	if len(offered) != 4 {
+		t.Errorf("picker offers %d suffixes (%v), want exactly the four FR-FT-002 names", len(offered), globs)
+	}
+
+	// Both pickers must use this one list; two literals is how they drift.
+	source, err := os.ReadFile(filepath.Join(repositoryRoot(t), "main.go"))
+	if err != nil {
+		t.Fatalf("read main.go: %v", err)
+	}
+	if occurrences := strings.Count(string(source), filters[0].Pattern); occurrences != 1 {
+		t.Errorf("the suffix glob appears %d times in main.go, want one shared definition", occurrences)
+	}
+}

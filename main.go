@@ -55,11 +55,8 @@ func main() {
 	applicationContext := application.NewApplicationContextHolder(fileUtils, appLogger)
 	dialogs := application.NewDocumentDialogs(func(ctx context.Context) (string, error) {
 		return runtime.OpenFileDialog(ctx, runtime.OpenDialogOptions{
-			Title: "Open Markdown or text file",
-			Filters: []runtime.FileFilter{{
-				DisplayName: "Markdown and text",
-				Pattern:     "*.md;*.markdown;*.mdown;*.txt",
-			}},
+			Title:   "Open Markdown or text file",
+			Filters: documentFileFilters(),
 		})
 	})
 	dialogs.SetSaveFilePicker(func(ctx context.Context, request appmodel.SaveDialogRequest) (string, error) {
@@ -67,10 +64,7 @@ func main() {
 			Title:            request.Title,
 			DefaultDirectory: request.DefaultDirectory,
 			DefaultFilename:  request.DefaultFilename,
-			Filters: []runtime.FileFilter{{
-				DisplayName: "Markdown and text",
-				Pattern:     "*.md;*.markdown;*.mdown;*.txt",
-			}},
+			Filters:          documentFileFilters(),
 		})
 	})
 	dialogs.SetOverwriteConfirmer(func(ctx context.Context, subject string) (bool, error) {
@@ -88,6 +82,20 @@ func main() {
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
 		bootstrapLogger.Error().Err(err).Msg("run application")
 	}
+}
+
+// documentFileFilters is the single suffix filter both native pickers use.
+//
+// It was two identical literals, one per picker, which is how a filter set can
+// drift from the suffixes the backend accepts without anything noticing.
+// FR-FT-002 names the four suffixes for Open and FR-FT-012 names the same four
+// for Save As, so there is one list, checked against
+// `file.IsSupportedDocumentSuffix` by TestNativePickersFilterExactlyTheSupportedSuffixes.
+func documentFileFilters() []runtime.FileFilter {
+	return []runtime.FileFilter{{
+		DisplayName: "Markdown and text",
+		Pattern:     "*.md;*.markdown;*.mdown;*.txt",
+	}}
 }
 
 func newAppOptions(applicationContext *application.ApplicationContextHolder) *options.App {
