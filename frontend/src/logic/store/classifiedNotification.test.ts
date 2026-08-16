@@ -87,13 +87,13 @@ it('T142 never offers a Retry whose command belongs to a different action', () =
  * is deliberately NOT closed by T142. `Save to recreate` has no command behind
  * it in the frontend: `App.tsx`'s `beginWrite` refuses a detached document
  * outright and only ever writes the *active* document, so a control offering it
- * would either refuse or save the wrong file. T151 owns that. Until then the
+ * would either refuse or save the wrong file. T160 owns that. Until then the
  * member must be dropped rather than rendered, which is what this pins.
  */
 // Proves: the classified error contract's rule that a category's copy is
 // remediated only from its own row — specifically that a member with no command
 // behind it is dropped. It does NOT prove the `not-found` detached pair, which
-// remains open as T151.
+// remains open as T160.
 it('T142 drops Save to recreate rather than rendering a control with no command', () => {
   expect(
     report(

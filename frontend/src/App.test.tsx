@@ -1011,7 +1011,7 @@ it('T116 renders the classified remediation and runs the command it names', asyn
  */
 // Proves: FR-FT-037 (the Reveal `system-command-failure` pair reaching the toast
 // and each control running its own command). It does not prove the detached
-// `not-found` pair, whose `Save to recreate` has no command — that is T151.
+// `not-found` pair, whose `Save to recreate` has no command — that is T160.
 it('T142 offers both Reveal remediations and re-runs Reveal from the Retry', async () => {
   act((): void => disposeAppModelProjection());
   store.dispatch(resetProjection());

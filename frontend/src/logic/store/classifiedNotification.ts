@@ -92,7 +92,7 @@ export interface ClassifiedReportOptions {
  * `App.tsx`'s `beginWrite` refuses a detached document outright — which
  * contradicts FR-FT-023 — and it writes only the *active* document, so a control
  * carrying it would either refuse or save a different file than the toast names.
- * **T151** owns both. Dropping the member leaves the detached `not-found` row
+ * **T160** owns both. Dropping the member leaves the detached `not-found` row
  * half-served, which is a visible gap; rendering it would be a control with
  * nothing behind it, which is the defect T116 exists to remove.
  *
