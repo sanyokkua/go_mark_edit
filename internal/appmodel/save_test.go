@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -297,5 +298,105 @@ func TestSaveValidationRefusesReadOnlyBeforeDiskAccess(t *testing.T) {
 	result := service.Save(context.Background(), document.metadata.DocumentID, 0, "")
 	if result.Status != apperr.WriteStatusRefused || result.Error == nil || result.Error.Category != apperr.ClassifiedPermissionDenied {
 		t.Fatalf("read-only Save = %+v, want pre-I/O permission refusal", result)
+	}
+}
+
+// countingDiskReaders records how often the two disk seams behind
+// prepareWriteDisk are reached, while still returning what the real host would.
+type countingDiskReaders struct {
+	mu              sync.Mutex
+	diskVersionHits int
+	stableReadHits  int
+}
+
+func (readers *countingDiskReaders) version(path string) (file.DiskVersion, error) {
+	readers.mu.Lock()
+	readers.diskVersionHits++
+	readers.mu.Unlock()
+	return file.CurrentDiskVersion(path)
+}
+
+func (readers *countingDiskReaders) stable(path string, limit int64) (file.StableClassifiedRead, error) {
+	readers.mu.Lock()
+	readers.stableReadHits++
+	readers.mu.Unlock()
+	return file.ReadClassifiedStable(path, limit)
+}
+
+func (readers *countingDiskReaders) total() (int, int) {
+	readers.mu.Lock()
+	defer readers.mu.Unlock()
+	return readers.diskVersionHits, readers.stableReadHits
+}
+
+func normalizationTokenCount(service *AppModelService) int {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	return len(service.normalizations)
+}
+
+// Proves: FR-FT-011 — the clause that manual Save "MUST refuse before disk
+// access without matching authorization". The Save As, autosave and close-save
+// arms of the same requirement are proved elsewhere.
+//
+// Save ran flushAutosave and then prepareWriteDisk — which stats the file and can
+// perform a full stable re-read through inspectDocument — and only reached the
+// mixed-line-ending authorization inside snapshotForWrite afterwards. SaveAs
+// already gated first; this asserts Save does too, by counting the disk seams
+// rather than by inspecting the refusal, because the refusal was already correct.
+func TestSaveRefusesMixedEndingsBeforeTouchingTheDisk(t *testing.T) {
+	service := NewAppModelService(&recordingEmitter{})
+	service.SetAutosaveEnabled(false)
+	_, documentID := writeMixedDocument(t, service, "first\r\nsecond\nthird\n")
+
+	readers := &countingDiskReaders{}
+	service.SetConflictReadersForTesting(readers.stable, readers.version)
+
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	revision := state.Snapshot.Documents[documentID].ContentRevision
+
+	// An empty decision token is the unauthorized case: nothing in
+	// service.normalizations can match it.
+	result := service.Save(context.Background(), documentID, revision, "")
+
+	if result.Status != apperr.WriteStatusNeedsNormalization {
+		t.Fatalf("Save status = %q, want %q", result.Status, apperr.WriteStatusNeedsNormalization)
+	}
+	versionHits, stableHits := readers.total()
+	if versionHits != 0 || stableHits != 0 {
+		t.Fatalf("unauthorized Save reached the disk: %d disk-version reads and %d stable reads, want 0 and 0", versionHits, stableHits)
+	}
+}
+
+// Proves: FR-FT-011 — the same manual-Save clause, observed through the refusal
+// the user is given rather than through a call counter.
+//
+// Ordering is not cosmetic. While the disk inspection ran first, an unauthorized
+// Save of a mixed-ending document whose file had also changed underneath reported
+// the conflict and never mentioned the line endings, so the normalization the
+// requirement demands was never requested.
+func TestUnauthorizedSaveAsksForNormalizationEvenWhenTheFileAlsoChanged(t *testing.T) {
+	service := NewAppModelService(&recordingEmitter{})
+	service.SetAutosaveEnabled(false)
+	path, documentID := writeMixedDocument(t, service, "first\r\nsecond\nthird\n")
+
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	revision := state.Snapshot.Documents[documentID].ContentRevision
+
+	// Someone else edits the file after it was opened.
+	if err := os.WriteFile(path, []byte("changed by another program\r\nand again\n"), 0o640); err != nil {
+		t.Fatalf("rewrite fixture: %v", err)
+	}
+
+	result := service.Save(context.Background(), documentID, revision, "")
+
+	if result.Status != apperr.WriteStatusNeedsNormalization {
+		t.Fatalf("Save status = %q, want %q — the authorization gate must precede the disk inspection", result.Status, apperr.WriteStatusNeedsNormalization)
 	}
 }

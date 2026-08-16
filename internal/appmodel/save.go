@@ -61,6 +61,21 @@ func (service *AppModelService) Save(ctx context.Context, documentID string, exp
 		return service.refusedWrite(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationNone)
 	}
 	path := document.metadata.Path
+	// FR-FT-011 requires a save to refuse before disk access when it has no
+	// matching authorization. prepareWriteDisk below stats the file and can run a
+	// full stable re-read through inspectDocument, so the check has to happen
+	// here — it used to happen inside snapshotForWrite, one disk inspection too
+	// late, which also meant a file that had changed underneath reported the
+	// conflict and never mentioned the line endings. SaveAs has always gated
+	// here; this is the same gate. An untitled document falls through to SaveAs,
+	// which runs it.
+	if path != "" && document.metadata.LineEnding == string(file.LineEndingMixed) {
+		authorization, authorized := service.normalizations[decisionToken]
+		if !authorized || authorization.documentID != documentID || authorization.contentRevision != expectedContentRevision || authorization.proposedEnding != document.normalizationEnding {
+			service.mu.RUnlock()
+			return service.RequestNormalization(documentID, expectedContentRevision)
+		}
+	}
 	service.mu.RUnlock()
 	if path == "" {
 		return service.SaveAs(ctx, documentID, expectedContentRevision, decisionToken)

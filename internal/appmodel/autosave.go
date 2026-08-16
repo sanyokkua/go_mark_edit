@@ -199,6 +199,16 @@ func (service *AppModelService) runAutosave(documentID string, revision, generat
 	}
 	snapshot, result := service.snapshotForWrite(documentID, revision, "", path, false)
 	if result.Status != "" {
+		// A refused autosave must not leave an authorization behind. Autosave
+		// passes an empty decision token, which never matches, so a mixed-ending
+		// document takes the unauthorized branch and snapshotForWrite mints a
+		// fresh single-use token to hand back with the refusal. Autosave has no
+		// prompt to show and drops the result, so without this the token would
+		// sit in service.normalizations for the process lifetime — one more for
+		// every debounce that fired. CancelNormalization exists for exactly this.
+		if result.DecisionToken != "" {
+			service.CancelNormalization(documentID, result.DecisionToken)
+		}
 		return
 	}
 	_ = service.executeWrite(ctx, snapshot, SaveOriginAutosave)

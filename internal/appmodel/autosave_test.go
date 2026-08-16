@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -286,4 +287,34 @@ func setAutosaveDocumentFlags(service *AppModelService, documentID string, detac
 	document := service.state.documents[documentID]
 	document.detached = detached
 	document.metadata.Capability = string(capability)
+}
+
+// Proves: FR-FT-011 — the autosave arm of "refuse before disk access without
+// matching authorization", specifically that a refused autosave leaves no
+// authorization behind. The manual-Save arm is proved in save_test.go.
+//
+// Autosave calls snapshotForWrite with an empty decision token. On a
+// mixed-ending document that never matches, so the unauthorized branch minted a
+// fresh single-use authorization into service.normalizations and returned it as
+// a needs-normalization result that autosave then discarded. Nothing consumed it
+// and nothing cancelled it, so every debounce that fired leaked one more token
+// for the lifetime of the process. CancelNormalization existed for exactly this
+// and had no caller at all.
+func TestRefusedAutosaveLeavesNoNormalizationAuthorizationBehind(t *testing.T) {
+	clock := &fakeAutosaveClock{}
+	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	_, documentID := writeMixedDocument(t, service, "first\r\nsecond\nthird\n")
+
+	for attempt := 1; attempt <= 3; attempt++ {
+		content := strings.Repeat("edited\n", attempt)
+		if err := service.UpdateBuffer(context.Background(), documentID, content); err != nil {
+			t.Fatalf("edit %d: %v", attempt, err)
+		}
+		if !clock.FireNext() {
+			t.Fatalf("no debounce pending for edit %d", attempt)
+		}
+		if leaked := normalizationTokenCount(service); leaked != 0 {
+			t.Fatalf("normalization authorizations after %d refused autosave(s) = %d, want 0", attempt, leaked)
+		}
+	}
 }
