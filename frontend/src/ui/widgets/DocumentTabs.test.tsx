@@ -1341,6 +1341,251 @@ it('T129 keeps the active document and the focused element across a keyboard Mov
 });
 
 /*
+ * T130, FR-FT-036 — the pointer drag. jsdom runs no layout engine, so every
+ * `getBoundingClientRect` here is a zero rect and a drop position measured from
+ * tab boxes would always resolve to slot 0, whatever the pointer did. These are
+ * the boxes a three-tab strip would have at 100 CSS pixels per tab, laid out
+ * from the origin: tab 0 spans 0–100 with its midpoint at 50, tab 1 spans
+ * 100–200, tab 2 spans 200–300.
+ */
+function layOutTabStrip(): void {
+  const items = document.querySelectorAll<HTMLElement>('[data-tab-item]');
+  for (const [index, item] of items.entries()) {
+    jest.spyOn(item, 'getBoundingClientRect').mockReturnValue({
+      bottom: 30,
+      height: 30,
+      left: index * 100,
+      right: index * 100 + 100,
+      toJSON: () => ({}),
+      top: 0,
+      width: 100,
+      x: index * 100,
+      y: 0,
+    } as DOMRect);
+  }
+}
+
+/*
+ * jsdom 26 still ships no `PointerEvent` constructor, so `fireEvent.pointerDown`
+ * would fall back to a bare `Event` and lose `clientX` — the one property every
+ * assertion below depends on. A `MouseEvent` carries it and React dispatches its
+ * `onPointerDown` from the native event's *type*, not from its constructor.
+ */
+function tabPointerEvent(type: string, clientX: number): MouseEvent {
+  return new MouseEvent(type, {
+    bubbles: true,
+    button: 0,
+    cancelable: true,
+    clientX,
+    clientY: 15,
+  });
+}
+
+function insertionSlot(): string | null {
+  return (
+    document
+      .querySelector('[data-tab-insertion-slot]')
+      ?.getAttribute('data-tab-insertion-slot') ?? null
+  );
+}
+
+/*
+ * FR-FT-035 directionally isolates user-supplied path text, so every tab's
+ * `textContent` arrives wrapped in U+2066/U+2069. The order the tabs are in is
+ * what is under test here, not the isolation.
+ */
+function tabOrderOnScreen(): string[] {
+  return screen
+    .getAllByRole('tab')
+    .map((tab) => (tab.textContent ?? '').replace(/[⁦-⁩]/gu, ''));
+}
+
+function threeTabs(): DocumentMetadata[] {
+  return [
+    documentFor('one', '/repo/one.md'),
+    documentFor('two', '/repo/two.md'),
+    documentFor('three', '/repo/three.md'),
+  ];
+}
+
+// Proves: FR-FT-036 (partial — the grab clause only: a press that travels past
+// the threshold starts a drag, and one that does not stays an activating
+// click). The reduced-opacity dragged tab and the strip's edge auto-scroll are
+// deferred to T177 and are proved by nothing, here or elsewhere.
+it('T130 grabs a tab only once the pointer has travelled past the drag threshold', async () => {
+  hydrate(threeTabs(), 'one');
+  const activateDocument = jest.fn(async () => ({}));
+  renderTabs({ activateDocument });
+  layOutTabStrip();
+  const tab = screen.getByRole('tab', { name: /one\.md/u });
+
+  // A hand trying to hold still: two pixels of travel is a click, not a grab.
+  fireEvent(tab, tabPointerEvent('pointerdown', 50));
+  fireEvent(document, tabPointerEvent('pointermove', 52));
+  expect(insertionSlot()).toBeNull();
+  fireEvent(document, tabPointerEvent('pointerup', 52));
+  fireEvent.click(tab);
+  await waitFor(() => expect(activateDocument).toHaveBeenCalledWith('one', 4));
+
+  // The same press taken past the threshold is a grab, and the strip says so.
+  fireEvent(tab, tabPointerEvent('pointerdown', 50));
+  fireEvent(document, tabPointerEvent('pointermove', 150));
+  expect(insertionSlot()).not.toBeNull();
+});
+
+// Proves: FR-FT-036 (partial — that the drag shows an insertion *position*, and
+// that the position it shows is the slot the pointer is over. That the
+// indicator is genuinely painted rather than clipped away is proved in
+// `real-files-and-tabs.test.ts`, which has a layout engine and `expectPainted`.)
+it('T130 shows the insertion position the pointer is over, and moves it as the pointer moves', () => {
+  hydrate(threeTabs(), 'one');
+  renderTabs({});
+  layOutTabStrip();
+  const tab = screen.getByRole('tab', { name: /one\.md/u });
+
+  fireEvent(tab, tabPointerEvent('pointerdown', 50));
+  // Past tab 1's midpoint (150) but not tab 2's (250): the slot between them.
+  fireEvent(document, tabPointerEvent('pointermove', 180));
+  expect(insertionSlot()).toBe('2');
+
+  // Past every midpoint: the slot after the last tab.
+  fireEvent(document, tabPointerEvent('pointermove', 290));
+  expect(insertionSlot()).toBe('3');
+
+  // Back before the first midpoint: the slot before the first tab.
+  fireEvent(document, tabPointerEvent('pointermove', 10));
+  expect(insertionSlot()).toBe('0');
+});
+
+/*
+ * `ReorderDocument` accepts one-position moves only — `tab_reorder.go:25`
+ * refuses anything further as `unsupported-input` — so a drag across two tabs
+ * is two commands. FR-FT-033 requires each to carry the tab-set revision it was
+ * issued against, which for the second is the revision the first *returned*,
+ * not the stale 4 this render closed over.
+ */
+// Proves: FR-FT-036 (partial — the drop clause) and FR-FT-033 (partial — that
+// each reorder a drag issues carries the tab-set revision current when it is
+// issued; the refusal-without-partial-change half is proved by
+// `tab_session_test.go`, not here).
+it('T130 drops a dragged tab through the backend reorder command and projects nothing itself', async () => {
+  hydrate(threeTabs(), 'one');
+  store.dispatch(resetNotifications());
+  let nextRevision = 4;
+  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => {
+    nextRevision += 1;
+    return {
+      status: 'reordered',
+      orderedDocumentIds: ['two', 'three', 'one'],
+      tabSetRevision: nextRevision,
+    };
+  });
+  renderTabs({ reorderDocument });
+  layOutTabStrip();
+  const tab = screen.getByRole('tab', { name: /one\.md/u });
+
+  fireEvent(tab, tabPointerEvent('pointerdown', 50));
+  fireEvent(document, tabPointerEvent('pointermove', 290));
+  fireEvent(document, tabPointerEvent('pointerup', 290));
+
+  await waitFor(() => expect(reorderDocument).toHaveBeenCalledTimes(2));
+  expect(reorderDocument).toHaveBeenNthCalledWith(1, 'one', 1, 4);
+  expect(reorderDocument).toHaveBeenNthCalledWith(2, 'one', 2, 5);
+  await waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Moved one.md to position 3 of 3',
+    ),
+  );
+
+  /*
+   * The Redux store is a projection. No `state:patch` was applied here, so the
+   * strip must still show the order the backend last confirmed — an optimistic
+   * local reorder would have rewritten it the moment the pointer came up.
+   */
+  expect(store.getState().documents.orderedIds).toEqual([
+    'one',
+    'two',
+    'three',
+  ]);
+  expect(tabOrderOnScreen()).toEqual(['one.md', 'two.md', 'three.md']);
+});
+
+// Proves: FR-FT-036 (partial — the Escape-cancels clause only)
+it('T130 abandons a drag on Escape without issuing a reorder or changing the order', async () => {
+  hydrate(threeTabs(), 'one');
+  store.dispatch(resetNotifications());
+  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+    status: 'reordered',
+    orderedDocumentIds: ['two', 'three', 'one'],
+    tabSetRevision: 5,
+  }));
+  renderTabs({ reorderDocument });
+  layOutTabStrip();
+  const tab = screen.getByRole('tab', { name: /one\.md/u });
+
+  fireEvent(tab, tabPointerEvent('pointerdown', 50));
+  fireEvent(document, tabPointerEvent('pointermove', 290));
+  expect(insertionSlot()).toBe('3');
+
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(insertionSlot()).toBeNull();
+
+  // The release that follows a cancelled drag must not become a late drop.
+  fireEvent(document, tabPointerEvent('pointerup', 290));
+  await Promise.resolve();
+
+  expect(reorderDocument).not.toHaveBeenCalled();
+  expect(store.getState().documents.tabSetRevision).toBe(4);
+  expect(store.getState().documents.orderedIds).toEqual([
+    'one',
+    'two',
+    'three',
+  ]);
+  expect(store.getState().notifications.items).toHaveLength(0);
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+});
+
+/*
+ * FR-FT-036: "issue no reorder for a same-position drop". The weak reading is
+ * that the order must not change — but a reorder issued to the index the tab
+ * already occupies leaves the order alone too, and `tabTransitionSuccess`
+ * (`tab_reorder.go:52`) still answers it with the current tab-set revision. So
+ * the order looking unchanged proves nothing. That no command was issued at all
+ * is the clause.
+ */
+// Proves: FR-FT-036 (partial — the same-position-drop clause only)
+it('T130 issues no reorder command at all when a drag is dropped where it started', async () => {
+  hydrate(threeTabs(), 'two');
+  store.dispatch(resetNotifications());
+  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+    status: 'reordered',
+    orderedDocumentIds: ['one', 'two', 'three'],
+    tabSetRevision: 5,
+  }));
+  renderTabs({ reorderDocument });
+  layOutTabStrip();
+  const tab = screen.getByRole('tab', { name: /two\.md/u });
+
+  // Grabbed at 150 and released at 190: past the 4px threshold, so this is a
+  // real drag, but still inside tab 1's own box and short of tab 2's midpoint.
+  fireEvent(tab, tabPointerEvent('pointerdown', 150));
+  fireEvent(document, tabPointerEvent('pointermove', 190));
+  expect(insertionSlot()).toBe('2');
+  fireEvent(document, tabPointerEvent('pointerup', 190));
+  await Promise.resolve();
+
+  expect(reorderDocument).not.toHaveBeenCalled();
+  expect(store.getState().documents.tabSetRevision).toBe(4);
+  expect(store.getState().documents.orderedIds).toEqual([
+    'one',
+    'two',
+    'three',
+  ]);
+  expect(store.getState().notifications.items).toHaveLength(0);
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+});
+
+/*
  * T156. Go refuses a switch against a stale tab set with `conflict` and sends
  * `Retry` — "The tab set changed; the switch must be retried." This arm
  * declared no intent, so `remediationsFor` dropped the control Go had sent.

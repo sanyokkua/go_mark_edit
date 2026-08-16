@@ -37,6 +37,21 @@
   padding: var(--tabs-row-padding);
 }
 
+/*
+ * T130, FR-FT-036: the insertion position a drag is showing. It exists only
+ * while a pointer drag is in flight, so it never appears in a parity capture
+ * and adds no flex child to the resting strip. `align-self: stretch` makes it
+ * the height of the tab row rather than of its own empty content box, which is
+ * what gives `expectPainted` a non-empty box to hit-test.
+ */
+.tabInsertionIndicator {
+  align-self: stretch;
+  background: var(--accent);
+  border-radius: 1.5px;
+  flex: none;
+  inline-size: 3px;
+}
+
 .emptyParityTabStrip {
   block-size: 43px;
   flex: 0 0 43px;

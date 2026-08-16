@@ -77,6 +77,48 @@ function announcementName(
   return (label?.accessibleName ?? fallback).replace(/[\u2066-\u2069]/gu, '');
 }
 
+/*
+ * T130, FR-FT-036. How far the pointer must travel before a press becomes a
+ * drag. Without a threshold every click on a tab is a zero-length drag: the
+ * press would immediately paint an insertion indicator, and releasing would run
+ * the drop path instead of the activation the user asked for. Four pixels is
+ * the usual slop for a hand that is trying to hold still, and it is well below
+ * the distance that reaches a neighbouring tab.
+ */
+const TAB_DRAG_THRESHOLD_PX = 4;
+
+/*
+ * The pointer sits *between* tabs, so the drag's position is a slot in
+ * `0..orderedDocuments.length`, not a tab index: slot 0 is before the first
+ * tab, slot n after the last. A slot becomes the index the dragged tab would
+ * occupy only after accounting for the gap the tab itself vacates \u2014 dropping at
+ * slot 3 while dragging the tab at index 1 lands on index 2, because index 1
+ * closes up behind it.
+ */
+function targetIndexForSlot(slot: number, fromIndex: number): number {
+  return slot > fromIndex ? slot - 1 : slot;
+}
+
+/*
+ * "Dragging a tab MUST show the insertion position" — this is that showing. A
+ * real flex child rather than an outline on a neighbouring tab, so it occupies
+ * the gap the tab would land in, and `aria-hidden` because it is a picture of
+ * where the pointer is. It carries no `pointer-events: none`: the drop position
+ * is measured from the tab boxes and the pointer's own coordinate, never from a
+ * hit test, so letting the bar be hit-testable costs nothing and is what lets
+ * `expectPainted` see that it is actually painted rather than clipped away.
+ */
+function insertionIndicator(slot: number): React.JSX.Element {
+  return (
+    <span
+      aria-hidden="true"
+      className={styles.tabInsertionIndicator}
+      data-tab-insertion-slot={slot}
+      key={`tab-insertion-${slot}`}
+    />
+  );
+}
+
 const DocumentTabs: React.FC<DocumentTabsProps> = ({
   adapter = appModelAdapter,
   conflictAdapter = documentConflictAdapter,
@@ -585,6 +627,186 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   );
 
   /*
+   * T130, FR-FT-036 — the pointer drag. Three clauses are built here (grab,
+   * insertion position, drop) plus the requirement's two guards (Escape
+   * cancels, a same-position drop issues nothing). The reduced-opacity dragged
+   * tab and the edge auto-scroll are deferred to T177.
+   *
+   * Pointer events rather than the HTML5 drag-and-drop API. There was no drag
+   * code here to follow, so this was a free choice, and DnD loses it on every
+   * axis that matters: its Escape handling is the browser's and cannot be
+   * observed reliably, it imposes a drag image that would fight the custom
+   * ghost T177 owns, and `dataTransfer` is awkward to drive from Playwright.
+   *
+   * Accessibility: deliberately no `aria-grabbed`/`aria-dropeffect`. Both were
+   * deprecated in ARIA 1.1 and removed in 1.2, no current screen reader acts on
+   * them, and adding them would put a dead attribute on a `role="tab"` whose
+   * roving `tabIndex` and Home/End/Arrow handling already work. The accessible
+   * equivalent of this drag is FR-FT-034's Move tab left/right — same command,
+   * same `editor.tab.moved` polite announcement — and a completed drag
+   * announces through exactly that live region below. The insertion indicator
+   * is `aria-hidden`, because it is a picture of a pointer position that a
+   * keyboard user reaches by a different route.
+   */
+  const pendingGrab = useRef<{
+    documentId: string;
+    fromIndex: number;
+    startX: number;
+  } | null>(null);
+  const activeDrag = useRef<{ documentId: string; fromIndex: number } | null>(
+    null,
+  );
+  const dragTeardown = useRef<(() => void) | null>(null);
+  const suppressActivationClick = useRef(false);
+  const [insertionSlot, setInsertionSlot] = useState<number | null>(null);
+
+  const endDrag = useCallback((): void => {
+    dragTeardown.current?.();
+    dragTeardown.current = null;
+    pendingGrab.current = null;
+    activeDrag.current = null;
+    setInsertionSlot(null);
+  }, []);
+  useEffect((): (() => void) => endDrag, [endDrag]);
+
+  /*
+   * The strip is measured, never counted. Tab widths differ by filename and by
+   * theme, so the slot is whichever tab box the pointer has passed the middle
+   * of. `[data-tab-item]` is queried rather than held in a ref map because DOM
+   * order is the order being reasoned about, and the indicator this returns a
+   * position for is itself a child of the same strip.
+   */
+  const insertionSlotAt = useCallback((clientX: number): number => {
+    const strip = stripRef.current;
+    if (strip === null) return 0;
+    const items = [...strip.querySelectorAll<HTMLElement>('[data-tab-item]')];
+    for (const [index, item] of items.entries()) {
+      const rect = item.getBoundingClientRect();
+      if (clientX < rect.left + rect.width / 2) return index;
+    }
+    return items.length;
+  }, []);
+
+  /*
+   * FR-FT-033 requires every reorder to carry the tab-set revision it was
+   * issued against, and `ReorderDocument` accepts one-position moves only
+   * (`internal/appmodel/tab_reorder.go:25` refuses anything further as
+   * `unsupported-input`). A drag across three tabs is therefore three commands,
+   * each carrying the revision the previous one returned — not the stale
+   * revision this render closed over, which the second command would be refused
+   * against. Nothing is projected locally: the order the strip shows is
+   * whatever the backend's `state:patch` says it is, so a refusal part-way
+   * leaves the strip on the last confirmed order rather than on a guess.
+   */
+  const dropDraggedTab = useCallback(
+    async (documentId: string, fromIndex: number, slot: number) => {
+      const finalIndex = targetIndexForSlot(slot, fromIndex);
+      /*
+       * FR-FT-036: "issue no reorder for a same-position drop". Issuing one
+       * anyway would *look* harmless — the backend answers `noop` and the order
+       * does not change — but `tabTransitionSuccess` still reports the current
+       * tab-set revision and every in-flight command holding the older one is
+       * then racing a set it no longer describes. Not issuing is the clause.
+       */
+      if (finalIndex === fromIndex) return;
+      const document = orderedDocuments[fromIndex];
+      if (document === undefined) return;
+      let revision = tabSetRevision;
+      let index = fromIndex;
+      const step = finalIndex > fromIndex ? 1 : -1;
+      while (index !== finalIndex) {
+        const next = index + step;
+        const result = await adapter.reorderDocument?.(
+          documentId,
+          next,
+          revision,
+        );
+        if (result?.error !== undefined) {
+          reportClassifiedError(
+            dispatch,
+            result.error,
+            'The tab could not be moved.',
+          );
+          return;
+        }
+        if (result?.status !== 'reordered') return;
+        revision = result.tabSetRevision ?? revision;
+        index = next;
+      }
+      announce(
+        t('editor.tab.moved', {
+          filename: announcementName(labels.get(documentId), document.title),
+          position: index + 1,
+          count: orderedDocuments.length,
+        }),
+      );
+    },
+    [adapter, announce, dispatch, labels, orderedDocuments, tabSetRevision],
+  );
+
+  const beginGrab = useCallback(
+    (documentId: string, fromIndex: number, startX: number): void => {
+      endDrag();
+      suppressActivationClick.current = false;
+      pendingGrab.current = { documentId, fromIndex, startX };
+
+      const move = (event: MouseEvent): void => {
+        const pending = pendingGrab.current;
+        if (
+          activeDrag.current === null &&
+          pending !== null &&
+          Math.abs(event.clientX - pending.startX) >= TAB_DRAG_THRESHOLD_PX
+        ) {
+          activeDrag.current = {
+            documentId: pending.documentId,
+            fromIndex: pending.fromIndex,
+          };
+          suppressActivationClick.current = true;
+        }
+        if (activeDrag.current === null) return;
+        event.preventDefault();
+        setInsertionSlot(insertionSlotAt(event.clientX));
+      };
+      const up = (event: MouseEvent): void => {
+        const drag = activeDrag.current;
+        endDrag();
+        if (drag === null) return;
+        void dropDraggedTab(
+          drag.documentId,
+          drag.fromIndex,
+          insertionSlotAt(event.clientX),
+        );
+      };
+      /*
+       * FR-FT-036's Escape clause. Capture phase, so a drag is abandoned before
+       * anything else in the shell reads the key, and `endDrag` is the whole
+       * behaviour: no command is issued, so there is no order change to undo
+       * and no revision to bump.
+       */
+      const cancelKey = (event: KeyboardEvent): void => {
+        if (event.key !== 'Escape') return;
+        if (activeDrag.current === null && pendingGrab.current === null) return;
+        event.preventDefault();
+        endDrag();
+      };
+      const cancelPointer = (): void => endDrag();
+
+      const target = globalThis.document;
+      target.addEventListener('pointermove', move);
+      target.addEventListener('pointerup', up);
+      target.addEventListener('pointercancel', cancelPointer);
+      target.addEventListener('keydown', cancelKey, true);
+      dragTeardown.current = (): void => {
+        target.removeEventListener('pointermove', move);
+        target.removeEventListener('pointerup', up);
+        target.removeEventListener('pointercancel', cancelPointer);
+        target.removeEventListener('keydown', cancelKey, true);
+      };
+    },
+    [dropDraggedTab, endDrag, insertionSlotAt],
+  );
+
+  /*
    * The tab strip's own accelerator listener. It answers for four registry
    * ids, not two: `next-tab` and `previous-tab` cycle the selection, and
    * `move-tab-left`/`move-tab-right` reorder the active tab. FR-FT-034 binds
@@ -716,108 +938,132 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         }}
       >
         <>
-          {orderedDocuments.map((document) => {
+          {orderedDocuments.flatMap((document, index) => {
             const label = labels.get(document.documentId) as TabLabel;
             const visualLabel = truncatedTabLabelParts(label, 42);
             const active = document.documentId === activeDocumentId;
-            return (
-              /*
-               * FR-FT-047 asks for correct roles, and `role="tab"` is only
-               * correct when a `tablist` owns it. This wrapper pairs the tab
-               * with its close control as one flex item, so it cannot be
-               * removed without moving the strip's pixels; `presentation`
-               * makes it transparent to the accessibility tree instead, which
-               * is what restores the ownership the markup already claimed.
-               */
-              <div
-                className={styles.tabItem}
-                key={document.documentId}
-                role="presentation"
-              >
-                <button
-                  aria-controls={EDITOR_TABPANEL_ID}
-                  aria-selected={active}
-                  aria-label={`${label.accessibleName}${document.conflictBlocked ? ` · ${t('conflict.blocked')}` : ''}`}
-                  className={styles.tab}
-                  data-document-id={document.documentId}
-                  id={tabElementId(document.documentId)}
-                  ref={(element): void => {
-                    if (element === null)
-                      tabRefs.current.delete(document.documentId);
-                    else tabRefs.current.set(document.documentId, element);
-                  }}
-                  role="tab"
-                  tabIndex={active ? 0 : -1}
-                  title={document.path || undefined}
-                  type="button"
-                  onAuxClick={(event): void => {
-                    if (event.button !== 1) return;
-                    event.preventDefault();
-                    closeTargetedTab(document.documentId);
-                  }}
-                  onClick={(): void => {
-                    void activateDocument(document.documentId);
-                  }}
-                  onContextMenu={(event): void => {
-                    event.preventDefault();
-                    setContextDocumentId(document.documentId);
-                  }}
+            const item =
+              (
+                /*
+                 * FR-FT-047 asks for correct roles, and `role="tab"` is only
+                 * correct when a `tablist` owns it. This wrapper pairs the tab
+                 * with its close control as one flex item, so it cannot be
+                 * removed without moving the strip's pixels; `presentation`
+                 * makes it transparent to the accessibility tree instead, which
+                 * is what restores the ownership the markup already claimed.
+                 */
+                <div
+                  className={styles.tabItem}
+                  data-tab-item=""
+                  key={document.documentId}
+                  role="presentation"
                 >
-                  <span
-                    aria-hidden={document.dirty ? undefined : true}
-                    aria-label={
-                      document.dirty ? t('editor.tab.modified') : undefined
-                    }
-                    className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
-                    data-write-in-flight={document.writeInFlight || undefined}
-                  />
-                  {document.conflictBlocked ? (
+                  <button
+                    aria-controls={EDITOR_TABPANEL_ID}
+                    aria-selected={active}
+                    aria-label={`${label.accessibleName}${document.conflictBlocked ? ` · ${t('conflict.blocked')}` : ''}`}
+                    className={styles.tab}
+                    data-document-id={document.documentId}
+                    id={tabElementId(document.documentId)}
+                    ref={(element): void => {
+                      if (element === null)
+                        tabRefs.current.delete(document.documentId);
+                      else tabRefs.current.set(document.documentId, element);
+                    }}
+                    role="tab"
+                    tabIndex={active ? 0 : -1}
+                    title={document.path || undefined}
+                    type="button"
+                    onAuxClick={(event): void => {
+                      if (event.button !== 1) return;
+                      event.preventDefault();
+                      closeTargetedTab(document.documentId);
+                    }}
+                    onClick={(): void => {
+                      /*
+                       * A completed drag ends in a `click` on the tab that was
+                       * dragged, because the pointer went down and up on it.
+                       * Activating there would switch documents every time the
+                       * user reordered one. The flag is set only once the grab
+                       * has passed the threshold, so an ordinary click — press,
+                       * no movement, release — still activates.
+                       */
+                      if (suppressActivationClick.current) {
+                        suppressActivationClick.current = false;
+                        return;
+                      }
+                      void activateDocument(document.documentId);
+                    }}
+                    onContextMenu={(event): void => {
+                      event.preventDefault();
+                      setContextDocumentId(document.documentId);
+                    }}
+                    onPointerDown={(event): void => {
+                      if (event.button !== 0) return;
+                      beginGrab(document.documentId, index, event.clientX);
+                    }}
+                  >
                     <span
-                      aria-label={t('conflict.blocked')}
-                      className={styles.modifiedDot}
-                      data-conflict-blocked
-                    >
-                      {t('conflict.blocked')}
+                      aria-hidden={document.dirty ? undefined : true}
+                      aria-label={
+                        document.dirty ? t('editor.tab.modified') : undefined
+                      }
+                      className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
+                      data-write-in-flight={document.writeInFlight || undefined}
+                    />
+                    {document.conflictBlocked ? (
+                      <span
+                        aria-label={t('conflict.blocked')}
+                        className={styles.modifiedDot}
+                        data-conflict-blocked
+                      >
+                        {t('conflict.blocked')}
+                      </span>
+                    ) : null}
+                    <span aria-hidden="true" className={styles.tabLabel}>
+                      {visualLabel.suffix === '' ? (
+                        visualLabel.basename
+                      ) : (
+                        <>
+                          <span
+                            className={styles.tabLabelBasename}
+                            data-tab-label-basename
+                          >
+                            {visualLabel.basename}
+                          </span>
+                          <span
+                            className={styles.tabLabelSuffix}
+                            data-tab-label-suffix
+                          >
+                            {visualLabel.suffix}
+                          </span>
+                        </>
+                      )}
                     </span>
-                  ) : null}
-                  <span aria-hidden="true" className={styles.tabLabel}>
-                    {visualLabel.suffix === '' ? (
-                      visualLabel.basename
-                    ) : (
-                      <>
-                        <span
-                          className={styles.tabLabelBasename}
-                          data-tab-label-basename
-                        >
-                          {visualLabel.basename}
-                        </span>
-                        <span
-                          className={styles.tabLabelSuffix}
-                          data-tab-label-suffix
-                        >
-                          {visualLabel.suffix}
-                        </span>
-                      </>
-                    )}
-                  </span>
-                </button>
-                <button
-                  aria-label={t('editor.tab.close', {
-                    title: label.accessibleName,
-                  })}
-                  className={styles.tabClose}
-                  type="button"
-                  onClick={(): void => {
-                    closeTargetedTab(document.documentId);
-                  }}
-                >
-                  <span aria-hidden="true" className={styles.tabCloseGlyph}>
-                    ×
-                  </span>
-                </button>
-              </div>
-            );
+                  </button>
+                  <button
+                    aria-label={t('editor.tab.close', {
+                      title: label.accessibleName,
+                    })}
+                    className={styles.tabClose}
+                    type="button"
+                    onClick={(): void => {
+                      closeTargetedTab(document.documentId);
+                    }}
+                  >
+                    <span aria-hidden="true" className={styles.tabCloseGlyph}>
+                      ×
+                    </span>
+                  </button>
+                </div>
+              );
+            return insertionSlot === index
+              ? [insertionIndicator(index), item]
+              : [item];
           })}
+          {insertionSlot === orderedDocuments.length
+            ? insertionIndicator(orderedDocuments.length)
+            : null}
           <button
             aria-label={t('editor.tab.new')}
             className={styles.tabAdd}

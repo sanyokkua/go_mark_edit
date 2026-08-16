@@ -510,6 +510,78 @@ test('T129 reorders the active tab with the Move accelerators and no-ops at the 
   expect(await order()).toEqual(before);
 });
 
+/*
+ * T130. FR-FT-036 was wholly unbuilt — a repository-wide grep for `draggable`,
+ * `onDragStart`, `onDrop` and `dataTransfer` returned nothing — so this is the
+ * first pointer drag the strip has ever had. It is driven with the real mouse
+ * against the real strip because both halves depend on layout: which slot the
+ * pointer is over is measured from the tab boxes, and whether the indicator is
+ * *painted* cannot be seen from the accessibility tree at all.
+ */
+// Proves: FR-FT-036 (partial — the insertion position is shown and painted, and
+// a release reorders through the backend so the strip shows a confirmed order).
+// Escape-cancel and the same-position no-op are proved in DocumentTabs.test.tsx,
+// where the *absence* of a command is observable and this suite could only see
+// an unchanged order — which a reorder to the tab's own index also produces.
+// The reduced-opacity dragged tab and the strip's edge auto-scroll are the two
+// clauses T130 deliberately deferred to T177; nothing here proves them.
+test('T130 paints the drop position during a tab drag and reorders on release', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'New tab' }).click();
+  await expect(page.getByRole('tab')).toHaveCount(2);
+
+  const order = (): Promise<(string | null)[]> =>
+    page
+      .getByRole('tab')
+      .evaluateAll((tabs) =>
+        tabs.map((tab) => tab.getAttribute('data-document-id')),
+      );
+  const before = await order();
+
+  /*
+   * The grab is taken on the tab button, which is what carries the pointer
+   * handler; the drop coordinate is taken from `[data-tab-item]`, which is the
+   * box the insertion slot is measured against — it is wider than the button,
+   * because it also holds the close control.
+   */
+  const grab = await page.getByRole('tab').nth(0).boundingBox();
+  const secondItem = await page.locator('[data-tab-item]').nth(1).boundingBox();
+  expect(grab).not.toBeNull();
+  expect(secondItem).not.toBeNull();
+
+  await page.mouse.move(
+    (grab?.x ?? 0) + (grab?.width ?? 0) / 2,
+    (grab?.y ?? 0) + (grab?.height ?? 0) / 2,
+  );
+  await page.mouse.down();
+  // Past the second tab's midpoint: the slot after the last tab.
+  await page.mouse.move(
+    (secondItem?.x ?? 0) + (secondItem?.width ?? 0) - 2,
+    (secondItem?.y ?? 0) + (secondItem?.height ?? 0) / 2,
+    { steps: 8 },
+  );
+
+  const indicator = page.locator('[data-tab-insertion-slot]');
+  await expect(indicator).toHaveAttribute('data-tab-insertion-slot', '2');
+  await expectPainted(indicator, 'the tab drag insertion indicator');
+
+  await page.mouse.up();
+
+  await expect(indicator).toHaveCount(0);
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Moved' }),
+  ).toContainText('position 2 of 2');
+  expect(await order()).toEqual([before[1], before[0]]);
+  // The drag must not have doubled as an activation click.
+  await expect(page.getByRole('tab').nth(0)).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});
+
 test('FT-VS-07 proves recents, reopen, launcher, and responsive status controls', async ({
   page,
 }) => {
