@@ -955,3 +955,83 @@ it('T142 restores focus immediately when Reveal is refused, because nothing took
 
   await waitFor(() => expect(tab).toHaveFocus());
 });
+
+/*
+ * `fireEvent` in this version has no `auxClick` shorthand, so the auxiliary
+ * click is constructed by hand. `button: 1` is the middle button; React's
+ * `onAuxClick` is the delegated `auxclick` listener, which is the event a
+ * browser raises for any non-primary button.
+ */
+function auxClick(element: HTMLElement, button: number): void {
+  fireEvent(
+    element,
+    new MouseEvent('auxclick', { bubbles: true, button, cancelable: true }),
+  );
+}
+
+function middleClick(element: HTMLElement): void {
+  auxClick(element, 1);
+}
+
+/*
+ * T141. FR-FT-034 names three affordances that close the *targeted* tab — the
+ * close control, middle-click, and the tab-specific Close action — and only
+ * two existed. The rule this proves is the middle-click clause; the routing
+ * assertion is what keeps it honest, because a middle-click that called the
+ * adapter directly would satisfy "closes the tab" while stepping around the
+ * dirty-close prompt the shell installs on `onCloseDocument`.
+ */
+// Proves: FR-FT-034 (partial — the middle-click clause only)
+it('T141 closes the targeted tab on middle-click, through the shell close path', async () => {
+  const first = documentFor('one', '/repo/one.md');
+  const second = documentFor('two', '/repo/two.md');
+  hydrate([first, second], 'two');
+  const onCloseDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+    status: 'closed',
+    activeDocumentId: 'two',
+    orderedDocumentIds: ['two'],
+  }));
+  const adapterClose = jest.fn(async (): Promise<TabTransitionResult> => ({
+    status: 'closed',
+    activeDocumentId: 'two',
+    orderedDocumentIds: ['two'],
+  }));
+  render(
+    <Provider store={store}>
+      <DocumentTabs
+        adapter={{ closeDocument: adapterClose }}
+        onCloseDocument={onCloseDocument}
+      />
+    </Provider>,
+  );
+
+  middleClick(screen.getByRole('tab', { name: /one\.md/ }));
+
+  await waitFor(() =>
+    expect(onCloseDocument).toHaveBeenCalledWith('one', 4, 'single', ['one']),
+  );
+  // The shell funnel owns the prompt, so the adapter must not be reached
+  // behind its back.
+  expect(adapterClose).not.toHaveBeenCalled();
+});
+
+// Proves: FR-FT-034 (partial — the middle-click clause only; that no other
+// auxiliary button closes a tab)
+it('T141 leaves the tab open for a right-button auxiliary click', () => {
+  const first = documentFor('one', '/repo/one.md');
+  hydrate([first]);
+  const onCloseDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+    status: 'closed',
+    activeDocumentId: undefined,
+    orderedDocumentIds: [],
+  }));
+  render(
+    <Provider store={store}>
+      <DocumentTabs adapter={{}} onCloseDocument={onCloseDocument} />
+    </Provider>,
+  );
+
+  auxClick(screen.getByRole('tab', { name: /one\.md/ }), 2);
+
+  expect(onCloseDocument).not.toHaveBeenCalled();
+});

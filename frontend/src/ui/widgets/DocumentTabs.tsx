@@ -340,6 +340,31 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     [adapter, dispatch, onCloseDocument],
   );
 
+  /*
+   * FR-FT-034 lists three affordances that close the *targeted* tab: the close
+   * control, middle-click, and the tab-specific Close action. All three land
+   * here rather than on `adapter.closeDocument`, because the shell installs
+   * the dirty-close prompt on `onCloseDocument` — a middle-click that reached
+   * the adapter directly would close an unsaved document without asking.
+   */
+  const closeTargetedTab = useCallback(
+    (documentId: string): void => {
+      void closeDocument(documentId, tabSetRevision, 'single', [
+        documentId,
+      ]).then((result): void => {
+        if (
+          result?.activeDocumentId !== undefined &&
+          result.activeDocumentId !== ''
+        ) {
+          focusDocument(result.activeDocumentId);
+        } else {
+          focusFallback();
+        }
+      });
+    },
+    [closeDocument, focusDocument, focusFallback, tabSetRevision],
+  );
+
   const handleTabAction = useCallback(
     async (
       action: TabContextAction,
@@ -511,6 +536,11 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                   tabIndex={active ? 0 : -1}
                   title={document.path || undefined}
                   type="button"
+                  onAuxClick={(event): void => {
+                    if (event.button !== 1) return;
+                    event.preventDefault();
+                    closeTargetedTab(document.documentId);
+                  }}
                   onClick={(): void => {
                     void activateDocument(document.documentId);
                   }}
@@ -547,19 +577,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                   className={styles.tabClose}
                   type="button"
                   onClick={(): void => {
-                    void closeDocument(
-                      document.documentId,
-                      tabSetRevision,
-                    ).then((result): void => {
-                      if (
-                        result?.activeDocumentId !== undefined &&
-                        result.activeDocumentId !== ''
-                      ) {
-                        focusDocument(result.activeDocumentId);
-                      } else {
-                        focusFallback();
-                      }
-                    });
+                    closeTargetedTab(document.documentId);
                   }}
                 >
                   <span aria-hidden="true" className={styles.tabCloseGlyph}>

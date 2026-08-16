@@ -53,7 +53,7 @@ test('FT-VS-02 flushes the latest edit and reports one explicit Save confirmatio
   ).toHaveCount(1);
 });
 
-// Proves: FR-FT-034 (partial — the strip, menu Move, edge disable and announcement; middle-click close is unbuilt, see T141)
+// Proves: FR-FT-034 (partial — the strip, menu Move, edge disable and announcement; the middle-click clause is proved by 'T141 middle-click closes the targeted tab' below)
 // Proves: FR-FT-046 (partial — only the "no clipping" clause, only for the Tab actions menu, only at 1280; the 768 and 375 widths, the other in-scope actions and the divider are proven elsewhere)
 test('FT-VS-03 exposes real tabs, backend-confirmed menu moves, and exact navigation', async ({
   page,
@@ -362,6 +362,36 @@ test('FT-VS-06 close plan gathers a complete choice before any tab removal', asy
     name: 'Save changes before closing?',
   });
   await secondPrompt.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('tab')).toHaveCount(0);
+});
+
+/*
+ * T141. The close affordance already routed through the shell's close funnel,
+ * which is what raises this prompt; middle-click did not exist at all. Proving
+ * the *prompt* rather than the tab count is deliberate — a middle-click wired
+ * straight to the adapter would also make the tab disappear, and would do it by
+ * discarding unsaved work without asking.
+ */
+// Proves: FR-FT-034 (partial — the middle-click clause only)
+test('T141 middle-click closes the targeted tab through the same dirty-close prompt', async ({
+  page,
+}) => {
+  await page.goto('/?close-plan');
+
+  const editor = page.getByRole('textbox', { name: 'Editor content' });
+  await expect(editor).toBeVisible();
+  await editor.press('ControlOrMeta+A');
+  await page.keyboard.type('dirty before the middle click');
+
+  await page.getByRole('tab').first().click({ button: 'middle' });
+
+  const prompt = page.getByRole('dialog', {
+    name: 'Save changes before closing?',
+  });
+  await expectPainted(prompt, 'the close prompt raised by a middle-click');
+  await expect(page.getByRole('tab')).toHaveCount(1);
+
+  await prompt.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('tab')).toHaveCount(0);
 });
 
