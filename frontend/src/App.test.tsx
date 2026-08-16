@@ -226,6 +226,7 @@ import {
 } from './logic/store/notificationsSlice';
 import { reportClassifiedError } from './logic/store/classifiedNotification';
 import type { WireError } from './logic/utils/parseError';
+import type { ClassifiedError } from './logic/store/appModelTypes';
 import {
   createAppModelAdapter,
   type AppModelBindings,
@@ -1857,5 +1858,206 @@ it('FR-FT-005 reports the 50 MiB open refusal with the limit named', async () =>
   );
 
   mockedAppModelAdapter.openDocument = undefined;
+  act((): void => disposeAppModelProjection());
+});
+
+/*
+ * T156. Go classifies a stale tab-set refusal as `conflict` and sends `Retry`
+ * with it — "The tab set changed; Open must be retried."
+ * (`internal/appmodel/file_lifecycle.go:136,167`) — and the contract's
+ * `conflict` row covers exactly that pairing since T159. The four entry callers
+ * declared no intent, so `remediationsFor` dropped the `Retry` Go had sent and
+ * the user was told to retry a command with nothing to retry it with.
+ *
+ * The retry has to re-read `tabSetRevision`: the revision that failed is by
+ * definition the stale one, so re-sending it would refuse identically. That is
+ * the assertion below, and it is the one a "call the same thing again" fix
+ * would fail.
+ */
+function staleTabSetRefusal(message: string): ClassifiedError {
+  return {
+    category: 'conflict',
+    message,
+    remediations: ['Retry'],
+    dedupKey: 'stale-tab-set',
+    safeSubject: 'one.md',
+  };
+}
+
+// Proves: FR-FT-015 and the classified error and remediation contract's
+// `conflict` row (partial — the entry paths' `Retry` only: that the control is
+// offered, and that it re-issues against a revision read fresh from the
+// backend. The close-plan path is T164 and the tab reorder arm is T165.)
+it('T156 offers Retry on a refused New and re-issues it against the fresh revision', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    ...bootstrapState('draft', 12),
+    snapshot: { ...bootstrapState('draft', 12).snapshot, tabSetRevision: 41 },
+  });
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  const newDocument = jest
+    .fn()
+    .mockResolvedValueOnce({
+      error: staleTabSetRefusal('The tab set changed; New must be retried.'),
+    })
+    .mockResolvedValueOnce({
+      data: { documentId: 'document-2', content: '' },
+    });
+  mockedAppModelAdapter.newDocument = newDocument;
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'New File' }));
+
+  const retry = await screen.findByRole('button', { name: 'Retry' });
+  const firstRevision = newDocument.mock.calls[0]?.[0] as number;
+  expect(firstRevision).toBe(41);
+  /*
+   * The tab set moves on while the toast is up — which is what the refusal was
+   * telling the user. A retry that re-sent the revision it already had would
+   * send 41 again and refuse identically.
+   */
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    ...bootstrapState('draft', 13),
+    snapshot: { ...bootstrapState('draft', 13).snapshot, tabSetRevision: 99 },
+  });
+
+  fireEvent.click(retry);
+  await waitFor(() => expect(newDocument).toHaveBeenCalledTimes(2));
+  expect(newDocument.mock.calls[1]?.[0]).toBe(99);
+  expect(newDocument.mock.calls[1]?.[0]).not.toBe(firstRevision);
+  // The refusal is resolved, so the toast that carried the control goes.
+  await waitFor(() =>
+    expect(store.getState().notifications.items).toHaveLength(0),
+  );
+
+  mockedAppModelAdapter.newDocument = undefined;
+  act((): void => disposeAppModelProjection());
+});
+
+// Proves: the classified error and remediation contract's `conflict` row
+// (partial — that `open-recent` carries the path its retry needs, and that a
+// retry with no path is not offered at all rather than rendered inert.)
+it('T156 re-issues Open Recent against the same path and a fresh revision', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    ...bootstrapState('draft', 12),
+    snapshot: {
+      ...bootstrapState('draft', 12).snapshot,
+      tabSetRevision: 77,
+      recentFiles: ['/documents/recent.md'],
+    },
+  });
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  const openRecentFile = jest
+    .fn()
+    .mockResolvedValueOnce({
+      error: staleTabSetRefusal('The tab set changed; Open must be retried.'),
+    })
+    .mockResolvedValueOnce({
+      activeBuffer: { documentId: 'document-3', content: '' },
+    });
+  mockedAppModelAdapter.openRecentFile = openRecentFile;
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'recent.md' }));
+
+  const recentRetry = await screen.findByRole('button', { name: 'Retry' });
+  expect(openRecentFile.mock.calls[0]).toEqual(['/documents/recent.md', 77]);
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    ...bootstrapState('draft', 13),
+    snapshot: {
+      ...bootstrapState('draft', 13).snapshot,
+      tabSetRevision: 78,
+      recentFiles: ['/documents/recent.md'],
+    },
+  });
+
+  fireEvent.click(recentRetry);
+  await waitFor(() => expect(openRecentFile).toHaveBeenCalledTimes(2));
+  expect(openRecentFile.mock.calls[1]).toEqual(['/documents/recent.md', 78]);
+
+  mockedAppModelAdapter.openRecentFile = undefined;
+  act((): void => disposeAppModelProjection());
+});
+
+/*
+ * The construction-side guarantee, asserted directly rather than through the
+ * interface: an intent whose arguments are missing must produce no control at
+ * all. Without this the "do not add an intent without the command behind it"
+ * rule holds only for the call sites that exist today.
+ */
+// Proves: the classified error and remediation contract (partial — the rule
+// that a remediation is offered only when its command can run).
+it('T156 offers no Retry for an intent whose command has no arguments to run with', () => {
+  store.dispatch(resetNotifications());
+  act((): void => {
+    reportClassifiedError(
+      store.dispatch,
+      staleTabSetRefusal('The tab set changed; Open must be retried.'),
+      'File operation failed',
+      { intent: 'open-recent' },
+    );
+  });
+  expect(store.getState().notifications.items[0]?.remediations).toEqual([]);
+
+  store.dispatch(resetNotifications());
+  act((): void => {
+    reportClassifiedError(
+      store.dispatch,
+      staleTabSetRefusal('The tab set changed; the switch must be retried.'),
+      'File operation failed',
+      { intent: 'activate-document' },
+    );
+  });
+  expect(store.getState().notifications.items[0]?.remediations).toEqual([]);
+});
+
+/*
+ * The tab strip declares this intent (`DocumentTabs.tsx`) but the command runs
+ * here, so the two halves are proved in the two places. `DocumentTabs.test.tsx`
+ * owns the declaration; this owns the execution.
+ */
+// Proves: the classified error and remediation contract's `conflict` row
+// (partial — the tab-activation `Retry` re-issuing against a fresh revision.)
+it('T156 re-activates the named tab against a fresh revision from the Retry', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    ...bootstrapState('draft', 12),
+    snapshot: { ...bootstrapState('draft', 12).snapshot, tabSetRevision: 63 },
+  });
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  const activateDocument = jest.fn().mockResolvedValue({});
+  mockedAppModelAdapter.activateDocument = activateDocument;
+
+  render(<App />);
+  await screen.findByRole('button', { name: 'File' });
+  act((): void => {
+    reportClassifiedError(
+      store.dispatch,
+      staleTabSetRefusal('The tab set changed; the switch must be retried.'),
+      'File operation failed',
+      { intent: 'activate-document', retry: { documentId: 'document-1' } },
+    );
+  });
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(activateDocument).toHaveBeenCalledTimes(1));
+  expect(activateDocument).toHaveBeenCalledWith('document-1', 63);
+
+  mockedAppModelAdapter.activateDocument = undefined;
   act((): void => disposeAppModelProjection());
 });

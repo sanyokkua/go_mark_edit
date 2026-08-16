@@ -78,6 +78,18 @@ export interface ClassifiedReportOptions {
    * control by naming the command.
    */
   intent?: NotificationRemediationIntent;
+  /**
+   * Everything the retry command needs beyond the failing document, and the
+   * reason a caller can be refused its control.
+   *
+   * `open-recent` re-issues a specific path, and `activate-document` acts on
+   * the tab the user clicked rather than on whatever document the error
+   * happens to name — a stale tab-set refusal often names none. A retry is
+   * offered only when every argument its intent requires is present, so the
+   * "control with no command behind it" case is unreachable by construction
+   * rather than guarded at the click.
+   */
+  retry?: { documentId?: string; path?: string };
 }
 
 /**
@@ -100,18 +112,57 @@ export interface ClassifiedReportOptions {
  * different reason: the contract routes them through the external-change prompt
  * and the close prompt, not through a toast.
  */
+/**
+ * Whether the named command has everything it needs to run.
+ *
+ * The intent alone is not the promise — `open-recent` without a path and
+ * `activate-document` without a document are both buttons that would call
+ * nothing, which is the defect T116 removed. Naming each intent's arguments
+ * here, once, is what keeps the check from drifting per call site.
+ */
+function retryIsExecutable(
+  intent: NotificationRemediationIntent,
+  documentId: string | undefined,
+  path: string | undefined,
+): boolean {
+  switch (intent) {
+    case 'copy-path':
+    case 'reveal':
+    case 'activate-document':
+      return documentId !== undefined && documentId !== '';
+    case 'open-recent':
+      return path !== undefined && path !== '';
+    case 'new-document':
+    case 'open-document':
+    case 'reopen-last':
+    case 'save':
+    case 'save-as':
+      return true;
+    default: {
+      const unhandled: never = intent;
+      return unhandled;
+    }
+  }
+}
+
 function remediationsFor(
   error: ClassifiedError,
   options: ClassifiedReportOptions,
 ): NotificationRemediation[] {
   const offered: NotificationRemediation[] = [];
-  const { intent } = options;
-  if (intent !== undefined && error.remediations.includes('Retry')) {
+  const { intent, retry } = options;
+  const documentId = retry?.documentId ?? error.documentId;
+  if (
+    intent !== undefined &&
+    error.remediations.includes('Retry') &&
+    retryIsExecutable(intent, documentId, retry?.path)
+  ) {
     offered.push({
       action: 'retry',
-      documentId: error.documentId,
+      documentId,
       intent,
       labelKey: 'action.retry.label',
+      ...(retry?.path === undefined ? {} : { path: retry.path }),
     });
   }
   // `copy-path` names its own command, so it needs no intent from the caller —

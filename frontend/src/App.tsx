@@ -216,6 +216,17 @@ interface ApplicationMenuState {
   onRequestedMenuHandled: () => void;
 }
 
+/**
+ * What a retry needs to read back from an entry command: whether it refused.
+ *
+ * Narrower than the adapter's own result on purpose — the retry arm decides
+ * only whether to dismiss the toast or leave it standing, and every other field
+ * has already been applied by the handler that owns it.
+ */
+interface EntryCommandOutcome {
+  error?: ClassifiedError;
+}
+
 const ApplicationMenuContext = createContext<ApplicationMenuState | null>(null);
 
 const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
@@ -474,14 +485,35 @@ const AppContents: React.FC = (): React.JSX.Element => {
    * `reportWriteError` because it preserves the backend's message instead of
    * substituting generic catalog copy.
    */
+  /*
+   * T156: the entry paths now name the command behind their `Retry`.
+   *
+   * Every refusal these four report on a stale tab set is `conflict` carrying
+   * `Retry` — "The tab set changed; Open must be retried."
+   * (`internal/appmodel/file_lifecycle.go:136,167`) — and the contract's
+   * `conflict` row covers exactly that pairing since T159. The command is
+   * well defined and identical for all four: re-read `tabSetRevision` from the
+   * backend and re-issue the same entry command against it. Until this, no
+   * intent was declared, so `remediationsFor` dropped the `Retry` Go had sent
+   * and the user was told to retry with nothing to retry with.
+   */
   const reportEntryError = useCallback(
-    (error: ClassifiedError | undefined): void => {
-      reportClassifiedError(dispatch, error, t('notification.error.io.title'));
+    (
+      error: ClassifiedError | undefined,
+      intent: NotificationRemediationIntent,
+      path?: string,
+    ): void => {
+      reportClassifiedError(dispatch, error, t('notification.error.io.title'), {
+        intent,
+        ...(path === undefined ? {} : { retry: { path } }),
+      });
     },
     [dispatch],
   );
   const onNewDocument = useCallback(
-    async (expectedTabSetRevision: number): Promise<unknown> => {
+    async (
+      expectedTabSetRevision: number,
+    ): Promise<EntryCommandOutcome | undefined> => {
       await flushActiveDocument();
       const result = await appModelAdapter.newDocument?.(
         expectedTabSetRevision,
@@ -489,13 +521,15 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (result?.data !== undefined) {
         setActiveBuffer(result.data);
       }
-      reportEntryError(result?.error);
+      reportEntryError(result?.error, 'new-document');
       return result;
     },
     [flushActiveDocument, reportEntryError],
   );
   const onOpenDocument = useCallback(
-    async (expectedTabSetRevision: number): Promise<unknown> => {
+    async (
+      expectedTabSetRevision: number,
+    ): Promise<EntryCommandOutcome | undefined> => {
       await flushActiveDocument();
       const result = await appModelAdapter.openDocument?.(
         expectedTabSetRevision,
@@ -503,13 +537,16 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (result?.activeBuffer !== undefined) {
         setActiveBuffer(result.activeBuffer);
       }
-      reportEntryError(result?.error);
+      reportEntryError(result?.error, 'open-document');
       return result;
     },
     [flushActiveDocument, reportEntryError],
   );
   const onOpenRecentFile = useCallback(
-    async (path: string, expectedTabSetRevision: number): Promise<unknown> => {
+    async (
+      path: string,
+      expectedTabSetRevision: number,
+    ): Promise<EntryCommandOutcome | undefined> => {
       await flushActiveDocument();
       const result = await appModelAdapter.openRecentFile?.(
         path,
@@ -518,13 +555,15 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (result?.activeBuffer !== undefined) {
         setActiveBuffer(result.activeBuffer);
       }
-      reportEntryError(result?.error);
+      reportEntryError(result?.error, 'open-recent', path);
       return result;
     },
     [flushActiveDocument, reportEntryError],
   );
   const onReopenLastFile = useCallback(
-    async (expectedTabSetRevision: number): Promise<unknown> => {
+    async (
+      expectedTabSetRevision: number,
+    ): Promise<EntryCommandOutcome | undefined> => {
       await flushActiveDocument();
       const result = await appModelAdapter.reopenLastFile?.(
         expectedTabSetRevision,
@@ -532,7 +571,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (result?.activeBuffer !== undefined) {
         setActiveBuffer(result.activeBuffer);
       }
-      reportEntryError(result?.error);
+      reportEntryError(result?.error, 'reopen-last');
       return result;
     },
     [flushActiveDocument, reportEntryError],
@@ -1201,6 +1240,48 @@ const AppContents: React.FC = (): React.JSX.Element => {
    * caller must name to earn the button, and the switch below is exhaustive, so
    * a new intent that names no command fails the build.
    */
+  /*
+   * Re-issue the command a `Retry` names, against a revision read fresh.
+   *
+   * Each arm calls the same handler the original invocation used, so the flush,
+   * the active-buffer update and the re-report of a second refusal all stay in
+   * one place — a retry that duplicated those would drift from the first
+   * attempt, which is the shape of defect this task exists to avoid.
+   */
+  const retryEntryCommand = useCallback(
+    async (
+      remediation: NotificationRemediation,
+      revision: number,
+    ): Promise<EntryCommandOutcome | undefined> => {
+      switch (remediation.intent) {
+        case 'new-document':
+          return onNewDocument(revision);
+        case 'open-document':
+          return onOpenDocument(revision);
+        case 'open-recent':
+          // `remediationsFor` refuses to offer this control without a path, so
+          // the guard is a type narrowing rather than a reachable branch.
+          return remediation.path === undefined
+            ? undefined
+            : onOpenRecentFile(remediation.path, revision);
+        case 'reopen-last':
+          return onReopenLastFile(revision);
+        case 'activate-document':
+          return remediation.documentId === undefined
+            ? undefined
+            : onActivateDocument(remediation.documentId, revision);
+        default:
+          return undefined;
+      }
+    },
+    [
+      onActivateDocument,
+      onNewDocument,
+      onOpenDocument,
+      onOpenRecentFile,
+      onReopenLastFile,
+    ],
+  );
   const onRemediate = useCallback(
     async (
       remediation: NotificationRemediation,
@@ -1256,6 +1337,28 @@ const AppContents: React.FC = (): React.JSX.Element => {
           dispatch(dismissNotification(notificationId));
           return;
         }
+        case 'new-document':
+        case 'open-document':
+        case 'open-recent':
+        case 'reopen-last':
+        case 'activate-document': {
+          /*
+           * The whole reason this arm exists: the refusal these controls
+           * remediate is "The tab set changed; … must be retried", so the
+           * revision that failed is by definition stale and re-sending it would
+           * refuse identically — the same reasoning that makes the write arm
+           * below use `beginWrite` rather than `finishWrite`. The fresh
+           * revision is read from the backend rather than from the store,
+           * because the store is a projection and the patch carrying the change
+           * may not have arrived yet.
+           */
+          const state = await appModelAdapter.getState();
+          const revision = state.snapshot.tabSetRevision ?? 0;
+          const result = await retryEntryCommand(remediation, revision);
+          if (result === undefined || result.error !== undefined) return;
+          dispatch(dismissNotification(notificationId));
+          return;
+        }
         case 'save':
         case 'save-as': {
           /*
@@ -1276,7 +1379,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
         }
       }
     },
-    [announceRemediation, beginWrite, dispatch],
+    [announceRemediation, beginWrite, dispatch, retryEntryCommand],
   );
   const onQuit = useCallback((): void => {
     if (parityQuitPrompt) {

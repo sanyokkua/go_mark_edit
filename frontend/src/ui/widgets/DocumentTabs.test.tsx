@@ -11,6 +11,7 @@ import {
 import { Provider } from 'react-redux';
 
 import type {
+  ClassifiedError,
   ConflictPreview,
   DocumentMetadata,
   DocumentTransitionResult,
@@ -1314,4 +1315,51 @@ it('T129 keeps the active document and the focused element across a keyboard Mov
   expect(activateDocument).not.toHaveBeenCalled();
   expect(store.getState().documents.activeDocumentId).toBe('two');
   expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveFocus();
+});
+
+/*
+ * T156. Go refuses a switch against a stale tab set with `conflict` and sends
+ * `Retry` — "The tab set changed; the switch must be retried." This arm
+ * declared no intent, so `remediationsFor` dropped the control Go had sent.
+ * `retry.documentId` is named explicitly rather than taken from the error,
+ * because a stale-tab-set refusal is about the *set* and carries no document;
+ * without it the control would be dropped for want of a target the strip has.
+ * The command itself runs in `App.tsx`, and `App.test.tsx`'s
+ * 'T156 re-activates the named tab against a fresh revision' proves that half.
+ */
+// Proves: the classified error and remediation contract's `conflict` row
+// (partial — only that this caller declares an executable retry, naming the tab
+// it acted on. The re-issue is proved in App.test.tsx.)
+it('T156 offers Retry on a refused activation, naming the tab it acted on', async () => {
+  hydrate([
+    documentFor('one', '/repo/one.md'),
+    documentFor('two', '/repo/two.md'),
+  ]);
+  store.dispatch(resetNotifications());
+  const activateDocument = jest.fn(
+    async (): Promise<DocumentTransitionResult> => ({
+      error: {
+        category: 'conflict',
+        safeSubject: 'two.md',
+        message: 'The tab set changed; the switch must be retried.',
+        remediations: ['Retry'],
+        dedupKey: 'activate:stale-tab-set',
+      } satisfies ClassifiedError,
+    }),
+  );
+  renderTabs({ activateDocument });
+
+  fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
+
+  await waitFor(() =>
+    expect(store.getState().notifications.items).toHaveLength(1),
+  );
+  expect(store.getState().notifications.items[0]?.remediations).toEqual([
+    {
+      action: 'retry',
+      documentId: 'two',
+      intent: 'activate-document',
+      labelKey: 'action.retry.label',
+    },
+  ]);
 });

@@ -21,14 +21,37 @@ export type NotificationSeverity = 'error' | 'info' | 'success' | 'warning';
  */
 export type NotificationRemediationAction = 'copy-path' | 'retry';
 
+/**
+ * The command a remediation control runs.
+ *
+ * Every member names something the application can actually execute; a caller
+ * that cannot name one gets no control, which is what keeps a rendered button
+ * from calling nothing. The entry members were added by T156: Go classifies a
+ * stale tab-set refusal as `conflict` and sends `Retry`, and the contract's
+ * `conflict` row (amended by T159) covers exactly that — re-reading
+ * `tabSetRevision` and re-issuing the same command.
+ */
 export type NotificationRemediationIntent =
-  'copy-path' | 'reveal' | 'save' | 'save-as';
+  | 'copy-path'
+  | 'reveal'
+  | 'save'
+  | 'save-as'
+  | 'new-document'
+  | 'open-document'
+  | 'open-recent'
+  | 'reopen-last'
+  | 'activate-document';
 
 export interface NotificationRemediation {
   action: NotificationRemediationAction;
   documentId?: string;
   intent: NotificationRemediationIntent;
   labelKey: string;
+  /**
+   * The recent-file path an `open-recent` retry re-issues. Absent for every
+   * other intent, and a retry is not offered at all without it.
+   */
+  path?: string;
 }
 
 export interface Notification {

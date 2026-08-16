@@ -233,10 +233,20 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         'error' in result &&
         result.error !== undefined
       ) {
+        /*
+         * T156. A refused activation is `conflict` — "The tab set changed; the
+         * switch must be retried." — and Go sends `Retry` with it. The command
+         * is well defined: re-read `tabSetRevision` and activate the same tab
+         * again. `retry.documentId` names it explicitly rather than relying on
+         * `error.documentId`, because a stale-tab-set refusal is about the set
+         * and frequently names no document at all; without it the control would
+         * be dropped for want of a target it does have.
+         */
         reportClassifiedError(
           dispatch,
           result.error,
           'The document could not be activated.',
+          { intent: 'activate-document', retry: { documentId } },
         );
       }
       if (result?.conflict !== undefined) {
