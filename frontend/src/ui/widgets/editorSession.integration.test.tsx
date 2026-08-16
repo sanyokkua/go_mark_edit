@@ -407,6 +407,11 @@ it('STORY-030-AC-3 rejects active-tab and stale-identity mismatch', async () => 
 });
 
 // Proves: FR-FT-030
+// Proves: SC-FT-003 (partial — the predicate `acceptsActivationAcknowledgement`
+// alone, not the wiring that calls it. A green run here says nothing about
+// whether production consults the guard; that is T128's case in App.test.tsx,
+// and the reason this test passed for a whole phase while production installed
+// acknowledgements unconditionally.)
 it('T017 rejects a late activation acknowledgement without installing content', () => {
   const document = documentFor(true, false);
   const acknowledgement = {

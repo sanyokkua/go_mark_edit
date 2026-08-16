@@ -2385,6 +2385,12 @@ function activationRefusal(dedupKey: string): ClassifiedError {
 // Proves: FR-FT-030 (the identity-and-revision guard on tab activation). The
 // clause "inactive reloads update backend state only until later activation"
 // is not exercised here — no reload is issued.
+// Proves: SC-FT-003 (partial — the "stale … switches produce zero cross-
+// document text installations" clause, for one supersession between two
+// documents). It does NOT prove the failed-switch arm (see T140 below), the
+// criterion's "repeated switches among 40 distinct documents" scale, or its
+// caret/selection/scroll restoration half. Scope map:
+// specs/003-real-files-and-tabs/evidence/sc-ft-003/switch-integrity.md
 it('T128 never installs the acknowledgement of a superseded tab switch', async () => {
   act((): void => disposeAppModelProjection());
   store.dispatch(resetProjection());
@@ -2484,6 +2490,11 @@ it('T128 never installs the acknowledgement of a superseded tab switch', async (
 // Proves: FR-FT-031 (the failure clause, on the shell's activation handler:
 // the failure is reported, the outgoing tab stays active, and no incoming
 // content is installed). The flush-and-await *ordering* is proved separately.
+// Proves: SC-FT-003 (partial — the "failed switches produce zero cross-document
+// text installations" clause only, for an outgoing-flush rejection). The stale
+// arm is T128 above; neither the 40-document scale nor the restoration half is
+// exercised here. Scope map:
+// specs/003-real-files-and-tabs/evidence/sc-ft-003/switch-integrity.md
 it('T140 refuses a switch whose outgoing flush fails and installs no incoming content', async () => {
   act((): void => disposeAppModelProjection());
   store.dispatch(resetProjection());

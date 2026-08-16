@@ -8,9 +8,17 @@ Covered here: the 40-document boundary, the 41st-document refusal, the 50 MiB re
 relaunch-without-session-restore claim. Covered in siblings rather than here: the 10 MiB pair
 (`sc-ft-002/boundaries-2026-08-15.md`), the tab, close and autosave journeys
 (`current-host-walkthrough.md`), and the default-open-mode journey
-(`default-open-mode-2026-08-15.md`). **No single walkthrough covers the whole criterion**, and
-SC-FT-011 also asks for preserved bytes and permissions after a real save and one resolved external
-change — see **T158**, which owns naming the artifact per clause.
+(`default-open-mode-2026-08-15.md`). **No single walkthrough covers the whole criterion.**
+
+**The per-clause map now exists**: [`../sc-ft-011/walkthrough-clause-map.md`](../sc-ft-011/walkthrough-clause-map.md),
+written by T158. Read it before citing this file for SC-FT-011 — it names nine covered clauses and
+**two that nothing in the tree covers**: preserved *permissions* after a real save (no artifact
+checks a file mode; the `ls -la` listings carry one as an unexamined by-product), and the mapped
+webview chrome compared against the same-browser result (`host-screenshots/README.md` explicitly
+disclaims that comparison). It also records that clause 10's demonstrated/deferred/host-unverified
+ledger does not exist — `grep -i host-unverified` over this whole directory returns nothing — and
+that the single external-change resolution rests on the 2026-08-11 run, which names no commit and
+predates five later host-found defects. The remainder is filed as **T186**.
 
 Binary: `build/bin/GoMarkEdit.app`, rebuilt at 10:57 from commit `790375fb` — after the T104
 autosave fix and after T107's classified-refusal fix. Host: darwin/arm64. Method: macOS screen
