@@ -297,41 +297,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     [conflictAdapter, conflictBusy, conflictPreview, dispatch],
   );
 
-  useEffect((): (() => void) => {
-    const navigate = (event: KeyboardEvent): void => {
-      if (modalOpen || conflictPreview !== null) return;
-      const binding = shortcutForKeyEvent(event, currentPlatform());
-      if (binding === undefined) return;
-      const action = actionsForSurface('shortcuts').find(
-        (candidate) =>
-          candidate.shortcut === binding ||
-          candidate.shortcutAliases?.includes(binding),
-      );
-      if (action?.id !== 'next-tab' && action?.id !== 'previous-tab') return;
-      if (orderedDocuments.length < 2 || activeDocumentId === null) return;
-      const current = orderedDocuments.findIndex(
-        (document) => document.documentId === activeDocumentId,
-      );
-      if (current < 0) return;
-      event.preventDefault();
-      const offset = action.id === 'next-tab' ? 1 : -1;
-      const target =
-        orderedDocuments[
-          (current + offset + orderedDocuments.length) % orderedDocuments.length
-        ];
-      if (target !== undefined) void activateDocument(target.documentId);
-    };
-    globalThis.document.addEventListener('keydown', navigate);
-    return (): void =>
-      globalThis.document.removeEventListener('keydown', navigate);
-  }, [
-    activateDocument,
-    activeDocumentId,
-    conflictPreview,
-    modalOpen,
-    orderedDocuments,
-  ]);
-
   const closeDocument = useCallback(
     async (
       documentId: string,
@@ -488,6 +453,91 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       tabSetRevision,
     ],
   );
+
+  /*
+   * The tab strip's own accelerator listener. It answers for four registry
+   * ids, not two: `next-tab` and `previous-tab` cycle the selection, and
+   * `move-tab-left`/`move-tab-right` reorder the active tab. FR-FT-034 binds
+   * the latter pair to `Ctrl/Cmd+Shift+PageUp/PageDown`, and
+   * `shortcutForKeyEvent` has always resolved those bindings — until T129 the
+   * ids were simply in nobody's list, so the keys resolved to an action that
+   * nothing then dispatched. `useShellShortcuts` cannot cover them either: it
+   * is installed once over `actionsForSurface('file-menu')`, and the only
+   * surface these two declare is `tab-context`.
+   *
+   * A Move goes through `handleTabAction`, the same path the context menu
+   * uses, so the command still carries the tab-set revision FR-FT-033
+   * requires and still produces the `editor.tab.moved` announcement.
+   */
+  useEffect((): (() => void) => {
+    const navigate = (event: KeyboardEvent): void => {
+      if (modalOpen || conflictPreview !== null) return;
+      const binding = shortcutForKeyEvent(event, currentPlatform());
+      if (binding === undefined) return;
+      /*
+       * Two surfaces, because the four ids this listener answers for do not
+       * share one. `next-tab`/`previous-tab` declare `shortcuts`;
+       * `move-tab-left`/`move-tab-right` declare only `tab-context`, which is
+       * how their bindings came to resolve to an action nobody dispatched.
+       * The registry is left alone: adding `shortcuts` to those two entries
+       * would also list them in the keyboard-shortcuts dialog, which is a
+       * user-visible change FR-FT-034 does not ask for.
+       */
+      const action = [
+        ...actionsForSurface('shortcuts'),
+        ...actionsForSurface('tab-context'),
+      ].find(
+        (candidate) =>
+          candidate.shortcut === binding ||
+          candidate.shortcutAliases?.includes(binding),
+      );
+      if (action === undefined) return;
+      const moving =
+        action.id === 'move-tab-left' || action.id === 'move-tab-right';
+      if (action.id !== 'next-tab' && action.id !== 'previous-tab' && !moving) {
+        return;
+      }
+      if (orderedDocuments.length < 2 || activeDocumentId === null) return;
+      const current = orderedDocuments.findIndex(
+        (document) => document.documentId === activeDocumentId,
+      );
+      if (current < 0) return;
+      event.preventDefault();
+      if (moving) {
+        const active = orderedDocuments[current];
+        if (active === undefined) return;
+        const targetIndex = current + (action.id === 'move-tab-left' ? -1 : 1);
+        /*
+         * FR-FT-034: "Moving past an edge MUST succeed as a no-op without
+         * incrementing the tab-set revision." Clamping the index instead —
+         * `Math.max(0, current - 1)` — would issue a reorder to the position
+         * the tab already occupies, and the backend would answer it with a
+         * new tab-set revision. Succeeding here means consuming the key and
+         * issuing nothing: no command, no revision, no announcement, and no
+         * error either, because this is not a refusal.
+         */
+        if (targetIndex < 0 || targetIndex >= orderedDocuments.length) return;
+        void handleTabAction(action.id, active, targetIndex);
+        return;
+      }
+      const offset = action.id === 'next-tab' ? 1 : -1;
+      const target =
+        orderedDocuments[
+          (current + offset + orderedDocuments.length) % orderedDocuments.length
+        ];
+      if (target !== undefined) void activateDocument(target.documentId);
+    };
+    globalThis.document.addEventListener('keydown', navigate);
+    return (): void =>
+      globalThis.document.removeEventListener('keydown', navigate);
+  }, [
+    activateDocument,
+    activeDocumentId,
+    conflictPreview,
+    handleTabAction,
+    modalOpen,
+    orderedDocuments,
+  ]);
 
   const contextAdapter: TabContextAdapter = adapter;
 

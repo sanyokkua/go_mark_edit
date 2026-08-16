@@ -458,6 +458,58 @@ test('T153 returns focus to the launcher New control when the last tab closes', 
   await expect(page.getByRole('tab')).toHaveCount(0);
 });
 
+/*
+ * T129. The bindings resolved and the actions existed; nothing dispatched
+ * them, so both accelerators were dead keys. Pressing the real keys against
+ * the real shell is the point — a unit test can call a handler that no key
+ * reaches.
+ */
+// Proves: FR-FT-034 (partial — the Move tab accelerators and the edge no-op,
+// end to end; the "no revision increment" half of the edge clause is proved in
+// DocumentTabs.test.tsx, where the absence of a command is observable)
+test('T129 reorders the active tab with the Move accelerators and no-ops at the edge', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'New tab' }).click();
+  await expect(page.getByRole('tab')).toHaveCount(2);
+  await expect(page.getByRole('tab').nth(1)).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+
+  const order = (): Promise<(string | null)[]> =>
+    page
+      .getByRole('tab')
+      .evaluateAll((tabs) =>
+        tabs.map((tab) => tab.getAttribute('data-document-id')),
+      );
+  const before = await order();
+
+  await page.keyboard.press('ControlOrMeta+Shift+PageUp');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Moved' }),
+  ).toContainText('position 1 of 2');
+  expect(await order()).toEqual([before[1], before[0]]);
+  await expect(page.getByRole('tab').nth(0)).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+
+  // The active tab now sits at the left-hand edge: the same key must succeed
+  // and change nothing.
+  await page.keyboard.press('ControlOrMeta+Shift+PageUp');
+  await expect(page.locator('[data-notification-code]')).toHaveCount(0);
+  expect(await order()).toEqual([before[1], before[0]]);
+
+  await page.keyboard.press('ControlOrMeta+Shift+PageDown');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Moved' }),
+  ).toContainText('position 2 of 2');
+  expect(await order()).toEqual(before);
+});
+
 test('FT-VS-07 proves recents, reopen, launcher, and responsive status controls', async ({
   page,
 }) => {

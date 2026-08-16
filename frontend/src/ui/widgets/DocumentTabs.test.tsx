@@ -1176,3 +1176,142 @@ it('T153 falls back to the launcher New control once the strip is gone', async (
     expect(screen.getByRole('button', { name: 'New File' })).toHaveFocus(),
   );
 });
+
+/*
+ * T129. FR-FT-034 binds Move tab left/right to `Ctrl/Cmd+Shift+PageUp` and
+ * `Ctrl/Cmd+Shift+PageDown`. `shortcutForKeyEvent` already resolved both — the
+ * ids were simply in nobody's dispatch list, so pressing either did nothing at
+ * all. These press the real keys rather than calling the handler, because the
+ * whole defect was the gap between a resolvable binding and a listener that
+ * would act on it.
+ */
+// Proves: FR-FT-034 (partial — the Move tab accelerators, backend-confirmed
+// projection and announcement; the edge no-op is proved separately below)
+it('T129 reorders the active tab with the Move tab accelerators and announces the move', async () => {
+  hydrate(
+    [
+      documentFor('one', '/repo/one.md'),
+      documentFor('two', '/repo/two.md'),
+      documentFor('three', '/repo/three.md'),
+    ],
+    'two',
+  );
+  store.dispatch(resetNotifications());
+  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+    status: 'reordered',
+    orderedDocumentIds: ['one', 'three', 'two'],
+  }));
+  renderTabs({ reorderDocument });
+
+  fireEvent.keyDown(document, {
+    key: 'PageDown',
+    ctrlKey: true,
+    shiftKey: true,
+  });
+  await waitFor(() =>
+    expect(reorderDocument).toHaveBeenCalledWith('two', 2, 4),
+  );
+  await waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Moved two.md to position 3 of 3',
+    ),
+  );
+
+  fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true, shiftKey: true });
+  await waitFor(() =>
+    expect(reorderDocument).toHaveBeenNthCalledWith(2, 'two', 0, 4),
+  );
+});
+
+/*
+ * The genuinely new rule. FR-FT-034: "Moving past an edge MUST succeed as a
+ * no-op without incrementing the tab-set revision." Succeeding is what
+ * separates it from a refusal — no error is reported — and *not incrementing*
+ * is what separates it from a reorder that happens to land where it started.
+ * The strongest way to prove no increment is that no command is issued at all.
+ */
+// Proves: FR-FT-034 (partial — the edge no-op clause only)
+it('T129 treats a Move past either edge as a successful no-op that does not bump the tab-set revision', async () => {
+  hydrate(
+    [documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')],
+    'one',
+  );
+  store.dispatch(resetNotifications());
+  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+    status: 'reordered',
+    orderedDocumentIds: ['two', 'one'],
+    tabSetRevision: 5,
+  }));
+  renderTabs({ reorderDocument });
+
+  const revisionBefore = store.getState().documents.tabSetRevision;
+  fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true, shiftKey: true });
+  await Promise.resolve();
+
+  expect(reorderDocument).not.toHaveBeenCalled();
+  expect(store.getState().documents.tabSetRevision).toBe(revisionBefore);
+  expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
+  expect(store.getState().notifications.items).toHaveLength(0);
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+});
+
+// Proves: FR-FT-034 (partial — the edge no-op clause at the right-hand edge)
+it('T129 treats a Move past the right-hand edge as the same successful no-op', async () => {
+  hydrate(
+    [documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')],
+    'two',
+  );
+  store.dispatch(resetNotifications());
+  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+    status: 'reordered',
+    orderedDocumentIds: ['two', 'one'],
+    tabSetRevision: 5,
+  }));
+  renderTabs({ reorderDocument });
+
+  const revisionBefore = store.getState().documents.tabSetRevision;
+  fireEvent.keyDown(document, {
+    key: 'PageDown',
+    ctrlKey: true,
+    shiftKey: true,
+  });
+  await Promise.resolve();
+
+  expect(reorderDocument).not.toHaveBeenCalled();
+  expect(store.getState().documents.tabSetRevision).toBe(revisionBefore);
+  expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
+  expect(store.getState().notifications.items).toHaveLength(0);
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+});
+
+// Proves: FR-FT-034 (partial — that a keyboard Move retains the active
+// document and the current focus)
+it('T129 keeps the active document and the focused element across a keyboard Move', async () => {
+  hydrate(
+    [
+      documentFor('one', '/repo/one.md'),
+      documentFor('two', '/repo/two.md'),
+      documentFor('three', '/repo/three.md'),
+    ],
+    'two',
+  );
+  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+    status: 'reordered',
+    orderedDocumentIds: ['two', 'one', 'three'],
+    tabSetRevision: 5,
+  }));
+  const activateDocument = jest.fn(async () => ({}));
+  renderTabs({ activateDocument, reorderDocument });
+
+  const activeTab = screen.getByRole('tab', { name: /two\.md/u });
+  activeTab.focus();
+
+  fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true, shiftKey: true });
+  await waitFor(() =>
+    expect(reorderDocument).toHaveBeenCalledWith('two', 0, 4),
+  );
+
+  expect(activateDocument).not.toHaveBeenCalled();
+  expect(store.getState().documents.activeDocumentId).toBe('two');
+  expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveFocus();
+});
