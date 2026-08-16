@@ -339,10 +339,6 @@ func (repository failingRecentFilesRepository) Promote(context.Context, string) 
 	return nil, repository.err
 }
 
-func (repository failingRecentFilesRepository) Remove(context.Context, string) ([]string, error) {
-	return nil, repository.err
-}
-
 type recordingRecentFilesRepository struct{ paths []string }
 
 func (repository *recordingRecentFilesRepository) List(context.Context) ([]string, error) {
@@ -351,16 +347,5 @@ func (repository *recordingRecentFilesRepository) List(context.Context) ([]strin
 
 func (repository *recordingRecentFilesRepository) Promote(_ context.Context, path string) ([]string, error) {
 	repository.paths = promoteRecentFile(repository.paths, path)
-	return append([]string(nil), repository.paths...), nil
-}
-
-func (repository *recordingRecentFilesRepository) Remove(_ context.Context, path string) ([]string, error) {
-	filtered := repository.paths[:0]
-	for _, candidate := range repository.paths {
-		if candidate != path {
-			filtered = append(filtered, candidate)
-		}
-	}
-	repository.paths = filtered
 	return append([]string(nil), repository.paths...), nil
 }

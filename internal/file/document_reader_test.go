@@ -77,6 +77,15 @@ func TestReadBoundedDoesNotConsumeBeyondLimit(t *testing.T) {
 	}
 }
 
+// readClassifiedAtDefaultLimit is what file.ReadClassifiedDocument used to be:
+// ReadClassified at the configured maximum. T137 deleted the exported alias —
+// nothing in production called it, and production calls ReadClassified with the
+// limit directly — but the classification behaviour these cases prove is real
+// and reachable, so they now drive the same function production does.
+func readClassifiedAtDefaultLimit(path string) (ClassifiedRead, error) {
+	return ReadClassified(path, MaxClassifiedReadBytes)
+}
+
 // Proves: FR-FT-005 (partial — the size thresholds and refusal; the preview pause is proven by PreviewPane.test.tsx)
 func TestReadClassifiedDocument(t *testing.T) {
 	root := t.TempDir()
@@ -90,7 +99,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 	}
 
 	valid := write("valid.MD", []byte("first\r\nsecond\r\n"))
-	read, err := ReadClassifiedDocument(valid)
+	read, err := readClassifiedAtDefaultLimit(valid)
 	if err != nil {
 		t.Fatalf("read valid document: %v", err)
 	}
@@ -108,7 +117,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 	}
 
 	bom := write("bom.md", append([]byte{0xef, 0xbb, 0xbf}, []byte("bom\n")...))
-	bomRead, err := ReadClassifiedDocument(bom)
+	bomRead, err := readClassifiedAtDefaultLimit(bom)
 	if err != nil {
 		t.Fatalf("read BOM document: %v", err)
 	}
@@ -117,7 +126,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 	}
 
 	invalid := write("invalid.md", []byte{'a', 0xff, 0xfe, 'b'})
-	invalidRead, err := ReadClassifiedDocument(invalid)
+	invalidRead, err := readClassifiedAtDefaultLimit(invalid)
 	if err != nil {
 		t.Fatalf("read invalid UTF-8 document: %v", err)
 	}
@@ -129,7 +138,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 	}
 
 	nul := write("nul.txt", []byte{'a', 0, 'b'})
-	nulRead, err := ReadClassifiedDocument(nul)
+	nulRead, err := readClassifiedAtDefaultLimit(nul)
 	if err != nil {
 		t.Fatalf("read NUL document: %v", err)
 	}
@@ -138,7 +147,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 	}
 
 	unsupported := write("unsupported.pdf", []byte("not markdown"))
-	unsupportedRead, err := ReadClassifiedDocument(unsupported)
+	unsupportedRead, err := readClassifiedAtDefaultLimit(unsupported)
 	if err != nil {
 		t.Fatalf("unsupported suffix should return a classified result: %v", err)
 	}
@@ -165,7 +174,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 		t.Run(row.name, func(t *testing.T) {
 			path := filepath.Join(root, row.name+".md")
 			writeRepeatedBytes(t, path, row.size, 'a')
-			classified, err := ReadClassifiedDocument(path)
+			classified, err := readClassifiedAtDefaultLimit(path)
 			if err != nil {
 				t.Fatalf("read exact size: %v", err)
 			}
@@ -216,7 +225,7 @@ func TestLineEndingClassification(t *testing.T) {
 			if err := os.WriteFile(path, testCase.content, 0o644); err != nil {
 				t.Fatalf("write line-ending fixture: %v", err)
 			}
-			classified, err := ReadClassifiedDocument(path)
+			classified, err := readClassifiedAtDefaultLimit(path)
 			if err != nil {
 				t.Fatalf("read line-ending fixture: %v", err)
 			}

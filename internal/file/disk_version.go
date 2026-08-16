@@ -45,11 +45,6 @@ func CurrentDiskVersion(path string) (DiskVersion, error) {
 	return newDiskVersion(info), nil
 }
 
-// CurrentVersion is the contract-level name for CurrentDiskVersion.
-func CurrentVersion(path string) (DiskVersion, error) {
-	return CurrentDiskVersion(path)
-}
-
 func newDiskVersion(info fs.FileInfo) DiskVersion {
 	return DiskVersion{
 		Exists:           true,

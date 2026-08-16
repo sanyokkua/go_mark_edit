@@ -109,32 +109,9 @@ type ClassifiedRead struct {
 	Error           *apperr.ClassifiedError
 }
 
-// DocumentFileService provides the filesystem capabilities used by later lifecycle slices.
-type DocumentFileService struct{}
-
-func NewDocumentFileService() *DocumentFileService {
-	return &DocumentFileService{}
-}
-
-func (service *DocumentFileService) CanonicalizeExisting(path string) (CanonicalDocumentPath, error) {
-	return CanonicalizeDocumentPath(path)
-}
-
-func (service *DocumentFileService) CanonicalizeCandidate(path string) (CanonicalDocumentPath, error) {
-	return CanonicalizeCandidateDocumentPath(path)
-}
-
-func (service *DocumentFileService) ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
-	return ReadClassified(path, maxBytes)
-}
-
 // ReadClassifiedStable captures a disk version before classification and after
 // the raw-byte hash. A result is usable only when both versions are equal.
 // The read itself remains bounded by ReadClassified's configured limit.
-func (service *DocumentFileService) ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, error) {
-	return ReadClassifiedStable(path, maxBytes)
-}
-
 func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, error) {
 	maxBytes = normalizedReadLimit(maxBytes)
 	before, err := CurrentDiskVersion(path)
@@ -244,10 +221,6 @@ func readRawBytesBounded(path string, maxBytes int64) ([]byte, error) {
 
 func readBounded(reader io.Reader, maxBytes int64) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(reader, normalizedReadLimit(maxBytes)))
-}
-
-func ReadClassifiedDocument(path string) (ClassifiedRead, error) {
-	return ReadClassified(path, MaxClassifiedReadBytes)
 }
 
 func classifyDocumentBytes(canonical CanonicalDocumentPath, info os.FileInfo, raw []byte) ClassifiedRead {

@@ -75,20 +75,6 @@ func (repository *SqliteRecentFilesRepository) Promote(ctx context.Context, path
 	})
 }
 
-func (repository *SqliteRecentFilesRepository) Remove(ctx context.Context, path string) ([]string, error) {
-	path = canonicalRecentPath(path)
-	return repository.withEntries(ctx, func(entries []string) ([]string, bool, error) {
-		current := normalizeRecentFiles(entries)
-		filtered := make([]string, 0, len(current))
-		for _, candidate := range current {
-			if candidate != path {
-				filtered = append(filtered, candidate)
-			}
-		}
-		return filtered, !sameRecentFiles(current, filtered), nil
-	})
-}
-
 func (repository *SqliteRecentFilesRepository) withEntries(ctx context.Context, mutate func([]string) ([]string, bool, error)) ([]string, error) {
 	if repository == nil || repository.database == nil {
 		return nil, errors.New("recent files database is not configured")

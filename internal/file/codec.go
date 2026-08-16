@@ -1,7 +1,6 @@
 package file
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"strings"
@@ -24,46 +23,6 @@ type DocumentSnapshot struct {
 	Encoding   Encoding
 	BOM        BOM
 	LineEnding LineEnding
-}
-
-// NewDocumentSnapshot creates the canonical representation for a new file.
-// New files use UTF-8, LF, and no BOM. A physical trailing newline is emitted
-// only when Content contains one.
-func NewDocumentSnapshot(content string) DocumentSnapshot {
-	return DocumentSnapshot{
-		Content:    strings.ReplaceAll(content, "\r\n", "\n"),
-		Encoding:   EncodingUTF8,
-		BOM:        BOMAbsent,
-		LineEnding: LineEndingLF,
-	}
-}
-
-// DecodeDocument converts raw UTF-8 file bytes to the canonical internal form.
-// Mixed endings remain represented so the editor can display them, but the
-// encoder refuses them until a later authorization chooses a target ending.
-func DecodeDocument(raw []byte) (DocumentSnapshot, error) {
-	payload := raw
-	bom := BOMAbsent
-	if bytes.HasPrefix(payload, []byte{0xef, 0xbb, 0xbf}) {
-		bom = BOMPresent
-		payload = payload[3:]
-	}
-	if !utf8.Valid(payload) {
-		return DocumentSnapshot{}, ErrCodecInvalidUTF8
-	}
-	if bytes.IndexByte(payload, 0) >= 0 {
-		return DocumentSnapshot{}, ErrCodecNULByte
-	}
-	lineEnding, _, _, _, loneCR := classifyLineEndings(payload)
-	if loneCR {
-		return DocumentSnapshot{}, ErrCodecLoneCR
-	}
-	return DocumentSnapshot{
-		Content:    strings.ReplaceAll(string(payload), "\r\n", "\n"),
-		Encoding:   EncodingUTF8,
-		BOM:        bom,
-		LineEnding: lineEnding,
-	}, nil
 }
 
 // EncodeDocument produces the exact bytes for one canonical snapshot. A none
@@ -108,9 +67,4 @@ func EncodeDocument(snapshot DocumentSnapshot) ([]byte, error) {
 		return nil, fmt.Errorf("unsupported BOM %q", snapshot.BOM)
 	}
 	return encoded, nil
-}
-
-// Encode is the method form used by write coordinators.
-func (snapshot DocumentSnapshot) Encode() ([]byte, error) {
-	return EncodeDocument(snapshot)
 }

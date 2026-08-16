@@ -48,11 +48,6 @@ func CanonicalizeDocumentPath(path string) (CanonicalDocumentPath, error) {
 	return newCanonicalDocumentPath(resolved, info), nil
 }
 
-// CanonicalizeExisting is the contract-level name for existing-path canonicalization.
-func CanonicalizeExisting(path string) (CanonicalDocumentPath, error) {
-	return CanonicalizeDocumentPath(path)
-}
-
 // CanonicalizeCandidateDocumentPath resolves an existing candidate and otherwise resolves its
 // parent, preserving the candidate's spelling and host filesystem case semantics.
 func CanonicalizeCandidateDocumentPath(path string) (CanonicalDocumentPath, error) {
@@ -85,11 +80,6 @@ func CanonicalizeCandidateDocumentPath(path string) (CanonicalDocumentPath, erro
 		DisplayName: safeDisplayName(filepath.Base(resolved)),
 		ParentName:  safeDisplayName(filepath.Base(filepath.Dir(resolved))),
 	}, nil
-}
-
-// CanonicalizeCandidate is the contract-level name for save-target canonicalization.
-func CanonicalizeCandidate(path string) (CanonicalDocumentPath, error) {
-	return CanonicalizeCandidateDocumentPath(path)
 }
 
 // IsSupportedDocumentSuffix accepts only the four direct-entry suffixes, case-insensitively.

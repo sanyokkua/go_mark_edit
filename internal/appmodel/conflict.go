@@ -184,12 +184,6 @@ func (service *AppModelService) AuthorizeKeepMine(ctx context.Context, documentI
 	return apperr.ConflictResult{Status: apperr.ConflictStatusAuthorized, DocumentID: documentID, DocumentRevision: contentRevision, DecisionToken: token, Preview: &queued.preview}
 }
 
-// KeepMine is a concise command alias for the bridge and frontend service
-// layer. It does not perform a write until Save consumes the returned token.
-func (service *AppModelService) KeepMine(documentID string, contentRevision uint64, path string, detectedVersion apperr.DiskVersion) apperr.ConflictResult {
-	return service.AuthorizeKeepMine(context.Background(), documentID, contentRevision, path, detectedVersion)
-}
-
 // Skip invalidates only the current comparison and does not change content or
 // disk state. The next write/foreground check will compare again.
 func (service *AppModelService) SkipConflict(ctx context.Context, documentID string, expectedContentRevision uint64, detectedVersion apperr.DiskVersion) apperr.ConflictResult {

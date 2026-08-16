@@ -204,7 +204,23 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	return OpenPreparation{ReservationID: reservationID}, nil
 }
 
-// CancelPreparedOpen releases a pending identity and reserved capacity.
+/*
+ * CancelPreparedOpen releases a pending identity and reserved capacity.
+ *
+ * It has no production caller, and T137 kept it anyway. FR-FT-004 names four
+ * events that end a reservation — "until activation, commit, cancellation, or
+ * failure" — and this is the only implementation of the third. Deleting it
+ * would delete a clause of the requirement rather than dead scaffolding.
+ *
+ * The arm is unreachable today for a structural reason: the two-phase boundary
+ * never crosses the bridge. OpenPath calls PrepareOpen and CommitPreparedOpen
+ * in adjacent statements, every PrepareOpen refusal returns before a
+ * reservation exists, and CommitPreparedOpen deletes the reservation on every
+ * branch — so nothing can be cancelled between the two, and no reservation
+ * leaks. FR-FT-004's intended sequence is prepare, then a frontend flush, then
+ * commit, and exposing that boundary is a design change well outside a
+ * dead-code pass. T174 owns the decision.
+ */
 func (service *AppModelService) CancelPreparedOpen(reservationID string) error {
 	service.mu.Lock()
 	defer service.mu.Unlock()
