@@ -21,7 +21,8 @@ export type NotificationSeverity = 'error' | 'info' | 'success' | 'warning';
  */
 export type NotificationRemediationAction = 'copy-path' | 'retry';
 
-export type NotificationRemediationIntent = 'copy-path' | 'save' | 'save-as';
+export type NotificationRemediationIntent =
+  'copy-path' | 'reveal' | 'save' | 'save-as';
 
 export interface NotificationRemediation {
   action: NotificationRemediationAction;
@@ -37,7 +38,15 @@ export interface Notification {
   id: number;
   message: string;
   refreshGeneration: number;
-  remediation?: NotificationRemediation;
+  /**
+   * The controls offered with this failure, in contract order.
+   *
+   * A list rather than one value because the contract specifies sets: a Reveal
+   * `system-command-failure` offers "Retry; a Reveal failure also offers Copy
+   * path", and a detached `not-found` offers "Save to recreate plus Copy path".
+   * Empty means message-only, which is what most of the eight categories are.
+   */
+  remediations: NotificationRemediation[];
   severity: NotificationSeverity;
   subject: string;
   title: string;
@@ -47,7 +56,7 @@ export interface NotificationInput {
   automatic?: boolean;
   code: string;
   message: string;
-  remediation?: NotificationRemediation;
+  remediations?: NotificationRemediation[];
   severity: NotificationSeverity;
   subject: string;
   title: string;
@@ -99,7 +108,7 @@ function toNotification(
     id: nextNotificationID,
     message: input.message,
     refreshGeneration: 0,
-    remediation: input.remediation,
+    remediations: input.remediations ?? [],
     severity: input.severity,
     subject: input.subject,
     title: input.title,
@@ -117,6 +126,31 @@ function findDuplicate(
   );
 }
 
+/**
+ * Merge, never replace.
+ *
+ * The previous line was `duplicate.remediation = incoming.remediation`, and a
+ * second report of the same failure that carried no control erased the one the
+ * first had earned. That is not hypothetical: a refused Save was reported twice
+ * — once by the write path with its intent, once by the menu's result arm
+ * without one — and the Retry button vanished behind a `×2` that read like the
+ * contract's dedup count working (`App.tsx:99-100`, `:289-291`). A repeat is the
+ * *same* failure, so a control it already offers stays offered; a control the
+ * repeat brings and the notification does not have yet is added once.
+ */
+function mergeRemediations(
+  existing: NotificationRemediation[],
+  incoming: NotificationRemediation[],
+): NotificationRemediation[] {
+  const offered = [...existing];
+  for (const candidate of incoming) {
+    if (offered.some((current) => current.action === candidate.action))
+      continue;
+    offered.push(candidate);
+  }
+  return offered;
+}
+
 function refreshDuplicate(
   duplicate: Notification,
   incoming: Notification,
@@ -125,7 +159,10 @@ function refreshDuplicate(
   duplicate.error = incoming.error;
   duplicate.message = incoming.message;
   duplicate.refreshGeneration += 1;
-  duplicate.remediation = incoming.remediation;
+  duplicate.remediations = mergeRemediations(
+    duplicate.remediations,
+    incoming.remediations,
+  );
   duplicate.severity = incoming.severity;
   duplicate.title = incoming.title;
 }

@@ -642,12 +642,14 @@ it('FR-FT-037 reports a Copy path clipboard failure as system-command-failure wi
   expect(store.getState().notifications.items[0]).toEqual(
     expect.objectContaining({
       code: 'system-command-failure',
-      remediation: {
-        action: 'retry',
-        documentId: 'one',
-        intent: 'copy-path',
-        labelKey: 'action.retry.label',
-      },
+      remediations: [
+        {
+          action: 'retry',
+          documentId: 'one',
+          intent: 'copy-path',
+          labelKey: 'action.retry.label',
+        },
+      ],
       severity: 'error',
       subject: 'copy-path:one',
       title: 'one.md',
@@ -686,8 +688,15 @@ it('FR-FT-037 invokes Reveal in file manager and reports nothing on OS acceptanc
 /*
  * T084 gap 4 — FR-FT-037: an OS command failure for Reveal reports one deduplicated
  * `system-command-failure` that additionally offers Copy path.
+ *
+ * T142 corrected the fixture as well as the mapping: Go has sent the full pair
+ * `['Retry', 'Copy path']` since T125 (`internal/appmodel/copy_path.go`,
+ * `revealCommandFailure`), and a double narrower than the real backend cannot
+ * see a mapping that drops a member.
  */
-it('FR-FT-037 offers Copy path remediation when Reveal fails', async () => {
+// Proves: FR-FT-037 (the Reveal `system-command-failure` pair, as the tab
+// surface reports it).
+it('FR-FT-037 offers both Retry and Copy path remediations when Reveal fails', async () => {
   hydrate([documentFor('one', '/repo/one.md')]);
   store.dispatch(resetNotifications());
   const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
@@ -696,7 +705,7 @@ it('FR-FT-037 offers Copy path remediation when Reveal fails', async () => {
       category: 'system-command-failure',
       safeSubject: 'one.md',
       message: 'The file manager could not reveal the document.',
-      remediations: ['Copy path'],
+      remediations: ['Retry', 'Copy path'],
       documentId: 'one',
       dedupKey: 'reveal:one',
     },
@@ -714,12 +723,20 @@ it('FR-FT-037 offers Copy path remediation when Reveal fails', async () => {
   expect(store.getState().notifications.items[0]).toEqual(
     expect.objectContaining({
       code: 'system-command-failure',
-      remediation: {
-        action: 'copy-path',
-        documentId: 'one',
-        intent: 'copy-path',
-        labelKey: 'action.copy-path.label',
-      },
+      remediations: [
+        {
+          action: 'retry',
+          documentId: 'one',
+          intent: 'reveal',
+          labelKey: 'action.retry.label',
+        },
+        {
+          action: 'copy-path',
+          documentId: 'one',
+          intent: 'copy-path',
+          labelKey: 'action.copy-path.label',
+        },
+      ],
       severity: 'error',
       subject: 'reveal:one',
       title: 'one.md',
@@ -866,4 +883,75 @@ it('FR-FT-004 surfaces the 40-document refusal raised by the new-tab control', a
       subject: 'capacity-limit:new',
     }),
   );
+});
+
+/*
+ * T142 gap (a). FR-FT-037 closes with a clause nothing implemented: "After a
+ * successful Reveal, focus restoration MUST occur only once the application
+ * regains foreground focus, since the file manager may briefly own it." The
+ * menu's dispatch ended in `.finally(onClose)` and `onClose` focused the
+ * originating tab synchronously, so the application pulled focus back while the
+ * file manager was still coming forward. There was no `focus` listener anywhere
+ * in `frontend/src` to wait on.
+ */
+// Proves: FR-FT-037 (the deferred-focus-restoration clause only; the menu's
+// contents, order and edge unavailability are proven elsewhere in this file).
+it('T142 waits for the application to regain foreground focus before restoring the tab', async () => {
+  hydrate([documentFor('one', '/repo/one.md')]);
+  store.dispatch(resetNotifications());
+  const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
+    status: 'revealed',
+  }));
+  renderTabs({ revealInFileManager });
+
+  const tab = screen.getByRole('tab', { name: /one\.md/u });
+  fireEvent.contextMenu(tab);
+  fireEvent.click(
+    screen.getByRole('menuitem', { name: 'Reveal in file manager' }),
+  );
+
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('menu', { name: 'Tab actions' }),
+    ).not.toBeInTheDocument(),
+  );
+  // The file manager may own the foreground here. Grabbing focus back now is
+  // exactly what the clause forbids.
+  expect(tab).not.toHaveFocus();
+
+  act((): void => {
+    window.dispatchEvent(new Event('focus'));
+  });
+  expect(tab).toHaveFocus();
+});
+
+/*
+ * The other half of the same clause: the wait is owed to a *successful* Reveal.
+ * A refusal never handed the foreground to anyone, so deferring it would leave
+ * focus on nothing until the user alt-tabbed away and back.
+ */
+// Proves: FR-FT-037 (the deferred-focus-restoration clause only).
+it('T142 restores focus immediately when Reveal is refused, because nothing took the foreground', async () => {
+  hydrate([documentFor('one', '/repo/one.md')]);
+  store.dispatch(resetNotifications());
+  const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
+    status: 'refused',
+    error: {
+      category: 'system-command-failure',
+      safeSubject: 'one.md',
+      message: 'The file manager could not reveal the document.',
+      remediations: ['Retry', 'Copy path'],
+      documentId: 'one',
+      dedupKey: 'reveal:one',
+    },
+  }));
+  renderTabs({ revealInFileManager });
+
+  const tab = screen.getByRole('tab', { name: /one\.md/u });
+  fireEvent.contextMenu(tab);
+  fireEvent.click(
+    screen.getByRole('menuitem', { name: 'Reveal in file manager' }),
+  );
+
+  await waitFor(() => expect(tab).toHaveFocus());
 });

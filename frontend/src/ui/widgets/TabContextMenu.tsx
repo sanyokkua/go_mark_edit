@@ -61,7 +61,19 @@ export interface TabContextMenuProps {
     document: DocumentMetadata,
     targetIndex?: number,
   ) => Promise<unknown>;
-  onClose: () => void;
+  onClose: (options?: TabContextCloseOptions) => void;
+}
+
+export interface TabContextCloseOptions {
+  /**
+   * Hold the focus restoration until the application is in the foreground.
+   *
+   * Only a *successful* Reveal sets this. FR-FT-037 defers restoration "since
+   * the file manager may briefly own it", and a Reveal that was refused or is
+   * unavailable never handed the foreground to anyone — deferring that would
+   * strand focus until the user happened to switch away and back.
+   */
+  deferFocusRestore?: boolean;
 }
 
 function errorResult(error: ClassifiedError | undefined): string {
@@ -173,9 +185,24 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
           };
         }
       },
-    }).finally((): void => {
-      onClose();
-    });
+    }).then(
+      (result): void => {
+        /*
+         * `mutated` is what the dispatcher reports for a Reveal the host
+         * accepted: `revealed` matches none of its refusal branches. FR-FT-037
+         * treats OS acceptance as success, and success is the only outcome that
+         * owes the deferred restoration.
+         */
+        onClose({
+          deferFocusRestore:
+            actionId === 'reveal-in-file-manager' &&
+            result.status === 'mutated',
+        });
+      },
+      (): void => {
+        onClose();
+      },
+    );
   };
 
   return (

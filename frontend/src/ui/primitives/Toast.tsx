@@ -71,17 +71,24 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       {notification.message}
     </RadixToast.Description>
     <div className={styles.actions}>
-      {notification.remediation !== undefined ? (
+      {/*
+       * Every offered control, in contract order — not just the first. Two
+       * contract rows pair two actions ("Retry; a Reveal failure also offers
+       * Copy path"), and while this rendered one button the second was
+       * unreachable however faithfully the backend sent it.
+       */}
+      {notification.remediations.map((remediation: NotificationRemediation) => (
         <button
           className={styles.action}
+          key={remediation.action}
           type="button"
           onClick={(): void => {
-            onRemediate(notification.remediation as NotificationRemediation);
+            onRemediate(remediation);
           }}
         >
-          {t(notification.remediation.labelKey)}
+          {t(remediation.labelKey)}
         </button>
-      ) : null}
+      ))}
       {notification.severity === 'error' ? (
         <RadixToast.Close className={styles.action}>
           {t('notification.dismiss')}

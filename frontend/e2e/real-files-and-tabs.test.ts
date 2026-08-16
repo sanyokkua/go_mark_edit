@@ -86,7 +86,10 @@ test('FT-VS-03 exposes real tabs, backend-confirmed menu moves, and exact naviga
   );
 });
 
-test('FR-FT-037 offers an actionable Copy path when Reveal fails, and paints it', async ({
+// Proves: FR-FT-037 (the Reveal failure remediation pair, both controls painted
+// and each running its own command). The detached `not-found` pair is not
+// proven here — its `Save to recreate` has no command yet (T151).
+test('FR-FT-037 offers both actionable Reveal remediations, paints them, and runs each', async ({
   page,
 }) => {
   /*
@@ -136,9 +139,35 @@ test('FR-FT-037 offers an actionable Copy path when Reveal fails, and paints it'
   );
   await expect(page.getByText(/private|https?:\/\//iu)).toHaveCount(0);
 
+  /*
+   * T142: the contract's Reveal row is a *pair* — "Retry; a Reveal failure also
+   * offers Copy path" — and the toast rendered one control, so whichever member
+   * the mapping picked, the other was unreachable. Both must be present, in
+   * contract order, and both must actually be painted: an assertion that only
+   * queries the accessibility tree passes on a control clipped to zero area.
+   */
+  const retry = errorToast.getByRole('button', { name: 'Retry' });
   const remediate = errorToast.getByRole('button', { name: 'Copy path' });
+  await expect(
+    errorToast.getByRole('button').filter({ hasNotText: 'Dismiss' }),
+  ).toHaveText(['Retry', 'Copy path']);
+  await expect(retry).toBeEnabled();
   await expect(remediate).toBeEnabled();
+  await expectPainted(retry, 'the Reveal failure Retry remediation');
   await expectPainted(remediate, 'the Reveal failure Copy path remediation');
+
+  /*
+   * Retry re-runs *Reveal*, not the other control's command. `?refuseReveal`
+   * refuses every attempt, so a second refusal is the observable proof that the
+   * button re-issued the reveal: the contract deduplicates it onto this same
+   * notification with an incrementing count. A Retry wired to copy-path — which
+   * is the only intent this caller could name before T142 — would have copied
+   * the path and dismissed the toast instead.
+   */
+  await retry.click();
+  await expect(errorToast).toContainText('×2');
+  // The repeat must not have withdrawn either control it already earned.
+  await expectPainted(remediate, 'the Copy path remediation after a Retry');
 
   await remediate.click();
   // FR-FT-037 wants the confirmation in a polite live region, and the resolved
@@ -187,7 +216,16 @@ test('FR-FT-015 offers Retry on a refused Save and re-issues the write', async (
   );
   await expect(page.getByText(/private|https?:\/\//iu)).toHaveCount(0);
 
+  /*
+   * `io-failure` is a one-member row — the contract remediates it with `Retry`
+   * and nothing else — so the widened toast must render exactly one control
+   * here. Asserting the whole set, not just that Retry exists, is what would
+   * catch a mapping that started offering a member this category forbids.
+   */
   const retry = errorToast.getByRole('button', { name: 'Retry' });
+  await expect(
+    errorToast.getByRole('button').filter({ hasNotText: 'Dismiss' }),
+  ).toHaveText(['Retry']);
   await expect(retry).toBeEnabled();
   await expectPainted(retry, 'the refused Save Retry remediation');
 

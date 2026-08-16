@@ -29,7 +29,9 @@ import ExternalChangePrompt, {
 import TabContextMenu, {
   type TabContextAction,
   type TabContextAdapter,
+  type TabContextCloseOptions,
 } from './TabContextMenu';
+import { whenApplicationRegainsForegroundFocus } from './foregroundFocus';
 import { tabLabelsFor, truncateTabLabel, type TabLabel } from './tabLabel';
 import styles from './DocumentTabs.module.css';
 
@@ -139,6 +141,33 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     }
     document.querySelector<HTMLButtonElement>('[data-tab-new="true"]')?.focus();
   }, [activeDocumentId, focusDocument]);
+
+  const restoreMenuFocus = useCallback(
+    (documentId: string): void => {
+      if (tabRefs.current.has(documentId)) {
+        focusDocument(documentId);
+        return;
+      }
+      focusFallback();
+    },
+    [focusDocument, focusFallback],
+  );
+
+  /*
+   * A deferred restoration outlives the menu that asked for it, so the pending
+   * wait is held here rather than in `TabContextMenu` — the menu unmounts the
+   * instant it closes, which would take its own listener with it and the
+   * restoration would never happen. Cancelling on unmount, and before arming a
+   * new one, is what keeps a `focus` handler from accumulating per invocation.
+   */
+  const cancelPendingFocusRestore = useRef<(() => void) | null>(null);
+  useEffect(
+    () => (): void => {
+      cancelPendingFocusRestore.current?.();
+      cancelPendingFocusRestore.current = null;
+    },
+    [],
+  );
 
   /*
    * The strip becomes a scroll container only once its tabs no longer fit.
@@ -371,14 +400,14 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       if (action === 'reveal-in-file-manager') {
         const result = await adapter.revealInFileManager?.(document.documentId);
         if (result?.error !== undefined) {
-          // FR-FT-037 pairs a Reveal failure with Copy path, and this is the one
-          // caller that can honour it: the document is known, so the fallback is
-          // a real command rather than a control with nothing behind it.
+          // FR-FT-037 pairs a Reveal failure with Copy path *and* a Retry that
+          // re-runs Reveal. `intent: 'reveal'` is what earns the second control:
+          // both are real commands here, because the document is known.
           reportClassifiedError(
             dispatch,
             result.error,
             'The file manager could not reveal the document.',
-            { intent: 'copy-path', reveal: true },
+            { intent: 'reveal' },
           );
         }
         return result;
@@ -578,13 +607,20 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
           document={contextDocument}
           index={contextIndex}
           onAction={handleTabAction}
-          onClose={(): void => {
+          onClose={(options?: TabContextCloseOptions): void => {
             setContextDocumentId(null);
-            if (tabRefs.current.has(contextDocument.documentId)) {
-              focusDocument(contextDocument.documentId);
-            } else {
-              focusFallback();
+            const documentId = contextDocument.documentId;
+            cancelPendingFocusRestore.current?.();
+            cancelPendingFocusRestore.current = null;
+            if (options?.deferFocusRestore !== true) {
+              restoreMenuFocus(documentId);
+              return;
             }
+            cancelPendingFocusRestore.current =
+              whenApplicationRegainsForegroundFocus((): void => {
+                cancelPendingFocusRestore.current = null;
+                restoreMenuFocus(documentId);
+              });
           }}
           orderedDocuments={orderedDocuments}
           tabSetRevision={tabSetRevision}

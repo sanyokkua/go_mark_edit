@@ -97,8 +97,10 @@ let activeRetry: Promise<AppModelBootstrapResult> | undefined;
  * symptom was a `×2` on a single failure — indistinguishable from the contract's
  * dedup count, which means a failure that genuinely repeated. It became visible
  * when the second, intent-less report started erasing the Retry control the
- * first had earned, because `refreshDuplicate` copies the incoming remediation
- * wholesale.
+ * first had earned, because `refreshDuplicate` copied the incoming remediation
+ * wholesale. T142 made that merge instead of replace, so the erasure can no
+ * longer happen — but the double *report* is still a miscount, which is what
+ * this set prevents.
  *
  * The dispatcher cannot infer this: it is a pure function with no store access
  * and no knowledge of which invoker reports. Naming the ids here keeps that
@@ -288,8 +290,9 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
        * return the `WriteResult`, whose `status` is `refused` on a failed write,
        * so the write path reported the failure once with its intent and this arm
        * reported the identical error again without one. `refreshDuplicate`
-       * copies the incoming remediation wholesale, so the second report erased
-       * the Retry control the first had earned.
+       * copied the incoming remediation wholesale, so the second report erased
+       * the Retry control the first had earned; T142 made it merge, so the lost
+       * control cannot recur even if a second report slips through here.
        *
        * It was invisible before: both reports produced the same generic copy, so
        * the only symptom was a `×2` on a single failure — which reads like the
@@ -1216,7 +1219,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
               dispatch,
               result.error,
               t('notification.error.io.title'),
-              { intent: 'copy-path', reveal: true },
+              { intent: 'copy-path' },
             );
             return;
           }
@@ -1225,6 +1228,32 @@ const AppContents: React.FC = (): React.JSX.Element => {
           announceRemediation(
             t('editor.tab.copiedPath', { filename: safeSubject }),
           );
+          return;
+        }
+        case 'reveal': {
+          /*
+           * The Retry the contract pairs with a Reveal failure. It has to re-run
+           * *Reveal*: while the toast could carry only one control this arm did
+           * not exist, so the reveal caller had no honourable intent to name and
+           * the mapping dropped Retry rather than hand it the copy-path command.
+           */
+          const documentId = remediation.documentId;
+          if (documentId === undefined) return;
+          const result =
+            await appModelAdapter.revealInFileManager?.(documentId);
+          if (result?.error !== undefined) {
+            reportClassifiedError(
+              dispatch,
+              result.error,
+              t('notification.error.io.title'),
+              { intent: 'reveal' },
+            );
+            return;
+          }
+          // FR-FT-037 treats OS acceptance as success and requires no toast; the
+          // failure that produced this control is resolved, so it goes.
+          if (result?.status !== 'revealed') return;
+          dispatch(dismissNotification(notificationId));
           return;
         }
         case 'save':

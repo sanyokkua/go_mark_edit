@@ -57,7 +57,7 @@ export function reportClassifiedError(
     notifyToast({
       code: classifiedErrorCode(error.category),
       message: error.message || fallback,
-      remediation: remediationFor(error, options),
+      remediations: remediationsFor(error, options),
       severity: 'error',
       subject: error.dedupKey,
       title: error.safeSubject ?? fallback,
@@ -66,58 +66,67 @@ export function reportClassifiedError(
 }
 
 export interface ClassifiedReportOptions {
-  /** Offer `Copy path` where the contract pairs it with a reveal failure. */
-  reveal?: boolean;
   /**
-   * The command the remediation control re-runs.
+   * The command a `Retry` control re-runs.
    *
-   * Omitting it is the deliberate way to say "this caller cannot re-issue what
-   * failed", and the notification then carries no remediation at all. That is
-   * what keeps the rendered button honest: until T116 nothing passed
-   * `onRemediate`, so every remediation was built and discarded, and a control
-   * that renders without a command behind it is the same defect wearing a
-   * button. A caller earns the control by naming the command.
+   * Only `Retry` needs telling: every other member of the vocabulary names its
+   * own command. Omitting it is the deliberate way to say "this caller cannot
+   * re-issue what failed", and no Retry is then offered. That is what keeps the
+   * rendered button honest: until T116 nothing passed `onRemediate`, so every
+   * remediation was built and discarded, and a control that renders without a
+   * command behind it is the same defect wearing a button. A caller earns the
+   * control by naming the command.
    */
   intent?: NotificationRemediationIntent;
 }
 
 /**
- * Pick the one action to offer out of the set Go sent.
+ * Map the set Go sent onto the controls this application can actually run.
  *
- * Go now carries a set, because three contract rows specify one — `not-found` for a
- * detached document is "Save to recreate plus Copy path". This maps the first member
- * it can honour and drops the rest, which keeps exactly the behaviour that shipped
- * before the widening. Rendering the whole set is **T142**, together with the
- * `Save to recreate` mapping that does not exist yet; adding a control here without
- * the command behind it is the defect T116 exists to remove.
+ * Three contract rows specify a set rather than a value, and two of them reach
+ * a toast: a Reveal `system-command-failure` offers "Retry; a Reveal failure
+ * also offers Copy path", and a detached `not-found` offers "Save to recreate
+ * plus Copy path". Order follows the contract table, so Retry precedes Copy path.
+ *
+ * `Save to recreate` is deliberately absent. Nothing in the frontend can run it:
+ * `App.tsx`'s `beginWrite` refuses a detached document outright — which
+ * contradicts FR-FT-023 — and it writes only the *active* document, so a control
+ * carrying it would either refuse or save a different file than the toast names.
+ * **T151** owns both. Dropping the member leaves the detached `not-found` row
+ * half-served, which is a visible gap; rendering it would be a control with
+ * nothing behind it, which is the defect T116 exists to remove.
+ *
+ * `Reload from disk`, `Keep mine`, `Skip` and `Cancel` are absent for a
+ * different reason: the contract routes them through the external-change prompt
+ * and the close prompt, not through a toast.
  */
-function remediationFor(
+function remediationsFor(
   error: ClassifiedError,
   options: ClassifiedReportOptions,
-): NotificationRemediation | undefined {
+): NotificationRemediation[] {
+  const offered: NotificationRemediation[] = [];
   const { intent } = options;
-  if (intent === undefined) return undefined;
-
-  // Preference, not set order. The contract writes the Reveal row as "Retry; a
-  // Reveal failure also offers Copy path", so Retry is the first member — but Copy
-  // path is the one that still helps when the file is gone, and it is why the
-  // caller passed `reveal`. Taking whichever member came first would hand a Reveal
-  // failure a Retry button and silently drop Copy path.
-  if (options.reveal === true && error.remediations.includes('Copy path')) {
-    return {
-      action: 'copy-path',
-      documentId: error.documentId,
-      intent,
-      labelKey: 'action.copy-path.label',
-    };
-  }
-  if (error.remediations.includes('Retry')) {
-    return {
+  if (intent !== undefined && error.remediations.includes('Retry')) {
+    offered.push({
       action: 'retry',
       documentId: error.documentId,
       intent,
       labelKey: 'action.retry.label',
-    };
+    });
   }
-  return undefined;
+  // `copy-path` names its own command, so it needs no intent from the caller —
+  // only a document to act on.
+  if (
+    error.documentId !== undefined &&
+    error.documentId !== '' &&
+    error.remediations.includes('Copy path')
+  ) {
+    offered.push({
+      action: 'copy-path',
+      documentId: error.documentId,
+      intent: 'copy-path',
+      labelKey: 'action.copy-path.label',
+    });
+  }
+  return offered;
 }

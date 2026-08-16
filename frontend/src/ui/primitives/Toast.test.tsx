@@ -24,6 +24,7 @@ it('STORY-006-AC-3 presents an accessible error toast without automatic dismissa
           count: 1,
           message: 'Choose a supported theme.',
           refreshGeneration: 0,
+          remediations: [],
           title: 'Invalid setting',
           error: {
             code: 'validation',
@@ -66,6 +67,7 @@ it.each([
           subject: 'completed-operation',
           count: 2,
           refreshGeneration: 1,
+          remediations: [],
           code: 'completed',
           title: 'Operation complete',
           message: 'The operation finished.',
@@ -83,6 +85,63 @@ it.each([
   expect(onDismiss).toHaveBeenCalledWith(duration);
 });
 
+/*
+ * T142. Two contract rows pair two actions — "Retry; a Reveal failure also
+ * offers Copy path" — and this rendered `notification.remediation`, one button.
+ * The second member of every pair was unreachable in the running application no
+ * matter how faithfully Go sent it.
+ */
+// Proves: FR-FT-037 (that both members of the Reveal remediation pair render and
+// each runs its own command). It does not prove which pair Go sends — that is
+// asserted in `classifiedNotification.test.ts`.
+it('T142 renders every offered control in contract order and reports the one clicked', () => {
+  const onRemediate = jest.fn();
+  const retry = {
+    action: 'retry' as const,
+    documentId: 'one',
+    intent: 'reveal' as const,
+    labelKey: 'action.retry.label',
+  };
+  const copyPath = {
+    action: 'copy-path' as const,
+    documentId: 'one',
+    intent: 'copy-path' as const,
+    labelKey: 'action.copy-path.label',
+  };
+  render(
+    <ToastProvider>
+      <NotificationToast
+        notification={{
+          code: 'system-command-failure',
+          count: 1,
+          id: 92,
+          message: 'The file manager could not reveal the document.',
+          refreshGeneration: 0,
+          remediations: [retry, copyPath],
+          severity: 'error',
+          subject: 'reveal:one',
+          title: 'one.md',
+        }}
+        onDismiss={jest.fn()}
+        onRemediate={onRemediate}
+      />
+    </ToastProvider>,
+  );
+
+  // Dismiss is the trailing control on an error toast and is not a remediation.
+  expect(
+    screen
+      .getAllByRole('button')
+      .map((button) => button.textContent)
+      .slice(0, 2),
+  ).toEqual(['Retry', 'Copy path']);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Copy path' }));
+  expect(onRemediate).toHaveBeenCalledWith(copyPath);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(onRemediate).toHaveBeenLastCalledWith(retry);
+});
+
 // Proves: FR-WS-016
 it('offers only the localized remediation label and keeps toasts above dialogs', () => {
   const onRemediate = jest.fn();
@@ -95,11 +154,13 @@ it('offers only the localized remediation label and keeps toasts above dialogs',
           id: 91,
           message: 'The operation can be tried again.',
           refreshGeneration: 0,
-          remediation: {
-            action: 'retry',
-            intent: 'copy-path',
-            labelKey: 'action.retry.label',
-          },
+          remediations: [
+            {
+              action: 'retry',
+              intent: 'copy-path',
+              labelKey: 'action.retry.label',
+            },
+          ],
           severity: 'warning',
           subject: 'operation',
           title: 'Operation paused',
@@ -148,6 +209,7 @@ it('T015 renders one explicit save confirmation with its localized safe filename
           id: 101,
           message: 'Saved selected.md · UTF-8 · LF',
           refreshGeneration: 0,
+          remediations: [],
           severity: 'success',
           subject: 'document-1',
           title: 'Saved',

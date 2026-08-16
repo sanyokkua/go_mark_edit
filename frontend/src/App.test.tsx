@@ -224,6 +224,7 @@ import {
   notifyToast,
   resetNotifications,
 } from './logic/store/notificationsSlice';
+import { reportClassifiedError } from './logic/store/classifiedNotification';
 import type { WireError } from './logic/utils/parseError';
 import {
   createAppModelAdapter,
@@ -876,12 +877,14 @@ it('T117 reports one refused Save once, not twice with a count', async () => {
   });
   expect(store.getState().notifications.items[0]).toMatchObject({
     count: 1,
-    remediation: {
-      action: 'retry',
-      documentId: 'document-1',
-      intent: 'save',
-      labelKey: 'action.retry.label',
-    },
+    remediations: [
+      {
+        action: 'retry',
+        documentId: 'document-1',
+        intent: 'save',
+        labelKey: 'action.retry.label',
+      },
+    ],
   });
   store.dispatch(resetNotifications());
   act((): void => disposeAppModelProjection());
@@ -967,12 +970,14 @@ it('T116 renders the classified remediation and runs the command it names', asyn
       notifyToast({
         code: 'system-command-failure',
         message: 'The file manager could not reveal the document.',
-        remediation: {
-          action: 'copy-path',
-          documentId: 'document-1',
-          intent: 'copy-path',
-          labelKey: 'action.copy-path.label',
-        },
+        remediations: [
+          {
+            action: 'copy-path',
+            documentId: 'document-1',
+            intent: 'copy-path',
+            labelKey: 'action.copy-path.label',
+          },
+        ],
         severity: 'error',
         subject: 'reveal:document-1',
         title: 'one.md',
@@ -992,6 +997,72 @@ it('T116 renders the classified remediation and runs the command it names', asyn
     expect(store.getState().notifications.items).toHaveLength(0);
   });
   mockedAppModelAdapter.copyPath = undefined;
+  act((): void => disposeAppModelProjection());
+});
+
+/*
+ * T142 gap (b), the half T116 could not reach. FR-FT-037 pairs a Reveal failure
+ * with `Retry` *and* `Copy path`, and while a toast could carry one control the
+ * Retry had nowhere honourable to point: the only intent the reveal caller could
+ * name was `copy-path`, so the mapping dropped Retry rather than render a button
+ * whose label said one thing and whose command did another. This drives both
+ * controls of the real pair through the application and asserts the command each
+ * one actually runs.
+ */
+// Proves: FR-FT-037 (the Reveal `system-command-failure` pair reaching the toast
+// and each control running its own command). It does not prove the detached
+// `not-found` pair, whose `Save to recreate` has no command — that is T151.
+it('T142 offers both Reveal remediations and re-runs Reveal from the Retry', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('draft', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.copyPath = jest.fn(
+    async (): Promise<PathCommandResult> => ({ status: 'copied' }),
+  );
+  mockedAppModelAdapter.revealInFileManager = jest.fn(
+    async (): Promise<PathCommandResult> => ({ status: 'revealed' }),
+  );
+
+  render(<App />);
+  await screen.findByRole('button', { name: 'File' });
+  act((): void => {
+    reportClassifiedError(
+      store.dispatch,
+      {
+        category: 'system-command-failure',
+        safeSubject: 'one.md',
+        message: 'The file manager could not reveal the document.',
+        remediations: ['Retry', 'Copy path'],
+        documentId: 'document-1',
+        dedupKey: 'reveal:document-1',
+      },
+      'File operation failed',
+      { intent: 'reveal' },
+    );
+  });
+
+  const retry = await screen.findByRole('button', { name: 'Retry' });
+  expect(screen.getByRole('button', { name: 'Copy path' })).toBeVisible();
+
+  fireEvent.click(retry);
+  await waitFor(() => {
+    expect(mockedAppModelAdapter.revealInFileManager).toHaveBeenCalledWith(
+      'document-1',
+    );
+  });
+  // A Reveal the host accepted resolves the failure, so the toast goes.
+  await waitFor(() => {
+    expect(store.getState().notifications.items).toHaveLength(0);
+  });
+  // The Retry must not have run the *other* control's command.
+  expect(mockedAppModelAdapter.copyPath).not.toHaveBeenCalled();
+
+  mockedAppModelAdapter.copyPath = undefined;
+  mockedAppModelAdapter.revealInFileManager = undefined;
   act((): void => disposeAppModelProjection());
 });
 
