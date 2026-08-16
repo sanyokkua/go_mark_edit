@@ -1065,8 +1065,14 @@ async function writeTargetedArtifacts(input: {
   readonly evidenceRoot: string;
   readonly reference: SemanticSignature;
   readonly actual: SemanticSignature;
+  /*
+   * Whether the comparison ran is read off this discriminant and nothing else.
+   * `pairing-mismatch` is the one value that means it did not; FR-FT-056, as
+   * strengthened by spec.md Session 2026-08-14, forbids a separate
+   * "comparison not attempted" field outright, because such a field can sit in
+   * an artifact that otherwise looks like a result.
+   */
   readonly status: TargetedStatus;
-  readonly comparisonAttempted: boolean;
   readonly comparisonCompleted: boolean;
   readonly metricDifferences?: readonly string[];
   readonly editorTopEdge: Readonly<{ reference: number; actual: number }>;
@@ -1086,7 +1092,7 @@ async function writeTargetedArtifacts(input: {
         reference: input.reference,
         actual: input.actual,
         pairing: input.status === 'pairing-mismatch' ? 'failed' : 'passed',
-        comparisonAttempted: input.comparisonAttempted,
+        status: input.status,
         comparisonCompleted: input.comparisonCompleted,
       },
       null,
@@ -1172,7 +1178,6 @@ async function writeTargetedArtifacts(input: {
     JSON.stringify(
       {
         status: input.status,
-        comparisonAttempted: input.comparisonAttempted,
         comparisonCompleted: input.comparisonCompleted,
         productionUiDrift: input.status === 'production-ui-drift',
         platformExceptions: input.filePopupVisual?.platformExceptions ?? [],
@@ -1186,7 +1191,6 @@ async function writeTargetedArtifacts(input: {
     join(input.evidenceRoot, 'raw-status.log'),
     [
       `status=${input.status}`,
-      `comparison_attempted=${input.comparisonAttempted}`,
       `comparison_completed=${input.comparisonCompleted}`,
       `platform_exception_count=${input.filePopupVisual?.platformExceptions.length ?? 0}`,
       `error=${input.error ?? ''}`,
@@ -1335,7 +1339,6 @@ for (const entry of [
             reference: referenceSignature,
             actual: actualSignature,
             status: 'pairing-mismatch',
-            comparisonAttempted: false,
             comparisonCompleted: false,
             editorTopEdge,
             error: message,
@@ -1486,7 +1489,6 @@ for (const entry of [
           reference: referenceSignature,
           actual: actualSignature,
           status: error === undefined ? 'passed' : 'production-ui-drift',
-          comparisonAttempted: true,
           comparisonCompleted: true,
           metricDifferences: differences,
           editorTopEdge,
@@ -1572,9 +1574,11 @@ async function prepareActualStatusCase(
 /**
  * The verification method every editor-status state is proven by. It is a
  * declared method with its own assertions, not an attempted comparison that did
- * not happen — spec.md (Session 2026-08-14) forbids a production-only
- * `comparisonAttempted: false` artifact from standing in for a parity result,
- * so that field never appears in these artifacts at all.
+ * not happen — spec.md (Session 2026-08-14) forbids a production-only artifact
+ * that merely records a comparison as un-attempted from standing in for a
+ * parity result, so no field anywhere in this harness reports that. Whether a
+ * comparison ran is carried only by the `status` discriminant, whose
+ * `pairing-mismatch` value always accompanies a thrown failure.
  */
 const T063_BEHAVIOUR_VERIFICATION_METHOD =
   'data-status-state attribute, title bar, status-item text and binding colour-token assertions';
