@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	goruntime "runtime"
+	"strings"
+	"unicode"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
@@ -84,18 +86,68 @@ func main() {
 	}
 }
 
-// documentFileFilters is the single suffix filter both native pickers use.
+// supportedDocumentSuffixes is the one list of suffixes both native pickers
+// offer. FR-FT-002 names these four for Open and FR-FT-012 names the same four
+// for Save As.
 //
 // It was two identical literals, one per picker, which is how a filter set can
-// drift from the suffixes the backend accepts without anything noticing.
-// FR-FT-002 names the four suffixes for Open and FR-FT-012 names the same four
-// for Save As, so there is one list, checked against
-// `file.IsSupportedDocumentSuffix` by TestNativePickersFilterExactlyTheSupportedSuffixes.
+// drift from the suffixes the backend accepts without anything noticing. The
+// backend's copy of the set is `file.IsSupportedDocumentSuffix`, and
+// TestNativePickersFilterExactlyTheSupportedSuffixes holds the two equal.
+var supportedDocumentSuffixes = []string{".md", ".markdown", ".mdown", ".txt"}
+
+// documentFileFilters is the single suffix filter both native pickers use.
 func documentFileFilters() []runtime.FileFilter {
+	return documentFileFiltersFor(goruntime.GOOS)
+}
+
+// documentFileFiltersFor builds the picker filter for one host.
+//
+// FR-FT-002 requires the picker to filter *case-insensitively*, and only one of
+// the three hosts needs help with that. macOS matches an `NSOpenPanel`'s
+// allowed types case-insensitively, and the Windows common item dialog matches
+// its filter spec case-insensitively, so on those hosts the four lowercase
+// globs already satisfy the clause and a longer list buys nothing.
+//
+// GTK does not. Wails hands every `;`-separated glob to
+// `gtk_file_filter_add_pattern` (`internal/frontend/desktop/linux/window.go`),
+// which compiles a GPatternSpec: case-sensitive, and understanding only `*` and
+// `?`, so there is no `*.[mM][dD]` to write. Enumerating the case forms is the
+// only construct GTK offers, so on Linux the filter carries all 300 of them.
+// They are never shown to anyone — the picker displays `DisplayName`.
+//
+// `*.md` stays the first glob on every host: the Windows Save dialog derives
+// its default extension from it (`.../windows/dialog.go`, `DefaultExtension`).
+func documentFileFiltersFor(goos string) []runtime.FileFilter {
+	globs := make([]string, 0, len(supportedDocumentSuffixes))
+	for _, suffix := range supportedDocumentSuffixes {
+		if goos == "linux" {
+			globs = append(globs, suffixCaseGlobs(suffix)...)
+			continue
+		}
+		globs = append(globs, "*"+suffix)
+	}
 	return []runtime.FileFilter{{
 		DisplayName: "Markdown and text",
-		Pattern:     "*.md;*.markdown;*.mdown;*.txt",
+		Pattern:     strings.Join(globs, ";"),
 	}}
+}
+
+// suffixCaseGlobs enumerates every case form of one suffix, all-lowercase first.
+func suffixCaseGlobs(suffix string) []string {
+	forms := []string{"*"}
+	for _, letter := range strings.ToLower(suffix) {
+		upper := unicode.ToUpper(letter)
+		grown := make([]string, 0, len(forms)*2)
+		for _, form := range forms {
+			grown = append(grown, form+string(letter))
+			if upper != letter {
+				grown = append(grown, form+string(upper))
+			}
+		}
+		forms = grown
+	}
+	return forms
 }
 
 func newAppOptions(applicationContext *application.ApplicationContextHolder) *options.App {

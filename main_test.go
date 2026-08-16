@@ -688,12 +688,8 @@ func (utils *failingStartupFileUtils) GetAppDatabaseFilePath() (string, error) {
 
 var _ file.FileUtilsServiceAPI = (*failingStartupFileUtils)(nil)
 
-// Proves: FR-FT-002 (partial — "filtered … to `.md`, `.markdown`, `.mdown`, and
-// `.txt`" and the same set for FR-FT-012's Save As picker. The
-// "case-insensitively" clause is **not** proved here: `main.go` still offers a
-// single lowercase glob, and correcting it is T148's, which owns the decision
-// to add the case variants. When T148 lands, the loop below gains the uppercase
-// and mixed-case forms and this parenthetical goes.)
+// Proves: FR-FT-002 "filtered case-insensitively to `.md`, `.markdown`,
+// `.mdown`, and `.txt`", and the same suffix set for FR-FT-012's Save As picker.
 //
 // The cancellation half of FR-FT-002 is proved by
 // `internal/appmodel/handler_test.go`.
@@ -704,35 +700,80 @@ var _ file.FileUtilsServiceAPI = (*failingStartupFileUtils)(nil)
 // predicate, and nothing proved the pickers agreed with it, so a suffix could be
 // offered in the dialog and refused after selection, or accepted by the backend
 // and impossible to reach through the picker.
+//
+// Case-insensitivity is per host, so the host branch is exercised explicitly
+// rather than through whatever `goruntime.GOOS` this test happens to run on.
 func TestNativePickersFilterExactlyTheSupportedSuffixes(t *testing.T) {
-	filters := documentFileFilters()
-	if len(filters) != 1 {
-		t.Fatalf("document file filters = %d, want one 'Markdown and text' group", len(filters))
-	}
+	named := []string{".md", ".markdown", ".mdown", ".txt"}
 
-	globs := strings.Split(filters[0].Pattern, ";")
-	offered := make(map[string]bool, len(globs))
-	for _, glob := range globs {
-		if !strings.HasPrefix(glob, "*.") {
-			t.Fatalf("picker glob %q is not a suffix pattern", glob)
+	for _, goos := range []string{"darwin", "windows", "linux"} {
+		filters := documentFileFiltersFor(goos)
+		if len(filters) != 1 {
+			t.Fatalf("%s: document file filters = %d, want one 'Markdown and text' group", goos, len(filters))
 		}
-		suffix := strings.TrimPrefix(glob, "*")
-		if offered[suffix] {
-			t.Fatalf("picker offers %q twice", suffix)
-		}
-		offered[suffix] = true
-		if !file.IsSupportedDocumentSuffix("document" + suffix) {
-			t.Errorf("the picker offers %q, which the backend refuses after selection", suffix)
-		}
-	}
 
-	for _, suffix := range []string{".md", ".markdown", ".mdown", ".txt"} {
-		if !offered[suffix] {
-			t.Errorf("the picker does not offer %q, which FR-FT-002 names and the backend accepts", suffix)
+		globs := strings.Split(filters[0].Pattern, ";")
+		if globs[0] != "*.md" {
+			// The Windows Save dialog takes its default extension from the
+			// first glob (wails internal/frontend/desktop/windows/dialog.go).
+			t.Errorf("%s: first glob is %q, want %q", goos, globs[0], "*.md")
 		}
-	}
-	if len(offered) != 4 {
-		t.Errorf("picker offers %d suffixes (%v), want exactly the four FR-FT-002 names", len(offered), globs)
+
+		offered := make(map[string]bool, len(globs))
+		for _, glob := range globs {
+			if !strings.HasPrefix(glob, "*.") {
+				t.Fatalf("%s: picker glob %q is not a suffix pattern", goos, glob)
+			}
+			suffix := strings.TrimPrefix(glob, "*")
+			if offered[suffix] {
+				t.Fatalf("%s: picker offers %q twice", goos, suffix)
+			}
+			offered[suffix] = true
+			if !file.IsSupportedDocumentSuffix("document" + suffix) {
+				t.Errorf("%s: the picker offers %q, which the backend refuses after selection", goos, suffix)
+			}
+		}
+
+		distinct := make(map[string]bool, len(named))
+		for suffix := range offered {
+			distinct[strings.ToLower(suffix)] = true
+		}
+		for _, suffix := range named {
+			if !distinct[suffix] {
+				t.Errorf("%s: the picker does not offer %q, which FR-FT-002 names and the backend accepts", goos, suffix)
+			}
+		}
+		if len(distinct) != len(named) {
+			t.Errorf("%s: picker offers %d distinct suffixes, want exactly the four FR-FT-002 names", goos, len(distinct))
+		}
+
+		if goos != "linux" {
+			// `NSOpenPanel` and the Windows common item dialog match their
+			// filters case-insensitively already, so the four lowercase globs
+			// are the whole filter there.
+			if len(offered) != len(named) {
+				t.Errorf("%s: picker carries %d globs, want the four lowercase ones", goos, len(offered))
+			}
+			continue
+		}
+
+		// GTK compiles each glob into a case-sensitive GPatternSpec that
+		// understands only `*` and `?` — no `*.[mM][dD]` — so the enumeration
+		// is the only way FR-FT-002's "case-insensitively" can hold on Linux.
+		for _, suffix := range named {
+			for _, form := range []string{
+				suffix,
+				strings.ToUpper(suffix),
+				"." + strings.ToUpper(suffix[1:2]) + suffix[2:],
+			} {
+				if !offered[form] {
+					t.Errorf("linux: the picker does not offer %q, so GTK hides files named that way", form)
+				}
+			}
+		}
+		if want := 4 + 256 + 32 + 8; len(offered) != want {
+			t.Errorf("linux: picker offers %d globs, want every case form of the four suffixes (%d)", len(offered), want)
+		}
 	}
 
 	// Both pickers must use this one list; two literals is how they drift.
@@ -740,7 +781,7 @@ func TestNativePickersFilterExactlyTheSupportedSuffixes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read main.go: %v", err)
 	}
-	if occurrences := strings.Count(string(source), filters[0].Pattern); occurrences != 1 {
-		t.Errorf("the suffix glob appears %d times in main.go, want one shared definition", occurrences)
+	if occurrences := strings.Count(string(source), `".md"`); occurrences != 1 {
+		t.Errorf("the suffix list appears %d times in main.go, want one shared definition", occurrences)
 	}
 }

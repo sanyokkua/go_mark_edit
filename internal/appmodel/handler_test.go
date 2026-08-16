@@ -226,8 +226,8 @@ func (service *fakeAppModelService) ReopenLastFile(_ context.Context, _ uint64) 
 }
 
 // Proves: FR-FT-002 (partial — only the cancellation half. The picker's four
-// suffixes are proved by TestNativePickersFilterExactlyTheSupportedSuffixes in
-// main_test.go; the "case-insensitively" clause is unbuilt and owned by T148.)
+// suffixes and its case-insensitive filtering are proved by
+// TestNativePickersFilterExactlyTheSupportedSuffixes in main_test.go.)
 func TestOpenCancellationHasNoMutation(t *testing.T) {
 	emitter := &recordingEmitter{}
 	service := NewEmptyAppModelService(emitter)
