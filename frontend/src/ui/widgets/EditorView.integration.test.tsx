@@ -1702,7 +1702,7 @@ it('STORY-015-AC-5 keeps keyboard selection and focus backend-controlled', async
 // and **preview scroll** is recorded to the backend by
 // `useSyncedBuffer.onPreviewScrollChange` but never restored into the preview
 // element, because no production code assigns `scrollTop` anywhere. Both are
-// filed as T178. Caret, selection and editor view state are proved by
+// filed as T179. Caret, selection and editor view state are proved by
 // 'STORY-022-AC-3 restores the exact Monaco session and saved scroll state'.)
 //
 // The failure this forbids is one document wearing another's state. The switch

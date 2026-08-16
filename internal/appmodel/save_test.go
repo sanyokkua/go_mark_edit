@@ -296,7 +296,9 @@ func TestSaveUsesStableDocumentIdentity(t *testing.T) {
 	}
 }
 
-// Proves: FR-FT-006 (partial — the pre-disk write refusal; editing/format/lint unavailability is unproven; T157)
+// Proves: FR-FT-006 (partial — the pre-disk write refusal. Save, Save As,
+// format and lint unavailability are proved by actionRegistry.test.ts and
+// actionDispatcher.test.ts; editing is unbuilt and filed as T178.)
 // Proves: FR-FT-035
 func TestRefusedWriteNamesTheFileNotTheDocumentID(t *testing.T) {
 	/*

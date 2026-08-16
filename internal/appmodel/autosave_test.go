@@ -92,7 +92,8 @@ func (clock *fakeAutosaveClock) FireNextAsync() bool {
 	return true
 }
 
-// Proves: FR-FT-017 (partial — debounce and eligibility; "no success toast" is unproven; T157)
+// Proves: FR-FT-017 (partial — debounce and eligibility; "never show a success
+// toast" is proved in the frontend by App.test.tsx, where the toast would be)
 func TestAutosaveDebounceAndEligibility(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)

@@ -1742,6 +1742,128 @@ rest genuinely unbuilt, the remainder is its own task with its own evidence.
   - **Parity harness**: FR-FT-052 popups staying at least 8 logical pixels inside the viewport; FR-FT-054 the three-consecutive-identical-hash precondition and the DPR-1/frozen-caret conditions asserted rather than merely exercised (a new `e2e/parity/readiness.test.ts`); FR-FT-055 the rule that a mapped region must be a component this feature owns and fully built (`e2e/parity/manifest.test.ts`).
   - **Whole requirements with no test at all**: ~~**FR-FT-036** (tab drag — insertion marker, reduced-opacity tab, Escape cancel, edge auto-scroll, same-position no-op). The requirement is unbuilt and **T130** owns building it; this entry exists so the coverage gap is not lost if T130 is descoped.~~ **Partly closed by T130**, which built and covered the insertion marker, Escape cancel and same-position no-op along with grab and drop. **The reduced-opacity dragged tab and the edge auto-scroll remain uncovered and now belong to T177** — the anchors T130 wrote are partial and name those two by name. **FR-FT-057** (every accepted screenshot or style-baseline change maps to a Feature 003 visual requirement, Feature 001/002 baselines preserved, host differences reported separately from same-browser mismatches) — nothing asserts any part of it, and it belongs in `e2e/parity/accounting.test.ts` with the host half in `cmd/native-evidence/`.
   - **Do not close this by writing anchors.** Every clause here failed the "does the body actually assert it?" test on a read of the body. An anchor without an assertion is the defect T115 exists to remove.
+  - **Closed 2026-08-16, except three clauses that name behaviour nothing implements.** Nineteen of the
+    twenty-two clauses listed above now have a covering test body; one was already covered and only its
+    anchor was wrong; three could not be written because the behaviour does not exist, and they are filed
+    as **T178** and **T179**. FR-FT-057 stays out of scope on the owner's decision in
+    `decisions-phase-21.md`; FR-FT-036's two remaining clauses are **T177's**; FR-FT-002's
+    case-insensitivity is **T148's**. Four branches, four commits, each squash-merged into the chain tip.
+  - **Go, `internal/appmodel/` — eight clauses, all new tests.** FR-FT-001 New under a Reading default
+    still opens in Editor mode with no scheduled write (`file_lifecycle_test.go`); FR-FT-012 Save As
+    rejects an unsupported suffix before the overwrite prompt, before any file appears at the target and
+    without holding a reservation (`save_test.go`); FR-FT-016 the recorded committed snapshot is read back
+    exactly and a replayed commit performs no second replacement (`write_coordinator_test.go`); FR-FT-018
+    documents dirty when autosave is switched off stay dirty *as projected state*, and never-eligible
+    documents are untouched (`autosave_disabled_test.go`); FR-FT-022 reload, successful Save, successful
+    Save As, close and path change each invalidate a Keep-mine authorization, and the dead token then buys
+    no overwrite of a fresh external change (`conflict_test.go`); FR-FT-026 a Save all resolves every
+    external conflict before the first write runs, then completes once the decision is given
+    (`close_plan_test.go`); FR-FT-028 recently-closed history retains no untitled document and no source
+    content — asserted reflectively over `recentlyClosedDocument`, so adding a `content` field fails the
+    test rather than slipping past it; FR-FT-039 explicit Save and Save As both promote recency, Save As
+    promoting the adopted path (`recent_files_test.go`).
+  - **Go, elsewhere — one clause covered, one half deliberately left to T148.** FR-FT-008's "never reads
+    the value directly from the visible editor widget" is now
+    `TestArchitectureOnlyTheFlushCommandCarriesDocumentContent` in `architecture_test.go`: `UpdateBuffer`
+    is the only bound Wails command that may take a document's text. That is where the rule has to live —
+    a `Save(documentID, content)` binding makes it unenforceable however careful the frontend is, and no
+    behavioural test can see that, because a Save that happens to write canonical content passes every
+    content assertion while the binding still accepts the widget's value. FR-FT-002's four suffixes are
+    covered by `TestNativePickersFilterExactlyTheSupportedSuffixes` in `main_test.go`, checked in both
+    directions against `file.IsSupportedDocumentSuffix`; the two identical glob literals in `main()`
+    became one `documentFileFilters()` so the test has one thing to check. **The "case-insensitively"
+    half is not claimed** — `main.go` still offers a single lowercase glob, T148 owns adding the case
+    variants, and the anchor says so and names it.
+  - **Frontend unit — six clauses covered, one already covered, three unbuildable.** FR-FT-006 Save, Save
+    As, format and lint are unavailable for a document Go actually classifies `unsafe-read-only`
+    (`actionRegistry.test.ts`), and the dispatcher refuses to run the command rather than merely dimming
+    it (`actionDispatcher.test.ts`) — the capability case that existed used `read-only`, a value
+    `App.tsx:1260-1264` records as one Go never emits. FR-FT-015 and FR-FT-017 an autosave arriving as a
+    status patch produces no toast, asserted beside the explicit-Save confirmation so the pair says "one,
+    and only for the explicit write" (`App.test.tsx`). FR-FT-024 the Discard choice answers `discard` and
+    not `discard-all` (`ClosePrompt.test.tsx`). FR-FT-042 startup with six remembered recent files opens,
+    activates and reopens nothing (`App.test.tsx`); the launcher's own rendering stays with
+    `Launcher.test.tsx`, because `App.test.tsx` stubs `AppShell`. FR-FT-047 a five-times-longer
+    substituted translation — the shim's own catalogue object, mutated and restored, so `t` really does
+    return longer strings — leaves every menubar action reachable with its complete accessible name and
+    does not push the row into the 375-pixel overflow (`ShellMenuRow.test.tsx`). FR-FT-053 the named
+    per-family structure: Glass blur *with saturation*, a highlight the other families do not draw,
+    translucent `rgba` surface layers and the continuous canvas; Material opaque fills and 18px pill tabs
+    filled with `--accent`; Minimal zero radius and underline-led selection (`tokens.test.ts`).
+  - **FR-FT-037 was already covered; only the anchor was wrong.** T142 built the deferred restoration and
+    proved it twice — `foregroundFocus.test.ts:24-64` and `DocumentTabs.test.tsx`'s *T142 waits for the
+    application to regain foreground focus before restoring the tab*, whose body asserts
+    `expect(tab).not.toHaveFocus()` after a successful Reveal and `expect(tab).toHaveFocus()` only after
+    `window.dispatchEvent(new Event('focus'))`, with the refusal case proving a *failed* Reveal restores
+    immediately. The stale "unproven; T157" half of the anchor at `DocumentTabs.test.tsx:257` was
+    corrected. No test was written for it.
+  - **Parity harness — three clauses, one new file.** FR-FT-054's three-consecutive-identical-hash
+    precondition, its restart-on-change behaviour, its refusal to return a capture from a region that
+    never settles, the frozen caret (both the native `caret-color` rule and the Monaco `div.cursor` rule
+    that `caret-color` cannot reach) and the freeze's idempotence are now `e2e/parity/readiness.test.ts`.
+    **That file is Jest's**: `jest.config.mjs` matches `e2e/parity/**/*.test.ts` recursively while
+    `playwright.config.ts` matches `e2e/*.test.ts` at the top level only, so the same file one directory
+    up would have killed the entire browser run at collection. Device-pixel-ratio 1 is now asserted per
+    case in `targeted-parity.test.ts` instead of being left to a config line nothing read back.
+    FR-FT-052's 8-logical-pixel inset is measured on all four edges of every popup surface against
+    `.application-frame` — the frame is the application window, and clamping against `window.innerHeight`
+    is what created a scroll container worth ~332 antialiasing pixels at the 720px parity height.
+    FR-FT-055's "a mapped region MUST be a component this feature owns and has fully built, compared in
+    its own region" is asserted over the 14 targeted entries in `e2e/parity/manifest.test.ts`: no
+    whole-screen selector, each entry's selector is its own region's, and every mapped region's production
+    token exists under `frontend/src/ui`.
+  - **Three clauses could not be covered, because the behaviour is unbuilt.** Each is named in the anchor
+    that would otherwise have claimed it. **FR-FT-006's "Editing … MUST be unavailable"**: nothing makes
+    the editor read-only for a capability — `CodeEditor.tsx` and `EditorView.tsx` contain no `readOnly`
+    option and no capability branch, and `getActionAvailability` applies no capability rule to
+    `editor`-scope actions at all. **FR-FT-032's "Reading state"**: there is no per-document field for it.
+    `DocumentView` carries arrangement, cursor, selection and scroll and nothing else;
+    `distraction-free-reading` is a window action and `defaultOpenMode` is an application setting.
+    **FR-FT-032's "preview scroll"**: it is recorded to the backend by
+    `useSyncedBuffer.onPreviewScrollChange` and never restored — no production source assigns `scrollTop`
+    anywhere. Filed as **T178** (the FR-FT-006 clause) and **T179** (the two FR-FT-032 clauses). Writing
+    an anchor over any of the three would have been exactly the defect this task exists to remove.
+  - **Every new test was shown red first, by breaking production and restoring it.** A sample, verbatim:
+    making `NewDocument` honour the open mode gave `New under the Reading default = {Arrangement:preview
+    EditorVisible:false PreviewVisible:true …}, want Editor mode regardless of the setting`; deleting the
+    Save As suffix guard gave `Save As to "notes.rtf" = "committed", want "refused"`; implementing "cancel
+    the pending write" as "forget the pending revision" gave `document "doc-…" stopped being dirty when
+    autosave was switched off … Status:saved`; removing `deleteTokensForDocument` from
+    `removeConflictLocked` gave `live Keep-mine authorizations = 2, want none after the invalidating
+    event` on three of the four FR-FT-022 arms; skipping the close plan's pre-write inspection gave `close
+    plan status = "ready", want it held short of ready while a conflict is unresolved`; adding a `content`
+    field to `recentlyClosedDocument` gave `the recently-closed entry retained the document's source
+    content in [content]`; dropping `SaveOriginExplicitSave` from the promotion predicate gave `recency
+    after the explicit Save = [second.md first.md], want first.md promoted over second.md`; zeroing the
+    recorded `ContentRevision` gave `recorded snapshot = {… ContentRevision:0 …}, want the exact request`;
+    adding a `content` parameter to the bound `Save` gave `bound command Save accepts document content
+    across the bridge ([handler.go: content])`; swapping `.mdown` for `.rst` in the picker glob failed in
+    both directions; `consecutive ?? 2` gave `Expected: 4 / Received: 3`; deleting the Monaco cursor rule
+    gave `Expected pattern: /\.monaco-editor \.cursor \{ visibility: hidden !important; \}/`; mapping the
+    closed menubar to `#app` gave `Expected: not "#app"`; narrowing the 375 overflow's frame margin from
+    18 to 2 gave `the settings-overflow popup is 1.00 logical pixels from the application frame's right
+    edge, which is less than the required 8`; adding an autosave toast gave 14 notifications against an
+    expected 0; restoring the first recent file at startup gave `Expected number of calls: 0 / Received
+    number of calls: 1`; forcing `choose('discard-all')` lost the `data-close-choice="discard"`
+    attribute; seeding `scrollRef` at zero gave `- "editor": 120 / + "editor": 0`; truncating the Settings
+    trigger label lost its accessible name; deleting `text-overflow: ellipsis` from the shared trigger
+    failed the clipping contract; and dropping `saturate()` from the glass blur, and the 18px pill radius,
+    each failed the FR-FT-053 case on its own. **In every Go case the pre-existing sibling tests stayed
+    green under the injected defect** — that silence is what the gap was.
+  - **One assertion was written, found vacuous, and replaced rather than kept.** The first FR-FT-032 draft
+    looped over every `setDocView` call checking that no document carried another's scroll. Under the
+    obvious injected defect it still passed, because no scroll event occurs in that harness and view
+    updates go through `updateLocalDocView`, a different mock. It was replaced with a driven preview
+    scroll on each document and an assertion on the *base* the next update is built from, which does fail:
+    seeding `scrollRef` at zero gives `- "editor": 120 / + "editor": 0`.
+  - **Gates.** `just check` green — `Test Suites: 80 passed, 80 total`, `Tests: 633 passed, 633 total`
+    (from 79/618; +15 tests and the one new suite); lint `0 errors, 2 warnings`, the same pre-existing
+    `react-refresh/only-export-components` notices in `DocumentIdentity.tsx` and `Launcher.tsx`, neither
+    file touched. `just verify 003-real-files-and-tabs`: M1-M6 all PASS. `go test -race ./internal/... .`
+    clean. `just e2e-test`: `268 passed (5.2m)`, `[parity states] 40/40`, `[parity accounting] 150/150`.
+    One run of `real-files-and-tabs.test.ts`'s `FT-VS-10 dispatches the File accelerators` failed on a
+    `Ctrl/Cmd+W` tab-count race and passed both in isolation and on a full re-run; it touches nothing this
+    task changed.
 
 - [ ] T158 Name the evidence that proves each success criterion, per Constitution II and the Definition of Done. T115 covered the FRs; the SCs remain. **SC-FT-001, 003, 007, 008, 011 and 013 appear in no test and no evidence file.** T115 linked the two whose substance plainly exists — SC-FT-007 to `evidence/ft-vs-05/autosave-performance.md` and SC-FT-011 to the host walkthroughs — and left the rest, because a link that overstates is worse than none.
   - **SC-FT-003** is not a link gap but a real one: it requires that stale or failed switches produce **zero** cross-document text installations, and **T128** records that the guard `acceptsActivationAcknowledgement` is imported only by its own test while production applies acknowledgements unconditionally. Sequence this after T128.
@@ -1881,3 +2003,14 @@ mock's per-category table is a strict subset of Go's permitted table, which cann
   - **The edge auto-scroll.** The strip is a scroll container only when its tabs overflow — `.tabStrip[data-tabs-overflowing='true']` gets `overflow-x: auto`, and `tabsOverflowing` is measured by a `ResizeObserver`, never counted. So the clause is reachable only in the overflowing case, and a test must **make the strip overflow by opening enough documents at the harness's width** rather than assuming a tab count. Auto-scroll while the pointer sits within some margin of the strip's leading or trailing edge, and stop when it leaves. Respect `prefers-reduced-motion: reduce`, which the stylesheet already honours for the row's other transitions.
   - **Two hazards the T130 work already paid for.** (1) `.application-frame` is the application window; `window.innerHeight` is not — measure the frame, not the browser viewport. (2) Making an element a scroll container costs ~332 deterministic antialiasing pixels against the parity reference, so do not widen `overflow-x: auto` beyond the `data-tabs-overflowing` case to make auto-scroll easier to implement.
   - When this lands, revisit the partial anchors T130 left behind and widen them — and only then may any anchor name FR-FT-036 without a parenthetical.
+
+- [ ] T178 Make editing genuinely unavailable for an `unsafe-read-only` document, per FR-FT-006 (gap, opened by T157). FR-FT-006 lists five things that "MUST be unavailable" when invalid-UTF-8 or NUL-bearing input opens tolerantly: "Editing, document formatting or lint commands, Save, Save As, and autosave". T157 covered four of them and could not cover the first, because nothing implements it. **Two independent holes, both verified directly.** (a) The editor is never made read-only: a repository-wide grep for `readOnly` across `frontend/src/ui/components/CodeEditor.tsx` and `frontend/src/ui/widgets/EditorView.tsx` returns nothing, no capability reaches Monaco's options, and `CodeEditor` has no `readOnly` prop to pass one through. A user can type into a document the backend will refuse to write, and the first refusal arrives at Save. (b) `getActionAvailability` (`frontend/src/logic/actions/actionRegistry.ts:474`) applies its capability rule only to `save` and `save-as` (`:517-530`); every `editor`-scope action — `bold`, `italic`, `heading-1..3`, the list and table actions, `paste`, and the rest at `:307-379` — is gated on `editorFocused` alone, in the registry and again in `actionDispatcher.ts:90-95`. So the formatting toolbar stays live on an unwritable document.
+  - **The two must be fixed together.** Making Monaco read-only without the registry leaves the toolbar buttons enabled and silently inert, which is the defect T116 exists to remove; correcting the registry without Monaco leaves the keyboard able to edit.
+  - **`unsafe-read-only` is not the only capability that must block editing.** `large-read-only` (a file above 10 MiB, FR-FT-005) is equally unwritable, and `readOnlyReason.ts:23-34` already distinguishes the two for the status surface. Read the capability, not one string — Go's own predicate is `capability != writable` (`internal/appmodel/save.go`), and `App.tsx:1265-1267` already mirrors it for the write path.
+  - **Where the covering tests go.** Registry and dispatcher unavailability beside the two `T157` cases in `actionRegistry.test.ts` and `actionDispatcher.test.ts`; the Monaco option in `EditorView.integration.test.tsx`, whose `mockRuntime` already records the options `CodeEditor` passes. When it lands, widen the `// Proves: FR-FT-006 (partial …)` anchors both tests carry — they name this task by number.
+
+- [ ] T179 Give a document its own Reading state and restore its preview scroll, per FR-FT-032 (gap, opened by T157). FR-FT-032 requires each document to preserve "its own dirty state, Editor/Split/Preview arrangement, **Reading state**, editor and **preview scroll**, caret, selection, and editor view state across switches". T157 covered dirty state, arrangement and the scroll *base*; the two named clauses could not be covered because neither exists.
+  - **Reading state has no per-document field.** `DocumentView` (`frontend/src/logic/store/appModelTypes.ts:27-34`) carries `arrangement`, `editorVisible`, `previewVisible`, `cursor`, `selection` and `scroll`, and `apperr.DocView` is the same shape on the Go side. The only "Reading" concepts in the product are the `distraction-free-reading` **window** action (`actionRegistry.ts:64,289`, rendered by `ViewMenu.tsx:296-299`) and the `defaultOpenMode: 'reading' | 'editor'` **application setting** that T119 wired. Neither is per document, so today switching tabs cannot preserve a per-document Reading state and cannot fail to. **Decide first whether the requirement means distraction-free reading or means `arrangement === 'preview'`** — if the latter, the clause is already satisfied by the arrangement clause and the requirement text should say so rather than naming a second thing; if the former, it needs a field on `DocView`, a migration-free addition to the Go projection, and a `setDocView` round trip.
+  - **Preview scroll is recorded and never restored.** `useSyncedBuffer.onPreviewScrollChange` (`frontend/src/logic/hooks/useSyncedBuffer.ts:221-227`) writes `scroll.preview` through `updateDocView`, and the value survives in the projection — T157's `T157 keeps each document its own dirty state and arrangement across a switch` proves the recorded base is per document. Nothing reads it back: a grep for `scrollTop =` across `frontend/src/ui` returns nothing, so the preview element always mounts at zero. The editor half is not affected — Monaco's own `restoreViewState` carries it, which is why only the preview is named here.
+  - **Restore it on activation, not on every render.** The preview remounts on every accepted revision (`EditorView.tsx:427` keys `LivePreview` on `documentId:content`), so an unconditional assignment would fight the user's scrolling on each keystroke. Apply the saved offset once per activation, the way the Monaco view state already is.
+  - **Prove it with a real scroll.** The harness for this already exists: T157's case in `EditorView.integration.test.tsx` drives `fireEvent.scroll` on the `previewContent` element inside the `Preview pane` region and reads the resulting view from the `updateLocalDocView` mock, not `setDocView`. When this lands, widen that test's `// Proves: FR-FT-032 (partial …)` anchor, which names this task by number.

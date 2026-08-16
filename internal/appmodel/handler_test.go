@@ -225,7 +225,9 @@ func (service *fakeAppModelService) ReopenLastFile(_ context.Context, _ uint64) 
 	return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
 }
 
-// Proves: FR-FT-002 (partial — only the cancellation half; the picker's suffix filter is unproven; T157)
+// Proves: FR-FT-002 (partial — only the cancellation half. The picker's four
+// suffixes are proved by TestNativePickersFilterExactlyTheSupportedSuffixes in
+// main_test.go; the "case-insensitively" clause is unbuilt and owned by T148.)
 func TestOpenCancellationHasNoMutation(t *testing.T) {
 	emitter := &recordingEmitter{}
 	service := NewEmptyAppModelService(emitter)

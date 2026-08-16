@@ -24,7 +24,9 @@ test('FT-VS-01 operates New/Open from the real File menu and keeps the shell usa
   await expect(page.getByRole('main', { name: 'Document area' })).toBeVisible();
 });
 
-// Proves: FR-FT-008 (partial — flush then save then one confirmation; "never reads the visible editor widget" is unproven; T157)
+// Proves: FR-FT-008 (partial — flush then save then one confirmation; "never
+//   reads the visible editor widget" is proved by
+//   TestArchitectureOnlyTheFlushCommandCarriesDocumentContent in architecture_test.go)
 test('FT-VS-02 flushes the latest edit and reports one explicit Save confirmation', async ({
   page,
 }) => {
