@@ -1,5 +1,10 @@
 # FT-VS-05 — Autosave performance evidence
 
+**Superseded as the primary SC-FT-007 artifact on 2026-08-16 by
+[`release-build-reconciliation-2026-08-16.md`](release-build-reconciliation-2026-08-16.md).** This
+file is retained as the earlier distribution the re-run is compared against; read it for history,
+not as the current answer.
+
 **Proves: SC-FT-007** — partially. Added by T115, which found that SC-FT-007 was named nowhere in the
 evidence tree or the test suite, so no mechanical answer existed to "which evidence proves this?"
 even though the substance was measured here.
@@ -7,8 +12,18 @@ even though the substance was measured here.
 The protocol below is SC-FT-007's exactly — 20 uncounted warmups, 100 measured autosaves across
 1 KiB / 256 KiB / 1 MiB / 2 MiB, monotonic timing from final input to atomic replacement. What it
 does **not** satisfy is SC-FT-007's "fresh current-host **release build**": this is the
-`native_evidence` build-tagged driver, and the substitution is stated at `:45` below. **T121 owns
-that reconciliation** and must not be considered closed by this link.
+`native_evidence` build-tagged driver, and the substitution is stated at `:50` below.
+
+**What T121 settled, 2026-08-16.** The two distributions agree — the re-run at HEAD is 100/100
+committed with p50 1,253.896 ms and p95 1,333.884 ms against this run's 1,276.937 / 1,394.934 — and
+the build substitution is narrower than this file conceded: `internal/appmodel` and `internal/file`
+compile to **identical Go package build IDs** under the release tag set and under the harness tag
+set, so the measured write path is the same object code the release binary links. What T121 could
+**not** do is run the protocol against the `just build` artifact itself: that binary wires no
+write-commit observer and embeds no scripted input driver, so it has neither timing seam. The
+interactive host spot-check that would close the remainder is filed as **T181** and has not been
+performed. **These numbers are also stale in one respect** — they predate T123's rewrite of
+`newAtomicReplaceError` and T134's `close_drain.go`, both in the measured write path.
 
 ## Result
 
@@ -53,6 +68,16 @@ GOCACHE=/tmp/gomarkedit-go-cache CGO_LDFLAGS='-framework UniformTypeIdentifiers'
 ```
 
 The limitation is explicit: this is not the `just build` artifact. The appmodel and file packages use the production constructors and byte-identical write path; only the build-tagged native driver and evidence frontend are added. T039 must independently spot-check the true `just build` binary and reopen this task if its distribution disagrees.
+
+**Resolved 2026-08-16 by T121, and only partly in this file's favour.** T039 never performed that
+spot-check — the string `spot-check` appeared here and nowhere else in the repository. T121 rebuilt
+the release artifact (`just build` exit 0, no stale instance, `just gen-check` run afterwards),
+re-ran the full 100-trial protocol at HEAD, and found the distributions agree. It also replaced the
+"byte-identical write path" claim above — which was prose nobody could check — with a measurement:
+identical Go package build IDs for both packages under both tag sets, no `native_evidence` build
+constraint in either package, and no cgo file in either. The clause that remains open is that the
+release binary cannot run this protocol at all, for want of a t0 and a t1 seam; **T181** owns the
+interactive host spot-check.
 
 ## Host and run metadata
 

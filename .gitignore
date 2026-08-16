@@ -28,6 +28,8 @@ profile.cov
 frontend/node_modules/
 frontend/dist/*
 !frontend/dist/.gitkeep
+# Written by frontend/evidence/vite.config.ts when a native-evidence scenario is run.
+frontend/dist-native-evidence/
 frontend/package.json.md5
 frontend/playwright-report/
 frontend/test-results/
