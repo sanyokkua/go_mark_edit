@@ -75,7 +75,10 @@ import {
   type ApplicationMenuTarget,
 } from './ui/widgets/applicationMenuRequest';
 import type { SettingsMenuProps } from './ui/widgets/SettingsMenu';
-import { EditorSessionProvider } from './ui/widgets/editorSession';
+import {
+  EditorSessionProvider,
+  useGuardedActivation,
+} from './ui/widgets/editorSession';
 import StartupFailure from './ui/widgets/StartupFailure';
 import ShortcutsDialog from './ui/widgets/ShortcutsDialog';
 import NormalizationPrompt from './ui/widgets/NormalizationPrompt';
@@ -418,7 +421,21 @@ const AppContents: React.FC = (): React.JSX.Element => {
       ? undefined
       : state.documents.byId[state.documents.activeDocumentId],
   );
-  const [activeBuffer, setActiveBuffer] = useState<ActiveBuffer | null>(null);
+  /*
+   * Named `replaceActiveBuffer`, not `setActiveBuffer`, and the rename is the
+   * point: an *activation acknowledgement* may not be installed through it.
+   * FR-FT-030 binds an acknowledgement to an identity and a revision and allows
+   * it to be applied "only while both values still match the confirmed active
+   * projection", so every acknowledgement goes through `activation.acknowledge`
+   * below. What is left here is the buffer handoff that is not an
+   * acknowledgement at all — startup, editor-state recovery, a completed close
+   * plan and an external-change reload — and a handler that reaches for the old
+   * name to install a command's answer now fails to compile rather than
+   * quietly reintroducing the unguarded install.
+   */
+  const [activeBuffer, replaceActiveBuffer] = useState<ActiveBuffer | null>(
+    null,
+  );
   const [remediationAnnouncement, setRemediationAnnouncement] = useState('');
   const [bootstrapStatus, setBootstrapStatus] =
     useState<BootstrapStatus>('loading');
@@ -469,6 +486,15 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const recoveryQuitConfirmedRef = useRef(false);
   const recoveryQuitCancelRef = useRef<HTMLButtonElement | null>(null);
   const activeDocumentId = activeBuffer?.documentId;
+  /*
+   * T128: the one install path for an active-buffer acknowledgement. Each of
+   * the five acknowledging handlers claims a generation with `begin()` before
+   * it issues its command and hands the answer to `acknowledge()`, which
+   * applies it only once the projection confirms the identity and revision it
+   * carries. Nothing here restates the guard, so a sixth handler cannot
+   * reintroduce the defect by forgetting a check it never had to write.
+   */
+  const activation = useGuardedActivation(replaceActiveBuffer);
   const flushActiveDocument = useCallback(async (): Promise<void> => {
     if (activeDocumentId === undefined) return;
     await appModelAdapter.flushActiveSession?.(activeDocumentId);
@@ -515,32 +541,30 @@ const AppContents: React.FC = (): React.JSX.Element => {
       expectedTabSetRevision: number,
     ): Promise<EntryCommandOutcome | undefined> => {
       await flushActiveDocument();
+      const generation = activation.begin();
       const result = await appModelAdapter.newDocument?.(
         expectedTabSetRevision,
       );
-      if (result?.data !== undefined) {
-        setActiveBuffer(result.data);
-      }
+      activation.acknowledge(generation, result?.data);
       reportEntryError(result?.error, 'new-document');
       return result;
     },
-    [flushActiveDocument, reportEntryError],
+    [activation, flushActiveDocument, reportEntryError],
   );
   const onOpenDocument = useCallback(
     async (
       expectedTabSetRevision: number,
     ): Promise<EntryCommandOutcome | undefined> => {
       await flushActiveDocument();
+      const generation = activation.begin();
       const result = await appModelAdapter.openDocument?.(
         expectedTabSetRevision,
       );
-      if (result?.activeBuffer !== undefined) {
-        setActiveBuffer(result.activeBuffer);
-      }
+      activation.acknowledge(generation, result?.activeBuffer);
       reportEntryError(result?.error, 'open-document');
       return result;
     },
-    [flushActiveDocument, reportEntryError],
+    [activation, flushActiveDocument, reportEntryError],
   );
   const onOpenRecentFile = useCallback(
     async (
@@ -548,33 +572,31 @@ const AppContents: React.FC = (): React.JSX.Element => {
       expectedTabSetRevision: number,
     ): Promise<EntryCommandOutcome | undefined> => {
       await flushActiveDocument();
+      const generation = activation.begin();
       const result = await appModelAdapter.openRecentFile?.(
         path,
         expectedTabSetRevision,
       );
-      if (result?.activeBuffer !== undefined) {
-        setActiveBuffer(result.activeBuffer);
-      }
+      activation.acknowledge(generation, result?.activeBuffer);
       reportEntryError(result?.error, 'open-recent', path);
       return result;
     },
-    [flushActiveDocument, reportEntryError],
+    [activation, flushActiveDocument, reportEntryError],
   );
   const onReopenLastFile = useCallback(
     async (
       expectedTabSetRevision: number,
     ): Promise<EntryCommandOutcome | undefined> => {
       await flushActiveDocument();
+      const generation = activation.begin();
       const result = await appModelAdapter.reopenLastFile?.(
         expectedTabSetRevision,
       );
-      if (result?.activeBuffer !== undefined) {
-        setActiveBuffer(result.activeBuffer);
-      }
+      activation.acknowledge(generation, result?.activeBuffer);
       reportEntryError(result?.error, 'reopen-last');
       return result;
     },
-    [flushActiveDocument, reportEntryError],
+    [activation, flushActiveDocument, reportEntryError],
   );
   const onActivateDocument = useCallback(
     async (
@@ -585,15 +607,16 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (currentDocumentId !== undefined && currentDocumentId !== documentId) {
         await appModelAdapter.flushActiveSession?.(currentDocumentId);
       }
+      const generation = activation.begin();
       const result = await appModelAdapter.activateDocument?.(
         documentId,
         expectedTabSetRevision,
       );
       if (result === undefined) return {};
-      if (result.data !== undefined) setActiveBuffer(result.data);
+      activation.acknowledge(generation, result.data, documentId);
       return result;
     },
-    [activeBuffer?.documentId],
+    [activation, activeBuffer?.documentId],
   );
   /*
    * The write path's copy defect — T107's and T111's, third and last arrow.
@@ -714,12 +737,12 @@ const AppContents: React.FC = (): React.JSX.Element => {
         reportClosePlanError(result.error);
         if (isNativeClose) await cancelNativeClose();
       } else if (result.activeBuffer !== undefined) {
-        setActiveBuffer(result.activeBuffer);
+        replaceActiveBuffer(result.activeBuffer);
       } else if (
         result.activeDocumentId === undefined ||
         result.activeDocumentId === ''
       ) {
-        setActiveBuffer(null);
+        replaceActiveBuffer(null);
       }
       if (
         result.error === undefined &&
@@ -1006,7 +1029,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
           return;
         }
         if (result.activeBuffer !== undefined)
-          setActiveBuffer(result.activeBuffer);
+          replaceActiveBuffer(result.activeBuffer);
         clearCloseState();
         const state = await appModelAdapter.getState();
         const prepared = await closePlanAdapter.prepareClose(
@@ -1122,7 +1145,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
         } else {
           setRecoverySurface(null);
           if (recovered.activeBuffer !== null) {
-            setActiveBuffer(recovered.activeBuffer);
+            replaceActiveBuffer(recovered.activeBuffer);
           }
         }
         const safeName = safeFilename(
@@ -1462,9 +1485,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (decision === 'reload') {
         const refreshedState = await appModelAdapter.getState();
         if (refreshedState.activeBuffer?.documentId === current.documentId) {
-          setActiveBuffer(refreshedState.activeBuffer);
+          replaceActiveBuffer(refreshedState.activeBuffer);
         } else if (result.activeBuffer !== undefined) {
-          setActiveBuffer(result.activeBuffer);
+          replaceActiveBuffer(result.activeBuffer);
         }
         setExternalConflict(null);
         return;
@@ -1565,7 +1588,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
 
           setIsRetrying(false);
           if (result.status === 'ready') {
-            setActiveBuffer(result.activeBuffer);
+            replaceActiveBuffer(result.activeBuffer);
             setVersion(result.applicationVersion);
             setBootstrapStatus('ready');
             return;

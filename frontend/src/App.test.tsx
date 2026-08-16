@@ -722,8 +722,36 @@ it('T111 surfaces the close plan refusal with the backend message intact', async
 it('T009 operates File New through the real menu and installs its acknowledged buffer', async () => {
   act((): void => disposeAppModelProjection());
   store.dispatch(resetProjection());
+  /*
+   * The double publishes the state patch as well as answering the call, because
+   * that is what `NewDocument` does: `publishLocked` emits the patch before the
+   * outcome is built (`internal/appmodel/file_lifecycle.go`). Until T128 nothing
+   * read the projection on this path so a double that answered and published
+   * nothing was indistinguishable from the real backend; FR-FT-030's guard reads
+   * it, and a double that never advances the projection would now hide the very
+   * confirmation the rule is about.
+   */
+  let publishStatePatch: ((patch: AppStatePatch) => void) | undefined;
   const newDocument = jest.fn(async (expectedTabSetRevision: number) => {
     void expectedTabSetRevision;
+    publishStatePatch?.({
+      revision: 13,
+      orderedDocumentIds: ['document-1', 'document-2'],
+      documents: {
+        upsert: {
+          'document-2': {
+            ...(bootstrapState('initial content', 12).snapshot.documents[
+              'document-1'
+            ] as DocumentMetadata),
+            documentId: 'document-2',
+            title: 'Two',
+            path: '',
+            contentRevision: 0,
+          },
+        },
+      },
+      activeDocumentId: 'document-2',
+    });
     return {
       data: {
         documentId: 'document-2',
@@ -739,7 +767,10 @@ it('T009 operates File New through the real menu and installs its acknowledged b
   mockedAppModelAdapter.getState.mockResolvedValueOnce(
     bootstrapState('initial content', 12),
   );
-  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.subscribeStatePatches.mockImplementation((listener) => {
+    publishStatePatch = listener;
+    return jest.fn();
+  });
 
   render(<App />);
 
@@ -753,6 +784,7 @@ it('T009 operates File New through the real menu and installs its acknowledged b
     ).toHaveTextContent('new document content');
   });
   mockedAppModelAdapter.newDocument = undefined;
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
   act((): void => disposeAppModelProjection());
 });
 
@@ -2057,6 +2089,162 @@ it('T156 re-activates the named tab against a fresh revision from the Retry', as
   fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
   await waitFor(() => expect(activateDocument).toHaveBeenCalledTimes(1));
   expect(activateDocument).toHaveBeenCalledWith('document-1', 63);
+
+  mockedAppModelAdapter.activateDocument = undefined;
+  act((): void => disposeAppModelProjection());
+});
+
+function tabSetSnapshot(): AppModelState['snapshot'] {
+  const view = {
+    arrangement: 'split',
+    editorVisible: true,
+    previewVisible: true,
+    cursor: { line: 1, column: 1 },
+    selection: {
+      start: { line: 1, column: 1 },
+      end: { line: 1, column: 1 },
+    },
+    scroll: { editor: 0, preview: 0 },
+  };
+  return {
+    revision: 12,
+    tabSetRevision: 63,
+    applicationVersion: 'test-build',
+    documents: {
+      'document-1': {
+        documentId: 'document-1',
+        title: 'One',
+        path: '/documents/one.md',
+        dirty: false,
+        encoding: 'utf-8',
+        lineEnding: 'lf',
+        wordCount: 1,
+        contentRevision: 5,
+        view,
+      },
+      'document-2': {
+        documentId: 'document-2',
+        title: 'Two',
+        path: '/documents/two.md',
+        dirty: false,
+        encoding: 'utf-8',
+        lineEnding: 'lf',
+        wordCount: 1,
+        contentRevision: 1,
+        view,
+      },
+    },
+    orderedDocumentIds: ['document-1', 'document-2'],
+    activeDocumentId: 'document-1',
+    ui: { sidebarVisible: true },
+  };
+}
+
+function activationRefusal(dedupKey: string): ClassifiedError {
+  return {
+    category: 'conflict',
+    message: 'The tab set changed; the switch must be retried.',
+    remediations: ['Retry'],
+    dedupKey,
+    safeSubject: 'one.md',
+  };
+}
+
+/*
+ * SC-FT-003 requires a stale or failed switch to produce zero cross-document
+ * text installations, and FR-FT-030 says the acknowledgement "may be applied
+ * only while both values still match the confirmed active projection". Two
+ * switches are issued; the losing one resolves last and must be dropped on
+ * arrival rather than overwriting the winner's source.
+ */
+// Proves: FR-FT-030 (the identity-and-revision guard on tab activation). The
+// clause "inactive reloads update backend state only until later activation"
+// is not exercised here — no reload is issued.
+it('T128 never installs the acknowledgement of a superseded tab switch', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    snapshot: tabSetSnapshot(),
+    activeBuffer: { documentId: 'document-1', content: 'initial content' },
+  });
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+
+  let resolveSuperseded:
+    | ((result: { data: { documentId: string; content: string } }) => void)
+    | undefined;
+  const activateDocument = jest.fn(
+    async (documentId: string): Promise<unknown> => {
+      if (documentId === 'document-2') {
+        return new Promise((resolve): void => {
+          resolveSuperseded = resolve as typeof resolveSuperseded;
+        });
+      }
+      return {
+        data: {
+          documentId: 'document-1',
+          documentRevision: 5,
+          projectionRevision: 12,
+          content: 'winning source',
+        },
+      };
+    },
+  );
+  mockedAppModelAdapter.activateDocument =
+    activateDocument as unknown as AppModelAdapter['activateDocument'];
+
+  render(<App />);
+  await screen.findByRole('button', { name: 'File' });
+
+  act((): void => {
+    reportClassifiedError(
+      store.dispatch,
+      activationRefusal('switch-to-two'),
+      'File operation failed',
+      { intent: 'activate-document', retry: { documentId: 'document-2' } },
+    );
+  });
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+  await waitFor((): void =>
+    expect(activateDocument).toHaveBeenCalledWith('document-2', 63),
+  );
+
+  act((): void => {
+    reportClassifiedError(
+      store.dispatch,
+      activationRefusal('switch-back-to-one'),
+      'File operation failed',
+      { intent: 'activate-document', retry: { documentId: 'document-1' } },
+    );
+  });
+  const retries = await screen.findAllByRole('button', { name: 'Retry' });
+  fireEvent.click(retries[retries.length - 1] as HTMLElement);
+  await waitFor((): void =>
+    expect(activateDocument).toHaveBeenCalledWith('document-1', 63),
+  );
+  await waitFor((): void =>
+    expect(
+      screen.getByRole('status', { name: 'Active editor buffer' }),
+    ).toHaveTextContent('winning source'),
+  );
+
+  await act(async (): Promise<void> => {
+    resolveSuperseded?.({
+      data: {
+        documentId: 'document-2',
+        documentRevision: 1,
+        projectionRevision: 13,
+        content: 'superseded cross-document source',
+      } as { documentId: string; content: string },
+    });
+    await Promise.resolve();
+  });
+
+  const buffer = screen.getByRole('status', { name: 'Active editor buffer' });
+  expect(buffer).not.toHaveTextContent('superseded cross-document source');
+  expect(buffer).toHaveTextContent('winning source');
 
   mockedAppModelAdapter.activateDocument = undefined;
   act((): void => disposeAppModelProjection());

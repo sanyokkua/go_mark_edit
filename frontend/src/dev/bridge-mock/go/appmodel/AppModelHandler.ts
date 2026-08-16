@@ -70,6 +70,10 @@ interface DocumentMetadata {
   encoding: string;
   lineEnding: string;
   wordCount: number;
+  // Optional to mirror Go's `contentRevision,omitempty`: a document at revision
+  // zero publishes no field at all. Until T128 this mock's type omitted it
+  // outright, so the mock could not express a value the real bridge sends.
+  contentRevision?: number;
   capability?: string;
   status?: string;
   detached?: boolean;
@@ -649,6 +653,19 @@ function activeDocument(): MockDocument {
 function cloneMetadata(document: MockDocument): DocumentMetadata {
   return {
     ...document.metadata,
+    /*
+     * T128. Go's projected metadata carries the document's content revision
+     * (`internal/appmodel` publishes `DocumentMetadata.ContentRevision` in
+     * every snapshot and patch) and its acknowledgements carry the same number
+     * as `ActiveBuffer.DocumentRevision`. This mock advanced only
+     * `MockDocument.documentRevision` and never republished it, so the two
+     * disagreed for every document past its first edit and for every parity
+     * fixture, which starts at revision 1. Nothing read the projected value
+     * until FR-FT-030's guard did, so the divergence was invisible; it is
+     * republished here so the mock cannot hide an identity-and-revision defect
+     * the real bridge would expose.
+     */
+    contentRevision: document.documentRevision,
     view: {
       ...document.metadata.view,
       cursor: { ...document.metadata.view.cursor },

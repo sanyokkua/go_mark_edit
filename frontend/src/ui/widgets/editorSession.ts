@@ -3,7 +3,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from 'react';
@@ -12,6 +14,7 @@ import type {
   ActiveBuffer,
   AppStateSnapshot,
 } from '../../logic/store/appModelTypes';
+import { useAppSelector } from '../../logic/store';
 import {
   type DocumentCommandAPI,
   type DocumentCommandSession,
@@ -149,6 +152,142 @@ export function acceptsActivationAcknowledgement(
     request.documentId === acknowledgement.documentId &&
     projection.revision >= (acknowledgement.projectionRevision ?? 0) &&
     projection.activeDocumentId === acknowledgement.documentId &&
-    projectedDocument?.contentRevision === acknowledgement.documentRevision
+    projectedDocument !== undefined &&
+    /*
+     * Both sides are defaulted, because the two revisions travel under
+     * different JSON rules and revision zero is the common case. Go tags the
+     * projected `DocumentMetadata.ContentRevision` `omitempty`
+     * (`internal/apperr/results.go:132`) but tags the acknowledgement's
+     * `ActiveBuffer.DocumentRevision` plainly (`:160`), so a document that has
+     * never been edited publishes no `contentRevision` at all and acknowledges
+     * `documentRevision: 0`. Comparing them raw is `undefined === 0`, which
+     * rejected every File New and every freshly opened file — the guard's first
+     * live wiring failed three e2e cases on exactly that. Absence means zero on
+     * this wire; a missing *document* is still a rejection, which is what the
+     * explicit `projectedDocument !== undefined` above keeps separate.
+     */
+    (projectedDocument.contentRevision ?? 0) ===
+      (acknowledgement.documentRevision ?? 0)
+  );
+}
+
+/**
+ * The single install path for an active-buffer acknowledgement.
+ *
+ * FR-FT-030 binds an acknowledgement to an identity and a revision and allows
+ * it to be applied "only while both values still match the confirmed active
+ * projection". Before T128 that guard existed as
+ * `acceptsActivationAcknowledgement` and nothing in production called it: all
+ * five acknowledging handlers in `App.tsx` — New, Open, Open Recent, Reopen and
+ * Activate — installed `result.data` / `result.activeBuffer` the moment it
+ * arrived, so a switch that had already lost a race still overwrote the
+ * winner's source. That is the cross-document text installation SC-FT-003
+ * requires to be impossible.
+ *
+ * The guard is not re-stated at the call sites, because a rule that has to be
+ * remembered five times is the shape of defect this replaces. A handler claims
+ * a generation with `begin()` before it issues its command and hands the answer
+ * to `acknowledge()`; there is no other way to install one, so a sixth handler
+ * cannot reintroduce the defect by forgetting a check it never had to write.
+ */
+export interface GuardedActivation {
+  /**
+   * Claim the newest activation generation. Every later acknowledgement from an
+   * older generation is a loser by construction and is dropped on arrival.
+   */
+  begin: () => number;
+  /**
+   * Offer one acknowledgement for installation. `requestedDocumentId` is the
+   * identity the command named, and is supplied only by Activate: the entry
+   * commands ask the backend to choose a document, so the acknowledgement's own
+   * identity is the only one they could compare against.
+   */
+  acknowledge: (
+    generation: number,
+    acknowledgement: ActiveBuffer | undefined,
+    requestedDocumentId?: string,
+  ) => void;
+}
+
+interface PendingAcknowledgement {
+  acknowledgement: ActiveBuffer;
+  request: ActivationRequest;
+}
+
+export function useGuardedActivation(
+  install: (acknowledgement: ActiveBuffer) => void,
+): GuardedActivation {
+  const latestGeneration = useRef(0);
+  const [pending, setPending] = useState<PendingAcknowledgement | null>(null);
+  const revision = useAppSelector((state) => state.documents.revision);
+  const activeDocumentId = useAppSelector(
+    (state) => state.documents.activeDocumentId,
+  );
+  const documents = useAppSelector((state) => state.documents.byId);
+  const projection = useMemo(
+    (): Pick<
+      AppStateSnapshot,
+      'activeDocumentId' | 'revision' | 'documents'
+    > => ({ activeDocumentId, documents, revision }),
+    [activeDocumentId, documents, revision],
+  );
+
+  const begin = useCallback((): number => {
+    latestGeneration.current += 1;
+    return latestGeneration.current;
+  }, []);
+
+  const acknowledge = useCallback(
+    (
+      generation: number,
+      acknowledgement: ActiveBuffer | undefined,
+      requestedDocumentId?: string,
+    ): void => {
+      if (acknowledgement === undefined) return;
+      if (generation !== latestGeneration.current) return;
+      setPending({
+        acknowledgement,
+        request: {
+          generation,
+          documentId: requestedDocumentId ?? acknowledgement.documentId,
+        },
+      });
+    },
+    [],
+  );
+
+  /*
+   * The projection is a separate delivery from the command's answer: Go
+   * publishes the patch before it returns, but the patch travels the event bus
+   * and the answer travels the call, so the store routinely still describes the
+   * previous document when the acknowledgement lands. Rejecting outright at
+   * that moment would drop legitimate acknowledgements, so a pending one waits
+   * here and is re-tested on each projection change until either its generation
+   * is superseded or the projection confirms it. Waiting is bounded: the next
+   * `begin()` retires the pending generation.
+   */
+  useEffect((): void => {
+    if (pending === null) return;
+    if (pending.request.generation !== latestGeneration.current) {
+      setPending(null);
+      return;
+    }
+    if (
+      !acceptsActivationAcknowledgement(
+        pending.acknowledgement,
+        pending.request,
+        latestGeneration.current,
+        projection,
+      )
+    ) {
+      return;
+    }
+    setPending(null);
+    install(pending.acknowledgement);
+  }, [install, pending, projection]);
+
+  return useMemo(
+    (): GuardedActivation => ({ acknowledge, begin }),
+    [acknowledge, begin],
   );
 }
