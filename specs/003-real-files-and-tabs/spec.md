@@ -1441,6 +1441,16 @@ completed feature already owns their behavior.
   now rests on the 14 component keys, the token gate across all six palettes, and the structural assertions
   retained in those suites.
 
+### Clarifications recorded against Success Criteria
+
+Two clarification clauses were recorded here rather than under a `### Session` heading in
+[Clarifications](#clarifications), because each answers a question about a success criterion above. They are
+the whole of the difference between the two counts a reader can take of this document: `grep -c '^- Q:'
+spec.md` returns **44**, and the five session headings account for 42 of them (2026-08-07: 21, 2026-08-09: 5,
+2026-08-12: 1, 2026-08-13: 5, 2026-08-14: 10). They are left in place rather than relocated so that neither
+count changes silently again; `plan.md` and `evidence/ft-ev-09/coverage-ledger.md` both state the 44, and
+`TestDeclaredClarifiedClauseCountMatchesTheSpecification` re-measures it.
+
 - Q: The About popup's `open-logs` and `view-github` rows are `laterDeferred` in the action registry, so
   production draws both visibly unavailable, and Feature 003 formats the Keyboard shortcuts accelerator for
   the host. The immutable mockup draws no disabled state anywhere and hard-codes `Ctrl ?`. Measured at 1280px
@@ -1458,7 +1468,17 @@ folder` and `View on GitHub (MIT)` at the single reviewed unavailable opacity, a
   result: 1,489 → 87 differing pixels, all of them the popup's antialiased outer boundary at a maximum
   channel delta of 4, with the interior at exactly zero.
 
-- Q: The editor region's computed styles differ from the binding on eight properties — the binding wants
+- Q: **Superseded 2026-08-14, recorded 2026-08-16.** The question and answer below are kept verbatim because
+  the decision they record — that Feature 003 does not redefine Feature 002's editor typeface, type scale or
+  scrolling model to improve its own numbers — still stands, and the measurement handed forward in
+  `evidence/ft-vs-08/phase-18/t035-run.md` is still the record of that difference. **What no longer holds is
+  the consequence.** The "432 of the 1,638 matrix comparisons" belong to the whole-screen parity contract
+  withdrawn on 2026-08-14; that contract was replaced by the 14 component keys and 36 behaviour keys, and
+  T103 closed T035 against the replacement. **T035 is closed and blocks on nothing**, so the sentence
+  "T035 cannot reach a full pass until Feature 002 resolves it" describes a dependency that no longer exists.
+  Read the rest of this clause as the standing decision, not as an open blocker. The original text follows
+  unaltered.
+  The editor region's computed styles differ from the binding on eight properties — the binding wants
   `JetBrains Mono 13px/23.4px` with `overflow: auto`, production draws `Inter 16px/normal` with
   `overflow: hidden` — and those eight assertions fail in 432 of the 1,638 matrix comparisons, worth roughly
   23,000 raw differing pixels per editor-family case against 177 for the preview family over the identical

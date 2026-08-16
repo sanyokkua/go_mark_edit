@@ -117,7 +117,7 @@ Reconciled against the current task state rather than the state when T044 was wr
 | CL-17 empty workspace, zero-width Assistant | Held — Claim 1. |
 | CL-18 unchanged normal startup | Held — Claim 2. |
 | Deferred-surface boundary | Held — `offline-and-controls.test.ts:194`, passing. |
-| Stale aggregate counts | **Two found, both corrected 2026-08-15.** See below. |
+| Stale aggregate counts | **Three found.** Two corrected 2026-08-15; the replacement figure was itself superseded 2026-08-16. See below. |
 
 ---
 
@@ -146,8 +146,31 @@ bitten by more than once.
 **Resolved 2026-08-15, by owner decision**: both figures were corrected to the measured count.
 T044 now requires "the **measured** clarified-clause count (**42** at 2026-08-15)" and
 `plan.md:836` reads 42, each carrying a note that the number is re-measured rather than
-incremented by hand and that 14/18/26/42 never agreed. This ledger's claim is therefore now
-**42, measured**, and the claim is satisfied.
+incremented by hand and that 14/18/26/42 never agreed. This ledger's claim was therefore
+**42, measured**, and the claim was satisfied.
+
+### Superseded 2026-08-16 — 42 was the session sum, not the document total
+
+**The count is now 44 `- Q:` entries**, and the rows above are left as written because each was true
+on its date; Constitution I requires a superseded record to be marked, not rewritten.
+
+42 was never wrong as a *per-session* sum, and it is still the sum of the five session headings. It
+was wrong as an answer to the question anyone actually asks, because the obvious re-derivation —
+`grep -c '^- Q:' spec.md` — returns **44**. The two extra clauses had been recorded inside the
+**Success Criteria** section under no `### Session` heading, so every re-measurement that walked the
+session headings missed them and every re-measurement that walked the document found them.
+
+| Where | Clauses |
+| --- | ---: |
+| Under the five `### Session` headings in Clarifications | 42 |
+| Under `### Clarifications recorded against Success Criteria` | 2 |
+| **`grep -c '^- Q:' spec.md`** | **44** |
+
+Two things changed so that this cannot recur silently. `spec.md` now carries a heading over the two
+Success Criteria clauses, naming them as the whole of the difference between the two counts. And
+`TestDeclaredClarifiedClauseCountMatchesTheSpecification` in the root Go package re-measures
+`spec.md` and fails if this ledger or `plan.md` states a different number, so the count is a gate
+rather than a habit. **This ledger's claim is therefore now 44 `- Q:` entries, measured.**
 
 ---
 

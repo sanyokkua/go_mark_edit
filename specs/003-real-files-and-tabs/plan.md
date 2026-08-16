@@ -13,7 +13,8 @@ Owned/Consumed/Deferred source matrix.
 ## Plan currency — brought up to date 2026-08-14
 
 **This plan was written on 2026-08-07 and not touched again until 2026-08-14**, while the specification
-accumulated 42 clarifications across five sessions and the work went through nineteen convergence phases.
+accumulated 44 clarifications — 42 across five sessions, 2 recorded against Success Criteria — and the work
+went through nineteen convergence phases.
 A cross-artifact check found it stating a contract the specification had withdrawn, so it is corrected here.
 What changed, and where the authority for each lives:
 
@@ -833,11 +834,19 @@ _PASS after Phase 1 design._
 - [data-model.md](data-model.md) assigns every field and transition to one authority without putting source in Redux.
 - [quickstart.md](quickstart.md) names runnable focused, aggregate, exact-browser, real-bridge and real-build proof.
 
-All 57 FRs, 13 SCs, 42 clarified clauses, user scenarios, 36 edge cases, 11 current source debts, explicit
+All 57 FRs, 13 SCs, 44 clarified clauses, user scenarios, 36 edge cases, 11 current source debts, explicit
 exclusions, and source dispositions have a dependency-ordered owner. `tasks.md` carries the task-level expansion.
 
-The clause count is **measured**, not carried forward: 42 `- Q:` entries across five Clarifications
-sessions (2026-08-07: 21, 2026-08-09: 5, 2026-08-12: 1, 2026-08-13: 5, 2026-08-14: 10). It read `14`
-here and `18` in T044 until 2026-08-15, and neither figure ever matched the document — the spec held
-26 when the `18` was written. Re-measure it when a session is added rather than incrementing it by
-hand; `evidence/ft-ev-09/coverage-ledger.md` records how the two stale figures were found.
+The clause count is **measured**, not carried forward: 44 `- Q:` entries in `spec.md`. Re-derive it with
+`grep -c '^- Q:' spec.md` — one command, one number, no summing. **42** of the 44 sit under the five
+Clarifications session headings (2026-08-07: 21, 2026-08-09: 5, 2026-08-12: 1, 2026-08-13: 5,
+2026-08-14: 10) and the remaining **2** were recorded against Success Criteria, under
+[Clarifications recorded against Success Criteria](spec.md#clarifications-recorded-against-success-criteria);
+those two are the whole of the difference between the two counts.
+
+The figure has been wrong four times, always by being carried rather than measured: it read `14` here and
+`18` in T044 until 2026-08-15, and neither ever matched the document — the spec held 26 when the `18` was
+written. It then read `42` until 2026-08-16, which was the session sum rather than the document total.
+`evidence/ft-ev-09/coverage-ledger.md` records how each stale figure was found, and
+`TestDeclaredClarifiedClauseCountMatchesTheSpecification` (root package) now fails if this number and
+`spec.md` disagree, so the next session cannot add clauses without the count following.
