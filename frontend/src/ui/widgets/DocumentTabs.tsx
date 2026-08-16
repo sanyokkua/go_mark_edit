@@ -36,6 +36,7 @@ import {
   onApplicationForeground,
   whenApplicationRegainsForegroundFocus,
 } from './foregroundFocus';
+import { flushOutgoingDocument, outgoingFlushRefusal } from './outgoingFlush';
 import {
   tabLabelsFor,
   truncatedTabLabelParts,
@@ -226,11 +227,50 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     window.setTimeout((): void => setAnnouncement(''), 3000);
   }, []);
 
+  /*
+   * T140. Two defects, one shape: a switch that fails has to end in a reported
+   * refusal, never in a rejected promise, because every caller of
+   * `activateDocument` below discards its result with `void` and a rejection
+   * there reaches the user as a dead tab click and an unhandled rejection.
+   *
+   * The fallback branch had a second problem of its own. FR-FT-031 requires the
+   * outgoing document's state to be flushed and awaited "before activating the
+   * incoming document", and the shell's `onActivateDocument` does that — but
+   * when no shell handler is supplied this component went straight to
+   * `adapter.activateDocument` with no flush at all, silently dropping the
+   * outgoing document's newest caret, selection, scroll and view state.
+   *
+   * The `catch` is the backstop for everything that is not the flush: the
+   * adapter throws rather than refuses while editor-state recovery holds the
+   * command surface, and that must still leave the outgoing tab where it is.
+   * It reports the same classified refusal, because the user-visible outcome is
+   * identical — the switch did not happen and re-issuing it is the remedy.
+   */
+  const runActivation = useCallback(
+    async (documentId: string): Promise<unknown> => {
+      try {
+        if (onActivateDocument) {
+          return await onActivateDocument(documentId, tabSetRevision);
+        }
+        const refusal = await flushOutgoingDocument(
+          adapter.flushActiveSession,
+          activeDocumentId === null || activeDocumentId === documentId
+            ? undefined
+            : activeDocumentId,
+        );
+        if (refusal !== undefined) return { error: refusal };
+        return await adapter.activateDocument?.(documentId, tabSetRevision);
+      } catch {
+        return { error: outgoingFlushRefusal() };
+      }
+    },
+    [activeDocumentId, adapter, onActivateDocument, tabSetRevision],
+  );
+
   const activateDocument = useCallback(
     async (documentId: string): Promise<unknown> => {
-      const result = onActivateDocument
-        ? await onActivateDocument(documentId, tabSetRevision)
-        : await adapter.activateDocument?.(documentId, tabSetRevision);
+      const result = (await runActivation(documentId)) as
+        (DocumentTransitionResult & { conflict?: ConflictPreview }) | undefined;
       if (
         result !== undefined &&
         'error' in result &&
@@ -257,7 +297,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       }
       return result;
     },
-    [adapter, dispatch, onActivateDocument, tabSetRevision],
+    [dispatch, runActivation],
   );
 
   /*

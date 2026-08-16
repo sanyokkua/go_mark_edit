@@ -1513,3 +1513,130 @@ it('T133 opens the external-change prompt for a conflict the focus check finds',
     ).toBeVisible(),
   );
 });
+
+/*
+ * FR-FT-031: "A tab switch MUST flush and await the outgoing document's newest
+ * text, caret, selection, scroll, and view state before activating the incoming
+ * document. Failure MUST leave the outgoing tab active and install no incoming
+ * content."
+ *
+ * The ordering was already right on the shell's path. What was missing was the
+ * failure outcome and the fallback's flush: `flushActiveSession` rejects on an
+ * activation-token mismatch, and every call site here discarded that with
+ * `void`, so a failed switch reached the user as a tab click that did nothing.
+ */
+// Proves: FR-FT-031 (the failure clause). "Installs no incoming content" is
+// proved here as its precondition — the incoming acknowledgement is never even
+// requested — because the buffer itself is App state, not this component's.
+it('T140 reports a failed switch and leaves the outgoing tab active', async () => {
+  hydrate([
+    documentFor('one', '/repo/one.md'),
+    documentFor('two', '/repo/two.md'),
+  ]);
+  store.dispatch(resetNotifications());
+  const activateDocument = jest.fn(
+    async (): Promise<DocumentTransitionResult> => ({}),
+  );
+  const onActivateDocument = jest.fn(
+    async (): Promise<DocumentTransitionResult> => {
+      throw new Error(
+        'The active editor activation changed while its lifecycle state was being flushed.',
+      );
+    },
+  );
+  render(
+    <Provider store={store}>
+      <DocumentTabs
+        adapter={{ activateDocument }}
+        conflictAdapter={quietConflictAdapter()}
+        onActivateDocument={onActivateDocument}
+      />
+    </Provider>,
+  );
+
+  fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
+
+  await waitFor(() =>
+    expect(store.getState().notifications.items).toHaveLength(1),
+  );
+  expect(store.getState().notifications.items[0]).toEqual(
+    expect.objectContaining({ code: 'conflict', severity: 'error' }),
+  );
+  expect(store.getState().notifications.items[0]?.remediations).toEqual([
+    expect.objectContaining({
+      action: 'retry',
+      documentId: 'two',
+      intent: 'activate-document',
+    }),
+  ]);
+  // The two consequences the requirement names.
+  expect(store.getState().documents.activeDocumentId).toBe('one');
+  expect(activateDocument).not.toHaveBeenCalled();
+});
+
+// Proves: FR-FT-031 (the flush-and-await ordering, on the adapter fallback the
+// shell's handler does not cover).
+it('T140 flushes the outgoing document before the adapter fallback activates', async () => {
+  hydrate([
+    documentFor('one', '/repo/one.md'),
+    documentFor('two', '/repo/two.md'),
+  ]);
+  store.dispatch(resetNotifications());
+  const calls: string[] = [];
+  const flushActiveSession = jest.fn(async (documentId: string) => {
+    calls.push(`flush:${documentId}`);
+  });
+  const activateDocument = jest.fn(
+    async (): Promise<DocumentTransitionResult> => {
+      calls.push('activate');
+      return {};
+    },
+  );
+  render(
+    <Provider store={store}>
+      <DocumentTabs
+        adapter={{ activateDocument, flushActiveSession }}
+        conflictAdapter={quietConflictAdapter()}
+      />
+    </Provider>,
+  );
+
+  fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
+
+  await waitFor(() => expect(activateDocument).toHaveBeenCalledTimes(1));
+  expect(calls).toEqual(['flush:one', 'activate']);
+});
+
+// Proves: FR-FT-031 (the failure clause, on the adapter fallback).
+it('T140 refuses the fallback switch when the outgoing flush rejects', async () => {
+  hydrate([
+    documentFor('one', '/repo/one.md'),
+    documentFor('two', '/repo/two.md'),
+  ]);
+  store.dispatch(resetNotifications());
+  const flushActiveSession = jest.fn(async (documentId: string) => {
+    void documentId;
+    throw new Error(
+      'The active editor activation changed while its lifecycle state was being flushed.',
+    );
+  });
+  const activateDocument = jest.fn(
+    async (): Promise<DocumentTransitionResult> => ({}),
+  );
+  render(
+    <Provider store={store}>
+      <DocumentTabs
+        adapter={{ activateDocument, flushActiveSession }}
+        conflictAdapter={quietConflictAdapter()}
+      />
+    </Provider>,
+  );
+
+  fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
+
+  await waitFor(() =>
+    expect(store.getState().notifications.items).toHaveLength(1),
+  );
+  expect(store.getState().documents.activeDocumentId).toBe('one');
+  expect(activateDocument).not.toHaveBeenCalled();
+});

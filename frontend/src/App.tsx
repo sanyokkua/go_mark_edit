@@ -79,6 +79,7 @@ import {
   EditorSessionProvider,
   useGuardedActivation,
 } from './ui/widgets/editorSession';
+import { flushOutgoingDocument } from './ui/widgets/outgoingFlush';
 import StartupFailure from './ui/widgets/StartupFailure';
 import ShortcutsDialog from './ui/widgets/ShortcutsDialog';
 import NormalizationPrompt from './ui/widgets/NormalizationPrompt';
@@ -604,8 +605,30 @@ const AppContents: React.FC = (): React.JSX.Element => {
       expectedTabSetRevision: number,
     ): Promise<DocumentTransitionResult> => {
       const currentDocumentId = activeBuffer?.documentId;
-      if (currentDocumentId !== undefined && currentDocumentId !== documentId) {
-        await appModelAdapter.flushActiveSession?.(currentDocumentId);
+      /*
+       * T140. The ordering was already what FR-FT-031 asks for; the outcome was
+       * not. `flushActiveSession` rejects on an activation-token mismatch, and
+       * this handler let that rejection escape — out through the tab strip's
+       * `activateDocument`, whose body cannot catch it, and into three `void`
+       * call sites that discarded it. What the user got was a tab click that
+       * did nothing and an unhandled promise rejection.
+       *
+       * The refusal is reported here rather than only returned, because the
+       * `Retry` remediation calls this handler directly and never reaches the
+       * strip's funnel. The funnel reports the same refusal on the paths it
+       * does own; `enqueueToast` collapses the pair on `code` and `subject`, so
+       * one failure is still one toast.
+       */
+      const refusal = await flushOutgoingDocument(
+        appModelAdapter.flushActiveSession,
+        currentDocumentId === documentId ? undefined : currentDocumentId,
+      );
+      if (refusal !== undefined) {
+        reportClassifiedError(dispatch, refusal, t('editor.tabs'), {
+          intent: 'activate-document',
+          retry: { documentId },
+        });
+        return { error: refusal };
       }
       const generation = activation.begin();
       const result = await appModelAdapter.activateDocument?.(
@@ -616,7 +639,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
       activation.acknowledge(generation, result.data, documentId);
       return result;
     },
-    [activation, activeBuffer?.documentId],
+    [activation, activeBuffer?.documentId, dispatch],
   );
   /*
    * The write path's copy defect — T107's and T111's, third and last arrow.

@@ -2249,3 +2249,75 @@ it('T128 never installs the acknowledgement of a superseded tab switch', async (
   mockedAppModelAdapter.activateDocument = undefined;
   act((): void => disposeAppModelProjection());
 });
+
+/*
+ * FR-FT-031's failure clause reaches the shell as well as the tab strip. The
+ * outgoing flush lives in `onActivateDocument`, which the `Retry` remediation
+ * calls directly, so a rejection there used to escape as an unhandled promise
+ * rejection with nothing shown and the switch silently abandoned.
+ */
+// Proves: FR-FT-031 (the failure clause, on the shell's activation handler:
+// the failure is reported, the outgoing tab stays active, and no incoming
+// content is installed). The flush-and-await *ordering* is proved separately.
+it('T140 refuses a switch whose outgoing flush fails and installs no incoming content', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    snapshot: tabSetSnapshot(),
+    activeBuffer: { documentId: 'document-1', content: 'outgoing content' },
+  });
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.flushActiveSession = jest.fn(async () => {
+    throw new Error(
+      'The active editor activation changed while its lifecycle state was being flushed.',
+    );
+  });
+  const activateDocument = jest.fn().mockResolvedValue({
+    data: {
+      documentId: 'document-2',
+      documentRevision: 1,
+      projectionRevision: 12,
+      content: 'incoming content that must not install',
+    },
+  });
+  mockedAppModelAdapter.activateDocument = activateDocument;
+
+  render(<App />);
+  await screen.findByRole('button', { name: 'File' });
+  act((): void => {
+    reportClassifiedError(
+      store.dispatch,
+      activationRefusal('switch-to-two'),
+      'File operation failed',
+      { intent: 'activate-document', retry: { documentId: 'document-2' } },
+    );
+  });
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+
+  await waitFor(() =>
+    expect(mockedAppModelAdapter.flushActiveSession).toHaveBeenCalledWith(
+      'document-1',
+    ),
+  );
+  await waitFor(() =>
+    expect(
+      store
+        .getState()
+        .notifications.items.filter(
+          (item) => item.subject === 'activate:outgoing-flush',
+        ),
+    ).toHaveLength(1),
+  );
+  expect(activateDocument).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole('status', { name: 'Active editor buffer' }),
+  ).toHaveTextContent('outgoing content');
+  expect(store.getState().documents.activeDocumentId).toBe('document-1');
+
+  mockedAppModelAdapter.activateDocument = undefined;
+  mockedAppModelAdapter.flushActiveSession = jest.fn(async () => undefined);
+  act((): void => disposeAppModelProjection());
+});
