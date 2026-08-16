@@ -4,7 +4,10 @@ import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import {
   actionsForSurface,
   getAction,
+  getActionAvailability,
+  type ActionAvailabilityContext,
   type ActionId,
+  type ProjectedActionState,
 } from '../../logic/actions/actionRegistry';
 import type {
   ClassifiedError,
@@ -120,16 +123,40 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
   const menuActions = actionsForSurface('tab-context')
     .map((entry) => entry.id)
     .filter(isTabContextAction);
-  const unavailable = new Set<TabContextAction>();
-  if (index === 0) unavailable.add('move-tab-left');
-  if (index === orderedDocuments.length - 1) unavailable.add('move-tab-right');
-  if (document.path === '') {
-    unavailable.add('copy-path');
-    unavailable.add('reveal-in-file-manager');
-  }
-  if (document.detached === true) unavailable.add('reveal-in-file-manager');
-  if (index === orderedDocuments.length - 1) unavailable.add('close-right');
-  if (orderedDocuments.length <= 1) unavailable.add('close-others');
+
+  /*
+   * T152: the rules below used to be recomputed here — `if (index === 0)
+   * unavailable.add('move-tab-left')` and five more — beside an identical set
+   * in `getActionAvailability`. They agreed, which is exactly how the
+   * `SettingsMenu` availability bug survived review: a second copy is right
+   * until the registry changes and nobody remembers this one exists. The menu
+   * now projects its own strip into the shape the registry reads and asks it.
+   */
+  const projectedState: ProjectedActionState = {
+    documents: Object.fromEntries(
+      orderedDocuments.map((entry) => [
+        entry.documentId,
+        { detached: entry.detached === true, path: entry.path },
+      ]),
+    ),
+    orderedDocumentIds: orderedDocuments.map((entry) => entry.documentId),
+  };
+  const availabilityContext = (
+    actionId: TabContextAction,
+  ): ActionAvailabilityContext => ({
+    documentId: document.documentId,
+    projectedState,
+    tabCommand: true,
+    targetDocumentId: document.documentId,
+    ...(actionId === 'move-tab-left'
+      ? { targetIndex: index - 1 }
+      : actionId === 'move-tab-right'
+        ? { targetIndex: index + 1 }
+        : {}),
+  });
+  const isUnavailable = (actionId: TabContextAction): boolean =>
+    getActionAvailability(actionId, availabilityContext(actionId)).kind !==
+    'available';
 
   useEffect((): void => {
     firstActionRef.current?.focus({ preventScroll: true });
@@ -154,18 +181,10 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
   }, [onClose]);
 
   const activate = (actionId: TabContextAction): void => {
-    if (unavailable.has(actionId)) return;
+    if (isUnavailable(actionId)) return;
     void dispatchAction(actionId, {
-      documentId: document.documentId,
+      ...availabilityContext(actionId),
       sessionDocumentId: document.documentId,
-      tabCommand: true,
-      targetDocumentId: document.documentId,
-      targetIndex:
-        actionId === 'move-tab-left'
-          ? index - 1
-          : actionId === 'move-tab-right'
-            ? index + 1
-            : undefined,
       expectedTabSetRevision: tabSetRevision,
       invoke: async (): Promise<unknown> => {
         try {
@@ -230,7 +249,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
     >
       {menuActions.map((actionId) => {
         const entry = getAction(actionId);
-        const disabled = unavailable.has(actionId);
+        const disabled = isUnavailable(actionId);
         return (
           <button
             aria-disabled={disabled || undefined}
