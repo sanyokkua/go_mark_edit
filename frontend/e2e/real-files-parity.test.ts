@@ -13,9 +13,11 @@ import {
 } from './parity/reference-adapter';
 import { recordParityStateCoverage } from './parity/accounting-io';
 import {
+  additionalStateEntries,
   ADDITIONAL_STATE_ASSIGNMENTS,
   PARITY_HEIGHT,
-  PARITY_MANIFEST,
+  T050_PROBE_ENTRIES,
+  T057_LAUNCHER_ENTRIES,
   type ManifestEntry,
   type ParityFamily,
   type ParityPalette,
@@ -1079,42 +1081,22 @@ async function setupReference(
   }
 }
 
-const T050_REFERENCE_PROBES = [
-  ['editor-split', 1280, 'glass-light'],
-  ['editor-split', 768, 'material-dark'],
-  ['editor-split', 375, 'minimal-light'],
-  ['menu-file', 1280, 'glass-light'],
-  ['menu-settings', 768, 'material-dark'],
-  ['menu-view', 375, 'minimal-light'],
-  ['menu-about', 1280, 'glass-dark'],
-  ['save-prompt', 375, 'material-light'],
-  ['quit-prompt', 375, 'material-dark'],
-  ['reload-prompt', 375, 'minimal-dark'],
-  ['settings-appearance', 375, 'glass-light'],
-  ['settings-editor', 768, 'material-light'],
-  ['settings-markdown', 1280, 'minimal-dark'],
-  ['toolbar-overflow', 375, 'glass-dark'],
-] as const;
-
+/*
+ * The probe list, the launcher filter and the state-gate lookup all live in
+ * `parity/manifest.ts` now, beside the index they navigate. That is what makes
+ * `RESOLVED_MANIFEST_KEYS` — and the "58 of 546" figure in that file's header —
+ * a measurement of what these three cases really visit, rather than arithmetic
+ * over a symbol nothing else reads.
+ */
 test('T050 reference navigation reaches every mapped probe before capture', async ({
   page,
 }) => {
   const referenceSourceHash = hashReferenceSource(
     await readFile(REFERENCE_PATH),
   );
+  expect(T050_PROBE_ENTRIES).toHaveLength(14);
 
-  for (const [family, width, palette] of T050_REFERENCE_PROBES) {
-    const entry = PARITY_MANIFEST.find(
-      (candidate) =>
-        candidate.kind === 'primary' &&
-        candidate.family === family &&
-        candidate.width === width &&
-        candidate.palette.id === palette,
-    );
-    if (entry === undefined) {
-      throw new Error(`T050 probe is not a primary manifest case: ${family}`);
-    }
-
+  for (const entry of T050_PROBE_ENTRIES) {
     await setupReference(page, entry, referenceSourceHash);
 
     const screen = screenForEntry(entry);
@@ -1134,12 +1116,7 @@ test('T057 pairs file-only launcher variants before any screenshot comparison', 
 }) => {
   const sourceHash = hashReferenceSource(await readFile(REFERENCE_PATH));
   const referencePage = await context.newPage();
-  const entries = PARITY_MANIFEST.filter(
-    (entry): boolean =>
-      entry.family === 'empty' &&
-      entry.palette.id === 'minimal-light' &&
-      (entry.width === 1280 || entry.width === 375),
-  );
+  const entries = T057_LAUNCHER_ENTRIES;
   expect(entries).toHaveLength(4);
 
   try {
@@ -1208,15 +1185,7 @@ test('T057 pairs file-only launcher variants before any screenshot comparison', 
 test('T120 covers every additional parity state with an assertion that runs', async ({
   page,
 }) => {
-  const stateEntries = ADDITIONAL_STATE_ASSIGNMENTS.map(({ stateId }) => {
-    const entry = PARITY_MANIFEST.find(
-      (candidate) => stateIdForEntry(candidate) === stateId,
-    );
-    if (entry === undefined) {
-      throw new Error(`no manifest entry for additional state ${stateId}`);
-    }
-    return entry;
-  });
+  const stateEntries = additionalStateEntries();
   expect(stateEntries).toHaveLength(ADDITIONAL_STATE_ASSIGNMENTS.length);
 
   const failures: string[] = [];

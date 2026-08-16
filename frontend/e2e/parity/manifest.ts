@@ -19,22 +19,42 @@
  * keys in `../targeted-manifest.ts`, and the behaviour-verified status keys
  * declared below.
  *
- * **Why the 546-key expansion survives.** Two live Playwright tests read entries
- * out of it, and between them they need both halves of the product:
+ * **How much of the 546 is live: 58 keys. The other 488 are resolved by
+ * nothing.** That is measured, not asserted — `RESOLVED_MANIFEST_KEYS` at the
+ * foot of this file is the union of the three selections below, every one of
+ * which is the value its Playwright case actually navigates, and
+ * `manifest.test.ts` pins the total. The three:
  *
- *   - `real-files-parity.test.ts` T050 looks up 14 **primary** entries by
- *     `(family, width, palette)` to drive reference navigation to every mapped
- *     screen before capture — spanning all three widths and all six palettes,
- *     so the full Cartesian expansion is what makes those lookups resolve.
- *   - `real-files-parity.test.ts` T057 filters the four `empty`-family entries
- *     at `minimal-light`: two primary (1280 and 375) plus the two **additional**
- *     launcher assignments (`launcher-first-run`, `launcher-six-file`). The
- *     40-row state table is therefore load-bearing too, not just the primaries.
+ *   - **14 primary probes.** `T050_REFERENCE_PROBES` looks up one entry per
+ *     mapped screen by `(family, width, palette)` to drive reference navigation
+ *     before capture, spanning all three widths and all six palettes.
+ *   - **4 `empty`-family entries.** `T057_LAUNCHER_ENTRIES` takes the
+ *     `minimal-light` launcher cases at 1280 and 375: two primary, plus the two
+ *     **additional** launcher assignments (`launcher-first-run`,
+ *     `launcher-six-file`).
+ *   - **40 additional states.** `additionalStateEntries()` resolves one entry
+ *     per `ADDITIONAL_STATE_ASSIGNMENTS` row for the T120 state gate, which
+ *     FR-FT-051 requires to fail closed on any state with no covering
+ *     assertion. This is why the 40-row state table must stay enumerable.
  *
- * So 306, 240 and 546 are the sizes of an index that is still navigated — not a
- * claim that 546 screens are compared. `LOGICAL_CASE_COUNT` is additionally read
- * by `../targeted-manifest.ts` and `./state-contract.test.ts`, which prove that
- * no targeted comparison key has leaked into this index.
+ * They do not overlap: T057 names its two launcher states at `minimal-light`
+ * while the T120 gate names every state at the first palette, `glass-light`,
+ * and an additional key is `state:<stateId>:<palette>`.
+ *
+ * **The figure this replaces was 18, and it was wrong.** It counted the 14
+ * probes and the 4 launcher entries, and it predates T120, which added the
+ * other 40 — so the T151 task text and the owner decision that both quote "18
+ * of 546" are superseded by this measurement. Saying so in full is the point of
+ * the task: a comment that quietly restates a stale number is worse than no
+ * comment, because it reads as a measurement and is not one.
+ *
+ * **Why the 488 survive anyway** (owner decision, 2026-08-16, `tasks.md` T151
+ * and `specs/003-real-files-and-tabs/decisions-phase-21.md`): reducing the
+ * index is a larger change than it looks — 306, 240 and 546 are asserted at
+ * module load here and cross-read by `../targeted-manifest.ts` and
+ * `./state-contract.test.ts` to prove no targeted comparison key has leaked in,
+ * and the T120 gate needs the state list enumerable. So 306, 240 and 546 are
+ * the sizes of an index, not a claim that 546 screens are compared.
  */
 export const PARITY_HEIGHT = 720 as const;
 export const PRIMARY_CASE_COUNT = 306 as const;
@@ -402,4 +422,100 @@ invariant(
 invariant(
   BEHAVIOUR_VERIFIED_MANIFEST.length === BEHAVIOUR_VERIFIED_CASE_COUNT,
   'behaviour-verified keys are not six states across six palettes',
+);
+
+/*
+ * ── What actually resolves an entry out of this index ────────────────────────
+ *
+ * Three live Playwright cases navigate it, and each one's selection is defined
+ * here rather than in the test, so the coverage number in the header comment is
+ * measured (`manifest.test.ts`) instead of remembered. A selection defined in
+ * the test and re-derived here would be arithmetic over a symbol nothing reads.
+ */
+
+/**
+ * T050's fourteen primary probes — one per mapped screen, spread across all
+ * three widths and all six palettes so a navigation bug in any of them shows up.
+ * `real-files-parity.test.ts` drives reference navigation to exactly these.
+ */
+export const T050_REFERENCE_PROBES = Object.freeze([
+  ['editor-split', 1280, 'glass-light'],
+  ['editor-split', 768, 'material-dark'],
+  ['editor-split', 375, 'minimal-light'],
+  ['menu-file', 1280, 'glass-light'],
+  ['menu-settings', 768, 'material-dark'],
+  ['menu-view', 375, 'minimal-light'],
+  ['menu-about', 1280, 'glass-dark'],
+  ['save-prompt', 375, 'material-light'],
+  ['quit-prompt', 375, 'material-dark'],
+  ['reload-prompt', 375, 'minimal-dark'],
+  ['settings-appearance', 375, 'glass-light'],
+  ['settings-editor', 768, 'material-light'],
+  ['settings-markdown', 1280, 'minimal-dark'],
+  ['toolbar-overflow', 375, 'glass-dark'],
+] as const satisfies readonly (readonly [
+  ParityFamily,
+  ParityWidth,
+  ParityPaletteId,
+])[]);
+
+export const T050_PROBE_ENTRIES: readonly PrimaryManifestEntry[] =
+  Object.freeze(
+    T050_REFERENCE_PROBES.map(([family, width, paletteId]) => {
+      const entry = PRIMARY_MANIFEST.find(
+        (candidate) =>
+          candidate.family === family &&
+          candidate.width === width &&
+          candidate.palette.id === paletteId,
+      );
+      invariant(
+        entry !== undefined,
+        `T050 probe is not a primary manifest case: ${family}:${width}:${paletteId}`,
+      );
+      return entry;
+    }),
+  );
+
+/**
+ * T057's four file-only launcher entries: the two primary `empty` screens at
+ * Minimal Light and the two additional launcher states assigned to that family.
+ * This is why the 40-row state table is load-bearing and not only the primaries.
+ */
+export const T057_LAUNCHER_ENTRIES: readonly ManifestEntry[] = Object.freeze(
+  PARITY_MANIFEST.filter(
+    (entry) =>
+      entry.family === 'empty' &&
+      entry.palette.id === 'minimal-light' &&
+      (entry.width === 1280 || entry.width === 375),
+  ),
+);
+
+/**
+ * The T120 state gate's forty entries — one per additional state. The palette
+ * dimension belongs to the pixel-compared and behaviour-verified key counts,
+ * which are accounted separately, so this takes the first entry each state has:
+ * `PARITY_PALETTES[0]`, Liquid Glass Light.
+ */
+export const additionalStateEntries = (): readonly AdditionalManifestEntry[] =>
+  ADDITIONAL_STATE_ASSIGNMENTS.map(({ stateId }) => {
+    const entry = ADDITIONAL_MANIFEST.find(
+      (candidate) => candidate.stateId === stateId,
+    );
+    invariant(
+      entry !== undefined,
+      `no manifest entry for additional state ${stateId}`,
+    );
+    return entry;
+  });
+
+/**
+ * Every logical key any live consumer resolves. The rest of the index is
+ * navigated by nothing — see the header comment for why it is retained anyway.
+ */
+export const RESOLVED_MANIFEST_KEYS: ReadonlySet<string> = Object.freeze(
+  new Set<string>([
+    ...T050_PROBE_ENTRIES.map(({ key }) => key),
+    ...T057_LAUNCHER_ENTRIES.map(({ key }) => key),
+    ...additionalStateEntries().map(({ key }) => key),
+  ]),
 );

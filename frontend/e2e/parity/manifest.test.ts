@@ -15,6 +15,10 @@ import {
   PRIMARY_CASE_COUNT,
   PRIMARY_FAMILIES,
   PRIMARY_MANIFEST,
+  RESOLVED_MANIFEST_KEYS,
+  T050_PROBE_ENTRIES,
+  T057_LAUNCHER_ENTRIES,
+  additionalStateEntries,
 } from './manifest';
 
 const unique = <T>(values: readonly T[]) => new Set(values);
@@ -251,4 +255,39 @@ it('no capture satisfies two state IDs', () => {
       { captureKey: 'capture-1', stateId: 'tab-dirty' },
     ]),
   ).toThrow('capture capture-1 satisfies multiple state IDs');
+});
+
+/*
+ * T151. The header comment above this index used to justify its 306/240/546
+ * size by saying how much of it is live, and the number it gave — 18 — had gone
+ * stale: it predates the T120 state gate, which resolves a further 40 entries.
+ * A comment that quietly restates a number nobody measures is the defect T151
+ * exists to remove, so the number is measured here instead of remembered.
+ *
+ * `RESOLVED_MANIFEST_KEYS` is the union of the three live resolutions, and each
+ * of the three is the very value its Playwright consumer navigates — see
+ * `real-files-parity.test.ts`, which imports `T050_PROBE_ENTRIES`,
+ * `T057_LAUNCHER_ENTRIES` and `additionalStateEntries()` rather than
+ * re-deriving them. Without that wiring this test would prove arithmetic over a
+ * symbol only it reads, which is worth nothing.
+ */
+// Proves: FR-FT-051 (partial — only that the navigation index's live coverage is
+//   measured rather than asserted in prose; the "every additional state has a
+//   covering assertion" clause is proven by accounting.test.ts)
+it('T151 measures how much of the 546-key navigation index anything resolves', () => {
+  expect(T050_PROBE_ENTRIES).toHaveLength(14);
+  expect(T057_LAUNCHER_ENTRIES).toHaveLength(4);
+  expect(additionalStateEntries()).toHaveLength(40);
+
+  // No probe resolves a key the index does not contain.
+  const indexKeys = new Set(PARITY_MANIFEST.map(({ key }) => key));
+  for (const key of RESOLVED_MANIFEST_KEYS) {
+    expect(indexKeys.has(key)).toBe(true);
+  }
+
+  // 14 + 4 + 40 with no overlap: T057 resolves its two launcher states at
+  // minimal-light, while the T120 gate resolves every state at the first
+  // palette, glass-light, so the two never name the same key.
+  expect(RESOLVED_MANIFEST_KEYS.size).toBe(58);
+  expect(LOGICAL_CASE_COUNT - RESOLVED_MANIFEST_KEYS.size).toBe(488);
 });
