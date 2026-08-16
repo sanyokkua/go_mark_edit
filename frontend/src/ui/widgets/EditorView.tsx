@@ -38,6 +38,7 @@ import { useMinimumWindow } from './minimumWindow';
 import PreviewPane from './PreviewPane';
 import EditorChrome from './EditorChrome';
 import type { DocumentTabsProps } from './DocumentTabs';
+import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
 import EditorContextMenu from './EditorContextMenu';
 import styles from './EditorView.module.css';
 import { t } from '../../i18n';
@@ -368,7 +369,23 @@ const EditorView: React.FC<EditorViewProps> = ({
         onCloseDocument={onCloseDocument}
         onNewDocument={onNewDocument}
       />
-      <div className={styles.panes}>
+      {/*
+       * FR-FT-047: the tab strip declares `role="tab"` on every open document
+       * and `aria-controls` on each of them; this is the element they control.
+       * One panel serves every tab because the strip switches the document
+       * inside a single stage rather than mounting a pane per tab, so the
+       * panel takes its accessible name from whichever tab is active.
+       */}
+      <div
+        aria-labelledby={
+          activeBuffer.documentId === ''
+            ? undefined
+            : tabElementId(activeBuffer.documentId)
+        }
+        className={styles.panes}
+        id={EDITOR_TABPANEL_ID}
+        role="tabpanel"
+      >
         <section
           aria-hidden={!editorVisible}
           aria-label={t('editor.editorPane')}

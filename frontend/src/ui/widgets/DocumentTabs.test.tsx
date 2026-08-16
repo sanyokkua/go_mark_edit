@@ -26,6 +26,7 @@ import {
 import { resetNotifications } from '../../logic/store/notificationsSlice';
 import { getActionAvailability } from '../../logic/actions/actionRegistry';
 import DocumentTabs from './DocumentTabs';
+import { EDITOR_TABPANEL_ID } from './editorTabPanel';
 
 function documentFor(
   documentId: string,
@@ -1034,4 +1035,88 @@ it('T141 leaves the tab open for a right-button auxiliary click', () => {
   auxClick(screen.getByRole('tab', { name: /one\.md/ }), 2);
 
   expect(onCloseDocument).not.toHaveBeenCalled();
+});
+
+/*
+ * T145. `role="tab"` requires an owning `tablist`, and a plain `<div>` between
+ * them breaks the ownership: the role the markup declares is not the role the
+ * accessibility tree reports. jsdom does not compute that tree, so ownership is
+ * asserted structurally — every element between a tab and its tablist must be
+ * transparent to the tree, which means `presentation` or its synonym `none`.
+ */
+function ownedByTablist(tab: HTMLElement, tablist: HTMLElement): boolean {
+  let node: HTMLElement | null = tab.parentElement;
+  while (node !== null && node !== tablist) {
+    const role = node.getAttribute('role');
+    if (role !== 'presentation' && role !== 'none') return false;
+    node = node.parentElement;
+  }
+  return node === tablist;
+}
+
+// Proves: FR-FT-047 (partial — the tab strip's role ownership and tab/panel
+// association only)
+it('T145 owns every tab from the tablist and points it at the editor panel', () => {
+  hydrate(
+    [
+      documentFor('one', '/repo/one.md'),
+      documentFor('two', '/repo/two.md'),
+      documentFor('three', '/repo/three.md'),
+    ],
+    'two',
+  );
+  renderTabs();
+
+  const tablist = screen.getByRole('tablist');
+  const tabs = screen.getAllByRole('tab');
+  expect(tabs).toHaveLength(3);
+  expect(
+    tabs.map((tab) => ({
+      id: tab.getAttribute('id'),
+      owned: ownedByTablist(tab, tablist),
+      controls: tab.getAttribute('aria-controls'),
+    })),
+  ).toEqual([
+    { id: 'tab-one', owned: true, controls: EDITOR_TABPANEL_ID },
+    { id: 'tab-two', owned: true, controls: EDITOR_TABPANEL_ID },
+    { id: 'tab-three', owned: true, controls: EDITOR_TABPANEL_ID },
+  ]);
+});
+
+/*
+ * The wrapper that gained `role="presentation"` is the same element the roving
+ * tabIndex and the Home/End/Arrow handler traverse. T084 already covers that
+ * behaviour on its own terms; this case re-anchors it to T145 so the ownership
+ * change cannot be made at its expense without a named failure.
+ */
+// Proves: FR-FT-047 (partial — that the ownership repair leaves the roving
+// tabIndex and Home/End/Arrow keyboard model intact)
+it('T145 keeps the roving tabIndex and Home/End/Arrow model after the ownership repair', () => {
+  hydrate(
+    [
+      documentFor('one', '/repo/one.md'),
+      documentFor('two', '/repo/two.md'),
+      documentFor('three', '/repo/three.md'),
+    ],
+    'two',
+  );
+  renderTabs();
+
+  const tablist = screen.getByRole('tablist');
+  const tabIndexes = (): (string | null)[] =>
+    screen.getAllByRole('tab').map((tab) => tab.getAttribute('tabindex'));
+
+  expect(tabIndexes()).toEqual(['-1', '0', '-1']);
+
+  fireEvent.keyDown(tablist, { key: 'Home' });
+  expect(screen.getByRole('tab', { name: /one\.md/ })).toHaveFocus();
+
+  fireEvent.keyDown(tablist, { key: 'End' });
+  expect(screen.getByRole('tab', { name: /three\.md/ })).toHaveFocus();
+
+  fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+  expect(screen.getByRole('tab', { name: /three\.md/ })).toHaveFocus();
+
+  fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+  expect(screen.getByRole('tab', { name: /one\.md/ })).toHaveFocus();
 });

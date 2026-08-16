@@ -31,6 +31,7 @@ import TabContextMenu, {
   type TabContextAdapter,
   type TabContextCloseOptions,
 } from './TabContextMenu';
+import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
 import { whenApplicationRegainsForegroundFocus } from './foregroundFocus';
 import { tabLabelsFor, truncateTabLabel, type TabLabel } from './tabLabel';
 import styles from './DocumentTabs.module.css';
@@ -521,12 +522,26 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
             const label = labels.get(document.documentId) as TabLabel;
             const active = document.documentId === activeDocumentId;
             return (
-              <div className={styles.tabItem} key={document.documentId}>
+              /*
+               * FR-FT-047 asks for correct roles, and `role="tab"` is only
+               * correct when a `tablist` owns it. This wrapper pairs the tab
+               * with its close control as one flex item, so it cannot be
+               * removed without moving the strip's pixels; `presentation`
+               * makes it transparent to the accessibility tree instead, which
+               * is what restores the ownership the markup already claimed.
+               */
+              <div
+                className={styles.tabItem}
+                key={document.documentId}
+                role="presentation"
+              >
                 <button
+                  aria-controls={EDITOR_TABPANEL_ID}
                   aria-selected={active}
                   aria-label={`${label.accessibleName}${document.conflictBlocked ? ` · ${t('conflict.blocked')}` : ''}`}
                   className={styles.tab}
                   data-document-id={document.documentId}
+                  id={tabElementId(document.documentId)}
                   ref={(element): void => {
                     if (element === null)
                       tabRefs.current.delete(document.documentId);

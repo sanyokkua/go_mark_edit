@@ -395,6 +395,46 @@ test('T141 middle-click closes the targeted tab through the same dirty-close pro
   await expect(page.getByRole('tab')).toHaveCount(0);
 });
 
+/*
+ * T145. The defect was that the markup's roles and the accessibility tree's
+ * roles disagreed: every `role="tab"` sat inside a plain `<div>`, so no tab was
+ * an owned child of the tablist. Asserting the markup would not have caught
+ * that — the DOM was always the same shape — so this reads Chromium's own
+ * accessibility tree over CDP, which is the tree assistive technology consumes.
+ */
+// Proves: FR-FT-047 (partial — the tab strip's role ownership and its
+// tab-to-panel association only)
+test('T145 exposes every tab as an owned child of the tablist controlling the editor panel', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'New tab' }).click();
+  await expect(page.getByRole('tab')).toHaveCount(2);
+  await expect(page.getByRole('tabpanel')).toHaveCount(1);
+
+  const panelId = await page.getByRole('tabpanel').getAttribute('id');
+  expect(panelId).not.toBeNull();
+  const controls = await page
+    .getByRole('tab')
+    .evaluateAll((tabs) =>
+      tabs.map((tab) => tab.getAttribute('aria-controls')),
+    );
+  expect(controls).toEqual([panelId, panelId]);
+
+  const session = await page.context().newCDPSession(page);
+  const tree = await session.send('Accessibility.getFullAXTree');
+  await session.detach();
+
+  const byId = new Map(tree.nodes.map((node) => [node.nodeId, node]));
+  const tablist = tree.nodes.find((node) => node.role?.value === 'tablist');
+  expect(tablist).toBeDefined();
+  const childRoles = (tablist?.childIds ?? []).map(
+    (childId) => byId.get(childId)?.role?.value,
+  );
+  expect(childRoles.filter((role) => role === 'tab')).toHaveLength(2);
+});
+
 test('FT-VS-07 proves recents, reopen, launcher, and responsive status controls', async ({
   page,
 }) => {
