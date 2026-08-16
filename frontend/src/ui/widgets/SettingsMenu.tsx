@@ -140,7 +140,32 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
   const settingUnavailable = (id: ActionId): boolean =>
     getAction(id).availability.kind === 'deferred';
 
+  /*
+   * T155: two independent reasons a Settings row is not operable, and both must
+   * be stated at every row.
+   *
+   * The registry is the authority on whether the action exists to be performed
+   * at all — reading wiring alone is the defect above, and the Autosave row
+   * carried no registry term whatsoever, so a future `laterDeferred` on
+   * `autosave` would have shipped an operable toggle. But an available action
+   * with no writer wired is equally inoperable, and drawing a control that
+   * calls nothing is the defect T116 exists to remove. A row is operable only
+   * when the registry allows it *and* something is there to receive the change.
+   *
+   * `writer` is omitted by the open-mode and Markdown-standard lists, which
+   * genuinely have none: `AppearanceControls.persist` accepts only `mode` and
+   * `theme` patches and passes `defaultOpenMode` through untouched, and nothing
+   * anywhere writes `markdown.standard`. Those rows report a value chosen
+   * elsewhere, which is what `.stateRow` in `MenuSurface.module.css` draws.
+   */
+  const rowUnavailable = (id: ActionId, writer?: unknown): boolean =>
+    settingUnavailable(id) || writer === undefined;
+
+  const availabilityOf = (id: ActionId): string =>
+    getAction(id).availability.kind;
+
   const toggle = (
+    actionId: ActionId,
     label: string,
     checked: boolean,
     onChange: (checked: boolean) => void,
@@ -155,6 +180,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
     <div
       aria-disabled={disabled}
       className={menu.row}
+      data-availability={availabilityOf(actionId)}
       data-settings-row={label}
       role="menuitem"
     >
@@ -239,8 +265,10 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
       <div className={menu.groupLabel}>{t('settings.openMode')}</div>
       {openModeOptions.map((option) => (
         <div
-          aria-disabled="true"
+          aria-disabled={rowUnavailable('default-open-mode')}
           className={`${menu.row} ${menu.stateRow}`}
+          data-availability={availabilityOf('default-open-mode')}
+          data-settings-row={option.label}
           key={option.value}
           role="menuitem"
         >
@@ -252,8 +280,10 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
       <div className={menu.groupLabel}>{t('settings.menu.markdown')}</div>
       {markdownStandardOptions.map((option) => (
         <div
-          aria-disabled="true"
+          aria-disabled={rowUnavailable('markdown-standard')}
           className={`${menu.row} ${menu.stateRow}`}
+          data-availability={availabilityOf('markdown-standard')}
+          data-settings-row={option.label}
           key={option.value}
           role="menuitem"
         >
@@ -263,25 +293,26 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
       ))}
       <div className={menu.separator} />
       {toggle(
+        'autosave',
         saveToggleLabels.autosave,
         fileSettings?.autosave ?? true,
         (checked): void => onFileSettingsChange?.({ autosave: checked }),
-        onFileSettingsChange === undefined,
+        rowUnavailable('autosave', onFileSettingsChange),
       )}
       {toggle(
+        'format-on-save',
         saveToggleLabels.formatOnSave,
         markdownSettings?.formatOnSave ?? false,
         (checked): void =>
           onMarkdownSettingsChange?.({ formatOnSave: checked }),
-        settingUnavailable('format-on-save') ||
-          onMarkdownSettingsChange === undefined,
+        rowUnavailable('format-on-save', onMarkdownSettingsChange),
       )}
       {toggle(
+        'lint-on-save',
         saveToggleLabels.lintOnSave,
         markdownSettings?.lintOnSave ?? true,
         (checked): void => onMarkdownSettingsChange?.({ lintOnSave: checked }),
-        settingUnavailable('lint-on-save') ||
-          onMarkdownSettingsChange === undefined,
+        rowUnavailable('lint-on-save', onMarkdownSettingsChange),
       )}
       <div className={menu.separator} />
       <div

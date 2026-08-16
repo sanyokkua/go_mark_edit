@@ -5,8 +5,32 @@ import {
   currentPlatform,
   formatShortcut,
 } from '../../logic/actions/shortcutRegistry';
-import { getAction, type ActionId } from '../../logic/actions/actionRegistry';
+import {
+  getAction,
+  type ActionAvailability,
+  type ActionId,
+} from '../../logic/actions/actionRegistry';
 import SettingsMenu from './SettingsMenu';
+
+jest.mock('../../logic/actions/actionRegistry', () => {
+  const actual = jest.requireActual('../../logic/actions/actionRegistry');
+  return {
+    __esModule: true,
+    ...actual,
+    getAction: jest.fn(actual.getAction),
+  };
+});
+
+const actionMock = getAction as jest.MockedFunction<typeof getAction>;
+
+beforeEach(() => {
+  actionMock.mockReset();
+  actionMock.mockImplementation(
+    jest.requireActual<typeof import('../../logic/actions/actionRegistry')>(
+      '../../logic/actions/actionRegistry',
+    ).getAction,
+  );
+});
 
 const catalogueValues = new Set(
   Object.values(catalogue as Record<string, string>),
@@ -228,4 +252,117 @@ it('T112 keeps no hardcoded accelerator string in the catalogue', () => {
   expect(Object.keys(catalogue as Record<string, string>)).not.toContain(
     'settings.menu.allSettings.accelerator',
   );
+});
+
+/*
+ * T155. `SettingsMenu` is where the availability-from-wiring defect was found
+ * and where its residue survived: the Autosave row read
+ * `onFileSettingsChange === undefined` with no registry term at all, and the
+ * open-mode and Markdown-standard rows hardcoded `aria-disabled="true"`. All
+ * three happen to *agree* with the registry today, which is exactly why the
+ * defect is invisible without making the registry answer something different.
+ * These cases replace the registry's answer and assert the rows follow it.
+ */
+function withRegistryAvailability(
+  overrides: Partial<Record<ActionId, ActionAvailability>>,
+): void {
+  const real = jest.requireActual<
+    typeof import('../../logic/actions/actionRegistry')
+  >('../../logic/actions/actionRegistry').getAction;
+  actionMock.mockImplementation((id: ActionId) => {
+    const entry = real(id);
+    const availability = overrides[id];
+    return availability === undefined ? entry : { ...entry, availability };
+  });
+}
+
+/*
+ * The five rows that report a stored value: the two default-open-mode options
+ * and the three Markdown standards. Every one is drawn by a `.stateRow`.
+ */
+const STATE_ROW_LABELS = [
+  'Reading (Viewer)',
+  'Editor',
+  'Minimal (CommonMark)',
+  'GFM',
+  'Full (+ math, footnotes…)',
+] as const;
+
+function settingsRow(label: string): HTMLElement {
+  const row = Array.from(
+    document.querySelectorAll<HTMLElement>('[data-settings-row]'),
+  ).find((candidate) => candidate.dataset.settingsRow === label);
+  if (row === undefined) {
+    throw new Error(
+      `no settings row for ${label}; found ${Array.from(
+        document.querySelectorAll<HTMLElement>('[data-settings-row]'),
+      )
+        .map((candidate) => candidate.dataset.settingsRow)
+        .join(' | ')}`,
+    );
+  }
+  return row;
+}
+
+// Proves: FR-FT-047 — the Autosave row's availability comes from the canonical
+// registry, not from whether `onFileSettingsChange` happens to be wired. It
+// does not prove the autosave behaviour itself, which App.test.tsx owns.
+it('T155 disables Autosave when the registry defers it, even with the handler wired', () => {
+  withRegistryAvailability({
+    autosave: { kind: 'deferred', reason: 'test-deferred' },
+  });
+  render(
+    <SettingsMenu
+      {...props}
+      fileSettings={{ autosave: true }}
+      onFileSettingsChange={jest.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+
+  expect(screen.getByRole('checkbox', { name: 'Autosave' })).toBeDisabled();
+  expect(settingsRow('Autosave')).toHaveAttribute(
+    'data-availability',
+    'deferred',
+  );
+});
+
+// Proves: FR-FT-047 — the open-mode and Markdown-standard state rows report the
+// registry's availability rather than a literal, and stay non-activatable while
+// no writer exists for either setting. It does not prove either setting's
+// behaviour; T119 owns default open mode and nothing yet writes the standard.
+it('T155 reports the registry availability on the two Settings state rows', () => {
+  render(<SettingsMenu {...props} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+
+  for (const label of STATE_ROW_LABELS) {
+    expect(settingsRow(label)).toHaveAttribute('data-availability', 'deferred');
+    expect(settingsRow(label)).toHaveAttribute('aria-disabled', 'true');
+  }
+});
+
+/*
+ * The registry saying `available` is necessary for an operable row and not
+ * sufficient: nothing in the frontend writes either setting — `persist`
+ * (`AppearanceControls.tsx`) accepts only `mode` and `theme` and passes
+ * `defaultOpenMode` straight through — so a row drawn operable would call
+ * nothing. Both terms are asserted here so neither can be dropped.
+ */
+// Proves: FR-FT-047 (partial — the sourcing half only: the row follows the
+// registry's answer, and refuses to become activatable without a writer.)
+it('T155 follows the registry when it calls a state row available, without inventing a writer', () => {
+  withRegistryAvailability({
+    'default-open-mode': { kind: 'available' },
+    'markdown-standard': { kind: 'available' },
+  });
+  render(<SettingsMenu {...props} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+
+  for (const label of STATE_ROW_LABELS) {
+    expect(settingsRow(label)).toHaveAttribute(
+      'data-availability',
+      'available',
+    );
+    expect(settingsRow(label)).toHaveAttribute('aria-disabled', 'true');
+  }
 });
