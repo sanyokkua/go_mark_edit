@@ -14,6 +14,10 @@ export interface TabLabel {
 
 function pathParts(document: DocumentMetadata): string[] {
   const source = document.path || document.displayName || document.title;
+  return splitPath(source);
+}
+
+function splitPath(source: string): string[] {
   return source.replaceAll('\\', '/').split('/').filter(Boolean);
 }
 
@@ -54,6 +58,26 @@ export function escapeUnsafeText(value: string): string {
 
 export function isolateUserText(value: string): string {
   return `\u2068${escapeUnsafeText(value)}\u2069`;
+}
+
+/**
+ * The safe basename of an arbitrary path, for copy that must never expose a
+ * full canonical path.
+ *
+ * FR-FT-048 forbids private full paths in user-facing failure copy, and the
+ * classified error contract narrows every message to "the safe basename or the
+ * document's shortest-unique disambiguated tab label". Callers outside the tab
+ * strip have no document set to disambiguate against, so they get the same
+ * escaping and directional isolation `tabLabelFor` applies, minus the suffix.
+ *
+ * Returns `undefined` for an absent or path-separator-only source so the caller
+ * can fall back to its own untitled copy rather than render an empty subject.
+ */
+export function safeBasenameOf(source: string | undefined): string | undefined {
+  if (source === undefined) return undefined;
+  const basename = splitPath(source).at(-1);
+  if (basename === undefined || basename.length === 0) return undefined;
+  return isolateUserText(basename);
 }
 
 function shortestUniqueSuffix(

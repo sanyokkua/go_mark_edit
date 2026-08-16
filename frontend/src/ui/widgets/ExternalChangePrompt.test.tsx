@@ -136,6 +136,47 @@ it('metadata-only conflict shows characteristic differences', () => {
   ).not.toBeInTheDocument();
 });
 
+// Proves: FR-FT-048 (the "no private full paths in errors" clause only), and
+// the classified error contract's rule that user-facing copy names only the
+// safe basename. It does not prove FR-FT-048's network, telemetry or
+// multi-window clauses.
+it('T146 names only the safe basename when the backend omits displayName', () => {
+  const canonicalPath = '/Users/someone/Private/Journal/notes.md';
+  render(
+    <ExternalChangePrompt
+      onDecision={jest.fn()}
+      open
+      preview={preview({ displayName: undefined, path: canonicalPath })}
+    />,
+  );
+
+  const message = screen.getByText(/changed outside GoMarkEdit/u);
+  expect(message).toBeVisible();
+  expect(message.textContent).not.toContain(canonicalPath);
+  expect(message.textContent).not.toContain('/Users/someone');
+  expect(message.textContent).toContain('notes.md');
+});
+
+// Proves: FR-FT-035's directional-isolation and control-character clauses as
+// they reach the external-change prompt. It does not prove the
+// shortest-unique-suffix disambiguation, which the prompt never renders.
+it('T146 isolates and escapes the basename it derives from a path', () => {
+  render(
+    <ExternalChangePrompt
+      onDecision={jest.fn()}
+      open
+      preview={preview({
+        displayName: undefined,
+        path: '/tmp/reports/re‮gnp.md',
+      })}
+    />,
+  );
+
+  const message = screen.getByText(/changed outside GoMarkEdit/u);
+  expect(message.textContent).not.toContain('‮');
+  expect(message.textContent).toContain('⁨re\\u202Egnp.md⁩');
+});
+
 it('truncated side is visibly identified', () => {
   render(
     <ExternalChangePrompt

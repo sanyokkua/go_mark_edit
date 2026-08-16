@@ -4,6 +4,7 @@ import { t } from '../../i18n';
 import type { ConflictPreview } from '../../logic/store/appModelTypes';
 import ModalShell from '../primitives/ModalShell';
 import styles from '../primitives/ModalShell.module.css';
+import { safeBasenameOf } from './tabLabel';
 
 export type ExternalChangeDecision = 'reload' | 'keep-mine' | 'skip' | 'cancel';
 
@@ -60,8 +61,16 @@ const ExternalChangePrompt: React.FC<ExternalChangePromptProps> = ({
       <div className={styles.promptBody}>
         <p>
           {t('conflict.message', {
+            /*
+             * FR-FT-048 forbids a private full path in user-facing copy, and
+             * the classified error contract narrows the subject to the safe
+             * basename. `displayName` is already that; `path` is the full
+             * canonical path and MUST be reduced before it is rendered.
+             */
             filename:
-              preview.displayName ?? preview.path ?? t('editor.untitled'),
+              preview.displayName ??
+              safeBasenameOf(preview.path) ??
+              t('editor.untitled'),
           })}
         </p>
         {!valid ? (
