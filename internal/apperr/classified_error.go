@@ -69,15 +69,17 @@ var AllClassifiedRemediations = []ClassifiedRemediation{
  *
  * `RemediationNone` is allowed everywhere: message-only is always a valid outcome.
  *
- * **`ClassifiedConflict` deliberately allows `RemediationRetry`, and the
- * specification does not.** The contract's conflict row enumerates the
- * *external-change* actions (Reload from disk, Keep mine, Skip, and Cancel for a
- * read-only change), but this codebase also classifies stale-tab-set and
- * stale-revision refusals as `conflict`, where re-issuing the command against the
- * fresh revision is the only sensible action and is what T156 will honour. That is
- * a spec/code disagreement, not a licence: it is filed as T159 and must be
- * resolved by amending the contract row or reclassifying those refusals — not by
- * leaving this comment as the answer.
+ * `ClassifiedConflict` allows `RemediationRetry` because the contract's conflict
+ * row says so. The row covers two collisions, not one: an *external change* — whose
+ * actions are Reload from disk, Keep mine, Skip, and Cancel for a read-only
+ * document — and a *stale tab-set or stale revision*, where re-issuing the command
+ * against the fresh revision is the only action that can succeed.
+ *
+ * That second half was added by T159. Until then the row enumerated only the
+ * external-change actions while this codebase already classified stale-revision
+ * refusals as `conflict`, and this comment carried the disagreement as a filed
+ * question. The owner amended the row rather than introducing a ninth category,
+ * so the table below now matches the specification instead of diverging from it.
  */
 var remediationsByCategory = map[ClassifiedErrorCategory][]ClassifiedRemediation{
 	ClassifiedNotFound:             {RemediationNone, RemediationSaveToRecreate, RemediationCopyPath},
