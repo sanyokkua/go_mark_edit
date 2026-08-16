@@ -135,12 +135,30 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     tabRefs.current.get(documentId)?.focus();
   }, []);
 
+  /*
+   * FR-FT-037's focus chain, steps two to four: the current active tab, then
+   * the tab strip's New control, then the launcher's New control. The last
+   * step is not decoration — closing the last document unmounts `EditorView`
+   * and this whole strip with it, and `AppShell` renders `Launcher` in its
+   * place, so by the time a close settles there may be no strip left to focus.
+   * Both controls are found by attribute rather than by ref for the same
+   * reason: the element that owns the ref may already be gone.
+   */
   const focusFallback = useCallback((): void => {
     if (activeDocumentId !== null && tabRefs.current.has(activeDocumentId)) {
       focusDocument(activeDocumentId);
       return;
     }
-    document.querySelector<HTMLButtonElement>('[data-tab-new="true"]')?.focus();
+    const stripNewControl = document.querySelector<HTMLButtonElement>(
+      '[data-tab-new="true"]',
+    );
+    if (stripNewControl !== null) {
+      stripNewControl.focus();
+      return;
+    }
+    document
+      .querySelector<HTMLButtonElement>('[data-launcher-new="true"]')
+      ?.focus();
   }, [activeDocumentId, focusDocument]);
 
   const restoreMenuFocus = useCallback(

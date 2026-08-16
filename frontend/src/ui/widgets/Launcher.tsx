@@ -55,7 +55,15 @@ const Launcher: React.FC<LauncherProps> = ({
               : t('launcher.chooseRecent')}
         </p>
         <div className={styles.actions}>
+          {/*
+           * FR-FT-037's focus chain ends here: "…otherwise the tab strip's New
+           * control, otherwise the launcher's New control". The tab strip is
+           * unmounted by the time that step is reached, so the fallback cannot
+           * hold a ref to this button and finds it by attribute instead —
+           * mirroring `data-tab-new` on the strip's own New control.
+           */}
           <button
+            data-launcher-new="true"
             type="button"
             onClick={(event): void => invoke(event, onNewDocument)}
           >

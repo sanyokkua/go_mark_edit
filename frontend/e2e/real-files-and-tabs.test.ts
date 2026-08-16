@@ -435,6 +435,29 @@ test('T145 exposes every tab as an owned child of the tablist controlling the ed
   expect(childRoles.filter((role) => role === 'tab')).toHaveLength(2);
 });
 
+/*
+ * T153. The last step of FR-FT-037's focus chain is only reachable once the tab
+ * strip has gone, and only `AppShell` can make that happen: closing the last
+ * document unmounts `EditorView` and renders `Launcher` in its place. Driving
+ * the real shell is therefore the point of doing this in the browser as well as
+ * in jsdom — the unit harness reproduces the swap, this one is the swap.
+ */
+// Proves: FR-FT-037 (partial — the fourth step of the Reveal focus chain only)
+test('T153 returns focus to the launcher New control when the last tab closes', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  await expect(page.getByRole('tab')).toHaveCount(1);
+  await page.getByRole('tab').first().click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Close Tab' }).click();
+
+  const launcherNew = page.locator('[data-launcher-new="true"]');
+  await expectPainted(launcherNew, 'the launcher New control');
+  await expect(launcherNew).toBeFocused();
+  await expect(page.getByRole('tab')).toHaveCount(0);
+});
+
 test('FT-VS-07 proves recents, reopen, launcher, and responsive status controls', async ({
   page,
 }) => {

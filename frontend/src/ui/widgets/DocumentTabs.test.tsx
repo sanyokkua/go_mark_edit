@@ -17,7 +17,7 @@ import type {
   PathCommandResult,
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
-import { store } from '../../logic/store';
+import { store, useAppSelector } from '../../logic/store';
 import {
   applyStatePatch,
   hydrateProjection,
@@ -27,6 +27,7 @@ import { resetNotifications } from '../../logic/store/notificationsSlice';
 import { getActionAvailability } from '../../logic/actions/actionRegistry';
 import DocumentTabs from './DocumentTabs';
 import { EDITOR_TABPANEL_ID } from './editorTabPanel';
+import Launcher from './Launcher';
 
 function documentFor(
   documentId: string,
@@ -1119,4 +1120,59 @@ it('T145 keeps the roving tabIndex and Home/End/Arrow model after the ownership 
 
   fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
   expect(screen.getByRole('tab', { name: /one\.md/ })).toHaveFocus();
+});
+
+/*
+ * T153. FR-FT-037's focus chain has four steps and the fourth had no code:
+ * "…otherwise the tab strip's New control, otherwise the launcher's New
+ * control". The fourth is reachable only once the strip itself is gone, which
+ * is what `AppShell` does when the last document closes — it unmounts
+ * `EditorView`, and `DocumentTabs` with it, and renders `Launcher` instead. The
+ * harness reproduces exactly that swap so the step under test is the real one.
+ */
+function ShellSwap({
+  adapter,
+}: {
+  adapter: Parameters<typeof DocumentTabs>[0]['adapter'];
+}): React.JSX.Element {
+  const open = useAppSelector((state) => state.documents.orderedIds.length);
+  return open > 0 ? (
+    <DocumentTabs adapter={adapter} />
+  ) : (
+    <Launcher onNewDocument={jest.fn()} />
+  );
+}
+
+// Proves: FR-FT-037 (partial — the fourth step of the Reveal focus chain only)
+it('T153 falls back to the launcher New control once the strip is gone', async () => {
+  hydrate([documentFor('only', '/repo/only.md')]);
+  const closeDocument = jest.fn(async (): Promise<TabTransitionResult> => {
+    store.dispatch(
+      applyStatePatch({
+        revision: 2,
+        tabSetRevision: 5,
+        documents: {},
+        orderedDocumentIds: [],
+        activeDocumentId: null,
+      }),
+    );
+    return {
+      status: 'closed',
+      activeDocumentId: undefined,
+      orderedDocumentIds: [],
+    };
+  });
+  render(
+    <Provider store={store}>
+      <ShellSwap adapter={{ closeDocument }} />
+    </Provider>,
+  );
+
+  fireEvent.contextMenu(screen.getByRole('tab', { name: /only\.md/ }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Close Tab' }));
+
+  await waitFor(() => expect(screen.queryByRole('tab')).toBeNull());
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'New File' })).toHaveFocus(),
+  );
 });
