@@ -81,24 +81,41 @@ export interface ClassifiedReportOptions {
   intent?: NotificationRemediationIntent;
 }
 
+/**
+ * Pick the one action to offer out of the set Go sent.
+ *
+ * Go now carries a set, because three contract rows specify one — `not-found` for a
+ * detached document is "Save to recreate plus Copy path". This maps the first member
+ * it can honour and drops the rest, which keeps exactly the behaviour that shipped
+ * before the widening. Rendering the whole set is **T142**, together with the
+ * `Save to recreate` mapping that does not exist yet; adding a control here without
+ * the command behind it is the defect T116 exists to remove.
+ */
 function remediationFor(
   error: ClassifiedError,
   options: ClassifiedReportOptions,
 ): NotificationRemediation | undefined {
-  if (options.intent === undefined) return undefined;
-  if (error.remediation === 'Copy path' && options.reveal === true) {
+  const { intent } = options;
+  if (intent === undefined) return undefined;
+
+  // Preference, not set order. The contract writes the Reveal row as "Retry; a
+  // Reveal failure also offers Copy path", so Retry is the first member — but Copy
+  // path is the one that still helps when the file is gone, and it is why the
+  // caller passed `reveal`. Taking whichever member came first would hand a Reveal
+  // failure a Retry button and silently drop Copy path.
+  if (options.reveal === true && error.remediations.includes('Copy path')) {
     return {
       action: 'copy-path',
       documentId: error.documentId,
-      intent: options.intent,
+      intent,
       labelKey: 'action.copy-path.label',
     };
   }
-  if (error.remediation === 'Retry') {
+  if (error.remediations.includes('Retry')) {
     return {
       action: 'retry',
       documentId: error.documentId,
-      intent: options.intent,
+      intent,
       labelKey: 'action.retry.label',
     };
   }

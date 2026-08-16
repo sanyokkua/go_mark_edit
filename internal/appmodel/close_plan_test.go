@@ -556,8 +556,8 @@ func TestPrepareCloseRefusesAStaleTabSetRevision(t *testing.T) {
 	if refused.Error.Message != "The tab set changed; close must be retried." {
 		t.Errorf("message = %q, want the literal the frontend renders", refused.Error.Message)
 	}
-	if refused.Error.Remediation != apperr.RemediationRetry {
-		t.Errorf("remediation = %q, want %q", refused.Error.Remediation, apperr.RemediationRetry)
+	if refused.Error.Remediation() != apperr.RemediationRetry {
+		t.Errorf("remediation = %q, want %q", refused.Error.Remediation(), apperr.RemediationRetry)
 	}
 }
 
@@ -615,7 +615,7 @@ func TestPrepareCloseRefusesARevisionThatMovedWhileAutosaveDrained(t *testing.T)
 	if refused.Error.Message != "The tab set changed while autosave work drained." {
 		t.Errorf("message = %q, want the literal the frontend renders", refused.Error.Message)
 	}
-	if refused.Error.Remediation != apperr.RemediationRetry {
-		t.Errorf("remediation = %q, want %q", refused.Error.Remediation, apperr.RemediationRetry)
+	if refused.Error.Remediation() != apperr.RemediationRetry {
+		t.Errorf("remediation = %q, want %q", refused.Error.Remediation(), apperr.RemediationRetry)
 	}
 }

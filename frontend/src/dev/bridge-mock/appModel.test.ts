@@ -327,7 +327,7 @@ it('rejects stale NewDocument without mutating state', async () => {
   ).resolves.toEqual({
     error: expect.objectContaining({
       category: 'conflict',
-      remediation: 'Retry',
+      remediations: ['Retry'],
     }),
   });
   await expect(GetState()).resolves.toEqual(initial);

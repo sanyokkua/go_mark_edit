@@ -584,7 +584,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
         error ?? {
           category: 'io-failure',
           message: t('notification.error.io.message'),
-          remediation: '',
+          remediations: [],
           documentId,
           dedupKey: `write:${documentId}`,
         },
@@ -1128,7 +1128,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
           {
             category: 'permission-denied',
             message: t('save.readOnly'),
-            remediation: '',
+            remediations: [],
             // Without a subject the title falls back to the generic "File
             // operation failed" once the message stops being overwritten.
             safeSubject: safeFilename(activeDocument),
@@ -1149,7 +1149,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
             // `localizedErrorCopy` overwrote it; now that the message survives,
             // an untranslated string would reach the user (FR-FT-047).
             message: t('save.activeDocumentChanged'),
-            remediation: 'Retry',
+            remediations: ['Retry'],
             safeSubject: safeFilename(activeDocument),
             documentId,
             dedupKey: `active-document:${documentId}`,

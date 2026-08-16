@@ -60,13 +60,18 @@ func (service *AppModelService) RevealInFileManager(ctx context.Context, documen
 	}
 	if _, err := os.Stat(path); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
+			// The file was there when the document was opened and is gone now. This
+			// collapsed into the known-missing case above and returned no error at
+			// all, so a user who chose Reveal saw nothing happen. FR-FT-037 requires
+			// it reported: detach, then one classified not-found offering the two
+			// actions that can still help.
 			service.markDetached(ctx, documentID)
-			return apperr.RevealResult{Status: apperr.PathCommandUnavailable}
+			return revealDetachedFailure(documentID, subject)
 		}
-		return revealFailure(apperr.ClassifiedSystemCommandFailure, documentID, subject, "The file manager could not reveal this document.", apperr.RemediationRetry)
+		return revealCommandFailure(documentID, subject)
 	}
 	if port == nil {
-		return revealFailure(apperr.ClassifiedSystemCommandFailure, documentID, subject, "The file manager could not reveal this document.", apperr.RemediationRetry)
+		return revealCommandFailure(documentID, subject)
 	}
 	if err := port.Reveal(path); err != nil {
 		if errors.Is(err, file.ErrRevealUnavailable) {
@@ -74,11 +79,9 @@ func (service *AppModelService) RevealInFileManager(ctx context.Context, documen
 		}
 		if errors.Is(err, fs.ErrNotExist) || os.IsNotExist(err) {
 			service.markDetached(ctx, documentID)
-			classified := apperr.NewClassifiedError(apperr.ClassifiedNotFound, subject, "The document could not be found.", apperr.RemediationSaveToRecreate, documentID)
-			return apperr.RevealResult{Status: apperr.PathCommandRefused, Error: &classified}
+			return revealDetachedFailure(documentID, subject)
 		}
-		classified := apperr.NewClassifiedError(apperr.ClassifiedSystemCommandFailure, subject, "The file manager could not reveal this document.", apperr.RemediationRetry, documentID)
-		return apperr.RevealResult{Status: apperr.PathCommandRefused, Error: &classified}
+		return revealCommandFailure(documentID, subject)
 	}
 	return apperr.RevealResult{Status: apperr.PathCommandRevealed}
 }
@@ -103,5 +106,33 @@ func pathCommandFailure(category apperr.ClassifiedErrorCategory, documentID, sub
 
 func revealFailure(category apperr.ClassifiedErrorCategory, documentID, subject, message string, remediation apperr.ClassifiedRemediation) apperr.RevealResult {
 	classified := apperr.NewClassifiedError(category, subject, message, remediation, documentID)
+	return apperr.RevealResult{Status: apperr.PathCommandRefused, Error: &classified}
+}
+
+/*
+ * The two Reveal outcomes the contract specifies as pairs, in one place so a third
+ * call site cannot offer half of one.
+ *
+ * `not-found` for a detached document is "Save to recreate plus Copy path"; a Reveal
+ * `system-command-failure` is "Retry; a Reveal failure also offers Copy path". Both
+ * were previously emitted with a single action because the field could only hold one,
+ * so Copy path — the action that still works when the file is gone — was the half
+ * that got dropped.
+ */
+func revealDetachedFailure(documentID, subject string) apperr.RevealResult {
+	classified := apperr.NewClassifiedErrorWithRemediations(
+		apperr.ClassifiedNotFound, subject, "The document could not be found.",
+		[]apperr.ClassifiedRemediation{apperr.RemediationSaveToRecreate, apperr.RemediationCopyPath},
+		documentID,
+	)
+	return apperr.RevealResult{Status: apperr.PathCommandRefused, Error: &classified}
+}
+
+func revealCommandFailure(documentID, subject string) apperr.RevealResult {
+	classified := apperr.NewClassifiedErrorWithRemediations(
+		apperr.ClassifiedSystemCommandFailure, subject, "The file manager could not reveal this document.",
+		[]apperr.ClassifiedRemediation{apperr.RemediationRetry, apperr.RemediationCopyPath},
+		documentID,
+	)
 	return apperr.RevealResult{Status: apperr.PathCommandRefused, Error: &classified}
 }

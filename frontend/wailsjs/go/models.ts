@@ -324,7 +324,7 @@ export namespace apperr {
 	    category: string;
 	    safeSubject?: string;
 	    message: string;
-	    remediation?: string;
+	    remediations?: string[];
 	    documentId?: string;
 	    dedupKey: string;
 	
@@ -337,7 +337,7 @@ export namespace apperr {
 	        this.category = source["category"];
 	        this.safeSubject = source["safeSubject"];
 	        this.message = source["message"];
-	        this.remediation = source["remediation"];
+	        this.remediations = source["remediations"];
 	        this.documentId = source["documentId"];
 	        this.dedupKey = source["dedupKey"];
 	    }

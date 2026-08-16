@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -82,6 +83,18 @@ func TestRevealInFileManagerRevalidatesExistenceAndClassifiesFailure(t *testing.
 	if err := os.Remove(path); err != nil {
 		t.Fatalf("remove known-missing fixture: %v", err)
 	}
+	// The first reveal after the file vanishes is the invocation-time race: it must
+	// report, and it detaches the document as a side effect. (This assertion used to
+	// require Status=unavailable with no error, which is the behaviour T125 removed —
+	// the test was pinning the defect, so it is corrected rather than dropped. The
+	// race itself is proved in full by
+	// TestRevealDisappearanceAtInvocationReportsNotFoundOfferingBothActions.)
+	vanishedAtStat := service.RevealInFileManager(context.Background(), opened.DocumentID)
+	if vanishedAtStat.Status != apperr.PathCommandRefused || vanishedAtStat.Error == nil || calls != 0 {
+		t.Fatalf("invocation-time race reveal = %+v, calls=%d", vanishedAtStat, calls)
+	}
+	// Only now is the document genuinely known-detached, and a repeat reveal is the
+	// silent no-op that keeps one failure from being reported twice.
 	knownMissing := service.RevealInFileManager(context.Background(), opened.DocumentID)
 	if knownMissing.Status != apperr.PathCommandUnavailable || knownMissing.Error != nil || calls != 0 {
 		t.Fatalf("known-missing reveal = %+v, calls=%d", knownMissing, calls)
@@ -96,8 +109,9 @@ func TestRevealInFileManagerRevalidatesExistenceAndClassifiesFailure(t *testing.
 	opened = service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
 	service.SetRevealPort(file.RevealPortFunc(func(string) error { return fs.ErrNotExist }))
 	race := service.RevealInFileManager(context.Background(), opened.DocumentID)
-	if race.Error == nil || race.Error.Category != apperr.ClassifiedNotFound || race.Error.Remediation != apperr.RemediationSaveToRecreate {
-		t.Fatalf("disappearance race reveal = %+v", race)
+	wantPair := []apperr.ClassifiedRemediation{apperr.RemediationSaveToRecreate, apperr.RemediationCopyPath}
+	if race.Error == nil || race.Error.Category != apperr.ClassifiedNotFound || !slices.Equal(race.Error.Remediations, wantPair) {
+		t.Fatalf("host-reported disappearance reveal = %+v", race)
 	}
 	after, _ := service.GetState(context.Background())
 	if !after.Snapshot.Documents[opened.DocumentID].Detached {
@@ -112,4 +126,51 @@ func openedPath(t *testing.T, documentID string, service *AppModelService) strin
 		t.Fatalf("GetState = %v", err)
 	}
 	return state.Snapshot.Documents[documentID].Path
+}
+
+// Proves: FR-FT-037 — the invocation-time disappearance is reported as one
+// classified not-found offering both Save to recreate and Copy path, and the
+// document is marked detached. Does not prove the deduplication itself, which the
+// notification layer owns via DedupKey.
+func TestRevealDisappearanceAtInvocationReportsNotFoundOfferingBothActions(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "vanishes.md")
+	if err := os.WriteFile(path, []byte("here\n"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	state, _ := service.GetState(context.Background())
+	opened := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
+	if opened.Error != nil {
+		t.Fatalf("OpenPath = %+v", opened)
+	}
+	reveals := 0
+	service.SetRevealPort(file.RevealPortFunc(func(string) error { reveals++; return nil }))
+
+	// The file goes away after the document is open and before Reveal is invoked.
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("remove fixture: %v", err)
+	}
+	vanished := service.RevealInFileManager(context.Background(), opened.DocumentID)
+
+	if vanished.Status != apperr.PathCommandRefused {
+		t.Fatalf("status = %q, want %q — the race was swallowed", vanished.Status, apperr.PathCommandRefused)
+	}
+	if vanished.Error == nil {
+		t.Fatal("no classified error: FR-FT-037 requires the race to be reported, not collapsed into the known-missing case")
+	}
+	if vanished.Error.Category != apperr.ClassifiedNotFound {
+		t.Errorf("category = %q, want %q", vanished.Error.Category, apperr.ClassifiedNotFound)
+	}
+	want := []apperr.ClassifiedRemediation{apperr.RemediationSaveToRecreate, apperr.RemediationCopyPath}
+	if !slices.Equal(vanished.Error.Remediations, want) {
+		t.Errorf("remediations = %v, want %v", vanished.Error.Remediations, want)
+	}
+	if reveals != 0 {
+		t.Errorf("host reveal invoked %d times; the missing path must be classified before the port is touched", reveals)
+	}
+	after, _ := service.GetState(context.Background())
+	if !after.Snapshot.Documents[opened.DocumentID].Detached {
+		t.Error("the document was not marked detached")
+	}
 }

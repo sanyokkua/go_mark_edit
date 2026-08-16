@@ -200,6 +200,11 @@ export type ClassifiedErrorCategory =
   | 'system-command-failure'
   | 'persistence-warning';
 
+/**
+ * The vocabulary Go sends. `''` is not a member of a remediation *set* — an empty
+ * set is message-only — but it remains in the union because `ClassifiedRemediation`
+ * also types single values at the call sites that handle one action.
+ */
 export type ClassifiedRemediation =
   | ''
   | 'Retry'
@@ -214,7 +219,8 @@ export interface ClassifiedError {
   category: ClassifiedErrorCategory;
   safeSubject?: string;
   message: string;
-  remediation: ClassifiedRemediation;
+  /** Ordered set of offered actions; empty means message-only. */
+  remediations: ClassifiedRemediation[];
   documentId?: string;
   dedupKey: string;
 }

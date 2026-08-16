@@ -101,7 +101,7 @@ function normalizeClassifiedError(
   return {
     ...error,
     category: error.category as ClassifiedError['category'],
-    remediation: (error.remediation ?? '') as ClassifiedError['remediation'],
+    remediations: (error.remediations ?? []) as ClassifiedError['remediations'],
   };
 }
 

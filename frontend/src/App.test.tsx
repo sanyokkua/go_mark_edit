@@ -685,7 +685,7 @@ it('T111 surfaces the close plan refusal with the backend message intact', async
     error: {
       category: 'conflict',
       message: 'The tab set changed; close must be retried.',
-      remediation: 'Retry',
+      remediations: ['Retry'],
       documentId: 'close plan',
       dedupKey: 'close plan:conflict',
       safeSubject: 'close plan',
@@ -812,7 +812,7 @@ it('T117 surfaces the Save refusal with the backend message and its own code', a
       category: 'conflict',
       safeSubject: 'one.md',
       message: 'The document changed on disk while Save was preparing.',
-      remediation: 'Retry',
+      remediations: ['Retry'],
       documentId: 'document-1',
       dedupKey: 'save-conflict:document-1',
     },
@@ -861,7 +861,7 @@ it('T117 reports one refused Save once, not twice with a count', async () => {
       category: 'io-failure',
       safeSubject: 'one.md',
       message: 'The file could not be written.',
-      remediation: 'Retry',
+      remediations: ['Retry'],
       documentId: 'document-1',
       dedupKey: 'write:document-1',
     },
@@ -911,7 +911,8 @@ it('T117 keeps each classified category on its own notification code', async () 
       category: 'capacity-limit',
       safeSubject: 'one.md',
       message: 'The document is larger than the 50 MiB limit.',
-      remediation: 'Cancel',
+      // capacity-limit is message-only; Go strips a Cancel here, so the double must too.
+      remediations: [],
       documentId: 'document-1',
       dedupKey: 'capacity:document-1',
     },
@@ -1760,7 +1761,8 @@ it('FR-FT-005 reports the 50 MiB open refusal with the limit named', async () =>
       category: 'capacity-limit' as const,
       safeSubject: 'boundary-50mib-plus-one.md',
       message: 'The document exceeds the 50 MiB limit.',
-      remediation: 'Cancel' as const,
+      // capacity-limit is message-only; Go strips a Cancel here, so the double must too.
+      remediations: [],
       dedupKey: 'capacity-limit:boundary-50mib-plus-one.md',
     },
   }));

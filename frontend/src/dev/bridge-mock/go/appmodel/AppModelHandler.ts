@@ -10,7 +10,7 @@ type ClassifiedErrorResult = Pick<
   | 'category'
   | 'safeSubject'
   | 'message'
-  | 'remediation'
+  | 'remediations'
   | 'documentId'
   | 'dedupKey'
 >;
@@ -749,15 +749,17 @@ function e2eConflictPreview(document: MockDocument): MockConflictPreview {
  * browser test. A test double that is looser than the real backend makes the
  * defects behind it unreachable.
  */
-const MOCK_REMEDIATION_BY_CATEGORY: Readonly<Record<string, string>> = {
-  'not-found': '',
-  'permission-denied': '',
-  'io-failure': 'Retry',
-  conflict: 'Retry',
-  'capacity-limit': '',
-  'unsupported-input': '',
-  'system-command-failure': 'Retry',
-  'persistence-warning': '',
+const MOCK_REMEDIATION_BY_CATEGORY: Readonly<
+  Record<string, readonly string[]>
+> = {
+  'not-found': [],
+  'permission-denied': [],
+  'io-failure': ['Retry'],
+  conflict: ['Retry'],
+  'capacity-limit': [],
+  'unsupported-input': [],
+  'system-command-failure': ['Retry'],
+  'persistence-warning': [],
 };
 
 function classifiedError(
@@ -768,7 +770,7 @@ function classifiedError(
   return {
     category,
     message,
-    remediation: MOCK_REMEDIATION_BY_CATEGORY[category] ?? '',
+    remediations: [...(MOCK_REMEDIATION_BY_CATEGORY[category] ?? [])],
     dedupKey,
   };
 }
@@ -920,7 +922,7 @@ function capacityLimitError(
   return {
     category: 'capacity-limit',
     message,
-    remediation: 'Cancel',
+    remediations: [],
     dedupKey,
     ...(safeSubject === undefined ? {} : { safeSubject }),
   };
@@ -1538,7 +1540,7 @@ export function RevealInFileManager(
             .split(/[\\/]/u)
             .pop() ?? document.metadata.title,
         message: 'The file manager could not reveal the document.',
-        remediation: 'Copy path',
+        remediations: ['Retry', 'Copy path'],
         documentId: requestedDocumentId,
         dedupKey: `reveal:${requestedDocumentId}`,
       },
@@ -1688,7 +1690,7 @@ function writeResultFor(
         category: 'not-found',
         safeSubject: requestedDocumentId,
         message: 'The mock document does not exist.',
-        remediation: 'Cancel',
+        remediations: [],
         documentId: requestedDocumentId,
         dedupKey: `mock-not-found:${requestedDocumentId}`,
       },
@@ -1711,7 +1713,7 @@ function writeResultFor(
             .pop() ?? document.metadata.title,
         message:
           'The file could not be written. The disk reported a temporary failure.',
-        remediation: 'Retry',
+        remediations: ['Retry'],
         documentId: requestedDocumentId,
         dedupKey: `write:${requestedDocumentId}`,
       },

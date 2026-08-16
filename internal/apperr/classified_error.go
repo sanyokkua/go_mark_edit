@@ -3,6 +3,7 @@ package apperr
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -114,12 +115,38 @@ type ClassifiedError struct {
 	Category    ClassifiedErrorCategory `json:"category"`
 	SafeSubject string                  `json:"safeSubject,omitempty"`
 	Message     string                  `json:"message"`
-	Remediation ClassifiedRemediation   `json:"remediation,omitempty"`
-	DocumentID  string                  `json:"documentId,omitempty"`
-	DedupKey    string                  `json:"dedupKey"`
+	// Remediations is the ordered set of actions offered with this failure, and it
+	// is a set because the contract specifies sets: `not-found` for a detached
+	// document offers "Save to recreate plus Copy path", and a Reveal
+	// `system-command-failure` offers "Retry; a Reveal failure also offers Copy
+	// path". A single field could not express either, so those rows were
+	// unsatisfiable no matter which value a call site picked. Empty means
+	// message-only.
+	Remediations []ClassifiedRemediation `json:"remediations,omitempty"`
+	DocumentID   string                  `json:"documentId,omitempty"`
+	DedupKey     string                  `json:"dedupKey"`
 }
 
+// Remediation reports the first offered action, or RemediationNone when the error
+// is message-only. It exists for the callers that genuinely handle one action and
+// keeps them from indexing a slice that may be empty.
+func (classified ClassifiedError) Remediation() ClassifiedRemediation {
+	if len(classified.Remediations) == 0 {
+		return RemediationNone
+	}
+	return classified.Remediations[0]
+}
+
+// NewClassifiedError builds an error offering at most one action. It is the form
+// almost every call site wants, and it stays five-argument so that widening the
+// field did not require touching 164 lines that had nothing to say about sets.
 func NewClassifiedError(category ClassifiedErrorCategory, subject, message string, remediation ClassifiedRemediation, documentID string) ClassifiedError {
+	return NewClassifiedErrorWithRemediations(category, subject, message, []ClassifiedRemediation{remediation}, documentID)
+}
+
+// NewClassifiedErrorWithRemediations builds an error offering a set of actions, for
+// the three contract rows that specify more than one.
+func NewClassifiedErrorWithRemediations(category ClassifiedErrorCategory, subject, message string, remediations []ClassifiedRemediation, documentID string) ClassifiedError {
 	if message == "" {
 		message = "The operation could not be completed."
 	}
@@ -130,22 +157,47 @@ func NewClassifiedError(category ClassifiedErrorCategory, subject, message strin
 	if isInternalIdentifier(safeSubject) {
 		safeSubject = genericSubject
 	}
-	// Fail safe, in the same shape as the subject guard above: a remediation the
-	// category forbids degrades to message-only rather than offering the user an
-	// action that cannot work. Validate still reports it, so a wrong call site is
-	// caught by a test rather than hidden by this coercion.
-	if !remediationAllowedFor(category, remediation) {
-		remediation = RemediationNone
-	}
 	result := ClassifiedError{
-		Category:    category,
-		SafeSubject: safeSubject,
-		Message:     message,
-		Remediation: remediation,
-		DocumentID:  documentID,
+		Category:     category,
+		SafeSubject:  safeSubject,
+		Message:      message,
+		Remediations: permittedRemediations(category, remediations),
+		DocumentID:   documentID,
 	}
 	result.DedupKey = result.DeduplicationKey()
 	return result
+}
+
+/*
+ * Fail safe, in the same shape as the subject guard above: an action the category
+ * forbids is dropped rather than offered to a user it cannot help. Validate still
+ * reports the forbidden member, so a wrong call site is caught by a test rather
+ * than hidden here.
+ *
+ * Dropping per member rather than voiding the whole set generalises T123's rule
+ * without weakening it. The property that matters is "never offer an action that
+ * cannot work"; discarding a legal `Copy path` because the same caller also asked
+ * for an illegal `Retry` would serve no one. For a one-element set the outcome is
+ * identical to T123's coercion to message-only.
+ *
+ * RemediationNone is not a member of any set — an empty set *is* message-only —
+ * so it is filtered out rather than stored alongside real actions.
+ */
+func permittedRemediations(category ClassifiedErrorCategory, requested []ClassifiedRemediation) []ClassifiedRemediation {
+	permitted := make([]ClassifiedRemediation, 0, len(requested))
+	for _, remediation := range requested {
+		if remediation == RemediationNone || !remediationAllowedFor(category, remediation) {
+			continue
+		}
+		if slices.Contains(permitted, remediation) {
+			continue
+		}
+		permitted = append(permitted, remediation)
+	}
+	if len(permitted) == 0 {
+		return nil
+	}
+	return permitted
 }
 
 // genericSubject is what a classified error shows when no safe label exists. A
@@ -192,11 +244,21 @@ func (classified ClassifiedError) Validate() error {
 	if !containsClassifiedCategory(classified.Category) {
 		return fmt.Errorf("unknown classified error category %q", classified.Category)
 	}
-	if !containsClassifiedRemediation(classified.Remediation) {
-		return fmt.Errorf("unsupported classified error remediation %q", classified.Remediation)
-	}
-	if !remediationAllowedFor(classified.Category, classified.Remediation) {
-		return fmt.Errorf("category %q does not permit remediation %q", classified.Category, classified.Remediation)
+	seen := make(map[ClassifiedRemediation]bool, len(classified.Remediations))
+	for _, remediation := range classified.Remediations {
+		if remediation == RemediationNone {
+			return fmt.Errorf("message-only is the empty remediation set, not a member of one")
+		}
+		if !containsClassifiedRemediation(remediation) {
+			return fmt.Errorf("unsupported classified error remediation %q", remediation)
+		}
+		if !remediationAllowedFor(classified.Category, remediation) {
+			return fmt.Errorf("category %q does not permit remediation %q", classified.Category, remediation)
+		}
+		if seen[remediation] {
+			return fmt.Errorf("remediation %q is offered twice", remediation)
+		}
+		seen[remediation] = true
 	}
 	if strings.ContainsAny(classified.SafeSubject, `/\\`) {
 		return fmt.Errorf("safeSubject must not contain a path separator")

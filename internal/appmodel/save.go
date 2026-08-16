@@ -304,7 +304,9 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 			// Carry the classification's own remediation rather than re-deciding it
 			// here. This hardcoded Retry for whatever category the atomic replace
 			// produced, which is how a permission-denied write came to offer one.
-			remediation = atomicErr.Classified.Remediation
+			// An atomic-replace classification carries one action by construction
+			// (newAtomicReplaceError names a single row), so the first is the whole set.
+			remediation = atomicErr.Classified.Remediation()
 		}
 		if category == apperr.ClassifiedConflict {
 			return service.conflictWrite(snapshot.documentID, message)

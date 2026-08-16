@@ -105,14 +105,17 @@ func TestClassifiedErrorRefusesARemediationItsCategoryForbids(t *testing.T) {
 		ClassifiedNotFound:           RemediationRetry,
 	}
 	for category, remediation := range forbidden {
-		invalid := ClassifiedError{Category: category, SafeSubject: "notes.md", Message: "m", Remediation: remediation}
+		invalid := ClassifiedError{
+			Category: category, SafeSubject: "notes.md", Message: "m",
+			Remediations: []ClassifiedRemediation{remediation},
+		}
 		if err := invalid.Validate(); err == nil {
 			t.Fatalf("Validate accepted %q for category %q, which the contract forbids", remediation, category)
 		}
 		// Defence in depth: the constructor must not be able to build one either.
 		built := NewClassifiedError(category, "notes.md", "m", remediation, "doc-1")
-		if built.Remediation != RemediationNone {
-			t.Fatalf("NewClassifiedError kept forbidden remediation %q for category %q, want message-only", built.Remediation, category)
+		if len(built.Remediations) != 0 {
+			t.Fatalf("NewClassifiedError kept forbidden remediation %q for category %q, want message-only, got %v", remediation, category, built.Remediations)
 		}
 	}
 }
@@ -135,8 +138,8 @@ func TestClassifiedErrorKeepsTheRemediationItsCategoryAllows(t *testing.T) {
 	}
 	for _, row := range allowed {
 		built := NewClassifiedError(row.category, "notes.md", "m", row.remediation, "doc-1")
-		if built.Remediation != row.remediation {
-			t.Fatalf("category %q dropped its allowed remediation %q", row.category, row.remediation)
+		if built.Remediation() != row.remediation {
+			t.Fatalf("category %q dropped its allowed remediation %q, carries %v", row.category, row.remediation, built.Remediations)
 		}
 		if err := built.Validate(); err != nil {
 			t.Fatalf("category %q with %q failed validation: %v", row.category, row.remediation, err)
