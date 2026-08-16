@@ -54,6 +54,7 @@ test('FT-VS-02 flushes the latest edit and reports one explicit Save confirmatio
 });
 
 // Proves: FR-FT-034 (partial — the strip, menu Move, edge disable and announcement; middle-click close is unbuilt, see T141)
+// Proves: FR-FT-046 (partial — only the "no clipping" clause, only for the Tab actions menu, only at 1280; the 768 and 375 widths, the other in-scope actions and the divider are proven elsewhere)
 test('FT-VS-03 exposes real tabs, backend-confirmed menu moves, and exact navigation', async ({
   page,
 }) => {
@@ -68,6 +69,18 @@ test('FT-VS-03 exposes real tabs, backend-confirmed menu moves, and exact naviga
   await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
   await tabs.nth(1).click({ button: 'right' });
   const menu = page.getByRole('menu', { name: 'Tab actions' });
+  /*
+   * T126. This menu carries the highest structural clipping risk in the
+   * application: it is the only `data-viewport-popup` widget rendered without
+   * `createPortal` (`TabContextMenu.tsx`), so it stays inside the tab strip's
+   * subtree and is `position: absolute` against `.shell`, which is
+   * `overflow: hidden`. Every assertion here was `toBeEnabled`/`toBeDisabled`,
+   * which read the accessibility tree and never layout. Proven load-bearing:
+   * clip `.shell` and the two availability assertions below stay green while
+   * this one reports "laid out at (1143, 204) but the topmost paint there is
+   * div".
+   */
+  await expectPainted(menu, 'the Tab actions menu');
   await expect(
     menu.getByRole('menuitem', { name: 'Move tab left' }),
   ).toBeEnabled();
@@ -236,6 +249,7 @@ test('FR-FT-015 offers Retry on a refused Save and re-issues the write', async (
   await expect(errorToast).toHaveCount(0);
 });
 
+// Proves: FR-FT-046 (partial — only the "no clipping" clause, only for the external-change prompt, only at 1280)
 test('FT-VS-04 shows the bounded external-change prompt and safe Skip decision', async ({
   page,
 }) => {
@@ -247,6 +261,15 @@ test('FT-VS-04 shows the bounded external-change prompt and safe Skip decision',
 
   const prompt = page.getByRole('dialog', { name: 'File changed on disk' });
   await expect(prompt).toBeVisible();
+  /*
+   * T126. `ModalShell.tsx` portals only on the narrow parity route, so in the
+   * ordinary application this prompt renders inline under the editor view and
+   * inherits whatever that subtree clips. `toBeVisible()` cannot see that.
+   * Proven load-bearing: clip `section.editorView` and the button-order and
+   * heading assertions here stay green while this one reports "laid out at
+   * (640, 360) but the topmost paint there is main".
+   */
+  await expectPainted(prompt, 'the external-change prompt');
   await expect(
     prompt.getByRole('heading', { name: /^On disk ·/u }),
   ).toBeVisible();
@@ -304,6 +327,7 @@ test('FT-VS-05 exposes acknowledged autosave control and truthful save status wi
   ).toHaveCount(0);
 });
 
+// Proves: FR-FT-046 (partial — only the "no clipping" clause, only for the close prompt, only at 1280)
 test('FT-VS-06 close plan gathers a complete choice before any tab removal', async ({
   page,
 }) => {
@@ -322,6 +346,8 @@ test('FT-VS-06 close plan gathers a complete choice before any tab removal', asy
     name: 'Save changes before closing?',
   });
   await expect(prompt).toBeVisible();
+  // T126: same inline-render exposure as the external-change prompt above.
+  await expectPainted(prompt, 'the close prompt');
   await expect(
     prompt.locator('[data-close-target="mock-document"]'),
   ).toBeVisible();
@@ -483,6 +509,7 @@ test('T051 keeps parity launchers isolated from the FT-VS-07 recent seed', async
   ).toBeDisabled();
 });
 
+// Proves: FR-FT-046 (partial — only the "no clipping" clause, only for the close prompt held open for a decision, only at 1280)
 test('FT-VS-08 keeps the close prompt until an explicit choice is made', async ({
   page,
 }) => {
@@ -498,6 +525,13 @@ test('FT-VS-08 keeps the close prompt until an explicit choice is made', async (
     name: 'Save changes before closing?',
   });
   await expect(prompt).toBeVisible();
+  /*
+   * T126. A prompt that survives a stray click is worth nothing if it is not
+   * on screen to answer. Proven load-bearing: clip `.application-frame` and
+   * both `toBeVisible()` and the `toBeFocused()` below stay green while this
+   * reports "laid out at (640, 360) but the topmost paint there is div#root".
+   */
+  await expectPainted(prompt, 'the close prompt held open for a decision');
   // Cancel takes focus, so the box is answerable from the keyboard immediately.
   await expect(prompt.getByRole('button', { name: 'Cancel' })).toBeFocused();
 

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { expectPainted } from './painted';
+
 const widths = [1280, 768, 375] as const;
 const themes = ['Liquid Glass', 'Material', 'Minimal'] as const;
 /*
@@ -135,6 +137,7 @@ for (const width of widths) {
 for (const width of widths) {
   for (const theme of themes) {
     for (const mode of modes) {
+      // Proves: FR-FT-046 (partial — only the "no clipping" clause, and only for the About dialog; the popup containment arithmetic around it is the containment clause)
       test(`T070 ${width}px ${theme} ${mode} keeps popup ownership and geometry safe`, async ({
         page,
       }) => {
@@ -292,6 +295,14 @@ for (const width of widths) {
           name: 'About GoMarkEdit',
         });
         await expect(aboutDialog).toBeVisible();
+        /*
+         * T126. `toBeVisible()` is satisfied by a bounding box alone, so it
+         * passes on a dialog an ancestor has clipped to nothing (T113). Proven
+         * load-bearing: clip `.application-frame` and `toBeVisible()` above
+         * stays green while this reports "laid out at (640, 360) but the
+         * topmost paint there is div#root".
+         */
+        await expectPainted(aboutDialog, `the About dialog at ${width}px`);
         await page.keyboard.press('Escape');
         await expect(aboutDialog).toBeHidden();
         expect(
@@ -442,6 +453,7 @@ for (const width of widths) {
 for (const width of widths) {
   for (const theme of themes) {
     for (const mode of modes) {
+      // Proves: FR-FT-046 (partial — only the "no clipping" clause, for the editor context menu at all three widths and the toolbar overflow menu at 375 and 768)
       test(`T055 ${width}px ${theme} ${mode} exercises reachable Editor-stage journeys`, async ({
         page,
       }) => {
@@ -521,6 +533,14 @@ for (const width of widths) {
               document.body.contains(element),
             ),
           ).toBe(true);
+          /*
+           * T126. `document.body.contains` proves the portal target, not that
+           * the menu reached the screen; `toBeVisible()` proves a box, not a
+           * paint. Proven load-bearing: clip `body` and both stay green while
+           * this reports "laid out at (412.484, 185) but the topmost paint
+           * there is html".
+           */
+          await expectPainted(overflowMenu, 'the toolbar overflow menu');
         }
         await replaceEditorText();
         await editor.press(`${modifier}+a`);
@@ -567,6 +587,17 @@ for (const width of widths) {
             document.body.contains(element),
           ),
         ).toBe(true);
+        /*
+         * T126. The bounds arithmetic below places the menu inside the
+         * viewport; none of it, nor `toBeVisible()`, can tell whether the menu
+         * paints there. Proven load-bearing: clip `body` and every assertion
+         * around this one stays green while this reports "laid out at
+         * (359, 383.5) but the topmost paint there is html".
+         */
+        await expectPainted(
+          contextMenu,
+          `the editor context menu at ${width}px`,
+        );
         const contextBox = await contextMenu.boundingBox();
         expect(contextBox).not.toBeNull();
         expect(contextBox!.x).toBeGreaterThanOrEqual(0);
@@ -634,6 +665,8 @@ for (const width of widths) {
               document.body.contains(element),
             ),
           ).toBe(true);
+          // T126: same exposure as the 375px overflow menu above.
+          await expectPainted(overflowMenu, 'the 768px toolbar overflow menu');
         }
 
         const overflow = await page.evaluate(() => ({

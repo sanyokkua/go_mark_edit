@@ -6,6 +6,7 @@ import {
   observeShellRequests,
   type ShellTimingSample,
 } from './helpers/shell-observation';
+import { expectPainted } from './painted';
 
 const palettes = [
   ['Liquid Glass', 'Light', 'glass', 'light', '#ffffff6b'],
@@ -673,6 +674,7 @@ for (const width of [375, 1280] as const) {
   }
 }
 
+// Proves: FR-FT-046 (partial — only the "no clipping" clause, only for the appearance-refusal error toast, only at 1280)
 test('T026 shell actions, focus, reset, sidebar, notification, identity, and absence', async ({
   page,
 }) => {
@@ -723,6 +725,15 @@ test('T026 shell actions, focus, reset, sidebar, notification, identity, and abs
   const errorToast = page.locator('[data-severity="error"]');
   await expect(errorToast).toContainText('Invalid input');
   await expect(errorToast).toContainText('A value needs to be corrected.');
+  /*
+   * T126. Until this line the only assertions on any refusal toast were
+   * `toContainText` and `toHaveCount` — neither consults layout, so the toast
+   * could have been clipped to nothing by its `ol` viewport and this case would
+   * still have passed. Proven load-bearing: with `overflow:hidden;height:0` on
+   * that `ol`, every assertion above stays green and this one reports
+   * "laid out at (1114, 730) but the topmost paint there is nothing".
+   */
+  await expectPainted(errorToast, 'the appearance-refusal error toast');
   await expect(page.getByText(/private|https?:\/\//i)).toHaveCount(0);
   await errorToast.getByRole('button', { name: 'Dismiss' }).click();
   await expect(errorToast).toHaveCount(0);

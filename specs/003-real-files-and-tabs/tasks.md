@@ -1280,8 +1280,74 @@ gates — which is why the finding count is high despite 113 ticked tasks.
   - **The mock was tightened in the same commit.** `MOCK_REMEDIATION_BY_CATEGORY` yields sets, the Reveal override sends the real `['Retry', 'Copy path']` pair, and the two `capacity-limit` + `Cancel` fixtures in `App.test.tsx` became message-only — Go strips that pairing, so a double that kept it was looser than the backend.
   - **Gates:** `just check` green (560 frontend tests, unchanged); `go test -race ./internal/... .` clean; `just verify 003-real-files-and-tabs` M1–M6 PASS, no new findings; `just e2e-test` **262 passed, `[parity states] 40/40`, `[parity accounting] 150/150`** — baseline exactly.
 
-- [ ] T126 Close the clip-blind hole beyond the two `Document details` sites, per FR-FT-045, FR-FT-046 and SC-FT-013 (partial). `expectPainted` (`frontend/e2e/painted.ts:26`) is the only assertion in this repository that detects clipping by an ancestor, and it is called at exactly two sites — `real-files-and-tabs.test.ts:297` and `targeted-parity.test.ts:1672`, both `Document details`. Every other surface whose entire purpose is to be seen is asserted clip-blind. Prioritised by real clipping risk: the error toast (`window-shell.test.ts:723-728` — `toContainText`/`toHaveCount` with **no layout assertion at all**); the **Tab actions menu** (`real-files-and-tabs.test.ts:68-78`), which is the only `data-viewport-popup` widget rendered without `createPortal` (`TabContextMenu.tsx:181-186`) and is asserted only with `toBeEnabled`/`toBeDisabled`; the Close and ExternalChange prompts (`real-files-and-tabs.test.ts:97-103,172-175,348-354`), which render inline because `ModalShell.tsx:195-197` portals only on the narrow parity route; the About dialog, editor context menu and toolbar overflow (`editor-stage.test.ts:294,518,560,630-631`); and the narrow-width popups and paused-preview bar (`narrow-width.test.ts:190,750-752`), guarded only by `expectInsideViewport`, which is `boundingBox()` arithmetic and equally clip-blind.
+- [X] T126 Close the clip-blind hole beyond the two `Document details` sites, per FR-FT-045, FR-FT-046 and SC-FT-013 (partial). `expectPainted` (`frontend/e2e/painted.ts:26`) is the only assertion in this repository that detects clipping by an ancestor, and it is called at exactly two sites — `real-files-and-tabs.test.ts:297` and `targeted-parity.test.ts:1672`, both `Document details`. Every other surface whose entire purpose is to be seen is asserted clip-blind. Prioritised by real clipping risk: the error toast (`window-shell.test.ts:723-728` — `toContainText`/`toHaveCount` with **no layout assertion at all**); the **Tab actions menu** (`real-files-and-tabs.test.ts:68-78`), which is the only `data-viewport-popup` widget rendered without `createPortal` (`TabContextMenu.tsx:181-186`) and is asserted only with `toBeEnabled`/`toBeDisabled`; the Close and ExternalChange prompts (`real-files-and-tabs.test.ts:97-103,172-175,348-354`), which render inline because `ModalShell.tsx:195-197` portals only on the narrow parity route; the About dialog, editor context menu and toolbar overflow (`editor-stage.test.ts:294,518,560,630-631`); and the narrow-width popups and paused-preview bar (`narrow-width.test.ts:190,750-752`), guarded only by `expectInsideViewport`, which is `boundingBox()` arithmetic and equally clip-blind.
   - **Carry the T113 lesson**: `toBeVisible` will not go red on a clipped element, so a red-first proof requires `expectPainted` from the start.
+  - **Closed 2026-08-16.** The root cause is not that anyone forgot to assert visibility — every one of these surfaces was
+    asserted, and asserted heavily. It is that all four of the assertions the suite reached for answer a question adjacent to
+    the one that matters. `toContainText` reads the text tree and never touches layout. `toBeVisible()` is defined as a
+    non-empty bounding box plus no `visibility: hidden`, and an element an ancestor has clipped to nothing keeps its box.
+    `toBeEnabled`/`toBeDisabled` read the accessibility tree. `expectInsideViewport` in `narrow-width.test.ts` is pure
+    `boundingBox()` arithmetic, so it proves a clipped element is clipped *in the right place*. `document.body.contains(...)`
+    in `editor-stage.test.ts` proves a portal target and nothing about paint. Nine surfaces were therefore covered by
+    assertions that would all stay green through the exact defect T113 shipped.
+  - **Red-first, and specifically the contrast.** Adding `expectPainted` to a surface that already paints goes green
+    immediately, which proves the call site compiles and nothing else. So each surface was reached, a clipping ancestor was
+    injected, and the old and new assertions were run against the same DOM. A temporary `frontend/e2e/t126-clip-contrast.test.ts`
+    (deleted before commit) did this for all nine; **all nine went red on `expectPainted` while every pre-existing assertion
+    around it stayed green.** Verbatim, for the two the task named:
+
+    ```
+    [T126] error toast: position:static clipper:<ol class="_viewport_1p1s4_1"> via overflow:hidden;height:0
+    [T126] error toast: OLD assertions all PASSED while clipped
+      ✘  1 [chromium] › e2e/t126-clip-contrast.test.ts:72:1 › CONTRAST 1 error toast (497ms)
+
+      Error: the appearance-refusal error toast is laid out at (1114, 730) but the topmost paint there is
+      nothing. It is clipped away or covered, and neither toBeVisible() nor toContainText() can see that (T113).
+    ```
+
+    The four "OLD assertions" that passed under that clip were `toContainText('Invalid input')`,
+    `toContainText('A value needs to be corrected.')`, `toHaveCount(1)` and `toBeVisible()` — i.e. the entire existing
+    coverage of the toast, plus a `toBeVisible()` the case did not even have.
+
+    ```
+    [T126] tab actions menu: position:absolute clipper:<div class="_shell_1i6f1_10"> via clip-path:inset(0 0 100% 0)
+    [T126] tab actions menu: OLD assertions all PASSED while clipped
+      ✘  2 [chromium] › e2e/t126-clip-contrast.test.ts:93:1 › CONTRAST 2 tab actions menu (486ms)
+
+      Error: the Tab actions menu is laid out at (1143, 204) but the topmost paint there is div. It is clipped
+      away or covered, and neither toBeVisible() nor toContainText() can see that (T113).
+    ```
+
+    The seven others produced the same shape and are recorded here in one line each, each with its pre-existing assertions
+    green in the same run: close prompt — "laid out at (640, 360) but the topmost paint there is div#root", with
+    `toBeVisible()` and `toBeFocused()` on Cancel both green; external-change prompt — "(640, 360) … topmost paint there is
+    main", with `toBeVisible()` and the three-button order assertion green; About dialog — "(640, 360) … div#root", with
+    `toBeVisible()` green; editor context menu — "(359, 383.5) … html", with `toBeVisible()` and `document.body.contains`
+    green; toolbar overflow — "(412.484, 185) … html", same two green; document launcher at 768 — "(407, 68) … div", with the
+    full `expectInsideViewport` bounds arithmetic green; paused preview bar — "(748, 295.5) … section", same. So all nine are
+    proven load-bearing; none were merely added.
+  - **Two mechanics worth writing down.** First, `overflow:hidden;height:0` — the literal T113 shape — reaches only the
+    toast and the launcher. It cannot clip a `position: fixed` descendant, and it cannot collapse a flex item whose grow
+    factor overrides `height`; `clip-path: inset(0 0 100% 0)` was needed for the other seven. Second, the paused preview bar
+    resisted *every* clip until its ancestry was read: its three nearest ancestors (`section`, `.previewContent`, `.pane`)
+    are all `display: contents`, which generates no box at all, so `overflow`, `height` and `clip-path` on them are inert.
+    The real clipping ancestor is `div._panes`. A future clip-injection harness must skip `display: contents` ancestors or it
+    will silently prove nothing.
+  - **Nothing was found genuinely clipped.** All nine surfaces paint correctly in production; the new assertions were green
+    on the first unmodified run and stayed green through the full suite. This task hardened coverage, it did not uncover a
+    defect.
+  - **Where the assertions went.** `window-shell.test.ts` T026 (error toast); `real-files-and-tabs.test.ts` FT-VS-03 (Tab
+    actions menu), FT-VS-04 (external-change prompt), FT-VS-06 and FT-VS-08 (close prompt); `editor-stage.test.ts` T070
+    (About dialog) and T055 (editor context menu at three widths, toolbar overflow at 375 and 768); `narrow-width.test.ts`
+    — the paint check moved *into* `expectInsideViewport` itself, so all thirteen of its call sites gained it at once, plus
+    `openToolbarOverflow`. Every anchor added is a `FR-FT-046 (partial — …)` naming the one clause proven and the widths it
+    was proven at; the anchor for the About dialog was initially placed on T019, which contains no such assertion, and was
+    moved to T070 before commit. Line numbers in the task text had drifted: the toast is at ~721 not 723, the tab menu at
+    ~68 (unchanged), the prompts at 248/321/497 not 97/172/348, `editor-stage.test.ts` at 292/519/560/634, and
+    `narrow-width.test.ts:190` is the `openToolbarOverflow` helper.
+  - **Gates.** `just check` green — 79 test suites / 575 tests, lint 0 errors / 2 pre-existing `react-refresh` warnings, no
+    new findings against baseline. `just verify 003-real-files-and-tabs` — M1–M6 all PASS. `just e2e-test` — **262 passed**,
+    `[parity states] 40/40`, `[parity accounting] 150/150 attempted, 150 passed, 0 failed, 0 unaccounted`.
 
 - [ ] T127 Replace the macOS accelerator pixel-skip with a reference variant, per FR-FT-055 and FR-FT-056 (contradicts). The T059 accelerator exception is implemented as a mask, inside the module whose header forbids masks. `targeted-parity.test.ts:1437-1441` collects `acceptedRects` from the exception and passes them to `attributeDifferences` as `extraAccepted`; `frontend/e2e/parity/attributed.ts:200` executes `if (extraAccepted.some((rect) => withinRect(x, y, rect))) continue;` **before** the attribution lookup, so those pixels land in neither `attributedPixels` nor `unattributedPixels` and can never fail the slice. They carry no `measuredPixels` ceiling, no `maxChannelDelta` and no shrink rule, and they cover glyphs — which FR-FT-055 forbids a mask from hiding. The same file states the rule it breaks at `attributed.ts:8-16`: "A mask deletes pixels from the count. Nothing reports them, and drift inside a masked area is invisible forever."
   - **The fix already exists in this codebase's own idiom**: `adaptViewMenu`, `adaptAboutMenu` and (since T112) `adaptDeferredSettingsRows` rewrite their accelerators from the mockup's own `.k` primitive, so the rows are measured exactly. Do the same for the four File rows and delete the `extraAccepted` path. Fold any new adapter markup into `REFERENCE_ADAPTER_HASH`, and kill the port-4174 server afterwards.

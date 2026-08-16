@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+import { expectPainted } from './painted';
+
 /*
  * The responsive sweep the audit at
  * `specs/003-real-files-and-tabs/evidence/ft-vs-08/phase-18/t084-coverage-rescope.md`
@@ -149,9 +151,22 @@ async function expectNoHorizontalPageScroll(
   expect(measured.body).toBeLessThanOrEqual(width);
 }
 
+/**
+ * FR-FT-046 asks for two different things — inside the viewport, and not
+ * clipped — and until T126 this helper measured only the first. Every
+ * assertion in it is `boundingBox()` arithmetic, and a box survives an
+ * ancestor clipping it to nothing, which is exactly the T113 defect. So the
+ * paint check runs here too: one helper, both halves of the rule.
+ *
+ * Proven load-bearing against the launcher and the paused preview bar: with
+ * the clipping ancestor injected, every bounds assertion below stays green
+ * while `expectPainted` reports the topmost paint at the centre is something
+ * else.
+ */
 async function expectInsideViewport(
   locator: Locator,
   width: number,
+  label = 'the surface',
 ): Promise<void> {
   const box = await locator.boundingBox();
   expect(box).not.toBeNull();
@@ -159,6 +174,7 @@ async function expectInsideViewport(
   expect(box!.y).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(width);
   expect(box!.y + box!.height).toBeLessThanOrEqual(VIEWPORT_HEIGHT);
+  await expectPainted(locator, `${label} at ${width}px`);
 }
 
 /**
@@ -188,6 +204,9 @@ async function openToolbarOverflow(page: Page): Promise<Locator> {
     .click();
   const popup = page.locator('[data-viewport-popup="editor-overflow"]');
   await expect(popup).toBeVisible();
+  // T126: the overflow menu is the only route to a relocated action at this
+  // width, so it has to paint, not merely have a box.
+  await expectPainted(popup, 'the toolbar overflow popup');
   return popup;
 }
 
@@ -195,6 +214,7 @@ async function openToolbarOverflow(page: Page): Promise<Locator> {
  * Gap 9 — the toolbar drop order, by action id.
  * ------------------------------------------------------------------ */
 
+// Proves: FR-FT-046 (partial — reachability and, since T126, that the overflow popup carrying the relocated actions actually paints unclipped, at 375)
 test('T084 375px reaches every relocated toolbar action through the overflow menu', async ({
   page,
 }) => {
@@ -252,6 +272,7 @@ test('T084 375px reaches every relocated toolbar action through the overflow men
   await expectNoHorizontalPageScroll(page, 375);
 });
 
+// Proves: FR-FT-046 (partial — reachability and, since T126, that the overflow popup carrying the relocated actions actually paints unclipped, at 768)
 test('T084 768px relocates exactly the list and insert groups to the overflow menu', async ({
   page,
 }) => {
@@ -478,6 +499,7 @@ for (const width of [768, 375] as const) {
  * Gap 6 — prompts at 768.
  * ------------------------------------------------------------------ */
 
+// Proves: FR-FT-046 (partial — "no clipping" as well as containment, for the close prompt and its three buttons, at 768 only)
 test('T084 768px keeps the close prompt reachable, contained and answerable', async ({
   page,
 }) => {
@@ -494,7 +516,7 @@ test('T084 768px keeps the close prompt reachable, contained and answerable', as
     name: 'Save changes before closing?',
   });
   await expect(prompt).toBeVisible();
-  await expectInsideViewport(prompt, 768);
+  await expectInsideViewport(prompt, 768, 'the prompt');
   /*
    * Reading order, which is Cancel first (`ClosePrompt.tsx:82-109`) so the
    * dismissing choice is the one focus lands on. The narrower width must not
@@ -508,7 +530,7 @@ test('T084 768px keeps the close prompt reachable, contained and answerable', as
   for (const name of ['Save', 'Discard', 'Cancel']) {
     const button = prompt.getByRole('button', { name, exact: true });
     await expect(button).toBeEnabled();
-    await expectInsideViewport(button, 768);
+    await expectInsideViewport(button, 768, `the ${name} button`);
   }
   await expectNoHorizontalPageScroll(page, 768);
 
@@ -525,6 +547,7 @@ test('T084 768px keeps the close prompt reachable, contained and answerable', as
   await expect(page.getByRole('tab')).toHaveCount(0);
 });
 
+// Proves: FR-FT-046 (partial — "no clipping" as well as containment, for the external-change prompt and its three buttons, at 768 only)
 test('T084 768px keeps the external-change prompt reachable, contained and answerable', async ({
   page,
 }) => {
@@ -536,7 +559,7 @@ test('T084 768px keeps the external-change prompt reachable, contained and answe
 
   const prompt = page.getByRole('dialog', { name: 'File changed on disk' });
   await expect(prompt).toBeVisible();
-  await expectInsideViewport(prompt, 768);
+  await expectInsideViewport(prompt, 768, 'the prompt');
   await expect(prompt.getByRole('button')).toHaveText([
     'Reload from disk',
     'Keep mine',
@@ -545,7 +568,7 @@ test('T084 768px keeps the external-change prompt reachable, contained and answe
   for (const name of ['Reload from disk', 'Keep mine', 'Skip']) {
     const button = prompt.getByRole('button', { name, exact: true });
     await expect(button).toBeEnabled();
-    await expectInsideViewport(button, 768);
+    await expectInsideViewport(button, 768, `the ${name} button`);
   }
   // The two sides of the comparison both survive the narrower width.
   await expect(
@@ -560,6 +583,7 @@ test('T084 768px keeps the external-change prompt reachable, contained and answe
   await expect(prompt).toHaveCount(0);
 });
 
+// Proves: FR-FT-046 (partial — "no clipping" as well as containment, for the normalization prompt and its two buttons, at 768 only)
 test('T084 768px keeps the normalization prompt reachable, contained and answerable', async ({
   page,
 }) => {
@@ -588,7 +612,7 @@ test('T084 768px keeps the normalization prompt reachable, contained and answera
 
   const prompt = page.getByRole('dialog', { name: 'Normalize line endings?' });
   await expect(prompt).toBeVisible();
-  await expectInsideViewport(prompt, 768);
+  await expectInsideViewport(prompt, 768, 'the prompt');
   await expect(prompt.getByRole('button')).toHaveText([
     'Normalize and save',
     'Cancel',
@@ -596,7 +620,7 @@ test('T084 768px keeps the normalization prompt reachable, contained and answera
   for (const name of ['Normalize and save', 'Cancel']) {
     const button = prompt.getByRole('button', { name, exact: true });
     await expect(button).toBeEnabled();
-    await expectInsideViewport(button, 768);
+    await expectInsideViewport(button, 768, `the ${name} button`);
   }
   await expectNoHorizontalPageScroll(page, 768);
 
@@ -608,6 +632,7 @@ test('T084 768px keeps the normalization prompt reachable, contained and answera
  * Gap 7 — the launcher at 768.
  * ------------------------------------------------------------------ */
 
+// Proves: FR-FT-046 (partial — "no clipping" as well as containment, for the launcher, its three actions and a recent entry, at 768 only)
 test('T084 768px renders, contains and operates the real launcher', async ({
   page,
 }) => {
@@ -623,7 +648,7 @@ test('T084 768px renders, contains and operates the real launcher', async ({
 
   const launcher = page.getByTestId('document-launcher');
   await expect(launcher).toBeVisible();
-  await expectInsideViewport(launcher, 768);
+  await expectInsideViewport(launcher, 768, 'the document launcher');
   const overflow = await launcher.evaluate((element) => ({
     scrollWidth: element.scrollWidth,
     clientWidth: element.clientWidth,
@@ -652,12 +677,13 @@ test('T084 768px renders, contains and operates the real launcher', async ({
     await expectInsideViewport(
       launcher.getByRole('button', { name, exact: true }),
       768,
+      `the launcher ${name} button`,
     );
   }
 
   // A recent entry still opens from here at this width.
   const recent = launcher.getByRole('button', { name: 't032-recent-07.md' });
-  await expectInsideViewport(recent, 768);
+  await expectInsideViewport(recent, 768, 'the recent entry');
   await recent.click();
   await expect(
     page.getByRole('tab', { name: 't032-recent-07.md' }),
@@ -728,6 +754,7 @@ for (const width of [768, 375] as const) {
     ).toHaveCount(0);
   });
 
+  // Proves: FR-FT-046 (partial — "no clipping" as well as containment, for the paused-preview bar and its refresh/retry controls, at 768 and 375)
   test(`T084 ${width}px keeps the paused preview refresh control reachable`, async ({
     page,
   }) => {
@@ -749,12 +776,12 @@ for (const width of [768, 375] as const) {
 
     const pausedBar = page.locator('[data-preview-paused-bar="true"]');
     await expect(pausedBar).toBeVisible();
-    await expectInsideViewport(pausedBar, width);
+    await expectInsideViewport(pausedBar, width, 'the paused preview bar');
     await expect(page.locator('[data-preview-state="paused"]')).toBeVisible();
 
     const refresh = page.getByRole('button', { name: 'Refresh preview' });
     await expect(refresh).toBeEnabled();
-    await expectInsideViewport(refresh, width);
+    await expectInsideViewport(refresh, width, 'the Refresh preview control');
     // Reachable means nothing covers it: the point the pointer would land on
     // has to resolve to the control itself.
     expect(
@@ -771,7 +798,7 @@ for (const width of [768, 375] as const) {
     await refresh.click();
     const retry = page.getByRole('button', { name: 'Retry' });
     await expect(retry).toBeVisible();
-    await expectInsideViewport(retry, width);
+    await expectInsideViewport(retry, width, 'the retry control');
     await expect(page.locator('[data-error-code="io-failure"]')).toBeVisible();
     await expect(page.locator('[data-preview-state="paused"]')).toBeVisible();
     await expectNoHorizontalPageScroll(page, width);
