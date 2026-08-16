@@ -41,7 +41,19 @@ type ApplicationContextHolder struct {
 // nil persistence. Init injects its concrete SQLite repository after startup.
 func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger *logging.Logger) *ApplicationContextHolder {
 	settingsService := settings.NewSettingsService(nil)
-	appModelService := appmodel.NewAppModelService(appmodel.RuntimeStatePatchEmitter{})
+	// The host ports go in through the constructor, not through setters, and they
+	// are constructed here rather than handed in by main.go. Both choices are the
+	// fix for T161: SetClipboardWriter and SetRevealPort had no production caller
+	// at all, so Copy path and Reveal in file manager returned a
+	// system-command-failure in every build that ever shipped. Wiring them where
+	// the graph is built means no host can forget them, and a port added to
+	// NewAppModelServiceForHost later fails to compile here rather than going out
+	// nil.
+	appModelService := appmodel.NewAppModelServiceForHost(
+		appmodel.RuntimeStatePatchEmitter{},
+		file.NewPlatformClipboardWriter(),
+		file.NewPlatformRevealPort(),
+	)
 	holder := &ApplicationContextHolder{
 		fileService:     fileService,
 		appLogger:       appLogger,

@@ -78,8 +78,26 @@ type pendingLayout struct {
 }
 
 // NewAppModelService creates one clean, never-saved document for this process.
+// It leaves the host ports unset and is therefore a test and harness constructor:
+// a production host must use NewAppModelServiceForHost.
 func NewAppModelService(emitter StatePatchEmitter) *AppModelService {
 	return newAppModelService(emitter, nil, systemLayoutTimer{})
+}
+
+// NewAppModelServiceForHost is the production constructor. The host ports are
+// positional parameters rather than optional setters, so adding a port here
+// breaks every host at compile time instead of leaving it nil.
+//
+// That distinction is the whole point of this function. SetClipboardWriter and
+// SetRevealPort existed and worked, but nothing outside a test ever called them,
+// so Copy path and Reveal in file manager returned system-command-failure in
+// every shipped binary from the day they were written. An optional setter cannot
+// report that it was not called; a parameter list can.
+func NewAppModelServiceForHost(emitter StatePatchEmitter, clipboard file.ClipboardWriter, reveal file.RevealPort) *AppModelService {
+	service := newAppModelService(emitter, nil, systemLayoutTimer{})
+	service.clipboard = clipboard
+	service.reveal = reveal
+	return service
 }
 
 // NewAppModelServiceWithLayoutRepository constructs the production layout seam
