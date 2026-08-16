@@ -67,11 +67,34 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 		service.mu.Unlock()
 		return tabTransitionFailure(apperr.ClassifiedConflict, documentID, "The tab set changed; close must be retried.", apperr.RemediationRetry)
 	}
+	if _, exists := service.state.documents[documentID]; !exists {
+		service.mu.Unlock()
+		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationCancel)
+	}
+	service.mu.Unlock()
+
+	// FR-FT-024: a pending working-copy flush must complete before the document
+	// is removed. Evaluating Dirty first refused a tab whose autosave debounce
+	// was still pending, prompting for work the application had already accepted
+	// and was about to write. Running it synchronously is what turns that into a
+	// silent clean close, which is why PrepareClose has always flushed here.
+	service.flushAutosaveForClose(documentID)
+
+	service.mu.Lock()
+	if service.state.tabSetRevision != expectedTabSetRevision {
+		service.mu.Unlock()
+		return tabTransitionFailure(apperr.ClassifiedConflict, documentID, "The tab set changed; close must be retried.", apperr.RemediationRetry)
+	}
 	document, exists := service.state.documents[documentID]
 	if !exists {
 		service.mu.Unlock()
 		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationCancel)
 	}
+	// Still dirty after the flush means there was nothing accepted to write, or
+	// the write did not clean the document — either way it needs a close plan.
+	// writeInFlight can only be a concurrent explicit save now, since the flush
+	// above waits out any autosave; removing the document mid-write is what this
+	// still refuses.
 	if service.effectiveDocumentMetadataLocked(document).Dirty || document.writeInFlight {
 		service.mu.Unlock()
 		return tabTransitionFailure(apperr.ClassifiedConflict, documentID, "The document has unsaved changes; prepare a close plan first.", apperr.RemediationRetry)

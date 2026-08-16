@@ -546,6 +546,11 @@ func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs 
 			removedActive = true
 		}
 		deleteTokensForDocument(service.keepMine, documentID)
+		// No autosave timer may outlive the document it names. Deleting the
+		// document without this left an entry in service.autosaveTimers keyed by
+		// an id that no longer resolves. This already holds service.mu, and
+		// cancelAutosaveLocked is the …Locked form, so it must not re-acquire it.
+		service.cancelAutosaveLocked(documentID)
 		service.removeConflictLocked(documentID)
 		if closedPath := before.documents[documentID].metadata.Path; closedPath != "" {
 			service.rememberClosedLocked(closedPath, before.documents[documentID])

@@ -2,10 +2,13 @@ package appmodel
 
 import (
 	"context"
+	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
 func TestTabSessionOrderRevision(t *testing.T) {
@@ -119,5 +122,111 @@ func TestAdjacentAndFinalClose(t *testing.T) {
 	state, _ = service.GetState(context.Background())
 	if state.Snapshot.ActiveDocumentID != "" || state.ActiveBuffer != nil || len(state.Snapshot.OrderedDocumentIDs) != 0 {
 		t.Fatalf("final close state = %+v", state)
+	}
+}
+
+func autosaveTimerCount(service *AppModelService, documentID string) int {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	if _, scheduled := service.autosaveTimers[documentID]; scheduled {
+		return 1
+	}
+	return 0
+}
+
+// Proves: FR-FT-024 — the clause that a pending working-copy flush "MUST
+// complete successfully before the document is removed", and that the resulting
+// clean close does not prompt. The dirty-with-no-autosave case still routes to a
+// close plan and is proved in close_plan_test.go.
+//
+// CloseDocument evaluated Dirty before flushing anything, so a tab with an
+// autosave debounce still pending was refused with "prepare a close plan first"
+// — a prompt for work the application had already accepted and was about to
+// write. PrepareClose has always flushed first for exactly this reason.
+func TestClosingATabFlushesItsPendingAutosaveInsteadOfPrompting(t *testing.T) {
+	clock := &fakeAutosaveClock{}
+	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	path, documentID := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	if clock.Pending() != 1 {
+		t.Fatalf("pending debounce = %d, want 1", clock.Pending())
+	}
+
+	outcome := service.CloseDocument(context.Background(), documentID, serviceTabRevision(t, service))
+
+	if outcome.Error != nil {
+		t.Fatalf("CloseDocument on a tab with a pending autosave = %+v, want a silent close", outcome.Error)
+	}
+	disk, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read file after close: %v", err)
+	}
+	if string(disk) != "edited\n" {
+		t.Fatalf("file after close = %q, want the pending working copy %q", disk, "edited\n")
+	}
+}
+
+// Proves: FR-FT-024 — the clause that the document is removed only after its
+// accepted work is resolved, here as the invariant that no autosave timer may
+// outlive the document it names.
+//
+// closeDocuments deleted the document from state without cancelling its debounce,
+// leaving an entry in service.autosaveTimers keyed by an id that no longer
+// resolves. This exercises closeDocuments directly because it is the shared
+// removal primitive behind both CloseDocument and ExecuteClosePlan, and the
+// invariant belongs to it rather than to either caller.
+func TestClosingDocumentsCancelsTheirAutosaveTimers(t *testing.T) {
+	clock := &fakeAutosaveClock{}
+	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	_, documentID := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	if autosaveTimerCount(service, documentID) != 1 {
+		t.Fatal("no autosave timer scheduled for the edited document")
+	}
+
+	if result := service.closeDocuments(context.Background(), []string{documentID}, nil); result.Error != nil {
+		t.Fatalf("closeDocuments: %+v", result.Error)
+	}
+
+	if leaked := autosaveTimerCount(service, documentID); leaked != 0 {
+		t.Fatalf("autosave timer entries for the removed document = %d, want 0", leaked)
+	}
+}
+
+// Proves: FR-FT-024 — the clause that the flush must *complete*. A flush that
+// never returns does not satisfy "MUST complete successfully"; it hangs the
+// close instead.
+//
+// flushAutosaveMode loops until the debounce is claimed, but runAutosave declines
+// a document that is no longer autosave-eligible and leaves the entry in place
+// when it does, so the loop re-read an unchanged entry forever. It is reachable
+// today from PrepareClose: edit a document, have its file disappear so the
+// document detaches, then close the window.
+func TestFlushingForCloseTerminatesWhenTheDocumentBecameIneligible(t *testing.T) {
+	clock := &fakeAutosaveClock{}
+	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	_, documentID := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	setAutosaveDocumentFlags(service, documentID, true, file.CapabilityWritable)
+
+	returned := make(chan struct{})
+	go func() {
+		service.flushAutosaveForClose(documentID)
+		close(returned)
+	}()
+
+	select {
+	case <-returned:
+	case <-time.After(5 * time.Second):
+		t.Fatal("flushAutosaveForClose did not return within 5s: the debounce it cannot run is never cancelled, so the close spins forever")
+	}
+	if leaked := autosaveTimerCount(service, documentID); leaked != 0 {
+		t.Fatalf("autosave timer entries after an unrunnable flush = %d, want 0", leaked)
 	}
 }

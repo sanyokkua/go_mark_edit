@@ -131,6 +131,19 @@ func (service *AppModelService) flushAutosaveMode(documentID string, runSchedule
 			revision, generation := entry.revision, entry.generation
 			service.mu.Unlock()
 			service.runAutosave(documentID, revision, generation)
+			// runAutosave declines a document that is no longer autosave-eligible
+			// — detached, read-only, or its path cleared — and leaves the entry in
+			// place when it declines. Looping on an entry nothing will ever claim
+			// spins forever, which is a hung close rather than the completed flush
+			// FR-FT-024 requires. If the entry survived, nothing can run it:
+			// cancel the debounce and stop.
+			service.mu.Lock()
+			if remaining := service.autosaveTimers[documentID]; remaining == entry {
+				service.cancelAutosaveLocked(documentID)
+				service.mu.Unlock()
+				return
+			}
+			service.mu.Unlock()
 			continue
 		}
 		if entry != nil && done != nil {
