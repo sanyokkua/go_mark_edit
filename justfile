@@ -120,6 +120,12 @@ baseline evidence:
 verify evidence:
     bash scripts/verify.sh {{evidence}}
 
+# Run the whole release gate stack and record every exit code into the feature's exit-codes.txt.
+# That artifact went stale twice in two days while it was written by hand (T096, then T132), which
+# is why it is generated. It does not retry a red gate and it does not write the Notes section.
+release-stack evidence:
+    bash scripts/release-stack.sh {{evidence}}
+
 # --- packaging ----------------------------------------------------------------
 # Deliberately not built. Naming a command that does not exist is how a Definition of Done certifies
 # something false — `just build` produces a runnable binary, not a distributable artifact.
