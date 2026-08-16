@@ -1,4 +1,4 @@
-import { buildParityAccountingReport } from './accounting';
+import { buildParityAccountingReport, emptyRunVerdict } from './accounting';
 import {
   ACCOUNTING_REPORT_PATH,
   buildRecordedStateCoverageReport,
@@ -22,16 +22,23 @@ import {
  * the shape of hole being closed.
  *
  * Zero records means this dimension did not run at all — a `-g` filter, or a
- * project-filtered run — and the previous state stands, exactly as the capture
- * guard treats zero captures. One or more records means the dimension ran, and
- * then every planned state must be covered.
+ * project-filtered run — and locally the previous state stands, exactly as the
+ * capture guard treats zero captures. **In CI it is fatal**: CI runs the whole
+ * suite, so nothing recorded means nothing measured, and this gate previously
+ * reported success in exactly that case (T139). `emptyRunVerdict` owns the
+ * decision and is unit-tested in both directions.
+ *
+ * One or more records means the dimension ran, and then every planned state
+ * must be covered.
  */
 async function assertEveryStateWasCovered(): Promise<void> {
   const records = await readRecordedStateCoverage();
   if (records.length === 0) {
-    console.log(
-      '[parity states] no state coverage recorded this run — the additional-state gate did not run',
-    );
+    const verdict = emptyRunVerdict('states', process.env);
+    if (verdict.failClosed) {
+      throw new Error(verdict.message);
+    }
+    console.log(verdict.message);
     return;
   }
   const coverage = await buildRecordedStateCoverageReport();
@@ -55,16 +62,19 @@ async function assertEveryStateWasCovered(): Promise<void> {
  * Guarded on purpose: a run that never executed the `parity` project — say
  * `playwright test --project=chromium`, or a single behavioural file — records
  * nothing, and overwriting a real report with an all-zero one would destroy
- * evidence rather than produce it. In that case the previous report stands and
- * the reason is printed.
+ * evidence rather than produce it. Locally the previous report stands and the
+ * reason is printed; in CI, where the whole suite always runs, zero captures
+ * means the contract was never measured and the run ends red (T139).
  */
 export default async function globalTeardown(): Promise<void> {
   await assertEveryStateWasCovered();
   const captures = await readRecordedCaptures();
   if (captures.length === 0) {
-    console.log(
-      '[parity accounting] no parity captures recorded this run — leaving the existing report untouched',
-    );
+    const verdict = emptyRunVerdict('accounting', process.env);
+    if (verdict.failClosed) {
+      throw new Error(verdict.message);
+    }
+    console.log(verdict.message);
     return;
   }
   /*

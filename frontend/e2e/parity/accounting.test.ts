@@ -1,6 +1,8 @@
 import {
   behaviourVerifiedKeys,
   buildParityStateCoverageReport,
+  emptyRunVerdict,
+  isContinuousIntegrationRun,
   PARITY_REPETITION_COUNT,
   pixelComparedKeys,
   plannedParityVerifications,
@@ -129,4 +131,45 @@ it('FR-FT-051 reports full coverage only when every state named an assertion', (
   expect(report.uncovered).toEqual([]);
   expect(report.covered).toBe(report.planned);
   expect(report.rows).toHaveLength(report.planned);
+});
+
+/*
+ * T139. Both teardown guards returned early on zero records, printing a note and
+ * exiting 0. That is the right answer for a developer running one file, and the
+ * wrong one for CI: an invocation narrowed to `--project=chromium` or a `-g`
+ * filter would report success having measured nothing at all — the exact
+ * "a gate that exits zero having parsed nothing did not pass" failure
+ * `scripts/verify.sh` refuses elsewhere. The verdict is now a decision, and
+ * these pin both sides of it.
+ */
+// Proves: FR-FT-051 (partial — only that a run recording nothing cannot report
+// success in CI. Which states are covered is proved by the four cases above.)
+it('FR-FT-051 fails closed when a CI run records no state coverage', () => {
+  const verdict = emptyRunVerdict('states', { CI: 'true' });
+
+  expect(verdict.failClosed).toBe(true);
+  expect(verdict.message).toContain('states');
+});
+
+// Proves: FR-FT-051 (partial — the local half of the same decision.)
+it('FR-FT-051 lets a narrowed local run record no state coverage', () => {
+  const verdict = emptyRunVerdict('states', {});
+
+  expect(verdict.failClosed).toBe(false);
+  expect(verdict.message).toContain('did not run');
+});
+
+// Proves: SC-FT-012 (partial — only that an accounting run recording no capture
+// cannot report success in CI; the 150-verification contract itself is proved by
+// `plannedParityVerifications` above and by the run's own teardown.)
+it('SC-FT-012 fails closed when a CI run records no parity capture', () => {
+  expect(emptyRunVerdict('accounting', { CI: '1' }).failClosed).toBe(true);
+  expect(emptyRunVerdict('accounting', {}).failClosed).toBe(false);
+});
+
+// Proves: SC-FT-012 (partial — the environment reading only.)
+it('SC-FT-012 treats only a non-empty CI variable as continuous integration', () => {
+  expect(isContinuousIntegrationRun({ CI: 'true' })).toBe(true);
+  expect(isContinuousIntegrationRun({ CI: '' })).toBe(false);
+  expect(isContinuousIntegrationRun({})).toBe(false);
 });

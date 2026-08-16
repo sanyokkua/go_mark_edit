@@ -1,6 +1,9 @@
 # `just check` / `just baseline` / `just verify` are the authoritative quality gate, run locally.
-# CI (.github/workflows/) is release-only: it triggers on `v*.*.*` tags and workflow_dispatch,
-# and builds/tests/packages/releases — it does not gate merges.
+# CI (.github/workflows/main.yml) is no longer release-only. Since 2026-08-16 it triggers on a push
+# to `master` or any `feature/**` branch, on every pull request, on `v*.*.*` tags and on
+# workflow_dispatch; it runs the nine `just check` steps and, in a second job, `just e2e-test`.
+# It still does not *block* a merge — that needs a branch protection rule, which is the repository
+# owner's to set.
 pre-commit:
   parallel: true
   commands:

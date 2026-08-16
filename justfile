@@ -141,7 +141,11 @@ sqlc-check:
 vuln:
     govulncheck ./...
 
-# Local mirror of the CI gate set. Security gates (sqlc-check, vuln) join later.
+# The mechanical half of the CI gate set, run locally. It is not a mirror: CI is a strict superset.
+# `.github/workflows/main.yml` runs these nine steps in this order *and* a second job that runs
+# `just e2e-test` — the Playwright parity, behaviour and state contracts, which nothing below
+# touches. A green `check` therefore says nothing about interface behaviour; run `just e2e-test`
+# before calling any interface work done. Security gates (sqlc-check, vuln) join later.
 check:
     just gen-check
     just frontend-build

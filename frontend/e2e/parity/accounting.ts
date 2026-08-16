@@ -180,3 +180,69 @@ export function buildParityAccountingReport(
     rows,
   };
 }
+
+/**
+ * The two dimensions a parity run records. Each has its own log, because a run
+ * that exercises one and not the other must not read as having covered both.
+ */
+export type ParityRunDimension = 'states' | 'accounting';
+
+/**
+ * True when this process is a continuous-integration run.
+ *
+ * Takes the environment rather than reading `process.env`, so the decision is
+ * testable in both directions without mutating global state.
+ */
+export const isContinuousIntegrationRun = (
+  environment: Readonly<Record<string, string | undefined>>,
+): boolean => (environment.CI ?? '').length > 0;
+
+export type EmptyRunVerdict = Readonly<{
+  /** Whether recording nothing must end the run non-zero. */
+  failClosed: boolean;
+  message: string;
+}>;
+
+/**
+ * What it means for a dimension to have recorded nothing.
+ *
+ * Locally this is ordinary: `playwright test e2e/window-shell.test.ts` records
+ * no parity capture, and `--project=parity` records no state coverage. Ending
+ * those runs red would punish the narrow run the repository documents and
+ * relies on, and would overwrite a complete committed report with an empty one.
+ *
+ * In CI it is never ordinary, because CI runs the whole suite by construction.
+ * Zero records there means the invocation was narrowed, the setup failed, or a
+ * recorder stopped recording — and the gate would otherwise report success
+ * having measured nothing. That is precisely what `scripts/baseline.sh` marks
+ * `UNRELIABLE` and `scripts/verify.sh` refuses to build on, so this decision
+ * makes the same rule hold for the interface gate: **a gate that parsed nothing
+ * did not pass.**
+ */
+export function emptyRunVerdict(
+  dimension: ParityRunDimension,
+  environment: Readonly<Record<string, string | undefined>>,
+): EmptyRunVerdict {
+  const label =
+    dimension === 'states' ? '[parity states]' : '[parity accounting]';
+  const recorded =
+    dimension === 'states'
+      ? 'no state coverage recorded this run'
+      : 'no parity captures recorded this run';
+  if (!isContinuousIntegrationRun(environment)) {
+    return {
+      failClosed: false,
+      message:
+        dimension === 'states'
+          ? `${label} ${recorded} — the additional-state gate did not run`
+          : `${label} ${recorded} — the accounting gate did not run, leaving the existing report untouched`,
+    };
+  }
+  return {
+    failClosed: true,
+    message:
+      `${label} ${recorded}, and CI runs the whole suite — so this gate measured nothing ` +
+      `and cannot report success. Run \`playwright test\` unfiltered: a \`--project=\` or ` +
+      `\`-g\` narrowing silences the ${dimension} dimension entirely.`,
+  };
+}
