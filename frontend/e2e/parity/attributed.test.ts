@@ -179,3 +179,54 @@ describe('T085 attributed residual shrink rule', () => {
     );
   });
 });
+
+/*
+ * T127. The T059 macOS accelerator exception used to be implemented here, as an
+ * `extraAccepted` rectangle parameter whose pixels were skipped *before* the
+ * attribution lookup. Skipped pixels landed in neither `unattributedPixels` nor
+ * any term's count, yet `attributedPixels` is derived as
+ * `differing - unattributed` — so they were reported as attributed while no
+ * declared term accounted for them. They carried no `measuredPixels` ceiling,
+ * no `maxChannelDelta` and no shrink rule, and they covered glyphs, which
+ * FR-FT-055 forbids a mask from hiding. It was a mask, in the module whose own
+ * header (`attributed.ts:8-16`) says a mask makes drift invisible forever.
+ *
+ * The invariant that catches it: the declared terms must account for every
+ * pixel the result calls attributed. That is checkable on every call and cannot
+ * be satisfied by a rectangle that excuses pixels without declaring a term.
+ */
+// Proves: FR-FT-055 (partial — only "any mask MUST NOT hide geometry, text,
+//   icons, focus, state, or a whole component", enforced as: no pixel is
+//   excused without a declared term accounting for it. The smallest-reviewed-
+//   rectangle, retained-image and reviewed-mapping clauses are proven elsewhere)
+it('T127 accounts every attributed pixel to a declared term, ignoring any extra rectangle', () => {
+  const comparison = comparisonDifferingIn(12, alongTopRow);
+
+  /*
+   * Passed positionally the way the retired parameter was. The signature no
+   * longer declares it, so this is what a caller reintroducing the mask would
+   * write, and the assertion below is what stops it working.
+   */
+  const withRectangle = (
+    attributeDifferences as unknown as (
+      comparison: PngComparison,
+      residuals: readonly AttributedResidual[],
+      extraAccepted: readonly Readonly<{
+        left: number;
+        top: number;
+        right: number;
+        bottom: number;
+      }>[],
+    ) => ReturnType<typeof attributeDifferences>
+  )(comparison, [], [{ left: 0, top: 0, right: WIDTH, bottom: HEIGHT }]);
+
+  const declared = withRectangle.terms.reduce(
+    (total, term) => total + term.pixels,
+    0,
+  );
+  expect(declared).toBe(withRectangle.attributedPixels);
+  expect(withRectangle.unattributedPixels).toBe(12);
+  expect(withRectangle.failures).toEqual([
+    '12 unattributed pixels: every differing pixel needs a written, proven cause',
+  ]);
+});

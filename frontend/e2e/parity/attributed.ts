@@ -150,16 +150,19 @@ function matchesTerm(
  * exceed its recorded measurement fails the slice; and so does one that has
  * shrunk far enough below it that the recorded ceiling has become a hiding
  * place.
+ *
+ * There is deliberately **no** second, undeclared way to excuse a pixel. This
+ * function used to take an `extraAccepted` rectangle list — the T059 macOS
+ * accelerator exception — and skip those pixels before the lookup below, which
+ * put them in neither `unattributedPixels` nor any term while still counting
+ * them as attributed. That was a mask over glyphs with no ceiling, no channel
+ * bound and no shrink rule, in the module whose header explains why masks are
+ * refused. T127 removed it by making the reference carry Feature 003's own
+ * accelerators, so those rows are compared instead of skipped.
  */
 export function attributeDifferences(
   comparison: PngComparison,
   residuals: readonly AttributedResidual[],
-  extraAccepted: readonly Readonly<{
-    left: number;
-    top: number;
-    right: number;
-    bottom: number;
-  }>[] = [],
 ): AttributionResult {
   const reference = comparison.reference.decoded;
   const actual = comparison.actual.decoded;
@@ -198,8 +201,6 @@ export function attributeDifferences(
       }
       if (channelDelta === 0) continue;
       differing += 1;
-
-      if (extraAccepted.some((rect) => withinRect(x, y, rect))) continue;
 
       const index = residuals.findIndex((residual) =>
         matchesTerm(residual.term, x, y, width, height, channelDelta),

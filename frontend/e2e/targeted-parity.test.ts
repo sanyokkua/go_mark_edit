@@ -474,35 +474,16 @@ type FilePopupPairing = Readonly<{
   readonly differences: readonly string[];
 }>;
 
-type FilePopupPixelException = Readonly<{
-  readonly actionId: string;
-  readonly kind: 'macos-accelerator-glyphs' | 'os-owned-accelerator';
-  readonly reason: string;
-  readonly referenceShortcut: string | null;
-  readonly actualShortcut: string | null;
-  readonly differentPixelCount: number;
-  readonly differenceBounds: Readonly<{
-    readonly left: number;
-    readonly top: number;
-    readonly right: number;
-    readonly bottom: number;
-  }> | null;
-  /** The accelerator glyph rectangle in whole-popup coordinates. */
-  readonly popupRect: PixelRect | null;
-}>;
-
 type FilePopupVisualRow = Readonly<{
   readonly actionId: string;
   readonly referenceMetrics: SurfaceMetrics;
   readonly actualMetrics: SurfaceMetrics;
   readonly comparison: PngComparison;
-  readonly acceptedPixelException: FilePopupPixelException | null;
 }>;
 
 type FilePopupVisualEvidence = Readonly<{
   readonly rows: readonly FilePopupVisualRow[];
   readonly differences: readonly string[];
-  readonly platformExceptions: readonly FilePopupPixelException[];
   readonly bytes: Readonly<
     Record<
       string,
@@ -551,19 +532,6 @@ const FILE_POPUP_ACCELERATOR_EXCLUSIONS = Object.freeze([
     'exit',
     'native quit ownership; the canonical Exit action intentionally has no registry shortcut',
   ],
-] as const);
-
-/**
- * T070: the reviewed platform pixel exception is limited to these four rows.
- * Every other row — including Close Tab and Exit — is compared exactly, and the
- * Feature 003 file-menu reference variant expresses their Feature 003
- * accelerators so there is nothing left to except.
- */
-const FILE_POPUP_ACCELERATOR_GLYPH_EXCEPTION_ACTIONS = Object.freeze([
-  'new-file',
-  'open-file',
-  'save',
-  'save-as',
 ] as const);
 
 const FILE_POPUP_EXCLUSIONS = Object.freeze([
@@ -821,191 +789,12 @@ async function filePopupItemLocator(
   );
 }
 
-type PixelRect = Readonly<{
-  readonly left: number;
-  readonly top: number;
-  readonly right: number;
-  readonly bottom: number;
-}>;
-
-function relativePixelRect(
-  rowBox: Readonly<{ x: number; y: number }>,
-  shortcutBox: Readonly<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>,
-): PixelRect {
-  return {
-    left: Math.max(0, Math.floor(shortcutBox.x - rowBox.x)),
-    top: Math.max(0, Math.floor(shortcutBox.y - rowBox.y)),
-    right: Math.ceil(shortcutBox.x - rowBox.x + shortcutBox.width) - 1,
-    bottom: Math.ceil(shortcutBox.y - rowBox.y + shortcutBox.height) - 1,
-  };
-}
-
-function allPixelDifferencesWithin(
-  comparison: PngComparison,
-  allowed: PixelRect,
-): boolean {
-  const reference = comparison.reference.decoded;
-  const actual = comparison.actual.decoded;
-  if (reference.width !== actual.width || reference.height !== actual.height) {
-    return false;
-  }
-  for (let y = 0; y < reference.height; y += 1) {
-    for (let x = 0; x < reference.width; x += 1) {
-      const offset = (y * reference.width + x) * 4;
-      let different = false;
-      for (let channel = 0; channel < 4; channel += 1) {
-        if (
-          reference.pixels[offset + channel] !== actual.pixels[offset + channel]
-        ) {
-          different = true;
-          break;
-        }
-      }
-      if (
-        different &&
-        (x < allowed.left ||
-          x > allowed.right ||
-          y < allowed.top ||
-          y > allowed.bottom)
-      ) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-async function classifyFilePopupPixelException(
-  actionId: string,
-  reference: Locator,
-  actual: Locator,
-  comparison: PngComparison,
-  actualPlatform: string,
-  popupBox: Readonly<{ x: number; y: number }> | null,
-): Promise<FilePopupPixelException | null> {
-  if (comparison.passed) return null;
-  /*
-   * T070: only the four reviewed rows may claim the platform exception. Every
-   * other row fails closed, so it is never inspected for an accelerator here.
-   */
-  if (
-    !(
-      FILE_POPUP_ACCELERATOR_GLYPH_EXCEPTION_ACTIONS as readonly string[]
-    ).includes(actionId)
-  ) {
-    return null;
-  }
-  const referenceShortcut =
-    (await reference.locator('.k').textContent())
-      ?.replace(/\s+/gu, ' ')
-      .trim() ?? null;
-  const actualShortcut = await actual.getAttribute('data-shortcut');
-  const shortcutBox = await reference.locator('.k').boundingBox();
-  const rowBox = await reference.boundingBox();
-  if (shortcutBox === null || rowBox === null) return null;
-  const allowed = relativePixelRect(rowBox, shortcutBox);
-  if (!allPixelDifferencesWithin(comparison, allowed)) return null;
-  /*
-   * Translate the validated row-relative rectangle by the row's integer offset
-   * inside the popup capture. Recomputing it from the popup origin would round
-   * against a different fractional grid and leave a one-pixel antialiased seam
-   * outside the accepted rectangle.
-   */
-  const popupRect =
-    popupBox === null
-      ? null
-      : {
-          left: allowed.left + Math.round(rowBox.x - popupBox.x),
-          right: allowed.right + Math.round(rowBox.x - popupBox.x),
-          top: allowed.top + Math.round(rowBox.y - popupBox.y),
-          bottom: allowed.bottom + Math.round(rowBox.y - popupBox.y),
-        };
-
-  const expectedShortcut = FILE_POPUP_SHORTCUT_BINDINGS[actionId];
-  const isMacOS = /Mac|iPhone|iPad/u.test(actualPlatform);
-  const exceptionPermitted = (
-    FILE_POPUP_ACCELERATOR_GLYPH_EXCEPTION_ACTIONS as readonly string[]
-  ).includes(actionId);
-  if (
-    exceptionPermitted &&
-    isMacOS &&
-    expectedShortcut !== undefined &&
-    actualShortcut?.startsWith('⌘') === true &&
-    normalizeShortcutBinding(referenceShortcut) ===
-      normalizeShortcutBinding(expectedShortcut) &&
-    normalizeShortcutBinding(actualShortcut) ===
-      normalizeShortcutBinding(expectedShortcut)
-  ) {
-    return {
-      actionId,
-      kind: 'macos-accelerator-glyphs',
-      reason:
-        'T059 explicit platform exception: native macOS accelerator glyphs differ from the immutable Ctrl-text reference',
-      referenceShortcut,
-      actualShortcut,
-      differentPixelCount: comparison.metrics.differentPixelCount,
-      differenceBounds: comparison.metrics.differenceBounds,
-      popupRect,
-    };
-  }
-  return null;
-}
-
-/**
- * Count whole-popup differing pixels that fall outside every reviewed
- * accelerator-glyph rectangle. Subtracting per-row totals would be an
- * approximation; this is the exact bounded-pixel accounting T070 requires.
- */
-function unexplainedPopupPixels(
-  comparison: PngComparison,
-  accepted: readonly PixelRect[],
-): number {
-  const reference = comparison.reference.decoded;
-  const actual = comparison.actual.decoded;
-  if (reference.width !== actual.width || reference.height !== actual.height) {
-    return comparison.metrics.differentPixelCount;
-  }
-  let unexplained = 0;
-  for (let y = 0; y < reference.height; y += 1) {
-    for (let x = 0; x < reference.width; x += 1) {
-      const offset = (y * reference.width + x) * 4;
-      let different = false;
-      for (let channel = 0; channel < 4; channel += 1) {
-        if (
-          reference.pixels[offset + channel] !== actual.pixels[offset + channel]
-        ) {
-          different = true;
-          break;
-        }
-      }
-      if (!different) continue;
-      const excused = accepted.some(
-        (rect) =>
-          x >= rect.left &&
-          x <= rect.right &&
-          y >= rect.top &&
-          y <= rect.bottom,
-      );
-      if (!excused) unexplained += 1;
-    }
-  }
-  return unexplained;
-}
-
 async function captureFilePopupVisualEvidence(
   referencePage: Page,
   actualPage: Page,
 ): Promise<FilePopupVisualEvidence> {
-  const popupBox = await referencePage.locator('#m-file').boundingBox();
   const rows: FilePopupVisualRow[] = [];
   const differences: string[] = [];
-  const platformExceptions: FilePopupPixelException[] = [];
-  const actualPlatform = await actualPage.evaluate(() => navigator.platform);
   const bytes: Record<
     string,
     { reference: Uint8Array; actual: Uint8Array; diff: Uint8Array }
@@ -1028,17 +817,13 @@ async function captureFilePopupVisualEvidence(
     differences.push(
       ...rowDifferences.map((difference) => `${actionId}: ${difference}`),
     );
-    const acceptedPixelException = await classifyFilePopupPixelException(
-      actionId,
-      reference,
-      actual,
-      comparison,
-      actualPlatform,
-      popupBox,
-    );
-    if (acceptedPixelException !== null) {
-      platformExceptions.push(acceptedPixelException);
-    } else if (!comparison.passed) {
+    /*
+     * T127: every row fails closed on pixels. There is no longer a reviewed
+     * accelerator exception, because the reference variant now carries Feature
+     * 003's own host-formatted accelerators for New File, Open File, Save and
+     * Save As, exactly as it already did for Close Tab.
+     */
+    if (!comparison.passed) {
       differences.push(
         `${actionId}: zero-tolerance pixel drift: ${comparison.metrics.differentPixelCount} unexplained pixels`,
       );
@@ -1048,7 +833,6 @@ async function captureFilePopupVisualEvidence(
       referenceMetrics,
       actualMetrics,
       comparison,
-      acceptedPixelException,
     });
     bytes[actionId] = {
       reference: referenceBytes,
@@ -1056,7 +840,7 @@ async function captureFilePopupVisualEvidence(
       diff: comparison.diff.bytes,
     };
   }
-  return { rows, differences, platformExceptions, bytes };
+  return { rows, differences, bytes };
 }
 
 async function writeTargetedArtifacts(input: {
@@ -1116,12 +900,8 @@ async function writeTargetedArtifacts(input: {
             actualMetrics: row.actualMetrics,
             comparison: row.comparison.metrics,
             exact: row.comparison.passed,
-            accepted:
-              row.comparison.passed || row.acceptedPixelException !== null,
-            acceptedPixelException: row.acceptedPixelException,
           })),
           differences: input.filePopupVisual.differences,
-          platformExceptions: input.filePopupVisual.platformExceptions,
           exact: input.filePopupVisual.differences.length === 0,
         },
         null,
@@ -1144,7 +924,6 @@ async function writeTargetedArtifacts(input: {
         editorTopEdge: input.editorTopEdge,
         differences:
           input.filePopupVisual?.differences ?? input.metricDifferences ?? [],
-        platformExceptions: input.filePopupVisual?.platformExceptions ?? [],
         boundsAndStylesPassed:
           (input.filePopupVisual?.differences ?? input.metricDifferences ?? [])
             .length === 0,
@@ -1180,7 +959,6 @@ async function writeTargetedArtifacts(input: {
         status: input.status,
         comparisonCompleted: input.comparisonCompleted,
         productionUiDrift: input.status === 'production-ui-drift',
-        platformExceptions: input.filePopupVisual?.platformExceptions ?? [],
         error: input.error ?? null,
       },
       null,
@@ -1192,7 +970,6 @@ async function writeTargetedArtifacts(input: {
     [
       `status=${input.status}`,
       `comparison_completed=${input.comparisonCompleted}`,
-      `platform_exception_count=${input.filePopupVisual?.platformExceptions.length ?? 0}`,
       `error=${input.error ?? ''}`,
       '',
     ].join('\n'),
@@ -1435,37 +1212,27 @@ for (const entry of [
           actualSurface.metrics,
         );
         /*
-         * T070: the File popup fails closed on whole-popup geometry, computed
-         * styles, and pixels exactly like every other slice. The per-row
-         * evidence is additional, not a substitute: the only accepted pixel
-         * difference is the reviewed macOS accelerator-glyph exception for
-         * New File, Open File, Save, and Save As, and that exception is
-         * subtracted from the whole-popup count by bounded rectangle rather
-         * than by skipping the comparison.
-         */
-        const acceptedRects = (filePopupVisual?.platformExceptions ?? [])
-          .map((exception) => exception.popupRect)
-          .filter((rect): rect is PixelRect => rect !== null);
-        /*
+         * T070, amended by T127: the File popup fails closed on whole-popup
+         * geometry, computed styles, and pixels exactly like every other slice,
+         * and it now has no accepted pixel difference at all. The reviewed
+         * macOS accelerator-glyph exception for New File, Open File, Save and
+         * Save As used to be subtracted here by bounded rectangle; the
+         * reference variant carries Feature 003's own host-formatted
+         * accelerators instead, so those glyphs are compared. The per-row
+         * evidence remains additional, not a substitute.
+         *
          * Attributed residuals: a differing pixel passes only when a declared
          * term covers it, that term names a written cause and cites the
          * evidence that measured it, and the term has not grown beyond what was
-         * measured. Anything else still fails, so this is stricter than the
-         * bare count it replaces — it can excuse a measured difference, never a
-         * new one. See parity/attributed.ts.
+         * measured — nor shrunk far below it. Anything else still fails. That
+         * is now the only way any pixel is ever excused. See parity/attributed.ts.
          */
         const declaredResiduals = attributedResidualsFor(entry.key);
-        const attribution = attributeDifferences(
-          comparison,
-          declaredResiduals,
-          acceptedRects,
-        );
+        const attribution = attributeDifferences(comparison, declaredResiduals);
         const unexplainedPixelCount =
           declaredResiduals.length > 0
             ? attribution.unattributedPixels
-            : acceptedRects.length === 0
-              ? comparison.metrics.differentPixelCount
-              : unexplainedPopupPixels(comparison, acceptedRects);
+            : comparison.metrics.differentPixelCount;
         const errors = [
           ...differences,
           ...attribution.failures.filter(

@@ -54,7 +54,7 @@ it('reference adapter hash is stable and bounded', () => {
     'rich-rendering',
     'monaco',
   ]);
-  expect(REFERENCE_ADAPTER_VERSION).toBe('feature-003-reference-adapter-v2');
+  expect(REFERENCE_ADAPTER_VERSION).toBe('feature-003-reference-adapter-v3');
 });
 
 // Proves: FR-FT-056 (partial — the variant boundary; the comparisonAttempted rule is proven by evidence.test.ts)
@@ -380,4 +380,70 @@ it('T112 fails closed when the source loses the Settings accelerator', () => {
   expect(() => adaptReferenceHtml(withoutAccelerator, 'base')).toThrow(
     'Settings reference source lost the All settings accelerator',
   );
+});
+
+/*
+ * T127. The T059 decision left New File, Open File, Save and Save As carrying
+ * the mockup's literal `Ctrl N` / `Ctrl O` / `Ctrl S` / `Ctrl ⇧ S`, and excused
+ * the resulting macOS difference with an accepted rectangle in
+ * `targeted-parity.test.ts`. That rectangle skipped its pixels before
+ * attribution, so they counted as attributed with no term accounting for them,
+ * carried no ceiling, no channel bound and no shrink rule — and it covered
+ * glyphs, which FR-FT-055 forbids a mask from hiding.
+ *
+ * The exception is retired by giving those four rows the same treatment
+ * `close-tab` has had since T070: Feature 003's own accelerator, formatted for
+ * the host, written into the mockup's own `.k` primitive. The rows are compared
+ * exactly, so there is nothing left to except.
+ */
+// Proves: FR-FT-056 (partial — only the File-menu clause "carries Feature 003's
+//   own accelerators"; the launcher, toolbar, View-menu, tab-menu, prompt and
+//   status clauses are proven by the other cases in this file)
+it('T127 gives every File-menu accelerator Feature 003 host formatting', () => {
+  const source = readFileSync(
+    resolve(process.cwd(), '../docs/delivery/spec/surface/mockup.html'),
+    'utf8',
+  );
+
+  // The immutable source still writes the platform-blind literals.
+  for (const literal of [
+    'New File<span class="k">Ctrl N</span>',
+    'Open File…<span class="k">Ctrl O</span>',
+    'Save<span class="k">Ctrl S</span>',
+    'Save As…<span class="k">Ctrl ⇧ S</span>',
+  ]) {
+    expect(source).toContain(literal);
+  }
+
+  const darwin = adaptReferenceHtml(source, 'file-menu', undefined, 'darwin');
+  const other = adaptReferenceHtml(source, 'file-menu', undefined, 'other');
+  const region = (html: string): string => {
+    const start = html.indexOf('<div class="dropdown" id="m-file"');
+    const end = html.indexOf('<div class="dropdown" id="m-settings"', start);
+    return html.slice(start, end);
+  };
+
+  for (const [row, mac, rest] of [
+    ['New File', '⌘N', 'Ctrl+N'],
+    ['Open File…', '⌘O', 'Ctrl+O'],
+    ['Save', '⌘S', 'Ctrl+S'],
+    ['Save As…', '⌘⇧S', 'Ctrl+Shift+S'],
+  ] as const) {
+    expect(region(darwin.html)).toContain(
+      `${row}<span class="k">${mac}</span>`,
+    );
+    expect(region(other.html)).toContain(
+      `${row}<span class="k">${rest}</span>`,
+    );
+  }
+
+  // No adapted row keeps a mockup literal, on either host.
+  for (const literal of ['Ctrl N', 'Ctrl O', 'Ctrl S', 'Ctrl ⇧ S']) {
+    expect(region(darwin.html)).not.toContain(`<span class="k">${literal}<`);
+    expect(region(other.html)).not.toContain(`<span class="k">${literal}<`);
+  }
+
+  // Only the mockup's own `.k` primitive is used, and the raw source hash is
+  // unchanged by the adaptation.
+  expect(darwin.sourceHash).toBe(other.sourceHash);
 });

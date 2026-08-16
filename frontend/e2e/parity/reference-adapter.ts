@@ -1,6 +1,13 @@
 import { createHash } from 'node:crypto';
 
-export const REFERENCE_ADAPTER_VERSION = 'feature-003-reference-adapter-v2';
+/*
+ * Bumped to v3 by T127, which folded the four File-menu accelerators the T059
+ * decision used to leave as literal mockup text into the same host-formatted
+ * treatment every other accelerator already gets. That retires the reviewed
+ * macOS accelerator-glyph pixel exception, so an adaptation produced by v2 is
+ * not interchangeable with one produced by v3.
+ */
+export const REFERENCE_ADAPTER_VERSION = 'feature-003-reference-adapter-v3';
 
 export const REFERENCE_ZERO_ASSISTANT_CLASS = 'no-assistant';
 
@@ -122,11 +129,17 @@ export type FileMenuReferencePlatform =
  * reviewed unavailable opacity so the comparison still measures geometry,
  * labels and spacing instead of collapsing into a colour difference.
  *
- * The four accelerators the specification's T059 decision preserves as literal
- * `Ctrl` reference text — New File, Open File, Save and Save As — are left
- * exactly as the immutable source writes them, so the reviewed macOS
- * accelerator-glyph pixel exception stays the only accepted difference and is
- * still measured with bounded per-row evidence.
+ * **T127: the last four are here too now.** New File, Open File, Save and Save
+ * As used to keep the mockup's literal `Ctrl N` / `Ctrl O` / `Ctrl S` /
+ * `Ctrl ⇧ S` text, and the resulting macOS difference was excused by a
+ * rectangle — a mask over glyphs, which FR-FT-055 forbids, in the file whose
+ * own header says a mask makes drift invisible forever. Nothing bounded it: no
+ * measured ceiling, no maximum channel delta, no shrink rule. They now carry
+ * Feature 003's own host-formatted accelerators like every other row, so the
+ * glyphs are **compared** instead of skipped, and the exception is gone rather
+ * than merely narrowed. `close-tab` has been measured this way since T070 —
+ * `⌘W` against the mockup's `.k` primitive, exact — which is why this was
+ * always available and never taken.
  *
  * Only the mockup's own primitives are used: `.mi`, `.mi.sub`, `.lab`, `.sep`,
  * `.k`, and `<svg class="ic"><use href="#i-file"/></svg>`. No HTML/CSS value in
@@ -137,17 +150,25 @@ const fileMenuReferenceAccelerators: Readonly<
   Record<FileMenuReferencePlatform, Readonly<Record<string, string | null>>>
 > = {
   darwin: {
+    'new-file': '⌘N',
     'new-window': null,
+    'open-file': '⌘O',
     'open-folder': null,
     reopen: '⌘⇧⌥T',
+    save: '⌘S',
+    'save-as': '⌘⇧S',
     'export-pdf': null,
     'close-tab': '⌘W',
     exit: null,
   },
   other: {
+    'new-file': 'Ctrl+N',
     'new-window': null,
+    'open-file': 'Ctrl+O',
     'open-folder': null,
     reopen: 'Ctrl+Shift+Alt+T',
+    save: 'Ctrl+S',
+    'save-as': 'Ctrl+Shift+S',
     'export-pdf': null,
     'close-tab': 'Ctrl+W',
     exit: null,
@@ -700,16 +721,16 @@ function adaptFileMenu(
   const shortcut = fileMenuReferenceAccelerators[platform];
   const fileIcon = '<svg class="ic"><use href="#i-file"/></svg>';
   const adapted = [
-    '\n      <div class="mi">New File<span class="k">Ctrl N</span></div>',
+    `\n      <div class="mi">New File${acceleratorSpan(shortcut['new-file'])}</div>`,
     `<div class="mi"${deferredAttributes()}>New Window${acceleratorSpan(shortcut['new-window'])}</div>`,
-    '<div class="mi">Open File…<span class="k">Ctrl O</span></div>',
+    `<div class="mi">Open File…${acceleratorSpan(shortcut['open-file'])}</div>`,
     `<div class="mi"${deferredAttributes()}>Open Folder…${acceleratorSpan(shortcut['open-folder'])}</div>`,
     '<div class="sep"></div><div class="lab">Open Recent</div>',
     `<div class="mi sub">${fileIcon} release-notes.md</div>`,
     `<div class="mi sub">${fileIcon} spec-draft.md</div>`,
     `<div class="mi sub" aria-disabled="true" style="opacity:${REFERENCE_UNAVAILABLE_OPACITY}">↺ Reopen last file${acceleratorSpan(shortcut['reopen'])}</div>`,
     '<div class="sep"></div>',
-    '<div class="mi">Save<span class="k">Ctrl S</span></div><div class="mi">Save As…<span class="k">Ctrl ⇧ S</span></div>',
+    `<div class="mi">Save${acceleratorSpan(shortcut['save'])}</div><div class="mi">Save As…${acceleratorSpan(shortcut['save-as'])}</div>`,
     `<div class="sep"></div><div class="mi"${deferredAttributes()}>Export to PDF…${acceleratorSpan(shortcut['export-pdf'])}</div>`,
     `<div class="sep"></div><div class="mi">Close Tab${acceleratorSpan(shortcut['close-tab'])}</div><div class="mi">Exit${acceleratorSpan(shortcut['exit'])}</div>`,
     '\n    ',
