@@ -631,7 +631,9 @@ it('T027 native close requests complete a clean plan before authorizing one quit
     orderedDocumentIds: [],
   });
   mockedNativeLifecycleAdapter.onCloseRequested.mockReset();
-  mockedNativeLifecycleAdapter.authorizeQuit.mockReset().mockResolvedValue();
+  mockedNativeLifecycleAdapter.authorizeQuit
+    .mockReset()
+    .mockResolvedValue(undefined);
   mockedNativeLifecycleAdapter.cancelQuit.mockReset().mockResolvedValue();
   let requestListener: (() => void) | undefined;
   mockedNativeLifecycleAdapter.onCloseRequested.mockImplementation(
@@ -715,6 +717,115 @@ it('T111 surfaces the close plan refusal with the backend message intact', async
   expect(store.getState().notifications.items[0]).toMatchObject({
     message: 'The tab set changed; close must be retried.',
     severity: 'error',
+  });
+  act((): void => disposeAppModelProjection());
+});
+
+// Proves: FR-FT-027 (partial — "A cancellation or drain failure MUST create no
+// permit, keep the window open, and provide a classified io-failure error with
+// Retry", from the surface the user actually sees. That no permit is created is
+// proved in Go by TestDrainFailureCreatesNoPermit.)
+it('T134 surfaces a drain refusal as one classified io-failure offering Retry', async () => {
+  /*
+   * Before T134 AuthorizeQuit answered with a bare VoidResult, so a failed
+   * drain crossed as an untyped WireError. `unwrapPromise` turned it into a
+   * `notifyError`, whose `localizedErrorCopy` replaces the backend's message
+   * with generic catalog copy, and `reportNativeCloseError` then dispatched a
+   * second one: two toasts, neither carrying the Retry control the requirement
+   * names, for a window the user now cannot close.
+   */
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  const readyState = bootstrapState('draft', 12);
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    ...readyState,
+    snapshot: {
+      ...readyState.snapshot,
+      revision: 13,
+      documents: {},
+      orderedDocumentIds: [],
+      activeDocumentId: null,
+      activeDocument: null,
+    },
+    activeBuffer: null,
+  });
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  const readyPlan = {
+    data: {
+      id: 'drain-refusal-plan',
+      kind: 'quit' as const,
+      tabSetRevision: 12,
+      targets: [],
+      status: 'ready' as const,
+    },
+  };
+  mockedClosePlanAdapter.prepareClose.mockReset().mockResolvedValue(readyPlan);
+  mockedClosePlanAdapter.resolveClosePlan
+    .mockReset()
+    .mockResolvedValue(readyPlan);
+  mockedClosePlanAdapter.executeClosePlan.mockReset().mockResolvedValue({
+    status: 'closed',
+    orderedDocumentIds: [],
+  });
+  mockedNativeLifecycleAdapter.onCloseRequested.mockReset();
+  mockedNativeLifecycleAdapter.requestQuit.mockReset();
+  mockedNativeLifecycleAdapter.cancelQuit.mockReset().mockResolvedValue();
+  mockedNativeLifecycleAdapter.authorizeQuit.mockReset().mockResolvedValue({
+    category: 'io-failure',
+    message:
+      'The application could not finish saving pending work before closing.',
+    remediations: ['Retry'],
+    documentId: '',
+    dedupKey: 'native close:io-failure',
+    safeSubject: 'native close',
+  });
+  let requestListener: (() => void) | undefined;
+  mockedNativeLifecycleAdapter.onCloseRequested.mockImplementation(
+    (listener) => {
+      requestListener = listener;
+      return jest.fn();
+    },
+  );
+
+  render(<App />);
+  await waitFor(() => expect(requestListener).toBeDefined());
+  act(() => {
+    requestListener?.();
+  });
+
+  await waitFor(() => {
+    expect(mockedNativeLifecycleAdapter.authorizeQuit).toHaveBeenCalledTimes(1);
+  });
+  // Exactly one toast, not two. The old path dispatched `notifyError` from
+  // `unwrapPromise` and then `reportNativeCloseError` again from the catch, so
+  // the count is the assertion — hence the reset above rather than a filter.
+  await waitFor(() => {
+    expect(store.getState().notifications.items).toHaveLength(1);
+  });
+  expect(store.getState().notifications.items[0]).toMatchObject({
+    code: 'io',
+    message:
+      'The application could not finish saving pending work before closing.',
+    severity: 'error',
+    subject: 'native close:io-failure',
+  });
+  expect(store.getState().notifications.items[0]?.remediations).toMatchObject([
+    { action: 'retry', intent: 'quit' },
+  ]);
+  // The window stays open: the pending request is cancelled so the coordinator
+  // holds no half-finished close.
+  await waitFor(() => {
+    expect(mockedNativeLifecycleAdapter.cancelQuit).toHaveBeenCalledTimes(1);
+  });
+
+  // The offered control is a real command, not a label: pressing Retry asks the
+  // native frame to close again, which is the only thing that can succeed.
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => {
+    expect(mockedNativeLifecycleAdapter.requestQuit).toHaveBeenCalledTimes(1);
   });
   act((): void => disposeAppModelProjection());
 });
@@ -1296,7 +1407,9 @@ it('T084 confirms a resync recovery quit with its own copy and discards newer ch
   });
   mockedNativeLifecycleAdapter.onCloseRequested.mockReset();
   mockedNativeLifecycleAdapter.requestQuit.mockReset();
-  mockedNativeLifecycleAdapter.authorizeQuit.mockReset().mockResolvedValue();
+  mockedNativeLifecycleAdapter.authorizeQuit
+    .mockReset()
+    .mockResolvedValue(undefined);
   mockedNativeLifecycleAdapter.cancelQuit.mockReset().mockResolvedValue();
   let requestListener: (() => void) | undefined;
   mockedNativeLifecycleAdapter.onCloseRequested.mockImplementation(

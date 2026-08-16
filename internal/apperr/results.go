@@ -54,6 +54,19 @@ type VoidResult struct {
 	Error *WireError `json:"error,omitempty"`
 }
 
+// ClassifiedVoidResult is the no-payload envelope for a command whose failures
+// belong to the classified category and remediation contract rather than to the
+// internal wire vocabulary.
+//
+// VoidResult carries a WireError, whose code and Retryable flag are an internal
+// taxonomy: the frontend renders it through the generic notification catalogue
+// and can offer no remediation control, because a WireError names none. Native
+// close needs the other shape — FR-FT-027 requires a drain failure to reach the
+// user as a classified io-failure offering Retry — so it returns this instead.
+type ClassifiedVoidResult struct {
+	Error *ClassifiedError `json:"error,omitempty"`
+}
+
 // StringResult is the envelope for a single string payload.
 type StringResult struct {
 	Data  string     `json:"data"`

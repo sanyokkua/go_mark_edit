@@ -236,22 +236,59 @@ func (holder *ApplicationContextHolder) BeforeClose(ctx context.Context) bool {
 	return coordinator.BeforeClose(ctx)
 }
 
-// AuthorizeQuit drains the editor/layout path before creating the one-shot
-// native close permit. A failed drain leaves the request pending for Retry and
-// can never create a permit.
-func (holder *ApplicationContextHolder) AuthorizeQuit(ctx context.Context) error {
-	if err := holder.FlushBeforeClose(); err != nil {
-		return apperr.IO("native close drain", err)
+// DrainBeforeClose runs FR-FT-027's full shutdown drain: accepted autosave and
+// editor work, then the SQLite layout intent. It is separate from
+// FlushBeforeClose, which stays the narrow Wails durability port used by the
+// veto hook and by Close.
+func (holder *ApplicationContextHolder) DrainBeforeClose() *apperr.ClassifiedError {
+	holder.mu.Lock()
+	service := holder.AppModelService
+	holder.mu.Unlock()
+	if service == nil {
+		return nil
+	}
+	return service.DrainBeforeClose()
+}
+
+// AuthorizeQuit drains every accepted layout, editor and autosave change before
+// creating the one-shot native close permit. A failed drain leaves the request
+// pending for Retry and can never create a permit.
+//
+// It returns a *apperr.ClassifiedError rather than an error because FR-FT-027
+// specifies the failure the user sees, not merely that one occurred: a
+// classified io-failure offering Retry. The previous apperr.IO wrapper reached
+// the frontend as an untyped WireError, which renders generic catalogue copy and
+// carries no remediation, so the window stayed open with nothing to press.
+func (holder *ApplicationContextHolder) AuthorizeQuit(ctx context.Context) *apperr.ClassifiedError {
+	if refusal := holder.DrainBeforeClose(); refusal != nil {
+		return refusal
 	}
 
 	holder.mu.Lock()
 	coordinator := holder.closeCoordinator
 	holder.mu.Unlock()
 	if coordinator == nil {
-		return apperr.Unsupported("native close authorization")
+		unsupported := apperr.NewClassifiedError(
+			apperr.ClassifiedUnsupportedInput,
+			"native close",
+			"This build cannot authorize a native close.",
+			apperr.RemediationNone,
+			"",
+		)
+		return &unsupported
 	}
 	if err := coordinator.Authorize(ctx); err != nil {
-		return apperr.Validation("native close", "a pending native close request", "none")
+		// Nothing is pending, so the close plan the frontend just completed is
+		// stale. That is the conflict row's stale-request arm, and re-issuing the
+		// close is the only action that can succeed.
+		stale := apperr.NewClassifiedError(
+			apperr.ClassifiedConflict,
+			"native close",
+			"There is no pending close request to authorize; close must be retried.",
+			apperr.RemediationRetry,
+			"",
+		)
+		return &stale
 	}
 	return nil
 }

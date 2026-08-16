@@ -40,7 +40,17 @@ export type NotificationRemediationIntent =
   | 'open-document'
   | 'open-recent'
   | 'reopen-last'
-  | 'activate-document';
+  | 'activate-document'
+  /**
+   * Re-asks the native frame to close, after FR-FT-027's drain refused.
+   *
+   * It re-issues the *request*, not the authorization: the coordinator
+   * cancelled the pending close when the drain failed, so there is nothing left
+   * to authorize and `AuthorizeQuit` would refuse as stale. Asking the frame to
+   * close again is what starts a fresh close plan, drain and permit — the only
+   * sequence that can succeed.
+   */
+  | 'quit';
 
 export interface NotificationRemediation {
   action: NotificationRemediationAction;

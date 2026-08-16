@@ -101,6 +101,17 @@ func (coordinator *DocumentWriteCoordinator) Commit(snapshot WriteSnapshot) (Com
 	return result, nil
 }
 
+// waitForIdle blocks until no replacement is in flight for this document.
+//
+// Taking the same mutex Commit holds is the whole wait, and it is deliberately
+// a wait rather than a cancellation: AtomicReplace has no safe interruption
+// point, so the close drain lets a running replacement finish instead of
+// tearing the file it is replacing.
+func (coordinator *DocumentWriteCoordinator) waitForIdle() {
+	coordinator.mu.Lock()
+	defer coordinator.mu.Unlock()
+}
+
 func reusableCommit(committed CommittedWriteResult, requested WriteSnapshot) bool {
 	if committed.Snapshot.DocumentID != requested.DocumentID || committed.Snapshot.ContentRevision != requested.ContentRevision || committed.Snapshot.CanonicalContent != requested.CanonicalContent || committed.Snapshot.TargetPath != requested.TargetPath {
 		return false

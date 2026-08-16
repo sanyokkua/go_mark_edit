@@ -778,9 +778,27 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       if (isNativeClose && result.error === undefined) {
         try {
-          await nativeLifecycleAdapter.authorizeQuit();
-          nativeClosePendingRef.current = false;
-          setNativeClosePending(false);
+          const refusal = await nativeLifecycleAdapter.authorizeQuit();
+          if (refusal === undefined) {
+            nativeClosePendingRef.current = false;
+            setNativeClosePending(false);
+          } else {
+            /*
+             * A refused drain, on the classified path rather than through
+             * `reportNativeCloseError`. Everything Go sends here is a
+             * `ClassifiedError` it built and sanitized — the case the comment on
+             * `reportNativeCloseError` excludes — so its own message survives
+             * and FR-FT-027's Retry becomes a control that re-asks the frame to
+             * close.
+             */
+            reportClassifiedError(
+              dispatch,
+              refusal,
+              t('notification.error.io.title'),
+              { intent: 'quit' },
+            );
+            await cancelNativeClose();
+          }
         } catch (error) {
           reportNativeCloseError(error);
           await cancelNativeClose();
@@ -1403,6 +1421,21 @@ const AppContents: React.FC = (): React.JSX.Element => {
           const result = await retryEntryCommand(remediation, revision);
           if (result === undefined || result.error !== undefined) return;
           dispatch(dismissNotification(notificationId));
+          return;
+        }
+        case 'quit': {
+          /*
+           * The Retry FR-FT-027 pairs with a drain failure. The pending close
+           * was cancelled when the drain refused, so this restarts the whole
+           * sequence — close request, plan, drain, permit — rather than
+           * re-authorizing a request that no longer exists.
+           *
+           * The toast is dismissed here rather than on a result, because
+           * `requestQuit` is fire-and-forget: the native frame answers by
+           * emitting a fresh close request, not by returning.
+           */
+          dispatch(dismissNotification(notificationId));
+          nativeLifecycleAdapter.requestQuit();
           return;
         }
         case 'save':

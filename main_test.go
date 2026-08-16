@@ -364,8 +364,8 @@ func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 		t.Fatalf("failed-close lifecycle events = %v, want %v", got, want)
 	}
 	failed := holder.ApplicationHandler.AuthorizeQuit()
-	if failed.Error == nil || failed.Error.Code != apperr.CodeIO || !failed.Error.Retryable {
-		t.Fatalf("failed AuthorizeQuit error = %+v, want retryable io error", failed.Error)
+	if failed.Error == nil || failed.Error.Category != apperr.ClassifiedIOFailure || failed.Error.Remediation() != apperr.RemediationRetry {
+		t.Fatalf("failed AuthorizeQuit error = %+v, want a classified io-failure offering Retry", failed.Error)
 	}
 	if quitCalls != 0 || holder.DB == nil {
 		t.Fatalf("failed close quit calls = %d and database = %p, want no quit and open database", quitCalls, holder.DB)

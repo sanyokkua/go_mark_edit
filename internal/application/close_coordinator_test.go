@@ -3,11 +3,12 @@ package application
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
@@ -97,13 +98,22 @@ func TestDrainFailureCreatesNoPermit(t *testing.T) {
 	if !holder.BeforeClose(context.Background()) {
 		t.Fatal("native close was not vetoed")
 	}
-	if err := holder.AuthorizeQuit(context.Background()); err == nil {
+	refusal := holder.AuthorizeQuit(context.Background())
+	if refusal == nil {
 		t.Fatal("AuthorizeQuit succeeded after a failed layout drain")
-	} else {
-		wire := apperr.ToWire(zerolog.Nop(), err)
-		if wire.Code != apperr.CodeIO || !wire.Retryable {
-			t.Fatalf("failed drain wire error = %+v, want retryable io", wire)
-		}
+	}
+	// FR-FT-027 names the shape, not just the fact of a failure: a classified
+	// io-failure carrying Retry. Until T134 this crossed the bridge as an
+	// untyped WireError inside a VoidResult, so the window that stayed open
+	// offered the user no way to try again.
+	if refusal.Category != apperr.ClassifiedIOFailure {
+		t.Fatalf("failed drain category = %q, want %q", refusal.Category, apperr.ClassifiedIOFailure)
+	}
+	if refusal.Remediation() != apperr.RemediationRetry {
+		t.Fatalf("failed drain remediation = %q, want %q", refusal.Remediation(), apperr.RemediationRetry)
+	}
+	if err := refusal.Validate(); err != nil {
+		t.Fatalf("failed drain is not a valid classified error: %v", err)
 	}
 	if quitCalls != 0 {
 		t.Fatalf("failed drain invoked Quit %d times", quitCalls)
@@ -113,8 +123,8 @@ func TestDrainFailureCreatesNoPermit(t *testing.T) {
 	}
 
 	repository.err = nil
-	if err := holder.AuthorizeQuit(context.Background()); err != nil {
-		t.Fatalf("retry AuthorizeQuit: %v", err)
+	if retried := holder.AuthorizeQuit(context.Background()); retried != nil {
+		t.Fatalf("retry AuthorizeQuit: %+v", retried)
 	}
 	if quitCalls != 1 || holder.BeforeClose(context.Background()) {
 		t.Fatalf("successful retry quit calls = %d or permit was not consumed", quitCalls)
@@ -158,8 +168,8 @@ func TestRecoveryQuitStillDrainsAndPermits(t *testing.T) {
 	if !holder.BeforeClose(context.Background()) {
 		t.Fatal("recovery close was not vetoed")
 	}
-	if err := holder.AuthorizeQuit(context.Background()); err != nil {
-		t.Fatalf("recovery AuthorizeQuit: %v", err)
+	if refusal := holder.AuthorizeQuit(context.Background()); refusal != nil {
+		t.Fatalf("recovery AuthorizeQuit: %+v", refusal)
 	}
 	if repository.writes == 0 || quitCalls != 1 {
 		t.Fatalf("recovery close writes = %d and quit calls = %d, want drain then one quit", repository.writes, quitCalls)
@@ -168,6 +178,72 @@ func TestRecoveryQuitStillDrainsAndPermits(t *testing.T) {
 		t.Fatal("recovery close permit was not consumed")
 	}
 }
+
+// Proves: FR-FT-027 (partial — "shutdown MUST ... drain accepted ... autosave
+// work before creating a one-use close permit or invoking native Quit", from the
+// composition root rather than from the model. The classified-refusal half is
+// proved by TestDrainFailureCreatesNoPermit above.)
+//
+// The assertion reads the file from inside the Quit callback because that is the
+// only point that is unambiguously after the permit was armed: if the accepted
+// revision is on disk by then, the drain cannot have been skipped or deferred.
+func TestAuthorizeQuitDrainsAcceptedAutosaveBeforeQuitting(t *testing.T) {
+	model := appmodel.NewAppModelServiceWithAutosaveTimer(
+		discardingCloseStatePatchEmitter{},
+		&countingAutosaveClock{},
+	)
+	path := filepath.Join(t.TempDir(), "quit-drain.md")
+	if err := os.WriteFile(path, []byte("base\n"), 0o640); err != nil {
+		t.Fatalf("write quit-drain fixture: %v", err)
+	}
+	state, err := model.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState before open: %v", err)
+	}
+	opened := model.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
+	if opened.Status != apperr.OpenStatusOpened {
+		t.Fatalf("OpenPath outcome = %+v", opened)
+	}
+	if err := model.UpdateBuffer(context.Background(), opened.DocumentID, "accepted before quit\n"); err != nil {
+		t.Fatalf("accepted edit: %v", err)
+	}
+
+	holder := NewApplicationContextHolder(nil, nil)
+	holder.AppModelService = model
+	var (
+		quitCalls  int
+		diskAtQuit []byte
+	)
+	holder.SetCloseCoordinator(NewCloseCoordinator(nil, func(context.Context) {
+		quitCalls++
+		diskAtQuit, _ = os.ReadFile(path)
+	}))
+
+	if !holder.BeforeClose(context.Background()) {
+		t.Fatal("native close was not vetoed")
+	}
+	if refusal := holder.AuthorizeQuit(context.Background()); refusal != nil {
+		t.Fatalf("AuthorizeQuit: %+v", refusal)
+	}
+	if quitCalls != 1 {
+		t.Fatalf("quit calls = %d, want one", quitCalls)
+	}
+	if string(diskAtQuit) != "accepted before quit\n" {
+		t.Fatalf("bytes on disk when native Quit ran = %q, want the last accepted revision", diskAtQuit)
+	}
+}
+
+// countingAutosaveClock never fires. The drain must run the scheduled write
+// itself; a clock that fires would let a test pass on the debounce elapsing.
+type countingAutosaveClock struct{}
+
+func (countingAutosaveClock) AfterFunc(time.Duration, func()) appmodel.AutosaveTimer {
+	return stoppedAutosaveTimer{}
+}
+
+type stoppedAutosaveTimer struct{}
+
+func (stoppedAutosaveTimer) Stop() bool { return true }
 
 type closeTestLayoutTimer struct{}
 

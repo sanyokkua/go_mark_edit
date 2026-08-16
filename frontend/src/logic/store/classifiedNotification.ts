@@ -132,11 +132,15 @@ function retryIsExecutable(
       return documentId !== undefined && documentId !== '';
     case 'open-recent':
       return path !== undefined && path !== '';
+    // `quit` belongs to this group for the same reason as the rest: it takes no
+    // arguments. It re-asks the native frame to close, and the frame is a
+    // singleton, so there is nothing a caller could fail to supply.
     case 'new-document':
     case 'open-document':
     case 'reopen-last':
     case 'save':
     case 'save-as':
+    case 'quit':
       return true;
     default: {
       const unhandled: never = intent;

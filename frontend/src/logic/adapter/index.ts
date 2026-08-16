@@ -435,7 +435,20 @@ export const applicationAdapter = {
 export interface NativeLifecycleAdapter {
   onCloseRequested: (listener: () => void) => () => void;
   requestQuit: () => void;
-  authorizeQuit: () => Promise<void>;
+  /**
+   * Arms the one-use native close permit, or returns the classified reason it
+   * could not be armed.
+   *
+   * A refusal is returned rather than thrown, and it is not routed through
+   * `unwrapPromise`. FR-FT-027 requires a drain failure to reach the user as a
+   * classified `io-failure` offering Retry; `unwrapPromise` dispatches
+   * `notifyError`, which renders generic catalogue copy from an internal
+   * `WireError` code and can carry no remediation. Handing the caller the
+   * `ClassifiedError` lets it report the backend's own message and offer the
+   * control the requirement names. A rejected promise still throws — that is a
+   * dead bridge, not a classified outcome.
+   */
+  authorizeQuit: () => Promise<ClassifiedError | undefined>;
   cancelQuit: () => Promise<void>;
 }
 
@@ -443,9 +456,8 @@ export const nativeLifecycleAdapter: NativeLifecycleAdapter = {
   onCloseRequested: (listener) =>
     EventsOn(NATIVE_CLOSE_REQUEST_EVENT, () => listener()),
   requestQuit: () => Quit(),
-  authorizeQuit: async () => {
-    await unwrapPromise(AuthorizeQuit());
-  },
+  authorizeQuit: async () =>
+    normalizeClassifiedError((await AuthorizeQuit()).error),
   cancelQuit: async () => {
     await unwrapPromise(CancelQuit());
   },
