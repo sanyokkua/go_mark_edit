@@ -204,6 +204,8 @@
   "recovery.quit.action": "Quit and discard newer unsaved changes",
   "recovery.quit.title": "Confirm quit and discard",
   "recovery.quit.message": "The file was saved on disk, but editor-state recovery failed. Quit and discard newer unsaved changes for the affected documents?",
+  "recovery.quit.documents": "Documents with newer unsaved changes",
+  "recovery.quit.documents.none": "No open document has newer unsaved changes.",
   "recovery.quit.cancel": "Cancel",
   "recovery.quit.confirm": "Quit and discard",
   "file.recent.label": "Recent files",

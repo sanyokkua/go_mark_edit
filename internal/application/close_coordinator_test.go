@@ -131,25 +131,20 @@ func TestDrainFailureCreatesNoPermit(t *testing.T) {
 	}
 }
 
+// Proves: FR-FT-027 (partial — "During FR-FT-016 recovery, only the
+// twice-confirmed Quit and discard newer unsaved changes path may bypass
+// successful rehydration; it MUST still satisfy this cancellation, drain, and
+// permit sequence". The two confirmations themselves are user-facing and are
+// proved in frontend/src/App.test.tsx; this proves the backend half — the
+// recovery route takes the same drain and the same one-use permit as an
+// ordinary quit, with no bypass.)
+//
+// T124 removed this test's first half. It drove appmodel.ProjectionRecovery,
+// a module with no non-test importer that never ran in production, so its
+// assertions recorded a second confirmation that no user could reach. The
+// reachable second confirmation lives in the close path the frontend drives,
+// and is tested there.
 func TestRecoveryQuitStillDrainsAndPermits(t *testing.T) {
-	recovery := appmodel.NewProjectionRecovery(
-		func() error { return errors.New("projection unavailable") },
-		immediateRecoveryTimer{},
-	)
-	recovery.Start()
-	if prompt := recovery.RequestQuitAndDiscard([]string{"Report.md"}); prompt.Authorized {
-		t.Fatal("first recovery quit request was already authorized")
-	}
-	if recovery.QuitAndDiscardAuthorized() {
-		t.Fatal("first recovery quit request bypassed confirmation")
-	}
-	if err := recovery.ConfirmQuitAndDiscard(); err != nil {
-		t.Fatalf("confirm recovery quit: %v", err)
-	}
-	if !recovery.QuitAndDiscardAuthorized() {
-		t.Fatal("second recovery confirmation did not authorize discard quit")
-	}
-
 	repository := &closeTestLayoutRepository{}
 	model := appmodel.NewAppModelServiceWithLayoutRepositoryAndTimer(
 		discardingCloseStatePatchEmitter{},
@@ -248,10 +243,6 @@ func (stoppedAutosaveTimer) Stop() bool { return true }
 type closeTestLayoutTimer struct{}
 
 func (closeTestLayoutTimer) AfterFunc(_ time.Duration, _ func()) {}
-
-type immediateRecoveryTimer struct{}
-
-func (immediateRecoveryTimer) AfterFunc(_ time.Duration, callback func()) { callback() }
 
 type discardingCloseStatePatchEmitter struct{}
 

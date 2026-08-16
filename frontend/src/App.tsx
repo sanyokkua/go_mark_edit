@@ -87,6 +87,7 @@ import ExternalChangePrompt, {
   type ExternalChangeDecision,
 } from './ui/widgets/ExternalChangePrompt';
 import ClosePrompt from './ui/widgets/ClosePrompt';
+import { tabLabelsFor } from './ui/widgets/tabLabel';
 import { ModalStateProvider } from './ui/widgets/modalState';
 import ModalShell from './ui/primitives/ModalShell';
 
@@ -481,6 +482,41 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const orderedDocumentIds = useAppSelector(
     (state) => state.documents.orderedIds,
   );
+  const documentsById = useAppSelector((state) => state.documents.byId);
+  /*
+   * The documents FR-FT-016's second confirmation must name.
+   *
+   * "Quit and discard newer unsaved changes MUST require a second confirmation
+   * naming the affected documents" — and the affected set is exactly the one
+   * the same requirement keeps "modified against the committed baseline": every
+   * document the projection still shows as dirty. A clean tab loses nothing, so
+   * naming it would overstate what the button does.
+   *
+   * Reading the projection is deliberate rather than a shortcut. Rehydration is
+   * the thing that failed on this path, so the last delivered snapshot is the
+   * only record of what is about to be discarded; there is no fresher truth to
+   * ask for, and commands are blocked, so it cannot move underneath the prompt.
+   *
+   * The labels are the tab labels, disambiguated the same way, so the prompt
+   * names files the way the rest of the window already does — two open
+   * `notes.md` read as two distinct rows rather than one repeated name.
+   */
+  const recoveryDiscardNames = useMemo((): string[] => {
+    const ordered = orderedDocumentIds
+      .map((documentId) => documentsById[documentId])
+      .filter(
+        (document): document is DocumentMetadata => document !== undefined,
+      );
+    const labels = tabLabelsFor(ordered);
+    return ordered
+      .filter((document) => document.dirty)
+      .map(
+        (document) =>
+          labels.get(document.documentId)?.label ??
+          document.displayName ??
+          document.title,
+      );
+  }, [documentsById, orderedDocumentIds]);
   const [version, setVersion] = useState('');
   const bootstrapGeneration = useRef(0);
   const nativeClosePendingRef = useRef(false);
@@ -1829,6 +1865,19 @@ const AppContents: React.FC = (): React.JSX.Element => {
                 {recoverySurface?.message !== undefined ? (
                   <p>{recoverySurface.message}</p>
                 ) : null}
+                {recoveryDiscardNames.length > 0 ? (
+                  <ul aria-label={t('recovery.quit.documents')}>
+                    {recoveryDiscardNames.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  // Saying so is the honest answer, not silence: the user is
+                  // being asked to approve a discard, and "nothing will be
+                  // discarded" is information they are entitled to before
+                  // pressing it.
+                  <p>{t('recovery.quit.documents.none')}</p>
+                )}
                 <div>
                   <button
                     ref={recoveryQuitCancelRef}

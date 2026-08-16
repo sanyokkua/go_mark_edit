@@ -53,6 +53,9 @@ jest.mock('./i18n', () => ({
       'recovery.quit.action': 'Quit and discard newer unsaved changes',
       'recovery.quit.cancel': 'Cancel',
       'recovery.quit.confirm': 'Quit and discard',
+      'recovery.quit.documents': 'Documents with newer unsaved changes',
+      'recovery.quit.documents.none':
+        'No open document has newer unsaved changes.',
       'recovery.quit.message':
         'The file was saved on disk, but editor-state recovery failed. Quit and discard newer unsaved changes for the affected documents?',
       'recovery.quit.title': 'Confirm quit and discard',
@@ -1477,6 +1480,114 @@ it('T084 confirms a resync recovery quit with its own copy and discards newer ch
   expect(
     screen.queryByRole('dialog', { name: 'Confirm quit and discard' }),
   ).not.toBeInTheDocument();
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+// Proves: FR-FT-016 — "Quit and discard newer unsaved changes MUST require a
+// second confirmation naming the affected documents". The two-step half of that
+// clause is proved by the case above; this proves the naming half, which is the
+// part that was missing: the confirmation asked the user to discard "the
+// affected documents" without ever saying which.
+it('T124 names every document whose newer changes the recovery quit discards', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  /*
+   * Two documents, one modified. The set the confirmation must name is the set
+   * whose newer edits the discard throws away — the documents FR-FT-016 keeps
+   * "modified against the committed baseline" — so a clean tab must not appear
+   * in it. Reading the projection is right here even though it is only a
+   * projection: rehydration is what failed, so the last delivered snapshot is
+   * the only record of what is about to be lost.
+   */
+  const twoDocumentState = ((): AppModelState => {
+    const base = bootstrapState('draft', 12);
+    const one = base.snapshot.documents['document-1'] as DocumentMetadata;
+    return {
+      ...base,
+      snapshot: {
+        ...base.snapshot,
+        documents: {
+          'document-1': { ...one, dirty: true },
+          'document-2': {
+            ...one,
+            documentId: 'document-2',
+            title: 'Two',
+            path: '/documents/two.md',
+            dirty: false,
+          },
+        },
+        orderedDocumentIds: ['document-1', 'document-2'],
+      },
+    };
+  })();
+  mockedAppModelAdapter.getState.mockResolvedValue(twoDocumentState);
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.reconcileCommittedWrite.mockReset().mockResolvedValue({
+    persistent: true,
+    savedOnDisk: true,
+    commandsBlocked: true,
+    closeBlocked: true,
+    message: 'The file was saved on disk, but editor-state recovery failed.',
+  });
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'committed',
+    data: {
+      documentId: 'document-1',
+      writtenContentRevision: 2,
+      committedProjectionRevision: 14,
+      targetPath: '/documents/one.md',
+      targetPathAdopted: false,
+      lineEndingOutcome: 'preserved-lf',
+      bomOutcome: 'absent',
+      resyncRequired: true,
+    },
+  });
+  mockedNativeLifecycleAdapter.onCloseRequested.mockReset();
+  mockedNativeLifecycleAdapter.requestQuit.mockReset();
+  mockedNativeLifecycleAdapter.cancelQuit.mockReset().mockResolvedValue();
+  let requestListener: (() => void) | undefined;
+  mockedNativeLifecycleAdapter.onCloseRequested.mockImplementation(
+    (listener) => {
+      requestListener = listener;
+      return jest.fn();
+    },
+  );
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+
+  const recovery = await screen.findByRole('alert', {
+    name: 'Editor recovery needed',
+  });
+  fireEvent.click(
+    within(recovery).getByRole('button', {
+      name: 'Quit and discard newer unsaved changes',
+    }),
+  );
+  await waitFor(() => expect(requestListener).toBeDefined());
+  act((): void => {
+    requestListener?.();
+  });
+
+  const confirm = await screen.findByRole('dialog', {
+    name: 'Confirm quit and discard',
+  });
+  const affected = within(confirm).getByRole('list', {
+    name: 'Documents with newer unsaved changes',
+  });
+  // The names carry the tab strip's bidi isolates, because they are the tab
+  // labels: a right-to-left filename must not reorder the sentence around it.
+  const affectedNames = within(affected)
+    .getAllByRole('listitem')
+    .map((item) => (item.textContent ?? '').replaceAll(/[\u2068\u2069]/gu, ''));
+  expect(affectedNames).toEqual(['one.md']);
+
+  fireEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }));
   store.dispatch(resetNotifications());
   act((): void => disposeAppModelProjection());
 });
