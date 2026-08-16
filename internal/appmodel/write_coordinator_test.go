@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"reflect"
 	"sync/atomic"
 	"testing"
 
@@ -66,7 +67,8 @@ func TestWriteCoordinator(t *testing.T) {
 	}
 }
 
-// Proves: FR-FT-016 (partial — resyncRequired and exactly-one-write; the recorded snapshot is not read back; T157)
+// Proves: FR-FT-016 (partial — resyncRequired and exactly-one-write; the
+// recorded snapshot is read back by the sibling below)
 func TestCommittedWriteProjectionFailure(t *testing.T) {
 	var writes atomic.Int32
 	coordinator := NewDocumentWriteCoordinator(
@@ -85,6 +87,67 @@ func TestCommittedWriteProjectionFailure(t *testing.T) {
 	}
 	if writes.Load() != 1 {
 		t.Fatalf("writes = %d, want exactly one replacement", writes.Load())
+	}
+}
+
+// Proves: FR-FT-016 — "the backend disk baseline MUST record the exact written
+// snapshot even if projection delivery fails", and "MUST NOT repeat or roll
+// back the write". Its sibling above proves the failure is reported as needing
+// resynchronization; neither it nor anything else read the recorded snapshot
+// back, so "exact" was unasserted.
+//
+// Reading it back is the whole point of the clause. Recovery reconstructs the
+// document's baseline from this record after the projection is gone, so a
+// record that is merely present but carries the wrong revision, the wrong
+// bytes or the wrong target reconstructs a baseline the file does not have —
+// and the document would come back either falsely clean or falsely dirty. The
+// second Commit of the same snapshot asserts the other half: the retry a
+// recovery performs must reuse the record, not replace the file again.
+func TestCommittedWriteRecordsTheExactSnapshotAndDoesNotRewriteIt(t *testing.T) {
+	var writes atomic.Int32
+	committedVersion := file.DiskVersion{Exists: true, Size: 11, ModifiedUnixNano: 1_700_000_000, Mode: 0o640}
+	coordinator := NewDocumentWriteCoordinator(
+		func(WriteSnapshot) (file.DiskVersion, error) {
+			writes.Add(1)
+			return committedVersion, nil
+		},
+		func(CommittedWriteResult) error { return errors.New("projection delivery failed") },
+	)
+	requested := WriteSnapshot{
+		DocumentID:       "doc-42",
+		ContentRevision:  7,
+		CanonicalContent: "exact bytes",
+		TargetPath:       "/documents/notes.md",
+	}
+
+	result, err := coordinator.Commit(requested)
+	if err != nil {
+		t.Fatalf("committed write returned error: %v", err)
+	}
+	if !result.ResyncRequired {
+		t.Fatalf("result = %+v, want resynchronization required", result)
+	}
+	if result.Snapshot.DocumentID != requested.DocumentID ||
+		result.Snapshot.ContentRevision != requested.ContentRevision ||
+		result.Snapshot.CanonicalContent != requested.CanonicalContent ||
+		result.Snapshot.TargetPath != requested.TargetPath {
+		t.Fatalf("recorded snapshot = %+v, want the exact request %+v", result.Snapshot, requested)
+	}
+	if !result.DiskVersion.Equal(committedVersion) {
+		t.Fatalf("recorded disk version = %+v, want the version the replacement committed %+v", result.DiskVersion, committedVersion)
+	}
+
+	// The recovery retry: the same snapshot, offered again after the failed
+	// projection. It must return the record, not perform a second replacement.
+	replayed, err := coordinator.Commit(requested)
+	if err != nil {
+		t.Fatalf("replayed commit returned error: %v", err)
+	}
+	if writes.Load() != 1 {
+		t.Fatalf("replacements = %d, want the committed write neither repeated nor rolled back", writes.Load())
+	}
+	if !reflect.DeepEqual(replayed.Snapshot, result.Snapshot) || !replayed.DiskVersion.Equal(result.DiskVersion) {
+		t.Fatalf("replayed record = %+v, want the same recorded snapshot %+v", replayed, result)
 	}
 }
 

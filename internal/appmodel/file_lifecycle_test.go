@@ -8,7 +8,8 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 )
 
-// Proves: FR-FT-001 (partial — the "regardless of the default open mode" clause is unproven; T157)
+// Proves: FR-FT-001 (partial — every clause at the Editor default; the
+// "regardless of the default open mode" clause is proved by the sibling below)
 func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 	emitter := &recordingEmitter{}
 	service := NewEmptyAppModelService(emitter)
@@ -57,6 +58,52 @@ func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 	patch := emitter.patches[0]
 	if patch.Documents == nil || patch.Documents.Upsert[documentID].Path != "" || patch.ActiveDocument == nil || !patch.ActiveDocument.Present {
 		t.Fatalf("New patch = %+v, want metadata/order/active transition", patch)
+	}
+}
+
+// Proves: FR-FT-001 — the "regardless of the default open mode" clause, which
+// no body asserted until T157.
+//
+// The clause is not decorative. Open genuinely branches on the setting:
+// `openArrangement` (`file_lifecycle.go:418-426`) returns ArrangementPreview
+// whenever the acknowledged default is Reading, and since T119 that setting
+// really does reach the backend. New must not follow it — an empty untitled
+// document has nothing to read, so a Reading arrangement would open the
+// preview pane over a blank buffer and hide the only editable surface.
+func TestNewDocumentIgnoresTheReadingDefaultOpenMode(t *testing.T) {
+	clock := &fakeAutosaveClock{}
+	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service.SetDefaultOpenMode(OpenModeViewer)
+	if got := service.DefaultOpenMode(); got != OpenModeViewer {
+		t.Fatalf("DefaultOpenMode() = %q, want the Reading default in force for this case", got)
+	}
+
+	before, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState before New: %v", err)
+	}
+	outcome := service.NewDocument(context.Background(), before.Snapshot.TabSetRevision)
+	if outcome.Error != nil || outcome.Data == nil {
+		t.Fatalf("NewDocument under the Reading default = %+v", outcome)
+	}
+	after, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState after New: %v", err)
+	}
+	documentID := outcome.Data.DocumentID
+	metadata := after.Snapshot.Documents[documentID]
+
+	if metadata.View.Arrangement != ArrangementEditor || !metadata.View.EditorVisible || metadata.View.PreviewVisible {
+		t.Fatalf("New under the Reading default = %+v, want Editor mode regardless of the setting", metadata.View)
+	}
+	if metadata.Path != "" || metadata.Title != "Untitled" {
+		t.Fatalf("New identity under the Reading default = %+v, want an untitled document with no path", metadata)
+	}
+	if metadata.Encoding != "utf-8" || metadata.BOM != "absent" || metadata.LineEnding != "lf" {
+		t.Fatalf("New characteristics under the Reading default = %+v, want UTF-8/LF/no BOM", metadata)
+	}
+	if pending := clock.Pending(); pending != 0 {
+		t.Fatalf("New under the Reading default scheduled %d automatic writes, want none", pending)
 	}
 }
 

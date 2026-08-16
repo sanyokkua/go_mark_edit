@@ -194,7 +194,10 @@ func TestWaitingDocumentsProjectBlockedByConflict(t *testing.T) {
 	}
 }
 
-// Proves: FR-FT-022 (partial — only the edit and second-disk-change invalidators; reload, save, save-as, close and path change are unproven; T157)
+// Proves: FR-FT-022 (partial — the edit invalidator; reload, successful Save,
+// successful Save As, close and path change are proved by
+// TestKeepMineAuthorizationIsInvalidatedByEveryNamedEvent, and the
+// second-disk-change invalidator by TestKeepMineSecondDiskChangeRefuses)
 func TestKeepMineAuthorizationInvalidation(t *testing.T) {
 	service, path, documentID := openConflictDocument(t, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
@@ -215,6 +218,172 @@ func TestKeepMineAuthorizationInvalidation(t *testing.T) {
 	stale := service.Save(context.Background(), documentID, 1, authorized.DecisionToken)
 	if stale.Status != apperr.WriteStatusRefused || stale.Error == nil || stale.Error.Category != apperr.ClassifiedConflict {
 		t.Fatalf("stale token Save = %+v", stale)
+	}
+}
+
+// conflictedDocumentWithTwoAuthorizations puts a document into an unresolved
+// external conflict and mints two Keep-mine authorizations against it.
+//
+// Two, not one, is what makes the "successful Save" and "successful Save As"
+// arms observable at all: those writes *consume* the token they are handed, so
+// a single token cannot distinguish "the write used it" from "the write
+// invalidated the document's authorizations". The second token is never
+// presented to anything; the requirement says the successful write must kill it
+// anyway.
+func conflictedDocumentWithTwoAuthorizations(t *testing.T) (service *AppModelService, path, documentID, used, spectator string) {
+	t.Helper()
+	service, path, documentID = openConflictDocument(t, "base\n")
+	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	writeConflictFile(t, path, "external\n")
+	blocked := service.Save(context.Background(), documentID, 1, "")
+	if blocked.Status != apperr.WriteStatusConflict || blocked.Conflict == nil {
+		t.Fatalf("Save = %+v, want an unresolved external conflict", blocked)
+	}
+	first := service.AuthorizeKeepMine(context.Background(), documentID, 1, path, blocked.Conflict.DetectedDiskVersion)
+	second := service.AuthorizeKeepMine(context.Background(), documentID, 1, path, blocked.Conflict.DetectedDiskVersion)
+	if first.DecisionToken == "" || second.DecisionToken == "" || first.DecisionToken == second.DecisionToken {
+		t.Fatalf("authorizations = %+v / %+v, want two distinct live tokens", first, second)
+	}
+	if count := liveKeepMineTokens(service, documentID); count != 2 {
+		t.Fatalf("live Keep-mine authorizations = %d, want 2", count)
+	}
+	return service, path, documentID, first.DecisionToken, second.DecisionToken
+}
+
+func liveKeepMineTokens(service *AppModelService, documentID string) int {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	count := 0
+	for _, authorization := range service.keepMine {
+		if authorization.documentID == documentID {
+			count++
+		}
+	}
+	return count
+}
+
+// Proves: FR-FT-022 — the five invalidators no body asserted before T157:
+// "Reload, successful Save, successful Save As, close, path change … MUST
+// invalidate a Keep-mine authorization". The edit and second-disk-change arms
+// are proved by the two siblings above; authorization use is proved by
+// TestExternalConflictDecision, which spends a token and then observes the
+// conflict resolved.
+//
+// A Keep-mine authorization is a standing licence to overwrite a specific set
+// of bytes on disk. Every event here changes what is on disk, or which file the
+// document points at, or removes the document entirely — so a surviving licence
+// would authorize a write against a comparison the user never saw.
+func TestKeepMineAuthorizationIsInvalidatedByEveryNamedEvent(t *testing.T) {
+	t.Run("reload from disk", func(t *testing.T) {
+		service, path, documentID, used, spectator := conflictedDocumentWithTwoAuthorizations(t)
+		detected := service.CheckExternalChanges(context.Background(), documentID)
+		if detected.Status != apperr.ConflictStatusDetected || detected.Preview == nil {
+			t.Fatalf("CheckExternalChanges = %+v, want the queued conflict", detected)
+		}
+		reloaded := service.ReloadFromDisk(context.Background(), documentID, 1, detected.Preview.DetectedDiskVersion)
+		if reloaded.Status != apperr.ConflictStatusReloaded {
+			t.Fatalf("ReloadFromDisk = %+v, want a reload", reloaded)
+		}
+		assertKeepMineTokensDead(t, service, documentID, used, spectator)
+		assertStaleKeepMineBuysNothing(t, service, path, documentID, used, spectator)
+	})
+
+	t.Run("successful Save", func(t *testing.T) {
+		service, path, documentID, used, spectator := conflictedDocumentWithTwoAuthorizations(t)
+		committed := service.Save(context.Background(), documentID, 1, used)
+		if committed.Status != apperr.WriteStatusCommitted {
+			t.Fatalf("authorized Save = %+v, want committed", committed)
+		}
+		if got := readConflictFile(t, path); got != "mine\n" {
+			t.Fatalf("disk after the authorized Save = %q", got)
+		}
+		assertKeepMineTokensDead(t, service, documentID, used, spectator)
+		assertStaleKeepMineBuysNothing(t, service, path, documentID, used, spectator)
+	})
+
+	t.Run("successful Save As, and the path change it makes", func(t *testing.T) {
+		service, path, documentID, used, spectator := conflictedDocumentWithTwoAuthorizations(t)
+		target := filepath.Join(t.TempDir(), "adopted.md")
+		service.SetDocumentSaveDialog(&saveDialogFixture{path: target, confirm: true})
+
+		committed := service.SaveAs(context.Background(), documentID, 1, used)
+		if committed.Status != apperr.WriteStatusCommitted || committed.Data == nil || !committed.Data.TargetPathAdopted {
+			t.Fatalf("authorized Save As = %+v, want a committed write that adopts the new path", committed)
+		}
+		state, err := service.GetState(context.Background())
+		if err != nil {
+			t.Fatalf("GetState after Save As: %v", err)
+		}
+		if adopted := state.Snapshot.Documents[documentID].Path; adopted == path {
+			t.Fatalf("document path = %q, want the adopted Save As target rather than the original", adopted)
+		}
+		assertKeepMineTokensDead(t, service, documentID, used, spectator)
+		assertStaleKeepMineBuysNothing(t, service, target, documentID, used, spectator)
+	})
+
+	t.Run("close", func(t *testing.T) {
+		service, _, documentID, used, spectator := conflictedDocumentWithTwoAuthorizations(t)
+		state, err := service.GetState(context.Background())
+		if err != nil {
+			t.Fatalf("GetState before the close plan: %v", err)
+		}
+		plan := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{documentID}, state.Snapshot.TabSetRevision)
+		if plan.Error != nil || plan.Data == nil {
+			t.Fatalf("PrepareClose = %+v", plan)
+		}
+		resolved := service.ResolveClosePlan(context.Background(), plan.Data.ID, []apperr.ClosePlanDecision{{DocumentID: documentID, Choice: apperr.CloseChoiceDiscard}})
+		if resolved.Error != nil || resolved.Data == nil || resolved.Data.Status != apperr.ClosePlanReady {
+			t.Fatalf("ResolveClosePlan = %+v, want a ready discard", resolved)
+		}
+		if executed := service.ExecuteClosePlan(context.Background(), plan.Data.ID); executed.Error != nil {
+			t.Fatalf("ExecuteClosePlan = %+v", executed)
+		}
+		if state, err = service.GetState(context.Background()); err != nil {
+			t.Fatalf("GetState after the close: %v", err)
+		}
+		if _, stillOpen := state.Snapshot.Documents[documentID]; stillOpen {
+			t.Fatalf("document %q survived the discard close", documentID)
+		}
+		assertKeepMineTokensDead(t, service, documentID, used, spectator)
+	})
+}
+
+// assertKeepMineTokensDead checks the authorization table: neither token may
+// survive the invalidating event.
+func assertKeepMineTokensDead(t *testing.T, service *AppModelService, documentID string, tokens ...string) {
+	t.Helper()
+	if count := liveKeepMineTokens(service, documentID); count != 0 {
+		t.Fatalf("live Keep-mine authorizations = %d, want none after the invalidating event", count)
+	}
+	for _, token := range tokens {
+		service.mu.RLock()
+		_, present := service.keepMine[token]
+		service.mu.RUnlock()
+		if present {
+			t.Fatalf("token %q survived the invalidating event", token)
+		}
+	}
+}
+
+// assertStaleKeepMineBuysNothing checks the consequence, which is the half that
+// matters: after the invalidating event a *new* external change appears, and
+// presenting the dead token must not overwrite it. An authorization that merely
+// vanishes from a map while the write path still honours it would satisfy the
+// table check above and none of the requirement.
+func assertStaleKeepMineBuysNothing(t *testing.T, service *AppModelService, path, documentID string, tokens ...string) {
+	t.Helper()
+	for index, token := range tokens {
+		external := "changed after the invalidating event " + string(rune('a'+index)) + "\n"
+		writeConflictFile(t, path, external)
+		result := service.Save(context.Background(), documentID, 1, token)
+		if result.Status == apperr.WriteStatusCommitted {
+			t.Fatalf("a Save presenting the invalidated token %q overwrote an unseen external change: %+v", token, result)
+		}
+		if got := readConflictFile(t, path); got != external {
+			t.Fatalf("disk after the refused Save = %q, want the external change intact", got)
+		}
 	}
 }
 

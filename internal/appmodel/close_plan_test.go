@@ -52,7 +52,8 @@ func TestClosePlanCompletenessAndCancel(t *testing.T) {
 	}
 }
 
-// Proves: FR-FT-026 (partial — order and first-failure stop; conflict resolution before each save is unproven; T157)
+// Proves: FR-FT-026 (partial — order and first-failure stop; "resolve external
+// conflicts before each affected save" is proved by the sibling below)
 func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 	service := NewAppModelService(&recordingEmitter{})
 	firstPath, firstID := openAutosaveDocument(t, service, "first base\n")
@@ -113,6 +114,104 @@ func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 	}
 	if disk, err := os.ReadFile(secondPath); err != nil || string(disk) != "second base\n" {
 		t.Fatalf("second disk after failed batch = %q, err=%v", disk, err)
+	}
+}
+
+// Proves: FR-FT-026 — "A multi-document Save all MUST resolve external
+// conflicts before each affected save". The order and first-failure clauses are
+// proved by the sibling above; nothing asserted this one before T157.
+//
+// The failure this forbids is partial and irreversible. Two documents are
+// queued for Save all and the *second* one has changed on disk underneath. If
+// the batch discovered that only when it reached the second write, the first
+// file would already have been replaced while the user was still being asked
+// about the second — a half-applied Save all whose remaining half needs a fresh
+// plan. So the assertion is not "the conflict is reported" but "zero writes
+// happened when it was reported", and then that the same batch completes once
+// the conflict is answered.
+func TestClosePlanResolvesEveryExternalConflictBeforeAnySaveRuns(t *testing.T) {
+	service := NewAppModelService(&recordingEmitter{})
+	service.SetAutosaveEnabled(false)
+	firstPath, firstID := openAutosaveDocument(t, service, "first base\n")
+	secondPath, secondID := openAutosaveDocument(t, service, "second base\n")
+	if err := service.UpdateBuffer(context.Background(), firstID, "first edited\n"); err != nil {
+		t.Fatalf("first edit: %v", err)
+	}
+	if err := service.UpdateBuffer(context.Background(), secondID, "second edited\n"); err != nil {
+		t.Fatalf("second edit: %v", err)
+	}
+
+	var writes atomic.Int32
+	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		writes.Add(1)
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.encodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+		return replaced.Version, err
+	})
+
+	// Only the second target is changed underneath, so a batch that inspected
+	// lazily would write the first file before ever noticing.
+	if err := os.WriteFile(secondPath, []byte("changed by another program\n"), 0o640); err != nil {
+		t.Fatalf("external change to the second target: %v", err)
+	}
+
+	state, _ := service.GetState(context.Background())
+	plan := service.PrepareClose(context.Background(), apperr.ClosePlanRight, []string{firstID, secondID}, state.Snapshot.TabSetRevision)
+	if plan.Error != nil || plan.Data == nil {
+		t.Fatalf("PrepareClose = %+v", plan)
+	}
+
+	blocked := service.ResolveClosePlan(context.Background(), plan.Data.ID, []apperr.ClosePlanDecision{{Choice: apperr.CloseChoiceSaveAll}})
+	if blocked.Error != nil || blocked.Data == nil {
+		t.Fatalf("ResolveClosePlan = %+v", blocked)
+	}
+	if blocked.Data.Status == apperr.ClosePlanReady {
+		t.Fatalf("close plan status = %q, want it held short of ready while a conflict is unresolved", blocked.Data.Status)
+	}
+	var conflicted *apperr.ConflictPreview
+	for _, target := range blocked.Data.Targets {
+		if target.DocumentID == secondID {
+			conflicted = target.Conflict
+		} else if target.Conflict != nil {
+			t.Fatalf("target %q reported a conflict it does not have: %+v", target.DocumentID, target.Conflict)
+		}
+	}
+	if conflicted == nil {
+		t.Fatalf("no conflict surfaced for the externally changed target: %+v", blocked.Data.Targets)
+	}
+	if got := writes.Load(); got != 0 {
+		t.Fatalf("writes performed while a conflict was still unresolved = %d, want 0", got)
+	}
+	if disk, err := os.ReadFile(firstPath); err != nil || string(disk) != "first base\n" {
+		t.Fatalf("the unconflicted document was written before the batch was resolvable: %q / %v", disk, err)
+	}
+
+	authorized := service.AuthorizeKeepMine(context.Background(), secondID, 1, secondPath, conflicted.DetectedDiskVersion)
+	if authorized.Status != apperr.ConflictStatusAuthorized || authorized.DecisionToken == "" {
+		t.Fatalf("Keep mine on the batch target = %+v", authorized)
+	}
+	resolved := service.ResolveClosePlan(context.Background(), plan.Data.ID, []apperr.ClosePlanDecision{
+		{Choice: apperr.CloseChoiceSaveAll},
+		{DocumentID: secondID, Choice: apperr.CloseChoiceSave, DecisionToken: authorized.DecisionToken},
+	})
+	if resolved.Error != nil || resolved.Data == nil || resolved.Data.Status != apperr.ClosePlanReady {
+		t.Fatalf("ResolveClosePlan after the conflict decision = %+v, want ready", resolved)
+	}
+	if got := writes.Load(); got != 0 {
+		t.Fatalf("writes performed during resolution = %d, want the batch still unstarted", got)
+	}
+
+	executed := service.ExecuteClosePlan(context.Background(), plan.Data.ID)
+	if executed.Error != nil {
+		t.Fatalf("ExecuteClosePlan = %+v", executed)
+	}
+	if got := writes.Load(); got != 2 {
+		t.Fatalf("writes after the resolved batch = %d, want both saves", got)
+	}
+	if disk, err := os.ReadFile(firstPath); err != nil || string(disk) != "first edited\n" {
+		t.Fatalf("first file after the resolved batch = %q / %v", disk, err)
+	}
+	if disk, err := os.ReadFile(secondPath); err != nil || string(disk) != "second edited\n" {
+		t.Fatalf("second file after the resolved batch = %q / %v", disk, err)
 	}
 }
 

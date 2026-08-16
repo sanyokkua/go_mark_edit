@@ -164,7 +164,9 @@ func TestAutosaveDebounceAndEligibility(t *testing.T) {
 	}
 }
 
-// Proves: FR-FT-018 (partial — cancellation and no catch-up on disk; "dirty documents stay dirty" is unproven as state; T157)
+// Proves: FR-FT-018 (partial — cancellation and no catch-up on disk; "existing
+// dirty documents MUST stay dirty" is proved as projected state by
+// TestAutosaveOffLeavesExistingDirtyDocumentsDirty in autosave_disabled_test.go)
 func TestAutosaveOffHasNoCatchUp(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)

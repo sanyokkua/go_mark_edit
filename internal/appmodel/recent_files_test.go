@@ -3,9 +3,11 @@ package appmodel
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -13,7 +15,9 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
-// Proves: FR-FT-039 (partial — the cap, dedupe, order and prune; promotion on explicit Save and Save As is unproven; T157)
+// Proves: FR-FT-039 (partial — the cap, dedupe, order and prune at the
+// repository; promotion on explicit Save and Save As is proved by
+// TestExplicitSaveAndSaveAsPromoteRecency)
 func TestRecentFilesMRUPersistenceAndLazyPrune(t *testing.T) {
 	database, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "recents.db"))
 	if err != nil {
@@ -266,7 +270,86 @@ func TestAutosaveAndReloadDoNotChangeRecency(t *testing.T) {
 	}
 }
 
-// Proves: FR-FT-028 (partial — the 40-entry newest-first cap; "no untitled documents or source content retained" is unproven; T157)
+// Proves: FR-FT-039 — "Every successful canonical Open/focus, explicit Save, or
+// Save As MUST promote its path". Open promotion is proved by
+// TestPromotionFailureEmitsPersistenceWarningWithoutRollback and the
+// non-promoters by TestAutosaveAndReloadDoNotChangeRecency; the two write
+// promoters had no covering body until T157.
+//
+// This is exactly the shape of the omission TestAutosaveAndReloadDoNotChangeRecency
+// guards from the other side: `save.go:365` decides to promote from the write's
+// SaveOrigin, so dropping either origin from that predicate is a one-token edit
+// that no assertion would have noticed, and Save would quietly stop being a
+// recency event.
+func TestExplicitSaveAndSaveAsPromoteRecency(t *testing.T) {
+	repository := &recordingRecentFilesRepository{}
+	service := NewAppModelService(&recordingEmitter{})
+	service.SetAutosaveEnabled(false)
+	service.SetRecentFilesRepository(repository)
+
+	root := t.TempDir()
+	firstPath := filepath.Join(root, "first.md")
+	secondPath := filepath.Join(root, "second.md")
+	for _, path := range []string{firstPath, secondPath} {
+		if err := os.WriteFile(path, []byte("base\n"), 0o600); err != nil {
+			t.Fatalf("write fixture %s: %v", path, err)
+		}
+	}
+	first := service.OpenPath(context.Background(), firstPath, 0)
+	if first.Error != nil {
+		t.Fatalf("open first = %+v", first.Error)
+	}
+	second := service.OpenPath(context.Background(), secondPath, serviceTabRevision(t, service))
+	if second.Error != nil {
+		t.Fatalf("open second = %+v", second.Error)
+	}
+	afterOpens, err := repository.List(context.Background())
+	if err != nil {
+		t.Fatalf("list after opens: %v", err)
+	}
+	if len(afterOpens) != 2 || filepath.Base(afterOpens[0]) != "second.md" {
+		t.Fatalf("recency after opens = %v, want the second file newest", afterOpens)
+	}
+
+	// An explicit Save of the older document must move it back to the front.
+	if err := service.UpdateBuffer(context.Background(), first.DocumentID, "edited\n"); err != nil {
+		t.Fatalf("edit the first document: %v", err)
+	}
+	if saved := service.Save(context.Background(), first.DocumentID, 1, ""); saved.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("explicit Save = %+v", saved)
+	}
+	afterSave, err := repository.List(context.Background())
+	if err != nil {
+		t.Fatalf("list after the explicit Save: %v", err)
+	}
+	if len(afterSave) != 2 || filepath.Base(afterSave[0]) != "first.md" || filepath.Base(afterSave[1]) != "second.md" {
+		t.Fatalf("recency after the explicit Save = %v, want first.md promoted over second.md", afterSave)
+	}
+
+	// Save As promotes the *adopted* path, and the source path keeps its place.
+	adopted := filepath.Join(root, "adopted.md")
+	service.SetDocumentSaveDialog(&saveDialogFixture{path: adopted, confirm: true})
+	if err := service.UpdateBuffer(context.Background(), second.DocumentID, "edited too\n"); err != nil {
+		t.Fatalf("edit the second document: %v", err)
+	}
+	if savedAs := service.SaveAs(context.Background(), second.DocumentID, 1, ""); savedAs.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("Save As = %+v", savedAs)
+	}
+	afterSaveAs, err := repository.List(context.Background())
+	if err != nil {
+		t.Fatalf("list after Save As: %v", err)
+	}
+	if len(afterSaveAs) != 3 || filepath.Base(afterSaveAs[0]) != "adopted.md" {
+		t.Fatalf("recency after Save As = %v, want the adopted path newest", afterSaveAs)
+	}
+	if filepath.Base(afterSaveAs[1]) != "first.md" || filepath.Base(afterSaveAs[2]) != "second.md" {
+		t.Fatalf("recency after Save As = %v, want the earlier order preserved beneath the adopted path", afterSaveAs)
+	}
+}
+
+// Proves: FR-FT-028 (partial — the 40-entry newest-first cap; "Untitled
+// documents and source content MUST NOT be retained" is proved by
+// TestRecentlyClosedHistoryRetainsNoUntitledDocumentAndNoSourceContent)
 func TestRecentlyClosedHistory(t *testing.T) {
 	service := NewEmptyAppModelService(&recordingEmitter{})
 	for index := 0; index < 41; index++ {
@@ -294,6 +377,114 @@ func TestRecentlyClosedHistory(t *testing.T) {
 	if service.state.recentlyClosed[0].path == "" || service.state.recentlyClosed[0].identity == "" {
 		t.Fatalf("newest closed entry = %+v, want canonical path and identity", service.state.recentlyClosed[0])
 	}
+}
+
+// Proves: FR-FT-028 — "Untitled documents and source content MUST NOT be
+// retained" in the recently-closed history. The cap and ordering are proved by
+// the sibling above; this clause had no covering body until T157.
+//
+// It is a privacy and correctness rule at once. Reopen last file re-reads from
+// disk (TestReopenLastFileLifecycle proves it returns the *current* bytes), so
+// retaining the source would keep a copy of every closed document's text alive
+// in a window's memory for no purpose, and an untitled entry would offer a
+// Reopen with no file behind it.
+//
+// The content half is asserted reflectively rather than against the three
+// fields the entry happens to have today, so adding a `content` field to
+// recentlyClosedDocument fails this test instead of silently passing it.
+func TestRecentlyClosedHistoryRetainsNoUntitledDocumentAndNoSourceContent(t *testing.T) {
+	const marker = "SOURCE-CONTENT-MARKER-a1b2c3\n"
+
+	service := NewAppModelService(&recordingEmitter{})
+	service.SetAutosaveEnabled(false)
+
+	// An untitled document, closed while empty so no close plan is needed.
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState before New: %v", err)
+	}
+	untitled := service.NewDocument(context.Background(), state.Snapshot.TabSetRevision)
+	if untitled.Data == nil {
+		t.Fatalf("NewDocument = %+v", untitled)
+	}
+	closed := service.CloseDocument(context.Background(), untitled.Data.DocumentID, serviceTabRevision(t, service))
+	if closed.Error != nil {
+		t.Fatalf("close the untitled document = %+v", closed.Error)
+	}
+	service.mu.RLock()
+	untitledEntries := len(service.state.recentlyClosed)
+	canReopen := service.state.canReopenLastFile
+	service.mu.RUnlock()
+	if untitledEntries != 0 || canReopen {
+		t.Fatalf("closing an untitled document left %d recently-closed entries (canReopen=%t), want none", untitledEntries, canReopen)
+	}
+
+	// A path-backed document whose buffer holds a distinctive marker.
+	path := filepath.Join(t.TempDir(), "retained.md")
+	if err := os.WriteFile(path, []byte(marker), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	opened := service.OpenPath(context.Background(), path, serviceTabRevision(t, service))
+	if opened.Error != nil {
+		t.Fatalf("open = %+v", opened.Error)
+	}
+	if opened.ActiveBuffer == nil || opened.ActiveBuffer.Content != marker {
+		t.Fatalf("opened buffer = %+v, want the marker content in memory while the document is open", opened.ActiveBuffer)
+	}
+	if closed := service.CloseDocument(context.Background(), opened.DocumentID, serviceTabRevision(t, service)); closed.Error != nil {
+		t.Fatalf("close = %+v", closed.Error)
+	}
+
+	service.mu.RLock()
+	entries := append([]recentlyClosedDocument(nil), service.state.recentlyClosed...)
+	service.mu.RUnlock()
+	if len(entries) != 1 {
+		t.Fatalf("recently-closed entries = %d, want the one path-backed close", len(entries))
+	}
+	if filepath.Base(entries[0].path) != "retained.md" {
+		t.Fatalf("retained entry = %+v, want the closed document's canonical path", entries[0])
+	}
+	if found := stringFieldsContaining(reflect.ValueOf(entries[0]), "SOURCE-CONTENT-MARKER"); len(found) != 0 {
+		t.Fatalf("the recently-closed entry retained the document's source content in %v", found)
+	}
+}
+
+// stringFieldsContaining walks a struct and reports the dotted field paths of
+// every string that contains needle.
+func stringFieldsContaining(value reflect.Value, needle string) []string {
+	var found []string
+	var walk func(reflect.Value, string)
+	walk = func(current reflect.Value, path string) {
+		switch current.Kind() {
+		case reflect.String:
+			if strings.Contains(current.String(), needle) {
+				found = append(found, path)
+			}
+		case reflect.Struct:
+			for index := 0; index < current.NumField(); index++ {
+				name := current.Type().Field(index).Name
+				if path != "" {
+					name = path + "." + name
+				}
+				walk(current.Field(index), name)
+			}
+		case reflect.Pointer, reflect.Interface:
+			if !current.IsNil() {
+				walk(current.Elem(), path)
+			}
+		case reflect.Slice, reflect.Array:
+			for index := 0; index < current.Len(); index++ {
+				walk(current.Index(index), fmt.Sprintf("%s[%d]", path, index))
+			}
+		case reflect.Map:
+			for _, key := range current.MapKeys() {
+				walk(current.MapIndex(key), fmt.Sprintf("%s[%v]", path, key))
+			}
+		default:
+		}
+	}
+	walk(value, "")
+	return found
 }
 
 func TestReopenLastFileLifecycle(t *testing.T) {

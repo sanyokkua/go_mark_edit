@@ -49,7 +49,8 @@ func newSaveDocument(t *testing.T, service *AppModelService, content string) str
 	return created.Data.DocumentID
 }
 
-// Proves: FR-FT-012 (partial — the Save-As fallback and .md append; rejection of an unsupported suffix through SaveAs is unproven; T157)
+// Proves: FR-FT-012 (partial — the Save-As fallback and the .md append; the
+// unsupported-suffix rejection is proved by the sibling below)
 func TestSaveAndSaveAs(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "Untitled")
 	dialog := &saveDialogFixture{path: target, confirm: true}
@@ -78,6 +79,63 @@ func TestSaveAndSaveAs(t *testing.T) {
 	document := state.Snapshot.Documents[documentID]
 	if document.Path != result.Data.TargetPath || document.Dirty || document.Status != string(SaveStatusSaved) {
 		t.Fatalf("saved metadata = %+v, want adopted clean saved document", document)
+	}
+}
+
+// Proves: FR-FT-012 — the clause that Save As "MUST … reject an unsupported
+// suffix before writing", which `file.IsSupportedDocumentSuffix`'s own unit
+// test could not reach: that test proves the predicate, not that Save As
+// consults it, nor that the refusal precedes the disk.
+//
+// "Before writing" is asserted three ways, because a refusal that arrives after
+// the native overwrite prompt has already been shown, or after a temporary file
+// has been created beside the target, is not a refusal before the write: the
+// overwrite confirmer must not have been called, no file may appear at the
+// selected path, and no entry may be left in the target-reservation table.
+func TestSaveAsRefusesAnUnsupportedSuffixBeforeWriting(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"notes.rtf", "notes.docx", "notes.md.exe"} {
+		t.Run(name, func(t *testing.T) {
+			target := filepath.Join(root, name)
+			dialog := &saveDialogFixture{path: target, confirm: true}
+			service := NewEmptyAppModelService(&recordingEmitter{})
+			service.SetDocumentSaveDialog(dialog)
+			documentID := newSaveDocument(t, service, "# rejected\n")
+
+			result := service.SaveAs(context.Background(), documentID, 1, "")
+
+			if result.Status != apperr.WriteStatusRefused {
+				t.Fatalf("Save As to %q = %q, want %q", name, result.Status, apperr.WriteStatusRefused)
+			}
+			if result.Error == nil || result.Error.Category != apperr.ClassifiedUnsupportedInput {
+				t.Fatalf("Save As refusal = %+v, want an unsupported-input classification", result.Error)
+			}
+			if dialog.confirmCalls != 0 {
+				t.Fatalf("overwrite confirmations = %d, want none: the suffix must be rejected before the write is prepared", dialog.confirmCalls)
+			}
+			if _, err := os.Stat(target); !os.IsNotExist(err) {
+				t.Fatalf("stat %q after the refusal = %v, want the file never to have been created", target, err)
+			}
+			entries, err := os.ReadDir(filepath.Dir(target))
+			if err != nil {
+				t.Fatalf("read target directory: %v", err)
+			}
+			for _, entry := range entries {
+				if entry.Name() == name || strings.HasPrefix(entry.Name(), name+".") {
+					t.Fatalf("the refused Save As left %q beside the target", entry.Name())
+				}
+			}
+			if len(service.saveReservations) != 0 {
+				t.Fatalf("save reservations after the refusal = %d, want none", len(service.saveReservations))
+			}
+			state, err := service.GetState(context.Background())
+			if err != nil {
+				t.Fatalf("GetState after the refusal: %v", err)
+			}
+			if document := state.Snapshot.Documents[documentID]; document.Path != "" || !document.Dirty {
+				t.Fatalf("document after the refusal = %+v, want an unadopted path and unsaved content", document)
+			}
+		})
 	}
 }
 
