@@ -1,5 +1,10 @@
 import type { DocumentMetadata } from '../../logic/store/appModelTypes';
-import { escapeUnsafeText, tabLabelFor, truncateTabLabel } from './tabLabel';
+import {
+  escapeUnsafeText,
+  tabLabelFor,
+  truncateTabLabel,
+  truncatedTabLabelParts,
+} from './tabLabel';
 
 function documentFor(documentId: string, path: string): DocumentMetadata {
   return {
@@ -67,4 +72,37 @@ it('ellipsis retains a distinguishing suffix and the complete label stays access
   expect(visual).toContain('…');
   expect(visual).toContain('first');
   expect(label.accessibleName).toBe(label.label);
+});
+
+/*
+ * T144: the split is what lets the layout give the *pixel* ellipsis to the
+ * basename. A joined string cannot express that, and the pixel budget clips its
+ * trailing edge — which is where the distinguishing suffix sits.
+ */
+// Proves: FR-FT-035 (partial — only that the visual label is split at the
+// separator so the suffix is addressable. That the suffix then survives the
+// pixel clip is a layout property and is proved in the browser by
+// 'T144 keeps the distinguishing suffix painted…' in real-files-and-tabs.test.ts.)
+it('T144 splits the visual tab label at the separator so the suffix is its own part', () => {
+  const documents = [
+    documentFor('one', '/repo/first/very-long-name.md'),
+    documentFor('two', '/repo/second/very-long-name.md'),
+  ];
+  const label = tabLabelFor(documents[0] as DocumentMetadata, documents);
+  const parts = truncatedTabLabelParts(label, 18);
+
+  expect(parts.basename).toContain('…');
+  expect(parts.suffix).toBe(' — ⁨first⁩');
+  expect(`${parts.basename}${parts.suffix}`).toBe(truncateTabLabel(label, 18));
+});
+
+// Proves: FR-FT-035 (partial — the no-suffix case keeps the single-part shape
+// the tab strip renders as one text node, which is what keeps the parity
+// fixtures' computed styles unchanged.)
+it('T144 leaves an unambiguous label as a single part with no suffix', () => {
+  const only = documentFor('one', '/repo/first/notes.md');
+  const parts = truncatedTabLabelParts(tabLabelFor(only, [only]), 42);
+
+  expect(parts.suffix).toBe('');
+  expect(parts.basename).toBe('⁨notes.md⁩');
 });

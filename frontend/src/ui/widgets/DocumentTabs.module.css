@@ -356,3 +356,43 @@
     transition: none;
   }
 }
+
+/*
+ * T144, FR-FT-035: "visual ellipsis MUST retain part of the distinguishing
+ * suffix". Two budgets truncate this label and they are in different units.
+ * `truncatedTabLabelParts(label, 42)` counts characters and elides inside the
+ * basename, which is correct; `.tabLabel`'s `max-width: var(--tab-max-width)`
+ * counts pixels and clips the *trailing* edge, which is where the ` \2014
+ * suffix` segment lives. Measured in Chromium at the tab's own 12.5px Roboto,
+ * the label has 129.33px to draw in — the 190px token less 60.67px of tab
+ * chrome — and a realistic disambiguated label crosses that at 21 characters,
+ * so the pixel clip always fired first and always removed the suffix.
+ *
+ * Reconciled in the layout rather than by lowering the character budget,
+ * because no character count can express a pixel budget in a proportional
+ * font: 42 is exactly how many `i` glyphs fit in 129.33px and only 11 `m` do.
+ * The basename is the flex item that shrinks and carries the ellipsis; the
+ * suffix never shrinks, so whatever the strip's width the distinguishing part
+ * is the part that survives.
+ *
+ * Scoped with `:has()` so a label with no suffix — every tab in every parity
+ * fixture, and the common case in use — keeps the single-text-node box it
+ * always had, down to `min-width: auto`, which the parity comparator compares.
+ */
+.tabLabel:has(> [data-tab-label-suffix]) {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.tabLabelBasename {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabLabelSuffix {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}

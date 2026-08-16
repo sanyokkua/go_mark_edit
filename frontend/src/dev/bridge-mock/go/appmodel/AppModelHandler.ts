@@ -294,6 +294,17 @@ const parityFileMenuRecentFiles = [
   '/tmp/release-notes.md',
   '/tmp/spec-draft.md',
 ];
+/*
+ * FR-FT-035's disambiguation is otherwise unreachable from a browser run: no
+ * default or parity fixture opens two files that share a basename, so the
+ * ` — suffix` segment the requirement protects could never be rendered end to
+ * end. Two paths, one basename, different parents — the shortest unique suffix
+ * is exactly one segment each.
+ */
+const duplicateBasenameRecentFiles = [
+  '/Users/parity/Notes/archive/release-notes.md',
+  '/Users/parity/Notes/projects/release-notes.md',
+];
 const parityLauncherRecentFiles = [
   '/tmp/parity-recent-06.md',
   '/tmp/parity-recent-05.md',
@@ -329,6 +340,9 @@ function seededRecentFiles(): string[] {
    */
   if (query.has('ft-vs-09')) {
     return [oversizeFixturePath];
+  }
+  if (query.has('duplicate-basenames')) {
+    return [...duplicateBasenameRecentFiles];
   }
   return query.has('ft-vs-07') ? [...e2eRecentFiles] : [];
 }
@@ -975,13 +989,32 @@ export function NewDocument(
   return Promise.resolve({ data: activeBuffer(document) });
 }
 
+function selectedBasename(path: string): string {
+  const normalized = path.replaceAll('\\', '/');
+  return normalized.slice(normalized.lastIndexOf('/') + 1) || 'selected.md';
+}
+
+/*
+ * Go keys a document on its canonical path (FR-FT-004), so two files sharing a
+ * basename in different directories are two documents. This mock keyed on the
+ * basename alone, so the second Open folded into the first and returned
+ * `focused` — which meant FR-FT-035's disambiguated label could not be produced
+ * in a browser run at all, and every defect behind it was unreachable. The
+ * basename stays the id while it is free, because every existing fixture
+ * depends on that; a basename already claimed by a different file falls back to
+ * the canonical path, which is what Go distinguishes on.
+ */
 function selectedDocumentId(
   path: string,
   requestedDocumentId?: string,
 ): string {
   if (requestedDocumentId !== undefined) return requestedDocumentId;
   const normalized = path.replaceAll('\\', '/');
-  return normalized.slice(normalized.lastIndexOf('/') + 1) || 'selected.md';
+  const basename = selectedBasename(normalized);
+  const claimed = documents[basename];
+  return claimed !== undefined && claimed.metadata.path !== normalized
+    ? normalized
+    : basename;
 }
 
 export function OpenDocument(
@@ -996,7 +1029,7 @@ export function OpenDocument(
     return Promise.resolve({ status: 'cancelled' });
   }
 
-  const displayName = selectedDocumentId(selection.path);
+  const displayName = selectedBasename(selection.path);
   const documentId = selectedDocumentId(selection.path, selection.documentId);
   const existing = documents[documentId];
   if (existing !== undefined) {

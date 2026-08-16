@@ -129,6 +129,42 @@ export function tabLabelFor(
   };
 }
 
+export interface TruncatedTabLabel {
+  /** The leading, non-distinguishing part: the basename, possibly elided. */
+  basename: string;
+  /** `' \u2014 ' + suffix`, or `''` when the label needs no disambiguation. */
+  suffix: string;
+}
+
+/**
+ * The visual label, split at the point FR-FT-035 protects.
+ *
+ * The requirement is that "visual ellipsis MUST retain part of the
+ * distinguishing suffix", and there are two ellipses, in two different units.
+ * This one is the character budget: it elides inside the basename and keeps a
+ * tail of the suffix, which is correct. The second is `.tabLabel`'s
+ * `max-width: var(--tab-max-width)` — a *pixel* budget whose `text-overflow`
+ * clips the trailing edge, which is exactly where the suffix sits. Measured in
+ * Chromium at the tab's own 12.5px Roboto the label has 129.33px to draw in and
+ * a realistic disambiguated label crosses it at 21 characters, so the pixel
+ * clip always wins and the suffix is what it removes.
+ *
+ * No character budget can reconcile that in a proportional font — 42 is exactly
+ * how many `i` glyphs fit in 129.33px and only 11 `m` do — so the two parts are
+ * returned separately and the layout gives the pixel ellipsis to the basename.
+ */
+export function truncatedTabLabelParts(
+  label: TabLabel,
+  maxLength: number,
+): TruncatedTabLabel {
+  const visual = truncateTabLabel(label, maxLength);
+  const separator = ' \u2014 ';
+  const at = visual.lastIndexOf(separator);
+  return label.suffix === undefined || at < 0
+    ? { basename: visual, suffix: '' }
+    : { basename: visual.slice(0, at), suffix: visual.slice(at) };
+}
+
 export function truncateTabLabel(label: TabLabel, maxLength: number): string {
   if (maxLength <= 0) return '';
   if (label.label.length <= maxLength) return label.label;

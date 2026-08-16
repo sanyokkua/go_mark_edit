@@ -800,3 +800,67 @@ test('FT-VS-10 dispatches the File accelerators the menu advertises', async ({
   await page.keyboard.press('ControlOrMeta+w');
   await expect(page.getByRole('tab')).toHaveCount(openedTabs);
 });
+
+/*
+ * T144. Two truncations apply to a tab label and only the first honours
+ * FR-FT-035's "visual ellipsis MUST retain part of the distinguishing suffix":
+ * `truncateTabLabel(label, 42)` counts *characters* and preserves the suffix,
+ * while `.tabLabel`'s `max-width: var(--tab-max-width)` clips *pixels* off the
+ * trailing edge — which is exactly where the ` — suffix` segment lives.
+ *
+ * Measured in Chromium at the tab's own 12.5px Roboto: the label has 129.33px
+ * to draw in (the 190px token minus 60.67px of tab chrome — item padding, two
+ * gaps, the modified dot and the close control), and `release-notes.md — p…`
+ * crosses that at **21 characters**, half the character budget. No character
+ * count reconciles the two in a proportional font: 42 is exactly how many `i`
+ * glyphs fit in 129.33px, while only 11 `m` do.
+ *
+ * `toContainText` cannot see this. FR-FT-035 also requires the complete
+ * disambiguated label to remain the accessible name, and that half was never
+ * broken — so a text assertion passes in both the clipped and the repaired
+ * state. `expectPainted` hit-tests the suffix's own centre against the painted
+ * output, which is the only artefact where the clip is visible.
+ */
+// Proves: FR-FT-035 (partial — the "visual ellipsis MUST retain part of the
+// distinguishing suffix" clause and the accessible-name clause beside it. The
+// shortest-unique-suffix computation, the \uXXXX escaping, the directional
+// isolation and the recompute-after-Save-As clauses are proved by
+// tabLabel.test.ts and are not asserted here.)
+test('T144 keeps the distinguishing suffix painted when the pixel budget truncates the tab label', async ({
+  page,
+}) => {
+  await page.goto('/?duplicate-basenames=1');
+
+  const file = page.getByRole('button', { name: 'File' });
+  const menu = page.getByRole('menu', { name: 'File' });
+  for (const index of [0, 1]) {
+    await file.click();
+    const recents = menu.getByRole('menuitem', { name: 'release-notes.md' });
+    await expect(recents).toHaveCount(2);
+    await recents.nth(index).click();
+  }
+
+  // Two documents, one basename, different parents: FR-FT-035's disambiguated
+  // pair, and the shortest unique suffix is one parent segment each.
+  const tabs = page.getByRole('tab', { name: /release-notes\.md/u });
+  await expect(tabs).toHaveCount(2);
+  await expect(tabs.nth(0)).toHaveAccessibleName(
+    /^⁨release-notes\.md⁩ — ⁨.+⁩$/u,
+  );
+  await expect(tabs.nth(1)).toHaveAccessibleName(
+    /^⁨release-notes\.md⁩ — ⁨.+⁩$/u,
+  );
+
+  const suffixes = page.locator('[role="tab"] [data-tab-label-suffix]');
+  await expect(suffixes).toHaveCount(2);
+  await expectPainted(suffixes.nth(0), "the first tab's distinguishing suffix");
+  await expectPainted(
+    suffixes.nth(1),
+    "the second tab's distinguishing suffix",
+  );
+
+  // The two must actually distinguish: a painted suffix that reads the same on
+  // both tabs would satisfy the pixels and defeat the requirement.
+  const rendered = await suffixes.allTextContents();
+  expect(new Set(rendered).size).toBe(2);
+});

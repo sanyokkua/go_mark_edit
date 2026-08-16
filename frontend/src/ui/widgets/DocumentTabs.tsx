@@ -33,7 +33,11 @@ import TabContextMenu, {
 } from './TabContextMenu';
 import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
 import { whenApplicationRegainsForegroundFocus } from './foregroundFocus';
-import { tabLabelsFor, truncateTabLabel, type TabLabel } from './tabLabel';
+import {
+  tabLabelsFor,
+  truncatedTabLabelParts,
+  type TabLabel,
+} from './tabLabel';
 import styles from './DocumentTabs.module.css';
 
 export interface DocumentTabsProps {
@@ -588,6 +592,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         <>
           {orderedDocuments.map((document) => {
             const label = labels.get(document.documentId) as TabLabel;
+            const visualLabel = truncatedTabLabelParts(label, 42);
             const active = document.documentId === activeDocumentId;
             return (
               /*
@@ -650,7 +655,24 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                     </span>
                   ) : null}
                   <span aria-hidden="true" className={styles.tabLabel}>
-                    {truncateTabLabel(label, 42)}
+                    {visualLabel.suffix === '' ? (
+                      visualLabel.basename
+                    ) : (
+                      <>
+                        <span
+                          className={styles.tabLabelBasename}
+                          data-tab-label-basename
+                        >
+                          {visualLabel.basename}
+                        </span>
+                        <span
+                          className={styles.tabLabelSuffix}
+                          data-tab-label-suffix
+                        >
+                          {visualLabel.suffix}
+                        </span>
+                      </>
+                    )}
                   </span>
                 </button>
                 <button
