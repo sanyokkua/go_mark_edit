@@ -513,10 +513,20 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   const fileActions = actionsForSurface('file-menu');
   const fileActionLabel = (item: (typeof fileActions)[number]): string =>
     t(item.surfaceLabelKeys?.['file-menu'] ?? item.labelKey);
-  const displayedRecentFiles =
-    recentFiles.length === 0
-      ? [t('file.recent.release'), t('file.recent.spec')]
-      : recentFiles.slice(0, 6);
+  /*
+   * FR-FT-042: with no recent files the menu shows the defined empty message.
+   * It used to show two disabled rows named `release-notes.md` and
+   * `spec-draft.md` instead — catalogue-backed, but invented filenames standing
+   * in for data that does not exist, which reads as history the user does not
+   * have.
+   */
+  const displayedRecentFiles = recentFiles.slice(0, 6);
+  const noRecentFiles = displayedRecentFiles.length === 0;
+  const recentEmptyMessage = (className: string): React.JSX.Element => (
+    <div className={className} data-no-recent-files="true">
+      {t('launcher.noRecent')}
+    </div>
+  );
   const aboutActions = actionsForSurface('about-menu');
   const sidebarAction = getAction('toggle-sidebar');
   const assistantAction = getAction('toggle-assistant');
@@ -729,25 +739,26 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                        * open-recent command is dispatched from the rows
                        * themselves.
                        */
-                      displayedRecentFiles.map((path) => (
-                        <DropdownMenu.Item
-                          className={`${styles.item} ${styles.subItem}`}
-                          disabled={recentFiles.length === 0}
-                          key={`recent-${path}`}
-                          onSelect={(): void => dispatchRecentFile(path)}
-                        >
-                          <Icon
-                            aria-hidden="true"
-                            className={styles.subItemIcon}
-                            name="file"
-                          />
-                          <span className={styles.subItemLabel}>
-                            {recentFiles.length === 0
-                              ? path
-                              : safeRecentLabel(path)}
-                          </span>
-                        </DropdownMenu.Item>
-                      ))
+                      noRecentFiles ? (
+                        recentEmptyMessage(`${styles.item} ${styles.subItem}`)
+                      ) : (
+                        displayedRecentFiles.map((path) => (
+                          <DropdownMenu.Item
+                            className={`${styles.item} ${styles.subItem}`}
+                            key={`recent-${path}`}
+                            onSelect={(): void => dispatchRecentFile(path)}
+                          >
+                            <Icon
+                              aria-hidden="true"
+                              className={styles.subItemIcon}
+                              name="file"
+                            />
+                            <span className={styles.subItemLabel}>
+                              {safeRecentLabel(path)}
+                            </span>
+                          </DropdownMenu.Item>
+                        ))
+                      )
                     ) : item.id === 'reopen' ? (
                       <DropdownMenu.Item
                         aria-label={t(item.labelKey)}
@@ -938,20 +949,21 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                             className={styles.submenu}
                             role="menu"
                           >
-                            {displayedRecentFiles.map((path) => (
-                              <button
-                                className={styles.item}
-                                disabled={recentFiles.length === 0}
-                                key={path}
-                                role="menuitem"
-                                type="button"
-                                onClick={(): void => dispatchRecentFile(path)}
-                              >
-                                {recentFiles.length === 0
-                                  ? path
-                                  : safeRecentLabel(path)}
-                              </button>
-                            ))}
+                            {noRecentFiles
+                              ? recentEmptyMessage(styles.item)
+                              : displayedRecentFiles.map((path) => (
+                                  <button
+                                    className={styles.item}
+                                    key={path}
+                                    role="menuitem"
+                                    type="button"
+                                    onClick={(): void =>
+                                      dispatchRecentFile(path)
+                                    }
+                                  >
+                                    {safeRecentLabel(path)}
+                                  </button>
+                                ))}
                           </div>
                         </div>
                       ) : (

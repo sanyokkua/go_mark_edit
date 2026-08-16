@@ -34,6 +34,15 @@ const Launcher: React.FC<LauncherProps> = ({
   onOpenDocument,
   onOpenRecentFile,
 }: LauncherProps): React.JSX.Element => {
+  /*
+   * The parity route selects the reference-height variant of the panel and
+   * nothing else. It used to select a whole second set of strings as well —
+   * raw English copied out of the mockup — which FR-FT-047 forbids, because
+   * every user-visible string must come from the translation catalogue. Those
+   * strings existed for the whole-screen comparison withdrawn on 2026-08-14;
+   * the launcher is not one of the 14 pixel-compared component keys, so
+   * nothing measured them.
+   */
   const parityRoute =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).has('parity-case');
@@ -44,15 +53,11 @@ const Launcher: React.FC<LauncherProps> = ({
       data-testid="document-launcher"
     >
       <div className={styles.panel}>
-        <h1 id="launcher-title">
-          {parityRoute ? 'GoMarkEdit' : t('launcher.title')}
-        </h1>
+        <h1 id="launcher-title">{t('launcher.title')}</h1>
         <p className={styles.message}>
-          {parityRoute
-            ? "Nothing is open. GoMarkEdit doesn't restore your last session."
-            : recentFiles.length === 0
-              ? t('launcher.firstRun')
-              : t('launcher.chooseRecent')}
+          {recentFiles.length === 0
+            ? t('launcher.firstRun')
+            : t('launcher.chooseRecent')}
         </p>
         <div className={styles.actions}>
           {/*
@@ -67,20 +72,20 @@ const Launcher: React.FC<LauncherProps> = ({
             type="button"
             onClick={(event): void => invoke(event, onNewDocument)}
           >
-            {parityRoute ? 'New file' : t('action.new-file.label')}
+            {t('action.new-file.label')}
           </button>
           <button
             type="button"
             onClick={(event): void => invoke(event, onOpenDocument)}
           >
-            {parityRoute ? 'Open file…' : t('action.open-file.label')}
+            {t('action.open-file.label')}
           </button>
           <button disabled title={t('action.unavailable')} type="button">
-            {parityRoute ? 'Open folder…' : t('action.open-folder.label')}
+            {t('action.open-folder.label')}
           </button>
         </div>
         <div aria-label={t('file.recent.label')} className={styles.recent}>
-          <h2>{parityRoute ? 'Recent' : t('file.recent.label')}</h2>
+          <h2>{t('file.recent.label')}</h2>
           {recentFiles.length === 0 ? (
             <p className={styles.empty}>{t('launcher.noRecent')}</p>
           ) : (
@@ -96,13 +101,6 @@ const Launcher: React.FC<LauncherProps> = ({
                     }}
                   >
                     {safeRecentLabel(path)}
-                    {parityRoute ? (
-                      <small>
-                        {path.includes('/archive/')
-                          ? '~/Notes/archive'
-                          : '~/Notes/projects'}
-                      </small>
-                    ) : null}
                   </button>
                 </li>
               ))}

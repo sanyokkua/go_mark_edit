@@ -169,10 +169,12 @@ async function expectEditorStageFixtures(
    * (`mockup.html:604`, `.mi.sub`) with no trigger row of its own, so there
    * `Open Recent` is a label and never a `menuitem` — the same shape as
    * `Appearance`, which is a radiogroup name rather than an item. Narrow, the
-   * popup uses an `Open Recent` trigger plus a nested submenu
-   * (`ShellMenuRow.tsx:786-802`). This route seeds no recent files
-   * (`AppModelHandler.ts:311`), so either way the rows are disabled
-   * placeholders carrying the binding's two names.
+   * popup uses an `Open Recent` trigger plus a nested submenu. This route seeds
+   * no recent files (`AppModelHandler.ts` `seededRecentFiles`), so T154 draws
+   * the defined empty message in both shapes: FR-FT-042 requires the first-run
+   * state to show it rather than the two invented filenames the menu used to
+   * carry (`release-notes.md`, `spec-draft.md`), which read as history the user
+   * does not have.
    */
   if (width <= 376) {
     await expect(
@@ -181,11 +183,13 @@ async function expectEditorStageFixtures(
   } else {
     await expect(fileMenu).toContainText('Open Recent');
   }
-  const recentRows = page.getByRole('menuitem', { name: 'release-notes.md' });
-  await expect(recentRows).toBeDisabled();
+  await expect(fileMenu.locator('[data-no-recent-files="true"]')).toBeVisible();
+  await expect(
+    page.getByRole('menuitem', { name: 'release-notes.md' }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole('menuitem', { name: 'spec-draft.md' }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await page.keyboard.press('Escape');
 
   if (width > 376) {

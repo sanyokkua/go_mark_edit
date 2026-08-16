@@ -234,8 +234,6 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
     'New Window',
     'Open File…',
     'Open Folder…',
-    'release-notes.md',
-    'spec-draft.md',
     // Binding source: mockup.html renders the reopen row as `↺ Reopen last
     // file`; the accessible name stays the plain action label.
     '↺ Reopen last file',
@@ -485,7 +483,22 @@ it('T091 places the functional sidebar and deferred Assistant controls at the me
   dispatch.mockRestore();
 });
 
-it('T052 preserves the narrow Open Recent submenu fixtures as deferred items', () => {
+/*
+ * T154. This case used to be `T052 preserves the narrow Open Recent submenu
+ * fixtures as deferred items`, and it asserted the defect: with no recent
+ * files the submenu drew two disabled rows named `release-notes.md` and
+ * `spec-draft.md`. Those are catalogue-backed (`file.recent.release`,
+ * `file.recent.spec`) but they are not entries — they are invented filenames
+ * standing in for data that does not exist, and FR-FT-042 requires the
+ * first-run state to show the defined empty message instead. The case is
+ * rewritten rather than deleted, because the narrow submenu still needs a test
+ * and the empty state is what it should have been asserting.
+ */
+// Proves: FR-FT-042 (partial — only the "MUST show the defined first-run
+//   message when no recent files exist" clause; the six-entry cap, the
+//   functional New/Open actions and the no-session-restore clause are proven by
+//   Launcher.test.tsx and real-files-and-tabs.test.ts)
+it('T154 shows the defined empty message in the narrow Open Recent submenu', () => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
     value: 375,
@@ -506,12 +519,16 @@ it('T052 preserves the narrow Open Recent submenu fixtures as deferred items', (
 
   const fileMenu = screen.getByRole('menu', { name: 'File' });
   const recent = within(fileMenu).getByRole('group', { name: 'Open Recent' });
+  expect(within(recent).getByText('No recent files yet.')).toBeVisible();
+  // The group's only remaining menuitem is its own `Open Recent` trigger,
+  // which the registry already marks unavailable when there is no history.
   expect(
-    within(recent).getByRole('menuitem', { name: 'release-notes.md' }),
-  ).toBeDisabled();
-  expect(
-    within(recent).getByRole('menuitem', { name: 'spec-draft.md' }),
-  ).toBeDisabled();
+    within(recent)
+      .getAllByRole('menuitem')
+      .map((item) => item.textContent),
+  ).toEqual(['Open Recent']);
+  expect(within(recent).queryByText('release-notes.md')).toBeNull();
+  expect(within(recent).queryByText('spec-draft.md')).toBeNull();
 });
 
 it('T085 repositions a narrow File popup from the overflow anchor after a resize', async () => {

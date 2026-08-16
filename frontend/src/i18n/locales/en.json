@@ -208,8 +208,6 @@
   "recovery.quit.confirm": "Quit and discard",
   "file.recent.label": "Recent files",
   "file.menu.recent.label": "Open Recent",
-  "file.recent.release": "release-notes.md",
-  "file.recent.spec": "spec-draft.md",
   "shell.workspace": "Workspace",
   "shell.workspace.resize": "Resize workspace",
   "shell.document": "Document area",
