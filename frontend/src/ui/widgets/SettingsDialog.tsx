@@ -258,8 +258,6 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const dialogRef = useRef<HTMLElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const parityTab = paritySettingsTab();
-  const narrowParityRoute =
-    typeof window !== 'undefined' && window.innerWidth <= 376;
 
   useEffect((): void | (() => void) => {
     if (!open) return;
@@ -394,12 +392,18 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         </section>
       </div>
     );
-    return narrowParityRoute
-      ? createPortal(paritySurface, document.body)
-      : paritySurface;
+    return createPortal(paritySurface, document.body);
   }
 
-  return (
+  /*
+   * T138. Both returns portal, and neither asks the route which one it is. The
+   * width test that used to gate this was written without the `?parity-case`
+   * guard `ModalShell` had, so the two files disagreed about when a dialog
+   * portals — and disagreed at exactly the 375px minimum window, where a
+   * transformed shell ancestor turns a `position: fixed` dialog into an
+   * absolute one and clips it.
+   */
+  return createPortal(
     <>
       <div aria-hidden="true" className={styles.overlay} />
       <section
@@ -448,7 +452,8 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
           </button>
         </footer>
       </section>
-    </>
+    </>,
+    document.body,
   );
 };
 

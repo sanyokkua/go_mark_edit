@@ -45,11 +45,6 @@ const ModalShell: React.FC<ModalShellProps> = ({
 }: ModalShellProps): React.JSX.Element | null => {
   const dialogRef = useRef<HTMLElement | null>(null);
   const originRef = useRef<HTMLElement | null>(null);
-  const parityRoute =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('parity-case');
-  const narrowParityRoute =
-    parityRoute && typeof window !== 'undefined' && window.innerWidth <= 376;
 
   useEffect(
     (): (() => void) => (): void => {
@@ -155,49 +150,23 @@ const ModalShell: React.FC<ModalShellProps> = ({
 
   if (!open) return null;
 
-  const content = (
-    <section
-      ref={dialogRef}
-      aria-label={parityRoute ? undefined : title}
-      aria-labelledby={labelledBy}
-      aria-modal={parityRoute ? undefined : 'true'}
-      className={`${styles.content} ${parityRoute ? styles.parityContent : ''} ${parityRoute && labelledBy === 'external-change-title' ? styles.parityReloadContent : ''}`}
-      data-modal-shell
-      role={parityRoute ? undefined : 'dialog'}
-      tabIndex={-1}
-      onKeyDown={trapFocus}
-    >
-      <h1 className={styles.title} id={labelledBy}>
-        {heading ?? title}
-      </h1>
-      {children}
-    </section>
-  );
-
-  if (parityRoute) {
-    const paritySurface = (
-      <div
-        aria-label={title}
-        aria-labelledby={
-          parityRoute && heading !== undefined ? undefined : labelledBy
-        }
-        aria-modal="true"
-        className={`${styles.overlay} ${styles.parityOverlay} ${labelledBy === 'external-change-title' ? styles.parityReloadOverlay : ''}`}
-        data-modal-backdrop
-        role="dialog"
-        onPointerDown={(event): void => {
-          if (event.target === event.currentTarget) onBackdrop();
-        }}
-      >
-        {content}
-      </div>
-    );
-    return narrowParityRoute
-      ? createPortal(paritySurface, document.body)
-      : paritySurface;
-  }
-
-  return (
+  /*
+   * T138. One structure, on every route. This used to branch on
+   * `?parity-case`: the backdrop became the dialog, the section had `role`,
+   * `aria-modal` and `aria-label` forced to `undefined`, and at 376px or less
+   * the whole thing portalled. FR-FT-054 lets the parity route seed data; it
+   * does not let it render a different component, and stripping the
+   * accessibility contract from the DOM the harness measures is worse than the
+   * portalling — it means no measurement taken there described what ships.
+   *
+   * The portal survives, unconditionally, because it is the half that was
+   * right: `.overlay` and `.content` are `position: fixed`, and a transformed
+   * or filtered ancestor turns a fixed descendant into an absolute one against
+   * that ancestor's box. Portalling to `document.body` keeps the modal owned by
+   * the viewport whatever the shell does above it, which at the 375px minimum
+   * window is the difference between a centred dialog and a clipped one.
+   */
+  return createPortal(
     <>
       <div
         aria-hidden="true"
@@ -207,8 +176,24 @@ const ModalShell: React.FC<ModalShellProps> = ({
           if (event.target === event.currentTarget) onBackdrop();
         }}
       />
-      {content}
-    </>
+      <section
+        ref={dialogRef}
+        aria-label={title}
+        aria-labelledby={labelledBy}
+        aria-modal="true"
+        className={styles.content}
+        data-modal-shell
+        role="dialog"
+        tabIndex={-1}
+        onKeyDown={trapFocus}
+      >
+        <h1 className={styles.title} id={labelledBy}>
+          {heading ?? title}
+        </h1>
+        {children}
+      </section>
+    </>,
+    document.body,
   );
 };
 

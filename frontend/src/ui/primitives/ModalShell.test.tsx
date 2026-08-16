@@ -1,7 +1,4 @@
 import { createRef } from 'react';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { fireEvent, render, screen } from '@testing-library/react';
 import ModalShell from './ModalShell';
 
@@ -78,95 +75,6 @@ it('ModalShell sends backdrop requests only for the backdrop surface', () => {
   expect(onBackdrop).toHaveBeenCalledTimes(1);
 });
 
-it('T045 maps the parity dialog to its bounded scrim while retaining the inner focus surface', () => {
-  const originalUrl = window.location.href;
-  window.history.replaceState(
-    {},
-    '',
-    '/?parity-case=primary:save-prompt:1280:glass-light',
-  );
-  try {
-    render(
-      <ModalShell
-        labelledBy="modal-title"
-        onBackdrop={jest.fn()}
-        onEscape={jest.fn()}
-        open
-        title="Accessible modal"
-      >
-        <button type="button">First</button>
-      </ModalShell>,
-    );
-
-    const dialog = screen.getByRole('dialog', { name: 'Accessible modal' });
-    expect(dialog).toHaveAttribute('data-modal-backdrop');
-    expect(dialog.querySelector('[data-modal-shell]')).toBeInTheDocument();
-    expect(dialog.querySelector('[data-modal-shell]')).not.toHaveAttribute(
-      'role',
-      'dialog',
-    );
-  } finally {
-    window.history.replaceState({}, '', originalUrl);
-  }
-});
-
-it('T045 keeps narrow parity modal scrims viewport-owned', () => {
-  const styles = readFileSync(
-    resolve(process.cwd(), 'src/ui/primitives/ModalShell.module.css'),
-    'utf8',
-  );
-
-  expect(styles).toMatch(
-    /@media \(max-width: 376px\) \{\s*\.parityOverlay\s*\{[^}]*position:\s*fixed;/s,
-  );
-  expect(styles).toMatch(
-    /\.parityOverlay\s*\{[^}]*backdrop-filter:\s*blur\(3px\);/s,
-  );
-  expect(styles).toMatch(
-    /@media \(min-width: 377px\)[\s\S]*?\.parityReloadOverlay\s*\{[^}]*inset-block-start:\s*-44px;[^}]*height:\s*calc\(100% \+ 44px\);/s,
-  );
-  expect(styles).toMatch(
-    /\.parityReloadContent\s*\{[^}]*width:\s*min\(560px, 92%\);/s,
-  );
-});
-
-it('T045 portals narrow parity modal scrims outside blurred app frames', () => {
-  const originalUrl = window.location.href;
-  const originalWidth = window.innerWidth;
-  window.history.replaceState(
-    {},
-    '',
-    '/?parity-case=primary:save-prompt:375:glass-light',
-  );
-  Object.defineProperty(window, 'innerWidth', {
-    configurable: true,
-    value: 375,
-  });
-  try {
-    render(
-      <ModalShell
-        labelledBy="modal-title"
-        onBackdrop={jest.fn()}
-        onEscape={jest.fn()}
-        open
-        title="Accessible modal"
-      >
-        <button type="button">First</button>
-      </ModalShell>,
-    );
-
-    expect(
-      screen.getByRole('dialog', { name: 'Accessible modal' }).parentElement,
-    ).toBe(document.body);
-  } finally {
-    window.history.replaceState({}, '', originalUrl);
-    Object.defineProperty(window, 'innerWidth', {
-      configurable: true,
-      value: originalWidth,
-    });
-  }
-});
-
 it('ModalShell honors a requested initial control before trapping focus', () => {
   const initialFocusRef = createRef<HTMLButtonElement>();
   render(
@@ -186,4 +94,99 @@ it('ModalShell honors a requested initial control before trapping focus', () => 
   );
 
   expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+});
+
+/*
+ * T138. FR-FT-054 permits a populated fixture to be seeded only on the
+ * deterministic parity route. It does not permit a different component
+ * structure, and this shell had three:
+ *
+ *   - production: an `aria-hidden` backdrop and a sibling
+ *     `role="dialog" aria-modal aria-label` section, rendered inline;
+ *   - `?parity-case` at any width: the backdrop became the dialog and the
+ *     section had `role`, `aria-modal` and `aria-label` forced to `undefined`
+ *     — the accessibility contract removed from the DOM the harness measures;
+ *   - `?parity-case` at 376px or less: the same, portalled to `document.body`.
+ *
+ * So the harness measured a structure that does not ship, which is the
+ * mock-divergence class that hid T104 and T107 relocated into production code.
+ * One structure now, portalled unconditionally, so the route can change what
+ * data is seeded and nothing else.
+ */
+// Proves: FR-FT-054 (partial — only "any populated multi-document fixture used
+//   for parity MUST be seeded only on the deterministic parity route", read as
+//   the route may seed data and may not change the rendered structure. The
+//   capture-condition, readiness and frozen-caret clauses are proven by the
+//   parity harness.)
+it('T138 renders one modal structure and one accessibility contract on every route', () => {
+  const describeModal = (): Record<string, string | boolean | null> => {
+    const shell = document.querySelector('[data-modal-shell]');
+    const backdrop = document.querySelector('[data-modal-backdrop]');
+    if (shell === null || backdrop === null) {
+      throw new Error('modal did not render a shell and a backdrop');
+    }
+    return {
+      shellRole: shell.getAttribute('role'),
+      shellAriaModal: shell.getAttribute('aria-modal'),
+      shellAriaLabel: shell.getAttribute('aria-label'),
+      shellParentIsBody: shell.parentElement === document.body,
+      backdropRole: backdrop.getAttribute('role'),
+      backdropAriaHidden: backdrop.getAttribute('aria-hidden'),
+      backdropWrapsShell: backdrop.contains(shell),
+    };
+  };
+
+  const originalUrl = window.location.href;
+  const originalWidth = window.innerWidth;
+  const shapeAt = (
+    url: string,
+    width: number,
+  ): Record<string, string | boolean | null> => {
+    window.history.replaceState({}, '', url);
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: width,
+    });
+    const rendered = render(
+      <ModalShell
+        labelledBy="modal-title"
+        onBackdrop={jest.fn()}
+        onEscape={jest.fn()}
+        open
+        title="Accessible modal"
+      >
+        <button type="button">First</button>
+      </ModalShell>,
+    );
+    const shape = describeModal();
+    rendered.unmount();
+    return shape;
+  };
+
+  try {
+    const production = shapeAt('/', 1280);
+    expect(production).toEqual({
+      shellRole: 'dialog',
+      shellAriaModal: 'true',
+      shellAriaLabel: 'Accessible modal',
+      shellParentIsBody: true,
+      backdropRole: null,
+      backdropAriaHidden: 'true',
+      backdropWrapsShell: false,
+    });
+
+    // The two shapes the parity route used to substitute for it.
+    expect(
+      shapeAt('/?parity-case=primary:save-prompt:1280:glass-light', 1280),
+    ).toEqual(production);
+    expect(
+      shapeAt('/?parity-case=primary:save-prompt:375:glass-light', 375),
+    ).toEqual(production);
+  } finally {
+    window.history.replaceState({}, '', originalUrl);
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: originalWidth,
+    });
+  }
 });

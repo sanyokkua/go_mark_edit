@@ -325,13 +325,16 @@ it('does not broadcast a reset into another mounted acknowledged Appearance proj
     await within(first.container).findByRole('button', { name: 'Settings' }),
   );
   fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
-  fireEvent.click(
-    within(first.container).getByRole('button', { name: 'Reset appearance' }),
-  );
+  /*
+   * T138 portals every dialog to `document.body`, so the reset control is no
+   * longer inside the projection's own container. Only the first projection's
+   * dialog is open at this point, so an unscoped query still names exactly one
+   * control — and the isolation this case is about is asserted below, on the
+   * *second* projection's menu, which is still container-scoped.
+   */
+  fireEvent.click(screen.getByRole('button', { name: 'Reset appearance' }));
   await waitFor(() =>
-    expect(
-      within(first.container).getByRole('radio', { name: 'Material' }),
-    ).toBeChecked(),
+    expect(screen.getByRole('radio', { name: 'Material' })).toBeChecked(),
   );
 
   fireEvent.click(
