@@ -15,6 +15,10 @@ import type {
   PathCommandResult,
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
+import {
+  currentPlatform,
+  formatShortcut,
+} from '../../logic/actions/shortcutRegistry';
 import { t } from '../../i18n';
 import styles from './DocumentTabs.module.css';
 
@@ -88,6 +92,20 @@ function parityRoute(): boolean {
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).has('parity-case')
   );
+}
+
+/*
+ * The same derivation `SettingsMenu.settingsAccelerator` and
+ * `ShellMenuRow.shortcutForMenuItem` use, so every surface in the shell
+ * advertises the accelerator from one source — the action registry — rendered
+ * for the running platform. The catalogue literal this replaced read `Ctrl W`
+ * on every host, including the macOS one where the binding is `⌘W`.
+ */
+function acceleratorFor(actionId: TabContextAction): string {
+  const binding = getAction(actionId).shortcut;
+  return binding === undefined
+    ? ''
+    : formatShortcut(binding, currentPlatform());
 }
 
 function parityLabel(actionId: TabContextAction): string {
@@ -265,7 +283,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
             {isParityRoute ? parityLabel(actionId) : t(entry.labelKey)}
             {isParityRoute && actionId === 'close-tab' ? (
               <span className={styles.parityAccelerator}>
-                {t('editor.tab.context.closeAccelerator')}
+                {acceleratorFor(actionId)}
               </span>
             ) : null}
           </button>

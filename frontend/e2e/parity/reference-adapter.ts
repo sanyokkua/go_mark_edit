@@ -503,6 +503,101 @@ function adaptDeferredSettingsRows(
 }
 
 /**
+ * T143, FR-FT-047 and FR-FT-056. The narrow toolbar overflow advertises eight
+ * accelerators. Production used to draw them from a hardcoded string table
+ * inside `EditorChrome.tsx` that copied the mockup verbatim — `Ctrl ⇧ 8` for an
+ * action the registry binds to `Mod+Shift+8` — so on macOS the popup told the
+ * user to press a key that dispatches nothing. It now derives every one of them
+ * from `formatShortcut(getAction(id).shortcut, currentPlatform())`, the same
+ * single source the File, View, About and Settings surfaces already use.
+ *
+ * The mockup's literals were correct for a platform-blind reference and are
+ * wrong on macOS, so the reference expresses Feature 003's own accelerators
+ * here — exactly what `adaptDeferredSettingsRows` does for `Ctrl ,` and
+ * `adaptViewMenu` for `Ctrl \`. FR-FT-056 requires a behavior-owned difference
+ * to be rendered as an explicit reference variant built from the same binding
+ * primitives and *compared*, not masked with a forgiveness rectangle: only the
+ * mockup's own `.mi` row and its inline accelerator span are used, no HTML/CSS
+ * value in `docs/delivery/spec/surface/mockup.html` is edited, and the raw
+ * source hash is unchanged.
+ */
+const overflowMenuReferenceAccelerators: Readonly<
+  Record<FileMenuReferencePlatform, Readonly<Record<string, string>>>
+> = {
+  darwin: {
+    'Bullet list': '⌘⇧8',
+    'Numbered list': '⌘⇧7',
+    'Task list': '⌘⇧9',
+    Quote: '⌘⇧.',
+    Link: '⌘K',
+    Image: '⌘⇧I',
+    Table: '⌘⇧T',
+    Compact: '⌥⇧C',
+  },
+  other: {
+    'Bullet list': 'Ctrl+Shift+8',
+    'Numbered list': 'Ctrl+Shift+7',
+    'Task list': 'Ctrl+Shift+9',
+    Quote: 'Ctrl+Shift+.',
+    Link: 'Ctrl+K',
+    Image: 'Ctrl+Shift+I',
+    Table: 'Ctrl+Shift+T',
+    Compact: 'Alt+Shift+C',
+  },
+};
+
+/**
+ * The mockup's own literal for each row, so a source that stops writing one
+ * fails loudly here rather than silently leaving the reference unadapted.
+ */
+const OVERFLOW_ACCELERATOR_SOURCE_TEXT: Readonly<Record<string, string>> = {
+  'Bullet list': 'Ctrl ⇧ 8',
+  'Numbered list': 'Ctrl ⇧ 7',
+  'Task list': 'Ctrl ⇧ 9',
+  Quote: 'Ctrl ⇧ .',
+  Link: 'Ctrl K',
+  Image: 'Ctrl ⇧ I',
+  Table: 'Ctrl ⇧ T',
+  Compact: '⌥⇧C',
+};
+
+const OVERFLOW_MENU_SOURCE_MARKER = '<div class="ovf-menu">';
+
+const OVERFLOW_ACCELERATOR_SPAN_OPEN =
+  '<span style="margin-left:auto;color:var(--faint)">';
+
+function adaptOverflowMenuAccelerators(
+  html: string,
+  platform: FileMenuReferencePlatform,
+): string {
+  // A source without the overflow menu is not a parity reference; leave it
+  // untouched so unit fixtures can exercise the other variants in isolation.
+  const start = html.indexOf(OVERFLOW_MENU_SOURCE_MARKER);
+  if (start < 0) return html;
+  const end = html.indexOf('</div>', html.indexOf('ovf-menus', start));
+  if (end < 0) {
+    throw new Error('Overflow-menu reference source region is malformed');
+  }
+  let overflow = html.slice(start, end);
+  const shortcut = overflowMenuReferenceAccelerators[platform];
+  for (const [label, source] of Object.entries(
+    OVERFLOW_ACCELERATOR_SOURCE_TEXT,
+  )) {
+    const from = `<div class="mi">${label}${OVERFLOW_ACCELERATOR_SPAN_OPEN}${source}</span></div>`;
+    if (!overflow.includes(from)) {
+      throw new Error(
+        `Overflow-menu reference source lost the accelerator row: ${label}`,
+      );
+    }
+    overflow = overflow.replace(
+      from,
+      `<div class="mi">${label}${OVERFLOW_ACCELERATOR_SPAN_OPEN}${shortcut[label] ?? ''}</span></div>`,
+    );
+  }
+  return html.slice(0, start) + overflow + html.slice(end);
+}
+
+/**
  * Feature 003's reviewed status-item containment, matching production's
  * `.responsiveItem` (`frontend/src/ui/components/StatusBar.module.css:27-36`).
  *
@@ -829,6 +924,8 @@ export const REFERENCE_ADAPTER_HASH = hash(
     DEFERRED_SETTINGS_ROW_LABELS,
     settingsMenuReferenceAccelerators,
     SETTINGS_ACCELERATOR_SOURCE_MARKUP,
+    overflowMenuReferenceAccelerators,
+    OVERFLOW_ACCELERATOR_SOURCE_TEXT,
     viewMenuReferenceAccelerators,
     aboutMenuReferenceAccelerators,
     LIGHTS_SOURCE_MARKUP,
@@ -944,8 +1041,12 @@ export function adaptReferenceHtml(
     withDeferredToolbar,
     fileMenuPlatform ?? hostReferencePlatform(),
   );
-  const withViewMenu = adaptViewMenu(
+  const withOverflowMenu = adaptOverflowMenuAccelerators(
     withDeferredSettings,
+    fileMenuPlatform ?? hostReferencePlatform(),
+  );
+  const withViewMenu = adaptViewMenu(
+    withOverflowMenu,
     fileMenuPlatform ?? hostReferencePlatform(),
   );
   const withAboutMenu = adaptAboutMenu(

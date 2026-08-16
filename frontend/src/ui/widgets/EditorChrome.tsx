@@ -61,17 +61,6 @@ const textualControlIds = new Set<ActionEntry['id']>([
   'lint',
 ]);
 
-const parityOverflowShortcuts: Partial<Record<ActionEntry['id'], string>> = {
-  'bullet-list': 'Ctrl ⇧ 8',
-  'numbered-list': 'Ctrl ⇧ 7',
-  'task-list': 'Ctrl ⇧ 9',
-  quote: 'Ctrl ⇧ .',
-  link: 'Ctrl K',
-  image: 'Ctrl ⇧ I',
-  table: 'Ctrl ⇧ T',
-  compact: '⌥⇧C',
-};
-
 const applicationOverflowLabels = {
   about: t('shell.about'),
   file: t('shell.file'),
@@ -424,11 +413,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
       >
         {t(entry.labelKey)}
         {entry.shortcut === undefined ? null : (
-          <span>
-            {toolbarOverflowParity
-              ? parityOverflowShortcuts[entry.id]
-              : formatShortcut(entry.shortcut, currentPlatform())}
-          </span>
+          <span>{formatShortcut(entry.shortcut, currentPlatform())}</span>
         )}
       </button>
     );

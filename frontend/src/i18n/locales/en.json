@@ -152,7 +152,6 @@
   "editor.tab.context.closeRight": "Close to the right",
   "editor.tab.context.copyPath": "Copy path",
   "editor.tab.context.reveal": "Reveal in file manager",
-  "editor.tab.context.closeAccelerator": "Ctrl W",
   "parity.toast.saved.title": "Saved",
   "parity.toast.saved.message": "release-notes.md written · UTF-8 · LF preserved",
   "parity.toast.formatted.title": "Formatted",

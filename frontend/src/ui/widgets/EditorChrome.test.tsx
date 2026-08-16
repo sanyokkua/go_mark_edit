@@ -11,12 +11,22 @@ import {
 import { Provider } from 'react-redux';
 
 import * as actionDispatcher from '../../logic/actions/actionDispatcher';
+import * as shortcutRegistry from '../../logic/actions/shortcutRegistry';
 import { store } from '../../logic/store';
 import { hydrateSettings } from '../../logic/store/settingsSlice';
 import { DocumentCommandContext } from './editorSession';
 import { EditorSessionContext } from './editorSession';
 import EditorChrome from './EditorChrome';
 import { ModalStateProvider } from './modalState';
+
+jest.mock('../../logic/actions/shortcutRegistry', () => {
+  const actual = jest.requireActual('../../logic/actions/shortcutRegistry');
+  return {
+    __esModule: true,
+    ...actual,
+    currentPlatform: jest.fn(actual.currentPlatform),
+  };
+});
 
 const render = (ui: Parameters<typeof rtlRender>[0]) =>
   rtlRender(<Provider store={store}>{ui}</Provider>);
@@ -646,3 +656,78 @@ it('T058 suppresses editor shortcuts while the Shortcuts dialog modal state is a
   expect(commands.getContent).not.toHaveBeenCalled();
   expect(commands.replaceRange).not.toHaveBeenCalled();
 });
+
+/*
+ * T143: `parityOverflowShortcuts` hardcoded a per-action string table, so the
+ * parity overflow advertised `Ctrl ⇧ 8` for an action the registry binds to
+ * `Mod+Shift+8`. Controlling the platform read is what separates a derivation
+ * from a literal that happens to agree on one host.
+ */
+const platformMock = shortcutRegistry.currentPlatform as jest.MockedFunction<
+  typeof shortcutRegistry.currentPlatform
+>;
+
+function overflowShortcuts(): Record<string, string> {
+  const entries: Record<string, string> = {};
+  for (const item of document.querySelectorAll('[data-parity-overflow-item]')) {
+    const id = item.getAttribute('data-action-id');
+    const shortcut = item.querySelector('span')?.textContent;
+    if (id !== null && shortcut != null) entries[id] = shortcut;
+  }
+  return entries;
+}
+
+// Proves: FR-FT-047 — every shortcut the parity toolbar overflow advertises is
+// the registry binding rendered for the running platform. It proves nothing
+// about the arrangement row beneath them, which carries no accelerator.
+it.each([
+  [
+    'darwin',
+    {
+      'bullet-list': '⌘⇧8',
+      'numbered-list': '⌘⇧7',
+      'task-list': '⌘⇧9',
+      quote: '⌘⇧.',
+      link: '⌘K',
+      image: '⌘⇧I',
+      table: '⌘⇧T',
+      compact: '⌥⇧C',
+    },
+  ],
+  [
+    'win32',
+    {
+      'bullet-list': 'Ctrl+Shift+8',
+      'numbered-list': 'Ctrl+Shift+7',
+      'task-list': 'Ctrl+Shift+9',
+      quote: 'Ctrl+Shift+.',
+      link: 'Ctrl+K',
+      image: 'Ctrl+Shift+I',
+      table: 'Ctrl+Shift+T',
+      compact: 'Alt+Shift+C',
+    },
+  ],
+] as const)(
+  'T143 draws every parity overflow shortcut from the registry binding on %s',
+  (platform, expected) => {
+    const originalUrl = window.location.href;
+    platformMock.mockReturnValue(platform);
+    window.history.replaceState(
+      {},
+      '',
+      '/?parity-case=primary:toolbar-overflow:1280:minimal-light',
+    );
+
+    try {
+      render(
+        <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+      );
+      fireEvent.click(screen.getByLabelText('More actions'));
+
+      expect(overflowShortcuts()).toEqual(expected);
+    } finally {
+      window.history.replaceState({}, '', originalUrl);
+      platformMock.mockReset();
+    }
+  },
+);

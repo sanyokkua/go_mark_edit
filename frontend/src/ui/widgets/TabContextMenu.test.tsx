@@ -9,7 +9,27 @@ import {
   type ActionAvailabilityContext,
   type ActionId,
 } from '../../logic/actions/actionRegistry';
+import { currentPlatform } from '../../logic/actions/shortcutRegistry';
 import TabContextMenu from './TabContextMenu';
+
+/*
+ * T143: the accelerator this menu draws must come from the registry binding
+ * rendered for the running platform. Only a platform the host is not can
+ * distinguish a derivation from a literal that happens to agree, so the
+ * platform read is the seam the test controls.
+ */
+jest.mock('../../logic/actions/shortcutRegistry', () => {
+  const actual = jest.requireActual('../../logic/actions/shortcutRegistry');
+  return {
+    __esModule: true,
+    ...actual,
+    currentPlatform: jest.fn(actual.currentPlatform),
+  };
+});
+
+const platformMock = currentPlatform as jest.MockedFunction<
+  typeof currentPlatform
+>;
 
 /*
  * T152: the point of the refactor is that the menu asks the registry rather
@@ -37,6 +57,8 @@ const availabilityMock = getActionAvailability as jest.MockedFunction<
 beforeEach(() => {
   availabilityMock.mockReset();
   availabilityMock.mockImplementation(realAvailability);
+  platformMock.mockReset();
+  platformMock.mockReturnValue('linux');
 });
 
 function documentFor(documentId: string): DocumentMetadata {
@@ -251,3 +273,54 @@ it('T152 matches getActionAvailability for every tab-context action and strip po
     view.unmount();
   }
 });
+
+function acceleratorTextFor(actionId: string): string | undefined {
+  const item = document.querySelector(`[data-action-id="${actionId}"]`);
+  return item?.querySelector('span')?.textContent ?? undefined;
+}
+
+function renderOnParityRoute(): void {
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=state:tab-menu-move-left-unavailable:material-light',
+  );
+  const first = documentFor('first');
+  const second = documentFor('second');
+  render(
+    <TabContextMenu
+      adapter={{}}
+      document={first}
+      index={0}
+      onAction={jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'reordered',
+        orderedDocumentIds: ['first', 'second'],
+      }))}
+      onClose={jest.fn()}
+      orderedDocuments={[first, second]}
+      tabSetRevision={7}
+    />,
+  );
+}
+
+// Proves: FR-FT-047 — the shortcut this menu advertises derives from the
+// canonical action registry (`close-tab` is bound to `Mod+W`) rendered for the
+// running platform, not from a catalogue literal. It does not prove anything
+// about the other six rows, which advertise no accelerator at all.
+it.each([
+  ['darwin', '⌘W'],
+  ['win32', 'Ctrl+W'],
+  ['linux', 'Ctrl+W'],
+] as const)(
+  'T143 draws the close-tab accelerator from the registry binding on %s',
+  (platform, expected) => {
+    const originalUrl = window.location.href;
+    platformMock.mockReturnValue(platform);
+    try {
+      renderOnParityRoute();
+      expect(acceleratorTextFor('close-tab')).toBe(expected);
+    } finally {
+      window.history.replaceState({}, '', originalUrl);
+    }
+  },
+);
