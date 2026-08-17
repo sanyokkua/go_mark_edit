@@ -434,7 +434,21 @@ test('T145 exposes every tab as an owned child of the tablist controlling the ed
   const childRoles = (tablist?.childIds ?? []).map(
     (childId) => byId.get(childId)?.role?.value,
   );
-  expect(childRoles.filter((role) => role === 'tab')).toHaveLength(2);
+  /*
+   * T163. This asserted `childRoles.filter((role) => role === 'tab')` had length
+   * two, which is silent about everything else the tablist owns — a control
+   * added to the strip, or one that stopped being owned, passed identically.
+   *
+   * The accepted children are named here instead, in DOM order: each tab is
+   * followed by its own close control, and the New affordance closes the strip.
+   * ARIA does not restrict a tablist's children to tabs, and axe's
+   * aria-required-parent / aria-required-children pair is satisfied by this
+   * shape, so owning the close controls and New alongside the tabs is a decision
+   * rather than a defect — it is recorded here because it was previously
+   * implicit. A later change to the strip's contents now fails this assertion
+   * and has to re-make the decision explicitly.
+   */
+  expect(childRoles).toEqual(['tab', 'button', 'tab', 'button', 'button']);
 });
 
 /*
