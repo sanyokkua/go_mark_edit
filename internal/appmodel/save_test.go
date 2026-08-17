@@ -1,7 +1,9 @@
 package appmodel
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -171,6 +173,22 @@ func TestMixedEndingAuthorization(t *testing.T) {
 	}
 	if got := state.Snapshot.Documents[opened.DocumentID].LineEnding; got != "lf" {
 		t.Fatalf("normalized line ending = %q, want lf", got)
+	}
+	/*
+	 * T183. Everything above reads the *projection*. A normalization that
+	 * updated the model and wrote the old bytes would satisfy every assertion
+	 * so far, so SC-FT-001's mixed-ending family was proved only as far as the
+	 * model. This is the disk.
+	 */
+	written, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatalf("read back after normalization: %v", readErr)
+	}
+	if bytes.Contains(written, []byte("\r")) {
+		t.Fatalf("bytes on disk = %q, want every CR normalized away", string(written))
+	}
+	if string(written) != "edited\ncontent\n" {
+		t.Fatalf("bytes on disk = %q, want the edited text with LF endings", string(written))
 	}
 }
 
@@ -559,5 +577,181 @@ func TestUnavailableHostDialogsOfferRetryRatherThanNothing(t *testing.T) {
 	}
 	if !slices.Contains(saved.Error.Remediations, apperr.RemediationRetry) {
 		t.Fatalf("Save dialog refusal remediations = %v, want Retry", saved.Error.Remediations)
+	}
+}
+
+/*
+T183 — SC-FT-001's CRLF, BOM and permission-mode fixture families, joined end to
+end.
+
+Each of the three was proved at one end only. CRLF and BOM were proved at
+`EncodeDocument`, a pure function whose output is compared in memory, and at the
+reader's classification; nothing opened a fixture, edited it through
+`appmodel.Save` and read the bytes back off disk. Permission mode was proved at
+`file.AtomicReplace` and nowhere above it.
+
+Deliberately NOT citing `internal/file/atomic_replace_test.go:44` for CRLF: it
+moves "before\r\n" → "after\r\n" as opaque payload and exercises no line-ending
+logic whatsoever. A fixture family is joined only when the convention survives
+the encoder *and* the write path together.
+
+Ownership is out of scope, and that is a reading of the criterion rather than an
+omission. SC-FT-001 names a "**permission-mode**" fixture, and Constitution V
+says "preserve permissions"; neither says ownership, and `atomic_replace.go` has
+no `Chown` at all. Asserting ownership here would fail by design against a
+requirement nothing states.
+*/
+// Proves: SC-FT-001 (the CRLF fixture family, encoder through disk)
+func TestSaveKeepsAUniformlyCRLFDocumentCRLFOnDisk(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "crlf.md")
+	if err := os.WriteFile(path, []byte("one\r\ntwo\r\n"), 0o644); err != nil {
+		t.Fatalf("write CRLF fixture: %v", err)
+	}
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	opened := service.OpenPath(context.Background(), path, 0)
+	if opened.ActiveBuffer == nil {
+		t.Fatalf("Open result = %+v", opened)
+	}
+	// The working copy carries LF, as the editor always does; the declared
+	// convention is what must reach disk.
+	if err := service.UpdateBuffer(context.Background(), opened.DocumentID, "one\nedited\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+	if result := service.Save(context.Background(), opened.DocumentID, 1, ""); result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("Save = %+v, want committed", result)
+	}
+
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if string(written) != "one\r\nedited\r\n" {
+		t.Fatalf("bytes on disk = %q, want CRLF preserved through the edit", string(written))
+	}
+}
+
+// Proves: SC-FT-001 (the UTF-8 BOM fixture family, encoder through disk)
+func TestSaveKeepsASingleUTF8BOMOnDisk(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "bom.md")
+	fixture := append([]byte{0xEF, 0xBB, 0xBF}, []byte("one\ntwo\n")...)
+	if err := os.WriteFile(path, fixture, 0o644); err != nil {
+		t.Fatalf("write BOM fixture: %v", err)
+	}
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	opened := service.OpenPath(context.Background(), path, 0)
+	if opened.ActiveBuffer == nil {
+		t.Fatalf("Open result = %+v", opened)
+	}
+	if err := service.UpdateBuffer(context.Background(), opened.DocumentID, "one\nedited\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+	if result := service.Save(context.Background(), opened.DocumentID, 1, ""); result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("Save = %+v, want committed", result)
+	}
+
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if len(written) < 3 || written[0] != 0xEF || written[1] != 0xBB || written[2] != 0xBF {
+		t.Fatalf("bytes on disk = % x, want a UTF-8 BOM as the first three bytes", written)
+	}
+	// The reader strips the BOM from the content and the encoder re-adds it, so
+	// the failure this guards against is a *doubled* mark rather than a missing
+	// one — which a byte-count or prefix check alone would not see.
+	if bytes.HasPrefix(written[3:], []byte{0xEF, 0xBB, 0xBF}) {
+		t.Fatalf("bytes on disk = % x, want exactly one BOM", written)
+	}
+	if string(written[3:]) != "one\nedited\n" {
+		t.Fatalf("content after the BOM = %q, want the edited text", string(written[3:]))
+	}
+}
+
+// Proves: SC-FT-001 (the permission-mode fixture family, at appmodel.Save)
+func TestSavePreservesThePermissionModeAboveAtomicReplace(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "mode.md")
+	if err := os.WriteFile(path, []byte("base\n"), 0o640); err != nil {
+		t.Fatalf("write mode fixture: %v", err)
+	}
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	opened := service.OpenPath(context.Background(), path, 0)
+	if opened.ActiveBuffer == nil {
+		t.Fatalf("Open result = %+v", opened)
+	}
+	if err := service.UpdateBuffer(context.Background(), opened.DocumentID, "edited\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+	if result := service.Save(context.Background(), opened.DocumentID, 1, ""); result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("Save = %+v, want committed", result)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat after save: %v", err)
+	}
+	if info.Mode().Perm() != 0o640 {
+		t.Fatalf("mode after save = %v, want 0640 preserved through appmodel.Save", info.Mode().Perm())
+	}
+}
+
+/*
+T183 — SC-FT-001's write-failure family, for a *single explicit Save*.
+
+The criterion's "or" has two halves: the edit reaches disk with the required
+characteristics, **or** the original file stays byte-for-byte intact and visibly
+modified. Both halves together were asserted in exactly one place —
+`close_plan_test.go:55`, a Save-all across a close plan — which is another
+requirement's test doing this family's work by accident. A single document
+saved explicitly is the ordinary path and had no such test.
+
+`file.AtomicReplace`'s own six pre-commit subtests prove the bytes survive at
+that layer, but they have no concept of a dirty document, so they cannot assert
+the second half of the "or" at all.
+*/
+// Proves: SC-FT-001 (the write-failure family, for a single explicit Save)
+func TestFailedExplicitSaveLeavesTheFileIntactAndTheDocumentDirty(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "intact.md")
+	if err := os.WriteFile(path, []byte("original\n"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	service.SetAutosaveEnabled(false)
+	opened := service.OpenPath(context.Background(), path, 0)
+	if opened.ActiveBuffer == nil {
+		t.Fatalf("Open result = %+v", opened)
+	}
+	if err := service.UpdateBuffer(context.Background(), opened.DocumentID, "edited\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+	service.SetWriteExecutorForTesting(func(WriteSnapshot) (file.DiskVersion, error) {
+		return file.DiskVersion{}, errors.New("write failed")
+	})
+
+	result := service.Save(context.Background(), opened.DocumentID, 1, "")
+	if result.Error == nil || result.Error.Category != apperr.ClassifiedIOFailure {
+		t.Fatalf("failed Save = %+v, want a classified io-failure", result)
+	}
+
+	// Half one of the criterion's "or": the original bytes are untouched.
+	written, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatalf("read back after a failed save: %v", readErr)
+	}
+	if string(written) != "original\n" {
+		t.Fatalf("bytes on disk = %q, want the original byte-for-byte", string(written))
+	}
+
+	// Half two, and the half `file.AtomicReplace`'s own tests cannot reach:
+	// the document is still visibly modified, so the work is not silently lost.
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("state after a failed save: %v", err)
+	}
+	if !state.Snapshot.Documents[opened.DocumentID].Dirty {
+		t.Fatalf("document after a failed save = clean, want still dirty")
 	}
 }
