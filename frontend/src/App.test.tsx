@@ -2958,3 +2958,75 @@ it('T169 never installs a reload acknowledgement overtaken by a document switch'
   store.dispatch(resetNotifications());
   act((): void => disposeAppModelProjection());
 });
+
+/*
+ * T170 — FR-FT-031's reporting clause on the `Retry` path.
+ *
+ * `onActivateDocument` reports the *outgoing-flush* refusal itself (T140) but
+ * returns a backend refusal unreported, leaving the reporting to
+ * `DocumentTabs.activateDocument`'s funnel — which every tab click goes through
+ * and which the `Retry` control does not, because it calls the handler
+ * directly. `onRemediate`'s arm then ends `if (result === undefined ||
+ * result.error !== undefined) return;`, so a stale-tab-set refusal met *on the
+ * retry* produced nothing at all: the original toast sat there with its original
+ * message and no sign the second attempt had failed too.
+ *
+ * The other four entry intents already self-report through `reportEntryError`,
+ * so this is the one handler that delegated its reporting somewhere the retry
+ * cannot reach — which is why the fix is to make it self-report like its
+ * siblings rather than to special-case the remediation arm.
+ */
+// Proves: FR-FT-031 (a refusal met on the Retry path is reported, and the
+// original notification is not dismissed to hide it)
+it('T170 reports an activation refusal met on the Retry path', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    snapshot: tabSetSnapshot(),
+    activeBuffer: { documentId: 'document-1', content: 'initial content' },
+  });
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  // The re-issue is refused again, which is the case a Retry is most likely to
+  // meet: the tab set moved again between the two attempts.
+  mockedAppModelAdapter.activateDocument = jest.fn(async () => ({
+    error: activationRefusal('activate:document-2'),
+  })) as unknown as AppModelAdapter['activateDocument'];
+
+  render(<App />);
+  await screen.findByRole('button', { name: 'File' });
+  act((): void => {
+    reportClassifiedError(
+      store.dispatch,
+      activationRefusal('activate:document-2'),
+      'File operation failed',
+      { intent: 'activate-document', retry: { documentId: 'document-2' } },
+    );
+  });
+
+  const before = store.getState().notifications.items;
+  expect(before).toHaveLength(1);
+  expect(before[0]?.count).toBe(1);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+  await waitFor(() =>
+    expect(mockedAppModelAdapter.activateDocument).toHaveBeenCalled(),
+  );
+
+  // The second refusal must leave a trace. It is the same failure, so the
+  // contract dedups it onto the standing notification and raises its count —
+  // which is what the toast renders as the repeat indicator.
+  await waitFor(() => {
+    expect(store.getState().notifications.items[0]?.count).toBe(2);
+  });
+  // And the original must still be there: a fix that dismissed it would hide
+  // the problem rather than report it.
+  expect(store.getState().notifications.items).toHaveLength(1);
+  expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible();
+
+  mockedAppModelAdapter.activateDocument = undefined;
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});

@@ -1501,7 +1501,33 @@ const AppContents: React.FC = (): React.JSX.Element => {
           const state = await appModelAdapter.getState();
           const revision = state.snapshot.tabSetRevision ?? 0;
           const result = await retryEntryCommand(remediation, revision);
-          if (result === undefined || result.error !== undefined) return;
+          if (result === undefined) return;
+          if (result.error !== undefined) {
+            /*
+             * T170. A refused retry used to return in silence, leaving the
+             * standing toast with its original message and no sign the second
+             * attempt had failed too.
+             *
+             * Reported *here*, and only for `activate-document`. The other four
+             * intents call `reportEntryError` inside their own handlers, so
+             * reporting them again would duplicate. And this cannot move into
+             * `onActivateDocument` either, tempting as the symmetry is: in
+             * production `DocumentTabs.runActivation` calls that handler and
+             * `DocumentTabs.activateDocument` then reports the same error, so a
+             * self-reporting handler would report twice per tab click. That is
+             * exactly the defect recorded at `notificationsSlice.ts:180-183`,
+             * where a Save refused twice put the Retry button behind a `×2`
+             * that read like the dedup count working. The `Retry` control is
+             * the one path the strip's funnel never sees.
+             */
+            if (remediation.intent === 'activate-document') {
+              reportClassifiedError(dispatch, result.error, t('editor.tabs'), {
+                intent: 'activate-document',
+                retry: { documentId: remediation.documentId },
+              });
+            }
+            return;
+          }
           dispatch(dismissNotification(notificationId));
           return;
         }
