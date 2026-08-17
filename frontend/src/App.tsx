@@ -733,9 +733,50 @@ const AppContents: React.FC = (): React.JSX.Element => {
    * callers — save, conflict resolution and native close — keep their copy
    * contract.
    */
+  /*
+   * T164. The close request currently in flight, so a refusal can be re-issued.
+   *
+   * A ref rather than a parameter threaded down the chain, because the request
+   * genuinely outlives the call stack that started it. `onClosePlanChoice`,
+   * `onCloseNormalizationDecision` and `onCloseConflictDecision` all resume a
+   * plan prepared in an *earlier* stack — the user answered a prompt in between
+   * — so there is no frame left to thread it through. Modelling that as a ref is
+   * honest about the lifetime; passing it as an argument would mean
+   * reconstructing it at each resumption point, which is exactly the "rebuild
+   * the request" mistake that closes the wrong tabs.
+   *
+   * Set by every path that prepares a plan, and read only when reporting a
+   * refusal.
+   */
+  const closeRequestRef = useRef<
+    { kind: ClosePlanKind; targetDocumentIds: string[] } | undefined
+  >(undefined);
   const reportClosePlanError = useCallback(
     (error: ClassifiedError | undefined): void => {
-      reportClassifiedError(dispatch, error, t('notification.error.io.title'));
+      /*
+       * Which Retry this failure earns depends on which arm asked.
+       *
+       * A native quit re-issues the *request* to the frame (`quit`), because
+       * `cancelNativeClose` has already run and there is no pending close left
+       * to re-prepare. A tab close re-prepares with its original kind and
+       * targets (`close-documents`). Offering `close-documents` on the native
+       * arm would close tabs when the user asked to quit; offering `quit` on the
+       * tab arm would quit when the user asked to close a tab. They are not
+       * interchangeable, which is why this is decided here rather than by a
+       * single default.
+       */
+      const request = closeRequestRef.current;
+      const options = nativeClosePendingRef.current
+        ? ({ intent: 'quit' } as const)
+        : request === undefined
+          ? undefined
+          : ({ intent: 'close-documents', retry: { close: request } } as const);
+      reportClassifiedError(
+        dispatch,
+        error,
+        t('notification.error.io.title'),
+        options,
+      );
     },
     [dispatch],
   );
@@ -1142,6 +1183,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
     ): Promise<TabTransitionResult> => {
       const targets =
         targetDocumentIds.length > 0 ? targetDocumentIds : [documentId];
+      // The only frame that holds the request. Everything below reports with a
+      // plan id, which is the thing the backend refuses as stale.
+      closeRequestRef.current = { kind, targetDocumentIds: targets };
       if (
         activeBuffer?.documentId !== undefined &&
         targets.includes(activeBuffer.documentId)
@@ -1528,6 +1572,38 @@ const AppContents: React.FC = (): React.JSX.Element => {
             }
             return;
           }
+          dispatch(dismissNotification(notificationId));
+          return;
+        }
+        case 'close-documents': {
+          /*
+           * T164. Re-prepares the close the backend refused as stale, with the
+           * *original* kind and targets and a revision read fresh from the
+           * backend — the same reasoning as the entry arm above, and the same
+           * reason the plan id is not reused: the id is precisely what was
+           * refused, so `executeClosePlan` would refuse identically.
+           *
+           * `onCloseDocument` re-enters the whole prepare/resolve/execute
+           * sequence, including the dirty-close prompt, so a document that
+           * became modified while the toast stood is still protected.
+           */
+          const request = remediation.close;
+          if (request === undefined) return;
+          const state = await appModelAdapter.getState();
+          const revision = state.snapshot.tabSetRevision ?? 0;
+          const result = await onCloseDocument(
+            request.targetDocumentIds[0] ?? '',
+            revision,
+            request.kind,
+            request.targetDocumentIds,
+          );
+          /*
+           * `onCloseDocument` reports its own refusal through
+           * `reportClosePlanError`, which offers this control again against the
+           * newer revision. Reporting here too would be the `×2` T188 removed
+           * from the activation path.
+           */
+          if (result.error !== undefined) return;
           dispatch(dismissNotification(notificationId));
           return;
         }

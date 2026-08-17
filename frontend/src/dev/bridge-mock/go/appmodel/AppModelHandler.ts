@@ -403,6 +403,30 @@ function activationRefusalEnabled(): boolean {
 }
 
 /**
+ * Make the host refuse a close plan's *execution*, so a browser run can drive
+ * the one close arm that had two reporters.
+ *
+ * The prepare arm never showed the duplicate — `App.onCloseDocument` swallows
+ * that refusal into `{status: 'noop'}` — so seeding `PrepareClose` would prove
+ * nothing here. `ExecuteClosePlan` is the arm where `completeClosePlan` reports
+ * the error and then returns it, which is what let the tab strip report the same
+ * failure a second time.
+ *
+ * Same shape and same reasoning as `refuseActivate`: a seed rather than an
+ * orchestrated revision race, because "exactly one report" needs the refusal to
+ * be certain rather than probable. It adds fidelity — the real backend refuses a
+ * stale execute at `close_plan.go:529` and the mock previously could not be made
+ * to — so it is a fixture seed under FR-FT-054, not a component substitution.
+ * T164.
+ */
+function closeExecutionRefusalEnabled(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('refuseCloseExecute')
+  );
+}
+
+/**
  * Make the host refuse the next N writes, so a browser run can drive a *failing
  * write* end to end — the case T116's evidence names and T117 makes carry a
  * classified message and a remediation.
@@ -1489,6 +1513,17 @@ export function ResolveClosePlan(
 }
 
 export function ExecuteClosePlan(planId: string): Promise<TabTransitionResult> {
+  if (closeExecutionRefusalEnabled()) {
+    return Promise.resolve({
+      status: 'refused',
+      orderedDocumentIds: [...orderedDocumentIds],
+      error: classifiedError(
+        'conflict',
+        'The tab set changed before tabs could be removed.',
+        planId,
+      ),
+    });
+  }
   const plan = mockClosePlans.get(planId);
   if (plan === undefined || plan.status !== 'ready') {
     return Promise.resolve({

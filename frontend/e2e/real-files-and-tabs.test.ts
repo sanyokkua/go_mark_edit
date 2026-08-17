@@ -1002,6 +1002,56 @@ test('T188 reports a refused activation exactly once', async ({ page }) => {
 });
 
 /*
+ * T164, the close-plan twin of the case above, and the one that was actually
+ * broken rather than merely unenforced.
+ *
+ * The task recorded `DocumentTabs`'s close-arm report as unreachable in
+ * production. That holds for the *prepare* refusal — `App.onCloseDocument`
+ * returns `{status: 'noop'}` with no error, so the strip sees nothing — but not
+ * for the execute arm: `completeClosePlan` reports the failure at `App.tsx` and
+ * then returns it, so the strip reported the same error a second time and the
+ * count rendered over the Retry control. One click, `×2`, exactly the shape
+ * `notificationsSlice.ts:180-183` describes.
+ *
+ * Only this level can see it, for the reasons T188 records: `App.test.tsx` stubs
+ * AppShell and never renders the strip, and `DocumentTabs.test.tsx` supplies its
+ * own `onCloseDocument`, so neither has both reporters wired at once.
+ *
+ * What this level cannot see: the Go side. `?refuseCloseExecute` forces the
+ * `conflict` row, so this proves the frontend reports it once — not that Go
+ * classifies a stale execute correctly, which `close_plan_test.go` owns.
+ */
+// Proves: the classified error contract's dedup rule and FR-FT-015, for the
+// close-plan execute path — exactly one report per refusal, with the Retry the
+// contract requires still reachable.
+test('T164 reports a refused close exactly once and keeps its Retry', async ({
+  page,
+}) => {
+  await page.goto('/?refuseCloseExecute');
+
+  await page.getByRole('button', { name: 'New tab' }).click();
+  await expect(page.getByRole('tab')).toHaveCount(2);
+
+  // The close control is a sibling of its tab, not a descendant — the tablist
+  // owns both directly, which is the ownership T163 pinned.
+  await page
+    .getByRole('button', { name: /^Close / })
+    .nth(1)
+    .click();
+
+  const errorToast = page.locator('[data-severity="error"]');
+  await expect(errorToast).toHaveCount(1);
+  /*
+   * `×2` is the signature of the duplicate: a second report deduplicates onto
+   * the first and the contract renders the count, stranding the control behind
+   * it. Asserting the Retry is still operable alongside is what distinguishes
+   * "reported once" from "reported once and lost its remediation".
+   */
+  await expect(errorToast).not.toContainText('×2');
+  await expect(errorToast.getByRole('button', { name: 'Retry' })).toBeVisible();
+});
+
+/*
  * T177, the first of the two clauses T130 deferred on the owner decision
  * recorded in `decisions-phase-21.md` ("Build the core only … Defer edge
  * auto-scroll and the reduced-opacity ghost"). That decision deferred them to a

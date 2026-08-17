@@ -1,5 +1,5 @@
 import type { AppDispatch } from './index';
-import type { ClassifiedError } from './appModelTypes';
+import type { ClassifiedError, ClosePlanKind } from './appModelTypes';
 import {
   notifyToast,
   type NotificationRemediation,
@@ -89,7 +89,19 @@ export interface ClassifiedReportOptions {
    * "control with no command behind it" case is unreachable by construction
    * rather than guarded at the click.
    */
-  retry?: { documentId?: string; path?: string };
+  retry?: {
+    documentId?: string;
+    path?: string;
+    /**
+     * The original close request, for `close-documents`.
+     *
+     * It comes from `onCloseDocument` and nowhere else. `reportClosePlanError`
+     * fires two and three frames below it, holding only the plan id the backend
+     * refused as stale — so without this the retry has no way to name which tabs
+     * the user asked to close.
+     */
+    close?: { kind: ClosePlanKind; targetDocumentIds: string[] };
+  };
 }
 
 /**
@@ -123,6 +135,7 @@ function retryIsExecutable(
   intent: NotificationRemediationIntent,
   documentId: string | undefined,
   path: string | undefined,
+  close: { kind: ClosePlanKind; targetDocumentIds: string[] } | undefined,
 ): boolean {
   switch (intent) {
     case 'copy-path':
@@ -131,6 +144,11 @@ function retryIsExecutable(
       return documentId !== undefined && documentId !== '';
     case 'open-recent':
       return path !== undefined && path !== '';
+    // A close needs the request itself, not a document: `others` and `right`
+    // name a set no single document identifies. An empty target list is refused
+    // rather than treated as "close nothing", so the control is never a no-op.
+    case 'close-documents':
+      return close !== undefined && close.targetDocumentIds.length > 0;
     // `quit` belongs to this group for the same reason as the rest: it takes no
     // arguments. It re-asks the native frame to close, and the frame is a
     // singleton, so there is nothing a caller could fail to supply.
@@ -158,7 +176,7 @@ function remediationsFor(
   if (
     intent !== undefined &&
     error.remediations.includes('Retry') &&
-    retryIsExecutable(intent, documentId, retry?.path)
+    retryIsExecutable(intent, documentId, retry?.path, retry?.close)
   ) {
     offered.push({
       action: 'retry',
@@ -166,6 +184,7 @@ function remediationsFor(
       intent,
       labelKey: 'action.retry.label',
       ...(retry?.path === undefined ? {} : { path: retry.path }),
+      ...(retry?.close === undefined ? {} : { close: retry.close }),
     });
   }
   // `Save to recreate` precedes `Copy path` because the contract's `not-found`

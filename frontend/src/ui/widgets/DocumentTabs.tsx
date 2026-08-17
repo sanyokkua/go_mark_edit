@@ -507,14 +507,38 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       kind: ClosePlanKind = 'single',
       targetDocumentIds: string[] = [documentId],
     ): Promise<TabTransitionResult | undefined> => {
-      const result = onCloseDocument
-        ? await onCloseDocument(
-            documentId,
-            expectedRevision,
-            kind,
-            targetDocumentIds,
-          )
-        : await adapter.closeDocument?.(documentId, expectedRevision);
+      /*
+       * T164. Whoever owns the command owns the report.
+       *
+       * When the shell supplies `onCloseDocument` it reports its own refusals
+       * through `reportClosePlanError`, and it is the only frame that can offer
+       * a useful Retry, because it alone holds the original kind and targets.
+       * Reporting here as well produced a real `×2` on the execute arm:
+       * `completeClosePlan` reports the failure and then *returns* it, so this
+       * saw the same error the shell had already announced, and the count
+       * rendered over the Retry control — the exact defect T188 made
+       * unrepeatable for activation.
+       *
+       * The prepare arm never showed it, because that path returns
+       * `{status: 'noop'}` with no error, which is why this read as unreachable
+       * rather than as a duplicate.
+       *
+       * The arm is kept rather than deleted: without `onCloseDocument` this
+       * component drives `adapter.closeDocument` directly and is then the only
+       * reporter there is.
+       */
+      if (onCloseDocument) {
+        return await onCloseDocument(
+          documentId,
+          expectedRevision,
+          kind,
+          targetDocumentIds,
+        );
+      }
+      const result = await adapter.closeDocument?.(
+        documentId,
+        expectedRevision,
+      );
       if (result?.error !== undefined) {
         reportClassifiedError(
           dispatch,

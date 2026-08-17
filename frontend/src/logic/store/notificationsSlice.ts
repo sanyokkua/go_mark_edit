@@ -2,6 +2,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import { t } from '../../i18n';
 import type { WireError } from '../utils/parseError';
+import type { ClosePlanKind } from './appModelTypes';
 
 export type NotificationSeverity = 'error' | 'info' | 'success' | 'warning';
 
@@ -63,7 +64,17 @@ export type NotificationRemediationIntent =
    * close again is what starts a fresh close plan, drain and permit — the only
    * sequence that can succeed.
    */
-  | 'quit';
+  | 'quit'
+  /**
+   * Re-prepares a refused close, after FR-FT-033's stale tab-set check.
+   *
+   * Like `quit` this re-issues the *request* rather than the refused call, and
+   * for the same reason: the plan id the failure carries is exactly what the
+   * backend rejected as stale, so re-executing it would refuse identically. What
+   * has to come back instead is the original `kind` and `targets`, which only
+   * `onCloseDocument` ever held — see `close` on NotificationRemediation.
+   */
+  | 'close-documents';
 
 export interface NotificationRemediation {
   action: NotificationRemediationAction;
@@ -75,6 +86,17 @@ export interface NotificationRemediation {
    * other intent, and a retry is not offered at all without it.
    */
   path?: string;
+  /**
+   * The close request a `close-documents` retry re-issues, verbatim.
+   *
+   * A close is the one entry command whose retry cannot be rebuilt at the point
+   * of failure. `Close others` and `Close to the right` name a set of documents
+   * that is not derivable from the active document, and the reporting frames
+   * hold neither — only the plan id the backend refused. Carrying the request
+   * itself is what makes the control honest; without it a retry would close the
+   * wrong tabs, which is worse than offering nothing.
+   */
+  close?: { kind: ClosePlanKind; targetDocumentIds: string[] };
 }
 
 export interface Notification {

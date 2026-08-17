@@ -2343,6 +2343,104 @@ it('T156 offers Retry on a refused New and re-issues it against the fresh revisi
   act((): void => disposeAppModelProjection());
 });
 
+/*
+ * T164. The close plan is the one entry path T156 refused to wire, and the
+ * reason was real: a stale-tab-set close refusal cannot be re-issued from where
+ * it is reported. `reportClosePlanError` fires inside `processClosePlanResult`
+ * and `completeClosePlan`, and neither holds the `kind` or the `targets` that
+ * `prepareClose` needs — only the plan id, which is precisely what the backend
+ * refused as stale, so re-executing it would refuse identically.
+ *
+ * The original request is therefore carried forward from `onCloseDocument`,
+ * which is the only frame that has it.
+ *
+ * This case drives the File menu's Close Tab, which is the only close this
+ * suite can reach: `close-others` and `close-right` are `tab-context` entries
+ * (actionRegistry) and the tab strip does not render here, because AppShell is
+ * stubbed. So this proves the mechanism and the fresh revision on the `single`
+ * arm. That a *multi-target* request survives the round trip — the case that
+ * separates "carried" from "rebuilt from the active document" — is the browser
+ * case, which can open the tab context menu.
+ */
+// Proves: FR-FT-015 and the classified error and remediation contract's
+// `conflict` row (partial — the close-plan path's `Retry` on the `single` arm
+// only: that the control is offered, and that it re-issues against a revision
+// read fresh from the backend. The multi-target request and the "exactly one
+// report" rule are both browser cases; the second reporter is the tab strip,
+// which this suite stubs away.)
+it('T164 offers Retry on a refused close and re-issues it against the fresh revision', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    ...bootstrapState('draft', 12),
+    snapshot: { ...bootstrapState('draft', 12).snapshot, tabSetRevision: 41 },
+  });
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedClosePlanAdapter.prepareClose
+    .mockReset()
+    .mockResolvedValueOnce({
+      error: staleTabSetRefusal('The tab set changed; close must be retried.'),
+    })
+    .mockResolvedValueOnce({
+      data: {
+        id: 'close-plan-2',
+        kind: 'single',
+        tabSetRevision: 99,
+        targets: [
+          {
+            documentId: 'document-1',
+            title: 'one.md',
+            contentRevision: 1,
+            dirty: false,
+          },
+        ],
+        status: 'ready',
+      },
+    });
+  mockedClosePlanAdapter.executeClosePlan
+    .mockReset()
+    .mockResolvedValue({ status: 'closed', orderedDocumentIds: [] });
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Close Tab' }));
+
+  const retry = await screen.findByRole('button', { name: 'Retry' });
+  expect(mockedClosePlanAdapter.prepareClose.mock.calls[0]).toEqual([
+    'single',
+    ['document-1'],
+    41,
+  ]);
+
+  /*
+   * The tab set moves on while the toast is up — which is what the refusal was
+   * telling the user. Re-sending 41 would refuse identically.
+   */
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    ...bootstrapState('draft', 13),
+    snapshot: { ...bootstrapState('draft', 13).snapshot, tabSetRevision: 99 },
+  });
+
+  fireEvent.click(retry);
+  await waitFor(() =>
+    expect(mockedClosePlanAdapter.prepareClose).toHaveBeenCalledTimes(2),
+  );
+  expect(mockedClosePlanAdapter.prepareClose.mock.calls[1]).toEqual([
+    'single',
+    ['document-1'],
+    99,
+  ]);
+  expect(mockedClosePlanAdapter.prepareClose.mock.calls[1]?.[2]).not.toBe(41);
+  await waitFor(() =>
+    expect(store.getState().notifications.items).toHaveLength(0),
+  );
+
+  act((): void => disposeAppModelProjection());
+});
+
 // Proves: the classified error and remediation contract's `conflict` row
 // (partial — that `open-recent` carries the path its retry needs, and that a
 // retry with no path is not offered at all rather than rendered inert.)
