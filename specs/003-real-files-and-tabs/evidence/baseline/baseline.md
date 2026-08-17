@@ -4,8 +4,8 @@ Captured by `just baseline 003-real-files-and-tabs`. Do not edit by hand.
 
 | | |
 |---|---|
-| commit | `213db113` (`213db113def28ce779ec929aa4226d440458b79f`) |
-| captured | 2026-08-17 18:56 UTC |
+| commit | `93a253e9` (`93a253e94b15cd2f4620e14e75181b83ec094a3e`) |
+| captured | 2026-08-17 19:05 UTC |
 | working tree | **dirty — uncommitted changes are part of this baseline** |
 | coverage | 65.9% (mean of 11 packages) |
 

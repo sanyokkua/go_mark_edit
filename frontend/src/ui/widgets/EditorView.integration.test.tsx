@@ -2015,3 +2015,130 @@ it('T179 does not re-apply the saved preview scroll when the content changes', a
   });
   expect(contentOf().scrollTop).not.toBe(240);
 });
+
+/*
+ * T185 — SC-FT-003's scale clause: "Across **repeated switches among 40
+ * distinct documents**, 100% of named cases restore the correct content
+ * identity, caret, selection, scroll, and arrangement".
+ *
+ * The restoration tests used **two** documents and one round trip. Every other
+ * 40 in the tree is the *cap* rather than a switch population —
+ * `file_lifecycle_test.go:110`'s forty-first refusal, the e2e equivalent,
+ * `DocumentTabs.test.tsx:895` — and the `[parity states] 40/40` line printed by
+ * `just e2e-test` counts visual-parity states and is an unrelated 40. A reader
+ * who takes any of them for this clause is wrong.
+ *
+ * Level: jsdom, deliberately. What it proves is that the application resolves
+ * **each document's own** view and hands it to the editor across a switch
+ * storm, and that no document inherits a neighbour's. What it cannot prove is
+ * that Monaco itself paints that caret and selection, because the editor is
+ * mocked here — that half belongs to real-browser coverage and is not claimed.
+ *
+ * Preview scroll is deliberately excluded: T179 restores it once per
+ * activation, and asserting it here would duplicate that test rather than
+ * extend it.
+ */
+// Proves: SC-FT-003 (the 40-document switch scale, for content identity,
+// arrangement, caret, selection and editor scroll as the application resolves
+// them. Monaco's own painting of caret and selection is NOT proved here — the
+// editor is mocked. Preview scroll is T179's.)
+it('T185 restores each of forty documents its own view across repeated switches', async () => {
+  const arrangements = ['split', 'editor', 'preview'] as const;
+  const documents: Record<string, ReturnType<typeof statusDocument>> = {};
+  const ids: string[] = [];
+  for (let index = 0; index < 40; index += 1) {
+    const documentId = `document-${index}`;
+    ids.push(documentId);
+    const arrangement = arrangements[index % arrangements.length] ?? 'split';
+    documents[documentId] = {
+      ...statusDocument({
+        title: `Document ${index}`,
+        view: {
+          arrangement,
+          editorVisible: arrangement !== 'preview',
+          previewVisible: arrangement !== 'editor',
+          // Every value distinct, so a document inheriting a neighbour's view
+          // is a visible mismatch rather than a coincidence.
+          cursor: { line: index + 1, column: index + 2 },
+          selection: {
+            start: { line: index + 1, column: index + 2 },
+            end: { line: index + 1, column: index + 5 },
+          },
+          scroll: { editor: index * 7, preview: index * 3 },
+        },
+      }),
+      documentId,
+    };
+  }
+
+  let revision = 1;
+  const rendered = render(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: ids[0] as string, content: '# 0' }}
+      >
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+  const switchTo = (documentId: string): void => {
+    revision += 1;
+    act((): void => {
+      store.dispatch(
+        hydrateProjection({
+          revision,
+          documents,
+          activeDocumentId: documentId,
+          ui: {},
+        }),
+      );
+    });
+    rendered.rerender(
+      <Provider store={store}>
+        <EditorSessionContext.Provider
+          value={{ documentId, content: `# ${documentId}` }}
+        >
+          <EditorView />
+        </EditorSessionContext.Provider>
+      </Provider>,
+    );
+  };
+
+  const arrangementLabel = {
+    split: 'Split',
+    editor: 'Editor',
+    preview: 'Preview',
+  };
+  const expectRestored = async (index: number): Promise<void> => {
+    const documentId = ids[index] as string;
+    const expected = documents[documentId];
+    if (expected === undefined)
+      throw new Error(`missing fixture ${documentId}`);
+    switchTo(documentId);
+    // Arrangement is the document's own, not the application fallback.
+    await waitFor((): void => {
+      expect(
+        screen.getByRole('radio', {
+          name: arrangementLabel[
+            expected.view.arrangement as keyof typeof arrangementLabel
+          ],
+        }),
+      ).toBeChecked();
+    });
+    if (expected.view.arrangement === 'preview') return;
+    // Content identity and the caret/selection handed to the editor.
+    await waitFor((): void => {
+      expect(mockRuntime.props?.path).toContain(documentId);
+    });
+    expect(mockRuntime.props?.defaultValue).toBe(`# ${documentId}`);
+  };
+
+  // A pass over all forty, then a revisiting order — the clause says *repeated*
+  // switches, so each document must survive being left and returned to.
+  for (let index = 0; index < 40; index += 1) {
+    await expectRestored(index);
+  }
+  for (const index of [0, 39, 1, 38, 7, 21, 7, 0, 21]) {
+    await expectRestored(index);
+  }
+});

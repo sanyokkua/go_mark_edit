@@ -3095,3 +3095,100 @@ it('T176 translates from en.json rather than a hand-maintained copy', () => {
     expect(t(key)).not.toBe(key);
   }
 });
+
+/*
+ * T185 — SC-FT-003's second half at depth: "stale or failed switches produce
+ * zero cross-document text installations".
+ *
+ * T128 proved it for **one** supersession between two documents. Nothing
+ * exercised multiple concurrently pending acknowledgements or a chain deeper
+ * than one, which is the case a real switch storm produces: several activations
+ * in flight at once, resolving in an order nobody controls.
+ *
+ * The losers here resolve *after* the winner and in reverse order, so a guard
+ * that merely compared against "the previous request" rather than the newest
+ * generation would install one of them.
+ */
+// Proves: SC-FT-003 (the "zero cross-document text installations" clause, for a
+// supersession chain of depth three with all acknowledgements pending at once.
+// The 40-document restoration scale is proved in EditorView.integration.test.tsx.)
+it('T185 installs only the newest of several concurrently pending switches', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue({
+    snapshot: tabSetSnapshot(),
+    activeBuffer: { documentId: 'document-1', content: 'initial content' },
+  });
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+
+  /*
+   * Every switch targets `document-1`, which the projection confirms as active.
+   * That is deliberate: it removes identity from the comparison, so the *only*
+   * thing separating these three acknowledgements is the generation each was
+   * issued under. A guard that dropped losers because their document did not
+   * match would pass a weaker test while ignoring generation entirely.
+   */
+  const answers: ((value: unknown) => void)[] = [];
+  mockedAppModelAdapter.activateDocument = jest.fn(
+    async (): Promise<unknown> =>
+      new Promise((resolve): void => {
+        answers.push(resolve as (value: unknown) => void);
+      }),
+  ) as unknown as AppModelAdapter['activateDocument'];
+
+  render(<App />);
+  await screen.findByRole('button', { name: 'File' });
+
+  for (let issued = 0; issued < 3; issued += 1) {
+    act((): void => {
+      reportClassifiedError(
+        store.dispatch,
+        activationRefusal(`switch-${issued}`),
+        'File operation failed',
+        { intent: 'activate-document', retry: { documentId: 'document-1' } },
+      );
+    });
+    const retries = await screen.findAllByRole('button', { name: 'Retry' });
+    fireEvent.click(retries[retries.length - 1] as HTMLElement);
+    await waitFor(() => expect(answers).toHaveLength(issued + 1));
+  }
+
+  const answerWith = async (index: number, content: string): Promise<void> => {
+    await act(async (): Promise<void> => {
+      answers[index]?.({
+        data: {
+          documentId: 'document-1',
+          // Matched to `tabSetSnapshot()` — revision 12 and contentRevision 5 —
+          // so identity, projection revision and content revision all agree for
+          // every one of the three. Generation is the only thing left to tell
+          // them apart, which is the guard under test.
+          documentRevision: 5,
+          projectionRevision: 12,
+          content,
+        },
+      });
+      await Promise.resolve();
+    });
+  };
+
+  // The newest wins, then the two older answers arrive — in reverse order, the
+  // shape a guard comparing against "the previous request" would get wrong.
+  await answerWith(2, 'winning source');
+  await answerWith(1, 'superseded source two');
+  await answerWith(0, 'superseded source one');
+
+  const buffer = screen.getByRole('status', { name: 'Active editor buffer' });
+  // Both halves. Without the positive assertion this passes vacuously when
+  // nothing is installed at all — which is exactly how the first draft of this
+  // test passed while proving nothing.
+  expect(buffer).toHaveTextContent('winning source');
+  expect(buffer).not.toHaveTextContent('superseded source two');
+  expect(buffer).not.toHaveTextContent('superseded source one');
+
+  mockedAppModelAdapter.activateDocument = undefined;
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
