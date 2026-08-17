@@ -245,7 +245,15 @@ func TestPersistedArrangementPrecedence(t *testing.T) {
 	}
 }
 
-func TestIdentityReservationLifecycle(t *testing.T) {
+// Proves: FR-FT-004 — that a prepared Open reserves exactly one identity. The
+// release half is proved by TestReservationReleasedOnEveryTerminalOutcome,
+// which drives the terminal outcomes that actually exist.
+//
+// This case previously also drove CancelPreparedOpen. That function is gone
+// with T174: the 2026-08-17 amendment records FR-FT-004's cancellation arm as
+// vacuously satisfied by the single-call Open design, so there is no longer a
+// cancellation to assert here.
+func TestPreparedOpenReservesExactlyOneIdentity(t *testing.T) {
 	path := writeOpenFixture(t, "reserved.md", "reserved\n")
 	service := NewEmptyAppModelService(&recordingEmitter{})
 	state, _ := service.GetState(context.Background())
@@ -253,28 +261,22 @@ func TestIdentityReservationLifecycle(t *testing.T) {
 	if classified != nil || preparation.ReservationID == "" || len(service.reservations) != 1 {
 		t.Fatalf("preparation = %+v, error=%+v, reservations=%d", preparation, classified, len(service.reservations))
 	}
-	if err := service.CancelPreparedOpen(preparation.ReservationID); err != nil {
-		t.Fatalf("cancel preparation: %v", err)
-	}
-	if len(service.reservations) != 0 {
-		t.Fatalf("cancel leaked reservation: %d", len(service.reservations))
-	}
 }
 
 func TestPendingReservationCountsTowardLimit(t *testing.T) {
 	root := t.TempDir()
 	service := NewEmptyAppModelService(&recordingEmitter{})
-	preparations := make([]OpenPreparation, 0, maxOpenDocuments)
 	for count := 0; count < maxOpenDocuments; count++ {
 		path := filepath.Join(root, "pending-"+string(rune('a'+count))+".md")
 		if err := os.WriteFile(path, []byte("pending\n"), 0o644); err != nil {
 			t.Fatalf("write pending fixture: %v", err)
 		}
-		preparation, classified := service.PrepareOpen(context.Background(), path, 0)
-		if classified != nil {
+		if _, classified := service.PrepareOpen(context.Background(), path, 0); classified != nil {
 			t.Fatalf("prepare %d = %+v", count+1, classified)
 		}
-		preparations = append(preparations, preparation)
+	}
+	if len(service.reservations) != maxOpenDocuments {
+		t.Fatalf("pending reservations = %d, want %d", len(service.reservations), maxOpenDocuments)
 	}
 	path := filepath.Join(root, "pending-refused.md")
 	if err := os.WriteFile(path, []byte("pending\n"), 0o644); err != nil {
@@ -283,11 +285,6 @@ func TestPendingReservationCountsTowardLimit(t *testing.T) {
 	_, classified := service.PrepareOpen(context.Background(), path, 0)
 	if classified == nil || classified.Category != apperr.ClassifiedCapacityLimit {
 		t.Fatalf("pending 41st preparation = %+v, want capacity-limit", classified)
-	}
-	for _, preparation := range preparations {
-		if err := service.CancelPreparedOpen(preparation.ReservationID); err != nil {
-			t.Fatalf("cancel pending reservation: %v", err)
-		}
 	}
 }
 
@@ -310,9 +307,6 @@ func TestConcurrentSameIdentityRequestsJoinOneOutcome(t *testing.T) {
 	}
 	if len(service.reservations) != 1 {
 		t.Fatalf("concurrent preparations reserved %d identities, want one", len(service.reservations))
-	}
-	if err := service.CancelPreparedOpen(preparations[0].ReservationID); err != nil {
-		t.Fatalf("cancel joined reservation: %v", err)
 	}
 }
 

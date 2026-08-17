@@ -3,7 +3,6 @@ package appmodel
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 
@@ -205,31 +204,23 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 }
 
 /*
- * CancelPreparedOpen releases a pending identity and reserved capacity.
+ * There is deliberately no CancelPreparedOpen.
  *
- * It has no production caller, and T137 kept it anyway. FR-FT-004 names four
- * events that end a reservation — "until activation, commit, cancellation, or
- * failure" — and this is the only implementation of the third. Deleting it
- * would delete a clause of the requirement rather than dead scaffolding.
+ * FR-FT-004 names four events that end a reservation — "until activation,
+ * commit, cancellation, or failure" — and the 2026-08-17 amendment records the
+ * third as satisfied vacuously by this single-call design rather than as an
+ * arm needing an implementation. OpenPath calls PrepareOpen and
+ * CommitPreparedOpen in adjacent statements, every PrepareOpen refusal returns
+ * before a reservation exists, and CommitPreparedOpen deletes the reservation
+ * on every branch, so no reservation can outlive a prepare and there is nothing
+ * to cancel between the two.
  *
- * The arm is unreachable today for a structural reason: the two-phase boundary
- * never crosses the bridge. OpenPath calls PrepareOpen and CommitPreparedOpen
- * in adjacent statements, every PrepareOpen refusal returns before a
- * reservation exists, and CommitPreparedOpen deletes the reservation on every
- * branch — so nothing can be cancelled between the two, and no reservation
- * leaks. FR-FT-004's intended sequence is prepare, then a frontend flush, then
- * commit, and exposing that boundary is a design change well outside a
- * dead-code pass. T174 owns the decision.
+ * T137 kept a CancelPreparedOpen so as not to delete a clause of the
+ * requirement; T174 resolved the clause instead, and the function went with it.
+ * Re-adding one means re-opening that decision, not filling a gap: it would
+ * need the prepare/commit boundary exposed across the bridge first, which is
+ * what would make the arm reachable and what the amendment declined.
  */
-func (service *AppModelService) CancelPreparedOpen(reservationID string) error {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	if _, ok := service.reservations[reservationID]; !ok {
-		return fmt.Errorf("open reservation not found")
-	}
-	delete(service.reservations, reservationID)
-	return nil
-}
 
 // CommitPreparedOpen revalidates the tab revision and applies exactly one Open transition.
 func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservationID string) apperr.OpenOutcome {

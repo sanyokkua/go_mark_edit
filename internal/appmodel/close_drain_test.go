@@ -130,11 +130,20 @@ func TestDrainBeforeCloseWaitsForAWriteInFlight(t *testing.T) {
 	}
 }
 
-// Proves: FR-FT-027 (partial — the "cancel in-flight long operations" half: work
-// that was scheduled but can no longer run is cancelled rather than waited for,
-// and the drain still returns.)
+// Proves: FR-FT-027 — the "cancel scheduled work that can no longer run" clause:
+// work that was scheduled but has since become ineligible is cancelled rather
+// than waited for, and the drain still returns.
 //
-// This is the regression guard for the live-lock this area has already had.
+// The clause read "cancel in-flight long operations" until the 2026-08-17
+// amendment, and this anchor named that wording while the body proved the
+// debounce behaviour below — an anchor asserting a claim its body does not make,
+// which converts a coverage gap into a false record of coverage. Nothing in this
+// backend implements the stronger reading and nothing here ever proved it:
+// AtomicReplace has no cancellation point by design, ReadClassifiedStable takes
+// no context, and the write coordinator serializes rather than interrupts. The
+// requirement and the anchor now say the same thing.
+//
+// This is also the regression guard for the live-lock this area has already had.
 // runAutosave declines a document that has become autosave-ineligible and leaves
 // its entry in place; a drain that loops until the entry disappears never
 // returns, which is a window that cannot be closed rather than a completed drain.
