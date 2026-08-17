@@ -235,13 +235,34 @@ func (service *AppModelService) RequestNormalization(documentID string, expected
 	return apperr.WriteResult{Status: apperr.WriteStatusNeedsNormalization, DecisionToken: token, ProposedEnding: proposed, DocumentRevision: expectedContentRevision}
 }
 
-func (service *AppModelService) CancelNormalization(documentID, token string) {
+// CancelNormalization releases a normalization authorization that was minted for
+// a prompt the user then dismissed.
+//
+// FR-FT-011 makes the confirmation single-use and says "cancellation MUST resume
+// nothing". Confirming consumes the authorization; before T168 nothing released
+// it when the prompt was dismissed instead, so it survived for the process
+// lifetime, the next Save minted another, and service.normalizations was never
+// swept. T135 closed the same leak on the autosave arm.
+//
+// Deliberately idempotent, and deliberately not an error when the token is
+// unknown or names another document. A dismissal can legitimately arrive after
+// the authorization has already been consumed or invalidated — the document
+// moved on, or the prompt was answered twice — and in every one of those cases
+// the caller's intent is already satisfied. Reporting a failure would put a
+// classified error in front of a user who did nothing wrong, and the security
+// property is unchanged: the token buys nothing either way.
+//
+// Returns ClassifiedVoidResult rather than nothing because this is reachable
+// across the Wails bridge, where every bound handler must answer with a typed
+// apperr result.
+func (service *AppModelService) CancelNormalization(documentID, token string) apperr.ClassifiedVoidResult {
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	authorization, ok := service.normalizations[token]
 	if ok && authorization.documentID == documentID {
 		delete(service.normalizations, token)
 	}
+	return apperr.ClassifiedVoidResult{}
 }
 
 func (service *AppModelService) snapshotForWrite(documentID string, expectedContentRevision uint64, decisionToken, targetPath string, targetPathAdopted bool) (writeSnapshot, apperr.WriteResult) {

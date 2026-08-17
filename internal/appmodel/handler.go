@@ -27,6 +27,9 @@ type AppModelServiceAPI interface {
 	SetDocView(ctx context.Context, documentID string, view apperr.DocViewInput) error
 	SetUILayout(ctx context.Context, layout apperr.UILayout) error
 	Save(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
+	// CancelNormalization takes no context: it only releases an in-memory
+	// authorization and touches neither disk nor the operating system. T168.
+	CancelNormalization(documentID, token string) apperr.ClassifiedVoidResult
 	SaveAs(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
 	CheckExternalChanges(ctx context.Context, documentID string) apperr.ConflictResult
 	// ForegroundCheck is CheckExternalChanges named for FR-FT-020's window
@@ -166,6 +169,34 @@ func (handler *AppModelHandler) ExecuteClosePlan(planID string) (res apperr.TabT
 		return tabTransitionFailure(apperr.ClassifiedSystemCommandFailure, planID, "The close plan service is unavailable.", apperr.RemediationRetry)
 	}
 	return planner.ExecuteClosePlan(handler.context(), planID)
+}
+
+// CancelNormalization releases the authorization a dismissed normalization
+// prompt was raised with.
+//
+// FR-FT-011 makes the mixed-ending confirmation single-use and requires that
+// "cancellation MUST resume nothing". Confirming consumes the authorization;
+// dismissing had no way to release it, because CancelNormalization existed in
+// the service and was not on the bound surface at all — this handler is what
+// gives the frontend a way to call it. T168.
+func (handler *AppModelHandler) CancelNormalization(documentID string, decisionToken string) (res apperr.ClassifiedVoidResult) {
+	defer func() {
+		if recover() != nil {
+			// The authorization is single-use and buys nothing on its own, so a
+			// panic here leaks a map entry rather than authorizing a write. Retry
+			// is the honest remediation: re-issuing the release is well defined,
+			// because the command is idempotent.
+			classified := apperr.NewClassifiedError(
+				apperr.ClassifiedSystemCommandFailure,
+				"",
+				"The normalization prompt could not be dismissed.",
+				apperr.RemediationRetry,
+				documentID,
+			)
+			res = apperr.ClassifiedVoidResult{Error: &classified}
+		}
+	}()
+	return handler.service.CancelNormalization(documentID, decisionToken)
 }
 
 // CopyPath delegates the explicit canonical path action to the injected clipboard port.

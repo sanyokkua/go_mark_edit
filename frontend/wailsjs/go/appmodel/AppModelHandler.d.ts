@@ -8,6 +8,8 @@ export function AuthorizeKeepMine(arg1:string,arg2:number,arg3:string,arg4:apper
 
 export function CancelConflict(arg1:string,arg2:number,arg3:apperr.DiskVersion):Promise<apperr.ConflictResult>;
 
+export function CancelNormalization(arg1:string,arg2:string):Promise<apperr.ClassifiedVoidResult>;
+
 export function CheckExternalChanges(arg1:string):Promise<apperr.ConflictResult>;
 
 export function CloseDocument(arg1:string,arg2:number):Promise<apperr.TabTransitionResult>;

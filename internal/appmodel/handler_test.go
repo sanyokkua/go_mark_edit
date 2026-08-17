@@ -38,6 +38,10 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		{"AuthorizeKeepMine", 5, reflect.TypeFor[apperr.ConflictResult]()},
 		{"SkipConflict", 4, reflect.TypeFor[apperr.ConflictResult]()},
 		{"CancelConflict", 4, reflect.TypeFor[apperr.ConflictResult]()},
+		// T168. Three inputs: the receiver, the document id and the token — and
+		// no context, because releasing an in-memory authorization touches
+		// neither disk nor the operating system.
+		{"CancelNormalization", 3, reflect.TypeFor[apperr.ClassifiedVoidResult]()},
 	}
 	for _, tt := range cases {
 		t.Run(tt.method, func(t *testing.T) {
@@ -54,7 +58,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		})
 	}
 
-	for _, method := range []string{"GetState", "NewDocument", "OpenDocument", "ActivateDocument", "ReorderDocument", "CloseDocument", "CopyPath", "RevealInFileManager", "UpdateBuffer", "SetDocView", "SetUILayout", "Save", "SaveAs"} {
+	for _, method := range []string{"GetState", "NewDocument", "OpenDocument", "ActivateDocument", "ReorderDocument", "CloseDocument", "CopyPath", "RevealInFileManager", "UpdateBuffer", "SetDocView", "SetUILayout", "Save", "SaveAs", "CancelNormalization"} {
 		t.Run(method+" recovers without emitting a patch", func(t *testing.T) {
 			service := &fakeAppModelService{panicOn: method}
 			panickingHandler := NewAppModelHandler(service, nil, nil)
@@ -117,8 +121,13 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 				if writeResult.Status != apperr.WriteStatusRefused || writeResult.Error == nil || writeResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want classified Save As refusal", writeResult)
 				}
+			case "CancelNormalization":
+				cancelled := panickingHandler.CancelNormalization("doc", "token")
+				if cancelled.Error == nil || cancelled.Error.Category != apperr.ClassifiedSystemCommandFailure {
+					t.Fatalf("panic result = %+v, want a classified dismissal refusal", cancelled)
+				}
 			}
-			if method != "GetState" && method != "NewDocument" && method != "OpenDocument" && method != "ActivateDocument" && method != "ReorderDocument" && method != "CloseDocument" && method != "CopyPath" && method != "RevealInFileManager" && method != "Save" && method != "SaveAs" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
+			if method != "GetState" && method != "NewDocument" && method != "OpenDocument" && method != "ActivateDocument" && method != "ReorderDocument" && method != "CloseDocument" && method != "CopyPath" && method != "RevealInFileManager" && method != "Save" && method != "SaveAs" && method != "CancelNormalization" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
 				t.Fatalf("panic result = %+v, want an internal envelope", result)
 			}
 			if service.emissions != 0 {
@@ -333,6 +342,15 @@ func (service *fakeAppModelService) SetUILayout(_ context.Context, _ apperr.UILa
 	}
 	service.emissions++
 	return nil
+}
+
+// T168: the release is in-memory only, which is why it takes no context.
+func (service *fakeAppModelService) CancelNormalization(_, _ string) apperr.ClassifiedVoidResult {
+	if service.panicOn == "CancelNormalization" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.ClassifiedVoidResult{}
 }
 
 func (service *fakeAppModelService) Save(_ context.Context, _ string, _ uint64, _ string) apperr.WriteResult {

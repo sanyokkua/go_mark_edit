@@ -26,6 +26,7 @@ import {
   UpdateBuffer,
   Save,
   SaveAs,
+  CancelNormalization,
   CheckExternalChanges,
   ReloadFromDisk,
   AuthorizeKeepMine,
@@ -282,6 +283,8 @@ export const documentWriteAdapter = createDocumentWriteAdapter({
     normalizeWriteResult(
       await SaveAs(documentId, contentRevision, decisionToken),
     ),
+  cancelNormalization: async (documentId, decisionToken) =>
+    CancelNormalization(documentId, decisionToken),
 });
 
 export const documentConflictAdapter = createDocumentConflictAdapter({

@@ -460,3 +460,61 @@ func TestUnauthorizedSaveAsksForNormalizationEvenWhenTheFileAlsoChanged(t *testi
 		t.Fatalf("Save status = %q, want %q — the authorization gate must precede the disk inspection", result.Status, apperr.WriteStatusNeedsNormalization)
 	}
 }
+
+/*
+T168 — FR-FT-011's cancellation arm for the manual prompt.
+
+A mixed-ending Save mints a single-use authorization into service.normalizations
+and hands it back as WriteResult.DecisionToken, which is how the prompt is
+raised. Confirming consumes it; the requirement also says "cancellation MUST
+resume nothing", and nothing released it when the user dismissed the prompt
+instead. The authorization stayed for the process lifetime and the next Save
+minted another, so service.normalizations grew one entry per dismissal and was
+never swept.
+
+T135 closed the same leak on the autosave arm by routing a refused attempt
+through CancelNormalization. This is the arm a person actually drives.
+*/
+// Proves: FR-FT-011
+func TestCancelNormalizationReleasesADismissedAuthorization(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "mixed.md")
+	if err := os.WriteFile(path, []byte("one\ntwo\r\n"), 0o640); err != nil {
+		t.Fatalf("write mixed fixture: %v", err)
+	}
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	opened := service.OpenPath(context.Background(), path, 0)
+	if opened.ActiveBuffer == nil {
+		t.Fatalf("Open result = %+v", opened)
+	}
+	if err := service.UpdateBuffer(context.Background(), opened.DocumentID, "edited\ncontent\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+	blocked := service.Save(context.Background(), opened.DocumentID, 1, "")
+	if blocked.Status != apperr.WriteStatusNeedsNormalization || blocked.DecisionToken == "" {
+		t.Fatalf("mixed Save = %+v, want one authorization", blocked)
+	}
+	if len(service.normalizations) != 1 {
+		t.Fatalf("authorizations after prompt = %d, want 1", len(service.normalizations))
+	}
+
+	// The user dismisses the prompt rather than authorizing it.
+	cancelled := service.CancelNormalization(opened.DocumentID, blocked.DecisionToken)
+	if cancelled.Error != nil {
+		t.Fatalf("CancelNormalization = %+v, want no error", cancelled)
+	}
+	if len(service.normalizations) != 0 {
+		t.Fatalf("authorizations after dismissal = %d, want 0", len(service.normalizations))
+	}
+
+	// The release must be real, not a bookkeeping trim: the dismissed token must
+	// buy nothing afterwards. Without this a no-op that merely stopped counting
+	// would pass the assertion above.
+	replayed := service.Save(context.Background(), opened.DocumentID, 1, blocked.DecisionToken)
+	if replayed.Status != apperr.WriteStatusNeedsNormalization {
+		t.Fatalf("Save with a dismissed token = %+v, want a fresh normalization request", replayed)
+	}
+	if replayed.DecisionToken == blocked.DecisionToken {
+		t.Fatalf("re-minted token = %q, want a new one rather than the dismissed one", replayed.DecisionToken)
+	}
+}

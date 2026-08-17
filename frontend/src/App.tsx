@@ -1931,7 +1931,25 @@ const AppContents: React.FC = (): React.JSX.Element => {
               />
               <NormalizationPrompt
                 filename={normalization?.filename ?? ''}
-                onCancel={(): void => setNormalization(null)}
+                onCancel={(): void => {
+                  /*
+                   * FR-FT-011: the confirmation is single-use and "cancellation
+                   * MUST resume nothing". Closing the prompt was resuming
+                   * nothing already; what it was not doing is releasing the
+                   * authorization it was raised with, so `service.normalizations`
+                   * kept an entry per dismissal for the process lifetime and the
+                   * next Save minted another. The token is handed back with the
+                   * document it was minted against, because the release is bound
+                   * to both. T168.
+                   */
+                  if (normalization !== null) {
+                    void documentWriteAdapter.cancelNormalization(
+                      normalization.documentId,
+                      normalization.decisionToken,
+                    );
+                  }
+                  setNormalization(null);
+                }}
                 onConfirm={onNormalizeConfirm}
                 open={bootstrapStatus === 'ready' && normalization !== null}
                 proposedEnding={normalization?.proposedEnding ?? 'lf'}

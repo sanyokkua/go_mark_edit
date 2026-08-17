@@ -14,6 +14,10 @@ export function CancelConflict(arg1, arg2, arg3) {
   return window['go']['appmodel']['AppModelHandler']['CancelConflict'](arg1, arg2, arg3);
 }
 
+export function CancelNormalization(arg1, arg2) {
+  return window['go']['appmodel']['AppModelHandler']['CancelNormalization'](arg1, arg2);
+}
+
 export function CheckExternalChanges(arg1) {
   return window['go']['appmodel']['AppModelHandler']['CheckExternalChanges'](arg1);
 }

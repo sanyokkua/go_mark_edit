@@ -80,6 +80,16 @@ it('T015 guards Save and Save As with their exact three-argument bridge shapes',
         return { status: 'cancelled' as const };
       },
     ),
+    // T168. Two arguments, not three: the release is bound to the document and
+    // the token, and carries no content revision — Go's `CancelNormalization`
+    // matches the token itself and checks only that it names this document.
+    cancelNormalization: jest.fn(
+      async (documentId: string, decisionToken: string) => {
+        void documentId;
+        void decisionToken;
+        return {};
+      },
+    ),
   };
   const adapter = createDocumentWriteAdapter(bindings);
 
@@ -89,8 +99,15 @@ it('T015 guards Save and Save As with their exact three-argument bridge shapes',
   await expect(adapter.saveAs('doc-1', 8, 'decision-1')).resolves.toEqual({
     status: 'cancelled',
   });
+  await expect(
+    adapter.cancelNormalization('doc-1', 'decision-1'),
+  ).resolves.toEqual({});
   expect(bindings.save).toHaveBeenCalledWith('doc-1', 8, '');
   expect(bindings.saveAs).toHaveBeenCalledWith('doc-1', 8, 'decision-1');
+  expect(bindings.cancelNormalization).toHaveBeenCalledWith(
+    'doc-1',
+    'decision-1',
+  );
 });
 
 it('T020 guards every conflict decision with its exact bridge argument order', async () => {

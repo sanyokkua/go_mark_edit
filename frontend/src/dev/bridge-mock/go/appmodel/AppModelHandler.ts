@@ -1831,6 +1831,25 @@ export function SaveAs(
   );
 }
 
+/**
+ * Release a dismissed normalization authorization.
+ *
+ * The mock mints no authorizations — `Save` answers from `mockSaveResult` — so
+ * there is nothing here to delete, and the honest mock is one that accepts the
+ * call and reports success, which is what Go does for an unknown token
+ * (`CancelNormalization` is deliberately idempotent). Present so the dev bridge
+ * and every Playwright run expose the same surface as the real binding rather
+ * than throwing on a command the application now issues. T168.
+ */
+export function CancelNormalization(
+  _requestedDocumentId: string,
+  _decisionToken: string,
+): Promise<{ error?: undefined }> {
+  void _requestedDocumentId;
+  void _decisionToken;
+  return Promise.resolve({});
+}
+
 export function SetDocView(
   requestedDocumentId: string,
   input: DocViewInput,

@@ -171,6 +171,7 @@ jest.mock('./logic/adapter', () => ({
   documentWriteAdapter: {
     save: jest.fn(async () => ({ status: 'cancelled' })),
     saveAs: jest.fn(async () => ({ status: 'cancelled' })),
+    cancelNormalization: jest.fn(async () => ({})),
   },
   documentConflictAdapter: {
     checkExternalChanges: jest.fn(async () => ({ status: 'unchanged' })),
@@ -3027,6 +3028,57 @@ it('T170 reports an activation refusal met on the Retry path', async () => {
   expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible();
 
   mockedAppModelAdapter.activateDocument = undefined;
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+/*
+ * T168 — FR-FT-011's cancellation arm, on the prompt a person actually drives.
+ *
+ * A mixed-ending Save mints a single-use authorization into
+ * `service.normalizations` and returns it as `WriteResult.DecisionToken`, which
+ * is how the prompt is raised. Confirming consumes it. Dismissing released
+ * nothing: `onCancel` only called `setNormalization(null)`, so the authorization
+ * survived for the process lifetime and the next Save minted another. T135
+ * closed the identical leak on the autosave arm by routing a refused attempt
+ * through `CancelNormalization`; that primitive had no other caller and was not
+ * on the Wails-bound surface at all, so the frontend could not reach it.
+ */
+// Proves: FR-FT-011 (the cancellation arm — a dismissed prompt releases its
+// authorization rather than leaking it)
+it('T168 releases the normalization authorization when the prompt is dismissed', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(bootstrapState('mixed', 12));
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'needs-normalization',
+    decisionToken: 'authorization-token',
+    proposedEnding: 'lf',
+    documentRevision: 3,
+  });
+  const cancelNormalization = jest.fn(async () => ({}));
+  mockedDocumentWriteAdapter.cancelNormalization =
+    cancelNormalization as unknown as typeof mockedDocumentWriteAdapter.cancelNormalization;
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+  await screen.findByRole('dialog', { name: 'Normalize line endings?' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  // The token the prompt was raised with must be handed back, for the document
+  // it was minted against — releasing some other token would leak this one.
+  await waitFor(() => {
+    expect(cancelNormalization).toHaveBeenCalledWith(
+      'document-1',
+      'authorization-token',
+    );
+  });
   store.dispatch(resetNotifications());
   act((): void => disposeAppModelProjection());
 });

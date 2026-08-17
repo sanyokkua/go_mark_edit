@@ -81,11 +81,24 @@ export interface DocumentWriteBindings {
     contentRevision: number,
     decisionToken: string,
   ) => Promise<WriteResult>;
+  /**
+   * Release the authorization a dismissed normalization prompt was raised with.
+   *
+   * FR-FT-011 makes the mixed-ending confirmation single-use and requires that
+   * cancellation resume nothing. Confirming consumes the authorization;
+   * dismissing had no way to release it, so it survived for the process
+   * lifetime and the next Save minted another. T168.
+   */
+  cancelNormalization: (
+    documentId: string,
+    decisionToken: string,
+  ) => Promise<{ error?: unknown }>;
 }
 
 export interface DocumentWriteAdapter {
   save: DocumentWriteBindings['save'];
   saveAs: DocumentWriteBindings['saveAs'];
+  cancelNormalization: DocumentWriteBindings['cancelNormalization'];
 }
 
 export interface DocumentConflictBindings {
@@ -281,12 +294,18 @@ export function createDocumentWriteAdapter(
 ): DocumentWriteAdapter {
   const save = guardArity('AppModelHandler.Save', bindings.save);
   const saveAs = guardArity('AppModelHandler.SaveAs', bindings.saveAs);
+  const cancelNormalization = guardArity(
+    'AppModelHandler.CancelNormalization',
+    bindings.cancelNormalization,
+  );
 
   return {
     save: (documentId, contentRevision, decisionToken) =>
       save(documentId, contentRevision, decisionToken),
     saveAs: (documentId, contentRevision, decisionToken) =>
       saveAs(documentId, contentRevision, decisionToken),
+    cancelNormalization: (documentId, decisionToken) =>
+      cancelNormalization(documentId, decisionToken),
   };
 }
 
