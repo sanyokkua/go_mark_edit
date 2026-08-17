@@ -1593,8 +1593,17 @@ const AppContents: React.FC = (): React.JSX.Element => {
       if (decision === 'keep-mine' && !externalConflictValid) return;
       await appModelAdapter.flushActiveSession?.(current.documentId);
       let result;
+      /*
+       * Claimed before the command is issued, exactly as the five activation
+       * handlers do. FR-FT-030 covers "activating a tab **or reloading the
+       * active document**", and this is the sixth handler the guard's contract
+       * anticipates — reload had been installing on an identity check alone.
+       * T169.
+       */
+      let reloadGeneration = 0;
       switch (decision) {
         case 'reload':
+          reloadGeneration = activation.begin();
           result = await documentConflictAdapter.reloadFromDisk(
             current.documentId,
             current.preview.contentRevision,
@@ -1633,11 +1642,27 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       if (decision === 'reload') {
         const refreshedState = await appModelAdapter.getState();
-        if (refreshedState.activeBuffer?.documentId === current.documentId) {
-          replaceActiveBuffer(refreshedState.activeBuffer);
-        } else if (result.activeBuffer !== undefined) {
-          replaceActiveBuffer(result.activeBuffer);
-        }
+        /*
+         * The fresher of the two answers is still preferred — the backend
+         * publishes the reloaded text into the projection, and re-reading picks
+         * it up — but neither is installed directly any more. `acknowledge`
+         * applies FR-FT-030's whole rule: the generation must still be current,
+         * the acknowledgement's identity must be the document the reload named,
+         * and the confirmed active projection must still agree on both identity
+         * and revision. The old `else` arm installed `result.activeBuffer` with
+         * no check at all, and it ran precisely when the refreshed state showed
+         * a *different* active document — so a reload overtaken by a tab switch
+         * wrote its text over whatever the user had switched to. T169.
+         */
+        const acknowledgement =
+          refreshedState.activeBuffer?.documentId === current.documentId
+            ? refreshedState.activeBuffer
+            : result.activeBuffer;
+        activation.acknowledge(
+          reloadGeneration,
+          acknowledgement,
+          current.documentId,
+        );
         setExternalConflict(null);
         return;
       }
@@ -1654,7 +1679,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       setExternalConflict(null);
     },
-    [externalConflict, externalConflictValid, finishWrite, reportWriteError],
+    [
+      activation,
+      externalConflict,
+      externalConflictValid,
+      finishWrite,
+      reportWriteError,
+    ],
   );
   // Keep the existing modal contract explicit for menu and keyboard consumers.
   const modalOpen =

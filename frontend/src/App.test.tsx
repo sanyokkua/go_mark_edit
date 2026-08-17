@@ -2854,3 +2854,107 @@ it('T157 opens no document at startup even with six remembered recent files', as
   mockedAppModelAdapter.openDocument = undefined;
   act((): void => disposeAppModelProjection());
 });
+
+/*
+ * T169 — FR-FT-030's reload arm, the half T128 left behind.
+ *
+ * FR-FT-030 covers "activating a tab **or reloading the active document**" and
+ * allows the acknowledgement to be applied "only while both values still match
+ * the confirmed active projection". T128 routed all five *activation* installs
+ * through `useGuardedActivation`; the reload arm still installed on an identity
+ * check alone — and its `else` branch installed `result.activeBuffer` with **no
+ * check whatsoever**, firing precisely when the refreshed state showed a
+ * different active document. So a reload overtaken by a tab switch wrote the
+ * reloaded document's text over whatever the user had switched to: the
+ * cross-document text installation SC-FT-003 requires to be impossible.
+ */
+// Proves: FR-FT-030 (the reload arm of the identity-and-revision guard)
+// Proves: SC-FT-003 (partial — "zero cross-document text installations", for a
+// reload overtaken by a switch. The activation arm is T128; the failed-switch
+// arm is T140; the 40-document scale is T185.)
+it('T169 never installs a reload acknowledgement overtaken by a document switch', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.getState.mockResolvedValue(
+    bootstrapState('mine\n', 12),
+  );
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'conflict',
+    conflict: {
+      documentId: 'document-1',
+      displayName: 'one.md',
+      contentRevision: 0,
+      detectedDiskVersion: {
+        exists: true,
+        size: 5,
+        modifiedUnixNano: '1',
+        mode: 0o644,
+      },
+      onDisk: { text: 'disk\n', lineCount: 1, byteCount: 5, truncated: false },
+      yours: { text: 'mine\n', lineCount: 1, byteCount: 5, truncated: false },
+      readOnly: false,
+    },
+  });
+  mockedAppModelAdapter.flushActiveSession = jest.fn(async () => undefined);
+
+  // The reload is held open so the tab switch can overtake it, exactly as T128
+  // holds a superseded activation open.
+  type ReloadAnswer = Awaited<
+    ReturnType<typeof mockedDocumentConflictAdapter.reloadFromDisk>
+  >;
+  let resolveReload: ((value: ReloadAnswer) => void) | undefined;
+  mockedDocumentConflictAdapter.reloadFromDisk.mockReset().mockImplementation(
+    async () =>
+      new Promise((resolve): void => {
+        resolveReload = resolve;
+      }),
+  );
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+  await screen.findByRole('dialog', { name: 'File changed on disk' });
+  fireEvent.click(screen.getByRole('button', { name: 'Reload from disk' }));
+  await waitFor(() =>
+    expect(mockedDocumentConflictAdapter.reloadFromDisk).toHaveBeenCalled(),
+  );
+
+  // The user switches away while the reload is in flight. Both the projection
+  // and the state the handler re-reads now describe document-2.
+  const switched = bootstrapState('second document text', 14);
+  switched.snapshot.documents['document-2'] = {
+    ...switched.snapshot.documents['document-1'],
+    documentId: 'document-2',
+    title: 'Two',
+    path: '/documents/two.md',
+  };
+  switched.snapshot.activeDocumentId = 'document-2';
+  switched.activeBuffer = {
+    documentId: 'document-2',
+    content: 'second document text',
+  };
+  mockedAppModelAdapter.getState.mockResolvedValue(switched);
+  act((): void => {
+    store.dispatch(hydrateProjection(switched.snapshot));
+  });
+
+  await act(async (): Promise<void> => {
+    resolveReload?.({
+      status: 'reloaded',
+      documentId: 'document-1',
+      activeBuffer: { documentId: 'document-1', content: 'stale reload text' },
+    } as ReloadAnswer);
+    await Promise.resolve();
+  });
+
+  const buffer = screen.getByRole('status', { name: 'Active editor buffer' });
+  expect(buffer).not.toHaveTextContent('stale reload text');
+
+  mockedAppModelAdapter.flushActiveSession = undefined;
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
