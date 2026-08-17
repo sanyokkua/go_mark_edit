@@ -384,6 +384,25 @@ function revealRefusalEnabled(): boolean {
 }
 
 /**
+ * Make the backend refuse every tab activation, so a browser run can drive a
+ * *refused activation* end to end.
+ *
+ * The refusal is the `conflict` stale-tab-set row Go answers with, which is the
+ * one a user actually meets and the one two separate frontend paths report:
+ * `DocumentTabs.activateDocument` owns the strip's funnel, and `onRemediate`
+ * owns the `Retry` control the funnel never sees. A seed rather than an
+ * orchestrated revision race, because the property under test — exactly one
+ * report per refusal — needs the refusal to be deterministic, not merely
+ * probable. Same shape as `refuseReveal` and `refuseSave`. T188.
+ */
+function activationRefusalEnabled(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('refuseActivate')
+  );
+}
+
+/**
  * Make the host refuse the next N writes, so a browser run can drive a *failing
  * write* end to end — the case T116's evidence names and T117 makes carry a
  * classified message and a remediation.
@@ -1178,6 +1197,9 @@ export function ActivateDocument(
   requestedDocumentId: string,
   expectedTabSetRevision: number,
 ): Promise<DocumentTransitionResult> {
+  if (activationRefusalEnabled()) {
+    return Promise.resolve({ error: staleRevisionError() });
+  }
   if (!expectedRevisionMatches(expectedTabSetRevision)) {
     return Promise.resolve({ error: staleRevisionError() });
   }

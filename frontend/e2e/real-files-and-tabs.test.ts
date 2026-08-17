@@ -938,3 +938,50 @@ test('T144 keeps the distinguishing suffix painted when the pixel budget truncat
   const rendered = await suffixes.allTextContents();
   expect(new Set(rendered).size).toBe(2);
 });
+
+/*
+ * T188. Two frontend paths report a refused activation, and they must never
+ * both fire for the same click: `DocumentTabs.activateDocument` owns the tab
+ * strip's funnel, and `onRemediate`'s `activate-document` arm owns the `Retry`
+ * control, which the funnel never sees. `App.onActivateDocument` therefore
+ * reports the outgoing-flush refusal and deliberately returns a *backend*
+ * refusal unreported, so the funnel is not duplicated.
+ *
+ * T170 verified that by reading the code. Nothing failed if someone later
+ * "simplified" it by making the handler self-report like its four sibling entry
+ * commands — and the failure is quiet: one click, `count: 2`, and the Retry
+ * control disappearing behind a `×2` that reads like the dedup contract working
+ * correctly. That is a defect this repository has already shipped once, at
+ * `notificationsSlice.ts:180-183`.
+ *
+ * This is the only level that can see it. `DocumentTabs.test.tsx` supplies its
+ * own `onActivateDocument` stub, so it cannot observe App's handler;
+ * `App.test.tsx` stubs `AppShell` *and* `EditorView`, so it never renders the
+ * real strip. Here both are the shipped components and the shipped handler.
+ *
+ * What this level cannot see: the Go side. `?refuseActivate` makes the dev
+ * bridge answer the `conflict` stale-tab-set row unconditionally, so this
+ * proves the frontend reports it once — not that Go classifies it correctly,
+ * which `internal/appmodel`'s own tests own.
+ */
+// Proves: the classified error contract's dedup rule and FR-FT-031, for the
+// tab-strip activation path — exactly one report per refusal.
+test('T188 reports a refused activation exactly once', async ({ page }) => {
+  await page.goto('/?refuseActivate');
+
+  await page.getByRole('button', { name: 'New tab' }).click();
+  const tabs = page.getByRole('tab');
+  await expect(tabs).toHaveCount(2);
+
+  await tabs.nth(0).click();
+
+  const errorToast = page.locator('[data-severity="error"]');
+  await expect(errorToast).toHaveCount(1);
+  /*
+   * The refusal is reported, and reported once. `×2` is what the contract
+   * renders when a second report deduplicates onto the first, so its absence is
+   * the assertion that matters here — a handler that self-reported alongside
+   * the strip's funnel would show it after a single click.
+   */
+  await expect(errorToast).not.toContainText('×2');
+});
