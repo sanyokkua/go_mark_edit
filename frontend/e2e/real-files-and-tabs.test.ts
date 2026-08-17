@@ -525,8 +525,9 @@ test('T129 reorders the active tab with the Move accelerators and no-ops at the 
 // Escape-cancel and the same-position no-op are proved in DocumentTabs.test.tsx,
 // where the *absence* of a command is observable and this suite could only see
 // an unchanged order — which a reorder to the tab's own index also produces.
-// The reduced-opacity dragged tab and the strip's edge auto-scroll are the two
-// clauses T130 deliberately deferred to T177; nothing here proves them.
+// The reduced-opacity dragged tab and the strip's edge auto-scroll were the two
+// clauses T130 deferred to T177; they are now proved by the two T177 cases at
+// the end of this file, not by this one.
 test('T130 paints the drop position during a tab drag and reorders on release', async ({
   page,
 }) => {
@@ -984,4 +985,113 @@ test('T188 reports a refused activation exactly once', async ({ page }) => {
    * the strip's funnel would show it after a single click.
    */
   await expect(errorToast).not.toContainText('×2');
+});
+
+/*
+ * T177, the first of the two clauses T130 deferred on the owner decision
+ * recorded in `decisions-phase-21.md` ("Build the core only … Defer edge
+ * auto-scroll and the reduced-opacity ghost"). That decision deferred them to a
+ * later task rather than dropping them; this is that task.
+ *
+ * FR-FT-036 names five clauses, and this is "show the insertion position **and
+ * reduced-opacity dragged tab**". The point of it is that a user can see which
+ * tab is in flight, so it is asserted as a *computed* style against the real
+ * strip — a class-name assertion in jsdom would pass whether or not the rule
+ * resolves, which is the shape of coverage this feature has removed twice.
+ */
+// Proves: FR-FT-036 (the reduced-opacity dragged tab)
+test('T177 draws the dragged tab at reduced opacity while it is in flight', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'New tab' }).click();
+  await expect(page.getByRole('tab')).toHaveCount(2);
+
+  const items = page.locator('[data-tab-item]');
+  const dragged = items.nth(0);
+  const untouched = items.nth(1);
+
+  // Nothing is translucent before the grab.
+  await expect(dragged).toHaveCSS('opacity', '1');
+
+  const grab = await page.getByRole('tab').nth(0).boundingBox();
+  expect(grab).not.toBeNull();
+  await page.mouse.move(
+    (grab?.x ?? 0) + (grab?.width ?? 0) / 2,
+    (grab?.y ?? 0) + (grab?.height ?? 0) / 2,
+  );
+  await page.mouse.down();
+  // Past TAB_DRAG_THRESHOLD_PX, which is what promotes a pending grab into a
+  // drag; below it the strip must still look untouched.
+  await page.mouse.move(
+    (grab?.x ?? 0) + (grab?.width ?? 0) / 2 + 24,
+    (grab?.y ?? 0) + (grab?.height ?? 0) / 2,
+    { steps: 6 },
+  );
+
+  await expect(dragged).toHaveCSS('opacity', '0.48');
+  // Only the tab in flight. A strip-wide fade would tell the user nothing.
+  await expect(untouched).toHaveCSS('opacity', '1');
+
+  await page.keyboard.press('Escape');
+  // Cancelling restores it, so the ghost is bound to the drag and not left behind.
+  await expect(dragged).toHaveCSS('opacity', '1');
+  await page.mouse.up();
+});
+
+/*
+ * T177's second clause, the other half T130 deferred: "auto-scroll the strip
+ * near its edges".
+ *
+ * Reachable only when the strip is a scroll container, which it is only at
+ * `[data-tabs-overflowing='true']` — measured by a ResizeObserver, never
+ * counted. So the fixture opens documents until the strip reports overflow
+ * rather than assuming a tab count, because the count that overflows depends on
+ * filename widths, theme and viewport.
+ */
+// Proves: FR-FT-036 (the strip's edge auto-scroll)
+test('T177 auto-scrolls the tab strip when a drag reaches its trailing edge', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  const strip = page.getByRole('tablist', { name: 'Document tabs' });
+  const newTab = page.getByRole('button', { name: 'New tab' });
+  // Open until the strip actually overflows; 40 is FR-FT-004's cap, so this
+  // cannot loop forever.
+  for (let opened = 0; opened < 39; opened += 1) {
+    if ((await strip.getAttribute('data-tabs-overflowing')) === 'true') break;
+    await newTab.click();
+  }
+  await expect(strip).toHaveAttribute('data-tabs-overflowing', 'true');
+
+  const before = await strip.evaluate((node) => node.scrollLeft);
+  const box = await strip.boundingBox();
+  expect(box).not.toBeNull();
+
+  // Grab a tab that is currently in view, then hold the pointer inside the
+  // strip's trailing edge margin without releasing.
+  const grab = await page.getByRole('tab').nth(0).boundingBox();
+  expect(grab).not.toBeNull();
+  await page.mouse.move(
+    (grab?.x ?? 0) + (grab?.width ?? 0) / 2,
+    (grab?.y ?? 0) + (grab?.height ?? 0) / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    (box?.x ?? 0) + (box?.width ?? 0) - 4,
+    (box?.y ?? 0) + (box?.height ?? 0) / 2,
+    { steps: 6 },
+  );
+
+  // The strip follows the pointer toward the tabs it cannot show.
+  await expect
+    .poll(async () => strip.evaluate((node) => node.scrollLeft), {
+      timeout: 4000,
+    })
+    .toBeGreaterThan(before);
+
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
 });

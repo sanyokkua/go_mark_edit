@@ -88,6 +88,37 @@ function announcementName(
 const TAB_DRAG_THRESHOLD_PX = 4;
 
 /*
+ * FR-FT-036's edge auto-scroll. The margin is the band inside each end of the
+ * strip that pulls it along, and the step is how far one tick moves it.
+ *
+ * Reachable only while the strip is a scroll container — it carries
+ * `overflow-x: auto` solely at `[data-tabs-overflowing='true']` — and that
+ * condition is deliberately not widened to make this easier to implement:
+ * making an element a scroll container costs ~332 deterministic antialiasing
+ * pixels against the immutable parity reference, because Chromium composites
+ * scrollable areas and drops LCD subpixel antialiasing. T177.
+ */
+const TAB_DRAG_EDGE_SCROLL_MARGIN_PX = 48;
+const TAB_DRAG_EDGE_SCROLL_STEP_PX = 12;
+const TAB_DRAG_EDGE_SCROLL_INTERVAL_MS = 16;
+
+/**
+ * Whether the user has asked for reduced motion.
+ *
+ * A continuously animating strip is exactly what that setting is about, so the
+ * loop below does not run under it. The behaviour is not dropped — the strip
+ * still steps once per pointer move, so a drag can still reach an off-screen
+ * tab — only the self-driving animation is.
+ */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+/*
  * The pointer sits *between* tabs, so the drag's position is a slot in
  * `0..orderedDocuments.length`, not a tab index: slot 0 is before the first
  * tab, slot n after the last. A slot becomes the index the dragged tab would
@@ -657,15 +688,31 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     null,
   );
   const dragTeardown = useRef<(() => void) | null>(null);
+  const edgeScrollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const suppressActivationClick = useRef(false);
   const [insertionSlot, setInsertionSlot] = useState<number | null>(null);
+  /*
+   * FR-FT-036's reduced-opacity dragged tab. `activeDrag` is a ref because the
+   * pointer handlers mutate it between renders; nothing could render from it,
+   * which is why T130 deferred this clause. The id is mirrored into state here
+   * rather than moved, so the handlers keep their synchronous read and the
+   * strip still re-renders when a drag starts and ends. T177.
+   */
+  const [draggingDocumentId, setDraggingDocumentId] = useState<string | null>(
+    null,
+  );
 
   const endDrag = useCallback((): void => {
+    if (edgeScrollTimer.current !== null) {
+      clearInterval(edgeScrollTimer.current);
+      edgeScrollTimer.current = null;
+    }
     dragTeardown.current?.();
     dragTeardown.current = null;
     pendingGrab.current = null;
     activeDrag.current = null;
     setInsertionSlot(null);
+    setDraggingDocumentId(null);
   }, []);
   useEffect((): (() => void) => endDrag, [endDrag]);
 
@@ -676,6 +723,57 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
    * order is the order being reasoned about, and the indicator this returns a
    * position for is itself a child of the same strip.
    */
+  /*
+   * FR-FT-036's edge auto-scroll, driven from the pointer position rather than
+   * from a drop target: while a drag is in flight and the pointer sits inside
+   * either end of the strip, the strip follows it toward the tabs it cannot
+   * show. It is a no-op unless the strip actually scrolls, which is only the
+   * overflowing case. T177.
+   */
+  const edgeScrollDirectionAt = useCallback((clientX: number): number => {
+    const strip = stripRef.current;
+    if (strip === null) return 0;
+    if (strip.scrollWidth <= strip.clientWidth) return 0;
+    const box = strip.getBoundingClientRect();
+    if (clientX >= box.right - TAB_DRAG_EDGE_SCROLL_MARGIN_PX) return 1;
+    if (clientX <= box.left + TAB_DRAG_EDGE_SCROLL_MARGIN_PX) return -1;
+    return 0;
+  }, []);
+
+  const stepEdgeScroll = useCallback((direction: number): void => {
+    const strip = stripRef.current;
+    if (strip === null || direction === 0) return;
+    strip.scrollLeft += direction * TAB_DRAG_EDGE_SCROLL_STEP_PX;
+  }, []);
+
+  /*
+   * Started and stopped by pointer position, not by every move event, so the
+   * strip keeps travelling while the pointer is held still inside the margin —
+   * which is the whole point of the clause. Under reduced motion no interval is
+   * armed and the caller steps once per move instead.
+   */
+  const updateEdgeScroll = useCallback(
+    (clientX: number): void => {
+      const direction = edgeScrollDirectionAt(clientX);
+      if (direction === 0) {
+        if (edgeScrollTimer.current !== null) {
+          clearInterval(edgeScrollTimer.current);
+          edgeScrollTimer.current = null;
+        }
+        return;
+      }
+      if (prefersReducedMotion()) {
+        stepEdgeScroll(direction);
+        return;
+      }
+      if (edgeScrollTimer.current !== null) return;
+      edgeScrollTimer.current = setInterval((): void => {
+        stepEdgeScroll(direction);
+      }, TAB_DRAG_EDGE_SCROLL_INTERVAL_MS);
+    },
+    [edgeScrollDirectionAt, stepEdgeScroll],
+  );
+
   const insertionSlotAt = useCallback((clientX: number): number => {
     const strip = stripRef.current;
     if (strip === null) return 0;
@@ -761,11 +859,13 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
             documentId: pending.documentId,
             fromIndex: pending.fromIndex,
           };
+          setDraggingDocumentId(pending.documentId);
           suppressActivationClick.current = true;
         }
         if (activeDrag.current === null) return;
         event.preventDefault();
         setInsertionSlot(insertionSlotAt(event.clientX));
+        updateEdgeScroll(event.clientX);
       };
       const up = (event: MouseEvent): void => {
         const drag = activeDrag.current;
@@ -803,7 +903,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         target.removeEventListener('keydown', cancelKey, true);
       };
     },
-    [dropDraggedTab, endDrag, insertionSlotAt],
+    [dropDraggedTab, endDrag, insertionSlotAt, updateEdgeScroll],
   );
 
   /*
@@ -954,6 +1054,11 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                  */
                 <div
                   className={styles.tabItem}
+                  data-tab-dragging={
+                    document.documentId === draggingDocumentId
+                      ? 'true'
+                      : undefined
+                  }
                   data-tab-item=""
                   key={document.documentId}
                   role="presentation"

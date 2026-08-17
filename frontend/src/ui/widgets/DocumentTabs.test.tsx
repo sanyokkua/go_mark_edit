@@ -1344,7 +1344,16 @@ it('T129 keeps the active document and the focused element across a keyboard Mov
 });
 
 /*
- * T130, FR-FT-036 — the pointer drag. jsdom runs no layout engine, so every
+ * T130, FR-FT-036 — the pointer drag. The five clauses are split across two
+ * levels by what each can actually observe: the cases below prove grab,
+ * insertion position, drop, Escape-cancel and the same-position no-op, because
+ * each turns on the *absence or presence of a command*, which is observable
+ * here and not in a browser. The two clauses T130 deferred and T177 built — the
+ * reduced-opacity dragged tab and the strip's edge auto-scroll — are proved in
+ * `e2e/real-files-and-tabs.test.ts` instead, because both are computed style
+ * and scroll geometry that jsdom cannot produce.
+ *
+ * jsdom runs no layout engine, so every
  * `getBoundingClientRect` here is a zero rect and a drop position measured from
  * tab boxes would always resolve to slot 0, whatever the pointer did. These are
  * the boxes a three-tab strip would have at 100 CSS pixels per tab, laid out

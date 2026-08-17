@@ -411,3 +411,13 @@
   flex: 0 0 auto;
   white-space: nowrap;
 }
+
+/* FR-FT-036's reduced-opacity dragged tab: the user must be able to see which
+   tab is in flight, and the insertion indicator alone does not say which one
+   moved. `--disabled-opacity` is reused rather than a drag-specific token
+   added, because `tokens.test.ts` checks palette completeness and an opacity is
+   palette-independent — a second token would have to be declared in all six
+   combinations to carry the same number. T177. */
+.tabItem[data-tab-dragging='true'] {
+  opacity: var(--disabled-opacity);
+}
