@@ -100,13 +100,12 @@ export interface ClassifiedReportOptions {
  * also offers Copy path", and a detached `not-found` offers "Save to recreate
  * plus Copy path". Order follows the contract table, so Retry precedes Copy path.
  *
- * `Save to recreate` is deliberately absent. Nothing in the frontend can run it:
- * `App.tsx`'s `beginWrite` refuses a detached document outright — which
- * contradicts FR-FT-023 — and it writes only the *active* document, so a control
+ * `Save to recreate` was absent until **T160**, because nothing in the frontend
+ * could run it: `beginWrite` refused a detached document outright — which
+ * contradicted FR-FT-023 — and it wrote only the *active* document, so a control
  * carrying it would either refuse or save a different file than the toast names.
- * **T160** owns both. Dropping the member leaves the detached `not-found` row
- * half-served, which is a visible gap; rendering it would be a control with
- * nothing behind it, which is the defect T116 exists to remove.
+ * T160 removed both blockers, so the member is now mapped and the row is served
+ * whole.
  *
  * `Reload from disk`, `Keep mine`, `Skip` and `Cancel` are absent for a
  * different reason: the contract routes them through the external-change prompt
@@ -167,6 +166,24 @@ function remediationsFor(
       intent,
       labelKey: 'action.retry.label',
       ...(retry?.path === undefined ? {} : { path: retry.path }),
+    });
+  }
+  // `Save to recreate` precedes `Copy path` because the contract's `not-found`
+  // row names them in that order. Like `copy-path` it names its own command, so
+  // it takes no intent from the caller — only the document the toast is about,
+  // which is the one whose file has gone. T160 gave it a command to run:
+  // `beginWrite` no longer refuses a detached document and now writes the
+  // document it is handed rather than whichever one happens to be active.
+  if (
+    error.documentId !== undefined &&
+    error.documentId !== '' &&
+    error.remediations.includes('Save to recreate')
+  ) {
+    offered.push({
+      action: 'save-to-recreate',
+      documentId: error.documentId,
+      intent: 'save',
+      labelKey: 'action.save-to-recreate.label',
     });
   }
   // `copy-path` names its own command, so it needs no intent from the caller —

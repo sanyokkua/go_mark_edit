@@ -83,18 +83,22 @@ it('T142 never offers a Retry whose command belongs to a different action', () =
 });
 
 /*
- * The detached half of the `not-found` row — "Save to recreate plus Copy path" —
- * is deliberately NOT closed by T142. `Save to recreate` has no command behind
- * it in the frontend: `App.tsx`'s `beginWrite` refuses a detached document
- * outright and only ever writes the *active* document, so a control offering it
- * would either refuse or save the wrong file. T160 owns that. Until then the
- * member must be dropped rather than rendered, which is what this pins.
+ * The detached half of the `not-found` row — "Save to recreate plus Copy path".
+ *
+ * T142 pinned this as *dropped*, because `Save to recreate` had no command
+ * behind it: `beginWrite` refused a detached document outright and only ever
+ * wrote the active document. T160 removed both blockers, so the member now names
+ * a command that runs and the contract row can be served whole. The superseded
+ * assertion is rewritten rather than deleted — the rule it protected (a member
+ * with no command behind it is dropped) is still proved, by `Retry` below.
+ *
+ * `save-to-recreate` needs no `intent` from the caller for the same reason
+ * `copy-path` does not: it names its own command and needs only a document to
+ * run it against.
  */
-// Proves: the classified error contract's rule that a category's copy is
-// remediated only from its own row — specifically that a member with no command
-// behind it is dropped. It does NOT prove the `not-found` detached pair, which
-// remains open as T160.
-it('T142 drops Save to recreate rather than rendering a control with no command', () => {
+// Proves: the classified error contract's `not-found` detached row, and FR-FT-023
+// insofar as the control that recreates the file is offered at all.
+it('T160 offers both Save to recreate and Copy path for a detached not-found', () => {
   expect(
     report(
       {
@@ -107,5 +111,33 @@ it('T142 drops Save to recreate rather than rendering a control with no command'
       },
       { intent: 'reveal' },
     ),
-  ).toEqual([{ action: 'copy-path', intent: 'copy-path' }]);
+  ).toEqual([
+    { action: 'save-to-recreate', intent: 'save' },
+    { action: 'copy-path', intent: 'copy-path' },
+  ]);
+});
+
+/*
+ * The rule T142's superseded case used to carry, kept on a member that genuinely
+ * has no command: the contract's `not-found` row permits no `Retry`, and even if
+ * Go sent one there is nothing a re-issue could achieve. A dropped member is the
+ * only correct outcome, and without this the "drop it" path would be unproved
+ * once `Save to recreate` started being rendered.
+ */
+// Proves: the classified error contract's rule that a remediation with no
+// executable command behind it is dropped rather than rendered.
+it('T160 still drops a remediation whose command cannot run', () => {
+  expect(
+    report(
+      {
+        category: 'not-found',
+        safeSubject: 'one.md',
+        message: 'The recent entry no longer exists.',
+        remediations: ['Retry'],
+        documentId: '',
+        dedupKey: 'recent:one',
+      },
+      { intent: 'open-recent' },
+    ),
+  ).toEqual([]);
 });

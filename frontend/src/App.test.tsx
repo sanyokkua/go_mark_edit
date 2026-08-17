@@ -59,6 +59,7 @@ jest.mock('./i18n', () => ({
       'recovery.quit.message':
         'The file was saved on disk, but editor-state recovery failed. Quit and discard newer unsaved changes for the affected documents?',
       'recovery.quit.title': 'Confirm quit and discard',
+      'action.save-to-recreate.label': 'Save to recreate',
       'save.readOnly': 'This document is read-only and cannot be saved.',
       'save.success.message': 'Saved {filename} · {encoding} · {lineEnding}',
       'save.success.title': 'Saved',
@@ -1253,6 +1254,161 @@ it('Save reports exactly one confirmation', async () => {
     0,
     '',
   );
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+/*
+ * T160 — FR-FT-023's recreate arm, which `beginWrite` vetoed outright.
+ *
+ * The guard treated `detached === true` as a read-only capability and answered
+ * every explicit Save with a `permission-denied` refusal. FR-FT-023 says the
+ * opposite in as many words: a missing backing file MUST keep the buffer, mark
+ * the document detached and modified, and "allow explicit Save to recreate the
+ * same path" (spec.md:1067, acceptance scenario 6 at spec.md:546). Go has always
+ * been able to do it — `internal/appmodel/save.go:355` clears `detached` on a
+ * successful write — so this was a frontend guard vetoing a backend capability,
+ * and it fired for every Save on a detached document, not only for the
+ * `Save to recreate` remediation T160 also owns.
+ */
+// Proves: FR-FT-023
+it('T160 lets an explicit Save recreate a detached document at the same path', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  const detached = bootstrapState('draft', 12);
+  detached.snapshot.documents['document-1'] = {
+    ...detached.snapshot.documents['document-1'],
+    detached: true,
+    dirty: true,
+  };
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(detached);
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.reconcileCommittedWrite.mockResolvedValue(
+    bootstrapState('draft', 13),
+  );
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'committed',
+    data: {
+      documentId: 'document-1',
+      writtenContentRevision: 2,
+      committedProjectionRevision: 13,
+      targetPath: '/documents/one.md',
+      targetPathAdopted: false,
+      lineEndingOutcome: 'preserved-lf',
+      bomOutcome: 'absent',
+      resyncRequired: false,
+    },
+  });
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+
+  // The write must actually be issued, at the document's own path — the point
+  // of the requirement is that the file comes back, not that the toast changes.
+  await waitFor(() => {
+    expect(mockedDocumentWriteAdapter.save).toHaveBeenCalledWith(
+      'document-1',
+      0,
+      '',
+    );
+  });
+  await waitFor(() => {
+    expect(screen.getByText('Saved one.md · UTF-8 · LF')).toBeVisible();
+  });
+  // And the refusal it used to answer with must be gone, not merely outvoted by
+  // a success toast rendered beside it.
+  expect(
+    screen.queryByText('This document is read-only and cannot be saved.'),
+  ).not.toBeInTheDocument();
+  store.dispatch(resetNotifications());
+  act((): void => disposeAppModelProjection());
+});
+
+/*
+ * T160 blocker 2 — the recreate must run against the document the toast names.
+ *
+ * A detached `not-found` is raised by Copy path or Reveal from the *tab context
+ * menu*, which can target any tab, so the document the message is about need not
+ * be the active one. `beginWrite` resolved its target from `activeDocument` and
+ * ignored any id it was handed, so a `Save to recreate` control wired to it would
+ * have recreated a different file than the one the user was told had gone —
+ * silently, and at the path of a document they never mentioned.
+ */
+// Proves: FR-FT-023 (the remediation arm: the recreate runs against the named
+// document) and the classified error contract's detached `not-found` row.
+it('T160 recreates the document the toast names, not the active one', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  const twoDocuments = bootstrapState('draft', 12);
+  twoDocuments.snapshot.documents['document-2'] = {
+    ...twoDocuments.snapshot.documents['document-1'],
+    documentId: 'document-2',
+    title: 'Two',
+    path: '/documents/two.md',
+    detached: true,
+    dirty: true,
+  };
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(twoDocuments);
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.reconcileCommittedWrite.mockResolvedValue(
+    bootstrapState('draft', 13),
+  );
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'committed',
+    data: {
+      documentId: 'document-2',
+      writtenContentRevision: 2,
+      committedProjectionRevision: 13,
+      targetPath: '/documents/two.md',
+      targetPathAdopted: false,
+      lineEndingOutcome: 'preserved-lf',
+      bomOutcome: 'absent',
+      resyncRequired: false,
+    },
+  });
+
+  render(<App />);
+  await screen.findByRole('button', { name: 'File' });
+  act((): void => {
+    reportClassifiedError(
+      store.dispatch,
+      {
+        category: 'not-found',
+        safeSubject: 'two.md',
+        message: 'The file for two.md no longer exists.',
+        remediations: ['Save to recreate', 'Copy path'],
+        documentId: 'document-2',
+        dedupKey: 'not-found:document-2',
+      },
+      'File operation failed',
+      { intent: 'reveal' },
+    );
+  });
+
+  const recreate = await screen.findByRole('button', {
+    name: 'Save to recreate',
+  });
+  expect(screen.getByRole('button', { name: 'Copy path' })).toBeVisible();
+
+  fireEvent.click(recreate);
+
+  // `document-2`, not the active `document-1`. Asserting the id alone would pass
+  // if the call were made twice, so the call count is pinned too.
+  await waitFor(() => {
+    expect(mockedDocumentWriteAdapter.save).toHaveBeenCalledWith(
+      'document-2',
+      0,
+      '',
+    );
+  });
+  expect(mockedDocumentWriteAdapter.save).toHaveBeenCalledTimes(1);
   store.dispatch(resetNotifications());
   act((): void => disposeAppModelProjection());
 });

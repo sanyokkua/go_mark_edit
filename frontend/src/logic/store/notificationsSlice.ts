@@ -19,7 +19,20 @@ export type NotificationSeverity = 'error' | 'info' | 'success' | 'warning';
  * remediation only when its caller declares an intent it can actually honour, so
  * a control that would do nothing is never constructed in the first place.
  */
-export type NotificationRemediationAction = 'copy-path' | 'retry';
+export type NotificationRemediationAction =
+  | 'copy-path'
+  /**
+   * The contract's `not-found` remediation for a *detached* document: write the
+   * buffer back to the path whose file has gone, recreating it.
+   *
+   * A distinct member rather than a `retry` with a `save` intent, because the
+   * control is not a re-issue of anything — the failure it answers is a Reveal or
+   * Copy path against a missing file, and the label the contract gives it says
+   * what it does rather than that it repeats. Its command is `save` all the same,
+   * which is why `intent` carries that. T160.
+   */
+  | 'save-to-recreate'
+  | 'retry';
 
 /**
  * The command a remediation control runs.

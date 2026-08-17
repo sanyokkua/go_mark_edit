@@ -1225,8 +1225,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
             replaceActiveBuffer(recovered.activeBuffer);
           }
         }
+        // The document that was written, which since T160 need not be the active
+        // one: a `Save to recreate` remediation targets the document its toast
+        // names. Reading `activeDocument` here would have labelled a background
+        // save with the foreground document's encoding.
+        const writtenDocument = documentsById[documentId] ?? activeDocument;
         const safeName = safeFilename(
-          activeDocument,
+          writtenDocument,
           result.data.targetPath ?? filename,
         );
         dispatch(
@@ -1234,7 +1239,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
             code: 'save-success',
             message: t('save.success.message', {
               encoding: t(
-                `status.encoding.${activeDocument?.encoding ?? 'utf-8'}`,
+                `status.encoding.${writtenDocument?.encoding ?? 'utf-8'}`,
               ),
               filename: safeName,
               lineEnding: writeLineEndingLabel(result.data),
@@ -1249,22 +1254,46 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       return result;
     },
-    [activeDocument, dispatch, reportWriteError],
+    [activeDocument, documentsById, dispatch, reportWriteError],
   );
   const beginWrite = useCallback(
-    async (kind: 'save' | 'save-as'): Promise<WriteResult | undefined> => {
-      const documentId = activeDocument?.documentId ?? activeBuffer?.documentId;
+    async (
+      kind: 'save' | 'save-as',
+      /**
+       * The document to write, when it is not the active one.
+       *
+       * T160: a `Save to recreate` control belongs to the document its toast
+       * names, and a detached `not-found` is raised by Copy path or Reveal from
+       * the tab context menu, which can target any tab. Omitted, this writes the
+       * active document, which is every menu- and shortcut-driven Save.
+       */
+      targetDocumentId?: string,
+    ): Promise<WriteResult | undefined> => {
+      const activeDocumentId =
+        activeDocument?.documentId ?? activeBuffer?.documentId;
+      const documentId = targetDocumentId ?? activeDocumentId;
       if (documentId === undefined) return undefined;
+      const target =
+        documentId === activeDocument?.documentId
+          ? activeDocument
+          : (documentsById[documentId] ?? activeDocument);
       if (
-        activeDocument?.status === 'read-only' ||
+        target?.status === 'read-only' ||
         // Go emits `large-read-only`/`unsafe-read-only`, never the bare
         // `read-only` this used to compare against, so the clause never fired.
         // Harmless — `status` already collapses every one of them
         // (`save_status.go:28-31`) — but it read as a capability check that
         // was not one. Mirrors Go's own predicate now.
-        (activeDocument?.capability !== undefined &&
-          activeDocument.capability !== 'writable') ||
-        activeDocument?.detached === true
+        (target?.capability !== undefined && target.capability !== 'writable')
+        // `detached` used to be a third disjunct here, and it contradicted
+        // FR-FT-023: a missing backing file MUST keep the buffer, mark the
+        // document detached and modified, and "allow explicit Save to recreate
+        // the same path" (acceptance scenario 6). Go clears `detached` on a
+        // successful write (`internal/appmodel/save.go:355`), so the capability
+        // to recreate was always there and only this guard stood in front of
+        // it. Detachment is not a capability — a detached document whose
+        // capability is `writable` is exactly the case the requirement is
+        // about. T160.
       ) {
         reportWriteError(
           {
@@ -1273,13 +1302,32 @@ const AppContents: React.FC = (): React.JSX.Element => {
             remediations: [],
             // Without a subject the title falls back to the generic "File
             // operation failed" once the message stops being overwritten.
-            safeSubject: safeFilename(activeDocument),
+            safeSubject: safeFilename(target),
             documentId,
             dedupKey: `read-only:${documentId}`,
           },
           documentId,
         );
         return undefined;
+      }
+      /*
+       * Only the active document has an editor working copy, so only it needs
+       * flushing and only it can have its revision invalidated by the flush.
+       * Running the active-buffer check for a background target would refuse
+       * every `Save to recreate` on a non-active tab by construction, since
+       * `state.activeBuffer.documentId` is by definition some other document.
+       */
+      if (documentId !== activeDocumentId) {
+        const backgroundState = await appModelAdapter.getState();
+        return finishWrite(
+          kind,
+          documentId,
+          backgroundState.snapshot.documents[documentId]?.contentRevision ??
+            target?.contentRevision ??
+            0,
+          '',
+          safeFilename(target),
+        );
       }
       await appModelAdapter.flushActiveSession?.(documentId);
       const state = await appModelAdapter.getState();
@@ -1292,7 +1340,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
             // an untranslated string would reach the user (FR-FT-047).
             message: t('save.activeDocumentChanged'),
             remediations: ['Retry'],
-            safeSubject: safeFilename(activeDocument),
+            safeSubject: safeFilename(target),
             documentId,
             dedupKey: `active-document:${documentId}`,
           },
@@ -1302,18 +1350,16 @@ const AppContents: React.FC = (): React.JSX.Element => {
         return undefined;
       }
       const revision =
-        state.activeBuffer.documentRevision ??
-        activeDocument?.contentRevision ??
-        0;
-      return finishWrite(
-        kind,
-        documentId,
-        revision,
-        '',
-        safeFilename(activeDocument),
-      );
+        state.activeBuffer.documentRevision ?? target?.contentRevision ?? 0;
+      return finishWrite(kind, documentId, revision, '', safeFilename(target));
     },
-    [activeBuffer, activeDocument, finishWrite, reportWriteError],
+    [
+      activeBuffer,
+      activeDocument,
+      documentsById,
+      finishWrite,
+      reportWriteError,
+    ],
   );
   const onSave = useCallback(() => beginWrite('save'), [beginWrite]);
   const onSaveAs = useCallback(() => beginWrite('save-as'), [beginWrite]);
@@ -1483,7 +1529,18 @@ const AppContents: React.FC = (): React.JSX.Element => {
            * session and re-reads the state first, which is what makes a retry
            * after a conflict or a transient IO failure able to succeed at all.
            */
-          const result = await beginWrite(remediation.intent);
+          /*
+           * The document id comes from the remediation, not from the active
+           * projection: a `Save to recreate` belongs to the document its toast
+           * names, which for a Copy path or Reveal failure raised from the tab
+           * context menu need not be the active one. It is `undefined` for a
+           * plain Save retry, where `beginWrite` falls back to the active
+           * document exactly as before. T160.
+           */
+          const result = await beginWrite(
+            remediation.intent,
+            remediation.documentId,
+          );
           if (result?.status !== 'committed') return;
           dispatch(dismissNotification(notificationId));
           return;
@@ -1641,8 +1698,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
         // Same correction as in `beginWrite`: the bare `read-only` literal is
         // not a value Go ever emits for `capability`.
         (activeDocument.capability === undefined ||
-          activeDocument.capability === 'writable') &&
-        activeDocument.detached !== true,
+          activeDocument.capability === 'writable'),
+      // `detached` was a fourth conjunct here and it is the *other* half of the
+      // FR-FT-023 defect T160 removes. `writable` reaches `ShellMenuRow.tsx:403`,
+      // which draws Save and Save As unavailable, so a detached document could
+      // not even dispatch the write that `beginWrite` would then have refused.
+      // Recreating the file is precisely what the requirement asks Save to do,
+      // so detachment must not make the command unavailable.
       onShortcuts: (): void => setShortcutsOpen(true),
       requestedMenu: requestedApplicationMenu,
       onRequestedMenuHandled: (): void => setRequestedApplicationMenu(null),

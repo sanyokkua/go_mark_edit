@@ -236,6 +236,7 @@
   "action.move-tab-left.label": "Move tab left",
   "action.move-tab-right.label": "Move tab right",
   "action.copy-path.label": "Copy path",
+  "action.save-to-recreate.label": "Save to recreate",
   "action.reveal-in-file-manager.label": "Reveal in file manager",
   "action.exit.label": "Exit",
   "action.settings.label": "Settings",
