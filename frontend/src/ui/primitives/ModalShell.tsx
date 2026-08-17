@@ -25,8 +25,16 @@ export interface ModalShellProps {
   onBackdrop: () => void;
   onEscape: () => void;
   open: boolean;
+  /**
+   * The dialog's accessible name, rendered as its heading.
+   *
+   * One mechanism, deliberately. The section used to carry `aria-label={title}`
+   * as well as `aria-labelledby`, and `aria-labelledby` wins wherever both are
+   * present, so the label was inert on every dialog while reading like a
+   * contract — which is how the T138 divergence stayed invisible. The heading
+   * below is what names the dialog; nothing else does. T172.
+   */
   title: string;
-  heading?: string;
 }
 
 function focusableElements(dialog: HTMLElement): HTMLElement[] {
@@ -41,7 +49,6 @@ const ModalShell: React.FC<ModalShellProps> = ({
   onEscape,
   open,
   title,
-  heading,
 }: ModalShellProps): React.JSX.Element | null => {
   const dialogRef = useRef<HTMLElement | null>(null);
   const originRef = useRef<HTMLElement | null>(null);
@@ -178,7 +185,6 @@ const ModalShell: React.FC<ModalShellProps> = ({
       />
       <section
         ref={dialogRef}
-        aria-label={title}
         aria-labelledby={labelledBy}
         aria-modal="true"
         className={styles.content}
@@ -188,7 +194,7 @@ const ModalShell: React.FC<ModalShellProps> = ({
         onKeyDown={trapFocus}
       >
         <h1 className={styles.title} id={labelledBy}>
-          {heading ?? title}
+          {title}
         </h1>
         {children}
       </section>

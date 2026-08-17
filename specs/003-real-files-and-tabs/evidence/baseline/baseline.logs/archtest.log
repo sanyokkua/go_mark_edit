@@ -1,16 +1,16 @@
 just go-archtest
 go test -run TestArchitecture -count=1 ./internal/... .
-ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	0.332s
-ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.574s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	0.953s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	1.257s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/db	2.353s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	0.482s
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.701s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	3.129s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	1.303s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	1.012s [no tests to run]
 ?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
-ok  	github.com/sanyokkua/go_mark_edit/internal/file	1.576s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/gate	3.533s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/logging	1.909s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit/internal/settings	3.236s [no tests to run]
-ok  	github.com/sanyokkua/go_mark_edit	2.774s
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	1.657s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	1.944s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	2.322s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	2.762s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit	3.578s
 just cgo-free-check
 CGO_ENABLED=0 go build ./...
 just migration-immutability-check

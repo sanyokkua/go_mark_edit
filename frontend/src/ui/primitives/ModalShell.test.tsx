@@ -129,6 +129,7 @@ it('T138 renders one modal structure and one accessibility contract on every rou
       shellRole: shell.getAttribute('role'),
       shellAriaModal: shell.getAttribute('aria-modal'),
       shellAriaLabel: shell.getAttribute('aria-label'),
+      shellAriaLabelledBy: shell.getAttribute('aria-labelledby'),
       shellParentIsBody: shell.parentElement === document.body,
       backdropRole: backdrop.getAttribute('role'),
       backdropAriaHidden: backdrop.getAttribute('aria-hidden'),
@@ -168,7 +169,13 @@ it('T138 renders one modal structure and one accessibility contract on every rou
     expect(production).toEqual({
       shellRole: 'dialog',
       shellAriaModal: 'true',
-      shellAriaLabel: 'Accessible modal',
+      // Null since T172: `aria-labelledby` always won, so `aria-label` was
+      // inert. Recorded as an absence rather than dropped from the snapshot,
+      // because a second mechanism reappearing is exactly what this case
+      // exists to catch — the parity branch T138 removed had moved
+      // `aria-label` onto the backdrop.
+      shellAriaLabel: null,
+      shellAriaLabelledBy: 'modal-title',
       shellParentIsBody: true,
       backdropRole: null,
       backdropAriaHidden: 'true',
@@ -189,4 +196,45 @@ it('T138 renders one modal structure and one accessibility contract on every rou
       value: originalWidth,
     });
   }
+});
+
+/*
+ * T172 — one labelling mechanism, not two.
+ *
+ * The dialog carried both `aria-label={title}` and `aria-labelledby`.
+ * `aria-labelledby` wins wherever both are present, so `aria-label` was inert
+ * on every dialog in the application while reading like a contract. The name
+ * was correct — `ModalShell` renders the `<h1 id={labelledBy}>` itself, so the
+ * two agreed — which is exactly what made it hard to see.
+ *
+ * Two mechanisms where one is silently ignored is how the T138 divergence
+ * stayed invisible: the parity branch moved `aria-label` onto the backdrop and
+ * stripped the section's role, so the same prompt answered to two different
+ * names by route and three e2e cases were written against the wrong one. This
+ * pins the survivor so a second mechanism cannot come back.
+ */
+// Proves: FR-FT-047 (the dialog's accessible name comes from its heading, by
+// exactly one mechanism)
+it('T172 names the dialog from its heading and carries no second mechanism', () => {
+  render(
+    <ModalShell
+      labelledBy="modal-title"
+      onBackdrop={jest.fn()}
+      onEscape={jest.fn()}
+      open
+      title="Accessible modal"
+    >
+      <button type="button">First</button>
+    </ModalShell>,
+  );
+
+  // The name still resolves — this is not a test that the dialog lost it.
+  const dialog = screen.getByRole('dialog', { name: 'Accessible modal' });
+  expect(dialog).toHaveAttribute('aria-labelledby', 'modal-title');
+  expect(dialog).not.toHaveAttribute('aria-label');
+  // And it resolves through the heading the id points at, rather than by
+  // coincidence.
+  expect(
+    screen.getByRole('heading', { name: 'Accessible modal' }),
+  ).toHaveAttribute('id', 'modal-title');
 });
