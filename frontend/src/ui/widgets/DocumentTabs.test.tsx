@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import type { MutableRefObject } from 'react';
+
 import {
   act,
   fireEvent,
@@ -24,9 +26,16 @@ import {
   hydrateProjection,
   resetProjection,
 } from '../../logic/store/appModelProjectionActions';
-import { resetNotifications } from '../../logic/store/notificationsSlice';
+import {
+  resetNotifications,
+  type NotificationRemediation,
+} from '../../logic/store/notificationsSlice';
 import { getActionAvailability } from '../../logic/actions/actionRegistry';
 import DocumentTabs from './DocumentTabs';
+import {
+  TabRemediationContext,
+  type TabRemediationExecutor,
+} from './tabRemediation';
 import { EDITOR_TABPANEL_ID } from './editorTabPanel';
 import Launcher from './Launcher';
 
@@ -1247,6 +1256,103 @@ it('T129 reorders the active tab with the Move tab accelerators and announces th
   fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true, shiftKey: true });
   await waitFor(() =>
     expect(reorderDocument).toHaveBeenNthCalledWith(2, 'two', 0, 4),
+  );
+});
+
+/*
+ * T165. A reorder Retry has two halves and the contract is only served if both
+ * run: the move must be re-issued against a *fresh* revision, and FR-FT-034's
+ * announcement must still be made. T156 declined to add the intent precisely
+ * because `onRemediate` lives in App, which has neither the disambiguated label
+ * nor the strip length the announcement is built from — a control that moved the
+ * tab and said nothing would satisfy the remediation row and break FR-FT-034.
+ *
+ * The strip now fills a slot App provides, so the command and the announcement
+ * stay in one function. This case drives that slot directly, which is the level
+ * where both halves are observable: the fresh revision comes in from App, and
+ * the live region is here.
+ *
+ * What this level does not see: that clicking Retry in App actually reaches the
+ * slot. App's own suite stubs AppShell, so no strip mounts there and the slot is
+ * never filled; the browser case owns that hop.
+ */
+// Proves: FR-FT-034 and the classified error and remediation contract's
+// `conflict` row (partial — that a refused move offers Retry carrying its
+// destination, and that re-issuing it against a fresh revision both moves the
+// tab and announces the move.)
+it('T165 re-issues a refused move against a fresh revision and announces it', async () => {
+  hydrate(
+    [
+      documentFor('one', '/repo/one.md'),
+      documentFor('two', '/repo/two.md'),
+      documentFor('three', '/repo/three.md'),
+    ],
+    'two',
+  );
+  store.dispatch(resetNotifications());
+  const reorderDocument = jest
+    .fn()
+    .mockResolvedValueOnce({
+      status: 'refused',
+      orderedDocumentIds: ['one', 'two', 'three'],
+      error: {
+        category: 'conflict',
+        message: 'The tab set changed; reorder must be retried.',
+        remediations: ['Retry'],
+        dedupKey: 'stale-tab-set',
+        safeSubject: 'two.md',
+      },
+    })
+    .mockResolvedValueOnce({
+      status: 'reordered',
+      orderedDocumentIds: ['one', 'three', 'two'],
+    });
+
+  const slot: MutableRefObject<TabRemediationExecutor | undefined> = {
+    current: undefined,
+  };
+  render(
+    <Provider store={store}>
+      <TabRemediationContext.Provider value={slot}>
+        <DocumentTabs adapter={{ reorderDocument }} />
+      </TabRemediationContext.Provider>
+    </Provider>,
+  );
+
+  fireEvent.keyDown(document, {
+    key: 'PageDown',
+    ctrlKey: true,
+    shiftKey: true,
+  });
+  await waitFor(() =>
+    expect(reorderDocument).toHaveBeenCalledWith('two', 2, 4),
+  );
+
+  // The refusal earns a control, and the control carries the destination —
+  // without it the retry would have no move to make.
+  const remediation = store.getState().notifications.items[0]?.remediations[0];
+  expect(remediation).toMatchObject({
+    action: 'retry',
+    intent: 'reorder-document',
+    reorder: { documentId: 'two', targetIndex: 2 },
+  });
+  // Nothing is announced for a refused move; only a completed one is.
+  expect(screen.getByRole('status')).toHaveTextContent('');
+
+  /*
+   * The tab set moved on while the toast stood, which is what the refusal said.
+   * App reads the fresh revision from the backend and hands it in; re-sending 4
+   * would refuse identically.
+   */
+  await act(async () => {
+    await slot.current?.(remediation as NotificationRemediation, 9);
+  });
+
+  expect(reorderDocument).toHaveBeenNthCalledWith(2, 'two', 2, 9);
+  await waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Moved two.md to position 3 of 3',
+    ),
   );
 });
 

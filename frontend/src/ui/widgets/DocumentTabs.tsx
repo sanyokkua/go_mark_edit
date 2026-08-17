@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   appModelAdapter,
@@ -32,6 +39,7 @@ import TabContextMenu, {
   type TabContextCloseOptions,
 } from './TabContextMenu';
 import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
+import { TabRemediationContext } from './tabRemediation';
 import {
   onApplicationForeground,
   whenApplicationRegainsForegroundFocus,
@@ -576,6 +584,93 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     [closeDocument, focusDocument, focusFallback, tabSetRevision],
   );
 
+  /*
+   * T165. One move, one report, one announcement — kept together deliberately.
+   *
+   * FR-FT-034 requires a completed move to be announced, and the announcement
+   * needs the disambiguated label and the strip's length, which only exist here.
+   * Splitting the command from its announcement is what made a reorder Retry
+   * impossible to add from App: the control would have moved the tab and said
+   * nothing, satisfying the remediation contract by breaking FR-FT-034.
+   *
+   * The refusal now carries `reorder-document`, so the same function serves the
+   * first attempt and the retry, and the announcement cannot be forgotten on one
+   * path and not the other.
+   */
+  const moveTab = useCallback(
+    async (
+      document: DocumentMetadata,
+      targetIndex: number,
+      expectedRevision: number,
+    ): Promise<TabTransitionResult | undefined> => {
+      const result = await adapter.reorderDocument?.(
+        document.documentId,
+        targetIndex,
+        expectedRevision,
+      );
+      if (result?.error !== undefined) {
+        reportClassifiedError(
+          dispatch,
+          result.error,
+          'The tab could not be moved.',
+          {
+            intent: 'reorder-document',
+            retry: {
+              reorder: { documentId: document.documentId, targetIndex },
+            },
+          },
+        );
+      } else if (result?.status === 'reordered') {
+        announce(
+          t('editor.tab.moved', {
+            filename: announcementName(
+              labels.get(document.documentId),
+              document.title,
+            ),
+            position: targetIndex + 1,
+            count: orderedDocuments.length,
+          }),
+        );
+      }
+      return result;
+    },
+    [adapter, announce, dispatch, labels, orderedDocuments.length],
+  );
+
+  /*
+   * Fill App's remediation slot while this strip is mounted.
+   *
+   * The revision arrives from App, read fresh from the backend, rather than
+   * being taken from the `tabSetRevision` selector above: the store is a
+   * projection, and the refusal being remediated *is* "the tab set changed", so
+   * the patch carrying the change may not have arrived. The entry arms in App
+   * read it the same way and for the same reason.
+   */
+  const remediationSlotRef = useContext(TabRemediationContext);
+  useEffect(() => {
+    if (remediationSlotRef === null) return undefined;
+    remediationSlotRef.current = async (remediation, freshTabSetRevision) => {
+      const move = remediation.reorder;
+      if (remediation.intent !== 'reorder-document' || move === undefined) {
+        return false;
+      }
+      const document = documentsById[move.documentId];
+      if (document === undefined) return false;
+      const result = await moveTab(
+        document,
+        move.targetIndex,
+        freshTabSetRevision,
+      );
+      // A refused retry has already reported itself through `moveTab`, offering
+      // the control again against the newer revision. Saying it was handled
+      // would dismiss the toast that carries it.
+      return result?.error === undefined;
+    };
+    return () => {
+      remediationSlotRef.current = undefined;
+    };
+  }, [documentsById, moveTab, remediationSlotRef]);
+
   const handleTabAction = useCallback(
     async (
       action: TabContextAction,
@@ -583,31 +678,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       targetIndex?: number,
     ): Promise<unknown> => {
       if (action === 'move-tab-left' || action === 'move-tab-right') {
-        const result = await adapter.reorderDocument?.(
-          document.documentId,
-          targetIndex ?? 0,
-          tabSetRevision,
-        );
-        if (result?.error !== undefined) {
-          reportClassifiedError(
-            dispatch,
-            result.error,
-            'The tab could not be moved.',
-          );
-        } else if (result?.status === 'reordered') {
-          const position = (targetIndex ?? 0) + 1;
-          announce(
-            t('editor.tab.moved', {
-              filename: announcementName(
-                labels.get(document.documentId),
-                document.title,
-              ),
-              position,
-              count: orderedDocuments.length,
-            }),
-          );
-        }
-        return result;
+        return await moveTab(document, targetIndex ?? 0, tabSetRevision);
       }
       if (action === 'copy-path') {
         const result = await adapter.copyPath?.(document.documentId);
@@ -676,6 +747,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       closeDocument,
       dispatch,
       labels,
+      moveTab,
       orderedDocuments,
       tabSetRevision,
     ],

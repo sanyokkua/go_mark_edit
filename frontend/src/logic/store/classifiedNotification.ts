@@ -101,6 +101,8 @@ export interface ClassifiedReportOptions {
      * the user asked to close.
      */
     close?: { kind: ClosePlanKind; targetDocumentIds: string[] };
+    /** The move a `reorder-document` retry re-issues. */
+    reorder?: { documentId: string; targetIndex: number };
   };
 }
 
@@ -136,6 +138,7 @@ function retryIsExecutable(
   documentId: string | undefined,
   path: string | undefined,
   close: { kind: ClosePlanKind; targetDocumentIds: string[] } | undefined,
+  reorder: { documentId: string; targetIndex: number } | undefined,
 ): boolean {
   switch (intent) {
     case 'copy-path':
@@ -149,6 +152,14 @@ function retryIsExecutable(
     // rather than treated as "close nothing", so the control is never a no-op.
     case 'close-documents':
       return close !== undefined && close.targetDocumentIds.length > 0;
+    // A move needs its destination. A negative index would be a control that
+    // asks the backend for a position that cannot exist, so it earns nothing.
+    case 'reorder-document':
+      return (
+        reorder !== undefined &&
+        reorder.documentId !== '' &&
+        reorder.targetIndex >= 0
+      );
     // `quit` belongs to this group for the same reason as the rest: it takes no
     // arguments. It re-asks the native frame to close, and the frame is a
     // singleton, so there is nothing a caller could fail to supply.
@@ -176,7 +187,13 @@ function remediationsFor(
   if (
     intent !== undefined &&
     error.remediations.includes('Retry') &&
-    retryIsExecutable(intent, documentId, retry?.path, retry?.close)
+    retryIsExecutable(
+      intent,
+      documentId,
+      retry?.path,
+      retry?.close,
+      retry?.reorder,
+    )
   ) {
     offered.push({
       action: 'retry',
@@ -185,6 +202,7 @@ function remediationsFor(
       labelKey: 'action.retry.label',
       ...(retry?.path === undefined ? {} : { path: retry.path }),
       ...(retry?.close === undefined ? {} : { close: retry.close }),
+      ...(retry?.reorder === undefined ? {} : { reorder: retry.reorder }),
     });
   }
   // `Save to recreate` precedes `Copy path` because the contract's `not-found`

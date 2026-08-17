@@ -74,7 +74,15 @@ export type NotificationRemediationIntent =
    * has to come back instead is the original `kind` and `targets`, which only
    * `onCloseDocument` ever held — see `close` on NotificationRemediation.
    */
-  | 'close-documents';
+  | 'close-documents'
+  /**
+   * Re-issues a refused tab move, after FR-FT-033's stale tab-set check.
+   *
+   * Executed by the tab strip rather than by App, because FR-FT-034 requires the
+   * completed move to be announced and the announcement is built from the
+   * disambiguated tab label and the strip's length — see TabRemediationContext.
+   */
+  | 'reorder-document';
 
 export interface NotificationRemediation {
   action: NotificationRemediationAction;
@@ -97,6 +105,12 @@ export interface NotificationRemediation {
    * wrong tabs, which is worse than offering nothing.
    */
   close?: { kind: ClosePlanKind; targetDocumentIds: string[] };
+  /**
+   * The move a `reorder-document` retry re-issues: which tab, and the index it
+   * was going to. The revision is deliberately absent — the one that failed is
+   * the stale one, so the executor reads a fresh one.
+   */
+  reorder?: { documentId: string; targetIndex: number };
 }
 
 export interface Notification {
