@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
 } from 'react';
 
@@ -222,6 +223,23 @@ interface LivePreviewProps {
   activeBuffer: ActiveBuffer;
   adapter: LivePreviewAdapter;
   onScrollChange: (scrollTop: number) => void;
+  /**
+   * The document's saved preview offset, supplied only on activation.
+   *
+   * `undefined` on every other mount, and this pane remounts constantly — it is
+   * keyed on `documentId:content`, so every accepted revision rebuilds it.
+   * Restoring unconditionally would drag the pane back to the saved offset on
+   * each keystroke and fight the user's own scrolling, so the parent decides
+   * when a restore is owed and this component only performs it. T179.
+   */
+  savedScrollTop: number;
+  /**
+   * Claim the one restore this document is owed, from inside the mount effect.
+   *
+   * Returns `true` exactly once per activation. The pane asks rather than being
+   * handed a value, so the parent's record is touched only during an effect.
+   */
+  claimScrollRestore: (documentId: string) => boolean;
   visible: boolean;
 }
 
@@ -238,9 +256,24 @@ const LivePreview: React.FC<LivePreviewProps> = ({
   activeBuffer,
   adapter,
   onScrollChange,
+  savedScrollTop,
+  claimScrollRestore,
   visible,
 }: LivePreviewProps): React.JSX.Element | null => {
   const accepted = useLivePreviewSnapshot(activeBuffer, adapter);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  /*
+   * Layout effect rather than `useEffect`: the assignment must land before the
+   * browser paints, or the pane is visibly at zero for a frame and then jumps.
+   * Declared above the `visible` early return because hooks cannot be
+   * conditional; the guard is inside instead. FR-FT-032 / T179.
+   */
+  useLayoutEffect((): void => {
+    const node = contentRef.current;
+    if (node === null) return;
+    if (!claimScrollRestore(activeBuffer.documentId)) return;
+    node.scrollTop = savedScrollTop;
+  }, [activeBuffer.documentId, claimScrollRestore, savedScrollTop]);
 
   if (!visible) {
     return null;
@@ -253,6 +286,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
         <span className={styles.paneMeta}>{t('editor.preview.flavour')}</span>
       </header>
       <div
+        ref={contentRef}
         className={styles.previewContent}
         onScroll={(event): void => {
           onScrollChange(event.currentTarget.scrollTop);
@@ -344,6 +378,31 @@ const EditorView: React.FC<EditorViewProps> = ({
   const onPreviewScrollHandler = useCallback(
     (handler: ((scrollTop: number) => void) | null): void => {
       previewScrollHandlerRef.current = handler;
+    },
+    [],
+  );
+
+  /*
+   * FR-FT-032 requires each document to keep "its own … preview scroll" across
+   * switches, and "across switches" is the clause: the offset is restored once
+   * when a document becomes active, not on every render. `LivePreview` remounts
+   * on every accepted revision (keyed on `documentId:content`), so its own state
+   * cannot tell an activation from a keystroke — the record has to live here,
+   * where nothing remounts on a content change.
+   *
+   * The pane *asks* rather than being told. A restore is claimed from inside
+   * `LivePreview`'s layout effect, so this ref is only ever touched during an
+   * effect — never read while rendering to decide a prop, which is unsafe under
+   * concurrent rendering, and never written through `setState` inside an effect.
+   * Both of those are what `react-hooks` rejected on the way to this shape.
+   * Declared above the early return, because hooks cannot be conditional. T179.
+   */
+  const restoredPreviewDocumentRef = useRef<string | null>(null);
+  const claimPreviewScrollRestore = useCallback(
+    (documentId: string): boolean => {
+      if (restoredPreviewDocumentRef.current === documentId) return false;
+      restoredPreviewDocumentRef.current = documentId;
+      return true;
     },
     [],
   );
@@ -448,6 +507,8 @@ const EditorView: React.FC<EditorViewProps> = ({
           key={`${activeBuffer.documentId}:${activeBuffer.content}`}
           activeBuffer={activeBuffer}
           adapter={adapter}
+          savedScrollTop={view.scroll.preview}
+          claimScrollRestore={claimPreviewScrollRestore}
           visible={previewVisible}
           onScrollChange={(scrollTop: number): void => {
             previewScrollHandlerRef.current?.(scrollTop);

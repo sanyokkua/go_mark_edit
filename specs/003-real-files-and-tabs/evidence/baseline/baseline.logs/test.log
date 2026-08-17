@@ -10,7 +10,7 @@ ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
 ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
-ok  	github.com/sanyokkua/go_mark_edit	7.009s
+ok  	github.com/sanyokkua/go_mark_edit	7.378s
 just frontend-test
 npm --prefix frontend test -- --passWithNoTests
 
@@ -25,16 +25,16 @@ npm --prefix frontend test -- --passWithNoTests
 > frontend@0.0.0 test
 > node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --passWithNoTests
 
-✔ applies only a current valid startup mirror before application code (2.95775ms)
-✔ resolves a current Auto mirror from the operating-system preference (0.702ms)
-✔ runs the blocking bootstrap before the application module (0.095458ms)
-✔ generates six complete named Monaco themes from palette values (2.921958ms)
-✔ converts CSS rgba palette values to Monaco-compatible hex (0.761625ms)
-✔ shares each fenced-language value by appearance across themes (1.048333ms)
-✔ rejects a palette missing a required Monaco token (0.346625ms)
-✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.58425ms)
-✔ rejects duplicate, unresolved, and unsupported palette sources (0.296208ms)
-✔ emits inactive highlight rules for every generated syntax token (0.562959ms)
+✔ applies only a current valid startup mirror before application code (2.975584ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.788042ms)
+✔ runs the blocking bootstrap before the application module (0.0975ms)
+✔ generates six complete named Monaco themes from palette values (2.553292ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.660416ms)
+✔ shares each fenced-language value by appearance across themes (0.877792ms)
+✔ rejects a palette missing a required Monaco token (0.273458ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.540375ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.302208ms)
+✔ emits inactive highlight rules for every generated syntax token (0.759833ms)
 ℹ tests 10
 ℹ suites 0
 ℹ pass 10
@@ -42,10 +42,10 @@ npm --prefix frontend test -- --passWithNoTests
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 70.674959
+ℹ duration_ms 70.103792
 
 Test Suites: 80 passed, 80 total
-Tests:       640 passed, 640 total
+Tests:       647 passed, 647 total
 Snapshots:   0 total
-Time:        9.957 s
+Time:        10.206 s
 Ran all test suites.

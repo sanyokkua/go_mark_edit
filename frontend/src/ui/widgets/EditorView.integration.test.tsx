@@ -1919,3 +1919,99 @@ it('T178 leaves the editor widget writable for a writable document', async () =>
   });
   expect(mockRuntime.props?.options?.readOnly).toBe(false);
 });
+
+/*
+ * T179 — FR-FT-032's "preview scroll" clause, the half T157 could not cover.
+ *
+ * `useSyncedBuffer.onPreviewScrollChange` records the offset and the projection
+ * keeps it (`documentsSlice.ts:68`), but nothing ever read it back: a grep for
+ * `scrollTop =` across `frontend/src/ui` returned nothing, so the preview pane
+ * always mounted at zero and a document's preview position was silently lost on
+ * every switch. The editor half is unaffected — Monaco's own `restoreViewState`
+ * carries it — which is why only the preview is named here.
+ */
+// Proves: FR-FT-032 (the preview-scroll clause)
+it('T179 restores a document its own preview scroll on activation', async () => {
+  const document = statusDocument({
+    documentId: 'document-1',
+    view: {
+      arrangement: 'split',
+      editorVisible: true,
+      previewVisible: true,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 240 },
+    },
+  });
+  renderLivePreviewEditor('# body', createRenderedEditorAdapter(), document);
+
+  const preview = await screen.findByRole('region', { name: 'Preview pane' });
+  const content = preview.querySelector(
+    'div[class*="previewContent"], div:not([class])',
+  );
+  if (content === null) throw new Error('preview scroll container not found');
+  await waitFor(() => {
+    expect((content as HTMLElement).scrollTop).toBe(240);
+  });
+});
+
+/*
+ * The clause is "restore on activation", not "restore on every render". The
+ * preview remounts on every accepted revision — `LivePreview` is keyed on
+ * `documentId:content` — so a restore that ran unconditionally would yank the
+ * pane back to the saved offset on each keystroke and fight the user's own
+ * scrolling. This is the assertion that distinguishes the two, and it fails
+ * against the naive fix rather than only against the missing one.
+ */
+// Proves: FR-FT-032 (the preview-scroll clause is applied once per activation)
+it('T179 does not re-apply the saved preview scroll when the content changes', async () => {
+  const view = {
+    arrangement: 'split' as const,
+    editorVisible: true,
+    previewVisible: true,
+    cursor: { line: 1, column: 1 },
+    selection: {
+      start: { line: 1, column: 1 },
+      end: { line: 1, column: 1 },
+    },
+    scroll: { editor: 0, preview: 240 },
+  };
+  const document = statusDocument({ documentId: 'document-1', view });
+  const { rerender } = renderLivePreviewEditor(
+    '# body',
+    createRenderedEditorAdapter(),
+    document,
+  );
+
+  const contentOf = (): HTMLElement => {
+    const node = screen
+      .getByRole('region', { name: 'Preview pane' })
+      .querySelector('div[class*="previewContent"], div:not([class])');
+    if (node === null) throw new Error('preview scroll container not found');
+    return node as HTMLElement;
+  };
+  await waitFor(() => {
+    expect(contentOf().scrollTop).toBe(240);
+  });
+
+  // The user scrolls somewhere else, then types — which remounts the pane.
+  contentOf().scrollTop = 10;
+  rerender(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: 'document-1', content: '# body edited' }}
+      >
+        <EditorView adapter={createRenderedEditorAdapter()} />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+
+  // Whatever the remount produces, it must not be the saved offset reapplied.
+  await waitFor(() => {
+    expect(screen.getByRole('region', { name: 'Preview pane' })).toBeVisible();
+  });
+  expect(contentOf().scrollTop).not.toBe(240);
+});
