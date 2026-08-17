@@ -35,21 +35,19 @@ const Launcher: React.FC<LauncherProps> = ({
   onOpenRecentFile,
 }: LauncherProps): React.JSX.Element => {
   /*
-   * The parity route selects the reference-height variant of the panel and
-   * nothing else. It used to select a whole second set of strings as well —
-   * raw English copied out of the mockup — which FR-FT-047 forbids, because
-   * every user-visible string must come from the translation catalogue. Those
-   * strings existed for the whole-screen comparison withdrawn on 2026-08-14;
-   * the launcher is not one of the 14 pixel-compared component keys, so
-   * nothing measured them.
+   * No `?parity-case` branch. FR-FT-054 lets the parity route seed a fixture and
+   * hold capture conditions fixed; it does not let the route restyle a
+   * component, and this one used to swap in three fixed heights. They existed
+   * for the whole-screen comparison withdrawn on 2026-08-14, and nothing has
+   * measured them since: the launcher is not among the compared `targeted:`
+   * regions, and no e2e assertion reads its height. T154 removed the string half
+   * of the same branch — a second set of raw English that FR-FT-047 forbade —
+   * and T171 removed this one.
    */
-  const parityRoute =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('parity-case');
   return (
     <section
       aria-labelledby="launcher-title"
-      className={`${styles.launcher} ${parityRoute ? styles.parityLauncher : ''}`}
+      className={styles.launcher}
       data-testid="document-launcher"
     >
       <div className={styles.panel}>

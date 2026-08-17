@@ -136,33 +136,8 @@
   margin-inline-start: auto;
 }
 
-/* The parity harness captures the launcher inside fixed reference content
-   bands, so on that route it takes the band's exact height instead of filling
-   the shell. Everything else it needs now comes from the rules above, which are
-   the binding itself. */
-.parityLauncher {
-  display: flex;
-  flex: 1 1 0%;
-  height: 313px;
-  min-height: auto;
-  margin: 0;
-  overflow: visible;
-  padding: 24px;
-}
-
 @media (max-width: 376px) {
   .launcher {
     align-items: start;
-  }
-
-  .parityLauncher {
-    height: 316px;
-    padding: 24px;
-  }
-}
-
-@media (min-width: 377px) and (max-width: 768px) {
-  .parityLauncher {
-    height: 301px;
   }
 }

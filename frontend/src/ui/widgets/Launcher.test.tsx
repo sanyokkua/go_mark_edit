@@ -1,31 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import Launcher from './Launcher';
-
-const readSource = (relativePath: string): string =>
-  readFileSync(resolve(process.cwd(), relativePath), 'utf8');
-
-it('T045 keeps the parity launcher inside the reference content bands', () => {
-  const styles = readSource('src/ui/widgets/Launcher.module.css');
-  const parityRule = styles.match(/\.parityLauncher\s*\{([^}]*)\}/)?.[1];
-
-  expect(parityRule).toBeDefined();
-  expect(parityRule).toMatch(/display:\s*flex/);
-  expect(parityRule).toMatch(/flex:\s*1\s+1\s+0%/);
-  expect(parityRule).toMatch(/height:\s*313px/);
-  expect(parityRule).toMatch(/min-height:\s*auto/);
-  expect(parityRule).toMatch(/margin:\s*0/);
-  expect(parityRule).toMatch(/overflow:\s*visible/);
-  expect(styles).toMatch(
-    /@media \(max-width: 376px\)[\s\S]*?\.parityLauncher\s*\{[^}]*height:\s*316px;/s,
-  );
-  expect(styles).toMatch(
-    /@media \(min-width: 377px\) and \(max-width: 768px\)[\s\S]*?\.parityLauncher\s*\{[^}]*height:\s*301px;/s,
-  );
-});
 
 // Proves: FR-FT-042 (partial — every clause but "never restores prior tabs
 // automatically", which is proved by App.test.tsx because this file renders the
