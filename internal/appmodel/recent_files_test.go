@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
@@ -539,4 +540,255 @@ func (repository *recordingRecentFilesRepository) List(context.Context) ([]strin
 func (repository *recordingRecentFilesRepository) Promote(_ context.Context, path string) ([]string, error) {
 	repository.paths = promoteRecentFile(repository.paths, path)
 	return append([]string(nil), repository.paths...), nil
+}
+
+/*
+T184 — SC-FT-008's focus arm of promotion.
+
+The criterion promotes "each successful canonical Open/**focus**", and
+`file_lifecycle.go` promotes on the focus branch as well as the open branch.
+`TestOpenFocusesCanonicalDuplicate` drives exactly that path — it opens a file,
+then opens an alias of it and gets `OpenStatusFocused` — and makes **no recents
+assertion at all**, so the focus half of the clause was reached by a test that
+was not looking at it.
+*/
+// Proves: SC-FT-008 (the focus arm of promotion)
+func TestFocusingAnOpenDocumentPromotesItToTheFrontOfRecents(t *testing.T) {
+	database, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "recents.db"))
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer func() { _ = database.Close() }()
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	service.SetRecentFilesRepository(NewSqliteRecentFilesRepository(database))
+	paths := recentFixturePaths(t, "first.md", "second.md")
+
+	state, _ := service.GetState(context.Background())
+	first := service.OpenPath(context.Background(), paths[0], state.Snapshot.TabSetRevision)
+	if first.Status != apperr.OpenStatusOpened {
+		t.Fatalf("first open = %+v, want opened", first)
+	}
+	state, _ = service.GetState(context.Background())
+	second := service.OpenPath(context.Background(), paths[1], state.Snapshot.TabSetRevision)
+	if second.Status != apperr.OpenStatusOpened {
+		t.Fatalf("second open = %+v, want opened", second)
+	}
+	state, _ = service.GetState(context.Background())
+	if state.Snapshot.RecentFiles[0] != paths[1] {
+		t.Fatalf("recents after two opens = %v, want the second file first", state.Snapshot.RecentFiles)
+	}
+
+	// Re-opening an already-open file focuses it rather than opening it again.
+	state, _ = service.GetState(context.Background())
+	focused := service.OpenPath(context.Background(), paths[0], state.Snapshot.TabSetRevision)
+	if focused.Status != apperr.OpenStatusFocused || focused.DocumentID != first.DocumentID {
+		t.Fatalf("re-open = %+v, want the first document focused", focused)
+	}
+
+	state, _ = service.GetState(context.Background())
+	if state.Snapshot.RecentFiles[0] != paths[0] {
+		t.Fatalf("recents after a focus = %v, want the focused file promoted to the front", state.Snapshot.RecentFiles)
+	}
+}
+
+/*
+T184 — SC-FT-008's display boundary.
+
+"Explicit display/choice refresh MUST observe the latest committed list."
+`TestPromotionIsLatestValueTransaction` proves the *repository* sees another
+instance's commits, which is a different seam: the one the criterion means is
+`GetState` → `refreshRecentFiles` (`service.go:312`, `recent_files.go:11`), and
+nothing asserted that a commit made out of band reaches a projection snapshot.
+*/
+// Proves: SC-FT-008 (the display boundary observes the latest committed list)
+func TestGetStateObservesARecentsCommitMadeOutOfBand(t *testing.T) {
+	first, second := openTwoRecentFilesDatabases(t)
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	service.SetRecentFilesRepository(NewSqliteRecentFilesRepository(first))
+	paths := recentFixturePaths(t, "seen.md", "outofband.md")
+
+	state, _ := service.GetState(context.Background())
+	if opened := service.OpenPath(context.Background(), paths[0], state.Snapshot.TabSetRevision); opened.Status != apperr.OpenStatusOpened {
+		t.Fatalf("seed open = %+v, want opened", opened)
+	}
+	state, _ = service.GetState(context.Background())
+	if len(state.Snapshot.RecentFiles) != 1 {
+		t.Fatalf("recents after the seed = %v, want one entry", state.Snapshot.RecentFiles)
+	}
+
+	// Another instance commits, through its own connection to the same file.
+	if _, err := NewSqliteRecentFilesRepository(second).Promote(context.Background(), paths[1]); err != nil {
+		t.Fatalf("out-of-band promotion: %v", err)
+	}
+
+	// The next display refresh must carry it, with no command issued here.
+	state, _ = service.GetState(context.Background())
+	if len(state.Snapshot.RecentFiles) != 2 || state.Snapshot.RecentFiles[0] != paths[1] {
+		t.Fatalf("recents at the display boundary = %v, want the out-of-band commit observed first", state.Snapshot.RecentFiles)
+	}
+}
+
+// countingRecentFilesRepository records how often each seam is reached, so a
+// timer or watcher added later shows up as calls nobody asked for. T184.
+type countingRecentFilesRepository struct {
+	paths    []string
+	lists    int
+	promotes int
+}
+
+func (repository *countingRecentFilesRepository) List(context.Context) ([]string, error) {
+	repository.lists++
+	return append([]string(nil), repository.paths...), nil
+}
+
+func (repository *countingRecentFilesRepository) Promote(_ context.Context, path string) ([]string, error) {
+	repository.promotes++
+	repository.paths = promoteRecentFile(repository.paths, path)
+	return append([]string(nil), repository.paths...), nil
+}
+
+/*
+T184 — SC-FT-008's "prune missing entries **without background polling**", for
+recents specifically.
+
+`TestNoWatcherOrPollingTimerIsRegistered` (`conflict_test.go:147`) counts
+disk-version conflict reads through `SetConflictReadersForTesting`. It says
+nothing about `RecentFilesRepository.List`, so the recents half of the clause
+rested entirely on a comment at `recent_files.go:9-10` — "performs validation
+only when state is requested, never from a watcher or timer" — which is the same
+shape as the guard T128 found unwired.
+
+Counted rather than timed: a sleep proves only that nothing fired *yet*, while a
+call count that stays put across a quiet interval and then moves on the next
+`GetState` shows what actually drives the seam.
+*/
+// Proves: SC-FT-008 (recents are pruned at the display boundary, not by polling)
+func TestRecentsAreListedOnlyAtDisplayAndChoice(t *testing.T) {
+	repository := &countingRecentFilesRepository{}
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	service.SetRecentFilesRepository(repository)
+	paths := recentFixturePaths(t, "counted.md")
+
+	state, _ := service.GetState(context.Background())
+	listsAfterFirstDisplay := repository.lists
+	if listsAfterFirstDisplay == 0 {
+		t.Fatal("GetState performed no List, so this test cannot tell polling from display")
+	}
+
+	// An explicit choice: opening a file promotes, and refreshes for display.
+	if opened := service.OpenPath(context.Background(), paths[0], state.Snapshot.TabSetRevision); opened.Status != apperr.OpenStatusOpened {
+		t.Fatalf("open = %+v, want opened", opened)
+	}
+	listsAfterChoice := repository.lists
+	if repository.promotes != 1 {
+		t.Fatalf("promotions = %d, want exactly the one explicit choice", repository.promotes)
+	}
+
+	// Now leave the service alone. Nothing may reach the repository on its own.
+	time.Sleep(150 * time.Millisecond)
+	if repository.lists != listsAfterChoice {
+		t.Fatalf("List calls rose from %d to %d while idle, so something polls", listsAfterChoice, repository.lists)
+	}
+	if repository.promotes != 1 {
+		t.Fatalf("promotions rose to %d while idle", repository.promotes)
+	}
+
+	// And the next display refresh still reaches it, so the count above is a
+	// quiet seam rather than a dead one.
+	if _, err := service.GetState(context.Background()); err != nil {
+		t.Fatalf("state after idle: %v", err)
+	}
+	if repository.lists <= listsAfterChoice {
+		t.Fatalf("List calls = %d after a display refresh, want more than the %d before it", repository.lists, listsAfterChoice)
+	}
+}
+
+/*
+T184 — SC-FT-008's clause K, against a **non-empty** prior order.
+
+"A failed metadata transaction MUST retain the last committed order and MUST NOT
+be reported as a successful promotion." The existing coverage used
+`failingRecentFilesRepository`, which fails `List` *and* `Promote`, so the "last
+committed order" at the moment of failure was the empty list and the assertion
+collapsed to "no phantom entry appeared" — it could not distinguish retaining an
+order from having none.
+
+This holds a real write transaction open on a second connection to the same
+database file, so the promotion fails with a genuine SQLite busy error rather
+than a fake error value: `grep -i busy` across the test tree previously found
+only a hand-written string.
+*/
+// Proves: SC-FT-008 (a failed metadata transaction retains a populated order)
+func TestFailedPromotionRetainsAPopulatedCommittedOrder(t *testing.T) {
+	first, second := openTwoRecentFilesDatabases(t)
+	repository := NewSqliteRecentFilesRepository(first)
+	service := NewEmptyAppModelService(&recordingEmitter{})
+	service.SetRecentFilesRepository(repository)
+	paths := recentFixturePaths(t, "committed-a.md", "committed-b.md", "refused.md")
+
+	// A populated, committed order — the thing that must survive the failure.
+	for _, path := range paths[:2] {
+		if _, err := repository.Promote(context.Background(), path); err != nil {
+			t.Fatalf("seed promotion %s: %v", path, err)
+		}
+	}
+	state, _ := service.GetState(context.Background())
+	committed := append([]string(nil), state.Snapshot.RecentFiles...)
+	if len(committed) != 2 || committed[0] != paths[1] {
+		t.Fatalf("committed order = %v, want two entries newest first", committed)
+	}
+
+	/*
+	 * Make the *write* fail while leaving the committed row readable, which is
+	 * what keeps the prior order populated — the whole point of this clause.
+	 *
+	 * A trigger rather than lock contention. A genuine SQLITE_BUSY is reachable
+	 * (`isRecentSQLiteBusy` and the retry loop exist for it) but costs about
+	 * fifteen seconds in a unit test: the busy timeout is 5000 ms and
+	 * `withEntries` retries three times. A trigger that aborts the upsert is the
+	 * same thing the requirement cares about — a real SQLite transaction that
+	 * fails — at no cost, and unlike dropping the table it leaves `List`
+	 * returning the committed order.
+	 */
+	if _, err := second.DB.ExecContext(context.Background(), `
+CREATE TRIGGER refuse_recent_files_write
+BEFORE UPDATE ON settings
+WHEN NEW.key = 'recent.files'
+BEGIN
+  SELECT RAISE(ABORT, 'recent files write refused');
+END;`); err != nil {
+		t.Fatalf("install the refusing trigger: %v", err)
+	}
+	defer func() {
+		_, _ = second.DB.ExecContext(context.Background(), "DROP TRIGGER IF EXISTS refuse_recent_files_write")
+	}()
+
+	state, _ = service.GetState(context.Background())
+	opened := service.OpenPath(context.Background(), paths[2], state.Snapshot.TabSetRevision)
+
+	// The open itself succeeds — recents are history, not the document.
+	if opened.Status != apperr.OpenStatusOpened {
+		t.Fatalf("open during contention = %+v, want the document opened", opened)
+	}
+	// And the failure is reported as a warning rather than as a success.
+	if opened.Error == nil || opened.Error.Category != apperr.ClassifiedPersistenceWarning {
+		t.Fatalf("open warning = %+v, want a persistence warning for the refused promotion", opened.Error)
+	}
+
+	// The clause: the previously committed order is still there, unchanged, and
+	// the refused path did not appear.
+	state, _ = service.GetState(context.Background())
+	if len(state.Snapshot.RecentFiles) != len(committed) {
+		t.Fatalf("recents after a failed promotion = %v, want the committed order %v", state.Snapshot.RecentFiles, committed)
+	}
+	for index, path := range committed {
+		if state.Snapshot.RecentFiles[index] != path {
+			t.Fatalf("recents after a failed promotion = %v, want the committed order %v", state.Snapshot.RecentFiles, committed)
+		}
+	}
+	for _, path := range state.Snapshot.RecentFiles {
+		if path == paths[2] {
+			t.Fatalf("refused promotion appeared in recents = %v", state.Snapshot.RecentFiles)
+		}
+	}
 }
