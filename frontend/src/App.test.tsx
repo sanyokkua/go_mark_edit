@@ -46,33 +46,23 @@ jest.mock('./ui/widgets/EditorView', () => ({
   ),
 }));
 
-jest.mock('./i18n', () => ({
-  t: (key: string, values: Record<string, string> = {}): string => {
-    const copy: Record<string, string> = {
-      'recovery.title': 'Editor recovery needed',
-      'recovery.quit.action': 'Quit and discard newer unsaved changes',
-      'recovery.quit.cancel': 'Cancel',
-      'recovery.quit.confirm': 'Quit and discard',
-      'recovery.quit.documents': 'Documents with newer unsaved changes',
-      'recovery.quit.documents.none':
-        'No open document has newer unsaved changes.',
-      'recovery.quit.message':
-        'The file was saved on disk, but editor-state recovery failed. Quit and discard newer unsaved changes for the affected documents?',
-      'recovery.quit.title': 'Confirm quit and discard',
-      'action.save-to-recreate.label': 'Save to recreate',
-      'save.readOnly': 'This document is read-only and cannot be saved.',
-      'save.success.message': 'Saved {filename} · {encoding} · {lineEnding}',
-      'save.success.title': 'Saved',
-      'status.encoding.utf-8': 'UTF-8',
-      'status.lineEnding.crlf': 'CRLF',
-      'status.lineEnding.lf': 'LF',
-    };
-    return Object.entries(values).reduce(
-      (text, [name, value]) => text.replace(`{${name}}`, value),
-      copy[key] ?? key,
-    );
-  },
-}));
+/*
+ * T176. This used to be a hand-written `copy` map of about a dozen keys with a
+ * silent `?? key` fallback — a *second* catalogue that had to be kept in step
+ * with `en.json` by hand, and nothing checked that it was. T124 hit it directly:
+ * two `recovery.quit.documents*` keys were added to `en.json` and the prompt
+ * still rendered the bare key as its accessible name until the map was edited
+ * too.
+ *
+ * `src/test/i18nShim.ts` builds a real translator from `en.json` and already
+ * served every suite importing `../../i18n`; only this file, importing `./i18n`
+ * at depth zero, fell outside the `moduleNameMapper` pattern and grew its own.
+ * Pointing at the shim leaves exactly one catalogue.
+ */
+jest.mock('./i18n', () => jest.requireActual('./test/i18nShim'));
+
+import englishCatalog from './i18n/locales/en.json';
+import { t } from './i18n';
 
 jest.mock('./logic/adapter', () => ({
   applicationAdapter: { retryStartup: jest.fn(async () => undefined) },
@@ -3081,4 +3071,27 @@ it('T168 releases the normalization authorization when the prompt is dismissed',
   });
   store.dispatch(resetNotifications());
   act((): void => disposeAppModelProjection());
+});
+
+/*
+ * T176 — the property the swap above establishes, pinned so it cannot be undone
+ * by reintroducing a hand-written map.
+ *
+ * The superseded double carried about a dozen keys and fell back to returning
+ * the key itself for everything else, silently. Any assertion on a key outside
+ * that map was therefore meaningless: the component rendered the bare key, the
+ * assertion matched the bare key, and the test passed whether or not the string
+ * existed in `en.json`. T124 lost time to exactly this.
+ */
+// Proves: the translator double is the catalogue rather than a copy of it
+it('T176 translates from en.json rather than a hand-maintained copy', () => {
+  // Three keys the superseded map never carried, all rendered by production
+  // code this suite drives: the tab-strip label, the dedup repeat indicator and
+  // the reorder announcement.
+  for (const key of ['editor.tabs', 'notification.count', 'editor.tab.moved']) {
+    expect(t(key)).toBe(englishCatalog[key as keyof typeof englishCatalog]);
+    // The catalogue's value, not the key echoed back — which is what the old
+    // double returned for every one of these.
+    expect(t(key)).not.toBe(key);
+  }
 });
