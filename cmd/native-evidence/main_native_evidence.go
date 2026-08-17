@@ -71,7 +71,9 @@ func parseNativeEvidenceFlags() {
 	nativeEvidenceAssetsDir = *assets
 	nativeEvidenceDatabaseDir = *database
 	if nativeEvidenceAssetsDir == "" && nativeEvidenceScenario != "" {
-		nativeEvidenceAssetsDir = filepath.Join("frontend", "dist-native-evidence", nativeEvidenceScenario)
+		// Repository root, not frontend/: the bundle is build output and lives
+		// outside the package the source linters are rooted at. T182.
+		nativeEvidenceAssetsDir = filepath.Join("dist-native-evidence", nativeEvidenceScenario)
 	}
 	if nativeEvidenceDatabaseDir == "" {
 		nativeEvidenceDatabaseDir = filepath.Join(os.TempDir(), "gomarkedit-native-evidence")
