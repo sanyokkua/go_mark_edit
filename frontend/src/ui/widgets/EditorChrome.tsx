@@ -1,4 +1,5 @@
 import {
+  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -9,10 +10,13 @@ import {
 import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
+import { useEditingProjection } from '../../logic/hooks/useEditingProjection';
 import {
   getAction,
+  getActionAvailability,
   actionsForSurface,
   type ActionEntry,
+  type ProjectedActionState,
 } from '../../logic/actions/actionRegistry';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import {
@@ -79,6 +83,22 @@ function action(id: ActionEntry['id']): ActionEntry {
   return getAction(id);
 }
 
+/**
+ * The active document, in the shape `getActionAvailability` reads.
+ *
+ * A context rather than a prop threaded through ten `actionButtons` call sites.
+ * It exists so a toolbar button can *ask* the registry whether its command is
+ * available instead of deciding for itself — `ActionButton` used to compute
+ * `disabled` from the static `entry.availability.kind` alone, which cannot see
+ * the document, so FR-FT-006's "Editing MUST be unavailable" was invisible here
+ * and every formatting button stayed live on a file the backend refuses to
+ * write. Re-deriving the capability rule locally is the `SettingsMenu` defect
+ * AGENTS.md records; asking the registry is the fix. T178.
+ */
+const ToolbarProjectionContext = createContext<
+  ProjectedActionState | undefined
+>(undefined);
+
 interface ActionButtonProps {
   entry: ActionEntry;
   onActivate: (entry: ActionEntry) => void;
@@ -88,7 +108,19 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   entry,
   onActivate,
 }: ActionButtonProps): React.JSX.Element => {
-  const unavailable = entry.availability.kind === 'deferred';
+  const projectedState = useContext(ToolbarProjectionContext);
+  /*
+   * The static check stays first and unchanged, so a deferred action is still
+   * deferred when no projection has arrived. The registry call only ever *adds*
+   * a refusal, and with no `modalOpen`/tab context passed it can only fire the
+   * capability rule — this widens the disabled set by exactly FR-FT-006 and
+   * nothing else.
+   */
+  const unavailable =
+    entry.availability.kind === 'deferred' ||
+    (projectedState !== undefined &&
+      getActionAvailability(entry.id, { projectedState }).kind ===
+        'unavailable');
   return (
     <button
       aria-label={t(entry.accessibilityKey)}
@@ -140,6 +172,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
 }: EditorChromeProps): React.JSX.Element => {
   const commands = useContext(DocumentCommandContext);
   const activeBuffer = useContext(EditorSessionContext);
+  const toolbarProjection = useEditingProjection(activeBuffer?.documentId);
   const modalOpen = useModalState();
   const requestApplicationMenu = useContext(ApplicationMenuRequestContext);
   const { markdownSettings } = useEditorSettings();
@@ -196,6 +229,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         void dispatchAction(entry.id, {
           editorFocused: commands !== null && activeBuffer !== null,
           documentId: activeBuffer?.documentId,
+          projectedState: toolbarProjection,
           sessionDocumentId: activeBuffer?.documentId,
           writable: activeBuffer !== null,
         });
@@ -204,6 +238,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
       void dispatchAction(entry.id, {
         documentId: activeBuffer?.documentId,
         editorFocused: commands !== null && activeBuffer !== null,
+        projectedState: toolbarProjection,
         invoke: (): unknown =>
           commands === null
             ? undefined
@@ -234,6 +269,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
       commands,
       markdownSettings.bulletMarker,
       markdownSettings.emphasisMarker,
+      toolbarProjection,
     ],
   );
   const onKeyDown = useCallback(
@@ -420,7 +456,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
   };
 
   return (
-    <>
+    <ToolbarProjectionContext.Provider value={toolbarProjection}>
       <DocumentTabs
         adapter={tabAdapter}
         modalOpen={modalOpen}
@@ -586,7 +622,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
               : document.body,
           )
         : null}
-    </>
+    </ToolbarProjectionContext.Provider>
   );
 };
 

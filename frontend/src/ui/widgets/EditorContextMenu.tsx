@@ -17,6 +17,8 @@ import {
   type ActionEntry,
 } from '../../logic/actions/actionRegistry';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
+import { getActionAvailability } from '../../logic/actions/actionRegistry';
+import { useEditingProjection } from '../../logic/hooks/useEditingProjection';
 import type { ActionResult } from '../../logic/actions/actionDispatcher';
 import {
   currentPlatform,
@@ -45,6 +47,17 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 }: EditorContextMenuProps): React.JSX.Element => {
   const commands = useContext(DocumentCommandContext);
   const activeBuffer = useContext(EditorSessionContext);
+  // FR-FT-006 / T178: ask the registry whether each command is available for
+  // this document, rather than reading the static entry, which cannot see it.
+  const editingProjection = useEditingProjection(activeBuffer?.documentId);
+  const itemUnavailable = (item: {
+    id: Parameters<typeof getActionAvailability>[0];
+    availability: { kind: string };
+  }): boolean =>
+    item.availability.kind === 'deferred' ||
+    (editingProjection !== undefined &&
+      getActionAvailability(item.id, { projectedState: editingProjection })
+        .kind === 'unavailable');
   const { markdownSettings } = useEditorSettings();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -186,6 +199,7 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
     void dispatchAction(actionId, {
       documentId: activeBuffer?.documentId,
       editorFocused: commands !== null && activeBuffer !== null,
+      projectedState: editingProjection,
       invoke,
       sessionDocumentId: activeBuffer?.documentId,
       writable: activeBuffer !== null,
@@ -235,7 +249,7 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                       }
                       className={styles.item}
                       data-action-id={item.id}
-                      disabled={item.availability.kind === 'deferred'}
+                      disabled={itemUnavailable(item)}
                       role="menuitem"
                       type="button"
                       onClick={(): void => activate(item.id)}
@@ -252,7 +266,7 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                     }
                     className={styles.item}
                     data-action-id={item.id}
-                    disabled={item.availability.kind === 'deferred'}
+                    disabled={itemUnavailable(item)}
                     key={item.id}
                     role="menuitem"
                     type="button"

@@ -250,3 +250,49 @@ it('T157 refuses to dispatch a write command for an unsafe-read-only document', 
     expect(invoke).not.toHaveBeenCalled();
   }
 });
+
+/*
+ * T178 — the editing half of FR-FT-006 at the dispatcher. Making Monaco
+ * read-only stops typing; it does not stop a `Mod+B` shortcut reaching the
+ * dispatcher and running a buffer mutation, because `actionDispatcher` gated
+ * `editor`-scope actions on `editorFocused` alone. The editor **is** focused on
+ * a read-only document, so the guard held open exactly when it mattered.
+ */
+// Proves: FR-FT-006 (the "Editing MUST be unavailable" clause, at the dispatcher)
+it('T178 refuses to dispatch a mutating editor command for a non-writable document', async () => {
+  const projectedState = {
+    activeDocumentId: 'unsafe',
+    orderedDocumentIds: ['unsafe'],
+    documents: {
+      unsafe: { capability: 'unsafe-read-only', path: '/documents/broken.md' },
+    },
+    canReopenLastFile: false,
+  };
+
+  for (const id of ['bold', 'paste', 'cut'] as const) {
+    const invoke = jest.fn();
+    await expect(
+      dispatchAction(id, {
+        projectedState,
+        documentId: 'unsafe',
+        editorFocused: true,
+        invoke,
+      }),
+    ).resolves.toMatchObject({ status: 'unavailable', actionId: id });
+    expect(invoke).not.toHaveBeenCalled();
+  }
+
+  // `copy` is editor-scope and mutates nothing, so it must still run. `mutated`
+  // is the dispatcher's status for an editor action that was invoked — the name
+  // describes the seam, not whether this particular command changed the buffer.
+  const invoke = jest.fn();
+  await expect(
+    dispatchAction('copy', {
+      projectedState,
+      documentId: 'unsafe',
+      editorFocused: true,
+      invoke,
+    }),
+  ).resolves.toMatchObject({ status: 'mutated' });
+  expect(invoke).toHaveBeenCalled();
+});

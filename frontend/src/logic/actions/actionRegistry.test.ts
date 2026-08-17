@@ -177,11 +177,10 @@ it('T059 keeps File popup actions ordered and classifies deferred items explicit
 
 // Proves: FR-FT-006 (partial — "document formatting or lint commands, Save,
 // Save As, and autosave MUST be unavailable" for an `unsafe-read-only`
-// document. The requirement's first item, **editing**, is NOT proved here and
-// is not built: no production code makes the editor read-only for a
-// capability — `CodeEditor.tsx` and `EditorView.tsx` contain no `readOnly`
-// option and no capability branch — and `getActionAvailability` applies no
-// capability rule to `editor`-scope actions. Filed as T178.
+// document. The requirement's first item, **editing**, is proved by the T178
+// case below and, at the editor widget, by the two T178 cases in
+// `EditorView.integration.test.tsx`; when this anchor was written that
+// behaviour did not exist.
 // The pre-disk write refusal is proved in Go by
 // `TestRefusedWriteNamesTheFileNotTheDocumentID`.)
 //
@@ -223,5 +222,80 @@ it('T157 makes Save, Save As, format and lint unavailable for an unsafe-read-onl
     expect(
       getActionAvailability(id, { projectedState, documentId: 'unsafe' }),
     ).toMatchObject({ kind: 'unavailable', reason: 'deferred' });
+  }
+});
+
+/*
+ * T178 — FR-FT-006's first item, "Editing … MUST be unavailable", which T157
+ * could not cover because nothing implemented it. `getActionAvailability`
+ * applied its capability rule to `save` and `save-as` only, so every
+ * `editor`-scope action stayed live on a document the backend will refuse to
+ * write and the formatting toolbar kept working on it.
+ *
+ * Two things this pins deliberately.
+ *
+ * **`copy` is editor-scope and must stay available.** The requirement makes
+ * *editing* unavailable, not the clipboard; a user must still be able to lift
+ * text out of a file they cannot write. It is the one editor action that mutates
+ * nothing, and asserting it here is what stops the fix being "disable the whole
+ * scope".
+ *
+ * **`large-read-only` is gated too, not just `unsafe-read-only`.** A file over
+ * 10 MiB (FR-FT-005) is equally unwritable, Go's own predicate is
+ * `capability != writable` (`internal/appmodel/save.go`), and reading one string
+ * would leave the larger case editable.
+ */
+// Proves: FR-FT-006 (the "Editing MUST be unavailable" clause, at the registry)
+it('T178 makes mutating editor commands unavailable for a non-writable document', () => {
+  const projectedState = {
+    activeDocumentId: 'unsafe',
+    orderedDocumentIds: ['unsafe', 'large', 'writable'],
+    documents: {
+      unsafe: { capability: 'unsafe-read-only', path: '/documents/broken.md' },
+      large: { capability: 'large-read-only', path: '/documents/huge.md' },
+      writable: { capability: 'writable', path: '/documents/fine.md' },
+    },
+    canReopenLastFile: false,
+  };
+  // Every editor-scope action that changes the buffer, except `image`, which is
+  // registry-deferred and so unavailable for a different reason everywhere.
+  const mutating = [
+    'bold',
+    'italic',
+    'strike',
+    'inline-code',
+    'heading-1',
+    'heading-2',
+    'heading-3',
+    'bullet-list',
+    'numbered-list',
+    'task-list',
+    'quote',
+    'link',
+    'table',
+    'cut',
+    'paste',
+    'paste-plain',
+  ] as const;
+
+  for (const documentId of ['unsafe', 'large'] as const) {
+    for (const id of mutating) {
+      expect(
+        getActionAvailability(id, { projectedState, documentId }),
+      ).toMatchObject({ kind: 'unavailable' });
+    }
+  }
+  // The same commands on a writable document stay available, so the refusals
+  // above are the capability and not a broken fixture.
+  for (const id of mutating) {
+    expect(
+      getActionAvailability(id, { projectedState, documentId: 'writable' }),
+    ).toEqual({ kind: 'available' });
+  }
+  // Copying out of a file you cannot write is not editing.
+  for (const documentId of ['unsafe', 'large', 'writable'] as const) {
+    expect(
+      getActionAvailability('copy', { projectedState, documentId }),
+    ).toEqual({ kind: 'available' });
   }
 });

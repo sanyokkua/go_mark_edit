@@ -1878,3 +1878,44 @@ function lastDocViewFor(
   return calls.at(-1)?.[1] as
     { scroll?: { editor: number; preview: number } } | undefined;
 }
+
+/*
+ * T178 — FR-FT-006's "Editing … MUST be unavailable", at Monaco itself.
+ *
+ * The registry and dispatcher halves stop a toolbar button and a shortcut. They
+ * do nothing about the keyboard typing into the widget: `CodeEditor` had no
+ * `readOnly` prop, no capability reached the editor's options, and a user could
+ * type freely into a document the backend will refuse to write — with the first
+ * refusal arriving at Save, long after the work was done.
+ *
+ * Asserted on the options `CodeEditor` actually hands Monaco, not on a class
+ * name, because the option is the thing that makes the widget refuse input.
+ */
+// Proves: FR-FT-006 (the "Editing MUST be unavailable" clause, at the editor widget)
+it('T178 makes the editor widget read-only for a non-writable document', async () => {
+  renderLivePreviewEditor(
+    'broken',
+    createRenderedEditorAdapter(),
+    statusDocument({ capability: 'unsafe-read-only' }),
+  );
+
+  await waitFor(() => {
+    expect(mockRuntime.props).not.toBeNull();
+  });
+  expect(mockRuntime.props?.options?.readOnly).toBe(true);
+});
+
+// Proves: FR-FT-006 (the negative half — the gate is the capability, not a
+// blanket read-only editor, which would make the application useless)
+it('T178 leaves the editor widget writable for a writable document', async () => {
+  renderLivePreviewEditor(
+    'fine',
+    createRenderedEditorAdapter(),
+    statusDocument({ capability: 'writable' }),
+  );
+
+  await waitFor(() => {
+    expect(mockRuntime.props).not.toBeNull();
+  });
+  expect(mockRuntime.props?.options?.readOnly).toBe(false);
+});

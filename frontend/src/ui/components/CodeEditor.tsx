@@ -44,6 +44,15 @@ export interface CodeEditorProps {
   fontSize?: 13 | 14 | 16;
   initialSelection?: EditorSelection;
   minimap?: boolean;
+  /**
+   * Refuse keyboard input, for a document whose capability is not `writable`.
+   *
+   * FR-FT-006 requires editing to be unavailable for input that opened
+   * tolerantly as read-only, and FR-FT-005 makes an over-large file equally
+   * unwritable. The registry and dispatcher stop the toolbar and the shortcuts;
+   * this is what stops typing. T178.
+   */
+  readOnly?: boolean;
   visible?: boolean;
   onChange?: (value: string) => void;
   onBlur?: () => void;
@@ -170,6 +179,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
       fontSize,
       initialSelection,
       minimap = false,
+      readOnly = false,
       visible = true,
       onChange,
       onBlur,
@@ -374,6 +384,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
               lineNumbersMinChars: 3,
               wordWrap,
               minimap: { enabled: minimap },
+              readOnly,
               fontFamily: parityRoute
                 ? '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace'
                 : undefined,

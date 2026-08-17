@@ -12,6 +12,10 @@ import {
   formatShortcut,
 } from '../../logic/actions/shortcutRegistry';
 import { store } from '../../logic/store';
+import {
+  hydrateProjection,
+  resetProjection,
+} from '../../logic/store/appModelProjectionActions';
 import { hydrateSettings } from '../../logic/store/settingsSlice';
 import EditorContextMenu from './EditorContextMenu';
 import { DocumentCommandContext, EditorSessionContext } from './editorSession';
@@ -461,4 +465,64 @@ it('T059 keeps failed plain-text reads from mutating the document', async () => 
     );
   });
   expect(commands.replaceRange).not.toHaveBeenCalled();
+});
+
+/*
+ * T178 — the editor context menu is the second surface that offers editing
+ * commands, and it had the same hole as the toolbar: `disabled` came from the
+ * static `item.availability.kind`, and `dispatchAction` was handed no
+ * projection, so the registry's FR-FT-006 capability rule could not fire on
+ * this path. Right-click → Bold stayed live on a document the backend refuses
+ * to write, after both the registry and Monaco had been fixed.
+ */
+// Proves: FR-FT-006 (the "Editing MUST be unavailable" clause, at the editor context menu)
+it('T178 disables context-menu editing commands for a non-writable document', () => {
+  store.dispatch(resetProjection());
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: {
+        'doc-1': {
+          documentId: 'doc-1',
+          title: 'broken',
+          path: '/documents/broken.md',
+          dirty: false,
+          encoding: 'utf-8',
+          lineEnding: 'lf',
+          wordCount: 0,
+          capability: 'unsafe-read-only',
+          view: {
+            arrangement: 'editor',
+            editorVisible: true,
+            previewVisible: false,
+            cursor: { line: 1, column: 1 },
+            selection: {
+              start: { line: 1, column: 1 },
+              end: { line: 1, column: 1 },
+            },
+            scroll: { editor: 0, preview: 0 },
+          },
+        },
+      },
+      activeDocumentId: 'doc-1',
+      ui: {},
+    }),
+  );
+
+  render(
+    <EditorSessionContext.Provider
+      value={{ documentId: 'doc-1', content: 'word' }}
+    >
+      <EditorContextMenu>
+        <textarea aria-label="Markdown source" />
+      </EditorContextMenu>
+    </EditorSessionContext.Provider>,
+  );
+  fireEvent.contextMenu(screen.getByLabelText('Markdown source'));
+
+  for (const name of ['Bold', 'Italic', 'Cut', 'Paste']) {
+    expect(screen.getByRole('menuitem', { name })).toBeDisabled();
+  }
+  // Copying out of a file you cannot write is not editing.
+  expect(screen.getByRole('menuitem', { name: 'Copy' })).toBeEnabled();
 });

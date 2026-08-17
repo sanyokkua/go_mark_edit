@@ -65,6 +65,13 @@ interface ActiveEditorProps {
   onPreviewScrollHandler: (
     handler: ((scrollTop: number) => void) | null,
   ) => void;
+  /**
+   * Refuse editing, for a document whose capability is not `writable`.
+   *
+   * FR-FT-006 requires editing to be unavailable when input opened tolerantly
+   * as read-only; FR-FT-005 makes an over-large file equally unwritable. T178.
+   */
+  readOnly: boolean;
   visible: boolean;
   view: DocumentView;
 }
@@ -100,6 +107,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
       activeBuffer,
       onLiveCursorChange,
       onPreviewScrollHandler,
+      readOnly,
       visible,
       view,
     }: ActiveEditorProps,
@@ -194,6 +202,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
             column: view.selection.end.column,
           },
         }}
+        readOnly={readOnly}
         visible={visible}
         onViewStateCaptureReady={(capture: (() => void) | null): void => {
           viewStateCaptureRef.current = capture;
@@ -306,6 +315,17 @@ const EditorView: React.FC<EditorViewProps> = ({
     }
     return state.documents.byId[activeBuffer.documentId];
   });
+  /*
+   * FR-FT-006's "Editing … MUST be unavailable". The predicate is Go's own —
+   * `capability !== 'writable'` (`internal/appmodel/save.go`) — rather than a
+   * match on `unsafe-read-only`, because `large-read-only` (FR-FT-005, a file
+   * over 10 MiB) is equally unwritable. A document whose capability the
+   * projection has not carried yet stays editable, which is the pre-T178
+   * behaviour for every ordinary document. T178.
+   */
+  const activeDocumentReadOnly =
+    activeDocument?.capability !== undefined &&
+    activeDocument.capability !== 'writable';
   const onArrangementChange = useCallback(
     (nextArrangement: ViewArrangement): void => {
       if (nextArrangement === 'preview') {
@@ -417,6 +437,7 @@ const EditorView: React.FC<EditorViewProps> = ({
               adapter={adapter}
               activeBuffer={activeBuffer}
               view={view}
+              readOnly={activeDocumentReadOnly}
               visible={editorVisible}
               onLiveCursorChange={onLiveCursorChange}
               onPreviewScrollHandler={onPreviewScrollHandler}

@@ -13,6 +13,10 @@ import { Provider } from 'react-redux';
 import * as actionDispatcher from '../../logic/actions/actionDispatcher';
 import * as shortcutRegistry from '../../logic/actions/shortcutRegistry';
 import { store } from '../../logic/store';
+import {
+  hydrateProjection,
+  resetProjection,
+} from '../../logic/store/appModelProjectionActions';
 import { hydrateSettings } from '../../logic/store/settingsSlice';
 import { DocumentCommandContext } from './editorSession';
 import { EditorSessionContext } from './editorSession';
@@ -731,3 +735,116 @@ it.each([
     }
   },
 );
+
+/*
+ * T178 — the formatting toolbar on a document the backend will refuse to write.
+ *
+ * `ActionButton` computed `disabled` from `entry.availability.kind ===
+ * 'deferred'` — the *static* registry entry — and `EditorChrome` passed no
+ * projection to `dispatchAction`, so neither the button's enabled state nor the
+ * command it runs could see the document's capability. Making Monaco read-only
+ * and gating the registry both leave this path open: the user cannot type, but
+ * every formatting button still works.
+ *
+ * This is the same defect class AGENTS.md records against `SettingsMenu` —
+ * a surface deciding availability for itself instead of asking the registry —
+ * so the fix asks `getActionAvailability` rather than re-deriving the rule here.
+ */
+// Proves: FR-FT-006 (the "Editing MUST be unavailable" clause, at the toolbar)
+it('T178 disables the formatting toolbar for a non-writable document', () => {
+  store.dispatch(resetProjection());
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: {
+        'doc-1': {
+          documentId: 'doc-1',
+          title: 'broken',
+          path: '/documents/broken.md',
+          dirty: false,
+          encoding: 'utf-8',
+          lineEnding: 'lf',
+          wordCount: 0,
+          capability: 'unsafe-read-only',
+          view: {
+            arrangement: 'editor',
+            editorVisible: true,
+            previewVisible: false,
+            cursor: { line: 1, column: 1 },
+            selection: {
+              start: { line: 1, column: 1 },
+              end: { line: 1, column: 1 },
+            },
+            scroll: { editor: 0, preview: 0 },
+          },
+        },
+      },
+      activeDocumentId: 'doc-1',
+      ui: {},
+    }),
+  );
+
+  render(
+    <EditorSessionContext.Provider
+      value={{ documentId: 'doc-1', content: 'word' }}
+    >
+      <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
+    </EditorSessionContext.Provider>,
+  );
+
+  for (const name of ['Bold', 'Italic', 'Heading 1', 'Table']) {
+    expect(screen.getByRole('button', { name })).toBeDisabled();
+  }
+});
+
+/*
+ * The control for the case above: the same toolbar on a writable document must
+ * stay live, so the assertion is the capability and not a toolbar that has been
+ * disabled outright.
+ */
+// Proves: FR-FT-006 (the negative half at the toolbar)
+it('T178 leaves the formatting toolbar live for a writable document', () => {
+  store.dispatch(resetProjection());
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: {
+        'doc-1': {
+          documentId: 'doc-1',
+          title: 'fine',
+          path: '/documents/fine.md',
+          dirty: false,
+          encoding: 'utf-8',
+          lineEnding: 'lf',
+          wordCount: 0,
+          capability: 'writable',
+          view: {
+            arrangement: 'editor',
+            editorVisible: true,
+            previewVisible: false,
+            cursor: { line: 1, column: 1 },
+            selection: {
+              start: { line: 1, column: 1 },
+              end: { line: 1, column: 1 },
+            },
+            scroll: { editor: 0, preview: 0 },
+          },
+        },
+      },
+      activeDocumentId: 'doc-1',
+      ui: {},
+    }),
+  );
+
+  render(
+    <EditorSessionContext.Provider
+      value={{ documentId: 'doc-1', content: 'word' }}
+    >
+      <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
+    </EditorSessionContext.Provider>,
+  );
+
+  for (const name of ['Bold', 'Italic', 'Heading 1', 'Table']) {
+    expect(screen.getByRole('button', { name })).toBeEnabled();
+  }
+});

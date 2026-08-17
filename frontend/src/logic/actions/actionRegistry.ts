@@ -404,6 +404,22 @@ const registryById = new Map(
   actionRegistry.map((action) => [action.id, action]),
 );
 
+/**
+ * The `editor`-scope actions that do not change the buffer.
+ *
+ * FR-FT-006 makes *editing* unavailable for a read-only document, not the
+ * clipboard: lifting text out of a file you cannot write is not editing, so
+ * `copy` stays available where `cut`, `paste` and every formatting command do
+ * not.
+ *
+ * Stated as the exceptions rather than as the list of mutations, so an
+ * `editor`-scope action added later is gated by default. That is the safe
+ * direction — a new mutation silently enabled on an unwritable document
+ * corrupts the user's expectation about a file, while a new reader wrongly
+ * dimmed is visible the first time anyone looks. T178.
+ */
+const NON_MUTATING_EDITOR_ACTIONS: ReadonlySet<ActionId> = new Set(['copy']);
+
 const TAB_ACTIONS: ReadonlySet<ActionId> = new Set([
   'close-tab',
   'close-others',
@@ -527,6 +543,28 @@ export function getActionAvailability(
     ) {
       return { kind: 'unavailable', reason: 'no-document' };
     }
+  }
+
+  /*
+   * FR-FT-006: "Editing … MUST be unavailable" when the document opened
+   * tolerantly as read-only. Every `editor`-scope action but `copy` changes the
+   * buffer, so the capability gates the scope.
+   *
+   * The predicate is `capability !== 'writable'`, mirroring Go's own
+   * (`internal/appmodel/save.go`), rather than a comparison against
+   * `unsafe-read-only`: `large-read-only` (FR-FT-005, a file over 10 MiB) is
+   * equally unwritable, and matching one string would leave the larger case
+   * editable. `reason` is `no-document` for consistency with the `save`/`save-as`
+   * capability refusal above; it is never rendered, only branched on in
+   * `actionDispatcher`. T178.
+   */
+  if (
+    action.scope === 'editor' &&
+    !NON_MUTATING_EDITOR_ACTIONS.has(id) &&
+    document?.capability !== undefined &&
+    document.capability !== 'writable'
+  ) {
+    return { kind: 'unavailable', reason: 'no-document' };
   }
 
   if (TAB_ACTIONS.has(id)) {
