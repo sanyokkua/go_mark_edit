@@ -935,6 +935,16 @@ table, safe-subject only, remediated only from that row's vocabulary.
   backend MUST then revalidate the expected tab-set revision and reservation and apply exactly one authoritative
   transition. Cancellation, failed flush, stale revision, lost reservation, classification failure, or refusal MUST
   leave active identity, ordered tabs, documents, recents, and active buffer unchanged.
+  **Amended 2026-08-17**: the *cancellation* arm of the reservation clause above is satisfied vacuously by the
+  single-call Open design, and requires no implementation. `OpenPath` calls `PrepareOpen` and `CommitPreparedOpen` in
+  adjacent statements; every `PrepareOpen` refusal returns before a reservation exists, and `CommitPreparedOpen`
+  deletes the reservation on every branch — so no reservation can outlive a prepare, and there is nothing to cancel
+  between the two. The frontend flush this requirement describes happens *before* the single `OpenPath` bridge call,
+  so the two-phase boundary never crosses the bridge and no reservation is ever exposed to frontend failure. The
+  alternative — splitting prepare and commit across the bridge so a failed flush cancels the reservation — was
+  considered and declined: it buys a two-call Open protocol and a new way for a reservation to leak if the frontend
+  dies mid-sequence, to give a clause a caller rather than to serve a user-observable behaviour. `CancelPreparedOpen`
+  is deleted with this amendment rather than retained as an unreachable implementation of an unreachable clause.
 - **FR-FT-005**: Size thresholds MUST use binary mebibytes: 2 MiB = 2,097,152 bytes, 10 MiB = 10,485,760 bytes, and
   50 MiB = 52,428,800 bytes. A safe supported file at exactly 10 MiB MUST remain writable; a file larger than 10 MiB
   and no larger than 50 MiB MUST open read-only with a visible reason; and a file larger than 50 MiB MUST be refused
@@ -1081,13 +1091,22 @@ table, safe-subject only, remediated only from that row's vocabulary.
   saves remain clean, every tab remains open, no discard is applied, and retry requires a fresh plan and choices.
   Tabs close only after all requested saves succeed.
 - **FR-FT-027**: Native close MUST remain vetoed until the close plan authorizes exit. After authorization, shutdown
-  MUST cancel in-flight long operations and drain accepted layout, editor, and autosave work before creating a
+  MUST cancel scheduled work that can no longer run and drain accepted layout, editor, and autosave work before creating a
   one-use close permit or invoking native Quit. A cancellation or drain failure MUST create no permit, keep the window
   open, and provide a classified `io-failure` error with Retry. After a successful drain, the backend MUST create one one-use permit, invoke
   native Quit, and atomically consume that permit only in the immediately resulting native close callback. The
   permitted shutdown MUST then close persistence and diagnostics in that order. Cancel MUST be a clean no-op that
   writes and closes nothing. During FR-FT-016 recovery, only the twice-confirmed Quit and discard newer unsaved changes
   path may bypass successful rehydration; it MUST still satisfy this cancellation, drain, and permit sequence.
+  **Amended 2026-08-17**: the first clause previously read "cancel in-flight long operations", which no part of this
+  backend implements or can implement as written. `file.AtomicReplace` has no cancellation point *by design* — an
+  abandoned atomic replace must still leave the target intact, which is the guarantee the whole write path exists to
+  provide — `file.ReadClassifiedStable` takes no `context.Context`, and the write coordinator serializes rather than
+  interrupts. The behaviour that is built, and that the clause was always describing, is the cancellation of
+  *scheduled* work whose document has become ineligible: `flushAutosaveForClose` cancels it and
+  `TestDrainBeforeCloseCancelsWorkThatCanNoLongerRun` proves it. The wording now names that. Making the strong
+  reading true would require context-aware I/O throughout `internal/file` plus a fresh correctness argument for
+  partial writes, which is a feature in its own right and not a clause of this one.
 
 #### Real tab lifecycle and editor identity
 
@@ -1109,9 +1128,15 @@ table, safe-subject only, remediated only from that row's vocabulary.
 - **FR-FT-031**: A tab switch MUST flush and await the outgoing document's newest text, caret, selection, scroll,
   and view state before activating the incoming document. Failure MUST leave the outgoing tab active and install
   no incoming content.
-- **FR-FT-032**: Each document MUST preserve its own dirty state, Editor/Split/Preview arrangement, Reading state,
-  editor and preview scroll, caret, selection, and editor view state across switches. The application arrangement
+- **FR-FT-032**: Each document MUST preserve its own dirty state, Editor/Split/Preview arrangement, editor and
+  preview scroll, caret, selection, and editor view state across switches. The application arrangement
   remains fallback only for a document with no saved view.
+  **Amended 2026-08-17**: this clause previously named "Reading state" alongside the arrangement, as if they were two
+  separate things to preserve. They are one: Reading state *is* the `preview` arrangement, and the arrangement clause
+  already carries it. The only other "Reading" concepts in the product are the `distraction-free-reading` **window**
+  action and the `defaultOpenMode` **application** setting, and neither is per document — so naming a second thing
+  invited a per-document field that `DocView` does not have and that no user-observable behaviour asks for. T179
+  built the preview-scroll clause and recorded this reading rather than inventing that field.
 - **FR-FT-033**: Close and reorder commands MUST carry the tab-set revision they were issued against. A stale
   command MUST be refused without partial order, active-document, or close changes.
 - **FR-FT-034**: The real tab strip MUST show each open filename, unsaved dot, close affordance, and New affordance.
@@ -1432,9 +1457,26 @@ completed feature already owns their behavior.
   they photographed an application 48 shell-surface commits out of date; their structural assertions are
   retained.
 - **SC-FT-013**: All unaffected Feature 001 and Feature 002 responsive, focus, action, and native-shell behavior
-  remains intact, proven by every behavioural assertion in the end-to-end suites passing at all three widths and
-  all six palettes. Zero populated workspace, Assistant/provider, custom native-frame, or deferred
-  rich-rendering surface appears in order to manufacture parity. **Amended 2026-08-14**: the visual half of this
+  remains intact, proven by every behavioural assertion in the end-to-end suites passing, and by those suites
+  **between them** covering all three widths and all six palettes. The cross-product is carried by a named subset —
+  `window-shell.test.ts`'s T026 matrix (18 cases), `editor-stage.test.ts` (108, with `Auto` as a third mode), and one
+  `appearance.test.ts` case — not by every suite individually. Zero populated workspace, Assistant/provider, custom
+  native-frame, or deferred rich-rendering surface appears in order to manufacture parity. **Amended 2026-08-17**:
+  the criterion previously read "every behavioural assertion … passing at all three widths and all six palettes",
+  which admits two readings: **(A)** every assertion executes at each of three widths and each of six palettes, or
+  **(B)** every assertion passes, and the suites between them cover three widths and six palettes. The suite
+  satisfies B and does not satisfy A, and the shortfall is structural rather than incidental — all five
+  `interactive-states.test.ts` cases, all four `launcher-binding` cases and all 20 `real-files-and-tabs` cases run
+  once, at 1280, in material/light; `narrow-width.test.ts` never runs at 1280; and `TargetedEntry.width` is typed
+  `1280 | 375`, so no pixel-compared key runs at 768 at all. **B now governs.** Expanding every behavioural suite to
+  18 cells would multiply a 5.1-minute gate by roughly six for coverage that is largely redundant, because the
+  palettes are token swaps and the assertions that genuinely vary by width already loop. Two further corrections,
+  recorded rather than quietly carried: the "token gate across all six palettes" cited below is **Jest**
+  (`frontend/src/ui/styles/tokens.test.ts`, run by `just check`), so `just e2e-test` cannot evidence it; and the
+  negative clause above is only partly proved — Assistant deferral is asserted at `offline-and-controls.test.ts:194`
+  at one width and palette, workspace is pinned only as sizing and absence, and **custom native frame and deferred
+  rich-rendering have no assertion anywhere**, surviving only as a prose comment at `real-files-parity.test.ts:90-95`.
+  That gap is filed as its own task rather than described here as coverage. **Amended 2026-08-14**: the visual half of this
   criterion previously rested on 25 committed whole-window screenshot baselines. Those are deleted rather than
   re-approved — they photographed an application 48 shell-surface commits out of date, and Feature 003 accepted
   **zero** baseline changes across its whole life, so no approved change ever needed listing. Visual regression
