@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import SettingsDialog from './SettingsDialog';
@@ -83,112 +80,58 @@ it('closes on Escape and restores focus to the opener', () => {
   expect(opener).toHaveFocus();
 });
 
-it('T045 retains the binding settings selection on parity routes', () => {
-  const originalUrl = window.location.href;
-  window.history.replaceState(
-    {},
-    '',
-    '/?parity-case=primary:settings-appearance:1280:glass-dark',
-  );
-  try {
-    render(
-      <SettingsDialog
-        mode="dark"
-        onModeChange={jest.fn()}
-        onOpenChange={jest.fn()}
-        onReset={jest.fn()}
-        onThemeChange={jest.fn()}
-        open
-        theme="glass"
-      />,
-    );
-
-    expect(screen.getByRole('button', { name: 'Material' })).toHaveAttribute(
-      'class',
-      expect.stringContaining('paritySelected'),
-    );
-    expect(screen.getByRole('button', { name: 'Light' })).toHaveAttribute(
-      'class',
-      expect.stringContaining('paritySelected'),
-    );
-    expect(screen.getByRole('button', { name: 'Glass' })).not.toHaveAttribute(
-      'class',
-      expect.stringContaining('paritySelected'),
-    );
-    expect(screen.getByRole('button', { name: 'Dark' })).not.toHaveAttribute(
-      'class',
-      expect.stringContaining('paritySelected'),
-    );
-    expect(
-      readFileSync(
-        resolve(process.cwd(), 'src/ui/widgets/SettingsDialog.module.css'),
-        'utf8',
-      ),
-    ).toMatch(
-      /:global\(:root\[data-theme='glass'\]\)\s+\.paritySelected\s*\{[^}]*background:\s*linear-gradient\(135deg,\s*var\(--accent\),\s*var\(--accent2\)\);/s,
-    );
-    expect(
-      readFileSync(
-        resolve(process.cwd(), 'src/ui/widgets/SettingsDialog.module.css'),
-        'utf8',
-      ),
-    ).toMatch(
-      /:global\(:root\[data-theme='glass'\]\)\s+\.parityContent\s*\{[^}]*backdrop-filter:\s*var\(--blur\);/s,
-    );
-  } finally {
-    window.history.replaceState({}, '', originalUrl);
-  }
-});
-
-it('T045 keeps the narrow parity settings scrim viewport-owned', () => {
-  const styles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/SettingsDialog.module.css'),
-    'utf8',
-  );
-
-  expect(styles).toMatch(
-    /@media \(max-width: 376px\) \{\s*\.parityOverlay\s*\{[^}]*position:\s*fixed;/s,
-  );
-});
-
-it('T045 portals narrow parity settings scrims outside blurred app frames', () => {
-  const originalUrl = window.location.href;
+/*
+ * T173. This case survives its three siblings, and without the route.
+ *
+ * The rule it protects is real and was a shipped defect: at the 375px minimum
+ * window a transformed shell ancestor turns a `position: fixed` dialog into an
+ * absolute one and clips it, so the dialog must portal outside the application
+ * frame. What made the case *look* parity-specific was that it reached the
+ * surface through `?parity-case`; T138 had already made both returns portal,
+ * so the route was never what the assertion depended on.
+ *
+ * Its three siblings went with the substituted surface they described. Two
+ * asserted `.parityOverlay` and `.parityPick` rules by reading the stylesheet as
+ * text — a rule no selector in the shipped application can reach. The third
+ * asserted that `Material` and `Light` rendered as selected while the props said
+ * `theme="glass"` and `mode="dark"`: it pinned the substituted pane's habit of
+ * reporting a state the application was not in.
+ */
+// Proves: FR-FT-047 (partial — that the settings dialog portals outside the
+// application frame at the 375px minimum window, so a transformed ancestor
+// cannot clip it.)
+it('T173 portals the narrow settings dialog outside the application frame', () => {
   const originalWidth = window.innerWidth;
-  window.history.replaceState(
-    {},
-    '',
-    '/?parity-case=primary:settings-appearance:375:glass-light',
-  );
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
     value: 375,
   });
   try {
-    renderDialog();
+    const { container } = render(
+      <SettingsDialog
+        mode="auto"
+        onModeChange={jest.fn()}
+        onOpenChange={jest.fn()}
+        onReset={jest.fn()}
+        onThemeChange={jest.fn()}
+        open
+        theme="material"
+      />,
+    );
     const surface = screen.getByRole('dialog', { name: 'Settings' });
-    expect(surface.parentElement?.parentElement).toBe(document.body);
+    /*
+     * Portalled means "outside the tree this component was rendered into" —
+     * that tree is where the shell's transformed ancestor lives. Asserting a
+     * fixed number of parent levels would pin the overlay's markup instead of
+     * the rule, and did: the substituted surface nested one level deeper, so the
+     * old assertion counted *its* wrapper rather than checking the destination.
+     */
+    expect(container.contains(surface)).toBe(false);
+    expect(document.body.contains(surface)).toBe(true);
   } finally {
-    window.history.replaceState({}, '', originalUrl);
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
       value: originalWidth,
     });
   }
-});
-
-it('T045 retains the reference picker flex geometry on parity routes', () => {
-  expect(
-    readFileSync(
-      resolve(process.cwd(), 'src/ui/widgets/SettingsDialog.module.css'),
-      'utf8',
-    ),
-  ).toMatch(
-    /\.parityPick\s*\{[^}]*display:\s*flex;[^}]*gap:\s*0;[^}]*padding:\s*3px;/s,
-  );
-  expect(
-    readFileSync(
-      resolve(process.cwd(), 'src/ui/widgets/SettingsDialog.module.css'),
-      'utf8',
-    ),
-  ).not.toMatch(/\.parityPick\s*\{[^}]*flex:\s*none;/s);
 });

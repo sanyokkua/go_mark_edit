@@ -274,53 +274,18 @@ it('T152 matches getActionAvailability for every tab-context action and strip po
   }
 });
 
-function acceleratorTextFor(actionId: string): string | undefined {
-  const item = document.querySelector(`[data-action-id="${actionId}"]`);
-  return item?.querySelector('span')?.textContent ?? undefined;
-}
-
-function renderOnParityRoute(): void {
-  window.history.replaceState(
-    {},
-    '',
-    '/?parity-case=state:tab-menu-move-left-unavailable:material-light',
-  );
-  const first = documentFor('first');
-  const second = documentFor('second');
-  render(
-    <TabContextMenu
-      adapter={{}}
-      document={first}
-      index={0}
-      onAction={jest.fn(async (): Promise<TabTransitionResult> => ({
-        status: 'reordered',
-        orderedDocumentIds: ['first', 'second'],
-      }))}
-      onClose={jest.fn()}
-      orderedDocuments={[first, second]}
-      tabSetRevision={7}
-    />,
-  );
-}
-
-// Proves: FR-FT-047 — the shortcut this menu advertises derives from the
-// canonical action registry (`close-tab` is bound to `Mod+W`) rendered for the
-// running platform, not from a catalogue literal. It does not prove anything
-// about the other six rows, which advertise no accelerator at all.
-it.each([
-  ['darwin', '⌘W'],
-  ['win32', 'Ctrl+W'],
-  ['linux', 'Ctrl+W'],
-] as const)(
-  'T143 draws the close-tab accelerator from the registry binding on %s',
-  (platform, expected) => {
-    const originalUrl = window.location.href;
-    platformMock.mockReturnValue(platform);
-    try {
-      renderOnParityRoute();
-      expect(acceleratorTextFor('close-tab')).toBe(expected);
-    } finally {
-      window.history.replaceState({}, '', originalUrl);
-    }
-  },
-);
+/*
+ * T173. The three `T143 draws the close-tab accelerator …` cases were removed
+ * here, and the reason belongs on the record rather than in a commit message.
+ *
+ * They rendered the menu on `?parity-case` and asserted the accelerator was
+ * derived from the action registry for the running platform. The derivation was
+ * real and the assertion was correct — but the accelerator was rendered **only**
+ * on that route. The shipped tab context menu advertises no accelerator on any
+ * row, so the anchor `Proves: FR-FT-047` described a surface no user reaches.
+ *
+ * Deleting the route branch preserves production exactly as it shipped; adding
+ * the accelerator to production would have been a UI change with no requirement
+ * behind it. Whether the menu *should* advertise its accelerators — the
+ * reference mockup does — is a product question, filed as T190.
+ */

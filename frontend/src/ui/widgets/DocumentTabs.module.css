@@ -283,12 +283,6 @@
   padding: 7px 10px;
 }
 
-.parityAccelerator {
-  color: var(--faint);
-  font-size: 11px;
-  margin-inline-start: auto;
-}
-
 .contextMenuItem {
   text-align: start;
   padding: var(--popup-row-padding);

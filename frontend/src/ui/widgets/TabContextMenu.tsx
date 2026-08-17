@@ -15,10 +15,6 @@ import type {
   PathCommandResult,
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
-import {
-  currentPlatform,
-  formatShortcut,
-} from '../../logic/actions/shortcutRegistry';
 import { t } from '../../i18n';
 import styles from './DocumentTabs.module.css';
 
@@ -87,44 +83,6 @@ function errorResult(error: ClassifiedError | undefined): string {
   return error?.message ?? 'The tab command could not be completed.';
 }
 
-function parityRoute(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('parity-case')
-  );
-}
-
-/*
- * The same derivation `SettingsMenu.settingsAccelerator` and
- * `ShellMenuRow.shortcutForMenuItem` use, so every surface in the shell
- * advertises the accelerator from one source — the action registry — rendered
- * for the running platform. The catalogue literal this replaced read `Ctrl W`
- * on every host, including the macOS one where the binding is `⌘W`.
- */
-function acceleratorFor(actionId: TabContextAction): string {
-  const binding = getAction(actionId).shortcut;
-  return binding === undefined
-    ? ''
-    : formatShortcut(binding, currentPlatform());
-}
-
-function parityLabel(actionId: TabContextAction): string {
-  switch (actionId) {
-    case 'close-tab':
-      return t('editor.tab.context.close');
-    case 'close-others':
-      return t('editor.tab.context.closeOthers');
-    case 'close-right':
-      return t('editor.tab.context.closeRight');
-    case 'copy-path':
-      return t('editor.tab.context.copyPath');
-    case 'reveal-in-file-manager':
-      return t('editor.tab.context.reveal');
-    default:
-      return '';
-  }
-}
-
 const TabContextMenu: React.FC<TabContextMenuProps> = ({
   adapter,
   document,
@@ -135,7 +93,6 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
   onClose,
 }: TabContextMenuProps): React.JSX.Element => {
   void adapter;
-  const isParityRoute = parityRoute();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const firstActionRef = useRef<HTMLButtonElement | null>(null);
   const menuActions = actionsForSurface('tab-context')
@@ -280,12 +237,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
             type="button"
             onClick={(): void => activate(actionId)}
           >
-            {isParityRoute ? parityLabel(actionId) : t(entry.labelKey)}
-            {isParityRoute && actionId === 'close-tab' ? (
-              <span className={styles.parityAccelerator}>
-                {acceleratorFor(actionId)}
-              </span>
-            ) : null}
+            {t(entry.labelKey)}
           </button>
         );
       })}
