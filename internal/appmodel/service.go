@@ -29,7 +29,7 @@ type AppModelService struct {
 	layout              LayoutRepositoryAPI
 	sequence            uint64
 	writerID            string
-	timer               layoutTimer
+	timer               LayoutTimer
 	autosaveTimer       AutosaveTimerFactory
 	autosaveEnabled     bool
 	autosaveTimers      map[string]*autosaveTimerEntry
@@ -62,7 +62,10 @@ type AppModelService struct {
 	diskVersion         func(string) (file.DiskVersion, error)
 }
 
-type layoutTimer interface{ AfterFunc(time.Duration, func()) }
+// LayoutTimer is the clock the layout debounce schedules against. It is
+// exported so a harness host can substitute a stalled or immediate clock; the
+// production default is systemLayoutTimer and no production host replaces it.
+type LayoutTimer interface{ AfterFunc(time.Duration, func()) }
 
 type systemLayoutTimer struct{}
 
@@ -106,11 +109,44 @@ func NewAppModelServiceWithLayoutRepository(emitter StatePatchEmitter, layout La
 	return newAppModelService(emitter, layout, systemLayoutTimer{})
 }
 
-func NewAppModelServiceWithLayoutRepositoryAndTimer(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer layoutTimer) *AppModelService {
+// NewAppModelServiceWithLayoutRepositoryAndTimer is a test and harness
+// constructor. It leaves the host ports unset, so no production host may use it;
+// the evidence driver used to, which is how Copy path and Reveal reached a nil
+// port in the one binary built to measure real behaviour (T167).
+func NewAppModelServiceWithLayoutRepositoryAndTimer(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer LayoutTimer) *AppModelService {
 	return newAppModelService(emitter, layout, timer)
 }
 
-func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer layoutTimer) *AppModelService {
+/*
+ * SetLayoutTimer replaces the layout debounce clock on an already-constructed
+ * service.
+ *
+ * This exists so a harness host can take the model the composition root built —
+ * with its host ports and its settings joins intact — and change only the clock,
+ * instead of constructing a second model and assigning it over the first. The
+ * evidence driver did the latter, and it silently cost both host ports plus the
+ * autosave and default-open-mode observers the root had already bound.
+ *
+ * It is deliberately not the pattern used for host ports. A missing clock is
+ * benign — the constructor installs systemLayoutTimer and production never calls
+ * this — whereas a missing port is a command that cannot work, which is why
+ * those stay positional parameters on NewAppModelServiceForHost that break the
+ * build when one is added. Read the comment there before turning either into the
+ * other.
+ *
+ * Call before the model schedules anything. It swaps the clock for subsequent
+ * scheduling only and does not reschedule work already pending on the old one.
+ */
+func (service *AppModelService) SetLayoutTimer(timer LayoutTimer) {
+	if timer == nil {
+		return
+	}
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.timer = timer
+}
+
+func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer LayoutTimer) *AppModelService {
 	documentID := mintDocumentID()
 	initialDocument := &openDocument{
 		metadata: apperr.DocumentMetadata{

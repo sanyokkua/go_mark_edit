@@ -16,7 +16,6 @@ import (
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
-	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -119,12 +118,17 @@ func configureNativeEvidenceDependencies(holder *application.ApplicationContextH
 		nativeEvidenceExplicitSave = explicitScenario
 	}
 
-	model := appmodel.NewAppModelServiceWithLayoutRepositoryAndTimer(
-		appmodel.RuntimeStatePatchEmitter{},
-		nil,
-		timer,
-	)
-	holder.AppModelService = model
+	// Take the model the composition root already built and change only the
+	// clock. This used to construct a second model and assign it over
+	// holder.AppModelService, which discarded the clipboard writer and the reveal
+	// port the root injects, and left the autosave and default-open-mode settings
+	// observers bound to an object nothing else referenced — in the binary whose
+	// whole purpose is to measure autosave. Nothing failed, because no scenario
+	// invokes Copy path or Reveal; that is what made it worth fixing rather than
+	// annotating. There is now exactly one wiring path, so a port added to
+	// NewAppModelServiceForHost reaches this host by construction.
+	model := holder.AppModelService
+	model.SetLayoutTimer(timer)
 	if nativeEvidenceAutosave != nil {
 		model.SetDocumentOpenDialog(nativeEvidenceAutosave)
 		model.SetWriteCommitObserver(nativeEvidenceAutosave.recordCommit)
@@ -134,9 +138,11 @@ func configureNativeEvidenceDependencies(holder *application.ApplicationContextH
 		model.SetDocumentSaveDialog(nativeEvidenceExplicitSave)
 		model.SetWriteCommitObserver(nativeEvidenceExplicitSave.recordCommit)
 	}
-	holder.AppModelHandler = appmodel.NewAppModelHandler(model, nil, holder.Context)
-	holder.NativeWindowService = application.NewNativeWindowService(model, nil)
-	holder.ApplicationHandler = application.NewApplicationHandler(holder, nil, holder.Context)
+	// No handler rebuild. NewApplicationContextHolder already built
+	// AppModelHandler, NativeWindowService and ApplicationHandler against this
+	// same model with the same nil logger, so re-creating them produced identical
+	// objects; they existed only because the model underneath them had been
+	// swapped. Leaving them alone keeps the root the single wiring site.
 }
 
 func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *nativeEvidencePaths) *options.App {
