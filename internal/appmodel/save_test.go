@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -516,5 +517,47 @@ func TestCancelNormalizationReleasesADismissedAuthorization(t *testing.T) {
 	}
 	if replayed.DecisionToken == blocked.DecisionToken {
 		t.Fatalf("re-minted token = %q, want a new one rather than the dismissed one", replayed.DecisionToken)
+	}
+}
+
+/*
+T162. The classified error contract permits `system-command-failure` only Retry
+and Copy path, and these two sites requested Cancel — which permittedRemediations
+dropped, leaving the row served as message-only where the contract names an
+action. Both refusals are a missing host dialog, and both are genuinely
+re-issuable: the Retry re-invokes the same command, which is what makes offering
+it honest rather than a control with nothing behind it.
+
+The third site that stated the same forbidden pairing, close_plan.go's Save
+dialog refusal, is deliberately message-only instead: T164 records that a
+close-plan failure cannot be re-issued from where it is reported, so Retry there
+would be exactly the button-that-calls-nothing this contract exists to prevent.
+
+Asserted on the emitted error rather than on the literal, because the literal is
+already covered by TestArchitectureClassifiedRemediationsMatchTheirCategory. The
+other thirty corrected sites became message-only, which is byte-for-byte what
+the coercion already produced, so only these two changed what a user receives.
+*/
+// Proves: the classified error contract's `system-command-failure` row
+func TestUnavailableHostDialogsOfferRetryRatherThanNothing(t *testing.T) {
+	service := NewEmptyAppModelService(&recordingEmitter{})
+
+	opened := service.OpenFromDialog(context.Background(), 0)
+	if opened.Error == nil || opened.Error.Category != apperr.ClassifiedSystemCommandFailure {
+		t.Fatalf("Open with no dialog = %+v, want a system-command-failure", opened)
+	}
+	if !slices.Contains(opened.Error.Remediations, apperr.RemediationRetry) {
+		t.Fatalf("Open dialog refusal remediations = %v, want Retry", opened.Error.Remediations)
+	}
+
+	// Revision 1, not 0: newSaveDocument edits the buffer, so revision 0 would
+	// be refused as a stale-revision conflict before the dialog check is reached.
+	documentID := newSaveDocument(t, service, "content")
+	saved := service.SaveAs(context.Background(), documentID, 1, "")
+	if saved.Error == nil || saved.Error.Category != apperr.ClassifiedSystemCommandFailure {
+		t.Fatalf("Save As with no dialog = %+v, want a system-command-failure", saved)
+	}
+	if !slices.Contains(saved.Error.Remediations, apperr.RemediationRetry) {
+		t.Fatalf("Save dialog refusal remediations = %v, want Retry", saved.Error.Remediations)
 	}
 }

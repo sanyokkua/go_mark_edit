@@ -165,7 +165,7 @@ func ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 	maxBytes = normalizedReadLimit(maxBytes)
 	canonical, err := CanonicalizeDocumentPath(path)
 	if err != nil {
-		return ClassifiedRead{Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationCancel)}, nil
+		return ClassifiedRead{Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
 	}
 	if !IsSupportedDocumentSuffix(canonical.Path) {
 		return ClassifiedRead{
@@ -177,7 +177,7 @@ func ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 	}
 	info, err := os.Stat(canonical.Path)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(canonical.DisplayName, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationCancel)}, nil
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(canonical.DisplayName, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
 	}
 	if info.Size() > maxBytes || info.Size() > MaxSupportedDocumentBytes {
 		return ClassifiedRead{

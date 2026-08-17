@@ -46,7 +46,7 @@ func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.Cl
 	requested, err := closePlanTargetOrderLocked(service.state.orderedDocumentIDs, service.state.documents, kind, targetDocumentIDs)
 	if err != nil {
 		service.mu.Unlock()
-		return closePlanRefused(apperr.ClassifiedNotFound, "close plan", err.Error(), apperr.RemediationCancel)
+		return closePlanRefused(apperr.ClassifiedNotFound, "close plan", err.Error(), apperr.RemediationNone)
 	}
 	if service.activeClosePlan != "" {
 		existing := service.closePlans[service.activeClosePlan]
@@ -90,7 +90,7 @@ func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.Cl
 	}
 	for _, documentID := range requested {
 		if _, ok := service.state.documents[documentID]; !ok {
-			return closePlanRefused(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationCancel)
+			return closePlanRefused(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 		}
 	}
 
@@ -127,7 +127,7 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 	plan := service.closePlans[planID]
 	if plan == nil || service.activeClosePlan != planID {
 		service.mu.Unlock()
-		return closePlanRefused(apperr.ClassifiedNotFound, planID, "The close plan is no longer active.", apperr.RemediationRetry)
+		return closePlanRefused(apperr.ClassifiedNotFound, planID, "The close plan is no longer active.", apperr.RemediationNone)
 	}
 	if plan.summary.Status != apperr.ClosePlanCollecting && plan.summary.Status != apperr.ClosePlanReady {
 		result := closePlanSummaryResult(plan)
@@ -289,7 +289,7 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 	plan := service.closePlans[planID]
 	if plan == nil || service.activeClosePlan != planID {
 		service.mu.Unlock()
-		return tabTransitionFailure(apperr.ClassifiedNotFound, planID, "The close plan is no longer active.", apperr.RemediationRetry)
+		return tabTransitionFailure(apperr.ClassifiedNotFound, planID, "The close plan is no longer active.", apperr.RemediationNone)
 	}
 	if plan.summary.Status != apperr.ClosePlanReady {
 		service.mu.Unlock()
@@ -422,7 +422,7 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 	}
 	service.mu.RUnlock()
 	if dialog == nil {
-		return classifiedClosePlanError(apperr.ClassifiedSystemCommandFailure, target.documentID, "The Save dialog is unavailable.", apperr.RemediationCancel), false
+		return classifiedClosePlanError(apperr.ClassifiedSystemCommandFailure, target.documentID, "The Save dialog is unavailable.", apperr.RemediationNone), false
 	}
 	selected, err := dialog.ChooseSaveFile(ctx, SaveDialogRequest{DefaultFilename: defaultFilename, Title: "Save Markdown document"})
 	if err != nil {
@@ -534,7 +534,7 @@ func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs 
 	requested := make(map[string]struct{}, len(documentIDs))
 	for _, documentID := range documentIDs {
 		if _, ok := service.state.documents[documentID]; !ok {
-			return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationCancel)
+			return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 		}
 		requested[documentID] = struct{}{}
 	}
@@ -683,7 +683,7 @@ func closePlanTargetIDs(summary apperr.ClosePlanSummary) []string {
 
 func closePlanSummaryResult(plan *closePlan) apperr.ClosePlanResult {
 	if plan == nil {
-		return closePlanRefused(apperr.ClassifiedNotFound, "close plan", "The close plan is no longer active.", apperr.RemediationRetry)
+		return closePlanRefused(apperr.ClassifiedNotFound, "close plan", "The close plan is no longer active.", apperr.RemediationNone)
 	}
 	summary := plan.summary
 	/*

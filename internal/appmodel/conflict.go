@@ -64,7 +64,7 @@ func (service *AppModelService) CheckExternalChanges(ctx context.Context, docume
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
-		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationCancel)
+		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
 	}
 	revision := document.metadata.ContentRevision
 	service.mu.RUnlock()
@@ -91,7 +91,7 @@ func (service *AppModelService) ReloadFromDisk(ctx context.Context, documentID s
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
-		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationCancel)
+		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
 	}
 	path := document.metadata.Path
 	currentRevision := document.metadata.ContentRevision
@@ -140,7 +140,7 @@ func (service *AppModelService) AuthorizeKeepMine(ctx context.Context, documentI
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
-		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationCancel)
+		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
 	}
 	documentPath := document.metadata.Path
 	canonicalPath := path
@@ -163,7 +163,7 @@ func (service *AppModelService) AuthorizeKeepMine(ctx context.Context, documentI
 	defer service.mu.Unlock()
 	document, ok = service.state.documents[documentID]
 	if !ok {
-		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationCancel)
+		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
 	}
 	queued, ok := service.conflicts[documentID]
 	if !ok || document.metadata.ContentRevision != contentRevision || document.metadata.Path != canonicalPath || !queued.version.Equal(fileVersionFromWire(detectedVersion)) || queued.preview.ContentRevision != contentRevision || queued.preview.Path != canonicalPath {
@@ -191,7 +191,7 @@ func (service *AppModelService) SkipConflict(ctx context.Context, documentID str
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
 	if !ok {
-		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationCancel)
+		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
 	}
 	queued, ok := service.conflicts[documentID]
 	if !ok || document.metadata.ContentRevision != expectedContentRevision || !queued.version.Equal(fileVersionFromWire(detectedVersion)) {
@@ -217,7 +217,7 @@ func (service *AppModelService) CancelConflict(ctx context.Context, documentID s
 	document, ok := service.state.documents[documentID]
 	queued, queuedOK := service.conflicts[documentID]
 	if !ok {
-		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationCancel)
+		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
 	}
 	if !queuedOK || document.metadata.ContentRevision != expectedContentRevision || !queued.version.Equal(fileVersionFromWire(detectedVersion)) {
 		return service.conflictRefused(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
@@ -236,7 +236,7 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
-		return diskInspection{classified: service.classifiedConflictError(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationCancel)}
+		return diskInspection{classified: service.classifiedConflictError(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)}
 	}
 	if document.metadata.ContentRevision != expectedRevision {
 		service.mu.RUnlock()

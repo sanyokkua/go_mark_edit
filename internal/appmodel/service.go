@@ -287,7 +287,7 @@ func (service *AppModelService) OpenFromDialog(ctx context.Context, expectedTabS
 	dialog := service.openDialog
 	service.mu.RUnlock()
 	if dialog == nil {
-		return apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog is unavailable.", apperr.RemediationCancel)}
+		return apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog is unavailable.", apperr.RemediationRetry)}
 	}
 	path, err := dialog.ChooseOpenFile(ctx)
 	if err != nil {

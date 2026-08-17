@@ -161,7 +161,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	// an explicit stale choice focused an unrelated tab instead of refusing.
 	// FR-FT-040 requires the refusal, and it has to happen before identity is read.
 	if !stable.Version.Exists {
-		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedNotFound, "The file no longer exists.", apperr.RemediationCancel)
+		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedNotFound, "The file no longer exists.", apperr.RemediationNone)
 	}
 	read := stable.Read
 	if read.Error != nil {
@@ -343,14 +343,14 @@ func (service *AppModelService) ReopenLastFile(ctx context.Context, expectedTabS
 	}
 	if len(service.state.recentlyClosed) == 0 {
 		service.mu.RUnlock()
-		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedNotFound, "There is no recently closed file to reopen.", apperr.RemediationCancel)}
+		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedNotFound, "There is no recently closed file to reopen.", apperr.RemediationNone)}
 	}
 	entry := service.state.recentlyClosed[0]
 	service.mu.RUnlock()
 
 	if _, err := os.Stat(entry.path); errors.Is(err, os.ErrNotExist) {
 		service.consumeClosedEntry(ctx, entry.path)
-		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedNotFound, "The recently closed file no longer exists.", apperr.RemediationCancel)}
+		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedNotFound, "The recently closed file no longer exists.", apperr.RemediationNone)}
 	}
 
 	result := service.OpenPath(ctx, entry.path, expectedTabSetRevision)

@@ -17,7 +17,7 @@ func (service *AppModelService) ReorderDocument(ctx context.Context, documentID 
 	}
 	index := indexOfDocument(service.state.orderedDocumentIDs, documentID)
 	if index < 0 {
-		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationCancel)
+		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	if targetIndex == index || (index == 0 && targetIndex == -1) || (index == len(service.state.orderedDocumentIDs)-1 && targetIndex == len(service.state.orderedDocumentIDs)) {
 		return service.tabTransitionSuccess(apperr.TabTransitionNoop, documentID)

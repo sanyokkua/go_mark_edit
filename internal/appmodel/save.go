@@ -50,7 +50,7 @@ func (service *AppModelService) Save(ctx context.Context, documentID string, exp
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
-		return service.refusedWrite(documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationCancel)
+		return service.refusedWrite(documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)
 	}
 	if document.metadata.ContentRevision != expectedContentRevision {
 		service.mu.RUnlock()
@@ -98,7 +98,7 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
-		return service.refusedWrite(documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationCancel)
+		return service.refusedWrite(documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)
 	}
 	if document.metadata.ContentRevision != expectedContentRevision {
 		service.mu.RUnlock()
@@ -134,7 +134,7 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		}
 	}
 	if dialog == nil {
-		return service.refusedWrite(documentID, apperr.ClassifiedSystemCommandFailure, "The Save dialog is unavailable.", apperr.RemediationCancel)
+		return service.refusedWrite(documentID, apperr.ClassifiedSystemCommandFailure, "The Save dialog is unavailable.", apperr.RemediationRetry)
 	}
 	selected, err := dialog.ChooseSaveFile(ctx, SaveDialogRequest{DefaultDirectory: defaultDirectory, DefaultFilename: defaultFilename, Title: "Save Markdown document"})
 	if err != nil {
@@ -221,7 +221,7 @@ func (service *AppModelService) RequestNormalization(documentID string, expected
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
 	if !ok {
-		return service.refusedWrite(documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationCancel)
+		return service.refusedWrite(documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)
 	}
 	if document.metadata.ContentRevision != expectedContentRevision || document.metadata.LineEnding != string(file.LineEndingMixed) {
 		return service.refusedWrite(documentID, apperr.ClassifiedConflict, "The normalization request is no longer valid.", apperr.RemediationRetry)
@@ -270,7 +270,7 @@ func (service *AppModelService) snapshotForWrite(documentID string, expectedCont
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
 	if !ok {
-		return writeSnapshot{}, service.refusedWrite(documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationCancel)
+		return writeSnapshot{}, service.refusedWrite(documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)
 	}
 	if document.metadata.ContentRevision != expectedContentRevision {
 		return writeSnapshot{}, service.refusedWrite(documentID, apperr.ClassifiedConflict, "The document changed before it could be saved.", apperr.RemediationRetry)
@@ -354,7 +354,7 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	document, ok := service.state.documents[snapshot.documentID]
 	if !ok {
 		service.mu.Unlock()
-		return service.refusedWrite(snapshot.documentID, apperr.ClassifiedNotFound, "The document was closed before the save completed.", apperr.RemediationCancel)
+		return service.refusedWrite(snapshot.documentID, apperr.ClassifiedNotFound, "The document was closed before the save completed.", apperr.RemediationNone)
 	}
 	document.writeInFlight = false
 	if snapshot.targetPathAdopted {

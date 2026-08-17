@@ -18,7 +18,7 @@ func (service *AppModelService) CopyPath(_ context.Context, documentID string) a
 	writer := service.clipboard
 	if !exists {
 		service.mu.RUnlock()
-		return pathCommandFailure(apperr.ClassifiedNotFound, documentID, documentID, "The document is no longer open.", apperr.RemediationCancel)
+		return pathCommandFailure(apperr.ClassifiedNotFound, documentID, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	path := document.metadata.Path
 	subject := document.metadata.DisplayName
@@ -45,7 +45,7 @@ func (service *AppModelService) RevealInFileManager(ctx context.Context, documen
 	port := service.reveal
 	if !exists {
 		service.mu.RUnlock()
-		return revealFailure(apperr.ClassifiedNotFound, documentID, documentID, "The document is no longer open.", apperr.RemediationCancel)
+		return revealFailure(apperr.ClassifiedNotFound, documentID, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	path := document.metadata.Path
 	subject := document.metadata.DisplayName

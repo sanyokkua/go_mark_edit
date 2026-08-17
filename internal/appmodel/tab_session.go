@@ -18,7 +18,7 @@ func (service *AppModelService) ActivateDocument(ctx context.Context, documentID
 	document, exists := service.state.documents[documentID]
 	if !exists {
 		service.mu.Unlock()
-		return documentTransitionClassified(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationCancel)
+		return documentTransitionClassified(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	if service.state.activeDocumentID == documentID {
 		outcome := activeDocumentTransition(documentID, service.state.revision, document)
@@ -75,7 +75,7 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	}
 	if _, exists := service.state.documents[documentID]; !exists {
 		service.mu.Unlock()
-		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationCancel)
+		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	service.mu.Unlock()
 
@@ -94,7 +94,7 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	document, exists := service.state.documents[documentID]
 	if !exists {
 		service.mu.Unlock()
-		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationCancel)
+		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	// Still dirty after the flush means there was nothing accepted to write, or
 	// the write did not clean the document — either way it needs a close plan.

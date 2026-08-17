@@ -7,6 +7,7 @@ package main
 // `go test -run TestArchitecture`.
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -481,4 +482,130 @@ func TestArchitectureOnlyTheFlushCommandCarriesDocumentContent(t *testing.T) {
 			"FR-FT-008 makes %s the only command that may carry a working copy, so that a write "+
 			"can only ever use the backend's canonical content", command, parameters, flushCommand)
 	}
+}
+
+/*
+T162. The classified error contract permits each category only its own
+remediations, and `permittedRemediations` silently drops a forbidden member on
+the way out. That coercion is a net, not the mechanism — it was added as one —
+so nothing reaches a user wrongly, but the source states an intent the contract
+refuses and a reader cannot tell which sites meant "message-only" and which are
+mistakes the net happens to be catching. The next call site copied from one of
+them inherits the error.
+
+This makes the coercion unreachable rather than load-bearing: a pairing the
+contract forbids now fails here, at the literal, instead of being quietly
+repaired at run time.
+
+Matched by shape rather than by function name, because the literals are rarely
+at `NewClassifiedError` itself — they are at the helpers that wrap it
+(`refusedWrite`, `classifiedOpenError`, `conflictRefusedLabelled`, and others).
+Any call that passes both a category literal and a remediation literal is
+stating a pairing, whichever function it is calling.
+*/
+func TestArchitectureClassifiedRemediationsMatchTheirCategory(t *testing.T) {
+	// The contract's table, restated here deliberately. A test that imported
+	// `remediationsByCategory` would pass whatever that map happened to say,
+	// including a mistake in the map itself; this is the spec's own row set.
+	permitted := map[string]map[string]bool{
+		"ClassifiedNotFound": {
+			"RemediationSaveToRecreate": true,
+			"RemediationCopyPath":       true,
+		},
+		"ClassifiedPermissionDenied": {},
+		"ClassifiedIOFailure":        {"RemediationRetry": true},
+		"ClassifiedConflict": {
+			"RemediationReloadFromDisk": true,
+			"RemediationKeepMine":       true,
+			"RemediationSkip":           true,
+			"RemediationCancel":         true,
+			"RemediationRetry":          true,
+		},
+		"ClassifiedCapacityLimit": {},
+		"ClassifiedSystemCommandFailure": {
+			"RemediationRetry":    true,
+			"RemediationCopyPath": true,
+		},
+		"ClassifiedUnsupported":   {},
+		"ClassifiedPersistence":   {"RemediationRetry": true},
+		"ClassifiedValidation":    {},
+		"ClassifiedInternalError": {"RemediationRetry": true},
+	}
+
+	root := repositoryRoot(t)
+	var findings []string
+	for _, path := range goSourceFiles(t, filepath.Join(root, "internal")) {
+		file := parseGo(t, path)
+		fileSet := token.NewFileSet()
+		reparsed, err := parser.ParseFile(fileSet, path, nil, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("reparse %s: %v", path, err)
+		}
+		_ = file
+		ast.Inspect(reparsed, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			var categories, remediations []string
+			for _, argument := range call.Args {
+				name := apperrSelectorName(argument)
+				switch {
+				case strings.HasPrefix(name, "Classified"):
+					categories = append(categories, name)
+				case strings.HasPrefix(name, "Remediation"):
+					remediations = append(remediations, name)
+				}
+			}
+			if len(categories) != 1 || len(remediations) == 0 {
+				return true
+			}
+			category := categories[0]
+			allowed, known := permitted[category]
+			if !known {
+				return true
+			}
+			for _, remediation := range remediations {
+				// RemediationNone is "message-only" and is legal everywhere: it
+				// requests nothing, so it can contradict no row.
+				if remediation == "RemediationNone" || allowed[remediation] {
+					continue
+				}
+				position := fileSet.Position(call.Pos())
+				findings = append(findings, fmt.Sprintf(
+					"%s:%d pairs %s with %s, which its row forbids",
+					mustRelative(t, root, position.Filename), position.Line, category, remediation,
+				))
+			}
+			return true
+		})
+	}
+	if len(findings) != 0 {
+		t.Fatalf("%d call site(s) request a remediation their category forbids:\n%s",
+			len(findings), strings.Join(findings, "\n"))
+	}
+}
+
+// apperrSelectorName reports the identifier of an `apperr.X` qualified reference,
+// or "" for anything else. Only a literal states a pairing; a variable does not.
+func apperrSelectorName(expression ast.Expr) string {
+	selector, ok := expression.(*ast.SelectorExpr)
+	if !ok {
+		return ""
+	}
+	packageIdent, ok := selector.X.(*ast.Ident)
+	if !ok || packageIdent.Name != "apperr" {
+		return ""
+	}
+	return selector.Sel.Name
+}
+
+func mustRelative(t *testing.T, root, path string) string {
+	t.Helper()
+
+	relative, err := filepath.Rel(root, path)
+	if err != nil {
+		return path
+	}
+	return relative
 }
