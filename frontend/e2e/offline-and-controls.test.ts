@@ -271,3 +271,88 @@ test('FR-FT-049 keeps every deferred surface unavailable rather than absent or w
     ),
   );
 });
+
+/*
+ * T189. SC-FT-013's negative clause names four surfaces that must not appear
+ * "in order to manufacture parity": populated workspace, Assistant/provider,
+ * custom native frame, and deferred rich rendering. The first two are asserted
+ * — Assistant by the case above, workspace as sizing and absence. The last two
+ * had no assertion anywhere in the repository; they survived only as a prose
+ * comment on `SURFACES` in `real-files-parity.test.ts`, and a comment is not a
+ * test. T187's amendment said so rather than concealing it, and filed this.
+ *
+ * **An absence is cheap to assert falsely.** `toHaveCount(0)` passes just as
+ * happily when the selector is wrong as when the surface is genuinely gone, so
+ * almost every assertion below is *positive*: it names the plain rendering that
+ * the deferred surface would have replaced. Rich rendering cannot appear
+ * without one of these failing, and a mistyped selector fails too instead of
+ * passing quietly.
+ *
+ * Verified by injection, per the task's instruction: each forbidden surface was
+ * put into the page in turn and the matching assertion went red, then the
+ * injection was removed.
+ */
+// Proves: SC-FT-013 (partial — the negative clause's custom native-frame and
+// deferred rich-rendering arms, which nothing asserted before. The workspace
+// and Assistant/provider arms are proved by the case above and by the parity
+// sizing assertions.)
+test('T189 renders no custom native frame and no deferred rich-rendering surface', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/');
+  const shell = page.getByTestId('application-shell');
+  await expect(shell).toBeVisible();
+
+  /*
+   * The custom native frame. The binding draws its own traffic lights
+   * (`<div class="lights">`, `mockup.html`), and Feature 003 does not reproduce
+   * them — the operating system's own frame owns that chrome, which
+   * `AppBrand.tsx` and `ShellMenuRow.module.css` both record. Asserting the
+   * shell is visible first is the positive control: without it a blank page
+   * would satisfy the absence.
+   */
+  await expect(shell.locator('.lights')).toHaveCount(0);
+  await expect(
+    shell.locator('[class*="traffic"], [class*="windowControl"]'),
+  ).toHaveCount(0);
+
+  const editor = page.getByRole('textbox', { name: 'Editor content' });
+  await editor.press('ControlOrMeta+A');
+  await page.keyboard.type(
+    '# Deferred\n\nMath: $E = mc^2$\n\n![flow](./assets/flow.png)\n\n```mermaid\ngraph LR; A-->B;\n```\n',
+  );
+
+  const preview = page.getByLabel('Preview pane', { exact: true });
+  await expect(preview).toBeVisible();
+
+  /*
+   * Math stays literal. The binding renders `.katex`; the application prints
+   * the dollar-delimited source, so seeing the source *is* the proof that no
+   * math renderer ran.
+   */
+  await expect(preview.getByText('Math: $E = mc^2$')).toBeVisible();
+  await expect(preview.locator('.katex')).toHaveCount(0);
+
+  /*
+   * A Mermaid fence stays a code block. The binding renders `.mermaid` as a
+   * diagram; the application renders the fence's own source inside
+   * `pre > code.language-mermaid`, and draws no SVG anywhere in the preview.
+   */
+  await expect(preview.locator('pre code.language-mermaid')).toContainText(
+    'graph LR; A-->B;',
+  );
+  await expect(preview.locator('.mermaid')).toHaveCount(0);
+  await expect(preview.locator('svg')).toHaveCount(0);
+
+  /*
+   * An image becomes a local, inert fallback rather than the binding's image
+   * placeholder widget — and never an `<img>`, which would be the remote fetch
+   * FR-FT-048 forbids and this file's five-minute case watches for.
+   */
+  await expect(
+    preview.locator('.gme-preview-image-fallback[role="img"]'),
+  ).toHaveText('flow');
+  await expect(preview.locator('.imgph')).toHaveCount(0);
+  await expect(preview.locator('img')).toHaveCount(0);
+});
