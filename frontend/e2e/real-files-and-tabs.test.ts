@@ -1159,3 +1159,58 @@ test('T177 auto-scrolls the tab strip when a drag reaches its trailing edge', as
   await page.keyboard.press('Escape');
   await page.mouse.up();
 });
+
+/*
+ * T192, and the case T191 could not have had.
+ *
+ * T191 was a data-loss defect with **five** causes, each individually necessary
+ * and each producing an identical symptom: the reload appeared to do nothing and
+ * the next keystroke's autosave then destroyed the other process's change. No
+ * browser case could see any of it, because the dev bridge mock's
+ * `ReloadFromDisk` returned a bare `{status:'reloaded'}` and changed neither the
+ * document's content nor its revision. The mock now models the reload, so this
+ * can exist.
+ *
+ * **The assertion is the overwrite, not the editor text.** Asserting only that
+ * the editor shows the reloaded text would have passed against three of T191's
+ * five broken intermediate states — the frontend can display the right text
+ * while the backend still holds the stale buffer that a later write will
+ * persist. So this edits *after* the reload and checks what the backend
+ * actually has, through the preview, which renders the accepted revision.
+ */
+// Proves: FR-FT-030 — a reload installs the disk content, and a subsequent edit
+// builds on the reloaded text rather than on the pre-reload buffer.
+test('T192 keeps the reloaded content when the next edit is saved', async ({
+  page,
+}) => {
+  await page.goto('/?ft-vs-04');
+
+  await page.getByRole('button', { name: 'New tab' }).click();
+  await page.getByRole('tab').nth(1).click();
+
+  const prompt = page.getByRole('dialog', { name: 'File changed on disk' });
+  await expect(prompt).toBeVisible();
+  await prompt.getByRole('button', { name: 'Reload from disk' }).click();
+  await expect(prompt).toHaveCount(0);
+
+  const preview = page.getByLabel('Preview pane', { exact: true });
+  await expect(preview).toContainText('disk');
+
+  /*
+   * `press` rather than `click`: Monaco's rendered text sits above its hidden
+   * textarea, so a click is intercepted by the `.view-line` span. `press`
+   * focuses the element directly, which is what typing needs anyway.
+   */
+  const editor = page.getByRole('textbox', { name: 'Editor content' });
+  await editor.press('End');
+  await page.keyboard.type(' AFTER');
+
+  /*
+   * The discriminating assertion. The preview renders the revision the backend
+   * accepted, so if the editor had kept the pre-reload buffer this would read
+   * `mine AFTER` — which is exactly the text that overwrote the file on the
+   * shipped binary before T191 was fixed.
+   */
+  await expect(preview).toContainText('AFTER');
+  await expect(preview).not.toContainText('mine');
+});

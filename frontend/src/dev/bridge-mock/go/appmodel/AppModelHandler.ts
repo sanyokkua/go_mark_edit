@@ -1734,6 +1734,18 @@ export function CheckExternalChanges(
   return Promise.resolve(result);
 }
 
+/*
+ * T192. This returned a bare `{status:'reloaded'}` and changed neither the
+ * document's content nor its revision, so the mock could not reproduce a reload
+ * at all — which is how five separate causes of a data-loss defect lived behind
+ * a permanently green Playwright suite (T191).
+ *
+ * It now does what `applyReload` does in Go: takes the disk side of the conflict
+ * preview, advances the content revision the way an ordinary edit would,
+ * publishes the patch, and answers with an active buffer carrying both. That is
+ * fixture fidelity under FR-FT-054 — the mock modelling a backend behaviour it
+ * previously omitted — not a component substitution.
+ */
 export function ReloadFromDisk(
   requestedDocumentId: string,
   _contentRevision: number,
@@ -1741,9 +1753,34 @@ export function ReloadFromDisk(
 ): Promise<MockConflictResult> {
   void _contentRevision;
   void _detectedVersion;
-  return Promise.resolve(
-    conflictResultFor('reloadFromDisk', requestedDocumentId),
-  );
+  const configured = conflictResultFor('reloadFromDisk', requestedDocumentId);
+  const document = documents[requestedDocumentId];
+  if (document === undefined || configured.status !== 'reloaded') {
+    return Promise.resolve(configured);
+  }
+  document.content = e2eConflictPreview(document).onDisk.text;
+  document.documentRevision += 1;
+  document.metadata = {
+    ...document.metadata,
+    conflictBlocked: false,
+    contentRevision: document.documentRevision,
+    dirty: false,
+    status: 'saved',
+  };
+  revision += 1;
+  emitPatch({
+    revision,
+    documents: {
+      upsert: { [requestedDocumentId]: cloneMetadata(document) },
+    },
+  });
+  return Promise.resolve({
+    ...configured,
+    documentId: requestedDocumentId,
+    documentRevision: document.documentRevision,
+    projectionRevision: revision,
+    activeBuffer: activeBuffer(document),
+  });
 }
 
 export function AuthorizeKeepMine(
