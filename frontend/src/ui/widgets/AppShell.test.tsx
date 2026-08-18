@@ -196,28 +196,6 @@ it('T045 keeps the parity shell route bounded to the binding window geometry', (
   );
 });
 
-it('T045 preserves the overflowing empty parity bands at narrow widths', () => {
-  const shellSource = readSource('src/ui/widgets/AppShell.tsx');
-  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-
-  expect(shellSource).toContain('window.scrollTo(0, 0)');
-  expect(shellStyles).toMatch(
-    /@media \(min-width: 377px\) and \(max-width: 768px\)[\s\S]*?:global\(\s*\.application-content:has\(\s*\[data-parity-shell='true'\]\[data-document-state='empty'\]\s*\)\s*\)\s*\{[\s\S]*?transform:\s*translateY\(29px\);/s,
-  );
-  expect(shellStyles).toMatch(
-    /@media \(max-width: 376px\)[\s\S]*?:global\(\s*\.application-content:has\(\s*\[data-parity-shell='true'\]\[data-document-state='empty'\]\s*\)\s*\)\s*\{[\s\S]*?transform:\s*translateY\(-109px\);/s,
-  );
-  /*
-   * This used to require `.shell[data-parity-shell='true'] .workspace {
-   * pointer-events: none }`. That rule existed only to stop the narrow
-   * workspace overlay from swallowing pointers meant for the tab strip
-   * underneath it. The minimum window no longer renders a workspace at all, so
-   * there is no overlay left to make transparent — the rule would style an
-   * element that is never in the tree.
-   */
-  expect(shellStyles).not.toMatch(/pointer-events:\s*none/);
-});
-
 it('FR-WS-008 renders an immediate non-durable divider width while sending the durable intent to Go', () => {
   renderShell({ sidebarVisible: true, sidebarWidth: 288 });
 
@@ -537,38 +515,6 @@ it('T047 projects an acknowledged autosave-on setting into status details', () =
   ).toHaveTextContent('Autosave off');
 });
 
-it('T045 keeps the parity empty launcher between the tab and status bands', () => {
-  window.history.pushState(
-    {},
-    '',
-    '/?parity-case=primary:empty:1280:glass-light',
-  );
-  store.dispatch(
-    hydrateProjection({
-      revision: 1,
-      documents: {},
-      activeDocumentId: '',
-      ui: {},
-    }),
-  );
-
-  render(
-    <Provider store={store}>
-      <AppShell
-        onNewDocument={async (): Promise<void> => undefined}
-        onOpenDocument={async (): Promise<void> => undefined}
-      />
-    </Provider>,
-  );
-
-  expect(screen.getByRole('tablist', { name: 'Document tabs' })).toBeVisible();
-  expect(screen.getByRole('button', { name: 'New tab' })).toBeVisible();
-  expect(screen.getByRole('status', { name: 'Document status' })).toBeVisible();
-  expect(screen.getByTestId('document-launcher')).toBeVisible();
-
-  window.history.pushState({}, '', '/');
-});
-
 it('FR-WS-008 uses exact responsive presentations without durable responsive write-back', () => {
   renderShell({ sidebarVisible: true, sidebarWidth: 288 });
 
@@ -627,3 +573,24 @@ it('FR-WS-017 and FR-WS-020 keep shell styles tokenized and production surfaces 
   expect(shellSource).not.toMatch(/aria-label=['"]Assistant['"]/i);
   expect(shellSource).not.toMatch(/(?:tablist|tabpanel|role=['"]tab['"])/i);
 });
+
+/*
+ * T173. Two `T045 …` cases were removed with the empty-state chrome they
+ * described.
+ *
+ * On `?parity-case` with no document open, AppShell mounted a `DocumentTabs`
+ * strip and a fabricated `StatusBar` — `cursor 1:1`, `utf-8`, `lf`,
+ * `not-saved`, `wordCount 0` — around the launcher. Production renders neither:
+ * the real status bar is guarded on `hasActiveDocument`, and with no document
+ * there is no tab strip. So the harness photographed a shell arrangement the
+ * application never shows, which is what FR-FT-054 forbids.
+ *
+ * The scroll-lock effect that kept that fabricated layout pinned to the top at
+ * ≤376px went with it.
+ *
+ * Still here, and deliberately: `data-parity-shell` and `data-parity-family` on
+ * the frame. They are not markup — they are hooks that 66 CSS rules across six
+ * stylesheets key off, and removing the attributes without a plan for those
+ * rules would silently disable all of them and leave the CSS behind. They are
+ * allowlisted in archtest and owed their own pass.
+ */

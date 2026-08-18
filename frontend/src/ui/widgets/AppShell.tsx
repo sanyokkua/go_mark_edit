@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -24,7 +23,6 @@ import styles from './AppShell.module.css';
 import EditorView from './EditorView';
 import { useMinimumWindow } from './minimumWindow';
 import StatusBar from '../components/StatusBar';
-import DocumentTabs from './DocumentTabs';
 import Launcher from './Launcher';
 
 export interface AppShellProps {
@@ -101,21 +99,6 @@ const AppShell: React.FC<AppShellProps> = ({
     onNewDocument !== undefined ||
     onOpenDocument !== undefined ||
     recentFiles.length > 0;
-  const showParityEmptyChrome = parityRoute && !hasActiveDocument;
-
-  useLayoutEffect((): (() => void) | undefined => {
-    if (!showParityEmptyChrome || window.innerWidth > 376) return undefined;
-    const keepParityEmptyRouteAtTop = (): void => {
-      if (window.scrollY !== 0) window.scrollTo(0, 0);
-    };
-    keepParityEmptyRouteAtTop();
-    window.addEventListener('scroll', keepParityEmptyRouteAtTop, {
-      passive: true,
-    });
-    return (): void => {
-      window.removeEventListener('scroll', keepParityEmptyRouteAtTop);
-    };
-  }, [showParityEmptyChrome]);
 
   const tabSetRevision = useAppSelector(
     (state) => state.documents.tabSetRevision,
@@ -292,9 +275,6 @@ const AppShell: React.FC<AppShellProps> = ({
         />
       ) : null}
       <main aria-label={t('shell.document')} className={styles.document}>
-        {showParityEmptyChrome ? (
-          <DocumentTabs onNewDocument={onNewDocument} />
-        ) : null}
         {!hasActiveDocument && showLauncher ? (
           <Launcher
             recentFiles={recentFiles}
@@ -331,16 +311,6 @@ const AppShell: React.FC<AppShellProps> = ({
             capability={activeDocument.capability}
             writeInFlight={activeDocument.writeInFlight}
             wordCount={activeDocument.wordCount}
-            autosave={fileSettings.autosave}
-            markdownStandard={markdownSettings.standard}
-          />
-        ) : showParityEmptyChrome ? (
-          <StatusBar
-            cursor={{ lineNumber: 1, column: 1 }}
-            encoding="utf-8"
-            lineEnding="lf"
-            status="not-saved"
-            wordCount={0}
             autosave={fileSettings.autosave}
             markdownStandard={markdownSettings.standard}
           />

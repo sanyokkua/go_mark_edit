@@ -545,17 +545,6 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     void dispatchShellAction(selected);
   };
   const dispatchFileAction = (id: ActionId): void => {
-    if (
-      id === 'exit' &&
-      onQuit !== undefined &&
-      typeof window !== 'undefined' &&
-      new URLSearchParams(window.location.search).has('parity-case')
-    ) {
-      setFileOpen(false);
-      setOverflowOpen(false);
-      onQuit();
-      return;
-    }
     setFileOpen(false);
     setOverflowOpen(false);
     /*

@@ -407,11 +407,6 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
 const AppContents: React.FC = (): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const notifications = useAppSelector((state) => state.notifications.items);
-  const parityQuitPrompt =
-    typeof window !== 'undefined' &&
-    /:quit-prompt:|:quit-discard-newer:/u.test(
-      new URLSearchParams(window.location.search).get('parity-case') ?? '',
-    );
   const banners = useAppSelector((state) => state.notifications.banners);
   const activeDocument = useAppSelector((state) =>
     state.documents.activeDocumentId === null
@@ -1685,34 +1680,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
     ],
   );
   const onQuit = useCallback((): void => {
-    if (parityQuitPrompt) {
-      // The browser bridge cannot authorize a native Wails quit request. Keep
-      // the parity route on the same close-plan surface that the native event
-      // would produce, while leaving ordinary startup on the native path.
-      if (activeDocument !== undefined) {
-        setClosePlan({
-          id: 'parity-quit-prompt',
-          kind: 'quit',
-          status: 'collecting',
-          tabSetRevision: 0,
-          targets: [
-            {
-              documentId: activeDocument.documentId,
-              title: activeDocument.title,
-              displayName: activeDocument.displayName,
-              path: activeDocument.path,
-              contentRevision: activeDocument.contentRevision ?? 0,
-              dirty: true,
-              capability: activeDocument.capability,
-              status: activeDocument.status,
-            },
-          ],
-        });
-      }
-      return;
-    }
     nativeLifecycleAdapter.requestQuit();
-  }, [activeDocument, parityQuitPrompt]);
+  }, []);
   const externalConflictValid =
     externalConflict === null ||
     activeDocument?.contentRevision === undefined ||
