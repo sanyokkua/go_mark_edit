@@ -50,14 +50,44 @@ class EditorSessionRegistry {
 const EditorSessionAttachmentContext =
   createContext<EditorSessionAttachment | null>(null);
 
+/**
+ * How many times the active document's text has been replaced by something
+ * other than the editor — today only FR-FT-030's reload.
+ *
+ * It exists because Monaco is seeded once per editor session, so a replacement
+ * that keeps the same document reaches the editor only if the session restarts.
+ * Keying that on the content revision would restart it per keystroke; this
+ * advances only for a replacement the editor did not originate. T191.
+ */
+export const EditorSessionEpochContext = createContext(0);
+
+/**
+ * Lets a descendant report that it replaced the active document's text.
+ *
+ * `DocumentTabs` owns an external-change prompt of its own, separate from the
+ * one in `App`, and its reload arm is the one the foreground check actually
+ * raises. It sits below this provider, so it cannot reach App's state — it
+ * reports here instead and the provider adds its count to the epoch. T191.
+ */
+export const EditorSessionReloadContext = createContext<() => void>(
+  (): void => undefined,
+);
+
 export interface EditorSessionProviderProps extends PropsWithChildren {
   activeBuffer: ActiveBuffer | null;
+  externalEpoch?: number;
 }
 
 export const EditorSessionProvider: React.FC<EditorSessionProviderProps> = ({
   activeBuffer,
   children,
+  externalEpoch = 0,
 }: EditorSessionProviderProps): React.JSX.Element => {
+  const [descendantReloads, setDescendantReloads] = useState(0);
+  const reportExternalReload = useCallback(
+    (): void => setDescendantReloads((count) => count + 1),
+    [],
+  );
   const [session, setSession] = useState<DocumentCommandSession | null>(null);
   const sessionRegistry = useMemo(
     (): EditorSessionRegistry => new EditorSessionRegistry(),
@@ -102,15 +132,23 @@ export const EditorSessionProvider: React.FC<EditorSessionProviderProps> = ({
   );
 
   return createElement(
-    EditorSessionContext.Provider,
-    { value: activeBuffer },
+    EditorSessionReloadContext.Provider,
+    { value: reportExternalReload },
     createElement(
-      DocumentCommandContext.Provider,
-      { value: documentCommands },
+      EditorSessionEpochContext.Provider,
+      { value: externalEpoch + descendantReloads },
       createElement(
-        EditorSessionAttachmentContext.Provider,
-        { value: attachment },
-        children,
+        EditorSessionContext.Provider,
+        { value: activeBuffer },
+        createElement(
+          DocumentCommandContext.Provider,
+          { value: documentCommands },
+          createElement(
+            EditorSessionAttachmentContext.Provider,
+            { value: attachment },
+            children,
+          ),
+        ),
       ),
     ),
   );

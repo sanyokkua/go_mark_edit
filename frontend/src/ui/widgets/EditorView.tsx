@@ -33,6 +33,7 @@ import type {
 } from '../../logic/store/appModelTypes';
 import {
   EditorSessionContext,
+  EditorSessionEpochContext,
   useEditorSessionAttachment,
 } from './editorSession';
 import { useMinimumWindow } from './minimumWindow';
@@ -117,11 +118,13 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
     const editorSettings = useEditorSettings().settings;
     const viewStateCaptureRef = useRef<(() => void) | null>(null);
     const attachEditor = useEditorSessionAttachment();
+    const externalEpoch = useContext(EditorSessionEpochContext);
     const synchronizedBuffer = useSyncedBuffer(
       activeBuffer.documentId,
       view,
       adapter,
       activeBuffer.content,
+      externalEpoch,
     );
     const activationToken = synchronizedBuffer.activationToken;
     const flushSession = synchronizedBuffer.flushActiveSession;

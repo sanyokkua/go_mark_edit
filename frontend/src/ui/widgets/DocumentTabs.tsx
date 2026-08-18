@@ -39,6 +39,7 @@ import TabContextMenu, {
   type TabContextCloseOptions,
 } from './TabContextMenu';
 import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
+import { EditorSessionReloadContext } from './editorSession';
 import { TabRemediationContext } from './tabRemediation';
 import {
   onApplicationForeground,
@@ -167,6 +168,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   modalOpen = false,
 }: DocumentTabsProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
+  const reportExternalReload = useContext(EditorSessionReloadContext);
   const orderedIds = useAppSelector((state) => state.documents.orderedIds);
   const documentsById = useAppSelector((state) => state.documents.byId);
   const orderedDocuments = useMemo(
@@ -500,8 +502,25 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       } else if (result.error === undefined) {
         setConflictPreview(null);
       }
+      /*
+       * T191. A successful reload replaced the document's text with something
+       * the editor did not produce, and Monaco is seeded once per editor
+       * session — so without this the reloaded text never reaches the editor,
+       * the document is still marked clean, and the next keystroke's autosave
+       * writes the stale buffer over the file. Reported only for `reload`:
+       * keep-mine and skip leave the buffer alone.
+       */
+      if (decision === 'reload' && result.error === undefined) {
+        reportExternalReload();
+      }
     },
-    [conflictAdapter, conflictBusy, conflictPreview, dispatch],
+    [
+      conflictAdapter,
+      conflictBusy,
+      conflictPreview,
+      dispatch,
+      reportExternalReload,
+    ],
   );
 
   const closeDocument = useCallback(

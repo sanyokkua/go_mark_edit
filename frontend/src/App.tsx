@@ -738,6 +738,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
    * Set by every path that prepares a plan, and read only when reporting a
    * refusal.
    */
+  const [externalEpoch, setExternalEpoch] = useState(0);
   const closeRequestRef = useRef<
     { kind: ClosePlanKind; targetDocumentIds: string[] } | undefined
   >(undefined);
@@ -1763,6 +1764,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
           acknowledgement,
           current.documentId,
         );
+        /*
+         * T191. Restart the editor session so the reloaded text actually
+         * reaches Monaco, which is seeded once per session. Bumped here and
+         * nowhere else: this is the only path that replaces the document's text
+         * with something the editor did not produce.
+         */
+        setExternalEpoch((epoch) => epoch + 1);
         setExternalConflict(null);
         return;
       }
@@ -1941,7 +1949,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
     <ToastProvider>
       <ModalStateProvider modalOpen={modalOpen}>
         <TabRemediationContext.Provider value={tabRemediationRef}>
-          <EditorSessionProvider activeBuffer={activeBuffer}>
+          <EditorSessionProvider
+            activeBuffer={activeBuffer}
+            externalEpoch={externalEpoch}
+          >
             <ApplicationMenuRequestContext.Provider
               value={setRequestedApplicationMenu}
             >

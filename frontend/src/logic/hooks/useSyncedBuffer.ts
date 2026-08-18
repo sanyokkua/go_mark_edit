@@ -91,6 +91,17 @@ export function useSyncedBuffer(
   view: DocumentView,
   adapter: EditorSynchronizationAdapter = appModelAdapter,
   initialContent = '',
+  /*
+   * Advances only when the document's text is replaced by something other than
+   * the editor — today that is FR-FT-030's reload. It restarts the editor
+   * session, which is the only way `initialContent` reaches Monaco: `CodeEditor`
+   * seeds it as `defaultValue` under `key={documentId}:{activationId}`.
+   *
+   * Deliberately not the content revision. Every keystroke bumps that, so
+   * keying the session on it would remount Monaco per character and throw away
+   * undo history and cursor position. T191.
+   */
+  externalEpoch = 0,
 ): SyncedBufferCallbacks {
   const viewRef = useRef(view);
   const cursorRef = useRef(
@@ -100,9 +111,14 @@ export function useSyncedBuffer(
   const activation = useMemo(
     () => ({
       documentId,
-      token: Symbol(`editor-activation-${++activationSequence}`),
+      // The epoch is part of the identity, not just a cache key: naming it
+      // here makes the dependency real rather than one the linter has to be
+      // told to keep, and a session symbol now says which reload produced it.
+      token: Symbol(
+        `editor-activation-${++activationSequence}-external-${externalEpoch}`,
+      ),
     }),
-    [documentId],
+    [documentId, externalEpoch],
   );
   const contentRef = useRef(initialContent);
   const selectionRef = useRef(view.selection);
