@@ -82,26 +82,6 @@
   overscroll-behavior: contain;
 }
 
-@media (min-width: 377px) and (max-width: 768px) {
-  :global(
-    .application-content:has(
-      [data-parity-shell='true'][data-document-state='empty']
-    )
-  ) {
-    transform: translateY(29px);
-  }
-}
-
-@media (max-width: 376px) {
-  :global(
-    .application-content:has(
-      [data-parity-shell='true'][data-document-state='empty']
-    )
-  ) {
-    transform: translateY(-109px);
-  }
-}
-
 /* Responsive presentation is visual only. It never issues a layout command,
    so the saved desktop divider width remains authoritative. */
 @media (max-width: 768px) {
