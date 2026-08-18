@@ -576,3 +576,75 @@ func TestConflictPreviewStillCountsAPartiallyRenderedLine(t *testing.T) {
 		t.Fatalf("side.LineCount = %d, want 4: three whole lines plus the partly rendered fourth", side.LineCount)
 	}
 }
+
+/*
+ * T191. The reload that loses the user's other window's work.
+ *
+ * `applyReload` replaced `document.content` and left `ContentRevision` alone,
+ * while `document.go:65` increments it for every ordinary buffer change. So the
+ * reload published new text under an unchanged revision, and every
+ * revision-keyed consumer in the frontend correctly concluded nothing had
+ * happened: the editor kept the stale buffer, and `committedRevision =
+ * ContentRevision` reported the document `Saved`.
+ *
+ * That is the whole defect. Marking it clean removes the before-write conflict
+ * check, so the next keystroke's autosave writes the stale buffer over the file
+ * and the external change is gone with no second prompt. Observed on the shipped
+ * binary and reproduced twice — see
+ * evidence/ft-ev-09/host-walkthrough-2026-08-18/.
+ *
+ * The sibling above asserts the reloaded *content* reaches the backend, which it
+ * always did. Nothing asserted the revision, which is the half the frontend
+ * needs, and that is why no gate caught this.
+ */
+// Proves: FR-FT-030 — a reload publishes its content under a new content
+// revision, and reports that same revision to the caller, so the acknowledgement
+// the frontend installs matches the projection it is checked against.
+func TestReloadFromDiskAdvancesTheContentRevision(t *testing.T) {
+	service, path, documentID := openConflictDocument(t, "base\n")
+	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	before, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("state before reload: %v", err)
+	}
+	editedRevision := before.Snapshot.Documents[documentID].ContentRevision
+
+	writeConflictFile(t, path, "theirs\n")
+	detected := service.CheckExternalChanges(context.Background(), documentID)
+	if detected.Status != apperr.ConflictStatusDetected || detected.Preview == nil {
+		t.Fatalf("conflict = %+v", detected)
+	}
+
+	result := service.ReloadFromDisk(context.Background(), documentID, editedRevision, detected.Preview.DetectedDiskVersion)
+	if result.Status != apperr.ConflictStatusReloaded {
+		t.Fatalf("reload = %+v", result)
+	}
+
+	after, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("state after reload: %v", err)
+	}
+	reloadedRevision := after.Snapshot.Documents[documentID].ContentRevision
+
+	if reloadedRevision <= editedRevision {
+		t.Errorf("content revision after reload = %d, want greater than %d: the reload changed the document's text, so every revision-keyed consumer must be told", reloadedRevision, editedRevision)
+	}
+	// The acknowledgement the frontend installs is checked against the
+	// projection, so the two revisions have to be the same number.
+	if result.DocumentRevision != reloadedRevision {
+		t.Errorf("reload reported DocumentRevision %d, projection says %d: the frontend's activation guard compares these and drops the install when they disagree", result.DocumentRevision, reloadedRevision)
+	}
+	if after.ActiveBuffer == nil || after.ActiveBuffer.Content != "theirs\n" {
+		t.Errorf("active buffer after reload = %+v, want the disk content", after.ActiveBuffer)
+	}
+	if after.ActiveBuffer != nil && after.ActiveBuffer.DocumentRevision != reloadedRevision {
+		t.Errorf("active buffer revision = %d, projection says %d", after.ActiveBuffer.DocumentRevision, reloadedRevision)
+	}
+	// Still clean: reloading takes the disk's content, so there is nothing
+	// unsaved. This is what must stay true while the revision advances.
+	if got := after.Snapshot.Documents[documentID].Status; got != string(SaveStatusSaved) {
+		t.Errorf("status after reload = %q, want %q", got, SaveStatusSaved)
+	}
+}

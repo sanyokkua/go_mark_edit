@@ -129,7 +129,28 @@ func (service *AppModelService) ReloadFromDisk(ctx context.Context, documentID s
 	}
 	service.conflictQueue.Remove(documentID)
 	projectionRevision, activeBuffer := service.activeBufferFor(documentID)
-	return apperr.ConflictResult{Status: apperr.ConflictStatusReloaded, DocumentID: documentID, DocumentRevision: expectedContentRevision, ProjectionRevision: projectionRevision, ActiveBuffer: activeBuffer}
+	/*
+	 * The *reloaded* revision, not the expected one. T191: this reported the
+	 * pre-reload revision, and the frontend's activation guard
+	 * (`acceptsActivationAcknowledgement`) compares the acknowledgement's
+	 * revision against the projection's -- so the two disagreed by one and the
+	 * install was dropped silently, with no error path to notice it.
+	 */
+	reloadedRevision := service.contentRevisionOf(documentID)
+	return apperr.ConflictResult{Status: apperr.ConflictStatusReloaded, DocumentID: documentID, DocumentRevision: reloadedRevision, ProjectionRevision: projectionRevision, ActiveBuffer: activeBuffer}
+}
+
+// contentRevisionOf reports a document's current content revision, or zero when
+// the document has gone. Used where a result must name the revision the caller
+// will be checked against rather than the one it asked about.
+func (service *AppModelService) contentRevisionOf(documentID string) uint64 {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	document, ok := service.state.documents[documentID]
+	if !ok {
+		return 0
+	}
+	return document.metadata.ContentRevision
 }
 
 // AuthorizeKeepMine creates one single-use authorization. The write itself is
@@ -393,6 +414,20 @@ func (service *AppModelService) applyReload(ctx context.Context, documentID stri
 	document.baselineRawHash = stable.RawHash
 	document.baselineCharacteristics = read.Characteristics
 	document.baselineOrigin = SaveOriginReload
+	/*
+	 * A reload replaces the document's text, so it advances the content
+	 * revision exactly as an ordinary edit does (document.go:65). T191: it did
+	 * not, and the consequence was data loss rather than a stale pane. Every
+	 * revision-keyed consumer in the frontend read "same revision" and kept the
+	 * pre-reload buffer, while committedRevision below marked the document
+	 * clean -- which removed the before-write conflict check, so the next
+	 * keystroke's autosave wrote the stale buffer over the file and destroyed
+	 * the other process's change with no second prompt.
+	 *
+	 * committedRevision is then set to the *new* revision, which is what keeps
+	 * the document correctly clean: its buffer now equals what is on disk.
+	 */
+	document.metadata.ContentRevision++
 	document.committedRevision = document.metadata.ContentRevision
 	document.failedWrite = false
 	document.detached = false
