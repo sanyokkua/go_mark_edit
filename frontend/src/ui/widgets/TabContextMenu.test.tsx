@@ -5,6 +5,7 @@ import type {
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
 import {
+  getAction,
   getActionAvailability,
   type ActionAvailabilityContext,
   type ActionId,
@@ -289,3 +290,75 @@ it('T152 matches getActionAvailability for every tab-context action and strip po
  * behind it. Whether the menu *should* advertise its accelerators — the
  * reference mockup does — is a product question, filed as T190.
  */
+
+/*
+ * T190. The owner's decision: both popup surfaces advertise their accelerators,
+ * as the File, Settings and View menus already do.
+ *
+ * The derivation existed and was correct, but rendered only on `?parity-case` —
+ * so the three cases that asserted it were anchored `Proves: FR-FT-047` against
+ * a surface no user reaches, and T173 deleted them with the branch. The shipped
+ * menu advertised nothing while three sibling menus did, which is the
+ * inconsistency this closes.
+ *
+ * Only `close-tab` carries a binding, so this is one row rather than seven: the
+ * other six advertise nothing under either reading, and asserting their absence
+ * is what keeps "advertise the accelerator" from becoming "invent one".
+ */
+// Proves: FR-FT-047 — the shortcut this menu advertises derives from the
+// canonical action registry, rendered for the running platform, on the shipped
+// surface rather than a parity route.
+it.each([
+  ['darwin', '⌘W'],
+  ['win32', 'Ctrl+W'],
+  ['linux', 'Ctrl+W'],
+] as const)(
+  'T190 advertises the close-tab accelerator on %s',
+  (platform, expected) => {
+    platformMock.mockReturnValue(platform);
+    const first = documentFor('first');
+    const second = documentFor('second');
+    render(
+      <TabContextMenu
+        adapter={{}}
+        document={first}
+        index={0}
+        onAction={jest.fn(async (): Promise<TabTransitionResult> => ({
+          status: 'reordered',
+          orderedDocumentIds: ['first', 'second'],
+        }))}
+        onClose={jest.fn()}
+        orderedDocuments={[first, second]}
+        tabSetRevision={7}
+      />,
+    );
+
+    expect(
+      document
+        .querySelector('[data-action-id="close-tab"]')
+        ?.getAttribute('data-shortcut'),
+    ).toBe(expected);
+
+    /*
+     * Every row agrees with the registry: it advertises exactly when the registry
+     * gives it a binding, and advertises nothing otherwise. Asserted against the
+     * registry rather than a hardcoded list — a first draft listed six rows as
+     * unbound and was simply wrong, because `move-tab-left` and `move-tab-right`
+     * carry bindings too. A list has to be maintained; this cannot drift.
+     */
+    for (const actionId of [
+      'close-tab',
+      'close-others',
+      'close-right',
+      'move-tab-left',
+      'move-tab-right',
+      'copy-path',
+      'reveal-in-file-manager',
+    ] as const) {
+      const advertised = document
+        .querySelector(`[data-action-id="${actionId}"]`)
+        ?.hasAttribute('data-shortcut');
+      expect(advertised).toBe(getAction(actionId).shortcut !== undefined);
+    }
+  },
+);

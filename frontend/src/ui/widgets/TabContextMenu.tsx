@@ -15,6 +15,10 @@ import type {
   PathCommandResult,
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
+import {
+  currentPlatform,
+  formatShortcut,
+} from '../../logic/actions/shortcutRegistry';
 import { t } from '../../i18n';
 import styles from './DocumentTabs.module.css';
 
@@ -77,6 +81,26 @@ export interface TabContextCloseOptions {
    * strand focus until the user happened to switch away and back.
    */
   deferFocusRestore?: boolean;
+}
+
+/*
+ * The same derivation `SettingsMenu.settingsAccelerator` and
+ * `ShellMenuRow.shortcutForMenuItem` use, so every popup in the shell advertises
+ * its accelerator from one source — the action registry — rendered for the
+ * running platform.
+ *
+ * T190 restored this to the shipped menu. It existed before, correct, but
+ * rendered only on `?parity-case`, so the tests that asserted it described a
+ * surface no user reaches while the shipped menu advertised nothing and three
+ * sibling menus advertised everything. Undefined rather than an empty string for
+ * a row with no binding: `DocumentTabs.module.css` keys the trailing box off the
+ * attribute's presence, so an empty value would add a box with nothing in it.
+ */
+function acceleratorFor(actionId: TabContextAction): string | undefined {
+  const binding = getAction(actionId).shortcut;
+  return binding === undefined
+    ? undefined
+    : formatShortcut(binding, currentPlatform());
 }
 
 function errorResult(error: ClassifiedError | undefined): string {
@@ -230,6 +254,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
             aria-disabled={disabled || undefined}
             className={styles.contextMenuItem}
             data-action-id={entry.id}
+            data-shortcut={acceleratorFor(actionId)}
             disabled={disabled}
             key={actionId}
             ref={actionId === 'close-tab' ? firstActionRef : undefined}

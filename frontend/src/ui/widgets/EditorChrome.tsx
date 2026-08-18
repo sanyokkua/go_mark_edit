@@ -128,7 +128,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
       data-action-id={entry.id}
       data-icon={textualControlIds.has(entry.id) ? undefined : entry.id}
       disabled={unavailable}
-      title={unavailable ? t('action.unavailable') : t(entry.labelKey)}
+      title={unavailable ? t('action.unavailable') : controlTooltip(entry)}
       type="button"
       onMouseDown={(event): void => {
         if (!unavailable) event.preventDefault();
@@ -625,5 +625,26 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
     </ToolbarProjectionContext.Provider>
   );
 };
+
+/*
+ * T190. The tooltip is where an icon-first control advertises its accelerator.
+ *
+ * These buttons carry an icon and a localized accessible name, so unlike the
+ * shell's text menus there is no row to put an accelerator beside — the tooltip
+ * is the surface that answers "what is this, and how do I reach it from the
+ * keyboard". The binding comes from the action registry and is formatted for the
+ * running platform, the same single source `ShellMenuRow`, `SettingsMenu` and
+ * `TabContextMenu` use.
+ *
+ * A control with no binding keeps its plain label rather than gaining an empty
+ * bracket.
+ */
+function controlTooltip(entry: ActionEntry): string {
+  const label = t(entry.labelKey);
+  const binding = entry.shortcut;
+  return binding === undefined
+    ? label
+    : `${label} (${formatShortcut(binding, currentPlatform())})`;
+}
 
 export default EditorChrome;

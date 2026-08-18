@@ -12,6 +12,7 @@ import { Provider } from 'react-redux';
 
 import * as actionDispatcher from '../../logic/actions/actionDispatcher';
 import * as shortcutRegistry from '../../logic/actions/shortcutRegistry';
+import { getAction } from '../../logic/actions/actionRegistry';
 import { store } from '../../logic/store';
 import {
   hydrateProjection,
@@ -846,5 +847,39 @@ it('T178 leaves the formatting toolbar live for a writable document', () => {
 
   for (const name of ['Bold', 'Italic', 'Heading 1', 'Table']) {
     expect(screen.getByRole('button', { name })).toBeEnabled();
+  }
+});
+
+/*
+ * T190, the toolbar half of the same decision. The overflow drew accelerators
+ * from the registry but only on `?parity-case`, and `formatShortcut` had no
+ * other caller in this file — so the shipped toolbar advertised nothing.
+ *
+ * These controls are icon-first with a localized accessible name, so there is no
+ * text row to put an accelerator beside; the tooltip is where a user asks "what
+ * is this, and how do I do it from the keyboard". Asserted against the registry
+ * rather than a fixed list so it cannot drift, and the unbound case is asserted
+ * too — a control with no binding must keep its plain label rather than gain an
+ * empty bracket.
+ */
+// Proves: FR-FT-047 — the toolbar advertises its registry bindings on the
+// shipped surface, formatted for the running platform.
+it('T190 advertises toolbar accelerators from the registry in the tooltip', () => {
+  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+
+  for (const actionId of ['bold', 'italic', 'link'] as const) {
+    const control = document.querySelector(`[data-action-id="${actionId}"]`);
+    const binding = getAction(actionId).shortcut;
+    const title = control?.getAttribute('title') ?? '';
+    if (binding === undefined) {
+      expect(title).not.toContain('(');
+    } else {
+      expect(title).toContain(
+        shortcutRegistry.formatShortcut(
+          binding,
+          shortcutRegistry.currentPlatform(),
+        ),
+      );
+    }
   }
 });
