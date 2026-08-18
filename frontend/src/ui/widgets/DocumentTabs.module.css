@@ -52,12 +52,6 @@
   inline-size: 3px;
 }
 
-.emptyParityTabStrip {
-  block-size: 43px;
-  flex: 0 0 43px;
-  padding: 7px 10px;
-}
-
 .tabs {
   align-items: center;
   box-sizing: border-box;

@@ -59,11 +59,7 @@ import {
 import { parseError } from './logic/utils/parseError';
 import { useEditorSettings } from './logic/settings/editorSettings';
 import { bootstrapSettingsProjection } from './logic/store/settingsProjection';
-import {
-  NotificationToast,
-  ParityToastSurface,
-  ToastProvider,
-} from './ui/primitives/Toast';
+import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
 import NotificationBanner from './ui/primitives/Banner';
 import LiveRegion from './ui/primitives/LiveRegion';
 import AppShell from './ui/widgets/AppShell';
@@ -411,11 +407,6 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
 const AppContents: React.FC = (): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const notifications = useAppSelector((state) => state.notifications.items);
-  const parityToasts =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search)
-      .get('parity-case')
-      ?.includes(':toasts:') === true;
   const parityQuitPrompt =
     typeof window !== 'undefined' &&
     /:quit-prompt:|:quit-discard-newer:/u.test(
@@ -2145,28 +2136,26 @@ const AppContents: React.FC = (): React.JSX.Element => {
                     </button>
                   </div>
                 </ModalShell>
-                {bootstrapStatus === 'ready' && parityToasts ? (
-                  <ParityToastSurface />
-                ) : bootstrapStatus === 'ready' ? (
-                  notifications.map((notification) => (
-                    <NotificationToast
-                      key={`${notification.id}:${notification.refreshGeneration}`}
-                      notification={notification}
-                      onDismiss={(id: number): void => {
-                        dispatch(dismissNotification(id));
-                      }}
-                      onRemediate={(
-                        remediation: NotificationRemediation,
-                      ): void => {
-                        void onRemediate(
-                          remediation,
-                          notification.id,
-                          notification.title,
-                        );
-                      }}
-                    />
-                  ))
-                ) : null}
+                {bootstrapStatus === 'ready'
+                  ? notifications.map((notification) => (
+                      <NotificationToast
+                        key={`${notification.id}:${notification.refreshGeneration}`}
+                        notification={notification}
+                        onDismiss={(id: number): void => {
+                          dispatch(dismissNotification(id));
+                        }}
+                        onRemediate={(
+                          remediation: NotificationRemediation,
+                        ): void => {
+                          void onRemediate(
+                            remediation,
+                            notification.id,
+                            notification.title,
+                          );
+                        }}
+                      />
+                    ))
+                  : null}
                 <LiveRegion message={remediationAnnouncement} />
               </div>
             </ApplicationMenuRequestContext.Provider>

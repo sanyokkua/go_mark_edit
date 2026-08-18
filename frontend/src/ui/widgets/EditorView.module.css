@@ -128,13 +128,15 @@
   white-space: nowrap;
 }
 
-/* Binding source: mockup.html `.pane-h .live{color:var(--accent-ink)}` (:301)
-   and the nested `<span style="color:var(--accent-ink)">sel 42w</span>` inside
-   the editor pane's metadata (:726). Both read as accent ink against the
-   header's `--faint`; without this they inherit `--faint` and the pane header
-   loses the binding's only emphasis. */
-.paneLive,
-.paneSelection {
+/* Binding source: mockup.html `.pane-h .live{color:var(--accent-ink)}` (:301).
+   It reads as accent ink against the header's `--faint`; without this it
+   inherits `--faint` and the pane header loses the binding's only emphasis.
+
+   T173 removed the `.paneSelection` half. The binding also nests a
+   `sel 42w` span here (:726), but Feature 003 builds no selection readout, so
+   that span is stripped from the reference by `adaptEditorPaneSelection` rather
+   than manufactured in production. */
+.paneLive {
   color: var(--accent-ink);
 }
 

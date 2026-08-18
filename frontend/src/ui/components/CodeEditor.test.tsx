@@ -192,49 +192,6 @@ it('T045 retains the reviewed parity Monaco line box height', () => {
   );
 });
 
-it('T045 retains the reviewed parity lint decoration styling', () => {
-  expect(readSource('src/ui/components/CodeEditor.module.css')).toMatch(
-    /\.parityLint\s*\{[^}]*text-decoration:\s*wavy underline var\(--warn\);[^}]*text-underline-offset:\s*3px;/s,
-  );
-});
-
-it('T045 decorates the reviewed parity lint range without affecting ordinary startup', async () => {
-  const originalUrl = window.location.href;
-  window.history.replaceState(
-    {},
-    '',
-    '/?parity-case=primary:editor-split:1280:glass-light',
-  );
-  try {
-    render(
-      <CodeEditor
-        documentId="parity-release-notes"
-        initialValue="We are exited to anounce the new"
-      />,
-    );
-
-    await screen.findByRole('textbox', { name: 'Markdown source' });
-    expect(mockRuntime.editor.deltaDecorations).toHaveBeenCalledWith(
-      [],
-      [
-        expect.objectContaining({
-          options: expect.objectContaining({
-            inlineClassName: expect.any(String),
-          }),
-          range: {
-            endColumn: 14,
-            endLineNumber: 3,
-            startColumn: 8,
-            startLineNumber: 3,
-          },
-        }),
-      ],
-    );
-  } finally {
-    window.history.replaceState({}, '', originalUrl);
-  }
-});
-
 it('restores the acknowledged selection at the fresh editor activation boundary', async () => {
   render(
     <CodeEditor
@@ -738,3 +695,23 @@ it('keeps replacement undo groups and complete-buffer callbacks at the Monaco bo
     'whole\nreplacement',
   );
 });
+
+/*
+ * T173. Two `T045 …` lint cases were removed here — the decoration's styling and
+ * the decoration itself. The two Monaco geometry cases above them survive,
+ * because the branches they pin survive.
+ *
+ * The decoration drew a wavy underline over a hardcoded range of a hardcoded
+ * document id, so the harness photographed a lint finding no lint engine had
+ * produced. That is a substitution, not a capture condition: the mockup shows a
+ * squiggle under "exited", the fixture's misspellings are still there, and if
+ * the application is to underline them a lint engine has to say so.
+ *
+ * The geometry branches were nearly deleted with it, on the reasoning that
+ * FR-FT-055 excludes the Monaco interior from every variant so they pin pixels
+ * nothing compares. A measurement said otherwise: removing them grew T059's
+ * `popup-antialiased-boundary` residual from 181 pixels to 239, because the
+ * File popup composites over the editor and its antialiased edge blends against
+ * whatever glyphs are behind it. An excluded *region* can still be load-bearing
+ * for a comparison outside it — re-measure before trusting the exclusion.
+ */

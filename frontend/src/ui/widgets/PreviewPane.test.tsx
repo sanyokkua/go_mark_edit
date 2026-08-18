@@ -34,65 +34,6 @@ function deferred<T>(): {
   return { promise, resolve: resolvePromise, reject: rejectPromise };
 }
 
-it('T045 presents the reviewed corrected copy on the parity preview route', () => {
-  const originalUrl = window.location.href;
-  window.history.replaceState(
-    {},
-    '',
-    '/?parity-case=primary:editor-split:1280:glass-light',
-  );
-  try {
-    render(
-      <PreviewPane
-        accepted={snapshot(
-          1,
-          '# Release Notes — v2.1\n\nWe are exited to anounce the new relase. This verison brings alot of improvments and fixs users asked for.',
-          120,
-        )}
-        onRefresh={jest.fn(async () => snapshot(1, '', 0))}
-      />,
-    );
-
-    expect(
-      screen.getByText(
-        'We are excited to announce the new release. This version brings improvements and fixes users asked for.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/exited to anounce/i)).not.toBeInTheDocument();
-  } finally {
-    window.history.replaceState({}, '', originalUrl);
-  }
-});
-
-it('T045 removes the split fixture typo across source line wrapping', () => {
-  const originalUrl = window.location.href;
-  window.history.replaceState(
-    {},
-    '',
-    '/?parity-case=primary:editor-split:1280:glass-light',
-  );
-  try {
-    render(
-      <PreviewPane
-        accepted={snapshot(
-          1,
-          '# Release Notes — v2.1\n\nWe are exited to anounce the new\nrelase. This verison brings alot of\nimprovments and fixs users asked for.',
-          120,
-        )}
-        onRefresh={jest.fn(async () => snapshot(1, '', 0))}
-      />,
-    );
-
-    expect(
-      screen.getByText(
-        'We are excited to announce the new release. This version brings improvements and fixes users asked for.',
-      ),
-    ).toBeInTheDocument();
-  } finally {
-    window.history.replaceState({}, '', originalUrl);
-  }
-});
-
 it('renders at the inclusive 2 MiB boundary and pauses above it', async () => {
   const refresh = jest.fn<Promise<PreviewSnapshot>, []>(async () =>
     snapshot(2, '# refreshed', PREVIEW_BYTE_LIMIT + 1),
@@ -255,3 +196,21 @@ it('does not render a stale refresh result for a newer accepted revision', async
   expect(screen.queryByText('stale revision')).not.toBeInTheDocument();
   expect(screen.queryByText('current revision')).not.toBeInTheDocument();
 });
+
+/*
+ * T173. Two `T045 …` cases were removed here: one asserting the preview showed
+ * "We are excited to announce the new release…" on `?parity-case`, and one
+ * asserting the correction survived a typo split across a source line wrap.
+ *
+ * Both were true, and both described a rewrite that only existed on the route.
+ * `PreviewPane` ran seven `replaceAll()` calls over the document's text in its
+ * render path, correcting the fixture's misspellings before rendering — a
+ * production component rendering different *content* on the parity route, which
+ * FR-FT-054 does not permit.
+ *
+ * The misspellings are load-bearing rather than accidental: the mockup shows a
+ * lint squiggle under "exited". So the fixture was right and the correction was
+ * the invention. The difference now lives where FR-FT-056 puts it — the
+ * reference adapter's IN_SCOPE_PREVIEW_CONTENT carries what the application
+ * actually renders, and the adapter version is bumped to v4 to say so.
+ */

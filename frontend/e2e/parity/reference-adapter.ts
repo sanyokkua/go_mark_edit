@@ -6,8 +6,23 @@ import { createHash } from 'node:crypto';
  * treatment every other accelerator already gets. That retires the reviewed
  * macOS accelerator-glyph pixel exception, so an adaptation produced by v2 is
  * not interchangeable with one produced by v3.
+ *
+ * Bumped to v4 by T173. IN_SCOPE_PREVIEW_CONTENT claimed to carry "the same
+ * in-scope basic-preview content the application renders for the parity
+ * document", and it did not: it carried a *spell-corrected* paragraph, and the
+ * application only produced that because PreviewPane rewrote the document's
+ * text in its render path whenever `?parity-case` was present. Seven
+ * replaceAll() calls, on the production path, correcting the fixture's
+ * deliberate misspellings before rendering.
+ *
+ * Those misspellings are load-bearing on the reference side — the mockup shows
+ * a lint squiggle under "exited" — so the fixture is right and the correction
+ * was the invention. FR-FT-054 lets the route seed a fixture; it does not let a
+ * production component render different content on it. The rewrite is deleted
+ * and this constant now carries what the application actually renders, so an
+ * adaptation produced by v3 is not interchangeable with one produced by v4.
  */
-export const REFERENCE_ADAPTER_VERSION = 'feature-003-reference-adapter-v3';
+export const REFERENCE_ADAPTER_VERSION = 'feature-003-reference-adapter-v4';
 
 export const REFERENCE_ZERO_ASSISTANT_CLASS = 'no-assistant';
 
@@ -751,12 +766,43 @@ function adaptFileMenu(
  */
 export const IN_SCOPE_PREVIEW_CONTENT = [
   '<h1>Release Notes — v2.1</h1>',
-  '<p>We are excited to announce the new release. This version brings improvements and fixes users asked for.</p>',
+  '<p>We are exited to anounce the new relase. This verison brings alot of improvments and fixs users asked for.</p>',
   '<h2>Highlights</h2>',
   '<ul><li>Faster startup</li><li>KaTeX math: $E = mc^2$</li><li><em>flow</em></li></ul>',
   '<blockquote><p>Tip: press Ctrl+S to save.</p></blockquote>',
   '<pre><code>graph LR; A--&gt;B; B--&gt;C;\n</code></pre>',
 ].join('\n              ');
+
+/**
+ * The editor pane header's selection readout, removed rather than manufactured.
+ *
+ * The mockup's pane header carries `· sel 42w` (`mockup.html:726`). Feature 003
+ * builds no selection readout — the pane header shows encoding and line ending
+ * and nothing else — so `EditorView` used to render a hardcoded `sel 42w` on
+ * `?parity-case` to make the two sides agree. That is manufacturing a surface in
+ * production to satisfy the harness, and the 2026-08-13 clarification recorded
+ * against this very region says the opposite is required: out-of-scope reference
+ * content "removed from the reference rather than manufactured in production",
+ * exactly as the deferred rich-rendering widgets are.
+ *
+ * The pane header and its metadata stay fully compared; only this one readout
+ * leaves, and the separator with it so no orphan `·` remains.
+ */
+const PANE_SELECTION_SOURCE_MARKUP =
+  ' · <span style="color:var(--accent-ink)">sel 42w</span>';
+
+function adaptEditorPaneSelection(html: string): string {
+  // A source without the editor pane at all is not a parity reference; leave it
+  // untouched so unit fixtures can exercise the other variants in isolation —
+  // the same allowance `adaptPreviewPane` makes for the same reason.
+  if (!html.includes('id="pane-editor"')) return html;
+  if (!html.includes(PANE_SELECTION_SOURCE_MARKUP)) {
+    throw new Error(
+      'Editor pane reference requires the source selection readout; the adaptation is stale.',
+    );
+  }
+  return html.split(PANE_SELECTION_SOURCE_MARKUP).join('');
+}
 
 function adaptPreviewPane(html: string): string {
   // A source without the preview pane at all is not a parity reference; leave
@@ -951,6 +997,7 @@ export const REFERENCE_ADAPTER_HASH = hash(
     aboutMenuReferenceAccelerators,
     LIGHTS_SOURCE_MARKUP,
     IN_SCOPE_PREVIEW_CONTENT,
+    PANE_SELECTION_SOURCE_MARKUP,
     statusReferenceStates,
     STATUS_REFERENCE_PRODUCTIONS,
     STATUS_REFERENCE_VARIANT_STATES,
@@ -1057,7 +1104,9 @@ export function adaptReferenceHtml(
       : withZeroAssistant;
   const withNativeFrame = adaptNativeFrameControls(withFileOnly);
   const withInScopePreview = adaptPreviewPane(withNativeFrame);
-  const withDeferredToolbar = adaptDeferredToolbarControls(withInScopePreview);
+  const withoutPaneSelection = adaptEditorPaneSelection(withInScopePreview);
+  const withDeferredToolbar =
+    adaptDeferredToolbarControls(withoutPaneSelection);
   const withDeferredSettings = adaptDeferredSettingsRows(
     withDeferredToolbar,
     fileMenuPlatform ?? hostReferencePlatform(),

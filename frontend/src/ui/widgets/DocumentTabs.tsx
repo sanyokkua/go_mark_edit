@@ -198,10 +198,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     () => tabLabelsFor(orderedDocuments),
     [orderedDocuments],
   );
-  const emptyParityRoute =
-    orderedDocuments.length === 0 &&
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('parity-case');
   const contextDocument = orderedDocuments.find(
     (document) => document.documentId === contextDocumentId,
   );
@@ -1095,7 +1091,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         ref={stripRef}
         aria-label={t('editor.tabs')}
         data-tabs-overflowing={tabsOverflowing ? 'true' : undefined}
-        className={`${styles.tabStrip} ${emptyParityRoute ? styles.emptyParityTabStrip : ''}`}
+        className={styles.tabStrip}
         role="tablist"
         onKeyDown={(event): void => {
           if (event.key === 'Home' || event.key === 'End') {

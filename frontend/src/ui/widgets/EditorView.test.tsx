@@ -347,32 +347,6 @@ it('T079 restores Split when the window widens again without writing an arrangem
   }
 });
 
-it('T045 presents the reviewed selection metadata on the parity editor route', () => {
-  const originalUrl = window.location.href;
-  window.history.replaceState(
-    {},
-    '',
-    '/?parity-case=primary:editor-split:1280:glass-light',
-  );
-  try {
-    renderEditorView('split');
-
-    /*
-     * The binding nests the selection metric in its own span so it can carry
-     * accent ink against the header's faint text (mockup.html:726). The
-     * metadata therefore still reads as one line, but `sel 42w` is a distinct
-     * element rather than a bare text fragment — assert both.
-     */
-    const selection = within(screen.getByLabelText('Editor pane')).getByText(
-      'sel 42w',
-    );
-    expect(selection).toBeInTheDocument();
-    expect(selection.parentElement).toHaveTextContent('UTF-8 · LF · sel 42w');
-  } finally {
-    window.history.replaceState({}, '', originalUrl);
-  }
-});
-
 it('T045 prevents the parity preview from double-compositing the pane surface', () => {
   const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
 
@@ -509,3 +483,19 @@ it('T045 keeps the narrow parity paused-preview action above its pane clip', () 
     /@media \(max-width: 376px\)[\s\S]*?:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)\s*\.pane:has\(\[data-preview-state='paused'\]\)\s*\{[^}]*overflow:\s*visible;/s,
   );
 });
+
+/*
+ * T173. `T045 presents the reviewed selection metadata on the parity editor
+ * route` was removed with the readout it described.
+ *
+ * The mockup's pane header carries `· sel 42w` (mockup.html:726) and Feature 003
+ * builds no selection readout, so `EditorView` rendered a hardcoded `sel 42w`
+ * on `?parity-case` to make the two sides agree. The 2026-08-13 clarification
+ * recorded against this exact region requires the opposite: out-of-scope
+ * reference content is "removed from the reference rather than manufactured in
+ * production", which is how the deferred rich-rendering widgets are handled.
+ *
+ * The readout is now stripped from the reference by
+ * `adaptEditorPaneSelection`, and the pane header and its metadata remain fully
+ * compared — the clarification's other half.
+ */

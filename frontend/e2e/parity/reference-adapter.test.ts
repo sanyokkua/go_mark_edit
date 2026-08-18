@@ -54,7 +54,7 @@ it('reference adapter hash is stable and bounded', () => {
     'rich-rendering',
     'monaco',
   ]);
-  expect(REFERENCE_ADAPTER_VERSION).toBe('feature-003-reference-adapter-v3');
+  expect(REFERENCE_ADAPTER_VERSION).toBe('feature-003-reference-adapter-v4');
 });
 
 // Proves: FR-FT-056 (partial — the variant boundary; the comparisonAttempted rule is proven by evidence.test.ts)

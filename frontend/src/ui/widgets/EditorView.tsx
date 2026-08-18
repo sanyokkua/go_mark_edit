@@ -243,6 +243,27 @@ interface LivePreviewProps {
   visible: boolean;
 }
 
+/*
+ * T173 kept this branch, and it is the only `?parity-case` read left in a
+ * production component. It is a capture condition, which FR-FT-054 permits
+ * explicitly — "seed a fixture and hold capture conditions fixed" — not a
+ * fixture seed and not a component substitution.
+ *
+ * It cannot move anywhere better. The mock backend is the sanctioned home for
+ * seeds, but this refresh never crosses the bridge: `onRefresh` dispatches
+ * `refresh-preview` with `invoke: () => accepted`, entirely in the frontend, so
+ * there is no backend call for a seed to intercept. The reference side cannot
+ * express it either — the mockup is static HTML that already *shows* the
+ * refreshing and failed states, and what is missing is a way to make production
+ * hold them still long enough to be photographed. That is what this does: it
+ * changes the timing and outcome of one async operation, and renders no markup
+ * the application does not otherwise render.
+ *
+ * The archtest allowlist carries this file at one occurrence for that reason.
+ * If `refresh-preview` ever gains a backend call, move the seed to
+ * `AppModelHandler` alongside `refuseSave` and `refuseCloseExecute` and drop the
+ * allowance.
+ */
 function parityPreviewRefreshMode(): 'refreshing' | 'failed' | undefined {
   if (typeof window === 'undefined') return undefined;
   const key = new URLSearchParams(window.location.search).get('parity-case');
@@ -431,9 +452,6 @@ const EditorView: React.FC<EditorViewProps> = ({
   const title = activeDocument?.title ?? t('editor.untitled');
   const encoding = activeDocument?.encoding ?? 'utf-8';
   const lineEnding = activeDocument?.lineEnding ?? 'lf';
-  const parityRoute =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('parity-case');
   const localizedEncoding = t(`status.encoding.${encoding.toLowerCase()}`);
   const localizedLineEnding = t(
     `status.lineEnding.${lineEnding.toLowerCase()}`,
@@ -477,16 +495,6 @@ const EditorView: React.FC<EditorViewProps> = ({
                 encoding: localizedEncoding,
                 lineEnding: localizedLineEnding,
               })}
-              {parityRoute ? (
-                <>
-                  {' · '}
-                  <span className={styles.paneSelection}>
-                    {t('editor.metadata.selection')}
-                  </span>
-                </>
-              ) : (
-                ''
-              )}
             </span>
           </header>
           <EditorContextMenu>

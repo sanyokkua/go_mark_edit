@@ -1,5 +1,5 @@
 import * as RadixToast from '@radix-ui/react-toast';
-import { useEffect, type PropsWithChildren } from 'react';
+import { type PropsWithChildren } from 'react';
 
 import { formatNumber, t } from '../../i18n';
 import type {
@@ -97,51 +97,3 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
     </div>
   </RadixToast.Root>
 );
-
-export const ParityToastSurface: React.FC = (): React.JSX.Element => {
-  useEffect((): (() => void) => {
-    const keepParityToastRouteAtTop = (): void => {
-      if (window.scrollY !== 0) window.scrollTo(0, 0);
-    };
-    keepParityToastRouteAtTop();
-    window.addEventListener('scroll', keepParityToastRouteAtTop, {
-      passive: true,
-    });
-    return (): void => {
-      window.removeEventListener('scroll', keepParityToastRouteAtTop);
-    };
-  }, []);
-
-  return (
-    <div className={styles.parityViewport} data-notification-code="parity">
-      <div className={`${styles.parityToast} ${styles.parityToastOk}`}>
-        <span className={styles.parityToastIcon}>✓</span>
-        <span className={styles.parityToastText}>
-          <b>{t('parity.toast.saved.title')}</b>
-          <span>{t('parity.toast.saved.message')}</span>
-        </span>
-      </div>
-      <div className={styles.parityToast}>
-        <span className={styles.parityToastIcon}>ℹ</span>
-        <span className={styles.parityToastText}>
-          <b>{t('parity.toast.formatted.title')}</b>
-          <span>{t('parity.toast.formatted.message')}</span>
-        </span>
-      </div>
-      <div className={`${styles.parityToast} ${styles.parityToastWarn}`}>
-        <span className={styles.parityToastIcon}>⚠</span>
-        <span className={styles.parityToastText}>
-          <b>{t('parity.toast.lint.title')}</b>
-          <span>{t('parity.toast.lint.message')}</span>
-        </span>
-      </div>
-      <div className={`${styles.parityToast} ${styles.parityToastErr}`}>
-        <span className={styles.parityToastIcon}>⤫</span>
-        <span className={styles.parityToastText}>
-          <b>{t('parity.toast.provider.title')}</b>
-          <span>{t('parity.toast.provider.message')}</span>
-        </span>
-      </div>
-    </div>
-  );
-};

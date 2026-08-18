@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
-import { NotificationToast, ParityToastSurface, ToastProvider } from './Toast';
+import { NotificationToast, ToastProvider } from './Toast';
 
 afterEach((): void => {
   jest.useRealTimers();
@@ -228,25 +228,18 @@ it('T015 renders one explicit save confirmation with its localized safe filename
   );
 });
 
-it('T045 keeps the parity toast surface at the reference scroll origin', () => {
-  const originalScrollY = window.scrollY;
-  const scrollTo = jest
-    .spyOn(window, 'scrollTo')
-    .mockImplementation((): void => undefined);
-  Object.defineProperty(window, 'scrollY', {
-    configurable: true,
-    value: 61,
-  });
-
-  try {
-    render(<ParityToastSurface />);
-    fireEvent.scroll(window);
-    expect(scrollTo).toHaveBeenCalledWith(0, 0);
-  } finally {
-    scrollTo.mockRestore();
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: originalScrollY,
-    });
-  }
-});
+/*
+ * T173. `T045 keeps the parity toast surface at the reference scroll origin`
+ * was removed with the surface it tested.
+ *
+ * `ParityToastSurface` replaced the entire notification stack on `?parity-case`
+ * with four hardcoded toasts — none of them carrying `NotificationToast`'s
+ * dismiss or remediate wiring, and one of them a **provider** toast, which
+ * FR-FT-049 forbids the application from having at all.
+ *
+ * It also quietly defeated the harness that was supposed to exercise it. The
+ * `toasts` family's driver performs a real Save and waits for
+ * `[data-notification-code]` to appear — and the fake surface rendered
+ * `data-notification-code="parity"`, so that wait was satisfied by the
+ * substitute rather than by the notification the save actually raised.
+ */

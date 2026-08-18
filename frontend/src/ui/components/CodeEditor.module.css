@@ -44,11 +44,6 @@
   left: 51.65625px !important;
 }
 
-.parityLint {
-  text-decoration: wavy underline var(--warn);
-  text-underline-offset: 3px;
-}
-
 .loading {
   min-height: var(--editor-min-height);
 }

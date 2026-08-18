@@ -1,5 +1,14 @@
 {
   "_why": "Violations that already existed when these gates were written on 2026-07-28. The gate is green with these and fails on anything new. Each is described in docs/delivery/plan/KNOWN_ISSUES.md. Lower a number when you fix one; never raise one.",
   "strings": {},
-  "colours": {}
+  "colours": {},
+  "_parityRoutes_why": "T173 swept ten `?parity-case` branches out of production. Two are kept deliberately and each carries a comment at its site explaining why it cannot move: CodeEditor holds Monaco capture conditions that a measurement proved load-bearing for T059's popup residual (181 -> 239 pixels when removed), and EditorView holds a preview refresh state that never crosses the bridge so no mock seed can intercept it. The other four entries are branches still owed a sweep - EditorChrome's substituted overflow menu, AppShell's empty-state chrome and shell data attributes, and the ShellMenuRow/App quit routing. Lower a number when a branch leaves; never raise one.",
+  "parityRoutes": {
+    "src/App.tsx": 1,
+    "src/ui/components/CodeEditor.tsx": 1,
+    "src/ui/widgets/AppShell.tsx": 2,
+    "src/ui/widgets/EditorChrome.tsx": 1,
+    "src/ui/widgets/EditorView.tsx": 1,
+    "src/ui/widgets/ShellMenuRow.tsx": 1
+  }
 }
