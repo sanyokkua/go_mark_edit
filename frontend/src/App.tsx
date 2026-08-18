@@ -739,6 +739,29 @@ const AppContents: React.FC = (): React.JSX.Element => {
    * refusal.
    */
   const [externalEpoch, setExternalEpoch] = useState(0);
+  /*
+   * T191. Installs a buffer produced by a reload the tab strip drove.
+   *
+   * `DocumentTabs` owns an external-change prompt separate from this one, and
+   * the foreground check raises that one — but the strip cannot install a
+   * buffer itself, because `useGuardedActivation` is the single install seam
+   * and re-implementing its checks elsewhere is the defect T128 removed. So the
+   * strip reports the acknowledgement here and this claims a generation, offers
+   * it to the guard, and advances the epoch that restarts the editor session.
+   */
+  const installExternalReload = useCallback(
+    (acknowledgement: ActiveBuffer | undefined): void => {
+      if (acknowledgement === undefined) return;
+      const generation = activation.begin();
+      activation.acknowledge(
+        generation,
+        acknowledgement,
+        acknowledgement.documentId,
+      );
+      setExternalEpoch((epoch) => epoch + 1);
+    },
+    [activation],
+  );
   const closeRequestRef = useRef<
     { kind: ClosePlanKind; targetDocumentIds: string[] } | undefined
   >(undefined);
@@ -1952,6 +1975,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
           <EditorSessionProvider
             activeBuffer={activeBuffer}
             externalEpoch={externalEpoch}
+            onExternalReload={installExternalReload}
           >
             <ApplicationMenuRequestContext.Provider
               value={setRequestedApplicationMenu}

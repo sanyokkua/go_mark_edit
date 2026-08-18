@@ -55,3 +55,34 @@ Which side drops the content — whether `ReloadFromDisk` returns the disk conte
 and the frontend fails to install it, or the backend returns the stale buffer.
 That needs a debugger pass, and is the first thing the fixing task should
 determine rather than assume.
+
+---
+
+## Fixed and verified, 2026-08-18
+
+Five causes, each producing this identical symptom, and each individually
+necessary:
+
+1. `applyReload` replaced `document.content` without incrementing
+   `ContentRevision` (`document.go:65` increments it for every ordinary edit).
+2. `ReloadFromDisk` reported the *pre*-reload revision, which the frontend's
+   activation guard compares against the projection — so it rejected the
+   acknowledgement.
+3. `useSyncedBuffer`'s activation memo depended on `[documentId]` alone, so the
+   editor session never restarted and Monaco was never re-seeded.
+4. `DocumentTabs` owns an external-change prompt separate from `App`'s, and the
+   foreground check raises **that** one — so fixing App's arm changed nothing.
+5. The strip's reload arm never installed `result.activeBuffer`, so restarting
+   the session re-seeded Monaco with the same stale content.
+
+**Verified on `just build` at `f53787c5` + the install fix**, binary 17:23:08,
+process started 17:23:09, prompt screenshotted before clicking:
+
+- Disk `DISK CONTENT FROM OTHER EDITOR`, buffer `BUFFER BEFORE RELOAD`.
+- After **Reload from disk**: editor and preview show the disk text, status
+  `Saved`, tab clean.
+- After a keystroke and autosave: disk holds the **reloaded** text carrying that
+  edit. `BUFFER BEFORE RELOAD` is absent. Mode `640` preserved.
+
+The overwrite is the assertion that matters — the editor text alone would have
+passed at step 3 while the data loss remained.

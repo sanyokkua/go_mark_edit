@@ -507,11 +507,15 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
        * the editor did not produce, and Monaco is seeded once per editor
        * session — so without this the reloaded text never reaches the editor,
        * the document is still marked clean, and the next keystroke's autosave
-       * writes the stale buffer over the file. Reported only for `reload`:
-       * keep-mine and skip leave the buffer alone.
+       * writes the stale buffer over the file.
+       *
+       * The buffer is handed *up* rather than installed here: the guarded
+       * activation seam in `App` is deliberately the single install path
+       * (T128/T169), so this reports and lets that seam decide. Reported only
+       * for `reload` — keep-mine and skip leave the buffer alone.
        */
       if (decision === 'reload' && result.error === undefined) {
-        reportExternalReload();
+        reportExternalReload(result.activeBuffer);
       }
     },
     [

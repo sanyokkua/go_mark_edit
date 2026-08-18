@@ -69,25 +69,34 @@ export const EditorSessionEpochContext = createContext(0);
  * raises. It sits below this provider, so it cannot reach App's state — it
  * reports here instead and the provider adds its count to the epoch. T191.
  */
-export const EditorSessionReloadContext = createContext<() => void>(
-  (): void => undefined,
-);
+export type ExternalReloadInstaller = (
+  acknowledgement: ActiveBuffer | undefined,
+) => void;
+
+export const EditorSessionReloadContext =
+  createContext<ExternalReloadInstaller>((): void => undefined);
 
 export interface EditorSessionProviderProps extends PropsWithChildren {
   activeBuffer: ActiveBuffer | null;
   externalEpoch?: number;
+  /**
+   * Installs a buffer the editor did not produce, and advances the epoch.
+   *
+   * Supplied by `App`, because the install has to go through the one guarded
+   * activation seam (T128/T169) rather than be re-implemented wherever a reload
+   * happens. `DocumentTabs` owns an external-change prompt of its own and calls
+   * this; without it, its reload updated the backend and cleared the prompt
+   * while the editor kept the pre-reload text. T191.
+   */
+  onExternalReload?: ExternalReloadInstaller;
 }
 
 export const EditorSessionProvider: React.FC<EditorSessionProviderProps> = ({
   activeBuffer,
   children,
   externalEpoch = 0,
+  onExternalReload = (): void => undefined,
 }: EditorSessionProviderProps): React.JSX.Element => {
-  const [descendantReloads, setDescendantReloads] = useState(0);
-  const reportExternalReload = useCallback(
-    (): void => setDescendantReloads((count) => count + 1),
-    [],
-  );
   const [session, setSession] = useState<DocumentCommandSession | null>(null);
   const sessionRegistry = useMemo(
     (): EditorSessionRegistry => new EditorSessionRegistry(),
@@ -133,10 +142,10 @@ export const EditorSessionProvider: React.FC<EditorSessionProviderProps> = ({
 
   return createElement(
     EditorSessionReloadContext.Provider,
-    { value: reportExternalReload },
+    { value: onExternalReload },
     createElement(
       EditorSessionEpochContext.Provider,
-      { value: externalEpoch + descendantReloads },
+      { value: externalEpoch },
       createElement(
         EditorSessionContext.Provider,
         { value: activeBuffer },
