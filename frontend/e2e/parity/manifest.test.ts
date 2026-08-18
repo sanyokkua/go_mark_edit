@@ -321,7 +321,6 @@ const REGION_PRODUCTION_TOKENS: Readonly<Record<string, string>> = {
   'closed-menubar': 'data-shell-menu',
   'file-menu': 'data-viewport-popup="file-menu"',
   'settings-menu': 'data-viewport-popup="settings-menu"',
-  'settings-overflow': 'data-viewport-popup="editor-overflow"',
   'view-menu': 'data-viewport-popup="view-menu"',
   'about-menu': 'data-viewport-popup="about-menu"',
   'tab-strip': 'role="tablist"',
@@ -360,8 +359,8 @@ it('T157 maps only components this feature built, each in its own region', async
   const entries = allTargetedEntries();
   // 14 pixel-compared component keys: six palettes of the closed menubar plus
   // the eight single-palette component slices.
-  expect(entries).toHaveLength(14);
-  expect(unique(entries.map(({ key }) => key)).size).toBe(14);
+  expect(entries).toHaveLength(13);
+  expect(unique(entries.map(({ key }) => key)).size).toBe(13);
 
   const regionIds = unique(entries.map(({ regionId }) => regionId));
   expect([...regionIds].sort()).toEqual(

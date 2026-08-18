@@ -187,32 +187,9 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
     left: number;
     top: number;
   } | null>(null);
-  const parityCase =
-    typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('parity-case')
-      : null;
   const [narrowToolbarOverflow, setNarrowToolbarOverflow] = useState(
     isNarrowToolbarViewport,
   );
-  /*
-   * The parity-shaped overflow is for parity captures only. It renders the
-   * binding's flat item list plus a text line standing in for the View group,
-   * and carries no text actions, no heading actions and no real arrangement
-   * radios.
-   *
-   * `narrowToolbarOverflow` alone used to force it, so at 375px the shipped
-   * application drew that stand-in as its actual narrow layout. Combined with
-   * `.relocateAt375 { display: none }` hiding the same controls from the
-   * toolbar, Bold, Italic, Strikethrough, Inline code and all three headings
-   * became unreachable at that width — present at 1280, gone at 375, with no
-   * other path to them.
-   *
-   * It is now confined to parity routes: a narrow parity capture still gets the
-   * binding's shape, and the real application gets its real controls.
-   */
-  const toolbarOverflowParity =
-    parityCase?.startsWith('primary:toolbar-overflow:') === true ||
-    (narrowToolbarOverflow && parityCase !== null);
   useEffect((): (() => void) => {
     const onResize = (): void =>
       setNarrowToolbarOverflow(isNarrowToolbarViewport());
@@ -368,15 +345,15 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
     const left =
       narrowToolbarOverflow && frameBounds !== undefined
         ? frameBounds.width - 18 - popupBounds.width
-        : calculatedLeft + (toolbarOverflowParity ? -6 : 0);
+        : calculatedLeft;
     const top =
       narrowToolbarOverflow && frameBounds !== undefined
         ? Math.round(calculatedTop - 19 - frameBounds.top)
-        : calculatedTop + (toolbarOverflowParity ? -18 : 0);
+        : calculatedTop;
     setOverflowPosition((current) =>
       current?.left === left && current.top === top ? current : { left, top },
     );
-  }, [narrowToolbarOverflow, toolbarOverflowParity]);
+  }, [narrowToolbarOverflow]);
 
   useLayoutEffect((): (() => void) | undefined => {
     if (!overflowOpen) return undefined;
@@ -430,27 +407,6 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         onClick={(): void => requestArrangement(next)}
       >
         {t(entry.labelKey)}
-      </button>
-    );
-  };
-
-  const parityOverflowItem = (id: ActionEntry['id']): React.JSX.Element => {
-    const entry = action(id);
-    const unavailable = entry.availability.kind === 'deferred';
-    return (
-      <button
-        className={styles.parityOverflowItem}
-        data-action-id={entry.id}
-        data-parity-overflow-item
-        disabled={unavailable}
-        key={entry.id}
-        type="button"
-        onClick={(): void => onActivate(entry)}
-      >
-        {t(entry.labelKey)}
-        {entry.shortcut === undefined ? null : (
-          <span>{formatShortcut(entry.shortcut, currentPlatform())}</span>
-        )}
       </button>
     );
   };
@@ -534,9 +490,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
             <div
               ref={overflowPopupRef}
               aria-label={t('editor.moreActions')}
-              className={`${styles.overflowContent} ${
-                toolbarOverflowParity ? styles.parityOverflowContent : ''
-              } ${narrowToolbarOverflow ? styles.narrowOverflowContent : ''}`}
+              className={`${styles.overflowContent} ${narrowToolbarOverflow ? styles.narrowOverflowContent : ''}`}
               data-viewport-popup="editor-overflow"
               role="menu"
               style={
@@ -551,48 +505,35 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
                     }
               }
             >
-              {toolbarOverflowParity ? (
-                <div className={styles.parityOverflowItems}>
-                  {([...listActions, ...insertActions, 'compact'] as const).map(
-                    (id) => parityOverflowItem(id),
-                  )}
-                  <div className={styles.parityOverflowItem}>
-                    {`${t('action.view.label')}: ${t('action.editor.label')} · ${t('action.split.label')} · ${t('action.preview.label')}`}
-                  </div>
+              <div className={styles.overflowAt768}>
+                {actionButtons(
+                  listActions.map((id) => action(id).id),
+                  onActivate,
+                )}
+                {actionButtons(
+                  insertActions.map((id) => action(id).id),
+                  onActivate,
+                )}
+              </div>
+              <div className={styles.overflowAt375}>
+                {actionButtons(
+                  textActions.map((id) => action(id).id),
+                  onActivate,
+                )}
+                {actionButtons(
+                  headingActions.map((id) => action(id).id),
+                  onActivate,
+                )}
+                <div
+                  aria-label={t('editor.arrangement')}
+                  className={`${styles.overflowArrangement} ${styles.arrangement}`}
+                  role="radiogroup"
+                >
+                  {arrangementButton('editor')}
+                  {arrangementButton('split')}
+                  {arrangementButton('preview')}
                 </div>
-              ) : (
-                <>
-                  <div className={styles.overflowAt768}>
-                    {actionButtons(
-                      listActions.map((id) => action(id).id),
-                      onActivate,
-                    )}
-                    {actionButtons(
-                      insertActions.map((id) => action(id).id),
-                      onActivate,
-                    )}
-                  </div>
-                  <div className={styles.overflowAt375}>
-                    {actionButtons(
-                      textActions.map((id) => action(id).id),
-                      onActivate,
-                    )}
-                    {actionButtons(
-                      headingActions.map((id) => action(id).id),
-                      onActivate,
-                    )}
-                    <div
-                      aria-label={t('editor.arrangement')}
-                      className={`${styles.overflowArrangement} ${styles.arrangement}`}
-                      role="radiogroup"
-                    >
-                      {arrangementButton('editor')}
-                      {arrangementButton('split')}
-                      {arrangementButton('preview')}
-                    </div>
-                  </div>
-                </>
-              )}
+              </div>
               <div className={styles.applicationOverflowItems}>
                 {(['file', 'settings', 'view', 'about'] as const).map(
                   (target, index) => (

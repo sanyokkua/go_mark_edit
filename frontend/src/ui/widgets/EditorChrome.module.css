@@ -393,17 +393,6 @@
   z-index: var(--z-dropdown);
 }
 
-.parityOverflowContent {
-  backdrop-filter: none;
-  border-color: var(--stroke);
-  border-radius: 11px;
-  display: block;
-  gap: 0;
-  inline-size: 212px;
-  min-inline-size: 212px;
-  padding: 6px;
-}
-
 .narrowOverflowContent {
   backdrop-filter: none;
   border-radius: 11px;
@@ -412,37 +401,6 @@
   inline-size: 212px;
   min-inline-size: 212px;
   padding: 6px;
-}
-
-.parityOverflowItems {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.parityOverflowItem {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  box-sizing: border-box;
-  color: var(--text);
-  display: flex;
-  font: inherit;
-  font-size: 12px;
-  gap: 10px;
-  justify-content: space-between;
-  line-height: normal;
-  min-height: 29px;
-  padding: 7px 10px;
-  text-align: start;
-  width: 100%;
-}
-
-.parityOverflowItem span {
-  color: var(--faint);
-  margin-inline-start: auto;
-  white-space: nowrap;
 }
 
 .applicationOverflowItems {
@@ -478,7 +436,6 @@
   padding-block: 9px 7px;
 }
 
-.parityOverflowItem:hover,
 .applicationOverflowItem:hover,
 .applicationOverflowItemFirst:hover {
   background: var(--hover);

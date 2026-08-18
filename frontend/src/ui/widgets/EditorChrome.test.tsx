@@ -189,26 +189,6 @@ it('T045 keeps the parity toolbar overflow trigger available at 1280px', () => {
   );
 });
 
-it('T045 renders the reviewed parity toolbar overflow inventory', () => {
-  const chromeSource = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.tsx'),
-    'utf8',
-  );
-  const chromeStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
-    'utf8',
-  );
-
-  expect(chromeSource).toContain("'primary:toolbar-overflow:'");
-  expect(chromeSource).toContain('parityOverflowItem');
-  expect(chromeStyles).toMatch(
-    /\.parityOverflowContent\s*\{[^}]*inline-size:\s*212px;[^}]*padding:\s*6px;/s,
-  );
-  expect(chromeStyles).toMatch(
-    /\.parityOverflowItem\s*\{[^}]*min-height:\s*29px;[^}]*padding:\s*7px 10px;/s,
-  );
-});
-
 it('T068 uses icon-first toolbar controls while retaining localized accessible names', () => {
   render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
 
@@ -668,75 +648,10 @@ it('T058 suppresses editor shortcuts while the Shortcuts dialog modal state is a
  * `Mod+Shift+8`. Controlling the platform read is what separates a derivation
  * from a literal that happens to agree on one host.
  */
-const platformMock = shortcutRegistry.currentPlatform as jest.MockedFunction<
-  typeof shortcutRegistry.currentPlatform
->;
-
-function overflowShortcuts(): Record<string, string> {
-  const entries: Record<string, string> = {};
-  for (const item of document.querySelectorAll('[data-parity-overflow-item]')) {
-    const id = item.getAttribute('data-action-id');
-    const shortcut = item.querySelector('span')?.textContent;
-    if (id !== null && shortcut != null) entries[id] = shortcut;
-  }
-  return entries;
-}
 
 // Proves: FR-FT-047 — every shortcut the parity toolbar overflow advertises is
 // the registry binding rendered for the running platform. It proves nothing
 // about the arrangement row beneath them, which carries no accelerator.
-it.each([
-  [
-    'darwin',
-    {
-      'bullet-list': '⌘⇧8',
-      'numbered-list': '⌘⇧7',
-      'task-list': '⌘⇧9',
-      quote: '⌘⇧.',
-      link: '⌘K',
-      image: '⌘⇧I',
-      table: '⌘⇧T',
-      compact: '⌥⇧C',
-    },
-  ],
-  [
-    'win32',
-    {
-      'bullet-list': 'Ctrl+Shift+8',
-      'numbered-list': 'Ctrl+Shift+7',
-      'task-list': 'Ctrl+Shift+9',
-      quote: 'Ctrl+Shift+.',
-      link: 'Ctrl+K',
-      image: 'Ctrl+Shift+I',
-      table: 'Ctrl+Shift+T',
-      compact: 'Alt+Shift+C',
-    },
-  ],
-] as const)(
-  'T143 draws every parity overflow shortcut from the registry binding on %s',
-  (platform, expected) => {
-    const originalUrl = window.location.href;
-    platformMock.mockReturnValue(platform);
-    window.history.replaceState(
-      {},
-      '',
-      '/?parity-case=primary:toolbar-overflow:1280:minimal-light',
-    );
-
-    try {
-      render(
-        <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
-      );
-      fireEvent.click(screen.getByLabelText('More actions'));
-
-      expect(overflowShortcuts()).toEqual(expected);
-    } finally {
-      window.history.replaceState({}, '', originalUrl);
-      platformMock.mockReset();
-    }
-  },
-);
-
 /*
  * T178 — the formatting toolbar on a document the backend will refuse to write.
  *
@@ -883,3 +798,20 @@ it('T190 advertises toolbar accelerators from the registry in the tooltip', () =
     }
   }
 });
+
+/*
+ * T173. The parity overflow inventory case and the two `T143 …` accelerator
+ * cases were removed with the substituted overflow they described.
+ *
+ * `toolbarOverflowParity` replaced the whole overflow popup with a flat item
+ * list carrying no text actions, no heading actions and no real arrangement
+ * radiogroup. It is gone: the overflow interior is now a named reviewed
+ * exclusion, because the shipped overflow is icon-first and the binding's is a
+ * flat text list — a design divergence, measured at `bounds.left 140.375 vs
+ * 102.375` at 375px, that no FR-FT-056 variant can express through the mockup's
+ * own primitives.
+ *
+ * The accelerators those cases asserted are not lost: T190 restored them to the
+ * shipped toolbar, in the tooltip, and `T190 advertises toolbar accelerators
+ * from the registry in the tooltip` asserts them against production.
+ */

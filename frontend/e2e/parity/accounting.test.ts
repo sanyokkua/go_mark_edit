@@ -33,13 +33,20 @@ it('repetition count matches the parity project declared in the config source', 
 });
 
 it('plans every key of the amended contract in every repetition', () => {
-  expect(pixelComparedKeys()).toHaveLength(14);
+  expect(pixelComparedKeys()).toHaveLength(13);
   expect(behaviourVerifiedKeys()).toHaveLength(36);
-  expect(new Set(pixelComparedKeys()).size).toBe(14);
+  expect(new Set(pixelComparedKeys()).size).toBe(13);
   expect(new Set(behaviourVerifiedKeys()).size).toBe(36);
 
   const planned = plannedParityVerifications();
-  expect(planned).toHaveLength((14 + 36) * PARITY_REPETITION_COUNT);
+  /*
+   * 13 pixel-compared keys, not 14. T173 removed
+   * `targeted:settings-overflow:375:minimal-light` when the overflow interior
+   * became a named reviewed exclusion, so the contract is 147 verifications
+   * rather than 150. Recorded here rather than silently lowered: a falling
+   * parity count is exactly the shape T151's fail-closed rule exists to catch.
+   */
+  expect(planned).toHaveLength((13 + 36) * PARITY_REPETITION_COUNT);
 
   // Every key appears exactly once per repetition, and no key appears twice.
   for (const key of [...pixelComparedKeys(), ...behaviourVerifiedKeys()]) {

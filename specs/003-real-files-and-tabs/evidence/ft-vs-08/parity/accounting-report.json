@@ -1,28 +1,28 @@
 {
   "contract": {
-    "pixelComparedKeys": 14,
+    "pixelComparedKeys": 13,
     "behaviourVerifiedKeys": 36,
     "repetitions": 3,
-    "plannedVerifications": 150
+    "plannedVerifications": 147
   },
   "totals": {
-    "planned": 150,
-    "attempted": 150,
-    "referenceReady": 42,
-    "actualReady": 150,
-    "comparisonCompleted": 150,
-    "passed": 150,
+    "planned": 147,
+    "attempted": 147,
+    "referenceReady": 39,
+    "actualReady": 147,
+    "comparisonCompleted": 147,
+    "passed": 147,
     "failed": 0,
     "unresolved": 0
   },
   "byMethod": {
     "pixel-comparison": {
-      "planned": 42,
-      "attempted": 42,
-      "referenceReady": 42,
-      "actualReady": 42,
-      "comparisonCompleted": 42,
-      "passed": 42,
+      "planned": 39,
+      "attempted": 39,
+      "referenceReady": 39,
+      "actualReady": 39,
+      "comparisonCompleted": 39,
+      "passed": 39,
       "failed": 0,
       "unresolved": 0
     },
@@ -344,45 +344,6 @@
     },
     {
       "manifestKey": "targeted:settings-menu:1280:minimal-light",
-      "repetition": 3,
-      "planned": true,
-      "attempted": true,
-      "referenceReady": true,
-      "actualReady": true,
-      "comparisonCompleted": true,
-      "passed": true,
-      "failed": false,
-      "unresolved": false,
-      "method": "pixel-comparison"
-    },
-    {
-      "manifestKey": "targeted:settings-overflow:375:minimal-light",
-      "repetition": 1,
-      "planned": true,
-      "attempted": true,
-      "referenceReady": true,
-      "actualReady": true,
-      "comparisonCompleted": true,
-      "passed": true,
-      "failed": false,
-      "unresolved": false,
-      "method": "pixel-comparison"
-    },
-    {
-      "manifestKey": "targeted:settings-overflow:375:minimal-light",
-      "repetition": 2,
-      "planned": true,
-      "attempted": true,
-      "referenceReady": true,
-      "actualReady": true,
-      "comparisonCompleted": true,
-      "passed": true,
-      "failed": false,
-      "unresolved": false,
-      "method": "pixel-comparison"
-    },
-    {
-      "manifestKey": "targeted:settings-overflow:375:minimal-light",
       "repetition": 3,
       "planned": true,
       "attempted": true,

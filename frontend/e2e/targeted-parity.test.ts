@@ -201,10 +201,6 @@ async function prepareReference(
   await page
     .locator(`#screenNav button[data-screen="${entry.activeScreen}"]`)
     .click();
-  if (entry.openSurface === 'settings-overflow') {
-    await page.locator('#app .tg-over button[title="More"]').click();
-    await expect(page.locator('#app .ovf-menu')).toBeVisible();
-  }
   await freezeParityPixels(page);
   await page.locator('#app').evaluate((app, assistantClass) => {
     app.classList.add(assistantClass);
@@ -286,17 +282,6 @@ async function prepareActual(
       const active = document.activeElement;
       if (active instanceof HTMLElement) active.blur();
     });
-  } else if (entry.openSurface === 'settings-overflow') {
-    await page.locator('summary[aria-label="More actions"]').click();
-    await expect(
-      page.locator('[data-viewport-popup="editor-overflow"]'),
-    ).toBeVisible();
-    await page
-      .locator(
-        '[data-viewport-popup="editor-overflow"] [data-parity-overflow-item]',
-      )
-      .filter({ hasText: /^Quote/u })
-      .hover();
   } else if (entry.openSurface === 'view-menu') {
     await page.getByRole('button', { name: 'View', exact: true }).click();
     await expect(
@@ -399,7 +384,6 @@ const POPUP_VIEWPORT_INSET = 8;
 const POPUP_SURFACES = new Set([
   'file-menu',
   'settings-menu',
-  'settings-overflow',
   'view-menu',
   'about-menu',
 ]);
@@ -1076,19 +1060,17 @@ for (const entry of [
       ? 'T059 state-pairs the File popup in Minimal Light'
       : entry.openSurface === 'settings-menu'
         ? 'T060 state-pairs the Settings popup in Minimal Light'
-        : entry.openSurface === 'settings-overflow'
-          ? 'T060 state-pairs the 375px Settings overflow in Minimal Light'
-          : entry.openSurface === 'tab-strip'
-            ? 'T062 state-pairs tabs and toolbar in Minimal Light'
-            : entry.openSurface === 'toolbar'
-              ? 'T077 state-pairs the document toolbar in Minimal Light'
-              : entry.openSurface === 'view-menu'
-                ? 'T061 state-pairs the View popup in Minimal Light'
-                : entry.openSurface === 'about-menu'
-                  ? 'T061 state-pairs the About popup in Minimal Light'
-                  : entry.openSurface === 'preview-paused'
-                    ? 'T064 state-pairs the paused preview in Minimal Light'
-                    : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
+        : entry.openSurface === 'tab-strip'
+          ? 'T062 state-pairs tabs and toolbar in Minimal Light'
+          : entry.openSurface === 'toolbar'
+            ? 'T077 state-pairs the document toolbar in Minimal Light'
+            : entry.openSurface === 'view-menu'
+              ? 'T061 state-pairs the View popup in Minimal Light'
+              : entry.openSurface === 'about-menu'
+                ? 'T061 state-pairs the About popup in Minimal Light'
+                : entry.openSurface === 'preview-paused'
+                  ? 'T064 state-pairs the paused preview in Minimal Light'
+                  : `T058 state-pairs the closed menubar in ${entry.palette.id}`,
     async ({ page, context }, testInfo) => {
       test.setTimeout(120_000);
       assertTargetedManifestIntegrity();
@@ -1118,8 +1100,7 @@ for (const entry of [
       const evidenceRoot = join(
         entry.openSurface === 'file-menu'
           ? FILE_MENU_EVIDENCE_ROOT
-          : entry.openSurface === 'settings-menu' ||
-              entry.openSurface === 'settings-overflow'
+          : entry.openSurface === 'settings-menu'
             ? SETTINGS_EVIDENCE_ROOT
             : entry.openSurface === 'view-menu' ||
                 entry.openSurface === 'about-menu'
@@ -1128,18 +1109,15 @@ for (const entry of [
                 ? PREVIEW_EVIDENCE_ROOT
                 : EVIDENCE_ROOT,
         entry.palette.id,
-        entry.openSurface === 'settings-overflow'
-          ? 'overflow-375'
-          : entry.openSurface === 'view-menu' ||
-              entry.openSurface === 'about-menu'
-            ? entry.openSurface
-            : entry.openSurface === 'tab-strip'
-              ? 'tab-strip'
-              : entry.openSurface === 'toolbar'
-                ? 'toolbar'
-                : entry.openSurface === 'preview-paused'
-                  ? 'paused'
-                  : '',
+        entry.openSurface === 'view-menu' || entry.openSurface === 'about-menu'
+          ? entry.openSurface
+          : entry.openSurface === 'tab-strip'
+            ? 'tab-strip'
+            : entry.openSurface === 'toolbar'
+              ? 'toolbar'
+              : entry.openSurface === 'preview-paused'
+                ? 'paused'
+                : '',
       );
       const referencePage = await context.newPage();
       let referenceSignature: SemanticSignature | undefined;

@@ -57,7 +57,6 @@ export type TargetedParityEntry = Readonly<{
     | 'closed-menubar'
     | 'file-menu'
     | 'settings-menu'
-    | 'settings-overflow'
     | 'view-menu'
     | 'about-menu'
     | 'tab-strip'
@@ -67,7 +66,6 @@ export type TargetedParityEntry = Readonly<{
     | 'closed-menubar'
     | 'file-menu'
     | 'settings-menu'
-    | 'settings-overflow'
     | 'view-menu'
     | 'about-menu'
     | 'tab-strip'
@@ -150,34 +148,6 @@ export const TARGETED_SETTINGS_MANIFEST: readonly TargetedParityEntry[] =
       editorActualSelector: 'section[aria-label="Editor view"]',
       regionId: 'settings-menu',
       openSurface: 'settings-menu',
-      implementedActionIds: ['file', 'settings', 'view', 'about'] as const,
-    }),
-    Object.freeze({
-      key: 'targeted:settings-overflow:375:minimal-light',
-      family: 'editor-split',
-      width: 375,
-      height: 720,
-      palette: Object.freeze({
-        id: 'minimal-light',
-        theme: 'minimal',
-        mode: 'light',
-      }),
-      activeScreen: 'editor-split',
-      /*
-       * T076/T078 (spec.md, Clarifications, Session 2026-08-14): at the native
-       * minimum window the application shows exactly one pane and Split
-       * collapses to the editor, while the binding stacks both panes
-       * (`mockup.html:54-55`). The reference variant hides the non-selected
-       * pane using the binding's own `#pane-preview{display:none}` declaration
-       * (`mockup.html:299`), so both pages draw the editor alone.
-       */
-      referenceVariant: 'editor-split-375',
-      referenceSelector: '#app .ovf-menu',
-      actualSelector: '[data-viewport-popup="editor-overflow"]',
-      editorReferenceSelector: '#app.no-assistant .content',
-      editorActualSelector: 'section[aria-label="Editor view"]',
-      regionId: 'settings-overflow',
-      openSurface: 'settings-overflow',
       implementedActionIds: ['file', 'settings', 'view', 'about'] as const,
     }),
   ]);
@@ -386,8 +356,17 @@ export function assertTargetedManifestIntegrity(): void {
       'T059 targeted case must not enter the unrestricted manifest',
     );
   }
-  if (TARGETED_SETTINGS_MANIFEST.length !== 2) {
-    throw new Error('T060 targeted Settings manifest must contain two cases');
+  /*
+   * One case, not two. T173 removed `targeted:settings-overflow:375:minimal-light`
+   * when the overflow interior became a named reviewed exclusion: the shipped
+   * overflow is icon-first and the binding's is a flat text list, a design
+   * divergence no FR-FT-056 variant can express through the mockup's own
+   * primitives. The measured difference was `bounds.left 140.375 vs 102.375` at
+   * 375px, which is a *box* difference — so a Monaco-style interior exclusion,
+   * which keeps position and size asserted, would not have covered it.
+   */
+  if (TARGETED_SETTINGS_MANIFEST.length !== 1) {
+    throw new Error('T060 targeted Settings manifest must contain one case');
   }
   for (const entry of TARGETED_SETTINGS_MANIFEST) {
     if (PARITY_MANIFEST.some(({ key }) => key === entry.key)) {
