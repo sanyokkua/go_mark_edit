@@ -1,6 +1,13 @@
 # SC-FT-011 clause 11 — the native webview compared with the same-browser result
 
 **Task:** T186, clause 11. **Date:** 2026-08-19.
+
+> **Corrected the same day by T195 — read `T195-resolution.md` alongside this file.** The
+> "native-host difference" recorded below was Monaco's scrollbar slider captured in different
+> hover states, not a renderer difference. With the slider controlled the two sides are
+> **91.18% identical**, the residual falls to **1.09%**, and the band collapses from 28,000
+> pixels to **217**. No native-host difference remains. The tables below are left as measured
+> so the correction is legible against them.
 **Build:** `just build` at `bcf0b548`, binary mtime `09:00:31`; the instance under test was
 launched after that, with no GoMarkEdit process alive beforehand.
 

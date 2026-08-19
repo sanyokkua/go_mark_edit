@@ -86,7 +86,9 @@ Behaviours that ship with no observation on a real binary behind them.
 | # | Behaviour | Why it is open | Owner |
 |---|---|---|---|
 | 6 | A document of exactly 2,097,152 bytes wedges the whole interface | `PREVIEW_BYTE_LIMIT` is inclusive, so the live preview renders the largest document it allows and the WebContent main thread saturates at 100% with no recovery; one byte more pauses the preview and the application is fine. The Go process stays idle at 0.2% throughout, which is why checking the binary hides it. | T194 |
-| 7 | The divider paints 19 levels lighter in WKWebView than in Chromium | Identical geometry, different paint — 51% of the whole measured renderer residual. Not classified as benign, because clause 11 says a native renderer difference is not an automatic pass. | T195 |
+| 7 | ~~The divider paints 19 levels lighter in WKWebView than in Chromium~~ | **Closed 2026-08-19 — it was never a renderer difference.** Monaco's scrollbar slider showing through a transparent overview-ruler canvas, captured in different hover states: host pointer-over, browser mid-fade. Controlled on both sides the band falls from 28,000 px to 217 and the two engines reach 91.18% identical with **no native-host difference remaining**. Reclassified as capture non-determinism. | done |
+
+Row 7 closed the same day it was filed, and closing it *strengthened* the clause 11 result rather than weakening it: the residual halved and the one unexplained category disappeared.
 
 **Both were found by walking the real binary, and neither was reachable from any suite.** That
 is the argument for host evidence stated as a result rather than as a principle: two defects in
