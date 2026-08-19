@@ -347,26 +347,6 @@ it('T079 restores Split when the window widens again without writing an arrangem
   }
 });
 
-it('T045 prevents the parity preview from double-compositing the pane surface', () => {
-  const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
-
-  expect(editorStyles).toContain(
-    ":global(.application-frame:has([data-parity-shell='true'])) .previewContent",
-  );
-  expect(editorStyles).toMatch(
-    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\) \.previewContent\s*\{[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/s,
-  );
-  expect(editorStyles).toMatch(
-    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?line-height:\s*normal;/s,
-  );
-  expect(editorStyles).toMatch(
-    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?margin-inline-start:\s*20px;[^}]*padding-inline-start:\s*0;/s,
-  );
-  expect(editorStyles).toMatch(
-    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\.previewContent\s+:global\(\.gme-preview\)[\s\S]*?:is\(ul, ol\)\s*\{[^}]*line-height:\s*normal;/s,
-  );
-});
-
 it('replaces the same-document editor model when a Reload acknowledgement changes content', () => {
   const document = documentFor('split');
   store.dispatch(
@@ -465,25 +445,25 @@ it('STORY-015-AC-6 matches the split-view structure', () => {
   expect(segmentedStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
 });
 
-it('T045 bounds and places the parity toolbar-overflow editor surface without a computed margin offset', () => {
-  const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
-
-  expect(editorStyles).toMatch(
-    /@media \(min-width: 769px\)[\s\S]*?:global\(\.application-frame:has\(\[data-parity-family='toolbar-overflow'\]\)\)\s+\.editorView\s*\{[^}]*transform:\s*translateX\(66\.797px\);[^}]*width:\s*720px;/s,
-  );
-  expect(editorStyles).not.toMatch(
-    /data-parity-family='toolbar-overflow'[\s\S]*?margin-inline-start:\s*66\.797px/s,
-  );
-});
-
-it('T045 keeps the narrow parity paused-preview action above its pane clip', () => {
-  const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
-
-  expect(editorStyles).toMatch(
-    /@media \(max-width: 376px\)[\s\S]*?:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)\s*\.pane:has\(\[data-preview-state='paused'\]\)\s*\{[^}]*overflow:\s*visible;/s,
-  );
-});
-
+/*
+ * T193. Three `T045` cases were removed here with the five CSS rules they
+ * described: the paused-pane overflow, the preview's transparent background,
+ * the two `.gme-preview` line-height overrides, and the `toolbar-overflow`
+ * editor transform.
+ *
+ * Each read `EditorView.module.css` as text and asserted a declaration appeared
+ * in it. That is only worth doing if the declaration does something, and T193
+ * measured that it does not: those selectors match only when the parity harness
+ * puts `data-parity-shell` on the application frame, and neutralising all five
+ * leaves `[parity accounting]` at 147/147 with the suite green. A rule that
+ * moves no compared pixel has nothing for a test to prove, so the assertions
+ * pinned their own text and no behaviour.
+ *
+ * The measurement is in
+ * `evidence/ft-vs-08/phase-18/shell-attribute-css-classification.md`, which also
+ * records the opposite verdict for `EditorChrome.module.css`'s 34 rules — those
+ * move an attributed residual from 181 to 184 pixels and stay.
+ */
 /*
  * T173. `T045 presents the reviewed selection metadata on the parity editor
  * route` was removed with the readout it described.
