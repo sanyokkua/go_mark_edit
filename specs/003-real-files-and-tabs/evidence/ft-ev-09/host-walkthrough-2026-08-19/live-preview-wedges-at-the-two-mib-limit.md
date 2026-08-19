@@ -1,7 +1,7 @@
 # A document at exactly the live-preview limit wedges the whole interface
 
-**Found:** 2026-08-19, during T181's host walk. **Severity:** the application becomes
-permanently unusable and the user cannot save, close a tab, or open a menu.
+**Found:** 2026-08-19, during T181's host walk. **Severity:** the application stops accepting input for minutes at a time, on open and again on each
+interaction. **Corrected 2026-08-19** — see "What the first write-up got wrong".
 **Build:** `just build` at commit `bcf0b548`, binary mtime `09:00:31`, process started
 `09:01:24` — stale-instance guard recorded.
 
@@ -72,3 +72,103 @@ dead one, so the cause is the preview render, not the editor and not document si
 Filed rather than fixed: the fix is a requirement question (what the preview limit should
 be, and whether the pause must be based on something other than byte count), and this walk's
 scope was T181's latency.
+
+
+---
+
+# Correction and diagnosis, 2026-08-19
+
+Two things in the write-up above are wrong, and the cause is not what it said.
+
+## What the first write-up got wrong
+
+**"Permanently unusable", "no recovery after five and a half minutes."** It does recover. A
+later instance was observed at **0.0% CPU after 3m18s**, having finished on its own, and the
+very first instance had already settled once (it painted `big.md` correctly about 70 seconds
+after the open) before wedging *again* when the editor was clicked. So the behaviour is not
+one permanent hang but a **multi-minute stall repeated on open and on each interaction**.
+That is still severe, and it is a different defect from the one first recorded.
+
+The original observation window was simply too short to see the end, and "no recovery after
+5.5 minutes" was written as though it established permanence. It did not.
+
+## The stated cause was wrong: rendering 2 MiB is cheap
+
+The write-up above attributes the wedge to the live preview rendering a 2 MiB document, and
+the one-byte control does prove the preview is *involved*. It does not prove that rendering
+is what costs the time — and it is not. Measured directly, on the very file that wedges the
+host:
+
+| Stage | Cost for `big.md` (2,097,152 B, 1,907 lines, longest 1,100 chars) |
+|---|---|
+| Markdown pipeline (`remark-parse` → `remark-gfm` → `remark-rehype` → `rehype-sanitize`) in **JSC/WebKit** | **579 ms** |
+| Same pipeline in **V8/Chromium** | 1,411 ms |
+| Browser layout of an equivalent 2 MiB DOM, WebKit | 46 ms |
+| Browser layout of an equivalent 2 MiB DOM, Chromium | 188 ms |
+
+**Everything the preview has to do costs under a second.** The application takes minutes.
+The gap is not the renderer, not the markdown pipeline, and not the engine.
+
+## Where the time actually goes
+
+`sample` of the wedged `com.apple.WebKit.WebContent` main thread, 4,057 samples:
+
+```
+4015  operationPutByIdStrictGaveUp
+  4013  JSC::JSArray::put(JSC::JSCell*, JSC::JSGlobalObject*, ...)
+    4013  JSC::JSObject::countElements()
+```
+
+**98.9% of samples are in `countElements`, reached through `JSArray::put`.** That is the
+signature of an array in a slow (sparse/dictionary) storage mode, where each indexed write
+walks the whole array — an O(n²) build. It is application JavaScript, not WebCore layout and
+not the markdown pipeline, both of which were measured above and are fast.
+
+The JS frames are not symbolicated in a `sample` of JIT-compiled code, so the exact function
+is not identified here. Locating it needs Safari Web Inspector attached to the packaged
+webview.
+
+## Why lowering `PREVIEW_BYTE_LIMIT` is the wrong fix
+
+Three independent reasons:
+
+1. **It is forbidden.** `spec.md:952` (FR-FT-005) says live preview "MUST remain active
+   **through exactly 2 MiB** and pause above it". The inclusive guard is the requirement, not
+   an oversight. Changing it needs the owner.
+2. **It would mask a quadratic path rather than remove it.** Quadratic cost does not
+   disappear when the input shrinks, it only gets quieter: if 2 MiB stalls for minutes, 512
+   KiB still stalls for roughly a sixteenth of that. The stall would survive at every size
+   below any new limit, where no pause protects the user.
+3. **The premise it rests on is measurably false.** The task framed the limit as unfixable
+   because "a 2,097,151-byte document is not meaningfully cheaper to render". True, and
+   irrelevant — rendering either one costs well under a second.
+
+## A separate finding, which does need the owner
+
+Parse cost scales with **line count**, not document size, and short lines are the expensive
+shape. At a fixed 2,097,152 bytes, in Node/V8:
+
+| line length | lines | parse |
+|---|---|---|
+| 80 chars | 25,891 | **14,916 ms** |
+| 1,000 chars | 2,096 | 1,413 ms |
+| 10,000 chars | 210 | 567 ms |
+| 28,000 chars | 75 | 535 ms |
+| one line | 1 | 474 ms |
+
+In-browser V8 measures the 55-char shape at **24,272 ms** at 2 MiB. Real Markdown prose has
+short lines, so **the common shape is the slow one** — and FR-FT-005 requires live preview to
+stay active at exactly that size. That is a requirement that cannot be met for ordinary
+content on Chromium, independent of the quadratic defect above. JSC is far better here (1,512
+ms for the same shape), so this one is engine-dependent in the opposite direction.
+
+## What is now established, and what is not
+
+**Established.** The preview is involved (one-byte control). The markdown pipeline and layout
+are both fast on the exact failing file, in both engines. The stall is repeated rather than
+permanent. The hot path is `JSArray::put`/`countElements` in application JavaScript.
+
+**Not established.** Which application function builds that array. Whether it is on the
+preview path specifically or on a shared path the preview merely triggers. Whether the same
+cost is present, smaller, at ordinary document sizes — which is the question that decides how
+urgent this is, and it is the next thing to measure.
