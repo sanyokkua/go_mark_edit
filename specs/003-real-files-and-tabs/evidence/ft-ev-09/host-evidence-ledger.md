@@ -1,7 +1,7 @@
 # Host evidence ledger — demonstrated, deferred, host-unverified
 
 **Requirement:** SC-FT-011 clause 10, "records every demonstrated, deferred and host-unverified
-behaviour". **Task:** T186. **Written:** 2026-08-19.
+behaviour". **Task:** T186. **Written:** 2026-08-19. **Revised the same day** after the T181 and clause 11 walks closed three of its five open rows and opened two new ones.
 
 Clause 10 asks for one ledger. Before this file there were per-run "what this does not cover"
 sections in seven artifacts, with corrections layered on three of them, and `grep -i
@@ -75,11 +75,22 @@ Behaviours that ship with no observation on a real binary behind them.
 
 | # | Behaviour | Why it is still open | Owner |
 |---|---|---|---|
-| 1 | Mapped webview chrome compared against the same-browser result | SC-FT-011 clause 11. `host-screenshots/README.md` disclaims the existing captures outright — not parity references, not compared to the binding mockup, read by no comparator. The vocabulary exists (`coverage-ledger.md` Claim 3's four-way taxonomy); the comparison does not. | T186 |
+| 1 | ~~Mapped webview chrome compared against the same-browser result~~ | **Closed 2026-08-19.** `host-walkthrough-2026-08-19/webview-vs-chromium/` — 90.08% identical at matched geometry, backgrounds bit-exact, residual partitioned three ways. The one native-host difference found is filed as T195 rather than passed. | done |
 | 2 | `File ▸ Close Tab` **by click** on the host | `accelerators-2026-08-15.md` §"One thing this walk could not confirm": fails twice on the host from a stable two-tab state with the click verified to land, while passing in Chromium against the mock and at unit level. The mock-divergence class this tree has been bitten by before. | filed separately |
 | 3 | Copy path reaching the system pasteboard, and Reveal *selecting* the file in Finder | T161 proved the ports non-nil and the bytes correct; the last hop — another application reading the pasteboard, and `open -R` selecting rather than merely revealing the folder — is observable only by a person. | T166 |
-| 4 | SC-FT-007's autosave latency **magnitude** | The 2026-08-18 spot-check established coalescing and constancy on the shipped binary but not magnitude: the tool round trip (~5.6 s) is coarser than the ~1.25 s quantity, and an anchor cannot bound an interval shorter than itself. Needs a stopwatch or an instrumented release build. | T181 |
+| 4 | ~~SC-FT-007's autosave latency **magnitude**~~ | **Closed 2026-08-19.** `host-walkthrough-2026-08-19/autosave-latency-measured.md` — measured anchor-free by write coalescing: `d ≈ 0.97–1.01 s`, five times inside the 5,000 ms bound, same at 2 MiB. The earlier "unmeasurable" note ruled out one method too many. | done |
 | 5 | The zero-tolerance parity contract on `ubuntu-24.04` | The CI interface gate has never run — nothing is pushed and `gh` is absent. `Inter` and `JetBrains Mono` may resolve differently under Linux's fallback chain, and the two compared pages are different DOMs whose glyph rasterisation agrees only if both resolve the same font. | T180 |
+
+### Opened by those two walks
+
+| # | Behaviour | Why it is open | Owner |
+|---|---|---|---|
+| 6 | A document of exactly 2,097,152 bytes wedges the whole interface | `PREVIEW_BYTE_LIMIT` is inclusive, so the live preview renders the largest document it allows and the WebContent main thread saturates at 100% with no recovery; one byte more pauses the preview and the application is fine. The Go process stays idle at 0.2% throughout, which is why checking the binary hides it. | T194 |
+| 7 | The divider paints 19 levels lighter in WKWebView than in Chromium | Identical geometry, different paint — 51% of the whole measured renderer residual. Not classified as benign, because clause 11 says a native renderer difference is not an automatic pass. | T195 |
+
+**Both were found by walking the real binary, and neither was reachable from any suite.** That
+is the argument for host evidence stated as a result rather than as a principle: two defects in
+one morning, in a feature whose local gate and e2e suite were both green throughout.
 
 ## What this ledger does not cover
 
