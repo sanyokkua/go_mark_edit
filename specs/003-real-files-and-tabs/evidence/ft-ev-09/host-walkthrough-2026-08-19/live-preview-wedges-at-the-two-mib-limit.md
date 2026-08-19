@@ -172,3 +172,98 @@ permanent. The hot path is `JSArray::put`/`countElements` in application JavaScr
 preview path specifically or on a shared path the preview merely triggers. Whether the same
 cost is present, smaller, at ordinary document sizes — which is the question that decides how
 urgent this is, and it is the next thing to measure.
+
+---
+
+# Second investigation, 2026-08-19 — the preview render is exonerated
+
+The correction above narrowed the cause to "application JavaScript, quadratic array writes,
+not the renderer". This pass narrowed it further, answered the urgency question, and hit a
+hard blocker. It did **not** name the function, and nothing was changed in production code.
+
+## The urgency question is answered: no quadratic cost at ordinary sizes
+
+The task asked, before any fix, whether the same quadratic cost is present but small at 256
+KiB and 1 MiB. It is not. The **real `MarkdownView`** — the shipped component, imported from
+the running dev server, so the actual `react-markdown` + plugin + React commit path — rendered
+and laid out at three sizes:
+
+| size | WebKit (JSC) | Chromium (V8) |
+|---|---|---|
+| 256 KiB | 163 ms | 175 ms |
+| 1 MiB | 490 ms | 620 ms |
+| 2 MiB | **950 ms** | 2,144 ms |
+
+WebKit is linear across the range (163 → 490 → 950 for 1× → 4× → 8× the bytes). There is no
+hidden quadratic term waiting at smaller sizes, so the defect is **not** silently degrading
+ordinary documents. That lowers its urgency, and it is the one thing the task said to
+establish first.
+
+## The whole preview render path is now exonerated, end to end
+
+Every stage has been measured on the host's engine family at 2 MiB:
+
+| Stage | WebKit/JSC |
+|---|---|
+| GFM pipeline alone (parse → gfm → rehype → sanitize) | 579 ms |
+| Full `MarkdownView`: pipeline + react-markdown + React commit + layout | **996 ms** |
+| Plain DOM layout of an equivalent 2 MiB tree | 46 ms |
+
+**Under one second for everything the preview does**, against a stall measured in minutes. The
+preview render is not where the time goes. That is a stronger statement than the earlier
+correction could make, which had only measured the pipeline and layout, not the component.
+
+## What the stack actually says, re-read
+
+The frames above the hot spot were under-read the first time. In full:
+
+```
+WebCore::timerFired
+  WebCore::WindowEventLoop::didReachTimeToRun
+    WebCore::EventLoop::run
+      WebCore::EventTarget::dispatchEvent
+        WebCore::EventTarget::fireEventListeners
+          WebCore::JSEventListener::handleEvent
+            JSC::Interpreter::executeCall
+              ... operationPutByIdStrictGaveUp
+                    JSC::JSArray::put  →  JSC::JSObject::countElements
+```
+
+The quadratic write happens **inside an event listener dispatched from a timer** — not inside
+a React render, and not inside layout. `operationPutByIdStrictGaveUp` is a put **by
+identifier**, a named property, on a `JSArray`. On an array the hot named property is
+`length`, and in JSC assigning `length` to an array in non-fast storage calls `countElements`,
+which is O(n). Repeated in a loop, that is the observed O(n²).
+
+## Where it is not
+
+`grep` over `frontend/src` for `length` assignment (`\.length\s*=\s*[^=]`) returns **nothing**
+outside tests, and the large-array idioms present are three benign ones (two single-element
+`splice` calls in `notificationsSlice`, one 39-element `Array.from` in the bridge mock). So
+the quadratic write is **not in first-party application source**. It is in bundled dependency
+code — Monaco or the markdown stack — or in generated Wails runtime code.
+
+## The blocker
+
+The task named Safari Web Inspector as the direct route. **It is not available in this
+environment**: browsers are granted at a read-only tier here, so Safari can be seen in a
+screenshot but cannot be clicked, and the Develop menu cannot be driven. `sample` does not
+symbolicate JIT frames, so it cannot name the function either. There is no third profiler to
+hand.
+
+Reproducing inside the packaged app was also not achieved: Monaco is not exposed on `window`,
+so a 2 MiB document cannot be injected into the running app from a test harness, and the mock
+bridge has no seam for seeding large document content.
+
+## What would finish it
+
+1. A **symbolicated JS profile** during the stall — Safari Web Inspector attached to the
+   packaged webview, by a person who can click. That is the shortest path and it names the
+   function directly.
+2. Failing that, a **content seam in the mock bridge** so a 2 MiB document can be loaded in
+   `just dev-ui`, which would make the stall reproducible under Playwright WebKit where it can
+   be bisected. Note this may not reproduce it: the stall may depend on the real Go bridge,
+   which the mock does not model.
+3. Either way, **do not lower `PREVIEW_BYTE_LIMIT`** — unchanged from the previous pass, and
+   now better supported: the preview render is measurably linear and cheap, so the threshold
+   is not what is hurting anyone.
