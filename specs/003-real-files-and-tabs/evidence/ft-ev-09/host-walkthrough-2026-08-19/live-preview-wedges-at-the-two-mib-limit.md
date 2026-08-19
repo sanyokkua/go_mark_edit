@@ -267,3 +267,62 @@ bridge has no seam for seeding large document content.
 3. Either way, **do not lower `PREVIEW_BYTE_LIMIT`** — unchanged from the previous pass, and
    now better supported: the preview render is measurably linear and cheap, so the threshold
    is not what is hurting anyone.
+
+
+---
+
+# Closed 2026-08-19 — one real cost fixed, the stall itself unexplained
+
+Closed on the owner's instruction ("if it is fixable, fix; if not, close and forget"). One
+genuine defect was found and fixed. The multi-minute host stall was never reproduced and its
+cause is not identified; this file is kept so a later reader starts where this left off.
+
+## Fixed: the preview re-parsed the document on every parent render
+
+`EditorView` hands `PreviewPane` an inline `onRefresh` arrow, so the pane received a fresh
+prop identity on every parent render, and neither `PreviewPane` nor `MarkdownView` was
+memoized. Every `EditorView` render therefore re-ran the whole GFM pipeline over the whole
+document.
+
+`MarkdownView` is now `memo`-wrapped on `source`, its only prop and one it is pure in.
+Measured at the limit on the shipping engine, worst-case shape:
+
+| | before | after |
+|---|---|---|
+| first render, 2 MiB of 80-char lines | 1,457 ms | 1,457 ms |
+| five further renders, source unchanged | ~5 × 1,457 ms | **51 ms total** |
+
+Paying ~1.5 s per keystroke is the shape of "the editor takes no keystrokes", so this is a
+real cost on the same surface. **It is not claimed to be the stall.** The stall's profile is
+98.9% in `JSC::JSObject::countElements` inside a timer-dispatched event listener, which is not
+a render; whether removing this cost also removes the stall is untested, because the stall was
+never reproducible outside the packaged app.
+
+## Not fixed, and why it stops here
+
+- The preview render path is under a second end to end at 2 MiB on WebKit.
+- Interactions against a committed 2 MiB DOM cost **0–1 ms** headlessly.
+- First-party source contains no `length` assignment and no large-array idiom.
+- A symbolicated JS profile is the only remaining route, and this environment cannot take one:
+  browsers are granted read-only so Web Inspector cannot be driven, and `sample` does not
+  symbolicate JIT frames.
+
+If the stall recurs on a build carrying the memoization, route (a) in the previous section —
+a Web Inspector profile taken by a person — is still the shortest path.
+
+## A mistake made while fixing this, recorded because the gate hid it
+
+The first attempt at the regression test **overwrote the existing
+`src/ui/components/MarkdownView.test.tsx`**, destroying its four cases. `ls` had printed the
+filename — the file existed — and that was read as "not found". `just check` then reported
+**all green** at 641 passed, because a deleted test cannot fail. The loss was visible only as
+an arithmetic discrepancy: 643 before, plus 2 added, should be 645.
+
+Two things follow, both already true of this repo's rules and both worth restating with an
+example. Look at a file before overwriting it. And **a suite total is evidence**: green says
+nothing about tests that no longer exist, so a total that moves the wrong way is a finding,
+not a rounding error.
+
+The file was restored byte-identical from HEAD and the new cases moved to
+`MarkdownView.memo.test.tsx`, which they needed anyway: they stub `react-markdown` to count
+renders, and the original four need the real renderer.
