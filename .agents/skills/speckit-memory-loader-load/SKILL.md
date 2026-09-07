@@ -4,8 +4,10 @@ description: Read all project memory files and output their contents for LLM con
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: memory-loader:commands/speckit.memory-loader.load.md
+  source: extension:memory-loader
 ---
+
+# Memory Loader Load Skill
 
 # Load Project Memory
 

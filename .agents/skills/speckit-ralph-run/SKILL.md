@@ -4,8 +4,10 @@ description: Run the ralph autonomous implementation loop
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: ralph:commands/run.md
+  source: extension:ralph
 ---
+
+# Ralph Run Skill
 
 ## User Input
 

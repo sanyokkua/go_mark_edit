@@ -12,7 +12,9 @@
           "speckit.memory-loader.load"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-memory-loader-load"
+      ],
       "installed_at": "2026-08-15T21:44:30.571991+00:00"
     },
     "speckit-superpowers-bridge": {
@@ -29,7 +31,11 @@
           "speckit.superpowers-bridge"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-speckit-superpowers-bridge-handoff",
+        "speckit-speckit-superpowers-bridge-guard",
+        "speckit-speckit-superpowers-bridge-execute"
+      ],
       "installed_at": "2026-08-15T21:44:57.648893+00:00"
     },
     "ralph": {
@@ -44,7 +50,10 @@
           "speckit.ralph.iterate"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-ralph-run",
+        "speckit-ralph-iterate"
+      ],
       "installed_at": "2026-08-15T21:45:36.280620+00:00"
     }
   }
