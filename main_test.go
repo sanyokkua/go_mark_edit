@@ -249,11 +249,22 @@ func TestWailsOptionsAllowIndependentNativeProcesses(t *testing.T) {
 	}
 }
 
-// Proves: FR-WS-011
-// A successful native close first synchronously flushes pending layout, then
-// lets Wails invoke shutdown and release the application-owned database.
+// Proves: FR-FT-027
+// Native close is vetoed once for asynchronous planning, then the authorized
+// programmatic quit consumes exactly one permit before shutdown.
 func TestWailsAppInstallsCloseFlushLifecycleHook(t *testing.T) {
 	ctx := context.Background()
+	previousEmit := emitNativeCloseRequest
+	previousQuit := quitNativeApplication
+	t.Cleanup(func() {
+		emitNativeCloseRequest = previousEmit
+		quitNativeApplication = previousQuit
+	})
+	closeRequests := 0
+	quitCalls := 0
+	emitNativeCloseRequest = func(context.Context) { closeRequests++ }
+	quitNativeApplication = func(context.Context) { quitCalls++ }
+
 	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
 	appOptions := newAppOptions(holder)
 	if err := holder.Init(ctx); err != nil {
@@ -270,34 +281,57 @@ func TestWailsAppInstallsCloseFlushLifecycleHook(t *testing.T) {
 		t.Fatalf("queue native resize before close: %v", err)
 	}
 	if appOptions.OnBeforeClose == nil {
-		t.Fatal("OnBeforeClose is nil; pending layout cannot flush before native close")
+		t.Fatal("OnBeforeClose is nil; native close cannot be vetoed")
 	}
 	if appOptions.OnShutdown == nil {
 		t.Fatal("OnShutdown is nil; a permitted native close cannot release the application database")
 	}
-	shutdownCalls := 0
+	if prevent := appOptions.OnBeforeClose(ctx); !prevent {
+		t.Fatal("first native close was not vetoed for asynchronous planning")
+	}
+	if prevent := appOptions.OnBeforeClose(ctx); !prevent {
+		t.Fatal("repeated native close was not idempotently vetoed")
+	}
+	if closeRequests != 1 {
+		t.Fatalf("native close request events = %d, want one", closeRequests)
+	}
+	if result := holder.ApplicationHandler.AuthorizeQuit(); result.Error != nil {
+		t.Fatalf("AuthorizeQuit returned error: %+v", result.Error)
+	}
+	if quitCalls != 1 {
+		t.Fatalf("programmatic quit calls = %d, want one", quitCalls)
+	}
 	if prevent := appOptions.OnBeforeClose(ctx); prevent {
-		t.Fatal("close flush prevented the native close")
-	} else {
-		shutdownCalls++
-		appOptions.OnShutdown(ctx)
-		if holder.DB == nil {
-			repository.events = append(repository.events, "close")
-		}
+		t.Fatal("authorized native close permit was not consumed")
+	}
+	appOptions.OnShutdown(ctx)
+	if holder.DB == nil {
+		repository.events = append(repository.events, "close")
 	}
 	if got, want := repository.events, []string{"flush", "close"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("close lifecycle events = %v, want synchronous flush before close", got)
+		t.Fatalf("close lifecycle events = %v, want ordered drain then close", got)
 	}
-	if shutdownCalls != 1 || holder.DB != nil {
-		t.Fatalf("permitted close shutdown calls = %d and database = %p, want one shutdown after flush and a closed database", shutdownCalls, holder.DB)
+	if holder.DB != nil {
+		t.Fatal("authorized close did not release the application database")
 	}
 }
 
-// Proves: FR-WS-011
-// A failed synchronous flush vetoes the native close. The lifecycle harness
-// directly records that Wails never reaches the shutdown/close callback.
+// Proves: FR-FT-027
+// A failed drain cannot create a permit or invoke Quit; the same pending
+// request remains available for an explicit retry.
 func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 	ctx := context.Background()
+	previousEmit := emitNativeCloseRequest
+	previousQuit := quitNativeApplication
+	t.Cleanup(func() {
+		emitNativeCloseRequest = previousEmit
+		quitNativeApplication = previousQuit
+	})
+	closeRequests := 0
+	quitCalls := 0
+	emitNativeCloseRequest = func(context.Context) { closeRequests++ }
+	quitNativeApplication = func(context.Context) { quitCalls++ }
+
 	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
 	appOptions := newAppOptions(holder)
 	if err := holder.Init(ctx); err != nil {
@@ -323,15 +357,56 @@ func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 	if appOptions.OnBeforeClose == nil || appOptions.OnShutdown == nil {
 		t.Fatal("native lifecycle hooks are incomplete; a failed close cannot veto shutdown")
 	}
-	shutdownCalls := 0
 	if prevent := appOptions.OnBeforeClose(ctx); !prevent {
-		t.Fatal("close continued after the synchronous layout flush failed; want native shutdown prevented")
+		t.Fatal("first native close did not remain vetoed while planning")
 	}
-	if got, want := repository.events, []string{"flush"}; !reflect.DeepEqual(got, want) {
+	if got, want := repository.events, []string(nil); !reflect.DeepEqual(got, want) {
 		t.Fatalf("failed-close lifecycle events = %v, want %v", got, want)
 	}
-	if shutdownCalls != 0 || holder.DB == nil {
-		t.Fatalf("failed close shutdown calls = %d and database = %p, want no shutdown and an open application database", shutdownCalls, holder.DB)
+	failed := holder.ApplicationHandler.AuthorizeQuit()
+	if failed.Error == nil || failed.Error.Category != apperr.ClassifiedIOFailure || failed.Error.Remediation() != apperr.RemediationRetry {
+		t.Fatalf("failed AuthorizeQuit error = %+v, want a classified io-failure offering Retry", failed.Error)
+	}
+	if quitCalls != 0 || holder.DB == nil {
+		t.Fatalf("failed close quit calls = %d and database = %p, want no quit and open database", quitCalls, holder.DB)
+	}
+	if closeRequests != 1 {
+		t.Fatalf("native close request events after failed drain = %d, want one", closeRequests)
+	}
+	repository.err = nil
+	if retry := holder.ApplicationHandler.AuthorizeQuit(); retry.Error != nil {
+		t.Fatalf("retry AuthorizeQuit returned error: %+v", retry.Error)
+	}
+	if quitCalls != 1 || appOptions.OnBeforeClose(ctx) {
+		t.Fatalf("retry close quit calls = %d or permit was not consumed", quitCalls)
+	}
+	appOptions.OnShutdown(ctx)
+}
+
+// Proves: FR-FT-027
+// Shutdown releases SQLite only after the final layout drain has completed.
+func TestShutdownOrder(t *testing.T) {
+	ctx := context.Background()
+	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
+	if err := holder.Init(ctx); err != nil {
+		t.Fatalf("initialize application before shutdown: %v", err)
+	}
+	repository := &recordingMainLayoutRepository{delegate: holder.AppModelService.LayoutRepository()}
+	holder.AppModelService = appmodel.NewAppModelServiceWithLayoutRepository(
+		discardingMainStatePatchEmitter{},
+		repository,
+	)
+	width := 1200
+	if err := holder.AppModelService.SetUILayout(ctx, apperr.UILayout{WindowWidth: &width}); err != nil {
+		t.Fatalf("queue shutdown layout: %v", err)
+	}
+	appOptions := newAppOptions(holder)
+	appOptions.OnShutdown(ctx)
+	if holder.DB == nil {
+		repository.events = append(repository.events, "sqlite-close")
+	}
+	if got, want := repository.events, []string{"flush", "sqlite-close"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("shutdown order events = %v, want %v", got, want)
 	}
 }
 
@@ -358,9 +433,13 @@ func TestAppModelHandlerIsBoundAndGenerated(t *testing.T) {
 	}
 	for _, signature := range []string{
 		"export function GetState():Promise<apperr.StateResult>;",
+		"export function NewDocument(arg1:number):Promise<apperr.DocumentTransitionResult>;",
+		"export function OpenDocument(arg1:number):Promise<apperr.OpenResult>;",
 		"export function UpdateBuffer(arg1:string,arg2:string):Promise<apperr.VoidResult>;",
 		"export function SetDocView(arg1:string,arg2:apperr.DocViewInput):Promise<apperr.VoidResult>;",
 		"export function SetUILayout(arg1:apperr.UILayout):Promise<apperr.VoidResult>;",
+		"export function Save(arg1:string,arg2:number,arg3:string):Promise<apperr.WriteResult>;",
+		"export function SaveAs(arg1:string,arg2:number,arg3:string):Promise<apperr.WriteResult>;",
 	} {
 		if !strings.Contains(string(bindings), signature) {
 			t.Errorf("generated app-model bindings omit exact signature %q", signature)
@@ -377,14 +456,16 @@ func TestAppModelHandlerIsBoundAndGenerated(t *testing.T) {
 		"error?: WireError;",
 		"export class AppState {",
 		"snapshot: AppStateSnapshot;",
-		"activeBuffer: ActiveBuffer;",
+		"activeBuffer?: ActiveBuffer;",
 		"export class ActiveBuffer {",
 		"documentId: string;",
+		"documentRevision: number;",
+		"projectionRevision: number;",
 		"content: string;",
 		"export class AppStateSnapshot {",
 		"documents: Record<string, DocumentMetadata>;",
 		"path: string;",
-		"activeDocumentId: string;",
+		"activeDocumentId?: string;",
 		"export class DocViewInput {",
 		"editorVisible: boolean;",
 		"previewVisible: boolean;",
@@ -431,6 +512,9 @@ func (repository *recordingMainLayoutRepository) Write(ctx context.Context, fiel
 	repository.events = append(repository.events, "flush")
 	if repository.err != nil {
 		return appmodel.LayoutWriteResult{}, repository.err
+	}
+	if repository.delegate == nil {
+		return appmodel.LayoutWriteResult{Applied: true, Value: value}, nil
 	}
 	return repository.delegate.Write(ctx, field, value)
 }
@@ -603,3 +687,101 @@ func (utils *failingStartupFileUtils) GetAppDatabaseFilePath() (string, error) {
 }
 
 var _ file.FileUtilsServiceAPI = (*failingStartupFileUtils)(nil)
+
+// Proves: FR-FT-002 "filtered case-insensitively to `.md`, `.markdown`,
+// `.mdown`, and `.txt`", and the same suffix set for FR-FT-012's Save As picker.
+//
+// The cancellation half of FR-FT-002 is proved by
+// `internal/appmodel/handler_test.go`.
+//
+// The filter set and the backend's accepted set are two lists that must stay
+// equal, and until this test they were three lists — two identical literals in
+// `main()` plus `file.IsSupportedDocumentSuffix`. `paths_test.go` proves the
+// predicate, and nothing proved the pickers agreed with it, so a suffix could be
+// offered in the dialog and refused after selection, or accepted by the backend
+// and impossible to reach through the picker.
+//
+// Case-insensitivity is per host, so the host branch is exercised explicitly
+// rather than through whatever `goruntime.GOOS` this test happens to run on.
+func TestNativePickersFilterExactlyTheSupportedSuffixes(t *testing.T) {
+	named := []string{".md", ".markdown", ".mdown", ".txt"}
+
+	for _, goos := range []string{"darwin", "windows", "linux"} {
+		filters := documentFileFiltersFor(goos)
+		if len(filters) != 1 {
+			t.Fatalf("%s: document file filters = %d, want one 'Markdown and text' group", goos, len(filters))
+		}
+
+		globs := strings.Split(filters[0].Pattern, ";")
+		if globs[0] != "*.md" {
+			// The Windows Save dialog takes its default extension from the
+			// first glob (wails internal/frontend/desktop/windows/dialog.go).
+			t.Errorf("%s: first glob is %q, want %q", goos, globs[0], "*.md")
+		}
+
+		offered := make(map[string]bool, len(globs))
+		for _, glob := range globs {
+			if !strings.HasPrefix(glob, "*.") {
+				t.Fatalf("%s: picker glob %q is not a suffix pattern", goos, glob)
+			}
+			suffix := strings.TrimPrefix(glob, "*")
+			if offered[suffix] {
+				t.Fatalf("%s: picker offers %q twice", goos, suffix)
+			}
+			offered[suffix] = true
+			if !file.IsSupportedDocumentSuffix("document" + suffix) {
+				t.Errorf("%s: the picker offers %q, which the backend refuses after selection", goos, suffix)
+			}
+		}
+
+		distinct := make(map[string]bool, len(named))
+		for suffix := range offered {
+			distinct[strings.ToLower(suffix)] = true
+		}
+		for _, suffix := range named {
+			if !distinct[suffix] {
+				t.Errorf("%s: the picker does not offer %q, which FR-FT-002 names and the backend accepts", goos, suffix)
+			}
+		}
+		if len(distinct) != len(named) {
+			t.Errorf("%s: picker offers %d distinct suffixes, want exactly the four FR-FT-002 names", goos, len(distinct))
+		}
+
+		if goos != "linux" {
+			// `NSOpenPanel` and the Windows common item dialog match their
+			// filters case-insensitively already, so the four lowercase globs
+			// are the whole filter there.
+			if len(offered) != len(named) {
+				t.Errorf("%s: picker carries %d globs, want the four lowercase ones", goos, len(offered))
+			}
+			continue
+		}
+
+		// GTK compiles each glob into a case-sensitive GPatternSpec that
+		// understands only `*` and `?` — no `*.[mM][dD]` — so the enumeration
+		// is the only way FR-FT-002's "case-insensitively" can hold on Linux.
+		for _, suffix := range named {
+			for _, form := range []string{
+				suffix,
+				strings.ToUpper(suffix),
+				"." + strings.ToUpper(suffix[1:2]) + suffix[2:],
+			} {
+				if !offered[form] {
+					t.Errorf("linux: the picker does not offer %q, so GTK hides files named that way", form)
+				}
+			}
+		}
+		if want := 4 + 256 + 32 + 8; len(offered) != want {
+			t.Errorf("linux: picker offers %d globs, want every case form of the four suffixes (%d)", len(offered), want)
+		}
+	}
+
+	// Both pickers must use this one list; two literals is how they drift.
+	source, err := os.ReadFile(filepath.Join(repositoryRoot(t), "main.go"))
+	if err != nil {
+		t.Fatalf("read main.go: %v", err)
+	}
+	if occurrences := strings.Count(string(source), `".md"`); occurrences != 1 {
+		t.Errorf("the suffix list appears %d times in main.go, want one shared definition", occurrences)
+	}
+}

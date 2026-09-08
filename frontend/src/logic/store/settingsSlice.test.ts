@@ -23,6 +23,7 @@ const settings: Settings = {
   },
   contentPrivacy: { remotePolicy: 'ask' },
   editor: { lineNumbers: false, wordWrap: true, fontSize: 16 },
+  file: { autosave: false },
 };
 
 it('T054 hydrates acknowledged editor and Markdown settings into Redux projection', () => {
@@ -32,6 +33,7 @@ it('T054 hydrates acknowledged editor and Markdown settings into Redux projectio
     hydrated: true,
     editor: settings.editor,
     markdown: settings.markdown,
+    file: settings.file,
   });
 });
 

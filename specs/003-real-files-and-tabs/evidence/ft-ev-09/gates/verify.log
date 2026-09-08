@@ -1,0 +1,22 @@
+bash scripts/verify.sh 003-real-files-and-tabs
+Verifying 003-real-files-and-tabs against specs/003-real-files-and-tabs/evidence/baseline/baseline.md
+  running build          ok
+  running fmt-check      ok
+  running typecheck      ok
+  running lint           ok
+  running test           ok
+  running archtest       ok
+
+| #   | check                        | result |
+|-----|------------------------------|--------|
+| M1  | format                       | PASS |
+| M2  | types                        | PASS |
+| M3  | static analysis              | PASS |
+| M4  | tests                        | PASS |
+| M5  | architecture                 | PASS |
+| M6  | build                        | PASS |
+
+Logs: /var/folders/r9/r0j788zn3x1g25mmm_xs4wgw0000gn/T/tmp.0o4o2jWn3l
+verify 003-real-files-and-tabs: every mechanical check passes against the baseline.
+Still owed by a person: M7 new code is tested, M8 no placeholders, M11 descriptive docs current,
+M13 scope declared, and the walkthrough in the story's Definition of Done.

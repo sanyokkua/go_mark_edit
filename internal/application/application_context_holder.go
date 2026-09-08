@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
@@ -32,19 +33,44 @@ type ApplicationContextHolder struct {
 	AppModelHandler     *appmodel.AppModelHandler
 	NativeWindowService *NativeWindowService
 	ApplicationHandler  *ApplicationHandler
+	DocumentDialogs     *DocumentDialogs
+	closeCoordinator    *CloseCoordinator
 }
 
 // NewApplicationContextHolder constructs the phase-one dependency graph with
 // nil persistence. Init injects its concrete SQLite repository after startup.
 func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger *logging.Logger) *ApplicationContextHolder {
 	settingsService := settings.NewSettingsService(nil)
-	appModelService := appmodel.NewAppModelService(appmodel.RuntimeStatePatchEmitter{})
+	// The host ports go in through the constructor, not through setters, and they
+	// are constructed here rather than handed in by main.go. Both choices are the
+	// fix for T161: SetClipboardWriter and SetRevealPort had no production caller
+	// at all, so Copy path and Reveal in file manager returned a
+	// system-command-failure in every build that ever shipped. Wiring them where
+	// the graph is built means no host can forget them, and a port added to
+	// NewAppModelServiceForHost later fails to compile here rather than going out
+	// nil.
+	appModelService := appmodel.NewAppModelServiceForHost(
+		appmodel.RuntimeStatePatchEmitter{},
+		file.NewPlatformClipboardWriter(),
+		file.NewPlatformRevealPort(),
+	)
 	holder := &ApplicationContextHolder{
 		fileService:     fileService,
 		appLogger:       appLogger,
 		SettingsService: settingsService,
 		AppModelService: appModelService,
 	}
+	// The join the 2026-08-14 walkthrough found missing. Settings owns the
+	// autosave preference and the document model owns the scheduler; this is the
+	// only place that holds both, so it is where the preference becomes a
+	// command rather than a projection.
+	settingsService.SetAutosaveObserver(appModelService.SetAutosaveEnabled)
+	// The same join, one setting over (T119). SetDefaultOpenMode had zero
+	// production callers, so FR-FT-003's "acknowledged default open mode" never
+	// left the database. settings.OpenMode* and appmodel.OpenMode* are
+	// string-identical, so no conversion is needed — only this join, since
+	// settings must not import appmodel.
+	settingsService.SetDefaultOpenModeObserver(appModelService.SetDefaultOpenMode)
 	holder.SettingsHandler = settings.NewSettingsHandler(settingsService, appLogger, holder.Context)
 	holder.AppModelHandler = appmodel.NewAppModelHandler(appModelService, appLogger, holder.Context)
 	holder.NativeWindowService = NewNativeWindowService(appModelService, nil)
@@ -52,12 +78,25 @@ func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger
 	return holder
 }
 
+// SetDocumentDialogs wires the composition-root native pickers into backend-owned file commands.
+func (holder *ApplicationContextHolder) SetDocumentDialogs(dialogs *DocumentDialogs) {
+	holder.mu.Lock()
+	holder.DocumentDialogs = dialogs
+	service := holder.AppModelService
+	holder.mu.Unlock()
+	service.SetDocumentOpenDialog(dialogs)
+	service.SetDocumentSaveDialog(dialogs)
+}
+
 // SetContext records the context Wails supplies during application startup.
 func (holder *ApplicationContextHolder) SetContext(ctx context.Context) {
 	holder.mu.Lock()
-	defer holder.mu.Unlock()
-
 	holder.ctx = ctx
+	service := holder.AppModelService
+	holder.mu.Unlock()
+	if service != nil {
+		service.SetRuntimeContext(ctx)
+	}
 }
 
 // Context returns the lifecycle context captured during startup.
@@ -99,10 +138,44 @@ func (holder *ApplicationContextHolder) Init(ctx context.Context) error {
 
 	holder.SettingsService.SetRepository(settings.NewSqliteSettingsRepository(database))
 	holder.AppModelService.SetLayoutRepository(appmodel.NewSqliteLayoutRepository(database))
+	holder.AppModelService.SetFileMetadataRepository(appmodel.NewSqliteFileMetadataRepository(database))
+	holder.AppModelService.SetRecentFilesRepository(appmodel.NewSqliteRecentFilesRepository(database))
 	holder.DB = database
+	holder.applyPersistedAutosavePreference(ctx)
+	holder.applyPersistedDefaultOpenMode(ctx)
 	holder.startupErr = nil
 	holder.AppModelService.SetStartupError(nil)
 	return nil
+}
+
+// applyPersistedAutosavePreference pushes the stored preference into the
+// document model once at startup. Without it the observer only fires when the
+// user toggles the switch, so a preference of "off" would silently come back on
+// at every launch.
+//
+// An unreadable store is not a reason to change behaviour: autosave stays at its
+// documented default rather than being disabled by a failure to read.
+func (holder *ApplicationContextHolder) applyPersistedAutosavePreference(ctx context.Context) {
+	stored, err := holder.SettingsService.Get(ctx)
+	if err != nil {
+		return
+	}
+	holder.AppModelService.SetAutosaveEnabled(stored.File.Autosave)
+}
+
+// applyPersistedDefaultOpenMode pushes the stored preference into the document
+// model once at startup. The observer alone only fires when the setting is
+// written, so a stored preference of Reading would silently come back as Editor
+// at every launch — which is the half of T104's defect that a projection-only
+// test would not have caught either.
+//
+// An unreadable store leaves the documented default of Editor in place.
+func (holder *ApplicationContextHolder) applyPersistedDefaultOpenMode(ctx context.Context) {
+	stored, err := holder.SettingsService.Get(ctx)
+	if err != nil {
+		return
+	}
+	holder.AppModelService.SetDefaultOpenMode(stored.Appearance.DefaultOpenMode)
 }
 
 func (holder *ApplicationContextHolder) StartupReady() bool {
@@ -140,6 +213,94 @@ func (holder *ApplicationContextHolder) FlushBeforeClose() error {
 		return nil
 	}
 	return service.FlushPendingUILayout()
+}
+
+// SetCloseCoordinator installs the native close protocol owned by the
+// composition root. Tests and non-Wails callers may leave it unset and use
+// the synchronous legacy flush fallback through BeforeClose.
+func (holder *ApplicationContextHolder) SetCloseCoordinator(coordinator *CloseCoordinator) {
+	holder.mu.Lock()
+	holder.closeCoordinator = coordinator
+	holder.mu.Unlock()
+}
+
+// BeforeClose is the Wails veto hook. A native request is always vetoed once
+// so the frontend can finish its asynchronous close plan before authorization.
+func (holder *ApplicationContextHolder) BeforeClose(ctx context.Context) bool {
+	holder.mu.Lock()
+	coordinator := holder.closeCoordinator
+	holder.mu.Unlock()
+	if coordinator == nil {
+		return holder.FlushBeforeClose() != nil
+	}
+	return coordinator.BeforeClose(ctx)
+}
+
+// DrainBeforeClose runs FR-FT-027's full shutdown drain: accepted autosave and
+// editor work, then the SQLite layout intent. It is separate from
+// FlushBeforeClose, which stays the narrow Wails durability port used by the
+// veto hook and by Close.
+func (holder *ApplicationContextHolder) DrainBeforeClose() *apperr.ClassifiedError {
+	holder.mu.Lock()
+	service := holder.AppModelService
+	holder.mu.Unlock()
+	if service == nil {
+		return nil
+	}
+	return service.DrainBeforeClose()
+}
+
+// AuthorizeQuit drains every accepted layout, editor and autosave change before
+// creating the one-shot native close permit. A failed drain leaves the request
+// pending for Retry and can never create a permit.
+//
+// It returns a *apperr.ClassifiedError rather than an error because FR-FT-027
+// specifies the failure the user sees, not merely that one occurred: a
+// classified io-failure offering Retry. The previous apperr.IO wrapper reached
+// the frontend as an untyped WireError, which renders generic catalogue copy and
+// carries no remediation, so the window stayed open with nothing to press.
+func (holder *ApplicationContextHolder) AuthorizeQuit(ctx context.Context) *apperr.ClassifiedError {
+	if refusal := holder.DrainBeforeClose(); refusal != nil {
+		return refusal
+	}
+
+	holder.mu.Lock()
+	coordinator := holder.closeCoordinator
+	holder.mu.Unlock()
+	if coordinator == nil {
+		unsupported := apperr.NewClassifiedError(
+			apperr.ClassifiedUnsupportedInput,
+			"native close",
+			"This build cannot authorize a native close.",
+			apperr.RemediationNone,
+			"",
+		)
+		return &unsupported
+	}
+	if err := coordinator.Authorize(ctx); err != nil {
+		// Nothing is pending, so the close plan the frontend just completed is
+		// stale. That is the conflict row's stale-request arm, and re-issuing the
+		// close is the only action that can succeed.
+		stale := apperr.NewClassifiedError(
+			apperr.ClassifiedConflict,
+			"native close",
+			"There is no pending close request to authorize; close must be retried.",
+			apperr.RemediationRetry,
+			"",
+		)
+		return &stale
+	}
+	return nil
+}
+
+// CancelQuit abandons the pending native close without creating a permit.
+func (holder *ApplicationContextHolder) CancelQuit(context.Context) {
+	holder.mu.Lock()
+	coordinator := holder.closeCoordinator
+	holder.mu.Unlock()
+	if coordinator != nil {
+		coordinator.Cancel()
+	}
 }
 
 // Close releases the application-owned database. It is safe to call repeatedly.

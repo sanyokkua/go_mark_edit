@@ -1,0 +1,169 @@
+import type { SVGProps } from 'react';
+
+import styles from './Icon.module.css';
+
+export type IconName =
+  | 'add'
+  | 'bold'
+  | 'bullet-list'
+  | 'close'
+  | 'editor'
+  | 'file'
+  | 'heading-1'
+  | 'heading-2'
+  | 'heading-3'
+  | 'image'
+  | 'inline-code'
+  | 'italic'
+  | 'link'
+  | 'more'
+  | 'modified'
+  | 'numbered-list'
+  | 'preview'
+  | 'quote'
+  | 'sidebar'
+  | 'split'
+  | 'strike'
+  | 'table'
+  | 'task-list'
+  | 'assistant';
+
+export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {
+  name: IconName;
+  size?: number;
+}
+
+const iconShapes: Record<IconName, React.JSX.Element> = {
+  add: <path d="M7.5 2.5v10M2.5 7.5h10" />,
+  bold: (
+    <path d="M4 2.5h3.7a2.5 2.5 0 0 1 .5 4.95H4m4.2 0A2.55 2.55 0 0 1 8 12.5H4v-10" />
+  ),
+  'bullet-list': (
+    <>
+      <circle cx="2.5" cy="4" r=".75" fill="currentColor" stroke="none" />
+      <circle cx="2.5" cy="7.5" r=".75" fill="currentColor" stroke="none" />
+      <circle cx="2.5" cy="11" r=".75" fill="currentColor" stroke="none" />
+      <path d="M5.5 4h7M5.5 7.5h7M5.5 11h7" />
+    </>
+  ),
+  close: <path d="m3.5 3.5 8 8m0-8-8 8" />,
+  editor: <path d="M2.5 2.5h10v10h-10zm2.5 2.5h5m-5 2.5h5m-5 2.5h3" />,
+  /*
+   * The binding source draws the document glyph in a 24-unit box
+   * (mockup.html #i-file) and renders it at 15px, so its stroke resolves to
+   * 1.75 * 15/24. Keeping the source viewBox reproduces those pixels exactly
+   * instead of approximating the path in the 15-unit space.
+   */
+  file: (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="M8 13h8M8 17h5" />
+    </>
+  ),
+  'heading-1': <path d="M2.5 3v9m0-4.5h4M6.5 3v9m3-7.5 2-1.5v9" />,
+  'heading-2': (
+    <path d="M2.5 3v9m0-4.5h4M6.5 3v9m3 1c0-3.5 3-3 3-5.2 0-1.8-2.5-2.3-3-.4" />
+  ),
+  'heading-3': (
+    <path d="M2.5 3v9m0-4.5h4M6.5 3v9m3 1h1.6c1.1 0 1.6-.7 1.6-1.6S12.2 11 11 11h-.6m.6 0c1.2 0 1.8-.6 1.8-1.5S12.1 8 11 8H9.5" />
+  ),
+  /*
+   * Binding source: mockup.html #i-image, drawn in a 24-unit box and rendered
+   * at 15px. Same reasoning as `file` above — keeping the source viewBox
+   * reproduces the binding's pixels instead of approximating the path in the
+   * 15-unit space.
+   */
+  image: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="9" cy="9" r="1.6" />
+      <path d="m21 15-5-5L5 21" />
+    </>
+  ),
+  'inline-code': (
+    <>
+      <path d="m5.5 4-3 3.5 3 3.5m4-7 3 3.5-3 3.5" />
+      <path d="m8.5 2.5-2 10" />
+    </>
+  ),
+  italic: <path d="M6 2.5h5M4 12.5h5m-2-10-2 10" />,
+  /* Binding source: mockup.html #i-link, drawn in a 24-unit box — see `image`. */
+  link: (
+    <>
+      <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+      <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+    </>
+  ),
+  more: (
+    <>
+      <circle cx="3" cy="7.5" r=".9" fill="currentColor" stroke="none" />
+      <circle cx="7.5" cy="7.5" r=".9" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="7.5" r=".9" fill="currentColor" stroke="none" />
+    </>
+  ),
+  modified: (
+    <circle cx="7.5" cy="7.5" r="2.3" fill="currentColor" stroke="none" />
+  ),
+  'numbered-list': (
+    <>
+      <path d="M5.5 4h7M5.5 7.5h7M5.5 11h7" />
+      <path d="M2.1 3.2h.8v2M2 5.2h1.2M2 6.7h1.1l-1.1 1.5h1.2M2 10.4c.3-.5 1.1-.4 1.1.2 0 .7-1.1.8-1.1 1.5h1.2" />
+    </>
+  ),
+  preview: (
+    <path d="M1.8 7.5s2-3.3 5.7-3.3 5.7 3.3 5.7 3.3-2 3.3-5.7 3.3-5.7-3.3-5.7-3.3Z" />
+  ),
+  quote: (
+    <path d="M2.5 6.8A2.8 2.8 0 0 1 5.3 4h.2v2.1H5a1.1 1.1 0 0 0-1.1 1.1v.1h1.6v3.2H2.5zm6 0A2.8 2.8 0 0 1 11.3 4h.2v2.1H11a1.1 1.1 0 0 0-1.1 1.1v.1h1.6v3.2H8.5z" />
+  ),
+  sidebar: <path d="M2.5 3.5h10m-10 4h10m-10 4h10" />,
+  split: <path d="M2.5 2.5h10v10h-10zm5 0v10" />,
+  strike: (
+    <path d="M3 5a2.5 2.5 0 0 1 4.7-1.2M12 10a2.5 2.5 0 0 1-4.7 1.2M2.5 7.5h10" />
+  ),
+  table: (
+    <>
+      <rect x="2" y="2.5" width="11" height="10" rx=".5" />
+      <path d="M2 6h11M2 9.3h11M5.7 2.5v10M9.3 2.5v10" />
+    </>
+  ),
+  'task-list': (
+    <>
+      <rect x="2" y="2.7" width="3" height="3" rx=".4" />
+      <path d="m2.8 4.1.7.7 1.3-1.5M7 4.2h5.5M7 8h5.5M7 11.8h5.5" />
+      <path d="m2.5 7.7 1 1 1.7-2" />
+    </>
+  ),
+  assistant: (
+    <path d="m7.5 1.8.9 3.8 3.8.9-3.8.9-.9 3.8-.9-3.8-3.8-.9 3.8-.9z" />
+  ),
+};
+
+const iconViewBoxes: Partial<Record<IconName, string>> = {
+  file: '0 0 24 24',
+  image: '0 0 24 24',
+  link: '0 0 24 24',
+};
+
+const Icon: React.FC<IconProps> = ({
+  name,
+  size = 15,
+  className,
+  ...props
+}: IconProps): React.JSX.Element => (
+  <svg
+    aria-hidden={props['aria-label'] === undefined ? true : undefined}
+    className={`${styles.icon} ${className ?? ''}`.trim()}
+    data-icon-name={name}
+    focusable="false"
+    height={size}
+    viewBox={iconViewBoxes[name] ?? '0 0 15 15'}
+    width={size}
+    {...props}
+  >
+    {iconShapes[name]}
+  </svg>
+);
+
+export default Icon;

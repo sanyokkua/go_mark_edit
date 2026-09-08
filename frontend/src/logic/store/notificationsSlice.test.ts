@@ -129,7 +129,7 @@ it('displaces only the oldest non-error and drops non-errors behind three errors
 });
 
 // Proves: FR-WS-016
-it('refreshes continuing conditions and keeps automatic success silent', () => {
+it('autosave success emits no toast while refreshing continuing conditions', () => {
   const condition = {
     code: 'offline',
     message: 'Changes remain local.',
@@ -165,4 +165,116 @@ it('refreshes continuing conditions and keeps automatic success silent', () => {
 
   state = reducer(state, clearCondition(state.banners[0].id));
   expect(state.banners).toEqual([]);
+});
+
+it('repeated failures update one notification with a count', () => {
+  const first = notifyError(error('io', 'First failure', 'Safe detail.'));
+  const second = notifyError(error('io', 'Second failure', 'New safe detail.'));
+  first.payload.subject = 'document-1';
+  second.payload.subject = 'document-1';
+
+  const state = reducer(reducer(undefined, first), second);
+
+  expect(state.items).toHaveLength(1);
+  expect(state.items[0]).toMatchObject({ count: 2, subject: 'document-1' });
+});
+
+/*
+ * T142. `refreshDuplicate` assigned the incoming remediation wholesale, so a
+ * second report of the same failure that carried no controls erased the ones the
+ * first had earned. `App.tsx:99-100` and `:289-291` both record the symptom: a
+ * refused Save reported twice, the second report intent-less, and the Retry
+ * button silently disappeared behind a `×2` that looked like the contract's
+ * dedup count doing its job. Widening one remediation to a set must not carry
+ * that forward.
+ */
+// Proves: the classified error contract's dedup rule ("a repeated failure ...
+// MUST update one existing notification with an incrementing count"), in the
+// specific respect that updating must not withdraw an offered remediation.
+it('T142 keeps the controls a notification earned when a later report brings none', () => {
+  const earned = notifyToast({
+    code: 'system-command-failure',
+    message: 'The file manager could not reveal the document.',
+    remediations: [
+      {
+        action: 'retry',
+        documentId: 'one',
+        intent: 'reveal',
+        labelKey: 'action.retry.label',
+      },
+      {
+        action: 'copy-path',
+        documentId: 'one',
+        intent: 'copy-path',
+        labelKey: 'action.copy-path.label',
+      },
+    ],
+    severity: 'error',
+    subject: 'reveal:one',
+    title: 'one.md',
+  });
+  const silent = notifyToast({
+    code: 'system-command-failure',
+    message: 'The file manager could not reveal the document.',
+    severity: 'error',
+    subject: 'reveal:one',
+    title: 'one.md',
+  });
+
+  const state = reducer(reducer(undefined, earned), silent);
+
+  expect(state.items).toHaveLength(1);
+  expect(state.items[0].count).toBe(2);
+  expect(state.items[0].remediations.map((offer) => offer.action)).toEqual([
+    'retry',
+    'copy-path',
+  ]);
+});
+
+// Proves: the classified error contract's dedup rule, in the respect that a
+// repeat which brings a control the notification does not yet have adds it once.
+it('T142 adds a newly offered control on a repeat without duplicating the existing ones', () => {
+  const first = notifyToast({
+    code: 'system-command-failure',
+    message: 'The path could not be copied.',
+    remediations: [
+      {
+        action: 'retry',
+        documentId: 'one',
+        intent: 'copy-path',
+        labelKey: 'action.retry.label',
+      },
+    ],
+    severity: 'error',
+    subject: 'copy-path:one',
+    title: 'one.md',
+  });
+  const wider = notifyToast({
+    code: 'system-command-failure',
+    message: 'The path could not be copied.',
+    remediations: [
+      {
+        action: 'retry',
+        documentId: 'one',
+        intent: 'copy-path',
+        labelKey: 'action.retry.label',
+      },
+      {
+        action: 'copy-path',
+        documentId: 'one',
+        intent: 'copy-path',
+        labelKey: 'action.copy-path.label',
+      },
+    ],
+    severity: 'error',
+    subject: 'copy-path:one',
+    title: 'one.md',
+  });
+
+  const state = reducer(reducer(undefined, first), wider);
+
+  expect(state.items[0].remediations.map((offer) => offer.action)).toEqual([
+    'retry',
+    'copy-path',
+  ]);
 });

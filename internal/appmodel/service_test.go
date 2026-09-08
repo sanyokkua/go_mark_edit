@@ -73,6 +73,46 @@ func TestInitialStateCreatesCleanUntitledDocument(t *testing.T) {
 	}
 }
 
+func TestGetStateRepresentsZeroDocuments(t *testing.T) {
+	service := NewEmptyAppModelService(nil)
+
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	if len(state.Snapshot.Documents) != 0 || len(state.Snapshot.OrderedDocumentIDs) != 0 {
+		t.Fatalf("zero-document snapshot = %+v, want no documents or ordered ids", state.Snapshot)
+	}
+	if state.Snapshot.ActiveDocumentID != "" || state.Snapshot.ActiveDocument != nil {
+		t.Fatalf("zero-document active identity = %q / %v, want absent", state.Snapshot.ActiveDocumentID, state.Snapshot.ActiveDocument)
+	}
+	if state.ActiveBuffer != nil {
+		t.Fatalf("zero-document active buffer = %+v, want absent", state.ActiveBuffer)
+	}
+}
+
+func TestAppStateOptionalActiveTuple(t *testing.T) {
+	activeService := NewAppModelService(nil)
+	active, err := activeService.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState active: %v", err)
+	}
+	if active.Snapshot.ActiveDocument == nil || active.ActiveBuffer == nil {
+		t.Fatalf("active tuple = %v / %v, want both present", active.Snapshot.ActiveDocument, active.ActiveBuffer)
+	}
+	if *active.Snapshot.ActiveDocument != active.ActiveBuffer.DocumentID {
+		t.Fatalf("active tuple ids differ: %q / %q", *active.Snapshot.ActiveDocument, active.ActiveBuffer.DocumentID)
+	}
+
+	zero, err := NewEmptyAppModelService(nil).GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState zero: %v", err)
+	}
+	if zero.Snapshot.ActiveDocument != nil || zero.ActiveBuffer != nil {
+		t.Fatalf("zero tuple = %v / %v, want both absent", zero.Snapshot.ActiveDocument, zero.ActiveBuffer)
+	}
+}
+
 // Proves: FR-WS-019
 func TestInitialStateProjectsTheSingleGoBuildIdentity(t *testing.T) {
 	state, err := NewAppModelService(nil).GetState(context.Background())
@@ -163,7 +203,7 @@ func TestSuccessfulCommandsEmitOneRevisionedContentFreePatch(t *testing.T) {
 		if marshalErr != nil {
 			t.Fatalf("marshal patch %d: %v", index, marshalErr)
 		}
-		if strings.Contains(string(encoded), "content") || strings.Contains(string(encoded), "activeBuffer") {
+		if strings.Contains(string(encoded), `"content":`) || strings.Contains(string(encoded), "activeBuffer") {
 			t.Fatalf("patch %d leaked buffer data: %s", index, encoded)
 		}
 	}
@@ -558,7 +598,7 @@ func TestDocumentContentAccessorSnapshotActiveDoesNotMutateEmitOrProjectContent(
 		if marshalErr != nil {
 			t.Fatalf("marshal patch: %v", marshalErr)
 		}
-		if strings.Contains(string(encoded), "content") {
+		if strings.Contains(string(encoded), `"content":`) {
 			t.Fatalf("patch leaked content: %s", encoded)
 		}
 	}

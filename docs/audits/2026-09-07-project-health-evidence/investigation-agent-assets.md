@@ -1,0 +1,115 @@
+# Agent assets review — bounded source audit, 8 September 2026
+
+Repository: `/Users/ok/Development/GitHub/go_mark_edit`; source HEAD `883fd053b9b30911248a304cf5f57d8cebe81795`. Instructions, skills, commands, configuration and linked launcher/guard behavior were examined as audit subjects. No repository files, application state, branches or configuration were changed. No workflow, launcher, gate, UI or external integration was executed. This report adds evidence to main-audit §§5.5–5.7/Epic F; it does not replace the owner's revisions.
+
+**Result:** preserve the useful behavior/evidence guidance and generated per-agent adapters. Simplify the project policy and optional workflow selection. Address the Ralph scope/permission/completion hazards before reusing that launcher; these are source-confirmed hazards, not evidence that the launcher caused historical application defects. The legacy evidence-deletion instruction and bridge/converge incompatibility are separate, concrete contradictions.
+
+## Inventory and ownership
+
+All 27 regular files under `.agents` were read. The ten Claude core bodies were checked against the reviewed Codex bodies: after removing Claude-only metadata and translating `/speckit-` to `$speckit-`, all ten are identical. All symlinks were resolved. Additional support was read where it controls invocation, ownership or the findings below. The complete per-file inventory, byte/line counts, SHA-256 values, tool snapshot and ownership checks are in `/tmp/gomark-agent-assets-inventory.txt`.
+
+| Surface | Regular files | Directory symlinks | Regular bytes | Regular lines |
+| --- | ---: | ---: | ---: | ---: |
+| `.agents` | 27 | 0 | 198,320 | 3,802 |
+| `.claude` | 10 | 5 | 134,360 | 2,476 |
+| Total | 37 | 5 | 332,680 | 6,278 |
+
+These are 37 independently stored files plus five aliases, not 42 independent policy owners. There are no commands under `.claude/commands`, no agent-tree hook scripts, settings files, subagent definitions or rules directories. The actual root `CLAUDE.md:1–5` is a thin `@AGENTS.md` pointer; `AGENTS.md` has 269 lines and is the only AGENTS file found outside dependencies/git.
+
+**Ownership evidence:** `.specify/integrations/{codex,claude}.manifest.json:5–16` owns ten core files on each side; all 20 hashes match. `.specify/integrations/speckit.manifest.json` owns 12 shared templates/scripts, all matching. `.specify/extensions/.registry:4–57` separately records memory-loader 1.0.0, bridge 1.1.0 and Ralph 1.2.1, with Codex registrations only. All three extension.yml hashes match that registry. The seven extra Codex skills are therefore extension-generated registrations/aliases, not unowned stray core files. Extension source commands are retained under `.specify/extensions/<extension>/commands/`; changes should go through their owner and regeneration, not manual twin edits. The short bridge alias is declared at `.specify/extensions/speckit-superpowers-bridge/extension.yml:37–41`; its execution body matches the canonical generated execute skill apart from wrapper/header details.
+
+### Complete logical inventory and proposed disposition
+
+The following table enumerates every file via explicit directory/name patterns. Detailed literal paths for all 42 entries are in the companion inventory. “Generated/change policy” means retain separate generated adapters if that capability is retained; update the governing source/extension instead of forcing identical bytes.
+
+| File(s) | Ownership and disposition |
+| --- | --- |
+| `.agents/commands/build-story.md` | Legacy project body; archive/remove from active dispatch after preserving behavior assertions and trustworthy baseline guidance. Missing validators already PR-2. |
+| `.agents/commands/finish-phase.md` | Legacy project body; preserve consumer-level verification guidance, correct development/mock explanation; retire redundant phase ceremony. |
+| `.agents/commands/plan-phase.md` | Legacy project body; retire migrated route; preserve dependency/scope reasoning, remove arbitrary story-size stops. |
+| `.agents/commands/plan-story.md` | Legacy project body; retire copied-rule expansion and duplicated rule inventory after preserving current acceptance intent. |
+| `.agents/commands/reconcile.md` | Legacy project body; remove evidence-deletion contradiction before any reuse; retain explicit discrepancy decisions. |
+| `.agents/skills/{build-story,finish-phase,plan-phase,plan-story,reconcile}/SKILL.md` | Five 11-line pointers to the above bodies (`:6–11`); sound single-owner structure. Retire with their capabilities, not independently. |
+| `.claude/skills/{build-story,finish-phase,plan-phase,plan-story,reconcile}` | Five valid directory symlinks to `../../.agents/skills/<name>`; intentional aliases. |
+| `.agents/skills/speckit-analyze/SKILL.md` and corresponding `.claude/skills/...` | Generated pair; retain useful read-only consistency analysis as optional tool. |
+| `speckit-checklist/SKILL.md` in both core skill trees | Generated pair; change blanket checklist-blocking policy; distinguish requirements review from implementation proof. |
+| `speckit-clarify/SKILL.md` in both | Generated pair; allow meaningful answers longer than five words; clarify based on decision consequence. |
+| `speckit-constitution/SKILL.md` in both | Generated pair; optional governance maintenance, not default coding ceremony. Keep current owner intent in one short source. |
+| `speckit-converge/SKILL.md` in both | Generated pair; change evidence claims, executor restriction and repeated-task append behavior. |
+| `speckit-implement/SKILL.md` in both | Generated pair; load original spec, scope checklist gates, align actual verification requirements. |
+| `speckit-plan/SKILL.md` in both | Generated pair; retain proportional planning; avoid making full framework/research mandatory for every reversible fix. |
+| `speckit-specify/SKILL.md` in both | Generated pair; correct hook/branch assumption and numerical clarification cutoff. |
+| `speckit-tasks/SKILL.md` in both | Generated pair; align optional-test rule with product evidence needs and avoid using task formatting as quality evidence. |
+| `speckit-taskstoissues/SKILL.md` in both | Generated pair; explicit opt-in only, feature-scoped deduplication and available connector required. |
+| `.agents/skills/speckit-memory-loader-load/SKILL.md` | Extension-generated; replace repeated full context dumping with targeted/load-once context, or disable if root pointer suffices. |
+| `.agents/skills/speckit-ralph-run/SKILL.md` | Extension-generated; disable/remove from normal route until scope, permission and outcome contract repaired. |
+| `.agents/skills/speckit-ralph-iterate/SKILL.md` | Extension-generated; same disposition; task ownership and scoped staging required if retained. |
+| `.agents/skills/speckit-speckit-superpowers-bridge-handoff/SKILL.md` | Extension-generated; optional only if a second executor is deliberately retained. Otherwise remove lifecycle ceremony. |
+| `.agents/skills/speckit-speckit-superpowers-bridge-guard/SKILL.md` | Extension-generated; claimed guard policy must match implementation if retained. |
+| `.agents/skills/speckit-speckit-superpowers-bridge-execute/SKILL.md` | Extension-generated; remove incompatible converge precondition and stale orchestration reference if retained. |
+| `.agents/skills/speckit-superpowers-bridge/SKILL.md` | Generated alias for execute; do not independently rewrite or count as a separate workflow. Retain only if useful alias. |
+
+## New source findings
+
+### AA-1 — P1 before launcher reuse: Ralph discards requested scope and broadens permissions
+
+**Confirmed:** `speckit-ralph-run/SKILL.md:18–30` explicitly ignores free text such as “Implement US1,” warns, then continues launching. `:56` only warns on `main`/`master`. `:76–99` opens an external terminal, exits immediately and forbids waiting/reporting the eventual outcome. The linked actual Bash launcher hardcodes `--yolo -s` for Copilot (`.specify/extensions/ralph/scripts/bash/ralph-loop.sh:396,402`), `--dangerously-skip-permissions` for Claude (`:468–471`) and `--sandbox danger-full-access` for Codex (`:517–524`). These are not selected by a risk-aware task policy. The delegated iterate instruction stages everything with `git add -A` (`speckit-ralph-iterate/SKILL.md:61–70`), potentially including preexisting unrelated changes. It selects the first incomplete user-story section (`:50–53`), with no corresponding selection for incomplete Setup/Foundation phases.
+
+**Practical failure:** a user-scoped request can become a broader autonomous loop, with a different execution boundary and unscoped commit staging. Branch warning conflicts with the explicit protected-master rule. User-story commits and “no partial commit” (`:61–70`) also conflict with task-commit policy and its own coherent-partial-commit exception (`:136`). These are instruction/script facts; no unauthorized execution or commit was observed.
+
+**Disposition/acceptance:** remove this launcher from the normal path or make it preserve explicitly selected task scope, supported execution permissions and ownership of files. Invalid scope must not silently become “all remaining tasks.” Report launch separately from completion and allow the orchestrating agent to observe the result. Check only the task-owned changes before staging; do not impose a blanket ban on unrelated working-tree changes. No launcher was run here.
+
+### AA-2 — P1 before launcher reuse: completion text can override a failing agent exit
+
+`.specify/extensions/ralph/scripts/bash/ralph-loop.sh:655–660` checks the completion marker and breaks with `completed=true` **before** inspecting the nonzero agent exit at `:669–677`. `:684–689` separately accepts zero unchecked task rows, and `:707–709` returns process exit 0 when completed. Thus output containing the accepted marker can turn a failing child invocation into a successful loop summary; checkbox exhaustion is also not fresh behavior/gate evidence. This is a source-proven control-flow path, not an executed failure in this review.
+
+**Disposition/acceptance:** preserve child failure status, require a valid scoped work result and reference the necessary fresh verification before emitting completed. Verify separately with bounded launcher fixtures: nonzero+marker; zero+marker with failed evidence; zero remaining checkboxes without required evidence; and valid scoped completion. This finding concerns reliability of the wrapper, not a claim that any historical app bug came from it.
+
+### AA-3 — P2: retained evidence is later ordered deleted
+
+`.agents/commands/build-story.md:41–45` says gate raw output “is never deleted.” `.agents/commands/reconcile.md:69–73` later orders deletion of the same finished stories' baselines, `.exit`, `.commit`, findings and `.logs/` sidecars. This expands PR-5 beyond missing commands: literal execution erases the evidence needed to assess a claimed pass. No deletion was performed or attributed to these instructions.
+
+**Disposition/acceptance:** one evidence-retention policy, referenced by optional workflows; archive a coherent evidence unit with provenance instead of deleting its verification record. Do not compensate with duplicate baseline copies.
+
+### AA-4 — P2: bridge promises, actual guard and convergence disagree
+
+The bridge execute alias forbids `speckit.implement` (`.agents/skills/speckit-superpowers-bridge/SKILL.md:67–73`), but core converge **MUST** run only after that exact executor ran on current tasks (`speckit-converge/SKILL.md:62–69`) and routes new tasks back to it (`:233–237`). A bridge-only implementation cannot satisfy that literal prerequisite. The execute body points to a supposedly authoritative “8-step” bridge SKILL at `:65`; the listed Codex path (`:36`) is the same file and contains no such numbered sequence. This is stale imported source-repository wording, not another discovered protocol.
+
+Separately, extension hooks claim to prevent plan/tasks/clarify contract changes while executing (`.specify/extensions/speckit-superpowers-bridge/extension.yml:44–55`), but the actual Bash guard only rejects `speckit.implement`, selected native Superpowers planning actions and constitution edits (`scripts/bash/guard-command.sh:52–68`). Other `speckit.*` actions, including those three, are allowed. Its feature context comes from handoff/explicit argument (`:40–47`), not automatically the active feature pointer. No current handoff exists; this is not a claim an active handoff was blocked or bypassed in runtime.
+
+**Disposition/acceptance:** prefer one optional execution route. If bridge retained, define completion by verified artifact state regardless of executor, remove the self-reference, and make the guard's finite action matrix match its stated intent. Capability registration remains a separate PR-4 packaging issue.
+
+### AA-5 — P2: issue deduplication collides across features
+
+`.agents/skills/speckit-taskstoissues/SKILL.md:69–72` deduplicates repository-wide issue titles using only `T001`-style IDs; new titles also omit feature identity. All three existing feature task files actually contain T001 (`specs/001-gomarkedit-product/tasks.md:61`, `002-editor-stage-formatting/tasks.md:62`, `003-real-files-and-tabs/tasks.md:74`). An issue for one feature's T001 therefore makes another feature's T001 silently skip. No GitHub action was attempted.
+
+**Disposition/acceptance:** identity must include repository, feature and task; verify same task ID in two features creates two distinct issues, and re-running one feature creates none. Preserve explicit user opt-in and the existing repository-target check (`:66–75`). This session has no GitHub connector tools and no `gh` executable, so the skill's assumed MCP schema/availability was not runtime-validated.
+
+### AA-6 — P2: convergence can overstate evidence and repeatedly append the same unfinished work
+
+Core converge asks for source inspection and file/area evidence (`.agents/skills/speckit-converge/SKILL.md:148–169`) but mandates “the implementation satisfies the spec, plan, and tasks” when no actionable finding is found (`:225–237`). It specifies no executed-test/native observation requirement for that assertion. Separately `:201–223` appends every remaining finding as a new task, even when prior convergence phases exist; it requires new IDs and never touching prior phases, with no rule to match already-open work. Re-running against an unchanged unresolved gap can duplicate it. All constitution MUST deviations become CRITICAL (`:173–174,220–221`), conflating process nonconformance with actual user-impact severity.
+
+**Disposition/acceptance:** distinguish source-assessed, behavior-verified and unresolved observations. A source review can conclude no discrepancy found in inspected scope, not establish unobserved native behavior. Match an existing open task by requirement/gap before adding another. Prioritize by impact and risk, recording governance violations separately. This is a workflow claim gap, not proof this skill caused the audit's historical false passes.
+
+## Smaller policy corrections and useful guidance to preserve
+
+- **Review bottleneck:** `speckit-implement/SKILL.md:59–87` scans every checklist and stops for any unchecked item, even a reviewer-owned requirements-quality checklist; these checklists are deliberately initially unchecked. Scope required decisions explicitly instead of turning every optional review artifact into a universal permission gate. Its required context (`:93–100`) omits `spec.md`, yet completion claims to match the original spec (`:174–178`). Load the product intent directly.
+- **Conflicting test-generation rules:** `speckit-tasks/SKILL.md:142` says tests are optional unless explicitly requested in feature spec/user TDD, while constitution `:36–43,119–124` mandates proving tests and observable failure/lifecycle evidence; the bridge demands TDD before every code-modifying task (`speckit-superpowers-bridge/SKILL.md:59`). Define proportionate behavior evidence once. Do not replace this with tests that merely mirror every implementation file: legacy `build-story.md:124–127` requires each changed source file to be touched by a test.
+- **Clarification ceremony:** `speckit-specify/SKILL.md:198–200` forces guesses after the third clarification marker; clarify validates answers against a five-word limit (`speckit-clarify/SKILL.md:162–177`). Meanwhile root `AGENTS.md:14–16` stops for every silent spec detail. Ask only for consequential unresolved intent; preserve longer clear answers and make reversible engineering choices within authorization. Neither fixed numerical limits nor blanket stops capture that distinction.
+- **False hook assumption:** `speckit-specify/SKILL.md:73–75` assumes any successful before-specify hook created/switched a branch. The installed before-specify hook is memory loading (`.specify/extensions/memory-loader/extension.yml:23–26`). Branch output should be required only from an actual branch-creation capability. Core hook blocks also silently skip malformed YAML (e.g. `speckit-taskstoissues/SKILL.md:79–86`); a claimed required hook should report that it was not evaluated rather than implying its checks passed.
+- **Unavailable/misdescribed capabilities:** current Ralph config selects `copilot` (`.specify/extensions/ralph/ralph-config.yml:17`), absent from PATH; its explicit prerequisite would stop. `sqlc` is also absent although legacy build instructs `sqlc generate` (`build-story.md:89`). These are current environment facts, not missing repository files. The default integration is Bash; `.specify/scripts/powershell` is absent, so alternative platform instructions are not evidence the configured Bash path is broken. Legacy `finish-phase.md:61–62` conflates Wails development with Playwright's mock bridge; development Wails uses the real bridge, as the separate navigation investigation establishes. Keep the valid requirement to test the actual packaged path while correcting the explanation.
+- **Context/style bloat:** memory-loader reads and prints all memory (`speckit-memory-loader-load/SKILL.md:14–34`) and is installed before seven core lifecycle commands; those commands also load constitution. Legacy plan-story copies feature rules (`plan-story.md:52–89`) and mechanical architecture rules (`:112–137`) into another document. Prefer one intent/architecture owner and targeted context. Formatting/import/indentation advice (`speckit-ralph-iterate/SKILL.md:121–128`) belongs in tool configuration where mechanically decidable; keep commentary explaining non-obvious decisions, not task-history narration.
+- **Positive evidence, and causal limit:** `build-story.md:80–86` forbids false proving anchors/source-text tests; `finish-phase.md:29–40` rejects symbol-presence, mock-self and documentation assertions; constitution `:119–124` demands observable default wiring, failure, recovery and lifecycle behavior. These are worth retaining. No reviewed skill instructs developers to add task diaries to production code. Therefore DOC-1/DOC-2 and bad tests are observed repository defects, but “the skill generated them” is not proven by this audit. The owner’s KISS/DRY/SOLID/common-component direction should become concrete design guidance: find the existing behavior owner before adding another, keep theme choices as data, pass context-specific content through shared controls, keep backend application state authoritative. The existing canonical registry rule (`constitution.md:95–102`) helps but does not itself establish a shared popup lifecycle owner.
+
+## Integration with the main audit
+
+PR-1…PR-5 already cover authority drift, dead paths, incident repetition, missing agent-side extension registrations and the legacy route. AA-1…AA-6 are additions or deeper causal evidence, not replacements. The main audit's updated distinction between generated invocation syntax and policy is correct. Seven extensions being outside the **core** integration manifests does not mean they lack ownership: the extension registry and command sources are their separate owners. Likewise, missing Claude registrations do not alone prove every possible fallback invocation fails.
+
+Epic F should express the owner's current intent rather than prescribe another mandatory ceremony: one concise product/design authority, optional tools chosen by task need, mechanical rules enforced mechanically, preserved scope/permission/evidence, and intentionally generated client adapters. An arbitrary AGENTS line cap, exactly five blessed commands, mandatory Spec Kit, or tests that assert policy text would repeat the overconstraint. Archive obsolete instructions after preserving the few useful engineering invariants. This audit recommends dispositions only; it has not edited any live guidance.
+
+## Next step
+
+**State:** Complete bounded source inventory and findings; 32 core/shared manifest hashes and three extension manifest hashes match, all five symlinks resolve, and all ten core pairs normalize as intended. No execution-path validation was claimed.
+**Command:** none — parent integrates audit findings; implementation requires its own authorized scope.
+**Prompt:**
+> Read `/tmp/gomark-agent-assets-review.md`, `/tmp/gomark-agent-assets-inventory.txt` and the current owner-edited `docs/audits/2026-09-07-project-health-audit.md`. Integrate the new source-confirmed execution/evidence hazards and generated ownership facts into the audit without changing repository instructions, skills, configuration or application code. Preserve the distinction between a launcher hazard and a demonstrated cause of historical app bugs.

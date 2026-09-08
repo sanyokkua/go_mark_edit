@@ -1,5 +1,5 @@
 import * as RadixToast from '@radix-ui/react-toast';
-import type { PropsWithChildren } from 'react';
+import { type PropsWithChildren } from 'react';
 
 import { formatNumber, t } from '../../i18n';
 import type {
@@ -14,7 +14,16 @@ type ToastProviderProps = PropsWithChildren;
 interface NotificationToastProps {
   notification: Notification;
   onDismiss: (id: number) => void;
-  onRemediate?: (remediation: NotificationRemediation) => void;
+  /**
+   * Required, not optional, and that is the point.
+   *
+   * While it was optional the remediation button rendered only when a caller
+   * happened to pass it, the one production render site did not, and the entire
+   * fixed remediation vocabulary was unreachable in the running application
+   * without a single test going red. An optional prop lets the next render site
+   * reintroduce exactly that defect; a required one cannot.
+   */
+  onRemediate: (remediation: NotificationRemediation) => void;
 }
 
 const durations: Record<NotificationSeverity, number> = {
@@ -40,6 +49,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
 }): React.JSX.Element => (
   <RadixToast.Root
     className={styles.toast}
+    data-notification-code={notification.code}
     data-severity={notification.severity}
     duration={durations[notification.severity]}
     open
@@ -49,7 +59,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       }
     }}
   >
-    <RadixToast.Title>
+    <RadixToast.Title className={styles.title}>
       {notification.title}
       {notification.count > 1
         ? t('notification.count', {
@@ -57,17 +67,28 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
           })
         : ''}
     </RadixToast.Title>
-    <RadixToast.Description>{notification.message}</RadixToast.Description>
+    <RadixToast.Description className={styles.description}>
+      {notification.message}
+    </RadixToast.Description>
     <div className={styles.actions}>
-      {notification.remediation !== undefined && onRemediate !== undefined ? (
+      {/*
+       * Every offered control, in contract order — not just the first. Two
+       * contract rows pair two actions ("Retry; a Reveal failure also offers
+       * Copy path"), and while this rendered one button the second was
+       * unreachable however faithfully the backend sent it.
+       */}
+      {notification.remediations.map((remediation: NotificationRemediation) => (
         <button
           className={styles.action}
+          key={remediation.action}
           type="button"
-          onClick={(): void => onRemediate(notification.remediation!)}
+          onClick={(): void => {
+            onRemediate(remediation);
+          }}
         >
-          {t(notification.remediation.labelKey)}
+          {t(remediation.labelKey)}
         </button>
-      ) : null}
+      ))}
       {notification.severity === 'error' ? (
         <RadixToast.Close className={styles.action}>
           {t('notification.dismiss')}

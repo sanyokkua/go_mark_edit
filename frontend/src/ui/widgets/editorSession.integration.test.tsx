@@ -17,7 +17,11 @@ import {
 } from '../../logic/store/appModelProjectionActions';
 import type { DocumentMetadata } from '../../logic/store/appModelTypes';
 import { store } from '../../logic/store';
-import { DocumentCommandContext, EditorSessionProvider } from './editorSession';
+import {
+  acceptsActivationAcknowledgement,
+  DocumentCommandContext,
+  EditorSessionProvider,
+} from './editorSession';
 import EditorView, { type EditorViewAdapter } from './EditorView';
 
 const mockEditorHandle: CodeEditorHandle = {
@@ -400,4 +404,44 @@ it('STORY-030-AC-3 rejects active-tab and stale-identity mismatch', async () => 
   expect(mockEditorHandle.getSelection).not.toHaveBeenCalled();
   expect(mockEditorHandle.replaceRange).not.toHaveBeenCalled();
   expect(mockEditorHandle.replaceAll).not.toHaveBeenCalled();
+});
+
+// Proves: FR-FT-030
+// Proves: SC-FT-003 (partial — the predicate `acceptsActivationAcknowledgement`
+// alone, not the wiring that calls it. A green run here says nothing about
+// whether production consults the guard; that is T128's case in App.test.tsx,
+// and the reason this test passed for a whole phase while production installed
+// acknowledgements unconditionally.)
+it('T017 rejects a late activation acknowledgement without installing content', () => {
+  const document = documentFor(true, false);
+  const acknowledgement = {
+    documentId: document.documentId,
+    documentRevision: 2,
+    projectionRevision: 4,
+    content: 'late source must not install',
+  };
+  const projection = {
+    revision: 4,
+    activeDocumentId: document.documentId,
+    documents: {
+      [document.documentId]: { ...document, contentRevision: 2 },
+    },
+  };
+
+  expect(
+    acceptsActivationAcknowledgement(
+      acknowledgement,
+      { generation: 1, documentId: document.documentId },
+      2,
+      projection,
+    ),
+  ).toBe(false);
+  expect(
+    acceptsActivationAcknowledgement(
+      acknowledgement,
+      { generation: 2, documentId: document.documentId },
+      2,
+      projection,
+    ),
+  ).toBe(true);
 });

@@ -1,5 +1,11 @@
 {
   "_why": "Violations that already existed when these gates were written on 2026-07-28. The gate is green with these and fails on anything new. Each is described in docs/delivery/plan/KNOWN_ISSUES.md. Lower a number when you fix one; never raise one.",
   "strings": {},
-  "colours": {}
+  "colours": {},
+  "_parityRoutes_why": "T173 swept every `?parity-case` substitution out of production; three files keep one branch and each is documented at its site. CodeEditor holds Monaco capture conditions a measurement proved load-bearing for T059's popup residual (181 -> 239 pixels when removed). EditorView holds a preview refresh state that never crosses the bridge, so no mock seed can intercept it and a static reference cannot express an in-flight refresh. AppShell's two are the data-parity-shell and data-parity-family attributes, whose remaining rules are classified capture conditions: they give the browser the mockup's bounded window geometry, which a native webview provides in production. Lower a number when a branch leaves; never raise one.",
+  "parityRoutes": {
+    "src/ui/components/CodeEditor.tsx": 1,
+    "src/ui/widgets/AppShell.tsx": 2,
+    "src/ui/widgets/EditorView.tsx": 1
+  }
 }

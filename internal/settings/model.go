@@ -36,6 +36,8 @@ const (
 	EditorFontSizeSmall  = 13
 	EditorFontSizeMedium = 14
 	EditorFontSizeLarge  = 16
+
+	DefaultAutosave = true
 )
 
 // DefaultSettings returns the documented defaults for the currently exposed
@@ -63,5 +65,6 @@ func DefaultSettings() apperr.Settings {
 			WordWrap:    false,
 			FontSize:    EditorFontSizeMedium,
 		},
+		File: apperr.FileSettings{Autosave: DefaultAutosave},
 	}
 }

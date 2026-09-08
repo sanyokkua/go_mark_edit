@@ -1,9 +1,23 @@
 import { guardArity } from './bridgeGuard';
 import { unwrap } from './envelope';
 import type {
+  ConflictResult,
+  ClosePlanDecision,
+  ClosePlanKind,
+  ClosePlanResult,
+  ClosePlanSummary,
+  CloseTarget,
+  DiskVersion,
+  DocumentTransitionResult,
+  OpenResult,
+  WriteResult,
+  TabTransitionResult,
+} from '../store/appModelTypes';
+import type {
   AppearanceSettings,
   ContentPrivacySettings,
   EditorSettings,
+  FileSettings,
   MarkdownSettings,
   Settings,
   SettingsResult,
@@ -19,6 +33,7 @@ export interface SettingsBindings {
   ) => Promise<VoidResult>;
   updateMarkdown: (settings: MarkdownSettings) => Promise<VoidResult>;
   updateEditor: (settings: EditorSettings) => Promise<VoidResult>;
+  updateFile: (settings: FileSettings) => Promise<VoidResult>;
 }
 
 export interface SettingsAdapter {
@@ -28,6 +43,270 @@ export interface SettingsAdapter {
   updateContentPrivacy: (settings: ContentPrivacySettings) => Promise<void>;
   updateMarkdown: (settings: MarkdownSettings) => Promise<void>;
   updateEditor: (settings: EditorSettings) => Promise<void>;
+  updateFile: (settings: FileSettings) => Promise<void>;
+}
+
+export interface DocumentLifecycleBindings {
+  newDocument: (
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  openDocument: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  openRecentFile?: (
+    path: string,
+    expectedTabSetRevision: number,
+  ) => Promise<OpenResult>;
+  reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
+}
+
+export interface DocumentLifecycleAdapter {
+  newDocument: (
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  openDocument: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  openRecentFile?: (
+    path: string,
+    expectedTabSetRevision: number,
+  ) => Promise<OpenResult>;
+  reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
+}
+
+export interface DocumentWriteBindings {
+  save: (
+    documentId: string,
+    contentRevision: number,
+    decisionToken: string,
+  ) => Promise<WriteResult>;
+  saveAs: (
+    documentId: string,
+    contentRevision: number,
+    decisionToken: string,
+  ) => Promise<WriteResult>;
+  /**
+   * Release the authorization a dismissed normalization prompt was raised with.
+   *
+   * FR-FT-011 makes the mixed-ending confirmation single-use and requires that
+   * cancellation resume nothing. Confirming consumes the authorization;
+   * dismissing had no way to release it, so it survived for the process
+   * lifetime and the next Save minted another. T168.
+   */
+  cancelNormalization: (
+    documentId: string,
+    decisionToken: string,
+  ) => Promise<{ error?: unknown }>;
+}
+
+export interface DocumentWriteAdapter {
+  save: DocumentWriteBindings['save'];
+  saveAs: DocumentWriteBindings['saveAs'];
+  cancelNormalization: DocumentWriteBindings['cancelNormalization'];
+}
+
+export interface DocumentConflictBindings {
+  checkExternalChanges: (documentId: string) => Promise<ConflictResult>;
+  reloadFromDisk: (
+    documentId: string,
+    contentRevision: number,
+    detectedVersion: DiskVersion,
+  ) => Promise<ConflictResult>;
+  authorizeKeepMine: (
+    documentId: string,
+    contentRevision: number,
+    path: string,
+    detectedVersion: DiskVersion,
+  ) => Promise<ConflictResult>;
+  skipConflict: (
+    documentId: string,
+    contentRevision: number,
+    detectedVersion: DiskVersion,
+  ) => Promise<ConflictResult>;
+  cancelConflict: (
+    documentId: string,
+    contentRevision: number,
+    detectedVersion: DiskVersion,
+  ) => Promise<ConflictResult>;
+}
+
+export type DocumentConflictAdapter = DocumentConflictBindings;
+
+export interface ClosePlanBindings {
+  prepareClose: (
+    kind: ClosePlanKind,
+    targetDocumentIds: string[],
+    expectedTabSetRevision: number,
+  ) => Promise<ClosePlanResult>;
+  resolveClosePlan: (
+    planId: string,
+    decisions: ClosePlanDecision[],
+  ) => Promise<ClosePlanResult>;
+  executeClosePlan: (planId: string) => Promise<TabTransitionResult>;
+}
+
+export interface ClosePlanAdapter {
+  prepareClose: ClosePlanBindings['prepareClose'];
+  resolveClosePlan: ClosePlanBindings['resolveClosePlan'];
+  executeClosePlan: ClosePlanBindings['executeClosePlan'];
+}
+
+function normalizeCloseTarget(target: CloseTarget): CloseTarget {
+  return {
+    ...target,
+    conflict:
+      target.conflict === undefined
+        ? undefined
+        : {
+            ...target.conflict,
+            detectedDiskVersion: {
+              ...target.conflict.detectedDiskVersion,
+              modifiedUnixNano: String(
+                target.conflict.detectedDiskVersion.modifiedUnixNano,
+              ),
+            },
+          },
+  };
+}
+
+function normalizeClosePlanResult(result: ClosePlanResult): ClosePlanResult {
+  return {
+    error: result.error,
+    data:
+      result.data === undefined
+        ? undefined
+        : {
+            ...result.data,
+            kind: result.data.kind as ClosePlanSummary['kind'],
+            status: result.data.status as ClosePlanSummary['status'],
+            /*
+             * Guarded because this reducer of the wire runs before anything can
+             * inspect the plan: a null here threw, the native-close handler
+             * caught it and cancelled a quit the frontend had already been asked
+             * to authorise, and the window could then only be killed. The
+             * backend no longer sends null, and a malformed plan now degrades to
+             * an empty target list instead of taking the close path down.
+             */
+            targets: (result.data.targets ?? []).map(normalizeCloseTarget),
+          },
+  };
+}
+
+export function createClosePlanAdapter(
+  bindings: ClosePlanBindings,
+): ClosePlanAdapter {
+  const prepareClose = guardArity(
+    'AppModelHandler.PrepareClose',
+    bindings.prepareClose,
+  );
+  const resolveClosePlan = guardArity(
+    'AppModelHandler.ResolveClosePlan',
+    bindings.resolveClosePlan,
+  );
+  const executeClosePlan = guardArity(
+    'AppModelHandler.ExecuteClosePlan',
+    bindings.executeClosePlan,
+  );
+  return {
+    prepareClose: async (kind, targetDocumentIds, expectedTabSetRevision) =>
+      normalizeClosePlanResult(
+        await prepareClose(kind, targetDocumentIds, expectedTabSetRevision),
+      ),
+    resolveClosePlan: async (planId, decisions) =>
+      normalizeClosePlanResult(await resolveClosePlan(planId, decisions)),
+    executeClosePlan: async (planId) => executeClosePlan(planId),
+  };
+}
+
+export function createDocumentConflictAdapter(
+  bindings: DocumentConflictBindings,
+): DocumentConflictAdapter {
+  const checkExternalChanges = guardArity(
+    'AppModelHandler.CheckExternalChanges',
+    bindings.checkExternalChanges,
+  );
+  const reloadFromDisk = guardArity(
+    'AppModelHandler.ReloadFromDisk',
+    bindings.reloadFromDisk,
+  );
+  const authorizeKeepMine = guardArity(
+    'AppModelHandler.AuthorizeKeepMine',
+    bindings.authorizeKeepMine,
+  );
+  const skipConflict = guardArity(
+    'AppModelHandler.SkipConflict',
+    bindings.skipConflict,
+  );
+  const cancelConflict = guardArity(
+    'AppModelHandler.CancelConflict',
+    bindings.cancelConflict,
+  );
+
+  return {
+    checkExternalChanges: (documentId) => checkExternalChanges(documentId),
+    reloadFromDisk: (documentId, contentRevision, detectedVersion) =>
+      reloadFromDisk(documentId, contentRevision, detectedVersion),
+    authorizeKeepMine: (documentId, contentRevision, path, detectedVersion) =>
+      authorizeKeepMine(documentId, contentRevision, path, detectedVersion),
+    skipConflict: (documentId, contentRevision, detectedVersion) =>
+      skipConflict(documentId, contentRevision, detectedVersion),
+    cancelConflict: (documentId, contentRevision, detectedVersion) =>
+      cancelConflict(documentId, contentRevision, detectedVersion),
+  };
+}
+
+export function createDocumentLifecycleAdapter(
+  bindings: DocumentLifecycleBindings,
+): DocumentLifecycleAdapter {
+  const newDocument = guardArity(
+    'AppModelHandler.NewDocument',
+    bindings.newDocument,
+  );
+  const openDocument = guardArity(
+    'AppModelHandler.OpenDocument',
+    bindings.openDocument,
+  );
+  const reopenLastFile =
+    bindings.reopenLastFile === undefined
+      ? undefined
+      : guardArity('AppModelHandler.ReopenLastFile', bindings.reopenLastFile);
+  const openRecentFile =
+    bindings.openRecentFile === undefined
+      ? undefined
+      : guardArity('AppModelHandler.OpenRecentFile', bindings.openRecentFile);
+
+  return {
+    newDocument: (expectedTabSetRevision: number) =>
+      newDocument(expectedTabSetRevision),
+    openDocument: (expectedTabSetRevision: number) =>
+      openDocument(expectedTabSetRevision),
+    openRecentFile:
+      openRecentFile === undefined
+        ? undefined
+        : (path: string, expectedTabSetRevision: number) =>
+            openRecentFile(path, expectedTabSetRevision),
+    reopenLastFile:
+      reopenLastFile === undefined
+        ? undefined
+        : (expectedTabSetRevision: number) =>
+            reopenLastFile(expectedTabSetRevision),
+  };
+}
+
+export function createDocumentWriteAdapter(
+  bindings: DocumentWriteBindings,
+): DocumentWriteAdapter {
+  const save = guardArity('AppModelHandler.Save', bindings.save);
+  const saveAs = guardArity('AppModelHandler.SaveAs', bindings.saveAs);
+  const cancelNormalization = guardArity(
+    'AppModelHandler.CancelNormalization',
+    bindings.cancelNormalization,
+  );
+
+  return {
+    save: (documentId, contentRevision, decisionToken) =>
+      save(documentId, contentRevision, decisionToken),
+    saveAs: (documentId, contentRevision, decisionToken) =>
+      saveAs(documentId, contentRevision, decisionToken),
+    cancelNormalization: (documentId, decisionToken) =>
+      cancelNormalization(documentId, decisionToken),
+  };
 }
 
 export function createSettingsAdapter(
@@ -57,6 +336,10 @@ export function createSettingsAdapter(
     'SettingsHandler.UpdateEditor',
     bindings.updateEditor,
   );
+  const updateFile = guardArity(
+    'SettingsHandler.UpdateFile',
+    bindings.updateFile,
+  );
 
   return {
     async getSettings(): Promise<Settings> {
@@ -78,6 +361,9 @@ export function createSettingsAdapter(
     },
     async updateEditor(settings: EditorSettings): Promise<void> {
       return unwrap(await updateEditor(settings));
+    },
+    async updateFile(settings: FileSettings): Promise<void> {
+      return unwrap(await updateFile(settings));
     },
   };
 }

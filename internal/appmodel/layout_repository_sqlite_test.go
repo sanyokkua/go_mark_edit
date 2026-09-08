@@ -761,3 +761,40 @@ func TestInitialLayoutOmitsExcludedDocumentAndAssistantFields(t *testing.T) {
 		t.Fatalf("initial application layout leaked excluded fields: %+v", layout)
 	}
 }
+
+// Proves: FR-WS-011
+// A width that travels with a visibility change is one discrete intent —
+// restoring a workspace that was put away — not the stream of updates a drag
+// produces. It is applied with the visibility change in a single patch, because
+// debouncing it would show the workspace at its old width and widen it a
+// quarter of a second later, which is the symptom the restore exists to remove.
+func TestSetUILayoutAppliesRestoredWorkspaceWidthWithItsVisibility(t *testing.T) {
+	timer := &deterministicTimer{}
+	repository := &recordingLayoutRepository{}
+	emitter := &recordingEmitter{}
+	service := NewAppModelServiceWithLayoutRepositoryAndTimer(emitter, repository, timer)
+	visible := true
+	width := 216
+
+	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarVisible: &visible, SidebarWidth: &width}); err != nil {
+		t.Fatalf("SetUILayout: %v", err)
+	}
+
+	if emitter.Count() != 1 {
+		t.Fatalf("patches=%d; want exactly one carrying both fields", emitter.Count())
+	}
+	fields := map[string]bool{}
+	for _, write := range repository.writes {
+		fields[write.field] = true
+	}
+	if !fields[LayoutWorkspaceVisible] || !fields[LayoutWorkspaceWidth] {
+		t.Fatalf("writes=%+v; want both visibility and width persisted before the timer fires", repository.writes)
+	}
+	patch := emitter.Patches()[0]
+	if patch.UI == nil || patch.UI.SidebarVisible == nil || patch.UI.SidebarWidth == nil {
+		t.Fatalf("patch ui=%+v; want one patch carrying visibility and width together", patch.UI)
+	}
+	if *patch.UI.SidebarVisible != true || *patch.UI.SidebarWidth != 216 {
+		t.Fatalf("patch ui visible=%v width=%d; want true and 216", *patch.UI.SidebarVisible, *patch.UI.SidebarWidth)
+	}
+}

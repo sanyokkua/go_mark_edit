@@ -8,7 +8,10 @@ import {
   notifyToast,
 } from '../src/logic/store/notificationsSlice';
 import { appModelAdapter } from '../src/logic/adapter';
-import { nativeEvidenceRuntime } from '../src/logic/adapter/nativeEvidenceRuntime';
+import {
+  nativeEvidenceRuntime,
+  type NativeAutosaveCommit,
+} from '../src/logic/adapter/nativeEvidenceRuntime';
 import { store } from '../src/logic/store';
 import '../src/ui/styles/tokens.css';
 import '../src/ui/styles/base.css';
@@ -86,9 +89,154 @@ async function runNativeEvidenceScenario(selected: string): Promise<void> {
         JSON.stringify({ scenario: selected, status: 'awaiting-retry' }),
       );
       return;
+    case 'autosave-latency':
+      await runAutosaveLatency();
+      return;
+    case 'explicit-save-latency':
+      // Go drives this walkthrough end to end. SC-FT-002's interval stops at
+      // the explicit-save confirmation, and a webview round trip inside that
+      // interval would be measured instead of the application. The frontend
+      // only proves the real shell mounted, then waits for Go to quit.
+      await waitForApplicationState();
+      reportEvidence(`scenario=${selected} status=go-driven`);
+      nativeEvidenceRuntime.logInfo(
+        JSON.stringify({ scenario: selected, status: 'go-driven' }),
+      );
+      return;
     default:
       throw new Error(`Unknown native evidence scenario: ${selected}`);
   }
+}
+
+async function runAutosaveLatency(): Promise<void> {
+  if (appModelAdapter.openDocument === undefined) {
+    throw new Error('AppModelAdapter.openDocument is unavailable.');
+  }
+  const sizes = [1024, 262_144, 1_048_576, 2_097_152];
+  const rows: NativeAutosaveCommit[] = [];
+  await waitForApplicationState();
+
+  for (const sizeBytes of sizes) {
+    const beforeOpen = await appModelAdapter.getState();
+    const opened = await appModelAdapter.openDocument(
+      beforeOpen.snapshot.tabSetRevision,
+    );
+    if (opened.activeBuffer === undefined) {
+      throw new Error(`No active buffer was returned for ${sizeBytes} bytes.`);
+    }
+    const documentId = opened.activeBuffer.documentId;
+    let content = opened.activeBuffer.content;
+    if (content.length !== sizeBytes) {
+      throw new Error(
+        `Fixture ${sizeBytes} bytes opened as ${content.length} characters.`,
+      );
+    }
+
+    for (let trial = 1; trial <= 30; trial += 1) {
+      const warmup = trial <= 5;
+      const input = { trial, warmup, sizeBytes, documentId };
+      const nextContent = replaceOneCharacter(content, trial - 1);
+      const commitPromise = waitForAutosaveCommit(input);
+      await appModelAdapter.updateBuffer(documentId, nextContent);
+      // This acknowledgement is emitted only after the final input handler
+      // has returned. The adapter's 200 ms synchronization remains inside the
+      // Go t0-to-t1 interval, before the production one-second timer fires.
+      nativeEvidenceRuntime.acknowledgeAutosaveInput(input);
+      const commit = await commitPromise;
+      rows.push(commit);
+      content = nextContent;
+      reportEvidence(
+        `scenario=autosave-latency size=${sizeBytes} trial=${trial} status=${commit.status}`,
+        true,
+      );
+    }
+  }
+
+  const measured = rows.filter((row) => !row.warmup);
+  const successful = measured.filter((row) => row.status === 'committed');
+  const withinFiveSeconds = successful.filter(
+    (row) => (row.durationNs ?? Number.POSITIVE_INFINITY) <= 5_000_000_000,
+  ).length;
+  const status =
+    measured.length === 100 &&
+    successful.length === 100 &&
+    withinFiveSeconds >= 95
+      ? 'PASS'
+      : 'FAIL';
+  nativeEvidenceRuntime.logInfo(
+    JSON.stringify({
+      scenario: 'autosave-latency',
+      status,
+      warmups: rows.length - measured.length,
+      measured: measured.length,
+      successful: successful.length,
+      withinFiveSeconds,
+    }),
+  );
+  document.title = `GoMarkEdit [native-evidence:autosave ${status} successful=${successful.length}/100 <=5s=${withinFiveSeconds}]`;
+  if (status === 'FAIL') {
+    throw new Error(
+      `Autosave latency evidence failed: ${successful.length}/100 committed, ${withinFiveSeconds}/100 <=5s.`,
+    );
+  }
+  await delay(250);
+  nativeEvidenceRuntime.quit();
+}
+
+function replaceOneCharacter(content: string, trial: number): string {
+  const offset = trial % content.length;
+  const current = content[offset];
+  const replacement = current === 'a' ? 'b' : 'a';
+  return `${content.slice(0, offset)}${replacement}${content.slice(offset + 1)}`;
+}
+
+async function waitForApplicationState(): Promise<void> {
+  const deadline = performance.now() + 15_000;
+  let lastError: unknown;
+  while (performance.now() < deadline) {
+    try {
+      await appModelAdapter.getState();
+      return;
+    } catch (error: unknown) {
+      lastError = error;
+      await delay(100);
+    }
+  }
+  throw new Error(
+    `Application state did not become available: ${String(lastError)}`,
+  );
+}
+
+function waitForAutosaveCommit(input: {
+  trial: number;
+  warmup: boolean;
+  sizeBytes: number;
+  documentId: string;
+}): Promise<NativeAutosaveCommit> {
+  return new Promise((resolve) => {
+    const dispose = nativeEvidenceRuntime.onAutosaveCommit((commit) => {
+      if (
+        commit.documentId !== input.documentId ||
+        commit.trial !== input.trial ||
+        commit.sizeBytes !== input.sizeBytes ||
+        commit.warmup !== input.warmup
+      ) {
+        return;
+      }
+      window.clearTimeout(timeoutId);
+      dispose();
+      resolve(commit);
+    });
+    const timeoutId = window.setTimeout(() => {
+      dispose();
+      nativeEvidenceRuntime.recordAutosaveMiss(input);
+      resolve({
+        ...input,
+        status: 'missed',
+        expectedDiskBytes: input.sizeBytes,
+      });
+    }, 7_500);
+  });
 }
 
 async function findSeparator(): Promise<HTMLElement> {

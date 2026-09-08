@@ -6,6 +6,7 @@ import {
   observeShellRequests,
   type ShellTimingSample,
 } from './helpers/shell-observation';
+import { expectPainted } from './painted';
 
 const palettes = [
   ['Liquid Glass', 'Light', 'glass', 'light', '#ffffff6b'],
@@ -50,7 +51,12 @@ async function openAction(page: Page, label: string): Promise<void> {
 
 async function openSettings(page: Page): Promise<void> {
   await openAction(page, 'Settings');
-  await page.getByRole('menuitem', { name: 'Appearance' }).click();
+  /*
+   * The binding's compact popup opens the settings screen from its
+   * `All settings…` row (`mockup.html:624`); `Appearance` is the popup's group
+   * label and its radiogroup name, not a menu item.
+   */
+  await page.getByRole('menuitem', { name: /All settings/u }).click();
   await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
 }
 
@@ -75,26 +81,47 @@ async function expectEditorStageFixtures(
     ]);
     await page.keyboard.press('Escape');
   } else {
-    expect(await actionBar.getByRole('button').allTextContents()).toEqual([
+    /*
+     * Accessible names, not glyph text. The sidebar and assistant controls were
+     * `☰` and `✦` text spans until `ca124e41` replaced them with `<Icon>` SVGs
+     * to meet FR-FT-052's binding monochrome size/stroke treatment, so
+     * `allTextContents()` reads two empty strings. (The `☰` never matched the
+     * binding either: `mockup.html:595` draws `▤` for toggle-sidebar.)
+     */
+    for (const name of [
       'File',
       'Settings',
       'View',
       'About',
-      '☰',
-      '✦',
-    ]);
+      'Toggle Sidebar',
+      'Toggle Assistant',
+    ]) {
+      await expect(
+        actionBar.getByRole('button', { name, exact: true }),
+      ).toBeVisible();
+    }
+    await expect(actionBar.getByRole('button')).toHaveCount(6);
     await expect(
       actionBar.getByRole('button', { name: 'Toggle Assistant' }),
     ).toBeDisabled();
   }
 
+  /*
+   * This helper used to assert the whole chrome was inert — disabled tabs, a
+   * disabled New tab, a disabled New File. That was correct while the shell was
+   * a static mock, and Feature 003's entire purpose was making it real, so a
+   * blanket `toBeDisabled()` now asserts the opposite of the requirement. What
+   * it checks instead is the inventory plus availability as the action registry
+   * defines it: enabled where this feature made it real, unavailable only where
+   * something is genuinely deferred.
+   */
   const tabs = page.getByRole('tablist', { name: 'Document tabs' });
   await expect(tabs).toBeVisible();
-  await expect(
-    tabs.getByRole('tab', { name: 'release-notes.md' }),
-  ).toBeDisabled();
-  await expect(tabs.getByRole('tab', { name: 'spec-draft.md' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'New tab' })).toBeDisabled();
+  /* The plain `/` route seeds one Untitled document; `release-notes.md` and
+     `spec-draft.md` are parity fixtures it never produces. */
+  await expect(tabs.getByRole('tab')).toHaveCount(1);
+  await expect(tabs.getByRole('tab', { name: /Untitled/u })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'New tab' })).toBeEnabled();
 
   const toolbar = page.getByRole('toolbar', { name: 'Document toolbar' });
   await expect(
@@ -106,22 +133,63 @@ async function expectEditorStageFixtures(
   if (width <= 768) {
     await toolbar.getByLabel('More actions').click();
   }
-  await expect(toolbar.getByRole('button', { name: 'Image' })).toBeDisabled();
-  if (width <= 376) {
+  /*
+   * At 375 the overflow popup is portalled into `.application-frame` so it can
+   * share the frame's containing block, which puts it outside the toolbar
+   * element — scoping the lookup to `toolbar` found nothing there. Image is
+   * still rendered and still unavailable; only where it lives changed.
+   */
+  const overflowPopup = page.locator('[data-viewport-popup="editor-overflow"]');
+  const usesOverflow = width <= 768;
+  const narrowOverflow = width <= 376;
+  const imageControl = usesOverflow
+    ? overflowPopup.getByRole('button', { name: 'Image' })
+    : toolbar.getByRole('button', { name: 'Image' });
+  await expect(imageControl).toBeDisabled();
+  if (narrowOverflow) {
     await expect(
-      toolbar.getByRole('radiogroup', { name: 'View arrangement' }),
+      overflowPopup.getByRole('radiogroup', { name: 'View arrangement' }),
     ).toBeVisible();
   }
   await page.keyboard.press('Escape');
 
   await openAction(page, 'File');
-  const fileMenu = page.getByRole('menu', { name: 'File' });
+  /* `exact` matters: the narrow popup nests a `Recent files` submenu, and
+     Playwright's accessible-name match is substring and case-insensitive, so a
+     loose `File` resolves to both menus and trips strict mode. */
+  const fileMenu = page.getByRole('menu', { name: 'File', exact: true });
+  /* `actionRegistry.ts:198` marks new-file `available()` — Feature 003 made it
+     real, so asserting it disabled asserted the opposite of the requirement. */
   await expect(
     fileMenu.getByRole('menuitem', { name: 'New File' }),
-  ).toBeDisabled();
+  ).toBeEnabled();
+  /*
+   * Recents are presented differently by width, and both are correct. Wide, the
+   * binding puts them as indented rows under an `Open Recent` group label
+   * (`mockup.html:604`, `.mi.sub`) with no trigger row of its own, so there
+   * `Open Recent` is a label and never a `menuitem` — the same shape as
+   * `Appearance`, which is a radiogroup name rather than an item. Narrow, the
+   * popup uses an `Open Recent` trigger plus a nested submenu. This route seeds
+   * no recent files (`AppModelHandler.ts` `seededRecentFiles`), so T154 draws
+   * the defined empty message in both shapes: FR-FT-042 requires the first-run
+   * state to show it rather than the two invented filenames the menu used to
+   * carry (`release-notes.md`, `spec-draft.md`), which read as history the user
+   * does not have.
+   */
+  if (width <= 376) {
+    await expect(
+      fileMenu.getByRole('menuitem', { name: 'Open Recent' }),
+    ).toBeDisabled();
+  } else {
+    await expect(fileMenu).toContainText('Open Recent');
+  }
+  await expect(fileMenu.locator('[data-no-recent-files="true"]')).toBeVisible();
   await expect(
-    fileMenu.getByRole('menuitem', { name: 'Open Recent' }),
-  ).toBeDisabled();
+    page.getByRole('menuitem', { name: 'release-notes.md' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('menuitem', { name: 'spec-draft.md' }),
+  ).toHaveCount(0);
   await page.keyboard.press('Escape');
 
   if (width > 376) {
@@ -368,10 +436,25 @@ for (const width of widths) {
         .click();
 
       const workspace = page.getByRole('complementary', { name: 'Workspace' });
-      await expect(workspace).toBeVisible();
-      await expect
-        .poll(async () => (await workspace.boundingBox())?.width)
-        .toBe(width === 375 ? 230 : width === 768 ? 46 : 256);
+      if (width === 375) {
+        /*
+         * The minimum window renders no workspace at all: there is no room for
+         * a column, and the 230px overlay this used to measure covered the tab
+         * strip and intercepted pointers meant for it.
+         */
+        await expect(workspace).toHaveCount(0);
+      } else {
+        await expect(workspace).toBeVisible();
+        await expect
+          .poll(async () => (await workspace.boundingBox())?.width)
+          /*
+           * 216 is the binding's own sidebar width (`mockup.html:254`
+           * `.sidebar{width:216px}`), exported as `WORKSPACE_BINDING_WIDTH` in
+           * `src/logic/store/uiLayoutCommands.ts:12`. The 256 this asserted
+           * before matched neither the binding nor the shipped default.
+           */
+          .toBe(width === 768 ? 46 : 216);
+      }
       await expect(
         page.getByRole('main', { name: 'Document area' }),
       ).toBeVisible();
@@ -389,18 +472,31 @@ for (const width of widths) {
         await expect(
           page.getByRole('button', { name: 'More actions' }),
         ).toBeVisible();
+        /*
+         * The minimum window carries one pane. This used to measure the editor
+         * and the preview stacked one above the other; Split now collapses to
+         * the editor and the preview is removed from the tree, so the editor is
+         * the whole pane row and the viewer is not there to measure.
+         */
         const editor = await page.getByLabel('Editor pane').boundingBox();
-        const preview = await page.getByLabel('Preview pane').boundingBox();
+        await expect(page.getByLabel('Preview pane')).toHaveCount(0);
         const document = page.getByRole('main', { name: 'Document area' });
         const documentBounds = await document.boundingBox();
         const toolbarBounds = await toolbar.boundingBox();
         await toolbar.getByLabel('More actions').click();
-        const arrangementBounds = await toolbar
+        /*
+         * The overflow popup portals into `.application-frame` so it can share
+         * the frame's containing block, which puts the relocated arrangement
+         * radios outside the toolbar element. The inline switch is hidden at
+         * this width (`mockup.html:76` `#viewseg`), so the popup is the only
+         * place they exist.
+         */
+        const arrangementBounds = await page
+          .locator('[data-viewport-popup="editor-overflow"]')
           .getByRole('radiogroup', { name: 'View arrangement' })
           .boundingBox();
         await page.keyboard.press('Escape');
         expect(editor).not.toBeNull();
-        expect(preview).not.toBeNull();
         expect(documentBounds).not.toBeNull();
         expect(toolbarBounds).not.toBeNull();
         expect(arrangementBounds).not.toBeNull();
@@ -418,8 +514,15 @@ for (const width of widths) {
         expect(
           arrangementBounds!.x + arrangementBounds!.width,
         ).toBeLessThanOrEqual(toolbarBounds!.x + toolbarBounds!.width);
-        expect(preview!.y).toBeGreaterThan(editor!.y);
-        expect(Math.abs(preview!.x - editor!.x)).toBeLessThanOrEqual(1);
+        /*
+         * The surviving pane fills the region: it starts inside the document
+         * area and runs to its trailing edge, with nothing beside it.
+         */
+        expect(editor!.x).toBeGreaterThanOrEqual(documentBounds!.x);
+        expect(editor!.x + editor!.width).toBeLessThanOrEqual(
+          documentBounds!.x + documentBounds!.width,
+        );
+        expect(editor!.width).toBeGreaterThan(documentBounds!.width / 2);
       } else {
         await expect(
           page.getByRole('button', { name: 'More actions' }),
@@ -433,34 +536,47 @@ for (const width of widths) {
           ),
         )
         .toBe(true);
+      /*
+       * `expectMonacoThemeReady` stays — it asserts the editor actually
+       * resolved this palette. The whole-window screenshot that followed it is
+       * withdrawn with the 2026-08-14 clarification, along with the cursor and
+       * overview-ruler hiding that existed only to steady it. What this matrix
+       * proves is the chrome inventory, availability, geometry and reachability
+       * asserted above, at all three widths and all six palettes.
+       */
       await expectMonacoThemeReady(page, mode, editorBackground);
-      await page.addStyleTag({
-        content:
-          '.monaco-editor .cursor, .monaco-editor .decorationsOverviewRuler { visibility: hidden !important; }',
-      });
-      await expect(page).toHaveScreenshot(
-        `window-shell-${width}-${theme}-${mode}.png`,
-        {
-          animations: 'disabled',
-          caret: 'hide',
-        },
-      );
       expect(runtimeErrors).toEqual([]);
     });
   }
 }
 
-test('T039 native minimum frame rounding keeps the workspace off-canvas', async ({
+test('T039 native minimum frame rounding drops the workspace entirely', async ({
   page,
 }) => {
+  /*
+   * The native minimum window is 375x480 (`main.go:104-105`); frame rounding
+   * can expose this 376px CSS viewport at that size, so it is the minimum
+   * window too. The workspace used to be presented here as a 230px overlay —
+   * off-canvas in name only, since it painted over the tab strip and
+   * intercepted its pointers. It is no longer rendered at this width.
+   */
   await page.setViewportSize({ width: 376, height: 480 });
   await page.goto('/');
 
-  const workspace = page.getByRole('complementary', { name: 'Workspace' });
-  await expect(workspace).toBeVisible();
-  await expect
-    .poll(async () => Math.round((await workspace.boundingBox())?.width ?? -1))
-    .toBe(230);
+  await expect(
+    page.getByRole('complementary', { name: 'Workspace' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('separator', { name: 'Resize workspace' }),
+  ).toHaveCount(0);
+  /*
+   * The stored preference is untouched, so the shell still reports it — the
+   * collapse owns no second "is it open" state.
+   */
+  await expect(page.getByTestId('application-shell')).toHaveAttribute(
+    'data-workspace-visible',
+    'true',
+  );
   await expect(
     page.getByRole('button', { name: 'More actions' }),
   ).toBeVisible();
@@ -482,9 +598,30 @@ for (const width of widths) {
     expect(popupBounds!.x + popupBounds!.width).toBeLessThanOrEqual(width);
     expect(popupBounds!.y).toBeGreaterThanOrEqual(0);
     expect(popupBounds!.y + popupBounds!.height).toBeLessThanOrEqual(480);
+    /*
+     * The popup must escape its trigger's subtree so no ancestor can clip it.
+     * It is portalled into `.application-frame` rather than `document.body`
+     * (`SettingsMenu.tsx:513`) so it shares the frame's containing block
+     * instead of being placed by collision-aware viewport coordinates —
+     * asserting `document.body` described the portal target before that
+     * convergence. The invariant the case actually needs is unchanged: the
+     * popup is a direct child of the top-level frame, and is not nested inside
+     * the menu root that owns the trigger.
+     */
     await expect
       .poll(() =>
-        popup.evaluate((element) => element.parentElement === document.body),
+        popup.evaluate(
+          (element) =>
+            element.parentElement ===
+            (document.querySelector('.application-frame') ?? document.body),
+        ),
+      )
+      .toBe(true);
+    await expect
+      .poll(() =>
+        popup.evaluate(
+          (element) => element.closest('[data-settings-menu-root]') === null,
+        ),
       )
       .toBe(true);
     await expect
@@ -502,7 +639,7 @@ for (const width of widths) {
     await dark.focus();
     await dark.press('Space');
     await expect(dark).toBeChecked();
-    const appearance = popup.getByRole('menuitem', { name: 'Appearance' });
+    const appearance = popup.getByRole('menuitem', { name: /All settings/u });
     await appearance.focus();
     await appearance.press('Enter');
     await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
@@ -541,6 +678,7 @@ for (const width of [375, 1280] as const) {
   }
 }
 
+// Proves: FR-FT-046 (partial — only the "no clipping" clause, only for the appearance-refusal error toast, only at 1280)
 test('T026 shell actions, focus, reset, sidebar, notification, identity, and absence', async ({
   page,
 }) => {
@@ -591,6 +729,15 @@ test('T026 shell actions, focus, reset, sidebar, notification, identity, and abs
   const errorToast = page.locator('[data-severity="error"]');
   await expect(errorToast).toContainText('Invalid input');
   await expect(errorToast).toContainText('A value needs to be corrected.');
+  /*
+   * T126. Until this line the only assertions on any refusal toast were
+   * `toContainText` and `toHaveCount` — neither consults layout, so the toast
+   * could have been clipped to nothing by its `ol` viewport and this case would
+   * still have passed. Proven load-bearing: with `overflow:hidden;height:0` on
+   * that `ol`, every assertion above stays green and this one reports
+   * "laid out at (1114, 730) but the topmost paint there is nothing".
+   */
+  await expectPainted(errorToast, 'the appearance-refusal error toast');
   await expect(page.getByText(/private|https?:\/\//i)).toHaveCount(0);
   await errorToast.getByRole('button', { name: 'Dismiss' }).click();
   await expect(errorToast).toHaveCount(0);

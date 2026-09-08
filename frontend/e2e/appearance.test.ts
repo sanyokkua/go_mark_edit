@@ -37,15 +37,6 @@ async function stabilizeMonacoScrollbar(
   ).toHaveCSS('background-color', expectedColor);
 }
 
-async function settleMonacoLayout(page: Page): Promise<void> {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      ),
-  );
-}
-
 test('changes all six palettes through keyboard reachable appearance controls without overflow', async ({
   page,
 }) => {
@@ -74,15 +65,18 @@ test('changes all six palettes through keyboard reachable appearance controls wi
           ),
         )
         .toBe(true);
+      /*
+       * The whole-window screenshot that used to close this loop is withdrawn
+       * with the 2026-08-14 clarification: it compared the application against
+       * a picture of itself from 48 shell-surface commits earlier. The
+       * scrollbar assertion stays, because it checks a real per-palette value
+       * rather than a picture.
+       */
       if (width === 1280) {
         await stabilizeMonacoScrollbar(
           page,
           mode === 'light' ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.2)',
         );
-        await settleMonacoLayout(page);
-        await expect(page).toHaveScreenshot(`appearance-${theme}-${mode}.png`, {
-          animations: 'disabled',
-        });
       }
     }
   }

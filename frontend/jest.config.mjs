@@ -3,7 +3,10 @@ export default {
   clearMocks: true,
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   testEnvironment: 'jsdom',
-  testMatch: ['<rootDir>/src/**/*.test.ts?(x)'],
+  testMatch: [
+    '<rootDir>/src/**/*.test.ts?(x)',
+    '<rootDir>/e2e/parity/**/*.test.ts',
+  ],
   moduleNameMapper: {
     '^.+\\.module\\.css$': '<rootDir>/src/test/styleMock.ts',
     '^\\.\\./\\.\\./i18n$': '<rootDir>/src/test/i18nShim.ts',

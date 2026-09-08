@@ -63,6 +63,10 @@ function missingDocument(): WireError {
 }
 
 async function flushBeforeHidingEditor(documentId: string): Promise<void> {
+  if (appModelAdapter.flushActiveSession !== undefined) {
+    await appModelAdapter.flushActiveSession(documentId);
+    return;
+  }
   await appModelAdapter.flushBuffer(documentId);
   await appModelAdapter.flushDocView(documentId);
 }
@@ -74,6 +78,9 @@ export const setViewArrangement = createAsyncThunk<
 >('documents/setViewArrangement', async (arrangement, thunkApi) => {
   const state = thunkApi.getState();
   const documentId = state.documents.activeDocumentId;
+  if (documentId === null) {
+    return thunkApi.rejectWithValue(missingDocument());
+  }
   const document = state.documents.byId[documentId];
 
   if (document === undefined) {
@@ -101,6 +108,9 @@ export const setEditorPaneVisible = createAsyncThunk<
 >('documents/setEditorPaneVisible', async (editorVisible, thunkApi) => {
   const state = thunkApi.getState();
   const documentId = state.documents.activeDocumentId;
+  if (documentId === null) {
+    return thunkApi.rejectWithValue(missingDocument());
+  }
   const document = state.documents.byId[documentId];
 
   if (document === undefined) {
@@ -135,6 +145,9 @@ export const setPreviewPaneVisible = createAsyncThunk<
 >('documents/setPreviewPaneVisible', async (previewVisible, thunkApi) => {
   const state = thunkApi.getState();
   const documentId = state.documents.activeDocumentId;
+  if (documentId === null) {
+    return thunkApi.rejectWithValue(missingDocument());
+  }
   const document = state.documents.byId[documentId];
 
   if (document === undefined) {

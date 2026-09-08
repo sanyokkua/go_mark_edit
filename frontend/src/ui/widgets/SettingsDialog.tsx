@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
 import type { AppearanceChoice, Theme } from '../../logic/theme/theme';
@@ -109,7 +110,15 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     return null;
   }
 
-  return (
+  /*
+   * T138. Both returns portal, and neither asks the route which one it is. The
+   * width test that used to gate this was written without the `?parity-case`
+   * guard `ModalShell` had, so the two files disagreed about when a dialog
+   * portals — and disagreed at exactly the 375px minimum window, where a
+   * transformed shell ancestor turns a `position: fixed` dialog into an
+   * absolute one and clips it.
+   */
+  return createPortal(
     <>
       <div aria-hidden="true" className={styles.overlay} />
       <section
@@ -158,7 +167,8 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
           </button>
         </footer>
       </section>
-    </>
+    </>,
+    document.body,
   );
 };
 

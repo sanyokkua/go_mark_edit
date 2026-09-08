@@ -46,6 +46,7 @@ func TestCompleteStageOneDefaultsFromEmptyKV(t *testing.T) {
 		},
 		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAsk},
 		Editor:         DefaultSettings().Editor,
+		File:           DefaultSettings().File,
 	}
 	if got != want {
 		t.Fatalf("empty settings registry = %+v, want %+v", got, want)
@@ -86,6 +87,10 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 	if err := service.UpdateMarkdown(ctx, wantMarkdown); err != nil {
 		t.Fatalf("update markdown: %v", err)
 	}
+	wantFile := apperr.FileSettings{Autosave: false}
+	if err := service.UpdateFile(ctx, wantFile); err != nil {
+		t.Fatalf("update file settings: %v", err)
+	}
 
 	for key, want := range map[string]store.UpsertSettingParams{
 		appearanceThemeKey:    {Key: appearanceThemeKey, Value: ThemeGlass, Type: settingTypeString},
@@ -97,6 +102,7 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 		formatBulletMarkerKey: {Key: formatBulletMarkerKey, Value: BulletMarkerPlus, Type: settingTypeString},
 		formatEmphasisKey:     {Key: formatEmphasisKey, Value: EmphasisMarkerAsterisk, Type: settingTypeString},
 		formatHeadingStyleKey: {Key: formatHeadingStyleKey, Value: HeadingStyleSetext, Type: settingTypeString},
+		fileAutosaveKey:       {Key: fileAutosaveKey, Value: "false", Type: settingTypeBool},
 	} {
 		got, getErr := database.Queries.GetSetting(ctx, key)
 		if getErr != nil {
@@ -111,7 +117,7 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read round-tripped registry: %v", err)
 	}
-	if got.Appearance != wantAppearance || got.Markdown != wantMarkdown {
+	if got.Appearance != wantAppearance || got.Markdown != wantMarkdown || got.File != wantFile {
 		t.Fatalf("round-tripped groups = %+v, want appearance %+v and markdown %+v", got, wantAppearance, wantMarkdown)
 	}
 	if got.ContentPrivacy.RemotePolicy != RemotePolicyAsk {
@@ -135,6 +141,7 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 		},
 		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAllow},
 		Editor:         DefaultSettings().Editor,
+		File:           DefaultSettings().File,
 	}
 
 	type storedFault struct {
@@ -175,6 +182,9 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 		{name: "missing remote policy", key: contentRemotePolicyKey, omit: true},
 		{name: "unsupported remote policy", key: contentRemotePolicyKey, value: "sometimes", type_: settingTypeString},
 		{name: "remote policy type mismatch", key: contentRemotePolicyKey, value: RemotePolicyBlock, type_: settingTypeBool},
+		{name: "missing autosave", key: fileAutosaveKey, omit: true},
+		{name: "malformed autosave", key: fileAutosaveKey, value: "sometimes", type_: settingTypeBool},
+		{name: "autosave type mismatch", key: fileAutosaveKey, value: "false", type_: settingTypeString},
 	}
 
 	for _, testCase := range testCases {
@@ -274,6 +284,7 @@ func TestSettingsRegistryAddsTypedScalarWithoutSchemaChange(t *testing.T) {
 		},
 		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyBlock},
 		Editor:         DefaultSettings().Editor,
+		File:           DefaultSettings().File,
 	}
 	if err := service.UpdateAppearance(ctx, existing.Appearance); err != nil {
 		t.Fatalf("seed appearance: %v", err)
@@ -336,6 +347,7 @@ func TestTypedGroupedDefaultsRoundTripThroughKV(t *testing.T) {
 		Markdown:       apperr.MarkdownSettings{Standard: MarkdownFull},
 		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAllow},
 		Editor:         DefaultSettings().Editor,
+		File:           DefaultSettings().File,
 	}
 	if err := repository.UpdateAppearance(ctx, want.Appearance); err != nil {
 		if closeErr := database.Close(); closeErr != nil {
@@ -496,7 +508,11 @@ func assertRepositorySettings(t *testing.T, ctx context.Context, repository *Sql
 	if err != nil {
 		t.Fatalf("get editor: %v", err)
 	}
-	got := apperr.Settings{Appearance: appearance, Markdown: markdown, ContentPrivacy: contentPrivacy, Editor: editor}
+	fileSettings, err := repository.GetFile(ctx)
+	if err != nil {
+		t.Fatalf("get file settings: %v", err)
+	}
+	got := apperr.Settings{Appearance: appearance, Markdown: markdown, ContentPrivacy: contentPrivacy, Editor: editor, File: fileSettings}
 	if got != want {
 		t.Fatalf("repository settings = %+v, want %+v", got, want)
 	}
@@ -542,6 +558,7 @@ func settingsKVRows(settings apperr.Settings) []store.UpsertSettingParams {
 		{Key: editorLineNumbersKey, Value: boolString(settings.Editor.LineNumbers), Type: settingTypeBool},
 		{Key: editorWordWrapKey, Value: boolString(settings.Editor.WordWrap), Type: settingTypeBool},
 		{Key: editorFontSizeKey, Value: strconv.Itoa(settings.Editor.FontSize), Type: settingTypeString},
+		{Key: fileAutosaveKey, Value: boolString(settings.File.Autosave), Type: settingTypeBool},
 	}
 }
 
@@ -578,6 +595,8 @@ func setSettingsScalar(t *testing.T, settings *apperr.Settings, key, value strin
 		settings.Markdown.HeadingStyle = value
 	case contentRemotePolicyKey:
 		settings.ContentPrivacy.RemotePolicy = value
+	case fileAutosaveKey:
+		settings.File.Autosave = value == "true"
 	default:
 		t.Fatalf("unknown settings scalar key %q", key)
 	}

@@ -72,6 +72,7 @@ function createAdapter(
     updateLocalDocView: jest.fn(),
     flushDocView: jest.fn<Promise<void>, [string]>(),
     setUILayout: jest.fn(),
+    reconcileCommittedWrite: jest.fn(),
     subscribeAsyncErrors(callback): () => void {
       errorListeners.push(callback);
       return jest.fn();
@@ -129,6 +130,74 @@ it('STORY-012-AC-1 strips content while hydrating projection metadata', async ()
   expect(projection).not.toHaveProperty('documents.byId.document-1.content');
   expect(JSON.stringify(projection)).not.toContain('Canonical content');
   expect(localStorage).toHaveLength(0);
+});
+
+it('dev bridge dirty state follows disk baseline', async (): Promise<void> => {
+  const state = appState(12);
+  state.snapshot.documents = {
+    [documentMetadata.documentId]: {
+      ...documentMetadata,
+      dirty: true,
+      status: 'unsaved-changes',
+    } as DocumentMetadata,
+  };
+
+  await expect(
+    bootstrapAppModelProjection(createAdapter(async () => state)),
+  ).resolves.toMatchObject({ status: 'ready' });
+
+  expect(
+    store.getState().documents.byId[documentMetadata.documentId],
+  ).toMatchObject({
+    dirty: true,
+    status: 'unsaved-changes',
+  });
+});
+
+it('projects optional active state', async () => {
+  const state = appState(9);
+  state.snapshot.documents = {};
+  state.snapshot.orderedDocumentIds = [];
+  state.snapshot.activeDocumentId = null;
+  state.snapshot.activeDocument = null;
+  state.activeBuffer = null;
+
+  await expect(
+    bootstrapAppModelProjection(createAdapter(async () => state)),
+  ).resolves.toEqual({
+    status: 'ready',
+    activeBuffer: null,
+    applicationVersion: 'test-build',
+  });
+
+  expect(store.getState().documents).toMatchObject({
+    revision: 9,
+    tabSetRevision: 9,
+    orderedIds: [],
+    byId: {},
+    activeDocumentId: null,
+  });
+});
+
+it('clears a stale active identity when the last ordered document is removed', async () => {
+  const state = appState(9);
+  const adapter = createAdapter(async (): Promise<AppModelState> => state);
+
+  await expect(bootstrapAppModelProjection(adapter)).resolves.toMatchObject({
+    status: 'ready',
+  });
+
+  adapter.emitPatch({
+    revision: 10,
+    orderedDocumentIds: [],
+    documents: { remove: [documentMetadata.documentId] },
+  });
+
+  expect(store.getState().documents).toMatchObject({
+    orderedIds: [],
+    byId: {},
+    activeDocumentId: null,
+  });
 });
 
 it('FR-WS-009 hydrates backend-acknowledged native geometry without a browser-owned substitute', async () => {
@@ -278,6 +347,56 @@ it('STORY-012-AC-3 reconciles revisioned content-free state patches', async () =
   expect(JSON.stringify(projection)).not.toContain('Canonical content');
 });
 
+/*
+ * Toggle Sidebar was inert against the real backend while the backend, the
+ * command and the emitted patch were all correct.
+ *
+ * The layout patch really arrives as `{revision, orderedDocumentIds: null, ui}`.
+ * `documentsSlice` guarded that field with `!== undefined`, so null passed the
+ * guard and spreading it threw. A throw in one slice aborts the whole dispatch,
+ * so the `ui` section of the same patch never reached `uiSlice` — a documents
+ * field silently killing a layout change. The revision guard was never
+ * involved: a synthetic patch at the same revision applied.
+ */
+it('FR-WS-011 applies the layout section of a patch carrying a null tab order', async () => {
+  const state = appState(5);
+  state.snapshot.ui = { sidebarVisible: false, sidebarWidth: 0 };
+  const adapter = createAdapter(async (): Promise<AppModelState> => state);
+
+  await expect(bootstrapAppModelProjection(adapter)).resolves.toMatchObject({
+    status: 'ready',
+  });
+
+  expect((): void => {
+    adapter.emitPatch({
+      revision: 6,
+      orderedDocumentIds: null,
+      ui: { sidebarVisible: true },
+    } as unknown as AppStatePatch);
+  }).not.toThrow();
+
+  expect(store.getState().ui).toEqual({
+    revision: 6,
+    layout: { sidebarVisible: true, sidebarWidth: 0 },
+  });
+  expect(store.getState().documents.orderedIds).toEqual([
+    documentMetadata.documentId,
+  ]);
+});
+
+it('FR-WS-011 still empties the tab order when the patch carries one', async () => {
+  const state = appState(5);
+  const adapter = createAdapter(async (): Promise<AppModelState> => state);
+
+  await expect(bootstrapAppModelProjection(adapter)).resolves.toMatchObject({
+    status: 'ready',
+  });
+
+  adapter.emitPatch({ revision: 6, orderedDocumentIds: [] });
+
+  expect(store.getState().documents.orderedIds).toEqual([]);
+});
+
 it('STORY-027-AC-2 isolates stale listeners queued patches and partial projection', async () => {
   let rejectFirst: ((error: Error) => void) | undefined;
   const failedAttempt = createAdapter(
@@ -298,6 +417,8 @@ it('STORY-027-AC-2 isolates stale listeners queued patches and partial projectio
   await expect(first).resolves.toEqual({ status: 'failed' });
   expect(store.getState().documents).toEqual({
     revision: -1,
+    tabSetRevision: -1,
+    orderedIds: [],
     byId: {},
     activeDocumentId: '',
   });

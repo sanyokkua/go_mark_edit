@@ -7,6 +7,7 @@ package main
 // `go test -run TestArchitecture`.
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -410,4 +411,201 @@ func TestArchitectureDocumentsHaveAnIdentityAndAContentAccessor(t *testing.T) {
 		t.Error("internal/appmodel declares no interface returning a document snapshot — " +
 			"the content accessor is the seam every later feature reads through")
 	}
+}
+
+// Proves: FR-FT-008 — the clause that Save "MUST never read the value directly
+// from the visible editor widget". The other half of the requirement, "first
+// accept the newest pending identity-bound working copy, then write only the
+// backend's canonical content", is proved behaviourally by
+// `frontend/e2e/real-files-and-tabs.test.ts` and by the write-path tests in
+// `internal/appmodel`.
+//
+// "Never" is a seam rule, and a seam rule can only be checked where the seam
+// is: the shape of the bridge. This asserts that the webview has exactly one
+// way to hand document text to Go — `UpdateBuffer`, the flush command — and
+// that no write command has a parameter it could smuggle editor text through.
+// A `Save(documentID, content)` binding would make the rule unenforceable by
+// any amount of care in the frontend, because the widget's value would be an
+// argument the backend is handed rather than a value it owns.
+//
+// Behaviour cannot substitute for this. A Save that happened to write the
+// backend's canonical content would pass every content assertion while the
+// binding still accepted the widget's text, and the next caller would use it.
+func TestArchitectureOnlyTheFlushCommandCarriesDocumentContent(t *testing.T) {
+	t.Parallel()
+
+	// Parameter names that carry a document's text across the bridge. Names are
+	// what a binding exposes to the webview, so names are what is checked.
+	contentParameters := map[string]bool{"content": true, "text": true, "value": true, "buffer": true, "source": true, "body": true}
+	// The one command whose entire purpose is to accept the working copy.
+	const flushCommand = "UpdateBuffer"
+
+	root := repositoryRoot(t)
+	carriers := map[string][]string{}
+	sawFlushCommand := false
+	sawSave := false
+
+	for path, functions := range boundMethods(t, root) {
+		for _, function := range functions {
+			switch function.Name.Name {
+			case flushCommand:
+				sawFlushCommand = true
+			case "Save", "SaveAs":
+				sawSave = true
+			}
+			if function.Type.Params == nil {
+				continue
+			}
+			for _, parameter := range function.Type.Params.List {
+				for _, name := range parameter.Names {
+					if !contentParameters[strings.ToLower(name.Name)] {
+						continue
+					}
+					if function.Name.Name == flushCommand {
+						continue
+					}
+					carriers[function.Name.Name] = append(carriers[function.Name.Name],
+						filepath.Base(path)+": "+name.Name)
+				}
+			}
+		}
+	}
+
+	if !sawFlushCommand {
+		t.Fatalf("no bound %s command found — this test is scanning the wrong surface", flushCommand)
+	}
+	if !sawSave {
+		t.Fatal("no bound Save or SaveAs command found — this test is scanning the wrong surface")
+	}
+	for command, parameters := range carriers {
+		t.Errorf("bound command %s accepts document content across the bridge (%v) — "+
+			"FR-FT-008 makes %s the only command that may carry a working copy, so that a write "+
+			"can only ever use the backend's canonical content", command, parameters, flushCommand)
+	}
+}
+
+/*
+T162. The classified error contract permits each category only its own
+remediations, and `permittedRemediations` silently drops a forbidden member on
+the way out. That coercion is a net, not the mechanism — it was added as one —
+so nothing reaches a user wrongly, but the source states an intent the contract
+refuses and a reader cannot tell which sites meant "message-only" and which are
+mistakes the net happens to be catching. The next call site copied from one of
+them inherits the error.
+
+This makes the coercion unreachable rather than load-bearing: a pairing the
+contract forbids now fails here, at the literal, instead of being quietly
+repaired at run time.
+
+Matched by shape rather than by function name, because the literals are rarely
+at `NewClassifiedError` itself — they are at the helpers that wrap it
+(`refusedWrite`, `classifiedOpenError`, `conflictRefusedLabelled`, and others).
+Any call that passes both a category literal and a remediation literal is
+stating a pairing, whichever function it is calling.
+*/
+func TestArchitectureClassifiedRemediationsMatchTheirCategory(t *testing.T) {
+	// The contract's table, restated here deliberately. A test that imported
+	// `remediationsByCategory` would pass whatever that map happened to say,
+	// including a mistake in the map itself; this is the spec's own row set.
+	permitted := map[string]map[string]bool{
+		"ClassifiedNotFound": {
+			"RemediationSaveToRecreate": true,
+			"RemediationCopyPath":       true,
+		},
+		"ClassifiedPermissionDenied": {},
+		"ClassifiedIOFailure":        {"RemediationRetry": true},
+		"ClassifiedConflict": {
+			"RemediationReloadFromDisk": true,
+			"RemediationKeepMine":       true,
+			"RemediationSkip":           true,
+			"RemediationCancel":         true,
+			"RemediationRetry":          true,
+		},
+		"ClassifiedCapacityLimit": {},
+		"ClassifiedSystemCommandFailure": {
+			"RemediationRetry":    true,
+			"RemediationCopyPath": true,
+		},
+		"ClassifiedUnsupported":   {},
+		"ClassifiedPersistence":   {"RemediationRetry": true},
+		"ClassifiedValidation":    {},
+		"ClassifiedInternalError": {"RemediationRetry": true},
+	}
+
+	root := repositoryRoot(t)
+	var findings []string
+	for _, path := range goSourceFiles(t, filepath.Join(root, "internal")) {
+		file := parseGo(t, path)
+		fileSet := token.NewFileSet()
+		reparsed, err := parser.ParseFile(fileSet, path, nil, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("reparse %s: %v", path, err)
+		}
+		_ = file
+		ast.Inspect(reparsed, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			var categories, remediations []string
+			for _, argument := range call.Args {
+				name := apperrSelectorName(argument)
+				switch {
+				case strings.HasPrefix(name, "Classified"):
+					categories = append(categories, name)
+				case strings.HasPrefix(name, "Remediation"):
+					remediations = append(remediations, name)
+				}
+			}
+			if len(categories) != 1 || len(remediations) == 0 {
+				return true
+			}
+			category := categories[0]
+			allowed, known := permitted[category]
+			if !known {
+				return true
+			}
+			for _, remediation := range remediations {
+				// RemediationNone is "message-only" and is legal everywhere: it
+				// requests nothing, so it can contradict no row.
+				if remediation == "RemediationNone" || allowed[remediation] {
+					continue
+				}
+				position := fileSet.Position(call.Pos())
+				findings = append(findings, fmt.Sprintf(
+					"%s:%d pairs %s with %s, which its row forbids",
+					mustRelative(t, root, position.Filename), position.Line, category, remediation,
+				))
+			}
+			return true
+		})
+	}
+	if len(findings) != 0 {
+		t.Fatalf("%d call site(s) request a remediation their category forbids:\n%s",
+			len(findings), strings.Join(findings, "\n"))
+	}
+}
+
+// apperrSelectorName reports the identifier of an `apperr.X` qualified reference,
+// or "" for anything else. Only a literal states a pairing; a variable does not.
+func apperrSelectorName(expression ast.Expr) string {
+	selector, ok := expression.(*ast.SelectorExpr)
+	if !ok {
+		return ""
+	}
+	packageIdent, ok := selector.X.(*ast.Ident)
+	if !ok || packageIdent.Name != "apperr" {
+		return ""
+	}
+	return selector.Sel.Name
+}
+
+func mustRelative(t *testing.T, root, path string) string {
+	t.Helper()
+
+	relative, err := filepath.Rel(root, path)
+	if err != nil {
+		return path
+	}
+	return relative
 }

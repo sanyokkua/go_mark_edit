@@ -1,0 +1,51 @@
+just go-test
+go test -race ./internal/... .
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	(cached)
+?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
+ok  	github.com/sanyokkua/go_mark_edit	7.087s
+just frontend-test
+npm --prefix frontend test -- --passWithNoTests
+
+> frontend@0.0.0 pretest
+> npm run check:editor-themes
+
+
+> frontend@0.0.0 check:editor-themes
+> node scripts/check-editor-themes.mjs
+
+
+> frontend@0.0.0 test
+> node --test scripts/generate-editor-themes.test.mjs public/theme-bootstrap.test.mjs && jest --passWithNoTests
+
+✔ applies only a current valid startup mirror before application code (2.953833ms)
+✔ resolves a current Auto mirror from the operating-system preference (0.647584ms)
+✔ runs the blocking bootstrap before the application module (0.087917ms)
+✔ generates six complete named Monaco themes from palette values (2.908666ms)
+✔ converts CSS rgba palette values to Monaco-compatible hex (0.687166ms)
+✔ shares each fenced-language value by appearance across themes (0.876458ms)
+✔ rejects a palette missing a required Monaco token (0.320958ms)
+✔ generates qualified Markdown and Go rules plus every required Monaco UI colour (0.569042ms)
+✔ rejects duplicate, unresolved, and unsupported palette sources (0.361583ms)
+✔ emits inactive highlight rules for every generated syntax token (0.57925ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 71.426792
+
+Test Suites: 80 passed, 80 total
+Tests:       645 passed, 645 total
+Snapshots:   0 total
+Time:        10.134 s
+Ran all test suites.

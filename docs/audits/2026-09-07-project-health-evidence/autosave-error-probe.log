@@ -1,0 +1,7 @@
+=== RUN   TestAuditAutosaveFailureReachesFrontend
+    save_test.go:849: disk="base\n" status=unsaved-changes dirty=true async error events=0
+    save_test.go:850: autosave disk failure dropped instead of notifying frontend
+--- FAIL: TestAuditAutosaveFailureReachesFrontend (0.00s)
+FAIL
+FAIL	github.com/sanyokkua/go_mark_edit/internal/appmodel	0.576s
+FAIL

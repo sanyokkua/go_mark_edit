@@ -1,0 +1,231 @@
+/*
+ * The one owner of menu-popup styling.
+ *
+ * The binding draws every dropdown — File, Settings, View, About, the tab
+ * context menu — from a single set of primitives: `.dropdown` (mockup.html:237),
+ * `.mi` (:239), `.mi .k` (:241), `.mi.sub` (:242), `.sep` (:243), `.lab`,
+ * `.tick` (:245) and `.tgl` (:248–:250). Production had been re-declaring those
+ * in three separate stylesheets, which is how the View menu ended up without the
+ * unavailable opacity its File-menu twin had — 1,404 differing pixels from one
+ * missing line.
+ *
+ * Import these class names wherever a menu surface is drawn. A menu that needs
+ * something the binding does not give it is a signal to check the binding, not
+ * to add a local rule.
+ */
+
+/*
+ * Binding source: mockup.html `.menu>button` (:229) and its state rule
+ * `.menu>button:hover,.menu>button.open{background:var(--hover);color:var(--text)}`
+ * (:230). One rule dresses all four menubar buttons there.
+ *
+ * Production had three: File and About took `ShellMenuRow`'s local `.trigger`,
+ * Settings and View each declared their own and were then patched from the
+ * parent through `[data-settings-opener]` and `[data-view-trigger]`. Only the
+ * first carried a hover rule, so File and About lit up under the pointer and
+ * Settings and View did not — the same drift that cost the View popup its
+ * unavailable opacity, on the trigger side.
+ *
+ * The binding gives hover and open the same treatment, so they share it here.
+ * `:focus-visible` is production's own and stays a separate state: a focus ring
+ * answers the keyboard, not the pointer.
+ */
+.trigger {
+  background: none;
+  block-size: var(--menu-trigger-height);
+  border: 0;
+  border-radius: var(--menu-trigger-radius);
+  box-sizing: border-box;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--menu-trigger-font-size);
+  line-height: var(--menu-trigger-line-height);
+  max-width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--menu-trigger-padding);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trigger:hover,
+.trigger[aria-expanded='true'] {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.trigger:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+
+/* Binding source: mockup.html `.dropdown` (:237). */
+.surface {
+  backdrop-filter: var(--blur);
+  background: var(--elevated);
+  border: var(--control-border-width) solid var(--stroke);
+  border-radius: var(--popup-radius);
+  box-shadow: var(--win-shadow);
+  box-sizing: border-box;
+  display: block;
+  min-inline-size: var(--popup-min-width);
+  overflow: visible;
+  padding: var(--popup-padding);
+  position: relative;
+  z-index: var(--z-dropdown);
+}
+
+/* Binding source: mockup.html `.mi` (:239). Two flex children — the label and
+   whatever trails it — held apart by `justify-content: space-between`. */
+.row {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: var(--popup-row-font-size);
+  gap: 22px;
+  inline-size: 100%;
+  justify-content: space-between;
+  min-inline-size: 0;
+  overflow: visible;
+  padding: var(--popup-row-padding);
+  text-align: start;
+  white-space: nowrap;
+}
+
+/* Binding source: mockup.html `.mi:hover{background:var(--hover)}` (:240). */
+.row:hover,
+.row:focus-visible,
+.row[data-highlighted] {
+  background: var(--hover);
+}
+
+/*
+ * A deferred row is drawn visibly unavailable at the single reviewed opacity.
+ * This lives here, once, so no menu can render a row it refuses to activate
+ * while showing it at full strength.
+ */
+.row:disabled,
+.row[data-disabled],
+.row[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: var(--disabled-opacity);
+}
+
+/*
+ * `aria-disabled` carries two different meanings here, and one row class must
+ * not flatten them into one appearance.
+ *
+ * On File and View it marks a *deferred action* — a row whose command is not
+ * built yet — and the rule above draws it visibly unavailable, which is the
+ * missing line that once cost the View menu 1,404 pixels.
+ *
+ * On Settings it marks a row that *reports the current value* of a setting
+ * chosen elsewhere: the open-mode and Markdown-standard lists show a tick
+ * against the active option and are not actions at all. Nothing is being
+ * withheld, so they keep full strength and the ordinary cursor, matching the
+ * binding, which draws `.mi` (mockup.html:239) with no disabled state.
+ *
+ * Rows marked this way still carry `aria-disabled`: they are genuinely not
+ * activatable, and assistive technology should say so.
+ */
+.row.stateRow[aria-disabled='true'] {
+  cursor: default;
+  opacity: 1;
+}
+
+/* Binding source: mockup.html `.mi .k` (:241). Rows carry their accelerator in
+   `data-shortcut`; a row whose action has no registry shortcut draws no
+   trailing box at all, so it keeps the two flex children the row expects. */
+.row:not([data-shortcut])::after {
+  content: none;
+}
+
+.row::after {
+  color: var(--faint);
+  content: attr(data-shortcut);
+  font-family: var(--mono);
+  font-size: var(--popup-accelerator-font-size);
+  margin-inline-start: auto;
+  padding-inline-start: 16px;
+}
+
+/* Binding source: mockup.html `.mi.sub` (:242). */
+.subRow {
+  color: var(--muted);
+  font-size: var(--popup-sub-row-font-size);
+  padding: var(--popup-sub-row-padding);
+}
+
+/* Binding source: mockup.html `.sep` (:243). */
+.separator {
+  background: var(--stroke-soft);
+  block-size: var(--control-border-width);
+  margin: 5px 4px;
+}
+
+/* Binding source: mockup.html `.lab` (:244), which is
+   `padding:7px 10px 3px`. This owner had 5px, and the File menu carried a
+   `.fileMenu .groupLabel{padding-block-start:7px}` override to put it back —
+   a local correction of the shared primitive is how drift announces itself. */
+.groupLabel {
+  color: var(--faint);
+  font-size: var(--popup-group-font-size);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  padding: 7px 10px 3px;
+  text-transform: uppercase;
+}
+
+/* Binding source: mockup.html `.tick` and `.tick.off` (:245). The box keeps its
+   width when off so selected and unselected rows stay aligned. */
+.tick {
+  color: var(--accent-ink);
+  flex: none;
+  text-align: center;
+  width: 14px;
+}
+
+.tickOff {
+  color: transparent;
+}
+
+/* Binding source: mockup.html `.tgl` (:248), `.tgl::after` (:249) and
+   `.tgl.on` (:250). The 19px pill is what lifts a switch row from the binding's
+   30px text row to 33px, so it carries row geometry and is not decoration. */
+.toggle {
+  background: var(--surface-3);
+  border: var(--control-border-width) solid var(--stroke);
+  border-radius: 12px;
+  cursor: pointer;
+  flex: none;
+  height: 19px;
+  position: relative;
+  width: 34px;
+}
+
+.toggle::after {
+  background: var(--muted);
+  border-radius: 50%;
+  content: '';
+  height: 14px;
+  left: 1.5px;
+  position: absolute;
+  top: 1.5px;
+  width: 14px;
+}
+
+.toggle[data-checked='true'] {
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.toggle[data-checked='true']::after {
+  background: var(--accent-contrast);
+  left: 16px;
+}

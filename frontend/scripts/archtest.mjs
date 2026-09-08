@@ -129,6 +129,66 @@ async function runColourScan(allowlist) {
   }
 }
 
+// ---------------------------------------------------------------- parity route branches
+
+/*
+ * FR-FT-054 lets the `?parity-case` route seed a fixture and hold capture
+ * conditions fixed. It does not let a production component render different
+ * markup, different content, or a different component on that route — a harness
+ * that measures a substituted component measures nothing that ships.
+ *
+ * T173 swept ten such branches out of `src/ui/**`. Two are kept deliberately and
+ * are allowed by count below; each carries a comment at its site saying why it
+ * cannot move to the mock backend or to a reference variant. `src/dev/bridge-mock/**`
+ * is not scanned at all: it is the sanctioned home for fixture seeds, which is
+ * where `refuseSave`, `refuseActivate` and `refuseCloseExecute` live.
+ *
+ * The allowance is a decreasing budget, like the colour scan above. Lower a
+ * number when a branch leaves; never raise one to make a new branch land.
+ */
+const PARITY_ROUTE = /parity-case/;
+
+async function runParityRouteScan(allowlist) {
+  // The whole of src/, not just src/ui/: App.tsx is a production component too,
+  // and it carried two of the ten branches T173 swept.
+  const sourceRoot = join(frontendRoot, 'src');
+  const counts = new Map();
+
+  for await (const path of walk(sourceRoot)) {
+    if (!/\.(ts|tsx)$/.test(path)) continue;
+    const file = relative(frontendRoot, path);
+    if (/\.test\.tsx?$/.test(file)) continue;
+    if (file.startsWith('src/dev/')) continue; // the sanctioned fixture-seed home
+
+    const lines = (await readFile(path, 'utf8')).split('\n');
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      if (
+        trimmed.startsWith('//') ||
+        trimmed.startsWith('*') ||
+        trimmed.startsWith('/*')
+      )
+        return;
+      if (!PARITY_ROUTE.test(line)) return;
+      counts.set(file, (counts.get(file) ?? 0) + 1);
+      process.stdout.write(`        ${file}:${index + 1}  ${trimmed}\n`);
+    });
+  }
+
+  for (const [file, count] of counts) {
+    const allowed = allowlist.parityRoutes?.[file] ?? 0;
+    if (count > allowed) {
+      fail(
+        `${file}: ${count} \`?parity-case\` branch(es) in a production component, ${allowed} allowed. ` +
+          `Seed the fixture in src/dev/bridge-mock/, or express the difference on the reference ` +
+          `side as an FR-FT-056 variant. See T173.`,
+      );
+    } else {
+      note(`  allowed  ${file}: ${count} known parity-route branch(es)`);
+    }
+  }
+}
+
 // ---------------------------------------------------------------- offline production sources
 
 async function runProductionNetworkScan() {
@@ -157,6 +217,8 @@ note('archtest (frontend) — boundaries');
 await runBoundaryLint(allowlist);
 note('archtest (frontend) — colour literals');
 await runColourScan(allowlist);
+note('archtest (frontend) — parity route branches');
+await runParityRouteScan(allowlist);
 note('archtest (frontend) — offline production sources');
 await runProductionNetworkScan();
 

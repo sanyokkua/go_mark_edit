@@ -1,7 +1,19 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import * as actionDispatcher from '../../logic/actions/actionDispatcher';
 import ViewMenu from './ViewMenu';
+
+it('T045 keeps the Radix view popup in the Popper positioning flow', (): void => {
+  const surfaceStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/primitives/MenuSurface.module.css'),
+    'utf8',
+  );
+
+  // The surface is owned once, by MenuSurface, for every menu popup.
+  expect(surfaceStyles).toMatch(/\.surface\s*\{[^}]*position:\s*relative;/s);
+});
 
 it('renders synchronized pane toggles without an unlisted view-cycle shortcut', (): void => {
   const onEditorVisibilityChange = jest.fn();
@@ -82,4 +94,66 @@ it('T061 routes legacy editor and preview view toggles through the dispatcher', 
   expect(onEditorVisibilityChange).toHaveBeenCalledWith(false);
   expect(onPreviewVisibilityChange).toHaveBeenCalledWith(false);
   dispatch.mockRestore();
+});
+
+// The whole View menu used to disappear when no document was open, which left
+// the user nothing to read and no way to see what View contains. It is now
+// always offered, with only the document-backed rows unavailable.
+it('offers the View menu with no document open and marks the arrangement rows unavailable', (): void => {
+  render(
+    <ViewMenu
+      arrangement="split"
+      documentOpen={false}
+      editorVisible
+      lineNumbers
+      previewVisible
+      wordWrap
+      onArrangementChange={jest.fn()}
+      onEditorVisibilityChange={jest.fn()}
+      onLineNumbersChange={jest.fn()}
+      onPreviewVisibilityChange={jest.fn()}
+      onWordWrapChange={jest.fn()}
+    />,
+  );
+
+  fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), {
+    key: 'ArrowDown',
+  });
+
+  const menu = screen.getByRole('menu', { name: 'View options' });
+  expect(document.body.contains(menu)).toBe(true);
+
+  for (const label of ['Editor', 'Split', 'Preview']) {
+    const row = screen.getByRole('menuitemradio', { name: label });
+    expect(row).toHaveAttribute('data-availability', 'unavailable');
+    expect(row).toHaveAttribute('data-disabled');
+  }
+
+  // The rows that do not read the active document keep working.
+  expect(
+    screen.getByRole('menuitemcheckbox', { name: /Line numbers/u }),
+  ).not.toHaveAttribute('data-disabled');
+});
+
+it('leaves the arrangement rows available once a document is open', (): void => {
+  render(
+    <ViewMenu
+      arrangement="split"
+      editorVisible
+      previewVisible
+      onArrangementChange={jest.fn()}
+      onEditorVisibilityChange={jest.fn()}
+      onPreviewVisibilityChange={jest.fn()}
+    />,
+  );
+
+  fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), {
+    key: 'ArrowDown',
+  });
+
+  for (const label of ['Editor', 'Split', 'Preview']) {
+    const row = screen.getByRole('menuitemradio', { name: label });
+    expect(row).toHaveAttribute('data-availability', 'enabled');
+    expect(row).not.toHaveAttribute('data-disabled');
+  }
 });

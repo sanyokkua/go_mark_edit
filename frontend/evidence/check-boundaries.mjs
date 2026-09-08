@@ -72,7 +72,9 @@ const evidenceRuntimeSource = fs.readFileSync(evidenceRuntimePath, 'utf8');
 if (
   !directWailsImports(evidenceRuntimeSource).includes('wailsjs/runtime') ||
   !evidenceRuntimeSource.includes('LogInfo') ||
-  !evidenceRuntimeSource.includes('Quit')
+  !evidenceRuntimeSource.includes('Quit') ||
+  !evidenceRuntimeSource.includes('EventsEmit') ||
+  !evidenceRuntimeSource.includes('EventsOn')
 ) {
   throw new Error(
     'Native evidence runtime seam does not own LogInfo and Quit.',
@@ -168,6 +170,16 @@ const requiredEvidence = {
   'startup-retry': ['nativeEvidencePaths', 'ApplicationHandler'],
   'divider-acknowledgement': ['driveSeparator', 'appModelAdapter.getState'],
   notifications: ['notifyToast', 'notifyCondition', 'dismissNotification'],
+  'autosave-latency': [
+    'acknowledgeAutosaveInput',
+    'onAutosaveCommit',
+    'appModelAdapter.updateBuffer',
+  ],
+  'explicit-save-latency': [
+    'newExplicitSaveLatencyScenario',
+    'SetDocumentSaveDialog',
+    'SetWriteCommitObserver',
+  ],
 };
 
 for (const [scenario, expectedBoundaries] of Object.entries(boundaries)) {

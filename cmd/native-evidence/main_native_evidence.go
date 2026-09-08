@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
-	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -26,13 +26,16 @@ import (
 )
 
 var (
-	nativeEvidenceAssetsDir   string
-	nativeEvidenceDatabaseDir string
-	nativeEvidenceInstance    = "native-evidence"
-	nativeEvidenceScenario    string
+	nativeEvidenceAssetsDir    string
+	nativeEvidenceDatabaseDir  string
+	nativeEvidenceInstance     = "native-evidence"
+	nativeEvidenceScenario     string
+	nativeEvidenceAutosave     *autosaveLatencyScenario
+	nativeEvidenceExplicitSave *explicitSaveLatencyScenario
 )
 
 func main() {
+	parseNativeEvidenceFlags()
 	if err := validateNativeEvidenceConfiguration(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
@@ -49,6 +52,30 @@ func main() {
 	if err := wails.Run(nativeEvidenceOptions(holder, paths)); err != nil {
 		fmt.Fprintf(os.Stderr, "native evidence run: %v\n", err)
 		os.Exit(1)
+	}
+	if nativeEvidenceExplicitSave != nil {
+		if err := nativeEvidenceExplicitSave.failure(); err != nil {
+			fmt.Fprintf(os.Stderr, "explicit-save-latency FAILED: %v\n", err)
+			os.Exit(1)
+		}
+	}
+}
+
+func parseNativeEvidenceFlags() {
+	scenario := flag.String("scenario", nativeEvidenceScenario, "native evidence scenario")
+	assets := flag.String("assets", nativeEvidenceAssetsDir, "native evidence frontend assets directory")
+	database := flag.String("database", nativeEvidenceDatabaseDir, "native evidence database and evidence directory")
+	flag.Parse()
+	nativeEvidenceScenario = *scenario
+	nativeEvidenceAssetsDir = *assets
+	nativeEvidenceDatabaseDir = *database
+	if nativeEvidenceAssetsDir == "" && nativeEvidenceScenario != "" {
+		// Repository root, not frontend/: the bundle is build output and lives
+		// outside the package the source linters are rooted at. T182.
+		nativeEvidenceAssetsDir = filepath.Join("dist-native-evidence", nativeEvidenceScenario)
+	}
+	if nativeEvidenceDatabaseDir == "" {
+		nativeEvidenceDatabaseDir = filepath.Join(os.TempDir(), "gomarkedit-native-evidence")
 	}
 }
 
@@ -69,27 +96,63 @@ func validateNativeEvidenceConfiguration() error {
 }
 
 func configureNativeEvidenceDependencies(holder *application.ApplicationContextHolder, scenario string) {
+	nativeEvidenceAutosave = nil
+	nativeEvidenceExplicitSave = nil
 	var timer nativeEvidenceLayoutTimer = systemNativeEvidenceTimer{}
 	switch scenario {
 	case "pending-close", "stale-close-old":
 		timer = stalledNativeEvidenceTimer{}
 	case "stale-close-new":
 		timer = immediateNativeEvidenceTimer{}
+	case "autosave-latency":
+		latencyScenario, err := newAutosaveLatencyScenario(nativeEvidenceDatabaseDir)
+		if err != nil {
+			panic(err)
+		}
+		nativeEvidenceAutosave = latencyScenario
+	case explicitSaveScenarioName:
+		explicitScenario, err := newExplicitSaveLatencyScenario(nativeEvidenceDatabaseDir)
+		if err != nil {
+			panic(err)
+		}
+		nativeEvidenceExplicitSave = explicitScenario
 	}
 
-	model := appmodel.NewAppModelServiceWithLayoutRepositoryAndTimer(
-		appmodel.RuntimeStatePatchEmitter{},
-		nil,
-		timer,
-	)
-	holder.AppModelService = model
-	holder.AppModelHandler = appmodel.NewAppModelHandler(model, nil, holder.Context)
-	holder.NativeWindowService = application.NewNativeWindowService(model, nil)
-	holder.ApplicationHandler = application.NewApplicationHandler(holder, nil, holder.Context)
+	// Take the model the composition root already built and change only the
+	// clock. This used to construct a second model and assign it over
+	// holder.AppModelService, which discarded the clipboard writer and the reveal
+	// port the root injects, and left the autosave and default-open-mode settings
+	// observers bound to an object nothing else referenced — in the binary whose
+	// whole purpose is to measure autosave. Nothing failed, because no scenario
+	// invokes Copy path or Reveal; that is what made it worth fixing rather than
+	// annotating. There is now exactly one wiring path, so a port added to
+	// NewAppModelServiceForHost reaches this host by construction.
+	model := holder.AppModelService
+	model.SetLayoutTimer(timer)
+	if nativeEvidenceAutosave != nil {
+		model.SetDocumentOpenDialog(nativeEvidenceAutosave)
+		model.SetWriteCommitObserver(nativeEvidenceAutosave.recordCommit)
+	}
+	if nativeEvidenceExplicitSave != nil {
+		nativeEvidenceExplicitSave.attachModel(model)
+		model.SetDocumentSaveDialog(nativeEvidenceExplicitSave)
+		model.SetWriteCommitObserver(nativeEvidenceExplicitSave.recordCommit)
+	}
+	// No handler rebuild. NewApplicationContextHolder already built
+	// AppModelHandler, NativeWindowService and ApplicationHandler against this
+	// same model with the same nil logger, so re-creating them produced identical
+	// objects; they existed only because the model underneath them had been
+	// swapped. Leaving them alone keeps the root the single wiring site.
 }
 
 func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *nativeEvidencePaths) *options.App {
 	holder.SetNativeWindow(nativeEvidenceWindow{})
+	holder.SetCloseCoordinator(application.NewCloseCoordinator(
+		func(ctx context.Context) {
+			wailsruntime.EventsEmit(ctx, application.NativeCloseRequestEvent)
+		},
+		wailsruntime.Quit,
+	))
 	return &options.App{
 		Title:         "GoMarkEdit",
 		Width:         1024,
@@ -106,6 +169,14 @@ func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *
 		},
 		OnStartup: func(ctx context.Context) {
 			holder.SetContext(ctx)
+			if nativeEvidenceAutosave != nil {
+				nativeEvidenceAutosave.attachContext(ctx)
+				wailsruntime.EventsOn(ctx, autosaveInputEvent, nativeEvidenceAutosave.recordInput)
+				wailsruntime.EventsOn(ctx, autosaveMissEvent, nativeEvidenceAutosave.recordMiss)
+			}
+			if nativeEvidenceExplicitSave != nil {
+				nativeEvidenceExplicitSave.attachContext(ctx)
+			}
 			if err := holder.Init(ctx); err != nil {
 				wailsruntime.WindowShow(ctx)
 				return
@@ -113,9 +184,12 @@ func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *
 			if err := holder.RestoreNativeWindow(ctx); err != nil {
 				wailsruntime.WindowShow(ctx)
 			}
+			if nativeEvidenceExplicitSave != nil {
+				startNativeEvidenceExplicitSave(ctx)
+			}
 		},
-		OnBeforeClose: func(_ context.Context) bool {
-			return holder.FlushBeforeClose() != nil
+		OnBeforeClose: func(ctx context.Context) bool {
+			return holder.BeforeClose(ctx)
 		},
 		OnShutdown: func(_ context.Context) {
 			_ = holder.Close()
@@ -132,6 +206,23 @@ func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *
 
 func nativeEvidenceMenuForPlatform(platform string) *menu.Menu {
 	return application.NativeMenuForPlatform(platform)
+}
+
+// startNativeEvidenceExplicitSave stamps SC-FT-002's ready-for-input instant the
+// moment startup finished, walks both fixtures off the UI thread, then quits so
+// the JSON report is the run's only outcome. The exit code is decided after
+// wails.Run returns, from the recorded walkthrough failure.
+func startNativeEvidenceExplicitSave(ctx context.Context) {
+	scenario := nativeEvidenceExplicitSave
+	scenario.markReady()
+	go func() {
+		if err := scenario.run(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "explicit-save-latency FAILED: %v\n", err)
+		} else {
+			fmt.Printf("explicit-save-latency PASS report=%s\n", scenario.reportPath)
+		}
+		wailsruntime.Quit(ctx)
+	}()
 }
 
 type nativeEvidencePaths struct {

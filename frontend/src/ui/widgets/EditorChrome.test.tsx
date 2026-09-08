@@ -1,34 +1,48 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import {
   createEvent,
   fireEvent,
   render as rtlRender,
   screen,
+  within,
 } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
 import * as actionDispatcher from '../../logic/actions/actionDispatcher';
+import * as shortcutRegistry from '../../logic/actions/shortcutRegistry';
+import { getAction } from '../../logic/actions/actionRegistry';
 import { store } from '../../logic/store';
+import {
+  hydrateProjection,
+  resetProjection,
+} from '../../logic/store/appModelProjectionActions';
 import { hydrateSettings } from '../../logic/store/settingsSlice';
 import { DocumentCommandContext } from './editorSession';
 import { EditorSessionContext } from './editorSession';
 import EditorChrome from './EditorChrome';
 import { ModalStateProvider } from './modalState';
 
+jest.mock('../../logic/actions/shortcutRegistry', () => {
+  const actual = jest.requireActual('../../logic/actions/shortcutRegistry');
+  return {
+    __esModule: true,
+    ...actual,
+    currentPlatform: jest.fn(actual.currentPlatform),
+  };
+});
+
 const render = (ui: Parameters<typeof rtlRender>[0]) =>
   rtlRender(<Provider store={store}>{ui}</Provider>);
 
-it('T018 renders the complete toolbar groups and visual tab fixtures', () => {
+it('T018 renders the complete toolbar groups and a real tab surface', () => {
   render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
 
   expect(
     screen.getByRole('tablist', { name: 'Document tabs' }),
   ).toBeInTheDocument();
-  expect(
-    screen.getByRole('tab', { name: /release-notes\.md/ }),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole('tab', { name: /spec-draft\.md/ }),
-  ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'New tab' })).toBeEnabled();
   expect(screen.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Heading 1' })).toBeInTheDocument();
   expect(
@@ -36,6 +50,143 @@ it('T018 renders the complete toolbar groups and visual tab fixtures', () => {
   ).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Table' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Format' })).toBeDisabled();
+});
+
+/*
+ * The binding holds the arrangement segment against the toolbar's trailing edge
+ * with an empty `.tsp{flex:1}` between the overflow group and the segment
+ * (mockup.html:672–673). Production had no spacer and drew the segment
+ * immediately after Format/Compact/Lint, so it sat mid-toolbar.
+ *
+ * Asserted as order rather than as computed layout, because jsdom does not lay
+ * flexbox out: the segment must be the toolbar's last child, and the spacer must
+ * sit between the overflow trigger and it.
+ */
+it('T033 holds the arrangement segment at the toolbar trailing edge', () => {
+  const { container } = render(
+    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+  );
+
+  const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
+  const children = Array.from(toolbar.children);
+  const segment = screen.getByRole('radiogroup', { name: 'View arrangement' });
+  const overflow = container.querySelector('details');
+  const spacer = toolbar.querySelector(':scope > div[aria-hidden="true"]');
+
+  expect(children.at(-1)).toBe(segment);
+  expect(spacer).not.toBeNull();
+  expect(children.indexOf(spacer as Element)).toBe(children.length - 2);
+  expect(children.indexOf(overflow as Element)).toBe(children.length - 3);
+
+  const chromeStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    'utf8',
+  );
+  expect(chromeStyles).toMatch(/\.spacer\s*\{[^}]*flex:\s*1;/);
+});
+
+it('T060 exposes real application-menu controls from the narrow toolbar overflow', () => {
+  const originalWidth = window.innerWidth;
+  const originalUrl = window.location.href;
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: 375,
+  });
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=targeted:settings-overflow:375:minimal-light',
+  );
+
+  try {
+    render(
+      <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+    );
+
+    fireEvent.click(screen.getByLabelText('More actions'));
+
+    const overflow = screen.getByRole('menu', { name: 'More actions' });
+    expect(
+      within(overflow).getByRole('button', { name: 'File' }),
+    ).toBeEnabled();
+    expect(
+      within(overflow).getByRole('button', { name: 'Settings' }),
+    ).toBeEnabled();
+    expect(
+      within(overflow).getByRole('button', { name: 'View' }),
+    ).toBeEnabled();
+    expect(
+      within(overflow).getByRole('button', { name: 'About' }),
+    ).toBeEnabled();
+  } finally {
+    window.history.replaceState({}, '', originalUrl);
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: originalWidth,
+    });
+  }
+});
+
+it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', () => {
+  const chromeStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    'utf8',
+  );
+
+  expect(chromeStyles).toContain('gap: var(--toolbar-gap)');
+  expect(chromeStyles).toContain('block-size: var(--toolbar-row-height)');
+  expect(chromeStyles).toContain('block-size: var(--toolbar-action-height)');
+  expect(chromeStyles).toContain(
+    'min-inline-size: var(--toolbar-action-min-width)',
+  );
+  expect(chromeStyles).toContain(
+    'padding-inline: var(--toolbar-action-padding-inline)',
+  );
+  expect(chromeStyles).toContain('border-radius: var(--toolbar-group-radius)');
+  expect(chromeStyles).toContain('font-size: 11.5px');
+  expect(chromeStyles).toContain('min-inline-size: var(--popup-min-width)');
+  /*
+   * The tab strip is DocumentTabs' surface, not EditorChrome's — EditorChrome
+   * never referenced the tab classes that used to sit in its stylesheet. The
+   * assertion follows the component that actually owns the rule.
+   */
+  expect(
+    readFileSync(
+      resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+      'utf8',
+    ),
+  ).toContain('min-inline-size: max-content');
+  expect(chromeStyles).toContain(":global(:root[data-theme='glass'])");
+  expect(chromeStyles).toContain(":global(:root[data-theme='material'])");
+  expect(chromeStyles).toContain(":global(:root[data-theme='minimal'])");
+});
+
+it('T045 retains the reference text glyphs for parity deferred actions', () => {
+  const chromeStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    'utf8',
+  );
+
+  expect(chromeStyles).toMatch(
+    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\[data-action-id='format'\]::before[\s\S]*?content:\s*'⌁ '/s,
+  );
+  expect(chromeStyles).toMatch(
+    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\[data-action-id='compact'\]::before[\s\S]*?content:\s*'⇥ '/s,
+  );
+  expect(chromeStyles).toMatch(
+    /:global\(\.application-frame:has\(\[data-parity-shell='true'\]\)\)[\s\S]*?\[data-action-id='lint'\]::before[\s\S]*?content:\s*'✓ '/s,
+  );
+});
+
+it('T045 keeps the parity toolbar overflow trigger available at 1280px', () => {
+  const chromeStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    'utf8',
+  );
+
+  expect(chromeStyles).toMatch(
+    /@media \(min-width: 769px\)[\s\S]*?:global\(\.application-frame:has\(\[data-parity-family='toolbar-overflow'\]\)\)\s+\.toolbar\s+\.overflow\s*\{[^}]*display:\s*block;/s,
+  );
 });
 
 it('T068 uses icon-first toolbar controls while retaining localized accessible names', () => {
@@ -63,6 +214,108 @@ it('T072 scopes overflow relocation to the documented 768 and 375 width groups',
     document.body.querySelector('[class*="overflowAt375"]'),
   ).not.toBeNull();
   expect(screen.getAllByRole('button', { name: 'Link' })).toHaveLength(2);
+});
+
+/*
+ * T072 above proves the two width buckets *exist*. It never proved which
+ * toolbar groups land in each, and that is the hole Bold, Italic,
+ * Strikethrough, Inline code and all three headings fell through:
+ * `.relocateAt375 { display: none }` (`EditorChrome.module.css:556-559`) took
+ * them out of the toolbar row at 375, while the parity-shaped overflow — which
+ * carries no text group and no heading group — was what the shipped
+ * application drew there. Present at 1280, absent at 375, with no other route
+ * to them.
+ *
+ * Whole sets are compared rather than membership, so removing an action from a
+ * bucket fails here instead of silently shrinking the narrow surface. jsdom
+ * lays nothing out and applies no media query, so this pins the *assignment*;
+ * `e2e/narrow-width.test.ts` pins what is actually reachable at each width.
+ */
+it('T084 assigns every toolbar group to the overflow bucket its width owns', () => {
+  const { container } = render(
+    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+  );
+  fireEvent.click(
+    container.querySelector('summary[aria-label="More actions"]')!,
+  );
+
+  const overflow = screen.getByRole('menu', { name: 'More actions' });
+  const idsIn = (selector: string): string[] =>
+    Array.from(
+      overflow.querySelectorAll<HTMLElement>(`${selector} [data-action-id]`),
+    ).map((element) => element.getAttribute('data-action-id') ?? '');
+
+  // Relocated first, at 768: the list group then the insert group.
+  expect(idsIn('.overflowAt768')).toEqual([
+    'bullet-list',
+    'numbered-list',
+    'task-list',
+    'quote',
+    'link',
+    'image',
+    'table',
+  ]);
+  // Relocated second, at 375: the text group, the heading group, and the
+  // arrangement segment, which the inline toolbar no longer shows at that width.
+  expect(idsIn('.overflowAt375')).toEqual([
+    'bold',
+    'italic',
+    'strike',
+    'inline-code',
+    'heading-1',
+    'heading-2',
+    'heading-3',
+    'editor',
+    'split',
+    'preview',
+  ]);
+
+  // And the row's own drop order is the other half of the same contract: each
+  // group carries exactly the relocation class for the width that drops it, and
+  // the deferred group carries none because it never leaves the row.
+  const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
+  const rowGroups = Array.from(
+    toolbar.querySelectorAll<HTMLElement>(':scope > div[class*="group"]'),
+  ).map((group) => ({
+    ids: Array.from(group.querySelectorAll('[data-action-id]')).map((element) =>
+      element.getAttribute('data-action-id'),
+    ),
+    relocatesAt: group.className.includes('relocateAt375')
+      ? 375
+      : group.className.includes('relocateAt768')
+        ? 768
+        : null,
+  }));
+  expect(rowGroups).toEqual([
+    { ids: ['bold', 'italic', 'strike', 'inline-code'], relocatesAt: 375 },
+    { ids: ['heading-1', 'heading-2', 'heading-3'], relocatesAt: 375 },
+    {
+      ids: ['bullet-list', 'numbered-list', 'task-list', 'quote'],
+      relocatesAt: 768,
+    },
+    { ids: ['link', 'image', 'table'], relocatesAt: 768 },
+    { ids: ['format', 'compact', 'lint'], relocatesAt: null },
+    { ids: ['editor', 'split', 'preview'], relocatesAt: 375 },
+  ]);
+
+  /*
+   * Availability is the registry's answer, never a wiring accident:
+   * `actionRegistry.ts:349` marks `image` deferred
+   * (`image-lifecycle-deferred`), and `:356`, `:367`, `:373` do the same for
+   * `format`, `compact` and `lint`. Nothing else in the toolbar is deferred, at
+   * either width.
+   */
+  const disabled = Array.from(
+    document.body.querySelectorAll<HTMLButtonElement>('[data-action-id]'),
+  )
+    .filter((element) => element.disabled)
+    .map((element) => element.getAttribute('data-action-id'));
+  expect([...new Set(disabled)].sort()).toEqual([
+    'compact',
+    'format',
+    'image',
+    'lint',
+  ]);
 });
 
 it('T070 closes the toolbar overflow on Escape and outside pointer input', () => {
@@ -157,7 +410,7 @@ it('T068 exposes active arrangement state and explicit icon metadata', () => {
   );
 });
 
-it('T018 keeps visual Assistant and future tab controls inert', () => {
+it('T018 keeps the Assistant deferred while exposing real tab controls', () => {
   const invoke = jest.fn();
   render(
     <DocumentCommandContext.Provider value={null}>
@@ -165,10 +418,7 @@ it('T018 keeps visual Assistant and future tab controls inert', () => {
     </DocumentCommandContext.Provider>,
   );
 
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Close release-notes.md' }),
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'New tab' }));
+  expect(screen.getByRole('button', { name: 'New tab' })).toBeEnabled();
   expect(invoke).not.toHaveBeenCalled();
   expect(
     screen.queryByRole('region', { name: 'Assistant' }),
@@ -186,11 +436,10 @@ it('T091 renders the text-labelled arrangement island in the toolbar', () => {
   );
 });
 
-it('T050 keeps representative tabs unavailable and non-interactive', () => {
+it('T050 keeps the tab-strip New affordance available', () => {
   render(<EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />);
 
-  expect(screen.getByRole('tab', { name: 'release-notes.md' })).toBeDisabled();
-  expect(screen.getByRole('tab', { name: 'spec-draft.md' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'New tab' })).toBeEnabled();
 });
 
 it('preserves the editor selection when a toolbar format button is pressed', () => {
@@ -392,3 +641,177 @@ it('T058 suppresses editor shortcuts while the Shortcuts dialog modal state is a
   expect(commands.getContent).not.toHaveBeenCalled();
   expect(commands.replaceRange).not.toHaveBeenCalled();
 });
+
+/*
+ * T143: `parityOverflowShortcuts` hardcoded a per-action string table, so the
+ * parity overflow advertised `Ctrl ⇧ 8` for an action the registry binds to
+ * `Mod+Shift+8`. Controlling the platform read is what separates a derivation
+ * from a literal that happens to agree on one host.
+ */
+
+// Proves: FR-FT-047 — every shortcut the parity toolbar overflow advertises is
+// the registry binding rendered for the running platform. It proves nothing
+// about the arrangement row beneath them, which carries no accelerator.
+/*
+ * T178 — the formatting toolbar on a document the backend will refuse to write.
+ *
+ * `ActionButton` computed `disabled` from `entry.availability.kind ===
+ * 'deferred'` — the *static* registry entry — and `EditorChrome` passed no
+ * projection to `dispatchAction`, so neither the button's enabled state nor the
+ * command it runs could see the document's capability. Making Monaco read-only
+ * and gating the registry both leave this path open: the user cannot type, but
+ * every formatting button still works.
+ *
+ * This is the same defect class AGENTS.md records against `SettingsMenu` —
+ * a surface deciding availability for itself instead of asking the registry —
+ * so the fix asks `getActionAvailability` rather than re-deriving the rule here.
+ */
+// Proves: FR-FT-006 (the "Editing MUST be unavailable" clause, at the toolbar)
+it('T178 disables the formatting toolbar for a non-writable document', () => {
+  store.dispatch(resetProjection());
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: {
+        'doc-1': {
+          documentId: 'doc-1',
+          title: 'broken',
+          path: '/documents/broken.md',
+          dirty: false,
+          encoding: 'utf-8',
+          lineEnding: 'lf',
+          wordCount: 0,
+          capability: 'unsafe-read-only',
+          view: {
+            arrangement: 'editor',
+            editorVisible: true,
+            previewVisible: false,
+            cursor: { line: 1, column: 1 },
+            selection: {
+              start: { line: 1, column: 1 },
+              end: { line: 1, column: 1 },
+            },
+            scroll: { editor: 0, preview: 0 },
+          },
+        },
+      },
+      activeDocumentId: 'doc-1',
+      ui: {},
+    }),
+  );
+
+  render(
+    <EditorSessionContext.Provider
+      value={{ documentId: 'doc-1', content: 'word' }}
+    >
+      <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
+    </EditorSessionContext.Provider>,
+  );
+
+  for (const name of ['Bold', 'Italic', 'Heading 1', 'Table']) {
+    expect(screen.getByRole('button', { name })).toBeDisabled();
+  }
+});
+
+/*
+ * The control for the case above: the same toolbar on a writable document must
+ * stay live, so the assertion is the capability and not a toolbar that has been
+ * disabled outright.
+ */
+// Proves: FR-FT-006 (the negative half at the toolbar)
+it('T178 leaves the formatting toolbar live for a writable document', () => {
+  store.dispatch(resetProjection());
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: {
+        'doc-1': {
+          documentId: 'doc-1',
+          title: 'fine',
+          path: '/documents/fine.md',
+          dirty: false,
+          encoding: 'utf-8',
+          lineEnding: 'lf',
+          wordCount: 0,
+          capability: 'writable',
+          view: {
+            arrangement: 'editor',
+            editorVisible: true,
+            previewVisible: false,
+            cursor: { line: 1, column: 1 },
+            selection: {
+              start: { line: 1, column: 1 },
+              end: { line: 1, column: 1 },
+            },
+            scroll: { editor: 0, preview: 0 },
+          },
+        },
+      },
+      activeDocumentId: 'doc-1',
+      ui: {},
+    }),
+  );
+
+  render(
+    <EditorSessionContext.Provider
+      value={{ documentId: 'doc-1', content: 'word' }}
+    >
+      <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
+    </EditorSessionContext.Provider>,
+  );
+
+  for (const name of ['Bold', 'Italic', 'Heading 1', 'Table']) {
+    expect(screen.getByRole('button', { name })).toBeEnabled();
+  }
+});
+
+/*
+ * T190, the toolbar half of the same decision. The overflow drew accelerators
+ * from the registry but only on `?parity-case`, and `formatShortcut` had no
+ * other caller in this file — so the shipped toolbar advertised nothing.
+ *
+ * These controls are icon-first with a localized accessible name, so there is no
+ * text row to put an accelerator beside; the tooltip is where a user asks "what
+ * is this, and how do I do it from the keyboard". Asserted against the registry
+ * rather than a fixed list so it cannot drift, and the unbound case is asserted
+ * too — a control with no binding must keep its plain label rather than gain an
+ * empty bracket.
+ */
+// Proves: FR-FT-047 — the toolbar advertises its registry bindings on the
+// shipped surface, formatted for the running platform.
+it('T190 advertises toolbar accelerators from the registry in the tooltip', () => {
+  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+
+  for (const actionId of ['bold', 'italic', 'link'] as const) {
+    const control = document.querySelector(`[data-action-id="${actionId}"]`);
+    const binding = getAction(actionId).shortcut;
+    const title = control?.getAttribute('title') ?? '';
+    if (binding === undefined) {
+      expect(title).not.toContain('(');
+    } else {
+      expect(title).toContain(
+        shortcutRegistry.formatShortcut(
+          binding,
+          shortcutRegistry.currentPlatform(),
+        ),
+      );
+    }
+  }
+});
+
+/*
+ * T173. The parity overflow inventory case and the two `T143 …` accelerator
+ * cases were removed with the substituted overflow they described.
+ *
+ * `toolbarOverflowParity` replaced the whole overflow popup with a flat item
+ * list carrying no text actions, no heading actions and no real arrangement
+ * radiogroup. It is gone: the overflow interior is now a named reviewed
+ * exclusion, because the shipped overflow is icon-first and the binding's is a
+ * flat text list — a design divergence, measured at `bounds.left 140.375 vs
+ * 102.375` at 375px, that no FR-FT-056 variant can express through the mockup's
+ * own primitives.
+ *
+ * The accelerators those cases asserted are not lost: T190 restored them to the
+ * shipped toolbar, in the tooltip, and `T190 advertises toolbar accelerators
+ * from the registry in the tooltip` asserts them against production.
+ */

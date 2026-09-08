@@ -1,0 +1,37 @@
+wails build
+[0;92mWails CLI[0m [0;31mv2.15.0[0m
+
+
+# Build Options
+
+Platform(s)        | darwin/arm64                                      
+Compiler           | /opt/homebrew/bin/go                              
+Skip Bindings      | false                                             
+Build Mode         | production                                        
+Devtools           | false                                             
+Frontend Directory | /Users/ok/Development/GitHub/go_mark_edit/frontend
+Obfuscated         | false                                             
+Install Scope      | machine                                           
+Skip Frontend      | false                                             
+Compress           | false                                             
+Package            | true                                              
+Clean Bin Dir      | false                                             
+LDFlags            |                                                   
+Tags               | []                                                
+Race Detector      | false                                             
+
+
+# Building target: darwin/arm64
+
+  • Generating bindings: Done.
+  • Installing frontend dependencies: Done.
+  • Compiling frontend: Done.
+  • Compiling application: # github.com/sanyokkua/go_mark_edit
+ld: warning: object file (/private/var/folders/bk/dpmdprgs4mxdvbh4rc300s8w0000gn/T/go-link-2597945533/go.o) was built for newer 'macOS' version (13.0) than being linked (11.0)
+Done.
+  • Packaging application: Done.
+  • Self-signing application: Done.
+Built '/Users/ok/Development/GitHub/go_mark_edit/build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit' in 11.612s.
+
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project:
+https://github.com/sponsors/leaanthony

@@ -120,6 +120,12 @@ baseline evidence:
 verify evidence:
     bash scripts/verify.sh {{evidence}}
 
+# Run the whole release gate stack and record every exit code into the feature's exit-codes.txt.
+# That artifact went stale twice in two days while it was written by hand (T096, then T132), which
+# is why it is generated. It does not retry a red gate and it does not write the Notes section.
+release-stack evidence:
+    bash scripts/release-stack.sh {{evidence}}
+
 # --- packaging ----------------------------------------------------------------
 # Deliberately not built. Naming a command that does not exist is how a Definition of Done certifies
 # something false — `just build` produces a runnable binary, not a distributable artifact.
@@ -141,7 +147,11 @@ sqlc-check:
 vuln:
     govulncheck ./...
 
-# Local mirror of the CI gate set. Security gates (sqlc-check, vuln) join later.
+# The mechanical half of the CI gate set, run locally. It is not a mirror: CI is a strict superset.
+# `.github/workflows/main.yml` runs these nine steps in this order *and* a second job that runs
+# `just e2e-test` — the Playwright parity, behaviour and state contracts, which nothing below
+# touches. A green `check` therefore says nothing about interface behaviour; run `just e2e-test`
+# before calling any interface work done. Security gates (sqlc-check, vuln) join later.
 check:
     just gen-check
     just frontend-build

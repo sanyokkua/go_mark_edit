@@ -1,0 +1,27 @@
+{
+  "case": "formatted",
+  "command": [
+    "rtk",
+    "proxy",
+    "golangci-lint",
+    "run",
+    "--config",
+    "/tmp/gomark-gofmt-lint-probe-_w6lbhni/.golangci.yml",
+    "--timeout=20s",
+    "--allow-parallel-runners",
+    "./..."
+  ],
+  "cwd": "/tmp/gomark-gofmt-lint-probe-_w6lbhni",
+  "environment_overrides": {
+    "GOCACHE": "/tmp/gomark-gofmt-lint-probe-_w6lbhni/go-cache",
+    "GOMODCACHE": "/tmp/gomark-gofmt-lint-probe-_w6lbhni/go-modcache",
+    "GOWORK": "off",
+    "GOPROXY": "off",
+    "GOSUMDB": "off",
+    "GOTOOLCHAIN": "local",
+    "GOLANGCI_LINT_CACHE": "/tmp/gomark-gofmt-lint-probe-_w6lbhni/golangci-cache"
+  },
+  "exit_code": 0,
+  "elapsed_seconds": 0.259,
+  "external_timeout_seconds": 25
+}

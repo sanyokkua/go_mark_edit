@@ -3,11 +3,15 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
 	"os"
 	goruntime "runtime"
+	"strings"
+	"unicode"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
+	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
@@ -24,6 +28,10 @@ var assets embed.FS
 
 var (
 	showStartupRecoveryWindow = runtime.WindowShow
+	emitNativeCloseRequest    = func(ctx context.Context) {
+		runtime.EventsEmit(ctx, application.NativeCloseRequestEvent)
+	}
+	quitNativeApplication = runtime.Quit
 )
 
 func main() {
@@ -47,9 +55,99 @@ func main() {
 	}()
 
 	applicationContext := application.NewApplicationContextHolder(fileUtils, appLogger)
+	dialogs := application.NewDocumentDialogs(func(ctx context.Context) (string, error) {
+		return runtime.OpenFileDialog(ctx, runtime.OpenDialogOptions{
+			Title:   "Open Markdown or text file",
+			Filters: documentFileFilters(),
+		})
+	})
+	dialogs.SetSaveFilePicker(func(ctx context.Context, request appmodel.SaveDialogRequest) (string, error) {
+		return runtime.SaveFileDialog(ctx, runtime.SaveDialogOptions{
+			Title:            request.Title,
+			DefaultDirectory: request.DefaultDirectory,
+			DefaultFilename:  request.DefaultFilename,
+			Filters:          documentFileFilters(),
+		})
+	})
+	dialogs.SetOverwriteConfirmer(func(ctx context.Context, subject string) (bool, error) {
+		result, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
+			Type:          runtime.QuestionDialog,
+			Title:         "Overwrite file?",
+			Message:       fmt.Sprintf("Overwrite %s?", subject),
+			Buttons:       []string{"Overwrite", "Cancel"},
+			DefaultButton: "Cancel",
+			CancelButton:  "Cancel",
+		})
+		return result == "Overwrite", err
+	})
+	applicationContext.SetDocumentDialogs(dialogs)
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
 		bootstrapLogger.Error().Err(err).Msg("run application")
 	}
+}
+
+// supportedDocumentSuffixes is the one list of suffixes both native pickers
+// offer. FR-FT-002 names these four for Open and FR-FT-012 names the same four
+// for Save As.
+//
+// It was two identical literals, one per picker, which is how a filter set can
+// drift from the suffixes the backend accepts without anything noticing. The
+// backend's copy of the set is `file.IsSupportedDocumentSuffix`, and
+// TestNativePickersFilterExactlyTheSupportedSuffixes holds the two equal.
+var supportedDocumentSuffixes = []string{".md", ".markdown", ".mdown", ".txt"}
+
+// documentFileFilters is the single suffix filter both native pickers use.
+func documentFileFilters() []runtime.FileFilter {
+	return documentFileFiltersFor(goruntime.GOOS)
+}
+
+// documentFileFiltersFor builds the picker filter for one host.
+//
+// FR-FT-002 requires the picker to filter *case-insensitively*, and only one of
+// the three hosts needs help with that. macOS matches an `NSOpenPanel`'s
+// allowed types case-insensitively, and the Windows common item dialog matches
+// its filter spec case-insensitively, so on those hosts the four lowercase
+// globs already satisfy the clause and a longer list buys nothing.
+//
+// GTK does not. Wails hands every `;`-separated glob to
+// `gtk_file_filter_add_pattern` (`internal/frontend/desktop/linux/window.go`),
+// which compiles a GPatternSpec: case-sensitive, and understanding only `*` and
+// `?`, so there is no `*.[mM][dD]` to write. Enumerating the case forms is the
+// only construct GTK offers, so on Linux the filter carries all 300 of them.
+// They are never shown to anyone — the picker displays `DisplayName`.
+//
+// `*.md` stays the first glob on every host: the Windows Save dialog derives
+// its default extension from it (`.../windows/dialog.go`, `DefaultExtension`).
+func documentFileFiltersFor(goos string) []runtime.FileFilter {
+	globs := make([]string, 0, len(supportedDocumentSuffixes))
+	for _, suffix := range supportedDocumentSuffixes {
+		if goos == "linux" {
+			globs = append(globs, suffixCaseGlobs(suffix)...)
+			continue
+		}
+		globs = append(globs, "*"+suffix)
+	}
+	return []runtime.FileFilter{{
+		DisplayName: "Markdown and text",
+		Pattern:     strings.Join(globs, ";"),
+	}}
+}
+
+// suffixCaseGlobs enumerates every case form of one suffix, all-lowercase first.
+func suffixCaseGlobs(suffix string) []string {
+	forms := []string{"*"}
+	for _, letter := range strings.ToLower(suffix) {
+		upper := unicode.ToUpper(letter)
+		grown := make([]string, 0, len(forms)*2)
+		for _, form := range forms {
+			grown = append(grown, form+string(letter))
+			if upper != letter {
+				grown = append(grown, form+string(upper))
+			}
+		}
+		forms = grown
+	}
+	return forms
 }
 
 func newAppOptions(applicationContext *application.ApplicationContextHolder) *options.App {
@@ -58,6 +156,7 @@ func newAppOptions(applicationContext *application.ApplicationContextHolder) *op
 
 func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger) *options.App {
 	applicationContext.SetNativeWindow(wailsNativeWindow{})
+	applicationContext.SetCloseCoordinator(application.NewCloseCoordinator(emitNativeCloseRequest, quitNativeApplication))
 	return &options.App{
 		Title:         "GoMarkEdit",
 		Width:         1024,
@@ -95,8 +194,8 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 				_ = appLogger.Close()
 			}
 		},
-		OnBeforeClose: func(_ context.Context) bool {
-			return applicationContext.FlushBeforeClose() != nil
+		OnBeforeClose: func(ctx context.Context) bool {
+			return applicationContext.BeforeClose(ctx)
 		},
 		Bind:     []interface{}{applicationContext.AppModelHandler, applicationContext.SettingsHandler, applicationContext.ApplicationHandler},
 		EnumBind: []interface{}{apperr.AllErrorCodes},

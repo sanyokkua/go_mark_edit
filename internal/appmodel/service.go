@@ -14,27 +14,58 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
+	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
 var nextDocumentID uint64
 
 // AppModelService is the mutex-guarded owner of live document and layout state.
 type AppModelService struct {
-	mu               sync.RWMutex
-	state            applicationState
-	commands         DocumentCommandAPI
-	content          DocumentContentAccessor
-	emitter          StatePatchEmitter
-	layout           LayoutRepositoryAPI
-	sequence         uint64
-	writerID         string
-	timer            layoutTimer
-	pending          *pendingLayout
-	pendingFlushDone chan struct{}
-	startupErr       error
+	mu                  sync.RWMutex
+	state               applicationState
+	commands            DocumentCommandAPI
+	content             DocumentContentAccessor
+	emitter             StatePatchEmitter
+	layout              LayoutRepositoryAPI
+	sequence            uint64
+	writerID            string
+	timer               LayoutTimer
+	autosaveTimer       AutosaveTimerFactory
+	autosaveEnabled     bool
+	autosaveTimers      map[string]*autosaveTimerEntry
+	autosaveInFlight    map[string]chan struct{}
+	autosaveGeneration  uint64
+	pending             *pendingLayout
+	pendingFlushDone    chan struct{}
+	startupErr          error
+	reservations        map[string]*openReservation
+	saveReservations    map[string]*saveReservation
+	normalizations      map[string]*normalizationAuthorization
+	writeCoordinators   map[string]*DocumentWriteCoordinator
+	closePlans          map[string]*closePlan
+	activeClosePlan     string
+	writeExecutor       WriteExecutor
+	writeCommitObserver WriteCommitObserver
+	runtimeContext      context.Context
+	conflicts           map[string]*documentConflict
+	conflictQueue       *conflictQueue
+	keepMine            map[string]*keepMineAuthorization
+	beforeSaveAsRecheck func(string)
+	metadata            FileMetadataRepository
+	recentFiles         RecentFilesRepository
+	defaultOpenMode     string
+	openDialog          DocumentOpenDialog
+	saveDialog          DocumentSaveDialog
+	clipboard           file.ClipboardWriter
+	reveal              file.RevealPort
+	stableRead          func(string, int64) (file.StableClassifiedRead, error)
+	diskVersion         func(string) (file.DiskVersion, error)
 }
 
-type layoutTimer interface{ AfterFunc(time.Duration, func()) }
+// LayoutTimer is the clock the layout debounce schedules against. It is
+// exported so a harness host can substitute a stalled or immediate clock; the
+// production default is systemLayoutTimer and no production host replaces it.
+type LayoutTimer interface{ AfterFunc(time.Duration, func()) }
 
 type systemLayoutTimer struct{}
 
@@ -50,8 +81,26 @@ type pendingLayout struct {
 }
 
 // NewAppModelService creates one clean, never-saved document for this process.
+// It leaves the host ports unset and is therefore a test and harness constructor:
+// a production host must use NewAppModelServiceForHost.
 func NewAppModelService(emitter StatePatchEmitter) *AppModelService {
 	return newAppModelService(emitter, nil, systemLayoutTimer{})
+}
+
+// NewAppModelServiceForHost is the production constructor. The host ports are
+// positional parameters rather than optional setters, so adding a port here
+// breaks every host at compile time instead of leaving it nil.
+//
+// That distinction is the whole point of this function. SetClipboardWriter and
+// SetRevealPort existed and worked, but nothing outside a test ever called them,
+// so Copy path and Reveal in file manager returned system-command-failure in
+// every shipped binary from the day they were written. An optional setter cannot
+// report that it was not called; a parameter list can.
+func NewAppModelServiceForHost(emitter StatePatchEmitter, clipboard file.ClipboardWriter, reveal file.RevealPort) *AppModelService {
+	service := newAppModelService(emitter, nil, systemLayoutTimer{})
+	service.clipboard = clipboard
+	service.reveal = reveal
+	return service
 }
 
 // NewAppModelServiceWithLayoutRepository constructs the production layout seam
@@ -60,17 +109,51 @@ func NewAppModelServiceWithLayoutRepository(emitter StatePatchEmitter, layout La
 	return newAppModelService(emitter, layout, systemLayoutTimer{})
 }
 
-func NewAppModelServiceWithLayoutRepositoryAndTimer(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer layoutTimer) *AppModelService {
+// NewAppModelServiceWithLayoutRepositoryAndTimer is a test and harness
+// constructor. It leaves the host ports unset, so no production host may use it;
+// the evidence driver used to, which is how Copy path and Reveal reached a nil
+// port in the one binary built to measure real behaviour (T167).
+func NewAppModelServiceWithLayoutRepositoryAndTimer(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer LayoutTimer) *AppModelService {
 	return newAppModelService(emitter, layout, timer)
 }
 
-func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer layoutTimer) *AppModelService {
+/*
+ * SetLayoutTimer replaces the layout debounce clock on an already-constructed
+ * service.
+ *
+ * This exists so a harness host can take the model the composition root built —
+ * with its host ports and its settings joins intact — and change only the clock,
+ * instead of constructing a second model and assigning it over the first. The
+ * evidence driver did the latter, and it silently cost both host ports plus the
+ * autosave and default-open-mode observers the root had already bound.
+ *
+ * It is deliberately not the pattern used for host ports. A missing clock is
+ * benign — the constructor installs systemLayoutTimer and production never calls
+ * this — whereas a missing port is a command that cannot work, which is why
+ * those stay positional parameters on NewAppModelServiceForHost that break the
+ * build when one is added. Read the comment there before turning either into the
+ * other.
+ *
+ * Call before the model schedules anything. It swaps the clock for subsequent
+ * scheduling only and does not reschedule work already pending on the old one.
+ */
+func (service *AppModelService) SetLayoutTimer(timer LayoutTimer) {
+	if timer == nil {
+		return
+	}
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.timer = timer
+}
+
+func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer LayoutTimer) *AppModelService {
 	documentID := mintDocumentID()
 	initialDocument := &openDocument{
 		metadata: apperr.DocumentMetadata{
 			DocumentID: documentID,
 			Title:      "Untitled",
 			Path:       "",
+			Capability: "writable",
 			Encoding:   "utf-8",
 			LineEnding: "lf",
 			View: apperr.DocView{
@@ -89,9 +172,10 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 	if timer == nil {
 		timer = systemLayoutTimer{}
 	}
-	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, writerID: newLayoutWriterID(), state: applicationState{
-		documents:        map[string]*openDocument{documentID: initialDocument},
-		activeDocumentID: documentID,
+	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, autosaveTimers: make(map[string]*autosaveTimerEntry), autosaveInFlight: make(map[string]chan struct{}), writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), saveReservations: make(map[string]*saveReservation), normalizations: make(map[string]*normalizationAuthorization), writeCoordinators: make(map[string]*DocumentWriteCoordinator), closePlans: make(map[string]*closePlan), conflicts: make(map[string]*documentConflict), conflictQueue: newConflictQueue(), keepMine: make(map[string]*keepMineAuthorization), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, state: applicationState{
+		orderedDocumentIDs: []string{documentID},
+		documents:          map[string]*openDocument{documentID: initialDocument},
+		activeDocumentID:   documentID,
 		ui: apperr.UILayout{
 			WindowWidth:    pointerTo(1024),
 			WindowHeight:   pointerTo(768),
@@ -103,6 +187,154 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 	return service
 }
 
+// SetConflictReadersForTesting injects deterministic version/read races without
+// changing the production foreground-only policy.
+func (service *AppModelService) SetConflictReadersForTesting(stableRead func(string, int64) (file.StableClassifiedRead, error), diskVersion func(string) (file.DiskVersion, error)) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	if stableRead != nil {
+		service.stableRead = stableRead
+	}
+	if diskVersion != nil {
+		service.diskVersion = diskVersion
+	}
+}
+
+// NewEmptyAppModelService constructs the same backend state with no open
+// documents. It is used by the zero-document launcher and keeps the optional
+// active identity explicit instead of manufacturing a placeholder.
+func NewEmptyAppModelService(emitter StatePatchEmitter) *AppModelService {
+	service := newAppModelService(emitter, nil, systemLayoutTimer{})
+	service.mu.Lock()
+	service.state.documents = map[string]*openDocument{}
+	service.state.orderedDocumentIDs = nil
+	service.state.activeDocumentID = ""
+	service.mu.Unlock()
+	return service
+}
+
+// SetFileMetadataRepository configures optional per-path arrangement persistence.
+func (service *AppModelService) SetFileMetadataRepository(repository FileMetadataRepository) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.metadata = repository
+}
+
+// SetRecentFilesRepository configures durable MRU metadata without changing
+// the in-memory document/session authority.
+func (service *AppModelService) SetRecentFilesRepository(repository RecentFilesRepository) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.recentFiles = repository
+}
+
+// SetDefaultOpenMode records the acknowledged setting used before path arrangements.
+func (service *AppModelService) SetDefaultOpenMode(mode string) {
+	if mode != OpenModeEditor && mode != OpenModeViewer {
+		return
+	}
+	service.mu.Lock()
+	service.defaultOpenMode = mode
+	service.mu.Unlock()
+}
+
+// DefaultOpenMode reports the acknowledged setting Open applies before it resolves
+// a path's arrangement. It exists so the composition-root join can be asserted:
+// until T119 SetDefaultOpenMode had no production caller at all, and nothing could
+// observe that the stored preference never arrived.
+func (service *AppModelService) DefaultOpenMode() string {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	return service.defaultOpenMode
+}
+
+// SetDocumentOpenDialog injects the composition-root native picker without importing Wails here.
+func (service *AppModelService) SetDocumentOpenDialog(dialog DocumentOpenDialog) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.openDialog = dialog
+}
+
+// SetDocumentSaveDialog injects the composition-root save chooser and native overwrite prompt.
+func (service *AppModelService) SetDocumentSaveDialog(dialog DocumentSaveDialog) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.saveDialog = dialog
+}
+
+// SetClipboardWriter injects the host clipboard without coupling appmodel to Wails.
+func (service *AppModelService) SetClipboardWriter(writer file.ClipboardWriter) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.clipboard = writer
+}
+
+// SetRevealPort injects the host file-manager reveal command.
+func (service *AppModelService) SetRevealPort(port file.RevealPort) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.reveal = port
+}
+
+// SetBeforeSaveAsRecheck is a narrow deterministic test seam for target drift between
+// confirmation and the final version/hash comparison.
+func (service *AppModelService) SetBeforeSaveAsRecheck(hook func(string)) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.beforeSaveAsRecheck = hook
+}
+
+// SetWriteExecutorForTesting injects a deterministic replacement seam before
+// the first write coordinator for a document is created.
+func (service *AppModelService) SetWriteExecutorForTesting(executor WriteExecutor) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.writeExecutor = executor
+}
+
+// SetWriteCommitObserver installs an optional read-only observation seam for
+// current-host evidence. It does not alter coordination, timing, or disk I/O.
+func (service *AppModelService) SetWriteCommitObserver(observer WriteCommitObserver) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.writeCommitObserver = observer
+}
+
+// SetRuntimeContext supplies the Wails lifecycle context used by timer-driven
+// state patches. Foreground handlers still pass their request context directly.
+func (service *AppModelService) SetRuntimeContext(ctx context.Context) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.runtimeContext = ctx
+}
+
+func (service *AppModelService) runtimeContextOr(fallback context.Context) context.Context {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	if service.runtimeContext != nil {
+		return service.runtimeContext
+	}
+	return fallback
+}
+
+// OpenFromDialog turns cancellation into a normal outcome and delegates selected paths to OpenPath.
+func (service *AppModelService) OpenFromDialog(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenResult {
+	service.mu.RLock()
+	dialog := service.openDialog
+	service.mu.RUnlock()
+	if dialog == nil {
+		return apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog is unavailable.", apperr.RemediationRetry)}
+	}
+	path, err := dialog.ChooseOpenFile(ctx)
+	if err != nil {
+		return apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog could not be opened.", apperr.RemediationRetry)}
+	}
+	if path == "" {
+		return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
+	}
+	return service.OpenPath(ctx, path, expectedTabSetRevision)
+}
+
 func newLayoutWriterID() string {
 	bytes := make([]byte, 16)
 	if _, err := rand.Read(bytes); err != nil {
@@ -112,7 +344,8 @@ func newLayoutWriterID() string {
 }
 
 // GetState returns a metadata-only snapshot plus the active canonical buffer.
-func (service *AppModelService) GetState(_ context.Context) (apperr.AppState, error) {
+func (service *AppModelService) GetState(ctx context.Context) (apperr.AppState, error) {
+	service.refreshRecentFiles(ctx)
 	service.mu.RLock()
 	defer service.mu.RUnlock()
 	if service.startupErr != nil {
@@ -123,19 +356,34 @@ func (service *AppModelService) GetState(_ context.Context) (apperr.AppState, er
 	for documentID, document := range service.state.documents {
 		documents[documentID] = service.effectiveDocumentMetadataLocked(document)
 	}
-	activeDocument := service.state.documents[service.state.activeDocumentID]
+	activeDocument, hasActiveDocument := service.state.documents[service.state.activeDocumentID]
+	var activeDocumentID *string
+	var activeBuffer *apperr.ActiveBuffer
+	if hasActiveDocument && service.state.activeDocumentID != "" {
+		id := service.state.activeDocumentID
+		activeDocumentID = &id
+		activeBuffer = &apperr.ActiveBuffer{
+			DocumentID:         id,
+			DocumentRevision:   activeDocument.metadata.ContentRevision,
+			ProjectionRevision: service.state.revision,
+			Content:            activeDocument.content,
+		}
+	}
+	orderedDocumentIDs := append([]string(nil), service.state.orderedDocumentIDs...)
 	return apperr.AppState{
 		Snapshot: apperr.AppStateSnapshot{
 			Revision:           service.state.revision,
+			TabSetRevision:     service.state.tabSetRevision,
 			ApplicationVersion: bootstrap.Version(),
 			Documents:          documents,
 			ActiveDocumentID:   service.state.activeDocumentID,
+			ActiveDocument:     activeDocumentID,
+			OrderedDocumentIDs: orderedDocumentIDs,
+			RecentFiles:        append([]string(nil), service.state.recentFiles...),
+			CanReopenLastFile:  service.state.canReopenLastFile,
 			UI:                 cloneUILayout(service.state.ui),
 		},
-		ActiveBuffer: apperr.ActiveBuffer{
-			DocumentID: service.state.activeDocumentID,
-			Content:    activeDocument.content,
-		},
+		ActiveBuffer: activeBuffer,
 	}, nil
 }
 
@@ -272,6 +520,12 @@ func (service *AppModelService) SetDocView(ctx context.Context, documentID strin
 
 func (service *AppModelService) effectiveDocumentMetadataLocked(document *openDocument) apperr.DocumentMetadata {
 	metadata := document.metadata
+	status := saveStatusForDocument(document)
+	metadata.Status = string(status)
+	metadata.Dirty = status == SaveStatusUnsavedChanges
+	metadata.Detached = document.detached
+	metadata.ConflictBlocked = document.conflictBlocked
+	metadata.WriteInFlight = document.writeInFlight
 	if document.hasSavedView || service.state.ui.ViewArrangement == nil {
 		return metadata
 	}
@@ -296,6 +550,13 @@ func (service *AppModelService) SetUILayout(ctx context.Context, layout apperr.U
 		WindowWidth:  layout.WindowWidth,
 		WindowHeight: layout.WindowHeight,
 		SidebarWidth: layout.SidebarWidth,
+	}
+	// A width arriving with a visibility change is one discrete intent — restoring
+	// a workspace that was put away — not the stream a drag produces, which is
+	// what the debounce exists to coalesce. Holding it back would show the
+	// workspace at its old width and widen it a quarter of a second later.
+	if layout.SidebarVisible != nil {
+		continuous.SidebarWidth = nil
 	}
 	if continuous.WindowWidth != nil || continuous.WindowHeight != nil || continuous.SidebarWidth != nil {
 		service.mu.Lock()
@@ -330,7 +591,11 @@ func (service *AppModelService) SetUILayout(ctx context.Context, layout apperr.U
 		})
 		layout.WindowWidth = nil
 		layout.WindowHeight = nil
-		layout.SidebarWidth = nil
+		// Only clear what was actually queued, so a width held back above still
+		// reaches the acknowledged apply below.
+		if continuous.SidebarWidth != nil {
+			layout.SidebarWidth = nil
+		}
 	}
 	if layout.WindowMaximized == nil && layout.SidebarVisible == nil && layout.ViewArrangement == nil {
 		return nil
@@ -611,25 +876,48 @@ func validateUILayout(layout apperr.UILayout) error {
 
 func (service *AppModelService) documentPatchLocked(documentID string) apperr.AppStatePatch {
 	service.state.revision++
-	return apperr.AppStatePatch{
-		Revision: service.state.revision,
-		Documents: &apperr.DocumentsPatch{Upsert: map[string]apperr.DocumentMetadata{
-			documentID: service.state.documents[documentID].metadata,
-		}},
+	tabSetRevision := service.state.tabSetRevision
+	orderedDocumentIDs := append([]string(nil), service.state.orderedDocumentIDs...)
+	var metadata apperr.DocumentMetadata
+	if document, ok := service.state.documents[documentID]; ok {
+		metadata = service.effectiveDocumentMetadataLocked(document)
 	}
+	return apperr.AppStatePatch{
+		Revision:           service.state.revision,
+		TabSetRevision:     &tabSetRevision,
+		OrderedDocumentIDs: orderedDocumentIDs,
+		Documents: &apperr.DocumentsPatch{Upsert: map[string]apperr.DocumentMetadata{
+			documentID: metadata,
+		}},
+		ActiveDocument:    activeDocumentPatch(service.state.activeDocumentID),
+		RecentFiles:       append([]string(nil), service.state.recentFiles...),
+		CanReopenLastFile: pointerTo(service.state.canReopenLastFile),
+	}
+}
+
+func activeDocumentPatch(documentID string) *apperr.ActiveDocumentPatch {
+	if documentID == "" {
+		return &apperr.ActiveDocumentPatch{Present: false}
+	}
+	return &apperr.ActiveDocumentPatch{Present: true, DocumentID: documentID}
 }
 
 func (service *AppModelService) snapshotLocked() applicationState {
 	snapshot := applicationState{
-		revision:         service.state.revision,
-		documents:        make(map[string]*openDocument, len(service.state.documents)),
-		activeDocumentID: service.state.activeDocumentID,
-		ui:               cloneUILayout(service.state.ui),
+		revision:           service.state.revision,
+		tabSetRevision:     service.state.tabSetRevision,
+		orderedDocumentIDs: append([]string(nil), service.state.orderedDocumentIDs...),
+		documents:          make(map[string]*openDocument, len(service.state.documents)),
+		activeDocumentID:   service.state.activeDocumentID,
+		ui:                 cloneUILayout(service.state.ui),
+		recentFiles:        append([]string(nil), service.state.recentFiles...),
+		canReopenLastFile:  service.state.canReopenLastFile,
 	}
 	for documentID, document := range service.state.documents {
 		documentCopy := *document
 		snapshot.documents[documentID] = &documentCopy
 	}
+	snapshot.recentlyClosed = append([]recentlyClosedDocument(nil), service.state.recentlyClosed...)
 	return snapshot
 }
 

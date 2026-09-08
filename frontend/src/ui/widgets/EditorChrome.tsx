@@ -1,4 +1,5 @@
 import {
+  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -9,14 +10,18 @@ import {
 import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
+import { useEditingProjection } from '../../logic/hooks/useEditingProjection';
 import {
   getAction,
+  getActionAvailability,
   actionsForSurface,
   type ActionEntry,
+  type ProjectedActionState,
 } from '../../logic/actions/actionRegistry';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import {
   currentPlatform,
+  formatShortcut,
   shortcutForKeyEvent,
 } from '../../logic/actions/shortcutRegistry';
 import {
@@ -26,12 +31,20 @@ import {
 import { DocumentCommandContext, EditorSessionContext } from './editorSession';
 import type { ViewArrangement } from '../../logic/store/appModelTypes';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
+import Icon, { type IconName } from '../primitives/Icon';
 import styles from './EditorChrome.module.css';
 import { useModalState } from './modalStateContext';
+import { isMinimumWindow } from './minimumWindow';
+import DocumentTabs, { type DocumentTabsProps } from './DocumentTabs';
+import { ApplicationMenuRequestContext } from './applicationMenuRequest';
 
 export interface EditorChromeProps {
   arrangement: ViewArrangement;
   onArrangementChange: (arrangement: ViewArrangement) => void;
+  tabAdapter?: DocumentTabsProps['adapter'];
+  onActivateDocument?: DocumentTabsProps['onActivateDocument'];
+  onCloseDocument?: DocumentTabsProps['onCloseDocument'];
+  onNewDocument?: DocumentTabsProps['onNewDocument'];
 }
 
 const textActions = ['bold', 'italic', 'strike', 'inline-code'] as const;
@@ -52,34 +65,39 @@ const textualControlIds = new Set<ActionEntry['id']>([
   'lint',
 ]);
 
-function actionGlyph(id: ActionEntry['id']): string {
-  const glyphs: Partial<Record<ActionEntry['id'], string>> = {
-    bold: '𝐁',
-    italic: '𝘐',
-    strike: 'S̶',
-    'inline-code': '</>',
-    'heading-1': 'H1',
-    'heading-2': 'H2',
-    'heading-3': 'H3',
-    'bullet-list': '•',
-    'numbered-list': '1.',
-    'task-list': '☑',
-    quote: '❝',
-    link: '↗',
-    image: '▧',
-    table: '▦',
-    'toggle-sidebar': '☰',
-    'toggle-assistant': '✦',
-    editor: '▣',
-    split: '▥',
-    preview: '▤',
-  };
-  return glyphs[id] ?? '•';
-}
+const applicationOverflowLabels = {
+  about: t('shell.about'),
+  file: t('shell.file'),
+  settings: t('shell.settings'),
+  view: t('action.view.label'),
+} as const;
+
+/*
+ * Deliberately the static read, not `useMinimumWindow`: this drives where the
+ * overflow popup is portalled and positioned, and it is already resynchronized
+ * by the toolbar's own resize listener below.
+ */
+const isNarrowToolbarViewport = isMinimumWindow;
 
 function action(id: ActionEntry['id']): ActionEntry {
   return getAction(id);
 }
+
+/**
+ * The active document, in the shape `getActionAvailability` reads.
+ *
+ * A context rather than a prop threaded through ten `actionButtons` call sites.
+ * It exists so a toolbar button can *ask* the registry whether its command is
+ * available instead of deciding for itself — `ActionButton` used to compute
+ * `disabled` from the static `entry.availability.kind` alone, which cannot see
+ * the document, so FR-FT-006's "Editing MUST be unavailable" was invisible here
+ * and every formatting button stayed live on a file the backend refuses to
+ * write. Re-deriving the capability rule locally is the `SettingsMenu` defect
+ * AGENTS.md records; asking the registry is the fix. T178.
+ */
+const ToolbarProjectionContext = createContext<
+  ProjectedActionState | undefined
+>(undefined);
 
 interface ActionButtonProps {
   entry: ActionEntry;
@@ -90,7 +108,19 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   entry,
   onActivate,
 }: ActionButtonProps): React.JSX.Element => {
-  const unavailable = entry.availability.kind === 'deferred';
+  const projectedState = useContext(ToolbarProjectionContext);
+  /*
+   * The static check stays first and unchanged, so a deferred action is still
+   * deferred when no projection has arrived. The registry call only ever *adds*
+   * a refusal, and with no `modalOpen`/tab context passed it can only fire the
+   * capability rule — this widens the disabled set by exactly FR-FT-006 and
+   * nothing else.
+   */
+  const unavailable =
+    entry.availability.kind === 'deferred' ||
+    (projectedState !== undefined &&
+      getActionAvailability(entry.id, { projectedState }).kind ===
+        'unavailable');
   return (
     <button
       aria-label={t(entry.accessibilityKey)}
@@ -98,7 +128,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
       data-action-id={entry.id}
       data-icon={textualControlIds.has(entry.id) ? undefined : entry.id}
       disabled={unavailable}
-      title={unavailable ? t('action.unavailable') : t(entry.labelKey)}
+      title={unavailable ? t('action.unavailable') : controlTooltip(entry)}
       type="button"
       onMouseDown={(event): void => {
         if (!unavailable) event.preventDefault();
@@ -108,9 +138,11 @@ const ActionButton: React.FC<ActionButtonProps> = ({
       {textualControlIds.has(entry.id) ? (
         t(entry.labelKey)
       ) : (
-        <span aria-hidden="true" className={styles.actionIcon}>
-          {actionGlyph(entry.id)}
-        </span>
+        <Icon
+          className={styles.actionIcon}
+          name={entry.id as IconName}
+          size={15}
+        />
       )}
     </button>
   );
@@ -133,10 +165,16 @@ function actionButtons(
 const EditorChrome: React.FC<EditorChromeProps> = ({
   arrangement,
   onArrangementChange,
+  tabAdapter,
+  onActivateDocument,
+  onCloseDocument,
+  onNewDocument,
 }: EditorChromeProps): React.JSX.Element => {
   const commands = useContext(DocumentCommandContext);
   const activeBuffer = useContext(EditorSessionContext);
+  const toolbarProjection = useEditingProjection(activeBuffer?.documentId);
   const modalOpen = useModalState();
+  const requestApplicationMenu = useContext(ApplicationMenuRequestContext);
   const { markdownSettings } = useEditorSettings();
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDetailsElement | null>(null);
@@ -149,6 +187,15 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
     left: number;
     top: number;
   } | null>(null);
+  const [narrowToolbarOverflow, setNarrowToolbarOverflow] = useState(
+    isNarrowToolbarViewport,
+  );
+  useEffect((): (() => void) => {
+    const onResize = (): void =>
+      setNarrowToolbarOverflow(isNarrowToolbarViewport());
+    window.addEventListener('resize', onResize);
+    return (): void => window.removeEventListener('resize', onResize);
+  }, []);
   const onActivate = useCallback(
     (entry: ActionEntry): void => {
       const formatActionId = formatActionIds[entry.id];
@@ -159,6 +206,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         void dispatchAction(entry.id, {
           editorFocused: commands !== null && activeBuffer !== null,
           documentId: activeBuffer?.documentId,
+          projectedState: toolbarProjection,
           sessionDocumentId: activeBuffer?.documentId,
           writable: activeBuffer !== null,
         });
@@ -167,6 +215,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
       void dispatchAction(entry.id, {
         documentId: activeBuffer?.documentId,
         editorFocused: commands !== null && activeBuffer !== null,
+        projectedState: toolbarProjection,
         invoke: (): unknown =>
           commands === null
             ? undefined
@@ -197,6 +246,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
       commands,
       markdownSettings.bulletMarker,
       markdownSettings.emphasisMarker,
+      toolbarProjection,
     ],
   );
   const onKeyDown = useCallback(
@@ -278,20 +328,32 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
       margin,
       window.innerWidth - popupBounds.width - margin,
     );
-    const left = Math.min(
+    const calculatedLeft = Math.min(
       Math.max(margin, anchorBounds.right - popupBounds.width),
       maximumLeft,
     );
     const below = anchorBounds.bottom + margin;
     const above = anchorBounds.top - popupBounds.height - margin;
-    const top =
+    const calculatedTop =
       below + popupBounds.height <= window.innerHeight - margin
         ? below
         : Math.max(margin, above);
+    const applicationFrame = narrowToolbarOverflow
+      ? document.querySelector<HTMLElement>('.application-frame')
+      : null;
+    const frameBounds = applicationFrame?.getBoundingClientRect();
+    const left =
+      narrowToolbarOverflow && frameBounds !== undefined
+        ? frameBounds.width - 18 - popupBounds.width
+        : calculatedLeft;
+    const top =
+      narrowToolbarOverflow && frameBounds !== undefined
+        ? Math.round(calculatedTop - 19 - frameBounds.top)
+        : calculatedTop;
     setOverflowPosition((current) =>
       current?.left === left && current.top === top ? current : { left, top },
     );
-  }, []);
+  }, [narrowToolbarOverflow]);
 
   useLayoutEffect((): (() => void) | undefined => {
     if (!overflowOpen) return undefined;
@@ -350,55 +412,14 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
   };
 
   return (
-    <div className={styles.chrome}>
-      <div
-        aria-label={t('editor.tabs')}
-        className={styles.tabStrip}
-        role="tablist"
-      >
-        <div className={styles.tabs}>
-          {(['release-notes.md', 'spec-draft.md'] as const).map(
-            (title, index) => (
-              <div className={styles.tabItem} key={title}>
-                <button
-                  aria-selected={index === 0}
-                  aria-label={title}
-                  className={styles.tab}
-                  disabled
-                  role="tab"
-                  type="button"
-                >
-                  {index === 0 ? (
-                    <span
-                      aria-label={t('editor.tab.modified')}
-                      className={styles.modifiedDot}
-                    >
-                      •
-                    </span>
-                  ) : null}
-                  {title}
-                </button>
-                <button
-                  aria-label={t('editor.tab.close', { title })}
-                  className={styles.tabClose}
-                  disabled
-                  type="button"
-                >
-                  ×
-                </button>
-              </div>
-            ),
-          )}
-          <button
-            aria-label={t('editor.tab.new')}
-            className={styles.tabAdd}
-            disabled
-            type="button"
-          >
-            +
-          </button>
-        </div>
-      </div>
+    <ToolbarProjectionContext.Provider value={toolbarProjection}>
+      <DocumentTabs
+        adapter={tabAdapter}
+        modalOpen={modalOpen}
+        onActivateDocument={onActivateDocument}
+        onCloseDocument={onCloseDocument}
+        onNewDocument={onNewDocument}
+      />
 
       <div
         aria-label={t('editor.toolbar')}
@@ -429,15 +450,6 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
           deferredActions.map((id) => action(id).id),
           onActivate,
         )}
-        <div
-          aria-label={t('editor.arrangement')}
-          className={`${styles.group} ${styles.relocateAt375}`}
-          role="radiogroup"
-        >
-          {arrangementButton('editor')}
-          {arrangementButton('split')}
-          {arrangementButton('preview')}
-        </div>
         <details
           ref={overflowRef}
           className={styles.overflow}
@@ -456,24 +468,39 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
               }
             }}
           >
-            »
+            <Icon name="more" size={15} />
           </summary>
         </details>
+        {/* Binding source: mockup.html `.tsp` (:673). The arrangement segment
+            follows the spacer, and the overflow trigger precedes it, so the
+            segment sits against the toolbar's trailing edge. */}
+        <div aria-hidden="true" className={styles.spacer} />
+        <div
+          aria-label={t('editor.arrangement')}
+          className={`${styles.group} ${styles.arrangement} ${styles.relocateAt375}`}
+          role="radiogroup"
+        >
+          {arrangementButton('editor')}
+          {arrangementButton('split')}
+          {arrangementButton('preview')}
+        </div>
       </div>
       {overflowOpen
         ? createPortal(
             <div
               ref={overflowPopupRef}
               aria-label={t('editor.moreActions')}
-              className={styles.overflowContent}
+              className={`${styles.overflowContent} ${narrowToolbarOverflow ? styles.narrowOverflowContent : ''}`}
               data-viewport-popup="editor-overflow"
               role="menu"
               style={
                 overflowPosition === null
                   ? { position: 'fixed', visibility: 'hidden' }
                   : {
+                      borderRadius: '12px',
+                      gap: 'normal',
                       left: overflowPosition.left,
-                      position: 'fixed',
+                      position: narrowToolbarOverflow ? 'absolute' : 'fixed',
                       top: overflowPosition.top,
                     }
               }
@@ -499,7 +526,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
                 )}
                 <div
                   aria-label={t('editor.arrangement')}
-                  className={styles.overflowArrangement}
+                  className={`${styles.overflowArrangement} ${styles.arrangement}`}
                   role="radiogroup"
                 >
                   {arrangementButton('editor')}
@@ -507,12 +534,58 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
                   {arrangementButton('preview')}
                 </div>
               </div>
+              <div className={styles.applicationOverflowItems}>
+                {(['file', 'settings', 'view', 'about'] as const).map(
+                  (target, index) => (
+                    <button
+                      className={
+                        index === 0
+                          ? styles.applicationOverflowItemFirst
+                          : styles.applicationOverflowItem
+                      }
+                      data-application-overflow-action={target}
+                      key={target}
+                      type="button"
+                      onClick={(): void => {
+                        requestApplicationMenu(target);
+                        closeOverflow();
+                      }}
+                    >
+                      {applicationOverflowLabels[target]}
+                    </button>
+                  ),
+                )}
+              </div>
             </div>,
-            document.body,
+            narrowToolbarOverflow
+              ? (document.querySelector<HTMLElement>('.application-frame') ??
+                  document.body)
+              : document.body,
           )
         : null}
-    </div>
+    </ToolbarProjectionContext.Provider>
   );
 };
+
+/*
+ * T190. The tooltip is where an icon-first control advertises its accelerator.
+ *
+ * These buttons carry an icon and a localized accessible name, so unlike the
+ * shell's text menus there is no row to put an accelerator beside — the tooltip
+ * is the surface that answers "what is this, and how do I reach it from the
+ * keyboard". The binding comes from the action registry and is formatted for the
+ * running platform, the same single source `ShellMenuRow`, `SettingsMenu` and
+ * `TabContextMenu` use.
+ *
+ * A control with no binding keeps its plain label rather than gaining an empty
+ * bracket.
+ */
+function controlTooltip(entry: ActionEntry): string {
+  const label = t(entry.labelKey);
+  const binding = entry.shortcut;
+  return binding === undefined
+    ? label
+    : `${label} (${formatShortcut(binding, currentPlatform())})`;
+}
 
 export default EditorChrome;

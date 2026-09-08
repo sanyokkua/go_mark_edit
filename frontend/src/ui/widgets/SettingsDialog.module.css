@@ -24,6 +24,32 @@
   z-index: var(--z-modal);
 }
 
+.content[data-normalization-prompt] {
+  gap: 16px;
+  max-width: min(440px, 92vw);
+  padding: 16px;
+}
+
+.content[data-normalization-prompt] header {
+  min-width: 0;
+}
+
+.content[data-normalization-prompt] p {
+  color: var(--text-muted);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.content[data-normalization-prompt] .actions {
+  gap: 8px;
+}
+
+.content[data-normalization-prompt] .primary,
+.content[data-normalization-prompt] .secondary {
+  border-radius: 9px;
+  padding: 8px 14px;
+}
+
 .label {
   display: grid;
   gap: var(--control-gap);

@@ -12,6 +12,7 @@ it('renders a continuing condition as an inline localized banner', () => {
         id: 21,
         message: 'Changes will remain on this device.',
         refreshGeneration: 0,
+        remediations: [],
         severity: 'warning',
         subject: 'sync',
         title: 'Working offline',

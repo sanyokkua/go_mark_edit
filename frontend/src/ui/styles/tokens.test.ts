@@ -47,6 +47,19 @@ it('STORY-007-AC-2 supplies the shell through tokens only', () => {
     ([, token]: RegExpMatchArray): string => token,
   );
 
+  /*
+   * `--shell-workspace-column` is declared by AppShell itself rather than in
+   * tokens.css, and deliberately: it must resolve against the acknowledged width
+   * that arrives as an inline `--shell-left-width` on the shell element, which a
+   * `:root` declaration cannot do. It is still supplied through a token — the
+   * assertion below proves its value composes from one — so the rule this test
+   * protects, that the shell carries no bare literals, is unchanged.
+   */
+  const locallyDeclared = Array.from(
+    shellStylesSource.matchAll(/^\s*(--shell-[\w-]+)\s*:\s*([^;]+);/gm),
+    ([, token, value]: RegExpMatchArray): [string, string] => [token, value],
+  );
+
   expect(definedTokens).toEqual([
     '--shell-left-width',
     '--shell-divider-width',
@@ -54,7 +67,16 @@ it('STORY-007-AC-2 supplies the shell through tokens only', () => {
     '--shell-center-min-width',
     '--shell-assistant-collapsed-width',
   ]);
-  expect(new Set(consumedTokens)).toEqual(new Set(definedTokens));
+  expect(locallyDeclared.map(([token]) => token)).toEqual([
+    '--shell-workspace-column',
+    '--shell-workspace-column',
+    '--shell-workspace-column',
+    '--shell-workspace-column',
+  ]);
+  expect(locallyDeclared[0]?.[1]).toBe('var(--shell-left-width)');
+  expect(new Set(consumedTokens)).toEqual(
+    new Set([...definedTokens, '--shell-workspace-column']),
+  );
   expect(shellStylesSource).not.toMatch(colorLiteralPattern);
   expect(tokensSource).toContain('--accent');
 });
@@ -124,6 +146,80 @@ it('exposesSelectionFocusAndScrollbarTokens', (): void => {
 it('definesEightNamedStackingTokens', (): void => {
   expect(appliedToken('material', 'light', '--z-toast')).toBe('90');
   expect(appliedToken('material', 'light', '--z-modal')).toBe('70');
+});
+
+it('exposes the binding surface metrics as centralized tokens', (): void => {
+  const exactMetrics: Record<string, string> = {
+    '--menu-row-height': '44px',
+    '--menu-trigger-font-size': '13px',
+    '--menu-trigger-padding': '6px 10px',
+    '--menu-trigger-radius': '7px',
+    '--icon-size': '15px',
+    '--icon-stroke': '1.75',
+    '--popup-min-width': '250px',
+    '--popup-radius': '12px',
+    '--popup-padding': '6px',
+    '--popup-row-padding': '7px 10px',
+    '--popup-row-font-size': '13px',
+    '--popup-accelerator-font-size': '11px',
+    '--popup-group-font-size': '10px',
+    '--tabs-row-padding': '7px 10px',
+    '--tabs-gap': '5px',
+    '--tab-padding': '7px 12px',
+    '--tab-gap': '8px',
+    '--tab-radius': '9px',
+    '--tab-max-width': '190px',
+    '--tab-label-font-size': '12.5px',
+    '--tab-add-size': '28px',
+    // mockup.html `.statusbar .b` (:384), `.dotk` (:385), `.pill` (:386)
+    '--status-bar-item-gap': '5px',
+    '--status-bar-dot-size': '6px',
+    '--status-bar-pill-padding': '2px 9px',
+    '--status-bar-pill-radius': '16px',
+    // mockup.html `.doc-name` (:232) and `.save-dot` (:233)
+    '--identity-font-size': '12px',
+    '--identity-gap': '7px',
+    '--identity-dot-size': '7px',
+    // mockup.html `.brand` (:226) and `.brand .logo` (:227)
+    '--brand-gap': '8px',
+    '--brand-font-size': '13px',
+    '--brand-font-weight': '600',
+    '--brand-logo-size': '19px',
+    '--brand-logo-radius': '6px',
+    '--brand-logo-font-size': '11px',
+    '--brand-logo-font-weight': '700',
+    '--toolbar-row-padding': '7px 10px',
+    '--toolbar-gap': '4px',
+    '--toolbar-group-padding': '3px',
+    '--toolbar-group-gap': '3px',
+    '--toolbar-group-radius': '11px',
+    '--toolbar-action-height': '30px',
+    '--toolbar-action-min-width': '30px',
+    '--toolbar-action-padding-inline': '8px',
+    '--arrangement-radius': '10px',
+    '--arrangement-option-padding': '5px 12px',
+    '--arrangement-option-radius': '7px',
+    '--pane-gap': '10px',
+    '--pane-radius': '12px',
+    '--pane-header-padding-block': '9px',
+    '--pane-header-padding-inline': '14px',
+    '--pane-header-meta-font-size': '10px',
+    '--preview-content-padding': '20px 26px',
+    '--disabled-opacity': '0.48',
+    '--toast-width': '300px',
+    '--toast-gap': '8px',
+    '--toast-padding': '9px 11px',
+    '--toast-radius': '10px',
+    '--toast-font-size': '12.5px',
+    '--status-bar-font-size': '11px',
+    '--status-bar-gap': '14px',
+    '--status-bar-min-height': '28px',
+    '--status-bar-padding-inline': '14px',
+  };
+
+  for (const [token, value] of Object.entries(exactMetrics)) {
+    expect(appliedToken('material', 'light', token)).toBe(value);
+  }
 });
 
 // Proves: themes-and-appearance#motion-tokens
@@ -209,6 +305,17 @@ const requiredPaletteTokens = [
   '--dur-fast',
   '--dur-base',
   '--dur-slow',
+  /*
+   * These four were asserted in one palette each and so could regress in the
+   * other five without any gate noticing. `--win-shadow` and `--font` are
+   * redefined per theme family (`tokens.css:224-243` and the six palette
+   * blocks from :327), which is exactly why presence has to be checked in all
+   * six rather than in the one that happened to be sampled.
+   */
+  '--win-shadow',
+  '--context-menu-shadow',
+  '--font',
+  '--disabled-opacity',
 ] as const;
 
 it('suppliesEveryAppearanceContractTokenAcrossAllSixPalettes', (): void => {
@@ -217,6 +324,46 @@ it('suppliesEveryAppearanceContractTokenAcrossAllSixPalettes', (): void => {
       expect(appliedToken(theme, mode, token)).not.toBe('');
     }
   }
+});
+
+/*
+ * FR-FT-053: the three families must stay structurally distinguishable, "not
+ * merely recolored". Presence alone cannot prove that — a family that silently
+ * inherited the root shadow or typeface would still pass the gate above while
+ * the structural difference disappeared. These two assert the distinction
+ * itself.
+ */
+// Proves: FR-FT-053 (partial — elevation and typeface distinctness; the named
+// per-family structural claims are proved by the sibling below)
+it('keepsTheElevationAndTypefaceDistinctPerThemeFamily', (): void => {
+  const shadows = new Set(
+    ['glass', 'material', 'minimal'].map((theme) =>
+      appliedToken(theme, 'light', '--win-shadow'),
+    ),
+  );
+  expect(shadows.size).toBe(3);
+
+  const fonts = new Set(
+    ['glass', 'material', 'minimal'].map((theme) =>
+      appliedToken(theme, 'light', '--font'),
+    ),
+  );
+  expect(fonts.size).toBe(3);
+});
+
+/*
+ * The inverse of the rule above. FR-FT-056 grants the reference variants a
+ * "single reviewed unavailable opacity", so this one value must NOT vary by
+ * palette — a per-theme override would make the deferred File, View and
+ * toolbar rows compare differently in one palette than in another.
+ */
+it('usesOneReviewedUnavailableOpacityInEveryPalette', (): void => {
+  const opacities = new Set(
+    palettes.map(([theme, mode]) =>
+      appliedToken(theme, mode, '--disabled-opacity'),
+    ),
+  );
+  expect([...opacities]).toEqual(['0.48']);
 });
 
 it('sharesSyntaxTokensByResolvedAppearance', (): void => {
@@ -279,4 +426,103 @@ it('routes every current appearance surface through palette tokens', (): void =>
       expect(appliedToken(theme, mode, token)).not.toBe('');
     }
   }
+});
+
+const tabStyles = readSource('src/ui/widgets/DocumentTabs.module.css');
+const editorViewStyles = readSource('src/ui/widgets/EditorView.module.css');
+
+// Proves: FR-FT-053 — the three named per-family structural claims: "Liquid
+// Glass MUST preserve the binding continuous internal canvas, translucent
+// layers, blur, saturation, and highlight; Material MUST preserve its filled
+// hierarchy and pill tabs; Minimal MUST preserve its flat,
+// separator/underline-led structure."
+//
+// The sibling above proves the families differ in shadow and typeface, which is
+// the "not merely recolored" floor. It is not the requirement: three families
+// could each carry a distinct shadow and font and still all render as the
+// generic outlined card the last sentence of FR-FT-053 explicitly fails. Each
+// claim below is therefore asserted as the mechanism that produces it and, for
+// the tab treatment, as a difference from the other two families.
+it('T157 keeps each family the structure FR-FT-053 names for it', (): void => {
+  // Liquid Glass — blur with saturation, in both modes; none anywhere else.
+  for (const mode of ['light', 'dark']) {
+    const blur = appliedToken('glass', mode, '--blur');
+    expect(blur).toMatch(/blur\(\s*\d+/);
+    expect(blur).toMatch(/saturate\(\s*\d+/);
+    expect(appliedToken('material', mode, '--blur')).toBe('none');
+    expect(appliedToken('minimal', mode, '--blur')).toBe('none');
+  }
+
+  // Liquid Glass — a highlight the other families do not draw.
+  for (const mode of ['light', 'dark']) {
+    expect(appliedToken('glass', mode, '--glass-highlight')).not.toBe(
+      'transparent',
+    );
+    expect(appliedToken('material', mode, '--glass-highlight')).toBe(
+      'transparent',
+    );
+    expect(appliedToken('minimal', mode, '--glass-highlight')).toBe(
+      'transparent',
+    );
+  }
+
+  // Liquid Glass — translucent layers. An opaque hex surface would render the
+  // blur behind it invisible, so translucency is what makes the rest true.
+  for (const mode of ['light', 'dark']) {
+    for (const token of ['--surface', '--surface-2']) {
+      expect(appliedToken('glass', mode, token)).toMatch(/^rgba\(/);
+    }
+  }
+
+  // Liquid Glass — the continuous internal canvas: one painted ground for the
+  // whole frame, with the blur applied over it rather than per panel.
+  expect(baseStylesSource).toMatch(/background:\s*var\(--canvas\)/);
+  expect(baseStylesSource).toMatch(/backdrop-filter:\s*var\(--blur\)/);
+  expect(editorViewStyles).toMatch(
+    /:global\(:root\[data-theme='glass'\]\)[\s\S]{0,400}?box-shadow:\s*inset 0 1px 0 var\(--glass-highlight\)/,
+  );
+
+  // Material — filled hierarchy: every surface layer is an opaque fill, not an
+  // alpha wash over the canvas.
+  for (const mode of ['light', 'dark']) {
+    for (const token of [
+      '--surface',
+      '--surface-2',
+      '--surface-3',
+      '--elevated',
+    ]) {
+      expect(appliedToken('material', mode, token)).toMatch(/^#[\da-f]{3,8}$/i);
+    }
+  }
+
+  // Material — pill tabs, filled when selected.
+  const materialTab = tabStyles.match(
+    /:global\(:root\[data-theme='material'\]\)\s*\.tabItem\s*\{[^}]*\}/,
+  )?.[0];
+  expect(materialTab).toBeDefined();
+  expect(materialTab).toMatch(/border-radius:\s*18px/);
+  expect(tabStyles).toMatch(
+    /:global\(:root\[data-theme='material'\]\)[\s\S]{0,400}?background:\s*var\(--accent\)/,
+  );
+
+  // Minimal — flat and separator/underline-led: no rounding, no border box, an
+  // underline that carries the selection.
+  const minimalTab = tabStyles.match(
+    /:global\(:root\[data-theme='minimal'\]\)\s*\.tabItem\s*\{[^}]*\}/,
+  )?.[0];
+  expect(minimalTab).toBeDefined();
+  expect(minimalTab).toMatch(/border-radius:\s*0/);
+  expect(minimalTab).toMatch(/border-bottom:\s*2px solid transparent/);
+  expect(tabStyles).toMatch(
+    /:global\(:root\[data-theme='minimal'\]\)[\s\S]{0,600}?border-bottom-color:\s*var\(--text\)/,
+  );
+  // Minimal panes are separators, not cards.
+  expect(editorViewStyles).toMatch(
+    /\.pane \+ \.pane\s*\{[^}]*border-inline-start:/,
+  );
+
+  // And the three tab treatments are genuinely three, not one card restyled:
+  // the pill radius and the underline structure cannot both describe the same
+  // rule set.
+  expect(materialTab).not.toEqual(minimalTab);
 });

@@ -118,6 +118,22 @@ func (handler *SettingsHandler) UpdateEditor(editor apperr.EditorSettings) (res 
 	return apperr.VoidResult{}
 }
 
+// UpdateFile validates and persists the acknowledged file-automation group.
+func (handler *SettingsHandler) UpdateFile(fileSettings apperr.FileSettings) (res apperr.VoidResult) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			wire := apperr.ToWire(handler.zlog(), apperr.Internal(fmt.Errorf(panicFormat, recovered)))
+			res = apperr.VoidResult{Error: &wire}
+		}
+	}()
+
+	if err := handler.service.UpdateFile(handler.context(), fileSettings); err != nil {
+		wire := apperr.ToWire(handler.zlog(), err)
+		return apperr.VoidResult{Error: &wire}
+	}
+	return apperr.VoidResult{}
+}
+
 func (handler *SettingsHandler) zlog() zerolog.Logger {
 	if handler.logger == nil {
 		return zerolog.Nop()

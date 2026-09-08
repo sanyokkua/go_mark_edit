@@ -1,0 +1,411 @@
+/*
+ * Spec: "Overflowing tabs scroll" (working-in-tabs.md #tab-overflow-scrolls) —
+ * "the strip scrolls. The layout does not break, and tabs do not shrink to
+ * unreadable", whose counter-example, "tabs compressed to 30 px each", was the
+ * shipped behaviour: 23 tabs at 1280px gave a 49px tab box and a 13px label,
+ * leaving nothing to click but the close control.
+ *
+ * The strip becomes a scroll container only once its tabs stop fitting.
+ * Chromium composites a scrollable area and drops LCD subpixel antialiasing
+ * inside it, so declaring `overflow-x: auto` unconditionally re-rendered every
+ * glyph in the row against the binding — identical bounds, identical computed
+ * styles, 332 deterministically differing pixels confined to the tab labels and
+ * the add control. A strip with nothing to scroll has no reason to be promoted,
+ * which also keeps its computed `overflow` matching the binding at the widths
+ * the comparator captures.
+ *
+ * `scrollbar-width: none` follows the binding's own scrolling strip
+ * (`mockup.html:72`): no gutter is reserved in a row the binding sizes exactly.
+ */
+.tabStrip[data-tabs-overflowing='true'] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.tabStrip {
+  align-items: center;
+  block-size: var(--tabs-row-height);
+  border-bottom: var(--control-border-width) solid var(--tabs-border-color);
+  box-sizing: border-box;
+  display: flex;
+  gap: 5px;
+  max-width: 100%;
+  min-width: auto;
+  overflow: visible;
+  padding: var(--tabs-row-padding);
+}
+
+/*
+ * T130, FR-FT-036: the insertion position a drag is showing. It exists only
+ * while a pointer drag is in flight, so it never appears in a parity capture
+ * and adds no flex child to the resting strip. `align-self: stretch` makes it
+ * the height of the tab row rather than of its own empty content box, which is
+ * what gives `expectPainted` a non-empty box to hit-test.
+ */
+.tabInsertionIndicator {
+  align-self: stretch;
+  background: var(--accent);
+  border-radius: 1.5px;
+  flex: none;
+  inline-size: 3px;
+}
+
+.tabs {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  gap: var(--tabs-gap);
+  min-inline-size: max-content;
+  padding: 0;
+}
+
+/* Binding source: mockup.html `.tab{display:flex;align-items:center;gap:8px;
+   padding:7px 12px;border-radius:9px;font-size:12.5px;border:1px solid
+   transparent;max-width:190px}` (:272). `.tabItem` IS that box: the dot, the
+   label and the close control are its three flex children, so the box's own
+   12px padding is what keeps the close control off the trailing edge. Putting
+   the padding on the inner label button instead — and leaving the close control
+   at `padding: 0` — is what pinned the × against the edge.
+
+   Every tab carries the border and radius; `.tab.active` (:274) only fills it
+   in, so a tab does not change size when it becomes active. */
+.tabItem {
+  align-items: center;
+  background: transparent;
+  border: var(--control-border-width) solid transparent;
+  border-radius: var(--tab-radius);
+  box-sizing: border-box;
+  display: flex;
+  font-size: var(--tab-label-font-size);
+  gap: var(--tab-gap);
+  /*
+   * Binding source: mockup.html `.app[data-w="375"] .tab{flex:none}` (:74). A
+   * tab keeps its own width and the strip scrolls; it never shrinks to fit.
+   * `flex: 0 1 auto` against `min-width: 0` is what compressed every tab.
+   * `max-width` still truncates one long filename at the binding's 190px, which
+   * is not the same thing as compressing all of them.
+   */
+  flex: none;
+  max-width: var(--tab-max-width);
+  padding: var(--tab-padding);
+}
+
+.tabItem:has(.tab[aria-selected='true']) {
+  background: var(--accent-soft);
+  border-color: var(--stroke-soft);
+}
+
+.tab,
+.tabClose,
+.tabAdd,
+.contextMenuItem {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+}
+
+.tab,
+.tabClose,
+.tabAdd,
+.contextMenuItem {
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.contextMenuItem {
+  padding: var(--tab-padding);
+}
+
+/* The label is a bare flex child of the tab box above — the box owns the
+   padding, the border and the radius. */
+.tab {
+  align-items: center;
+  border: 0;
+  display: inline-flex;
+  gap: var(--tab-gap);
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  text-align: start;
+  text-overflow: ellipsis;
+}
+
+.tabLabel {
+  display: inline-block;
+  max-width: var(--tab-max-width);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--text);
+  box-shadow: none;
+}
+
+.tabClose {
+  color: var(--faint);
+}
+
+.tabAdd {
+  display: block;
+  font-family: Arial;
+  padding: 0;
+  text-align: center;
+  white-space: normal;
+}
+
+.tabClose {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.tabCloseGlyph {
+  font-size: 14px;
+  line-height: normal;
+}
+
+.tabAdd {
+  block-size: var(--tab-add-size);
+  inline-size: var(--tab-add-size);
+}
+
+.modifiedDot {
+  align-items: center;
+  background: transparent;
+  border-radius: 50%;
+  color: var(--accent);
+  display: inline-flex;
+  height: 6px;
+  justify-content: center;
+  width: 6px;
+}
+
+.modifiedDot:not([aria-hidden='true']) {
+  background: var(--accent);
+}
+
+.modifiedDotMuted {
+  opacity: var(--disabled-opacity);
+}
+
+.modifiedDot[aria-hidden='true'] {
+  visibility: hidden;
+}
+
+.tab:focus-visible,
+.tabClose:focus-visible,
+.tabAdd:focus-visible,
+.contextMenuItem:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+  outline-offset: 2px;
+}
+
+.tab:disabled,
+.tabClose:disabled,
+.tabAdd:disabled,
+.contextMenuItem:disabled {
+  cursor: not-allowed;
+  opacity: var(--disabled-opacity);
+}
+
+.contextMenu {
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--popup-radius);
+  box-shadow: var(--context-menu-shadow);
+  display: grid;
+  gap: 0;
+  min-inline-size: var(--popup-min-width);
+  padding: var(--popup-padding);
+  position: absolute;
+  right: var(--app-gap);
+  top: 3rem;
+  z-index: var(--z-dropdown);
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .contextMenu {
+  backdrop-filter: var(--blur);
+  display: block;
+  border-radius: 11px;
+  gap: normal;
+  inline-size: 190px;
+  left: 210px;
+  min-inline-size: 190px;
+  padding: 5px;
+  right: auto;
+  top: 106px;
+}
+
+@media (max-width: 376px) {
+  :global(.application-frame:has([data-parity-shell='true'])) .contextMenu {
+    left: 172px;
+    top: -116px;
+  }
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .tabStrip {
+  z-index: calc(var(--z-sticky) + 1);
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .contextMenuItem[data-action-id='move-tab-left'],
+:global(.application-frame:has([data-parity-shell='true']))
+  .contextMenuItem[data-action-id='move-tab-right'] {
+  display: none;
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .contextMenuItem[data-action-id='copy-path'] {
+  margin-top: 11px;
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .contextMenuItem {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  gap: 22px;
+  inline-size: 100%;
+  justify-content: space-between;
+  padding: 7px 10px;
+}
+
+.contextMenuItem {
+  text-align: start;
+  padding: var(--popup-row-padding);
+  font-size: var(--popup-row-font-size);
+}
+
+/* The binding themes the tab box and nothing else, with one rule per theme and
+   one for its active state. Because `.tabItem` is that box, each of these is a
+   direct transcription — no inner element needs a matching override, and the
+   Minimal underline is a real border rather than a pseudo-element standing in
+   for one. */
+
+/* Binding source: mockup.html
+   `body[data-theme="material"] .tab{border-radius:18px;padding:8px 15px}`
+   (:282). */
+:global(:root[data-theme='material']) .tabItem {
+  border-radius: 18px;
+  padding: 8px 15px;
+}
+
+:global(:root[data-theme='material']) .tabItem:has(.tab[aria-selected='true']) {
+  background: var(--accent);
+  border-color: transparent;
+}
+
+:global(:root[data-theme='material']) .tab[aria-selected='true'] {
+  background: transparent;
+  box-shadow: none;
+  color: var(--accent-contrast);
+}
+
+/* Binding source: mockup.html
+   `body[data-theme="minimal"] .tab{border-radius:0;border:0;
+   border-bottom:2px solid transparent;background:none;padding:8px 12px}`
+   (:280). */
+:global(:root[data-theme='minimal']) .tabItem {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 12px;
+}
+
+/* Binding source: mockup.html
+   `body[data-theme="minimal"] .tab.active{background:none;
+   border-bottom-color:var(--text);font-weight:500}` (:281). */
+:global(:root[data-theme='minimal']) .tabItem:has(.tab[aria-selected='true']) {
+  background: none;
+  border-bottom-color: var(--text);
+  font-weight: 500;
+}
+
+:global(:root[data-theme='minimal']) .tab[aria-selected='true'] {
+  box-shadow: none;
+}
+
+:global(:root[data-theme='glass']) .tabItem,
+:global(:root[data-theme='glass']) .tab {
+  backdrop-filter: none;
+}
+
+:global(:root[data-theme='glass']) .tabStrip {
+  backdrop-filter: var(--blur);
+}
+
+:global(.application-frame:has([data-parity-shell='true'])) .tabAdd {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab,
+  .tabClose,
+  .tabAdd,
+  .contextMenuItem {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
+
+/*
+ * T144, FR-FT-035: "visual ellipsis MUST retain part of the distinguishing
+ * suffix". Two budgets truncate this label and they are in different units.
+ * `truncatedTabLabelParts(label, 42)` counts characters and elides inside the
+ * basename, which is correct; `.tabLabel`'s `max-width: var(--tab-max-width)`
+ * counts pixels and clips the *trailing* edge, which is where the ` \2014
+ * suffix` segment lives. Measured in Chromium at the tab's own 12.5px Roboto,
+ * the label has 129.33px to draw in — the 190px token less 60.67px of tab
+ * chrome — and a realistic disambiguated label crosses that at 21 characters,
+ * so the pixel clip always fired first and always removed the suffix.
+ *
+ * Reconciled in the layout rather than by lowering the character budget,
+ * because no character count can express a pixel budget in a proportional
+ * font: 42 is exactly how many `i` glyphs fit in 129.33px and only 11 `m` do.
+ * The basename is the flex item that shrinks and carries the ellipsis; the
+ * suffix never shrinks, so whatever the strip's width the distinguishing part
+ * is the part that survives.
+ *
+ * Scoped with `:has()` so a label with no suffix — every tab in every parity
+ * fixture, and the common case in use — keeps the single-text-node box it
+ * always had, down to `min-width: auto`, which the parity comparator compares.
+ */
+.tabLabel:has(> [data-tab-label-suffix]) {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.tabLabelBasename {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabLabelSuffix {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* FR-FT-036's reduced-opacity dragged tab: the user must be able to see which
+   tab is in flight, and the insertion indicator alone does not say which one
+   moved. `--disabled-opacity` is reused rather than a drag-specific token
+   added, because `tokens.test.ts` checks palette completeness and an opacity is
+   palette-independent — a second token would have to be declared in all six
+   combinations to carry the same number. T177. */
+.tabItem[data-tab-dragging='true'] {
+  opacity: var(--disabled-opacity);
+}

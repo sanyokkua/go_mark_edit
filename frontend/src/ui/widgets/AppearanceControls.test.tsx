@@ -60,8 +60,8 @@ it('changes appearance from keyboard reachable controls after a successful write
   const settings = await screen.findByRole('button', { name: 'Settings' });
   fireEvent.click(settings);
   expect(screen.getByRole('radio', { name: 'Material' })).toBeChecked();
-  expect(screen.getByRole('radio', { name: 'Follows system' })).toBeChecked();
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Appearance' }));
+  expect(screen.getByRole('radio', { name: 'Auto (system)' })).toBeChecked();
+  fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
 
   const dark = screen.getByRole('radio', { name: 'Dark' });
   dark.focus();
@@ -82,10 +82,20 @@ it('T045 keeps Markdown Standard visible but unavailable without persistence', a
   render(<AppearanceControls />);
 
   fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
-  const standard = screen.getByRole('menuitem', {
-    name: 'Markdown standard',
-  });
-  expect(standard).toBeDisabled();
+  // The converged popup follows the binding mockup, which lists the three
+  // Markdown standard choices directly instead of one combined row. All three
+  // remain visible and unavailable while persistence is deferred.
+  for (const name of [
+    'Minimal (CommonMark)',
+    'GFM',
+    'Full (+ math, footnotes…)',
+  ]) {
+    const option = screen.getByRole('menuitem', {
+      name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'),
+    });
+    expect(option).toBeVisible();
+    expect(option).toHaveAttribute('aria-disabled', 'true');
+  }
   expect(
     screen.queryByRole('combobox', { name: 'Markdown standard' }),
   ).not.toBeInTheDocument();
@@ -98,7 +108,7 @@ it('leaves both controls and the root palette unchanged when persistence rejects
 
   const settings = await screen.findByRole('button', { name: 'Settings' });
   fireEvent.click(settings);
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Appearance' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
   fireEvent.click(screen.getByRole('radio', { name: 'Liquid Glass' }));
 
   await waitFor((): void => {
@@ -171,7 +181,7 @@ it('normalizes invalid persisted values before exposing controls or root attribu
   });
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(screen.getByRole('radio', { name: 'Material' })).toBeChecked();
-  expect(screen.getByRole('radio', { name: 'Follows system' })).toBeChecked();
+  expect(screen.getByRole('radio', { name: 'Auto (system)' })).toBeChecked();
 });
 
 it('owns one Auto listener, ignores a later system change while pinned, and stays silent on success', async (): Promise<void> => {
@@ -243,13 +253,15 @@ it('updates synchronized quick and modal Appearance only after reset is acknowle
   fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
   expect(screen.getByRole('radio', { name: 'Minimal' })).toBeChecked();
   expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked();
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Appearance' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
   fireEvent.click(screen.getByRole('button', { name: 'Reset appearance' }));
   expect(screen.getByRole('radio', { name: 'Minimal' })).toBeChecked();
 
   acknowledgeReset?.();
   await waitFor((): void => {
     expect(screen.getByRole('radio', { name: 'Material' })).toBeChecked();
+    // The full Settings dialog is now the visible surface; it keeps its own
+    // catalogue wording for the same acknowledged Auto choice.
     expect(screen.getByRole('radio', { name: 'Follows system' })).toBeChecked();
   });
   expect(document.documentElement).toHaveAttribute('data-theme', 'material');
@@ -278,7 +290,7 @@ it('retains acknowledged Appearance when the transactional reset is rejected', a
   render(<AppearanceControls />);
 
   fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Appearance' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
   fireEvent.click(screen.getByRole('button', { name: 'Reset appearance' }));
 
   await waitFor((): void => expect(resetAppearance).toHaveBeenCalledTimes(1));
@@ -312,14 +324,17 @@ it('does not broadcast a reset into another mounted acknowledged Appearance proj
   fireEvent.click(
     await within(first.container).findByRole('button', { name: 'Settings' }),
   );
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Appearance' }));
-  fireEvent.click(
-    within(first.container).getByRole('button', { name: 'Reset appearance' }),
-  );
+  fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
+  /*
+   * T138 portals every dialog to `document.body`, so the reset control is no
+   * longer inside the projection's own container. Only the first projection's
+   * dialog is open at this point, so an unscoped query still names exactly one
+   * control — and the isolation this case is about is asserted below, on the
+   * *second* projection's menu, which is still container-scoped.
+   */
+  fireEvent.click(screen.getByRole('button', { name: 'Reset appearance' }));
   await waitFor(() =>
-    expect(
-      within(first.container).getByRole('radio', { name: 'Material' }),
-    ).toBeChecked(),
+    expect(screen.getByRole('radio', { name: 'Material' })).toBeChecked(),
   );
 
   fireEvent.click(

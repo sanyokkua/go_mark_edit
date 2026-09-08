@@ -1,20 +1,19 @@
 .row {
   position: relative;
   z-index: var(--z-sticky);
-  min-height: 44px;
+  height: var(--menu-row-height);
+  min-height: revert;
   display: flex;
   align-items: center;
-  gap: var(--app-gap);
-  padding: var(--app-gap);
+  gap: var(--menu-row-gap);
+  padding: var(--menu-row-padding);
   border-block-end: var(--control-border-width) solid var(--border);
-  backdrop-filter: var(--blur);
-  background: var(--surface-raised);
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
+  background: transparent;
+  min-width: revert;
+  overflow: visible;
+  white-space: normal;
 }
 
-.trigger,
 .item,
 .rowAction {
   background: transparent;
@@ -22,31 +21,61 @@
   font: inherit;
 }
 
-.trigger,
+/* Binding source: mockup.html `.menu{display:flex;gap:1px}` (:228).
+   Nothing positions this element but the elements before it. The binding's
+   `.lights` are drawn by the operating system's own frame (`spec.md:599`) and
+   are removed from the reference rather than reserved for here, so both pages
+   derive the menu's position from the same layout. */
+.menu {
+  display: flex;
+  gap: 1px;
+}
+
+/*
+ * The menubar triggers — File, Settings, View, About and the narrow overflow —
+ * are drawn by `MenuTrigger`, which owns their styling, ARIA and keyboard
+ * contract in one place. The two patches that used to live here,
+ * `.menu [data-settings-opener]` and `.menu [data-view-trigger]`, existed only
+ * because Settings and View declared their own triggers and drifted; a parent
+ * reaching in to correct a child's styling is the symptom, not the fix.
+ */
+
 .rowAction {
   border: var(--control-border-width) solid transparent;
-  border-radius: var(--control-radius);
-  padding: var(--control-padding);
+  border-radius: var(--menu-trigger-radius);
   cursor: pointer;
+  font-size: var(--menu-trigger-font-size);
+  height: var(--menu-trigger-height);
+  line-height: var(--menu-trigger-line-height);
   max-width: 100%;
+  min-height: 0;
   overflow: hidden;
+  padding: var(--menu-trigger-padding);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.trigger:hover,
 .rowAction:hover,
-.trigger:focus-visible,
 .rowAction:focus-visible {
   background: var(--surface);
-  border-color: var(--border);
+  box-shadow: var(--focus-ring);
 }
 
+/* Binding source: mockup.html — a single `.sp{flex:1}` spacer (:231) sits
+   before `.doc-name`, and the two window-control buttons follow it on the
+   row's own 12px gap. The identity owns the auto margin; a second one here
+   would split the free space and leave the identity floating mid-row instead
+   of adjacent to these buttons. */
 .menuRowActions {
   align-items: center;
   display: flex;
   gap: var(--control-gap);
-  margin-inline-start: auto;
+}
+
+/* Binding source: mockup.html `.sp{flex:1}` (:231). */
+.spacer {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .rowAction:disabled {
@@ -58,29 +87,169 @@
   background: var(--surface-raised);
   backdrop-filter: var(--blur);
   border: var(--control-border-width) solid var(--border);
-  border-radius: var(--control-radius);
+  border-radius: var(--popup-radius);
   box-sizing: border-box;
   display: grid;
-  min-width: 10rem;
+  min-width: var(--popup-min-width);
   max-block-size: calc(100vh - 4rem);
   gap: 0;
   overflow: auto;
-  padding: var(--control-gap);
+  padding: var(--popup-padding);
   position: fixed;
   box-shadow: var(--win-shadow);
   z-index: var(--z-dropdown);
 }
 
+.radixOverflow {
+  max-block-size: min(
+    calc(100vh - 4rem),
+    var(--radix-dropdown-menu-content-available-height)
+  );
+  position: relative;
+}
+
+/* The binding dropdown is `min-width:250px` and shrink-to-fit: its rendered
+   width follows the widest row. Pinning a width here would freeze the popup at
+   whatever the widest row happened to be when the width was measured. */
+.fileMenu {
+  display: block;
+  gap: normal;
+  inset: var(--file-menu-popup-top) auto auto var(--file-menu-popup-left);
+  min-width: var(--popup-min-width);
+  overflow: visible;
+  position: absolute;
+  width: max-content;
+}
+
+/* The popup is positioned by the binding coordinates above, so the portal
+   wrapper must not contribute collision-aware placement of its own. */
+:global(.application-frame)
+  > :global([data-radix-popper-content-wrapper]):has(.fileMenu) {
+  inset: 0 auto auto 0 !important;
+  position: absolute !important;
+  transform: none !important;
+}
+
+/* Binding source: mockup.html `#m-about{left:240px}` with `.dropdown{top:42px}`. */
+.aboutMenu {
+  display: block;
+  gap: normal;
+  inset: var(--menu-popup-top) auto auto var(--about-menu-popup-left);
+  overflow: visible;
+  position: absolute;
+  width: max-content;
+}
+
+:global(.application-frame)
+  > :global([data-radix-popper-content-wrapper]):has(.aboutMenu) {
+  inset: 0 auto auto 0 !important;
+  position: absolute !important;
+  transform: none !important;
+}
+
+.aboutMenu .item {
+  border: 0;
+  border-radius: 8px;
+  gap: 22px;
+  min-height: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+.fileMenu .item {
+  border: 0;
+  border-radius: 8px;
+  gap: 22px;
+  min-height: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+.fileMenu .groupLabel {
+  padding-block-start: 7px;
+}
+
+/* Binding source: mockup.html `.mi.sub`. The indented recent and reopen rows
+   are muted, one step smaller, and push their trailing content to the row end
+   through the same space-between flow the binding `.mi` uses. */
+.fileMenu .subItem {
+  color: var(--muted);
+  font-size: var(--popup-sub-row-font-size);
+  justify-content: space-between;
+  padding: var(--popup-sub-row-padding);
+}
+
+.subItemIcon {
+  color: inherit;
+}
+
+.subItemLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reopenGlyph {
+  font-size: var(--popup-sub-row-font-size);
+  line-height: 1;
+}
+
+.fileMenu .fileMenuLateSeparator {
+  margin: 5px 4px;
+}
+
 .item {
+  align-items: center;
   background: transparent;
   border: var(--control-border-width) solid transparent;
-  border-radius: calc(var(--control-radius) / 2);
+  border-radius: var(--menu-trigger-radius);
   color: var(--text);
   cursor: pointer;
+  display: flex;
   font: inherit;
+  font-size: var(--popup-row-font-size);
   inline-size: 100%;
-  padding: var(--control-padding);
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--popup-row-padding);
   text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A row with no accelerator has no trailing box in the binding menu. Emitting
+   an empty pseudo-element would add a third flex item whose auto margin
+   absorbs the free space and defeats the row's space-between flow. */
+.item:not([data-shortcut])::after {
+  content: none;
+}
+
+/* Binding source: mockup.html `.mi .k`. */
+.item::after {
+  color: var(--faint);
+  content: attr(data-shortcut);
+  font-family: var(--mono);
+  font-size: var(--popup-accelerator-font-size);
+  margin-inline-start: auto;
+  padding-inline-start: 16px;
+}
+
+/* Binding source: mockup.html `.lab`. */
+.groupLabel {
+  color: var(--faint);
+  font-size: var(--popup-group-font-size);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  padding: 5px 10px 3px;
+  text-transform: uppercase;
+}
+
+/* Binding source: mockup.html `.sep`. */
+.separator {
+  background: var(--stroke-soft);
+  block-size: 1px;
+  margin: 5px 4px;
 }
 
 .item:hover,

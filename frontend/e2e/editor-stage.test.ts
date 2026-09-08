@@ -1,8 +1,16 @@
 import { expect, test } from '@playwright/test';
 
+import { expectPainted } from './painted';
+
 const widths = [1280, 768, 375] as const;
 const themes = ['Liquid Glass', 'Material', 'Minimal'] as const;
-const modes = ['Follows system', 'Light', 'Dark'] as const;
+/*
+ * The compact Settings popup's appearance rows, which the binding spells
+ * `Auto (system)` (`mockup.html:615`). The full Settings dialog spells the same
+ * choice `Follows system` — a different surface with different catalogue keys,
+ * and these cases drive the popup.
+ */
+const modes = ['Auto (system)', 'Light', 'Dark'] as const;
 
 for (const width of widths) {
   for (const theme of themes) {
@@ -68,7 +76,7 @@ for (const width of widths) {
 
         await page.keyboard.press('Escape');
         await expect(
-          page.getByRole('tab', { name: 'release-notes.md' }),
+          page.getByRole('tab', { name: 'Untitled' }).first(),
         ).toBeVisible();
         if (width === 375) {
           await page
@@ -101,13 +109,25 @@ for (const width of widths) {
         }));
         expect(overflow.body).toBeLessThanOrEqual(overflow.viewport);
         expect(overflow.frame).toBeLessThanOrEqual(overflow.viewport);
-        if (width === 375) {
-          expect(overflow.tabs).toBeGreaterThan(overflow.viewport);
-          await expect(page.locator('[role="tablist"]')).toHaveCSS(
-            'overflow-x',
-            'auto',
-          );
-        }
+        /*
+         * The tab strip becomes a scroll container only when its tabs actually
+         * overflow (`6efb45fa`). That is deliberate: making it one
+         * unconditionally costs ~332 deterministic antialiasing pixels, because
+         * Chromium composites scrollable areas and drops LCD subpixel
+         * antialiasing inside them.
+         *
+         * This used to assert the strip always overflows at 375, which only
+         * held when the fixture carried several tabs. Asserting both directions
+         * pins the actual rule instead: scrollable exactly when it needs to be.
+         */
+        const tabStrip = page.locator('[role="tablist"]');
+        const tabsOverflow = await tabStrip.evaluate(
+          (element) => element.scrollWidth > element.clientWidth,
+        );
+        await expect(tabStrip).toHaveCSS(
+          'overflow-x',
+          tabsOverflow ? 'auto' : 'visible',
+        );
         expect(unexpectedRequests).toEqual([]);
       });
     }
@@ -117,6 +137,7 @@ for (const width of widths) {
 for (const width of widths) {
   for (const theme of themes) {
     for (const mode of modes) {
+      // Proves: FR-FT-046 (partial — only the "no clipping" clause, and only for the About dialog; the popup containment arithmetic around it is the containment clause)
       test(`T070 ${width}px ${theme} ${mode} keeps popup ownership and geometry safe`, async ({
         page,
       }) => {
@@ -195,9 +216,17 @@ for (const width of widths) {
             'data-workspace-visible',
             workspaceVisible ?? '',
           );
-          await expect(
-            page.getByRole('complementary', { name: 'Workspace' }),
-          ).toBeHidden();
+          /*
+           * The minimum window renders no workspace panel at either setting —
+           * there is no room for a column and an overlay would cover the tab
+           * strip. What the toggle still does at this width is move the stored
+           * preference, which is what governs the wide layout, so the attribute
+           * is asserted to flip both ways while the panel stays absent.
+           */
+          const workspacePanel = page.getByRole('complementary', {
+            name: 'Workspace',
+          });
+          await expect(workspacePanel).toHaveCount(0);
           await openShellItem('View');
           await view
             .getByRole('menuitemcheckbox', { name: 'Toggle Sidebar' })
@@ -206,9 +235,7 @@ for (const width of widths) {
             'data-workspace-visible',
             workspaceVisible ?? '',
           );
-          await expect(
-            page.getByRole('complementary', { name: 'Workspace' }),
-          ).toBeVisible();
+          await expect(workspacePanel).toHaveCount(0);
         }
 
         if (width !== 375) {
@@ -268,6 +295,14 @@ for (const width of widths) {
           name: 'About GoMarkEdit',
         });
         await expect(aboutDialog).toBeVisible();
+        /*
+         * T126. `toBeVisible()` is satisfied by a bounding box alone, so it
+         * passes on a dialog an ancestor has clipped to nothing (T113). Proven
+         * load-bearing: clip `.application-frame` and `toBeVisible()` above
+         * stays green while this reports "laid out at (640, 360) but the
+         * topmost paint there is div#root".
+         */
+        await expectPainted(aboutDialog, `the About dialog at ${width}px`);
         await page.keyboard.press('Escape');
         await expect(aboutDialog).toBeHidden();
         expect(
@@ -312,41 +347,91 @@ for (const width of widths) {
         const preview = page.getByRole('region', { name: 'Preview pane' });
         const status = page.getByLabel('Document status', { exact: true });
 
-        const [
-          navigationBox,
-          tabsBox,
-          toolbarBox,
-          editorBox,
-          previewBox,
-          statusBox,
-        ] = await Promise.all([
-          navigation.boundingBox(),
-          tabs.boundingBox(),
-          toolbar.boundingBox(),
-          editor.boundingBox(),
-          preview.boundingBox(),
-          status.boundingBox(),
-        ]);
+        /*
+         * The minimum window carries one pane: Split collapses to the editor
+         * and the preview is removed from the tree, so there is no viewer to
+         * measure at 375. Above that width both panes are laid out and the
+         * hierarchy is asserted against each of them.
+         */
+        const minimumWindow = width === 375;
+        if (minimumWindow) {
+          await expect(preview).toHaveCount(0);
+        }
+        const [navigationBox, tabsBox, toolbarBox, editorBox, statusBox] =
+          await Promise.all([
+            navigation.boundingBox(),
+            tabs.boundingBox(),
+            toolbar.boundingBox(),
+            editor.boundingBox(),
+            status.boundingBox(),
+          ]);
+        const previewBox = minimumWindow ? null : await preview.boundingBox();
         expect(navigationBox).not.toBeNull();
         expect(tabsBox).not.toBeNull();
         expect(toolbarBox).not.toBeNull();
         expect(editorBox).not.toBeNull();
-        expect(previewBox).not.toBeNull();
         expect(statusBox).not.toBeNull();
         expect(navigationBox!.y).toBeLessThan(tabsBox!.y);
         expect(tabsBox!.y).toBeLessThan(toolbarBox!.y);
         expect(toolbarBox!.y).toBeLessThan(editorBox!.y);
-        expect(toolbarBox!.y).toBeLessThan(previewBox!.y);
         expect(statusBox!.y).toBeGreaterThan(editorBox!.y);
-        expect(statusBox!.y).toBeGreaterThan(previewBox!.y);
         expect(editorBox!.width).toBeGreaterThan(0);
-        expect(previewBox!.width).toBeGreaterThan(0);
-        await expect(
-          page.getByRole('tab', { name: 'release-notes.md' }),
-        ).toBeDisabled();
-        await expect(
-          page.getByRole('tab', { name: 'spec-draft.md' }),
-        ).toBeDisabled();
+        if (minimumWindow) {
+          /*
+           * The surviving pane fills the region rather than sharing it: only
+           * the pane row's own inline padding is taken off the viewport, where
+           * a stacked or side-by-side split would leave it near half.
+           */
+          expect(editorBox!.width).toBeGreaterThan(width * 0.8);
+        } else {
+          expect(previewBox).not.toBeNull();
+          expect(toolbarBox!.y).toBeLessThan(previewBox!.y);
+          expect(statusBox!.y).toBeGreaterThan(previewBox!.y);
+          expect(previewBox!.width).toBeGreaterThan(0);
+        }
+        /*
+         * These two assertions used to require the tabs be `toBeDisabled()`,
+         * and to name `spec-draft.md`. Both were written when the shell was a
+         * static picture and the tab strip was decoration. Feature 003's whole
+         * purpose was making these tabs real, so a disabled tab is now the
+         * failure, not the expectation. The chrome hierarchy above is still the
+         * subject of this case; what follows checks the strip is a working
+         * control at this width and palette rather than a drawing of one.
+         */
+        const documentTabs = page.getByRole('tab');
+        await expect(documentTabs.first()).toBeEnabled();
+        await expect(documentTabs.first()).toHaveAttribute(
+          'aria-selected',
+          'true',
+        );
+        /*
+         * The new-tab control is exercised at every width, 375 included. It
+         * used to be skipped there: the workspace opened as an overlay sitting
+         * on top of the tab strip, and Playwright reported the
+         * `<aside aria-label="Workspace">` intercepting the pointer. The
+         * minimum window renders no workspace at all, so nothing covers the
+         * strip and the control is reachable on first sight.
+         */
+        const newTab = page.getByRole('button', { name: 'New tab' });
+        if (await newTab.isVisible()) {
+          const initialTabs = await documentTabs.count();
+          await newTab.click();
+          await expect(documentTabs).toHaveCount(initialTabs + 1);
+          await expect(documentTabs.nth(initialTabs)).toHaveAttribute(
+            'aria-selected',
+            'true',
+          );
+          await documentTabs
+            .nth(initialTabs)
+            .locator('..')
+            .getByRole('button', { name: /^Close /u })
+            .click();
+          await expect(documentTabs).toHaveCount(initialTabs);
+          await expect(documentTabs.first()).toHaveAttribute(
+            'aria-selected',
+            'true',
+          );
+        }
         await expect(page.locator('html')).toHaveAttribute(
           'data-theme',
           themes.indexOf(theme) === 0
@@ -368,6 +453,7 @@ for (const width of widths) {
 for (const width of widths) {
   for (const theme of themes) {
     for (const mode of modes) {
+      // Proves: FR-FT-046 (partial — only the "no clipping" clause, for the editor context menu at all three widths and the toolbar overflow menu at 375 and 768)
       test(`T055 ${width}px ${theme} ${mode} exercises reachable Editor-stage journeys`, async ({
         page,
       }) => {
@@ -447,6 +533,14 @@ for (const width of widths) {
               document.body.contains(element),
             ),
           ).toBe(true);
+          /*
+           * T126. `document.body.contains` proves the portal target, not that
+           * the menu reached the screen; `toBeVisible()` proves a box, not a
+           * paint. Proven load-bearing: clip `body` and both stay green while
+           * this reports "laid out at (412.484, 185) but the topmost paint
+           * there is html".
+           */
+          await expectPainted(overflowMenu, 'the toolbar overflow menu');
         }
         await replaceEditorText();
         await editor.press(`${modifier}+a`);
@@ -493,6 +587,17 @@ for (const width of widths) {
             document.body.contains(element),
           ),
         ).toBe(true);
+        /*
+         * T126. The bounds arithmetic below places the menu inside the
+         * viewport; none of it, nor `toBeVisible()`, can tell whether the menu
+         * paints there. Proven load-bearing: clip `body` and every assertion
+         * around this one stays green while this reports "laid out at
+         * (359, 383.5) but the topmost paint there is html".
+         */
+        await expectPainted(
+          contextMenu,
+          `the editor context menu at ${width}px`,
+        );
         const contextBox = await contextMenu.boundingBox();
         expect(contextBox).not.toBeNull();
         expect(contextBox!.x).toBeGreaterThanOrEqual(0);
@@ -560,6 +665,8 @@ for (const width of widths) {
               document.body.contains(element),
             ),
           ).toBe(true);
+          // T126: same exposure as the 375px overflow menu above.
+          await expectPainted(overflowMenu, 'the 768px toolbar overflow menu');
         }
 
         const overflow = await page.evaluate(() => ({

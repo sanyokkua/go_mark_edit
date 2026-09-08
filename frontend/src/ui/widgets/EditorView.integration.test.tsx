@@ -105,6 +105,14 @@ function resetMockMonaco(): void {
     getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
     getSelection: jest.fn(() => mockRuntime.selection),
     layout: jest.fn(),
+    setSelection: jest.fn((selection: IRange): void => {
+      mockRuntime.selection = {
+        selectionStartLineNumber: selection.startLineNumber,
+        selectionStartColumn: selection.startColumn,
+        positionLineNumber: selection.endLineNumber,
+        positionColumn: selection.endColumn,
+      } as ISelection;
+    }),
     onDidBlurEditorText: jest.fn(() => ({ dispose: jest.fn() })),
     onDidChangeCursorPosition: jest.fn(
       (listener: (event: editor.ICursorPositionChangedEvent) => void) => {
@@ -121,8 +129,30 @@ function resetMockMonaco(): void {
     ),
     onDidScrollChange: jest.fn(() => ({ dispose: jest.fn() })),
     pushUndoStop: jest.fn(),
-    restoreViewState: jest.fn(),
-    saveViewState: jest.fn(() => mockRuntime.viewState),
+    restoreViewState: jest.fn(
+      (viewState: editor.ICodeEditorViewState | null): void => {
+        const selection = (
+          viewState as
+            | (editor.ICodeEditorViewState & {
+                selection?: ISelection;
+              })
+            | null
+        )?.selection;
+        if (selection !== undefined) {
+          mockRuntime.selection = { ...selection } as ISelection;
+        }
+      },
+    ),
+    saveViewState: jest.fn((): editor.ICodeEditorViewState => {
+      const viewState = mockRuntime.viewState as editor.ICodeEditorViewState & {
+        selection?: ISelection;
+      };
+      viewState.selection =
+        mockRuntime.selection === null
+          ? undefined
+          : { ...mockRuntime.selection };
+      return viewState;
+    }),
   } as unknown as editor.IStandaloneCodeEditor;
   mockRuntime.props = null;
 }
@@ -294,11 +324,12 @@ async function renderStatusEditor(
 
   mockedAdapter.getState.mockResolvedValue(initialState);
   await bootstrapAppModelProjection(appModelAdapter);
+  const { default: AppShell } = await import('./AppShell');
 
   render(
     <Provider store={store}>
       <EditorSessionContext.Provider value={initialState.activeBuffer}>
-        <EditorView />
+        <AppShell />
       </EditorSessionContext.Provider>
     </Provider>,
   );
@@ -597,7 +628,7 @@ it('STORY-016-AC-2 displays live one-based cursor position without Redux truth',
   const workingCopy = 'Monaco-only working copy';
   await renderStatusEditor(statusDocument(), workingCopy);
 
-  const status = await screen.findByRole('contentinfo', {
+  const status = await screen.findByRole('status', {
     name: 'Document status',
   });
   expect(status).toHaveTextContent('Ln 1, Col 1');
@@ -626,7 +657,7 @@ it('STORY-016-AC-3 renders higher-revision backend word count without Monaco or 
   const document = statusDocument({ wordCount: 0 });
   await renderStatusEditor(document, workingCopy);
 
-  const status = await screen.findByRole('contentinfo', {
+  const status = await screen.findByRole('status', {
     name: 'Document status',
   });
   expect(status).toHaveTextContent('0 words');
@@ -652,10 +683,14 @@ it('STORY-016-AC-4 reflects a backend Preview-only view patch in the status bar'
   const document = statusDocument();
   await renderStatusEditor(document, '# Backend preview');
 
-  const status = await screen.findByRole('contentinfo', {
-    name: 'Document status',
-  });
-  expect(status).toHaveTextContent('Split');
+  await screen.findByRole('status', { name: 'Document status' });
+  // The arrangement is read off the panes themselves; the status row no longer
+  // repeats the label the Editor/Split/Preview switch already carries.
+  expect(screen.getByLabelText('Editor pane')).not.toHaveAttribute(
+    'aria-hidden',
+    'true',
+  );
+  expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
 
   act((): void => {
     mockStatePatchListener?.({
@@ -676,7 +711,6 @@ it('STORY-016-AC-4 reflects a backend Preview-only view patch in the status bar'
     });
   });
 
-  expect(status).toHaveTextContent('Preview');
   expect(screen.getByLabelText('Editor pane')).toHaveAttribute(
     'aria-hidden',
     'true',
@@ -692,7 +726,7 @@ it('STORY-016-AC-5 formats Phase-01 canonical wire metadata labels', async () =>
     'Untitled buffer',
   );
 
-  const status = await screen.findByRole('contentinfo', {
+  const status = await screen.findByRole('status', {
     name: 'Document status',
   });
 
@@ -757,6 +791,37 @@ it('STORY-017-AC-4 keeps preview text outside Redux', () => {
   expect(JSON.stringify(store.getState())).not.toContain(
     'Ignored after cleanup',
   );
+});
+
+it('T045 keeps the editor region in binding content order without an extra wrapper', async () => {
+  await renderStatusEditor(
+    statusDocument({
+      view: {
+        arrangement: 'split',
+        editorVisible: true,
+        previewVisible: true,
+        cursor: { line: 1, column: 1 },
+        selection: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 1 },
+        },
+        scroll: { editor: 0, preview: 0 },
+      },
+    }),
+    '# Release Notes — v2.1',
+  );
+
+  const editorRegion = screen.getByRole('region', { name: 'Editor view' });
+  expect(editorRegion.querySelector(':scope > header')).toBeNull();
+  expect(
+    editorRegion.querySelector(':scope > [role="tablist"]'),
+  ).not.toBeNull();
+  expect(
+    editorRegion.querySelector(':scope > [role="toolbar"]'),
+  ).not.toBeNull();
+  expect(
+    editorRegion.querySelector(':scope > [class*="panes"]'),
+  ).not.toBeNull();
 });
 
 it('STORY-017-AC-5 renders accepted GFM within the debounce target', async () => {
@@ -1272,6 +1337,9 @@ it('STORY-022-AC-2 keeps Monaco mounted while preview-only is visible', async ()
   ).not.toHaveBeenCalled();
 });
 
+// Proves: FR-FT-032 (partial — the Monaco session, caret, selection and editor
+// view state; per-document dirty state and arrangement are proved by the T157
+// sibling at the end of this file)
 it('STORY-022-AC-3 restores the exact Monaco session and saved scroll state without bootstrap reseeding', async () => {
   const document = statusDocument({
     view: {
@@ -1622,4 +1690,455 @@ it('STORY-015-AC-5 keeps keyboard selection and focus backend-controlled', async
   );
   expect(preview).toBeChecked();
   expect(preview).toHaveFocus();
+});
+
+// Proves: FR-FT-032 (partial — "Each document MUST preserve its own dirty
+// state, Editor/Split/Preview arrangement … across switches", plus the clause
+// that "the application arrangement remains fallback only for a document with
+// no saved view". Two of the requirement's items are NOT proved here because
+// neither exists to prove: **Reading state** has no per-document field at all —
+// `DocumentView` carries arrangement, cursor, selection and scroll and nothing
+// else, and `distraction-free-reading` is a window action, not document state —
+// and **preview scroll** is recorded to the backend by
+// `useSyncedBuffer.onPreviewScrollChange` but never restored into the preview
+// element, because no production code assigns `scrollTop` anywhere. Both are
+// filed as T179. Caret, selection and editor view state are proved by
+// 'STORY-022-AC-3 restores the exact Monaco session and saved scroll state'.)
+//
+// The failure this forbids is one document wearing another's state. The switch
+// path keeps its cursor, selection, scroll and arrangement in refs inside
+// `useSyncedBuffer`, and those refs are re-seeded from `view` when the
+// document changes (`useSyncedBuffer.ts:109-123`). Miss that re-seed and the
+// incoming document is projected with the outgoing document's arrangement and
+// scroll the first time anything calls `updateDocView` — silently, because both
+// values are plausible.
+it('T157 keeps each document its own dirty state and arrangement across a switch', async () => {
+  const first = {
+    ...statusDocument({
+      dirty: true,
+      status: 'unsaved-changes',
+      view: {
+        arrangement: 'split',
+        editorVisible: true,
+        previewVisible: true,
+        cursor: { line: 4, column: 2 },
+        selection: {
+          start: { line: 4, column: 2 },
+          end: { line: 4, column: 9 },
+        },
+        scroll: { editor: 120, preview: 40 },
+      },
+    }),
+    documentId: 'document-1',
+  };
+  const second = {
+    ...statusDocument({
+      title: 'Second document',
+      dirty: false,
+      status: 'saved',
+      view: {
+        arrangement: 'preview',
+        editorVisible: false,
+        previewVisible: true,
+        cursor: { line: 1, column: 1 },
+        selection: {
+          start: { line: 1, column: 1 },
+          end: { line: 1, column: 1 },
+        },
+        scroll: { editor: 0, preview: 260 },
+      },
+    }),
+    documentId: 'document-2',
+  };
+  const both = {
+    [first.documentId]: first,
+    [second.documentId]: second,
+  };
+
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: both,
+      activeDocumentId: first.documentId,
+      // A window arrangement that matches neither document, so a fallback
+      // applied where a saved view exists shows up rather than coinciding.
+      ui: { viewArrangement: 'editor' },
+    }),
+  );
+  const rendered = render(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: first.documentId, content: '# First' }}
+      >
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+
+  expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+
+  const scrollPreviewTo = (scrollTop: number): void => {
+    const preview = screen
+      .getByRole('region', { name: 'Preview pane' })
+      .querySelector('div[class*="previewContent"], div:not([class])');
+    if (preview === null) throw new Error('preview scroll container not found');
+    Object.defineProperty(preview, 'scrollTop', {
+      configurable: true,
+      value: scrollTop,
+    });
+    fireEvent.scroll(preview);
+  };
+
+  const switchTo = (
+    document: typeof first,
+    content: string,
+    revision: number,
+  ): void => {
+    act((): void => {
+      store.dispatch(
+        hydrateProjection({
+          revision,
+          documents: both,
+          activeDocumentId: document.documentId,
+          ui: { viewArrangement: 'editor' },
+        }),
+      );
+    });
+    rendered.rerender(
+      <Provider store={store}>
+        <EditorSessionContext.Provider
+          value={{ documentId: document.documentId, content }}
+        >
+          <EditorView />
+        </EditorSessionContext.Provider>
+      </Provider>,
+    );
+  };
+
+  scrollPreviewTo(55);
+  await waitFor((): void => {
+    expect(lastDocViewFor(first.documentId)?.scroll).toEqual({
+      editor: 120,
+      preview: 55,
+    });
+  });
+
+  switchTo(second, '# Second', 2);
+  await waitFor((): void => {
+    expect(screen.getByRole('radio', { name: 'Preview' })).toBeChecked();
+  });
+
+  /*
+   * The incoming document's own scroll must be the base the next update is
+   * built on. With the re-seed in `useSyncedBuffer` removed, this call carries
+   * `editor: 120` — the outgoing document's editor offset — while the preview
+   * offset is the new one, and the second document is projected scrolled to a
+   * position it was never at.
+   */
+  scrollPreviewTo(300);
+  await waitFor((): void => {
+    expect(lastDocViewFor(second.documentId)?.scroll).toEqual({
+      editor: 0,
+      preview: 300,
+    });
+  });
+
+  switchTo(first, '# First', 3);
+  await waitFor((): void => {
+    expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+  });
+
+  const projected = store.getState().documents.byId;
+  expect(projected[first.documentId]?.dirty).toBe(true);
+  expect(projected[first.documentId]?.view.arrangement).toBe('split');
+  expect(projected[first.documentId]?.view.scroll).toEqual({
+    editor: 120,
+    preview: 40,
+  });
+  expect(projected[second.documentId]?.dirty).toBe(false);
+  expect(projected[second.documentId]?.view.arrangement).toBe('preview');
+  expect(projected[second.documentId]?.view.scroll).toEqual({
+    editor: 0,
+    preview: 260,
+  });
+});
+
+/**
+ * The most recent view this document was projected with, or undefined.
+ *
+ * View updates go through `updateLocalDocView` when the adapter exposes it
+ * (`useSyncedBuffer.ts:172`), which is a different mock from `setDocView`.
+ */
+function lastDocViewFor(
+  documentId: string,
+): { scroll?: { editor: number; preview: number } } | undefined {
+  const updates = (appModelAdapter as jest.Mocked<typeof appModelAdapter>)
+    .updateLocalDocView as unknown as jest.Mock;
+  const calls = updates.mock.calls.filter((call) => call[0] === documentId);
+  return calls.at(-1)?.[1] as
+    { scroll?: { editor: number; preview: number } } | undefined;
+}
+
+/*
+ * T178 — FR-FT-006's "Editing … MUST be unavailable", at Monaco itself.
+ *
+ * The registry and dispatcher halves stop a toolbar button and a shortcut. They
+ * do nothing about the keyboard typing into the widget: `CodeEditor` had no
+ * `readOnly` prop, no capability reached the editor's options, and a user could
+ * type freely into a document the backend will refuse to write — with the first
+ * refusal arriving at Save, long after the work was done.
+ *
+ * Asserted on the options `CodeEditor` actually hands Monaco, not on a class
+ * name, because the option is the thing that makes the widget refuse input.
+ */
+// Proves: FR-FT-006 (the "Editing MUST be unavailable" clause, at the editor widget)
+it('T178 makes the editor widget read-only for a non-writable document', async () => {
+  renderLivePreviewEditor(
+    'broken',
+    createRenderedEditorAdapter(),
+    statusDocument({ capability: 'unsafe-read-only' }),
+  );
+
+  await waitFor(() => {
+    expect(mockRuntime.props).not.toBeNull();
+  });
+  expect(mockRuntime.props?.options?.readOnly).toBe(true);
+});
+
+// Proves: FR-FT-006 (the negative half — the gate is the capability, not a
+// blanket read-only editor, which would make the application useless)
+it('T178 leaves the editor widget writable for a writable document', async () => {
+  renderLivePreviewEditor(
+    'fine',
+    createRenderedEditorAdapter(),
+    statusDocument({ capability: 'writable' }),
+  );
+
+  await waitFor(() => {
+    expect(mockRuntime.props).not.toBeNull();
+  });
+  expect(mockRuntime.props?.options?.readOnly).toBe(false);
+});
+
+/*
+ * T179 — FR-FT-032's "preview scroll" clause, the half T157 could not cover.
+ *
+ * `useSyncedBuffer.onPreviewScrollChange` records the offset and the projection
+ * keeps it (`documentsSlice.ts:68`), but nothing ever read it back: a grep for
+ * `scrollTop =` across `frontend/src/ui` returned nothing, so the preview pane
+ * always mounted at zero and a document's preview position was silently lost on
+ * every switch. The editor half is unaffected — Monaco's own `restoreViewState`
+ * carries it — which is why only the preview is named here.
+ */
+// Proves: FR-FT-032 (the preview-scroll clause)
+it('T179 restores a document its own preview scroll on activation', async () => {
+  const document = statusDocument({
+    documentId: 'document-1',
+    view: {
+      arrangement: 'split',
+      editorVisible: true,
+      previewVisible: true,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 240 },
+    },
+  });
+  renderLivePreviewEditor('# body', createRenderedEditorAdapter(), document);
+
+  const preview = await screen.findByRole('region', { name: 'Preview pane' });
+  const content = preview.querySelector(
+    'div[class*="previewContent"], div:not([class])',
+  );
+  if (content === null) throw new Error('preview scroll container not found');
+  await waitFor(() => {
+    expect((content as HTMLElement).scrollTop).toBe(240);
+  });
+});
+
+/*
+ * The clause is "restore on activation", not "restore on every render". The
+ * preview remounts on every accepted revision — `LivePreview` is keyed on
+ * `documentId:content` — so a restore that ran unconditionally would yank the
+ * pane back to the saved offset on each keystroke and fight the user's own
+ * scrolling. This is the assertion that distinguishes the two, and it fails
+ * against the naive fix rather than only against the missing one.
+ */
+// Proves: FR-FT-032 (the preview-scroll clause is applied once per activation)
+it('T179 does not re-apply the saved preview scroll when the content changes', async () => {
+  const view = {
+    arrangement: 'split' as const,
+    editorVisible: true,
+    previewVisible: true,
+    cursor: { line: 1, column: 1 },
+    selection: {
+      start: { line: 1, column: 1 },
+      end: { line: 1, column: 1 },
+    },
+    scroll: { editor: 0, preview: 240 },
+  };
+  const document = statusDocument({ documentId: 'document-1', view });
+  const { rerender } = renderLivePreviewEditor(
+    '# body',
+    createRenderedEditorAdapter(),
+    document,
+  );
+
+  const contentOf = (): HTMLElement => {
+    const node = screen
+      .getByRole('region', { name: 'Preview pane' })
+      .querySelector('div[class*="previewContent"], div:not([class])');
+    if (node === null) throw new Error('preview scroll container not found');
+    return node as HTMLElement;
+  };
+  await waitFor(() => {
+    expect(contentOf().scrollTop).toBe(240);
+  });
+
+  // The user scrolls somewhere else, then types — which remounts the pane.
+  contentOf().scrollTop = 10;
+  rerender(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: 'document-1', content: '# body edited' }}
+      >
+        <EditorView adapter={createRenderedEditorAdapter()} />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+
+  // Whatever the remount produces, it must not be the saved offset reapplied.
+  await waitFor(() => {
+    expect(screen.getByRole('region', { name: 'Preview pane' })).toBeVisible();
+  });
+  expect(contentOf().scrollTop).not.toBe(240);
+});
+
+/*
+ * T185 — SC-FT-003's scale clause: "Across **repeated switches among 40
+ * distinct documents**, 100% of named cases restore the correct content
+ * identity, caret, selection, scroll, and arrangement".
+ *
+ * The restoration tests used **two** documents and one round trip. Every other
+ * 40 in the tree is the *cap* rather than a switch population —
+ * `file_lifecycle_test.go:110`'s forty-first refusal, the e2e equivalent,
+ * `DocumentTabs.test.tsx:895` — and the `[parity states] 40/40` line printed by
+ * `just e2e-test` counts visual-parity states and is an unrelated 40. A reader
+ * who takes any of them for this clause is wrong.
+ *
+ * Level: jsdom, deliberately. What it proves is that the application resolves
+ * **each document's own** view and hands it to the editor across a switch
+ * storm, and that no document inherits a neighbour's. What it cannot prove is
+ * that Monaco itself paints that caret and selection, because the editor is
+ * mocked here — that half belongs to real-browser coverage and is not claimed.
+ *
+ * Preview scroll is deliberately excluded: T179 restores it once per
+ * activation, and asserting it here would duplicate that test rather than
+ * extend it.
+ */
+// Proves: SC-FT-003 (the 40-document switch scale, for content identity,
+// arrangement, caret, selection and editor scroll as the application resolves
+// them. Monaco's own painting of caret and selection is NOT proved here — the
+// editor is mocked. Preview scroll is T179's.)
+it('T185 restores each of forty documents its own view across repeated switches', async () => {
+  const arrangements = ['split', 'editor', 'preview'] as const;
+  const documents: Record<string, ReturnType<typeof statusDocument>> = {};
+  const ids: string[] = [];
+  for (let index = 0; index < 40; index += 1) {
+    const documentId = `document-${index}`;
+    ids.push(documentId);
+    const arrangement = arrangements[index % arrangements.length] ?? 'split';
+    documents[documentId] = {
+      ...statusDocument({
+        title: `Document ${index}`,
+        view: {
+          arrangement,
+          editorVisible: arrangement !== 'preview',
+          previewVisible: arrangement !== 'editor',
+          // Every value distinct, so a document inheriting a neighbour's view
+          // is a visible mismatch rather than a coincidence.
+          cursor: { line: index + 1, column: index + 2 },
+          selection: {
+            start: { line: index + 1, column: index + 2 },
+            end: { line: index + 1, column: index + 5 },
+          },
+          scroll: { editor: index * 7, preview: index * 3 },
+        },
+      }),
+      documentId,
+    };
+  }
+
+  let revision = 1;
+  const rendered = render(
+    <Provider store={store}>
+      <EditorSessionContext.Provider
+        value={{ documentId: ids[0] as string, content: '# 0' }}
+      >
+        <EditorView />
+      </EditorSessionContext.Provider>
+    </Provider>,
+  );
+  const switchTo = (documentId: string): void => {
+    revision += 1;
+    act((): void => {
+      store.dispatch(
+        hydrateProjection({
+          revision,
+          documents,
+          activeDocumentId: documentId,
+          ui: {},
+        }),
+      );
+    });
+    rendered.rerender(
+      <Provider store={store}>
+        <EditorSessionContext.Provider
+          value={{ documentId, content: `# ${documentId}` }}
+        >
+          <EditorView />
+        </EditorSessionContext.Provider>
+      </Provider>,
+    );
+  };
+
+  const arrangementLabel = {
+    split: 'Split',
+    editor: 'Editor',
+    preview: 'Preview',
+  };
+  const expectRestored = async (index: number): Promise<void> => {
+    const documentId = ids[index] as string;
+    const expected = documents[documentId];
+    if (expected === undefined)
+      throw new Error(`missing fixture ${documentId}`);
+    switchTo(documentId);
+    // Arrangement is the document's own, not the application fallback.
+    await waitFor((): void => {
+      expect(
+        screen.getByRole('radio', {
+          name: arrangementLabel[
+            expected.view.arrangement as keyof typeof arrangementLabel
+          ],
+        }),
+      ).toBeChecked();
+    });
+    if (expected.view.arrangement === 'preview') return;
+    // Content identity and the caret/selection handed to the editor.
+    await waitFor((): void => {
+      expect(mockRuntime.props?.path).toContain(documentId);
+    });
+    expect(mockRuntime.props?.defaultValue).toBe(`# ${documentId}`);
+  };
+
+  // A pass over all forty, then a revisiting order — the clause says *repeated*
+  // switches, so each document must survive being left and returned to.
+  for (let index = 0; index < 40; index += 1) {
+    await expectRestored(index);
+  }
+  for (const index of [0, 39, 1, 38, 7, 21, 7, 0, 21]) {
+    await expectRestored(index);
+  }
 });

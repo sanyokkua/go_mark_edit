@@ -59,6 +59,26 @@ Tests passing against the wrong behaviour is not done.
 - Run the full gate, not module scope, whenever a change can open a dialog, block a thread, touch
   startup/the composition root, or alter a public interface.
 
+**Name the rule a test proves, in the test.** Constitution II makes this a MUST — "proving tests
+MUST identify the rule they exercise" — and one convention carries it in both languages:
+
+```go
+// Proves: FR-FT-023
+func TestReadClassifiedStableReportsAbsenceWithoutAnError(t *testing.T) {
+```
+
+```ts
+// Proves: FR-FT-015
+it('T117 surfaces the Save refusal with the backend message and its own code', async () => {
+```
+
+Go puts it above the `func`; TypeScript above the `it`/`test`. A task id may lead the title, but the
+requirement anchor goes in the comment, where it is greppable and cannot be mistaken for prose.
+
+**Never name a rule the test does not prove.** An anchor asserting a claim the body does not make is
+worse than no anchor — it converts a coverage gap into a false record of coverage. If no test proves
+a requirement, that is a gap to file as its own task, not a title to write.
+
 Closing checklist — evidence, not assertion:
 
 - [ ] Every acceptance criterion met, each named with the evidence that proves it
@@ -160,8 +180,70 @@ because `/speckit-converge` must still determine whether the implementation matc
   against a mock bridge, and every Playwright run uses that mock — a known divergence
   (`docs/delivery/plan/KNOWN_ISSUES.md`). A live check against `dev-ui` never substitutes for
   walking the real `just build` binary before calling a story done.
+- **`just check` never runs Playwright.** It is exactly `gen-check, frontend-build, fmt-check,
+  lint, typecheck, frontend-test, go-vet, archtest, go-test` (`justfile:145`); the e2e suites run
+  only under `just e2e-test` / `just verify-ui`, and `just baseline` does not capture them either.
+  A green `just check` says nothing about interface behaviour. On 2026-08-13 it was green while
+  `real-files-and-tabs.test.ts` was 2 failed / 6 passed — a dead Settings toggle and a test still
+  describing a superseded File menu. Run `just e2e-test` explicitly, and diff it, before calling
+  any interface work done.
+- **Two test runners can claim the same files, and the loser dies at collection.** `just e2e-test`
+  could not run *at all* from T034 until 2026-08-14: `playwright.config.ts` matched
+  `e2e/**/*.test.ts`, which swallowed the seven Jest unit tests under `e2e/parity/` that
+  `jest.config.js` explicitly owns, and `playwright test` with no arguments died with
+  `ReferenceError: it is not defined` before one browser case ran. Running a single file
+  (`npx playwright test e2e/window-shell.test.ts`) always worked, which is why nobody noticed.
+  The config now matches `e2e/*.test.ts` — top level only, one owner per file. **When you add a
+  test under `e2e/`, check which runner claims it.**
+- **`.application-frame` is the application window; `window.innerHeight` is not.** Popups portal
+  into that frame so they share its containing block, and the parity harness draws the frame inset
+  inside a taller page. Clamping a popup against the browser viewport therefore fires at the 720px
+  parity height — where the frame is only 619px — creating a scroll container that costs ~332
+  antialiasing pixels against the immutable reference. Measure the frame. (The same portalling
+  means a control that has relocated into the toolbar overflow at ≤768px is **outside** the
+  `toolbar` element: `toolbar.getByRole('button', {name: 'Image'})` finds nothing, and
+  `[data-viewport-popup="editor-overflow"]` is where it lives.)
+- **Fixing a stale assertion reveals the next one.** Playwright stops a case at its first failure,
+  so a failing-case count understates the work by construction. On 2026-08-14 the Settings-popup
+  viewport assertion hid a stale portal-target assertion; a status-row arrangement assertion hid a
+  divider-bounds assertion; and every repaired assertion in the shell matrix hid its screenshot
+  comparison. Budget for the second layer.
+- **Availability comes from the action registry, never from whether a handler happens to be
+  wired.** `SettingsMenu` computed it as `onMarkdownSettingsChange === undefined` and shipped
+  `Format on save` and `Lint on save` enabled while `actionRegistry.ts` marked both
+  `laterDeferred`. Read `getAction(id).availability.kind`.
+- **A pixel difference with no style or bounds difference is usually layerisation, not drift.**
+  The comparator's compared-property list is `METRIC_PROPERTIES` in
+  `frontend/e2e/targeted-parity.test.ts` (~line 84): `flex` and `max-width` are not compared,
+  `min-width` is — and `min-width: auto` computes to `auto` only for a flex item, so a plain block
+  wrapper makes a child compute `0px` and reads as drift. Separately, making an element a scroll
+  container costs ~332 deterministic pixels confined to glyphs, because Chromium composites
+  scrollable areas and drops LCD subpixel antialiasing. Check determinism and composited-layer
+  ancestry before chasing a style fix that does not exist.
+- **The parity reference server is reused across runs, so it serves a stale adaptation.**
+  `frontend/playwright.config.ts` sets `reuseExistingServer: !process.env.CI` for the server on
+  port 4174. A server started before you edit `frontend/e2e/parity/reference-adapter.ts` keeps
+  serving the **old** HTML for the rest of the session, and the measurement fails in the direction
+  that looks like production drift — the Settings popup reported 2,554 pixels instead of 709 until
+  the port-4174 process was killed. Kill it after every adapter change.
+- **`just build` leaves `frontend/wailsjs/runtime/` at mode 644.** Three files show as modified with
+  **zero content difference** — only the mode bit. `just gen-check` runs `wails generate module`,
+  which rewrites them at 755 and cleans the tree, so the fix is to run gen-check *after* build.
+  The release gate order (gen-check first, build last) therefore ends with a dirty tree; that is
+  expected, not drift.
+- **`git add -A` can silently regress `frontend/wailsjs/**` to mode 644**, especially after a
+  `git stash` cycle, which fails `just gen-check` on the mode bit alone with zero content
+  difference. Check `git ls-files -s frontend/wailsjs/runtime/` before committing anything that
+  used `add -A`.
 - **`just package` exits non-zero on purpose** until Phase 08 introduces it — don't report that
   as broken.
+- **Everything under `frontend/wailsjs/` is committed executable (`100755`), because that is the
+  only mode the generator writes.** Wails writes every generated file through
+  `MustWriteString`, which hardcodes `0o755` (`internal/fs/fs.go:161`) with no platform branch.
+  "Tidying" those files back to `644` does not survive the next `wails generate module`, and it
+  breaks `just gen-check` for everyone afterwards — `git diff --exit-code` fails on the mode bit
+  alone, with zero content difference, which reads as generated-code drift when nothing drifted.
+  Three of the ten files were stored at `644` and did exactly that.
 - **Never assume the reader knows what an identifier means.** Restate a rule, anchor, or story ID
   in the same message with one concrete example — go find the fact rather than asking about it.
 - **`.claude/skills/speckit-*` and `.agents/skills/speckit-*` look like duplicate mirrors — they

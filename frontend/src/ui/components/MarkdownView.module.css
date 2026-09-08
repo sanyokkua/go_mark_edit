@@ -3,15 +3,74 @@
   font-size: var(--preview-font-size);
   line-height: var(--preview-line-height);
   overflow-wrap: anywhere;
+  padding: var(--preview-content-padding);
+}
+
+.preview h1 {
+  font-size: 25px;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+}
+
+.preview h2 {
+  font-size: 18px;
+  margin: 20px 0 9px;
+}
+
+.preview p {
+  color: var(--muted);
+  line-height: 1.75;
+  margin: 9px 0;
+}
+
+.preview ul,
+.preview ol {
+  color: var(--muted);
+  margin: 9px 0;
+  padding-inline-start: 20px;
+}
+
+.preview li {
+  margin: 5px 0;
+}
+
+.preview blockquote {
+  background: var(--accent-soft);
+  border-inline-start: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  color: var(--text);
+  margin: 12px 0;
+  padding: 6px 14px;
 }
 
 .preview :is(h1, h2, h3, h4, h5, h6) {
   line-height: var(--preview-heading-line-height);
-  margin-block: var(--preview-block-spacing) var(--preview-inline-spacing);
+}
+
+.preview h1 {
+  margin: 0 0 12px;
+}
+
+.preview h2 {
+  margin: 20px 0 9px;
 }
 
 .preview :is(p, ul, ol, pre, blockquote, table) {
   margin-block: var(--preview-block-spacing);
+}
+
+.preview p,
+.preview ul,
+.preview ol {
+  margin: 9px 0;
+}
+
+.preview li {
+  margin: 5px 0;
+}
+
+.preview blockquote {
+  margin: 12px 0;
 }
 
 .preview :is(ul, ol) {
@@ -31,6 +90,18 @@
   text-align: start;
 }
 
+/* Binding source: mockup.html `.preview strong{color:var(--md-strong)}` and
+   `.preview em{color:var(--md-emphasis)}` (:313). Without these both inherit
+   the surrounding `--muted`, which is the only difference the binding draws
+   between emphasised and ordinary body text. */
+.preview strong {
+  color: var(--md-strong);
+}
+
+.preview em {
+  color: var(--md-emphasis);
+}
+
 .preview :is(code, pre) {
   font-family: var(--preview-code-font-family);
 }
@@ -39,15 +110,46 @@
   padding-inline: var(--preview-code-inline-padding);
 }
 
+/* Binding source: mockup.html `.preview pre` (:324). The binding sets no
+   line-height here, and `.preview` (:310) sets none either, so the block
+   resolves to `normal` — roughly 14px at this 12px size. `.preview`'s own
+   1.5 would otherwise cascade in as 18px and push every code line 2px down. */
 .preview pre {
+  background: var(--surface-2);
+  border: var(--control-border-width) solid var(--stroke-soft);
+  border-radius: var(--preview-code-block-radius);
+  color: var(--code-fg);
+  font-size: var(--preview-code-block-font-size);
+  line-height: normal;
+  margin: var(--preview-code-block-margin) 0;
   overflow-x: auto;
   padding: var(--preview-code-block-padding);
+}
+
+/* The binding block already carries the monospaced treatment; the nested code
+   element must not add a second inline padding step.
+
+   The family is deliberately the generic keyword. The binding names
+   `var(--mono)` on `.preview pre` (:324) and on `.preview .kbd` (:325) — the
+   primitive production's inline code maps onto — but nowhere on a `code`
+   inside a `pre`. The UA rule `code{font-family:monospace}` therefore wins
+   there over the ancestor's family, and the binding renders the block's text
+   in the platform's generic monospace. */
+.preview pre code {
+  background: none;
+  font-family: monospace;
+  padding-inline: 0;
 }
 
 .preview input[disabled] {
   opacity: 1;
 }
 
+/* The Feature 003 reference variant expresses the discarded image as the
+   binding's own emphasis primitive (`<em>`, mockup.html:313), so the fallback
+   must carry the whole of that treatment — the italic and the emphasis colour.
+   Italic alone leaves it inheriting `--muted` from the list. */
 .preview :global(.gme-preview-image-fallback) {
+  color: var(--md-emphasis);
   font-style: italic;
 }

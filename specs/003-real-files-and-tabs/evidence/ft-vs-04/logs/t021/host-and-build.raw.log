@@ -1,0 +1,9 @@
+2026-08-08T23:02:09+02:00
+Darwin Oleksandrs-MacBook-Pro.local 25.5.0 Darwin Kernel Version 25.5.0: Tue Jun  9 22:18:58 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T6000 arm64
+ProductName:		macOS
+ProductVersion:		26.5.2
+BuildVersion:		25F84
+1fc1e2d63b90b23e0eee42a177254684b0687a97
+## feature/v1-implementation--003-t021-conflict-evidence
+?? specs/003-real-files-and-tabs/evidence/ft-vs-04/logs/
+build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit 16580336 bytes 0755 Aug  8 22:56:09 2026

@@ -1,0 +1,18 @@
+2026-08-08T23:31:57+02:00
+Darwin Oleksandrs-MacBook-Pro.local 25.5.0 Darwin Kernel Version 25.5.0: Tue Jun  9 22:18:58 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T6000 arm64
+ProductName:        macOS
+ProductVersion:     26.5.2
+BuildVersion:       25F84
+git rev-parse HEAD:
+3797295f91b5451c55ee65be637d6596bc418803
+git branch:
+## feature/v1-implementation--003-t021-conflict-evidence
+binary:
+build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit 16580384 bytes 0755 2026-08-08T23:31:57+0200
+sha256:
+d3cca6e107d032e328311fb6549adbe38605d11f5dcfb317dfd0344818ce651b  build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit
+generator gate:
+GOCACHE=/private/tmp/gomarkedit-gocache just gen-check
+wails generate module
+git diff --exit-code -- frontend/wailsjs/
+exit 0

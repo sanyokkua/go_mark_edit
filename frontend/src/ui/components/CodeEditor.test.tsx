@@ -14,6 +14,7 @@ import { applyMonacoThemeFromRoot } from './monacoSetup';
 import { createDocumentCommands } from '../../logic/hooks/useDocumentCommands';
 
 interface MockModel {
+  dispose: jest.Mock<void, []>;
   getFullModelRange: jest.Mock<IRange, []>;
   getValue: jest.Mock<string, []>;
   setValue: jest.Mock<void, [string]>;
@@ -52,6 +53,7 @@ function resetMockMonaco(): void {
     positionColumn: 1,
   } as ISelection;
   mockRuntime.model = {
+    dispose: jest.fn<void, []>(),
     getFullModelRange: jest.fn<IRange, []>(() => fullModelRange),
     getValue: jest.fn<string, []>(() => mockRuntime.content),
     setValue: jest.fn<void, [string]>(),
@@ -62,6 +64,7 @@ function resetMockMonaco(): void {
     getScrollTop: jest.fn(() => mockRuntime.scrollTop),
     getSelection: jest.fn(() => mockRuntime.selection),
     setSelection: jest.fn(),
+    deltaDecorations: jest.fn(() => []),
     onDidBlurEditorText: jest.fn((listener: () => void) => {
       mockRuntime.blurListener = listener;
 
@@ -82,6 +85,7 @@ function resetMockMonaco(): void {
       },
     ),
     pushUndoStop: jest.fn(),
+    dispose: jest.fn(),
   } as unknown as editor.IStandaloneCodeEditor;
   mockRuntime.props = null;
   mockRuntime.scrollTop = 0;
@@ -149,9 +153,11 @@ it('STORY-013-AC-1 configures the default Markdown editor tokens and options', a
     path: 'inmemory://gomarkedit/document-1.md',
     options: {
       lineNumbers: 'on',
+      lineNumbersMinChars: 3,
       wordWrap: 'off',
       minimap: { enabled: false },
       fontSize: 14,
+      padding: { top: 12, bottom: 12 },
     },
   });
 
@@ -164,6 +170,47 @@ it('STORY-013-AC-1 configures the default Markdown editor tokens and options', a
   expect(readSource('src/ui/components/CodeEditor.tsx')).toContain(
     "getPropertyValue('--editor-font-size')",
   );
+});
+
+it('T045 aligns the parity Monaco gutter with the reviewed code column', () => {
+  const editorStyles = readSource('src/ui/components/CodeEditor.module.css');
+
+  expect(editorStyles).toMatch(
+    /\.editor\[data-parity-route='true'\][\s\S]*?:global\(\.monaco-editor \.margin\)\s*\{[^}]*width:\s*51\.65625px\s*!important;/s,
+  );
+  expect(editorStyles).toMatch(
+    /\.editor\[data-parity-route='true'\][\s\S]*?:global\(\.monaco-editor \.line-numbers\)\s*\{[^}]*width:\s*25\.65625px\s*!important;/s,
+  );
+  expect(editorStyles).toMatch(
+    /\.editor\[data-parity-route='true'\][\s\S]*?:global\(\.monaco-editor \.editor-scrollable\)\s*\{[^}]*left:\s*51\.65625px\s*!important;/s,
+  );
+});
+
+it('T045 retains the reviewed parity Monaco line box height', () => {
+  expect(readSource('src/ui/components/CodeEditor.tsx')).toContain(
+    'lineHeight: parityRoute ? 23.4 : undefined,',
+  );
+});
+
+it('restores the acknowledged selection at the fresh editor activation boundary', async () => {
+  render(
+    <CodeEditor
+      documentId="document-1"
+      initialValue="first\nselected"
+      initialSelection={{
+        start: { lineNumber: 2, column: 1 },
+        end: { lineNumber: 2, column: 9 },
+      }}
+    />,
+  );
+
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+  expect(mockRuntime.editor.setSelection).toHaveBeenCalledWith({
+    startLineNumber: 2,
+    startColumn: 1,
+    endLineNumber: 2,
+    endColumn: 9,
+  });
 });
 
 it('STORY-013-AC-3 reports Monaco edits immediately', async () => {
@@ -221,6 +268,32 @@ it('STORY-013-AC-4 seeds a model only for a new document identity', async () => 
     defaultValue: 'second document',
     path: 'inmemory://gomarkedit/document-2.md',
   });
+});
+
+// Proves: FR-FT-029
+it('T017 creates a fresh activation model and drops prior undo identity', async () => {
+  const { rerender } = render(
+    <CodeEditor
+      documentId="document-1"
+      activationId="Symbol(editor-activation-1)"
+      initialValue="first activation"
+    />,
+  );
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+  const firstPath = mockRuntime.props?.path;
+
+  rerender(
+    <CodeEditor
+      documentId="document-1"
+      activationId="Symbol(editor-activation-2)"
+      initialValue="second activation"
+    />,
+  );
+
+  expect(mockRuntime.props?.path).not.toBe(firstPath);
+  expect(mockRuntime.props?.defaultValue).toBe('second activation');
+  expect(mockRuntime.model.dispose).toHaveBeenCalled();
+  expect(mockRuntime.editor.dispose).toHaveBeenCalled();
 });
 
 it('STORY-013-AC-5 preserves the model cursor and selection on metadata rerender', async () => {
@@ -622,3 +695,23 @@ it('keeps replacement undo groups and complete-buffer callbacks at the Monaco bo
     'whole\nreplacement',
   );
 });
+
+/*
+ * T173. Two `T045 …` lint cases were removed here — the decoration's styling and
+ * the decoration itself. The two Monaco geometry cases above them survive,
+ * because the branches they pin survive.
+ *
+ * The decoration drew a wavy underline over a hardcoded range of a hardcoded
+ * document id, so the harness photographed a lint finding no lint engine had
+ * produced. That is a substitution, not a capture condition: the mockup shows a
+ * squiggle under "exited", the fixture's misspellings are still there, and if
+ * the application is to underline them a lint engine has to say so.
+ *
+ * The geometry branches were nearly deleted with it, on the reasoning that
+ * FR-FT-055 excludes the Monaco interior from every variant so they pin pixels
+ * nothing compares. A measurement said otherwise: removing them grew T059's
+ * `popup-antialiased-boundary` residual from 181 pixels to 239, because the
+ * File popup composites over the editor and its antialiased edge blends against
+ * whatever glyphs are behind it. An excluded *region* can still be load-bearing
+ * for a comparison outside it — re-measure before trusting the exclusion.
+ */

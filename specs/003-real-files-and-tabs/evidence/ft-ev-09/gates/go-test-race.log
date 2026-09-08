@@ -1,0 +1,11 @@
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	(cached)
+?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	(cached)
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	(cached)
+ok  	github.com/sanyokkua/go_mark_edit	(cached)

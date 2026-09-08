@@ -2,6 +2,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import type {
   EditorSettings,
+  FileSettings,
   MarkdownSettings,
   Settings,
 } from '../adapter/settingsTypes';
@@ -21,16 +22,22 @@ export const defaultMarkdownSettings: MarkdownSettings = {
   headingStyle: 'atx',
 };
 
+export const defaultFileSettings: FileSettings = {
+  autosave: true,
+};
+
 export interface SettingsProjectionState {
   hydrated: boolean;
   editor: EditorSettings;
   markdown: MarkdownSettings;
+  file: FileSettings;
 }
 
 export const initialSettingsState: SettingsProjectionState = {
   hydrated: false,
   editor: defaultEditorSettings,
   markdown: defaultMarkdownSettings,
+  file: defaultFileSettings,
 };
 
 const settingsSlice = createSlice({
@@ -45,6 +52,7 @@ const settingsSlice = createSlice({
         hydrated: true,
         editor: action.payload.editor ?? defaultEditorSettings,
         markdown: action.payload.markdown,
+        file: action.payload.file ?? defaultFileSettings,
       };
     },
     acknowledgeEditorSettings(
@@ -59,6 +67,9 @@ const settingsSlice = createSlice({
     ): void {
       state.markdown = action.payload;
     },
+    acknowledgeFileSettings(state, action: PayloadAction<FileSettings>): void {
+      state.file = action.payload;
+    },
     resetSettingsProjection(): SettingsProjectionState {
       return initialSettingsState;
     },
@@ -67,6 +78,7 @@ const settingsSlice = createSlice({
 
 export const {
   acknowledgeEditorSettings,
+  acknowledgeFileSettings,
   acknowledgeMarkdownSettings,
   hydrateSettings,
   resetSettingsProjection,

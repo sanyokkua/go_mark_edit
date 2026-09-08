@@ -1,9 +1,17 @@
 import { guardArity } from './bridgeGuard';
 import { unwrapPromise } from './envelope';
+import { createDocumentLifecycleAdapter } from './services';
+import type { RegisteredLifecycleSession } from '../hooks/useLifecycleBarrier';
 import type {
   AppModelState,
   AppStatePatch,
+  DocumentTransitionResult,
   DocViewInput,
+  OpenResult,
+  CommittedWriteOutcome,
+  PathCommandResult,
+  RecoverySurface,
+  TabTransitionResult,
   UILayout,
 } from '../store/appModelTypes';
 import { isWireError, type WireError } from '../utils/parseError';
@@ -21,6 +29,30 @@ interface StateResult {
 
 export interface AppModelBindings {
   getState: () => Promise<StateResult>;
+  newDocument?: (
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  openRecentFile?: (
+    path: string,
+    expectedTabSetRevision: number,
+  ) => Promise<OpenResult>;
+  reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  activateDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  reorderDocument?: (
+    documentId: string,
+    targetIndex: number,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
+  closeDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
+  copyPath?: (documentId: string) => Promise<PathCommandResult>;
+  revealInFileManager?: (documentId: string) => Promise<PathCommandResult>;
   updateBuffer: (documentId: string, content: string) => Promise<VoidResult>;
   setDocView: (documentId: string, view: DocViewInput) => Promise<VoidResult>;
   setUILayout: (layout: UILayout) => Promise<VoidResult>;
@@ -41,7 +73,38 @@ export interface AcceptedBuffer {
 
 export interface AppModelAdapter {
   getState: () => Promise<AppModelState>;
+  newDocument?: (
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  openRecentFile?: (
+    path: string,
+    expectedTabSetRevision: number,
+  ) => Promise<OpenResult>;
+  reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
+  activateDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<DocumentTransitionResult>;
+  reorderDocument?: (
+    documentId: string,
+    targetIndex: number,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
+  closeDocument?: (
+    documentId: string,
+    expectedTabSetRevision: number,
+  ) => Promise<TabTransitionResult>;
+  copyPath?: (documentId: string) => Promise<PathCommandResult>;
+  revealInFileManager?: (documentId: string) => Promise<PathCommandResult>;
   updateBuffer: (documentId: string, content: string) => Promise<void>;
+  flushActiveSession?: (
+    documentId: string,
+    expectedActivationToken?: symbol,
+  ) => Promise<void>;
+  registerActiveSession?: (
+    session: RegisteredLifecycleSession<symbol>,
+  ) => () => void;
   flushBuffer: (documentId: string) => Promise<void>;
   subscribeAcceptedBuffers: (
     listener: (buffer: AcceptedBuffer) => void,
@@ -53,8 +116,12 @@ export interface AppModelAdapter {
   ) => Promise<void>;
   updateDocView: (documentId: string, view: DocViewInput) => Promise<void>;
   updateLocalDocView: (documentId: string, view: DocViewInput) => Promise<void>;
+  cancelPendingSession?: (documentId: string) => void;
   flushDocView: (documentId: string) => Promise<void>;
   setUILayout: (layout: UILayout) => Promise<void>;
+  reconcileCommittedWrite: (
+    outcome: CommittedWriteOutcome,
+  ) => Promise<AppModelState | RecoverySurface>;
   subscribeAsyncErrors?: (onError: (error: WireError) => void) => () => void;
   subscribeStatePatches: (
     onPatch: (patch: AppStatePatch) => void,
@@ -104,11 +171,88 @@ function isAppStatePatch(payload: unknown): payload is AppStatePatch {
   );
 }
 
+/*
+ * Fields `AppStatePatch` declares as optional and never null, so a null on the
+ * wire means "absent" and must not survive into the projection.
+ *
+ * `activeDocumentId` is deliberately absent from this list: null is its
+ * documented way of saying there is no active document.
+ */
+const absentWhenNull = [
+  'tabSetRevision',
+  'orderedDocumentIds',
+  'documents',
+  'activeDocument',
+  'recentFiles',
+  'canReopenLastFile',
+  'ui',
+] as const;
+
+/*
+ * The bridge is the only module that sees the wire, so it is the only place
+ * that can make the declared patch shape true.
+ *
+ * `apperr.AppStatePatch` tags `OrderedDocumentIDs` without `omitempty`, so
+ * every layout-only patch the backend emits really arrives carrying
+ * `orderedDocumentIds: null`. Spreading that in `documentsSlice` threw, and a
+ * throw in one slice aborts the whole dispatch — so a documents-shaped field
+ * silently discarded the `ui` section travelling beside it, and Toggle Sidebar
+ * did nothing while the backend, the command and the patch were all correct.
+ *
+ * An empty array is preserved: that is the last document closing, not an
+ * absent field.
+ */
+function normalizeStatePatch(patch: AppStatePatch): AppStatePatch {
+  const normalized = { ...patch };
+  for (const field of absentWhenNull) {
+    const value: unknown = normalized[field];
+    if (value === null) {
+      delete normalized[field];
+    }
+  }
+  return normalized;
+}
+
 export function createAppModelAdapter(
   bindings: AppModelBindings,
   runtime: AppModelRuntime,
 ): AppModelAdapter {
   const getState = guardArity('AppModelHandler.GetState', bindings.getState);
+  const documentLifecycle =
+    bindings.newDocument === undefined || bindings.openDocument === undefined
+      ? undefined
+      : createDocumentLifecycleAdapter({
+          newDocument: bindings.newDocument,
+          openDocument: bindings.openDocument,
+          openRecentFile: bindings.openRecentFile,
+          reopenLastFile: bindings.reopenLastFile,
+        });
+  const activateDocument =
+    bindings.activateDocument === undefined
+      ? undefined
+      : guardArity(
+          'AppModelHandler.ActivateDocument',
+          bindings.activateDocument,
+        );
+  const reorderDocument =
+    bindings.reorderDocument === undefined
+      ? undefined
+      : guardArity('AppModelHandler.ReorderDocument', bindings.reorderDocument);
+  const closeDocument =
+    bindings.closeDocument === undefined
+      ? undefined
+      : guardArity('AppModelHandler.CloseDocument', bindings.closeDocument);
+  const copyPath =
+    bindings.copyPath === undefined
+      ? undefined
+      : guardArity('AppModelHandler.CopyPath', bindings.copyPath);
+  const revealInFileManager =
+    bindings.revealInFileManager === undefined
+      ? undefined
+      : guardArity(
+          'AppModelHandler.RevealInFileManager',
+          bindings.revealInFileManager,
+        );
   const updateBuffer = guardArity(
     'AppModelHandler.UpdateBuffer',
     bindings.updateBuffer,
@@ -122,9 +266,22 @@ export function createAppModelAdapter(
     bindings.setUILayout,
   );
   let disposeStatePatches: (() => void) | undefined;
+  const statePatchListeners = new Set<(patch: AppStatePatch) => void>();
   const acceptedBufferListeners = new Set<(buffer: AcceptedBuffer) => void>();
   const bufferRecords = new Map<string, BufferRecord>();
   const viewRecords = new Map<string, ViewRecord>();
+  let greatestProjectionRevision = 0;
+  let recoveryPromise: Promise<AppModelState | RecoverySurface> | undefined;
+  let recoverySurface: RecoverySurface | undefined;
+  let activeSession: RegisteredLifecycleSession<symbol> | undefined;
+
+  function assertCommandsAvailable(): void {
+    if (recoveryPromise !== undefined || recoverySurface !== undefined) {
+      throw new Error(
+        recoverySurface?.message ?? 'Editor-state recovery is in progress.',
+      );
+    }
+  }
 
   function bufferRecord(documentId: string): BufferRecord {
     const existing = bufferRecords.get(documentId);
@@ -302,17 +459,164 @@ export function createAppModelAdapter(
     }, BUFFER_SYNC_MS);
   }
 
+  async function flushQueuedSession(documentId: string): Promise<void> {
+    const buffer = bufferRecord(documentId);
+    const view = viewRecord(documentId);
+    if (buffer.timer !== undefined) {
+      clearTimeout(buffer.timer);
+      buffer.timer = undefined;
+    }
+    if (view.timer !== undefined) {
+      clearTimeout(view.timer);
+      view.timer = undefined;
+    }
+
+    await sendPendingBuffer(documentId);
+    await sendPendingView(documentId);
+  }
+
+  async function hydrateState(): Promise<AppModelState> {
+    const state = await unwrapPromise(getState());
+    greatestProjectionRevision = Math.max(
+      greatestProjectionRevision,
+      state.snapshot.revision,
+    );
+    return state;
+  }
+
   return {
     async getState(): Promise<AppModelState> {
-      return unwrapPromise(getState());
+      return hydrateState();
     },
+    newDocument:
+      documentLifecycle === undefined
+        ? undefined
+        : async (
+            expectedTabSetRevision: number,
+          ): Promise<DocumentTransitionResult> => {
+            assertCommandsAvailable();
+            return documentLifecycle.newDocument(expectedTabSetRevision);
+          },
+    openDocument:
+      documentLifecycle === undefined
+        ? undefined
+        : async (expectedTabSetRevision: number): Promise<OpenResult> => {
+            assertCommandsAvailable();
+            return documentLifecycle.openDocument(expectedTabSetRevision);
+          },
+    openRecentFile:
+      documentLifecycle?.openRecentFile === undefined
+        ? undefined
+        : async (
+            path: string,
+            expectedTabSetRevision: number,
+          ): Promise<OpenResult> => {
+            assertCommandsAvailable();
+            return (
+              documentLifecycle.openRecentFile?.(
+                path,
+                expectedTabSetRevision,
+              ) ?? { status: 'cancelled' }
+            );
+          },
+    reopenLastFile:
+      documentLifecycle?.reopenLastFile === undefined
+        ? undefined
+        : async (expectedTabSetRevision: number): Promise<OpenResult> => {
+            assertCommandsAvailable();
+            return (
+              documentLifecycle.reopenLastFile?.(expectedTabSetRevision) ?? {
+                status: 'cancelled',
+              }
+            );
+          },
+    activateDocument:
+      activateDocument === undefined
+        ? undefined
+        : async (documentId, expectedTabSetRevision) => {
+            assertCommandsAvailable();
+            return activateDocument(documentId, expectedTabSetRevision);
+          },
+    reorderDocument:
+      reorderDocument === undefined
+        ? undefined
+        : async (documentId, targetIndex, expectedTabSetRevision) => {
+            assertCommandsAvailable();
+            return reorderDocument(
+              documentId,
+              targetIndex,
+              expectedTabSetRevision,
+            );
+          },
+    closeDocument:
+      closeDocument === undefined
+        ? undefined
+        : async (documentId, expectedTabSetRevision) => {
+            assertCommandsAvailable();
+            return closeDocument(documentId, expectedTabSetRevision);
+          },
+    copyPath:
+      copyPath === undefined
+        ? undefined
+        : async (documentId) => {
+            assertCommandsAvailable();
+            return copyPath(documentId);
+          },
+    revealInFileManager:
+      revealInFileManager === undefined
+        ? undefined
+        : async (documentId) => {
+            assertCommandsAvailable();
+            return revealInFileManager(documentId);
+          },
     async updateBuffer(documentId: string, content: string): Promise<void> {
+      assertCommandsAvailable();
       const record = bufferRecord(documentId);
       record.nextGeneration += 1;
       record.pending = { generation: record.nextGeneration, content };
       scheduleBuffer(documentId);
     },
+    async flushActiveSession(
+      documentId: string,
+      expectedActivationToken?: symbol,
+    ): Promise<void> {
+      assertCommandsAvailable();
+      if (
+        expectedActivationToken !== undefined &&
+        activeSession !== undefined &&
+        activeSession.documentId !== documentId
+      ) {
+        return;
+      }
+      if (
+        activeSession !== undefined &&
+        activeSession.documentId === documentId
+      ) {
+        if (
+          expectedActivationToken !== undefined &&
+          !Object.is(expectedActivationToken, activeSession.activationToken)
+        ) {
+          throw new Error(
+            'The active editor activation changed while its lifecycle state was being flushed.',
+          );
+        }
+        await activeSession.flushActiveSession();
+        return;
+      }
+      await flushQueuedSession(documentId);
+    },
+    registerActiveSession(
+      session: RegisteredLifecycleSession<symbol>,
+    ): () => void {
+      activeSession = session;
+      return (): void => {
+        if (activeSession === session) {
+          activeSession = undefined;
+        }
+      };
+    },
     async flushBuffer(documentId: string): Promise<void> {
+      assertCommandsAvailable();
       const record = bufferRecord(documentId);
       if (record.timer !== undefined) {
         clearTimeout(record.timer);
@@ -341,6 +645,7 @@ export function createAppModelAdapter(
       view: DocViewIntent,
       fallbackView?: DocViewInput,
     ): Promise<void> {
+      assertCommandsAvailable();
       const record = viewRecord(documentId);
       if (record.timer !== undefined) {
         clearTimeout(record.timer);
@@ -350,6 +655,7 @@ export function createAppModelAdapter(
       return sendPendingView(documentId);
     },
     async updateDocView(documentId: string, view: DocViewInput): Promise<void> {
+      assertCommandsAvailable();
       const record = viewRecord(documentId);
       queueDocView(record, view);
       scheduleDocView(documentId);
@@ -358,11 +664,33 @@ export function createAppModelAdapter(
       documentId: string,
       view: DocViewInput,
     ): Promise<void> {
+      assertCommandsAvailable();
       const record = viewRecord(documentId);
       queueDocView(record, view, undefined, true);
       scheduleDocView(documentId);
     },
+    cancelPendingSession(documentId: string): void {
+      const buffer = bufferRecords.get(documentId);
+      if (buffer?.timer !== undefined) {
+        clearTimeout(buffer.timer);
+        buffer.timer = undefined;
+      }
+      if (buffer !== undefined) {
+        buffer.pending = undefined;
+      }
+
+      const view = viewRecords.get(documentId);
+      if (view?.timer !== undefined) {
+        clearTimeout(view.timer);
+        view.timer = undefined;
+      }
+      if (view !== undefined) {
+        view.pending = undefined;
+        view.latestView = undefined;
+      }
+    },
     async flushDocView(documentId: string): Promise<void> {
+      assertCommandsAvailable();
       const record = viewRecord(documentId);
       if (record.timer !== undefined) {
         clearTimeout(record.timer);
@@ -371,7 +699,54 @@ export function createAppModelAdapter(
       await sendPendingView(documentId);
     },
     async setUILayout(layout: UILayout): Promise<void> {
+      assertCommandsAvailable();
       return unwrapPromise(setUILayout(layout));
+    },
+    async reconcileCommittedWrite(
+      outcome: CommittedWriteOutcome,
+    ): Promise<AppModelState | RecoverySurface> {
+      if (
+        !outcome.resyncRequired &&
+        outcome.committedProjectionRevision <= greatestProjectionRevision
+      ) {
+        return hydrateState();
+      }
+      if (recoveryPromise !== undefined) {
+        return recoveryPromise;
+      }
+
+      recoveryPromise = new Promise<AppModelState | RecoverySurface>(
+        (resolve) => {
+          let attempts = 0;
+          const tryHydrate = (): void => {
+            attempts += 1;
+            void hydrateState()
+              .then((state): void => {
+                recoverySurface = undefined;
+                resolve(state);
+              })
+              .catch((): void => {
+                if (attempts >= 3) {
+                  recoverySurface = {
+                    persistent: true,
+                    savedOnDisk: true,
+                    commandsBlocked: true,
+                    closeBlocked: true,
+                    message:
+                      'The file was saved on disk, but editor-state recovery failed.',
+                  };
+                  resolve(recoverySurface);
+                  return;
+                }
+                setTimeout(tryHydrate, attempts === 1 ? 250 : 1000);
+              });
+          };
+          tryHydrate();
+        },
+      ).finally((): void => {
+        recoveryPromise = undefined;
+      });
+      return recoveryPromise;
     },
     subscribeAsyncErrors(onError: (error: WireError) => void): () => void {
       return runtime.eventsOn('state:error', (payload: unknown) => {
@@ -381,26 +756,39 @@ export function createAppModelAdapter(
       });
     },
     subscribeStatePatches(onPatch: (patch: AppStatePatch) => void): () => void {
-      if (disposeStatePatches !== undefined) {
-        return disposeStatePatches;
+      statePatchListeners.add(onPatch);
+      if (disposeStatePatches === undefined) {
+        const unsubscribe = runtime.eventsOn(
+          'state:patch',
+          (payload: unknown) => {
+            if (!isAppStatePatch(payload)) {
+              return;
+            }
+            const patch = normalizeStatePatch(payload);
+            greatestProjectionRevision = Math.max(
+              greatestProjectionRevision,
+              patch.revision,
+            );
+            for (const listener of statePatchListeners) {
+              listener(patch);
+            }
+          },
+        );
+        disposeStatePatches = (): void => {
+          unsubscribe();
+          disposeStatePatches = undefined;
+        };
       }
-
-      const unsubscribe = runtime.eventsOn(
-        'state:patch',
-        (payload: unknown) => {
-          if (isAppStatePatch(payload)) {
-            onPatch(payload);
-          }
-        },
-      );
       const dispose = (): void => {
-        if (disposeStatePatches !== dispose) {
+        statePatchListeners.delete(onPatch);
+        if (
+          statePatchListeners.size !== 0 ||
+          disposeStatePatches === undefined
+        ) {
           return;
         }
-        unsubscribe();
-        disposeStatePatches = undefined;
+        disposeStatePatches();
       };
-      disposeStatePatches = dispose;
       return dispose;
     },
   };

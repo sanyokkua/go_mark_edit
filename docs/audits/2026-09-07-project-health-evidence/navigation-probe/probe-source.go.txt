@@ -1,0 +1,156 @@
+package main
+
+import (
+    "bytes"
+    "crypto/sha256"
+    "encoding/hex"
+    "encoding/json"
+    "fmt"
+    "io"
+    "net/http"
+    "net/http/httptest"
+    "net/url"
+    "os"
+    "path/filepath"
+    "strings"
+    "time"
+
+    "github.com/wailsapp/wails/v2/pkg/assetserver"
+    assetoptions "github.com/wailsapp/wails/v2/pkg/options/assetserver"
+    "golang.org/x/net/html"
+)
+
+const moduleRoot = "/Users/ok/go/pkg/mod/github.com/wailsapp/wails/v2@v2.15.0"
+const artifacts = "/tmp/gomark-navigation-probe.Ig0rZh"
+
+// The Wails internal bundle is not publicly importable. Read the exact three
+// pinned files embedded by its dev build, then satisfy its public interface.
+type pinnedRuntime struct { desktop, websocket, runtime []byte }
+func (r pinnedRuntime) DesktopIPC() []byte { return r.desktop }
+func (r pinnedRuntime) WebsocketIPC() []byte { return r.websocket }
+func (r pinnedRuntime) RuntimeDesktopJS() []byte { return r.runtime }
+
+func mustRead(path string) []byte {
+    b, err := os.ReadFile(path)
+    if err != nil { panic(err) }
+    return b
+}
+func mustWrite(path string, b []byte) {
+    if err := os.WriteFile(path, b, 0600); err != nil { panic(err) }
+}
+func digest(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
+
+type observation struct {
+    Label string `json:"label"`
+    Path string `json:"path"`
+    Status int `json:"status"`
+    ContentType string `json:"contentType"`
+    BodySHA256 string `json:"bodySHA256"`
+    BodyBytes int `json:"bodyBytes"`
+    Scripts []string `json:"scripts"`
+    ReactRoot bool `json:"reactRoot"`
+    ReactEntry bool `json:"reactEntry"`
+}
+
+func capture(label, path string, response *http.Response) observation {
+    defer response.Body.Close()
+    body, err := io.ReadAll(response.Body)
+    if err != nil { panic(err) }
+    out := observation{Label:label, Path:path, Status:response.StatusCode,
+        ContentType:response.Header.Get("Content-Type"), BodySHA256:digest(body),
+        BodyBytes:len(body), Scripts:[]string{}}
+    if strings.Contains(out.ContentType, "text/html") {
+        tokenizer := html.NewTokenizer(bytes.NewReader(body))
+        for {
+            tokenType := tokenizer.Next()
+            if tokenType == html.ErrorToken { break }
+            if tokenType != html.StartTagToken { continue }
+            token := tokenizer.Token()
+            for _, attr := range token.Attr {
+                if token.Data == "div" && attr.Key == "id" && attr.Val == "root" { out.ReactRoot = true }
+                if token.Data == "script" && attr.Key == "src" {
+                    out.Scripts = append(out.Scripts,attr.Val)
+                    if strings.Contains(attr.Val,"/src/main.tsx") { out.ReactEntry = true }
+                }
+            }
+        }
+    }
+    mustWrite(filepath.Join(artifacts,label+".body.txt"),body)
+    response.Body = io.NopCloser(bytes.NewReader(body))
+    var wire bytes.Buffer
+    if err := response.Write(&wire); err != nil { panic(err) }
+    mustWrite(filepath.Join(artifacts,label+".http.txt"),wire.Bytes())
+    return out
+}
+
+func includes(items []string, needle string) bool {
+    for _, item := range items { if item == needle { return true } }
+    return false
+}
+
+func main() {
+    upstream, err := url.Parse("http://127.0.0.1:54173")
+    if err != nil { panic(err) }
+    external := assetserver.NewExternalAssetsHandler(nil,assetoptions.Options{},upstream)
+    handler, err := assetserver.NewAssetHandler(assetoptions.Options{Handler:external},nil)
+    if err != nil { panic(err) }
+    runtimeRoot := filepath.Join(moduleRoot,"internal/frontend/runtime")
+    runtime := pinnedRuntime{
+        desktop:mustRead(filepath.Join(runtimeRoot,"ipc.js")),
+        websocket:mustRead(filepath.Join(runtimeRoot,"ipc_websocket.js")),
+        runtime:mustRead(filepath.Join(runtimeRoot,"runtime_debug_desktop.js")),
+    }
+    // Empty binding metadata: this probe instantiates no application services.
+    // This leaves Wails's real HTML matching/injection and runtime assets intact.
+    server, err := assetserver.NewDevAssetServer(handler,"",false,nil,runtime)
+    if err != nil { panic(err) }
+    client := &http.Client{Timeout:15*time.Second}
+    observations := []observation{}
+    for _, path := range []string{"/","/audit-next.md"} {
+        suffix := "root"
+        if path != "/" { suffix = "missing-markdown" }
+        request, err := http.NewRequest(http.MethodGet,upstream.String()+path,nil)
+        if err != nil { panic(err) }
+        request.Header.Set("Accept","text/html")
+        request.Header.Set("User-Agent","navigation-audit wails.io")
+        direct, err := client.Do(request)
+        if err != nil { panic(err) }
+        observations = append(observations,capture("vite-"+suffix,path,direct))
+
+        recorder := httptest.NewRecorder()
+        request = httptest.NewRequest(http.MethodGet,"http://wails.localhost"+path,nil)
+        request.Header.Set("Accept","text/html")
+        request.Header.Set("User-Agent","navigation-audit wails.io")
+        server.ServeHTTP(recorder,request)
+        observations = append(observations,capture("wails-"+suffix,path,recorder.Result()))
+    }
+    runtimeResults := []observation{}
+    for _, path := range []string{"/wails/runtime.js","/wails/ipc.js"} {
+        recorder := httptest.NewRecorder()
+        request := httptest.NewRequest(http.MethodGet,"http://wails.localhost"+path,nil)
+        request.Header.Set("User-Agent","navigation-audit wails.io")
+        server.ServeHTTP(recorder,request)
+        label := "wails-"+strings.TrimSuffix(filepath.Base(path),".js")
+        runtimeResults = append(runtimeResults,capture(label,path,recorder.Result()))
+    }
+    checks := map[string]bool{}
+    for _, observed := range observations {
+        checks[observed.Label+"-actual-react-index"] = observed.Status == 200 &&
+            strings.Contains(observed.ContentType,"text/html") && observed.ReactRoot && observed.ReactEntry
+        if strings.HasPrefix(observed.Label,"wails-") {
+            expected := observed.Path == "/"
+            checks[observed.Label+"-runtime-injection"] = includes(observed.Scripts,"/wails/runtime.js") == expected
+            checks[observed.Label+"-ipc-injection"] = includes(observed.Scripts,"/wails/ipc.js") == expected
+        }
+    }
+    checks["served-pinned-runtime-bytes"] = runtimeResults[0].Status == 200 && runtimeResults[0].BodySHA256 == digest(runtime.runtime)
+    checks["served-pinned-desktop-ipc-bytes"] = runtimeResults[1].Status == 200 && runtimeResults[1].BodySHA256 == digest(runtime.desktop)
+    output := map[string]any{"wailsVersion":"v2.15.0", "observations":observations,
+        "runtimeEndpointObservations":runtimeResults,"checks":checks,
+        "limits":"HTTP pipeline only; no WKWebView, JS execution, app bindings, settings profile, or native shutdown was instantiated."}
+    encoded, err := json.MarshalIndent(output,"","  ")
+    if err != nil { panic(err) }
+    mustWrite(filepath.Join(artifacts,"probe-summary.txt"),append(encoded,'\n'))
+    fmt.Println(string(encoded))
+    for _, passed := range checks { if !passed { os.Exit(1) } }
+}

@@ -1,37 +1,78 @@
 .editorView {
-  background: var(--app-bg);
+  background: transparent;
   box-sizing: border-box;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   height: 100%;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: var(--editor-view-gap);
   min-width: 0;
-  min-height: 0;
-  padding: var(--editor-view-padding) var(--editor-view-padding) 0;
+  padding: 0;
 }
 
 .toolbar {
   display: flex;
   flex-wrap: nowrap;
   justify-content: space-between;
-  gap: var(--editor-view-gap);
+  gap: var(--toolbar-gap);
   min-width: 0;
   overflow: hidden;
 }
 
 .panes {
-  display: grid;
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(min(var(--editor-pane-min-width), 100%), 1fr)
-  );
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: row;
   gap: var(--editor-view-gap);
   min-width: 0;
+  min-height: 0;
+  padding: var(--pane-body-padding-block) var(--pane-body-padding-inline);
+}
+
+.panes:has([data-preview-paused-bar='true']) {
+  column-gap: var(--editor-view-gap);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: var(--preview-paused-bar-height) minmax(0, 1fr);
+  padding-inline: 0;
+  padding-top: 0;
+  position: relative;
+  row-gap: 0;
+}
+
+.panes:has([data-preview-paused-bar='true']) > .pane:first-child {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.panes:has([data-preview-paused-bar='true']) > .pane:last-child,
+.panes:has([data-preview-paused-bar='true']) > .pane:last-child .previewContent,
+.panes:has([data-preview-paused-bar='true'])
+  > .pane:last-child
+  [data-preview-state='paused'] {
+  display: contents;
+}
+
+.panes:has([data-preview-paused-bar='true']) > .pane:last-child .paneHeader {
+  display: none;
+}
+
+.panes [data-preview-paused-bar='true'] {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-height: auto;
+  min-width: auto;
+  position: static;
+  width: auto;
 }
 
 @media (max-width: 376px) {
   .panes {
-    grid-template-columns: minmax(0, 1fr);
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .editorView {
+    padding: 0;
   }
 
   .paneHeader {
@@ -49,12 +90,13 @@
   backdrop-filter: var(--blur);
   background: var(--surface);
   color: var(--text);
-  display: grid;
-  grid-template-rows: auto minmax(var(--editor-pane-min-height), 1fr);
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   min-width: 0;
   overflow: hidden;
   border: var(--editor-pane-border-width) solid var(--editor-pane-border-color);
-  border-radius: var(--editor-pane-radius);
+  border-radius: var(--pane-radius);
 }
 
 .paneHidden {
@@ -62,28 +104,85 @@
 }
 
 .paneHeader {
-  backdrop-filter: var(--blur);
-  background: var(--surface-raised);
+  align-items: center;
   display: flex;
   justify-content: space-between;
   gap: var(--editor-pane-header-gap);
-  padding: var(--editor-pane-header-padding-block)
-    var(--editor-pane-header-padding-inline);
-  border-bottom: var(--editor-pane-border-width) solid
-    var(--editor-pane-border-color);
+  padding: var(--pane-header-padding-block) var(--pane-header-padding-inline);
+  border-bottom: var(--editor-pane-border-width) solid var(--stroke-soft);
+  color: var(--faint);
+  font-size: 10px;
   font-weight: var(--editor-pane-header-font-weight);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .paneMeta {
-  font-size: var(--editor-pane-meta-font-size);
+  font-size: var(--pane-header-meta-font-size);
   font-weight: var(--editor-pane-meta-font-weight);
   white-space: nowrap;
 }
 
+/* Binding source: mockup.html `.pane-h .live{color:var(--accent-ink)}` (:301).
+   It reads as accent ink against the header's `--faint`; without this it
+   inherits `--faint` and the pane header loses the binding's only emphasis.
+
+   T173 removed the `.paneSelection` half. The binding also nests a
+   `sel 42w` span here (:726), but Feature 003 builds no selection readout, so
+   that span is stripped from the reference by `adaptEditorPaneSelection` rather
+   than manufactured in production. */
+.paneLive {
+  color: var(--accent-ink);
+}
+
 .previewContent {
   background: var(--surface);
+  flex: 1 1 0;
   min-height: 0;
   min-width: 0;
   overflow: auto;
-  padding: var(--preview-pane-padding);
+  padding: 6px 0;
+}
+
+:global(:root[data-theme='minimal']) .pane {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+/* Binding source: mockup.html `body[data-theme="minimal"] .body{gap:0;padding:0}`
+   — Minimal panes are flush, separated only where two panes meet. */
+@media (min-width: 377px) {
+  :global(:root[data-theme='minimal']) .editorView {
+    padding: 0;
+  }
+
+  :global(:root[data-theme='minimal']) .panes {
+    gap: 0;
+    padding: 0;
+  }
+}
+
+/* Binding source: `body[data-theme="minimal"] .pane+.pane{border-left:1px solid var(--stroke)}`. */
+:global(:root[data-theme='minimal']) .pane + .pane {
+  border-inline-start: var(--control-border-width) solid var(--stroke);
+}
+
+/* Binding source: `.pane-h{border-bottom:1px solid var(--stroke-soft)}`. */
+:global(:root[data-theme='minimal']) .paneHeader {
+  background: transparent;
+  border-bottom-color: var(--stroke-soft);
+}
+
+:global(:root[data-theme='material']) .pane {
+  box-shadow: var(--win-shadow);
+}
+
+:global(:root[data-theme='glass']) .pane,
+:global(:root[data-theme='glass']) .previewContent {
+  backdrop-filter: var(--blur);
+}
+
+:global(:root[data-theme='glass']) .pane {
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
 }

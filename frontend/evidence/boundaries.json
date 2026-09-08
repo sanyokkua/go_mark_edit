@@ -22,5 +22,15 @@
     "AppModelHandler.SetUILayout",
     "AppModelAdapter.getState"
   ],
-  "notifications": ["notificationsSlice actions", "Redux store"]
+  "notifications": ["notificationsSlice actions", "Redux store"],
+  "autosave-latency": [
+    "AppModelAdapter.updateBuffer",
+    "nativeEvidenceRuntime input acknowledgement",
+    "native-evidence autosave commit event"
+  ],
+  "explicit-save-latency": [
+    "AppModelService.Save and SaveAs",
+    "appmodel DocumentSaveDialog",
+    "appmodel write-commit observer"
+  ]
 }

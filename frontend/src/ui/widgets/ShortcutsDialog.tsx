@@ -10,6 +10,7 @@ import {
   formatShortcut,
 } from '../../logic/actions/shortcutRegistry';
 import styles from './ShortcutsDialog.module.css';
+import Icon from '../primitives/Icon';
 
 export interface ShortcutsDialogProps {
   open: boolean;
@@ -93,7 +94,7 @@ const ShortcutsDialog: React.FC<ShortcutsDialogProps> = ({
             type="button"
             onClick={(): void => onOpenChange(false)}
           >
-            ×
+            <Icon name="close" size={15} />
           </button>
         </div>
         <div className={styles.list}>

@@ -1,0 +1,72 @@
+"use strict";
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+const crypto = require("node:crypto");
+const ts = require("/Users/ok/Development/GitHub/go_mark_edit/frontend/node_modules/typescript/lib/typescript.js");
+const source = fs.readFileSync(path.join(__dirname, "settingsProjection.ts"), "utf8");
+const output = ts.transpileModule(source, {
+  fileName: "settingsProjection.ts",
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  reportDiagnostics: true,
+});
+const errors = (output.diagnostics || []).filter(d => d.category === ts.DiagnosticCategory.Error);
+assert.equal(errors.length, 0, "transpilation must have no syntax diagnostics");
+fs.writeFileSync(path.join(__dirname, "settingsProjection.transpiled.cjs"), output.outputText);
+const actions = [];
+const imports = [];
+const exportsObject = {};
+const moduleObject = { exports: exportsObject };
+const requireSubstitute = (name) => {
+  imports.push(name);
+  if (name === "./index") return { store: { dispatch: action => { actions.push(action); return action; } } };
+  if (name === "./settingsSlice") return {
+    hydrateSettings: payload => ({ type: "settings/hydrate", payload }),
+    resetSettingsProjection: () => ({ type: "settings/reset" }),
+  };
+  throw new Error("Unexpected runtime import; cannot run an isolated probe: " + name);
+};
+const context = vm.createContext({ exports: exportsObject, module: moduleObject, require: requireSubstitute });
+new vm.Script(output.outputText, { filename: "settingsProjection.transpiled.cjs" }).runInContext(context, { timeout: 1000 });
+const { bootstrapSettingsProjection, disposeSettingsProjection } = moduleObject.exports;
+async function run() {
+  console.log("node=" + process.version + " typescript=" + ts.version);
+  console.log("source_sha256=" + crypto.createHash("sha256").update(source).digest("hex"));
+  console.log("substituted_runtime_imports=" + JSON.stringify(imports));
+  assert.deepEqual(imports, ["./index", "./settingsSlice"]);
+  let calls = 0;
+  let recovered = false;
+  const transient = new Error("transient settings read failure");
+  const settings = { marker: "recovered settings" };
+  const adapter = { getSettings: async () => {
+    calls++;
+    if (!recovered) throw transient;
+    return settings;
+  } };
+  const first = bootstrapSettingsProjection(adapter);
+  await assert.rejects(first, error => error === transient);
+  assert.equal(calls, 1);
+  assert.equal(actions.length, 0);
+  console.log("first read: rejected=true calls=" + calls + " dispatches=" + actions.length);
+  recovered = true;
+  const retried = bootstrapSettingsProjection(adapter);
+  assert.equal(retried, first, "retry reuses the identical cached Promise");
+  await assert.rejects(retried, error => error === transient);
+  assert.equal(calls, 1);
+  assert.equal(actions.length, 0);
+  console.log("adapter recovered, retry: rejected=true samePromise=" + (retried === first) + " calls=" + calls + " dispatches=" + actions.length);
+  disposeSettingsProjection();
+  assert.equal(actions.length, 1);
+  assert.equal(actions[0].type, "settings/reset");
+  const resetRetry = bootstrapSettingsProjection(adapter);
+  assert.notEqual(resetRetry, first);
+  await resetRetry;
+  assert.equal(calls, 2);
+  assert.equal(actions.length, 2);
+  assert.equal(actions[1].type, "settings/hydrate");
+  assert.equal(actions[1].payload, settings);
+  console.log("dispose then retry: resolved=true samePromise=" + (resetRetry === first) + " calls=" + calls + " actionTypes=" + JSON.stringify(actions.map(a => a.type)));
+  console.log("PASS: isolated cached-rejection consequence and disposer positive control");
+}
+run().catch(error => { console.error(error); process.exitCode = 1; });

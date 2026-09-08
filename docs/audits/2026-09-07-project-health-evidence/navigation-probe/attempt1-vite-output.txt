@@ -1,0 +1,10 @@
+
+> frontend@0.0.0 dev
+> vite --mode wails --config /tmp/gomark-navigation-probe.Ig0rZh/vite.config.mjs --configLoader runner
+
+error when starting dev server:
+Error: listen EPERM: operation not permitted 127.0.0.1:54173
+    at Server.setupListenHandle [as _listen2] (node:net:2145:21)
+    at listenInCluster (node:net:2224:12)
+    at node:net:2448:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)

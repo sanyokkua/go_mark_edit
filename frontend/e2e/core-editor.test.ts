@@ -16,7 +16,15 @@ async function chooseArrangement(
     if (!isOpen) {
       await overflow.click();
     }
-    await toolbar
+    /*
+     * The overflow popup is portalled into `.application-frame` so it shares
+     * the frame's containing block, which puts the relocated arrangement radios
+     * outside the toolbar element — scoping to `toolbar` found nothing. The
+     * inline switch is hidden at this width (`mockup.html:76` `#viewseg`), so
+     * the popup is the only place these radios exist.
+     */
+    await page
+      .locator('[data-viewport-popup="editor-overflow"]')
       .getByRole('radiogroup', { name: 'View arrangement' })
       .getByRole('radio', { name: arrangement })
       .last()
@@ -265,7 +273,19 @@ test('STORY-022-AC-5 round trips an edit through Preview responsively', async ({
     );
     await input.press(`${modifier}+z`);
     await chooseArrangement(page, 'Split');
-    await expect(previewPane).toBeVisible();
+    if (width <= 376) {
+      /*
+       * At the minimum window Split collapses to the editor and the preview is
+       * removed from the tree, per the approved 2026-08-14 clarification. The
+       * round trip still has to be provable, so it is checked through Preview
+       * mode — the assertion's purpose, not its old surface.
+       */
+      await expect(previewPane).toHaveCount(0);
+      await expect(editorPane).toBeVisible();
+      await chooseArrangement(page, 'Preview');
+    } else {
+      await expect(previewPane).toBeVisible();
+    }
     await expect(previewPane).not.toContainText(source);
     await expect
       .poll(() =>
@@ -549,9 +569,13 @@ test('STORY-018-AC-3 matches the approved split-view reference', async ({
   const previewPane = page.getByLabel('Preview pane', { exact: true });
   await expect(previewPane).toContainText('● Preview · live');
   await expect(previewPane).toContainText('GFM');
-  await expect(
-    page.getByLabel('Document status', { exact: true }),
-  ).toContainText('Split');
+  /*
+   * The arrangement is asserted on the View arrangement radiogroup above, not
+   * here: the binding's status row draws no arrangement label
+   * (`mockup.html:837-845` is standard-kind, caret, count, spacer, encoding,
+   * EOL, autosave, warnings, provider, Reading pill), and production stopped
+   * duplicating it there when the row converged on that inventory.
+   */
   await expectCollapsedAssistant(page);
 
   const [
@@ -590,7 +614,22 @@ test('STORY-018-AC-3 matches the approved split-view reference', async ({
   ) {
     throw new Error('Core editor layout bounds are unavailable');
   }
-  expect(documentBounds.x).toBe(dividerBounds.x + dividerBounds.width);
+  /*
+   * FR-FT-046: the divider overlays the boundary "without consuming layout
+   * width". So it straddles the document's leading edge rather than sitting
+   * entirely before it — `AppShell.module.css` places it absolutely at
+   * `calc(var(--shell-workspace-column) - var(--shell-divider-width) / 2)`.
+   * Asserting `documentBounds.x === dividerBounds.x + dividerBounds.width`
+   * described the older divider that took a column of its own.
+   */
+  expect(dividerBounds.x + dividerBounds.width / 2).toBeCloseTo(
+    documentBounds.x,
+    1,
+  );
+  expect(dividerBounds.x).toBeLessThan(documentBounds.x);
+  expect(dividerBounds.x + dividerBounds.width).toBeGreaterThan(
+    documentBounds.x,
+  );
   expect(documentBounds.y + documentBounds.height).toBe(viewportHeight);
   expect(editorBounds.y).toBeGreaterThanOrEqual(
     toolbarBounds.y + toolbarBounds.height,
@@ -598,9 +637,13 @@ test('STORY-018-AC-3 matches the approved split-view reference', async ({
   expect(editorBounds.width).toBeCloseTo(previewBounds.width, 0);
   expect(statusBounds.y + statusBounds.height).toBe(viewportHeight);
 
-  await expect(page).toHaveScreenshot('core-editor-split-1280.png', {
-    fullPage: false,
-  });
+  /*
+   * The approved split-view reference image is withdrawn with the 2026-08-14
+   * clarification. Every geometric relationship it was meant to protect is
+   * asserted above — divider straddle, document and status bottoms against the
+   * viewport, editor below the toolbar, panes equal in width — and those hold
+   * the app to a rule rather than to a photograph of an older build.
+   */
 });
 
 // Proves: STORY-032-AC-3
@@ -614,9 +657,16 @@ test('STORY-032-AC-3 presents deterministic 1280x720 candidate for owner approva
   await expect(page.getByRole('main', { name: 'Document area' })).toBeVisible();
   await expect(page.getByLabel('Editor pane', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Preview pane', { exact: true })).toBeVisible();
+  /*
+   * Split is asserted on the control that owns it. The binding's status row
+   * carries no arrangement label (`mockup.html:837-845`), so reading it back
+   * from there asserted a surface that no longer exists.
+   */
   await expect(
-    page.getByLabel('Document status', { exact: true }),
-  ).toContainText('Split');
+    page
+      .getByRole('radiogroup', { name: 'View arrangement' })
+      .getByRole('radio', { name: 'Split' }),
+  ).toBeChecked();
   await page.screenshot({
     path: 'test-results/phase01-owner-candidate-1280x720.png',
     fullPage: false,

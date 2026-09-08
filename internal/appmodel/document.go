@@ -60,8 +60,20 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 		commands.service.mu.Unlock()
 		return apperr.NotFound(documentID)
 	}
+	acceptedRevision := uint64(0)
+	if document.content != content {
+		document.metadata.ContentRevision++
+		acceptedRevision = document.metadata.ContentRevision
+		for token, authorization := range commands.service.normalizations {
+			if authorization.documentID == documentID {
+				delete(commands.service.normalizations, token)
+			}
+		}
+		deleteTokensForDocument(commands.service.keepMine, documentID)
+		commands.service.removeConflictLocked(documentID)
+	}
 	document.content = content
-	document.metadata.Dirty = content != document.baseline
+	document.metadata.Dirty = document.content != document.baseline || document.detached || (document.metadata.Path == "" && document.content != "") || document.failedWrite || document.metadata.ContentRevision > document.committedRevision
 	document.metadata.WordCount = len(strings.Fields(content))
 	patch := commands.service.documentPatchLocked(documentID)
 	if err := commands.service.publishLocked(ctx, before, patch); err != nil {
@@ -69,6 +81,9 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 		return err
 	}
 	commands.service.mu.Unlock()
+	if acceptedRevision != 0 {
+		commands.service.scheduleAutosave(documentID, acceptedRevision)
+	}
 
 	return nil
 }

@@ -12,4 +12,6 @@ export function UpdateContentPrivacy(arg1:apperr.ContentPrivacySettings):Promise
 
 export function UpdateEditor(arg1:apperr.EditorSettings):Promise<apperr.VoidResult>;
 
+export function UpdateFile(arg1:apperr.FileSettings):Promise<apperr.VoidResult>;
+
 export function UpdateMarkdown(arg1:apperr.MarkdownSettings):Promise<apperr.VoidResult>;

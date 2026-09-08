@@ -1,0 +1,60 @@
+/* Binding source: mockup.html `.doc-name{font-size:12px;color:var(--faint);
+   display:flex;align-items:center;gap:7px}` (:232) with
+   `white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40ch`
+   (:70). The binding gives it no background of its own — it sits directly on
+   the title bar — and the preceding `.sp{flex:1}` spacer (:231) is what pushes
+   it to the trailing edge, ahead of the two window-control buttons. */
+.identity {
+  align-items: center;
+  background: none;
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  font-size: var(--identity-font-size);
+  gap: var(--identity-gap);
+  max-width: 40ch;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.heading,
+.status {
+  min-width: 0;
+  margin: 0;
+}
+
+.heading {
+  color: var(--faint);
+  font-size: inherit;
+  font-weight: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  color: var(--faint);
+  font-size: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Binding source: mockup.html `.save-dot{width:7px;height:7px;border-radius:50%;
+   background:var(--accent);box-shadow:0 0 7px var(--accent)}` (:233). */
+.saveDot {
+  background: var(--accent);
+  block-size: var(--identity-dot-size);
+  border-radius: 50%;
+  box-shadow: 0 0 7px var(--accent);
+  flex: none;
+  inline-size: var(--identity-dot-size);
+}
+
+@media (max-width: 376px) {
+  .identity {
+    max-width: 16ch;
+  }
+}

@@ -6,6 +6,9 @@ import { render, screen } from '@testing-library/react';
 import { createElement } from 'react';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import remarkParse from 'remark-parse';
+import remarkRehype from 'remark-rehype';
+import { unified } from 'unified';
 
 import {
   baseGfmRehypePlugins,
@@ -306,3 +309,59 @@ it('STORY-031-AC-3 attempts zero runtime requests and keeps higher tiers literal
     restoreProperty(HTMLLinkElement.prototype, 'href', linkHrefDescriptor);
   }
 });
+
+/*
+ * T194. FR-FT-005 requires live preview to remain active "through exactly
+ * 2 MiB", so the pipeline must actually be able to process a document of
+ * exactly PREVIEW_BYTE_LIMIT bytes. Nothing exercised that: `PreviewPane`'s
+ * own tests compare `byteLength` as a number and never parse anything large,
+ * so the one size the requirement names was the one size never run.
+ *
+ * This measures the pipeline, which is the part the requirement can hold to a
+ * budget. It is deliberately NOT a claim about the 2 MiB host wedge recorded in
+ * `evidence/ft-ev-09/host-walkthrough-2026-08-19/`: that stall was measured at
+ * minutes while this pipeline handles the very same file in 579 ms under JSC
+ * and 1,411 ms under V8, and its profile points at quadratic array writes in
+ * application code, not at markdown. A test that asserted otherwise would
+ * record coverage this repo does not have.
+ *
+ * The shape is the host fixture's: 1,100-character lines. Line count, not byte
+ * count, drives parse cost — at this same 2 MiB, 80-character lines take about
+ * ten times longer — so this budget does not bound the short-line case, which
+ * is filed separately.
+ */
+// Proves: FR-FT-005 (partial — that the GFM pipeline processes a document of
+// exactly the 2 MiB live-preview limit, rather than that the preview renders it
+// within any interactive budget.)
+it('T194 processes a document of exactly the 2 MiB preview limit', () => {
+  const PREVIEW_BYTE_LIMIT = 2_097_152;
+  const line = 'lorem ipsum dolor sit amet consectetur adipiscing elit '
+    .repeat(20)
+    .slice(0, 1100);
+  let source = '';
+  while (source.length < PREVIEW_BYTE_LIMIT) source += `${line}\n`;
+  source = source.slice(0, PREVIEW_BYTE_LIMIT);
+  expect(Buffer.byteLength(source, 'utf8')).toBe(PREVIEW_BYTE_LIMIT);
+
+  const processor = unified()
+    .use(remarkParse)
+    .use(baseGfmRemarkPlugins)
+    .use(remarkRehype)
+    .use(baseGfmRehypePlugins);
+
+  const startedAt = performance.now();
+  const tree = processor.runSync(processor.parse(source));
+  const elapsedMs = performance.now() - startedAt;
+
+  expect(tree.type).toBe('root');
+  /*
+   * Measured at 1,411 ms in V8 on this shape, so this allows roughly a 5x
+   * margin for a loaded CI runner. It is set to catch a change in complexity
+   * class, not a slow machine.
+   *
+   * 15,000 ms was the first choice and was wrong: the 80-character-line shape
+   * at this same size measures 14,916 ms, so a budget of 15 s would have
+   * admitted an order-of-magnitude worse case as a pass.
+   */
+  expect(elapsedMs).toBeLessThan(8_000);
+}, 30_000);

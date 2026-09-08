@@ -139,6 +139,12 @@ func TestSettingsHandlerReturnsRecoveredResultEnvelope(t *testing.T) {
 					return handler.UpdateContentPrivacy(DefaultSettings().ContentPrivacy).Error
 				},
 			},
+			{
+				name: "update file",
+				call: func(handler *SettingsHandler) *apperr.WireError {
+					return handler.UpdateFile(DefaultSettings().File).Error
+				},
+			},
 		}
 		for _, panicCase := range panicCases {
 			t.Run(panicCase.name, func(t *testing.T) {
@@ -161,6 +167,7 @@ func TestSettingsHandlerReturnsRecoveredResultEnvelope(t *testing.T) {
 			"UpdateAppearance":     reflect.TypeOf(apperr.VoidResult{}),
 			"UpdateMarkdown":       reflect.TypeOf(apperr.VoidResult{}),
 			"UpdateContentPrivacy": reflect.TypeOf(apperr.VoidResult{}),
+			"UpdateFile":           reflect.TypeOf(apperr.VoidResult{}),
 		}
 		for name, resultType := range methods {
 			method, ok := handlerType.MethodByName(name)

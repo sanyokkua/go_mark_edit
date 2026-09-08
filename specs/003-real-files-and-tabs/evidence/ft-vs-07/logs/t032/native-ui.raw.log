@@ -1,0 +1,10 @@
+$ node_repl: sky.list_apps()
+The Mac is locked and automatic unlock could not unlock it. Ask the user to unlock the Mac manually before continuing.
+exit=1
+
+$ unlocked native Wails walkthrough
+sky.get_app_state(build/bin/GoMarkEdit.app): exit=0
+File -> Open Recent: alpha.md, bravo.md
+alpha.md selected: identity gomarkedit-t032.opRXV7 / alpha.md; status Saved; notifications none
+bravo.md opened from native Open File: identity gomarkedit-t032.opRXV7 / bravo.md; status Saved
+native-status-saved.jpeg captured under artifacts/t032/

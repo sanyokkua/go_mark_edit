@@ -1,0 +1,209 @@
+# The e2e baseline — the gate that was never run
+
+**Requirement**: Constitution VII (no work builds on a gate that did not analyze
+its target; a green aggregate label is never evidence of completion).
+**Measured**: 2026-08-13.
+
+## `just check` does not run Playwright
+
+`justfile:145`:
+
+```
+check:
+    just gen-check
+    just frontend-build
+    just fmt-check
+    just lint
+    just typecheck
+    just frontend-test
+    just go-vet
+    just archtest
+    just go-test
+```
+
+Playwright runs only under `just e2e-test` → `just verify-ui` →
+`npm --prefix frontend run verify:ui` → `playwright test`. **`just check` never
+calls it, and `scripts/baseline.sh` does not capture it either** — the recorded
+baseline lists `frontend-build, fmt-check, typecheck, lint, test, archtest,
+coverage` and no Playwright gate.
+
+So the feature's stated position — "`just check` green: 75 suites / 483 tests" —
+was true, and said nothing whatever about the real-interface suites.
+
+## What the e2e suites actually do
+
+### `real-files-and-tabs.test.ts` — was 2 failed / 6 passed, now 8 passed
+
+Both failures were real and are fixed in Phase 18; see
+`settings-dead-toggle-and-stale-recents.md`. Three of the four underlying causes
+were production defects (a dead Settings toggle, a missing ARIA role, and
+availability bypassing the action registry); the fourth was a stale test.
+
+### `editor-stage.test.ts` + `window-shell.test.ts` — 106 failing cases
+
+Run to completion on the tree at `40d4e120`, which contains the four committed
+Phase 18 defect fixes and none of the uncommitted Settings work:
+
+| Suite | Failing cases |
+|---|---:|
+| `editor-stage.test.ts` | 78 |
+| `window-shell.test.ts` | 28 |
+| **Total** | **106** (33 passed, 25.4 minutes) |
+
+**These are pre-existing.** They are not caused by any Phase 18 change: the same
+two suites were re-run on the working tree with the Settings work restored and
+compared case-by-case (`mytree-e2e.log`).
+
+### The four root causes
+
+Every one of the 106 reduces to four stale expectations, counted across the
+failing cases:
+
+| Count | The locator that never resolves | Why |
+|---:|---|---|
+| 36 | `getByRole('tab', { name: 'release-notes.md' })` | The suite expects a seeded document named after the mockup's tab; production opens `Untitled`. |
+| 36 | `…getByRole('radio', { name: 'Follows system' })` | Production's appearance option is **`Auto (system)`**, which is what the binding draws (`mockup.html:615`). The test still uses the pre-convergence wording. |
+| 24 | `getByRole('menuitem', { name: 'Appearance' })` | Production exposes Appearance as a `radiogroup` with that accessible name, not a `menuitem`. |
+| 6 | `[data-viewport-popup="editor-overflow"] … 'Bold'` | The overflow toolbar structure changed. |
+
+By assertion type: 66 timeouts waiting for a locator that never appears, 18
+`toBeVisible`, 18 `toBeDisabled`, 3 numeric bound checks.
+
+**None of these is a product defect.** In each case production matches the
+binding and the test describes the surface as it was *before* it was converged —
+the identical failure mode as FT-VS-07's `Open Recent` submenu, which had been
+red since the T070 File-popup convergence and is fixed in Phase 18.
+
+## Why this matters more than the individual cases
+
+This is the mechanism behind "defects kept being found by eye".
+
+Every defect reported this week is an interface defect — the arrangement segment
+in the wrong place, Settings and View not lighting up under the pointer, a
+Settings toggle that does nothing. The gate that would catch interface defects
+was **not part of the gate being run and reported as green**, and inside that
+unrun gate 106 cases had been failing long enough that four separate
+convergences had landed without anyone updating them.
+
+Two consequences:
+
+1. `just e2e-test` must be run and diffed explicitly before anything touching
+   the interface is called done. It is covered by neither `just check` nor
+   `just baseline`. Recorded in `AGENTS.md`.
+2. Even a green Playwright run could not have caught three of the four Phase 18
+   defects, because **parity captures are taken at rest** — no suite exercised
+   hover, focus or open state. That gap is closed separately; see
+   `interactive-state-coverage.md`.
+
+## Repair progress — 2026-08-13
+
+Three of the four root causes are fixed, all by correcting the test to the
+surface the binding actually specifies. Production was the correct side in every
+case; nothing in production changed.
+
+| Fix | Cases |
+|---|---:|
+| `editor-stage.test.ts:5` — the appearance modes constant now spells the compact popup's `Auto (system)` (`mockup.html:615`) instead of the Settings **dialog**'s `Follows system`. Two surfaces, two catalogue keys; these cases drive the popup. | — |
+| `editor-stage.test.ts` — the plain `/` route opens an `Untitled` document; `release-notes.md` is a parity-fixture name that route never produces. | — |
+| `window-shell.test.ts` — `openSettings` clicked a menuitem named `Appearance`, but the binding opens the settings screen from its `All settings…` row (`mockup.html:624`); `Appearance` is the popup's group label and its radiogroup name, not an item. | — |
+| **Combined** | **39 fixed** |
+
+| Suite | Before | After |
+|---|---:|---:|
+| `editor-stage.test.ts` | 78 failed / 30 passed | **45 failed / 63 passed** |
+| `window-shell.test.ts` | 28 failed / 2 passed | **22 failed / 8 passed** |
+| **Total** | **106 failed / 32 passed** | **67 failed / 71 passed** |
+
+## The 67 that remain, and why they were not repaired here
+
+They are not more of the same. Each needs a judgement about the test's *intent*
+that should not be rushed:
+
+- **T069 × 27** ("retains the mockup chrome hierarchy") asserts the document
+  tabs are `toBeDisabled()`. That was correct when the shell was a static mock —
+  but **Feature 003's entire purpose was making those tabs real**, and a real
+  tab is enabled. Deciding what this test should now assert is a question about
+  what "retains the mockup chrome hierarchy" means once the chrome became
+  functional, not a locator rename.
+- **T055 375px × 9** drives Bold from the editor overflow popup. Focusing the
+  editor now dismisses that popup, so it must be reopened first. Reopening it
+  was attempted and the popup did not become visible again in that state, which
+  needs its own investigation — it may be a real defect in the narrow toolbar
+  overflow rather than a stale test.
+- **T019 375px × 9**, plus the remaining `window-shell` cases, are unexamined.
+
+Repairing these properly is its own unit of work. Guessing at their intent to
+drive a number down would be exactly the failure this whole phase is about.
+
+## Status of the remainder: recorded, not fixed
+
+The 106 stale cases are **deliberately not repaired in Phase 18**, and this is a
+scope decision rather than an oversight:
+
+- They are stale *tests*, not product defects. The product is correct against
+  the binding in all four clusters.
+- Repairing them means re-deriving expected labels, roles and fixtures for 106
+  cases across two suites — work comparable in size to the rest of Phase 18, and
+  session decision 10 requires each piece to be either complete and green or
+  fully reverted. Starting and abandoning it would leave the repository worse
+  than finding it.
+- The diagnosis above is complete enough to act on directly: four root causes,
+  exact locators, exact counts.
+
+They are carried forward as named follow-up work, with this file as the
+specification for it.
+
+---
+
+## Update, 2026-08-14 — the gate could not run, not merely was not run
+
+This file's title turns out to be literally true, and for a second reason the
+original investigation did not reach.
+
+`frontend/playwright.config.ts` set `testMatch: 'e2e/**/*.test.ts'`. That glob
+captured the seven Jest unit tests under `frontend/e2e/parity/`, which
+`jest.config.js` explicitly owns (`<rootDir>/e2e/parity/` recursively). Those
+files use bare `describe`/`it`, which Playwright does not provide, so:
+
+```
+$ npx playwright test --list
+ReferenceError: it is not defined
+   at e2e/parity/reference-server.test.ts:12
+```
+
+`playwright test` **with no arguments** is exactly what `npm run verify:ui`
+runs, which is what `just verify-ui` runs, which is what `just e2e-test` runs.
+So the command this file recommends running — "`just e2e-test` must be run and
+diffed explicitly before anything touching the interface is called done" — died
+during collection, before a single browser case executed.
+
+### How long
+
+| Commit | What it did |
+|---|---|
+| `c7771c8b` (STORY-018) | set `testMatch: 'e2e/**/*.test.ts'`; never narrowed afterwards |
+| `7744cc82` (T034) | added `e2e/parity/*.test.ts`, the first Jest tests under `e2e/` |
+
+From T034 onward the two globs overlapped. Every individual-file run
+(`npx playwright test e2e/window-shell.test.ts`) worked, which is how the 106
+failing cases were measured at all — but the aggregate gate did not.
+
+### Why this compounds the original finding
+
+The original finding was that `just check` does not include Playwright. The
+mitigation recorded in `AGENTS.md` was to run `just e2e-test` separately. **That
+mitigation was itself inoperative.** Both halves of the interface gate were dark
+simultaneously, which is a better explanation than "nobody ran it" for how 106
+stale cases survived four convergences.
+
+### Fixed
+
+`a17c49f9` narrows the Playwright glob to `e2e/*.test.ts`, giving each file one
+owner. Nothing is excluded from verification: `npx jest e2e/parity --listTests`
+still returns all seven files, and `npx playwright test --list` now collects
+**191 tests in 10 files**.
+
+Two further no-op files were found on the same gate path. `zz-probe.test.ts` —
+one test, zero assertions, a `console.log` walk of the 375px overflow left
+behind by `b5bc99b8` — is removed in `5d3026af`. A second, `zz-status-measure.test.ts`,
+is untracked scratch and must not be committed.

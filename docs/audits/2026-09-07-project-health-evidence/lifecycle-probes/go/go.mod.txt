@@ -1,0 +1,3 @@
+module example.invalid/gomark-close-probe
+
+go 1.27.0

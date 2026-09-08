@@ -3,6 +3,7 @@ package apperr
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -111,6 +112,61 @@ func TestResultEnvelopesExposeOnlyContractFields(t *testing.T) {
 	}
 }
 
+func TestDocumentTransitionWireShape(t *testing.T) {
+	acknowledgement := ActiveBufferAcknowledgement{
+		DocumentID:         "doc-1",
+		DocumentRevision:   0,
+		ProjectionRevision: 7,
+		Content:            "",
+	}
+	success, err := json.Marshal(DocumentTransitionOutcome{Data: &acknowledgement})
+	if err != nil {
+		t.Fatalf("marshal successful transition: %v", err)
+	}
+	if string(success) != `{"data":{"documentId":"doc-1","documentRevision":0,"projectionRevision":7,"content":""}}` {
+		t.Fatalf("successful transition JSON = %s", success)
+	}
+	failure, err := json.Marshal(DocumentTransitionOutcome{Error: func() *ClassifiedError {
+		value := NewClassifiedError(ClassifiedCapacityLimit, "Untitled", "The window already contains 40 documents.", RemediationCancel, "")
+		return &value
+	}()})
+	if err != nil {
+		t.Fatalf("marshal refused transition: %v", err)
+	}
+	if !strings.Contains(string(failure), `"error"`) || !strings.Contains(string(failure), `"category":"capacity-limit"`) {
+		t.Fatalf("refused transition JSON = %s", failure)
+	}
+}
+
+func TestCommittedWriteResultWireShape(t *testing.T) {
+	result := CommittedWriteResult{Data: &CommittedWriteOutcome{
+		DocumentID:                  "doc-1",
+		WrittenContentRevision:      4,
+		CommittedProjectionRevision: 8,
+		TargetPathAdopted:           true,
+		LineEndingOutcome:           LineEndingPreservedCRLF,
+		BOMOutcome:                  BOMOutcomePreserved,
+		ResyncRequired:              true,
+	}}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatalf("marshal committed write result: %v", err)
+	}
+	for _, field := range []string{
+		`"documentId":"doc-1"`,
+		`"writtenContentRevision":4`,
+		`"committedProjectionRevision":8`,
+		`"targetPathAdopted":true`,
+		`"lineEndingOutcome":"preserved-crlf"`,
+		`"bomOutcome":"preserved"`,
+		`"resyncRequired":true`,
+	} {
+		if !strings.Contains(string(encoded), field) {
+			t.Fatalf("committed write result JSON = %s, missing %s", encoded, field)
+		}
+	}
+}
+
 func mapKeys(values map[string]json.RawMessage) []string {
 	keys := make([]string, 0, len(values))
 	for key := range values {
@@ -144,5 +200,47 @@ func TestResultEnvelopeFieldContracts(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Proves: FR-FT-021
+// Nanosecond disk versions survive a JSON round trip without JavaScript-number rounding.
+func TestDiskVersionJSONUsesExactTimestampText(t *testing.T) {
+	t.Parallel()
+
+	want := DiskVersion{
+		Exists:           true,
+		Size:             31,
+		ModifiedUnixNano: 1786223275058000123,
+		Mode:             0o644,
+		FileIdentity:     "file:1:2",
+	}
+	encoded, err := json.Marshal(want)
+	if err != nil {
+		t.Fatalf("marshal disk version: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"modifiedUnixNano":"1786223275058000123"`) {
+		t.Fatalf("disk version JSON = %s, want exact timestamp text", encoded)
+	}
+	var got DiskVersion
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatalf("unmarshal disk version: %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("round trip = %+v, want %+v", got, want)
+	}
+}
+
+// Proves: FR-FT-021
+// The bridge remains compatible with legacy numeric timestamp payloads.
+func TestDiskVersionJSONReadsLegacyNumericTimestamp(t *testing.T) {
+	t.Parallel()
+
+	var got DiskVersion
+	if err := json.Unmarshal([]byte(`{"exists":true,"size":1,"modifiedUnixNano":123,"mode":420}`), &got); err != nil {
+		t.Fatalf("unmarshal legacy disk version: %v", err)
+	}
+	if got.ModifiedUnixNano != 123 {
+		t.Fatalf("legacy timestamp = %d, want 123", got.ModifiedUnixNano)
 	}
 }
