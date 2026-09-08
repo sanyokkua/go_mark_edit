@@ -17,27 +17,6 @@
       ],
       "installed_at": "2026-08-15T21:44:30.571991+00:00"
     },
-    "speckit-superpowers-bridge": {
-      "version": "1.1.0",
-      "source": "local",
-      "manifest_hash": "sha256:f83ce1777a458c2ef9f019fec92065ba5621382f89d6d4db4282ad550772329f",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "codex": [
-          "speckit.speckit-superpowers-bridge.handoff",
-          "speckit.speckit-superpowers-bridge.guard",
-          "speckit.speckit-superpowers-bridge.execute",
-          "speckit.superpowers-bridge"
-        ]
-      },
-      "registered_skills": [
-        "speckit-speckit-superpowers-bridge-handoff",
-        "speckit-speckit-superpowers-bridge-guard",
-        "speckit-speckit-superpowers-bridge-execute"
-      ],
-      "installed_at": "2026-08-15T21:44:57.648893+00:00"
-    },
     "ralph": {
       "version": "1.2.1",
       "source": "local",
@@ -55,6 +34,23 @@
         "speckit-ralph-iterate"
       ],
       "installed_at": "2026-08-15T21:45:36.280620+00:00"
+    },
+    "speckit-superpowers-bridge": {
+      "version": "1.2.0",
+      "source": "local",
+      "manifest_hash": "sha256:fe7c8d353c87f90f48763c424f24c09bd02e572479b9313900ee341b5a858e89",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "codex": [
+          "speckit.speckit-superpowers-bridge.handoff",
+          "speckit.speckit-superpowers-bridge.guard",
+          "speckit.speckit-superpowers-bridge.execute",
+          "speckit.superpowers-bridge"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-09-08T19:39:17.865257+00:00"
     }
   }
 }

@@ -4,10 +4,8 @@ description: Create or update the Superpowers implementation handoff state
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: extension:speckit-superpowers-bridge
+  source: speckit-superpowers-bridge:commands/speckit.speckit-superpowers-bridge.handoff.md
 ---
-
-# Speckit Superpowers Bridge Handoff Skill
 
 # Superpowers Handoff
 

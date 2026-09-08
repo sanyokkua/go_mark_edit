@@ -59,3 +59,10 @@ build/bin/*
 __pycache__/
 *.pyc
 .idea
+
+# Spec Kit runtime artifacts and caches
+.specify/.cache/
+.specify/bridge-events.jsonl
+.specify/extensions/.backup/
+.specify/extensions/.cache/
+.specify/extensions/ralph/ralph-config.yml

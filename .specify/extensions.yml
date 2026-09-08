@@ -104,14 +104,6 @@ hooks:
     description: Load project memory files before analysis
     condition: null
   after_tasks:
-  - extension: speckit-superpowers-bridge
-    command: speckit.speckit-superpowers-bridge.handoff
-    enabled: true
-    optional: false
-    priority: 10
-    prompt: Execute speckit.speckit-superpowers-bridge.handoff?
-    description: Create the Superpowers handoff after Spec Kit task generation
-    condition: null
   - extension: ralph
     command: speckit.ralph.run
     enabled: true
@@ -119,4 +111,12 @@ hooks:
     priority: 10
     prompt: Run ralph loop to implement tasks?
     description: Start autonomous implementation after task generation
+    condition: null
+  - extension: speckit-superpowers-bridge
+    command: speckit.speckit-superpowers-bridge.handoff
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.speckit-superpowers-bridge.handoff?
+    description: Create the Superpowers handoff after Spec Kit task generation
     condition: null
