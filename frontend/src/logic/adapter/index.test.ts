@@ -58,6 +58,10 @@ it('STORY-006-AC-1 guards and unwraps every settings call', async () => {
       calls.push(`markdown:${nextMarkdown.standard}`);
       return Promise.resolve(voidResult);
     },
+    updateEditor(): Promise<VoidResult> {
+      calls.push('editor');
+      return Promise.resolve(voidResult);
+    },
   };
   const adapter = createSettingsAdapter(bindings);
 

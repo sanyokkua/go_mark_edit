@@ -7,6 +7,7 @@
   gap: var(--app-gap);
   padding: var(--app-gap);
   border-block-end: var(--control-border-width) solid var(--border);
+  backdrop-filter: var(--blur);
   background: var(--surface-raised);
   min-width: 0;
   overflow: hidden;
@@ -14,17 +15,17 @@
 }
 
 .trigger,
-.overflow,
-.item {
-  border: var(--control-border-width) solid var(--border);
-  border-radius: var(--control-radius);
-  background: var(--surface-raised);
+.item,
+.rowAction {
+  background: transparent;
   color: var(--text);
   font: inherit;
 }
 
 .trigger,
-.item {
+.rowAction {
+  border: var(--control-border-width) solid transparent;
+  border-radius: var(--control-radius);
   padding: var(--control-padding);
   cursor: pointer;
   max-width: 100%;
@@ -33,17 +34,75 @@
   white-space: nowrap;
 }
 
+.trigger:hover,
+.rowAction:hover,
+.trigger:focus-visible,
+.rowAction:focus-visible {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.menuRowActions {
+  align-items: center;
+  display: flex;
+  gap: var(--control-gap);
+  margin-inline-start: auto;
+}
+
+.rowAction:disabled {
+  cursor: not-allowed;
+  opacity: var(--disabled-opacity);
+}
+
 .overflow {
+  background: var(--surface-raised);
+  backdrop-filter: var(--blur);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  box-sizing: border-box;
   display: grid;
   min-width: 10rem;
-  gap: var(--control-gap);
+  max-block-size: calc(100vh - 4rem);
+  gap: 0;
+  overflow: auto;
   padding: var(--control-gap);
+  position: fixed;
   box-shadow: var(--win-shadow);
   z-index: var(--z-dropdown);
 }
 
+.item {
+  background: transparent;
+  border: var(--control-border-width) solid transparent;
+  border-radius: calc(var(--control-radius) / 2);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  inline-size: 100%;
+  padding: var(--control-padding);
+  text-align: start;
+}
+
+.item:hover,
+.item:focus-visible,
 .item[data-highlighted] {
-  outline: var(--segmented-focus-outline-width) solid
-    var(--segmented-outline-color);
-  outline-offset: var(--segmented-focus-outline-offset);
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.item:disabled,
+.item[data-disabled] {
+  cursor: not-allowed;
+  opacity: var(--disabled-opacity);
+}
+
+.narrowOverflow {
+  max-inline-size: calc(100vw - 2 * var(--app-gap));
+}
+
+.submenu {
+  border-block-start: var(--control-border-width) solid var(--border);
+  display: grid;
+  margin-block-start: var(--control-gap);
+  padding-block-start: var(--control-gap);
 }

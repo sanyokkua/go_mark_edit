@@ -22,6 +22,9 @@ const (
 	formatEmphasisKey      = "format.emphasisMarker"
 	formatHeadingStyleKey  = "format.headingStyle"
 	contentRemotePolicyKey = "content.remotePolicy"
+	editorLineNumbersKey   = "editor.lineNumbers"
+	editorWordWrapKey      = "editor.wordWrap"
+	editorFontSizeKey      = "editor.fontSize"
 	settingTypeString      = "string"
 	settingTypeBool        = "bool"
 )
@@ -104,6 +107,24 @@ func (repository *SqliteSettingsRepository) GetContentPrivacy(ctx context.Contex
 	return apperr.ContentPrivacySettings{RemotePolicy: remotePolicy}, nil
 }
 
+// GetEditor reads the persisted editor display group with scalar defaults.
+func (repository *SqliteSettingsRepository) GetEditor(ctx context.Context) (apperr.EditorSettings, error) {
+	defaults := DefaultSettings().Editor
+	lineNumbers, err := repository.getBool(ctx, editorLineNumbersKey, defaults.LineNumbers)
+	if err != nil {
+		return apperr.EditorSettings{}, err
+	}
+	wordWrap, err := repository.getBool(ctx, editorWordWrapKey, defaults.WordWrap)
+	if err != nil {
+		return apperr.EditorSettings{}, err
+	}
+	fontSize, err := repository.getInt(ctx, editorFontSizeKey, defaults.FontSize)
+	if err != nil {
+		return apperr.EditorSettings{}, err
+	}
+	return apperr.EditorSettings{LineNumbers: lineNumbers, WordWrap: wordWrap, FontSize: fontSize}, nil
+}
+
 // UpdateAppearance writes the complete appearance group through typed KV keys.
 func (repository *SqliteSettingsRepository) UpdateAppearance(ctx context.Context, appearance apperr.AppearanceSettings) error {
 	if err := repository.upsertString(ctx, appearanceThemeKey, appearance.Theme); err != nil {
@@ -161,6 +182,17 @@ func (repository *SqliteSettingsRepository) UpdateContentPrivacy(ctx context.Con
 	return repository.upsertString(ctx, contentRemotePolicyKey, contentPrivacy.RemotePolicy)
 }
 
+// UpdateEditor writes the editor display group through typed KV keys.
+func (repository *SqliteSettingsRepository) UpdateEditor(ctx context.Context, editor apperr.EditorSettings) error {
+	if err := repository.upsertBool(ctx, editorLineNumbersKey, editor.LineNumbers); err != nil {
+		return err
+	}
+	if err := repository.upsertBool(ctx, editorWordWrapKey, editor.WordWrap); err != nil {
+		return err
+	}
+	return repository.upsertInt(ctx, editorFontSizeKey, editor.FontSize)
+}
+
 func (repository *SqliteSettingsRepository) getString(ctx context.Context, key, defaultValue string) (string, error) {
 	setting, err := repository.queries.GetSetting(ctx, key)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -193,6 +225,24 @@ func (repository *SqliteSettingsRepository) getBool(ctx context.Context, key str
 	return value, nil
 }
 
+func (repository *SqliteSettingsRepository) getInt(ctx context.Context, key string, defaultValue int) (int, error) {
+	setting, err := repository.queries.GetSetting(ctx, key)
+	if errors.Is(err, sql.ErrNoRows) {
+		return defaultValue, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	if setting.Type != settingTypeString {
+		return defaultValue, nil
+	}
+	value, err := strconv.Atoi(setting.Value)
+	if err != nil {
+		return defaultValue, nil
+	}
+	return value, nil
+}
+
 func (repository *SqliteSettingsRepository) upsertString(ctx context.Context, key, value string) error {
 	return repository.queries.UpsertSetting(ctx, store.UpsertSettingParams{
 		Key:   key,
@@ -206,6 +256,14 @@ func (repository *SqliteSettingsRepository) upsertBool(ctx context.Context, key 
 		Key:   key,
 		Value: strconv.FormatBool(value),
 		Type:  settingTypeBool,
+	})
+}
+
+func (repository *SqliteSettingsRepository) upsertInt(ctx context.Context, key string, value int) error {
+	return repository.queries.UpsertSetting(ctx, store.UpsertSettingParams{
+		Key:   key,
+		Value: strconv.Itoa(value),
+		Type:  settingTypeString,
 	})
 }
 

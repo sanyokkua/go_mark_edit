@@ -21,6 +21,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -98,6 +99,7 @@ func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *
 		Frameless:     false,
 		DisableResize: false,
 		StartHidden:   true,
+		Mac:           &mac.Options{DisableZoom: false},
 		Menu:          nativeEvidenceMenuForPlatform(runtime.GOOS),
 		AssetServer: &assetserver.Options{
 			Assets: os.DirFS(nativeEvidenceAssetsDir),

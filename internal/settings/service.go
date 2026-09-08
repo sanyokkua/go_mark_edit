@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"strconv"
 	"sync"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -48,12 +49,32 @@ func (service *SettingsService) Get(ctx context.Context) (apperr.Settings, error
 	if err != nil {
 		return apperr.Settings{}, apperr.IO("read settings", err)
 	}
+	editor, err := repository.GetEditor(ctx)
+	if err != nil {
+		return apperr.Settings{}, apperr.IO("read settings", err)
+	}
 
 	return apperr.Settings{
 		Appearance:     normalizeAppearance(appearance),
 		Markdown:       normalizeMarkdown(markdown),
 		ContentPrivacy: normalizeContentPrivacy(contentPrivacy),
+		Editor:         normalizeEditor(editor),
 	}, nil
+}
+
+// UpdateEditor validates and persists the complete editor display group.
+func (service *SettingsService) UpdateEditor(ctx context.Context, editor apperr.EditorSettings) error {
+	if err := validateEditor(editor); err != nil {
+		return err
+	}
+	repository, err := service.getRepository()
+	if err != nil {
+		return err
+	}
+	if err := repository.UpdateEditor(nonNilContext(ctx), editor); err != nil {
+		return apperr.IO("update settings", err)
+	}
+	return nil
 }
 
 // UpdateAppearance validates and persists the complete appearance group.
@@ -169,6 +190,14 @@ func normalizeContentPrivacy(contentPrivacy apperr.ContentPrivacySettings) apper
 	return contentPrivacy
 }
 
+func normalizeEditor(editor apperr.EditorSettings) apperr.EditorSettings {
+	defaults := DefaultSettings().Editor
+	if editor.FontSize != EditorFontSizeSmall && editor.FontSize != EditorFontSizeMedium && editor.FontSize != EditorFontSizeLarge {
+		editor.FontSize = defaults.FontSize
+	}
+	return editor
+}
+
 func validateAppearance(appearance apperr.AppearanceSettings) error {
 	if !isTheme(appearance.Theme) {
 		return apperr.Validation("appearance.theme", "liquid-glass, material, or minimal", appearance.Theme)
@@ -201,6 +230,13 @@ func validateMarkdown(markdown apperr.MarkdownSettings) error {
 func validateContentPrivacy(contentPrivacy apperr.ContentPrivacySettings) error {
 	if !isRemotePolicy(contentPrivacy.RemotePolicy) {
 		return apperr.Validation("content.remotePolicy", "ask, allow, or block", contentPrivacy.RemotePolicy)
+	}
+	return nil
+}
+
+func validateEditor(editor apperr.EditorSettings) error {
+	if editor.FontSize != EditorFontSizeSmall && editor.FontSize != EditorFontSizeMedium && editor.FontSize != EditorFontSizeLarge {
+		return apperr.Validation("editor.fontSize", "13, 14, or 16", strconv.Itoa(editor.FontSize))
 	}
 	return nil
 }

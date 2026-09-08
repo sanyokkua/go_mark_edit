@@ -93,6 +93,7 @@ type fakeSettingsRepository struct {
 	appearance        apperr.AppearanceSettings
 	markdown          apperr.MarkdownSettings
 	contentPrivacy    apperr.ContentPrivacySettings
+	editor            apperr.EditorSettings
 	panicOperation    string
 	appearanceUpdates int
 	markdownUpdates   int
@@ -131,6 +132,16 @@ func (repository *fakeSettingsRepository) GetContentPrivacy(context.Context) (ap
 	return repository.contentPrivacy, nil
 }
 
+func (repository *fakeSettingsRepository) GetEditor(context.Context) (apperr.EditorSettings, error) {
+	if repository.panicOperation == "get editor" {
+		panic("get editor")
+	}
+	if repository.editor.FontSize == 0 {
+		return DefaultSettings().Editor, nil
+	}
+	return repository.editor, nil
+}
+
 func (repository *fakeSettingsRepository) UpdateAppearance(_ context.Context, appearance apperr.AppearanceSettings) error {
 	if repository.panicOperation == "update appearance" {
 		panic("update appearance")
@@ -154,6 +165,14 @@ func (repository *fakeSettingsRepository) UpdateContentPrivacy(_ context.Context
 		panic("update content privacy")
 	}
 	repository.contentPrivacy = contentPrivacy
+	return nil
+}
+
+func (repository *fakeSettingsRepository) UpdateEditor(_ context.Context, editor apperr.EditorSettings) error {
+	if repository.panicOperation == "update editor" {
+		panic("update editor")
+	}
+	repository.editor = editor
 	return nil
 }
 

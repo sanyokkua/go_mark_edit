@@ -95,6 +95,10 @@
     z-index: var(--z-dropdown);
   }
 
+  .shell[data-workspace-visible='false'] .workspace {
+    display: none;
+  }
+
   .document {
     min-width: 0;
   }

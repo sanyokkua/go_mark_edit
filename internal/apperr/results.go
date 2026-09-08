@@ -22,11 +22,19 @@ type ContentPrivacySettings struct {
 	RemotePolicy string `json:"remotePolicy"`
 }
 
+// EditorSettings controls acknowledged display options for the source editor.
+type EditorSettings struct {
+	LineNumbers bool `json:"lineNumbers"`
+	WordWrap    bool `json:"wordWrap"`
+	FontSize    int  `json:"fontSize"`
+}
+
 // Settings is the bridge DTO for the settings groups available in Stage 1.
 type Settings struct {
 	Appearance     AppearanceSettings     `json:"appearance"`
 	Markdown       MarkdownSettings       `json:"markdown"`
 	ContentPrivacy ContentPrivacySettings `json:"contentPrivacy"`
+	Editor         EditorSettings         `json:"editor"`
 }
 
 // VoidResult is the envelope for a successful operation with no payload.

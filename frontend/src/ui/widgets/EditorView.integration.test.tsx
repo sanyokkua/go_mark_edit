@@ -411,7 +411,6 @@ it('FR-WS-017 renders the translated editor catalogue and preview text', async (
 
   expect(screen.getByLabelText('Editor view')).toBeInTheDocument();
   expect(screen.getByLabelText('Document toolbar')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'View' })).toBeInTheDocument();
   expect(
     screen.getByRole('radiogroup', { name: 'View arrangement' }),
   ).toBeInTheDocument();
@@ -434,7 +433,11 @@ it('FR-WS-017 applies every persisted palette to the rendered Settings control',
   mockGetSettings.mockReset();
   for (const [theme, mode] of palettes) {
     mockGetSettings.mockResolvedValueOnce(appearanceSettings(theme, mode));
-    const rendered = render(<AppearanceControls />);
+    const rendered = render(
+      <Provider store={store}>
+        <AppearanceControls />
+      </Provider>,
+    );
 
     await waitFor((): void => {
       expect(document.documentElement).toHaveAttribute('data-theme', theme);

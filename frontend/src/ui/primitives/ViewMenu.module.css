@@ -1,9 +1,8 @@
 .trigger,
-.content,
 .item {
-  border: var(--segmented-border-width) solid var(--segmented-border-color);
+  border: var(--segmented-border-width) solid transparent;
   border-radius: var(--segmented-option-radius);
-  background: var(--segmented-option-background);
+  background: transparent;
   color: var(--segmented-option-color);
   font: inherit;
 }
@@ -15,9 +14,17 @@
 }
 
 .content {
+  backdrop-filter: var(--blur);
+  background: var(--surface-raised);
+  border: var(--segmented-border-width) solid var(--segmented-border-color);
+  border-radius: var(--segmented-option-radius);
   display: grid;
   gap: var(--segmented-gap);
+  max-block-size: calc(100vh - 4rem);
+  overflow: auto;
   padding: var(--segmented-padding);
+  position: fixed;
+  z-index: var(--z-dropdown);
 }
 
 .item {
@@ -30,6 +37,8 @@
 }
 
 .item[data-highlighted] {
+  background: var(--surface);
+  border-color: var(--segmented-border-color);
   outline: var(--segmented-focus-outline-width) solid
     var(--segmented-outline-color);
   outline-offset: var(--segmented-focus-outline-offset);

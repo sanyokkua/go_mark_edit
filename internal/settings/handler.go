@@ -102,6 +102,22 @@ func (handler *SettingsHandler) UpdateContentPrivacy(contentPrivacy apperr.Conte
 	return apperr.VoidResult{}
 }
 
+// UpdateEditor validates and persists the acknowledged editor display group.
+func (handler *SettingsHandler) UpdateEditor(editor apperr.EditorSettings) (res apperr.VoidResult) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			wire := apperr.ToWire(handler.zlog(), apperr.Internal(fmt.Errorf(panicFormat, recovered)))
+			res = apperr.VoidResult{Error: &wire}
+		}
+	}()
+
+	if err := handler.service.UpdateEditor(handler.context(), editor); err != nil {
+		wire := apperr.ToWire(handler.zlog(), err)
+		return apperr.VoidResult{Error: &wire}
+	}
+	return apperr.VoidResult{}
+}
+
 func (handler *SettingsHandler) zlog() zerolog.Logger {
 	if handler.logger == nil {
 		return zerolog.Nop()

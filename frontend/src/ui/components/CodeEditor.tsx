@@ -26,7 +26,11 @@ export type EditorSelection = EditorRange;
 export interface CodeEditorHandle {
   getContent(): string | null;
   getSelection(): EditorSelection | null;
-  replaceRange(range: EditorRange, text: string): boolean;
+  replaceRange(
+    range: EditorRange,
+    text: string,
+    selection?: EditorSelection,
+  ): boolean;
   replaceAll(text: string): boolean;
 }
 
@@ -35,6 +39,7 @@ export interface CodeEditorProps {
   initialValue: string;
   lineNumbers?: 'on' | 'off';
   wordWrap?: 'on' | 'off';
+  fontSize?: 13 | 14 | 16;
   minimap?: boolean;
   visible?: boolean;
   onChange?: (value: string) => void;
@@ -120,6 +125,7 @@ function applyEdit(
   editorInstance: editor.IStandaloneCodeEditor | null,
   range: IRange,
   text: string,
+  selection?: EditorSelection,
 ): boolean {
   if (editorInstance === null || editorInstance.getModel() === null) {
     return false;
@@ -133,6 +139,9 @@ function applyEdit(
       forceMoveMarkers: true,
     },
   ]);
+  if (selection !== undefined) {
+    editorInstance.setSelection(toMonacoRange(selection));
+  }
   editorInstance.pushUndoStop();
 
   return true;
@@ -145,6 +154,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
       initialValue,
       lineNumbers = 'on',
       wordWrap = 'off',
+      fontSize,
       minimap = false,
       visible = true,
       onChange,
@@ -230,6 +240,14 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
       };
     }, [visible]);
 
+    useEffect((): void => {
+      editorRef.current?.updateOptions?.({
+        lineNumbers,
+        wordWrap,
+        ...(fontSize === undefined ? {} : { fontSize }),
+      });
+    }, [fontSize, lineNumbers, wordWrap]);
+
     useImperativeHandle(
       ref,
       (): CodeEditorHandle => ({
@@ -243,8 +261,17 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
             ? null
             : toEditorSelection(selection);
         },
-        replaceRange(range: EditorRange, text: string): boolean {
-          return applyEdit(editorRef.current, toMonacoRange(range), text);
+        replaceRange(
+          range: EditorRange,
+          text: string,
+          selection?: EditorSelection,
+        ): boolean {
+          return applyEdit(
+            editorRef.current,
+            toMonacoRange(range),
+            text,
+            selection,
+          );
         },
         replaceAll(text: string): boolean {
           const model = editorRef.current?.getModel();
@@ -281,7 +308,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     };
 
     return (
-      <div className={styles.editor}>
+      <div className={styles.editor} data-editor-surface>
         <Suspense
           fallback={<div aria-busy="true" className={styles.loading} />}
         >
@@ -295,7 +322,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
               lineNumbers,
               wordWrap,
               minimap: { enabled: minimap },
-              fontSize: getEditorFontSize(),
+              fontSize: fontSize ?? getEditorFontSize(),
             }}
             onChange={(value: string | undefined): void => {
               onChangeRef.current?.(value ?? '');

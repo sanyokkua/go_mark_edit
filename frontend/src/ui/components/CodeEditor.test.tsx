@@ -61,6 +61,7 @@ function resetMockMonaco(): void {
     getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
     getScrollTop: jest.fn(() => mockRuntime.scrollTop),
     getSelection: jest.fn(() => mockRuntime.selection),
+    setSelection: jest.fn(),
     onDidBlurEditorText: jest.fn((listener: () => void) => {
       mockRuntime.blurListener = listener;
 
@@ -402,6 +403,32 @@ it('STORY-013-AC-6 keeps the editor component presentational', async () => {
   expect(source).not.toMatch(
     /from\s+['"][^'"]*(?:logic\/adapter|redux|wailsjs)[^'"]*['"]/,
   );
+});
+
+it('T057 applies formatter caret and range selection intent after a Monaco edit', async () => {
+  const ref = { current: null as CodeEditorHandle | null };
+  render(<CodeEditor ref={ref} documentId="document-1" initialValue="hello" />);
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+
+  const selection: EditorSelection = {
+    start: { lineNumber: 1, column: 3 },
+    end: { lineNumber: 1, column: 8 },
+  };
+  ref.current?.replaceRange(
+    {
+      start: { lineNumber: 1, column: 1 },
+      end: { lineNumber: 1, column: 6 },
+    },
+    '**hello**',
+    selection,
+  );
+
+  expect(mockRuntime.editor.setSelection).toHaveBeenCalledWith({
+    startLineNumber: 1,
+    startColumn: 3,
+    endLineNumber: 1,
+    endColumn: 8,
+  });
 });
 
 it('STORY-019-AC-5 routes the editable command seam through Monaco and UpdateBuffer', async () => {

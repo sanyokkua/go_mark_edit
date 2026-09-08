@@ -10,4 +10,6 @@ export function UpdateAppearance(arg1:apperr.AppearanceSettings):Promise<apperr.
 
 export function UpdateContentPrivacy(arg1:apperr.ContentPrivacySettings):Promise<apperr.VoidResult>;
 
+export function UpdateEditor(arg1:apperr.EditorSettings):Promise<apperr.VoidResult>;
+
 export function UpdateMarkdown(arg1:apperr.MarkdownSettings):Promise<apperr.VoidResult>;

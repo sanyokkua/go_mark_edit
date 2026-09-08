@@ -1,4 +1,6 @@
-# Local safety net only. CI owns the authoritative staged quality gate.
+# `just check` / `just baseline` / `just verify` are the authoritative quality gate, run locally.
+# CI (.github/workflows/) is release-only: it triggers on `v*.*.*` tags and workflow_dispatch,
+# and builds/tests/packages/releases — it does not gate merges.
 pre-commit:
   parallel: true
   commands:

@@ -1,0 +1,19 @@
+$ npx prettier --check e2e/appearance.test.ts
+Checking formatting...
+All matched files use Prettier code style!
+
+$ npx playwright test e2e/appearance.test.ts
+
+Running 3 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/appearance.test.ts:32:1 › changes all six palettes through keyboard reachable appearance controls without overflow (2.5s)
+  ✓  2 [chromium] › e2e/appearance.test.ts:72:1 › uses the pre-paint mirror before canonical reconciliation and keeps the controls visibly focused with bundled typography (234ms)
+  ✓  3 [chromium] › e2e/appearance.test.ts:158:1 › retains the acknowledged palette when the bridge rejects an appearance write (357ms)
+
+  3 passed (3.9s)
+
+$ npm run verify:ui
+
+Running 148 tests using 4 workers
+
+  148 passed (1.5m)

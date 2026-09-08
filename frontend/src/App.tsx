@@ -17,13 +17,19 @@ import { store, useAppDispatch, useAppSelector } from './logic/store';
 import {
   setEditorPaneVisible,
   setPreviewPaneVisible,
+  setViewArrangement,
 } from './logic/store/docViewCommands';
 import {
   bootstrapAppModelProjection,
   type AppModelBootstrapResult,
 } from './logic/store/appModelProjection';
-import type { ActiveBuffer } from './logic/store/appModelTypes';
+import type {
+  ActiveBuffer,
+  ViewArrangement,
+} from './logic/store/appModelTypes';
 import { setWorkspaceVisible } from './logic/store/uiLayoutCommands';
+import { useEditorSettings } from './logic/settings/editorSettings';
+import { bootstrapSettingsProjection } from './logic/store/settingsProjection';
 import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
 import NotificationBanner from './ui/primitives/Banner';
 import AppShell from './ui/widgets/AppShell';
@@ -33,6 +39,8 @@ import ShellMenuRow from './ui/widgets/ShellMenuRow';
 import type { SettingsMenuProps } from './ui/widgets/SettingsMenu';
 import { EditorSessionProvider } from './ui/widgets/editorSession';
 import StartupFailure from './ui/widgets/StartupFailure';
+import ShortcutsDialog from './ui/widgets/ShortcutsDialog';
+import { ModalStateProvider } from './ui/widgets/modalState';
 
 let activeRetry: Promise<AppModelBootstrapResult> | undefined;
 
@@ -43,16 +51,26 @@ function startAppModelBootstrap(
     return activeRetry;
   }
   const attempt = import('./logic/adapter')
-    .then(async ({ applicationAdapter, appModelAdapter, windowAdapter }) => {
-      if (isRetry) {
-        await applicationAdapter.retryStartup();
-      }
-      const result = await bootstrapAppModelProjection(appModelAdapter);
-      if (result.status === 'ready') {
-        await windowAdapter.windowReady();
-      }
-      return result;
-    })
+    .then(
+      async ({
+        applicationAdapter,
+        appModelAdapter,
+        settingsAdapter,
+        windowAdapter,
+      }) => {
+        if (isRetry) {
+          await applicationAdapter.retryStartup();
+        }
+        const [result] = await Promise.all([
+          bootstrapAppModelProjection(appModelAdapter),
+          bootstrapSettingsProjection(settingsAdapter),
+        ]);
+        if (result.status === 'ready') {
+          await windowAdapter.windowReady();
+        }
+        return result;
+      },
+    )
     .catch((): AppModelBootstrapResult => ({ status: 'failed' }));
   if (!isRetry) {
     return attempt;
@@ -67,9 +85,9 @@ function startAppModelBootstrap(
 type BootstrapStatus = 'loading' | 'ready' | 'failed';
 
 interface ApplicationMenuState {
-  aboutOpen: boolean;
+  modalOpen: boolean;
   onAbout: () => void;
-  settingsOpen: boolean;
+  onShortcuts: () => void;
 }
 
 const ApplicationMenuContext = createContext<ApplicationMenuState | null>(null);
@@ -88,24 +106,49 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
   const workspaceVisible = useAppSelector(
     (state) => state.ui.layout.sidebarVisible ?? true,
   );
+  const editorSettings = useEditorSettings();
 
   return (
     <ShellMenuRow
-      modalOpen={menuState.settingsOpen || menuState.aboutOpen}
+      modalOpen={menuState.modalOpen}
       onAbout={menuState.onAbout}
-      settingsMenuProps={settingsMenuProps}
+      onShortcuts={menuState.onShortcuts}
+      settingsMenuProps={{
+        ...settingsMenuProps,
+        editorSettings: editorSettings.settings,
+        onEditorSettingsChange: (patch): void => {
+          void editorSettings.update(patch).catch((): void => undefined);
+        },
+      }}
       viewMenuProps={
         activeDocument === undefined
           ? undefined
           : {
+              arrangement: activeDocument.view.arrangement as ViewArrangement,
               editorVisible: activeDocument.view.editorVisible,
+              lineNumbers: editorSettings.settings.lineNumbers,
               previewVisible: activeDocument.view.previewVisible,
+              onArrangementChange: (arrangement): void => {
+                void dispatch(setViewArrangement(arrangement));
+              },
               onEditorVisibilityChange: (visible): void => {
                 void dispatch(setEditorPaneVisible(visible));
+              },
+              onFullscreen: (): void => {
+                void import('./logic/adapter').then(({ windowAdapter }) => {
+                  void windowAdapter.toggleFullscreen();
+                });
+              },
+              onLineNumbersChange: (enabled): void => {
+                void editorSettings.update({ lineNumbers: enabled });
               },
               onPreviewVisibilityChange: (visible): void => {
                 void dispatch(setPreviewPaneVisible(visible));
               },
+              onWordWrapChange: (enabled): void => {
+                void editorSettings.update({ wordWrap: enabled });
+              },
+              wordWrap: editorSettings.settings.wordWrap,
               workspaceVisible,
               onWorkspaceVisibilityChange: (visible): void => {
                 void dispatch(setWorkspaceVisible(visible));
@@ -126,15 +169,16 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [version, setVersion] = useState('');
   const bootstrapGeneration = useRef(0);
   const applicationMenuState = useMemo<ApplicationMenuState>(
     () => ({
-      aboutOpen,
+      modalOpen: settingsOpen || aboutOpen || shortcutsOpen,
       onAbout: (): void => setAboutOpen(true),
-      settingsOpen,
+      onShortcuts: (): void => setShortcutsOpen(true),
     }),
-    [aboutOpen, settingsOpen],
+    [aboutOpen, settingsOpen, shortcutsOpen],
   );
 
   const runBootstrap = useCallback(
@@ -211,56 +255,64 @@ const AppContents: React.FC = (): React.JSX.Element => {
 
   return (
     <ToastProvider>
-      <EditorSessionProvider activeBuffer={activeBuffer}>
-        <div className="application-frame">
-          <div className="application-menu">
-            <ApplicationMenuContext.Provider value={applicationMenuState}>
-              <AppearanceControls
-                visible={bootstrapStatus === 'ready'}
-                settingsOpen={settingsOpen}
-                onSettingsOpenChange={setSettingsOpen}
-                settingsMenuRenderer={ApplicationShellMenu}
-              />
-            </ApplicationMenuContext.Provider>
-          </div>
-          <div className="application-content">
-            {bootstrapStatus === 'failed' ? (
-              <StartupFailure
-                isRetrying={isRetrying}
-                onRetry={(): void => {
-                  runBootstrap(true);
-                }}
-              />
-            ) : bootstrapStatus === 'ready' ? (
-              <>
-                {banners.map((notification) => (
-                  <NotificationBanner
-                    key={`${notification.id}:${notification.refreshGeneration}`}
-                    notification={notification}
-                  />
-                ))}
-                <AppShell />
-              </>
-            ) : null}
-          </div>
-          <AboutDialog
-            open={bootstrapStatus === 'ready' && aboutOpen}
-            onOpenChange={setAboutOpen}
-            version={version}
-          />
-          {bootstrapStatus === 'ready'
-            ? notifications.map((notification) => (
-                <NotificationToast
-                  key={`${notification.id}:${notification.refreshGeneration}`}
-                  notification={notification}
-                  onDismiss={(id: number): void => {
-                    dispatch(dismissNotification(id));
+      <ModalStateProvider
+        modalOpen={settingsOpen || aboutOpen || shortcutsOpen}
+      >
+        <EditorSessionProvider activeBuffer={activeBuffer}>
+          <div className="application-frame">
+            <div className="application-menu">
+              <ApplicationMenuContext.Provider value={applicationMenuState}>
+                <AppearanceControls
+                  visible={bootstrapStatus === 'ready'}
+                  settingsOpen={settingsOpen}
+                  onSettingsOpenChange={setSettingsOpen}
+                  settingsMenuRenderer={ApplicationShellMenu}
+                />
+              </ApplicationMenuContext.Provider>
+            </div>
+            <div className="application-content">
+              {bootstrapStatus === 'failed' ? (
+                <StartupFailure
+                  isRetrying={isRetrying}
+                  onRetry={(): void => {
+                    runBootstrap(true);
                   }}
                 />
-              ))
-            : null}
-        </div>
-      </EditorSessionProvider>
+              ) : bootstrapStatus === 'ready' ? (
+                <>
+                  {banners.map((notification) => (
+                    <NotificationBanner
+                      key={`${notification.id}:${notification.refreshGeneration}`}
+                      notification={notification}
+                    />
+                  ))}
+                  <AppShell />
+                </>
+              ) : null}
+            </div>
+            <AboutDialog
+              open={bootstrapStatus === 'ready' && aboutOpen}
+              onOpenChange={setAboutOpen}
+              version={version}
+            />
+            <ShortcutsDialog
+              open={bootstrapStatus === 'ready' && shortcutsOpen}
+              onOpenChange={setShortcutsOpen}
+            />
+            {bootstrapStatus === 'ready'
+              ? notifications.map((notification) => (
+                  <NotificationToast
+                    key={`${notification.id}:${notification.refreshGeneration}`}
+                    notification={notification}
+                    onDismiss={(id: number): void => {
+                      dispatch(dismissNotification(id));
+                    }}
+                  />
+                ))
+              : null}
+          </div>
+        </EditorSessionProvider>
+      </ModalStateProvider>
     </ToastProvider>
   );
 };

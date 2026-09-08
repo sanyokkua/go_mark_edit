@@ -3,28 +3,65 @@
 }
 
 .trigger,
-.content,
 .item {
-  border: var(--control-border-width) solid var(--border);
-  background: var(--surface-raised);
+  background: transparent;
   color: var(--text);
   font: inherit;
 }
 
+.group {
+  border: 0;
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0.35rem 0;
+}
+
+.group legend {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  padding: 0;
+}
+
+.settingLabel {
+  color: var(--text-muted);
+  padding: 0.3rem 0.4rem;
+}
+
+.checkbox,
+.selectLabel {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 0.3rem 0.4rem;
+}
+
+.selectLabel select {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
 .trigger,
 .item {
+  border: var(--control-border-width) solid transparent;
   border-radius: var(--control-radius);
   padding: var(--control-padding);
 }
 
 .content {
+  backdrop-filter: var(--blur);
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
   box-sizing: border-box;
   border-radius: var(--control-radius);
   box-shadow: var(--win-shadow);
   display: grid;
   gap: var(--control-gap);
   inline-size: min(30rem, calc(100vw - 2 * var(--control-gap)));
-  max-block-size: calc(100vh - 2 * var(--control-gap));
+  max-block-size: calc(100vh - 4rem);
   overflow: auto;
   padding: var(--control-gap);
   position: fixed;
@@ -40,4 +77,10 @@
 .item {
   cursor: pointer;
   inline-size: 100%;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--surface);
+  border-color: var(--border);
 }

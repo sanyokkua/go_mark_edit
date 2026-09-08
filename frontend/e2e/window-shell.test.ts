@@ -54,16 +54,104 @@ async function openSettings(page: Page): Promise<void> {
   await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
 }
 
-async function expectFutureSurfacesAbsent(page: Page): Promise<void> {
+async function expectEditorStageFixtures(
+  page: Page,
+  width: number,
+): Promise<void> {
+  const actionBar = page.getByRole('navigation', {
+    name: 'Application actions',
+  });
+  if (width <= 376) {
+    const overflow = actionBar.getByRole('button', { name: 'More actions' });
+    await overflow.click();
+    const overflowMenu = page.getByRole('menu', {
+      name: 'More actions',
+    });
+    expect(await overflowMenu.getByRole('menuitem').allTextContents()).toEqual([
+      'File',
+      'Settings',
+      'View',
+      'About',
+    ]);
+    await page.keyboard.press('Escape');
+  } else {
+    expect(await actionBar.getByRole('button').allTextContents()).toEqual([
+      'File',
+      'Settings',
+      'View',
+      'About',
+      '☰',
+      '✦',
+    ]);
+    await expect(
+      actionBar.getByRole('button', { name: 'Toggle Assistant' }),
+    ).toBeDisabled();
+  }
+
+  const tabs = page.getByRole('tablist', { name: 'Document tabs' });
+  await expect(tabs).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'File', exact: true }),
-  ).toHaveCount(0);
+    tabs.getByRole('tab', { name: 'release-notes.md' }),
+  ).toBeDisabled();
+  await expect(tabs.getByRole('tab', { name: 'spec-draft.md' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'New tab' })).toBeDisabled();
+
+  const toolbar = page.getByRole('toolbar', { name: 'Document toolbar' });
   await expect(
-    page.getByRole('menuitem', { name: 'File', exact: true }),
+    toolbar.getByRole('button', { name: 'Toggle Assistant' }),
   ).toHaveCount(0);
-  await expect(page.getByRole('tablist')).toHaveCount(0);
-  await expect(page.getByLabel(/assistant/i)).toHaveCount(0);
-  await expect(page.getByText(/launcher|recent/i)).toHaveCount(0);
+  await expect(toolbar.getByRole('button', { name: 'Format' })).toBeDisabled();
+  await expect(toolbar.getByRole('button', { name: 'Compact' })).toBeDisabled();
+  await expect(toolbar.getByRole('button', { name: 'Lint' })).toBeDisabled();
+  if (width <= 768) {
+    await toolbar.getByLabel('More actions').click();
+  }
+  await expect(toolbar.getByRole('button', { name: 'Image' })).toBeDisabled();
+  if (width <= 376) {
+    await expect(
+      toolbar.getByRole('radiogroup', { name: 'View arrangement' }),
+    ).toBeVisible();
+  }
+  await page.keyboard.press('Escape');
+
+  await openAction(page, 'File');
+  const fileMenu = page.getByRole('menu', { name: 'File' });
+  await expect(
+    fileMenu.getByRole('menuitem', { name: 'New File' }),
+  ).toBeDisabled();
+  await expect(
+    fileMenu.getByRole('menuitem', { name: 'Open Recent' }),
+  ).toBeDisabled();
+  await page.keyboard.press('Escape');
+
+  if (width > 376) {
+    await openAction(page, 'View');
+    const viewMenu = page.getByRole('menu', { name: 'View options' });
+    await expect(
+      viewMenu.getByRole('menuitem', { name: 'Toggle Assistant' }),
+    ).toBeDisabled();
+    await expect(
+      viewMenu.getByRole('menuitem', { name: 'Distraction-free reading' }),
+    ).toBeDisabled();
+    await page.keyboard.press('Escape');
+  }
+
+  await openAction(page, 'About');
+  const aboutMenu = page.getByRole('menu', { name: 'About' });
+  await expect(aboutMenu.getByRole('menuitem')).toHaveCount(4);
+  expect(await aboutMenu.getByRole('menuitem').allTextContents()).toEqual([
+    'Keyboard shortcuts',
+    'Open logs folder',
+    'View on GitHub (MIT)',
+    'About GoMarkEdit',
+  ]);
+  await expect(
+    aboutMenu.getByRole('menuitem', { name: 'Open logs folder' }),
+  ).toBeDisabled();
+  await expect(
+    aboutMenu.getByRole('menuitem', { name: 'View on GitHub (MIT)' }),
+  ).toBeDisabled();
+  await page.keyboard.press('Escape');
 }
 
 async function browserNow(page: Page): Promise<number> {
@@ -274,7 +362,10 @@ for (const width of widths) {
             ),
         )
         .toBe('0ms');
-      await page.getByRole('button', { name: 'Close' }).click();
+      await page
+        .getByRole('dialog', { name: 'Settings' })
+        .getByRole('button', { name: 'Close' })
+        .click();
 
       const workspace = page.getByRole('complementary', { name: 'Workspace' });
       await expect(workspace).toBeVisible();
@@ -284,7 +375,7 @@ for (const width of widths) {
       await expect(
         page.getByRole('main', { name: 'Document area' }),
       ).toBeVisible();
-      await expectFutureSurfacesAbsent(page);
+      await expectEditorStageFixtures(page, width);
       await expect
         .poll(() =>
           page.evaluate(
@@ -303,17 +394,15 @@ for (const width of widths) {
         const document = page.getByRole('main', { name: 'Document area' });
         const documentBounds = await document.boundingBox();
         const toolbarBounds = await toolbar.boundingBox();
-        const toolbarViewBounds = await toolbar
-          .getByRole('button', { name: 'View', exact: true })
-          .boundingBox();
+        await toolbar.getByLabel('More actions').click();
         const arrangementBounds = await toolbar
           .getByRole('radiogroup', { name: 'View arrangement' })
           .boundingBox();
+        await page.keyboard.press('Escape');
         expect(editor).not.toBeNull();
         expect(preview).not.toBeNull();
         expect(documentBounds).not.toBeNull();
         expect(toolbarBounds).not.toBeNull();
-        expect(toolbarViewBounds).not.toBeNull();
         expect(arrangementBounds).not.toBeNull();
         await expect(document).toBeInViewport({ ratio: 1 });
         await expect(toolbar).toBeInViewport({ ratio: 1 });
@@ -325,10 +414,6 @@ for (const width of widths) {
         expect(toolbarBounds!.x + toolbarBounds!.width).toBeLessThanOrEqual(
           documentBounds!.x + documentBounds!.width,
         );
-        expect(toolbarViewBounds!.x).toBeGreaterThanOrEqual(toolbarBounds!.x);
-        expect(
-          toolbarViewBounds!.x + toolbarViewBounds!.width,
-        ).toBeLessThanOrEqual(toolbarBounds!.x + toolbarBounds!.width);
         expect(arrangementBounds!.x).toBeGreaterThanOrEqual(toolbarBounds!.x);
         expect(
           arrangementBounds!.x + arrangementBounds!.width,
@@ -478,19 +563,23 @@ test('T026 shell actions, focus, reset, sidebar, notification, identity, and abs
 
   await openAction(page, 'View');
   const workspaceToggle = page.getByRole('menuitemcheckbox', {
-    name: 'Show Workspace',
+    name: 'Toggle Sidebar',
   });
   await workspaceToggle.click();
   await expect(
     page.getByRole('complementary', { name: 'Workspace' }),
   ).toBeHidden();
   await openAction(page, 'View');
-  await page.getByRole('menuitemcheckbox', { name: 'Show Workspace' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Toggle Sidebar' }).click();
   await expect(
     page.getByRole('complementary', { name: 'Workspace' }),
   ).toBeVisible();
 
   await openAction(page, 'About');
+  await page
+    .getByRole('menu', { name: 'About' })
+    .getByRole('menuitem', { name: 'About GoMarkEdit' })
+    .click();
   const about = page.getByRole('dialog', { name: 'About GoMarkEdit' });
   await expect(about).toBeFocused();
   await expect(about.getByText('Version dev', { exact: true })).toBeVisible();
@@ -503,9 +592,9 @@ test('T026 shell actions, focus, reset, sidebar, notification, identity, and abs
   await expect(errorToast).toContainText('Invalid input');
   await expect(errorToast).toContainText('A value needs to be corrected.');
   await expect(page.getByText(/private|https?:\/\//i)).toHaveCount(0);
-  await expectFutureSurfacesAbsent(page);
   await errorToast.getByRole('button', { name: 'Dismiss' }).click();
   await expect(errorToast).toHaveCount(0);
+  await expectEditorStageFixtures(page, 1280);
 });
 
 test('T029 keeps a long localized shell label and its two-layer keyboard focus ring visible', async ({
@@ -517,7 +606,7 @@ test('T029 keeps a long localized shell label and its two-layer keyboard focus r
   const actionBar = page.getByRole('navigation', {
     name: 'Application actions',
   });
-  const settings = actionBar.getByRole('button').first();
+  const settings = actionBar.locator('button[data-settings-opener]');
   await expect(settings).toHaveAccessibleName('Settings');
   await settings.focus();
   await settings.evaluate((button) => {
@@ -576,7 +665,10 @@ test('T026 representative shell journey stays local-only', async ({
   const requests = observeShellRequests(page, 'http://127.0.0.1:4173');
   await page.goto('/');
   await openSettings(page);
-  await page.getByRole('button', { name: 'Close' }).click();
+  await page
+    .getByRole('dialog', { name: 'Settings' })
+    .getByRole('button', { name: 'Close' })
+    .click();
   await openAction(page, 'View');
   await page.keyboard.press('Escape');
   await openAction(page, 'About');

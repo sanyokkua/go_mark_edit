@@ -37,7 +37,10 @@ it('STORY-019-AC-5 exposes editor changes through the document-command seam', ()
     start: { lineNumber: 1, column: 2 },
     end: { lineNumber: 1, column: 4 },
   };
-  const replaceRange = jest.fn<boolean, [EditorRange, string]>(() => true);
+  const replaceRange = jest.fn<
+    boolean,
+    [EditorRange, string, EditorSelection?]
+  >(() => true);
   const replaceAll = jest.fn<boolean, [string]>(() => true);
   const session = createSession(
     'document-1',
@@ -61,7 +64,7 @@ it('STORY-019-AC-5 exposes editor changes through the document-command seam', ()
     status: 'available',
     value: selection,
   });
-  expect(commands.replaceRange(range, 'new')).toEqual({
+  expect(commands.replaceRange(range, 'new', selection)).toEqual({
     status: 'available',
     value: undefined,
   });
@@ -70,7 +73,7 @@ it('STORY-019-AC-5 exposes editor changes through the document-command seam', ()
     value: undefined,
   });
 
-  expect(replaceRange).toHaveBeenCalledWith(range, 'new');
+  expect(replaceRange).toHaveBeenCalledWith(range, 'new', selection);
   expect(replaceAll).toHaveBeenCalledWith('whole document');
 });
 

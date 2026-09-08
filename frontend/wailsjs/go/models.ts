@@ -339,6 +339,22 @@ export namespace apperr {
 		}
 	}
 	
+	export class EditorSettings {
+	    lineNumbers: boolean;
+	    wordWrap: boolean;
+	    fontSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditorSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.lineNumbers = source["lineNumbers"];
+	        this.wordWrap = source["wordWrap"];
+	        this.fontSize = source["fontSize"];
+	    }
+	}
 	export class MarkdownSettings {
 	    standard: string;
 	    formatOnSave: boolean;
@@ -367,6 +383,7 @@ export namespace apperr {
 	    appearance: AppearanceSettings;
 	    markdown: MarkdownSettings;
 	    contentPrivacy: ContentPrivacySettings;
+	    editor: EditorSettings;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -377,6 +394,7 @@ export namespace apperr {
 	        this.appearance = this.convertValues(source["appearance"], AppearanceSettings);
 	        this.markdown = this.convertValues(source["markdown"], MarkdownSettings);
 	        this.contentPrivacy = this.convertValues(source["contentPrivacy"], ContentPrivacySettings);
+	        this.editor = this.convertValues(source["editor"], EditorSettings);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

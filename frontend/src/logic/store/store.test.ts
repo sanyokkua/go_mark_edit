@@ -22,6 +22,7 @@ it('STORY-006-AC-2 creates projection-only notification state', () => {
   expect(Object.keys(state).sort()).toEqual([
     'documents',
     'notifications',
+    'settings',
     'ui',
   ]);
   expect(state.notifications.items).toEqual([

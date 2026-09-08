@@ -10,9 +10,40 @@ const palettes = [
 ] as const;
 
 async function openAppearance(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('menuitem', { name: 'Appearance' }).click();
-  await expect(page.getByRole('dialog', { name: 'Appearance' })).toBeVisible();
+  if ((page.viewportSize()?.width ?? 1280) <= 376) {
+    await page.getByRole('button', { name: 'More actions' }).first().click();
+    await page.getByRole('menuitem', { name: 'Settings' }).click();
+  } else {
+    await page.getByRole('button', { name: 'Settings' }).click();
+  }
+  await expect(page.getByRole('menu', { name: 'Settings menu' })).toBeVisible();
+}
+
+async function stabilizeMonacoScrollbar(
+  page: Page,
+  expectedColor: string,
+): Promise<void> {
+  await page.addStyleTag({
+    content:
+      '.monaco-scrollable-element .scrollbar.vertical { opacity: 1 !important; }',
+  });
+  await expect(
+    page.locator('.monaco-scrollable-element .scrollbar.vertical').first(),
+  ).toHaveCSS('opacity', '1');
+  await expect(
+    page
+      .locator('.monaco-scrollable-element .scrollbar.vertical .slider')
+      .first(),
+  ).toHaveCSS('background-color', expectedColor);
+}
+
+async function settleMonacoLayout(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
 }
 
 test('changes all six palettes through keyboard reachable appearance controls without overflow', async ({
@@ -44,6 +75,11 @@ test('changes all six palettes through keyboard reachable appearance controls wi
         )
         .toBe(true);
       if (width === 1280) {
+        await stabilizeMonacoScrollbar(
+          page,
+          mode === 'light' ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.2)',
+        );
+        await settleMonacoLayout(page);
         await expect(page).toHaveScreenshot(`appearance-${theme}-${mode}.png`, {
           animations: 'disabled',
         });
@@ -148,7 +184,5 @@ test('retains the acknowledged palette when the bridge rejects an appearance wri
   await openAppearance(page);
   await page.getByRole('radio', { name: 'Liquid Glass' }).press('Space');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'material');
-  await expect(
-    page.getByText('Invalid setting', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('Invalid input', { exact: true })).toBeVisible();
 });

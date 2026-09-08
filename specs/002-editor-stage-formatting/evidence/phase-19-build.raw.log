@@ -1,0 +1,13 @@
+$ just build
+wails build
+Wails CLI v2.12.0
+
+  • Generating bindings: Done.
+  • Installing frontend dependencies: Done.
+  • Compiling frontend: Done.
+  • Compiling application: Done.
+  • Packaging application: Done.
+  • Self-signing application: Done.
+Built '/Users/ok/Development/GitHub/go_mark_edit/build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit' in 10.557s.
+
+exit 0

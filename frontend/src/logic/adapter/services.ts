@@ -3,6 +3,7 @@ import { unwrap } from './envelope';
 import type {
   AppearanceSettings,
   ContentPrivacySettings,
+  EditorSettings,
   MarkdownSettings,
   Settings,
   SettingsResult,
@@ -17,6 +18,7 @@ export interface SettingsBindings {
     settings: ContentPrivacySettings,
   ) => Promise<VoidResult>;
   updateMarkdown: (settings: MarkdownSettings) => Promise<VoidResult>;
+  updateEditor: (settings: EditorSettings) => Promise<VoidResult>;
 }
 
 export interface SettingsAdapter {
@@ -25,6 +27,7 @@ export interface SettingsAdapter {
   resetAppearance: () => Promise<void>;
   updateContentPrivacy: (settings: ContentPrivacySettings) => Promise<void>;
   updateMarkdown: (settings: MarkdownSettings) => Promise<void>;
+  updateEditor: (settings: EditorSettings) => Promise<void>;
 }
 
 export function createSettingsAdapter(
@@ -50,6 +53,10 @@ export function createSettingsAdapter(
     'SettingsHandler.UpdateMarkdown',
     bindings.updateMarkdown,
   );
+  const updateEditor = guardArity(
+    'SettingsHandler.UpdateEditor',
+    bindings.updateEditor,
+  );
 
   return {
     async getSettings(): Promise<Settings> {
@@ -68,6 +75,9 @@ export function createSettingsAdapter(
     },
     async updateMarkdown(settings: MarkdownSettings): Promise<void> {
       return unwrap(await updateMarkdown(settings));
+    },
+    async updateEditor(settings: EditorSettings): Promise<void> {
+      return unwrap(await updateEditor(settings));
     },
   };
 }
