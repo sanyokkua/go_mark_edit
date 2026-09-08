@@ -1,0 +1,49 @@
+.row {
+  position: relative;
+  z-index: var(--z-sticky);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--app-gap);
+  padding: var(--app-gap);
+  border-block-end: var(--control-border-width) solid var(--border);
+  background: var(--surface-raised);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.trigger,
+.overflow,
+.item {
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.trigger,
+.item {
+  padding: var(--control-padding);
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overflow {
+  display: grid;
+  min-width: 10rem;
+  gap: var(--control-gap);
+  padding: var(--control-gap);
+  box-shadow: var(--win-shadow);
+  z-index: var(--z-dropdown);
+}
+
+.item[data-highlighted] {
+  outline: var(--segmented-focus-outline-width) solid
+    var(--segmented-outline-color);
+  outline-offset: var(--segmented-focus-outline-offset);
+}

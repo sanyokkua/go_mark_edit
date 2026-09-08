@@ -1,0 +1,44 @@
+.viewport {
+  display: grid;
+  gap: var(--app-gap);
+  inset: auto var(--app-gap) var(--app-gap) auto;
+  margin: 0;
+  padding: 0;
+  position: fixed;
+  width: min(24rem, calc(100vw - 2 * var(--app-gap)));
+  z-index: var(--z-toast);
+}
+
+.toast {
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--err);
+  border-radius: var(--win-radius);
+  box-shadow: var(--win-shadow);
+  color: var(--text);
+  padding: var(--dialog-padding);
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+.toast[data-severity='info'],
+.toast[data-severity='success'] {
+  border-color: var(--accent);
+}
+
+.toast[data-severity='warning'] {
+  border-color: var(--warn);
+}
+
+.actions {
+  display: flex;
+  gap: var(--control-gap);
+  margin-top: var(--control-gap);
+}
+
+.action {
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--control-radius);
+  color: var(--accent-contrast);
+  font: inherit;
+  padding: var(--control-padding);
+}

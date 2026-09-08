@@ -1,0 +1,53 @@
+name: release-gates
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: staged quality gate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+      - name: Install just
+        uses: extractions/setup-just@v3
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+      - name: Generate bindings
+        run: just gen-check
+      - name: Build frontend assets
+        run: just frontend-build
+      - name: Format check
+        run: just fmt-check
+      - name: Lint
+        run: just lint
+      - name: Frontend typecheck
+        run: just typecheck
+      - name: Frontend tests
+        run: just frontend-test
+      - name: Go vet
+        run: just go-vet
+      - name: Go race tests
+        run: just go-test
+
+  release-skeleton:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "Release packaging is introduced in Phase 08 (see docs/delivery/plan/phase-08-install-it.md)."

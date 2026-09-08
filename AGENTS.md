@@ -1,214 +1,174 @@
-# AGENTS.md
+# Working in this repository
 
-Guidance for AI agents implementing **GoMarkEdit** — a native, offline, cross-platform Markdown editor
-& viewer built with Wails v2 (Go + React/TypeScript). This repo is a **binding specification**; the
-app is implemented from it, one story at a time.
+GoMarkEdit is one desktop binary: a Go process (Wails v2) serving a React application in a native
+webview. Active, migrated Spec Kit work is governed by the matching feature directory under `specs/`.
+The older `docs/delivery/` tree is reference-only for migrated work; do not silently change it to make
+an active specification or gate pass.
 
-## What this project is
+## Read first
 
-GoMarkEdit edits and renders Markdown, integrates with the OS as a file handler, ships three themes with
-light/dark/auto, and runs fully offline. See `specification/00_Foundation/01_VISION_AND_SCOPE.md`
-and the locked decisions in `00_Foundation/04_DESIGN_DECISIONS.md` (`DD-NN`).
+Read the active feature's `spec.md`, `plan.md`, `tasks.md`, applicable `contracts/`, and
+`.specify/memory/constitution.md` before implementation. For legacy work that has not migrated, read
+the assigned story and its `docs/delivery/architecture/README.md` first.
 
-**Spec authority:** `specification/` is the single source of truth. Never invent behaviour. Every
-non-trivial decision must trace to a spec clause. If the spec is silent or ambiguous, **stop and ask**.
+The story is self-contained by design. If you cannot tell what to build from it alone, that is a defect
+in the story: say so rather than going hunting.
 
-## AI config locations
+## Commands
 
-- `AGENTS.md` — this file.
-- `.claude/rules/*.md` — shared path-scoped coding rules; Codex must read every rule whose glob matches files it will touch.
-- `.agents/skills/*/SKILL.md` — Codex task playbooks (invoke by trigger).
-- `.codex/agents/*.toml` — Codex custom-agent definitions (investigator → architect → coder → tester → reviewer → docs).
-- **`specification/`** — the **frozen, read-only** source of truth: requirements, architecture, phases,
-  the initial ADRs (`specification/08_Decisions/`), the process formats, and the UI mockups
-  (`specification/mockups/`). Never edited during implementation. Start at `specification/INDEX.md`.
-- **`docs/`** — the **mutable** working area: generated `docs/stories/`, new decisions `docs/adr/`
-  (ADR-0013+; ADR-0001…0012 are frozen in `specification/08_Decisions/`), and `docs/traceability.yaml`
-  — the GENERATED progress record (`just trace` / `just trace-check`). A spec change is recorded here
-  (new story + new ADR), never by editing the spec.
-
-## Non-negotiable architecture constraints
-
-Hold on every turn, not just when a rule file happens to be loaded:
-
-- **Wails v2, CGO-free Go.** SQLite via `modernc.org/sqlite`. (DD-01..03, ADR-0001)
-- **Backend layering Handler → Service → Repository.** Bound handlers return a concrete
-  `apperr.*Result` (never `(T, error)`), take **no `context.Context`**, and convert panics via
-  `defer/recover` → `CodeInternal`. Inner services keep `(T, error)`. `internal/apperr` imports no
-  other internal package.
-- **One composition root.** All concrete wiring lives in `internal/application` (+ `main.go`), two-phase
-  (nil repos in the constructor, real repos injected in `Init(ctx)` after the DB opens). Services depend
-  on interfaces owned by the package that defines the type.
-- **sqlc-generated `internal/db/store/` is never hand-edited.** Migrations are additive only.
-- **Frontend never imports `wailsjs/` directly** — only `logic/adapter/`. `unwrap()` handles the
-  envelope; components/thunks call adapter singletons.
-- **The Go backend is the single source of truth for the live application model.** `internal/appmodel`
-  owns open documents + canonical content, the tab set, the workspace ref, and UI/layout state; the
-  Redux store is a **derived projection** (hydrated via `GetState`, reconciled by `state:*` events),
-  and every UI interaction is a **command** to the backend. The visible Monaco buffer is a
-  debounce-synced working copy (`UpdateBuffer`, flushed on blur/switch/close/save); the backend never
-  echoes buffer text into the focused editor. (DD-62..64, ADR-0014)
-- **Token-only theming.** One layout; themes swap CSS custom properties via `data-theme` × `data-mode`
-  on `document.documentElement`. No hardcoded colors. The Viewer hides all chrome. (DD-28..30, ADR-0005)
-- **Offline-first, no background network.** No background/unsolicited network calls; bundle all rendering
-  assets (KaTeX/Mermaid/fonts). Remote *document* assets load only per the content policy. The **only**
-  outbound calls are user-invoked LLM inferences to the configured provider (local by default); Stages 1–2
-  make none. (DD-32 revised, DD-54, F6, ADR-0011)
-- **No telemetry, no auto-update.** Logs are local files only. (DD-33, DD-34)
-- **Multiple instances** (no single-instance lock); settings DB shared via WAL + busy_timeout. (DD-08, ADR-0006)
-- **LLM assistant is Stage-3-only.** It must not exist in Stages 1–2 (which only leave the F1–F9 seams open).
-  It is a **bounded agentic tool-call loop** (iteration + wall-clock limits, per-iteration cancellation) with
-  a **single in-flight inference** enforced by the process-wide gate (`busy` on contention); tools are
-  least-privilege, read-mostly, allowlisted. **Edits are user-applied proposals** (a diff applied via the
-  editor command seam — never a direct file write). **API keys are env-var-name only** — never persisted or
-  logged. Network policy: **no background network; only user-invoked calls to the configured provider (local
-  by default)**. (DD-32 revised, DD-38..DD-55; ADR-0007..0011)
-
-## Commands (target `justfile` — see `04_Build_and_Release/03_CI_AND_HOOKS.md`)
-
-```bash
-just setup        # install Go + frontend deps; install git hooks
-just dev          # wails dev (hot reload, real bridge)
-just dev-ui       # frontend-only with bridge mock (no Go backend)
-just build        # wails build → build/bin
-just gen          # wails generate module (regenerate TS bindings)
-just fmt          # gofmt + prettier
-just lint         # golangci-lint + eslint
-just typecheck    # tsc --noEmit
-just test         # go test -race ./...  +  jest
-just verify-ui    # Playwright responsive + smoke tests
-just trace        # regenerate docs/traceability.yaml
-just trace-check  # validate traceability (gate)
-just check        # fmt-check + lint + typecheck + test + arch checks
-```
-
-## Planning workflows (the two-stage workflow)
-
-Two Codex skills (`.agents/skills/plan-phase-stories-creation/` and
-`.agents/skills/plan-user-story-implementation/`) bootstrap the whole process. Both run **read-only** —
-they gather full context, delegate mapping to the `investigator` subagent, produce a plan, and request
-explicit user approval. Nothing is created or changed until approval.
-
-- **`plan-phase-stories-creation <PHASE_NN>`** — for starting a new phase. Reads the phase, the process
-  formats, and the spec clauses it touches; maps the current codebase (what's implemented/tested/config/
-  docs/done-stories/traceability); then **plans the real story set** (the phase's suggested tasks are a
-  backlog, not truth — it refines them to what's actually relevant), with ids, cited clauses, modules, ACs,
-  edge cases, test plan, and the traceability delta. Approve → the `architect` authors the story files into
-  `docs/stories/`.
-- **`plan-user-story-implementation <STORY-NNN>`** — for building a story. Reads the story + every cited
-  clause/DD/ADR + applicable rules/skills; investigates the codebase and prior stories/commits; collects
-  edge cases; then **plans the implementation + test + traceability + DoD**, one session's worth. Approve →
-  the `coder` implements and the `tester` writes the AC tests and runs `just trace`/`trace-check`.
-
-## How work is tracked
-
-Phases (`specification/07_Phases/`) list a **suggested-task backlog**; the `architect` **generates** the
-actual stories into `docs/stories/story-NNN-*.md` per phase, in the fixed format
-(`specification/06_Process_and_Traceability/02_STORY_FORMAT.md`). **One story per coding session.** A
-story is `done` only when every AC has a passing test naming the story id and `just trace-check` passes
-with zero orphans. `done` is immutable — a spec change spawns a new story (+ a new ADR in `docs/adr/` if
-significant), never an edit to the frozen spec.
-
-## Implementation stages
-
-Work ships in three coarse stages (`specification/00_Foundation/06_IMPLEMENTATION_STAGES.md`):
-**Stage 1 — Viewer** → **Stage 2 — Editor** → **Stage 3 — LLM Assistant**. Each stage must ship a working
-app and **leave the seams open for the next without building a wall**. Stage 1/2 stories must honour the
-binding forward-compatibility constraints **F1–F9** (three-region layout slot, document identity + content
-accessor, document-command seam, growable settings registry, reserved backend seams incl. the generic gate,
-scoped-not-absolute offline invariant, editable buffer selection/apply, programmatic Format/Lint, reusable
-DiffView). The Stage-3 assistant is built entirely by **consuming** F1–F9 — never by restructuring an
-earlier contract. Two phases are **cross-cutting** and belong to no single stage: Phase 10
-(i18n/packaging) and **Phase 15 — CI/CD & release**
-(`specification/07_Phases/PHASE_15_CICD_RELEASE.md`): version injection via
-`internal/settings.AppVersion` + ldflags, the icon pipeline, and the tag-triggered release workflow
-(DD-65..67, `specification/04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md`). v1 releases ship
-via that pipeline; local/dev builds always report version `dev`.
-
-## Orchestration discipline
-
-The top-level session orchestrates; delegate a story's implementation, an investigation, or a review to
-one agent (see `.codex/agents/`). Don't loop dozens of edits in the main session when one `coder`
-delegation is cleaner. Keep parallel subagents to ≤8. Ask each for a concise structured summary.
-
-## Quality gates — do not bypass
-
-- Fix every `gofmt`/`go vet`/`golangci-lint`/`mypy`-equivalent (`tsc`)/`eslint` finding in files you
-  touch before `done`. "Pre-existing" is not an excuse in this greenfield repo.
-- Never `git commit --no-verify`. Never delete/comment a failing test to make a suite pass. Never weaken
-  a lint rule to silence a finding without an ADR.
-- Regenerate bindings after any bound-signature change; commit no drift.
-
-## Never do this
-
-- CGO or a non-pure-Go SQLite driver. A single-instance flock lock (multi-instance is required).
-- `(T, error)` from a bound handler; a `context.Context` param on a bound handler.
-- Importing `wailsjs/` outside `logic/adapter/`. Hardcoded colors / styling outside the token system.
-- Any background/unsolicited network call from the app; a network call in Stage 1/2; loading a CDN asset at
-  runtime. Telemetry. Auto-update. (Stage 3's only outbound call is a user-invoked inference to the
-  configured provider.)
-- Editing `internal/db/store/` by hand; a non-additive migration. Editing the spec to fit the code.
-
-## Self-discovery
-
-Before assuming a convention doesn't exist: check `.agents/skills/`, the relevant `.claude/rules/*.md`
-(by glob), and `specification/06_Process_and_Traceability/01_MODULE_INVENTORY.md` for the module
-you're in. The spec itself (`specification/`), shared `.claude/rules/`, Codex `.agents/skills/`, and
-`.codex/agents/` are the
-authoritative source for every structural, envelope, DI, theming, and CI convention.
-
-## Rules Reference
-
-| Rule | Globs | Description |
-|---|---|---|
-| go-backend-architecture | `internal/**/*.go`, `main.go` | Layering, envelope, DI, no-ctx handlers; `internal/appmodel` = single source of truth (DD-62) |
-| go-error-envelope | `internal/apperr/**`, `internal/**/handler*.go` | `AppError`/`WireError`/`ToWire`/`*Result` |
-| go-persistence-sqlite | `internal/db/**`, `internal/settings/**`, `internal/recent/**` | modernc, WAL, goose, sqlc, KV |
-| go-logging | `internal/**/*.go` | zerolog, no PII/secrets, local-only |
-| go-testing | `internal/**/*_test.go`, `main_test.go` | table-driven, `-race`, fakes-only |
-| ts-react-frontend | `frontend/src/**/*.ts(x)` | strict TS, `React.FC`, no `any`, CSS modules |
-| ts-redux-adapter | `frontend/src/logic/**` | store = projection of appmodel (commands + `state:patch`, DD-63/64), slice-per-feature, adapter-only-imports-wailsjs |
-| ts-theming-tokens | `frontend/src/ui/styles/**`, `frontend/src/ui/**` | token-only, `data-theme`×`data-mode` |
-| ts-markdown-pipeline | `frontend/src/logic/markdown/**`, `frontend/src/logic/{format,lint}/**` | remark/rehype, standard mapping |
-| ts-testing | `frontend/src/**/*.test.ts(x)` | RTL/behavioural, a11y queries, mock adapter |
-| wails-integration | `main.go`, `wails.json`, `build/**` | embed, Bind/EnumBind, lifecycle, associations |
-| traceability-and-stories | `docs/stories/**`, `docs/adr/**` | story format, lifecycle, trace-check |
-| offline-and-privacy | `**/*` | no background network, no telemetry, bundled assets, user-invoked provider calls only |
-| llm-integration | `internal/llm/**`, `frontend/src/logic/store/assistant/**`, `frontend/src/logic/llm/**`, `frontend/src/ui/widgets/assistant/**` | Stage-3 assistant: provider abstraction, agent loop, tools, gate, budget, env-var secrets |
-
-## Skills Reference
-
-| Skill | Use when |
+| Verb | Command |
 |---|---|
-| story-and-traceability-workflow | Creating/editing a story, or updating the trace record |
-| adr-authoring | A decision is architecturally significant |
-| wails-dev | Anything Wails v2: wails.json, Bind/EnumBind, lifecycle hooks, runtime API, events, menus, platform options, asset server, drag-and-drop, window/UI-layout persistence (12 topic references) |
-| go-envelope-and-di | Adding a handler/service/repository vertical or the DI wiring |
-| sqlite-kv-persistence | Touching settings/recent persistence or a migration |
-| markdown-rendering-pipeline | Changing the renderer, standard mapping, Mermaid, math, highlighting |
-| theming-tokens | Adding/adjusting a theme or token; light/dark/auto |
-| testing-wails-app | Writing Go/Jest/Playwright tests for a story |
-| create-mermaid-diagrams | Authoring an architecture/flow diagram in the spec |
-| llm-provider-integration | Adding/adjusting a provider kind, model discovery, verification, or AI/Providers settings (Stage 3) |
-| agentic-tool-loop | Building/adjusting the agent loop, tools, cancellation, gate, or edit-proposal apply (Stage 3) |
-| context-and-tokenizer | Token estimation, context budgeting, fit meter, or over-context handling (Stage 3) |
-| code-review | Reviewing a diff/PR/branch against GoMarkEdit's layering, envelope, adapter/token, migration, offline, and traceability invariants (read-only) |
-| project-navigator | Orienting in the repository — stack, structure, entry points, run/build/test commands (read-only) |
-| project-documentation | Generating architecture/overview docs into `docs/` (or scratch `.agent-docs/`) from the code; never edits the frozen spec |
+| bootstrap | `just setup` |
+| format | `just fmt` |
+| format-check | `just fmt-check` |
+| typecheck | `just typecheck` |
+| lint | `just lint` |
+| test | `just test` |
+| e2e-test | `just e2e-test` |
+| archtest | `just archtest` |
+| build | `just build` |
+| package | `just package` — **not built yet; Phase 08 introduces it, and it exits non-zero until then** |
+| baseline | `just baseline FEATURE-DIR-OR-ID` |
+| verify | `just verify FEATURE-DIR-OR-ID` |
+| everything | `just check` |
 
-## Agents Reference
+If a command is not listed by `just --list`, do not report it as having run. In particular, this
+checkout currently has no `just spec-check` or `just story-check` recipe. Use the available targeted
+checks and the Spec Kit analysis/convergence skills instead, and report unavailable gates honestly.
 
-| Agent | Model | Use after |
+`just dev` runs the real bridge. `just dev-ui` runs the frontend against a mock — every Playwright run
+uses that mock, which is a known divergence recorded in `docs/delivery/plan/KNOWN_ISSUES.md`.
+
+## Spec Kit workflow
+
+For active Spec Kit features, follow the first applicable step in this dependency-ordered flow:
+
+`$speckit-specify` → `$speckit-clarify` → `$speckit-plan` → `$speckit-tasks` →
+`$speckit-analyze` → `$speckit-implement` → `$speckit-converge` → review/release.
+
+Use `$speckit-taskstoissues` only when the user asks to mirror the task list into GitHub issues. Use
+the legacy `/plan-phase` → `/plan-story` → `/build-story` → `/finish-phase` → `/reconcile` flow only
+for a feature that still lives exclusively under `docs/delivery/`.
+
+Choose the next step from the actual artifact state, not from a completion label:
+
+| Current state | Next action | Suggested prompt |
 |---|---|---|
-| investigator | Haiku | Starting a phase — read-only map of spec vs. code |
-| architect | Opus | Investigation done — write `docs/stories/*.md` + ADRs |
-| coder | Sonnet | A story is `ready` — implement exactly one story |
-| tester | Sonnet | Coder finished — write the AC tests, run `just trace` |
-| debugger | Sonnet (→Opus after 2 fails) | A non-trivial test/CI failure |
-| docs-writer | Haiku | Public surface changed / an ADR is needed |
-| spec-conformance-reviewer | Opus | Story implementation done — re-derive ACs from spec before `done` |
+| Requirements are missing or ambiguous | `$speckit-clarify` | `Run $speckit-clarify for <feature>. Ask only the questions needed to remove the remaining ambiguity, preserve approved decisions, and update the active specification.` |
+| The specification is ready but has no implementation plan | `$speckit-plan` | `Run $speckit-plan for <feature>. Produce a dependency-ordered vertical-slice plan from the active spec, constitution, and contracts; do not invent unresolved decisions.` |
+| The plan is ready but tasks are missing or incomplete | `$speckit-tasks` | `Run $speckit-tasks for <feature>. Generate complete, traceable, dependency-ordered tasks with one owner and named evidence for every in-scope requirement.` |
+| Tasks exist but have not all been implemented | `$speckit-implement` | `Run $speckit-implement for <feature>. Execute every remaining task in dependency order, verify each task, mark only genuinely completed tasks, and report any blocked requirement.` |
+| Tasks are marked complete after implementation | `$speckit-converge` | `Run $speckit-converge for <feature>. Read the current spec, plan, tasks, constitution, and implementation as the sole intent; append only traceable remaining work, or report converged without changing tasks.` |
+| Convergence appended tasks | `$speckit-implement` | `Run $speckit-implement for <feature> to execute the newly appended convergence tasks, then verify them against the current baseline.` |
+| Convergence reports no remaining work | Review/release | `Review the converged feature against its evidence and release gates. Do not claim the whole product is complete unless every product slice and final gate is complete.` |
 
-## Context management
+Every command handoff must name the next applicable flow step and provide a copy-paste prompt like the
+ones above. The prompt must name the feature, preserve the current scope and dependencies, and state
+whether the next command is read-only or allowed to edit artifacts/code.
 
-When compacting, preserve: the current phase/story, modified file paths, outstanding lint/type failures
-by file, current test failure names, and any ADR decisions made and why.
+Planning writes durable, reviewable artifacts under the active feature directory. It does not use plan
+mode as a substitute for writing the plan to disk.
+
+An active Spec Kit feature with unresolved questions or missing plan/task coverage is not buildable;
+run the applicable planning skill before implementation. A legacy story marked `**STATUS:** stub — not
+buildable.` is not buildable. `/build-story` refuses it, and the correct response is `/plan-story NNN`,
+never filling the gap in place.
+
+## Non-negotiable
+
+- **Never weaken, delete or reinterpret a rule to make a check pass.** If a rule is wrong or
+  impossible, stop and report.
+- **Never suppress an architecture test**, never add a file to
+  `frontend/scripts/archtest-allowlist.json`, and never edit `.golangci.yml`, an eslint config, the
+  `justfile` or anything under `.github/` to make a gate pass.
+- **Never edit anything under `docs/delivery/spec/` or `docs/delivery/architecture/`.** Those say what
+  must be true. A needed change is reported and approved, not made. Everything else in `docs/` says what
+  is true and is updated freely.
+- **Never leave a placeholder, stub or no-op on a production path.**
+- **Never touch a file outside the story's `Where the code goes`** without saying so.
+- **Never bypass a commit hook with `--no-verify`.** The hook is the last thing standing between a
+  broken gate and a green history. If it is wrong, fix the hook and say you did.
+- **Never delete, skip or ignore a failing test to get a gate green.** A failing test is information.
+  Removing it destroys the information and keeps the defect. That includes `t.Skip`, `.skip()`,
+  `.only()` narrowing a suite, and commenting a case out.
+- **Never build on a gate that did not run.** A gate that exits non-zero and produces no findings
+  crashed — it did not pass. `just baseline` marks that `UNRELIABLE` and `just verify` refuses it.
+  Fix the gate; do not record the anomaly and carry on.
+
+## Five things about this codebase specifically
+
+1. A Wails-bound handler returns an `apperr.*Result` value, takes no `context.Context`, uses a named
+   result, and recovers panics in its first statement. All four are checked by `just archtest`.
+2. The Go backend owns the application model. The Redux store is a projection: hydrate once, then apply
+   `state:patch`. Every interaction is a command to Go.
+3. Only `frontend/src/logic/adapter/` imports `wailsjs/`. Checked by `just archtest`.
+4. Every colour is a token in `frontend/src/ui/styles/tokens.css`, keyed by `data-theme` × `data-mode`.
+   There are six palettes; a literal is right in at most one. Checked by `just archtest`.
+5. The app makes no background network call, ever. Migrations only add. SQLite is CGO-free. Several
+   windows run at once with no lock.
+
+The full set is the active feature's applicable architecture/constitution material. The planning and
+task skills copy or map those rules into their artifacts; do not invent a second authority in a task.
+
+## Communication
+
+Never assume the reader will look up an identifier, an anchor, a story or a phase. When you refer to a
+rule, restate its meaning in the same message.
+
+Bad:
+
+> How should `#preview-pauses-at-2mb` interact with the fallback in `#read-only-above-10mb`?
+
+Good:
+
+> Live preview stops updating for a document over 2 MB, and a document over 10 MB opens read-only with
+> no editing at all. A 12 MB file hits both: it cannot be edited, so there is nothing for the preview to
+> fall behind. Should it render once on open, or stay paused behind the Refresh button?
+> I would render it once — the pause exists to keep typing smooth, and there is no typing.
+
+Use plain words. Describe the actual screen, file or operation. One concrete example beats a paragraph
+of abstraction. If you are asking because you do not know something factual, go and find out instead.
+
+## Task handoff
+
+After each implementation task, the agent MUST verify the task's named evidence before calling it
+complete. In the completion message, it MUST state the task ID and actual result, identify the next
+applicable Spec Kit flow step from the table above, and provide one exact suggested prompt for that
+step. If the next step is blocked, name the missing artifact, failed gate, or user decision instead of
+pretending the task or feature is finished. This handoff is required even when all current tasks are
+complete, because `$speckit-converge` must determine whether the implementation truly matches the
+specification before review or release.
+
+## Definition of done
+
+For active Spec Kit features, the Definition of Done is the feature's task list, named evidence, and
+current repository gates. For legacy stories, it is generated from `docs/delivery/work/DOD_TEMPLATE.md`.
+Every item runs a command and is compared against the baseline captured before the work started.
+
+A finding that is in the baseline is not yours. A finding that is not, is.
+
+`just archtest` is the exception: it is never diffed against a baseline. It must be green.
+
+The baseline records each gate's **exit code and reliability verdict**, and keeps its raw output in the
+active feature's evidence directory (or `docs/delivery/work/baselines/story-NNN.logs/` for legacy
+stories). A gate marked `UNRELIABLE` exited non-zero having
+parsed nothing, so it analysed nothing — every later diff against it compares empty with empty and
+prints PASS. That is a hard stop before the story starts, not a caveat to transcribe.
+
+## Live verification
+
+**Per story, during implementation.** For every story that changes a visible surface or user
+interaction, validate the running app in live mode after a material UI change and again before
+claiming the story is done. Start the appropriate development server, open its local URL in the
+available in-app browser, and use the actual controls. Confirm the visible state, root attributes or
+other authoritative UI signal, and the affected layout at the relevant viewport. Treat a live finding
+as a defect: fix it, reload the app, and repeat the live check. Automated unit, Playwright, and build
+checks complement this step; they do not replace it.
+
+**Per feature gate.** For active Spec Kit work, run the named current quality/specification checks,
+inspect retained evidence, and walk the real `just build` binary — **not** only `wails dev`. For legacy
+work, `/finish-phase` walks the phase's "Done when" paragraph on `just build`. The dev server serves
+the mock bridge for anything Playwright touches, and it runs with a different log level, version string
+and configuration folder. The two checks are not interchangeable: the dev-server check tells you the
+interface behaves; only the real build tells you the application does. A story-level live check never
+substitutes for the feature or phase gate.

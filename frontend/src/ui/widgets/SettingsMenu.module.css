@@ -1,0 +1,43 @@
+.menu {
+  position: relative;
+}
+
+.trigger,
+.content,
+.item {
+  border: var(--control-border-width) solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.trigger,
+.item {
+  border-radius: var(--control-radius);
+  padding: var(--control-padding);
+}
+
+.content {
+  box-sizing: border-box;
+  border-radius: var(--control-radius);
+  box-shadow: var(--win-shadow);
+  display: grid;
+  gap: var(--control-gap);
+  inline-size: min(30rem, calc(100vw - 2 * var(--control-gap)));
+  max-block-size: calc(100vh - 2 * var(--control-gap));
+  overflow: auto;
+  padding: var(--control-gap);
+  position: fixed;
+  z-index: var(--z-dropdown);
+}
+
+.content > [role='radiogroup'] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  inline-size: 100%;
+}
+
+.item {
+  cursor: pointer;
+  inline-size: 100%;
+}

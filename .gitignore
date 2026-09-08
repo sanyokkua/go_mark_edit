@@ -19,6 +19,12 @@ profile.cov
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+frontend/node_modules/
+frontend/dist/*
+!frontend/dist/.gitkeep
+frontend/package.json.md5
+frontend/playwright-report/
+frontend/test-results/
 
 # Go workspace file
 go.work
@@ -33,3 +39,9 @@ go.work.sum
 
 # OS
 .DS_Store
+
+build/bin/*
+
+# Python bytecode from the specification checkers in scripts/
+__pycache__/
+*.pyc

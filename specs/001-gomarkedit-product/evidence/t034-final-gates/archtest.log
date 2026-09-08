@@ -1,0 +1,27 @@
+just go-archtest
+go test -run TestArchitecture -count=1 ./internal/... .
+just cgo-free-check
+CGO_ENABLED=0 go build ./...
+go: writing stat cache: open /Users/ok/go/pkg/mod/cache/download/github.com/sanyokkua/go_mark_edit/@v/v0.0.0-20260801133505-f70bf3fff24c.info883145291.tmp: operation not permitted
+just migration-immutability-check
+just frontend-archtest
+node frontend/scripts/archtest.mjs
+ok  	github.com/sanyokkua/go_mark_edit/internal/apperr	0.408s
+ok  	github.com/sanyokkua/go_mark_edit/internal/application	0.510s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/appmodel	0.720s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/bootstrap	1.424s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/db	1.146s [no tests to run]
+?   	github.com/sanyokkua/go_mark_edit/internal/db/store	[no test files]
+ok  	github.com/sanyokkua/go_mark_edit/internal/file	1.714s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/gate	2.792s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/logging	3.179s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit/internal/settings	2.051s [no tests to run]
+ok  	github.com/sanyokkua/go_mark_edit	2.444s
+migrations: no committed file modified in place
+archtest (frontend) — boundaries
+  stale    src/ui/components/ViewModeToggle.tsx: allowlist reserves 1, none found — lower it in scripts/archtest-allowlist.json
+  stale    src/ui/widgets/AppShell.tsx: allowlist reserves 3, none found — lower it in scripts/archtest-allowlist.json
+  stale    src/ui/widgets/EditorView.tsx: allowlist reserves 7, none found — lower it in scripts/archtest-allowlist.json
+archtest (frontend) — colour literals
+archtest (frontend) — offline production sources
+archtest (frontend): ok

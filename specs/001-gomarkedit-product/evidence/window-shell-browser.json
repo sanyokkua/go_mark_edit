@@ -1,0 +1,1196 @@
+{
+  "task": "T033",
+  "capturedAt": "2026-08-02T10:55:15.029Z",
+  "command": "PLAYWRIGHT_JSON_OUTPUT_NAME=/private/tmp/t033-window-shell-report.json npm exec -- playwright test e2e/window-shell.test.ts --reporter=json",
+  "result": {
+    "expected": 22,
+    "unexpected": 0,
+    "flaky": 0,
+    "durationMs": 28982.845
+  },
+  "matrix": {
+    "cases": 18,
+    "viewportWidths": [
+      375,
+      768,
+      1280
+    ],
+    "palettes": [
+      "glass-light",
+      "glass-dark",
+      "material-light",
+      "material-dark",
+      "minimal-light",
+      "minimal-dark"
+    ],
+    "assertions": [
+      "correct resolved root theme and mode",
+      "reduced-motion token",
+      "workspace width and responsive presentation",
+      "real editor/preview visibility and Monaco resolved palette",
+      "one-row, unclipped toolbar and no page horizontal overflow",
+      "File, tab strip, Assistant, launcher, and recents absent",
+      "strict approved screenshot with no pixel-difference tolerance"
+    ],
+    "passed": true
+  },
+  "interactiveRepair": {
+    "server": "just dev-ui at http://localhost:5175/",
+    "browser": "Codex in-app browser",
+    "actions": [
+      "At 1280, opened Settings, changed appearance to Liquid Glass/Dark, reset to Material/Light, pressed Escape, and verified focus returned to Settings.",
+      "At 1280, opened View, hid and restored Workspace, opened About, verified Version dev, dismissed it by keyboard, and invoked F11 with no console errors.",
+      "At 375, verified the 230 px workspace overlay, stacked editor and preview, More actions overflow with Settings/View/About, and scrollWidth equals innerWidth.",
+      "At 768, verified the 46 px rail, no Assistant surface, no tab strip, and scrollWidth equals innerWidth."
+    ],
+    "finding": "No visible product defect. The strict screenshot fixture hides Monaco's cursor and decorationsOverviewRuler canvas only: they are transient editor-position artifacts outside the shell contract. No screenshot pixel-difference tolerance is configured."
+  },
+  "requests": {
+    "count": 151,
+    "origins": [
+      "http://127.0.0.1:4173"
+    ],
+    "allLocal": true,
+    "fullLog": [
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/",
+        "local": true,
+        "resourceType": "document"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/@vite/client",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/theme-bootstrap.js",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/main.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/@react-refresh",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/vite/dist/client/env.mjs",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/react.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/react-dom_client.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/App.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/styles/tokens.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/styles/base.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/chunk-W2HXWTC7.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/chunk-ZPWHCABL.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/react-redux.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/store/notificationsSlice.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/store/index.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/store/docViewCommands.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/store/appModelProjection.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/store/uiLayoutCommands.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/primitives/Toast.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/primitives/Banner.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/AppShell.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/AboutDialog.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/AppearanceControls.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/ShellMenuRow.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/editorSession.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/StartupFailure.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/@reduxjs_toolkit.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/store/documentsSlice.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/store/uiSlice.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/i18n/index.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/adapter/index.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/utils/parseError.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/store/appModelProjectionActions.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/@radix-ui_react-toast.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/primitives/Toast.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/primitives/Banner.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/AppShell.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/EditorView.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/AppearanceDialog.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/theme/theme.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/theme/startupThemeMirror.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/SettingsDialog.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/SettingsMenu.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/AppearanceControls.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/chunk-AWXOKIML.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/@radix-ui_react-dropdown-menu.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/actions/shellActions.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/actions/useShellShortcuts.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/primitives/ViewMenu.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/ShellMenuRow.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/hooks/useDocumentCommands.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/StartupFailure.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/i18n/locales/en.json?import",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/i18n/catalog.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/dev/bridge-mock/go/settings/SettingsHandler.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/wailsjs/go/models.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/dev/bridge-mock/runtime/index.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/dev/bridge-mock/go/application/ApplicationHandler.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/adapter/appModelAdapter.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/adapter/services.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/adapter/windowAdapter.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/adapter/bridgeGuard.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/adapter/envelope.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/chunk-LVCOKK7Q.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/chunk-UBTLCYIU.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/components/CodeEditor.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/components/StatusBar.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/components/ViewModeToggle.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/hooks/useLivePreview.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/hooks/useSyncedBuffer.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/PreviewView.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/EditorView.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/primitives/Segmented.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/SettingsDialog.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/widgets/SettingsMenu.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/primitives/ViewMenu.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/components/StatusBar.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/components/CodeEditor.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/components/MarkdownView.tsx",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/primitives/Segmented.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/react-markdown.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/markdown/renderer.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/components/MarkdownView.module.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/rehype-sanitize.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/remark-gfm.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/chunk-UOW5UEE3.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/chunk-HRHI3PQH.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/@monaco-editor_react.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/components/monacoSetup.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/fonts/Roboto-Latin.woff2",
+        "local": true,
+        "resourceType": "font"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/monaco-editor_esm_vs_editor_editor__api.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/monaco-editor_esm_vs_basic-languages_markdown_markdown__contribution.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/editor.worker.js?worker",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/ui/components/monacoThemes.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/chunk-SF3KJGYL.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/src/logic/theme/generatedEditorThemes.ts",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/standalone/browser/standalone-tokens.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/services/hoverService/hover.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/scrollbar/media/scrollbars.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/hover/hoverWidget.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/widget/markdownRenderer/browser/renderedMarkdown.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/aria/aria.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/contextview/contextview.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/list/list.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/selectBox/selectBoxCustom.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/selectBox/selectBox.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/actionbar/actionbar.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/dropdown/dropdown.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/platform/actions/browser/menuEntryActionViewItem.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/standalone/browser/quickInput/standaloneQuickInput.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/toggle/toggle.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/platform/quickinput/browser/media/quickInput.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/button/button.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/countBadge/countBadge.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/progressbar/progressbar.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/inputbox/inputBox.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/findinput/findInput.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/sash/sash.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/splitview/splitview.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/table/table.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/tree/media/tree.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/iconLabel/iconlabel.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/keybindingLabel/keybindingLabel.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/widget/codeEditor/editor.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/controller/textAreaHandler.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/lineNumbers/lineNumbers.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/margin/margin.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/mouseCursor/mouseCursor.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/blockDecorations/blockDecorations.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/currentLineHighlight/currentLineHighlight.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/decorations/decorations.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/glyphMargin/glyphMargin.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/indentGuides/indentGuides.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/lines/viewLines.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/linesDecorations/linesDecorations.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/marginDecorations/marginDecorations.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/minimap/minimap.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/overlayWidgets/overlayWidgets.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/rulers/rulers.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/scrollDecoration/scrollDecoration.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/selections/selections.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/viewCursors/viewCursors.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/viewParts/whitespace/whitespace.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/widget/diffEditor/style.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/widget/diffEditor/components/accessibleDiffViewer.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/base/browser/ui/toolbar/toolbar.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/monaco-editor/esm/vs/editor/browser/widget/multiDiffEditor/style.css",
+        "local": true,
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/node_modules/.vite/deps/markdown-24E333EP.js?v=a82f0a22",
+        "local": true,
+        "resourceType": "script"
+      }
+    ]
+  },
+  "timing": {
+    "units": "milliseconds; each sample records visible update, maximum animation-frame gap, and a durable appmodel acknowledgement emitted after the input stopped; divider acknowledgement requires a new matching patch after pointer release",
+    "thresholds": {
+      "visibleUpdateMs": {
+        "target": 100,
+        "minimumPassRatio": 0.95
+      },
+      "maximumFrameGapMs": 250,
+      "acknowledgedMs": 500
+    },
+    "resizeSamples": [
+      {
+        "visibleUpdateMs": 64.5,
+        "freezeMs": 50,
+        "acknowledgedMs": 361.90000000596046
+      },
+      {
+        "visibleUpdateMs": 13,
+        "freezeMs": 10.200000000000045,
+        "acknowledgedMs": 368.09999999403954
+      },
+      {
+        "visibleUpdateMs": 13.099999994039536,
+        "freezeMs": 10.5,
+        "acknowledgedMs": 365.2999999821186
+      },
+      {
+        "visibleUpdateMs": 13.900000005960464,
+        "freezeMs": 10.299999999999955,
+        "acknowledgedMs": 383.40000000596046
+      },
+      {
+        "visibleUpdateMs": 14.599999994039536,
+        "freezeMs": 10.5,
+        "acknowledgedMs": 375.09999999403954
+      },
+      {
+        "visibleUpdateMs": 8.900000005960464,
+        "freezeMs": 10.400000000000091,
+        "acknowledgedMs": 368.2000000178814
+      },
+      {
+        "visibleUpdateMs": 8.699999988079071,
+        "freezeMs": 10.300000000000182,
+        "acknowledgedMs": 376
+      },
+      {
+        "visibleUpdateMs": 13,
+        "freezeMs": 10.400000000000091,
+        "acknowledgedMs": 365.19999998807907
+      },
+      {
+        "visibleUpdateMs": 12,
+        "freezeMs": 10.300000000000182,
+        "acknowledgedMs": 377.59999999403954
+      },
+      {
+        "visibleUpdateMs": 12.100000023841858,
+        "freezeMs": 10.5,
+        "acknowledgedMs": 361.90000000596046
+      },
+      {
+        "visibleUpdateMs": 12,
+        "freezeMs": 10.5,
+        "acknowledgedMs": 372.2999999821186
+      },
+      {
+        "visibleUpdateMs": 10.599999994039536,
+        "freezeMs": 9.300000000000182,
+        "acknowledgedMs": 360.19999998807907
+      },
+      {
+        "visibleUpdateMs": 12,
+        "freezeMs": 9.399999999999636,
+        "acknowledgedMs": 359.89999997615814
+      },
+      {
+        "visibleUpdateMs": 13.799999982118607,
+        "freezeMs": 9.300000000000182,
+        "acknowledgedMs": 357.09999999403954
+      },
+      {
+        "visibleUpdateMs": 11.700000017881393,
+        "freezeMs": 9.100000000000364,
+        "acknowledgedMs": 358.39999997615814
+      },
+      {
+        "visibleUpdateMs": 13,
+        "freezeMs": 10.5,
+        "acknowledgedMs": 359.90000000596046
+      },
+      {
+        "visibleUpdateMs": 12.699999988079071,
+        "freezeMs": 9.300000000000182,
+        "acknowledgedMs": 358.90000000596046
+      },
+      {
+        "visibleUpdateMs": 13.599999994039536,
+        "freezeMs": 9.300000000000182,
+        "acknowledgedMs": 361.80000001192093
+      },
+      {
+        "visibleUpdateMs": 12.200000017881393,
+        "freezeMs": 9.199999999999818,
+        "acknowledgedMs": 360.19999998807907
+      },
+      {
+        "visibleUpdateMs": 13.600000023841858,
+        "freezeMs": 9.399999999999636,
+        "acknowledgedMs": 362.09999999403954
+      }
+    ],
+    "dividerSamples": [
+      {
+        "visibleUpdateMs": 63,
+        "freezeMs": 24.299999999999272,
+        "acknowledgedMs": 362.69999998807907
+      },
+      {
+        "visibleUpdateMs": 36.099999994039536,
+        "freezeMs": 9.299999999999272,
+        "acknowledgedMs": 361.09999999403954
+      },
+      {
+        "visibleUpdateMs": 41,
+        "freezeMs": 9.200000000000728,
+        "acknowledgedMs": 359.30000001192093
+      },
+      {
+        "visibleUpdateMs": 32,
+        "freezeMs": 9.5,
+        "acknowledgedMs": 360.5
+      },
+      {
+        "visibleUpdateMs": 34.19999998807907,
+        "freezeMs": 9.200000000000728,
+        "acknowledgedMs": 359.7000000178814
+      },
+      {
+        "visibleUpdateMs": 29.200000017881393,
+        "freezeMs": 9.300000000001091,
+        "acknowledgedMs": 360.40000000596046
+      },
+      {
+        "visibleUpdateMs": 31.600000023841858,
+        "freezeMs": 9.300000000001091,
+        "acknowledgedMs": 362.69999998807907
+      },
+      {
+        "visibleUpdateMs": 41.099999994039536,
+        "freezeMs": 9.300000000001091,
+        "acknowledgedMs": 359.59999999403954
+      },
+      {
+        "visibleUpdateMs": 31.599999994039536,
+        "freezeMs": 15.300000000001091,
+        "acknowledgedMs": 374.59999999403954
+      },
+      {
+        "visibleUpdateMs": 32.400000005960464,
+        "freezeMs": 9.200000000000728,
+        "acknowledgedMs": 362.7999999821186
+      },
+      {
+        "visibleUpdateMs": 34.400000005960464,
+        "freezeMs": 9.300000000001091,
+        "acknowledgedMs": 364.40000000596046
+      },
+      {
+        "visibleUpdateMs": 42.70000001788139,
+        "freezeMs": 9.100000000000364,
+        "acknowledgedMs": 364.30000001192093
+      },
+      {
+        "visibleUpdateMs": 42.80000001192093,
+        "freezeMs": 9.5,
+        "acknowledgedMs": 360
+      },
+      {
+        "visibleUpdateMs": 36.5,
+        "freezeMs": 8.700000000000728,
+        "acknowledgedMs": 371.30000001192093
+      },
+      {
+        "visibleUpdateMs": 42.20000001788139,
+        "freezeMs": 9.300000000001091,
+        "acknowledgedMs": 360.19999998807907
+      },
+      {
+        "visibleUpdateMs": 34.10000002384186,
+        "freezeMs": 9.100000000000364,
+        "acknowledgedMs": 365
+      },
+      {
+        "visibleUpdateMs": 33.900000005960464,
+        "freezeMs": 9.099999999998545,
+        "acknowledgedMs": 364.40000000596046
+      },
+      {
+        "visibleUpdateMs": 34.5,
+        "freezeMs": 9.200000000000728,
+        "acknowledgedMs": 366.40000000596046
+      },
+      {
+        "visibleUpdateMs": 42.5,
+        "freezeMs": 9.100000000000364,
+        "acknowledgedMs": 365.5
+      },
+      {
+        "visibleUpdateMs": 42.099999994039536,
+        "freezeMs": 9.299999999999272,
+        "acknowledgedMs": 364.09999999403954
+      }
+    ],
+    "summary": {
+      "resize": {
+        "count": 20,
+        "within100Ms": 20,
+        "maxVisibleUpdateMs": 64.5,
+        "maxFrameGapMs": 50,
+        "maxAcknowledgedMs": 383.40000000596046
+      },
+      "divider": {
+        "count": 20,
+        "within100Ms": 20,
+        "maxVisibleUpdateMs": 63,
+        "maxFrameGapMs": 24.299999999999272,
+        "maxAcknowledgedMs": 374.59999999403954
+      },
+      "passed": true
+    }
+  }
+}
+

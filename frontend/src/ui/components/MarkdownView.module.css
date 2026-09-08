@@ -1,0 +1,53 @@
+.preview {
+  font-family: var(--preview-font-family);
+  font-size: var(--preview-font-size);
+  line-height: var(--preview-line-height);
+  overflow-wrap: anywhere;
+}
+
+.preview :is(h1, h2, h3, h4, h5, h6) {
+  line-height: var(--preview-heading-line-height);
+  margin-block: var(--preview-block-spacing) var(--preview-inline-spacing);
+}
+
+.preview :is(p, ul, ol, pre, blockquote, table) {
+  margin-block: var(--preview-block-spacing);
+}
+
+.preview :is(ul, ol) {
+  padding-inline-start: var(--preview-list-indent);
+}
+
+.preview table {
+  border-collapse: collapse;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.preview :is(th, td) {
+  border: var(--preview-table-border-width) solid currentColor;
+  padding: var(--preview-table-cell-padding);
+  text-align: start;
+}
+
+.preview :is(code, pre) {
+  font-family: var(--preview-code-font-family);
+}
+
+.preview code {
+  padding-inline: var(--preview-code-inline-padding);
+}
+
+.preview pre {
+  overflow-x: auto;
+  padding: var(--preview-code-block-padding);
+}
+
+.preview input[disabled] {
+  opacity: 1;
+}
+
+.preview :global(.gme-preview-image-fallback) {
+  font-style: italic;
+}

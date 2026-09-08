@@ -1,0 +1,413 @@
+package main
+
+// Architecture tests. These scan source rather than exercising behaviour, which is permitted only
+// for the invariants in docs/delivery/architecture/rules.md — they cannot be checked any other way.
+//
+// Every function here starts with TestArchitecture, because `just archtest` selects them with
+// `go test -run TestArchitecture`.
+
+import (
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
+	"testing"
+)
+
+// repositoryRoot resolves the module root from this file's own location.
+func repositoryRoot(t *testing.T) string {
+	t.Helper()
+
+	_, sourceFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate architecture test source")
+	}
+	return filepath.Dir(sourceFile)
+}
+
+// goSourceFiles lists every non-generated, non-test .go file under root, excluding the directories
+// named in skip (matched as path prefixes relative to root).
+func goSourceFiles(t *testing.T, root string, skip ...string) []string {
+	t.Helper()
+
+	var files []string
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		relative, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			return relErr
+		}
+		if entry.IsDir() {
+			base := entry.Name()
+			if base == "node_modules" || base == ".git" || base == "build" || base == "frontend" {
+				return filepath.SkipDir
+			}
+			for _, prefix := range skip {
+				if relative == prefix || strings.HasPrefix(relative, prefix+string(filepath.Separator)) {
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		files = append(files, path)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", root, err)
+	}
+	return files
+}
+
+func parseGo(t *testing.T, path string) *ast.File {
+	t.Helper()
+
+	parsed, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse %s: %v", path, err)
+	}
+	return parsed
+}
+
+func importPath(spec *ast.ImportSpec) string {
+	return strings.Trim(spec.Path.Value, "`\"")
+}
+
+// receiverTypeName returns the receiver's type name for a method, or "" for a plain function.
+func receiverTypeName(decl *ast.FuncDecl) string {
+	if decl.Recv == nil || len(decl.Recv.List) == 0 {
+		return ""
+	}
+	expr := decl.Recv.List[0].Type
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	identifier, ok := expr.(*ast.Ident)
+	if !ok {
+		return ""
+	}
+	return identifier.Name
+}
+
+// boundMethods yields every exported method on a type whose name ends in "Handler". Those types are
+// the ones passed to Bind in main.go, and the rules below apply to all of them.
+func boundMethods(t *testing.T, root string) map[string][]*ast.FuncDecl {
+	t.Helper()
+
+	found := make(map[string][]*ast.FuncDecl)
+	for _, path := range goSourceFiles(t, filepath.Join(root, "internal")) {
+		parsed := parseGo(t, path)
+		for _, declaration := range parsed.Decls {
+			function, ok := declaration.(*ast.FuncDecl)
+			if !ok || !function.Name.IsExported() {
+				continue
+			}
+			if !strings.HasSuffix(receiverTypeName(function), "Handler") {
+				continue
+			}
+			found[path] = append(found[path], function)
+		}
+	}
+	return found
+}
+
+// Proves: architecture#handler-returns-a-result
+func TestArchitectureBoundHandlersReturnAResult(t *testing.T) {
+	t.Parallel()
+
+	root := repositoryRoot(t)
+	total := 0
+	for path, methods := range boundMethods(t, root) {
+		for _, method := range methods {
+			total++
+			results := method.Type.Results
+			if results == nil || len(results.List) != 1 || len(results.List[0].Names) != 1 {
+				t.Errorf("%s: %s must return exactly one named result", path, method.Name.Name)
+				continue
+			}
+			selector, ok := results.List[0].Type.(*ast.SelectorExpr)
+			if !ok {
+				t.Errorf("%s: %s must return an apperr.*Result value", path, method.Name.Name)
+				continue
+			}
+			pkg, _ := selector.X.(*ast.Ident)
+			if pkg == nil || pkg.Name != "apperr" || !strings.HasSuffix(selector.Sel.Name, "Result") {
+				t.Errorf("%s: %s returns %v, want an apperr.*Result value", path, method.Name.Name, selector.Sel.Name)
+			}
+		}
+	}
+	if total == 0 {
+		t.Fatal("found no bound handler methods to check — the discovery rule is wrong")
+	}
+}
+
+// Proves: architecture#bound-handlers-take-no-context
+func TestArchitectureBoundHandlersTakeNoContext(t *testing.T) {
+	t.Parallel()
+
+	root := repositoryRoot(t)
+	for path, methods := range boundMethods(t, root) {
+		for _, method := range methods {
+			if method.Type.Params == nil {
+				continue
+			}
+			for _, parameter := range method.Type.Params.List {
+				selector, ok := parameter.Type.(*ast.SelectorExpr)
+				if !ok {
+					continue
+				}
+				pkg, _ := selector.X.(*ast.Ident)
+				if pkg != nil && pkg.Name == "context" && selector.Sel.Name == "Context" {
+					t.Errorf("%s: %s takes a context.Context — Wails strips it and the binding arity then disagrees",
+						path, method.Name.Name)
+				}
+			}
+		}
+	}
+}
+
+// Proves: architecture#panic-becomes-internal-error
+func TestArchitectureBoundHandlersRecoverPanics(t *testing.T) {
+	t.Parallel()
+
+	root := repositoryRoot(t)
+	for path, methods := range boundMethods(t, root) {
+		for _, method := range methods {
+			if method.Body == nil || len(method.Body.List) == 0 {
+				t.Errorf("%s: %s has no body", path, method.Name.Name)
+				continue
+			}
+			deferStatement, ok := method.Body.List[0].(*ast.DeferStmt)
+			if !ok {
+				t.Errorf("%s: %s does not begin with a deferred recover", path, method.Name.Name)
+				continue
+			}
+			if !containsRecoverCall(deferStatement) {
+				t.Errorf("%s: %s defers something that never calls recover()", path, method.Name.Name)
+			}
+		}
+	}
+}
+
+func containsRecoverCall(node ast.Node) bool {
+	found := false
+	ast.Inspect(node, func(inner ast.Node) bool {
+		call, ok := inner.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		if identifier, ok := call.Fun.(*ast.Ident); ok && identifier.Name == "recover" {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
+}
+
+// The apperr import direction is checked in package apperr itself, by
+// internal/apperr/architecture_test.go — it is closer to the code it governs and it runs there.
+
+// crossPackageConstructor matches a call such as settings.NewSqliteSettingsRepository(...).
+var crossPackageConstructor = regexp.MustCompile(`^New.*(Service|Repository|Handler)$`)
+
+// Proves: architecture#one-composition-root
+func TestArchitectureOnlyTheCompositionRootWiresConcretes(t *testing.T) {
+	t.Parallel()
+
+	root := repositoryRoot(t)
+	paths := goSourceFiles(t, filepath.Join(root, "internal"), "application")
+	paths = append(paths, filepath.Join(root, "main.go"))
+
+	for _, path := range paths {
+		if filepath.Base(path) == "main.go" && filepath.Dir(path) == root {
+			continue // main.go is the outer half of the composition root
+		}
+		parsed := parseGo(t, path)
+		ast.Inspect(parsed, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			selector, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			pkg, _ := selector.X.(*ast.Ident)
+			if pkg == nil || pkg.Name == "apperr" {
+				return true
+			}
+			if crossPackageConstructor.MatchString(selector.Sel.Name) {
+				t.Errorf("%s constructs %s.%s — concrete wiring belongs in internal/application",
+					path, pkg.Name, selector.Sel.Name)
+			}
+			if pkg.Name == "db" && selector.Sel.Name == "Open" {
+				t.Errorf("%s calls db.Open — the database is opened once, in internal/application's Init", path)
+			}
+			return true
+		})
+	}
+}
+
+var destructiveSQL = regexp.MustCompile(`(?i)\b(DROP\s+(TABLE|INDEX|VIEW|COLUMN)|ALTER\s+TABLE\s+\S+\s+DROP|UPDATE\s+\S+\s+SET|DELETE\s+FROM)\b`)
+
+// Proves: architecture#migrations-only-add
+func TestArchitectureMigrationsOnlyAdd(t *testing.T) {
+	t.Parallel()
+
+	root := repositoryRoot(t)
+	directory := filepath.Join(root, "internal", "db", "migrations")
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatalf("read migrations directory: %v", err)
+	}
+	checked := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+		path := filepath.Join(directory, entry.Name())
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatalf("read %s: %v", path, readErr)
+		}
+		checked++
+		for _, line := range strings.Split(string(content), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+				continue
+			}
+			if destructiveSQL.MatchString(trimmed) {
+				t.Errorf("%s: %q — migrations add only. A correction is a new numbered file.", path, trimmed)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("found no migrations to check")
+	}
+}
+
+// Proves: architecture#no-single-instance-lock
+// Proves: architecture#no-background-network
+func TestArchitectureNoSingleInstanceOrNetworkPath(t *testing.T) {
+	t.Parallel()
+
+	root := repositoryRoot(t)
+	// internal/llm is where the assistant's user-invoked provider client will live. It is the one
+	// package permitted an HTTP client, and it does not exist yet.
+	paths := goSourceFiles(t, filepath.Join(root, "internal"), "llm")
+	paths = append(paths, filepath.Join(root, "main.go"))
+
+	for _, path := range paths {
+		parsed := parseGo(t, path)
+		for _, spec := range parsed.Imports {
+			if forbiddenNetworkOrLockImport(importPath(spec)) {
+				t.Errorf("%s imports %q — the app makes no background network call and takes no instance lock",
+					path, importPath(spec))
+			}
+		}
+		ast.Inspect(parsed, func(node ast.Node) bool {
+			selector, ok := node.(*ast.SelectorExpr)
+			if !ok || !forbiddenNetworkOrLockSelector(selector) {
+				return true
+			}
+			base, _ := selector.X.(*ast.Ident)
+			name := ""
+			if base != nil {
+				name = base.Name
+			}
+			t.Errorf("%s uses %s.%s — the app makes no background network call and takes no instance lock",
+				path, name, selector.Sel.Name)
+			return true
+		})
+	}
+}
+
+func forbiddenNetworkOrLockImport(path string) bool {
+	if path == "net" || strings.HasPrefix(path, "net/") {
+		// net/http is permitted only inside internal/llm, which this walk excludes.
+		return true
+	}
+	return strings.Contains(path, "flock") ||
+		strings.Contains(path, "lockfile") ||
+		strings.Contains(path, "singleinstance")
+}
+
+func forbiddenNetworkOrLockSelector(selector *ast.SelectorExpr) bool {
+	base, _ := selector.X.(*ast.Ident)
+	if base == nil {
+		return false
+	}
+	switch base.Name {
+	case "net":
+		return selector.Sel.Name == "Dial" || selector.Sel.Name == "DialTimeout" || selector.Sel.Name == "Listen"
+	case "http":
+		return selector.Sel.Name == "Get" || selector.Sel.Name == "Post" ||
+			selector.Sel.Name == "ListenAndServe" || selector.Sel.Name == "ListenAndServeTLS"
+	case "syscall", "unix":
+		return selector.Sel.Name == "Flock"
+	case "os":
+		return selector.Sel.Name == "O_EXCL"
+	}
+	return false
+}
+
+// Proves: architecture#documents-have-identity
+func TestArchitectureDocumentsHaveAnIdentityAndAContentAccessor(t *testing.T) {
+	t.Parallel()
+
+	root := repositoryRoot(t)
+	hasIdentityStruct := false
+	hasReadSeam := false
+
+	for _, path := range goSourceFiles(t, filepath.Join(root, "internal", "appmodel")) {
+		ast.Inspect(parseGo(t, path), func(node ast.Node) bool {
+			spec, ok := node.(*ast.TypeSpec)
+			if !ok {
+				return true
+			}
+			switch definition := spec.Type.(type) {
+			case *ast.StructType:
+				fields := map[string]bool{}
+				for _, field := range definition.Fields.List {
+					for _, name := range field.Names {
+						fields[name.Name] = true
+					}
+				}
+				if fields["DocumentID"] && fields["Content"] {
+					hasIdentityStruct = true
+				}
+			case *ast.InterfaceType:
+				for _, method := range definition.Methods.List {
+					function, ok := method.Type.(*ast.FuncType)
+					if !ok || function.Results == nil {
+						continue
+					}
+					for _, result := range function.Results.List {
+						if identifier, ok := result.Type.(*ast.Ident); ok && strings.Contains(identifier.Name, "Snapshot") {
+							hasReadSeam = true
+						}
+					}
+				}
+			}
+			return true
+		})
+	}
+
+	if !hasIdentityStruct {
+		t.Error("internal/appmodel declares no struct carrying both DocumentID and Content — " +
+			"a document's identity must be distinct from its path, and its text must be reached through the model")
+	}
+	if !hasReadSeam {
+		t.Error("internal/appmodel declares no interface returning a document snapshot — " +
+			"the content accessor is the seam every later feature reads through")
+	}
+}

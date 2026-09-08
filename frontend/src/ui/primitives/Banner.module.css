@@ -1,0 +1,17 @@
+.banner {
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--warn);
+  color: var(--text);
+  display: flex;
+  gap: var(--app-gap);
+  padding: var(--control-padding);
+}
+
+.banner[data-severity='error'] {
+  border-color: var(--err);
+}
+
+.banner[data-severity='info'],
+.banner[data-severity='success'] {
+  border-color: var(--accent);
+}

@@ -1,0 +1,101 @@
+.shell {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  grid-template-areas: 'workspace divider document assistant';
+  grid-template-columns:
+    var(--shell-left-width)
+    var(--shell-divider-width)
+    minmax(var(--shell-center-min-width), 1fr)
+    var(--shell-assistant-collapsed-width);
+}
+
+.shell[data-workspace-visible='false'] {
+  grid-template-columns:
+    0
+    0
+    minmax(var(--shell-center-min-width), 1fr)
+    var(--shell-assistant-collapsed-width);
+}
+
+.workspace {
+  grid-area: workspace;
+  min-width: 0;
+  overflow: auto;
+}
+
+.divider {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: col-resize;
+  grid-area: divider;
+  min-width: 0;
+  padding: 0;
+  position: relative;
+  touch-action: none;
+}
+
+.divider::after {
+  background: var(--border);
+  content: '';
+  inset: 0 auto 0 50%;
+  position: absolute;
+  transform: translateX(-50%);
+  width: var(--shell-divider-line-width);
+}
+
+.document {
+  grid-area: document;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Responsive presentation is visual only. It never issues a layout command,
+   so the saved desktop divider width remains authoritative. */
+@media (max-width: 768px) {
+  .shell {
+    grid-template-areas: 'workspace document assistant';
+    grid-template-columns: 46px minmax(0, 1fr) 0;
+  }
+
+  .shell[data-workspace-visible='false'] {
+    grid-template-columns: 0 minmax(0, 1fr) 0;
+  }
+
+  .workspace {
+    overflow: hidden;
+  }
+
+  .divider {
+    display: none;
+  }
+}
+
+/* The native 375 px minimum can expose a 376 px CSS viewport after frame
+   rounding, so include that one-pixel boundary in the minimum presentation. */
+@media (max-width: 376px) {
+  .shell {
+    display: grid;
+    grid-template-areas: 'workspace document assistant';
+    grid-template-columns:
+      0
+      minmax(0, 1fr)
+      var(--shell-assistant-collapsed-width);
+    position: relative;
+  }
+
+  .workspace {
+    background: var(--surface-raised);
+    inset: 0 auto 0 0;
+    position: absolute;
+    width: 230px;
+    z-index: var(--z-dropdown);
+  }
+
+  .document {
+    min-width: 0;
+  }
+}

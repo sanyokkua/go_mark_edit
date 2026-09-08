@@ -1,0 +1,88 @@
+.editorView {
+  background: var(--app-bg);
+  box-sizing: border-box;
+  display: grid;
+  height: 100%;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--editor-view-gap);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--editor-view-padding) var(--editor-view-padding) 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: var(--editor-view-gap);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(var(--editor-pane-min-width), 100%), 1fr)
+  );
+  gap: var(--editor-view-gap);
+  min-width: 0;
+}
+
+@media (max-width: 376px) {
+  .panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .paneHeader {
+    min-width: 0;
+  }
+
+  .paneHeader > :first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.pane {
+  backdrop-filter: var(--blur);
+  background: var(--surface);
+  color: var(--text);
+  display: grid;
+  grid-template-rows: auto minmax(var(--editor-pane-min-height), 1fr);
+  min-width: 0;
+  overflow: hidden;
+  border: var(--editor-pane-border-width) solid var(--editor-pane-border-color);
+  border-radius: var(--editor-pane-radius);
+}
+
+.paneHidden {
+  display: none;
+}
+
+.paneHeader {
+  background: var(--surface-raised);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--editor-pane-header-gap);
+  padding: var(--editor-pane-header-padding-block)
+    var(--editor-pane-header-padding-inline);
+  border-bottom: var(--editor-pane-border-width) solid
+    var(--editor-pane-border-color);
+  font-weight: var(--editor-pane-header-font-weight);
+}
+
+.paneMeta {
+  font-size: var(--editor-pane-meta-font-size);
+  font-weight: var(--editor-pane-meta-font-weight);
+  white-space: nowrap;
+}
+
+.previewContent {
+  background: var(--surface);
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  padding: var(--preview-pane-padding);
+}

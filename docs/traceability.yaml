@@ -1,9 +1,0 @@
-# traceability.yaml — GENERATED. Do not edit by hand. Regenerate with `just trace`.
-# Schema: specification/06_Process_and_Traceability/03_TRACEABILITY.md
-# This seed shows the shape; it is empty until stories land and `just trace` runs.
-generated_at: '2026-07-10T00:00:00Z'
-generator_version: 1
-stories: {}
-clauses: {}
-edge_cases: {}
-modules: {}

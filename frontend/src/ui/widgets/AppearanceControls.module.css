@@ -1,0 +1,6 @@
+.controls {
+  position: fixed;
+  inset-block-start: var(--app-gap);
+  inset-inline-end: var(--app-gap);
+  z-index: var(--z-sticky);
+}

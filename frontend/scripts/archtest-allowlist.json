@@ -1,0 +1,5 @@
+{
+  "_why": "Violations that already existed when these gates were written on 2026-07-28. The gate is green with these and fails on anything new. Each is described in docs/delivery/plan/KNOWN_ISSUES.md. Lower a number when you fix one; never raise one.",
+  "strings": {},
+  "colours": {}
+}

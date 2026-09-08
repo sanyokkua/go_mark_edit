@@ -1,0 +1,62 @@
+.overlay {
+  background: var(--overlay);
+  inset: 0;
+  position: fixed;
+  z-index: var(--z-overlay);
+}
+
+.content {
+  background: var(--surface-raised);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--win-radius);
+  box-shadow: var(--win-shadow);
+  color: var(--text);
+  display: grid;
+  gap: var(--app-gap);
+  inset: 50% auto auto 50%;
+  max-height: calc(100vh - 2 * var(--app-gap));
+  max-width: min(32rem, calc(100vw - 2 * var(--app-gap)));
+  overflow: auto;
+  padding: var(--dialog-padding);
+  position: fixed;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  z-index: var(--z-modal);
+}
+
+.label {
+  display: grid;
+  gap: var(--control-gap);
+  margin-top: var(--app-gap);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--control-gap);
+  justify-content: flex-end;
+}
+
+.primary,
+.secondary {
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  font: inherit;
+  padding: var(--control-padding);
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.secondary {
+  background: var(--surface);
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content {
+    scroll-behavior: auto;
+  }
+}
