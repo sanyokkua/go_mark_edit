@@ -1,0 +1,21 @@
+{
+  "source_head": "883fd053b9b30911248a304cf5f57d8cebe81795",
+  "repository": "/Users/ok/Development/GitHub/go_mark_edit",
+  "probe_directory": "/tmp/gomark-lifecycle-probes-t1_oan_z",
+  "files": [
+    {
+      "source": "internal/application/close_coordinator.go",
+      "copy": "/tmp/gomark-lifecycle-probes-t1_oan_z/go/close_coordinator.go",
+      "sha256": "3882b4ca93e6c044971aed6f42d6a402b866221bc661c70277b0452bf5fb1806",
+      "bytes": 2628,
+      "matches_audited_commit": true
+    },
+    {
+      "source": "frontend/src/logic/store/settingsProjection.ts",
+      "copy": "/tmp/gomark-lifecycle-probes-t1_oan_z/node/settingsProjection.ts",
+      "sha256": "c590c769bdb29c172161d1248706b49a65cba15fdb93a199522d02364831ca40",
+      "bytes": 662,
+      "matches_audited_commit": true
+    }
+  ]
+}

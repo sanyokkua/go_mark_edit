@@ -58,3 +58,4 @@ build/bin/*
 # Python bytecode from the specification checkers in scripts/
 __pycache__/
 *.pyc
+.idea

@@ -1,0 +1,43 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import cp from 'node:child_process';
+import { pathToFileURL } from 'node:url';
+const repo = process.argv[2] ?? process.cwd();
+const ts = (await import(pathToFileURL(path.join(repo, 'frontend/node_modules/typescript/lib/typescript.js')))).default;
+const files = cp.execFileSync('git', ['ls-files'], { cwd: repo, encoding: 'utf8' }).trim().split('\n');
+const read = file => fs.readFileSync(path.join(repo, file), 'utf8');
+const rawLines = file => { const text = read(file); return text.split('\n').length - (text.endsWith('\n') ? 1 : 0); };
+const groups = {
+  goTests: files.filter(f => f.endsWith('_test.go')),
+  goNonTests: files.filter(f => f.endsWith('.go') && !f.endsWith('_test.go')),
+  frontendSrcTests: files.filter(f => f.startsWith('frontend/src/') && /\.test\.tsx?$/.test(f)),
+  frontendSrcNonTests: files.filter(f => f.startsWith('frontend/src/') && /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f)),
+  frontendE2eTests: files.filter(f => f.startsWith('frontend/e2e/') && /\.test\.tsx?$/.test(f)),
+  rootScripts: files.filter(f => f.startsWith('scripts/')),
+  frontendScripts: files.filter(f => f.startsWith('frontend/scripts/')),
+};
+console.log('filesAndRawLines', Object.fromEntries(Object.entries(groups).map(([key, value]) => [key, { files: value.length, rawLines: value.reduce((sum, f) => sum + rawLines(f), 0) }])));
+console.log('goTestFunctions', groups.goTests.reduce((sum, f) => sum + [...read(f).matchAll(/^func (Test\w+)\(t \*testing.T\)/gm)].length, 0));
+console.log('goExternalTestPackages', groups.goTests.filter(f => /^package \w+_test$/m.test(read(f))).length);
+console.log('justRecipes', [...read('justfile').matchAll(/^[a-z][\w-]*(?: [\w{}]+)*:/gm)].length);
+function base(expr) {
+  if (ts.isIdentifier(expr)) return expr.text;
+  if (ts.isPropertyAccessExpression(expr) || ts.isCallExpression(expr)) return base(expr.expression);
+  return '';
+}
+const titles = {};
+for (const file of files.filter(f => f.startsWith('frontend/') && /\.test\.(?:tsx?|mjs)$/.test(f))) {
+  const group = file.startsWith('frontend/src/') ? 'src' : file.startsWith('frontend/e2e/parity/') ? 'parityUnit' : file.startsWith('frontend/e2e/') ? 'browser' : 'node';
+  titles[group] ??= { files: 0, declarations: 0, withIds: 0 };
+  titles[group].files++;
+  const tree = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+  const visit = node => {
+    if (ts.isCallExpression(node) && ['it', 'test'].includes(base(node.expression)) && node.arguments.length >= 2 && (ts.isStringLiteral(node.arguments[0]) || ts.isNoSubstitutionTemplateLiteral(node.arguments[0]))) {
+      titles[group].declarations++;
+      if (/(?:\bT\d{3}\b|\bSTORY[- ]?\d|\b(?:FR|SC|FT|WS)-[A-Z\d-]+)/.test(node.arguments[0].text)) titles[group].withIds++;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+}
+console.log('staticTitles', titles);

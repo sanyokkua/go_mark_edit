@@ -1,0 +1,51 @@
+wails build
+[0;92mWails CLI[0m [0;31mv2.15.0[0m
+
+
+# Build Options
+
+Platform(s)        | darwin/arm64                                      
+Compiler           | /opt/homebrew/bin/go                              
+Skip Bindings      | false                                             
+Build Mode         | production                                        
+Devtools           | false                                             
+Frontend Directory | /Users/ok/Development/GitHub/go_mark_edit/frontend
+Obfuscated         | false                                             
+Install Scope      | machine                                           
+Skip Frontend      | false                                             
+Compress           | false                                             
+Package            | true                                              
+Clean Bin Dir      | false                                             
+LDFlags            |                                                   
+Tags               | []                                                
+Race Detector      | false                                             
+
+
+# Building target: darwin/arm64
+
+  • Generating bindings:   ERROR   
+          go: github.com/sanyokkua/go_mark_edit/docs/delivery/spec: open /Users/ok/Library/Caches/go-build/f9/f959bd1966adb19b0addcb5f4168e6b8e933881e99efd9eb02f073962b204d60-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/dist: open /Users/ok/Library/Caches/go-build/5f/5f37e592378f4cf0b23c5c30650ef5e828e1f8c1307bdfb4527ca35c293bec0f-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/dist/assets: open /Users/ok/Library/Caches/go-build/88/886a4216f3d4f9aed16941489014b90d2944f189524c4afd58cb6c36d6158edd-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/wailsjs/go: open /Users/ok/Library/Caches/go-build/4c/4c99b479e73a7e6bb2b2085984df6aaee893d3f899b721e8b746cb23cf8a8ce7-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/wailsjs/go/application: open /Users/ok/Library/Caches/go-build/0f/0ff11b269589b69eec0ddd2c17905df23b1a223548578529d311de31dc264605-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/wailsjs/go/appmodel: open /Users/ok/Library/Caches/go-build/dd/dd7841d57915519fe76de75fbc55800492f6ad7cffe22db6cc50dd2a2939524e-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/wailsjs/go/settings: open /Users/ok/Library/Caches/go-build/7e/7e81731e11ae05d2721d435d2204fa3adb2eb69b51e34d870372642163d8aebc-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/wailsjs/runtime: open /Users/ok/Library/Caches/go-build/15/1536933166a377b6197b8a3cbe020298faae5b4463d4f8f6600b9f64aebf085d-a: operation not permitted
+          
+          exit status 1
+
+  ERROR   
+          go: github.com/sanyokkua/go_mark_edit/docs/delivery/spec: open /Users/ok/Library/Caches/go-build/f9/f959bd1966adb19b0addcb5f4168e6b8e933881e99efd9eb02f073962b204d60-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/dist: open /Users/ok/Library/Caches/go-build/5f/5f37e592378f4cf0b23c5c30650ef5e828e1f8c1307bdfb4527ca35c293bec0f-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/dist/assets: open /Users/ok/Library/Caches/go-build/88/886a4216f3d4f9aed16941489014b90d2944f189524c4afd58cb6c36d6158edd-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/wailsjs/go: open /Users/ok/Library/Caches/go-build/4c/4c99b479e73a7e6bb2b2085984df6aaee893d3f899b721e8b746cb23cf8a8ce7-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/wailsjs/go/application: open /Users/ok/Library/Caches/go-build/0f/0ff11b269589b69eec0ddd2c17905df23b1a223548578529d311de31dc264605-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/wailsjs/go/appmodel: open /Users/ok/Library/Caches/go-build/dd/dd7841d57915519fe76de75fbc55800492f6ad7cffe22db6cc50dd2a2939524e-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/wailsjs/go/settings: open /Users/ok/Library/Caches/go-build/7e/7e81731e11ae05d2721d435d2204fa3adb2eb69b51e34d870372642163d8aebc-a: operation not permitted
+          go: github.com/sanyokkua/go_mark_edit/frontend/wailsjs/runtime: open /Users/ok/Library/Caches/go-build/15/1536933166a377b6197b8a3cbe020298faae5b4463d4f8f6600b9f64aebf085d-a: operation not permitted
+          
+          exit status 1
+ ♥   If Wails is useful to you or your company, please consider sponsoring the project:
+https://github.com/sponsors/leaanthony
+error: recipe `build` failed on line 21 with exit code 1

@@ -1,0 +1,126 @@
+{
+  "sourceCommit": "883fd053b9b30911248a304cf5f57d8cebe81795",
+  "method": "CUA ordinary-route UI actions and read-only DOM/computed-style inspection; normalized record of tool observations, not a test-runner report",
+  "browserRoute": "http://127.0.0.1:4187/",
+  "backend": "Vite TypeScript bridge mock; production UI components, no parity-case parameter",
+  "theme": "material",
+  "mode": "dark",
+  "native": {
+    "route": "wails://wails.localhost:34115/",
+    "alreadyRunning": true,
+    "observed": "Right-clicking the existing Untitled tab opened Tab actions; Escape dismissed it.",
+    "geometry": "Unavailable: native screenshot request returned Screenshot unavailable.",
+    "cleanup": "App left running; no document content, files or preference changes."
+  },
+  "tabContext": {
+    "viewport": { "width": 750, "height": 942 },
+    "tabRect": {
+      "x": 72,
+      "y": 61.25,
+      "width": 60.375,
+      "height": 14.5,
+      "right": 132.375,
+      "bottom": 75.75
+    },
+    "menuRect": {
+      "x": 488,
+      "y": 92,
+      "width": 250,
+      "height": 217,
+      "right": 738,
+      "bottom": 309
+    },
+    "computedPosition": {
+      "position": "absolute",
+      "left": "488px",
+      "right": "12px",
+      "top": "48px"
+    },
+    "initialFocusedItem": "Close Tab",
+    "accelerators": [
+      { "label": "Close Tab", "dataShortcut": "⌘W", "afterContent": "none" },
+      {
+        "label": "Move tab left",
+        "dataShortcut": "⌘⇧PAGEUP",
+        "afterContent": "none"
+      },
+      {
+        "label": "Move tab right",
+        "dataShortcut": "⌘⇧PAGEDOWN",
+        "afterContent": "none"
+      }
+    ],
+    "visibleShortcutText": false
+  },
+  "triggerSecondClick": {
+    "viewport": { "width": 750, "height": 942 },
+    "File": { "firstExpanded": true, "secondExpanded": true },
+    "About": { "firstExpanded": true, "secondExpanded": true },
+    "View": { "firstExpanded": true, "secondExpanded": true },
+    "Settings": { "firstExpanded": true, "secondExpanded": false },
+    "eventOrder": "Not traced; only resulting expanded state was observed."
+  },
+  "intermediateWidthPopups": {
+    "viewport": { "width": 400, "height": 720 },
+    "applicationFrameRight": 400,
+    "applicationFrameOverflowX": "hidden",
+    "menus": [
+      {
+        "name": "File",
+        "x": 96,
+        "y": 42,
+        "width": 250,
+        "height": 397.5,
+        "right": 346,
+        "focusVisible": true
+      },
+      {
+        "name": "Settings",
+        "x": 150,
+        "y": 42,
+        "width": 250,
+        "height": 538,
+        "right": 400,
+        "focusVisible": false
+      },
+      {
+        "name": "View",
+        "x": 196,
+        "y": 42,
+        "width": 250,
+        "height": 305,
+        "right": 446,
+        "focusVisible": true
+      },
+      {
+        "name": "About",
+        "x": 240,
+        "y": 42,
+        "width": 250,
+        "height": 152,
+        "right": 490,
+        "focusVisible": true
+      }
+    ],
+    "fileAndAboutComputedShadow": "rgb(22, 22, 28) 0px 0px 0px 2px, rgb(179, 194, 255) 0px 0px 0px 4px",
+    "visualObservation": "About's right portion was clipped in the browser screenshot. The focus ring was visible."
+  },
+  "narrowStatus": {
+    "viewport": { "width": 375, "height": 720 },
+    "wordCount": "0 words",
+    "wordCountComputedDisplay": "none",
+    "detailsVisibleValues": ["UTF-8", "LF", "Not saved", "Autosave on"],
+    "detailsContainsWordCount": false
+  },
+  "limits": [
+    "No real Go backend behavior, native popup geometry or native startup/theme-roundtrip cause was certified by these browser observations.",
+    "Settings and View were initially queried by an incorrect exact aria-label selector; those queries returned missing. Recorded final bounds came from the visible menu locator after fresh DOM inspection.",
+    "No focused theme, menu-scroll, pane-scroll or closed-editor-menu-listener runtime probe was performed in this extension."
+  ],
+  "cleanup": {
+    "browserTab": "Closed",
+    "viewportOverride": "Reset",
+    "ownedViteProcess": "Stopped with Ctrl-C; exit 130",
+    "existingRuntimeChanges": "Three generated Wails runtime files already had mode-only 100755→100644 changes at turn start; preserved."
+  }
+}

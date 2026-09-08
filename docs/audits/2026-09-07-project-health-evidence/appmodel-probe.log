@@ -1,0 +1,63 @@
+=== RUN   TestAuditReopenAfterAtomicSave
+    save_test.go:774: first id=doc-0000000000000003 second id=doc-0000000000000003 status=focused tabs=1
+--- PASS: TestAuditReopenAfterAtomicSave (0.02s)
+=== RUN   TestAuditRefusalLabelConcurrentDocumentChanges
+==================
+WARNING: DATA RACE
+Write at 0x00c000370750 by goroutine 21:
+  runtime.mapaccess2_faststr()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/internal/runtime/maps/runtime_faststr.go:120 +0x2bc
+  github.com/sanyokkua/go_mark_edit/internal/appmodel.(*AppModelService).NewDocument()
+      /Users/ok/Development/GitHub/go_mark_edit/internal/appmodel/file_lifecycle.go:66 +0x454
+  github.com/sanyokkua/go_mark_edit/internal/appmodel.TestAuditRefusalLabelConcurrentDocumentChanges.func2()
+      /Users/ok/Development/GitHub/go_mark_edit/internal/appmodel/save_test.go:785 +0x108
+
+Previous read at 0x00c000370750 by goroutine 20:
+  runtime.mapaccess1_faststr()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/internal/runtime/maps/runtime_faststr.go:114 +0x4c
+  github.com/sanyokkua/go_mark_edit/internal/appmodel.(*AppModelService).safeDocumentLabelLocked()
+      /Users/ok/Development/GitHub/go_mark_edit/internal/appmodel/save.go:701 +0x8c
+  github.com/sanyokkua/go_mark_edit/internal/appmodel.(*AppModelService).refusedWrite()
+      /Users/ok/Development/GitHub/go_mark_edit/internal/appmodel/save.go:657 +0xb0
+  github.com/sanyokkua/go_mark_edit/internal/appmodel.(*AppModelService).Save()
+      /Users/ok/Development/GitHub/go_mark_edit/internal/appmodel/save.go:53 +0xde8
+  github.com/sanyokkua/go_mark_edit/internal/appmodel.TestAuditRefusalLabelConcurrentDocumentChanges.func1()
+      /Users/ok/Development/GitHub/go_mark_edit/internal/appmodel/save_test.go:784 +0xb8
+
+Goroutine 21 (running) created at:
+  github.com/sanyokkua/go_mark_edit/internal/appmodel.TestAuditRefusalLabelConcurrentDocumentChanges()
+      /Users/ok/Development/GitHub/go_mark_edit/internal/appmodel/save_test.go:785 +0x250
+  testing.tRunner()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2193 +0x164
+  testing.(*T).Run.gowrap1()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2258 +0x34
+
+Goroutine 20 (running) created at:
+  github.com/sanyokkua/go_mark_edit/internal/appmodel.TestAuditRefusalLabelConcurrentDocumentChanges()
+      /Users/ok/Development/GitHub/go_mark_edit/internal/appmodel/save_test.go:784 +0x17c
+  testing.tRunner()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2193 +0x164
+  testing.(*T).Run.gowrap1()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2258 +0x34
+==================
+    testing.go:1865: race detected during execution of test
+--- FAIL: TestAuditRefusalLabelConcurrentDocumentChanges (0.00s)
+=== RUN   TestAuditOpenHardLinkDeduplicates
+    save_test.go:797: identity a=path:/private/var/folders/bk/dpmdprgs4mxdvbh4rc300s8w0000gn/T/TestAuditOpenHardLinkDeduplicates483979051/001/document.md b=path:/private/var/folders/bk/dpmdprgs4mxdvbh4rc300s8w0000gn/T/TestAuditOpenHardLinkDeduplicates483979051/001/alias.md; first=doc-000000000000001c second=doc-000000000000001e status=opened
+    save_test.go:798: same physical file opened as two tabs via hard links
+--- FAIL: TestAuditOpenHardLinkDeduplicates (0.00s)
+=== RUN   TestAuditAutosavePublicationAfterSaveAs
+    save_test.go:826: current path=/private/var/folders/bk/dpmdprgs4mxdvbh4rc300s8w0000gn/T/TestAuditAutosavePublicationAfterSaveAs1347781259/001/new.md content=v2 dirty=false status=autosaved old disk=v2 new disk=v1
+    save_test.go:827: SaveAs destination lacks latest content but model reports clean
+--- FAIL: TestAuditAutosavePublicationAfterSaveAs (1.03s)
+=== RUN   TestAuditClosedDocumentWriteBufferRetention
+    save_test.go:838: open documents=0 retained coordinators=1 retained content bytes=1048576 retained encoded bytes=1048576
+    save_test.go:839: closed document retains write coordinator and full saved source
+--- FAIL: TestAuditClosedDocumentWriteBufferRetention (0.04s)
+=== RUN   TestAuditAutosaveFailureReachesFrontend
+    save_test.go:849: disk="base\n" status=unsaved-changes dirty=true async error events=0
+    save_test.go:850: autosave disk failure dropped instead of notifying frontend
+--- FAIL: TestAuditAutosaveFailureReachesFrontend (0.00s)
+FAIL
+FAIL	github.com/sanyokkua/go_mark_edit/internal/appmodel	1.711s
+FAIL

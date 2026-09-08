@@ -1,0 +1,30 @@
+HTTP/1.1 200 OK
+Content-Length: 601
+Cache-Control: no-cache
+Connection: keep-alive
+Content-Type: text/html
+Date: Tue, 08 Sep 2026 07:39:43 GMT
+Etag: W/"259-LcPI4Bo1PxhVQZeGpk7x5Cif5KE"
+Keep-Alive: timeout=5
+Vary: Origin
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <script type="module">import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;</script>
+
+    <script type="module" src="/@vite/client"></script>
+
+    <meta charset="UTF-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>GoMarkEdit</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="/theme-bootstrap.js"></script>
+    <script src="./src/main.tsx" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,774 @@
+package settings
+
+import (
+	"context"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/db"
+	"github.com/sanyokkua/go_mark_edit/internal/db/store"
+)
+
+// Proves: STORY-009-AC-1
+// An empty typed KV store returns every complete Stage-1 scalar at its documented default.
+func TestCompleteStageOneDefaultsFromEmptyKV(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatalf("open temporary settings database: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close temporary settings database: %v", closeErr)
+		}
+	})
+
+	got, err := NewSettingsService(NewSqliteSettingsRepository(database)).Get(ctx)
+	if err != nil {
+		t.Fatalf("read empty settings registry: %v", err)
+	}
+	want := apperr.Settings{
+		Appearance: apperr.AppearanceSettings{
+			Theme:           ThemeMaterial,
+			Mode:            ModeAuto,
+			DefaultOpenMode: OpenModeEditor,
+		},
+		Markdown: apperr.MarkdownSettings{
+			Standard:       MarkdownGFM,
+			FormatOnSave:   false,
+			LintOnSave:     true,
+			BulletMarker:   BulletMarkerDash,
+			EmphasisMarker: EmphasisMarkerUnderscore,
+			HeadingStyle:   HeadingStyleATX,
+		},
+		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAsk},
+		Editor:         DefaultSettings().Editor,
+		File:           DefaultSettings().File,
+	}
+	if got != want {
+		t.Fatalf("empty settings registry = %+v, want %+v", got, want)
+	}
+}
+
+// Proves: STORY-009-AC-2
+// Valid non-default Appearance and Markdown groups round-trip through their stable dotted keys with the declared scalar metadata.
+func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatalf("open temporary settings database: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close temporary settings database: %v", closeErr)
+		}
+	})
+
+	service := NewSettingsService(NewSqliteSettingsRepository(database))
+	wantAppearance := apperr.AppearanceSettings{
+		Theme:           ThemeGlass,
+		Mode:            ModeDark,
+		DefaultOpenMode: OpenModeViewer,
+	}
+	wantMarkdown := apperr.MarkdownSettings{
+		Standard:       MarkdownFull,
+		FormatOnSave:   true,
+		LintOnSave:     false,
+		BulletMarker:   BulletMarkerPlus,
+		EmphasisMarker: EmphasisMarkerAsterisk,
+		HeadingStyle:   HeadingStyleSetext,
+	}
+	if err := service.UpdateAppearance(ctx, wantAppearance); err != nil {
+		t.Fatalf("update appearance: %v", err)
+	}
+	if err := service.UpdateMarkdown(ctx, wantMarkdown); err != nil {
+		t.Fatalf("update markdown: %v", err)
+	}
+	wantFile := apperr.FileSettings{Autosave: false}
+	if err := service.UpdateFile(ctx, wantFile); err != nil {
+		t.Fatalf("update file settings: %v", err)
+	}
+
+	for key, want := range map[string]store.UpsertSettingParams{
+		appearanceThemeKey:    {Key: appearanceThemeKey, Value: ThemeGlass, Type: settingTypeString},
+		appearanceModeKey:     {Key: appearanceModeKey, Value: ModeDark, Type: settingTypeString},
+		defaultOpenModeKey:    {Key: defaultOpenModeKey, Value: OpenModeViewer, Type: settingTypeString},
+		markdownStandardKey:   {Key: markdownStandardKey, Value: MarkdownFull, Type: settingTypeString},
+		formatOnSaveKey:       {Key: formatOnSaveKey, Value: "true", Type: settingTypeBool},
+		lintOnSaveKey:         {Key: lintOnSaveKey, Value: "false", Type: settingTypeBool},
+		formatBulletMarkerKey: {Key: formatBulletMarkerKey, Value: BulletMarkerPlus, Type: settingTypeString},
+		formatEmphasisKey:     {Key: formatEmphasisKey, Value: EmphasisMarkerAsterisk, Type: settingTypeString},
+		formatHeadingStyleKey: {Key: formatHeadingStyleKey, Value: HeadingStyleSetext, Type: settingTypeString},
+		fileAutosaveKey:       {Key: fileAutosaveKey, Value: "false", Type: settingTypeBool},
+	} {
+		got, getErr := database.Queries.GetSetting(ctx, key)
+		if getErr != nil {
+			t.Fatalf("read persisted key %q: %v", key, getErr)
+		}
+		if got.Key != want.Key || got.Value != want.Value || got.Type != want.Type {
+			t.Fatalf("persisted key %q = %+v, want %+v", key, got, want)
+		}
+	}
+
+	got, err := service.Get(ctx)
+	if err != nil {
+		t.Fatalf("read round-tripped registry: %v", err)
+	}
+	if got.Appearance != wantAppearance || got.Markdown != wantMarkdown || got.File != wantFile {
+		t.Fatalf("round-tripped groups = %+v, want appearance %+v and markdown %+v", got, wantAppearance, wantMarkdown)
+	}
+	if got.ContentPrivacy.RemotePolicy != RemotePolicyAsk {
+		t.Fatalf("unchanged content privacy = %q, want %q", got.ContentPrivacy.RemotePolicy, RemotePolicyAsk)
+	}
+}
+
+// Proves: STORY-009-AC-4
+// Evidence: EC-THEME-3, EC-SET-2
+// Per-scalar missing, invalid, and wrong-type persisted rows fall back independently while valid siblings remain intact.
+func TestStoredSettingsFallbackMatrix(t *testing.T) {
+	valid := apperr.Settings{
+		Appearance: apperr.AppearanceSettings{Theme: ThemeGlass, Mode: ModeDark, DefaultOpenMode: OpenModeViewer},
+		Markdown: apperr.MarkdownSettings{
+			Standard:       MarkdownFull,
+			FormatOnSave:   true,
+			LintOnSave:     false,
+			BulletMarker:   BulletMarkerPlus,
+			EmphasisMarker: EmphasisMarkerAsterisk,
+			HeadingStyle:   HeadingStyleSetext,
+		},
+		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAllow},
+		Editor:         DefaultSettings().Editor,
+		File:           DefaultSettings().File,
+	}
+
+	type storedFault struct {
+		name  string
+		key   string
+		value string
+		type_ string
+		omit  bool
+	}
+	testCases := []storedFault{
+		{name: "EC-THEME-3 missing theme", key: appearanceThemeKey, omit: true},
+		{name: "EC-THEME-3 unsupported theme", key: appearanceThemeKey, value: "vaporwave", type_: settingTypeString},
+		{name: "EC-THEME-3 theme type mismatch", key: appearanceThemeKey, value: ThemeMinimal, type_: settingTypeBool},
+		{name: "missing color mode", key: appearanceModeKey, omit: true},
+		{name: "unsupported color mode", key: appearanceModeKey, value: "midnight", type_: settingTypeString},
+		{name: "color mode type mismatch", key: appearanceModeKey, value: ModeLight, type_: settingTypeBool},
+		{name: "missing default open mode", key: defaultOpenModeKey, omit: true},
+		{name: "unsupported default open mode", key: defaultOpenModeKey, value: "split", type_: settingTypeString},
+		{name: "default open mode type mismatch", key: defaultOpenModeKey, value: OpenModeEditor, type_: settingTypeBool},
+		{name: "missing markdown standard", key: markdownStandardKey, omit: true},
+		{name: "unsupported markdown standard", key: markdownStandardKey, value: "plain-text", type_: settingTypeString},
+		{name: "markdown standard type mismatch", key: markdownStandardKey, value: MarkdownGFM, type_: settingTypeBool},
+		{name: "missing format on save", key: formatOnSaveKey, omit: true},
+		{name: "malformed format on save", key: formatOnSaveKey, value: "sometimes", type_: settingTypeBool},
+		{name: "format on save type mismatch", key: formatOnSaveKey, value: "true", type_: settingTypeString},
+		{name: "missing lint on save", key: lintOnSaveKey, omit: true},
+		{name: "malformed lint on save", key: lintOnSaveKey, value: "sometimes", type_: settingTypeBool},
+		{name: "lint on save type mismatch", key: lintOnSaveKey, value: "false", type_: settingTypeString},
+		{name: "missing bullet marker", key: formatBulletMarkerKey, omit: true},
+		{name: "unsupported bullet marker", key: formatBulletMarkerKey, value: "•", type_: settingTypeString},
+		{name: "bullet marker type mismatch", key: formatBulletMarkerKey, value: BulletMarkerDash, type_: settingTypeBool},
+		{name: "missing emphasis marker", key: formatEmphasisKey, omit: true},
+		{name: "unsupported emphasis marker", key: formatEmphasisKey, value: "~", type_: settingTypeString},
+		{name: "emphasis marker type mismatch", key: formatEmphasisKey, value: EmphasisMarkerUnderscore, type_: settingTypeBool},
+		{name: "missing heading style", key: formatHeadingStyleKey, omit: true},
+		{name: "unsupported heading style", key: formatHeadingStyleKey, value: "underlined", type_: settingTypeString},
+		{name: "heading style type mismatch", key: formatHeadingStyleKey, value: HeadingStyleATX, type_: settingTypeBool},
+		{name: "missing remote policy", key: contentRemotePolicyKey, omit: true},
+		{name: "unsupported remote policy", key: contentRemotePolicyKey, value: "sometimes", type_: settingTypeString},
+		{name: "remote policy type mismatch", key: contentRemotePolicyKey, value: RemotePolicyBlock, type_: settingTypeBool},
+		{name: "missing autosave", key: fileAutosaveKey, omit: true},
+		{name: "malformed autosave", key: fileAutosaveKey, value: "sometimes", type_: settingTypeBool},
+		{name: "autosave type mismatch", key: fileAutosaveKey, value: "false", type_: settingTypeString},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			ctx := context.Background()
+			database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+			if err != nil {
+				t.Fatalf("open temporary settings database: %v", err)
+			}
+			t.Cleanup(func() {
+				if closeErr := database.Close(); closeErr != nil {
+					t.Errorf("close temporary settings database: %v", closeErr)
+				}
+			})
+
+			seedCompleteSettings(t, ctx, database, valid, testCase.key)
+			if !testCase.omit {
+				if err := database.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
+					Key: testCase.key, Value: testCase.value, Type: testCase.type_,
+				}); err != nil {
+					t.Fatalf("seed corrupt setting %q: %v", testCase.key, err)
+				}
+			}
+
+			want := valid
+			setSettingsScalar(t, &want, testCase.key, settingsScalarValue(DefaultSettings(), testCase.key))
+			got, err := NewSettingsService(NewSqliteSettingsRepository(database)).Get(ctx)
+			if err != nil {
+				t.Fatalf("read fallback settings: %v", err)
+			}
+			if got != want {
+				t.Fatalf("fallback settings = %+v, want %+v", got, want)
+			}
+		})
+	}
+
+	t.Run("EC-SET-2 all empty canonical style scalars preserve boolean siblings", func(t *testing.T) {
+		ctx := context.Background()
+		database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+		if err != nil {
+			t.Fatalf("open temporary settings database: %v", err)
+		}
+		t.Cleanup(func() {
+			if closeErr := database.Close(); closeErr != nil {
+				t.Errorf("close temporary settings database: %v", closeErr)
+			}
+		})
+
+		seedCompleteSettings(t, ctx, database, valid, "")
+		for _, key := range []string{formatBulletMarkerKey, formatEmphasisKey, formatHeadingStyleKey} {
+			if err := database.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
+				Key: key, Value: "", Type: settingTypeString,
+			}); err != nil {
+				t.Fatalf("seed empty canonical style %q: %v", key, err)
+			}
+		}
+
+		want := valid
+		want.Markdown.BulletMarker = DefaultSettings().Markdown.BulletMarker
+		want.Markdown.EmphasisMarker = DefaultSettings().Markdown.EmphasisMarker
+		want.Markdown.HeadingStyle = DefaultSettings().Markdown.HeadingStyle
+		got, err := NewSettingsService(NewSqliteSettingsRepository(database)).Get(ctx)
+		if err != nil {
+			t.Fatalf("read independently normalized settings: %v", err)
+		}
+		if got != want {
+			t.Fatalf("settings after empty canonical styles = %+v, want %+v", got, want)
+		}
+	})
+}
+
+// Proves: STORY-009-AC-5
+// A future bool scalar uses the same generic KV table and typed helpers without changing the existing registry or schema.
+func TestSettingsRegistryAddsTypedScalarWithoutSchemaChange(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatalf("open temporary settings database: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close temporary settings database: %v", closeErr)
+		}
+	})
+
+	repository := NewSqliteSettingsRepository(database)
+	service := NewSettingsService(repository)
+	existing := apperr.Settings{
+		Appearance: apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeLight, DefaultOpenMode: OpenModeViewer},
+		Markdown: apperr.MarkdownSettings{
+			Standard:       MarkdownMinimal,
+			FormatOnSave:   true,
+			LintOnSave:     false,
+			BulletMarker:   BulletMarkerAsterisk,
+			EmphasisMarker: EmphasisMarkerAsterisk,
+			HeadingStyle:   HeadingStyleSetext,
+		},
+		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyBlock},
+		Editor:         DefaultSettings().Editor,
+		File:           DefaultSettings().File,
+	}
+	if err := service.UpdateAppearance(ctx, existing.Appearance); err != nil {
+		t.Fatalf("seed appearance: %v", err)
+	}
+	if err := service.UpdateMarkdown(ctx, existing.Markdown); err != nil {
+		t.Fatalf("seed markdown: %v", err)
+	}
+	if err := service.UpdateContentPrivacy(ctx, existing.ContentPrivacy); err != nil {
+		t.Fatalf("seed content privacy: %v", err)
+	}
+	beforeSchema := settingsTableColumns(t, ctx, database)
+
+	const futureLineNumbersKey = "future.preview.lineNumbers"
+	if err := repository.upsertBool(ctx, futureLineNumbersKey, true); err != nil {
+		t.Fatalf("persist future typed scalar: %v", err)
+	}
+	gotFuture, err := repository.getBool(ctx, futureLineNumbersKey, false)
+	if err != nil {
+		t.Fatalf("read future typed scalar: %v", err)
+	}
+	if !gotFuture {
+		t.Fatal("future typed scalar = false, want true")
+	}
+	storedFuture, err := database.Queries.GetSetting(ctx, futureLineNumbersKey)
+	if err != nil {
+		t.Fatalf("read future KV row: %v", err)
+	}
+	if storedFuture.Value != "true" || storedFuture.Type != settingTypeBool {
+		t.Fatalf("future KV row = %+v, want true bool", storedFuture)
+	}
+	if afterSchema := settingsTableColumns(t, ctx, database); afterSchema != beforeSchema {
+		t.Fatalf("settings schema changed from %q to %q after future scalar", beforeSchema, afterSchema)
+	}
+
+	gotExisting, err := service.Get(ctx)
+	if err != nil {
+		t.Fatalf("read existing registry after future scalar: %v", err)
+	}
+	if gotExisting != existing {
+		t.Fatalf("existing registry after future scalar = %+v, want %+v", gotExisting, existing)
+	}
+}
+
+// Proves: STORY-005-AC-2
+// Typed grouped defaults and updates survive a reopen through the generic dotted-key KV table, while a future scalar needs no migration.
+func TestTypedGroupedDefaultsRoundTripThroughKV(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "settings.db")
+	database, err := db.Open(ctx, path)
+	if err != nil {
+		t.Fatalf("open temporary settings database: %v", err)
+	}
+
+	repository := NewSqliteSettingsRepository(database)
+	defaults := DefaultSettings()
+	assertRepositorySettings(t, ctx, repository, defaults)
+
+	want := apperr.Settings{
+		Appearance:     apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeDark},
+		Markdown:       apperr.MarkdownSettings{Standard: MarkdownFull},
+		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAllow},
+		Editor:         DefaultSettings().Editor,
+		File:           DefaultSettings().File,
+	}
+	if err := repository.UpdateAppearance(ctx, want.Appearance); err != nil {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after appearance failure: %v", closeErr)
+		}
+		t.Fatalf("update appearance: %v", err)
+	}
+	if err := repository.UpdateMarkdown(ctx, want.Markdown); err != nil {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after markdown failure: %v", closeErr)
+		}
+		t.Fatalf("update markdown: %v", err)
+	}
+	if err := repository.UpdateContentPrivacy(ctx, want.ContentPrivacy); err != nil {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after content privacy failure: %v", closeErr)
+		}
+		t.Fatalf("update content privacy: %v", err)
+	}
+	for key, value := range map[string]string{
+		appearanceThemeKey:     want.Appearance.Theme,
+		appearanceModeKey:      want.Appearance.Mode,
+		markdownStandardKey:    want.Markdown.Standard,
+		contentRemotePolicyKey: want.ContentPrivacy.RemotePolicy,
+	} {
+		stored, getErr := database.Queries.GetSetting(ctx, key)
+		if getErr != nil {
+			if closeErr := database.Close(); closeErr != nil {
+				t.Errorf("close settings database after read failure: %v", closeErr)
+			}
+			t.Fatalf("read typed dotted key %q: %v", key, getErr)
+		}
+		if stored.Value != value || stored.Type != settingTypeString {
+			if closeErr := database.Close(); closeErr != nil {
+				t.Errorf("close settings database after assertion failure: %v", closeErr)
+			}
+			t.Fatalf("stored %q = %+v, want value %q and type %q", key, stored, value, settingTypeString)
+		}
+	}
+	if err := database.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
+		Key: "future.editor.tabSize", Value: "4", Type: "int",
+	}); err != nil {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after future scalar failure: %v", closeErr)
+		}
+		t.Fatalf("persist future scalar without migration: %v", err)
+	}
+	if err := database.Close(); err != nil {
+		t.Fatalf("close initial settings database: %v", err)
+	}
+
+	reopened, err := db.Open(ctx, path)
+	if err != nil {
+		t.Fatalf("reopen settings database: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := reopened.Close(); closeErr != nil {
+			t.Errorf("close reopened settings database: %v", closeErr)
+		}
+	})
+	assertRepositorySettings(t, ctx, NewSqliteSettingsRepository(reopened), want)
+	future, err := reopened.Queries.GetSetting(ctx, "future.editor.tabSize")
+	if err != nil {
+		t.Fatalf("read future scalar after reopen: %v", err)
+	}
+	if future.Value != "4" || future.Type != "int" {
+		t.Fatalf("future scalar after reopen = %+v, want value 4 and type int", future)
+	}
+}
+
+// Proves: STORY-005-AC-3
+// Missing, malformed, wrong-type, and unsupported stored values in every initial group resolve to documented defaults.
+func TestStoredInvalidValuesResolveToDefaults(t *testing.T) {
+	testCases := []struct {
+		name string
+		seed func(t *testing.T, database *db.Database)
+	}{
+		{
+			name: "missing",
+			seed: func(*testing.T, *db.Database) {},
+		},
+		{
+			name: "malformed",
+			seed: func(t *testing.T, database *db.Database) {
+				seedStoredSettings(t, database, settingTypeString, map[string]string{
+					appearanceThemeKey:     "vaporwave",
+					appearanceModeKey:      "midnight",
+					markdownStandardKey:    "plain-text",
+					contentRemotePolicyKey: "sometimes",
+				})
+			},
+		},
+		{
+			name: "wrong type",
+			seed: func(t *testing.T, database *db.Database) {
+				seedStoredSettings(t, database, "bool", map[string]string{
+					appearanceThemeKey:     ThemeMinimal,
+					appearanceModeKey:      ModeDark,
+					markdownStandardKey:    MarkdownFull,
+					contentRemotePolicyKey: RemotePolicyAllow,
+				})
+			},
+		},
+		{
+			name: "unsupported type",
+			seed: func(t *testing.T, database *db.Database) {
+				seedStoredSettings(t, database, "future-enum", map[string]string{
+					appearanceThemeKey:     ThemeGlass,
+					appearanceModeKey:      ModeLight,
+					markdownStandardKey:    MarkdownMinimal,
+					contentRemotePolicyKey: RemotePolicyBlock,
+				})
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			ctx := context.Background()
+			database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+			if err != nil {
+				t.Fatalf("open temporary settings database: %v", err)
+			}
+			t.Cleanup(func() {
+				if closeErr := database.Close(); closeErr != nil {
+					t.Errorf("close settings database: %v", closeErr)
+				}
+			})
+			testCase.seed(t, database)
+
+			got, err := NewSettingsService(NewSqliteSettingsRepository(database)).Get(ctx)
+			if err != nil {
+				t.Fatalf("get normalized settings: %v", err)
+			}
+			if got != DefaultSettings() {
+				t.Fatalf("normalized settings = %+v, want documented defaults %+v", got, DefaultSettings())
+			}
+		})
+	}
+}
+
+func assertRepositorySettings(t *testing.T, ctx context.Context, repository *SqliteSettingsRepository, want apperr.Settings) {
+	t.Helper()
+
+	appearance, err := repository.GetAppearance(ctx)
+	if err != nil {
+		t.Fatalf("get appearance: %v", err)
+	}
+	markdown, err := repository.GetMarkdown(ctx)
+	if err != nil {
+		t.Fatalf("get markdown: %v", err)
+	}
+	contentPrivacy, err := repository.GetContentPrivacy(ctx)
+	if err != nil {
+		t.Fatalf("get content privacy: %v", err)
+	}
+	editor, err := repository.GetEditor(ctx)
+	if err != nil {
+		t.Fatalf("get editor: %v", err)
+	}
+	fileSettings, err := repository.GetFile(ctx)
+	if err != nil {
+		t.Fatalf("get file settings: %v", err)
+	}
+	got := apperr.Settings{Appearance: appearance, Markdown: markdown, ContentPrivacy: contentPrivacy, Editor: editor, File: fileSettings}
+	if got != want {
+		t.Fatalf("repository settings = %+v, want %+v", got, want)
+	}
+}
+
+func seedStoredSettings(t *testing.T, database *db.Database, settingType string, values map[string]string) {
+	t.Helper()
+
+	for key, value := range values {
+		if err := database.Queries.UpsertSetting(context.Background(), store.UpsertSettingParams{
+			Key: key, Value: value, Type: settingType,
+		}); err != nil {
+			t.Fatalf("seed %q: %v", key, err)
+		}
+	}
+}
+
+func seedCompleteSettings(t *testing.T, ctx context.Context, database *db.Database, settings apperr.Settings, omitKey string) {
+	t.Helper()
+
+	for _, setting := range settingsKVRows(settings) {
+		if setting.Key == omitKey {
+			continue
+		}
+		if err := database.Queries.UpsertSetting(ctx, setting); err != nil {
+			t.Fatalf("seed complete setting %q: %v", setting.Key, err)
+		}
+	}
+}
+
+func settingsKVRows(settings apperr.Settings) []store.UpsertSettingParams {
+	return []store.UpsertSettingParams{
+		{Key: appearanceThemeKey, Value: settings.Appearance.Theme, Type: settingTypeString},
+		{Key: appearanceModeKey, Value: settings.Appearance.Mode, Type: settingTypeString},
+		{Key: defaultOpenModeKey, Value: settings.Appearance.DefaultOpenMode, Type: settingTypeString},
+		{Key: markdownStandardKey, Value: settings.Markdown.Standard, Type: settingTypeString},
+		{Key: formatOnSaveKey, Value: boolString(settings.Markdown.FormatOnSave), Type: settingTypeBool},
+		{Key: lintOnSaveKey, Value: boolString(settings.Markdown.LintOnSave), Type: settingTypeBool},
+		{Key: formatBulletMarkerKey, Value: settings.Markdown.BulletMarker, Type: settingTypeString},
+		{Key: formatEmphasisKey, Value: settings.Markdown.EmphasisMarker, Type: settingTypeString},
+		{Key: formatHeadingStyleKey, Value: settings.Markdown.HeadingStyle, Type: settingTypeString},
+		{Key: contentRemotePolicyKey, Value: settings.ContentPrivacy.RemotePolicy, Type: settingTypeString},
+		{Key: editorLineNumbersKey, Value: boolString(settings.Editor.LineNumbers), Type: settingTypeBool},
+		{Key: editorWordWrapKey, Value: boolString(settings.Editor.WordWrap), Type: settingTypeBool},
+		{Key: editorFontSizeKey, Value: strconv.Itoa(settings.Editor.FontSize), Type: settingTypeString},
+		{Key: fileAutosaveKey, Value: boolString(settings.File.Autosave), Type: settingTypeBool},
+	}
+}
+
+func settingsScalarValue(settings apperr.Settings, key string) string {
+	for _, setting := range settingsKVRows(settings) {
+		if setting.Key == key {
+			return setting.Value
+		}
+	}
+	panic("unknown settings scalar key: " + key)
+}
+
+func setSettingsScalar(t *testing.T, settings *apperr.Settings, key, value string) {
+	t.Helper()
+
+	switch key {
+	case appearanceThemeKey:
+		settings.Appearance.Theme = value
+	case appearanceModeKey:
+		settings.Appearance.Mode = value
+	case defaultOpenModeKey:
+		settings.Appearance.DefaultOpenMode = value
+	case markdownStandardKey:
+		settings.Markdown.Standard = value
+	case formatOnSaveKey:
+		settings.Markdown.FormatOnSave = value == "true"
+	case lintOnSaveKey:
+		settings.Markdown.LintOnSave = value == "true"
+	case formatBulletMarkerKey:
+		settings.Markdown.BulletMarker = value
+	case formatEmphasisKey:
+		settings.Markdown.EmphasisMarker = value
+	case formatHeadingStyleKey:
+		settings.Markdown.HeadingStyle = value
+	case contentRemotePolicyKey:
+		settings.ContentPrivacy.RemotePolicy = value
+	case fileAutosaveKey:
+		settings.File.Autosave = value == "true"
+	default:
+		t.Fatalf("unknown settings scalar key %q", key)
+	}
+}
+
+func boolString(value bool) string {
+	if value {
+		return "true"
+	}
+	return "false"
+}
+
+// Proves: FR-WS-015
+// Reset changes exactly Theme, Appearance mode, and default Editor open mode in
+// one transaction; unrelated and future keys retain their original values.
+func TestResetAppearanceChangesOnlyDeliveredAppearanceKeys(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatalf("open reset database: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close reset database: %v", closeErr)
+		}
+	})
+
+	before := map[string]store.UpsertSettingParams{
+		appearanceThemeKey:       {Key: appearanceThemeKey, Value: ThemeMinimal, Type: settingTypeString},
+		appearanceModeKey:        {Key: appearanceModeKey, Value: ModeDark, Type: settingTypeString},
+		defaultOpenModeKey:       {Key: defaultOpenModeKey, Value: OpenModeViewer, Type: settingTypeString},
+		markdownStandardKey:      {Key: markdownStandardKey, Value: MarkdownFull, Type: settingTypeString},
+		"layout.workspaceWidth":  {Key: "layout.workspaceWidth", Value: "314", Type: "int"},
+		"document.active":        {Key: "document.active", Value: "document-7", Type: settingTypeString},
+		"recent.paths":           {Key: "recent.paths", Value: "opaque", Type: settingTypeString},
+		"future.appearance.glow": {Key: "future.appearance.glow", Value: "high", Type: settingTypeString},
+	}
+	for _, setting := range before {
+		if err := database.Queries.UpsertSetting(ctx, setting); err != nil {
+			t.Fatalf("seed reset key %q: %v", setting.Key, err)
+		}
+	}
+
+	if err := NewSqliteSettingsRepository(database).ResetAppearance(ctx); err != nil {
+		t.Fatalf("reset appearance: %v", err)
+	}
+
+	wantAppearance := map[string]string{
+		appearanceThemeKey: ThemeMaterial,
+		appearanceModeKey:  ModeAuto,
+		defaultOpenModeKey: OpenModeEditor,
+	}
+	for key, want := range wantAppearance {
+		stored, getErr := database.Queries.GetSetting(ctx, key)
+		if getErr != nil {
+			t.Fatalf("read reset key %q: %v", key, getErr)
+		}
+		if stored.Value != want || stored.Type != settingTypeString {
+			t.Fatalf("reset key %q = %+v, want value %q string", key, stored, want)
+		}
+	}
+	for _, key := range []string{markdownStandardKey, "layout.workspaceWidth", "document.active", "recent.paths", "future.appearance.glow"} {
+		stored, getErr := database.Queries.GetSetting(ctx, key)
+		if getErr != nil {
+			t.Fatalf("read retained key %q: %v", key, getErr)
+		}
+		if stored.Value != before[key].Value || stored.Type != before[key].Type {
+			t.Fatalf("retained key %q = %+v, want %+v", key, stored, before[key])
+		}
+	}
+}
+
+// Proves: FR-WS-015
+// A failure on the second delivered key rolls the first write back as well.
+func TestResetAppearanceRollsBackEveryValueOnFailure(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatalf("open rollback database: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close rollback database: %v", closeErr)
+		}
+	})
+	original := apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeDark, DefaultOpenMode: OpenModeViewer}
+	if err := NewSqliteSettingsRepository(database).UpdateAppearance(ctx, original); err != nil {
+		t.Fatalf("seed appearance before rollback: %v", err)
+	}
+	if _, err := database.DB.ExecContext(ctx, `
+		CREATE TRIGGER reject_appearance_mode
+		BEFORE INSERT ON settings
+		WHEN NEW.key = 'appearance.mode'
+		BEGIN
+			SELECT RAISE(ABORT, 'forced reset failure');
+		END`); err != nil {
+		t.Fatalf("install reset failure trigger: %v", err)
+	}
+
+	repository := NewSqliteSettingsRepository(database)
+	if err := repository.ResetAppearance(ctx); err == nil {
+		t.Fatal("reset appearance succeeded despite forced middle-key failure")
+	}
+	got, err := repository.GetAppearance(ctx)
+	if err != nil {
+		t.Fatalf("read appearance after rollback: %v", err)
+	}
+	if got != original {
+		t.Fatalf("appearance after rollback = %+v, want %+v", got, original)
+	}
+}
+
+func settingsTableColumns(t *testing.T, ctx context.Context, database *db.Database) string {
+	t.Helper()
+
+	rows, err := database.DB.QueryContext(ctx, "PRAGMA table_info(settings)")
+	if err != nil {
+		t.Fatalf("inspect settings table: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			t.Errorf("close settings schema rows: %v", closeErr)
+		}
+	})
+
+	columns := make([]string, 0, 3)
+	for rows.Next() {
+		var (
+			index      int
+			name       string
+			columnType string
+			notNull    int
+			defaultVal any
+			primaryKey int
+		)
+		if err := rows.Scan(&index, &name, &columnType, &notNull, &defaultVal, &primaryKey); err != nil {
+			t.Fatalf("scan settings schema row: %v", err)
+		}
+		columns = append(columns, name+":"+columnType)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate settings schema: %v", err)
+	}
+	return strings.Join(columns, ",")
+}
+
+func TestAuditAppearanceGroupAtomicityUnderSQLiteFailure(t *testing.T) {
+ for _,operation:=range []string{"update","reset"} {
+  t.Run(operation,func(t *testing.T){
+   ctx:=context.Background();path:=filepath.Join(t.TempDir(),"settings.db")
+   database,err:=db.Open(ctx,path);if err!=nil{t.Fatal(err)}
+   t.Cleanup(func(){_ = database.Close()})
+   repository:=NewSqliteSettingsRepository(database);service:=NewSettingsService(repository)
+   before:=apperr.AppearanceSettings{Theme:ThemeGlass,Mode:ModeDark,DefaultOpenMode:OpenModeViewer}
+   if err:=service.UpdateAppearance(ctx,before);err!=nil{t.Fatal(err)}
+   liveOpenMode:=before.DefaultOpenMode;observedUpdates:=0
+   service.SetDefaultOpenModeObserver(func(mode string){liveOpenMode=mode;observedUpdates++})
+   // Fail the second scalar write after the first theme upsert succeeds.
+   _,err=database.DB.ExecContext(ctx,`CREATE TRIGGER audit_fail_appearance_mode BEFORE UPDATE ON settings WHEN NEW.key = 'appearance.mode' BEGIN SELECT RAISE(ABORT, 'audit injected second-scalar failure'); END`)
+   if err!=nil{t.Fatal(err)}
+   handler:=NewSettingsHandler(service,nil,func()context.Context{return ctx})
+   var result apperr.VoidResult
+   if operation=="update" {result=handler.UpdateAppearance(apperr.AppearanceSettings{Theme:ThemeMaterial,Mode:ModeLight,DefaultOpenMode:OpenModeEditor})} else {result=handler.ResetAppearance()}
+   if result.Error==nil{t.Fatal("failure injection did not reach public handler")}
+   after,err:=service.Get(ctx);if err!=nil{t.Fatal(err)}
+   t.Logf("handler error=%+v before=%+v after failed %s=%+v live mode=%s observer calls=%d",result.Error,before,operation,after.Appearance,liveOpenMode,observedUpdates)
+   if err:=database.Close();err!=nil{t.Fatal(err)}
+   reopened,err:=db.Open(ctx,path);if err!=nil{t.Fatal(err)};t.Cleanup(func(){_ = reopened.Close()})
+   restarted,err:=NewSettingsService(NewSqliteSettingsRepository(reopened)).Get(ctx);if err!=nil{t.Fatal(err)}
+   t.Logf("after database close/reopen appearance=%+v",restarted.Appearance)
+   if restarted.Appearance!=before {t.Fatalf("refused %s persisted a partial appearance group",operation)}
+   if observedUpdates!=0 || liveOpenMode!=before.DefaultOpenMode {t.Fatal("failed update changed acknowledged observer state")}
+  })
+ }
+}

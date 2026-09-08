@@ -1,0 +1,104 @@
+{
+  "checks": {
+    "served-pinned-desktop-ipc-bytes": true,
+    "served-pinned-runtime-bytes": true,
+    "vite-missing-markdown-actual-react-index": true,
+    "vite-root-actual-react-index": true,
+    "wails-missing-markdown-actual-react-index": true,
+    "wails-missing-markdown-ipc-injection": true,
+    "wails-missing-markdown-runtime-injection": true,
+    "wails-root-actual-react-index": true,
+    "wails-root-ipc-injection": true,
+    "wails-root-runtime-injection": true
+  },
+  "limits": "HTTP pipeline only; no WKWebView, JS execution, app bindings, settings profile, or native shutdown was instantiated.",
+  "observations": [
+    {
+      "label": "vite-root",
+      "path": "/",
+      "status": 200,
+      "contentType": "text/html",
+      "bodySHA256": "e727317163499c80c20a46af00d6f9b7256d23db132c83f46bab252b15c8c744",
+      "bodyBytes": 601,
+      "scripts": [
+        "/@vite/client",
+        "/theme-bootstrap.js",
+        "./src/main.tsx"
+      ],
+      "reactRoot": true,
+      "reactEntry": true
+    },
+    {
+      "label": "wails-root",
+      "path": "/",
+      "status": 200,
+      "contentType": "text/html",
+      "bodySHA256": "5c75746e0b67d632f20903160c02db89b12f7e0a9c9dd7c5c43bf93501d3e656",
+      "bodyBytes": 703,
+      "scripts": [
+        "/wails/ipc.js",
+        "/wails/runtime.js",
+        "/@vite/client",
+        "/theme-bootstrap.js",
+        "./src/main.tsx"
+      ],
+      "reactRoot": true,
+      "reactEntry": true
+    },
+    {
+      "label": "vite-missing-markdown",
+      "path": "/audit-next.md",
+      "status": 200,
+      "contentType": "text/html",
+      "bodySHA256": "adb4faa571058124f45e3057beea7cd19fd9ce8ce6e95c4d4f3d56ebfd9d66ba",
+      "bodyBytes": 600,
+      "scripts": [
+        "/@vite/client",
+        "/theme-bootstrap.js",
+        "/src/main.tsx"
+      ],
+      "reactRoot": true,
+      "reactEntry": true
+    },
+    {
+      "label": "wails-missing-markdown",
+      "path": "/audit-next.md",
+      "status": 200,
+      "contentType": "text/html",
+      "bodySHA256": "adb4faa571058124f45e3057beea7cd19fd9ce8ce6e95c4d4f3d56ebfd9d66ba",
+      "bodyBytes": 600,
+      "scripts": [
+        "/@vite/client",
+        "/theme-bootstrap.js",
+        "/src/main.tsx"
+      ],
+      "reactRoot": true,
+      "reactEntry": true
+    }
+  ],
+  "runtimeEndpointObservations": [
+    {
+      "label": "wails-runtime",
+      "path": "/wails/runtime.js",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bodySHA256": "daa35e97280c219e08945763abc194a62ed9e9c4036aa7aead2a9078b83aeb8c",
+      "bodyBytes": 107871,
+      "scripts": [],
+      "reactRoot": false,
+      "reactEntry": false
+    },
+    {
+      "label": "wails-ipc",
+      "path": "/wails/ipc.js",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bodySHA256": "2f75a5e2282e82ec1c447291915b12636c39235a52df8ed87f9199beb4c060f2",
+      "bodyBytes": 412,
+      "scripts": [],
+      "reactRoot": false,
+      "reactEntry": false
+    }
+  ],
+  "wailsVersion": "v2.15.0"
+}

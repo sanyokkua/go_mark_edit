@@ -1,0 +1,3 @@
+module example.invalid/gomark-format-probe
+
+go 1.25.7

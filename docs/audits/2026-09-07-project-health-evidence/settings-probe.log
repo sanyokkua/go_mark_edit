@@ -1,0 +1,14 @@
+=== RUN   TestAuditAppearanceGroupAtomicityUnderSQLiteFailure
+=== RUN   TestAuditAppearanceGroupAtomicityUnderSQLiteFailure/update
+    repository_sqlite_test.go:765: handler error=&{Code:io Title:File operation failed Message:The file operation could not be completed. Details:map[operation:update settings] Retryable:true} before={Theme:glass Mode:dark DefaultOpenMode:viewer} after failed update={Theme:material Mode:dark DefaultOpenMode:viewer} live mode=viewer observer calls=0
+    repository_sqlite_test.go:769: after database close/reopen appearance={Theme:material Mode:dark DefaultOpenMode:viewer}
+    repository_sqlite_test.go:770: refused update persisted a partial appearance group
+=== RUN   TestAuditAppearanceGroupAtomicityUnderSQLiteFailure/reset
+    repository_sqlite_test.go:765: handler error=&{Code:io Title:File operation failed Message:The file operation could not be completed. Details:map[operation:reset appearance] Retryable:true} before={Theme:glass Mode:dark DefaultOpenMode:viewer} after failed reset={Theme:glass Mode:dark DefaultOpenMode:viewer} live mode=viewer observer calls=0
+    repository_sqlite_test.go:769: after database close/reopen appearance={Theme:glass Mode:dark DefaultOpenMode:viewer}
+--- FAIL: TestAuditAppearanceGroupAtomicityUnderSQLiteFailure (0.01s)
+    --- FAIL: TestAuditAppearanceGroupAtomicityUnderSQLiteFailure/update (0.01s)
+    --- PASS: TestAuditAppearanceGroupAtomicityUnderSQLiteFailure/reset (0.00s)
+FAIL
+FAIL	github.com/sanyokkua/go_mark_edit/internal/settings	0.544s
+FAIL

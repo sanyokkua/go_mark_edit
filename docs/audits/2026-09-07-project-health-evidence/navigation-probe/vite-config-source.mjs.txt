@@ -1,0 +1,8 @@
+import applicationConfig from '/Users/ok/Development/GitHub/go_mark_edit/frontend/vite.config.ts';
+
+export default (environment) => ({
+  ...applicationConfig(environment),
+  root: '/Users/ok/Development/GitHub/go_mark_edit/frontend',
+  cacheDir: '/tmp/gomark-navigation-probe.Ig0rZh/vite-cache',
+  server: { host: '127.0.0.1', port: 54173, strictPort: true },
+});

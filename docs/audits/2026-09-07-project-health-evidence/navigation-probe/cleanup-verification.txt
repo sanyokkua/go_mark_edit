@@ -1,0 +1,39 @@
+[
+  {
+    "command": [
+      "rtk",
+      "proxy",
+      "pgrep",
+      "-g",
+      "35072"
+    ],
+    "exitCode": 3,
+    "stdout": "",
+    "stderr": "sysmon request failed with error: sysmond service not found\npgrep: Cannot get process list\n"
+  },
+  {
+    "command": [
+      "rtk",
+      "proxy",
+      "pgrep",
+      "-g",
+      "35097"
+    ],
+    "exitCode": 3,
+    "stdout": "",
+    "stderr": "sysmon request failed with error: sysmond service not found\npgrep: Cannot get process list\n"
+  },
+  {
+    "command": [
+      "rtk",
+      "proxy",
+      "lsof",
+      "-nP",
+      "-iTCP:54173",
+      "-sTCP:LISTEN"
+    ],
+    "exitCode": 1,
+    "stdout": "",
+    "stderr": ""
+  }
+]

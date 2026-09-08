@@ -1,0 +1,367 @@
+fe4692edbfa210e54560c58b2ce54e8f0876f414 2026-07-17T13:09:01+02:00 Initial commit
+50d692d6d724e44de0b7d06fed7b9471706e319b 2026-07-17T13:19:01+02:00 Initial commit with the app specification and pre-configured CLAUDE agent.
+c90c088f3a4df6ae7c78c6a866ca41d808d7d040 2026-07-20T10:57:14+02:00 Added CODEX configs
+85205ba77e26bde72fe2ee09e4ec69f186e56057 2026-07-20T11:40:02+02:00 Fixes for the CODEX
+dbabc3de931ae9f304255afaa30cd58367c22a36 2026-07-20T12:56:16+02:00 Phase 0
+21346f8bc1a1c9ad63a5f98ac83f2dcd30e2b109 2026-07-20T13:51:37+02:00 Story 001
+041250d61ea2d2b28eecd0c16d64e7248b46e7bd 2026-07-20T14:24:06+02:00 STORY-002
+6a9c9502037ec989e873376258dc5e3d6c326a92 2026-07-20T15:07:18+02:00 Story 003
+a5a7e2534b2521b738a72fbd56024de92bc14d3d 2026-07-20T16:54:16+02:00 STORY-004
+4f4f642d13fb4af3211a10120892981fd6aac188 2026-07-20T17:51:18+02:00 STORY-005 done. Hot fix story STORY-009 is created.
+5de50476e90cc1dff9422ba9d9b4e65490110297 2026-07-20T18:25:04+02:00 STORY-009
+26a13fcceb7e8eb89a52f6dd56a0b9ff37af59a9 2026-07-20T20:13:24+02:00 STORY-006
+f7da7a380ee4eea9fa2094e80411362a00d61b02 2026-07-20T20:38:11+02:00 STORY-007
+a37f7722225b3bf8539c807d4f2b0578fc9e8c7c 2026-07-20T21:57:35+02:00 STORY-008
+65a612dfcf3409e768b6e550918fb4a6c71740e1 2026-07-20T22:58:05+02:00 STORY-010
+0ddffef6fe74b3a706fb565dd1b37f28a6df1a3b 2026-07-21T00:05:26+02:00 Phase 01
+806873be2e0bd5d080cf0497e72b9850e24efb52 2026-07-21T10:40:03+02:00 STORY-011
+6d59d058f2eac0f3716df1bbcb5bfea005d1e520 2026-07-21T10:51:54+02:00 moved STORY-012 to ready
+d03e5c986e5141dabb8241569402bc51a08ec96a 2026-07-21T11:33:47+02:00 STORY-012
+40569d25ea6977528dd84493f3ce887091a35988 2026-07-21T12:08:25+02:00 STORY-013
+96672e1aa26e074b74aa63e3584b3c9558f4a697 2026-07-21T13:07:09+02:00 STORY-014
+b9b01c6338162ed75d2026e026eaca0b3f730ef9 2026-07-21T14:01:48+02:00 STORY-019
+b2e038eafeee9ea878ce27735cf143023c6f70f4 2026-07-21T14:02:14+02:00 STORY-019
+a7bdfe1badd0920c05bc165eb0b55d0a83cd0fe0 2026-07-21T14:38:09+02:00 STORY-015
+ecfee51ffa983ee40f86134d8ffca3ae953d0634 2026-07-21T15:26:38+02:00 STORY-016
+100b45de424d7be3cfe5b40e22126c8f4e292c12 2026-07-21T16:44:27+02:00 STORY-017
+c7771c8b19121e955d762c89439c4cd439dea105 2026-07-21T18:26:13+02:00 STORY-018
+6aa7abc584c3332f0fefb62b7cc27e03242bb7a1 2026-07-22T13:56:17+02:00 Updates to the spec from perspective of tracking work. Added new stories to fix the gaps.
+14b26048b7f2c73fc4da7807e3f1428e616967e4 2026-07-22T15:07:10+02:00 STORY-021
+78826ed028b9e9680a9c801d5fb0d60a0f495be5 2026-07-22T16:22:32+02:00 STORY-022
+daeb1960bc4623a64d48f3014096ce80331ac047 2026-07-22T17:20:49+02:00 STORY-023
+12f4b64c2ad0178bb1a44ec63294f6f6a594c58c 2026-07-22T20:45:37+02:00 Audit results after Phase 1
+f2cd9cc6a71dc6c113583f1931e2e1f2dfc61861 2026-07-22T21:25:24+02:00 STORY-025
+7a48cba6a1da708985fd451048276cf3af662f7c 2026-07-22T22:10:06+02:00 STORY-026
+ad9c6570d0ea088e616189f3d6b4a4a8e8818903 2026-07-22T22:32:25+02:00 STORY-027
+a6589816aeda6cab658ee8ac87f2480efac53aae 2026-07-22T23:02:39+02:00 STORY-028
+dbc8345a3789d14581dc002195f8fe26b92b85be 2026-07-23T11:18:23+02:00 STORY-029
+a31b9395c728bbf6d6ebe169bbd2ae6758f644db 2026-07-23T12:36:57+02:00 STORY-030
+59b379a27da3a0d1308090d638713ba78969d67c 2026-07-23T14:27:12+02:00 STORY-031
+b6b5c16594a79b96b09368bbfdbf07eaf72747de 2026-07-23T17:18:07+02:00 STORY-032
+914ea17b97737ae552697359cca320e57482948f 2026-07-23T17:36:03+02:00 ADR-0018 remove Phase 01 manual network capture
+7671d5a5e4db72e91ddda89352483ea6e028f6b6 2026-07-23T17:43:04+02:00 ADR-0019 allow committed Phase 01 evidence
+b53f1197b4d9145868b0a79cdf45a8dd10a58536 2026-07-23T17:44:37+02:00 Complete Phase 01 evidence
+2b20decffb0686d70d3f41fb6c9c5e4b456ce25c 2026-07-23T17:46:33+02:00 Fix committed Phase 01 evidence validation
+f811652bbdbaf1b24c29c2c37fe0f58fecd0e488 2026-07-23T18:18:24+02:00 Refresh Phase 01 evidence revision
+39efb7aef099042a37f70925fca8cf42e282d103 2026-07-23T21:53:44+02:00 Phase 02 planned
+927d15fe69ec1444956230d917d678afcacdfa9a 2026-07-25T18:53:14+02:00 Changing the approach in the development. Rewriting (cleanup) of the documentation in order to simplify the further project development
+e1bd33ff1c8696dcbc48877d0d6015d416dce38d 2026-07-27T08:36:27+02:00 Review and Adjustment of the Spec. Stage 1 of review finished
+3af7c583de7f33926663859bcba5cffc96029828 2026-07-28T15:08:48+02:00 Converted the Specification to new Format
+ca3f7e722c805ec391bf3c17e32f90fa37513f76 2026-07-28T15:51:59+02:00 Planned stories for phase 02
+0a7f21dde4b596faedd804175454d5f6ee8f1cbb 2026-07-28T16:14:08+02:00 Story 059 Planned
+c8d88feb3c51a025bc9034da630da3c54e810b96 2026-07-28T16:52:54+02:00 Story STORY-058 is implemented
+a240936e85e7d9dead697e7531ccca6546be579f 2026-07-29T00:42:41+02:00 Fixed spec
+dea4bcc3e70d577371d5d86c35f1791b389ba1dd 2026-07-29T10:03:40+02:00 plan-phase 02. Re-planned phase 2. Stories to implement 063-065
+cf52e782bb97dabd8adf86ab7953c5f662ee7ec3 2026-07-29T10:45:11+02:00 Planned the STORY-063
+fc785fe79712fc8545ed2ba33d6ab32ef1aadfa2 2026-07-29T14:28:08+02:00 Story-063 - fixes to the story description and workflow.
+857636a4bb91c9d7f1fd178c7511fd7ba8f214ba 2026-07-30T08:35:12+02:00 baseline
+b9d8a05ca448cf96986800b25847991141473467 2026-07-30T10:38:45+02:00 Added Spec kit Constitution
+05c38984547b8e8b38baea16ab612f1575ab7aac 2026-07-30T11:36:30+02:00 specified the requirements
+3b0cca1462692e5fcd509a2e6d87d248d43fc08b 2026-07-30T12:05:45+02:00 Implementation Plan created
+9afea12eb72636cecff1e52af0051e0fdd3fdaba 2026-07-30T12:46:40+02:00 Improved plan
+7151465c3f4f12dc01c01109d4bf5e97974a6c59 2026-07-30T15:35:05+02:00 Created tasks
+53af8e4da40b5741265415aca42f1dc7f5e2cd39 2026-07-30T22:30:02+02:00 feat: complete appearance verification
+99f0275bb17245933e1ba4a90c788f1a98af302e 2026-07-31T22:31:28+02:00 Cleanup and preparation for next phases.
+e537caab7bc816890313ed407287d797fc9e7b86 2026-07-31T23:01:40+02:00 Planned next stage
+f70bf3fff24c3534b45589b7d78f12354b9db19d 2026-08-01T15:35:05+02:00 Created tasks
+011d2b55aff5fb95cd61b5c789f5a84472330d1b 2026-08-02T18:08:35+02:00 feat: complete native window shell slice
+c74fc22b25c8b34df203a114c72ebe6df4c5449d 2026-08-03T10:51:08+02:00 feat: close native shell convergence
+cebb11da3fabf2c3d0fd34581b4959c4d53d1307 2026-08-03T13:41:40+02:00 Specified 002
+5a1e93de3404ef66f0ab5112d1aa20cd1bbf9af6 2026-08-03T14:31:06+02:00 Planned 002
+cf9d92ffc7d008048a01607f9c8aa938cfcf3c3e 2026-08-04T00:04:28+02:00 Finalized the plan
+b892fc1eb3fdae59c371837e118a17636cb60427 2026-08-06T11:42:39+02:00 feat(editor): implement editor stage formatting
+848856ef89310cd57d8d235150e9b7fa4bbc9dbb 2026-08-06T15:56:44+02:00 feat(editor): harden stage controls and evidence
+c025ab419214a63de563d31e6e9ddc0adadcec63 2026-08-06T17:05:32+02:00 chore(agents): apply agent memory standard and restore spec-kit skill divergence
+15080ee5d2202108128b9ece4648037fcfa782f6 2026-08-07T08:13:40+02:00 feat(editor): close stage convergence
+3fcde380fe8bcc7adeb82e90f01efa057f0a4f00 2026-08-07T23:08:02+02:00 docs(spec): add Feature 003 real files and tabs specification
+3ddb781b6c998623edabf8ce0dd1f57c270717b6 2026-08-07T23:11:01+02:00 fix(evidence): route Spec Kit baselines into feature specs
+216bcf7c3f60b106787d3a594503736d5550125f 2026-08-07T23:14:48+02:00 fix(evidence): sample working-tree provenance before writing baseline output
+7d3988c09d60627bafd3c77ee071a9869c59cff2 2026-08-07T23:16:51+02:00 test(evidence): capture Feature 003 baseline
+9b87718703536be9dda0814fb075a6ed5e041aa5 2026-08-07T23:19:15+02:00 fix(evidence): keep captured coverage gate output under version control
+96edf75a6261a26ea7c757bc180af592d8dd77ec 2026-08-08T11:26:29+02:00 Updated speck status
+4abb423a1beeb1a361752e232abba50f4cac19fe 2026-08-08T17:46:56+02:00 Adjustments to requirements
+c3d26718c44fc7f8030cee84116751dfccae2fe8 2026-08-08T17:59:08+02:00 chore(tasks): record baseline routing completion
+f768d2ae30cdaacfb8a4b8b2cd9f8fb322b03dbf 2026-08-08T17:59:37+02:00 test(evidence): capture Feature 003 baseline
+35f6a2e62c235850a2d35600d01e1f300546368e 2026-08-08T18:10:09+02:00 test(files): add deterministic lifecycle fixtures
+decb64716d2ed2a1129a1fe7ffa06b5d893e8e2c 2026-08-08T18:22:39+02:00 feat(appmodel): add zero-safe ordered document projection
+7bf74489e7eb6c8c24162c3410b581b03afb6d4e 2026-08-08T18:32:38+02:00 feat(files): classify canonical document input
+33c39585ba20166381a084f3b8ff89da250ba163 2026-08-08T18:39:43+02:00 feat(files): add backend-authoritative New
+d5d6e8181e1ff43c82fb66110c9c8d9b26842d9d 2026-08-08T18:48:09+02:00 feat(files): add canonical Open lifecycle
+4b8861659c4e0683d19c6db46f97b42985d931c5 2026-08-08T18:52:54+02:00 feat(wails): wire native New and Open commands
+67de09026ea53fbbb1757bcb47202d3191825b58 2026-08-08T19:10:36+02:00 feat(files): operate New and Open from real surfaces
+30847ad3a6c8db44b7cc6a057abfce394228ecca 2026-08-08T19:20:22+02:00 feat(editor): add awaited lifecycle barrier
+67cf1caf09598d795a3722ed89c5e0d35fa8c742 2026-08-08T19:26:56+02:00 feat(files): add document codec and disk versions
+1f16029e164b3045144abbdea34881bd1dba2f9d 2026-08-08T19:44:39+02:00 feat(files): add platform-safe atomic replacement
+0f3a2211dca848bf9f44a5bc32f2f90fb171fa6b 2026-08-08T20:18:59+02:00 feat(files): converge committed writes without replay
+40a30829d40d7b324730f82f5da8dca4d7cee2d9 2026-08-08T20:42:54+02:00 feat(files): add safe Save and Save As
+f5ae3e14ca666db9fde05d6a26db4325af76184c 2026-08-08T21:09:39+02:00 feat(files): expose truthful save outcomes
+f19510e357c82f0b4691ed115a5abc1b6c842384 2026-08-08T21:24:08+02:00 feat(tabs): add revision-safe backend tab state
+4624b7ee88cb9ff2874d593b0a73b36e930e791f 2026-08-08T21:37:01+02:00 feat(editor): isolate Monaco sessions by activation
+b527696d36a6fb9b339edb9c4ccb62e3e1f9c17a 2026-08-08T22:02:23+02:00 feat(tabs): replace fixtures with real tab controls
+bb6c68f2f08109aeb8133a7d3b7b1e2ae7a3cfd7 2026-08-08T22:30:39+02:00 feat(files): add revision-bound external recovery
+1fc1e2d63b90b23e0eee42a177254684b0687a97 2026-08-08T22:58:01+02:00 feat(files): add accessible external-change decisions
+c5ce90917fd3ffd55fdd6ec3b636347035bf310d 2026-08-08T23:11:14+02:00 fix(files): preserve disk version precision across bridge
+9518dda3ee8734e76f7c29db3c13f26c7258ce33 2026-08-08T23:15:58+02:00 fix(files): refresh editor after disk reload
+62c3f8c9118102eac9f94411860b821120ab00ae 2026-08-08T23:21:58+02:00 fix(files): refresh reload from authoritative state
+5c486e5e235e7ac9d58e0d7bcc9a87f90b3f921a 2026-08-08T23:28:14+02:00 fix(files): flush conflict session before decision
+09fa0b44c4e6f61e25d4357c8ee453300e6afb4e 2026-08-08T23:28:59+02:00 test(files): reset conflict flush mock safely
+3797295f91b5451c55ee65be637d6596bc418803 2026-08-08T23:31:41+02:00 fix(files): refresh preview after disk reload
+41ed7e4c18913084ed835e55f5e0f4c45aa30d75 2026-08-08T23:35:23+02:00 test(evidence): prove external-change recovery
+b52c6d1f48481632ff18edd117bd9c3f77ad59fd 2026-08-08T23:46:50+02:00 feat(settings): persist acknowledged autosave
+1d8aa10b5cd54cd0628f1c5eb03539657f6494ac 2026-08-08T23:58:26+02:00 feat(files): serialize backend autosave
+9918a62375a288e801aac9f55e9ef880341ef928 2026-08-09T00:44:41+02:00 feat(files): expose and prove autosave
+e80c54f72944e402c82b0c328c5c825e5e370504 2026-08-09T01:14:33+02:00 feat(files): add transactional close plans
+5c3d33e599ff90ff2c2c8d24022ba5d953434f23 2026-08-09T01:35:42+02:00 feat(files): resolve close plans in one prompt
+fea08b7460bf7d0db634dbeb2dd3f762d8dab32f 2026-08-09T02:02:50+02:00 feat(lifecycle): protect native close with one-shot plans
+fae183a90df07457942b26660f6e00c713edea52 2026-08-09T08:02:19+02:00 test(evidence): prove transactional close and quit
+fca13a0812dda876bcf6497e1b5cf95bf7d8d763 2026-08-09T08:31:28+02:00 feat(files): add recents and recently closed history
+47e55db3c78b2c362ae6ac1f2e5cb6620558a35b 2026-08-09T08:50:05+02:00 feat(actions): activate canonical file and tab commands
+068fed7ae591435efb0060fe4f7408126e3aea7b 2026-08-09T09:16:58+02:00 feat(files): add recents launcher and file status
+4186d574b7edbc330c5e592ceafa7dfb1200bd6f 2026-08-09T10:51:57+02:00 test(evidence): prove recents launcher and reopen
+ca124e410f98dea10393c00b1164d7af7ffe960f 2026-08-09T11:19:16+02:00 feat(ui): match binding metrics and palette structures
+7744cc824388e3685c434948822d6e32e6b2edea 2026-08-09T11:31:35+02:00 test(ui): add immutable zero-tolerance parity harness
+e95a0818fdcb1d75ec855602be3f7f74d908fd81 2026-08-11T11:32:05+02:00 chore(checkpoint): preserve Feature 003 parity worktree
+b87f6c7d1786df26493418dfc7ff5eb222fa0cb5 2026-08-11T11:59:10+02:00 test(ui): stabilize parity reference readiness
+e1c599c9ba47c79628fab91a7ef797598bdd9061 2026-08-11T15:41:14+02:00 fix(feature-003): audit lifecycle and parity evidence
+47d62563a25c8dd93c8347e24474230bf2e526a6 2026-08-11T23:23:12+02:00 test(ui): add state-paired targeted parity diagnostics
+1b2897ba237818cc05d929e19c6116d0b075cd4b 2026-08-11T23:41:44+02:00 fix(test): pair file-only launcher reference state
+9c818df994f222da89abe9f65a932803ca8fed08 2026-08-12T00:26:08+02:00 fix(ui): converge targeted menubar slice
+2936d4f4dbe5507a6a267e1b257f9b6633532874 2026-08-12T08:08:37+02:00 fix(ui): converge targeted File menu slice
+9065b022cae98a3c0d7691ae8361ce6d508e499e 2026-08-12T13:41:03+02:00 fix(ui): converge targeted Settings menu slice
+1a5280fcb07c49520c1c2bccb06b7e1c464e20f9 2026-08-12T14:00:13+02:00 fix(ui): converge targeted View and About menus
+1be16474b61f5acc2ee751c6262b92e723cc878c 2026-08-12T14:03:01+02:00 feat(ui): converge production shell geometry
+41bae345bebcd698b15708f13cd18b7d4119e614 2026-08-12T14:03:25+02:00 feat(ui): place document identity in menu row
+9c5dc1b53184eab0544675329bce36309593fc86 2026-08-12T14:03:43+02:00 feat(ui): place status below editor content
+37cd72b3699a272f93ed87b345ef8e8c682fe134 2026-08-12T14:14:53+02:00 test(evidence): close unrestricted parity accounting
+7cbb0a6e72898862dd0cd18b8111657ee7431ecd 2026-08-12T14:32:14+02:00 fix(ui): converge targeted tabs and toolbar slice
+ebbda7be546897c5e50abaf51e90f6a76435fe6e 2026-08-12T16:52:58+02:00 fix(ui): converge exact tab strip rendering
+1ce611b112420ad259079978ed5618761a666bad 2026-08-12T17:07:32+02:00 fix(ui): prove editor status state slice
+d63c8856fa8c2e5e1285acf4eb471f071e0c0dd1 2026-08-12T18:18:41+02:00 fix(ui): converge targeted preview slice
+544eece509eb12ca235053152637d93580ec7972 2026-08-12T22:39:16+02:00 chore(feature-003): preserve Phase 17 converge output and in-flight diagnostics
+7b4feca2675ec005e5d7f93e11cf7a1ab474808c 2026-08-12T22:46:26+02:00 fix(ui): localize Settings popup through the catalogue
+f95bc9cdb660bf056aedb6b7d2d8556a4a88a570 2026-08-12T22:50:46+02:00 docs(tasks): mark T069 complete
+096222b6f0bee66582276c4cce64f341db7759c4 2026-08-12T23:24:02+02:00 fix(ui): converge File popup to the binding dropdown
+5f8e59de97f0d412842b3db53f49e6773be14a52 2026-08-12T23:32:49+02:00 fix(ui): apply binding Minimal pane and toolbar rules
+86c4ac032c36efe2bea69212ae442ad6e2bb0735 2026-08-12T23:38:38+02:00 fix(ui): restore a clean gate after the parity convergence
+7fa47fc6f22271781b1418a6aba01f7577ded052 2026-08-12T23:42:32+02:00 test(evidence): record Phase 17 session status and open decision
+a5d618548b65ba9d18c08fda5d29ae2935a5a7c9 2026-08-13T00:27:09+02:00 docs(spec): record the editor-region and status-state parity decisions
+f170c6e03bd1ac3747f24a0604f5d0b250c79463 2026-08-13T00:30:55+02:00 docs(spec): correct the editor-region decision to its implementable form
+89978d68b32da75507511a9820105cfd80c645f6 2026-08-13T00:31:55+02:00 chore: keep parity diff probes out of the repository
+b807dfe096570bee689d4832d80f99111e866e01 2026-08-13T00:49:16+02:00 feat(test): implement the approved editor-region parity decision
+9e2f4471cfc99489a49895372ad62e7061d1c171 2026-08-13T00:53:48+02:00 fix(ui): anchor the View and About popups at binding coordinates
+a5d85bfcf540841ce0e784cd6c2c5a436dbae98f 2026-08-13T00:54:40+02:00 test(evidence): update Phase 17 session status
+ff3da20717e629835c6ca2f754dfca516e86ade0 2026-08-13T09:06:58+02:00 fix(test): remove partial-raster nondeterminism from parity capture
+5698c92520fd8b16f98025a4863498812a6efa44 2026-08-13T09:17:01+02:00 fix(ui): converge editor pane metadata and toolbar chrome
+b6b451929bb130fef6841876db877ade155fba9d 2026-08-13T10:03:35+02:00 fix(ui): derive toolbar widths from content and converge preview typography
+96ad20170815114498464ff50c003aec32a01b30 2026-08-13T10:18:07+02:00 feat(parity): render the toolbar's deferred controls in the reference variant
+65345dc23613e47212ff46d3a8bd2bc6693198d5 2026-08-13T10:19:07+02:00 docs(evidence): record Phase 17 editor-region convergence to 182 px
+29c8a1185e776bc415d51e56c35f0fa86ee9f3d0 2026-08-13T10:21:54+02:00 docs(evidence): measure the View popup inventory against the binding
+f6cd408d0ae79fa1c269574bf3d475541d360bcd 2026-08-13T10:35:21+02:00 feat(ui): give the View popup the binding's grouping, indicators and switches
+fcb851c5bab47e9223122234c6ec5cbaedfd8a34 2026-08-13T11:21:34+02:00 feat(parity): resolve the View popup through a reference variant
+6ab57a50776b8db8dad5c4d2c08e658085bf4e49 2026-08-13T11:27:39+02:00 docs(evidence): diagnose the Glass menubar drift as a compositing backdrop
+ccf94c15616e0597b6eb99aac4b3b44c2c4851ec 2026-08-13T11:30:41+02:00 docs(evidence): attribute the Settings popup's 709 pixels exactly
+804f8db9a4982bae04c9d2757a5274a2f42fd93d 2026-08-13T12:28:21+02:00 fix(ui): restore the binding's title-bar, tab and status-bar structure
+9715f8422fbf4ba83914ff53b09c9005bd2ac925 2026-08-13T12:31:37+02:00 refactor(ui): give menu popups a single owner for their styling
+f61e2a2b1e8421ce242484398bf19d18d1290716 2026-08-13T12:32:25+02:00 docs(evidence): name the pattern behind the UI drift
+452739d0923331f460e2a317f040a436bad913bd 2026-08-13T12:51:29+02:00 fix(ui): tie the workspace divider to the pane it resizes
+07650c71e313bfb4dac6252c8c687648e4c30fd4 2026-08-13T13:22:02+02:00 fix(ui): surface a refused workspace-visibility command, and record why the control is inert
+9fc420a7f181a70ebc952b7deff6ed55b21731af 2026-08-13T13:24:22+02:00 refactor(ui): delete the dead tab styling from EditorChrome
+48bfd8c535a1a00878dea9fd276cb4e5cd11bcb6 2026-08-13T14:14:46+02:00 fix(projection): stop a null tab order discarding the layout patch beside it
+33c8fd9ffc3b2c387b30d68479fd8a6a6b9ed09f 2026-08-13T14:15:00+02:00 refactor(ui): draw the Settings popup from the shared menu surface
+cf3b0d6a75d76513ef9f931dff50bb9a38f5c063 2026-08-13T14:37:16+02:00 build(wailsjs): store generated bindings at the mode the generator writes
+5ec7c00e75e31f9445505c8ec38d0e7576d414c6 2026-08-13T15:01:29+02:00 feat(ui): treat a workspace dragged to zero as hidden, and restore it at the binding width
+8285f099e9f734c00c5f768cd71b9687d318fa3f 2026-08-13T16:04:05+02:00 fix(ui): hold the arrangement segment at the toolbar's trailing edge
+2f42296d27e1aed9398aacbf139832dae6bfc663 2026-08-13T16:06:10+02:00 refactor(ui): drop the parity-only auto margin now the toolbar has its spacer
+0ec1c3dbd83a6ab82de68586c6fe4f7d1e955f2b 2026-08-13T16:46:37+02:00 refactor(ui): give every menubar trigger one owner
+40fcc3264226cf872aa3f5501d64dd441e3111c6 2026-08-13T17:05:46+02:00 fix(close): stop an empty close plan making the window impossible to close
+6efb45fa59d592295046c10328e863d8074606ba 2026-08-13T18:03:56+02:00 fix(ui): scroll the tab strip instead of shrinking its tabs
+bce66d1f0cdf5bcb8f701140d02addfd68d69e01 2026-08-13T18:53:54+02:00 fix(close): let the newest close request supersede an abandoned plan
+b03a4bb3376993256c2d0dc2398c3d846d6187d9 2026-08-13T19:06:53+02:00 fix(ui): drop the two status-bar items the title bar and view switch already own
+ac341997933c80639c9063c307c9eddac0183d5d 2026-08-13T19:16:28+02:00 fix(ui): keep the View menu present and mark its document-backed rows unavailable
+40d4e120245bdfc8ed550d91b46d4f50dcca1775 2026-08-13T19:23:21+02:00 fix(ui): draw the shipped launcher from the binding instead of a second design
+45e01eac71fadd8d708870eef59df435de965fac 2026-08-13T20:52:11+02:00 fix(ui): make Settings toggles real controls, add interactive-state and toolbar coverage
+48078cbdc53d69a41c527dfe53d47fdd059cef9f 2026-08-13T20:58:30+02:00 fix(parity): draw the deferred Settings rows unavailable in the reference, and close T071
+48c23a3887fdac18b28e1ec466e340910a95b9e7 2026-08-13T21:01:59+02:00 docs(parity): attribute every remaining targeted residual and close T070
+54037a928ae5b255ef4130c74e3e15af1cbce02d 2026-08-13T21:03:33+02:00 docs(spec): record what remains open at the close of Phase 18, and why
+d724aa41425f133e7b96c65be7d401b65a81741a 2026-08-13T21:41:31+02:00 docs(parity): record the T035 matrix run and measure the Feature 002 editor term
+b7dfbd111e83e7e54b9692ed5b0daaaeee3b8841 2026-08-13T21:44:20+02:00 docs(agents): record the stale reference server and the wailsjs mode trap
+73c00fcae5968129834d46b7afa4034b90ca9988 2026-08-13T21:58:23+02:00 fix(parity): draw the deferred About rows unavailable in the reference, and close T072
+2c2a097385c0b82070b184f2426e2eefadb0ef1b 2026-08-13T22:04:42+02:00 docs(evidence): walk the built binary and prove the close-app trap on the real bridge
+7ca282b0586fe4e52436576ac543986ced97deb1 2026-08-13T22:40:21+02:00 test(e2e): correct three stale locators, repairing 39 of the 106 failing cases
+8f35c2ec86ce860082f28a696c09183886bc1b4e 2026-08-13T22:40:43+02:00 docs(spec): record that Feature 003 does not change the editor font or scrolling
+782a82ad8fc4e8e21c8471b5d8fc4253f1e920d2 2026-08-13T23:49:41+02:00 fix(ui): make Escape dismiss every modal, and stop a stray click answering the close prompt
+cfb74b0d691dc3a66633c5b2286d2c19a7644ab2 2026-08-13T23:58:23+02:00 test(parity): accept measured, explained residuals so the targeted suite can pass
+b5bc99b86fcac890e55d79e5e6649637e87ef7aa 2026-08-14T00:53:28+02:00 fix(editor): restore the formatting controls that vanished at 375px
+7ee7c070e62cf2806b34fd52dc9b14c9cad7f6b0 2026-08-14T01:21:10+02:00 test(e2e): stop assuming the workspace panel starts open, and record the narrow-overlay decision
+28d5d3d8833273c4543211884aadd566f30ca7c1 2026-08-14T12:44:51+02:00 docs(tasks): append Phase 18 convergence — minimum-window behaviour and rescoped contracts
+13d3ffea9b8478b5d7731001b5c44ab76415759f 2026-08-14T13:47:36+02:00 docs(spec): record the Phase 18 minimum-window and rescoped parity clarifications
+e9b16a42eab2752d99ea8bf87d55389470fce388 2026-08-14T13:51:43+02:00 test(parity): fail a residual that shrank below its recorded ceiling
+d2535fc6d6b36aa80b10a0d406799260c6dd7155 2026-08-14T13:58:53+02:00 docs(evidence): reduce T045 to three representative combinations, and record the session baseline
+36e264ab004eb3fd84553f4401abb64e1d6e0c4b 2026-08-14T14:06:31+02:00 fix(ui): keep the Settings popup inside the smallest supported window
+997581a4be192fd94eefc1fc46c58471ff0ea2f5 2026-08-14T14:07:45+02:00 docs(evidence): rescope the five coverage sweeps, naming the test behind every skip
+88c19e21eddfc968a95397fb0c9f301bc40cd203 2026-08-14T14:09:51+02:00 test(ui): gate shadow, typeface and disabled opacity across all six palettes
+a108ae6935e1e564baa4f7899064c150de5b6460 2026-08-14T14:11:45+02:00 docs(evidence): record the two decisions that block a full matrix and e2e pass
+5d3026af6fa448a7277e475a71160de5801a5e6c 2026-08-14T14:12:41+02:00 test(e2e): remove the committed debugging probe from the e2e gate
+a17c49f9619c77396d6b4d0140db5bcb9374b3e6 2026-08-14T14:14:15+02:00 fix(test): give each e2e file one runner so just e2e-test can collect
+ca36c208dfa73ffcf50f1f7fa2442b60748b200a 2026-08-14T14:14:45+02:00 docs(evidence): record that the e2e gate could not collect, not merely was not run
+d0e63414d0511cedf49592c8d4ada028a5d5d4b6 2026-08-14T14:26:34+02:00 feat(ui): show one pane and no workspace at the minimum window
+dacbe5c17b0ec0e87bb3a8fcd2280b828dcd3985 2026-08-14T14:26:48+02:00 fix(ui): read the binding's status colour and drop autosave at 375
+6622084f020ce53708d5ca036787327c76803630 2026-08-14T14:27:02+02:00 test(ui): close the tab, Save As and recovery-prompt coverage gaps
+57c33948c50cdb8d03977f7eb018d030b37b7780 2026-08-14T14:29:27+02:00 fix(ui): move tab focus with the arrow keys, not just selection
+da302d88192bb9c687e373faad2c8e35235fbf9b 2026-08-14T14:48:32+02:00 test(parity): verify the six status states by behaviour, and collapse the 375 split reference
+97316adeaaafacb48b437072272a20eb3db3de51 2026-08-14T14:50:54+02:00 test(e2e): cover narrow-width toolbar reach, wrapping, prompts, launcher and preview
+8bccd4f523665c94aa1eec62504c05ebcdf3f00e 2026-08-14T14:51:15+02:00 docs(evidence): record all 17 rescoped coverage states as closed
+d4fe43b98bb0e56e1455dae4af89acb7a00b0da4 2026-08-14T15:04:58+02:00 test(e2e): assert the shell chrome that exists, not the static mock it replaced
+bf811cb5ae8bd5973c780b536d8235f5152e4da8 2026-08-14T15:11:01+02:00 test(e2e): reach the relocated arrangement radios and expect the 375 collapse
+e05d7cd4d60f87c894799aeea4ab0a2a3c656bfc 2026-08-14T15:11:51+02:00 docs(evidence): record a verdict and its evidence for each of the 26 failing cases
+60caf51ade1934562d078124d97b69a48e7dfb6e 2026-08-14T15:13:14+02:00 style(parity): apply prettier to the targeted manifest
+27420663574784069946cf89c4fbe9098b6088a1 2026-08-14T15:13:53+02:00 docs(evidence): record baseline provenance — zero accepted changes, 25 stale images
+bb109bf91492bcad6ec24606c8c78b4d2f27dea5 2026-08-14T15:15:18+02:00 docs(agents): record the collection-time gate failure and the frame-vs-window trap
+7eff3a33f76b635b30ef521cde38725228aa7c28 2026-08-14T15:57:33+02:00 docs(evidence): measure the T035 matrix and revise where its failures actually are
+c1592ac74db7f3d5c0ca92c56e24e79a1c9cedf7 2026-08-14T16:00:19+02:00 test(evidence): retain the Feature 003 release gate stack with exit codes
+a9b1eae97634309c9e9add22fcce31cd67c46281 2026-08-14T16:04:11+02:00 docs(agents): note that just build leaves wailsjs at 644 until gen-check reruns
+94a23c7bdbfbbf4a8fab7364e5453a843240e674 2026-08-14T16:08:07+02:00 test(evidence): deny outbound requests for five continuous minutes and pin the deferred boundary
+5ffccaa8738733d926611ff590b2bbedca71b81e 2026-08-14T16:10:01+02:00 docs(evidence): measure T045's three combinations, and find what one combination hid
+2cbf95fada71e1cff5f996880df1200ecf4cc30d 2026-08-14T16:11:38+02:00 docs(evidence): find that 31% of production parity captures are non-deterministic
+a0283a3d8d69c0f9c2b5aec9429f7fa4568dca71 2026-08-14T16:14:35+02:00 test(parity): capture only once the region has stopped changing
+18e40f9db1a0e85e5e07e6cfe7cb290233f29382 2026-08-14T16:18:30+02:00 test(parity): settle targeted captures too, and tighten the ceiling it exposed
+384a2b00e421bc8709a41f698c7d243034a67270 2026-08-14T16:18:59+02:00 docs(evidence): record that 155 of 217 attributed pixels were capture noise
+171fa2abd27dcf6c7c5d1f43c78c668d653db61b 2026-08-14T16:36:21+02:00 test(parity): repair 270 setup failures, split the runner, and freeze Monaco's caret
+73974f3ba10c4ec27168e3c904ec561d58dab05c 2026-08-14T16:37:04+02:00 docs(evidence): show the toolbar-overflow click failure is a fixture artifact
+d1f6bf8b1f6dd5267e545c97a3631cd92a5c6ea1 2026-08-14T16:37:54+02:00 docs(spec): bring the deferred-work record to nine open tasks, with each blocker named
+b5f4b36188c0abcba8eaafa882d1d4dfc80a056d 2026-08-14T17:27:14+02:00 docs(evidence): re-run the matrix on trustworthy numbers — both repairs held
+23ba4b5073deaacb62ceb0a8b61ef2f78b06a40b 2026-08-14T19:02:56+02:00 docs(spec): retarget visual parity from whole screens to owned components
+f9a34a7b50110af12957fc491335cc72d910113b 2026-08-14T19:14:11+02:00 test(parity): remove the withdrawn whole-screen matrix from the runner
+de0f0cb875140e56d642fed81d4e3355682c9877 2026-08-14T21:10:57+02:00 docs(plan): bring plan.md and the design artifacts to the amended contract
+1f26c75a33a3825cfad54a3aab36a82373953d0c 2026-08-14T21:55:10+02:00 test(parity): drop the counts that outlived the runner enforcing them
+a6312372a8fbc70bebb1cc492eee18c6ac8e85d6 2026-08-14T22:09:07+02:00 docs(spec): mark the artifacts that still described the withdrawn contract
+dab2989a008bfd2fc21065a33bfbab3f0ad6438b 2026-08-14T22:31:45+02:00 test(parity): run all six palettes of the editor-status contract
+de37102df27044a71dc3280da3847817dc1d3ba4 2026-08-14T22:36:15+02:00 test(parity): give SC-FT-012's three runs a mechanism that exists
+690c52b83610110b79743bdeb24163f1e60dcf32 2026-08-14T22:37:41+02:00 docs(spec): close the two checklist items the amendment left stranded
+4784f9906316d4c5e3a29591c067b228e04b4c09 2026-08-14T22:53:07+02:00 docs(tasks): append Phase 20 — the evidence has fallen behind the code
+4efe969f4cb145bc452eca55bad8966df048b2df 2026-08-14T23:00:26+02:00 docs(tasks): close the three tasks Phase 19 rescoping already satisfied
+a06e597efe6086027489032d4a83daf4f61b2b9d 2026-08-14T23:01:17+02:00 docs(evidence): say which parity reports describe a withdrawn contract
+3842e1d3b7bbd558717822d986ceffb87484066c 2026-08-14T23:05:15+02:00 test(parity): give the Monaco exclusion a name the code enforces
+29739cecf6af594fbf5546cd392b380511b9856c 2026-08-14T23:21:52+02:00 test(parity): produce the per-key accounting instead of only unit-testing it
+3befc43ee4d0bf7362fb5e1e0d53ebff89d5a9b8 2026-08-14T23:22:12+02:00 docs(evidence): record the approved resolution of the branch divergence
+76ff6179ddf33111b4b0fcccaf8480b4757e72de 2026-08-14T23:30:36+02:00 docs(evidence): re-record a gate stack that matches the code
+39cbfa795c38d31307bc2d7e159149a270af8a8b 2026-08-14T23:41:42+02:00 docs(evidence): walk the real binary and find the autosave switch does nothing
+8eb9f29d2ae30c751d1a3150209d616160f88073 2026-08-15T00:06:47+02:00 fix(autosave): make the Autosave switch actually stop autosaving
+d5c806f1252ec252abd44f2094bab96b13753c52 2026-08-15T00:34:21+02:00 docs(evidence): verify all four size boundaries on the real binary
+982122446069a1962084bfe9c274ca4f70a74718 2026-08-15T10:51:42+02:00 fix(open): carry the classified refusal message to the user
+c7dfbe98cf617d8d6b835f197aeea8c7b4d8cefa 2026-08-15T10:56:58+02:00 test(evidence): make the parity accounting fail closed, and supersede a stale record
+790375fb41a1d327b88ee634c0196f81871565be 2026-08-15T11:06:59+02:00 docs(evidence): write the coverage ledger, and report the clause count it measures
+1a2505d733e27c01745a01a4ab56b3287de04e1f 2026-08-15T11:34:27+02:00 test(evidence): measure SC-FT-002's explicit saves in-process, not through a tool boundary
+39ca006527f17155fd8a1b5847f8120a49bdf265 2026-08-15T11:47:45+02:00 docs(evidence): walk the rebuilt binary and settle the cap and the message on the host
+4e141037beb8356bf1e6801b2490a611335285a9 2026-08-15T12:04:24+02:00 test(evidence): re-record the release gate stack at HEAD, and close the last of the twelve
+0e7c703bc1a7e38232a276ef692f926a385b0b9e 2026-08-15T13:39:27+02:00 fix(shortcuts): dispatch the File-menu accelerators the menu advertises
+258d1d32f094cb97ccae9328c8aaae5e8ba0b5f8 2026-08-15T13:54:06+02:00 fix(settings): advertise the accelerator the platform actually dispatches
+e4a79ece59740ed4cd19a17e27e2a63c28bad00b 2026-08-15T14:56:35+02:00 fix(menus): grey a File row that has no handler instead of rendering it inert
+cc63ea984eaebbd26e8aa09402185e646de88dd4 2026-08-15T15:06:42+02:00 fix(actions): report a refused command as refused, not as a mutation
+19e8ff4458dbfcb2f1ee98948e9163c5eea78e30 2026-08-15T15:30:23+02:00 feat(status): derive a read-only reason from capability, and file its blocker
+9ba00d87dbdae47af3de1a5207d1a4cb3f705c36 2026-08-15T16:40:42+02:00 fix(status): dock the details disclosure outside the row that clipped it
+11c4c72dcfc12a30454aaff90960b58e1369afa9 2026-08-15T16:41:06+02:00 docs(tasks): close T108 — the read-only reason is visible on the binary
+e2c584232e7d94b1657ffee0561fc5be72b8716e 2026-08-15T21:59:14+02:00 fix(open): refuse a missing path before it can match an untitled tab
+a76312c3c1311bc964380022a1fcdbda49f500c0 2026-08-15T22:24:03+02:00 feat(errors): make the classified remediation reachable and actionable
+2f09e55decda23a827ef1630d85cf83cb08898a8 2026-08-15T22:40:19+02:00 fix(errors): carry the backend's classified message through the write path
+b9518dbef2f280cc0c24ed086c5fdf1e8c5daa62 2026-08-15T22:52:31+02:00 fix(settings): let the stored default open mode reach the document model
+2b20c91450bc1810d3bbbbaf93d250a7677947c8 2026-08-15T23:12:39+02:00 test(parity): make "a state with no covering assertion fails closed" executable
+cb48e68871a45c31692ec8a2b7b7befc7e90de47 2026-08-15T23:27:44+02:00 docs(tests): name the rule each proving test exercises
+cf8cff1eff1741ed5507c4d0a098e00d985027a2 2026-08-15T23:46:45+02:00 Speckit updates
+49f0b886d5d1a8daae80d939b7c0f9d54a81515e 2026-08-16T00:36:04+02:00 fix(errors): name the file in a classified error, not the internal id
+b3a44ff8e3727eef3fdd99ee3fd388ee7f637ce7 2026-08-16T00:48:36+02:00 fix(errors): bind each remediation to the category its contract allows
+4b764367b67ddece18e0411aa9f6054cb8b6d7c9 2026-08-16T12:53:36+02:00 docs(spec): record the twelve Phase 21 owner decisions
+3ceff3cce374051b79c06b904b8b5d0b4c140371 2026-08-16T12:58:45+02:00 fix(errors): amend the conflict row to cover the refusals it already classifies
+1c8cb27d96a9679b00512f27414054c8d8611989 2026-08-16T13:23:03+02:00 fix(errors): carry a remediation set, and report the Reveal disappearance race
+c69a26b8eebc80fb150c707048b7fc087bdff9a3 2026-08-16T13:35:52+02:00 fix(conflict): name the safe basename, not the full path, in the change prompt
+6eac9949f9752efa2fa0cd10be13b5e8e062c604 2026-08-16T14:00:12+02:00 fix(errors): wait for the foreground, and carry the whole remediation set
+5e1e32606a4b9ee35a265b6955573f74bdcdbbb0 2026-08-16T14:04:07+02:00 docs(tasks): file the unwired host ports, and free the reused task number
+6053bf678db5135190c1691fb8e0791fb1cfc44d 2026-08-16T14:29:32+02:00 test(e2e): assert nine seen-only surfaces actually paint
+79262a519925be697dbcf15f88fc6587839b6466 2026-08-16T14:32:16+02:00 docs(tasks): converge Batch A and file the misstated remediation call sites
+621fc3c49a7b9544eec2cb3703c3eac175000771 2026-08-16T14:35:17+02:00 docs(tasks): close T114 by resetting the parent onto the chain tip
+50f0262a5ba7b345b9759b0ef422e1b2db2ca8e2 2026-08-16T14:35:43+02:00 docs(tasks): close T147 and correct the topology figures it recorded
+77ec219d774cc073a0ded372844c1c1efdb4cf53 2026-08-16T14:50:14+02:00 refactor(tabs): read tab-menu availability from the action registry
+f7b4c34886b8ac24da8eb48ddbd6243d7e3e33fa 2026-08-16T15:01:01+02:00 feat(tabs): close the targeted tab on middle-click
+c611c67f2a281ca36aad6ff21a4d16a585e19baa 2026-08-16T15:13:50+02:00 fix(a11y): make the tab strip's declared roles the roles the AX tree reports
+fc78e71e72229fbbce948b8cc4ca4db99a919269 2026-08-16T15:24:53+02:00 feat(tabs): finish the Reveal focus chain at the launcher New control
+b83ee47c71595c5cadcfaafd6df3bee5f88f8d62 2026-08-16T15:36:11+02:00 feat(tabs): dispatch the Move tab left/right accelerators
+23a21112f33c34fdede3e0519745087651af4dde 2026-08-16T15:37:05+02:00 docs(tasks): file T163 for what the tablist may own besides its tabs
+d271255245d36aeaa732357cf1b619f33f3cbb0f 2026-08-16T16:01:08+02:00 fix(shortcuts): derive the last two hardcoded accelerators from the registry
+fe05b8e7d7eba8bf0ff8a5975e58182bcad75a4c 2026-08-16T16:17:36+02:00 fix(tabs): keep the distinguishing suffix inside the tab label pixel budget
+c6f4c83b72c69e42d55aecf532d6ad7901164166 2026-08-16T16:29:50+02:00 fix(settings): source every Settings row's availability from the action registry
+edde79e0ba4951374c89e659427c790373f0bc7a 2026-08-16T16:47:07+02:00 feat(errors): honour Retry on the entry and tab-activation paths
+4a7b259cac79f282bb3b505f413d828de2d14173 2026-08-16T17:00:48+02:00 fix(wiring): inject the host clipboard and reveal ports at the composition root
+98e0487d2b8d49f35dd88a11edef18b385ecc721 2026-08-16T17:08:57+02:00 fix(save): gate the mixed-ending authorization before Save touches the disk
+e488b624c683b3c3b6da63e6657623bfaf9f8875 2026-08-16T17:15:43+02:00 fix(close): flush a tab's pending autosave instead of prompting to close it
+aaab0eaf4add0cf9fa361dcac80769f15ab18375 2026-08-16T17:20:53+02:00 fix(conflict): count only the preview lines that were actually rendered
+f5190306e77a838e731a7de4b2d9e17e3c43770e 2026-08-16T17:55:49+02:00 fix(activation): install an acknowledgement only once the projection confirms it
+21ef00c7472586f244a734e0792613cdc1154277 2026-08-16T18:12:51+02:00 feat(conflict): check the disk again when the window comes back to the foreground
+e8d3afb2b52a95df7d7e93860b3125ccd4284891 2026-08-16T18:27:16+02:00 fix(tabs): refuse a tab switch whose outgoing flush failed, instead of dropping it
+d1090e9d3a890101b1f3863fa937d62777b1879e 2026-08-16T18:41:55+02:00 refactor(parity): carry pairing outcome on the status discriminant alone
+51fbdbc0dc4b71fe9e3be31cf5c6d6808b39b323 2026-08-16T18:53:57+02:00 docs(parity): measure how much of the navigation index is live
+b37ef3444ae68fe4cc7569bc28f4399431eca693 2026-08-16T19:13:51+02:00 fix(i18n): source every launcher string from the catalogue
+45f80de1256e121c8e7966d7d7b7f0c945d4d349 2026-08-16T19:27:59+02:00 fix(parity): compare the File accelerators instead of masking them
+8fedc8bbd2762af555a3f5183843e1ae1a872d81 2026-08-16T19:56:32+02:00 fix(ui): render one modal structure on every route
+beeb59be098f66d369839b1c5b9d562ac40829b0 2026-08-16T20:25:56+02:00 fix(close): drain accepted autosave and editor work before the close permit
+58c8ce6bc8e3e843cff96a8be0d46f15355c29a2 2026-08-16T20:40:31+02:00 fix(recovery): name the affected documents in the Quit-and-discard confirmation
+399a250b42de818807a898eb3520e3acd180f948 2026-08-16T20:50:00+02:00 refactor(go): remove the exported symbols no production path calls
+06ba7637d04ac6fd31c0cd49b72d14bbe5e64187 2026-08-16T21:21:00+02:00 feat(tabs): reorder a tab by dragging it, per FR-FT-036
+cfee1e55c0ec61a06ed95aaea9e6f57abcd5cef8 2026-08-16T21:40:19+02:00 test(appmodel): cover the eight document-model clauses T115 left unproven
+8b5d531b4ed79f930f40cb3e881e02da20aaf326 2026-08-16T21:43:57+02:00 test(root): prove the picker's suffix set and the content-carrying bridge seam
+fa80e4fa1c4767df41c68b5d841241694e8a5c37 2026-08-16T22:04:41+02:00 test(parity): assert the determinism preconditions and the mapping rule
+33dc07ec9809311fe468d4054112974d1146c9be 2026-08-16T22:24:09+02:00 test(frontend): cover the interface clauses T115 left unproven
+855fdf55a82aba1c65014022346b33b57903392c 2026-08-16T22:33:57+02:00 docs(tasks): record T157's closure and file the three unbuildable clauses
+4def3d620d6f761b079434b1230652c36099c270 2026-08-16T22:43:27+02:00 fix(dialogs): let the native picker match a suffix in any case
+aa59cc64ce407d2cc7e4286e1eac29cf2277b2a8 2026-08-16T22:49:37+02:00 docs(spec): mark the withdrawn parity blocker and gate the clause count
+559cec74889f038f6c22b92c4e44106eec132bbb 2026-08-16T23:09:05+02:00 ci(gates): run the parity contract and fail closed on an empty run
+ae597753fa15789c3ad9cca79a83f401d1f6eb5d 2026-08-16T23:31:17+02:00 docs(evidence): measure SC-FT-007 against the build the release binary links
+ef18a8a0a03fc24210a0ef55e6d141857b9fdb1f 2026-08-16T23:47:58+02:00 docs(evidence): name the evidence for each success criterion, and its limits
+4f391957f3848157ca11f40975a4984ce9d3ccb1 2026-08-17T00:14:55+02:00 docs(gates): record the release stack at the chain tip, from a recipe
+03c2275e89fe26a7c5994f2c2ea47d3dc3d0fb68 2026-08-17T11:32:36+02:00 fix(save): let an explicit Save recreate a detached document, per FR-FT-023
+dcfefdcc73e63d5c79501ca56a2a945c6f8df44a 2026-08-17T12:31:35+02:00 fix(editor): make editing unavailable for a non-writable document, per FR-FT-006
+96bfbbcdd01a1549ea8be3eab9bea64c355ff11b 2026-08-17T14:03:26+02:00 feat(preview): restore a document its own preview scroll, per FR-FT-032
+3736ff27b1965a567b098a2e73bca5942c194d8d 2026-08-17T14:17:44+02:00 fix(conflict): guard the external-change reload install, per FR-FT-030
+39835cebb5ab089719e5c04fb197e35aa5e542e0 2026-08-17T14:42:40+02:00 fix(tabs): report an activation refusal met on the Retry path, per FR-FT-031
+0a97ccdfb9911117927f5391ffcdd32eb1169dd0 2026-08-17T15:36:09+02:00 fix(normalize): release a dismissed normalization authorization, per FR-FT-011
+503f8721ff7a796722c239515a625b38984e94ff 2026-08-17T15:49:41+02:00 fix(errors): state only the remediation each category permits, per the contract
+49e3329f81580e257a59367f7a18d10f6e375648 2026-08-17T16:13:28+02:00 test(app): translate from en.json rather than a hand-maintained copy
+50dab20be0df01c110b15928ca159ef22f5fccb5 2026-08-17T16:26:04+02:00 refactor(launcher): drop the parity-only height variant, per FR-FT-054
+a2dee00a3d0c0ca8ab668f60b507a539653cba04 2026-08-17T17:22:53+02:00 fix(a11y): give ModalShell one labelling mechanism, per FR-FT-047
+e52dadf406159620dde216fa69d95838703070f5 2026-08-17T18:08:32+02:00 test(e2e): enforce one report per refused activation
+7c15a4813d988aaaf7c6226bc5ae06b1c54247f5 2026-08-17T18:47:14+02:00 feat(tabs): build FR-FT-036's dragged-tab ghost and edge auto-scroll
+213db113def28ce779ec929aa4226d440458b79f 2026-08-17T19:30:02+02:00 test(save): join SC-FT-001's CRLF, BOM, permission and failure families to disk
+93a253e94b15cd2f4620e14e75181b83ec094a3e 2026-08-17T21:04:06+02:00 test(recents): cover SC-FT-008's four uncovered clauses
+ca905478b41263ad995c1d51a5fe2a0019defea9 2026-08-17T21:17:10+02:00 test(switching): exercise SC-FT-003 at forty documents and at supersession depth
+b3386b4413b96c1e23d5f0143423c56b721d8fde 2026-08-17T21:30:51+02:00 build(evidence): write the native-evidence bundle outside the frontend package
+a9b6d39edefdeabe262eb00739be4be420841f62 2026-08-17T22:39:24+02:00 docs(spec): amend four clauses on the owner's decisions
+b49b309b8867fab7eb6d926b4a4ac00b0f6916dc 2026-08-17T22:43:45+02:00 refactor(open): delete the unreachable reservation cancellation, per FR-FT-004
+ef5e8deb840fe780b57f1a23d470994a94046f05 2026-08-17T22:47:55+02:00 fix(evidence): keep the composition root's model in the driver, per FR-FT-037
+c1af782b0b5d1049aea610d0ec442e4297c6adda 2026-08-17T22:55:34+02:00 test(tabs): name the roles the tablist may own, per FR-FT-047
+0d9de49dd18f7191fb1401c9cd177876dfc392b3 2026-08-17T23:10:51+02:00 fix(close): honour Retry on every close arm and report a refusal once
+476a2014d5227168f1dba5a25d69880305629415 2026-08-17T23:24:53+02:00 feat(tabs): honour Retry on a refused tab move, per FR-FT-034
+9f73f62747aedb6797f6581f9aa2288925d39b28 2026-08-17T23:41:38+02:00 refactor(parity): delete the substituted settings and tab-menu surfaces
+4bd8ee79103cb255fcd459f0c9f030d85522bf24 2026-08-18T09:04:47+02:00 refactor(parity): sweep five more parity branches and gate the pattern
+bfb103d3cbf92b01fa5866a265203f4e3d0bada3 2026-08-18T09:43:47+02:00 refactor(parity): retire the quit workaround and the empty-state chrome
+478e67029473a2797b40be23b11883bf567e1357 2026-08-18T09:55:41+02:00 test(deferred): assert the two surfaces SC-FT-013 named but nothing proved
+8b8c41b0c7a04e474aa949e64250f1936930f676 2026-08-18T16:10:26+02:00 docs(evidence): close T166 on the host walk and file the reload data loss
+68cd2f231d4bc63779ff96e5c952153247e6e392 2026-08-18T16:27:45+02:00 fix(conflict): advance the content revision on reload, per FR-FT-030
+f53787c5b57da55606b55d081cc31653c9c10afb 2026-08-18T16:57:52+02:00 fix(editor): restart the editor session when a reload replaces the text
+e1cb9d81ac7b8437a14b66b083e5357d670fa8c9 2026-08-18T17:09:55+02:00 docs(tasks): record T191's fifth cause, found on a deliberate host run
+808d1f3164d5cfe14f0b188af0dc6782e3649df5 2026-08-18T17:32:21+02:00 fix(conflict): install the reloaded buffer through the guarded seam
+be5ff5f9c447e2e29f4ec60f7b5392e5edbf5b17 2026-08-18T18:31:44+02:00 test(conflict): model the reload in the mock and cover it in the browser
+7585677b87cda53732e83857ad16d204832ebcea 2026-08-18T18:53:59+02:00 feat(shortcuts): advertise registry accelerators on both popup surfaces
+10542139940222c15bb11cffe313fb4a9ec63099 2026-08-18T19:43:50+02:00 refactor(parity): classify the shell parity CSS and drop the dead rules
+2b97bd23649098d4ab12205d837626e916a3a089 2026-08-18T21:06:29+02:00 docs(tasks): record why the overflow reference variant is the wrong instrument
+2a4a3f6e5fc45b52b07bfa187ad21dc8348b442d 2026-08-18T21:15:25+02:00 docs(tasks): choose the reviewed exclusion and record how it must be built
+31c66762b7cdfc442f9498660356b45c87cc584a 2026-08-18T21:54:55+02:00 refactor(parity): exclude the overflow popup and close the parity sweep
+3aa5c179dc62955b50f330fe6f76ca2121c76d9e 2026-08-18T22:00:09+02:00 docs(evidence): prove autosave coalescing and constancy on the shipped binary
+e2a42f7c70289c6251ee903fc09ac0a9ed106465 2026-08-19T08:09:41+02:00 test(parity): classify the last thirty-nine shell-attribute CSS rules
+bcf0b5486ac05390be3df7bb7a2c0a5b40fbeef5 2026-08-19T08:12:21+02:00 docs(evidence): index the host evidence in one ledger, and close two clauses
+0456eb2f04e61cb8038dad49a3f7df4fb63abd1e 2026-08-19T09:16:04+02:00 docs(evidence): measure the autosave debounce, and file the 2 MiB preview wedge
+51d4e781c478b69fc1094b3578c6c18303feae56 2026-08-19T09:28:31+02:00 docs(evidence): compare the native webview with Chromium, closing T186
+f3af7b7d16dbc5262c7d1a5badc0b28df5c48280 2026-08-19T09:44:48+02:00 test(preview): correct the 2 MiB diagnosis and guard the limit
+528b7b1dd69014ea231f9b474228d9461420d4a2 2026-08-19T09:54:12+02:00 docs(evidence): resolve T195 -- the band was Monaco's scrollbar, not the renderer
+19a84b1c0dace43bf8a5def6c9d7a692cbfa9c18 2026-08-19T10:46:42+02:00 docs(evidence): exonerate the preview render, and answer T194's urgency question
+544372de269c64158644781673e3a7101d06dad3 2026-08-19T11:12:10+02:00 perf(preview): memoize MarkdownView, and close T180, T194 and T196
+35de8f2e4528e0bcd9a3d0579339c13ae6c3b5bc 2026-08-21T13:39:31+02:00 docs(retrospective): analyse features 001-003 and name what must change before Phase 06
+883fd053b9b30911248a304cf5f57d8cebe81795 2026-09-07T17:51:23+02:00 Updated skills, dependencies
