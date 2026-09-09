@@ -13,6 +13,7 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/application"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
 	"github.com/wailsapp/wails/v2"
@@ -54,7 +55,8 @@ func main() {
 		}
 	}()
 
-	applicationContext := application.NewApplicationContextHolder(fileUtils, appLogger)
+	outcomes := bridge.NewOutcomeCache()
+	applicationContext := application.NewApplicationContextHolder(fileUtils, appLogger, outcomes)
 	dialogs := application.NewDocumentDialogs(func(ctx context.Context) (string, error) {
 		return runtime.OpenFileDialog(ctx, runtime.OpenDialogOptions{
 			Title:   "Open Markdown or text file",

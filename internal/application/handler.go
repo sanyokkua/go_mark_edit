@@ -15,6 +15,7 @@ type ApplicationHandler struct {
 	contextProvider func() context.Context
 	service         ApplicationServiceAPI
 	logger          *logging.Logger
+	outcomes        *bridge.OutcomeCache
 }
 
 // ApplicationServiceAPI is the repeatable startup lifecycle exposed to the
@@ -32,26 +33,34 @@ type NativeCloseServiceAPI interface {
 	CancelQuit(context.Context)
 }
 
-func NewApplicationHandler(service ApplicationServiceAPI, logger *logging.Logger, contextProvider func() context.Context) *ApplicationHandler {
-	return &ApplicationHandler{service: service, logger: logger, contextProvider: contextProvider}
+func NewApplicationHandler(service ApplicationServiceAPI, logger *logging.Logger, contextProvider func() context.Context, outcomeCaches ...*bridge.OutcomeCache) *ApplicationHandler {
+	outcomes := bridge.NewOutcomeCache()
+	if len(outcomeCaches) > 0 && outcomeCaches[0] != nil {
+		outcomes = outcomeCaches[0]
+	}
+	return &ApplicationHandler{service: service, logger: logger, contextProvider: contextProvider, outcomes: outcomes}
 }
 
 // WindowReady acknowledges that the frontend hydrated and the hidden window
 // may become visible.
-func (handler *ApplicationHandler) WindowReady() (result apperr.VoidResult) {
+func (handler *ApplicationHandler) WindowReady(request bridge.Request) (result apperr.VoidResult) {
 	defer bridge.Guard(&result)
-	handler.service.FrontendReady(handler.context())
-	return apperr.VoidResult{}
+	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
+		handler.service.FrontendReady(handler.context())
+		return apperr.VoidResult{}
+	})
 }
 
 // RetryStartup repeats backend initialization and hidden native restore.
-func (handler *ApplicationHandler) RetryStartup() (result apperr.VoidResult) {
+func (handler *ApplicationHandler) RetryStartup(request bridge.Request) (result apperr.VoidResult) {
 	defer bridge.Guard(&result)
-	if err := handler.service.RetryStartup(handler.context()); err != nil {
-		wire := apperr.ToWire(handler.zlog(), err)
-		return apperr.VoidResult{Error: &wire}
-	}
-	return apperr.VoidResult{}
+	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
+		if err := handler.service.RetryStartup(handler.context()); err != nil {
+			wire := apperr.ToWire(handler.zlog(), err)
+			return apperr.VoidResult{Error: &wire}
+		}
+		return apperr.VoidResult{}
+	})
 }
 
 // AuthorizeQuit completes the frontend close plan and arms one native close
@@ -62,34 +71,38 @@ func (handler *ApplicationHandler) RetryStartup() (result apperr.VoidResult) {
 // to reach the user as a classified io-failure with Retry. A VoidResult can
 // carry only a WireError, which the frontend renders as generic catalogue copy
 // with no remediation control.
-func (handler *ApplicationHandler) AuthorizeQuit() (result apperr.ClassifiedVoidResult) {
+func (handler *ApplicationHandler) AuthorizeQuit(request bridge.Request) (result apperr.ClassifiedVoidResult) {
 	defer bridge.Guard(&result)
-	service, ok := handler.service.(NativeCloseServiceAPI)
-	if !ok {
-		return bridge.Refused[apperr.ClassifiedVoidResult](apperr.ClassifiedUnsupportedInput, "native close", "This build cannot authorize a native close.", apperr.RemediationNone)
-	}
-	if refusal := service.AuthorizeQuit(handler.context()); refusal != nil {
-		logger := handler.zlog()
-		logger.Warn().
-			Str("category", string(refusal.Category)).
-			Str("subject", refusal.SafeSubject).
-			Msg("native close authorization refused")
-		return bridge.FromClassified[apperr.ClassifiedVoidResult](refusal)
-	}
-	return apperr.ClassifiedVoidResult{}
+	return bridge.Once(handler.outcomes, request, func() apperr.ClassifiedVoidResult {
+		service, ok := handler.service.(NativeCloseServiceAPI)
+		if !ok {
+			return bridge.Refused[apperr.ClassifiedVoidResult](apperr.ClassifiedUnsupportedInput, "native close", "This build cannot authorize a native close.", apperr.RemediationNone)
+		}
+		if refusal := service.AuthorizeQuit(handler.context()); refusal != nil {
+			logger := handler.zlog()
+			logger.Warn().
+				Str("category", string(refusal.Category)).
+				Str("subject", refusal.SafeSubject).
+				Msg("native close authorization refused")
+			return bridge.FromClassified[apperr.ClassifiedVoidResult](refusal)
+		}
+		return apperr.ClassifiedVoidResult{}
+	})
 }
 
 // CancelQuit abandons the pending native close plan and leaves the window
 // open. It is intentionally idempotent.
-func (handler *ApplicationHandler) CancelQuit() (result apperr.VoidResult) {
+func (handler *ApplicationHandler) CancelQuit(request bridge.Request) (result apperr.VoidResult) {
 	defer bridge.Guard(&result)
-	service, ok := handler.service.(NativeCloseServiceAPI)
-	if !ok {
-		wire := apperr.ToWire(handler.zlog(), apperr.Unsupported("native close cancellation"))
-		return apperr.VoidResult{Error: &wire}
-	}
-	service.CancelQuit(handler.context())
-	return apperr.VoidResult{}
+	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
+		service, ok := handler.service.(NativeCloseServiceAPI)
+		if !ok {
+			wire := apperr.ToWire(handler.zlog(), apperr.Unsupported("native close cancellation"))
+			return apperr.VoidResult{Error: &wire}
+		}
+		service.CancelQuit(handler.context())
+		return apperr.VoidResult{}
+	})
 }
 
 func (handler *ApplicationHandler) context() context.Context {

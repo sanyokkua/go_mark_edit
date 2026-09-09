@@ -15,6 +15,7 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 )
@@ -52,7 +53,7 @@ func TestStartupInitFailureRemainsRecoverableInWebview(t *testing.T) {
 	if holder.DB != nil {
 		t.Fatal("failed Init retained an opened database")
 	}
-	if state := holder.AppModelHandler.GetState(); state.Data != nil || state.Error == nil {
+	if state := holder.AppModelHandler.GetState(bridge.Request{ID: "startup-recovery-state"}); state.Data != nil || state.Error == nil {
 		t.Fatalf("GetState after failed startup = %+v, want a typed failure so the normal shell stays unmounted", state)
 	}
 	if recoveryCalls != 1 || recoveryContext != startupContext {
@@ -295,7 +296,7 @@ func TestWailsAppInstallsCloseFlushLifecycleHook(t *testing.T) {
 	if closeRequests != 1 {
 		t.Fatalf("native close request events = %d, want one", closeRequests)
 	}
-	if result := holder.ApplicationHandler.AuthorizeQuit(); result.Error != nil {
+	if result := holder.ApplicationHandler.AuthorizeQuit(bridge.Request{ID: "authorize-close"}); result.Error != nil {
 		t.Fatalf("AuthorizeQuit returned error: %+v", result.Error)
 	}
 	if quitCalls != 1 {
@@ -363,7 +364,7 @@ func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 	if got, want := repository.events, []string(nil); !reflect.DeepEqual(got, want) {
 		t.Fatalf("failed-close lifecycle events = %v, want %v", got, want)
 	}
-	failed := holder.ApplicationHandler.AuthorizeQuit()
+	failed := holder.ApplicationHandler.AuthorizeQuit(bridge.Request{ID: "authorize-close-failure"})
 	if failed.Error == nil || failed.Error.Category != apperr.ClassifiedIOFailure || failed.Error.Remediation() != apperr.RemediationRetry {
 		t.Fatalf("failed AuthorizeQuit error = %+v, want a classified io-failure offering Retry", failed.Error)
 	}
@@ -374,7 +375,7 @@ func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 		t.Fatalf("native close request events after failed drain = %d, want one", closeRequests)
 	}
 	repository.err = nil
-	if retry := holder.ApplicationHandler.AuthorizeQuit(); retry.Error != nil {
+	if retry := holder.ApplicationHandler.AuthorizeQuit(bridge.Request{ID: "authorize-close-retry"}); retry.Error != nil {
 		t.Fatalf("retry AuthorizeQuit returned error: %+v", retry.Error)
 	}
 	if quitCalls != 1 || appOptions.OnBeforeClose(ctx) {
@@ -432,14 +433,14 @@ func TestAppModelHandlerIsBoundAndGenerated(t *testing.T) {
 		t.Fatalf("read generated app-model bindings: %v", err)
 	}
 	for _, signature := range []string{
-		"export function GetState():Promise<apperr.StateResult>;",
-		"export function NewDocument(arg1:number):Promise<apperr.DocumentTransitionResult>;",
-		"export function OpenDocument(arg1:number):Promise<apperr.OpenResult>;",
-		"export function UpdateBuffer(arg1:string,arg2:string):Promise<apperr.VoidResult>;",
-		"export function SetDocView(arg1:string,arg2:apperr.DocViewInput):Promise<apperr.VoidResult>;",
-		"export function SetUILayout(arg1:apperr.UILayout):Promise<apperr.VoidResult>;",
-		"export function Save(arg1:string,arg2:number,arg3:string):Promise<apperr.WriteResult>;",
-		"export function SaveAs(arg1:string,arg2:number,arg3:string):Promise<apperr.WriteResult>;",
+		"export function GetState(arg1:bridge.Request):Promise<apperr.StateResult>;",
+		"export function NewDocument(arg1:bridge.Request,arg2:number):Promise<apperr.DocumentTransitionResult>;",
+		"export function OpenDocument(arg1:bridge.Request,arg2:number):Promise<apperr.OpenResult>;",
+		"export function UpdateBuffer(arg1:bridge.Request,arg2:string,arg3:string):Promise<apperr.VoidResult>;",
+		"export function SetDocView(arg1:bridge.Request,arg2:string,arg3:apperr.DocViewInput):Promise<apperr.VoidResult>;",
+		"export function SetUILayout(arg1:bridge.Request,arg2:apperr.UILayout):Promise<apperr.VoidResult>;",
+		"export function Save(arg1:bridge.Request,arg2:string,arg3:number,arg4:string):Promise<apperr.WriteResult>;",
+		"export function SaveAs(arg1:bridge.Request,arg2:string,arg3:number,arg4:string):Promise<apperr.WriteResult>;",
 	} {
 		if !strings.Contains(string(bindings), signature) {
 			t.Errorf("generated app-model bindings omit exact signature %q", signature)

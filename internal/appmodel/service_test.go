@@ -16,6 +16,7 @@ import (
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 // Proves: STORY-011-AC-1
@@ -798,20 +799,20 @@ func TestPublicationFailureRollsBackMutations(t *testing.T) {
 			{
 				name: "buffer",
 				apply: func(handler *AppModelHandler, documentID string) apperr.VoidResult {
-					return handler.UpdateBuffer(documentID, "changed")
+					return handler.UpdateBuffer(bridge.Request{ID: "handler-mutation"}, documentID, "changed")
 				},
 			},
 			{
 				name: "view",
 				apply: func(handler *AppModelHandler, documentID string) apperr.VoidResult {
-					return handler.SetDocView(documentID, validDocView(true, false))
+					return handler.SetDocView(bridge.Request{ID: "handler-mutation"}, documentID, validDocView(true, false))
 				},
 			},
 			{
 				name: "layout",
 				apply: func(handler *AppModelHandler, _ string) apperr.VoidResult {
 					visible := false
-					return handler.SetUILayout(apperr.UILayout{SidebarVisible: &visible})
+					return handler.SetUILayout(bridge.Request{ID: "handler-mutation"}, apperr.UILayout{SidebarVisible: &visible})
 				},
 			},
 		} {
@@ -898,20 +899,20 @@ func TestNilEmitterRollsBackMutations(t *testing.T) {
 		{
 			name: "buffer",
 			apply: func(handler *AppModelHandler, documentID string) apperr.VoidResult {
-				return handler.UpdateBuffer(documentID, "changed")
+				return handler.UpdateBuffer(bridge.Request{ID: "handler-mutation"}, documentID, "changed")
 			},
 		},
 		{
 			name: "view",
 			apply: func(handler *AppModelHandler, documentID string) apperr.VoidResult {
-				return handler.SetDocView(documentID, validDocView(true, false))
+				return handler.SetDocView(bridge.Request{ID: "handler-mutation"}, documentID, validDocView(true, false))
 			},
 		},
 		{
 			name: "layout",
 			apply: func(handler *AppModelHandler, _ string) apperr.VoidResult {
 				visible := false
-				return handler.SetUILayout(apperr.UILayout{SidebarVisible: &visible})
+				return handler.SetUILayout(bridge.Request{ID: "handler-mutation"}, apperr.UILayout{SidebarVisible: &visible})
 			},
 		},
 	} {

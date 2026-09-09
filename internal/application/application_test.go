@@ -10,6 +10,7 @@ import (
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
@@ -37,7 +38,7 @@ func TestApplicationContextInitializesSettingsInTwoPhases(t *testing.T) {
 	if holder.DB != nil {
 		t.Fatal("phase-one composition must not open persistence")
 	}
-	beforeInit := holder.SettingsHandler.GetSettings()
+	beforeInit := holder.SettingsHandler.GetSettings(bridge.Request{ID: "settings-before-init"})
 	if beforeInit.Data != nil || beforeInit.Error == nil || beforeInit.Error.Code != apperr.CodeUnsupported {
 		t.Fatalf("phase-one handler result = %+v, want unsupported error without data", beforeInit)
 	}
@@ -59,7 +60,7 @@ func TestApplicationContextInitializesSettingsInTwoPhases(t *testing.T) {
 		t.Fatalf("database path calls = %d, want 1", paths.databasePathCalls)
 	}
 
-	afterInit := holder.SettingsHandler.GetSettings()
+	afterInit := holder.SettingsHandler.GetSettings(bridge.Request{ID: "settings-after-init"})
 	if afterInit.Error != nil {
 		t.Fatalf("handler after Init returned error = %+v", afterInit.Error)
 	}
@@ -109,7 +110,7 @@ func TestApplicationContextWaitsForBothStartupAndFrontendReadiness(t *testing.T)
 	native := &lifecycleRecordingNativeWindow{usableWidth: 1920, usableHeight: 1080}
 	holder.SetNativeWindow(native)
 
-	if result := holder.ApplicationHandler.WindowReady(); result.Error != nil {
+	if result := holder.ApplicationHandler.WindowReady(bridge.Request{ID: "frontend-before-init"}); result.Error != nil {
 		t.Fatalf("early frontend readiness result = %+v, want deferred acknowledgement", result)
 	}
 	if native.showCalls != 0 {
@@ -131,7 +132,7 @@ func TestApplicationContextWaitsForBothStartupAndFrontendReadiness(t *testing.T)
 		t.Fatalf("show calls after both readiness signals = %d, want 1", native.showCalls)
 	}
 
-	if result := holder.ApplicationHandler.WindowReady(); result.Error != nil {
+	if result := holder.ApplicationHandler.WindowReady(bridge.Request{ID: "frontend-after-restore"}); result.Error != nil {
 		t.Fatalf("second frontend readiness result = %+v, want acknowledgement", result)
 	}
 	if native.showCalls != 1 {
@@ -163,13 +164,13 @@ func TestApplicationContextWaitsForFrontendReadinessAfterBackendRestore(t *testi
 		t.Fatalf("backend restore showed %d times before frontend readiness, want 0", native.showCalls)
 	}
 
-	if result := holder.ApplicationHandler.WindowReady(); result.Error != nil {
+	if result := holder.ApplicationHandler.WindowReady(bridge.Request{ID: "frontend-before-restore"}); result.Error != nil {
 		t.Fatalf("frontend readiness after backend restore = %+v, want acknowledgement", result)
 	}
 	if native.showCalls != 1 {
 		t.Fatalf("show calls after frontend readiness = %d, want 1", native.showCalls)
 	}
-	if result := holder.ApplicationHandler.WindowReady(); result.Error != nil {
+	if result := holder.ApplicationHandler.WindowReady(bridge.Request{ID: "frontend-after-restore"}); result.Error != nil {
 		t.Fatalf("repeated frontend readiness = %+v, want acknowledgement", result)
 	}
 	if native.showCalls != 1 {

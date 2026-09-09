@@ -343,6 +343,11 @@ export namespace apperr {
 	    }
 	}
 	export class ClassifiedVoidResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    error?: ClassifiedError;
 	
 	    static createFrom(source: any = {}) {
@@ -351,6 +356,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
 	
@@ -569,6 +579,11 @@ export namespace apperr {
 		}
 	}
 	export class ClosePlanResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    data?: ClosePlanSummary;
 	    error?: ClassifiedError;
 	
@@ -578,6 +593,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.data = this.convertValues(source["data"], ClosePlanSummary);
 	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
@@ -631,6 +651,11 @@ export namespace apperr {
 	
 	
 	export class ConflictResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    status: string;
 	    documentId?: string;
 	    projectionRevision?: number;
@@ -646,6 +671,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.status = source["status"];
 	        this.documentId = source["documentId"];
 	        this.projectionRevision = source["projectionRevision"];
@@ -729,6 +759,11 @@ export namespace apperr {
 	}
 	
 	export class DocumentTransitionResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    data?: ActiveBuffer;
 	    conflict?: ConflictPreview;
 	    error?: ClassifiedError;
@@ -739,6 +774,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.data = this.convertValues(source["data"], ActiveBuffer);
 	        this.conflict = this.convertValues(source["conflict"], ConflictPreview);
 	        this.error = this.convertValues(source["error"], ClassifiedError);
@@ -813,6 +853,11 @@ export namespace apperr {
 	    }
 	}
 	export class OpenResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    status: string;
 	    documentId?: string;
 	    projectionRevision?: number;
@@ -825,6 +870,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.status = source["status"];
 	        this.documentId = source["documentId"];
 	        this.projectionRevision = source["projectionRevision"];
@@ -851,6 +901,11 @@ export namespace apperr {
 		}
 	}
 	export class PathCommandResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    status: string;
 	    error?: ClassifiedError;
 	
@@ -860,6 +915,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.status = source["status"];
 	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
@@ -943,6 +1003,11 @@ export namespace apperr {
 	    }
 	}
 	export class SettingsResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    data?: Settings;
 	    error?: WireError;
 	
@@ -952,6 +1017,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.data = this.convertValues(source["data"], Settings);
 	        this.error = this.convertValues(source["error"], WireError);
 	    }
@@ -975,6 +1045,11 @@ export namespace apperr {
 		}
 	}
 	export class StateResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    data?: AppState;
 	    error?: WireError;
 	
@@ -984,6 +1059,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.data = this.convertValues(source["data"], AppState);
 	        this.error = this.convertValues(source["error"], WireError);
 	    }
@@ -1007,6 +1087,11 @@ export namespace apperr {
 		}
 	}
 	export class TabTransitionResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    status: string;
 	    documentId?: string;
 	    projectionRevision?: number;
@@ -1023,6 +1108,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.status = source["status"];
 	        this.documentId = source["documentId"];
 	        this.projectionRevision = source["projectionRevision"];
@@ -1054,6 +1144,11 @@ export namespace apperr {
 	}
 	
 	export class VoidResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    error?: WireError;
 	
 	    static createFrom(source: any = {}) {
@@ -1062,6 +1157,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.error = this.convertValues(source["error"], WireError);
 	    }
 	
@@ -1085,6 +1185,11 @@ export namespace apperr {
 	}
 	
 	export class WriteResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
 	    status: string;
 	    data?: CommittedWriteOutcome;
 	    decisionToken?: string;
@@ -1099,6 +1204,11 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
 	        this.status = source["status"];
 	        this.data = this.convertValues(source["data"], CommittedWriteOutcome);
 	        this.decisionToken = source["decisionToken"];
@@ -1125,6 +1235,23 @@ export namespace apperr {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace bridge {
+	
+	export class Request {
+	    id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Request(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	    }
 	}
 
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 // Proves: STORY-011-AC-6
@@ -20,28 +21,28 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		inputs int
 		output reflect.Type
 	}{
-		{"GetState", 1, reflect.TypeFor[apperr.StateResult]()},
-		{"NewDocument", 2, reflect.TypeFor[apperr.DocumentTransitionOutcome]()},
-		{"ActivateDocument", 3, reflect.TypeFor[apperr.DocumentTransitionOutcome]()},
-		{"ReorderDocument", 4, reflect.TypeFor[apperr.TabTransitionResult]()},
-		{"CloseDocument", 3, reflect.TypeFor[apperr.TabTransitionResult]()},
-		{"CopyPath", 2, reflect.TypeFor[apperr.CopyPathResult]()},
-		{"RevealInFileManager", 2, reflect.TypeFor[apperr.RevealResult]()},
-		{"OpenDocument", 2, reflect.TypeFor[apperr.OpenResult]()},
-		{"UpdateBuffer", 3, reflect.TypeFor[apperr.VoidResult]()},
-		{"SetDocView", 3, reflect.TypeFor[apperr.VoidResult]()},
-		{"SetUILayout", 2, reflect.TypeFor[apperr.VoidResult]()},
-		{"Save", 4, reflect.TypeFor[apperr.WriteResult]()},
-		{"SaveAs", 4, reflect.TypeFor[apperr.WriteResult]()},
-		{"CheckExternalChanges", 2, reflect.TypeFor[apperr.ConflictResult]()},
-		{"ReloadFromDisk", 4, reflect.TypeFor[apperr.ConflictResult]()},
-		{"AuthorizeKeepMine", 5, reflect.TypeFor[apperr.ConflictResult]()},
-		{"SkipConflict", 4, reflect.TypeFor[apperr.ConflictResult]()},
-		{"CancelConflict", 4, reflect.TypeFor[apperr.ConflictResult]()},
+		{"GetState", 2, reflect.TypeFor[apperr.StateResult]()},
+		{"NewDocument", 3, reflect.TypeFor[apperr.DocumentTransitionOutcome]()},
+		{"ActivateDocument", 4, reflect.TypeFor[apperr.DocumentTransitionOutcome]()},
+		{"ReorderDocument", 5, reflect.TypeFor[apperr.TabTransitionResult]()},
+		{"CloseDocument", 4, reflect.TypeFor[apperr.TabTransitionResult]()},
+		{"CopyPath", 3, reflect.TypeFor[apperr.CopyPathResult]()},
+		{"RevealInFileManager", 3, reflect.TypeFor[apperr.RevealResult]()},
+		{"OpenDocument", 3, reflect.TypeFor[apperr.OpenResult]()},
+		{"UpdateBuffer", 4, reflect.TypeFor[apperr.VoidResult]()},
+		{"SetDocView", 4, reflect.TypeFor[apperr.VoidResult]()},
+		{"SetUILayout", 3, reflect.TypeFor[apperr.VoidResult]()},
+		{"Save", 5, reflect.TypeFor[apperr.WriteResult]()},
+		{"SaveAs", 5, reflect.TypeFor[apperr.WriteResult]()},
+		{"CheckExternalChanges", 3, reflect.TypeFor[apperr.ConflictResult]()},
+		{"ReloadFromDisk", 5, reflect.TypeFor[apperr.ConflictResult]()},
+		{"AuthorizeKeepMine", 6, reflect.TypeFor[apperr.ConflictResult]()},
+		{"SkipConflict", 5, reflect.TypeFor[apperr.ConflictResult]()},
+		{"CancelConflict", 5, reflect.TypeFor[apperr.ConflictResult]()},
 		// T168. Three inputs: the receiver, the document id and the token — and
 		// no context, because releasing an in-memory authorization touches
 		// neither disk nor the operating system.
-		{"CancelNormalization", 3, reflect.TypeFor[apperr.ClassifiedVoidResult]()},
+		{"CancelNormalization", 4, reflect.TypeFor[apperr.ClassifiedVoidResult]()},
 	}
 	for _, tt := range cases {
 		t.Run(tt.method, func(t *testing.T) {
@@ -66,63 +67,63 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 			var result apperr.VoidResult
 			switch method {
 			case "GetState":
-				stateResult := panickingHandler.GetState()
+				stateResult := panickingHandler.GetState(boundRequest(method))
 				if stateResult.Data != nil || stateResult.Error == nil || stateResult.Error.Code != apperr.CodeInternal {
 					t.Fatalf("panic result = %+v, want an internal envelope without data", stateResult)
 				}
 			case "NewDocument":
-				transition := panickingHandler.NewDocument(0)
+				transition := panickingHandler.NewDocument(boundRequest(method), 0)
 				if transition.Data != nil || transition.Category != apperr.ClassifiedInternal {
 					t.Fatalf("panic result = %+v, want a classified internal transition error", transition)
 				}
 			case "ActivateDocument":
-				transition := panickingHandler.ActivateDocument("doc", 0)
+				transition := panickingHandler.ActivateDocument(boundRequest(method), "doc", 0)
 				if transition.Data != nil || transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want classified activation refusal", transition)
 				}
 			case "ReorderDocument":
-				transition := panickingHandler.ReorderDocument("doc", 0, 0)
+				transition := panickingHandler.ReorderDocument(boundRequest(method), "doc", 0, 0)
 				if transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want classified reorder refusal", transition)
 				}
 			case "CloseDocument":
-				transition := panickingHandler.CloseDocument("doc", 0)
+				transition := panickingHandler.CloseDocument(boundRequest(method), "doc", 0)
 				if transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want classified close refusal", transition)
 				}
 			case "CopyPath":
-				pathResult := panickingHandler.CopyPath("doc")
+				pathResult := panickingHandler.CopyPath(boundRequest(method), "doc")
 				if pathResult.Error == nil || pathResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want classified copy refusal", pathResult)
 				}
 			case "RevealInFileManager":
-				revealResult := panickingHandler.RevealInFileManager("doc")
+				revealResult := panickingHandler.RevealInFileManager(boundRequest(method), "doc")
 				if revealResult.Error == nil || revealResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want classified reveal refusal", revealResult)
 				}
 			case "OpenDocument":
-				opened := panickingHandler.OpenDocument(0)
+				opened := panickingHandler.OpenDocument(boundRequest(method), 0)
 				if opened.Status != apperr.OpenStatusRefused || opened.Error == nil || opened.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want a classified dialog error", opened)
 				}
 			case "UpdateBuffer":
-				result = panickingHandler.UpdateBuffer("doc", "content")
+				result = panickingHandler.UpdateBuffer(boundRequest(method), "doc", "content")
 			case "SetDocView":
-				result = panickingHandler.SetDocView("doc", validDocView(true, true))
+				result = panickingHandler.SetDocView(boundRequest(method), "doc", validDocView(true, true))
 			case "SetUILayout":
-				result = panickingHandler.SetUILayout(apperr.UILayout{})
+				result = panickingHandler.SetUILayout(boundRequest(method), apperr.UILayout{})
 			case "Save":
-				writeResult := panickingHandler.Save("doc", 1, "")
+				writeResult := panickingHandler.Save(boundRequest(method), "doc", 1, "")
 				if writeResult.Status != apperr.WriteStatusRefused || writeResult.Error == nil || writeResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want classified Save refusal", writeResult)
 				}
 			case "SaveAs":
-				writeResult := panickingHandler.SaveAs("doc", 1, "")
+				writeResult := panickingHandler.SaveAs(boundRequest(method), "doc", 1, "")
 				if writeResult.Status != apperr.WriteStatusRefused || writeResult.Error == nil || writeResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want classified Save As refusal", writeResult)
 				}
 			case "CancelNormalization":
-				cancelled := panickingHandler.CancelNormalization("doc", "token")
+				cancelled := panickingHandler.CancelNormalization(boundRequest(method), "doc", "token")
 				if cancelled.Error == nil || cancelled.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want a classified dismissal refusal", cancelled)
 				}
@@ -144,15 +145,15 @@ func TestHandlerConflictMethodsRecoverClassifiedErrors(t *testing.T) {
 			var result apperr.ConflictResult
 			switch method {
 			case "CheckExternalChanges":
-				result = handler.CheckExternalChanges("doc")
+				result = handler.CheckExternalChanges(boundRequest(method), "doc")
 			case "ReloadFromDisk":
-				result = handler.ReloadFromDisk("doc", 1, apperr.DiskVersion{})
+				result = handler.ReloadFromDisk(boundRequest(method), "doc", 1, apperr.DiskVersion{})
 			case "AuthorizeKeepMine":
-				result = handler.AuthorizeKeepMine("doc", 1, "path", apperr.DiskVersion{})
+				result = handler.AuthorizeKeepMine(boundRequest(method), "doc", 1, "path", apperr.DiskVersion{})
 			case "SkipConflict":
-				result = handler.SkipConflict("doc", 1, apperr.DiskVersion{})
+				result = handler.SkipConflict(boundRequest(method), "doc", 1, apperr.DiskVersion{})
 			case "CancelConflict":
-				result = handler.CancelConflict("doc", 1, apperr.DiskVersion{})
+				result = handler.CancelConflict(boundRequest(method), "doc", 1, apperr.DiskVersion{})
 			}
 			if result.Error == nil || result.Error.Category != apperr.ClassifiedSystemCommandFailure {
 				t.Fatalf("panic result = %+v", result)
@@ -166,7 +167,7 @@ func TestHandlerConflictMethodsRecoverClassifiedErrors(t *testing.T) {
 // never exposes its local failure cause.
 func TestHandlerClassifiesRejectedLayoutWrite(t *testing.T) {
 	handler := NewAppModelHandler(&fakeAppModelService{layoutError: errors.New("/private/user/settings.db")}, nil, nil)
-	result := handler.SetUILayout(apperr.UILayout{})
+	result := handler.SetUILayout(boundRequest("layout-rejection"), apperr.UILayout{})
 	if result.Error == nil || result.Error.Code != apperr.CodeInternal {
 		t.Fatalf("rejected layout result = %+v, want internal typed envelope", result)
 	}
@@ -186,7 +187,7 @@ func TestHandlerClassifiesLayoutPersistenceFailuresWithSafeSubject(t *testing.T)
 	handler := NewAppModelHandler(service, nil, nil)
 	visible := false
 
-	result := handler.SetUILayout(apperr.UILayout{SidebarVisible: &visible})
+	result := handler.SetUILayout(boundRequest("layout-persistence"), apperr.UILayout{SidebarVisible: &visible})
 
 	if result.Error == nil || result.Error.Code != apperr.CodeIO {
 		t.Fatalf("layout persistence result = %+v, want io typed envelope", result)
@@ -202,6 +203,10 @@ func TestHandlerClassifiesLayoutPersistenceFailuresWithSafeSubject(t *testing.T)
 			t.Fatalf("layout persistence leaked raw failure data %q: %+v", forbidden, result.Error)
 		}
 	}
+}
+
+func boundRequest(id string) bridge.Request {
+	return bridge.Request{ID: id}
 }
 
 type fakeAppModelService struct {

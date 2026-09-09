@@ -40,7 +40,11 @@ type ApplicationContextHolder struct {
 
 // NewApplicationContextHolder constructs the phase-one dependency graph with
 // nil persistence. Init injects its concrete SQLite repository after startup.
-func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger *logging.Logger) *ApplicationContextHolder {
+func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger *logging.Logger, outcomeCaches ...*bridge.OutcomeCache) *ApplicationContextHolder {
+	outcomes := bridge.NewOutcomeCache()
+	if len(outcomeCaches) > 0 && outcomeCaches[0] != nil {
+		outcomes = outcomeCaches[0]
+	}
 	settingsService := settings.NewSettingsService(nil)
 	// The host ports go in through the constructor, not through setters, and they
 	// are constructed here rather than handed in by main.go. Both choices are the
@@ -72,10 +76,10 @@ func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger
 	// string-identical, so no conversion is needed — only this join, since
 	// settings must not import appmodel.
 	settingsService.SetDefaultOpenModeObserver(appModelService.SetDefaultOpenMode)
-	holder.SettingsHandler = settings.NewSettingsHandler(settingsService, appLogger, holder.Context)
-	holder.AppModelHandler = appmodel.NewAppModelHandler(appModelService, appLogger, holder.Context)
+	holder.SettingsHandler = settings.NewSettingsHandler(settingsService, appLogger, holder.Context, outcomes)
+	holder.AppModelHandler = appmodel.NewAppModelHandler(appModelService, appLogger, holder.Context, outcomes)
 	holder.NativeWindowService = NewNativeWindowService(appModelService, nil)
-	holder.ApplicationHandler = NewApplicationHandler(holder, appLogger, holder.Context)
+	holder.ApplicationHandler = NewApplicationHandler(holder, appLogger, holder.Context, outcomes)
 	return holder
 }
 

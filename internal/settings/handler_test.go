@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 // Proves: STORY-009-AC-3
@@ -38,7 +39,7 @@ func TestSettingsHandlerRejectsUnsupportedGroupUpdatesWithoutWriting(t *testing.
 				repository := fakeSettingsRepository{appearance: original.Appearance, markdown: original.Markdown, contentPrivacy: original.ContentPrivacy}
 				handler := NewSettingsHandler(NewSettingsService(&repository), nil, nil)
 
-				result := handler.UpdateAppearance(testCase.input)
+				result := handler.UpdateAppearance(settingsRequest("appearance-"+testCase.name), testCase.input)
 				if result.Error == nil || result.Error.Code != apperr.CodeValidation {
 					t.Fatalf("invalid appearance envelope = %+v, want validation error", result)
 				}
@@ -64,7 +65,7 @@ func TestSettingsHandlerRejectsUnsupportedGroupUpdatesWithoutWriting(t *testing.
 				repository := fakeSettingsRepository{appearance: original.Appearance, markdown: original.Markdown, contentPrivacy: original.ContentPrivacy}
 				handler := NewSettingsHandler(NewSettingsService(&repository), nil, nil)
 
-				result := handler.UpdateMarkdown(testCase.input)
+				result := handler.UpdateMarkdown(settingsRequest("markdown-"+testCase.name), testCase.input)
 				if result.Error == nil || result.Error.Code != apperr.CodeValidation {
 					t.Fatalf("invalid markdown envelope = %+v, want validation error", result)
 				}
@@ -89,7 +90,7 @@ func TestSettingsHandlerReturnsRecoveredResultEnvelope(t *testing.T) {
 			contentPrivacy: want.ContentPrivacy,
 		}), nil, func() context.Context { return context.Background() })
 
-		got := handler.GetSettings()
+		got := handler.GetSettings(settingsRequest("success"))
 		if got.Error != nil {
 			t.Fatalf("success envelope error = %+v", got.Error)
 		}
@@ -101,7 +102,7 @@ func TestSettingsHandlerReturnsRecoveredResultEnvelope(t *testing.T) {
 	t.Run("panic is internal with no partial data", func(t *testing.T) {
 		handler := NewSettingsHandler(NewSettingsService(&fakeSettingsRepository{panicOperation: "get appearance"}), nil, nil)
 
-		got := handler.GetSettings()
+		got := handler.GetSettings(settingsRequest("panic"))
 		if got.Data != nil {
 			t.Fatalf("panic envelope data = %+v, want nil", got.Data)
 		}
@@ -118,31 +119,31 @@ func TestSettingsHandlerReturnsRecoveredResultEnvelope(t *testing.T) {
 			{
 				name: "update appearance",
 				call: func(handler *SettingsHandler) *apperr.WireError {
-					return handler.UpdateAppearance(DefaultSettings().Appearance).Error
+					return handler.UpdateAppearance(settingsRequest("panic"), DefaultSettings().Appearance).Error
 				},
 			},
 			{
 				name: "reset appearance",
 				call: func(handler *SettingsHandler) *apperr.WireError {
-					return handler.ResetAppearance().Error
+					return handler.ResetAppearance(settingsRequest("panic")).Error
 				},
 			},
 			{
 				name: "update markdown",
 				call: func(handler *SettingsHandler) *apperr.WireError {
-					return handler.UpdateMarkdown(DefaultSettings().Markdown).Error
+					return handler.UpdateMarkdown(settingsRequest("panic"), DefaultSettings().Markdown).Error
 				},
 			},
 			{
 				name: "update content privacy",
 				call: func(handler *SettingsHandler) *apperr.WireError {
-					return handler.UpdateContentPrivacy(DefaultSettings().ContentPrivacy).Error
+					return handler.UpdateContentPrivacy(settingsRequest("panic"), DefaultSettings().ContentPrivacy).Error
 				},
 			},
 			{
 				name: "update file",
 				call: func(handler *SettingsHandler) *apperr.WireError {
-					return handler.UpdateFile(DefaultSettings().File).Error
+					return handler.UpdateFile(settingsRequest("panic"), DefaultSettings().File).Error
 				},
 			},
 		}
@@ -184,4 +185,8 @@ func TestSettingsHandlerReturnsRecoveredResultEnvelope(t *testing.T) {
 			}
 		}
 	})
+}
+
+func settingsRequest(id string) bridge.Request {
+	return bridge.Request{ID: id}
 }

@@ -112,7 +112,7 @@ close scenarios also run on `wails dev` and in the walkthrough.
   - **Depends on**: T003.
   - **Branch**: `feature/004-codebase-refactoring-bridge`; `refactor(bridge): one guard, one failure constructor, request identity and outcome cache`.
 
-- [x] T006 [US4] Put `bridge.Request` first on all 35 bound methods in `internal/appmodel/handler*.go`, `internal/settings/handler.go`, `internal/application/handler*.go` and regenerate the bindings
+- [ ] T006 [US4] Put `bridge.Request` first on all 35 bound methods in `internal/appmodel/handler*.go`, `internal/settings/handler.go`, `internal/application/handler*.go` and regenerate the bindings
   - **Implements**: FR-019; lint L4 shape (named result, `defer bridge.Guard(&result)` first, `bridge.Once`); data-model "Request and Outcome"; harness contract launch step 4 (repeated `WindowReady` idempotent).
   - **Scope**: edit `internal/appmodel/handler*.go` (24 methods), `internal/settings/handler.go` (7), `internal/application/handler*.go` (4) to the contract's handler shape; edit `main.go` so one `OutcomeCache` is shared by the three handlers; `RetryStartup` and `WindowReady` idempotent for a repeated request; regenerate `frontend/wailsjs/**` through `scripts/build`; the adapter compiles against the new arity (the wrapper itself is T008).
   - **Evidence**: `scripts/build` leaves a clean tree. `tests/go/integration/application/handlers_test.go` — a repeated Save with the same request id writes once (SC-014 Retry outcome); a second WindowReady is idempotent. `scripts/test integration` green.
