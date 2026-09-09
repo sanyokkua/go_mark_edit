@@ -35,7 +35,7 @@ func TestExternalConflictDecision(t *testing.T) {
 
 	authorized := service.AuthorizeKeepMine(context.Background(), documentID, 1, path, blocked.Conflict.DetectedDiskVersion)
 	if authorized.Status != apperr.ConflictStatusAuthorized || authorized.DecisionToken == "" {
-		t.Fatalf("Keep mine authorization = %+v error=%+v queued=%+v path=%q", authorized, authorized.Error, service.conflicts[documentID], path)
+		t.Fatalf("Keep mine authorization = %+v error=%+v queued=%+v path=%q", authorized, authorized.Error, service.state.documents[documentID].conflict, path)
 	}
 	committed := service.Save(context.Background(), documentID, 1, authorized.DecisionToken)
 	if committed.Status != apperr.WriteStatusCommitted {
@@ -207,13 +207,17 @@ func TestKeepMineAuthorizationInvalidation(t *testing.T) {
 	blocked := service.Save(context.Background(), documentID, 1, "")
 	authorized := service.AuthorizeKeepMine(context.Background(), documentID, 1, path, blocked.Conflict.DetectedDiskVersion)
 	if authorized.DecisionToken == "" {
-		t.Fatalf("authorization = %+v error=%+v queued=%+v", authorized, authorized.Error, service.conflicts[documentID])
+		t.Fatalf("authorization = %+v error=%+v queued=%+v", authorized, authorized.Error, service.state.documents[documentID].conflict)
 	}
 	if err := service.UpdateBuffer(context.Background(), documentID, "newer mine\n"); err != nil {
 		t.Fatalf("new edit: %v", err)
 	}
-	if _, ok := service.keepMine[authorized.DecisionToken]; ok {
-		t.Fatal("edit retained Keep-mine authorization")
+	if document := service.state.documents[documentID]; document != nil {
+		if _, ok := document.keepMine[authorized.DecisionToken]; ok {
+			t.Fatal("edit retained Keep-mine authorization")
+		}
+	} else {
+		t.Fatal("document disappeared after edit")
 	}
 	stale := service.Save(context.Background(), documentID, 1, authorized.DecisionToken)
 	if stale.Status != apperr.WriteStatusRefused || stale.Error == nil || stale.Error.Category != apperr.ClassifiedConflict {
@@ -256,9 +260,11 @@ func liveKeepMineTokens(service *AppModelService, documentID string) int {
 	service.mu.RLock()
 	defer service.mu.RUnlock()
 	count := 0
-	for _, authorization := range service.keepMine {
-		if authorization.documentID == documentID {
-			count++
+	if document := service.state.documents[documentID]; document != nil {
+		for _, authorization := range document.keepMine {
+			if authorization.documentID == documentID {
+				count++
+			}
 		}
 	}
 	return count
@@ -359,7 +365,11 @@ func assertKeepMineTokensDead(t *testing.T, service *AppModelService, documentID
 	}
 	for _, token := range tokens {
 		service.mu.RLock()
-		_, present := service.keepMine[token]
+		document := service.state.documents[documentID]
+		present := false
+		if document != nil {
+			_, present = document.keepMine[token]
+		}
 		service.mu.RUnlock()
 		if present {
 			t.Fatalf("token %q survived the invalidating event", token)

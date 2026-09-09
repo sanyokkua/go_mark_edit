@@ -6,7 +6,25 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
+
+type windowsIdentityStat struct {
+	VolumeSerialNumber uint32
+	FileIndexHigh      uint32
+	FileIndexLow       uint32
+}
+
+type syntheticFileInfo struct {
+	sys any
+}
+
+func (info syntheticFileInfo) Name() string       { return "notes.md" }
+func (info syntheticFileInfo) Size() int64        { return 1 }
+func (info syntheticFileInfo) Mode() os.FileMode  { return 0o644 }
+func (info syntheticFileInfo) ModTime() time.Time { return time.Unix(1, 0) }
+func (info syntheticFileInfo) IsDir() bool        { return false }
+func (info syntheticFileInfo) Sys() any           { return info.sys }
 
 // Proves: STORY-003-AC-2
 // Development and production use separate configuration, log, and database paths below an injected temporary root.
@@ -90,7 +108,7 @@ func TestCanonicalizeDocumentPath(t *testing.T) {
 	if canonical.Path != wantPath {
 		t.Fatalf("canonical path = %q, want %q", canonical.Path, wantPath)
 	}
-	if canonical.Identity == "" {
+	if canonical.Identity.IsZero() {
 		t.Fatal("canonical identity must be filesystem-aware or path-backed")
 	}
 	if canonical.DisplayName != "Report.MD" {
@@ -128,5 +146,18 @@ func TestCanonicalizeDocumentPath(t *testing.T) {
 	}
 	if !strings.Contains(unsafeCanonical.DisplayName, `\u0001`) || !strings.Contains(unsafeCanonical.DisplayName, `\u202E`) {
 		t.Fatalf("unsafe display name did not retain visible escapes: %q", unsafeCanonical.DisplayName)
+	}
+}
+
+func TestFilesystemIdentityUsesWindowsVolumeAndFileIndex(t *testing.T) {
+	identity := filesystemIdentity(`C:\notes.md`, syntheticFileInfo{sys: windowsIdentityStat{
+		VolumeSerialNumber: 0x10203040,
+		FileIndexHigh:      0x55667788,
+		FileIndexLow:       0x99AABBCC,
+	}})
+
+	want := Identity{Device: 0x10203040, Inode: uint64(0x55667788)<<32 | uint64(0x99AABBCC)}
+	if !identity.Equal(want) {
+		t.Fatalf("Windows identity = %+v, want %+v", identity, want)
 	}
 }

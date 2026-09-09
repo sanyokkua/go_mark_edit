@@ -10,7 +10,7 @@ type OpenPreparation struct {
 
 type openReservation struct {
 	id                  string
-	identity            string
+	identity            file.Identity
 	expectedTabRevision uint64
 	canonical           file.CanonicalDocumentPath
 	read                file.ClassifiedRead

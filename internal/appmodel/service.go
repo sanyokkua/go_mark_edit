@@ -22,47 +22,42 @@ var nextDocumentID uint64
 
 // AppModelService is the mutex-guarded owner of live document and layout state.
 type AppModelService struct {
-	mu                  sync.RWMutex
-	state               applicationState
-	commands            DocumentCommandAPI
-	content             DocumentContentAccessor
-	emitter             StatePatchEmitter
-	layout              LayoutRepositoryAPI
-	sequence            uint64
-	writerID            string
-	timer               LayoutTimer
-	autosaveTimer       AutosaveTimerFactory
-	autosaveEnabled     bool
-	autosaveTimers      map[string]*autosaveTimerEntry
-	autosaveInFlight    map[string]chan struct{}
-	autosaveGeneration  uint64
-	pending             *pendingLayout
-	pendingFlushDone    chan struct{}
-	startupErr          error
-	pendingClose        *apperr.PendingClose
-	reservations        map[string]*openReservation
-	saveReservations    map[string]*saveReservation
-	normalizations      map[string]*normalizationAuthorization
-	writeCoordinators   map[string]*DocumentWriteCoordinator
-	closePlans          map[string]*closePlan
-	activeClosePlan     string
-	writeExecutor       WriteExecutor
-	writeCommitObserver WriteCommitObserver
-	runtimeContext      context.Context
-	conflicts           map[string]*documentConflict
-	conflictQueue       *conflictQueue
-	keepMine            map[string]*keepMineAuthorization
-	beforeSaveAsRecheck func(string)
-	shutdownDraining    bool
-	metadata            FileMetadataRepository
-	recentFiles         RecentFilesRepository
-	defaultOpenMode     string
-	openDialog          DocumentOpenDialog
-	saveDialog          DocumentSaveDialog
-	clipboard           file.ClipboardWriter
-	reveal              file.RevealPort
-	stableRead          func(string, int64) (file.StableClassifiedRead, error)
-	diskVersion         func(string) (file.DiskVersion, error)
+	mu                             sync.RWMutex
+	state                          applicationState
+	commands                       DocumentCommandAPI
+	content                        DocumentContentAccessor
+	emitter                        StatePatchEmitter
+	layout                         LayoutRepositoryAPI
+	sequence                       uint64
+	writerID                       string
+	timer                          LayoutTimer
+	autosaveTimer                  AutosaveTimerFactory
+	autosaveEnabled                bool
+	pending                        *pendingLayout
+	pendingFlushDone               chan struct{}
+	startupErr                     error
+	pendingClose                   *apperr.PendingClose
+	reservations                   map[string]*openReservation
+	closePlans                     map[string]*closePlan
+	activeClosePlan                string
+	writeExecutor                  WriteExecutor
+	writeCommitObserver            WriteCommitObserver
+	runtimeContext                 context.Context
+	conflictQueue                  *conflictQueue
+	beforeSaveAsRecheck            func(string)
+	shutdownDraining               bool
+	metadata                       FileMetadataRepository
+	recentFiles                    RecentFilesRepository
+	defaultOpenMode                string
+	openDialog                     DocumentOpenDialog
+	saveDialog                     DocumentSaveDialog
+	clipboard                      file.ClipboardWriter
+	reveal                         file.RevealPort
+	stableRead                     func(string, int64) (file.StableClassifiedRead, error)
+	diskVersion                    func(string) (file.DiskVersion, error)
+	publicationMu                  sync.Mutex
+	publicationSequence            uint64
+	applicationPublicationCommitID uint64
 }
 
 // LayoutTimer is the clock the layout debounce schedules against. It is
@@ -175,7 +170,10 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 	if timer == nil {
 		timer = systemLayoutTimer{}
 	}
-	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, autosaveTimers: make(map[string]*autosaveTimerEntry), autosaveInFlight: make(map[string]chan struct{}), writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), saveReservations: make(map[string]*saveReservation), normalizations: make(map[string]*normalizationAuthorization), writeCoordinators: make(map[string]*DocumentWriteCoordinator), closePlans: make(map[string]*closePlan), conflicts: make(map[string]*documentConflict), conflictQueue: newConflictQueue(), keepMine: make(map[string]*keepMineAuthorization), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, state: applicationState{
+	initialDocument.id = documentID
+	initialDocument.canonicalPath = ""
+	initialDocument.setBufferRevision(initialDocument.metadata.ContentRevision)
+	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), closePlans: make(map[string]*closePlan), conflictQueue: newConflictQueue(), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, state: applicationState{
 		orderedDocumentIDs: []string{documentID},
 		documents:          map[string]*openDocument{documentID: initialDocument},
 		activeDocumentID:   documentID,
@@ -374,7 +372,10 @@ func (service *AppModelService) CloseStatus() (dirtyDocuments []string, pendingW
 		}
 		pendingWork = pendingWork || document.writeInFlight
 	}
-	pendingWork = pendingWork || len(service.autosaveTimers) > 0 || len(service.autosaveInFlight) > 0 || service.pending != nil || service.pendingFlushDone != nil
+	for _, document := range service.state.documents {
+		pendingWork = pendingWork || document.autosave != nil || document.autosaveInFlight != nil
+	}
+	pendingWork = pendingWork || service.pending != nil || service.pendingFlushDone != nil
 	return dirtyDocuments, pendingWork
 }
 
@@ -591,13 +592,7 @@ func (service *AppModelService) SetDocView(ctx context.Context, documentID strin
 }
 
 func (service *AppModelService) effectiveDocumentMetadataLocked(document *openDocument) apperr.DocumentMetadata {
-	metadata := document.metadata
-	status := saveStatusForDocument(document)
-	metadata.Status = string(status)
-	metadata.Dirty = status == SaveStatusUnsavedChanges
-	metadata.Detached = document.detached
-	metadata.ConflictBlocked = document.conflictBlocked
-	metadata.WriteInFlight = document.writeInFlight
+	metadata := document.effectiveMetadata()
 	if document.hasSavedView || service.state.ui.ViewArrangement == nil {
 		return metadata
 	}
@@ -987,29 +982,17 @@ func (service *AppModelService) snapshotLocked() applicationState {
 	}
 	for documentID, document := range service.state.documents {
 		documentCopy := *document
+		if document.keepMine != nil {
+			documentCopy.keepMine = make(map[string]*keepMineAuthorization, len(document.keepMine))
+			for token, authorization := range document.keepMine {
+				authorizationCopy := *authorization
+				documentCopy.keepMine[token] = &authorizationCopy
+			}
+		}
 		snapshot.documents[documentID] = &documentCopy
 	}
 	snapshot.recentlyClosed = append([]recentlyClosedDocument(nil), service.state.recentlyClosed...)
 	return snapshot
-}
-
-func (service *AppModelService) publishLocked(ctx context.Context, before applicationState, patch apperr.AppStatePatch) (err error) {
-	if service.emitter == nil {
-		service.state = before
-		return apperr.Internal(errors.New("state patch emitter is required"))
-	}
-	var emitErr error
-	if bridge.Protect(func() {
-		emitErr = service.emitter.EmitStatePatch(ctx, patch)
-	}) {
-		service.state = before
-		return apperr.Internal(errors.New("emit state patch panicked"))
-	}
-	if emitErr != nil {
-		service.state = before
-		return apperr.Internal(fmt.Errorf("emit state patch: %w", emitErr))
-	}
-	return nil
 }
 
 func arrangementFor(editorVisible, previewVisible bool) string {

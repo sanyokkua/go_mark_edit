@@ -67,11 +67,5 @@ func (service *AppModelService) openDocumentIDs() []string {
 // document. A document that has never been written has no coordinator yet, and
 // nothing to wait for.
 func (service *AppModelService) waitForWriteInFlight(documentID string) {
-	service.mu.RLock()
-	coordinator := service.writeCoordinators[documentID]
-	service.mu.RUnlock()
-	if coordinator == nil {
-		return
-	}
-	coordinator.waitForIdle()
+	service.waitForDocumentIdle(documentID)
 }

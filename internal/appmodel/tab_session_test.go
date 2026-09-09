@@ -128,7 +128,7 @@ func TestAdjacentAndFinalClose(t *testing.T) {
 func autosaveTimerCount(service *AppModelService, documentID string) int {
 	service.mu.RLock()
 	defer service.mu.RUnlock()
-	if _, scheduled := service.autosaveTimers[documentID]; scheduled {
+	if document := service.state.documents[documentID]; document != nil && document.autosave != nil {
 		return 1
 	}
 	return 0

@@ -53,7 +53,7 @@ func (service *AppModelService) SetAutosaveEnabled(enabled bool) {
 	if enabled {
 		return
 	}
-	for documentID := range service.autosaveTimers {
+	for documentID := range service.state.documents {
 		service.cancelAutosaveLocked(documentID)
 	}
 }
@@ -72,6 +72,7 @@ func NewAppModelServiceWithAutosaveTimer(emitter StatePatchEmitter, timer Autosa
 
 func (service *AppModelService) scheduleAutosave(documentID string, revision uint64) {
 	service.mu.Lock()
+	document := service.state.documents[documentID]
 	if service.shutdownDraining || !service.autosaveEnabled || !service.autosaveEligibleLocked(documentID, revision) {
 		service.cancelAutosaveLocked(documentID)
 		service.mu.Unlock()
@@ -79,10 +80,15 @@ func (service *AppModelService) scheduleAutosave(documentID string, revision uin
 	}
 
 	service.cancelAutosaveLocked(documentID)
-	service.autosaveGeneration++
-	generation := service.autosaveGeneration
+	document = service.state.documents[documentID]
+	if document == nil {
+		service.mu.Unlock()
+		return
+	}
+	document.autosaveGeneration++
+	generation := document.autosaveGeneration
 	entry := &autosaveTimerEntry{revision: revision, generation: generation}
-	service.autosaveTimers[documentID] = entry
+	document.autosave = entry
 	timerFactory := service.autosaveTimer
 	service.mu.Unlock()
 
@@ -91,7 +97,7 @@ func (service *AppModelService) scheduleAutosave(documentID string, revision uin
 	})
 
 	service.mu.Lock()
-	if current := service.autosaveTimers[documentID]; current == entry {
+	if currentDocument := service.state.documents[documentID]; currentDocument != nil && currentDocument.autosave == entry {
 		entry.timer = timer
 	} else if timer != nil {
 		timer.Stop()
@@ -113,8 +119,13 @@ func (service *AppModelService) flushAutosaveForClose(documentID string) {
 func (service *AppModelService) flushAutosaveMode(documentID string, runScheduled bool) {
 	for {
 		service.mu.Lock()
-		entry := service.autosaveTimers[documentID]
-		done := service.autosaveInFlight[documentID]
+		document := service.state.documents[documentID]
+		var entry *autosaveTimerEntry
+		var done chan struct{}
+		if document != nil {
+			entry = document.autosave
+			done = document.autosaveInFlight
+		}
 		if entry != nil && done == nil {
 			if !runScheduled {
 				service.cancelAutosaveLocked(documentID)
@@ -138,7 +149,8 @@ func (service *AppModelService) flushAutosaveMode(documentID string, runSchedule
 			// FR-FT-024 requires. If the entry survived, nothing can run it:
 			// cancel the debounce and stop.
 			service.mu.Lock()
-			if remaining := service.autosaveTimers[documentID]; remaining == entry {
+			remainingDocument := service.state.documents[documentID]
+			if remainingDocument != nil && remainingDocument.autosave == entry {
 				service.cancelAutosaveLocked(documentID)
 				service.mu.Unlock()
 				return
@@ -159,42 +171,51 @@ func (service *AppModelService) flushAutosaveMode(documentID string, runSchedule
 }
 
 func (service *AppModelService) cancelAutosaveLocked(documentID string) {
-	entry := service.autosaveTimers[documentID]
+	document := service.state.documents[documentID]
+	if document == nil {
+		return
+	}
+	entry := document.autosave
 	if entry == nil {
 		return
 	}
-	delete(service.autosaveTimers, documentID)
+	document.autosave = nil
 	if entry.timer != nil {
 		entry.timer.Stop()
 	}
 }
 
 func (service *AppModelService) autosaveEligibleLocked(documentID string, revision uint64) bool {
-	document, ok := service.state.documents[documentID]
-	if !ok || document.metadata.ContentRevision != revision {
+	document := service.state.documents[documentID]
+	if document == nil || document.metadata.ContentRevision != revision {
 		return false
 	}
 	return document.metadata.Path != "" &&
 		document.metadata.Capability == string(file.CapabilityWritable) &&
-		!document.detached
+		!document.detached &&
+		!document.closing
 }
 
 func (service *AppModelService) runAutosave(documentID string, revision, generation uint64) {
 	service.mu.Lock()
-	entry, scheduled := service.autosaveTimers[documentID]
-	if !scheduled || entry.revision != revision || entry.generation != generation || !service.autosaveEnabled || !service.autosaveEligibleLocked(documentID, revision) {
+	document := service.state.documents[documentID]
+	var entry *autosaveTimerEntry
+	if document != nil {
+		entry = document.autosave
+	}
+	if entry == nil || entry.revision != revision || entry.generation != generation || !service.autosaveEnabled || !service.autosaveEligibleLocked(documentID, revision) {
 		service.mu.Unlock()
 		return
 	}
-	delete(service.autosaveTimers, documentID)
-	path := service.state.documents[documentID].metadata.Path
+	document.autosave = nil
+	path := document.metadata.Path
 	done := make(chan struct{})
-	service.autosaveInFlight[documentID] = done
+	document.autosaveInFlight = done
 	service.mu.Unlock()
 	defer func() {
 		service.mu.Lock()
-		if service.autosaveInFlight[documentID] == done {
-			delete(service.autosaveInFlight, documentID)
+		if current := service.state.documents[documentID]; current != nil && current.autosaveInFlight == done {
+			current.autosaveInFlight = nil
 			close(done)
 		}
 		service.mu.Unlock()

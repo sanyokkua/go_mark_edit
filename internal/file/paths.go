@@ -15,12 +15,40 @@ const (
 	settingsDatabase   = "settings.db"
 )
 
+// Identity is the stable identity of a local document. Device is signed because
+// Darwin's stat structure exposes dev_t through a signed field; Linux values are
+// represented losslessly for the filesystems supported by the application.
+// Path is populated only when the platform exposes neither a device nor inode.
+type Identity struct {
+	Device int64
+	Inode  uint64
+	Path   string
+}
+
+func (identity Identity) IsZero() bool {
+	return identity.Device == 0 && identity.Inode == 0 && identity.Path == ""
+}
+
+func (identity Identity) String() string {
+	if identity.Path != "" {
+		return identity.Path
+	}
+	if identity.Device == 0 && identity.Inode == 0 {
+		return ""
+	}
+	return fmt.Sprintf("file:%d:%d", identity.Device, identity.Inode)
+}
+
+func (identity Identity) Equal(other Identity) bool {
+	return identity == other
+}
+
 // CanonicalDocumentPath is the identity-safe path metadata shared by file lifecycle commands.
 // Path is absolute and symlink-resolved for existing files; Identity is filesystem-aware when the
 // host exposes a stable device/inode pair and otherwise falls back to the canonical path.
 type CanonicalDocumentPath struct {
 	Path        string
-	Identity    string
+	Identity    Identity
 	DisplayName string
 	ParentName  string
 }
@@ -76,7 +104,7 @@ func CanonicalizeCandidateDocumentPath(path string) (CanonicalDocumentPath, erro
 	resolved := filepath.Join(parent, filepath.Base(absolute))
 	return CanonicalDocumentPath{
 		Path:        resolved,
-		Identity:    "path:" + resolved,
+		Identity:    Identity{Path: "path:" + resolved},
 		DisplayName: safeDisplayName(filepath.Base(resolved)),
 		ParentName:  safeDisplayName(filepath.Base(filepath.Dir(resolved))),
 	}, nil
@@ -101,7 +129,7 @@ func newCanonicalDocumentPath(path string, info os.FileInfo) CanonicalDocumentPa
 	}
 }
 
-func filesystemIdentity(path string, info os.FileInfo) string {
+func filesystemIdentity(path string, info os.FileInfo) Identity {
 	value := reflect.ValueOf(info.Sys())
 	if value.IsValid() {
 		if value.Kind() == reflect.Pointer {
@@ -112,14 +140,38 @@ func filesystemIdentity(path string, info os.FileInfo) string {
 			}
 		}
 		if value.IsValid() && value.Kind() == reflect.Struct {
-			dev, hasDev := uintField(value, "Dev")
+			dev, hasDev := integerField(value, "Dev")
 			ino, hasIno := uintField(value, "Ino")
 			if hasDev && hasIno {
-				return fmt.Sprintf("file:%d:%d", dev, ino)
+				return Identity{Device: dev, Inode: ino}
+			}
+			volume, hasVolume := integerField(value, "VolumeSerialNumber")
+			high, hasHigh := uintField(value, "FileIndexHigh")
+			low, hasLow := uintField(value, "FileIndexLow")
+			if hasVolume && hasHigh && hasLow {
+				return Identity{Device: volume, Inode: high<<32 | low}
 			}
 		}
 	}
-	return "path:" + path
+	return Identity{Path: "path:" + path}
+}
+
+func integerField(value reflect.Value, name string) (int64, bool) {
+	field := value.FieldByName(name)
+	if !field.IsValid() {
+		return 0, false
+	}
+	if field.CanInt() {
+		return field.Int(), true
+	}
+	if field.CanUint() {
+		unsigned := field.Uint()
+		if unsigned > uint64(^uint64(0)>>1) {
+			return 0, false
+		}
+		return int64(unsigned), true
+	}
+	return 0, false
 }
 
 func uintField(value reflect.Value, name string) (uint64, bool) {

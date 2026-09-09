@@ -31,6 +31,7 @@ type documentConflict struct {
 }
 
 type keepMineAuthorization struct {
+	token           string
 	documentID      string
 	contentRevision uint64
 	path            string
@@ -185,24 +186,28 @@ func (service *AppModelService) AuthorizeKeepMine(ctx context.Context, documentI
 	defer service.mu.Unlock()
 	document, ok = service.state.documents[documentID]
 	if !ok {
-		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
 	}
-	queued, ok := service.conflicts[documentID]
+	queued := document.conflict
+	ok = queued != nil
 	if !ok || document.metadata.ContentRevision != contentRevision || document.metadata.Path != canonicalPath || !queued.version.Equal(fileVersionFromWire(detectedVersion)) || queued.preview.ContentRevision != contentRevision || queued.preview.Path != canonicalPath {
-		return service.conflictRefused(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
 	}
 	if queued.preview.ReadOnly {
-		return service.conflictRefused(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be overwritten.", apperr.RemediationNone)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be overwritten.", apperr.RemediationNone)
 	}
 	if err != nil || !current.Equal(queued.version) {
 		before := service.snapshotLocked()
 		service.removeConflictLocked(documentID)
 		patch := service.documentPatchLocked(documentID)
 		_ = service.publishLocked(ctx, before, patch)
-		return service.conflictRefused(documentID, apperr.ClassifiedConflict, "The file changed again; refresh the comparison.", apperr.RemediationRetry)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedConflict, "The file changed again; refresh the comparison.", apperr.RemediationRetry)
 	}
 	token := mintDocumentID()
-	service.keepMine[token] = &keepMineAuthorization{documentID: documentID, contentRevision: contentRevision, path: canonicalPath, version: queued.version, rawHash: queued.rawHash, characteristics: queued.read.Characteristics}
+	if document.keepMine == nil {
+		document.keepMine = make(map[string]*keepMineAuthorization)
+	}
+	document.keepMine[token] = &keepMineAuthorization{token: token, documentID: documentID, contentRevision: contentRevision, path: canonicalPath, version: queued.version, rawHash: queued.rawHash, characteristics: queued.read.Characteristics}
 	return apperr.ConflictResult{Status: apperr.ConflictStatusAuthorized, DocumentID: documentID, DocumentRevision: contentRevision, DecisionToken: token, Preview: &queued.preview}
 }
 
@@ -213,20 +218,21 @@ func (service *AppModelService) SkipConflict(ctx context.Context, documentID str
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
 	if !ok {
-		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
 	}
-	queued, ok := service.conflicts[documentID]
+	queued := document.conflict
+	ok = queued != nil
 	if !ok || document.metadata.ContentRevision != expectedContentRevision || !queued.version.Equal(fileVersionFromWire(detectedVersion)) {
-		return service.conflictRefused(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
 	}
 	if queued.preview.ReadOnly {
-		return service.conflictRefused(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only; cancel the foreground check.", apperr.RemediationNone)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only; cancel the foreground check.", apperr.RemediationNone)
 	}
 	before := service.snapshotLocked()
 	service.removeConflictLocked(documentID)
 	patch := service.documentPatchLocked(documentID)
 	if err := service.publishLocked(ctx, before, patch); err != nil {
-		return service.conflictRefused(documentID, apperr.ClassifiedIOFailure, "The conflict decision could not be published.", apperr.RemediationRetry)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedIOFailure, "The conflict decision could not be published.", apperr.RemediationRetry)
 	}
 	return apperr.ConflictResult{Status: apperr.ConflictStatusSkipped, DocumentID: documentID, DocumentRevision: expectedContentRevision}
 }
@@ -237,18 +243,19 @@ func (service *AppModelService) CancelConflict(ctx context.Context, documentID s
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
-	queued, queuedOK := service.conflicts[documentID]
 	if !ok {
-		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)
 	}
+	queued := document.conflict
+	queuedOK := queued != nil
 	if !queuedOK || document.metadata.ContentRevision != expectedContentRevision || !queued.version.Equal(fileVersionFromWire(detectedVersion)) {
-		return service.conflictRefused(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
 	}
 	before := service.snapshotLocked()
 	service.removeConflictLocked(documentID)
 	patch := service.documentPatchLocked(documentID)
 	if err := service.publishLocked(ctx, before, patch); err != nil {
-		return service.conflictRefused(documentID, apperr.ClassifiedIOFailure, "The conflict decision could not be published.", apperr.RemediationRetry)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedIOFailure, "The conflict decision could not be published.", apperr.RemediationRetry)
 	}
 	return apperr.ConflictResult{Status: apperr.ConflictStatusCancelled, DocumentID: documentID, DocumentRevision: expectedContentRevision}
 }
@@ -258,11 +265,11 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
-		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedNotFound, service.safeDocumentLabelLocked(documentID), "The document is no longer open.", apperr.RemediationNone, documentID)}
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedNotFound, service.documentLabel(documentID), "The document is no longer open.", apperr.RemediationNone, documentID)}
 	}
 	if document.metadata.ContentRevision != expectedRevision {
 		service.mu.RUnlock()
-		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The document changed before the disk check completed.", apperr.RemediationRetry, documentID)}
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The document changed before the disk check completed.", apperr.RemediationRetry, documentID)}
 	}
 	path := document.metadata.Path
 	baselineVersion := document.baselineVersion
@@ -276,19 +283,24 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 
 	if decisionToken != "" {
 		service.mu.Lock()
-		authorization, authorized := service.keepMine[decisionToken]
+		currentDocument := service.state.documents[documentID]
+		var authorization *keepMineAuthorization
+		if currentDocument != nil {
+			authorization = currentDocument.keepMine[decisionToken]
+		}
+		authorized := authorization != nil
 		if authorized && authorization.documentID == documentID && authorization.contentRevision == expectedRevision && authorization.path == path {
-			delete(service.keepMine, decisionToken)
+			delete(currentDocument.keepMine, decisionToken)
 			before := service.snapshotLocked()
-			document.baselineVersion = authorization.version
-			document.baselineRawHash = authorization.rawHash
-			document.baselineCharacteristics = authorization.characteristics
-			document.detached = false
+			currentDocument.baselineVersion = authorization.version
+			currentDocument.baselineRawHash = authorization.rawHash
+			currentDocument.baselineCharacteristics = authorization.characteristics
+			currentDocument.detached = false
 			service.removeConflictLocked(documentID)
 			patch := service.documentPatchLocked(documentID)
 			if err := service.publishLocked(ctx, before, patch); err != nil {
 				service.mu.Unlock()
-				return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, service.safeDocumentLabelLocked(documentID), "The external-change decision could not be published.", apperr.RemediationRetry, documentID)}
+				return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, documentLabelFromMetadata(documentSnapshot.metadata), "The external-change decision could not be published.", apperr.RemediationRetry, documentID)}
 			}
 			service.mu.Unlock()
 			return diskInspection{kind: diskAuthorized, version: authorization.version, rawHash: authorization.rawHash, characteristics: authorization.characteristics}
@@ -298,7 +310,7 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 
 	current, err := service.currentDiskVersion(path)
 	if err != nil {
-		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, service.safeDocumentLabelLocked(documentID), "The document could not be inspected.", apperr.RemediationRetry, documentID)}
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, service.documentLabel(documentID), "The document could not be inspected.", apperr.RemediationRetry, documentID)}
 	}
 	if current.Equal(baselineVersion) {
 		return diskInspection{kind: diskUnchanged, version: current}
@@ -306,13 +318,13 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	stable, readErr := service.readStable(path)
 	if readErr != nil {
 		if errors.Is(readErr, file.ErrUnstableRead) {
-			return diskInspection{kind: diskUnstable, version: stable.Version, classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The file is changing; check again before saving.", apperr.RemediationRetry, documentID)}
+			return diskInspection{kind: diskUnstable, version: stable.Version, classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The file is changing; check again before saving.", apperr.RemediationRetry, documentID)}
 		}
-		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, service.safeDocumentLabelLocked(documentID), "The document could not be inspected.", apperr.RemediationRetry, documentID)}
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, service.documentLabel(documentID), "The document could not be inspected.", apperr.RemediationRetry, documentID)}
 	}
 	if !stable.Version.Exists {
 		if err := service.applyDetached(ctx, documentID, expectedRevision); err != nil {
-			return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The document changed before detachment completed.", apperr.RemediationRetry, documentID)}
+			return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The document changed before detachment completed.", apperr.RemediationRetry, documentID)}
 		}
 		return diskInspection{kind: diskDetached, version: stable.Version}
 	}
@@ -321,13 +333,13 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	}
 	if stable.RawHash == baselineHash && characteristicsEqual(stable.Read.Characteristics, baselineCharacteristics) {
 		if err := service.refreshDiskVersion(ctx, documentID, expectedRevision, stable.Version); err != nil {
-			return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The document changed before the disk baseline could be refreshed.", apperr.RemediationRetry, documentID)}
+			return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The document changed before the disk baseline could be refreshed.", apperr.RemediationRetry, documentID)}
 		}
 		return diskInspection{kind: diskUnchanged, version: stable.Version, rawHash: stable.RawHash, characteristics: stable.Read.Characteristics}
 	}
 	preview := buildConflictPreview(documentID, &documentSnapshot, stable.Read, stable.Version)
 	if err := service.registerConflict(ctx, documentID, expectedRevision, stable, preview); err != nil {
-		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The external-change decision could not be queued.", apperr.RemediationRetry, documentID)}
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The external-change decision could not be queued.", apperr.RemediationRetry, documentID)}
 	}
 	return diskInspection{kind: diskConflict, version: stable.Version, rawHash: stable.RawHash, characteristics: stable.Read.Characteristics, preview: &preview}
 }
@@ -341,7 +353,7 @@ func (service *AppModelService) prepareWriteDisk(ctx context.Context, documentID
 		return bridge.FromClassified[apperr.WriteResult](inspection.classified, apperr.WriteStatusRefused)
 	}
 	if inspection.kind == diskConflict && inspection.preview != nil {
-		classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The file changed on disk before it could be saved.", apperr.RemediationNone, documentID)
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The file changed on disk before it could be saved.", apperr.RemediationNone, documentID)
 		result := bridge.FromClassified[apperr.WriteResult](classified, apperr.WriteStatusConflict)
 		result.Conflict = inspection.preview
 		return result
@@ -462,17 +474,17 @@ func (service *AppModelService) registerConflict(ctx context.Context, documentID
 	}
 	before := service.snapshotLocked()
 	document.conflictBlocked = true
-	service.conflicts[documentID] = &documentConflict{preview: preview, version: stable.Version, rawHash: stable.RawHash, read: stable.Read, createdAt: service.state.revision + 1}
+	document.conflict = &documentConflict{preview: preview, version: stable.Version, rawHash: stable.RawHash, read: stable.Read, createdAt: service.state.revision + 1}
 	service.conflictQueue.Enqueue(conflictQueueEntry{DocumentID: documentID, ContentRevision: expectedRevision, DiskVersion: stable.Version, Preview: preview})
 	patch := service.documentPatchLocked(documentID)
 	return service.publishLocked(ctx, before, patch)
 }
 
 func (service *AppModelService) removeConflictLocked(documentID string) {
-	delete(service.conflicts, documentID)
 	service.conflictQueue.Remove(documentID)
-	deleteTokensForDocument(service.keepMine, documentID)
 	if document := service.state.documents[documentID]; document != nil {
+		document.conflict = nil
+		document.keepMine = nil
 		document.conflictBlocked = false
 	}
 }
@@ -480,7 +492,8 @@ func (service *AppModelService) removeConflictLocked(documentID string) {
 func (service *AppModelService) invalidateConflict(ctx context.Context, documentID string) {
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	if _, ok := service.conflicts[documentID]; !ok {
+	document := service.state.documents[documentID]
+	if document == nil || document.conflict == nil {
 		return
 	}
 	before := service.snapshotLocked()
@@ -520,14 +533,6 @@ func (service *AppModelService) readStable(path string) (file.StableClassifiedRe
 		reader = file.ReadClassifiedStable
 	}
 	return reader(path, file.MaxClassifiedReadBytes)
-}
-
-func deleteTokensForDocument(tokens map[string]*keepMineAuthorization, documentID string) {
-	for token, authorization := range tokens {
-		if authorization.documentID == documentID {
-			delete(tokens, token)
-		}
-	}
 }
 
 func buildConflictPreview(documentID string, document *openDocument, read file.ClassifiedRead, version file.DiskVersion) apperr.ConflictPreview {
@@ -609,6 +614,13 @@ func fileVersionFromWire(version apperr.DiskVersion) file.DiskVersion {
 }
 
 func (service *AppModelService) conflictRefused(documentID string, category apperr.ClassifiedErrorCategory, message string, remediation apperr.ClassifiedRemediation) apperr.ConflictResult {
+	classified := bridge.ClassifiedWithID(category, service.documentLabel(documentID), message, remediation, documentID)
+	result := bridge.FromClassified[apperr.ConflictResult](classified, apperr.ConflictStatusRefused)
+	result.DocumentID = documentID
+	return result
+}
+
+func (service *AppModelService) conflictRefusedLocked(documentID string, category apperr.ClassifiedErrorCategory, message string, remediation apperr.ClassifiedRemediation) apperr.ConflictResult {
 	classified := bridge.ClassifiedWithID(category, service.safeDocumentLabelLocked(documentID), message, remediation, documentID)
 	result := bridge.FromClassified[apperr.ConflictResult](classified, apperr.ConflictStatusRefused)
 	result.DocumentID = documentID
@@ -619,7 +631,7 @@ func (service *AppModelService) conflictRefused(documentID string, category appe
 // it is recovering from came from the code that owns the document map. See
 // the save path for the same reasoning.
 func (service *AppModelService) conflictResultUnstable(documentID string, revision uint64) apperr.ConflictResult {
-	classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The file is changing; check again before saving.", apperr.RemediationRetry, documentID)
+	classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The file is changing; check again before saving.", apperr.RemediationRetry, documentID)
 	result := bridge.FromClassified[apperr.ConflictResult](classified, apperr.ConflictStatusUnstable)
 	result.DocumentID = documentID
 	result.DocumentRevision = revision

@@ -375,7 +375,7 @@ func TestRecentlyClosedHistory(t *testing.T) {
 	if len(service.state.recentlyClosed) != 40 {
 		t.Fatalf("recently closed length = %d, want 40", len(service.state.recentlyClosed))
 	}
-	if service.state.recentlyClosed[0].path == "" || service.state.recentlyClosed[0].identity == "" {
+	if service.state.recentlyClosed[0].path == "" || service.state.recentlyClosed[0].identity.IsZero() {
 		t.Fatalf("newest closed entry = %+v, want canonical path and identity", service.state.recentlyClosed[0])
 	}
 }

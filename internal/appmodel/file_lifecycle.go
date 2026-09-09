@@ -87,6 +87,8 @@ func (service *AppModelService) NewDocument(ctx context.Context, expectedTabSetR
 
 func newUntitledEditorDocument(documentID string) *openDocument {
 	return &openDocument{
+		id:            documentID,
+		canonicalPath: "",
 		metadata: apperr.DocumentMetadata{
 			DocumentID:  documentID,
 			Title:       "Untitled",
@@ -182,7 +184,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	}
 	existingDocumentID := ""
 	for documentID, document := range service.state.documents {
-		if document.canonicalIdentity == identity || (identity == "path:"+document.metadata.Path && document.metadata.Path != "") {
+		if document.identity.Equal(identity) || (document.identity.IsZero() && document.metadata.Path == identity.Path && identity.Path != "") {
 			existingDocumentID = documentID
 			break
 		}
@@ -298,7 +300,7 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		return result
 	}
 	service.state.revision++
-	metadata := service.state.documents[documentID].metadata
+	metadata := service.effectiveDocumentMetadataLocked(service.state.documents[documentID])
 	patch := apperr.AppStatePatch{
 		Revision:           service.state.revision,
 		TabSetRevision:     pointerTo(service.state.tabSetRevision),
@@ -378,7 +380,8 @@ func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arr
 			LineEnding: string(read.Characteristics.LineEnding), Capability: string(read.Capability), SizeClass: sizeClass,
 			WordCount: len(strings.Fields(read.Content)), View: openView(arrangement),
 		},
-		content: read.Content, baseline: read.Content, baselineVersion: version, baselineCharacteristics: read.Characteristics, baselineRawHash: rawHash, baselineOrigin: SaveOriginOpen, committedRevision: 0, normalizationEnding: normalizationEnding, canonicalIdentity: read.CanonicalPath.Identity,
+		id: documentID, identity: read.CanonicalPath.Identity, canonicalPath: read.CanonicalPath.Path,
+		content: read.Content, baseline: read.Content, baselineVersion: version, baselineCharacteristics: read.Characteristics, baselineRawHash: rawHash, baselineOrigin: SaveOriginOpen, committedRevision: 0, bufferRevision: 0, normalizationEnding: normalizationEnding,
 	}
 }
 

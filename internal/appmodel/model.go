@@ -15,27 +15,9 @@ const (
 	ArrangementPreview = "preview"
 )
 
-type openDocument struct {
-	metadata                apperr.DocumentMetadata
-	content                 string
-	baseline                string
-	baselineVersion         file.DiskVersion
-	baselineCharacteristics file.FileCharacteristics
-	baselineOrigin          SaveOrigin
-	committedRevision       uint64
-	failedWrite             bool
-	detached                bool
-	normalizationEnding     string
-	baselineRawHash         string
-	canonicalIdentity       string
-	conflictBlocked         bool
-	writeInFlight           bool
-	hasSavedView            bool
-}
-
 type recentlyClosedDocument struct {
 	path     string
-	identity string
+	identity file.Identity
 	view     apperr.DocView
 }
 

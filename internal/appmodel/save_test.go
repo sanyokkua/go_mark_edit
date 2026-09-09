@@ -128,8 +128,8 @@ func TestSaveAsRefusesAnUnsupportedSuffixBeforeWriting(t *testing.T) {
 					t.Fatalf("the refused Save As left %q beside the target", entry.Name())
 				}
 			}
-			if len(service.saveReservations) != 0 {
-				t.Fatalf("save reservations after the refusal = %d, want none", len(service.saveReservations))
+			if count := saveReservationCount(service); count != 0 {
+				t.Fatalf("save reservations after the refusal = %d, want none", count)
 			}
 			state, err := service.GetState(context.Background())
 			if err != nil {
@@ -164,8 +164,8 @@ func TestMixedEndingAuthorization(t *testing.T) {
 	if result := service.Save(context.Background(), opened.DocumentID, 1, blocked.DecisionToken); result.Status != apperr.WriteStatusCommitted {
 		t.Fatalf("authorized mixed Save = %+v, want committed", result)
 	}
-	if len(service.normalizations) != 0 {
-		t.Fatalf("normalization authorizations = %d, want consumed after commit", len(service.normalizations))
+	if count := normalizationTokenCount(service); count != 0 {
+		t.Fatalf("normalization authorizations = %d, want consumed after commit", count)
 	}
 	state, err := service.GetState(context.Background())
 	if err != nil {
@@ -290,13 +290,13 @@ func TestSaveAsTargetReservationReleasedOnEveryTerminalOutcome(t *testing.T) {
 		t.Fatalf("write cancellation target: %v", err)
 	}
 	service.SetDocumentSaveDialog(dialog)
-	if result := service.SaveAs(context.Background(), opened.DocumentID, 0, ""); result.Status != apperr.WriteStatusCancelled || len(service.saveReservations) != 0 {
-		t.Fatalf("cancel result/reservations = %+v/%d", result, len(service.saveReservations))
+	if result := service.SaveAs(context.Background(), opened.DocumentID, 0, ""); result.Status != apperr.WriteStatusCancelled || saveReservationCount(service) != 0 {
+		t.Fatalf("cancel result/reservations = %+v/%d", result, saveReservationCount(service))
 	}
 	dialog.path = filepath.Join(root, "failure.md")
 	service.SetBeforeSaveAsRecheck(func(string) { panic("injected failure") })
-	if result := service.SaveAs(context.Background(), opened.DocumentID, 0, ""); result.Status != apperr.WriteStatusRefused || len(service.saveReservations) != 0 {
-		t.Fatalf("failure result/reservations = %+v/%d", result, len(service.saveReservations))
+	if result := service.SaveAs(context.Background(), opened.DocumentID, 0, ""); result.Status != apperr.WriteStatusRefused || saveReservationCount(service) != 0 {
+		t.Fatalf("failure result/reservations = %+v/%d", result, saveReservationCount(service))
 	}
 }
 
@@ -411,7 +411,25 @@ func (readers *countingDiskReaders) total() (int, int) {
 func normalizationTokenCount(service *AppModelService) int {
 	service.mu.RLock()
 	defer service.mu.RUnlock()
-	return len(service.normalizations)
+	count := 0
+	for _, document := range service.state.documents {
+		if document.normalization != nil {
+			count++
+		}
+	}
+	return count
+}
+
+func saveReservationCount(service *AppModelService) int {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	count := 0
+	for _, document := range service.state.documents {
+		if document.saveReservation != nil {
+			count++
+		}
+	}
+	return count
 }
 
 // Proves: FR-FT-011 — the clause that manual Save "MUST refuse before disk
@@ -513,8 +531,8 @@ func TestCancelNormalizationReleasesADismissedAuthorization(t *testing.T) {
 	if blocked.Status != apperr.WriteStatusNeedsNormalization || blocked.DecisionToken == "" {
 		t.Fatalf("mixed Save = %+v, want one authorization", blocked)
 	}
-	if len(service.normalizations) != 1 {
-		t.Fatalf("authorizations after prompt = %d, want 1", len(service.normalizations))
+	if count := normalizationTokenCount(service); count != 1 {
+		t.Fatalf("authorizations after prompt = %d, want 1", count)
 	}
 
 	// The user dismisses the prompt rather than authorizing it.
@@ -522,8 +540,8 @@ func TestCancelNormalizationReleasesADismissedAuthorization(t *testing.T) {
 	if cancelled.Error != nil {
 		t.Fatalf("CancelNormalization = %+v, want no error", cancelled)
 	}
-	if len(service.normalizations) != 0 {
-		t.Fatalf("authorizations after dismissal = %d, want 0", len(service.normalizations))
+	if count := normalizationTokenCount(service); count != 0 {
+		t.Fatalf("authorizations after dismissal = %d, want 0", count)
 	}
 
 	// The release must be real, not a bookkeeping trim: the dismissed token must

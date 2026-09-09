@@ -67,7 +67,7 @@ func portableFileIdentity(info fs.FileInfo) string {
 		return ""
 	}
 
-	if device, hasDevice := uintField(value, "Dev"); hasDevice {
+	if device, hasDevice := integerField(value, "Dev"); hasDevice {
 		if inode, hasInode := uintField(value, "Ino"); hasInode {
 			return fmt.Sprintf("device:%d:inode:%d", device, inode)
 		}

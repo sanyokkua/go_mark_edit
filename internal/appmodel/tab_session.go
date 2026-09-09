@@ -106,12 +106,12 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 }
 
 func (service *AppModelService) rememberClosedLocked(path string, document *openDocument) {
-	identity := document.canonicalIdentity
+	identity := document.identity
 	entry := recentlyClosedDocument{path: path, identity: identity, view: document.metadata.View}
 	filtered := make([]recentlyClosedDocument, 0, 41)
 	filtered = append(filtered, entry)
 	for _, existing := range service.state.recentlyClosed {
-		if existing.path == path || (identity != "" && existing.identity == identity) {
+		if existing.path == path || (!identity.IsZero() && existing.identity.Equal(identity)) {
 			continue
 		}
 		if len(filtered) == 40 {

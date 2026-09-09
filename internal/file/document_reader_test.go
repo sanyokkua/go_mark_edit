@@ -60,7 +60,7 @@ func TestReadClassifiedStableReportsAbsenceWithoutAnError(t *testing.T) {
 	if absent.Version.Exists {
 		t.Fatalf("stable read of a missing path reports Exists = true: %+v", absent.Version)
 	}
-	if absent.Read.Error != nil || absent.Read.CanonicalPath.Identity != "" {
+	if absent.Read.Error != nil || !absent.Read.CanonicalPath.Identity.IsZero() {
 		t.Fatalf("stable read of a missing path = %+v, want a zero-valued read that carries no classification", absent.Read)
 	}
 }

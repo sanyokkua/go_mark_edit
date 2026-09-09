@@ -25,7 +25,7 @@ type closePlanTarget struct {
 	choice             apperr.CloseChoice
 	normalizationToken string
 	savePath           string
-	saveIdentity       string
+	saveIdentity       file.Identity
 	expectedVersion    file.DiskVersion
 	expectedRawHash    string
 	reservationID      string
@@ -367,12 +367,12 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 func (service *AppModelService) executeClosePlanSaveAs(ctx context.Context, target closePlanTarget) apperr.WriteResult {
 	currentVersion, err := file.CurrentDiskVersion(target.savePath)
 	if err != nil || !currentVersion.Equal(target.expectedVersion) {
-		return bridge.Conflict[apperr.WriteResult](service.safeDocumentLabelLocked(target.documentID), target.documentID, apperr.ClassifiedConflict, "The Save As target changed before the close-plan write.", apperr.RemediationNone)
+		return bridge.Conflict[apperr.WriteResult](service.documentLabel(target.documentID), target.documentID, apperr.ClassifiedConflict, "The Save As target changed before the close-plan write.", apperr.RemediationNone)
 	}
 	if target.expectedRawHash != "" {
 		currentHash, hashErr := rawBytesHash(target.savePath)
 		if hashErr != nil || currentHash != target.expectedRawHash {
-			return bridge.Conflict[apperr.WriteResult](service.safeDocumentLabelLocked(target.documentID), target.documentID, apperr.ClassifiedConflict, "The Save As target bytes changed before the close-plan write.", apperr.RemediationNone)
+			return bridge.Conflict[apperr.WriteResult](service.documentLabel(target.documentID), target.documentID, apperr.ClassifiedConflict, "The Save As target bytes changed before the close-plan write.", apperr.RemediationNone)
 		}
 	}
 	snapshot, result := service.snapshotForWrite(target.documentID, target.contentRevision, target.normalizationToken, target.savePath, true)
@@ -512,7 +512,7 @@ func (service *AppModelService) invalidateClosePlanLocked(plan *closePlan, statu
 func (service *AppModelService) releaseClosePlanReservationsLocked(plan *closePlan) {
 	for index := range plan.targets {
 		if reservationID := plan.targets[index].reservationID; reservationID != "" {
-			delete(service.saveReservations, reservationID)
+			service.releaseSaveTargetLocked(reservationID)
 			plan.targets[index].reservationID = ""
 		}
 	}
@@ -520,38 +520,76 @@ func (service *AppModelService) releaseClosePlanReservationsLocked(plan *closePl
 
 func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs []string, expectedTabSetRevision *uint64) apperr.TabTransitionResult {
 	service.mu.Lock()
-	defer service.mu.Unlock()
 	if expectedTabSetRevision != nil && service.state.tabSetRevision != *expectedTabSetRevision {
+		service.mu.Unlock()
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", "The tab set changed before tabs could be removed.", apperr.RemediationRetry)
 	}
 	if len(documentIDs) == 0 {
-		return service.tabTransitionSuccess(apperr.TabTransitionClosed, "")
+		result := service.tabTransitionSuccess(apperr.TabTransitionClosed, "")
+		service.mu.Unlock()
+		return result
 	}
 	requested := make(map[string]struct{}, len(documentIDs))
+	closeIDs := make([]string, 0, len(documentIDs))
 	for _, documentID := range documentIDs {
-		if _, ok := service.state.documents[documentID]; !ok {
+		if _, duplicate := requested[documentID]; duplicate {
+			continue
+		}
+		document, ok := service.state.documents[documentID]
+		if !ok {
+			service.mu.Unlock()
 			return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 		}
+		if document.closing {
+			service.mu.Unlock()
+			return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The document is already being closed.", apperr.RemediationRetry)
+		}
 		requested[documentID] = struct{}{}
+		closeIDs = append(closeIDs, documentID)
+		document.closing = true
+	}
+	service.mu.Unlock()
+
+	// Seal the records before releasing the model lock. A write that has already
+	// crossed the seal is represented by writeInFlight and is drained below;
+	// every later write attempt is refused atomically by setWriteInFlight.
+	for _, documentID := range closeIDs {
+		service.waitForDocumentIdle(documentID)
+	}
+
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	if expectedTabSetRevision != nil && service.state.tabSetRevision != *expectedTabSetRevision {
+		service.clearClosingLocked(closeIDs)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", "The tab set changed before tabs could be removed.", apperr.RemediationRetry)
+	}
+	for _, documentID := range closeIDs {
+		if _, ok := service.state.documents[documentID]; !ok {
+			service.clearClosingLocked(closeIDs)
+			return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		}
+	}
+	// Keep the close barrier out of the rollback snapshot. The model lock stays
+	// held until disposal, so clearing it here cannot admit an interleaving write.
+	service.clearClosingLocked(closeIDs)
+
+	if len(closeIDs) == 0 {
+		return service.tabTransitionSuccess(apperr.TabTransitionClosed, "")
 	}
 	before := service.snapshotLocked()
 	activeIndex := indexOfDocument(service.state.orderedDocumentIDs, service.state.activeDocumentID)
 	removedActive := false
-	for _, documentID := range documentIDs {
+	for _, documentID := range closeIDs {
 		if documentID == service.state.activeDocumentID {
 			removedActive = true
 		}
-		deleteTokensForDocument(service.keepMine, documentID)
-		// No autosave timer may outlive the document it names. Deleting the
-		// document without this left an entry in service.autosaveTimers keyed by
-		// an id that no longer resolves. This already holds service.mu, and
-		// cancelAutosaveLocked is the …Locked form, so it must not re-acquire it.
-		service.cancelAutosaveLocked(documentID)
-		service.removeConflictLocked(documentID)
+		// dispose is the only terminal cleanup path. Close plans run after their
+		// writes have completed, so it may release every document-owned resource
+		// as one operation.
 		if closedPath := before.documents[documentID].metadata.Path; closedPath != "" {
 			service.rememberClosedLocked(closedPath, before.documents[documentID])
 		}
-		delete(service.state.documents, documentID)
+		service.dispose(documentID)
 	}
 	remaining := make([]string, 0, len(service.state.orderedDocumentIDs)-len(requested))
 	for _, documentID := range service.state.orderedDocumentIDs {
@@ -573,13 +611,13 @@ func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs 
 	service.state.tabSetRevision++
 	service.state.revision++
 	patch := service.tabStatePatchLocked()
-	patch.Documents = &apperr.DocumentsPatch{Remove: append([]string(nil), documentIDs...)}
+	patch.Documents = &apperr.DocumentsPatch{Remove: append([]string(nil), closeIDs...)}
 	patch.RecentFiles = append([]string(nil), service.state.recentFiles...)
 	patch.CanReopenLastFile = pointerTo(service.state.canReopenLastFile)
 	if err := service.publishLocked(ctx, before, patch); err != nil {
-		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedIOFailure, documentIDs[0], "The documents could not be closed.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedIOFailure, closeIDs[0], "The documents could not be closed.", apperr.RemediationRetry)
 	}
-	return service.tabTransitionSuccess(apperr.TabTransitionClosed, documentIDs[0])
+	return service.tabTransitionSuccess(apperr.TabTransitionClosed, closeIDs[0])
 }
 
 func closePlanTargetOrderLocked(order []string, documents map[string]*openDocument, kind apperr.ClosePlanKind, requested []string) ([]string, error) {
@@ -697,7 +735,11 @@ func closePlanSummaryResult(plan *closePlan) apperr.ClosePlanResult {
 }
 
 func validNormalizationTokenLocked(service *AppModelService, token, documentID string, revision uint64) bool {
-	authorization, ok := service.normalizations[token]
+	document := service.state.documents[documentID]
+	if document == nil {
+		return false
+	}
+	authorization, ok := normalizationAuthorizationForLocked(document, token)
 	return token != "" && ok && authorization.documentID == documentID && authorization.contentRevision == revision
 }
 
