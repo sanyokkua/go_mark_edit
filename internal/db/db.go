@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/pressly/goose/v3"
-	"github.com/sanyokkua/go_mark_edit/internal/db/store"
 	_ "modernc.org/sqlite"
 )
 
@@ -40,14 +39,13 @@ var (
 	migrationFiles embed.FS
 )
 
-// Database owns an open SQLite connection and its generated query store.
+// Database owns an open SQLite connection.
 type Database struct {
-	DB      *sql.DB
-	Queries *store.Queries
+	DB *sql.DB
 }
 
 // Open opens path with the SQLite multi-instance pragmas, applies pending additive migrations, and
-// exposes the generated query store. Recognized corruption is retained beside the database before a
+// exposes the opened connection. Recognized corruption is retained beside the database before a
 // clean database is created. A schema newer than this binary supports is never recovered or changed.
 func Open(ctx context.Context, path string) (*Database, error) {
 	if ctx == nil {
@@ -161,7 +159,7 @@ func migrateOpenConnection(ctx context.Context, database *sql.DB) (_ *Database, 
 		return nil, fmt.Errorf("apply database migrations: %w", err)
 	}
 
-	return &Database{DB: database, Queries: store.New(database)}, nil
+	return &Database{DB: database}, nil
 }
 
 func applyMigrations(ctx context.Context, database *sql.DB, migrations fs.FS) error {

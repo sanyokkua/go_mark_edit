@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -9,7 +10,7 @@ import (
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
-	"github.com/sanyokkua/go_mark_edit/internal/db/store"
+	"github.com/sanyokkua/go_mark_edit/internal/kv"
 )
 
 // Proves: STORY-009-AC-1
@@ -92,7 +93,7 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 		t.Fatalf("update file settings: %v", err)
 	}
 
-	for key, want := range map[string]store.UpsertSettingParams{
+	for key, want := range map[string]kv.KVEntry{
 		appearanceThemeKey:    {Key: appearanceThemeKey, Value: ThemeGlass, Type: settingTypeString},
 		appearanceModeKey:     {Key: appearanceModeKey, Value: ModeDark, Type: settingTypeString},
 		defaultOpenModeKey:    {Key: defaultOpenModeKey, Value: OpenModeViewer, Type: settingTypeString},
@@ -104,7 +105,7 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 		formatHeadingStyleKey: {Key: formatHeadingStyleKey, Value: HeadingStyleSetext, Type: settingTypeString},
 		fileAutosaveKey:       {Key: fileAutosaveKey, Value: "false", Type: settingTypeBool},
 	} {
-		got, getErr := database.Queries.GetSetting(ctx, key)
+		got, getErr := readKVSetting(database, ctx, key)
 		if getErr != nil {
 			t.Fatalf("read persisted key %q: %v", key, getErr)
 		}
@@ -202,7 +203,7 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 
 			seedCompleteSettings(t, ctx, database, valid, testCase.key)
 			if !testCase.omit {
-				if err := database.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
+				if err := writeKVSetting(database, ctx, kv.KVEntry{
 					Key: testCase.key, Value: testCase.value, Type: testCase.type_,
 				}); err != nil {
 					t.Fatalf("seed corrupt setting %q: %v", testCase.key, err)
@@ -235,7 +236,7 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 
 		seedCompleteSettings(t, ctx, database, valid, "")
 		for _, key := range []string{formatBulletMarkerKey, formatEmphasisKey, formatHeadingStyleKey} {
-			if err := database.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
+			if err := writeKVSetting(database, ctx, kv.KVEntry{
 				Key: key, Value: "", Type: settingTypeString,
 			}); err != nil {
 				t.Fatalf("seed empty canonical style %q: %v", key, err)
@@ -308,7 +309,7 @@ func TestSettingsRegistryAddsTypedScalarWithoutSchemaChange(t *testing.T) {
 	if !gotFuture {
 		t.Fatal("future typed scalar = false, want true")
 	}
-	storedFuture, err := database.Queries.GetSetting(ctx, futureLineNumbersKey)
+	storedFuture, err := readKVSetting(database, ctx, futureLineNumbersKey)
 	if err != nil {
 		t.Fatalf("read future KV row: %v", err)
 	}
@@ -373,7 +374,7 @@ func TestTypedGroupedDefaultsRoundTripThroughKV(t *testing.T) {
 		markdownStandardKey:    want.Markdown.Standard,
 		contentRemotePolicyKey: want.ContentPrivacy.RemotePolicy,
 	} {
-		stored, getErr := database.Queries.GetSetting(ctx, key)
+		stored, getErr := readKVSetting(database, ctx, key)
 		if getErr != nil {
 			if closeErr := database.Close(); closeErr != nil {
 				t.Errorf("close settings database after read failure: %v", closeErr)
@@ -387,7 +388,7 @@ func TestTypedGroupedDefaultsRoundTripThroughKV(t *testing.T) {
 			t.Fatalf("stored %q = %+v, want value %q and type %q", key, stored, value, settingTypeString)
 		}
 	}
-	if err := database.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
+	if err := writeKVSetting(database, ctx, kv.KVEntry{
 		Key: "future.editor.tabSize", Value: "4", Type: "int",
 	}); err != nil {
 		if closeErr := database.Close(); closeErr != nil {
@@ -409,7 +410,7 @@ func TestTypedGroupedDefaultsRoundTripThroughKV(t *testing.T) {
 		}
 	})
 	assertRepositorySettings(t, ctx, NewSqliteSettingsRepository(reopened), want)
-	future, err := reopened.Queries.GetSetting(ctx, "future.editor.tabSize")
+	future, err := readKVSetting(reopened, ctx, "future.editor.tabSize")
 	if err != nil {
 		t.Fatalf("read future scalar after reopen: %v", err)
 	}
@@ -522,7 +523,7 @@ func seedStoredSettings(t *testing.T, database *db.Database, settingType string,
 	t.Helper()
 
 	for key, value := range values {
-		if err := database.Queries.UpsertSetting(context.Background(), store.UpsertSettingParams{
+		if err := writeKVSetting(database, context.Background(), kv.KVEntry{
 			Key: key, Value: value, Type: settingType,
 		}); err != nil {
 			t.Fatalf("seed %q: %v", key, err)
@@ -537,14 +538,14 @@ func seedCompleteSettings(t *testing.T, ctx context.Context, database *db.Databa
 		if setting.Key == omitKey {
 			continue
 		}
-		if err := database.Queries.UpsertSetting(ctx, setting); err != nil {
+		if err := writeKVSetting(database, ctx, setting); err != nil {
 			t.Fatalf("seed complete setting %q: %v", setting.Key, err)
 		}
 	}
 }
 
-func settingsKVRows(settings apperr.Settings) []store.UpsertSettingParams {
-	return []store.UpsertSettingParams{
+func settingsKVRows(settings apperr.Settings) []kv.KVEntry {
+	return []kv.KVEntry{
 		{Key: appearanceThemeKey, Value: settings.Appearance.Theme, Type: settingTypeString},
 		{Key: appearanceModeKey, Value: settings.Appearance.Mode, Type: settingTypeString},
 		{Key: defaultOpenModeKey, Value: settings.Appearance.DefaultOpenMode, Type: settingTypeString},
@@ -560,6 +561,21 @@ func settingsKVRows(settings apperr.Settings) []store.UpsertSettingParams {
 		{Key: editorFontSizeKey, Value: strconv.Itoa(settings.Editor.FontSize), Type: settingTypeString},
 		{Key: fileAutosaveKey, Value: boolString(settings.File.Autosave), Type: settingTypeBool},
 	}
+}
+
+func writeKVSetting(database *db.Database, ctx context.Context, entry kv.KVEntry) error {
+	return kv.New(database.DB).Upsert(ctx, entry)
+}
+
+func readKVSetting(database *db.Database, ctx context.Context, key string) (kv.KVEntry, error) {
+	entry, found, err := kv.New(database.DB).Get(ctx, key)
+	if err != nil {
+		return kv.KVEntry{}, err
+	}
+	if !found {
+		return kv.KVEntry{}, errors.New("setting is absent")
+	}
+	return entry, nil
 }
 
 func settingsScalarValue(settings apperr.Settings, key string) string {
@@ -624,7 +640,7 @@ func TestResetAppearanceChangesOnlyDeliveredAppearanceKeys(t *testing.T) {
 		}
 	})
 
-	before := map[string]store.UpsertSettingParams{
+	before := map[string]kv.KVEntry{
 		appearanceThemeKey:       {Key: appearanceThemeKey, Value: ThemeMinimal, Type: settingTypeString},
 		appearanceModeKey:        {Key: appearanceModeKey, Value: ModeDark, Type: settingTypeString},
 		defaultOpenModeKey:       {Key: defaultOpenModeKey, Value: OpenModeViewer, Type: settingTypeString},
@@ -635,7 +651,7 @@ func TestResetAppearanceChangesOnlyDeliveredAppearanceKeys(t *testing.T) {
 		"future.appearance.glow": {Key: "future.appearance.glow", Value: "high", Type: settingTypeString},
 	}
 	for _, setting := range before {
-		if err := database.Queries.UpsertSetting(ctx, setting); err != nil {
+		if err := writeKVSetting(database, ctx, setting); err != nil {
 			t.Fatalf("seed reset key %q: %v", setting.Key, err)
 		}
 	}
@@ -650,7 +666,7 @@ func TestResetAppearanceChangesOnlyDeliveredAppearanceKeys(t *testing.T) {
 		defaultOpenModeKey: OpenModeEditor,
 	}
 	for key, want := range wantAppearance {
-		stored, getErr := database.Queries.GetSetting(ctx, key)
+		stored, getErr := readKVSetting(database, ctx, key)
 		if getErr != nil {
 			t.Fatalf("read reset key %q: %v", key, getErr)
 		}
@@ -659,7 +675,7 @@ func TestResetAppearanceChangesOnlyDeliveredAppearanceKeys(t *testing.T) {
 		}
 	}
 	for _, key := range []string{markdownStandardKey, "layout.workspaceWidth", "document.active", "recent.paths", "future.appearance.glow"} {
-		stored, getErr := database.Queries.GetSetting(ctx, key)
+		stored, getErr := readKVSetting(database, ctx, key)
 		if getErr != nil {
 			t.Fatalf("read retained key %q: %v", key, getErr)
 		}

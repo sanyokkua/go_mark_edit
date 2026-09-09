@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/kv"
 )
 
 // Proves: FR-WS-009
@@ -76,7 +77,7 @@ func TestSqliteLayoutRepositoryKeepsCommittedWinnerAcrossReadThenWriteRace(t *te
 	readDecided := make(chan struct{})
 	releaseWrite := make(chan struct{})
 	secondRepository := &SqliteLayoutRepository{
-		database: second.DB,
+		store: kv.New(second.DB),
 		afterReadDecision: func() {
 			close(readDecided)
 			<-releaseWrite

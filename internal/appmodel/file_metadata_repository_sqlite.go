@@ -3,38 +3,40 @@ package appmodel
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 
 	"github.com/sanyokkua/go_mark_edit/internal/db"
+	"github.com/sanyokkua/go_mark_edit/internal/kv"
 )
 
 const documentViewSettingPrefix = "document.view."
 
 type SqliteFileMetadataRepository struct {
-	database *sql.DB
+	store *kv.Store
 }
 
 func NewSqliteFileMetadataRepository(database *db.Database) *SqliteFileMetadataRepository {
-	return &SqliteFileMetadataRepository{database: database.DB}
+	if database == nil {
+		return &SqliteFileMetadataRepository{store: kv.New(nil)}
+	}
+	return &SqliteFileMetadataRepository{store: kv.New(database.DB)}
 }
 
 func (repository *SqliteFileMetadataRepository) ReadArrangement(ctx context.Context, canonicalPath string) (string, bool, error) {
-	var encoded string
-	err := repository.database.QueryRowContext(ctx, "SELECT value FROM settings WHERE key = ?", documentViewKey(canonicalPath)).Scan(&encoded)
-	if err == sql.ErrNoRows {
-		return "", false, nil
-	}
+	entry, found, err := repository.store.Get(ctx, documentViewKey(canonicalPath))
 	if err != nil {
 		return "", false, fmt.Errorf("read document arrangement: %w", err)
+	}
+	if !found {
+		return "", false, nil
 	}
 	var stored struct {
 		Version     int    `json:"version"`
 		Arrangement string `json:"arrangement"`
 	}
-	if err := json.Unmarshal([]byte(encoded), &stored); err != nil || stored.Version != 1 || !validArrangement(stored.Arrangement) {
+	valid, err := kv.DecodeVersionedJSON(entry.Value, 1, &stored)
+	if err != nil || !valid || !validArrangement(stored.Arrangement) {
 		return "", false, nil
 	}
 	return stored.Arrangement, true, nil
@@ -44,18 +46,13 @@ func (repository *SqliteFileMetadataRepository) WriteArrangement(ctx context.Con
 	if !validArrangement(arrangement) {
 		return fmt.Errorf("invalid document arrangement")
 	}
-	encoded, err := json.Marshal(struct {
-		Version     int    `json:"version"`
+	encoded, err := kv.EncodeVersionedJSON(1, struct {
 		Arrangement string `json:"arrangement"`
-	}{Version: 1, Arrangement: arrangement})
+	}{Arrangement: arrangement})
 	if err != nil {
 		return fmt.Errorf("encode document arrangement: %w", err)
 	}
-	_, err = repository.database.ExecContext(ctx, `
-INSERT INTO settings (key, value, type) VALUES (?, ?, ?)
-ON CONFLICT(key) DO UPDATE SET value = excluded.value, type = excluded.type
-`, documentViewKey(canonicalPath), string(encoded), "document.view.v1")
-	if err != nil {
+	if err := repository.store.Upsert(ctx, kv.KVEntry{Key: documentViewKey(canonicalPath), Value: encoded, Type: "document.view.v1"}); err != nil {
 		return fmt.Errorf("write document arrangement: %w", err)
 	}
 	return nil

@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/sanyokkua/go_mark_edit/internal/db/store"
 )
 
 // Proves: STORY-004-AC-2
@@ -95,11 +93,11 @@ func TestOpenAppliesAdditiveMigrationsAndGeneratedStoreQueries(t *testing.T) {
 		t.Fatalf("total non-baseline applied migrations = %d, want exactly 1", totalAppliedMigrations)
 	}
 
-	params := store.UpsertSettingParams{Key: "appearance.theme", Value: "minimal", Type: "string"}
-	if err := database.Queries.UpsertSetting(ctx, params); err != nil {
+	params := testSetting{Key: "appearance.theme", Value: "minimal", Type: "string"}
+	if err := writeTestSetting(database, ctx, params); err != nil {
 		t.Fatalf("upsert migrated setting through generated query: %v", err)
 	}
-	setting, err := database.Queries.GetSetting(ctx, params.Key)
+	setting, err := readTestSetting(database, ctx, params.Key)
 	if err != nil {
 		t.Fatalf("get migrated setting through generated query: %v", err)
 	}
@@ -110,7 +108,7 @@ func TestOpenAppliesAdditiveMigrationsAndGeneratedStoreQueries(t *testing.T) {
 	if _, err := database.DB.ExecContext(ctx, "INSERT INTO settings (key, value, type) VALUES (?, ?, ?)", "window.width", "1200", "int"); err != nil {
 		t.Fatalf("insert a later scalar setting without schema migration: %v", err)
 	}
-	if _, err := database.Queries.GetSetting(ctx, "window.width"); err != nil {
+	if _, err := readTestSetting(database, ctx, "window.width"); err != nil {
 		t.Fatalf("generated query cannot read later scalar setting: %v", err)
 	}
 

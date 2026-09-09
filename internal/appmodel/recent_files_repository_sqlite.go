@@ -2,8 +2,6 @@ package appmodel
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -11,20 +9,21 @@ import (
 
 	"github.com/sanyokkua/go_mark_edit/internal/db"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
+	"github.com/sanyokkua/go_mark_edit/internal/kv"
 )
 
 // SqliteRecentFilesRepository stores only the versioned recent-path envelope
 // in the existing settings KV table. It owns no document/session state.
 type SqliteRecentFilesRepository struct {
-	database          *sql.DB
+	store             *kv.Store
 	afterReadDecision func()
 }
 
 func NewSqliteRecentFilesRepository(database *db.Database) *SqliteRecentFilesRepository {
 	if database == nil {
-		return &SqliteRecentFilesRepository{}
+		return &SqliteRecentFilesRepository{store: kv.New(nil)}
 	}
-	return &SqliteRecentFilesRepository{database: database.DB}
+	return &SqliteRecentFilesRepository{store: kv.New(database.DB)}
 }
 
 type recentFilesValue struct {
@@ -76,7 +75,7 @@ func (repository *SqliteRecentFilesRepository) Promote(ctx context.Context, path
 }
 
 func (repository *SqliteRecentFilesRepository) withEntries(ctx context.Context, mutate func([]string) ([]string, bool, error)) ([]string, error) {
-	if repository == nil || repository.database == nil {
+	if repository == nil || repository.store == nil {
 		return nil, errors.New("recent files database is not configured")
 	}
 	if ctx == nil {
@@ -92,75 +91,62 @@ func (repository *SqliteRecentFilesRepository) withEntries(ctx context.Context, 
 }
 
 func (repository *SqliteRecentFilesRepository) withEntriesAttempt(ctx context.Context, mutate func([]string) ([]string, bool, error)) ([]string, bool, error) {
-	tx, err := repository.database.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, isRecentSQLiteBusy(err), fmt.Errorf("begin recent files transaction: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	entries, err := readRecentFilesTx(ctx, tx)
+	var result []string
+	err := repository.store.Tx(ctx, func(transaction *kv.Tx) error {
+		entries, err := readRecentFilesTx(ctx, transaction)
+		if err != nil {
+			return err
+		}
+		if repository.afterReadDecision != nil {
+			hook := repository.afterReadDecision
+			repository.afterReadDecision = nil
+			hook()
+		}
+		next, changed, err := mutate(entries)
+		if err != nil {
+			return err
+		}
+		next = normalizeRecentFiles(next)
+		if changed {
+			if err := writeRecentFilesTx(ctx, transaction, next); err != nil {
+				return err
+			}
+		}
+		result = next
+		return nil
+	})
 	if err != nil {
 		return nil, isRecentSQLiteBusy(err), err
 	}
-	if repository.afterReadDecision != nil {
-		hook := repository.afterReadDecision
-		repository.afterReadDecision = nil
-		hook()
-	}
-	next, changed, err := mutate(entries)
-	if err != nil {
-		return nil, false, err
-	}
-	next = normalizeRecentFiles(next)
-	if changed {
-		if err := writeRecentFilesTx(ctx, tx, next); err != nil {
-			return nil, isRecentSQLiteBusy(err), err
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, isRecentSQLiteBusy(err), fmt.Errorf("commit recent files transaction: %w", err)
-	}
-	return next, false, nil
+	return result, false, nil
 }
 
-type recentFilesQuerier interface {
-	QueryRowContext(context.Context, string, ...any) *sql.Row
-	ExecContext(context.Context, string, ...any) (sql.Result, error)
-}
-
-func readRecentFilesTx(ctx context.Context, query recentFilesQuerier) ([]string, error) {
-	var encoded string
-	err := query.QueryRowContext(ctx, "SELECT value FROM settings WHERE key = ?", recentFilesSettingKey).Scan(&encoded)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
+func readRecentFilesTx(ctx context.Context, query *kv.Tx) ([]string, error) {
+	entry, found, err := query.Get(ctx, recentFilesSettingKey)
 	if err != nil {
 		return nil, fmt.Errorf("read recent files: %w", err)
 	}
-	var value recentFilesValue
-	if err := json.Unmarshal([]byte(encoded), &value); err != nil {
-		// Recent-file metadata is optional presentation state. A corrupt value
-		// must not prevent startup or block a later promotion from replacing it.
+	if !found {
 		return nil, nil
 	}
-	if value.Version != 1 {
-		// Unknown versions are treated as empty until a writer that understands
-		// the current envelope promotes a new path.
+	var value recentFilesValue
+	valid, err := kv.DecodeVersionedJSON(entry.Value, 1, &value)
+	if err != nil || !valid {
+		// Recent-file metadata is optional presentation state. A corrupt or
+		// unknown value must not prevent startup or block later promotion.
 		return nil, nil
 	}
 	return value.Entries, nil
 }
 
-func writeRecentFilesTx(ctx context.Context, query recentFilesQuerier, entries []string) error {
-	encoded, err := json.Marshal(recentFilesValue{Version: 1, Entries: entries})
+func writeRecentFilesTx(ctx context.Context, query *kv.Tx, entries []string) error {
+	encoded, err := kv.EncodeVersionedJSON(1, struct {
+		Entries []string `json:"entries"`
+	}{Entries: entries})
 	if err != nil {
 		return fmt.Errorf("encode recent files: %w", err)
 	}
-	if _, err := query.ExecContext(ctx, `
-INSERT INTO settings (key, value, type)
-VALUES (?, ?, ?)
-ON CONFLICT(key) DO UPDATE SET value = excluded.value, type = excluded.type
-`, recentFilesSettingKey, string(encoded), recentFilesSettingType); err != nil {
+	if err := query.Upsert(ctx, kv.KVEntry{Key: recentFilesSettingKey, Value: encoded, Type: recentFilesSettingType}); err != nil {
 		return fmt.Errorf("write recent files: %w", err)
 	}
 	return nil

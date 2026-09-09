@@ -2,13 +2,12 @@ package settings
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"strconv"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
-	"github.com/sanyokkua/go_mark_edit/internal/db/store"
+	"github.com/sanyokkua/go_mark_edit/internal/kv"
 )
 
 const (
@@ -33,14 +32,16 @@ const (
 // SqliteSettingsRepository persists typed groups through the generic settings
 // key-value table. New scalar settings only need a dotted key and typed helper.
 type SqliteSettingsRepository struct {
-	queries  *store.Queries
-	database *sql.DB
+	store *kv.Store
 }
 
 // NewSqliteSettingsRepository constructs the SQLite implementation used after
 // ApplicationContextHolder opens the database.
 func NewSqliteSettingsRepository(database *db.Database) *SqliteSettingsRepository {
-	return &SqliteSettingsRepository{queries: database.Queries, database: database.DB}
+	if database == nil {
+		return &SqliteSettingsRepository{store: kv.New(nil)}
+	}
+	return &SqliteSettingsRepository{store: kv.New(database.DB)}
 }
 
 // GetAppearance reads the persisted appearance group with scalar defaults.
@@ -135,105 +136,77 @@ func (repository *SqliteSettingsRepository) GetFile(ctx context.Context) (apperr
 	return apperr.FileSettings{Autosave: autosave}, nil
 }
 
-// UpdateAppearance writes the complete appearance group through typed KV keys.
+// UpdateAppearance writes the complete appearance group in one transaction.
 func (repository *SqliteSettingsRepository) UpdateAppearance(ctx context.Context, appearance apperr.AppearanceSettings) error {
-	if err := repository.upsertString(ctx, appearanceThemeKey, appearance.Theme); err != nil {
-		return err
-	}
-	if err := repository.upsertString(ctx, appearanceModeKey, appearance.Mode); err != nil {
-		return err
-	}
-	return repository.upsertString(ctx, defaultOpenModeKey, appearance.DefaultOpenMode)
+	return repository.updateGroup(ctx, []kv.KVEntry{
+		{Key: appearanceThemeKey, Value: appearance.Theme, Type: settingTypeString},
+		{Key: appearanceModeKey, Value: appearance.Mode, Type: settingTypeString},
+		{Key: defaultOpenModeKey, Value: appearance.DefaultOpenMode, Type: settingTypeString},
+	})
 }
 
 // ResetAppearance atomically restores all and only the delivered appearance
 // values; layout, documents, and every other settings group stay untouched.
 func (repository *SqliteSettingsRepository) ResetAppearance(ctx context.Context) error {
-	transaction, err := repository.database.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = transaction.Rollback() }()
 	defaults := DefaultSettings().Appearance
-	for _, setting := range []struct{ key, value string }{
-		{appearanceThemeKey, defaults.Theme},
-		{appearanceModeKey, defaults.Mode},
-		{defaultOpenModeKey, defaults.DefaultOpenMode},
-	} {
-		if _, err := transaction.ExecContext(ctx, "INSERT INTO settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, type = excluded.type", setting.key, setting.value, settingTypeString); err != nil {
-			return err
-		}
-	}
-	return transaction.Commit()
+	return repository.updateGroup(ctx, []kv.KVEntry{
+		{Key: appearanceThemeKey, Value: defaults.Theme, Type: settingTypeString},
+		{Key: appearanceModeKey, Value: defaults.Mode, Type: settingTypeString},
+		{Key: defaultOpenModeKey, Value: defaults.DefaultOpenMode, Type: settingTypeString},
+	})
 }
 
-// UpdateMarkdown writes the complete Markdown group through typed KV keys.
+// UpdateMarkdown writes the complete Markdown group in one transaction.
 func (repository *SqliteSettingsRepository) UpdateMarkdown(ctx context.Context, markdown apperr.MarkdownSettings) error {
-	if err := repository.upsertString(ctx, markdownStandardKey, markdown.Standard); err != nil {
-		return err
-	}
-	if err := repository.upsertBool(ctx, formatOnSaveKey, markdown.FormatOnSave); err != nil {
-		return err
-	}
-	if err := repository.upsertBool(ctx, lintOnSaveKey, markdown.LintOnSave); err != nil {
-		return err
-	}
-	if err := repository.upsertString(ctx, formatBulletMarkerKey, markdown.BulletMarker); err != nil {
-		return err
-	}
-	if err := repository.upsertString(ctx, formatEmphasisKey, markdown.EmphasisMarker); err != nil {
-		return err
-	}
-	return repository.upsertString(ctx, formatHeadingStyleKey, markdown.HeadingStyle)
+	return repository.updateGroup(ctx, []kv.KVEntry{
+		{Key: markdownStandardKey, Value: markdown.Standard, Type: settingTypeString},
+		{Key: formatOnSaveKey, Value: strconv.FormatBool(markdown.FormatOnSave), Type: settingTypeBool},
+		{Key: lintOnSaveKey, Value: strconv.FormatBool(markdown.LintOnSave), Type: settingTypeBool},
+		{Key: formatBulletMarkerKey, Value: markdown.BulletMarker, Type: settingTypeString},
+		{Key: formatEmphasisKey, Value: markdown.EmphasisMarker, Type: settingTypeString},
+		{Key: formatHeadingStyleKey, Value: markdown.HeadingStyle, Type: settingTypeString},
+	})
 }
 
-// UpdateContentPrivacy writes the complete content-privacy group through typed KV keys.
+// UpdateContentPrivacy writes the complete content-privacy group in one transaction.
 func (repository *SqliteSettingsRepository) UpdateContentPrivacy(ctx context.Context, contentPrivacy apperr.ContentPrivacySettings) error {
-	return repository.upsertString(ctx, contentRemotePolicyKey, contentPrivacy.RemotePolicy)
+	return repository.updateGroup(ctx, []kv.KVEntry{{Key: contentRemotePolicyKey, Value: contentPrivacy.RemotePolicy, Type: settingTypeString}})
 }
 
-// UpdateEditor writes the editor display group through typed KV keys.
+// UpdateEditor writes the editor display group in one transaction.
 func (repository *SqliteSettingsRepository) UpdateEditor(ctx context.Context, editor apperr.EditorSettings) error {
-	if err := repository.upsertBool(ctx, editorLineNumbersKey, editor.LineNumbers); err != nil {
-		return err
-	}
-	if err := repository.upsertBool(ctx, editorWordWrapKey, editor.WordWrap); err != nil {
-		return err
-	}
-	return repository.upsertInt(ctx, editorFontSizeKey, editor.FontSize)
+	return repository.updateGroup(ctx, []kv.KVEntry{
+		{Key: editorLineNumbersKey, Value: strconv.FormatBool(editor.LineNumbers), Type: settingTypeBool},
+		{Key: editorWordWrapKey, Value: strconv.FormatBool(editor.WordWrap), Type: settingTypeBool},
+		{Key: editorFontSizeKey, Value: strconv.Itoa(editor.FontSize), Type: settingTypeString},
+	})
 }
 
-// UpdateFile writes the complete file-automation group through typed KV keys.
+// UpdateFile writes the complete file-automation group in one transaction.
 func (repository *SqliteSettingsRepository) UpdateFile(ctx context.Context, fileSettings apperr.FileSettings) error {
-	return repository.upsertBool(ctx, fileAutosaveKey, fileSettings.Autosave)
+	return repository.updateGroup(ctx, []kv.KVEntry{{Key: fileAutosaveKey, Value: strconv.FormatBool(fileSettings.Autosave), Type: settingTypeBool}})
 }
 
 func (repository *SqliteSettingsRepository) getString(ctx context.Context, key, defaultValue string) (string, error) {
-	setting, err := repository.queries.GetSetting(ctx, key)
-	if errors.Is(err, sql.ErrNoRows) {
-		return defaultValue, nil
-	}
+	entry, found, err := repository.store.Get(ctx, key)
 	if err != nil {
 		return "", err
 	}
-	if setting.Type != settingTypeString {
+	if !found || entry.Type != settingTypeString {
 		return defaultValue, nil
 	}
-	return setting.Value, nil
+	return entry.Value, nil
 }
 
 func (repository *SqliteSettingsRepository) getBool(ctx context.Context, key string, defaultValue bool) (bool, error) {
-	setting, err := repository.queries.GetSetting(ctx, key)
-	if errors.Is(err, sql.ErrNoRows) {
-		return defaultValue, nil
-	}
+	entry, found, err := repository.store.Get(ctx, key)
 	if err != nil {
 		return false, err
 	}
-	if setting.Type != settingTypeBool {
+	if !found || entry.Type != settingTypeBool {
 		return defaultValue, nil
 	}
-	value, err := strconv.ParseBool(setting.Value)
+	value, err := strconv.ParseBool(entry.Value)
 	if err != nil {
 		return defaultValue, nil
 	}
@@ -241,44 +214,35 @@ func (repository *SqliteSettingsRepository) getBool(ctx context.Context, key str
 }
 
 func (repository *SqliteSettingsRepository) getInt(ctx context.Context, key string, defaultValue int) (int, error) {
-	setting, err := repository.queries.GetSetting(ctx, key)
-	if errors.Is(err, sql.ErrNoRows) {
-		return defaultValue, nil
-	}
+	entry, found, err := repository.store.Get(ctx, key)
 	if err != nil {
 		return 0, err
 	}
-	if setting.Type != settingTypeString {
+	if !found || entry.Type != settingTypeString {
 		return defaultValue, nil
 	}
-	value, err := strconv.Atoi(setting.Value)
+	value, err := strconv.Atoi(entry.Value)
 	if err != nil {
 		return defaultValue, nil
 	}
 	return value, nil
 }
 
-func (repository *SqliteSettingsRepository) upsertString(ctx context.Context, key, value string) error {
-	return repository.queries.UpsertSetting(ctx, store.UpsertSettingParams{
-		Key:   key,
-		Value: value,
-		Type:  settingTypeString,
-	})
-}
-
 func (repository *SqliteSettingsRepository) upsertBool(ctx context.Context, key string, value bool) error {
-	return repository.queries.UpsertSetting(ctx, store.UpsertSettingParams{
-		Key:   key,
-		Value: strconv.FormatBool(value),
-		Type:  settingTypeBool,
-	})
+	return repository.store.Upsert(ctx, kv.KVEntry{Key: key, Value: strconv.FormatBool(value), Type: settingTypeBool})
 }
 
-func (repository *SqliteSettingsRepository) upsertInt(ctx context.Context, key string, value int) error {
-	return repository.queries.UpsertSetting(ctx, store.UpsertSettingParams{
-		Key:   key,
-		Value: strconv.Itoa(value),
-		Type:  settingTypeString,
+func (repository *SqliteSettingsRepository) updateGroup(ctx context.Context, entries []kv.KVEntry) error {
+	if len(entries) == 0 {
+		return errors.New("settings group is empty")
+	}
+	return repository.store.Tx(ctx, func(transaction *kv.Tx) error {
+		for _, entry := range entries {
+			if err := transaction.Upsert(ctx, entry); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sanyokkua/go_mark_edit/internal/db/store"
+	"github.com/sanyokkua/go_mark_edit/internal/kv"
 )
 
 // Proves: STORY-004-AC-1
@@ -30,8 +30,8 @@ func TestOpenConfiguresCGOFreeWALDatabase(t *testing.T) {
 			t.Errorf("close first database: %v", err)
 		}
 	})
-	if first.Queries == nil {
-		t.Fatal("open database has no generated query store")
+	if kvStore := kv.New(first.DB); kvStore == nil {
+		t.Fatal("open database has no key-value store")
 	}
 	if got := first.DB.Stats().MaxOpenConnections; got != 1 {
 		t.Fatalf("max open connections = %d, want 1", got)
@@ -136,12 +136,12 @@ func TestOpenRetriesBriefLockContention(t *testing.T) {
 				t.Errorf("close reopened database: %v", err)
 			}
 		})
-		if err := result.database.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
+		if err := writeTestSetting(result.database, ctx, testSetting{
 			Key: "editor.autosave", Value: "true", Type: "bool",
 		}); err != nil {
 			t.Fatalf("write setting after lock contention: %v", err)
 		}
-		setting, err := result.database.Queries.GetSetting(ctx, "editor.autosave")
+		setting, err := readTestSetting(result.database, ctx, "editor.autosave")
 		if err != nil {
 			t.Fatalf("read setting after lock contention: %v", err)
 		}
@@ -194,7 +194,7 @@ func TestOpenRejectsCorruptOrUnsupportedSchemaSafely(t *testing.T) {
 		if err != nil {
 			t.Fatalf("open seed database: %v", err)
 		}
-		if err := seed.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
+		if err := writeTestSetting(seed, ctx, testSetting{
 			Key: "editor.autosave", Value: "false", Type: "bool",
 		}); err != nil {
 			if closeErr := seed.Close(); closeErr != nil {
@@ -295,7 +295,7 @@ func openRecognizedCorruptPrimary(t *testing.T, ctx context.Context, path string
 	if err != nil {
 		t.Fatalf("open corrupt database safely: %v", err)
 	}
-	if err := database.Queries.UpsertSetting(ctx, store.UpsertSettingParams{
+	if err := writeTestSetting(database, ctx, testSetting{
 		Key: "appearance.mode", Value: "dark", Type: "string",
 	}); err != nil {
 		if closeErr := database.Close(); closeErr != nil {
@@ -440,12 +440,12 @@ func runConcurrentCorruptOpeners(t *testing.T, path string) {
 			t.Errorf("close cross-process replacement database: %v", err)
 		}
 	})
-	if err := database.Queries.UpsertSetting(context.Background(), store.UpsertSettingParams{
+	if err := writeTestSetting(database, context.Background(), testSetting{
 		Key: "appearance.mode", Value: "dark", Type: "string",
 	}); err != nil {
 		t.Fatalf("write cross-process replacement setting: %v", err)
 	}
-	if _, err := database.Queries.GetSetting(context.Background(), "appearance.mode"); err != nil {
+	if _, err := readTestSetting(database, context.Background(), "appearance.mode"); err != nil {
 		t.Fatalf("read cross-process replacement setting: %v", err)
 	}
 }
