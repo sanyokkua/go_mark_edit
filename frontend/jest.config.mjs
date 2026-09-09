@@ -6,6 +6,8 @@ export default {
   testMatch: [
     '<rootDir>/src/**/*.test.ts?(x)',
     '<rootDir>/e2e/parity/**/*.test.ts',
+    '<rootDir>/tests/unit/**/*.test.ts?(x)',
+    '<rootDir>/tests/integration/**/*.test.ts?(x)',
   ],
   moduleNameMapper: {
     '^.+\\.module\\.css$': '<rootDir>/src/test/styleMock.ts',

@@ -36,7 +36,7 @@ run_unit_stage() {
 }
 
 run_integration_stage() {
-  (cd "$REPO_ROOT/frontend" && run_command 'Jest integration tests (interim layout)' npx --no-install jest --ci --runInBand --config jest.config.mjs --testPathPatterns 'src/.*\.integration\.test\.tsx$')
+  (cd "$REPO_ROOT/frontend" && run_command 'Jest integration tests (interim layout)' npx --no-install jest --ci --runInBand --config jest.config.mjs --testPathPatterns '(^src/.*\.integration\.test\.tsx$|^tests/integration/.*\.test\.tsx$)')
 }
 
 run_e2e_stage() {

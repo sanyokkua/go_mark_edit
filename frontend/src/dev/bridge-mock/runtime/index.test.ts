@@ -1,7 +1,8 @@
 import { EventsEmit } from './index';
+import { EVENTS } from '../../../logic/adapter/events';
 
 it('mirrors state patches to a read-only browser-visible log', (): void => {
-  EventsEmit('state:patch', {
+  EventsEmit(EVENTS.statePatch, {
     revision: 1,
     documents: { upsert: { 'mock-document': { dirty: true } } },
   });

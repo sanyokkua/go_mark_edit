@@ -1,5 +1,6 @@
 import { EventsEmit } from '../../runtime';
-import type { apperr } from '../../../../../wailsjs/go/models';
+import type { apperr, bridge } from '../../../../../wailsjs/go/models';
+import { EVENTS } from '../../../../logic/adapter/events';
 
 type ActiveBufferResult = Pick<
   apperr.ActiveBuffer,
@@ -850,7 +851,16 @@ function classifiedError(
 }
 
 function emitPatch(patch: AppStatePatch): void {
-  EventsEmit('state:patch', patch);
+  EventsEmit(EVENTS.statePatch, patch);
+}
+
+function isRequest(value: unknown): value is bridge.Request {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    typeof value.id === 'string'
+  );
 }
 
 function notFound(): VoidResult {
@@ -864,7 +874,10 @@ function notFound(): VoidResult {
   };
 }
 
-export function GetState(): Promise<StateResult> {
+export function GetState(): Promise<StateResult>;
+export function GetState(request: bridge.Request): Promise<StateResult>;
+export function GetState(_request?: bridge.Request): Promise<StateResult> {
+  void _request;
   const current = activeDocument();
   return Promise.resolve({
     data: {
@@ -1019,7 +1032,18 @@ function emitTabTransitionPatch(document: MockDocument): void {
 
 export function NewDocument(
   expectedTabSetRevision: number,
+): Promise<DocumentTransitionResult>;
+export function NewDocument(
+  request: bridge.Request,
+  expectedTabSetRevision: number,
+): Promise<DocumentTransitionResult>;
+export function NewDocument(
+  requestOrRevision: bridge.Request | number,
+  expectedRevisionMaybe?: number,
 ): Promise<DocumentTransitionResult> {
+  const expectedTabSetRevision = isRequest(requestOrRevision)
+    ? (expectedRevisionMaybe ?? 0)
+    : requestOrRevision;
   if (!expectedRevisionMatches(expectedTabSetRevision)) {
     return Promise.resolve({ error: staleRevisionError() });
   }
@@ -1079,7 +1103,18 @@ function selectedDocumentId(
 
 export function OpenDocument(
   expectedTabSetRevision: number,
+): Promise<OpenResult>;
+export function OpenDocument(
+  request: bridge.Request,
+  expectedTabSetRevision: number,
+): Promise<OpenResult>;
+export function OpenDocument(
+  requestOrRevision: bridge.Request | number,
+  expectedRevisionMaybe?: number,
 ): Promise<OpenResult> {
+  const expectedTabSetRevision = isRequest(requestOrRevision)
+    ? (expectedRevisionMaybe ?? 0)
+    : requestOrRevision;
   if (!expectedRevisionMatches(expectedTabSetRevision)) {
     return Promise.resolve({ status: 'refused', error: staleRevisionError() });
   }
@@ -1158,9 +1193,11 @@ export function OpenDocument(
 }
 
 export function OpenRecentFile(
+  request: bridge.Request,
   path: string,
   expectedTabSetRevision: number,
 ): Promise<OpenResult> {
+  void request;
   const wasRecentlyClosed = recentlyClosed.some((entry) => entry.path === path);
   setMockOpenSelection({
     path,
@@ -1168,12 +1205,14 @@ export function OpenRecentFile(
       ? `${selectedDocumentId(path)}-reopened-${nextReopenDocumentNumber++}`
       : undefined,
   });
-  return OpenDocument(expectedTabSetRevision);
+  return OpenDocument(request, expectedTabSetRevision);
 }
 
 export async function ReopenLastFile(
+  request: bridge.Request,
   expectedTabSetRevision: number,
 ): Promise<OpenResult> {
+  void request;
   if (!expectedRevisionMatches(expectedTabSetRevision)) {
     return { status: 'refused', error: staleRevisionError() };
   }
@@ -1194,7 +1233,7 @@ export async function ReopenLastFile(
     content: entry.content,
     documentId: `${selectedDocumentId(entry.path)}-reopened-${nextReopenDocumentNumber++}`,
   });
-  const result = await OpenDocument(expectedTabSetRevision);
+  const result = await OpenDocument(request, expectedTabSetRevision);
   if (result.status !== 'opened' && result.status !== 'focused') {
     return result;
   }
@@ -1220,7 +1259,23 @@ export async function ReopenLastFile(
 export function ActivateDocument(
   requestedDocumentId: string,
   expectedTabSetRevision: number,
+): Promise<DocumentTransitionResult>;
+export function ActivateDocument(
+  request: bridge.Request,
+  requestedDocumentId: string,
+  expectedTabSetRevision: number,
+): Promise<DocumentTransitionResult>;
+export function ActivateDocument(
+  requestOrDocumentID: bridge.Request | string,
+  documentOrRevision: string | number,
+  expectedRevisionMaybe?: number,
 ): Promise<DocumentTransitionResult> {
+  const requestedDocumentId = isRequest(requestOrDocumentID)
+    ? (documentOrRevision as string)
+    : requestOrDocumentID;
+  const expectedTabSetRevision = isRequest(requestOrDocumentID)
+    ? (expectedRevisionMaybe ?? 0)
+    : (documentOrRevision as number);
   if (activationRefusalEnabled()) {
     return Promise.resolve({ error: staleRevisionError() });
   }
@@ -1262,10 +1317,12 @@ export function ActivateDocument(
 }
 
 export function ReorderDocument(
+  _request: bridge.Request,
   requestedDocumentId: string,
   targetIndex: number,
   expectedTabSetRevision: number,
 ): Promise<TabTransitionResult> {
+  void _request;
   if (!expectedRevisionMatches(expectedTabSetRevision)) {
     return Promise.resolve({
       status: 'refused',
@@ -1342,9 +1399,11 @@ export function ReorderDocument(
 }
 
 export function CloseDocument(
+  _request: bridge.Request,
   requestedDocumentId: string,
   expectedTabSetRevision: number,
 ): Promise<TabTransitionResult> {
+  void _request;
   if (!expectedRevisionMatches(expectedTabSetRevision)) {
     return Promise.resolve({
       status: 'refused',
@@ -1425,7 +1484,28 @@ export function PrepareClose(
   kind: string,
   requestedTargetIds: string[],
   expectedTabSetRevision: number,
+): Promise<ClosePlanResult>;
+export function PrepareClose(
+  request: bridge.Request,
+  kind: string,
+  requestedTargetIds: string[],
+  expectedTabSetRevision: number,
+): Promise<ClosePlanResult>;
+export function PrepareClose(
+  requestOrKind: bridge.Request | string,
+  kindOrTargets: string | string[],
+  targetsOrRevision: string[] | number,
+  revisionMaybe?: number,
 ): Promise<ClosePlanResult> {
+  const kind = isRequest(requestOrKind)
+    ? (kindOrTargets as string)
+    : requestOrKind;
+  const requestedTargetIds = isRequest(requestOrKind)
+    ? (targetsOrRevision as string[])
+    : (kindOrTargets as string[]);
+  const expectedTabSetRevision = isRequest(requestOrKind)
+    ? (revisionMaybe ?? 0)
+    : (targetsOrRevision as number);
   if (!expectedRevisionMatches(expectedTabSetRevision)) {
     return Promise.resolve({ error: staleRevisionError() });
   }
@@ -1472,7 +1552,23 @@ export function PrepareClose(
 export function ResolveClosePlan(
   planId: string,
   decisions: ClosePlanDecision[],
+): Promise<ClosePlanResult>;
+export function ResolveClosePlan(
+  request: bridge.Request,
+  planId: string,
+  decisions: ClosePlanDecision[],
+): Promise<ClosePlanResult>;
+export function ResolveClosePlan(
+  requestOrPlanID: bridge.Request | string,
+  planOrDecisions: string | ClosePlanDecision[],
+  decisionsMaybe?: ClosePlanDecision[],
 ): Promise<ClosePlanResult> {
+  const planId = isRequest(requestOrPlanID)
+    ? (planOrDecisions as string)
+    : requestOrPlanID;
+  const decisions = isRequest(requestOrPlanID)
+    ? (decisionsMaybe ?? [])
+    : (planOrDecisions as ClosePlanDecision[]);
   const plan = mockClosePlans.get(planId);
   if (plan === undefined) {
     return Promise.resolve({
@@ -1512,7 +1608,18 @@ export function ResolveClosePlan(
   return Promise.resolve({ data: cloneClosePlan(plan) });
 }
 
-export function ExecuteClosePlan(planId: string): Promise<TabTransitionResult> {
+export function ExecuteClosePlan(planId: string): Promise<TabTransitionResult>;
+export function ExecuteClosePlan(
+  request: bridge.Request,
+  planId: string,
+): Promise<TabTransitionResult>;
+export function ExecuteClosePlan(
+  requestOrPlanID: bridge.Request | string,
+  planIDMaybe?: string,
+): Promise<TabTransitionResult> {
+  const planId = isRequest(requestOrPlanID)
+    ? (planIDMaybe ?? '')
+    : requestOrPlanID;
   if (closeExecutionRefusalEnabled()) {
     return Promise.resolve({
       status: 'refused',
@@ -1591,8 +1698,10 @@ export function ExecuteClosePlan(planId: string): Promise<TabTransitionResult> {
 }
 
 export function CopyPath(
+  _request: bridge.Request,
   requestedDocumentId: string,
 ): Promise<{ status: string; error?: ClassifiedErrorResult }> {
+  void _request;
   if (documents[requestedDocumentId] === undefined) {
     return Promise.resolve({
       status: 'refused',
@@ -1619,8 +1728,10 @@ export function CopyPath(
 }
 
 export function RevealInFileManager(
+  _request: bridge.Request,
   requestedDocumentId: string,
 ): Promise<{ status: string; error?: ClassifiedErrorResult }> {
+  void _request;
   if (documents[requestedDocumentId] === undefined) {
     return Promise.resolve({
       status: 'refused',
@@ -1662,7 +1773,23 @@ export function RevealInFileManager(
 export function UpdateBuffer(
   requestedDocumentId: string,
   nextContent: string,
+): Promise<VoidResult>;
+export function UpdateBuffer(
+  request: bridge.Request,
+  requestedDocumentId: string,
+  nextContent: string,
+): Promise<VoidResult>;
+export function UpdateBuffer(
+  requestOrDocumentID: bridge.Request | string,
+  documentOrContent: string,
+  contentMaybe?: string,
 ): Promise<VoidResult> {
+  const requestedDocumentId = isRequest(requestOrDocumentID)
+    ? documentOrContent
+    : requestOrDocumentID;
+  const nextContent = isRequest(requestOrDocumentID)
+    ? (contentMaybe ?? '')
+    : documentOrContent;
   const document = documents[requestedDocumentId];
   if (document === undefined) {
     return Promise.resolve(notFound());
@@ -1728,7 +1855,18 @@ function publishConflictProjection(
 
 export function CheckExternalChanges(
   requestedDocumentId: string,
+): Promise<MockConflictResult>;
+export function CheckExternalChanges(
+  request: bridge.Request,
+  requestedDocumentId: string,
+): Promise<MockConflictResult>;
+export function CheckExternalChanges(
+  requestOrDocumentID: bridge.Request | string,
+  documentIDMaybe?: string,
 ): Promise<MockConflictResult> {
+  const requestedDocumentId = isRequest(requestOrDocumentID)
+    ? (documentIDMaybe ?? '')
+    : requestOrDocumentID;
   const result = conflictResultFor('checkExternalChanges', requestedDocumentId);
   publishConflictProjection(requestedDocumentId, result);
   return Promise.resolve(result);
@@ -1750,7 +1888,28 @@ export function ReloadFromDisk(
   requestedDocumentId: string,
   _contentRevision: number,
   _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult>;
+export function ReloadFromDisk(
+  request: bridge.Request,
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult>;
+export function ReloadFromDisk(
+  requestOrDocumentID: bridge.Request | string,
+  documentOrRevision: string | number,
+  revisionOrVersion: number | apperr.DiskVersion,
+  versionMaybe?: apperr.DiskVersion,
 ): Promise<MockConflictResult> {
+  const requestedDocumentId = isRequest(requestOrDocumentID)
+    ? (documentOrRevision as string)
+    : requestOrDocumentID;
+  const _contentRevision = isRequest(requestOrDocumentID)
+    ? (revisionOrVersion as number)
+    : (documentOrRevision as number);
+  const _detectedVersion = isRequest(requestOrDocumentID)
+    ? (versionMaybe as apperr.DiskVersion)
+    : (revisionOrVersion as apperr.DiskVersion);
   void _contentRevision;
   void _detectedVersion;
   const configured = conflictResultFor('reloadFromDisk', requestedDocumentId);
@@ -1788,7 +1947,33 @@ export function AuthorizeKeepMine(
   _contentRevision: number,
   _path: string,
   _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult>;
+export function AuthorizeKeepMine(
+  request: bridge.Request,
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _path: string,
+  _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult>;
+export function AuthorizeKeepMine(
+  requestOrDocumentID: bridge.Request | string,
+  documentOrRevision: string | number,
+  revisionOrPath: number | string,
+  pathOrVersion: string | apperr.DiskVersion,
+  versionMaybe?: apperr.DiskVersion,
 ): Promise<MockConflictResult> {
+  const requestedDocumentId = isRequest(requestOrDocumentID)
+    ? (documentOrRevision as string)
+    : requestOrDocumentID;
+  const _contentRevision = isRequest(requestOrDocumentID)
+    ? (revisionOrPath as number)
+    : (documentOrRevision as number);
+  const _path = isRequest(requestOrDocumentID)
+    ? (pathOrVersion as string)
+    : (revisionOrPath as string);
+  const _detectedVersion = isRequest(requestOrDocumentID)
+    ? (versionMaybe as apperr.DiskVersion)
+    : (pathOrVersion as apperr.DiskVersion);
   void _contentRevision;
   void _path;
   void _detectedVersion;
@@ -1801,7 +1986,28 @@ export function SkipConflict(
   requestedDocumentId: string,
   _contentRevision: number,
   _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult>;
+export function SkipConflict(
+  request: bridge.Request,
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult>;
+export function SkipConflict(
+  requestOrDocumentID: bridge.Request | string,
+  documentOrRevision: string | number,
+  revisionOrVersion: number | apperr.DiskVersion,
+  versionMaybe?: apperr.DiskVersion,
 ): Promise<MockConflictResult> {
+  const requestedDocumentId = isRequest(requestOrDocumentID)
+    ? (documentOrRevision as string)
+    : requestOrDocumentID;
+  const _contentRevision = isRequest(requestOrDocumentID)
+    ? (revisionOrVersion as number)
+    : (documentOrRevision as number);
+  const _detectedVersion = isRequest(requestOrDocumentID)
+    ? (versionMaybe as apperr.DiskVersion)
+    : (revisionOrVersion as apperr.DiskVersion);
   void _contentRevision;
   void _detectedVersion;
   return Promise.resolve(
@@ -1813,7 +2019,28 @@ export function CancelConflict(
   requestedDocumentId: string,
   _contentRevision: number,
   _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult>;
+export function CancelConflict(
+  request: bridge.Request,
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _detectedVersion: apperr.DiskVersion,
+): Promise<MockConflictResult>;
+export function CancelConflict(
+  requestOrDocumentID: bridge.Request | string,
+  documentOrRevision: string | number,
+  revisionOrVersion: number | apperr.DiskVersion,
+  versionMaybe?: apperr.DiskVersion,
 ): Promise<MockConflictResult> {
+  const requestedDocumentId = isRequest(requestOrDocumentID)
+    ? (documentOrRevision as string)
+    : requestOrDocumentID;
+  const _contentRevision = isRequest(requestOrDocumentID)
+    ? (revisionOrVersion as number)
+    : (documentOrRevision as number);
+  const _detectedVersion = isRequest(requestOrDocumentID)
+    ? (versionMaybe as apperr.DiskVersion)
+    : (revisionOrVersion as apperr.DiskVersion);
   void _contentRevision;
   void _detectedVersion;
   return Promise.resolve(
@@ -1905,7 +2132,28 @@ export function Save(
   requestedDocumentId: string,
   _contentRevision: number,
   _decisionToken: string,
+): Promise<MockWriteResult>;
+export function Save(
+  request: bridge.Request,
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _decisionToken: string,
+): Promise<MockWriteResult>;
+export function Save(
+  requestOrDocumentID: bridge.Request | string,
+  documentOrRevision: string | number,
+  revisionOrToken: number | string,
+  tokenMaybe?: string,
 ): Promise<MockWriteResult> {
+  const requestedDocumentId = isRequest(requestOrDocumentID)
+    ? (documentOrRevision as string)
+    : requestOrDocumentID;
+  const _contentRevision = isRequest(requestOrDocumentID)
+    ? (revisionOrToken as number)
+    : (documentOrRevision as number);
+  const _decisionToken = isRequest(requestOrDocumentID)
+    ? (tokenMaybe ?? '')
+    : (revisionOrToken as string);
   void _contentRevision;
   void _decisionToken;
   return Promise.resolve(
@@ -1917,7 +2165,28 @@ export function SaveAs(
   requestedDocumentId: string,
   _contentRevision: number,
   _decisionToken: string,
+): Promise<MockWriteResult>;
+export function SaveAs(
+  request: bridge.Request,
+  requestedDocumentId: string,
+  _contentRevision: number,
+  _decisionToken: string,
+): Promise<MockWriteResult>;
+export function SaveAs(
+  requestOrDocumentID: bridge.Request | string,
+  documentOrRevision: string | number,
+  revisionOrToken: number | string,
+  tokenMaybe?: string,
 ): Promise<MockWriteResult> {
+  const requestedDocumentId = isRequest(requestOrDocumentID)
+    ? (documentOrRevision as string)
+    : requestOrDocumentID;
+  const _contentRevision = isRequest(requestOrDocumentID)
+    ? (revisionOrToken as number)
+    : (documentOrRevision as number);
+  const _decisionToken = isRequest(requestOrDocumentID)
+    ? (tokenMaybe ?? '')
+    : (revisionOrToken as string);
   void _contentRevision;
   void _decisionToken;
   return Promise.resolve(
@@ -1938,7 +2207,23 @@ export function SaveAs(
 export function CancelNormalization(
   _requestedDocumentId: string,
   _decisionToken: string,
+): Promise<{ error?: undefined }>;
+export function CancelNormalization(
+  request: bridge.Request,
+  _requestedDocumentId: string,
+  _decisionToken: string,
+): Promise<{ error?: undefined }>;
+export function CancelNormalization(
+  requestOrDocumentID: bridge.Request | string,
+  documentIDMaybe: string,
+  tokenMaybe?: string,
 ): Promise<{ error?: undefined }> {
+  const _requestedDocumentId = isRequest(requestOrDocumentID)
+    ? documentIDMaybe
+    : requestOrDocumentID;
+  const _decisionToken = isRequest(requestOrDocumentID)
+    ? (tokenMaybe ?? '')
+    : documentIDMaybe;
   void _requestedDocumentId;
   void _decisionToken;
   return Promise.resolve({});
@@ -1947,7 +2232,23 @@ export function CancelNormalization(
 export function SetDocView(
   requestedDocumentId: string,
   input: DocViewInput,
+): Promise<VoidResult>;
+export function SetDocView(
+  request: bridge.Request,
+  requestedDocumentId: string,
+  input: DocViewInput,
+): Promise<VoidResult>;
+export function SetDocView(
+  requestOrDocumentID: bridge.Request | string,
+  documentOrInput: string | DocViewInput,
+  inputMaybe?: DocViewInput,
 ): Promise<VoidResult> {
+  const requestedDocumentId = isRequest(requestOrDocumentID)
+    ? (documentOrInput as string)
+    : requestOrDocumentID;
+  const input = isRequest(requestOrDocumentID)
+    ? (inputMaybe as DocViewInput)
+    : (documentOrInput as DocViewInput);
   const document = documents[requestedDocumentId];
   if (document === undefined) {
     return Promise.resolve(notFound());
@@ -1980,7 +2281,18 @@ export function SetDocView(
   return Promise.resolve({});
 }
 
-export function SetUILayout(input: UILayout): Promise<VoidResult> {
+export function SetUILayout(input: UILayout): Promise<VoidResult>;
+export function SetUILayout(
+  request: bridge.Request,
+  input: UILayout,
+): Promise<VoidResult>;
+export function SetUILayout(
+  requestOrInput: bridge.Request | UILayout,
+  inputMaybe?: UILayout,
+): Promise<VoidResult> {
+  const input = isRequest(requestOrInput)
+    ? (inputMaybe as UILayout)
+    : requestOrInput;
   const continuous: UILayout = {
     sidebarWidth: input.sidebarWidth,
     windowHeight: input.windowHeight,

@@ -51,7 +51,11 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
     className={styles.toast}
     data-notification-code={notification.code}
     data-severity={notification.severity}
-    duration={durations[notification.severity]}
+    duration={
+      notification.persistent
+        ? Number.POSITIVE_INFINITY
+        : durations[notification.severity]
+    }
     open
     onOpenChange={(open: boolean): void => {
       if (!open) {

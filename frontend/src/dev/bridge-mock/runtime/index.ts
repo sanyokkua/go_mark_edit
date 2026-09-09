@@ -1,8 +1,11 @@
+import { EVENTS } from '../../../logic/adapter/events';
+
 type EventCallback = (...data: unknown[]) => void;
 
 const listeners = new Map<string, Set<EventCallback>>();
 const statePatchMirror: unknown[] = [];
 let fullscreen = false;
+let closeRequestSequence = 0;
 
 declare global {
   interface Window {
@@ -92,7 +95,7 @@ export function EventsOnce(
 }
 
 export function EventsEmit(eventName: string, ...data: unknown[]): void {
-  if (eventName === 'state:patch') {
+  if (eventName === EVENTS.statePatch) {
     statePatchMirror.push(cloneForBrowserMirror(data[0]));
   }
   listeners.get(eventName)?.forEach((callback) => callback(...data));
@@ -131,5 +134,8 @@ export function WindowIsMaximised(): Promise<boolean> {
 }
 
 export function Quit(): void {
-  EventsEmit('application-close-requested');
+  closeRequestSequence += 1;
+  EventsEmit(EVENTS.applicationCloseRequested, {
+    id: `mock-close-${closeRequestSequence}`,
+  });
 }

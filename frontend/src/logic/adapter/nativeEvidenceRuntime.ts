@@ -1,6 +1,7 @@
 import { EventsEmit, EventsOn, LogInfo, Quit } from 'wailsjs/runtime';
+import { EVENTS } from './events';
 
-export const NATIVE_CLOSE_REQUEST_EVENT = 'application-close-requested';
+export const NATIVE_CLOSE_REQUEST_EVENT = EVENTS.applicationCloseRequested;
 
 export interface NativeAutosaveCommit {
   trial: number;

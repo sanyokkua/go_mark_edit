@@ -33,7 +33,7 @@ import {
   SkipConflict,
   CancelConflict,
 } from 'wailsjs/go/appmodel/AppModelHandler';
-import { apperr } from 'wailsjs/go/models';
+import { apperr, bridge } from 'wailsjs/go/models';
 import {
   EventsOn,
   WindowFullscreen,
@@ -76,9 +76,80 @@ import type {
   TabTransitionResult,
   WriteResult,
 } from '../store/appModelTypes';
-import { unwrapPromise } from './envelope';
+import { store } from '../store';
+import {
+  dismissStuckCommand,
+  notifyStuckCommand,
+} from '../store/notificationsSlice';
+import {
+  createCommandInvoker,
+  getBootstrapStatus,
+  type CommandBindOptions,
+} from './command';
+import { EVENTS } from './events';
 
-const NATIVE_CLOSE_REQUEST_EVENT = 'application-close-requested';
+const commandInvoker = createCommandInvoker({
+  isReady: (): boolean => getBootstrapStatus() === 'ready',
+  requestFactory: (requestId): bridge.Request =>
+    new bridge.Request({ id: requestId }),
+  noticeOwner: {
+    show: ({ command, requestId }): void => {
+      store.dispatch(notifyStuckCommand(requestId, command));
+    },
+    withdraw: (requestId): void => {
+      store.dispatch(dismissStuckCommand(requestId));
+    },
+  },
+});
+
+const commandArities: Readonly<Record<string, number>> = {
+  'SettingsHandler.GetSettings': 0,
+  'SettingsHandler.UpdateAppearance': 1,
+  'SettingsHandler.ResetAppearance': 0,
+  'SettingsHandler.UpdateContentPrivacy': 1,
+  'SettingsHandler.UpdateMarkdown': 1,
+  'SettingsHandler.UpdateEditor': 1,
+  'SettingsHandler.UpdateFile': 1,
+  'AppModelHandler.GetState': 0,
+  'AppModelHandler.NewDocument': 1,
+  'AppModelHandler.OpenDocument': 1,
+  'AppModelHandler.OpenRecentFile': 2,
+  'AppModelHandler.ReopenLastFile': 1,
+  'AppModelHandler.ActivateDocument': 2,
+  'AppModelHandler.ReorderDocument': 3,
+  'AppModelHandler.CloseDocument': 2,
+  'AppModelHandler.CopyPath': 1,
+  'AppModelHandler.RevealInFileManager': 1,
+  'AppModelHandler.UpdateBuffer': 2,
+  'AppModelHandler.SetDocView': 2,
+  'AppModelHandler.SetUILayout': 1,
+  'AppModelHandler.PrepareClose': 3,
+  'AppModelHandler.ResolveClosePlan': 2,
+  'AppModelHandler.ExecuteClosePlan': 1,
+  'AppModelHandler.Save': 3,
+  'AppModelHandler.SaveAs': 3,
+  'AppModelHandler.CancelNormalization': 2,
+  'AppModelHandler.CheckExternalChanges': 1,
+  'AppModelHandler.ReloadFromDisk': 3,
+  'AppModelHandler.AuthorizeKeepMine': 4,
+  'AppModelHandler.SkipConflict': 3,
+  'AppModelHandler.CancelConflict': 3,
+  'ApplicationHandler.RetryStartup': 0,
+  'ApplicationHandler.WindowReady': 0,
+  'ApplicationHandler.AuthorizeQuit': 1,
+  'ApplicationHandler.CancelQuit': 1,
+};
+
+function command<TArgs extends unknown[], TResult>(
+  commandName: string,
+  bound: (request: bridge.Request, ...args: TArgs) => Promise<TResult>,
+  options?: CommandBindOptions<TArgs>,
+): (...args: TArgs) => Promise<TResult> {
+  return commandInvoker.bind(commandName, bound, {
+    ...options,
+    expectedArity: options?.expectedArity ?? commandArities[commandName],
+  });
+}
 
 function normalizeSaveStatus(
   status: string | undefined,
@@ -263,28 +334,145 @@ function normalizeWriteResult(result: apperr.WriteResult): WriteResult {
 }
 
 const generatedSettingsBindings: SettingsBindings = {
-  getSettings: GetSettings,
-  updateAppearance: UpdateAppearance,
-  resetAppearance: ResetAppearance,
-  updateContentPrivacy: UpdateContentPrivacy,
-  updateMarkdown: UpdateMarkdown,
-  updateEditor: UpdateEditor,
-  updateFile: UpdateFile,
+  getSettings: command('SettingsHandler.GetSettings', GetSettings),
+  updateAppearance: command(
+    'SettingsHandler.UpdateAppearance',
+    UpdateAppearance,
+  ),
+  resetAppearance: command('SettingsHandler.ResetAppearance', ResetAppearance),
+  updateContentPrivacy: command(
+    'SettingsHandler.UpdateContentPrivacy',
+    UpdateContentPrivacy,
+  ),
+  updateMarkdown: command('SettingsHandler.UpdateMarkdown', UpdateMarkdown),
+  updateEditor: command('SettingsHandler.UpdateEditor', UpdateEditor),
+  updateFile: command('SettingsHandler.UpdateFile', UpdateFile),
 };
 
 export const settingsAdapter = createSettingsAdapter(generatedSettingsBindings);
 
+const commandInvokerSave = command('AppModelHandler.Save', Save, {
+  pacing: (documentId: string): 'bounded' | 'user-paced' =>
+    store.getState().documents.byId[documentId]?.path === ''
+      ? 'user-paced'
+      : 'bounded',
+});
+const commandInvokerSaveAs = command('AppModelHandler.SaveAs', SaveAs, {
+  pacing: 'user-paced',
+});
+const commandInvokerCancelNormalization = command(
+  'AppModelHandler.CancelNormalization',
+  CancelNormalization,
+);
+const commandInvokerCheckExternalChanges = command(
+  'AppModelHandler.CheckExternalChanges',
+  CheckExternalChanges,
+);
+const commandInvokerReloadFromDisk = command(
+  'AppModelHandler.ReloadFromDisk',
+  ReloadFromDisk,
+);
+const commandInvokerAuthorizeKeepMine = command(
+  'AppModelHandler.AuthorizeKeepMine',
+  AuthorizeKeepMine,
+);
+const commandInvokerSkipConflict = command(
+  'AppModelHandler.SkipConflict',
+  SkipConflict,
+);
+const commandInvokerCancelConflict = command(
+  'AppModelHandler.CancelConflict',
+  CancelConflict,
+);
+
+const commandInvokerGetState = command('AppModelHandler.GetState', GetState);
+const commandInvokerNewDocument = command(
+  'AppModelHandler.NewDocument',
+  NewDocument,
+);
+const commandInvokerOpenDocument = command(
+  'AppModelHandler.OpenDocument',
+  OpenDocument,
+  { pacing: 'user-paced' },
+);
+const commandInvokerOpenRecentFile = command(
+  'AppModelHandler.OpenRecentFile',
+  OpenRecentFile,
+);
+const commandInvokerReopenLastFile = command(
+  'AppModelHandler.ReopenLastFile',
+  ReopenLastFile,
+);
+const commandInvokerActivateDocument = command(
+  'AppModelHandler.ActivateDocument',
+  ActivateDocument,
+);
+const commandInvokerReorderDocument = command(
+  'AppModelHandler.ReorderDocument',
+  ReorderDocument,
+);
+const commandInvokerCloseDocument = command(
+  'AppModelHandler.CloseDocument',
+  CloseDocument,
+);
+const commandInvokerCopyPath = command('AppModelHandler.CopyPath', CopyPath);
+const commandInvokerRevealInFileManager = command(
+  'AppModelHandler.RevealInFileManager',
+  RevealInFileManager,
+);
+const commandInvokerUpdateBuffer = command(
+  'AppModelHandler.UpdateBuffer',
+  UpdateBuffer,
+);
+const commandInvokerSetDocView = command(
+  'AppModelHandler.SetDocView',
+  SetDocView,
+);
+const commandInvokerSetUILayout = command(
+  'AppModelHandler.SetUILayout',
+  SetUILayout,
+);
+const commandInvokerPrepareClose = command(
+  'AppModelHandler.PrepareClose',
+  PrepareClose,
+);
+const commandInvokerResolveClosePlan = command(
+  'AppModelHandler.ResolveClosePlan',
+  ResolveClosePlan,
+  { pacing: 'user-paced' },
+);
+const commandInvokerExecuteClosePlan = command(
+  'AppModelHandler.ExecuteClosePlan',
+  ExecuteClosePlan,
+);
+const commandInvokerRetryStartup = command(
+  'ApplicationHandler.RetryStartup',
+  RetryStartup,
+);
+const commandInvokerWindowReady = command(
+  'ApplicationHandler.WindowReady',
+  WindowReady,
+);
+const commandInvokerAuthorizeQuit = command(
+  'ApplicationHandler.AuthorizeQuit',
+  AuthorizeQuit,
+);
+const commandInvokerCancelQuit = command(
+  'ApplicationHandler.CancelQuit',
+  CancelQuit,
+);
+
 export const documentWriteAdapter = createDocumentWriteAdapter({
   save: async (documentId, contentRevision, decisionToken) =>
     normalizeWriteResult(
-      await Save(documentId, contentRevision, decisionToken),
+      await commandInvokerSave(documentId, contentRevision, decisionToken),
     ),
   saveAs: async (documentId, contentRevision, decisionToken) =>
     normalizeWriteResult(
-      await SaveAs(documentId, contentRevision, decisionToken),
+      await commandInvokerSaveAs(documentId, contentRevision, decisionToken),
     ),
   cancelNormalization: async (documentId, decisionToken) =>
-    CancelNormalization(documentId, decisionToken),
+    commandInvokerCancelNormalization(documentId, decisionToken),
 });
 
 export const documentConflictAdapter = createDocumentConflictAdapter({
@@ -295,7 +483,7 @@ export const documentConflictAdapter = createDocumentConflictAdapter({
     detectedVersion,
   ) =>
     normalizeConflictResult(
-      await AuthorizeKeepMine(
+      await commandInvokerAuthorizeKeepMine(
         documentId,
         contentRevision,
         path,
@@ -304,17 +492,19 @@ export const documentConflictAdapter = createDocumentConflictAdapter({
     ),
   cancelConflict: async (documentId, contentRevision, detectedVersion) =>
     normalizeConflictResult(
-      await CancelConflict(
+      await commandInvokerCancelConflict(
         documentId,
         contentRevision,
         new apperr.DiskVersion(detectedVersion),
       ),
     ),
   checkExternalChanges: async (documentId) =>
-    normalizeConflictResult(await CheckExternalChanges(documentId)),
+    normalizeConflictResult(
+      await commandInvokerCheckExternalChanges(documentId),
+    ),
   reloadFromDisk: async (documentId, contentRevision, detectedVersion) =>
     normalizeConflictResult(
-      await ReloadFromDisk(
+      await commandInvokerReloadFromDisk(
         documentId,
         contentRevision,
         new apperr.DiskVersion(detectedVersion),
@@ -322,7 +512,7 @@ export const documentConflictAdapter = createDocumentConflictAdapter({
     ),
   skipConflict: async (documentId, contentRevision, detectedVersion) =>
     normalizeConflictResult(
-      await SkipConflict(
+      await commandInvokerSkipConflict(
         documentId,
         contentRevision,
         new apperr.DiskVersion(detectedVersion),
@@ -332,7 +522,7 @@ export const documentConflictAdapter = createDocumentConflictAdapter({
 
 const generatedAppModelBindings: AppModelBindings = {
   getState: async () => {
-    const result = await GetState();
+    const result = await commandInvokerGetState();
     if (result.data === undefined) {
       return { error: result.error };
     }
@@ -354,39 +544,58 @@ const generatedAppModelBindings: AppModelBindings = {
               ],
             ),
           ),
+          pendingClose:
+            result.data.snapshot.pendingClose === undefined
+              ? undefined
+              : { id: result.data.snapshot.pendingClose.id },
         },
         activeBuffer: result.data.activeBuffer ?? null,
       },
     };
   },
   newDocument: async (expectedTabSetRevision) =>
-    normalizeTransitionResult(await NewDocument(expectedTabSetRevision)),
+    normalizeTransitionResult(
+      await commandInvokerNewDocument(expectedTabSetRevision),
+    ),
   openDocument: async (expectedTabSetRevision) =>
-    normalizeOpenResult(await OpenDocument(expectedTabSetRevision)),
+    normalizeOpenResult(
+      await commandInvokerOpenDocument(expectedTabSetRevision),
+    ),
   openRecentFile: async (path, expectedTabSetRevision) =>
-    normalizeOpenResult(await OpenRecentFile(path, expectedTabSetRevision)),
+    normalizeOpenResult(
+      await commandInvokerOpenRecentFile(path, expectedTabSetRevision),
+    ),
   reopenLastFile: async (expectedTabSetRevision) =>
-    normalizeOpenResult(await ReopenLastFile(expectedTabSetRevision)),
+    normalizeOpenResult(
+      await commandInvokerReopenLastFile(expectedTabSetRevision),
+    ),
   activateDocument: async (documentId, expectedTabSetRevision) =>
     normalizeTransitionResult(
-      await ActivateDocument(documentId, expectedTabSetRevision),
+      await commandInvokerActivateDocument(documentId, expectedTabSetRevision),
     ),
   reorderDocument: async (documentId, targetIndex, expectedTabSetRevision) =>
     normalizeTabTransitionResult(
-      await ReorderDocument(documentId, targetIndex, expectedTabSetRevision),
+      await commandInvokerReorderDocument(
+        documentId,
+        targetIndex,
+        expectedTabSetRevision,
+      ),
     ),
   closeDocument: async (documentId, expectedTabSetRevision) =>
     normalizeTabTransitionResult(
-      await CloseDocument(documentId, expectedTabSetRevision),
+      await commandInvokerCloseDocument(documentId, expectedTabSetRevision),
     ),
   copyPath: async (documentId) =>
-    normalizePathCommandResult(await CopyPath(documentId)),
+    normalizePathCommandResult(await commandInvokerCopyPath(documentId)),
   revealInFileManager: async (documentId) =>
-    normalizePathCommandResult(await RevealInFileManager(documentId)),
-  updateBuffer: UpdateBuffer,
+    normalizePathCommandResult(
+      await commandInvokerRevealInFileManager(documentId),
+    ),
+  updateBuffer: commandInvokerUpdateBuffer,
   setDocView: (documentId, view) =>
-    SetDocView(documentId, new apperr.DocViewInput(view)),
-  setUILayout: (layout) => SetUILayout(new apperr.UILayout(layout)),
+    commandInvokerSetDocView(documentId, new apperr.DocViewInput(view)),
+  setUILayout: (layout) =>
+    commandInvokerSetUILayout(new apperr.UILayout(layout)),
 };
 
 const wailsRuntime: AppModelRuntime = {
@@ -400,13 +609,13 @@ export const appModelAdapter = createAppModelAdapter(
 
 export const closePlanAdapter = createClosePlanAdapter({
   prepareClose: async (kind, targetDocumentIds, expectedTabSetRevision) =>
-    (await PrepareClose(
+    (await commandInvokerPrepareClose(
       kind,
       targetDocumentIds,
       expectedTabSetRevision,
     )) as unknown as ClosePlanResult,
   resolveClosePlan: async (planId, decisions) =>
-    (await ResolveClosePlan(
+    (await commandInvokerResolveClosePlan(
       planId,
       decisions.map(
         (decision) =>
@@ -418,12 +627,12 @@ export const closePlanAdapter = createClosePlanAdapter({
       ),
     )) as unknown as ClosePlanResult,
   executeClosePlan: (planId) =>
-    ExecuteClosePlan(planId).then(normalizeTabTransitionResult),
+    commandInvokerExecuteClosePlan(planId).then(normalizeTabTransitionResult),
 });
 
 export const windowAdapter = createWindowAdapter({
-  retryStartup: RetryStartup,
-  windowReady: WindowReady,
+  retryStartup: commandInvokerRetryStartup,
+  windowReady: commandInvokerWindowReady,
   windowFullscreen: WindowFullscreen,
   windowGetSize: WindowGetSize,
   windowIsFullscreen: WindowIsFullscreen,
@@ -436,7 +645,7 @@ export const applicationAdapter = {
 };
 
 export interface NativeLifecycleAdapter {
-  onCloseRequested: (listener: () => void) => () => void;
+  onCloseRequested: (listener: (closeID?: string) => void) => () => void;
   requestQuit: () => void;
   /**
    * Arms the one-use native close permit, or returns the classified reason it
@@ -451,23 +660,57 @@ export interface NativeLifecycleAdapter {
    * control the requirement names. A rejected promise still throws — that is a
    * dead bridge, not a classified outcome.
    */
-  authorizeQuit: () => Promise<ClassifiedError | undefined>;
-  cancelQuit: () => Promise<void>;
+  authorizeQuit: (closeID: string) => Promise<ClassifiedError | undefined>;
+  cancelQuit: (closeID: string) => Promise<void>;
+}
+
+function closeRequestID(payload: unknown): string | undefined {
+  if (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'id' in payload &&
+    typeof payload.id === 'string'
+  ) {
+    return payload.id;
+  }
+  return typeof payload === 'string' ? payload : undefined;
 }
 
 export const nativeLifecycleAdapter: NativeLifecycleAdapter = {
   onCloseRequested: (listener) =>
-    EventsOn(NATIVE_CLOSE_REQUEST_EVENT, () => listener()),
+    EventsOn(EVENTS.applicationCloseRequested, (payload: unknown) =>
+      listener(closeRequestID(payload)),
+    ),
   requestQuit: () => Quit(),
-  authorizeQuit: async () =>
-    normalizeClassifiedError((await AuthorizeQuit()).error),
-  cancelQuit: async () => {
-    await unwrapPromise(CancelQuit());
+  authorizeQuit: async (closeID) =>
+    normalizeClassifiedError(
+      (await commandInvokerAuthorizeQuit(closeID)).error,
+    ),
+  cancelQuit: async (closeID) => {
+    const result = await commandInvokerCancelQuit(closeID);
+    if (result.error !== undefined) throw result.error;
   },
+};
+
+export const commandAdapter = {
+  retry: commandInvoker.retry,
+  cancel: commandInvoker.cancel,
 };
 
 export { guardArity } from './bridgeGuard';
 export { unwrap, unwrapPromise } from './envelope';
+export {
+  createCommandInvoker,
+  getBootstrapStatus,
+  setBootstrapStatus,
+  type BootstrapStatus,
+  type CommandBindOptions,
+  type CommandInvoker,
+  type CommandInvokerOptions,
+  type CommandNoticeOwner,
+  type CommandPacing,
+} from './command';
+export { EVENTS, type AdapterEventName } from './events';
 export {
   BUFFER_SYNC_MS,
   createAppModelAdapter,

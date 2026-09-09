@@ -160,6 +160,8 @@ function retryIsExecutable(
         reorder.documentId !== '' &&
         reorder.targetIndex >= 0
       );
+    case 'command':
+      return false;
     // `quit` belongs to this group for the same reason as the rest: it takes no
     // arguments. It re-asks the native frame to close, and the frame is a
     // singleton, so there is nothing a caller could fail to supply.

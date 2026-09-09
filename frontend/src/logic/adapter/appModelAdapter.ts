@@ -15,6 +15,8 @@ import type {
   UILayout,
 } from '../store/appModelTypes';
 import { isWireError, type WireError } from '../utils/parseError';
+import { t } from '../../i18n';
+import { EVENTS } from './events';
 
 export const BUFFER_SYNC_MS = 200;
 
@@ -277,9 +279,7 @@ export function createAppModelAdapter(
 
   function assertCommandsAvailable(): void {
     if (recoveryPromise !== undefined || recoverySurface !== undefined) {
-      throw new Error(
-        recoverySurface?.message ?? 'Editor-state recovery is in progress.',
-      );
+      throw new Error(recoverySurface?.message ?? t('recovery.inProgress'));
     }
   }
 
@@ -749,7 +749,7 @@ export function createAppModelAdapter(
       return recoveryPromise;
     },
     subscribeAsyncErrors(onError: (error: WireError) => void): () => void {
-      return runtime.eventsOn('state:error', (payload: unknown) => {
+      return runtime.eventsOn(EVENTS.stateError, (payload: unknown) => {
         if (isWireError(payload)) {
           onError(payload);
         }
@@ -759,7 +759,7 @@ export function createAppModelAdapter(
       statePatchListeners.add(onPatch);
       if (disposeStatePatches === undefined) {
         const unsubscribe = runtime.eventsOn(
-          'state:patch',
+          EVENTS.statePatch,
           (payload: unknown) => {
             if (!isAppStatePatch(payload)) {
               return;

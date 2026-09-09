@@ -17,6 +17,7 @@ import {
   SetUILayout,
   UpdateBuffer,
 } from './go/appmodel/AppModelHandler';
+import { EVENTS } from '../../logic/adapter/events';
 import { EventsOn } from './runtime';
 
 beforeEach(() => {
@@ -218,7 +219,7 @@ it('STORY-012-AC-6 mirrors the app-model bridge contract', async () => {
   });
 
   const patches: unknown[] = [];
-  const unsubscribe = EventsOn('state:patch', (patch: unknown): void => {
+  const unsubscribe = EventsOn(EVENTS.statePatch, (patch: unknown): void => {
     patches.push(patch);
   });
 
@@ -279,7 +280,7 @@ it('STORY-012-AC-6 mirrors the app-model bridge contract', async () => {
 it('accepts NewDocument at the current tab revision and emits one activation patch', async () => {
   const initial = await GetState();
   const patches: unknown[] = [];
-  const unsubscribe = EventsOn('state:patch', (patch: unknown): void => {
+  const unsubscribe = EventsOn(EVENTS.statePatch, (patch: unknown): void => {
     patches.push(patch);
   });
 
@@ -336,7 +337,7 @@ it('rejects stale NewDocument without mutating state', async () => {
 it('returns OpenDocument cancellation without a patch or state mutation', async () => {
   const initial = await GetState();
   const patches: unknown[] = [];
-  const unsubscribe = EventsOn('state:patch', (patch: unknown): void => {
+  const unsubscribe = EventsOn(EVENTS.statePatch, (patch: unknown): void => {
     patches.push(patch);
   });
 
@@ -355,7 +356,7 @@ it('opens the selected mock path and returns its active-buffer acknowledgement',
   setMockOpenSelection({ path: '/tmp/selected.md', content: '# selected' });
   const initial = await GetState();
   const patches: unknown[] = [];
-  const unsubscribe = EventsOn('state:patch', (patch: unknown): void => {
+  const unsubscribe = EventsOn(EVENTS.statePatch, (patch: unknown): void => {
     patches.push(patch);
   });
 

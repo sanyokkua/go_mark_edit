@@ -15,6 +15,7 @@ export type AppModelBootstrapResult =
       status: 'ready';
       activeBuffer: ActiveBuffer | null;
       applicationVersion: string;
+      pendingCloseId?: string;
     }
   | { status: 'failed' };
 
@@ -90,11 +91,15 @@ async function initializeProjection(
     }
     attempt.queuedPatches = [];
 
-    return {
+    const result: Extract<AppModelBootstrapResult, { status: 'ready' }> = {
       status: 'ready',
       activeBuffer: state.activeBuffer,
       applicationVersion: state.snapshot.applicationVersion,
     };
+    if (state.snapshot.pendingClose?.id !== undefined) {
+      result.pendingCloseId = state.snapshot.pendingClose.id;
+    }
+    return result;
   } catch {
     resetAttempt(attempt);
     return { status: 'failed' };

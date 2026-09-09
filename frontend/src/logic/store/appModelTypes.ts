@@ -154,6 +154,10 @@ export interface UILayout {
   viewArrangement?: string;
 }
 
+export interface PendingClose {
+  id: string;
+}
+
 export interface AppStateSnapshot {
   revision: number;
   tabSetRevision?: number;
@@ -165,6 +169,7 @@ export interface AppStateSnapshot {
   recentFiles?: string[];
   canReopenLastFile?: boolean;
   ui: UILayout;
+  pendingClose?: PendingClose;
 }
 
 export interface AppModelState {

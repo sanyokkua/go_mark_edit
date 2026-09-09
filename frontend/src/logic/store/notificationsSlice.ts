@@ -33,7 +33,9 @@ export type NotificationRemediationAction =
    * which is why `intent` carries that. T160.
    */
   | 'save-to-recreate'
-  | 'retry';
+  | 'retry'
+  | 'retry-command'
+  | 'cancel-command';
 
 /**
  * The command a remediation control runs.
@@ -55,6 +57,7 @@ export type NotificationRemediationIntent =
   | 'open-recent'
   | 'reopen-last'
   | 'activate-document'
+  | 'command'
   /**
    * Re-asks the native frame to close, after FR-FT-027's drain refused.
    *
@@ -89,6 +92,7 @@ export interface NotificationRemediation {
   documentId?: string;
   intent: NotificationRemediationIntent;
   labelKey: string;
+  requestId?: string;
   /**
    * The recent-file path an `open-recent` retry re-issues. Absent for every
    * other intent, and a retry is not offered at all without it.
@@ -129,6 +133,8 @@ export interface Notification {
    * Empty means message-only, which is what most of the eight categories are.
    */
   remediations: NotificationRemediation[];
+  persistent?: boolean;
+  requestId?: string;
   severity: NotificationSeverity;
   subject: string;
   title: string;
@@ -139,6 +145,8 @@ export interface NotificationInput {
   code: string;
   message: string;
   remediations?: NotificationRemediation[];
+  persistent?: boolean;
+  requestId?: string;
   severity: NotificationSeverity;
   subject: string;
   title: string;
@@ -191,6 +199,8 @@ function toNotification(
     message: input.message,
     refreshGeneration: 0,
     remediations: input.remediations ?? [],
+    persistent: input.persistent,
+    requestId: input.requestId,
     severity: input.severity,
     subject: input.subject,
     title: input.title,
@@ -317,6 +327,38 @@ const notificationsSlice = createSlice({
         }
       },
     },
+    notifyStuckCommand: {
+      prepare(requestId: string, command: string): { payload: Notification } {
+        return {
+          payload: toNotification({
+            code: 'command-stuck',
+            message: t('command.stuck.message'),
+            persistent: true,
+            remediations: [
+              {
+                action: 'retry-command',
+                intent: 'command',
+                labelKey: 'command.retry',
+                requestId,
+              },
+              {
+                action: 'cancel-command',
+                intent: 'command',
+                labelKey: 'command.cancel',
+                requestId,
+              },
+            ],
+            requestId,
+            severity: 'warning',
+            subject: requestId,
+            title: t('command.stuck.title', { command }),
+          }),
+        };
+      },
+      reducer(state, action: PayloadAction<Notification>): void {
+        enqueueToast(state, action.payload);
+      },
+    },
     notifyCondition: {
       prepare(input: NotificationInput): { payload: Notification } {
         return { payload: toNotification(input) };
@@ -346,6 +388,20 @@ const notificationsSlice = createSlice({
         (notification) => notification.id !== action.payload,
       );
     },
+    dismissStuckCommand(state, action: PayloadAction<string>): void {
+      const visibleIndex = state.items.findIndex(
+        (notification) => notification.requestId === action.payload,
+      );
+      if (visibleIndex >= 0) {
+        state.items.splice(visibleIndex, 1);
+        const queuedError = state.queuedErrors.shift();
+        if (queuedError !== undefined) state.items.push(queuedError);
+        return;
+      }
+      state.queuedErrors = state.queuedErrors.filter(
+        (notification) => notification.requestId !== action.payload,
+      );
+    },
     clearCondition(state, action: PayloadAction<number>): void {
       state.banners = state.banners.filter(
         (notification) => notification.id !== action.payload,
@@ -360,8 +416,10 @@ const notificationsSlice = createSlice({
 export const {
   clearCondition,
   dismissNotification,
+  dismissStuckCommand,
   notifyCondition,
   notifyError,
+  notifyStuckCommand,
   notifyToast,
   resetNotifications,
 } = notificationsSlice.actions;

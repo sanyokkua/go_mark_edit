@@ -52,10 +52,12 @@ import { setWorkspaceVisible } from './logic/store/uiLayoutCommands';
 import {
   appModelAdapter,
   closePlanAdapter,
+  commandAdapter,
   documentConflictAdapter,
   documentWriteAdapter,
   nativeLifecycleAdapter,
 } from './logic/adapter';
+import { setBootstrapStatus as setCommandBootstrapStatus } from './logic/adapter/command';
 import { parseError } from './logic/utils/parseError';
 import { useEditorSettings } from './logic/settings/editorSettings';
 import { bootstrapSettingsProjection } from './logic/store/settingsProjection';
@@ -90,6 +92,7 @@ import ClosePrompt from './ui/widgets/ClosePrompt';
 import { tabLabelsFor } from './ui/widgets/tabLabel';
 import { ModalStateProvider } from './ui/widgets/modalState';
 import ModalShell from './ui/primitives/ModalShell';
+import { useShutdown, type ShutdownController } from './app/useShutdown';
 
 let activeRetry: Promise<AppModelBootstrapResult> | undefined;
 
@@ -431,6 +434,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const [remediationAnnouncement, setRemediationAnnouncement] = useState('');
   const [bootstrapStatus, setBootstrapStatus] =
     useState<BootstrapStatus>('loading');
+  const [hydratedPendingCloseId, setHydratedPendingCloseId] = useState<
+    string | null
+  >(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [requestedApplicationMenu, setRequestedApplicationMenu] =
@@ -510,6 +516,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const [version, setVersion] = useState('');
   const bootstrapGeneration = useRef(0);
   const nativeClosePendingRef = useRef(false);
+  const nativeCloseIdRef = useRef('');
+  const shutdownControllerRef = useRef<ShutdownController | undefined>(
+    undefined,
+  );
   const recoveryQuitConfirmedRef = useRef(false);
   const recoveryQuitCancelRef = useRef<HTMLButtonElement | null>(null);
   const activeDocumentId = activeBuffer?.documentId;
@@ -832,10 +842,16 @@ const AppContents: React.FC = (): React.JSX.Element => {
   );
   const cancelNativeClose = useCallback(async (): Promise<void> => {
     if (!nativeClosePendingRef.current) return;
-    nativeClosePendingRef.current = false;
-    setNativeClosePending(false);
+    const closeID = nativeCloseIdRef.current;
     try {
-      await nativeLifecycleAdapter.cancelQuit();
+      if (shutdownControllerRef.current !== undefined) {
+        await shutdownControllerRef.current.cancelQuit(closeID);
+      } else {
+        await nativeLifecycleAdapter.cancelQuit(closeID);
+      }
+      nativeClosePendingRef.current = false;
+      setNativeClosePending(false);
+      nativeCloseIdRef.current = '';
     } catch (error) {
       reportNativeCloseError(error);
     }
@@ -881,10 +897,16 @@ const AppContents: React.FC = (): React.JSX.Element => {
       }
       if (isNativeClose && result.error === undefined) {
         try {
-          const refusal = await nativeLifecycleAdapter.authorizeQuit();
+          const closeID = nativeCloseIdRef.current;
+          const refusal =
+            shutdownControllerRef.current !== undefined
+              ? await shutdownControllerRef.current.authorizeQuit(closeID)
+              : await nativeLifecycleAdapter.authorizeQuit(closeID);
           if (refusal === undefined) {
+            shutdownControllerRef.current?.clearPendingClose(closeID);
             nativeClosePendingRef.current = false;
             setNativeClosePending(false);
+            nativeCloseIdRef.current = '';
           } else {
             /*
              * A refused drain, on the classified path rather than through
@@ -1055,17 +1077,32 @@ const AppContents: React.FC = (): React.JSX.Element => {
     reportNativeCloseError,
     resolvePreparedClosePlan,
   ]);
-  const onNativeCloseRequested = useCallback(async (): Promise<void> => {
-    if (nativeClosePendingRef.current) return;
-    nativeClosePendingRef.current = true;
-    recoveryQuitConfirmedRef.current = false;
-    setNativeClosePending(true);
-    if (recoverySurface !== null) {
-      setRecoveryQuitConfirmOpen(true);
-      return;
-    }
-    await prepareNativeClosePlan();
-  }, [prepareNativeClosePlan, recoverySurface]);
+  const onNativeCloseRequested = useCallback(
+    async (closeID: string): Promise<void> => {
+      if (nativeClosePendingRef.current) return;
+      nativeCloseIdRef.current = closeID;
+      nativeClosePendingRef.current = true;
+      recoveryQuitConfirmedRef.current = false;
+      setNativeClosePending(true);
+      if (recoverySurface !== null) {
+        setRecoveryQuitConfirmOpen(true);
+        return;
+      }
+      await prepareNativeClosePlan();
+    },
+    [prepareNativeClosePlan, recoverySurface],
+  );
+  const shutdownController = useShutdown({
+    bootstrapStatus,
+    hydratedPendingCloseId,
+    onPendingChange: (closeID): void => {
+      setNativeClosePending(closeID !== null);
+    },
+    onRequest: onNativeCloseRequested,
+  });
+  useEffect((): void => {
+    shutdownControllerRef.current = shutdownController;
+  }, [shutdownController]);
   const onRecoveryQuitConfirm = useCallback((): void => {
     if (!nativeClosePendingRef.current || recoverySurface === null) return;
     recoveryQuitConfirmedRef.current = true;
@@ -1505,6 +1542,16 @@ const AppContents: React.FC = (): React.JSX.Element => {
       safeSubject: string,
     ): Promise<void> => {
       switch (remediation.intent) {
+        case 'command': {
+          const requestId = remediation.requestId;
+          if (requestId === undefined) return;
+          if (remediation.action === 'retry-command') {
+            commandAdapter?.retry(requestId);
+          } else if (remediation.action === 'cancel-command') {
+            commandAdapter?.cancel(requestId);
+          }
+          return;
+        }
         case 'copy-path': {
           const documentId = remediation.documentId;
           if (documentId === undefined) return;
@@ -1891,6 +1938,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
     (isRetry: boolean): void => {
       const generation = bootstrapGeneration.current + 1;
       bootstrapGeneration.current = generation;
+      setCommandBootstrapStatus('loading');
+      setHydratedPendingCloseId(null);
       if (isRetry) {
         setIsRetrying(true);
         dispatch(resetNotifications());
@@ -1906,11 +1955,14 @@ const AppContents: React.FC = (): React.JSX.Element => {
           if (result.status === 'ready') {
             replaceActiveBuffer(result.activeBuffer);
             setVersion(result.applicationVersion);
+            setHydratedPendingCloseId(result.pendingCloseId ?? null);
             setBootstrapStatus('ready');
+            setCommandBootstrapStatus('ready');
             return;
           }
 
           setBootstrapStatus('failed');
+          setCommandBootstrapStatus('failed');
         },
       );
     },
@@ -1958,15 +2010,6 @@ const AppContents: React.FC = (): React.JSX.Element => {
       window.removeEventListener('resize', reportNativeGeometry);
     };
   }, [bootstrapStatus]);
-
-  useEffect((): (() => void) | undefined => {
-    if (bootstrapStatus !== 'ready') {
-      return undefined;
-    }
-    return nativeLifecycleAdapter.onCloseRequested((): void => {
-      void onNativeCloseRequested();
-    });
-  }, [bootstrapStatus, onNativeCloseRequested]);
 
   return (
     <ToastProvider>
