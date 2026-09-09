@@ -1,23 +1,21 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 -> 2.0.0 (MAJOR: authority, anchor and baseline governance redefined)
+- Version change: 2.0.0 -> 2.1.0 (MINOR: Principle VII materially expanded)
 - Modified principles:
-  - I. Normative Specification Is the Authority -> I. One Authority: the Feature Specs and the
-    Architecture Map (docs/delivery removed; docs/architecture.md added)
-  - II. Deliver Self-Contained Vertical Slices -> II. Specify in EARS, Deliver Vertical Slices
-    (stable requirement anchors and a named proving test per rule removed; EARS form required)
-  - V. Protect Data and Cross-Platform Operation (CGO-free scoped to backend and SQLite)
-  - VII. Evidence Before Completion (per-story baseline-gate ritual replaced by one
-    scripts/baseline run per feature; tests live apart from production code; no anchors)
-- Added principles:
-  - VIII. One Implementation per Behaviour (DRY, KISS, SOLID)
-- Modified sections: Product and Technical Constraints (CGO scope, gate clause removed);
-  Specification-Driven Delivery Workflow (six stages behind scripts/verify, once-per-feature
-  baseline, no per-rule quotas); Governance (authority paragraph)
+  - VII. Evidence Before Completion: (a) a behaviour unreachable through public interfaces may keep
+    an in-package `_test.go` test beside the code, listed with its reason in the feature plan and
+    enforced by the lint stage, with no export shim or test-only parameter (carries Feature 004
+    FR-023, owner decision D3); (b) the feature that creates `scripts/baseline` runs it immediately
+    after creating the entry-point scripts, before any other implementation edit (Feature 004
+    FR-064) — mirrored in Specification-Driven Delivery Workflow step 3
+- Added principles: none
+- Added sections: none
 - Removed sections: none
 - Templates: Spec Kit templates are owned by the Spec Kit CLI and untouched. AGENTS.md and
   CLAUDE.md are rewritten by Feature 004 (FR-077); until then they conflict with I, II and VII.
 - Follow-up TODOs: none
+- Previous report (1.0.0 -> 2.0.0, 2026-09-08): authority, anchor and baseline governance redefined;
+  Principle VIII added; see git history.
 -->
 # GoMarkEdit Constitution
 
@@ -133,14 +131,19 @@ correctness, not optional polish.
 Verification is six stages (Lint, Format check, Build, Unit, Integration, End-to-end) run through
 the shared entry-point scripts; hooks, CI and local runs MUST call the same scripts. Before the
 first implementation edit of a feature, `scripts/baseline` MUST be run once to record the commit,
-tool versions and every stage's exit code; before the feature closes, a fresh run MUST be compared
+tool versions and every stage's exit code (the feature that creates `scripts/baseline` runs it
+immediately after creating the entry-point scripts, before any other implementation edit); before
+the feature closes, a fresh run MUST be compared
 against that baseline, and a stage that exited non-zero having analysed nothing is unreliable and
 MUST be fixed before anything builds on it. Failing tests MUST NOT be deleted, skipped, narrowed,
 ignored or commented out, and quality configurations, hooks or lint rules MUST NOT be weakened to
 manufacture a pass.
 
 Tests MUST live in the test roots apart from production code and prove observable behaviour
-through public interfaces, including default wiring, failure, recovery and lifecycle paths. A test
+through public interfaces, including default wiring, failure, recovery and lifecycle paths, except
+that a behaviour unreachable through public interfaces MAY keep an in-package `_test.go` test
+beside the code, each exception listed with its reason in the feature plan and enforced by the lint
+stage; no export shim or test-only parameter may be added for it. A test
 MUST NOT assert source text, CSS text, DTO field order, struct shape or the content of a
 specification or documentation file; production code MUST carry no test-only branch, hook, port or
 build flavour. The end-to-end stage MUST drive the real application process; a defect fix MUST
@@ -197,7 +200,9 @@ owner per behaviour keeps the product coherent and makes the next feature cheape
 2. Plan one dependency-ordered feature at a time. The plan MUST give every in-scope requirement an
    owning task, identify the applicable boundaries and name the evidence for each acceptance
    scenario. No rule-count, branch-per-file or per-rule-test quota applies.
-3. Run `scripts/baseline` once before the first implementation edit. Implement the approved scope;
+3. Run `scripts/baseline` once before the first implementation edit (the feature that creates
+   `scripts/baseline` runs it immediately after creating the entry-point scripts, before any other
+   implementation edit). Implement the approved scope;
    report any necessary scope expansion or requirement decision instead of resolving it in code.
 4. Verify through the six stages with `scripts/verify`, then perform the live interaction checks
    required for visible or platform-dependent work. Record commands, results and remaining
@@ -232,4 +237,4 @@ repository working instructions, and the active Spec Kit commands define artifac
 neither may override this constitution. The constitution itself is updated only through the
 constitution workflow.
 
-**Version**: 2.0.0 | **Ratified**: 2026-07-30 | **Last Amended**: 2026-09-08
+**Version**: 2.1.0 | **Ratified**: 2026-07-30 | **Last Amended**: 2026-09-09
