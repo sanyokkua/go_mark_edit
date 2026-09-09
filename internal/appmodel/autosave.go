@@ -72,7 +72,7 @@ func NewAppModelServiceWithAutosaveTimer(emitter StatePatchEmitter, timer Autosa
 
 func (service *AppModelService) scheduleAutosave(documentID string, revision uint64) {
 	service.mu.Lock()
-	if !service.autosaveEnabled || !service.autosaveEligibleLocked(documentID, revision) {
+	if service.shutdownDraining || !service.autosaveEnabled || !service.autosaveEligibleLocked(documentID, revision) {
 		service.cancelAutosaveLocked(documentID)
 		service.mu.Unlock()
 		return

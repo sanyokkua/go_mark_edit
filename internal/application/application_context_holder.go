@@ -35,7 +35,7 @@ type ApplicationContextHolder struct {
 	NativeWindowService *NativeWindowService
 	ApplicationHandler  *ApplicationHandler
 	DocumentDialogs     *DocumentDialogs
-	closeCoordinator    *CloseCoordinator
+	Shutdown            *ShutdownOwner
 }
 
 // NewApplicationContextHolder constructs the phase-one dependency graph with
@@ -80,7 +80,60 @@ func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger
 	holder.AppModelHandler = appmodel.NewAppModelHandler(appModelService, appLogger, holder.Context, outcomes)
 	holder.NativeWindowService = NewNativeWindowService(appModelService, nil)
 	holder.ApplicationHandler = NewApplicationHandler(holder, appLogger, holder.Context, outcomes)
+	holder.Shutdown = NewShutdownOwner(applicationShutdownModel{holder: holder}, WithShutdownLogger(appLogger))
 	return holder
+}
+
+// applicationShutdownModel keeps the shutdown owner attached to the holder's
+// current model. This matters during startup recovery and for hosts that swap
+// the model's repository wiring after construction.
+type applicationShutdownModel struct {
+	holder *ApplicationContextHolder
+}
+
+func (port applicationShutdownModel) model() *appmodel.AppModelService {
+	port.holder.mu.Lock()
+	defer port.holder.mu.Unlock()
+	return port.holder.AppModelService
+}
+
+func (port applicationShutdownModel) CloseStatus() ([]string, bool) {
+	model := port.model()
+	if model == nil {
+		return nil, false
+	}
+	return model.CloseStatus()
+}
+
+func (port applicationShutdownModel) BeginShutdownDrain() {
+	if model := port.model(); model != nil {
+		model.BeginShutdownDrain()
+	}
+}
+
+func (port applicationShutdownModel) EndShutdownDrain() {
+	if model := port.model(); model != nil {
+		model.EndShutdownDrain()
+	}
+}
+
+func (port applicationShutdownModel) DrainBeforeClose() *apperr.ClassifiedError {
+	if model := port.model(); model != nil {
+		return model.DrainBeforeClose()
+	}
+	return nil
+}
+
+func (port applicationShutdownModel) SetPendingClose(id string) {
+	if model := port.model(); model != nil {
+		model.SetPendingClose(id)
+	}
+}
+
+func (port applicationShutdownModel) ClearPendingClose(id string) {
+	if model := port.model(); model != nil {
+		model.ClearPendingClose(id)
+	}
 }
 
 // SetDocumentDialogs wires the composition-root native pickers into backend-owned file commands.
@@ -201,9 +254,13 @@ func (holder *ApplicationContextHolder) RetryStartup(ctx context.Context) error 
 func (holder *ApplicationContextHolder) FrontendReady(ctx context.Context) {
 	holder.mu.Lock()
 	service := holder.NativeWindowService
+	shutdown := holder.Shutdown
 	holder.mu.Unlock()
 	if service != nil {
 		service.FrontendReady(ctx)
+	}
+	if shutdown != nil {
+		shutdown.WindowReady(ctx)
 	}
 }
 
@@ -220,25 +277,25 @@ func (holder *ApplicationContextHolder) FlushBeforeClose() error {
 	return service.FlushPendingUILayout()
 }
 
-// SetCloseCoordinator installs the native close protocol owned by the
-// composition root. Tests and non-Wails callers may leave it unset and use
-// the synchronous legacy flush fallback through BeforeClose.
-func (holder *ApplicationContextHolder) SetCloseCoordinator(coordinator *CloseCoordinator) {
+// ConfigureShutdown installs the native ports owned by the composition root.
+func (holder *ApplicationContextHolder) ConfigureShutdown(options ...shutdownOption) {
 	holder.mu.Lock()
-	holder.closeCoordinator = coordinator
+	shutdown := holder.Shutdown
 	holder.mu.Unlock()
+	if shutdown != nil {
+		shutdown.ConfigureShutdown(options...)
+	}
 }
 
-// BeforeClose is the Wails veto hook. A native request is always vetoed once
-// so the frontend can finish its asynchronous close plan before authorization.
+// BeforeClose is the Wails veto hook owned by the shutdown protocol.
 func (holder *ApplicationContextHolder) BeforeClose(ctx context.Context) bool {
 	holder.mu.Lock()
-	coordinator := holder.closeCoordinator
+	shutdown := holder.Shutdown
 	holder.mu.Unlock()
-	if coordinator == nil {
-		return holder.FlushBeforeClose() != nil
+	if shutdown == nil {
+		return false
 	}
-	return coordinator.BeforeClose(ctx)
+	return shutdown.BeforeClose(ctx)
 }
 
 // DrainBeforeClose runs FR-FT-027's full shutdown drain: accepted autosave and
@@ -264,34 +321,25 @@ func (holder *ApplicationContextHolder) DrainBeforeClose() *apperr.ClassifiedErr
 // classified io-failure offering Retry. The previous apperr.IO wrapper reached
 // the frontend as an untyped WireError, which renders generic catalogue copy and
 // carries no remediation, so the window stayed open with nothing to press.
-func (holder *ApplicationContextHolder) AuthorizeQuit(ctx context.Context) *apperr.ClassifiedError {
-	if refusal := holder.DrainBeforeClose(); refusal != nil {
-		return refusal
-	}
-
+func (holder *ApplicationContextHolder) AuthorizeQuit(ctx context.Context, closeID string) *apperr.ClassifiedError {
 	holder.mu.Lock()
-	coordinator := holder.closeCoordinator
+	shutdown := holder.Shutdown
 	holder.mu.Unlock()
-	if coordinator == nil {
-		return bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, "native close", "This build cannot authorize a native close.", apperr.RemediationNone, "")
+	if shutdown == nil {
+		return bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, "native close", "This build cannot authorize a native close.", apperr.RemediationNone, closeID)
 	}
-	if err := coordinator.Authorize(ctx); err != nil {
-		// Nothing is pending, so the close plan the frontend just completed is
-		// stale. That is the conflict row's stale-request arm, and re-issuing the
-		// close is the only action that can succeed.
-		return bridge.ClassifiedWithID(apperr.ClassifiedConflict, "native close", "There is no pending close request to authorize; close must be retried.", apperr.RemediationRetry, "")
-	}
-	return nil
+	return shutdown.AuthorizeQuit(ctx, closeID)
 }
 
 // CancelQuit abandons the pending native close without creating a permit.
-func (holder *ApplicationContextHolder) CancelQuit(context.Context) {
+func (holder *ApplicationContextHolder) CancelQuit(ctx context.Context, closeID string) *apperr.ClassifiedError {
 	holder.mu.Lock()
-	coordinator := holder.closeCoordinator
+	shutdown := holder.Shutdown
 	holder.mu.Unlock()
-	if coordinator != nil {
-		coordinator.Cancel()
+	if shutdown == nil {
+		return bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, "native close", "This build cannot cancel a native close.", apperr.RemediationNone, closeID)
 	}
+	return shutdown.CancelQuit(ctx, closeID)
 }
 
 // Close releases the application-owned database. It is safe to call repeatedly.

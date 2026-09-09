@@ -169,6 +169,13 @@ type AppStateSnapshot struct {
 	RecentFiles        []string                    `json:"recentFiles,omitempty"`
 	CanReopenLastFile  bool                        `json:"canReopenLastFile"`
 	UI                 UILayout                    `json:"ui"`
+	PendingClose       *PendingClose               `json:"pendingClose,omitempty"`
+}
+
+// PendingClose identifies a native close request that the frontend must
+// discover during hydration.
+type PendingClose struct {
+	ID string `json:"id"`
 }
 
 // ActiveBuffer carries the canonical content only during explicit state hydration.

@@ -39,6 +39,7 @@ type AppModelService struct {
 	pending             *pendingLayout
 	pendingFlushDone    chan struct{}
 	startupErr          error
+	pendingClose        *apperr.PendingClose
 	reservations        map[string]*openReservation
 	saveReservations    map[string]*saveReservation
 	normalizations      map[string]*normalizationAuthorization
@@ -52,6 +53,7 @@ type AppModelService struct {
 	conflictQueue       *conflictQueue
 	keepMine            map[string]*keepMineAuthorization
 	beforeSaveAsRecheck func(string)
+	shutdownDraining    bool
 	metadata            FileMetadataRepository
 	recentFiles         RecentFilesRepository
 	defaultOpenMode     string
@@ -346,6 +348,72 @@ func newLayoutWriterID() string {
 	return hex.EncodeToString(bytes)
 }
 
+// CloseStatus reports the document names that still need a native discard
+// decision and whether any accepted work remains in flight or queued. It reads
+// the authoritative model state even while startup is recovering, so shutdown
+// can decide safely before the frontend reaches ready.
+func (service *AppModelService) CloseStatus() (dirtyDocuments []string, pendingWork bool) {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+
+	for _, documentID := range service.state.orderedDocumentIDs {
+		document := service.state.documents[documentID]
+		if document == nil {
+			continue
+		}
+		metadata := service.effectiveDocumentMetadataLocked(document)
+		if metadata.Dirty {
+			name := metadata.DisplayName
+			if name == "" {
+				name = metadata.Title
+			}
+			if name == "" {
+				name = documentID
+			}
+			dirtyDocuments = append(dirtyDocuments, name)
+		}
+		pendingWork = pendingWork || document.writeInFlight
+	}
+	pendingWork = pendingWork || len(service.autosaveTimers) > 0 || len(service.autosaveInFlight) > 0 || service.pending != nil || service.pendingFlushDone != nil
+	return dirtyDocuments, pendingWork
+}
+
+// BeginShutdownDrain prevents new explicit or debounced writes from starting
+// while accepted work is drained. Work already running remains allowed to
+// finish, which preserves atomic replacement semantics.
+func (service *AppModelService) BeginShutdownDrain() {
+	service.mu.Lock()
+	service.shutdownDraining = true
+	service.mu.Unlock()
+}
+
+// EndShutdownDrain reopens the write boundary after a user cancels shutdown.
+func (service *AppModelService) EndShutdownDrain() {
+	service.mu.Lock()
+	service.shutdownDraining = false
+	service.mu.Unlock()
+}
+
+// SetPendingClose records a close request for a frontend that hydrates after
+// the native request was emitted.
+func (service *AppModelService) SetPendingClose(id string) {
+	if id == "" {
+		return
+	}
+	service.mu.Lock()
+	service.pendingClose = &apperr.PendingClose{ID: id}
+	service.mu.Unlock()
+}
+
+// ClearPendingClose removes only the matching native close request.
+func (service *AppModelService) ClearPendingClose(id string) {
+	service.mu.Lock()
+	if service.pendingClose != nil && service.pendingClose.ID == id {
+		service.pendingClose = nil
+	}
+	service.mu.Unlock()
+}
+
 // GetState returns a metadata-only snapshot plus the active canonical buffer.
 func (service *AppModelService) GetState(ctx context.Context) (apperr.AppState, error) {
 	service.refreshRecentFiles(ctx)
@@ -385,6 +453,7 @@ func (service *AppModelService) GetState(ctx context.Context) (apperr.AppState, 
 			RecentFiles:        append([]string(nil), service.state.recentFiles...),
 			CanReopenLastFile:  service.state.canReopenLastFile,
 			UI:                 cloneUILayout(service.state.ui),
+			PendingClose:       clonePendingClose(service.pendingClose),
 		},
 		ActiveBuffer: activeBuffer,
 	}, nil
@@ -1023,6 +1092,14 @@ func cloneUILayout(layout apperr.UILayout) apperr.UILayout {
 	clone := apperr.UILayout{}
 	mergeUILayout(&clone, layout)
 	return clone
+}
+
+func clonePendingClose(pending *apperr.PendingClose) *apperr.PendingClose {
+	if pending == nil {
+		return nil
+	}
+	clone := *pending
+	return &clone
 }
 
 func pointerTo[T any](value T) *T {

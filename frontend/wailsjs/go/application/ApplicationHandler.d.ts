@@ -3,9 +3,9 @@
 import {bridge} from '../models';
 import {apperr} from '../models';
 
-export function AuthorizeQuit(arg1:bridge.Request):Promise<apperr.ClassifiedVoidResult>;
+export function AuthorizeQuit(arg1:bridge.Request,arg2:string):Promise<apperr.ClassifiedVoidResult>;
 
-export function CancelQuit(arg1:bridge.Request):Promise<apperr.VoidResult>;
+export function CancelQuit(arg1:bridge.Request,arg2:string):Promise<apperr.ClassifiedVoidResult>;
 
 export function RetryStartup(arg1:bridge.Request):Promise<apperr.VoidResult>;
 

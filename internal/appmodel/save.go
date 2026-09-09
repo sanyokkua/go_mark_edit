@@ -47,6 +47,10 @@ type encodedWrite struct {
 // Save writes a path-backed document or enters the native Save As flow for an untitled one.
 func (service *AppModelService) Save(ctx context.Context, documentID string, expectedContentRevision uint64, decisionToken string) apperr.WriteResult {
 	service.mu.RLock()
+	if service.shutdownDraining {
+		service.mu.RUnlock()
+		return bridge.Refused[apperr.WriteResult](apperr.ClassifiedConflict, "application", "The application is finishing an earlier close request.", apperr.RemediationRetry)
+	}
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
@@ -95,6 +99,10 @@ func (service *AppModelService) Save(ctx context.Context, documentID string, exp
 // SaveAs chooses and validates a target before any target or model mutation occurs.
 func (service *AppModelService) SaveAs(ctx context.Context, documentID string, expectedContentRevision uint64, decisionToken string) apperr.WriteResult {
 	service.mu.RLock()
+	if service.shutdownDraining {
+		service.mu.RUnlock()
+		return bridge.Refused[apperr.WriteResult](apperr.ClassifiedConflict, "application", "The application is finishing an earlier close request.", apperr.RemediationRetry)
+	}
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()

@@ -29,6 +29,18 @@ export namespace apperr {
 	        this.content = source["content"];
 	    }
 	}
+	export class PendingClose {
+	    id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PendingClose(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	    }
+	}
 	export class UILayout {
 	    windowWidth?: number;
 	    windowHeight?: number;
@@ -234,6 +246,7 @@ export namespace apperr {
 	    recentFiles?: string[];
 	    canReopenLastFile: boolean;
 	    ui: UILayout;
+	    pendingClose?: PendingClose;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppStateSnapshot(source);
@@ -251,6 +264,7 @@ export namespace apperr {
 	        this.recentFiles = source["recentFiles"];
 	        this.canReopenLastFile = source["canReopenLastFile"];
 	        this.ui = this.convertValues(source["ui"], UILayout);
+	        this.pendingClose = this.convertValues(source["pendingClose"], PendingClose);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -942,6 +956,7 @@ export namespace apperr {
 		    return a;
 		}
 	}
+	
 	
 	
 	export class Settings {

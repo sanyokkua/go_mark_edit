@@ -147,12 +147,12 @@ func configureNativeEvidenceDependencies(holder *application.ApplicationContextH
 
 func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *nativeEvidencePaths) *options.App {
 	holder.SetNativeWindow(nativeEvidenceWindow{})
-	holder.SetCloseCoordinator(application.NewCloseCoordinator(
-		func(ctx context.Context) {
-			wailsruntime.EventsEmit(ctx, application.NativeCloseRequestEvent)
-		},
-		wailsruntime.Quit,
-	))
+	holder.ConfigureShutdown(
+		application.WithCloseRequestedEmitter(func(ctx context.Context, id string) {
+			wailsruntime.EventsEmit(ctx, application.NativeCloseRequestEvent, map[string]string{"id": id})
+		}),
+		application.WithNativeQuit(wailsruntime.Quit),
+	)
 	return &options.App{
 		Title:         "GoMarkEdit",
 		Width:         1024,

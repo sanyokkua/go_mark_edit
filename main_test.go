@@ -263,7 +263,7 @@ func TestWailsAppInstallsCloseFlushLifecycleHook(t *testing.T) {
 	})
 	closeRequests := 0
 	quitCalls := 0
-	emitNativeCloseRequest = func(context.Context) { closeRequests++ }
+	emitNativeCloseRequest = func(context.Context, string) { closeRequests++ }
 	quitNativeApplication = func(context.Context) { quitCalls++ }
 
 	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
@@ -287,16 +287,19 @@ func TestWailsAppInstallsCloseFlushLifecycleHook(t *testing.T) {
 	if appOptions.OnShutdown == nil {
 		t.Fatal("OnShutdown is nil; a permitted native close cannot release the application database")
 	}
+	if result := holder.ApplicationHandler.WindowReady(bridge.Request{ID: "native-close-ready"}); result.Error != nil {
+		t.Fatalf("WindowReady returned error: %+v", result.Error)
+	}
 	if prevent := appOptions.OnBeforeClose(ctx); !prevent {
 		t.Fatal("first native close was not vetoed for asynchronous planning")
 	}
 	if prevent := appOptions.OnBeforeClose(ctx); !prevent {
 		t.Fatal("repeated native close was not idempotently vetoed")
 	}
-	if closeRequests != 1 {
-		t.Fatalf("native close request events = %d, want one", closeRequests)
+	if closeRequests != 2 {
+		t.Fatalf("native close request events = %d, want two for the same pending request", closeRequests)
 	}
-	if result := holder.ApplicationHandler.AuthorizeQuit(bridge.Request{ID: "authorize-close"}); result.Error != nil {
+	if result := holder.ApplicationHandler.AuthorizeQuit(bridge.Request{ID: "authorize-close"}, holder.Shutdown.Snapshot().Request.ID); result.Error != nil {
 		t.Fatalf("AuthorizeQuit returned error: %+v", result.Error)
 	}
 	if quitCalls != 1 {
@@ -330,7 +333,7 @@ func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 	})
 	closeRequests := 0
 	quitCalls := 0
-	emitNativeCloseRequest = func(context.Context) { closeRequests++ }
+	emitNativeCloseRequest = func(context.Context, string) { closeRequests++ }
 	quitNativeApplication = func(context.Context) { quitCalls++ }
 
 	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
@@ -358,24 +361,27 @@ func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 	if appOptions.OnBeforeClose == nil || appOptions.OnShutdown == nil {
 		t.Fatal("native lifecycle hooks are incomplete; a failed close cannot veto shutdown")
 	}
+	if result := holder.ApplicationHandler.WindowReady(bridge.Request{ID: "native-close-failure-ready"}); result.Error != nil {
+		t.Fatalf("WindowReady returned error: %+v", result.Error)
+	}
 	if prevent := appOptions.OnBeforeClose(ctx); !prevent {
 		t.Fatal("first native close did not remain vetoed while planning")
 	}
 	if got, want := repository.events, []string(nil); !reflect.DeepEqual(got, want) {
 		t.Fatalf("failed-close lifecycle events = %v, want %v", got, want)
 	}
-	failed := holder.ApplicationHandler.AuthorizeQuit(bridge.Request{ID: "authorize-close-failure"})
+	failed := holder.ApplicationHandler.AuthorizeQuit(bridge.Request{ID: "authorize-close-failure"}, holder.Shutdown.Snapshot().Request.ID)
 	if failed.Error == nil || failed.Error.Category != apperr.ClassifiedIOFailure || failed.Error.Remediation() != apperr.RemediationRetry {
 		t.Fatalf("failed AuthorizeQuit error = %+v, want a classified io-failure offering Retry", failed.Error)
 	}
 	if quitCalls != 0 || holder.DB == nil {
 		t.Fatalf("failed close quit calls = %d and database = %p, want no quit and open database", quitCalls, holder.DB)
 	}
-	if closeRequests != 1 {
-		t.Fatalf("native close request events after failed drain = %d, want one", closeRequests)
+	if closeRequests != 2 {
+		t.Fatalf("native close request events after failed drain = %d, want two for the same pending request", closeRequests)
 	}
 	repository.err = nil
-	if retry := holder.ApplicationHandler.AuthorizeQuit(bridge.Request{ID: "authorize-close-retry"}); retry.Error != nil {
+	if retry := holder.ApplicationHandler.AuthorizeQuit(bridge.Request{ID: "authorize-close-retry"}, holder.Shutdown.Snapshot().Request.ID); retry.Error != nil {
 		t.Fatalf("retry AuthorizeQuit returned error: %+v", retry.Error)
 	}
 	if quitCalls != 1 || appOptions.OnBeforeClose(ctx) {

@@ -29,8 +29,8 @@ var assets embed.FS
 
 var (
 	showStartupRecoveryWindow = runtime.WindowShow
-	emitNativeCloseRequest    = func(ctx context.Context) {
-		runtime.EventsEmit(ctx, application.NativeCloseRequestEvent)
+	emitNativeCloseRequest    = func(ctx context.Context, id string) {
+		runtime.EventsEmit(ctx, application.NativeCloseRequestEvent, map[string]string{"id": id})
 	}
 	quitNativeApplication = runtime.Quit
 )
@@ -158,7 +158,26 @@ func newAppOptions(applicationContext *application.ApplicationContextHolder) *op
 
 func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger) *options.App {
 	applicationContext.SetNativeWindow(wailsNativeWindow{})
-	applicationContext.SetCloseCoordinator(application.NewCloseCoordinator(emitNativeCloseRequest, quitNativeApplication))
+	applicationContext.ConfigureShutdown(
+		application.WithCloseRequestedEmitter(emitNativeCloseRequest),
+		application.WithNativeQuit(quitNativeApplication),
+		application.WithNativeConfirmation(func(ctx context.Context, documents []string) (bool, error) {
+			message := "There are unsaved changes."
+			if len(documents) > 0 {
+				message = "The following documents have unsaved changes:\n\n" + strings.Join(documents, "\n")
+			}
+			result, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
+				Type:          runtime.QuestionDialog,
+				Title:         "Quit with unsaved changes?",
+				Message:       message,
+				Buttons:       []string{"Quit and discard", "Cancel"},
+				DefaultButton: "Cancel",
+				CancelButton:  "Cancel",
+			})
+			return result == "Quit and discard", err
+		}),
+		application.WithShutdownLogger(appLogger),
+	)
 	return &options.App{
 		Title:         "GoMarkEdit",
 		Width:         1024,

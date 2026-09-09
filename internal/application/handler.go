@@ -29,8 +29,8 @@ type ApplicationServiceAPI interface {
 // usable by focused tests and older composition fixtures that do not install
 // native close coordination.
 type NativeCloseServiceAPI interface {
-	AuthorizeQuit(context.Context) *apperr.ClassifiedError
-	CancelQuit(context.Context)
+	AuthorizeQuit(context.Context, string) *apperr.ClassifiedError
+	CancelQuit(context.Context, string) *apperr.ClassifiedError
 }
 
 func NewApplicationHandler(service ApplicationServiceAPI, logger *logging.Logger, contextProvider func() context.Context, outcomeCaches ...*bridge.OutcomeCache) *ApplicationHandler {
@@ -71,14 +71,14 @@ func (handler *ApplicationHandler) RetryStartup(request bridge.Request) (result 
 // to reach the user as a classified io-failure with Retry. A VoidResult can
 // carry only a WireError, which the frontend renders as generic catalogue copy
 // with no remediation control.
-func (handler *ApplicationHandler) AuthorizeQuit(request bridge.Request) (result apperr.ClassifiedVoidResult) {
+func (handler *ApplicationHandler) AuthorizeQuit(request bridge.Request, closeID string) (result apperr.ClassifiedVoidResult) {
 	defer bridge.Guard(&result)
 	return bridge.Once(handler.outcomes, request, func() apperr.ClassifiedVoidResult {
 		service, ok := handler.service.(NativeCloseServiceAPI)
 		if !ok {
 			return bridge.Refused[apperr.ClassifiedVoidResult](apperr.ClassifiedUnsupportedInput, "native close", "This build cannot authorize a native close.", apperr.RemediationNone)
 		}
-		if refusal := service.AuthorizeQuit(handler.context()); refusal != nil {
+		if refusal := service.AuthorizeQuit(handler.context(), closeID); refusal != nil {
 			logger := handler.zlog()
 			logger.Warn().
 				Str("category", string(refusal.Category)).
@@ -92,16 +92,22 @@ func (handler *ApplicationHandler) AuthorizeQuit(request bridge.Request) (result
 
 // CancelQuit abandons the pending native close plan and leaves the window
 // open. It is intentionally idempotent.
-func (handler *ApplicationHandler) CancelQuit(request bridge.Request) (result apperr.VoidResult) {
+func (handler *ApplicationHandler) CancelQuit(request bridge.Request, closeID string) (result apperr.ClassifiedVoidResult) {
 	defer bridge.Guard(&result)
-	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
+	return bridge.Once(handler.outcomes, request, func() apperr.ClassifiedVoidResult {
 		service, ok := handler.service.(NativeCloseServiceAPI)
 		if !ok {
-			wire := apperr.ToWire(handler.zlog(), apperr.Unsupported("native close cancellation"))
-			return apperr.VoidResult{Error: &wire}
+			return bridge.FromClassified[apperr.ClassifiedVoidResult](bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, "native close", "This build cannot cancel a native close.", apperr.RemediationNone, closeID))
 		}
-		service.CancelQuit(handler.context())
-		return apperr.VoidResult{}
+		if refusal := service.CancelQuit(handler.context(), closeID); refusal != nil {
+			logger := handler.zlog()
+			logger.Warn().
+				Str("category", string(refusal.Category)).
+				Str("subject", refusal.SafeSubject).
+				Msg("native close cancellation refused")
+			return bridge.FromClassified[apperr.ClassifiedVoidResult](refusal)
+		}
+		return apperr.ClassifiedVoidResult{}
 	})
 }
 
