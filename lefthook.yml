@@ -1,31 +1,8 @@
-# `just check` / `just baseline` / `just verify` are the authoritative quality gate, run locally.
-# CI (.github/workflows/main.yml) is no longer release-only. Since 2026-08-16 it triggers on a push
-# to `master` or any `feature/**` branch, on every pull request, on `v*.*.*` tags and on
-# workflow_dispatch; it runs the nine `just check` steps and, in a second job, `just e2e-test`.
-# It still does not *block* a merge — that needs a branch protection rule, which is the repository
-# owner's to set.
 pre-commit:
-  parallel: true
   commands:
-    go-fmt:
-      glob: "*.go"
-      run: gofmt -w {staged_files}
-      stage_fixed: true
-    frontend-format:
-      root: frontend/
-      glob: ["*.ts", "*.tsx", "*.css"]
-      run: npx prettier --write {staged_files}
-      stage_fixed: true
-
-# Ordering is load-bearing: bindings -> frontend build/checks -> Go compilation/tests.
+    format:
+      run: scripts/format --check
 pre-push:
   commands:
-    01-bindings:
-      priority: 1
-      run: sh scripts/hooks/pre-push-bindings.sh
-    02-frontend:
-      priority: 2
-      run: sh scripts/hooks/pre-push-frontend.sh
-    03-go:
-      priority: 3
-      run: sh scripts/hooks/pre-push-go.sh
+    verify:
+      run: scripts/verify

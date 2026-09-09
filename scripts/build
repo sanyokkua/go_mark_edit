@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/build [--version X.Y.Z]
+       scripts/build setup [--with-browser]
+       scripts/build dev
+EOF
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ "${1:-}" == "setup" ]]; then
+  with_browser=false
+  shift
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --with-browser) with_browser=true ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      *) usage_error "unknown setup option: $1" ;;
+    esac
+    shift
+  done
+  require_command go
+  require_command npm
+  require_command node
+  (cd "$REPO_ROOT" && go mod download)
+  wails_version="$(sed -nE 's/^[[:space:]]*github\.com\/wailsapp\/wails\/v2[[:space:]]+([^[:space:]]+).*/\1/p' "$REPO_ROOT/go.mod" | head -1)"
+  [[ -n "$wails_version" ]] || die 'could not read the Wails CLI version from go.mod'
+  log "installing Wails CLI $wails_version"
+  go install "github.com/wailsapp/wails/v2/cmd/wails@$wails_version"
+  log "installing golangci-lint $GOLANGCI_LINT_VERSION"
+  go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
+  log "installing shfmt $SHFMT_VERSION"
+  go install "mvdan.cc/sh/v3/cmd/shfmt@$SHFMT_VERSION"
+  npm --prefix "$REPO_ROOT/frontend" ci
+  if [[ "$with_browser" == true ]]; then
+    (cd "$REPO_ROOT/frontend" && npx --no-install playwright install chromium)
+  fi
+  if command -v lefthook >/dev/null 2>&1; then
+    (cd "$REPO_ROOT" && lefthook install)
+  else
+    log 'lefthook is not installed; setup completed without installing the optional hook tool'
+  fi
+  exit 0
+fi
+
+if [[ "${1:-}" == "dev" ]]; then
+  shift
+  [[ $# -eq 0 ]] || usage_error 'scripts/build dev takes no options'
+  require_command wails
+  exec wails dev
+fi
+
+version=''
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --version)
+      [[ $# -ge 2 ]] || usage_error '--version requires X.Y.Z'
+      version="$2"
+      shift 2
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *) usage_error "unknown option: $1" ;;
+  esac
+done
+
+require_command wails
+require_command go
+require_command node
+require_command npm
+
+if [[ "$(uname -s)" == 'Linux' ]]; then
+  require_command pkg-config
+  pkg-config --exists gtk+-3.0 webkit2gtk-4.1 || die 'missing Linux GTK/WebKit headers: gtk+-3.0 and webkit2gtk-4.1'
+fi
+
+cd "$REPO_ROOT"
+build_state_dir="$(mktemp -d "${TMPDIR:-/tmp}/gomarkedit-build.XXXXXX")"
+trap 'rm -rf "$build_state_dir"' EXIT
+git diff --binary HEAD >"$build_state_dir/before.diff"
+git status --porcelain -z >"$build_state_dir/before.status"
+dist_placeholder="$REPO_ROOT/frontend/dist/.gitkeep"
+if [[ -f "$dist_placeholder" ]]; then
+  cp "$dist_placeholder" "$build_state_dir/dist.gitkeep"
+fi
+
+wails generate module
+node frontend/scripts/generate-editor-themes.mjs
+
+build_args=()
+if [[ -n "$version" ]]; then
+  [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "invalid version: $version (expected X.Y.Z)"
+  build_args+=(-ldflags "-X github.com/sanyokkua/go_mark_edit/internal/bootstrap.version=$version")
+fi
+if [[ "$(uname -s)" == 'Linux' ]]; then
+  build_args+=(-tags webkit2_41)
+fi
+if [[ ${#build_args[@]} -gt 0 ]]; then
+  wails build "${build_args[@]}"
+else
+  wails build
+fi
+
+if [[ -f "$build_state_dir/dist.gitkeep" ]]; then
+  mkdir -p "$(dirname "$dist_placeholder")"
+  cp "$build_state_dir/dist.gitkeep" "$dist_placeholder"
+fi
+
+restore_tracked_modes
+
+if [[ "$(uname -s)" == 'Darwin' && -n "$version" ]]; then
+  bundle="$REPO_ROOT/build/bin/GoMarkEdit.app/Contents/Info.plist"
+  [[ -f "$bundle" ]] || die "built bundle is missing: $bundle"
+  plutil -replace CFBundleShortVersionString -string "$version" "$bundle"
+  plutil -replace CFBundleVersion -string "$version" "$bundle"
+fi
+
+if [[ -x "$REPO_ROOT/tools/lint/bundle-scan.mjs" ]]; then
+  node "$REPO_ROOT/tools/lint/bundle-scan.mjs" "$REPO_ROOT/frontend/dist"
+fi
+
+git diff --binary HEAD >"$build_state_dir/after.diff"
+git status --porcelain -z >"$build_state_dir/after.status"
+if ! cmp -s "$build_state_dir/before.diff" "$build_state_dir/after.diff" || ! cmp -s "$build_state_dir/before.status" "$build_state_dir/after.status"; then
+  printf 'error: build changed the working tree relative to its starting state:\n' >&2
+  git status --short >&2
+  exit 1
+fi
+log "build complete (version ${version:-dev})"

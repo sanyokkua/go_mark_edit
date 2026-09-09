@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/lib/common.sh"
+. "$SCRIPT_DIR/lib/stages.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/verify [lint|format|build|unit|integration|e2e] [--skip e2e]
+EOF
+}
+
+selected='all'
+skip_e2e=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    --skip)
+      [[ $# -ge 2 ]] || usage_error '--skip requires a stage'
+      [[ "$2" == e2e ]] || usage_error 'only --skip e2e is supported'
+      skip_e2e=true
+      shift 2
+      ;;
+    lint | format | build | unit | integration | e2e)
+      [[ "$selected" == all ]] || usage_error 'only one stage may be selected'
+      selected="$1"
+      shift
+      ;;
+    *) usage_error "unknown option: $1" ;;
+  esac
+done
+
+[[ "$selected" == e2e && "$skip_e2e" == true ]] && usage_error 'cannot select and skip e2e together'
+
+new_run_dir >/dev/null
+failed=0
+run_named() {
+  local name="$1"
+  case "$name" in
+    lint) capture_stage lint 'scripts/verify lint' run_lint_stage || return 1 ;;
+    format) capture_stage format 'scripts/verify format' run_format_stage || return 1 ;;
+    build) capture_stage build 'scripts/verify build' run_build_stage || return 1 ;;
+    unit) capture_stage unit 'scripts/verify unit' run_unit_stage || return 1 ;;
+    integration) capture_stage integration 'scripts/verify integration' run_integration_stage || return 1 ;;
+    e2e) capture_stage e2e 'scripts/verify e2e' run_e2e_stage || return 1 ;;
+  esac
+}
+
+if [[ "$selected" != all ]]; then
+  run_named "$selected" || failed=1
+else
+  run_named lint || failed=1
+  if [[ "$failed" -eq 0 ]]; then run_named format || failed=1; fi
+  if [[ "$failed" -eq 0 ]]; then run_named build || failed=1; fi
+  if [[ "$failed" -eq 0 ]]; then run_named unit || failed=1; fi
+  if [[ "$failed" -eq 0 ]]; then run_named integration || failed=1; fi
+  if [[ "$skip_e2e" == true ]]; then
+    write_skipped_stage e2e 'scripts/verify --skip e2e'
+    printf 'e2e: skipped\n'
+  elif [[ "$failed" -eq 0 ]]; then
+    run_named e2e || failed=1
+  fi
+fi
+
+node "$REPO_ROOT/tools/verify/results.mjs" summary --run-dir "$RUN_DIR" --output "$RUN_DIR/summary.json" || true
+[[ "$failed" -eq 0 ]] || exit 1

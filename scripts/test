@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/lib/common.sh"
+. "$SCRIPT_DIR/lib/stages.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/test <unit|integration|e2e|all>
+EOF
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  unit | integration | e2e | all) tier="$1" ;;
+  *) usage_error 'expected unit, integration, e2e or all' ;;
+esac
+[[ $# -eq 1 ]] || usage_error 'scripts/test accepts exactly one tier'
+
+new_run_dir >/dev/null
+failed=0
+run_tier() {
+  local name="$1"
+  case "$name" in
+    unit) capture_stage unit 'scripts/test unit' run_unit_stage || failed=1 ;;
+    integration) capture_stage integration 'scripts/test integration' run_integration_stage || failed=1 ;;
+    e2e) capture_stage e2e 'scripts/test e2e' run_e2e_stage || failed=1 ;;
+  esac
+}
+
+if [[ "$tier" == all ]]; then
+  run_tier unit
+  if [[ "$failed" -eq 0 ]]; then run_tier integration; fi
+  if [[ "$failed" -eq 0 ]]; then run_tier e2e; fi
+else
+  run_tier "$tier"
+fi
+
+node "$REPO_ROOT/tools/verify/results.mjs" summary --run-dir "$RUN_DIR" --output "$RUN_DIR/summary.json" || failed=1
+[[ "$failed" -eq 0 ]] || exit 1

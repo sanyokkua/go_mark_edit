@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/lib/common.sh"
+. "$SCRIPT_DIR/lib/stages.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/baseline [--compare]
+EOF
+}
+
+compare=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --compare) compare=true ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *) usage_error "unknown option: $1" ;;
+  esac
+  shift
+done
+
+feature="$(feature_name)"
+baseline_path="$REPO_ROOT/.specify/baseline/$feature.json"
+new_run_dir >/dev/null
+git diff --binary HEAD >"$RUN_DIR/initial.diff"
+git status --porcelain -z >"$RUN_DIR/initial.status"
+
+failed=0
+run_baseline_stage() {
+  local name="$1"
+  case "$name" in
+    lint) capture_stage lint 'scripts/baseline lint' run_lint_stage || failed=1 ;;
+    format) capture_stage format 'scripts/baseline format' run_format_stage || failed=1 ;;
+    build) capture_stage build 'scripts/baseline build' run_build_stage || failed=1 ;;
+    unit) capture_stage unit 'scripts/baseline unit' run_unit_stage || failed=1 ;;
+    integration) capture_stage integration 'scripts/baseline integration' run_integration_stage || failed=1 ;;
+    e2e) capture_stage e2e 'scripts/baseline e2e' run_e2e_stage || failed=1 ;;
+  esac
+}
+
+for stage in lint format build unit integration e2e; do
+  run_baseline_stage "$stage"
+done
+
+node "$REPO_ROOT/tools/verify/results.mjs" summary --run-dir "$RUN_DIR" --output "$RUN_DIR/summary.json" || true
+if [[ "$compare" == true ]]; then
+  node "$REPO_ROOT/tools/verify/results.mjs" compare --baseline "$baseline_path" --run-dir "$RUN_DIR"
+else
+  node "$REPO_ROOT/tools/verify/results.mjs" baseline \
+    --feature "$feature" \
+    --run-dir "$RUN_DIR" \
+    --diff-file "$RUN_DIR/initial.diff" \
+    --status-file "$RUN_DIR/initial.status" \
+    --output "$baseline_path"
+fi

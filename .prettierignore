@@ -1,0 +1,10 @@
+.specify/**
+.claude/skills/speckit-*/**
+.agents/skills/speckit-*/**
+frontend/wailsjs/**
+frontend/dist/**
+build/bin/**
+**/node_modules/**
+package-lock.json
+go.sum
+justfile
