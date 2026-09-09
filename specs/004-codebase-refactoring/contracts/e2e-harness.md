@@ -70,7 +70,7 @@ Each case runs exactly once per stage run; a timing failure fails the stage.
 
 ## Regression cases for Story 1 that run here
 
-Scenarios 6, 7, 9–15, 17, 18 of Story 1 run as E2E cases (see plan.md); their archive run executes
+Scenarios 6, 7, 9–15, 18 of Story 1 run as E2E cases (see plan.md); their archive run executes
 the same case with `E2E_REPO` pointing at a worktree of `bc185c9`, so `wails dev` starts from that
 worktree.
 

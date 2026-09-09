@@ -12,7 +12,7 @@ the cause (a missing tool, a failed stage, a dirty tree, a missing baseline inpu
 
 | Form | Does |
 |---|---|
-| `scripts/build` | check the toolchain (fails naming the missing tool: `wails`, `go`, `node`, `npm`, GTK/WebKit headers on Linux) → `wails generate module` → `node frontend/scripts/generate-editor-themes.mjs` → `wails build` (with `-ldflags -X …/internal/bootstrap.version=<v>` when given; `-tags webkit2_41` on Linux) → restore tracked modes of `frontend/wailsjs/**` → on macOS with `--version`, `plutil -replace` both bundle version keys → bundle scan (lint L27) → assert `git status --porcelain` is empty (fails listing the paths) |
+| `scripts/build` | check the toolchain (fails naming the missing tool: `wails`, `go`, `node`, `npm`, GTK/WebKit headers on Linux) → `wails generate module` → `node frontend/scripts/generate-editor-themes.mjs` → `wails build` (with `-ldflags -X …/internal/bootstrap.version=<v>` when given; `-tags webkit2_41` on Linux) → restore tracked modes of `frontend/wailsjs/**` → on macOS with `--version`, `plutil -replace` both bundle version keys → bundle scan (lint L27) → assert `git status --porcelain` is empty (fails listing the paths). `wails build` runs the frontend's `npm run build`, which is `vite build` alone: the type check belongs to the Lint stage, so `tsc` runs once per verify (FR-062) |
 | `scripts/build setup` | `go mod download`; `go install github.com/wailsapp/wails/v2/cmd/wails@<go.mod version>`; `go install` golangci-lint and shfmt at the pinned versions; `npm ci --prefix frontend`; `npx playwright install chromium` when `--with-browser`; `lefthook install` |
 | `scripts/build dev` | `wails dev` (foreground) |
 
@@ -37,7 +37,10 @@ Results: one JSON per runner under `.specify/baseline/runs/<run-id>/` (ignored) 
 `tools/verify/results.mjs`. Until G7 relocates the tests, `scripts/lib/stages.sh` maps the tiers
 onto the existing layout (unit = `go test ./...` + the current Jest config; integration = the Jest
 `*.integration.test.tsx` suites; e2e = the current Playwright suite) so the baseline collects on
-every stage.
+every stage; from G3 on the unit and integration tiers also collect the new roots (`tests/go/**`,
+`frontend/tests/**`) beside the existing layout, and G7 drops the old half. The interim Lint list
+is golangci-lint, `tsc` per existing tsconfig, ESLint and `frontend/scripts/archtest.mjs`, each
+replaced when its G7 owner lands (the ten commands of the table below are the final list).
 
 ## `scripts/verify [<stage>] [--skip e2e]`
 

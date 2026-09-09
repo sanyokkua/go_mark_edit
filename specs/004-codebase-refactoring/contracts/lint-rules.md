@@ -6,7 +6,7 @@ check works. No rule may be suppressed or allowlisted to make a stage pass.
 
 | # | Rule | Owner | Scope | Failure message names |
 |---|---|---|---|---|
-| L1 | `internal/apperr` and `internal/bridge` import nothing under `internal/` | golangci-lint `depguard` | Go | the offending import |
+| L1 | `internal/apperr` imports nothing under `internal/`; `internal/bridge` imports only `internal/apperr` | golangci-lint `depguard` | Go | the offending import |
 | L2 | `internal/appmodel` imports neither the Wails runtime nor `internal/bootstrap` | `depguard` | Go | file and import |
 | L3 | handlers import services only; services import repositories, `internal/file`, `internal/kv`; no package imports `main` | `depguard` | Go | file and import |
 | L4 | every method of a type listed in `main.go`'s `Bind:` returns one `apperr.*Result`, takes no `context.Context`, uses a named result, and its first statement is `defer bridge.Guard(&result)` | `tools/archlint` | Go | method |
