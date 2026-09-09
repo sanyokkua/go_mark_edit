@@ -176,7 +176,8 @@ func mapKeys(values map[string]json.RawMessage) []string {
 }
 
 // Proves: STORY-002-AC-1
-// The Go result types expose no fields beyond the data-or-error bridge contract.
+// The Go result types expose one shared failure envelope alongside their
+// data-or-error bridge contract.
 func TestResultEnvelopeFieldContracts(t *testing.T) {
 	t.Parallel()
 
@@ -185,9 +186,9 @@ func TestResultEnvelopeFieldContracts(t *testing.T) {
 		type_ reflect.Type
 		want  []string
 	}{
-		{"void", reflect.TypeFor[VoidResult](), []string{"Error"}},
-		{"string", reflect.TypeFor[StringResult](), []string{"Data", "Error"}},
-		{"state", reflect.TypeFor[StateResult](), []string{"Data", "Error"}},
+		{"void", reflect.TypeFor[VoidResult](), []string{"Failure", "Error"}},
+		{"string", reflect.TypeFor[StringResult](), []string{"Failure", "Data", "Error"}},
+		{"state", reflect.TypeFor[StateResult](), []string{"Failure", "Data", "Error"}},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {

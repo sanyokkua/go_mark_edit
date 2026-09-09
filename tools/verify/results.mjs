@@ -151,6 +151,12 @@ function parseFindings(stage, log) {
     }
 
     if (
+      /^(?:ℹ\s*)?(?:fail(?:ed|ure)?|failed)\s+0\b/i.test(line) ||
+      /\b0\s+failed\b/i.test(line)
+    )
+      continue;
+
+    if (
       !/(error|fail|failed|missing tool|not found|cannot|panic|✖|✗|\bFAIL\b)/i.test(
         line,
       )

@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
@@ -323,11 +324,13 @@ func (service *AppModelService) OpenFromDialog(ctx context.Context, expectedTabS
 	dialog := service.openDialog
 	service.mu.RUnlock()
 	if dialog == nil {
-		return apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog is unavailable.", apperr.RemediationRetry)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedSystemCommandFailure, "document", "The Open dialog is unavailable.", apperr.RemediationRetry, "")
+		return bridge.FromClassified[apperr.OpenResult](classified, apperr.OpenStatusRefused)
 	}
 	path, err := dialog.ChooseOpenFile(ctx)
 	if err != nil {
-		return apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog could not be opened.", apperr.RemediationRetry)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedSystemCommandFailure, "document", "The Open dialog could not be opened.", apperr.RemediationRetry, "")
+		return bridge.FromClassified[apperr.OpenResult](classified, apperr.OpenStatusRefused)
 	}
 	if path == "" {
 		return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
@@ -922,17 +925,18 @@ func (service *AppModelService) snapshotLocked() applicationState {
 }
 
 func (service *AppModelService) publishLocked(ctx context.Context, before applicationState, patch apperr.AppStatePatch) (err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			service.state = before
-			err = apperr.Internal(fmt.Errorf("state patch emitter panic: %v", recovered))
-		}
-	}()
 	if service.emitter == nil {
 		service.state = before
 		return apperr.Internal(errors.New("state patch emitter is required"))
 	}
-	if emitErr := service.emitter.EmitStatePatch(ctx, patch); emitErr != nil {
+	var emitErr error
+	if bridge.Protect(func() {
+		emitErr = service.emitter.EmitStatePatch(ctx, patch)
+	}) {
+		service.state = before
+		return apperr.Internal(errors.New("emit state patch panicked"))
+	}
+	if emitErr != nil {
 		service.state = before
 		return apperr.Internal(fmt.Errorf("emit state patch: %w", emitErr))
 	}

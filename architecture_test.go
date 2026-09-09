@@ -191,11 +191,32 @@ func TestArchitectureBoundHandlersRecoverPanics(t *testing.T) {
 				t.Errorf("%s: %s does not begin with a deferred recover", path, method.Name.Name)
 				continue
 			}
-			if !containsRecoverCall(deferStatement) {
-				t.Errorf("%s: %s defers something that never calls recover()", path, method.Name.Name)
+			if !containsRecoverCall(deferStatement) && !containsBridgeGuardCall(deferStatement) {
+				t.Errorf("%s: %s defers neither the shared bridge guard nor recover()", path, method.Name.Name)
 			}
 		}
 	}
+}
+
+func containsBridgeGuardCall(node ast.Node) bool {
+	found := false
+	ast.Inspect(node, func(inner ast.Node) bool {
+		call, ok := inner.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		selector, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || selector.Sel.Name != "Guard" {
+			return true
+		}
+		packageName, ok := selector.X.(*ast.Ident)
+		if ok && packageName.Name == "bridge" {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
 }
 
 func containsRecoverCall(node ast.Node) bool {

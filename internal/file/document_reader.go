@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 const (
@@ -165,19 +166,19 @@ func ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 	maxBytes = normalizedReadLimit(maxBytes)
 	canonical, err := CanonicalizeDocumentPath(path)
 	if err != nil {
-		return ClassifiedRead{Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
+		return ClassifiedRead{Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
 	}
 	if !IsSupportedDocumentSuffix(canonical.Path) {
 		return ClassifiedRead{
 			CanonicalPath: canonical,
 			Outcome:       ReadOutcomeRefused,
 			Capability:    CapabilityRefused,
-			Error:         classifiedReadError(canonical.DisplayName, apperr.ClassifiedUnsupportedInput, "The selected file type is not supported.", apperr.RemediationNone),
+			Error:         bridge.Classified(canonical.DisplayName, apperr.ClassifiedUnsupportedInput, "The selected file type is not supported.", apperr.RemediationNone),
 		}, nil
 	}
 	info, err := os.Stat(canonical.Path)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(canonical.DisplayName, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
 	}
 	if info.Size() > maxBytes || info.Size() > MaxSupportedDocumentBytes {
 		return ClassifiedRead{
@@ -185,18 +186,18 @@ func ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 			Characteristics: FileCharacteristics{RawSizeBytes: info.Size(), Capability: CapabilityRefused, Mode: info.Mode()},
 			Outcome:         ReadOutcomeRefused,
 			Capability:      CapabilityRefused,
-			Error:           classifiedReadError(canonical.DisplayName, apperr.ClassifiedCapacityLimit, "The document exceeds the 50 MiB limit.", apperr.RemediationNone),
+			Error:           bridge.Classified(canonical.DisplayName, apperr.ClassifiedCapacityLimit, "The document exceeds the 50 MiB limit.", apperr.RemediationNone),
 		}, nil
 	}
 
 	file, err := os.Open(canonical.Path)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
 	}
 	defer func() { _ = file.Close() }()
 	data, err := readBounded(file, maxBytes)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, BytesRead: int64(len(data)), Error: classifiedReadError(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, BytesRead: int64(len(data)), Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
 	}
 	classified := classifyDocumentBytes(canonical, info, data)
 	classified.BytesRead = int64(len(data))
@@ -310,9 +311,4 @@ func normalizeCRLF(content string) string {
 
 func tolerantDisplay(data []byte) string {
 	return strings.ToValidUTF8(string(data), "\ufffd")
-}
-
-func classifiedReadError(subject string, category apperr.ClassifiedErrorCategory, message string, remediation apperr.ClassifiedRemediation) *apperr.ClassifiedError {
-	classified := apperr.NewClassifiedError(category, subject, message, remediation, "")
-	return &classified
 }

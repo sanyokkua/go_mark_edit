@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 // NativeCloseRequestEvent is emitted after the native frame asks to close.
 // The frontend owns the asynchronous save/discard decision; the native close
 // callback remains vetoed until that decision has completed.
-const NativeCloseRequestEvent = "application-close-requested"
+const NativeCloseRequestEvent = bridge.EventApplicationCloseRequested
 
 var errNativeCloseNotPending = errors.New("native close request is not pending")
 

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
@@ -18,20 +19,20 @@ func (service *AppModelService) CopyPath(_ context.Context, documentID string) a
 	writer := service.clipboard
 	if !exists {
 		service.mu.RUnlock()
-		return pathCommandFailure(apperr.ClassifiedNotFound, documentID, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.PathCommandResult](apperr.ClassifiedNotFound, documentID, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	path := document.metadata.Path
 	subject := document.metadata.DisplayName
 	service.mu.RUnlock()
 
 	if path == "" {
-		return pathCommandFailure(apperr.ClassifiedUnsupportedInput, documentID, subject, "This document does not have a file path.", apperr.RemediationNone)
+		return bridge.Refused[apperr.PathCommandResult](apperr.ClassifiedUnsupportedInput, documentID, subject, "This document does not have a file path.", apperr.RemediationNone)
 	}
 	if writer == nil {
-		return pathCommandFailure(apperr.ClassifiedSystemCommandFailure, documentID, subject, "The path could not be copied.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.PathCommandResult](apperr.ClassifiedSystemCommandFailure, documentID, subject, "The path could not be copied.", apperr.RemediationRetry)
 	}
 	if err := writer.WriteText(path); err != nil {
-		return pathCommandFailure(apperr.ClassifiedSystemCommandFailure, documentID, subject, "The path could not be copied.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.PathCommandResult](apperr.ClassifiedSystemCommandFailure, documentID, subject, "The path could not be copied.", apperr.RemediationRetry)
 	}
 	return apperr.CopyPathResult{Status: apperr.PathCommandCopied}
 }
@@ -45,7 +46,7 @@ func (service *AppModelService) RevealInFileManager(ctx context.Context, documen
 	port := service.reveal
 	if !exists {
 		service.mu.RUnlock()
-		return revealFailure(apperr.ClassifiedNotFound, documentID, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.RevealResult](apperr.ClassifiedNotFound, documentID, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	path := document.metadata.Path
 	subject := document.metadata.DisplayName
@@ -53,7 +54,7 @@ func (service *AppModelService) RevealInFileManager(ctx context.Context, documen
 	service.mu.RUnlock()
 
 	if path == "" {
-		return revealFailure(apperr.ClassifiedUnsupportedInput, documentID, subject, "This document does not have a file path.", apperr.RemediationNone)
+		return bridge.Refused[apperr.RevealResult](apperr.ClassifiedUnsupportedInput, documentID, subject, "This document does not have a file path.", apperr.RemediationNone)
 	}
 	if knownDetached {
 		return apperr.RevealResult{Status: apperr.PathCommandUnavailable}
@@ -99,16 +100,6 @@ func (service *AppModelService) markDetached(ctx context.Context, documentID str
 	_ = service.publishLocked(ctx, before, patch)
 }
 
-func pathCommandFailure(category apperr.ClassifiedErrorCategory, documentID, subject, message string, remediation apperr.ClassifiedRemediation) apperr.PathCommandResult {
-	classified := apperr.NewClassifiedError(category, subject, message, remediation, documentID)
-	return apperr.PathCommandResult{Status: apperr.PathCommandRefused, Error: &classified}
-}
-
-func revealFailure(category apperr.ClassifiedErrorCategory, documentID, subject, message string, remediation apperr.ClassifiedRemediation) apperr.RevealResult {
-	classified := apperr.NewClassifiedError(category, subject, message, remediation, documentID)
-	return apperr.RevealResult{Status: apperr.PathCommandRefused, Error: &classified}
-}
-
 /*
  * The two Reveal outcomes the contract specifies as pairs, in one place so a third
  * call site cannot offer half of one.
@@ -120,19 +111,19 @@ func revealFailure(category apperr.ClassifiedErrorCategory, documentID, subject,
  * that got dropped.
  */
 func revealDetachedFailure(documentID, subject string) apperr.RevealResult {
-	classified := apperr.NewClassifiedErrorWithRemediations(
+	classified := bridge.ClassifiedWithRemediations(
 		apperr.ClassifiedNotFound, subject, "The document could not be found.",
 		[]apperr.ClassifiedRemediation{apperr.RemediationSaveToRecreate, apperr.RemediationCopyPath},
 		documentID,
 	)
-	return apperr.RevealResult{Status: apperr.PathCommandRefused, Error: &classified}
+	return bridge.FromClassified[apperr.RevealResult](classified, apperr.PathCommandRefused)
 }
 
 func revealCommandFailure(documentID, subject string) apperr.RevealResult {
-	classified := apperr.NewClassifiedErrorWithRemediations(
+	classified := bridge.ClassifiedWithRemediations(
 		apperr.ClassifiedSystemCommandFailure, subject, "The file manager could not reveal this document.",
 		[]apperr.ClassifiedRemediation{apperr.RemediationRetry, apperr.RemediationCopyPath},
 		documentID,
 	)
-	return apperr.RevealResult{Status: apperr.PathCommandRefused, Error: &classified}
+	return bridge.FromClassified[apperr.RevealResult](classified, apperr.PathCommandRefused)
 }

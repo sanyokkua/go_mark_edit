@@ -72,7 +72,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 				}
 			case "NewDocument":
 				transition := panickingHandler.NewDocument(0)
-				if transition.Data != nil || transition.Error == nil || transition.Error.Category != apperr.ClassifiedIOFailure {
+				if transition.Data != nil || transition.Category != apperr.ClassifiedInternal {
 					t.Fatalf("panic result = %+v, want a classified internal transition error", transition)
 				}
 			case "ActivateDocument":

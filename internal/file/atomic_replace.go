@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 // AtomicReplaceRequest contains the immutable bytes and disk baseline for one
@@ -271,11 +272,10 @@ func newAtomicReplaceError(target string, committed bool, phase AtomicReplacePha
 	case apperr.ClassifiedIOFailure:
 		remediation = apperr.RemediationRetry
 	}
-	classified := apperr.NewClassifiedError(category, target, message, remediation, "")
 	return &AtomicReplaceError{
 		Committed:  committed,
 		Phase:      phase,
-		Classified: &classified,
+		Classified: bridge.ClassifiedWithID(category, target, message, remediation, ""),
 		Cause:      cause,
 	}
 }

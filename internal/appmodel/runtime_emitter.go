@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -16,7 +17,7 @@ func (RuntimeStatePatchEmitter) EmitStatePatch(ctx context.Context, patch apperr
 	if ctx == nil {
 		return errors.New("wails lifecycle context is required")
 	}
-	runtime.EventsEmit(ctx, "state:patch", patch)
+	runtime.EventsEmit(ctx, bridge.EventStatePatch, patch)
 	return nil
 }
 
@@ -26,7 +27,7 @@ func (RuntimeStatePatchEmitter) EmitAsyncError(ctx context.Context, wire apperr.
 	if ctx == nil {
 		return errors.New("wails lifecycle context is required")
 	}
-	runtime.EventsEmit(ctx, "state:error", wire)
+	runtime.EventsEmit(ctx, bridge.EventStateError, wire)
 	return nil
 }
 

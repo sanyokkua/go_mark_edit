@@ -30,7 +30,7 @@ run_build_stage() {
 
 run_unit_stage() {
   local failed=0
-  run_command 'Go unit tests (interim layout)' go test -race ./internal/... . || failed=1
+  run_command 'Go unit tests' go test -race ./internal/... ./tests/go/unit/... . || failed=1
   (cd "$REPO_ROOT/frontend" && run_command 'Jest unit tests (interim layout)' npm test -- --runInBand) || failed=1
   return "$failed"
 }

@@ -2,6 +2,7 @@ package appmodel
 
 import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 /*
@@ -48,14 +49,7 @@ func (service *AppModelService) DrainBeforeClose() *apperr.ClassifiedError {
 	// makes the drain's own ordering match FR-FT-027's "layout, editor, and
 	// autosave work" as one boundary rather than three racing ones.
 	if err := service.FlushPendingUILayout(); err != nil {
-		classified := apperr.NewClassifiedError(
-			apperr.ClassifiedIOFailure,
-			"native close",
-			"The application could not finish saving pending work before closing.",
-			apperr.RemediationRetry,
-			"",
-		)
-		return &classified
+		return bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, "native close", "The application could not finish saving pending work before closing.", apperr.RemediationRetry, "")
 	}
 	return nil
 }

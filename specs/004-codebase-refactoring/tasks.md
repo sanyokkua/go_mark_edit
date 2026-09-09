@@ -81,7 +81,7 @@ and the worktree the Story 1 archive runs need.
   - **Depends on**: T002.
   - **Branch**: feature branch (`feature/004-codebase-refactoring`, no task branch); `style: format every tracked source and document file`, committed immediately after the T001 commit (`build: …`) on the same formatted working tree — T001 first, then this reformat commit.
 
-- [ ] T004 Add the archive worktree `../gme-archive` at `archive/v1-linear-history-2026-09`
+- [x] T004 Add the archive worktree `../gme-archive` at `archive/v1-linear-history-2026-09`
   - **Implements**: FR-031; quickstart 7; plan close-out "Archive worktree" line.
   - **Scope**: `git worktree add ../gme-archive archive/v1-linear-history-2026-09` (`bc185c9`); no file in this repository changes.
   - **Evidence**: `git worktree list` shows `../gme-archive` at `bc185c9`.
@@ -105,7 +105,7 @@ and the event contract in one place.
 (FR-031); run once on the archived tree it fails, on the refactored tree it passes. The link and
 close scenarios also run on `wails dev` and in the walkthrough.
 
-- [ ] T005 [US4] Create `internal/bridge` (Request, Guard, Fail, OutcomeCache, Once, events) and make every `internal/apperr` envelope embed one `Failure`
+- [x] T005 [US4] Create `internal/bridge` (Request, Guard, Fail, OutcomeCache, Once, events) and make every `internal/apperr` envelope embed one `Failure`
   - **Implements**: FR-019, FR-020, FR-021 (backend half), FR-052; `contracts/bridge-requests.md` (request identity, handler shape, outcome cache, events); data-model "Request and Outcome", "ClassifiedFailure and result envelopes"; R9.
   - **Scope**: create `internal/bridge/*.go` as a leaf package importing only `internal/apperr`: `Request{ID string}` serialised as `id`; `Guard(&result)` turning a panic into an `internal` failure; `Fail(category, subject, message, remediation)` as the only classified-failure constructor; `OutcomeCache` keyed by `Request.ID` (60 s retention after completion, capacity 256 oldest-first, an in-flight id joins the running call, fresh after eviction, one cache per process); `Once(cache, request, fn)`; empty id refused as `validation`; `internal/bridge/events.go` holding `state:patch`, `state:error`, `application:close-requested`. Edit `internal/apperr/*.go` so every `*Result` envelope embeds `Failure{category, subject, message, remediation, id}`; delete the fifteen error wrappers and every hand-written `recover` in handlers (handlers are rewritten in T006).
   - **Evidence**: `tests/go/unit/bridge/` — the guard turns a panic into an internal failure; an empty request id is refused as a validation failure; the cache answers a retried id with the original outcome; a call with an in-flight id joins the running call; outcomes expire after 60 s and beyond 256 entries with a fake clock; a retry after eviction runs fresh. `grep -rn 'recover(' internal/` hits only `internal/bridge`. `scripts/test unit` green.

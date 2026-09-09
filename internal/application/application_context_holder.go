@@ -8,6 +8,7 @@ import (
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
@@ -268,27 +269,13 @@ func (holder *ApplicationContextHolder) AuthorizeQuit(ctx context.Context) *appe
 	coordinator := holder.closeCoordinator
 	holder.mu.Unlock()
 	if coordinator == nil {
-		unsupported := apperr.NewClassifiedError(
-			apperr.ClassifiedUnsupportedInput,
-			"native close",
-			"This build cannot authorize a native close.",
-			apperr.RemediationNone,
-			"",
-		)
-		return &unsupported
+		return bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, "native close", "This build cannot authorize a native close.", apperr.RemediationNone, "")
 	}
 	if err := coordinator.Authorize(ctx); err != nil {
 		// Nothing is pending, so the close plan the frontend just completed is
 		// stale. That is the conflict row's stale-request arm, and re-issuing the
 		// close is the only action that can succeed.
-		stale := apperr.NewClassifiedError(
-			apperr.ClassifiedConflict,
-			"native close",
-			"There is no pending close request to authorize; close must be retried.",
-			apperr.RemediationRetry,
-			"",
-		)
-		return &stale
+		return bridge.ClassifiedWithID(apperr.ClassifiedConflict, "native close", "There is no pending close request to authorize; close must be retried.", apperr.RemediationRetry, "")
 	}
 	return nil
 }

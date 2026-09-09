@@ -51,6 +51,7 @@ type Settings struct {
 
 // VoidResult is the envelope for a successful operation with no payload.
 type VoidResult struct {
+	Failure
 	Error *WireError `json:"error,omitempty"`
 }
 
@@ -64,17 +65,20 @@ type VoidResult struct {
 // close needs the other shape — FR-FT-027 requires a drain failure to reach the
 // user as a classified io-failure offering Retry — so it returns this instead.
 type ClassifiedVoidResult struct {
+	Failure
 	Error *ClassifiedError `json:"error,omitempty"`
 }
 
 // StringResult is the envelope for a single string payload.
 type StringResult struct {
+	Failure
 	Data  string     `json:"data"`
 	Error *WireError `json:"error,omitempty"`
 }
 
 // SettingsResult is the envelope for the complete typed settings registry.
 type SettingsResult struct {
+	Failure
 	Data  *Settings  `json:"data,omitempty"`
 	Error *WireError `json:"error,omitempty"`
 }
@@ -180,6 +184,7 @@ type ActiveBufferAcknowledgement = ActiveBuffer
 
 // DocumentTransitionResult is the data-or-classified-error envelope for backend New transitions.
 type DocumentTransitionResult struct {
+	Failure
 	Data     *ActiveBufferAcknowledgement `json:"data,omitempty"`
 	Conflict *ConflictPreview             `json:"conflict,omitempty"`
 	Error    *ClassifiedError             `json:"error,omitempty"`
@@ -202,6 +207,7 @@ const (
 // TabTransitionResult is the order/active projection barrier returned by tab commands.
 // No caller may infer a new order or active identity before this result is accepted.
 type TabTransitionResult struct {
+	Failure
 	Status             TabTransitionStatus          `json:"status"`
 	DocumentID         string                       `json:"documentId,omitempty"`
 	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
@@ -299,6 +305,7 @@ type ClosePlanSummary struct {
 // ClosePlanResult carries a plan summary or a classified refusal. Execution
 // returns the final TabTransitionResult after the summary reaches complete.
 type ClosePlanResult struct {
+	Failure
 	Data  *ClosePlanSummary `json:"data,omitempty"`
 	Error *ClassifiedError  `json:"error,omitempty"`
 }
@@ -315,6 +322,7 @@ const (
 // PathCommandResult contains only the explicit command outcome. The canonical path
 // is deliberately not returned: CopyPath hands it to the injected clipboard port.
 type PathCommandResult struct {
+	Failure
 	Status PathCommandStatus `json:"status"`
 	Error  *ClassifiedError  `json:"error,omitempty"`
 }
@@ -352,6 +360,7 @@ type CommittedWriteOutcome struct {
 }
 
 type CommittedWriteResult struct {
+	Failure
 	Data  *CommittedWriteOutcome `json:"data,omitempty"`
 	Error *ClassifiedError       `json:"error,omitempty"`
 }
@@ -369,6 +378,7 @@ const (
 // WriteResult distinguishes a committed disk replacement from a cancelled,
 // authorization, conflict, or classified refusal outcome.
 type WriteResult struct {
+	Failure
 	Status           WriteStatus            `json:"status"`
 	Data             *CommittedWriteOutcome `json:"data,omitempty"`
 	DecisionToken    string                 `json:"decisionToken,omitempty"`
@@ -497,6 +507,7 @@ const (
 // ConflictResult is returned separately from WriteResult so foreground checks
 // and reload/decision commands can share the same safe envelope.
 type ConflictResult struct {
+	Failure
 	Status             ConflictStatus               `json:"status"`
 	DocumentID         string                       `json:"documentId,omitempty"`
 	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
@@ -518,6 +529,7 @@ const (
 
 // OpenResult describes canonical Open without placing source in the metadata projection.
 type OpenResult struct {
+	Failure
 	Status             OpenStatus                   `json:"status"`
 	DocumentID         string                       `json:"documentId,omitempty"`
 	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
@@ -562,6 +574,7 @@ type AppStatePatch struct {
 
 // StateResult is the envelope for an application-model hydration query.
 type StateResult struct {
+	Failure
 	Data  *AppState  `json:"data,omitempty"`
 	Error *WireError `json:"error,omitempty"`
 }

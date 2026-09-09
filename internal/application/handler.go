@@ -2,10 +2,10 @@ package application
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/rs/zerolog"
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
 )
 
@@ -39,24 +39,14 @@ func NewApplicationHandler(service ApplicationServiceAPI, logger *logging.Logger
 // WindowReady acknowledges that the frontend hydrated and the hidden window
 // may become visible.
 func (handler *ApplicationHandler) WindowReady() (result apperr.VoidResult) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			wire := apperr.ToWire(handler.zlog(), apperr.Internal(fmt.Errorf("panic: %v", recovered)))
-			result = apperr.VoidResult{Error: &wire}
-		}
-	}()
+	defer bridge.Guard(&result)
 	handler.service.FrontendReady(handler.context())
 	return apperr.VoidResult{}
 }
 
 // RetryStartup repeats backend initialization and hidden native restore.
 func (handler *ApplicationHandler) RetryStartup() (result apperr.VoidResult) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			wire := apperr.ToWire(handler.zlog(), apperr.Internal(fmt.Errorf("panic: %v", recovered)))
-			result = apperr.VoidResult{Error: &wire}
-		}
-	}()
+	defer bridge.Guard(&result)
 	if err := handler.service.RetryStartup(handler.context()); err != nil {
 		wire := apperr.ToWire(handler.zlog(), err)
 		return apperr.VoidResult{Error: &wire}
@@ -73,33 +63,10 @@ func (handler *ApplicationHandler) RetryStartup() (result apperr.VoidResult) {
 // carry only a WireError, which the frontend renders as generic catalogue copy
 // with no remediation control.
 func (handler *ApplicationHandler) AuthorizeQuit() (result apperr.ClassifiedVoidResult) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			// A panic here is a shutdown that did not complete and did not arm a
-			// permit, which is indistinguishable to the user from a failed drain.
-			// FR-FT-027 names the failure the user gets in that case.
-			logger := handler.zlog()
-			logger.Error().Interface("panic", recovered).Msg("native close authorization panicked")
-			classified := apperr.NewClassifiedError(
-				apperr.ClassifiedIOFailure,
-				"native close",
-				"The application could not finish closing.",
-				apperr.RemediationRetry,
-				"",
-			)
-			result = apperr.ClassifiedVoidResult{Error: &classified}
-		}
-	}()
+	defer bridge.Guard(&result)
 	service, ok := handler.service.(NativeCloseServiceAPI)
 	if !ok {
-		unsupported := apperr.NewClassifiedError(
-			apperr.ClassifiedUnsupportedInput,
-			"native close",
-			"This build cannot authorize a native close.",
-			apperr.RemediationNone,
-			"",
-		)
-		return apperr.ClassifiedVoidResult{Error: &unsupported}
+		return bridge.Refused[apperr.ClassifiedVoidResult](apperr.ClassifiedUnsupportedInput, "native close", "This build cannot authorize a native close.", apperr.RemediationNone)
 	}
 	if refusal := service.AuthorizeQuit(handler.context()); refusal != nil {
 		logger := handler.zlog()
@@ -107,7 +74,7 @@ func (handler *ApplicationHandler) AuthorizeQuit() (result apperr.ClassifiedVoid
 			Str("category", string(refusal.Category)).
 			Str("subject", refusal.SafeSubject).
 			Msg("native close authorization refused")
-		return apperr.ClassifiedVoidResult{Error: refusal}
+		return bridge.FromClassified[apperr.ClassifiedVoidResult](refusal)
 	}
 	return apperr.ClassifiedVoidResult{}
 }
@@ -115,12 +82,7 @@ func (handler *ApplicationHandler) AuthorizeQuit() (result apperr.ClassifiedVoid
 // CancelQuit abandons the pending native close plan and leaves the window
 // open. It is intentionally idempotent.
 func (handler *ApplicationHandler) CancelQuit() (result apperr.VoidResult) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			wire := apperr.ToWire(handler.zlog(), apperr.Internal(fmt.Errorf("panic: %v", recovered)))
-			result = apperr.VoidResult{Error: &wire}
-		}
-	}()
+	defer bridge.Guard(&result)
 	service, ok := handler.service.(NativeCloseServiceAPI)
 	if !ok {
 		wire := apperr.ToWire(handler.zlog(), apperr.Unsupported("native close cancellation"))

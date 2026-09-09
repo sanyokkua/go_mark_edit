@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
@@ -257,11 +258,11 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
-		return diskInspection{classified: service.classifiedConflictError(documentID, apperr.ClassifiedNotFound, "The document is no longer open.", apperr.RemediationNone)}
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedNotFound, service.safeDocumentLabelLocked(documentID), "The document is no longer open.", apperr.RemediationNone, documentID)}
 	}
 	if document.metadata.ContentRevision != expectedRevision {
 		service.mu.RUnlock()
-		return diskInspection{classified: service.classifiedConflictError(documentID, apperr.ClassifiedConflict, "The document changed before the disk check completed.", apperr.RemediationRetry)}
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The document changed before the disk check completed.", apperr.RemediationRetry, documentID)}
 	}
 	path := document.metadata.Path
 	baselineVersion := document.baselineVersion
@@ -287,7 +288,7 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 			patch := service.documentPatchLocked(documentID)
 			if err := service.publishLocked(ctx, before, patch); err != nil {
 				service.mu.Unlock()
-				return diskInspection{classified: service.classifiedConflictError(documentID, apperr.ClassifiedIOFailure, "The external-change decision could not be published.", apperr.RemediationRetry)}
+				return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, service.safeDocumentLabelLocked(documentID), "The external-change decision could not be published.", apperr.RemediationRetry, documentID)}
 			}
 			service.mu.Unlock()
 			return diskInspection{kind: diskAuthorized, version: authorization.version, rawHash: authorization.rawHash, characteristics: authorization.characteristics}
@@ -297,7 +298,7 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 
 	current, err := service.currentDiskVersion(path)
 	if err != nil {
-		return diskInspection{classified: service.classifiedConflictError(documentID, apperr.ClassifiedIOFailure, "The document could not be inspected.", apperr.RemediationRetry)}
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, service.safeDocumentLabelLocked(documentID), "The document could not be inspected.", apperr.RemediationRetry, documentID)}
 	}
 	if current.Equal(baselineVersion) {
 		return diskInspection{kind: diskUnchanged, version: current}
@@ -305,13 +306,13 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	stable, readErr := service.readStable(path)
 	if readErr != nil {
 		if errors.Is(readErr, file.ErrUnstableRead) {
-			return diskInspection{kind: diskUnstable, version: stable.Version, classified: service.classifiedConflictError(documentID, apperr.ClassifiedConflict, "The file is changing; check again before saving.", apperr.RemediationRetry)}
+			return diskInspection{kind: diskUnstable, version: stable.Version, classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The file is changing; check again before saving.", apperr.RemediationRetry, documentID)}
 		}
-		return diskInspection{classified: service.classifiedConflictError(documentID, apperr.ClassifiedIOFailure, "The document could not be inspected.", apperr.RemediationRetry)}
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, service.safeDocumentLabelLocked(documentID), "The document could not be inspected.", apperr.RemediationRetry, documentID)}
 	}
 	if !stable.Version.Exists {
 		if err := service.applyDetached(ctx, documentID, expectedRevision); err != nil {
-			return diskInspection{classified: service.classifiedConflictError(documentID, apperr.ClassifiedConflict, "The document changed before detachment completed.", apperr.RemediationRetry)}
+			return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The document changed before detachment completed.", apperr.RemediationRetry, documentID)}
 		}
 		return diskInspection{kind: diskDetached, version: stable.Version}
 	}
@@ -320,13 +321,13 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	}
 	if stable.RawHash == baselineHash && characteristicsEqual(stable.Read.Characteristics, baselineCharacteristics) {
 		if err := service.refreshDiskVersion(ctx, documentID, expectedRevision, stable.Version); err != nil {
-			return diskInspection{classified: service.classifiedConflictError(documentID, apperr.ClassifiedConflict, "The document changed before the disk baseline could be refreshed.", apperr.RemediationRetry)}
+			return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The document changed before the disk baseline could be refreshed.", apperr.RemediationRetry, documentID)}
 		}
 		return diskInspection{kind: diskUnchanged, version: stable.Version, rawHash: stable.RawHash, characteristics: stable.Read.Characteristics}
 	}
 	preview := buildConflictPreview(documentID, &documentSnapshot, stable.Read, stable.Version)
 	if err := service.registerConflict(ctx, documentID, expectedRevision, stable, preview); err != nil {
-		return diskInspection{classified: service.classifiedConflictError(documentID, apperr.ClassifiedConflict, "The external-change decision could not be queued.", apperr.RemediationRetry)}
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The external-change decision could not be queued.", apperr.RemediationRetry, documentID)}
 	}
 	return diskInspection{kind: diskConflict, version: stable.Version, rawHash: stable.RawHash, characteristics: stable.Read.Characteristics, preview: &preview}
 }
@@ -335,12 +336,15 @@ func (service *AppModelService) prepareWriteDisk(ctx context.Context, documentID
 	inspection := service.inspectDocument(ctx, documentID, expectedRevision, decisionToken)
 	if inspection.classified != nil {
 		if inspection.kind == diskUnstable {
-			return apperr.WriteResult{Status: apperr.WriteStatusConflict, Error: inspection.classified}
+			return bridge.FromClassified[apperr.WriteResult](inspection.classified, apperr.WriteStatusConflict)
 		}
-		return apperr.WriteResult{Status: apperr.WriteStatusRefused, Error: inspection.classified}
+		return bridge.FromClassified[apperr.WriteResult](inspection.classified, apperr.WriteStatusRefused)
 	}
 	if inspection.kind == diskConflict && inspection.preview != nil {
-		return apperr.WriteResult{Status: apperr.WriteStatusConflict, Conflict: inspection.preview, Error: service.classifiedConflictError(documentID, apperr.ClassifiedConflict, "The file changed on disk before it could be saved.", apperr.RemediationNone)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The file changed on disk before it could be saved.", apperr.RemediationNone, documentID)
+		result := bridge.FromClassified[apperr.WriteResult](classified, apperr.WriteStatusConflict)
+		result.Conflict = inspection.preview
+		return result
 	}
 	return apperr.WriteResult{}
 }
@@ -350,7 +354,10 @@ func (service *AppModelService) conflictResultForInspection(documentID string, r
 		if inspection.kind == diskUnstable {
 			return service.conflictResultUnstable(documentID, revision)
 		}
-		return apperr.ConflictResult{Status: apperr.ConflictStatusRefused, DocumentID: documentID, DocumentRevision: revision, Error: inspection.classified}
+		result := bridge.FromClassified[apperr.ConflictResult](inspection.classified, apperr.ConflictStatusRefused)
+		result.DocumentID = documentID
+		result.DocumentRevision = revision
+		return result
 	}
 	switch inspection.kind {
 	case diskConflict:
@@ -601,28 +608,22 @@ func fileVersionFromWire(version apperr.DiskVersion) file.DiskVersion {
 	return file.DiskVersion{Exists: version.Exists, Size: version.Size, ModifiedUnixNano: version.ModifiedUnixNano, Mode: fs.FileMode(version.Mode), FileIdentity: version.FileIdentity}
 }
 
-// The external-change path is the other surface T117 made subject-visible, so it
-// resolves the document's own label rather than relying on apperr's generic
-// fallback. FR-FT-021's prompt and its errors name the same file the tab does.
-func (service *AppModelService) classifiedConflictError(documentID string, category apperr.ClassifiedErrorCategory, message string, remediation apperr.ClassifiedRemediation) *apperr.ClassifiedError {
-	errorValue := apperr.NewClassifiedError(category, service.safeDocumentLabelLocked(documentID), message, remediation, documentID)
-	return &errorValue
-}
-
 func (service *AppModelService) conflictRefused(documentID string, category apperr.ClassifiedErrorCategory, message string, remediation apperr.ClassifiedRemediation) apperr.ConflictResult {
-	return apperr.ConflictResult{Status: apperr.ConflictStatusRefused, DocumentID: documentID, Error: service.classifiedConflictError(documentID, category, message, remediation)}
+	classified := bridge.ClassifiedWithID(category, service.safeDocumentLabelLocked(documentID), message, remediation, documentID)
+	result := bridge.FromClassified[apperr.ConflictResult](classified, apperr.ConflictStatusRefused)
+	result.DocumentID = documentID
+	return result
 }
 
 // The handler's panic-recovery form: it holds the service interface, and the panic
 // it is recovering from came from the code that owns the document map. See
-// refusedWriteLabelled in save.go for the same reasoning.
-func conflictRefusedLabelled(documentID string, category apperr.ClassifiedErrorCategory, message string, remediation apperr.ClassifiedRemediation) apperr.ConflictResult {
-	errorValue := apperr.NewClassifiedError(category, "document", message, remediation, documentID)
-	return apperr.ConflictResult{Status: apperr.ConflictStatusRefused, DocumentID: documentID, Error: &errorValue}
-}
-
+// the save path for the same reasoning.
 func (service *AppModelService) conflictResultUnstable(documentID string, revision uint64) apperr.ConflictResult {
-	return apperr.ConflictResult{Status: apperr.ConflictStatusUnstable, DocumentID: documentID, DocumentRevision: revision, Error: service.classifiedConflictError(documentID, apperr.ClassifiedConflict, "The file is changing; check again before saving.", apperr.RemediationRetry)}
+	classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.safeDocumentLabelLocked(documentID), "The file is changing; check again before saving.", apperr.RemediationRetry, documentID)
+	result := bridge.FromClassified[apperr.ConflictResult](classified, apperr.ConflictStatusUnstable)
+	result.DocumentID = documentID
+	result.DocumentRevision = revision
+	return result
 }
 
 func hashBytes(data []byte) string {
