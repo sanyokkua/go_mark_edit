@@ -53,8 +53,8 @@ preview and the authoritative buffer always agree — neither is ever fed on the
 
 ```ts
 const scheduleSync = useDebouncedCallback((tabId: string, markdown: string) => {
-    appModelAdapter.updateBuffer(tabId, markdown); // sync the authoritative model (DD-64)
-    dispatch(setPreviewSource(markdown));          // MarkdownView re-renders from the same snapshot
+  appModelAdapter.updateBuffer(tabId, markdown); // sync the authoritative model (DD-64)
+  dispatch(setPreviewSource(markdown)); // MarkdownView re-renders from the same snapshot
 }, DEBOUNCE_MS);
 ```
 
@@ -113,7 +113,7 @@ already finished is a **success no-op**, not an error: the caller raced the comp
 which won, and reporting that as a failure would make every well-behaved cancel look broken.
 
 **Exactly one terminal outcome.** The race between "cancel arrives" and "the work finishes" is resolved
-at one point in the code, not at each call site. A run cancelled mid-operation produces the *same*
+at one point in the code, not at each call site. A run cancelled mid-operation produces the _same_
 result shape, log record and event as one cancelled between steps. Two rules follow:
 
 - **Cancelled is a normal outcome, not an error.** It is reported as such (`20_NOTIFICATIONS_AND_EMPTY_STATES.md`).
@@ -137,7 +137,9 @@ runtime.EventsEmit(ctx, "export:done", ExportProgress{Phase: "done", Percent: 10
 
 ```ts
 // logic/adapter subscribes and dispatches into the store:
-runtime.EventsOn('export:progress', (p: ExportProgress) => store.dispatch(setExportProgress(p)));
+runtime.EventsOn('export:progress', (p: ExportProgress) =>
+  store.dispatch(setExportProgress(p)),
+);
 ```
 
 The adapter is the only place that subscribes to Wails events (`03_FRONTEND_REACT.md`

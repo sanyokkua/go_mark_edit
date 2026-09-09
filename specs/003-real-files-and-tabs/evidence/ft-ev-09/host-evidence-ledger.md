@@ -23,27 +23,27 @@ The three dispositions are deliberately unequal in what they claim:
 
 ## Demonstrated on a real binary
 
-| Behaviour | Artifact | Build named? | Stale-instance guard? |
-|---|---|---|---|
-| Opens and saves real files on disk | `walkthrough-2026-08-14-automated.md` + Addendum | no | no |
-| Preserves bytes across a save | `walkthrough-2026-08-14-automated.md` Addendum row 3; `sc-ft-002/boundaries-2026-08-15.md` row 1 | no | no |
-| Preserves file mode across a save | `host-walkthrough-2026-08-18/autosave-spot-check.md` | yes (`31c66762`) | yes |
-| Switches two real tabs, restoring per-tab state | `current-host-walkthrough.md` rows 8–9 | no | no |
-| Clean and dirty close | `current-host-walkthrough.md` rows 10, 12; `close-tab-click-2026-08-15.md` | no | no |
-| Resolves one external change | `host-walkthrough-2026-08-18/reload-from-disk-loses-external-change.md` | yes (`31c66762`) | yes |
-| Toggles autosave, and the toggle actually stops it | `walkthrough-2026-08-14-automated.md` + T110 correction | no | no |
-| 10 MiB boundary, both sides | `sc-ft-002/boundaries-2026-08-15.md` rows 1–2 | no | no |
-| 50 MiB boundary, both sides | `sc-ft-002/boundaries-2026-08-15.md` rows 3–4; `host-walkthrough-2026-08-15.md` | no | no |
-| 40-document limit and the 41st refusal | `host-walkthrough-2026-08-15.md`; `sc-ft-002/capacity-refusals-2026-08-15.md` | no | no |
-| Autosave coalescing and constancy | `host-walkthrough-2026-08-18/autosave-spot-check.md` | yes (`31c66762`) | yes |
-| Persisted default open mode applied by Open | `default-open-mode-2026-08-15.md` | no | no |
-| Menu and settings accelerators | `accelerators-2026-08-15.md`; `settings-accelerator-2026-08-15.md` | no | no |
-| Read-only reason surfacing | `readonly-reason-2026-08-15.md` | no | no |
-| Details disclosure | `details-disclosure-2026-08-15.md` | no | no |
-| Settings persist across restart; session does not | `coverage-ledger.md` Claim 2 | no | no |
+| Behaviour                                          | Artifact                                                                                         | Build named?     | Stale-instance guard? |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------- | --------------------- |
+| Opens and saves real files on disk                 | `walkthrough-2026-08-14-automated.md` + Addendum                                                 | no               | no                    |
+| Preserves bytes across a save                      | `walkthrough-2026-08-14-automated.md` Addendum row 3; `sc-ft-002/boundaries-2026-08-15.md` row 1 | no               | no                    |
+| Preserves file mode across a save                  | `host-walkthrough-2026-08-18/autosave-spot-check.md`                                             | yes (`31c66762`) | yes                   |
+| Switches two real tabs, restoring per-tab state    | `current-host-walkthrough.md` rows 8–9                                                           | no               | no                    |
+| Clean and dirty close                              | `current-host-walkthrough.md` rows 10, 12; `close-tab-click-2026-08-15.md`                       | no               | no                    |
+| Resolves one external change                       | `host-walkthrough-2026-08-18/reload-from-disk-loses-external-change.md`                          | yes (`31c66762`) | yes                   |
+| Toggles autosave, and the toggle actually stops it | `walkthrough-2026-08-14-automated.md` + T110 correction                                          | no               | no                    |
+| 10 MiB boundary, both sides                        | `sc-ft-002/boundaries-2026-08-15.md` rows 1–2                                                    | no               | no                    |
+| 50 MiB boundary, both sides                        | `sc-ft-002/boundaries-2026-08-15.md` rows 3–4; `host-walkthrough-2026-08-15.md`                  | no               | no                    |
+| 40-document limit and the 41st refusal             | `host-walkthrough-2026-08-15.md`; `sc-ft-002/capacity-refusals-2026-08-15.md`                    | no               | no                    |
+| Autosave coalescing and constancy                  | `host-walkthrough-2026-08-18/autosave-spot-check.md`                                             | yes (`31c66762`) | yes                   |
+| Persisted default open mode applied by Open        | `default-open-mode-2026-08-15.md`                                                                | no               | no                    |
+| Menu and settings accelerators                     | `accelerators-2026-08-15.md`; `settings-accelerator-2026-08-15.md`                               | no               | no                    |
+| Read-only reason surfacing                         | `readonly-reason-2026-08-15.md`                                                                  | no               | no                    |
+| Details disclosure                                 | `details-disclosure-2026-08-15.md`                                                               | no               | no                    |
+| Settings persist across restart; session does not  | `coverage-ledger.md` Claim 2                                                                     | no               | no                    |
 
 **The two right-hand columns are the point of this table.** Only the three 2026-08-18 artifacts
-name the commit they ran against *and* record the `ps -o lstart` check against the binary mtime.
+name the commit they ran against _and_ record the `ps -o lstart` check against the binary mtime.
 Everything above them was observed on a build nobody can now identify, and `open` raises an
 existing process, so a stale instance cannot be ruled out after the fact. That does not make those
 observations wrong — it makes them unrepeatable, which is a weaker thing than the tree's phrasing
@@ -53,19 +53,19 @@ has sometimes implied. Any future host walk should name its commit and record th
 
 Nothing to verify. Listed so absence is never read as an unfilled gap.
 
-| Behaviour | Where the deferral is recorded |
-|---|---|
-| Assistant surface | `spec.md` negative clause; asserted deferred in `offline-and-controls.test.ts:194` |
-| Workspace surface | `spec.md` negative clause; pinned only as sizing and absence |
-| Custom native frame | `spec.md` negative clause — **asserted nowhere**, filed as T189 |
-| Deferred rich-rendering widgets | `spec.md` negative clause — **asserted nowhere**, filed as T189 |
-| Settings row for default open mode | `default-open-mode-2026-08-15.md`; belongs to T155 |
-| `Format on save`, `Lint on save` | `actionRegistry.ts`, availability `laterDeferred` |
-| Monaco's interior, for pixel comparison | FR-FT-055 reviewed exclusion; `reference-adapter.ts` |
-| The overflow popup's interior, for pixel comparison | T173/T193 reviewed exclusion; key removed from `targeted-manifest.ts` |
+| Behaviour                                           | Where the deferral is recorded                                                     |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Assistant surface                                   | `spec.md` negative clause; asserted deferred in `offline-and-controls.test.ts:194` |
+| Workspace surface                                   | `spec.md` negative clause; pinned only as sizing and absence                       |
+| Custom native frame                                 | `spec.md` negative clause — **asserted nowhere**, filed as T189                    |
+| Deferred rich-rendering widgets                     | `spec.md` negative clause — **asserted nowhere**, filed as T189                    |
+| Settings row for default open mode                  | `default-open-mode-2026-08-15.md`; belongs to T155                                 |
+| `Format on save`, `Lint on save`                    | `actionRegistry.ts`, availability `laterDeferred`                                  |
+| Monaco's interior, for pixel comparison             | FR-FT-055 reviewed exclusion; `reference-adapter.ts`                               |
+| The overflow popup's interior, for pixel comparison | T173/T193 reviewed exclusion; key removed from `targeted-manifest.ts`              |
 
 The two entries marked **asserted nowhere** are the honest half of this table. They are deferred
-*and* unproven — the criterion's wording survives only as a prose comment at
+_and_ unproven — the criterion's wording survives only as a prose comment at
 `real-files-parity.test.ts:90-95`. T189 exists because naming them in a criterion as though they
 were covered is the false record Constitution II forbids.
 
@@ -73,22 +73,22 @@ were covered is the false record Constitution II forbids.
 
 Behaviours that ship with no observation on a real binary behind them.
 
-| # | Behaviour | Why it is still open | Owner |
-|---|---|---|---|
-| 1 | ~~Mapped webview chrome compared against the same-browser result~~ | **Closed 2026-08-19.** `host-walkthrough-2026-08-19/webview-vs-chromium/` — 90.08% identical at matched geometry, backgrounds bit-exact, residual partitioned three ways. The one native-host difference found is filed as T195 rather than passed. | done |
-| 2 | `File ▸ Close Tab` **by click** on the host | `accelerators-2026-08-15.md` §"One thing this walk could not confirm": fails twice on the host from a stable two-tab state with the click verified to land, while passing in Chromium against the mock and at unit level. The mock-divergence class this tree has been bitten by before. | filed separately |
-| 3 | Copy path reaching the system pasteboard, and Reveal *selecting* the file in Finder | T161 proved the ports non-nil and the bytes correct; the last hop — another application reading the pasteboard, and `open -R` selecting rather than merely revealing the folder — is observable only by a person. | T166 |
-| 4 | ~~SC-FT-007's autosave latency **magnitude**~~ | **Closed 2026-08-19.** `host-walkthrough-2026-08-19/autosave-latency-measured.md` — measured anchor-free by write coalescing: `d ≈ 0.97–1.01 s`, five times inside the 5,000 ms bound, same at 2 MiB. The earlier "unmeasurable" note ruled out one method too many. | done |
-| 5 | The zero-tolerance parity contract on `ubuntu-24.04` | The CI interface gate has never run — nothing is pushed and `gh` is absent. `Inter` and `JetBrains Mono` may resolve differently under Linux's fallback chain, and the two compared pages are different DOMs whose glyph rasterisation agrees only if both resolve the same font. | T180 |
+| #   | Behaviour                                                                           | Why it is still open                                                                                                                                                                                                                                                                     | Owner            |
+| --- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| 1   | ~~Mapped webview chrome compared against the same-browser result~~                  | **Closed 2026-08-19.** `host-walkthrough-2026-08-19/webview-vs-chromium/` — 90.08% identical at matched geometry, backgrounds bit-exact, residual partitioned three ways. The one native-host difference found is filed as T195 rather than passed.                                      | done             |
+| 2   | `File ▸ Close Tab` **by click** on the host                                         | `accelerators-2026-08-15.md` §"One thing this walk could not confirm": fails twice on the host from a stable two-tab state with the click verified to land, while passing in Chromium against the mock and at unit level. The mock-divergence class this tree has been bitten by before. | filed separately |
+| 3   | Copy path reaching the system pasteboard, and Reveal _selecting_ the file in Finder | T161 proved the ports non-nil and the bytes correct; the last hop — another application reading the pasteboard, and `open -R` selecting rather than merely revealing the folder — is observable only by a person.                                                                        | T166             |
+| 4   | ~~SC-FT-007's autosave latency **magnitude**~~                                      | **Closed 2026-08-19.** `host-walkthrough-2026-08-19/autosave-latency-measured.md` — measured anchor-free by write coalescing: `d ≈ 0.97–1.01 s`, five times inside the 5,000 ms bound, same at 2 MiB. The earlier "unmeasurable" note ruled out one method too many.                     | done             |
+| 5   | The zero-tolerance parity contract on `ubuntu-24.04`                                | The CI interface gate has never run — nothing is pushed and `gh` is absent. `Inter` and `JetBrains Mono` may resolve differently under Linux's fallback chain, and the two compared pages are different DOMs whose glyph rasterisation agrees only if both resolve the same font.        | T180             |
 
 ### Opened by those two walks
 
-| # | Behaviour | Why it is open | Owner |
-|---|---|---|---|
-| 6 | A document of exactly 2,097,152 bytes wedges the whole interface | `PREVIEW_BYTE_LIMIT` is inclusive, so the live preview renders the largest document it allows and the WebContent main thread saturates at 100% with no recovery; one byte more pauses the preview and the application is fine. The Go process stays idle at 0.2% throughout, which is why checking the binary hides it. | T194 |
-| 7 | ~~The divider paints 19 levels lighter in WKWebView than in Chromium~~ | **Closed 2026-08-19 — it was never a renderer difference.** Monaco's scrollbar slider showing through a transparent overview-ruler canvas, captured in different hover states: host pointer-over, browser mid-fade. Controlled on both sides the band falls from 28,000 px to 217 and the two engines reach 91.18% identical with **no native-host difference remaining**. Reclassified as capture non-determinism. | done |
+| #   | Behaviour                                                              | Why it is open                                                                                                                                                                                                                                                                                                                                                                                                      | Owner |
+| --- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| 6   | A document of exactly 2,097,152 bytes wedges the whole interface       | `PREVIEW_BYTE_LIMIT` is inclusive, so the live preview renders the largest document it allows and the WebContent main thread saturates at 100% with no recovery; one byte more pauses the preview and the application is fine. The Go process stays idle at 0.2% throughout, which is why checking the binary hides it.                                                                                             | T194  |
+| 7   | ~~The divider paints 19 levels lighter in WKWebView than in Chromium~~ | **Closed 2026-08-19 — it was never a renderer difference.** Monaco's scrollbar slider showing through a transparent overview-ruler canvas, captured in different hover states: host pointer-over, browser mid-fade. Controlled on both sides the band falls from 28,000 px to 217 and the two engines reach 91.18% identical with **no native-host difference remaining**. Reclassified as capture non-determinism. | done  |
 
-Row 7 closed the same day it was filed, and closing it *strengthened* the clause 11 result rather than weakening it: the residual halved and the one unexplained category disappeared.
+Row 7 closed the same day it was filed, and closing it _strengthened_ the clause 11 result rather than weakening it: the residual halved and the one unexplained category disappeared.
 
 **Both were found by walking the real binary, and neither was reachable from any suite.** That
 is the argument for host evidence stated as a result rather than as a principle: two defects in

@@ -39,6 +39,7 @@ release-notes-driven constant. The mechanics:
 
   The `-X` path uses the full module path (`gomarkedit/internal/settings.AppVersion`); see
   `01_BUILD_MATRIX.md#6-wails-build-flags`.
+
 - **The `wails.json` jq patch — and why it exists.** ldflags reach only the Go binary. The
   OS-level packaging metadata is generated from `wails.json` templates: the macOS `Info.plist` and
   the Windows version resource (`info.json`) both resolve a `{{.Info.ProductVersion}}` placeholder
@@ -51,6 +52,7 @@ release-notes-driven constant. The mechanics:
   Without this patch the binary would report the right version while Finder/Explorer file
   properties show a stale `dev` (EC-REL-6). On the Windows runner this step runs under
   `shell: bash` explicitly, so `jq`/`mv` behave identically on all three runners.
+
 - **Computed once, shared everywhere.** The version string is computed **once** in the
   `determine-version` job (§3) — from the pushed tag `v*.*.*` (leading `v` stripped) or the manual
   dispatch input — and every downstream job consumes the same job output. No job re-derives it.
@@ -77,7 +79,7 @@ derived from one processed master — **never hand-forked**.
   3. Export a **1024×1024 RGBA** PNG with the tile centered.
   4. **Assert** the output contract: 1024×1024, RGBA, and **alpha == 0 at all four corner pixels**
      (transparent corners). A violated assertion fails the run.
-  If `appicon-source.png` is missing, the script **fails fast** with a clear message (EC-REL-5).
+     If `appicon-source.png` is missing, the script **fails fast** with a clear message (EC-REL-5).
 - **Single derivation point.** The script's output is committed as **`build/appicon.png`**. This
   file — not the source artwork — is the one input every downstream icon derives from:
   - **macOS** — Wails derives `build/darwin/*.icns` at build time.
@@ -102,10 +104,10 @@ Per **DD-67**, one workflow file (`.github/workflows/release.yml`) implements th
 - **Tag push `v*.*.*`** — the automatic release path.
 - **`workflow_dispatch`** — manual, with inputs:
 
-  | Input | Type | Default | Meaning |
-  |---|---|---|---|
-  | `version` | string | — | The version to build, **without** the leading `v` (e.g. `1.2.0`). |
-  | `create_release` | boolean | `true` | `false` = **build-only mode**: run everything, upload artifacts, publish no release (EC-REL-2). |
+  | Input            | Type    | Default | Meaning                                                                                         |
+  | ---------------- | ------- | ------- | ----------------------------------------------------------------------------------------------- |
+  | `version`        | string  | —       | The version to build, **without** the leading `v` (e.g. `1.2.0`).                               |
+  | `create_release` | boolean | `true`  | `false` = **build-only mode**: run everything, upload artifacts, publish no release (EC-REL-2). |
 
 ### Job 1 — `determine-version`
 
@@ -119,12 +121,12 @@ pre-release flag in Job 4 (EC-REL-3).
 One native runner per artifact (rationale: `01_BUILD_MATRIX.md#5-why-each-os-builds-on-its-own-runner`;
 artifact naming: `01_BUILD_MATRIX.md#2-artifact-matrix`):
 
-| platform | runner | build tags | extra setup | artifact path uploaded |
-|---|---|---|---|---|
-| `linux/amd64` | `ubuntu-24.04` | `webkit2_41` | `apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev` | `build/bin/GoMarkEdit-linux-amd64` (+ `.deb`/`.rpm`) |
-| `windows/amd64` | `windows-latest` | — | — | `build/bin/GoMarkEdit-windows-amd64.exe` (+ NSIS installer) |
-| `darwin/arm64` | `macos-latest` | — | — | `build/bin/GoMarkEdit.app` (the **whole `.app` bundle**) |
-| `darwin/amd64` | `macos-13` | — | — | `build/bin/GoMarkEdit.app` (the **whole `.app` bundle**) |
+| platform        | runner           | build tags   | extra setup                                                             | artifact path uploaded                                      |
+| --------------- | ---------------- | ------------ | ----------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `linux/amd64`   | `ubuntu-24.04`   | `webkit2_41` | `apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev` | `build/bin/GoMarkEdit-linux-amd64` (+ `.deb`/`.rpm`)        |
+| `windows/amd64` | `windows-latest` | —            | —                                                                       | `build/bin/GoMarkEdit-windows-amd64.exe` (+ NSIS installer) |
+| `darwin/arm64`  | `macos-latest`   | —            | —                                                                       | `build/bin/GoMarkEdit.app` (the **whole `.app` bundle**)    |
+| `darwin/amd64`  | `macos-13`       | —            | —                                                                       | `build/bin/GoMarkEdit.app` (the **whole `.app` bundle**)    |
 
 Per-matrix-entry steps, in order:
 
@@ -189,6 +191,7 @@ A red `test` job blocks `create-release` — a tag push with a failing gate prod
 
    A release that has not been verified is not published. This costs one script and removes the entire
    class of "the release is up and it does not launch".
+
 6. Publish the GitHub Release via a release action with:
    - `tag` from `determine-version`;
    - **`prerelease: contains(version, '-')`** — auto-detected, no manual flag (EC-REL-3);
@@ -204,21 +207,31 @@ The structure (not the full file — the real YAML carries the complete step lis
 name: release
 on:
   push:
-    tags: ["v*.*.*"]
+    tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
-      version: { description: "Version without the leading v", required: true, type: string }
-      create_release: { description: "Publish a GitHub release", type: boolean, default: true }
+      version:
+        {
+          description: 'Version without the leading v',
+          required: true,
+          type: string,
+        }
+      create_release:
+        {
+          description: 'Publish a GitHub release',
+          type: boolean,
+          default: true,
+        }
 
 jobs:
   determine-version:
     runs-on: ubuntu-24.04
     outputs:
-      version: ${{ steps.v.outputs.version }}   # e.g. 1.2.0 / 1.2.0-rc.1
-      tag: ${{ steps.v.outputs.tag }}           # v1.2.0
+      version: ${{ steps.v.outputs.version }} # e.g. 1.2.0 / 1.2.0-rc.1
+      tag: ${{ steps.v.outputs.tag }} # v1.2.0
     steps:
       - id: v
-        run: |  # tag push → strip leading v; dispatch → take the input verbatim
+        run: | # tag push → strip leading v; dispatch → take the input verbatim
           ...
 
   build:
@@ -226,10 +239,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - { platform: linux/amd64,   os: ubuntu-24.04,   tags: webkit2_41 }
+          - { platform: linux/amd64, os: ubuntu-24.04, tags: webkit2_41 }
           - { platform: windows/amd64, os: windows-latest }
-          - { platform: darwin/arm64,  os: macos-latest }
-          - { platform: darwin/amd64,  os: macos-13 }
+          - { platform: darwin/arm64, os: macos-latest }
+          - { platform: darwin/amd64, os: macos-13 }
     runs-on: ${{ matrix.os }}
     steps:
       # checkout → setup-go (cache) → setup-node (npm cache: frontend/package-lock.json)

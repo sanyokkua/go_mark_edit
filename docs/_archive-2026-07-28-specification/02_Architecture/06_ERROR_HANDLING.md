@@ -27,17 +27,17 @@ editor's failure modes (files, folders, assets, export).
 `apperr.ErrorCode` is a string enum, exported to TypeScript via `EnumBind` (`04_WAILS_INTEGRATION.md`
 `#bind-enumbind`). The catalog covers GoMarkEdit's domain:
 
-| Code | Constant | When | Retryable |
-|---|---|---|---|
-| `validation` | `CodeValidation` | Bad argument / precondition (empty path, unsupported extension) | no |
-| `not_found` | `CodeNotFound` | File/folder/recent entry no longer exists | no |
-| `io` | `CodeIO` | Read/write failure (disk, encoding) | sometimes |
-| `permission` | `CodePermission` | OS denied read/write, or asset outside allowlist | no |
-| `busy` | `CodeBusy` | Long-ops gate held (export/format-all already running) | no |
-| `timeout` | `CodeTimeout` | A long op exceeded its budget | yes |
-| `cancelled` | `CodeCancelled` | User/shutdown cancelled an in-flight op | no |
-| `unsupported` | `CodeUnsupported` | Operation not available (e.g. export precondition unmet) | no |
-| `internal` | `CodeInternal` | Catch-all / panic fallback | yes |
+| Code          | Constant          | When                                                            | Retryable |
+| ------------- | ----------------- | --------------------------------------------------------------- | --------- |
+| `validation`  | `CodeValidation`  | Bad argument / precondition (empty path, unsupported extension) | no        |
+| `not_found`   | `CodeNotFound`    | File/folder/recent entry no longer exists                       | no        |
+| `io`          | `CodeIO`          | Read/write failure (disk, encoding)                             | sometimes |
+| `permission`  | `CodePermission`  | OS denied read/write, or asset outside allowlist                | no        |
+| `busy`        | `CodeBusy`        | Long-ops gate held (export/format-all already running)          | no        |
+| `timeout`     | `CodeTimeout`     | A long op exceeded its budget                                   | yes       |
+| `cancelled`   | `CodeCancelled`   | User/shutdown cancelled an in-flight op                         | no        |
+| `unsupported` | `CodeUnsupported` | Operation not available (e.g. export precondition unmet)        | no        |
+| `internal`    | `CodeInternal`    | Catch-all / panic fallback                                      | yes       |
 
 Constructors: `apperr.Validation(field, expected, got)`, `apperr.NotFound(path)`,
 `apperr.IO(op, cause)`, `apperr.Permission(path)`, `apperr.Busy()`, `apperr.Cancelled(...)`,
@@ -52,18 +52,18 @@ These codes are part of the one `apperr.ErrorCode` enum and are exposed to TypeS
 existing meaning (the gate held → `busy`; deadline → `timeout`; etc.); the assistant-specific additions
 are:
 
-| Code | Constant | When | Retryable |
-|---|---|---|---|
-| `provider_unreachable` | `CodeProviderUnreachable` | Transport failure reaching the endpoint (connection refused / DNS / reset) | yes |
-| `auth` | `CodeAuth` | Endpoint returned 401/403 — credential rejected | no |
-| `missing_credential` | `CodeMissingCredential` | Configured env-var name is unset in the process environment (secret never sent) | no |
-| `model_not_found` | `CodeModelNotFound` | 404 — configured model or endpoint path not found | no |
-| `context_window` | `CodeContextWindow` | Prompt overflowed the model's context window (400 at inference, or the reactive backstop) | no |
-| `rate_limited` | `CodeRateLimited` | 429 — provider throttling; retry backoff honors `Retry-After` | yes |
-| `upstream` | `CodeUpstream` | Other non-2xx upstream failure not otherwise classified | sometimes |
-| `empty_completion` | `CodeEmptyCompletion` | 2xx but the model returned no usable text | yes |
-| `tool_failed` | `CodeToolFailed` | An agent tool call had invalid arguments or failed to execute | no |
-| `agent_limit` | `CodeAgentLimit` | The tool loop hit its iteration or wall-clock limit without converging | no |
+| Code                   | Constant                  | When                                                                                      | Retryable |
+| ---------------------- | ------------------------- | ----------------------------------------------------------------------------------------- | --------- |
+| `provider_unreachable` | `CodeProviderUnreachable` | Transport failure reaching the endpoint (connection refused / DNS / reset)                | yes       |
+| `auth`                 | `CodeAuth`                | Endpoint returned 401/403 — credential rejected                                           | no        |
+| `missing_credential`   | `CodeMissingCredential`   | Configured env-var name is unset in the process environment (secret never sent)           | no        |
+| `model_not_found`      | `CodeModelNotFound`       | 404 — configured model or endpoint path not found                                         | no        |
+| `context_window`       | `CodeContextWindow`       | Prompt overflowed the model's context window (400 at inference, or the reactive backstop) | no        |
+| `rate_limited`         | `CodeRateLimited`         | 429 — provider throttling; retry backoff honors `Retry-After`                             | yes       |
+| `upstream`             | `CodeUpstream`            | Other non-2xx upstream failure not otherwise classified                                   | sometimes |
+| `empty_completion`     | `CodeEmptyCompletion`     | 2xx but the model returned no usable text                                                 | yes       |
+| `tool_failed`          | `CodeToolFailed`          | An agent tool call had invalid arguments or failed to execute                             | no        |
+| `agent_limit`          | `CodeAgentLimit`          | The tool loop hit its iteration or wall-clock limit without converging                    | no        |
 
 The provider **service** owns the mapping from transport/HTTP status to these codes and retries only the
 retryable classes with backoff (DD-48); see `02_Architecture/08_LLM_INTEGRATION.md`
@@ -135,9 +135,20 @@ always branch on a stable shape:
 
 ```ts
 export function parseError(e: unknown): WireError {
-    if (isWireError(e)) return e;                 // already an envelope error (thrown by unwrap)
-    if (e instanceof Error) return { code: 'internal', title: 'Something went wrong', message: e.message, retryable: true };
-    return { code: 'internal', title: 'Something went wrong', message: String(e), retryable: true };
+  if (isWireError(e)) return e; // already an envelope error (thrown by unwrap)
+  if (e instanceof Error)
+    return {
+      code: 'internal',
+      title: 'Something went wrong',
+      message: e.message,
+      retryable: true,
+    };
+  return {
+    code: 'internal',
+    title: 'Something went wrong',
+    message: String(e),
+    retryable: true,
+  };
 }
 ```
 
@@ -150,11 +161,11 @@ The adapter's `unwrap()` is the single choke point that turns an envelope error 
 
 ```ts
 export function unwrap<T>(res: { data?: T; error?: WireError }): T {
-    if (res.error) {
-        store.dispatch(notifyError(res.error)); // → notifications slice → Toast primitive
-        throw res.error;
-    }
-    return res.data as T;
+  if (res.error) {
+    store.dispatch(notifyError(res.error)); // → notifications slice → Toast primitive
+    throw res.error;
+  }
+  return res.data as T;
 }
 ```
 
@@ -179,18 +190,18 @@ deleted it as dead code — leaving no panic protection on any background gorout
 
 ## Startup failure has five causes and needs five messages
 
-The whole of startup currently resolves to one dialog: *"GoMarkEdit could not initialize its local
-settings. Please try again."* Five different problems produce it, and only one of them is helped by
+The whole of startup currently resolves to one dialog: _"GoMarkEdit could not initialize its local
+settings. Please try again."_ Five different problems produce it, and only one of them is helped by
 trying again.
 
-| Cause | Fatal? | What the user is told |
-|---|---|---|
-| The configuration folder cannot be resolved | fatal | Names the path it tried. There is nothing the app can do, but the user can. |
-| The database cannot be opened | fatal | The generic message is appropriate here. |
-| A migration fails | fatal | Distinct wording: **the data is intact and the application is wrong.** "Try again" is actively misleading; the next launch fails identically. |
-| The database was written by a **newer** build | fatal | *"…was created by a newer version of GoMarkEdit."* The app must **not** replace or downgrade it. |
-| A corrupt database was recovered | **not fatal** | The app opens with defaults and says so: preferences were reset, and where the old file was preserved. Recovering silently means the user's settings vanish with no explanation. |
-| The **log directory** cannot be created | **not fatal** | Nothing. Logging degrades to console-only and the editor opens. A read-only or full configuration folder currently prevents a Markdown editor from opening at all, which trades the product for a diagnostic. |
+| Cause                                         | Fatal?        | What the user is told                                                                                                                                                                                         |
+| --------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The configuration folder cannot be resolved   | fatal         | Names the path it tried. There is nothing the app can do, but the user can.                                                                                                                                   |
+| The database cannot be opened                 | fatal         | The generic message is appropriate here.                                                                                                                                                                      |
+| A migration fails                             | fatal         | Distinct wording: **the data is intact and the application is wrong.** "Try again" is actively misleading; the next launch fails identically.                                                                 |
+| The database was written by a **newer** build | fatal         | _"…was created by a newer version of GoMarkEdit."_ The app must **not** replace or downgrade it.                                                                                                              |
+| A corrupt database was recovered              | **not fatal** | The app opens with defaults and says so: preferences were reset, and where the old file was preserved. Recovering silently means the user's settings vanish with no explanation.                              |
+| The **log directory** cannot be created       | **not fatal** | Nothing. Logging degrades to console-only and the editor opens. A read-only or full configuration folder currently prevents a Markdown editor from opening at all, which trades the product for a diagnostic. |
 
 **Every step of two-phase `Init` declares whether its failure is fatal or degraded**, and a degraded
 step names what is degraded. A step that warns and returns early — leaving the application running on a

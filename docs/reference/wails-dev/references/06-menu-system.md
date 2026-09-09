@@ -53,6 +53,7 @@ item.SetLabel(string)              // update label in place
 ```
 
 Callback signature:
+
 ```go
 type Callback func(data *menu.CallbackData)
 

@@ -21,11 +21,11 @@ Two independent gaps let three defects through:
 
 The three defects map onto those gaps exactly:
 
-| Defect | Gap |
-|---|---|
-| Arrangement segment in the wrong place | toolbar never compared |
-| Settings does not light up under the pointer | hover never observed |
-| View does not light up under the pointer | hover never observed |
+| Defect                                       | Gap                    |
+| -------------------------------------------- | ---------------------- |
+| Arrangement segment in the wrong place       | toolbar never compared |
+| Settings does not light up under the pointer | hover never observed   |
+| View does not light up under the pointer     | hover never observed   |
 
 ## What was added
 
@@ -33,13 +33,13 @@ The three defects map onto those gaps exactly:
 
 Ten cases, all driving the real controls:
 
-| Case | Asserts |
-|---|---|
+| Case                                                                                | Asserts                                                                                                                                                       |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `T076 the {File,Settings,View,About} menu trigger lights up under the pointer` (×4) | the trigger's computed `background-color` **changes** on hover, is not transparent when hovered, and **returns** to its resting value when the pointer leaves |
-| `T076 the {…} menu trigger shows a visible focus ring` (×4) | `outline-style`/`outline-width`/`box-shadow` change on focus, and the focused state is not `none\|0px\|none` |
-| `T076 an open menu trigger is drawn as open` | each trigger reports `data-state="open"`, its background differs from resting and is not transparent, and Escape returns it to `closed` |
-| `T076 holds the arrangement segment at the toolbar trailing edge` | the segment's right edge meets the toolbar's content edge, and **no** toolbar child starts after it |
-| `T076 keeps every arrangement option reachable and exactly one checked` | three radios, exactly one `aria-checked`, and each responds to the pointer |
+| `T076 the {…} menu trigger shows a visible focus ring` (×4)                         | `outline-style`/`outline-width`/`box-shadow` change on focus, and the focused state is not `none\|0px\|none`                                                  |
+| `T076 an open menu trigger is drawn as open`                                        | each trigger reports `data-state="open"`, its background differs from resting and is not transparent, and Escape returns it to `closed`                       |
+| `T076 holds the arrangement segment at the toolbar trailing edge`                   | the segment's right edge meets the toolbar's content edge, and **no** toolbar child starts after it                                                           |
+| `T076 keeps every arrangement option reachable and exactly one checked`             | three radios, exactly one `aria-checked`, and each responds to the pointer                                                                                    |
 
 **These assert change, not colour.** A hovered trigger must differ from its
 resting value and revert afterwards; the exact value is left to the tokens, so a
@@ -81,6 +81,6 @@ was rejected: it would multiply an already 30-minute, 1,638-comparison contract
 by the number of states, and pixel-comparing a hover state against a static
 mockup that has no hover rendering would produce residuals no production edit
 could close — the same trap recorded in
-[the parity-contract sizing lesson]. Asserting *behaviour* (it changes, it
+[the parity-contract sizing lesson]. Asserting _behaviour_ (it changes, it
 reverts, it is not transparent) is cheap, fast, deterministic, and is what the
 defects actually violated.

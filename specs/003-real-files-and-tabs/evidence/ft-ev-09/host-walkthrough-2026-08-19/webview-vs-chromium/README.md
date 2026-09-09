@@ -8,25 +8,25 @@
 > **91.18% identical**, the residual falls to **1.09%**, and the band collapses from 28,000
 > pixels to **217**. No native-host difference remains. The tables below are left as measured
 > so the correction is legible against them.
-**Build:** `just build` at `bcf0b548`, binary mtime `09:00:31`; the instance under test was
-launched after that, with no GoMarkEdit process alive beforehand.
+> **Build:** `just build` at `bcf0b548`, binary mtime `09:00:31`; the instance under test was
+> launched after that, with no GoMarkEdit process alive beforehand.
 
 ## Why this comparison exists
 
 The parity contract is proven **in Chromium**. Users see a **macOS WKWebView**. Nothing in
 the tree had ever checked that those two render the same thing, so the parity guarantee
 stopped at the browser and no artifact said how far it carried. `host-screenshots/README.md`
-is explicit that its captures "are *not* parity references… and no comparator reads them".
+is explicit that its captures "are _not_ parity references… and no comparator reads them".
 This is the first measured comparison.
 
 ## Method
 
-| | Host | Browser |
-|---|---|---|
-| Surface | packaged `GoMarkEdit.app`, WKWebView | Chromium via Playwright |
-| Capture | `screencapture -x -R 352,105,840,760` | `page.screenshot`, `deviceScaleFactor: 2` |
-| Geometry | 840×760 pt window, native title bar cropped (64 device px, a sharp transition from mean luminance 253.9 to 15.5) | viewport 840×728 pt |
-| Result | 1680×1456 px | 1680×1456 px |
+|          | Host                                                                                                             | Browser                                   |
+| -------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Surface  | packaged `GoMarkEdit.app`, WKWebView                                                                             | Chromium via Playwright                   |
+| Capture  | `screencapture -x -R 352,105,840,760`                                                                            | `page.screenshot`, `deviceScaleFactor: 2` |
+| Geometry | 840×760 pt window, native title bar cropped (64 device px, a sharp transition from mean luminance 253.9 to 15.5) | viewport 840×728 pt                       |
+| Result   | 1680×1456 px                                                                                                     | 1680×1456 px                              |
 
 Both sides therefore describe the same 840×728 pt webview area at 2× and are compared
 pixel-for-pixel with no scaling.
@@ -51,11 +51,11 @@ A comparison of two surfaces in different states measures the states.
 
 ## Result, with both states equalised
 
-| | pixels | share |
-|---|---|---|
-| identical | 2,203,491 | **90.08%** |
-| within ±16 | 188,234 | 7.70% |
-| differing > 16 | 54,355 | **2.22%** |
+|                | pixels    | share      |
+| -------------- | --------- | ---------- |
+| identical      | 2,203,491 | **90.08%** |
+| within ±16     | 188,234   | 7.70%      |
+| differing > 16 | 54,355    | **2.22%**  |
 
 Flat background patches are **exactly equal** — left gutter `25,25,25` both sides, preview
 background `20,20,22` both sides. That is the negative result that kills the colour-profile
@@ -67,11 +67,11 @@ would be the first place it showed, and they agree bit-for-bit.
 `coverage-ledger.md` Claim 3's four-way taxonomy, applied. The 54,355 differing pixels
 partition cleanly, which is itself evidence that they are understood rather than assumed.
 
-| Cause | pixels | Taxonomy |
-|---|---|---|
-| Divider / scrollbar band, `x` 1067–1093 | 28,000 | **native-host difference** |
-| Outer frame edges (`x < 4`, `x ≥ W−6`, `y < 4`, bottom row) | 11,042 | capture boundary |
-| Glyph edges throughout | 15,313 | composited-layer artefact |
+| Cause                                                       | pixels | Taxonomy                   |
+| ----------------------------------------------------------- | ------ | -------------------------- |
+| Divider / scrollbar band, `x` 1067–1093                     | 28,000 | **native-host difference** |
+| Outer frame edges (`x < 4`, `x ≥ W−6`, `y < 4`, bottom row) | 11,042 | capture boundary           |
+| Glyph edges throughout                                      | 15,313 | composited-layer artefact  |
 
 **1. The one real renderer difference (28,000 px, 51% of the residual).** A vertical band
 27 device px wide spans 1,036 rows. It is at **identical geometry on both sides** — the

@@ -96,18 +96,21 @@ Chosen: **C**.
 ## Pros and cons of the options
 
 ### Option A — hand-write six themes
+
 - Good: no tooling; complete control over every value.
 - Bad: six files of literal colours in an application whose first design decision is that no component
   hard-codes a colour. They drift from the table the first time someone tunes one in isolation.
 
 ### Option B — read tokens at runtime, redefine on change
+
 - Good: one source of truth, no build step, and it genuinely works.
 - Bad: `getComputedStyle` on every theme change, on the main thread, at the exact moment the user is
   watching for a smooth transition; and it needs a resolved DOM before the editor can be themed at all,
   which conflicts with painting the first frame already correct. It also cannot catch a missing token at
   build time — a typo yields an undefined value and a black-on-black editor.
 
-### Option C — generate at build time *(chosen)*
+### Option C — generate at build time _(chosen)_
+
 - Good: one source, zero runtime cost, and a missing or misnamed token fails the build.
 - Bad: a build step and committed generated output.
 
@@ -115,8 +118,8 @@ Chosen: **C**.
 
 - Design decisions: DD-28, DD-29, DD-30, DD-69
 - Spec clauses: ../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#the-two-syntax-palettes`,
-  `#editor-theme`, `#diagrams-and-maths`,
-  ../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#theme`,
+`#editor-theme`, `#diagrams-and-maths`,
+../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#theme`,
   ../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md`
 - Related: ADR-0005 (token theming — this ADR supplies the mechanism its editor half was missing)
 - Phase: `specification/07_Phases/PHASE_02_EVERY_THEME_LOOKS_RIGHT.md` (steps 2 and 3)

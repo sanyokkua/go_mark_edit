@@ -89,17 +89,20 @@ Chosen: **C** — with the explicit consequence that "level" stops being a user-
 ## Pros and cons of the options
 
 ### Option A — never allow raw HTML
+
 - Good: the simplest possible story, no sanitizer, no schema, nothing to maintain.
 - Bad: real Markdown in the wild contains `<details>`, `<br>`, `<sub>`, alignment `<div>`s and embedded
   tables. Rendering all of it as literal text makes the app wrong on documents people already have.
 
 ### Option B — an independent security-level control
+
 - Good: orthogonal; a user could have Full Markdown with locked-down HTML.
 - Bad: a second control, in a settings group that has no home for it, whose failure mode is a user
   wondering why their document renders differently on two machines. The combinations are mostly
   meaningless.
 
-### Option C — derived from the Markdown standard *(chosen)*
+### Option C — derived from the Markdown standard _(chosen)_
+
 - Good: one control, safe default, and the expensive machinery only where it was asked for.
 - Bad: couples two concerns that are theoretically separate.
 
@@ -107,10 +110,10 @@ Chosen: **C** — with the explicit consequence that "level" stops being a user-
 
 - Design decisions: DD-14, DD-19 (standard → plugin set), DD-21, DD-22 (remote content policy)
 - Spec clauses: ../../_archive-2026-07-28-specification/01_Product/19_SANITIZATION_AND_CSP.md` (new, owns the detail),
-  ../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization`,
+../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization`,
   ../../_archive-2026-07-28-specification/01_Product/04_MARKDOWN_STANDARDS.md`,
-  ../../_archive-2026-07-28-specification/01_Product/09_ASSETS_AND_SECURITY.md`,
+../../_archive-2026-07-28-specification/01_Product/09_ASSETS_AND_SECURITY.md`,
   ../../_archive-2026-07-28-specification/03_NonFunctional/03_SECURITY_AND_PRIVACY.md`,
-  ../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md`
+../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md`
 - Phase: `specification/07_Phases/PHASE_06_RICH_AND_SAFE.md` — this closes its blocking question.
 - Stories: the Phase 06 stories, not yet written.

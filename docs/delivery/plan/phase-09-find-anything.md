@@ -25,7 +25,7 @@ same keyboard navigation and the same "no matches" state get built three times, 
 different from the first.
 
 The fourth, find and replace, is Monaco's own widget. It belongs here because it is the same job from
-the user's side, and because the work is *exposing* the widget rather than building one.
+the user's side, and because the work is _exposing_ the widget rather than building one.
 
 The outline also produces something nothing else does: a map from each heading to the source line it
 came from. That map is what makes scroll sync cheap. Built anywhere else it would be a second parse of

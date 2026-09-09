@@ -14,14 +14,14 @@ The 42 pixels lay entirely inside the tab-strip add control, on the antialiased
 arcs of its four 7px rounded corners, at a maximum channel delta of **2/255**.
 Every compared property was already identical on both pages, measured directly:
 
-| Property | Reference `.tab-add` | Production `[data-tab-new]` |
-|---|---|---|
-| bounds | `555.766, 279.500  28x28` | `555.766, 185.500  28x28` |
-| border | `1px solid rgb(228,228,231)` | `1px solid rgb(228,228,231)` |
-| background / colour | `rgb(251,251,250)` / `rgb(31,35,40)` | identical |
-| border-radius, box-sizing | `7px`, `border-box` | identical |
-| font | `15px Arial`, weight 400 | identical |
-| text-align, line-height | `center`, `normal` | identical |
+| Property                  | Reference `.tab-add`                 | Production `[data-tab-new]`  |
+| ------------------------- | ------------------------------------ | ---------------------------- |
+| bounds                    | `555.766, 279.500  28x28`            | `555.766, 185.500  28x28`    |
+| border                    | `1px solid rgb(228,228,231)`         | `1px solid rgb(228,228,231)` |
+| background / colour       | `rgb(251,251,250)` / `rgb(31,35,40)` | identical                    |
+| border-radius, box-sizing | `7px`, `border-box`                  | identical                    |
+| font                      | `15px Arial`, weight 400             | identical                    |
+| text-align, line-height   | `center`, `normal`                   | identical                    |
 
 Both boxes share the same sub-pixel phase (`x` fractional `.766`, `y` fractional
 `.5`), so the raster grid alignment is the same on both pages.
@@ -34,10 +34,10 @@ partial-raster paths quantise an antialiased arc one step differently.
 
 The direction of causality is what proves this is not production drift:
 
-| Page | Distinct rasters over 12 identical runs |
-|---|---|
-| Production | **1** — byte-identical every run |
-| Immutable reference | **2** — split 8 / 4 |
+| Page                | Distinct rasters over 12 identical runs |
+| ------------------- | --------------------------------------- |
+| Production          | **1** — byte-identical every run        |
+| Immutable reference | **2** — split 8 / 4                     |
 
 One of the reference's two rasters was byte-identical to production's single
 raster. A production defect cannot make the reference page nondeterministic.
@@ -65,7 +65,7 @@ suppress real drift is shown by T058 glass-light (6,187) and T059 (181) being
 unchanged by it.
 
 `frontend/e2e/targeted-parity.test.ts`, `frontend/e2e/real-files-parity.test.ts`
-— freeze parity pixels *before* driving the reference harness switches instead
+— freeze parity pixels _before_ driving the reference harness switches instead
 of after. The binding animates `.sidebar` and `.assistant` width over
 `--dur-slow` (300ms, `mockup.html:254` and `:337`), so a width or screen click
 started a transition that the later freeze could only snap mid-flight. This is
@@ -74,22 +74,22 @@ the split on its own.
 
 ## Measured effect — every targeted slice, re-run after the change
 
-| Slice | Before | After |
-|---|---|---|
-| T058 closed menubar, minimal-light | passed | **passed** |
-| T058 closed menubar, minimal-dark | not reached | **passed** |
-| T058 closed menubar, material-light | not reached | **passed** |
-| T058 closed menubar, material-dark | not reached | **passed** |
-| T058 closed menubar, glass-light | 6,187 | 6,187 |
-| T058 closed menubar, glass-dark | not reached | 6,380 |
-| T059 File popup | 181 | 181 |
-| T060 Settings popup | 823 | **709** |
-| T060 Settings overflow, 375px | not reached | 205 |
-| T061 View popup | `bounds.bottom: 455 != 457` | unchanged |
-| T061 About popup | not reached | 1,489 |
-| T062 tabs and toolbar | 42 | **passed** |
-| T063 editor-status states | — | passed |
-| T064 paused preview | 41 | **passed** |
+| Slice                               | Before                      | After      |
+| ----------------------------------- | --------------------------- | ---------- |
+| T058 closed menubar, minimal-light  | passed                      | **passed** |
+| T058 closed menubar, minimal-dark   | not reached                 | **passed** |
+| T058 closed menubar, material-light | not reached                 | **passed** |
+| T058 closed menubar, material-dark  | not reached                 | **passed** |
+| T058 closed menubar, glass-light    | 6,187                       | 6,187      |
+| T058 closed menubar, glass-dark     | not reached                 | 6,380      |
+| T059 File popup                     | 181                         | 181        |
+| T060 Settings popup                 | 823                         | **709**    |
+| T060 Settings overflow, 375px       | not reached                 | 205        |
+| T061 View popup                     | `bounds.bottom: 455 != 457` | unchanged  |
+| T061 About popup                    | not reached                 | 1,489      |
+| T062 tabs and toolbar               | 42                          | **passed** |
+| T063 editor-status states           | —                           | passed     |
+| T064 paused preview                 | 41                          | **passed** |
 
 The slices previously marked "not reached" were never measured: the file is
 `test.describe.configure({ mode: 'serial' })`, so one failure skips the rest.

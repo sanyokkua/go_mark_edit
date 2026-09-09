@@ -15,14 +15,14 @@ All four come from `spec.md` Session 2026-08-09 (`spec.md:158-177`). They are la
 through CL-18 in requirement text but the session itself does not number them, which is why they
 have been cited scattered across four `ft-vs-08` files and never in one place until now.
 
-| ID | The approved decision |
-| --- | --- |
-| **CL-15** | Achieve binding-mockup parity by **changing production UI**, not by normalizing the harness. Do not edit the mockup, replace the reference, widen masks, increase tolerance, or normalize away genuine production layout drift. |
+| ID        | The approved decision                                                                                                                                                                                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CL-15** | Achieve binding-mockup parity by **changing production UI**, not by normalizing the harness. Do not edit the mockup, replace the reference, widen masks, increase tolerance, or normalize away genuine production layout drift.                                              |
 | **CL-16** | Render document identity in the top in-app menu row and remove the separate vertical identity row; keep the divider resizable but **overlaid so it consumes no layout width**; render the 28 px status bar below the editor content, outside the main document content area. |
-| **CL-17** | Match the **empty workspace frame only**. No populated folder tree, no workspace enumeration. Keep the Assistant surface **zero-width** and defer all Assistant and provider behaviour. |
-| **CL-18** | **Do not change ordinary startup** to support parity. Preserve normal startup behaviour unchanged and seed the populated multi-document fixture **only on the deterministic parity route**. |
+| **CL-17** | Match the **empty workspace frame only**. No populated folder tree, no workspace enumeration. Keep the Assistant surface **zero-width** and defer all Assistant and provider behaviour.                                                                                      |
+| **CL-18** | **Do not change ordinary startup** to support parity. Preserve normal startup behaviour unchanged and seed the populated multi-document fixture **only on the deterministic parity route**.                                                                                  |
 
-A fifth question in the same session resolves the T045 editor-region metric *against* CL-17: the
+A fifth question in the same session resolves the T045 editor-region metric _against_ CL-17: the
 zero-Assistant contract is preserved and the reference mapping revised to an explicit
 zero-Assistant adapter region. It is a consequence of CL-17, not a fifth decision.
 
@@ -54,7 +54,7 @@ while marked `laterDeferred`.
 
 **Proved structurally, which is stronger than a screenshot.**
 
-The populated fixture is not conditionally *styled* on the parity route; it is not *constructed*
+The populated fixture is not conditionally _styled_ on the parity route; it is not _constructed_
 off it. `frontend/src/dev/bridge-mock/go/appmodel/AppModelHandler.ts:336-341`:
 
 ```ts
@@ -69,9 +69,9 @@ function parityFixtureEnabled(): boolean {
 and the document set derived from it (`:355-362`):
 
 ```ts
-  return parityFixtureEnabled()
-    ? [parityReleaseDocumentId, paritySpecDocumentId]
-    : [initialDocumentId];
+return parityFixtureEnabled()
+  ? [parityReleaseDocumentId, paritySpecDocumentId]
+  : [initialDocumentId];
 ```
 
 Without a `parity-case` query parameter the window opens with exactly one untitled document —
@@ -83,7 +83,7 @@ FT-VS-07 recent seed` (`frontend/e2e/real-files-and-tabs.test.ts:294`) navigates
 `/?ft-vs-07&parity-case=primary:empty:1280:glass-light` — both flags at once — and proves the
 parity route wins. It passes in the 2026-08-15 run.
 
-**One boundary of this claim, stated plainly**: all of the above is the *mock* bridge, which serves
+**One boundary of this claim, stated plainly**: all of the above is the _mock_ bridge, which serves
 `just dev-ui` and every Playwright run. It is the surface where a parity fixture could leak into
 ordinary startup, so it is the right place to prove CL-18. It is not evidence about the packaged
 binary's startup, which is walked separately (see "What this ledger does not cover").
@@ -95,12 +95,12 @@ binary's startup, which is walked separately (see "What this ledger does not cov
 `evidence/ft-vs-08/phase-18/residual-attribution.md` attributes residual pixels per key. Two
 findings from it and its successors define the split this claim requires:
 
-| Class | What it is | Evidence |
-| --- | --- | --- |
-| **Same-browser production drift** | A real difference between production and the binding, reproducible in one browser across runs. This is the only class CL-15 permits fixing in production. | The `appearance-glass-light` 31,440-pixel difference (Settings dialog vs Settings popup) — deterministic across runs, diagnosed, and resolved by the Phase 19 rescope. |
-| **Capture non-determinism** | Not drift at all. 155 of 217 attributed pixels were capture noise, and 31% of production parity captures were non-deterministic before `a0283a3d` made capture wait for the region to settle. | `b5f4b361`, `2cbf95fa`, `384a2b00` |
-| **Composited-layer artefact** | A pixel difference with no style or bounds difference. Making an element a scroll container costs ~332 deterministic pixels confined to glyphs, because Chromium drops LCD subpixel antialiasing on composited scrollable areas. | Recorded in `AGENTS.md`; the reason `.application-frame`, not `window.innerHeight`, is the clamping reference. |
-| **Native-host difference** | Anything only observable in the packaged Wails webview. | Walked in `current-host-walkthrough.md`, `native-binary-walkthrough-2026-08-11.md`, `walkthrough-2026-08-14-automated.md`, `sc-ft-002/boundaries-2026-08-15.md` |
+| Class                             | What it is                                                                                                                                                                                                                       | Evidence                                                                                                                                                               |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Same-browser production drift** | A real difference between production and the binding, reproducible in one browser across runs. This is the only class CL-15 permits fixing in production.                                                                        | The `appearance-glass-light` 31,440-pixel difference (Settings dialog vs Settings popup) — deterministic across runs, diagnosed, and resolved by the Phase 19 rescope. |
+| **Capture non-determinism**       | Not drift at all. 155 of 217 attributed pixels were capture noise, and 31% of production parity captures were non-deterministic before `a0283a3d` made capture wait for the region to settle.                                    | `b5f4b361`, `2cbf95fa`, `384a2b00`                                                                                                                                     |
+| **Composited-layer artefact**     | A pixel difference with no style or bounds difference. Making an element a scroll container costs ~332 deterministic pixels confined to glyphs, because Chromium drops LCD subpixel antialiasing on composited scrollable areas. | Recorded in `AGENTS.md`; the reason `.application-frame`, not `window.innerHeight`, is the clamping reference.                                                         |
+| **Native-host difference**        | Anything only observable in the packaged Wails webview.                                                                                                                                                                          | Walked in `current-host-walkthrough.md`, `native-binary-walkthrough-2026-08-11.md`, `walkthrough-2026-08-14-automated.md`, `sc-ft-002/boundaries-2026-08-15.md`        |
 
 The reason this split matters is CL-15: only the first class may be fixed by changing production.
 Treating capture noise or a layerisation artefact as drift would mean changing production UI to
@@ -110,14 +110,14 @@ chase a difference that does not exist — which is the failure mode CL-15's sec
 
 Reconciled against the current task state rather than the state when T044 was written:
 
-| Obligation | Status |
-| --- | --- |
-| CL-15 production-side parity, no harness normalization | Held. The mockup, masks, tolerance, coordinate handling and comparator are unchanged; the rescope withdrew a *contract*, not a measurement. `parity/README.md` marks the withdrawn reports. |
-| CL-16 identity row, overlay divider, 28 px status bar | Held; measured in `phase-17/t045-editor-region-geometry.md` and the targeted parity keys. |
-| CL-17 empty workspace, zero-width Assistant | Held — Claim 1. |
-| CL-18 unchanged normal startup | Held — Claim 2. |
-| Deferred-surface boundary | Held — `offline-and-controls.test.ts:194`, passing. |
-| Stale aggregate counts | **Three found.** Two corrected 2026-08-15; the replacement figure was itself superseded 2026-08-16. See below. |
+| Obligation                                             | Status                                                                                                                                                                                      |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CL-15 production-side parity, no harness normalization | Held. The mockup, masks, tolerance, coordinate handling and comparator are unchanged; the rescope withdrew a _contract_, not a measurement. `parity/README.md` marks the withdrawn reports. |
+| CL-16 identity row, overlay divider, 28 px status bar  | Held; measured in `phase-17/t045-editor-region-geometry.md` and the targeted parity keys.                                                                                                   |
+| CL-17 empty workspace, zero-width Assistant            | Held — Claim 1.                                                                                                                                                                             |
+| CL-18 unchanged normal startup                         | Held — Claim 2.                                                                                                                                                                             |
+| Deferred-surface boundary                              | Held — `offline-and-controls.test.ts:194`, passing.                                                                                                                                         |
+| Stale aggregate counts                                 | **Three found.** Two corrected 2026-08-15; the replacement figure was itself superseded 2026-08-16. See below.                                                                              |
 
 ---
 
@@ -126,11 +126,11 @@ Reconciled against the current task state rather than the state when T044 was wr
 T044 requires this ledger to "report 18 clarified clauses". **No measurement of this specification
 has ever produced 18.**
 
-| Source | Figure | Measured `- Q:` clauses in `spec.md` at that time |
-| --- | ---: | ---: |
-| `plan.md:836` ("14 clarified clauses") | 14 | — |
-| T044, introduced in `e95a0818` (2026-08-11) | 18 | **26** (Session 2026-08-07: 21, Session 2026-08-09: 5) |
-| This ledger, 2026-08-15 | — | **42** across five sessions |
+| Source                                      | Figure |      Measured `- Q:` clauses in `spec.md` at that time |
+| ------------------------------------------- | -----: | -----------------------------------------------------: |
+| `plan.md:836` ("14 clarified clauses")      |     14 |                                                      — |
+| T044, introduced in `e95a0818` (2026-08-11) |     18 | **26** (Session 2026-08-07: 21, Session 2026-08-09: 5) |
+| This ledger, 2026-08-15                     |      — |                            **42** across five sessions |
 
 Today's count, per session: 2026-08-07 **21**, 2026-08-09 **5**, 2026-08-12 **1**, 2026-08-13
 **5**, 2026-08-14 **10** — **42**.
@@ -154,17 +154,17 @@ incremented by hand and that 14/18/26/42 never agreed. This ledger's claim was t
 **The count is now 44 `- Q:` entries**, and the rows above are left as written because each was true
 on its date; Constitution I requires a superseded record to be marked, not rewritten.
 
-42 was never wrong as a *per-session* sum, and it is still the sum of the five session headings. It
+42 was never wrong as a _per-session_ sum, and it is still the sum of the five session headings. It
 was wrong as an answer to the question anyone actually asks, because the obvious re-derivation —
 `grep -c '^- Q:' spec.md` — returns **44**. The two extra clauses had been recorded inside the
 **Success Criteria** section under no `### Session` heading, so every re-measurement that walked the
 session headings missed them and every re-measurement that walked the document found them.
 
-| Where | Clauses |
-| --- | ---: |
-| Under the five `### Session` headings in Clarifications | 42 |
-| Under `### Clarifications recorded against Success Criteria` | 2 |
-| **`grep -c '^- Q:' spec.md`** | **44** |
+| Where                                                        | Clauses |
+| ------------------------------------------------------------ | ------: |
+| Under the five `### Session` headings in Clarifications      |      42 |
+| Under `### Clarifications recorded against Success Criteria` |       2 |
+| **`grep -c '^- Q:' spec.md`**                                |  **44** |
 
 Two things changed so that this cannot recur silently. `spec.md` now carries a heading over the two
 Success Criteria clauses, naming them as the whole of the difference between the two counts. And

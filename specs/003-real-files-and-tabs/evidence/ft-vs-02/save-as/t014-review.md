@@ -20,4 +20,3 @@ Host: `darwin/arm64`
 - Save As reservations are process-local and released by deferred cleanup on cancellation, refusal, conflict, commit, and injected failure. A target held by another open document is refused before disk I/O.
 - Mixed endings use a dominant LF/CRLF choice with first-ending tie break, a revision/document-bound single-use authorization, and no write before authorization. Edits invalidate pending authorizations; successful normalization updates the committed line-ending characteristic.
 - Bound `Save` and `SaveAs` methods return `apperr.WriteResult`, recover panics into classified refusals, and are present in regenerated Wails bindings. Native picker and overwrite ports are wired only at the composition root.
-

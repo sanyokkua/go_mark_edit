@@ -34,10 +34,6 @@
       "kind": "deferred"
     }
   ],
-  "shellColumns": [
-    "216px",
-    "1064px",
-    "0px"
-  ],
+  "shellColumns": ["216px", "1064px", "0px"],
   "assistantTrack": "0px"
 }

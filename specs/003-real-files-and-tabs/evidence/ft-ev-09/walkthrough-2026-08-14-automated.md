@@ -70,23 +70,23 @@ original paragraph got right.
 
 The behavioural suites drive the deterministic parity route with seeded fixtures and assert the
 projection. The 2026-08-13 walkthrough recorded the toggle as working, but what it verified was
-the label: *"the projection round-trips: the status bar moved `Autosave on` → `Autosave off` →
-`Autosave on`"* (`current-host-walkthrough.md:16`). It never checked that autosaving stopped.
+the label: _"the projection round-trips: the status bar moved `Autosave on` → `Autosave off` →
+`Autosave on`"_ (`current-host-walkthrough.md:16`). It never checked that autosaving stopped.
 The observable behaviour and the label disagree, and only the label was ever tested.
 
 ## What this run does establish
 
-| Check | Result |
-| --- | --- |
-| Startup on the real binary | Launches to an `Untitled` document, ready for input; native frame with OS traffic lights, in-app menu row below it |
-| File menu inventory | `Open Folder…` and `Export to PDF…` visibly unavailable; `New Window` unavailable; one recent file; `⌘N`/`⌘O`/`⌘S`/`⇧⌘S`/`⌘W` accelerators shown |
-| Native Open dialog | Real macOS dialog; non-Markdown files (`go.mod`, `justfile`, `*.go`) correctly dimmed; `⇧⌘G` path entry works |
-| Open a real file from disk | `fixture-a.md` (96 bytes) opens; title bar shows `gomarkedit-walkthrough / fixture-a.md`, status `UTF-8`, `LF`, 17 words |
-| Explicit save commits to disk | 96 → 132 → 145 bytes across two explicit saves; content on disk matches the editor |
+| Check                           | Result                                                                                                                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Startup on the real binary      | Launches to an `Untitled` document, ready for input; native frame with OS traffic lights, in-app menu row below it                                                      |
+| File menu inventory             | `Open Folder…` and `Export to PDF…` visibly unavailable; `New Window` unavailable; one recent file; `⌘N`/`⌘O`/`⌘S`/`⇧⌘S`/`⌘W` accelerators shown                        |
+| Native Open dialog              | Real macOS dialog; non-Markdown files (`go.mod`, `justfile`, `*.go`) correctly dimmed; `⇧⌘G` path entry works                                                           |
+| Open a real file from disk      | `fixture-a.md` (96 bytes) opens; title bar shows `gomarkedit-walkthrough / fixture-a.md`, status `UTF-8`, `LF`, 17 words                                                |
+| Explicit save commits to disk   | 96 → 132 → 145 bytes across two explicit saves; content on disk matches the editor                                                                                      |
 | **FR-FT-009 temp-file absence** | **Confirmed.** Non-recursive listings before and after are in `sc-ft-002/listing-before.txt` and `listing-after.txt`; no temp, swap or backup file appears at any point |
-| Dirty projection | Typing moves the title bar to `Unsaved changes` immediately |
-| Deferred settings | `Format on save` and `Lint on save` render visibly unavailable; `Autosave` renders enabled |
-| Settings menu shape | Theme swatches, Appearance (Auto/Light/Dark), Default open mode, Markdown flavour, three switches, `All settings…` |
+| Dirty projection                | Typing moves the title bar to `Unsaved changes` immediately                                                                                                             |
+| Deferred settings               | `Format on save` and `Lint on save` render visibly unavailable; `Autosave` renders enabled                                                                              |
+| Settings menu shape             | Theme swatches, Appearance (Auto/Light/Dark), Default open mode, Markdown flavour, three switches, `All settings…`                                                      |
 
 ## What this method cannot produce, and why
 
@@ -151,13 +151,13 @@ rather than letting a read failure disable it.
 
 ## Re-verification on the real binary
 
-| Step | Result |
-| --- | --- |
-| Open `fixture-a.md` (96 bytes), Autosave `on` | Opens; status bar `Autosave on` |
-| Toggle Autosave off | Status bar `Autosave off` |
+| Step                                            | Result                                                                                                                                                             |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Open `fixture-a.md` (96 bytes), Autosave `on`   | Opens; status bar `Autosave on`                                                                                                                                    |
+| Toggle Autosave off                             | Status bar `Autosave off`                                                                                                                                          |
 | Edit, then wait **8 seconds**, no explicit save | Title bar stays `Unsaved changes`. **On disk: size 96 and mtime `1786744610.459748`, both byte-identical to before the edit.** Before the fix this wrote the file. |
-| File → Save | Title bar reads **`Saved`**, not `Autosaved`; file grows 96 → 122 bytes with the edit |
-| Temp files after the save | None |
+| File → Save                                     | Title bar reads **`Saved`**, not `Autosaved`; file grows 96 → 122 bytes with the edit                                                                              |
+| Temp files after the save                       | None                                                                                                                                                               |
 
 **The second symptom resolved with the first, as predicted rather than assumed.** With autosave
 genuinely stopped, the explicit save is the operation that establishes the clean baseline, so

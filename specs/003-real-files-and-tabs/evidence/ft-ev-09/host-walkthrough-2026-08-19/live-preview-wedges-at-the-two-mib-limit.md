@@ -73,7 +73,6 @@ Filed rather than fixed: the fix is a requirement question (what the preview lim
 be, and whether the pause must be based on something other than byte count), and this walk's
 scope was T181's latency.
 
-
 ---
 
 # Correction and diagnosis, 2026-08-19
@@ -85,7 +84,7 @@ Two things in the write-up above are wrong, and the cause is not what it said.
 **"Permanently unusable", "no recovery after five and a half minutes."** It does recover. A
 later instance was observed at **0.0% CPU after 3m18s**, having finished on its own, and the
 very first instance had already settled once (it painted `big.md` correctly about 70 seconds
-after the open) before wedging *again* when the editor was clicked. So the behaviour is not
+after the open) before wedging _again_ when the editor was clicked. So the behaviour is not
 one permanent hang but a **multi-minute stall repeated on open and on each interaction**.
 That is still severe, and it is a different defect from the one first recorded.
 
@@ -95,16 +94,16 @@ The original observation window was simply too short to see the end, and "no rec
 ## The stated cause was wrong: rendering 2 MiB is cheap
 
 The write-up above attributes the wedge to the live preview rendering a 2 MiB document, and
-the one-byte control does prove the preview is *involved*. It does not prove that rendering
+the one-byte control does prove the preview is _involved_. It does not prove that rendering
 is what costs the time — and it is not. Measured directly, on the very file that wedges the
 host:
 
-| Stage | Cost for `big.md` (2,097,152 B, 1,907 lines, longest 1,100 chars) |
-|---|---|
-| Markdown pipeline (`remark-parse` → `remark-gfm` → `remark-rehype` → `rehype-sanitize`) in **JSC/WebKit** | **579 ms** |
-| Same pipeline in **V8/Chromium** | 1,411 ms |
-| Browser layout of an equivalent 2 MiB DOM, WebKit | 46 ms |
-| Browser layout of an equivalent 2 MiB DOM, Chromium | 188 ms |
+| Stage                                                                                                     | Cost for `big.md` (2,097,152 B, 1,907 lines, longest 1,100 chars) |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Markdown pipeline (`remark-parse` → `remark-gfm` → `remark-rehype` → `rehype-sanitize`) in **JSC/WebKit** | **579 ms**                                                        |
+| Same pipeline in **V8/Chromium**                                                                          | 1,411 ms                                                          |
+| Browser layout of an equivalent 2 MiB DOM, WebKit                                                         | 46 ms                                                             |
+| Browser layout of an equivalent 2 MiB DOM, Chromium                                                       | 188 ms                                                            |
 
 **Everything the preview has to do costs under a second.** The application takes minutes.
 The gap is not the renderer, not the markdown pipeline, and not the engine.
@@ -148,13 +147,13 @@ Three independent reasons:
 Parse cost scales with **line count**, not document size, and short lines are the expensive
 shape. At a fixed 2,097,152 bytes, in Node/V8:
 
-| line length | lines | parse |
-|---|---|---|
-| 80 chars | 25,891 | **14,916 ms** |
-| 1,000 chars | 2,096 | 1,413 ms |
-| 10,000 chars | 210 | 567 ms |
-| 28,000 chars | 75 | 535 ms |
-| one line | 1 | 474 ms |
+| line length  | lines  | parse         |
+| ------------ | ------ | ------------- |
+| 80 chars     | 25,891 | **14,916 ms** |
+| 1,000 chars  | 2,096  | 1,413 ms      |
+| 10,000 chars | 210    | 567 ms        |
+| 28,000 chars | 75     | 535 ms        |
+| one line     | 1      | 474 ms        |
 
 In-browser V8 measures the 55-char shape at **24,272 ms** at 2 MiB. Real Markdown prose has
 short lines, so **the common shape is the slow one** — and FR-FT-005 requires live preview to
@@ -188,11 +187,11 @@ KiB and 1 MiB. It is not. The **real `MarkdownView`** — the shipped component,
 the running dev server, so the actual `react-markdown` + plugin + React commit path — rendered
 and laid out at three sizes:
 
-| size | WebKit (JSC) | Chromium (V8) |
-|---|---|---|
-| 256 KiB | 163 ms | 175 ms |
-| 1 MiB | 490 ms | 620 ms |
-| 2 MiB | **950 ms** | 2,144 ms |
+| size    | WebKit (JSC) | Chromium (V8) |
+| ------- | ------------ | ------------- |
+| 256 KiB | 163 ms       | 175 ms        |
+| 1 MiB   | 490 ms       | 620 ms        |
+| 2 MiB   | **950 ms**   | 2,144 ms      |
 
 WebKit is linear across the range (163 → 490 → 950 for 1× → 4× → 8× the bytes). There is no
 hidden quadratic term waiting at smaller sizes, so the defect is **not** silently degrading
@@ -203,11 +202,11 @@ establish first.
 
 Every stage has been measured on the host's engine family at 2 MiB:
 
-| Stage | WebKit/JSC |
-|---|---|
-| GFM pipeline alone (parse → gfm → rehype → sanitize) | 579 ms |
+| Stage                                                                  | WebKit/JSC |
+| ---------------------------------------------------------------------- | ---------- |
+| GFM pipeline alone (parse → gfm → rehype → sanitize)                   | 579 ms     |
 | Full `MarkdownView`: pipeline + react-markdown + React commit + layout | **996 ms** |
-| Plain DOM layout of an equivalent 2 MiB tree | 46 ms |
+| Plain DOM layout of an equivalent 2 MiB tree                           | 46 ms      |
 
 **Under one second for everything the preview does**, against a stall measured in minutes. The
 preview render is not where the time goes. That is a stronger statement than the earlier
@@ -268,7 +267,6 @@ bridge has no seam for seeding large document content.
    now better supported: the preview render is measurably linear and cheap, so the threshold
    is not what is hurting anyone.
 
-
 ---
 
 # Closed 2026-08-19 — one real cost fixed, the stall itself unexplained
@@ -287,9 +285,9 @@ document.
 `MarkdownView` is now `memo`-wrapped on `source`, its only prop and one it is pure in.
 Measured at the limit on the shipping engine, worst-case shape:
 
-| | before | after |
-|---|---|---|
-| first render, 2 MiB of 80-char lines | 1,457 ms | 1,457 ms |
+|                                        | before        | after           |
+| -------------------------------------- | ------------- | --------------- |
+| first render, 2 MiB of 80-char lines   | 1,457 ms      | 1,457 ms        |
 | five further renders, source unchanged | ~5 × 1,457 ms | **51 ms total** |
 
 Paying ~1.5 s per keystroke is the shape of "the editor takes no keystrokes", so this is a

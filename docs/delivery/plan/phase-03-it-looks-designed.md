@@ -7,7 +7,7 @@ drag to resize, a split you can drag to rebalance, and a status bar that tells y
 something goes wrong you get a message that says what to do about it. There is a Settings dialog with
 its groups laid out, and the app remembers how you left it.
 
-Nothing new *does* anything yet. This phase is about what surfaces exist to put things on, and how
+Nothing new _does_ anything yet. This phase is about what surfaces exist to put things on, and how
 they behave when they are empty, busy, or broken.
 
 ## Build it in this order
@@ -30,6 +30,7 @@ they behave when they are empty, busy, or broken.
    specify all of it. **Every one of these has to be checked on all three platforms in Phase 08**, because
    this is precisely the part Wails does not do for us — see `KNOWN_ISSUES.md` §13. A zone that works in
    `wails dev` on macOS tells you nothing about Windows.
+
 2. **The chrome shells.** Title bar, menu bar, tab strip, sidebar slot, and the status bar — styled,
    empty, and correct at 375, 768 and 1280 pixels wide. They hold nothing yet; later phases fill them.
    The formatting toolbar Phase 04 adds has sixteen buttons, so decide the overflow behaviour now: an
@@ -54,8 +55,8 @@ they behave when they are empty, busy, or broken.
    defaults without replacing the existing Appearance state path.
 9. **Expand menu quick-settings.** Keep Phase 02's theme swatches and appearance controls in the new
    title-bar Settings menu, then add the default open mode, Markdown standard and Autosave /
-   Format-on-save / Lint-on-save controls plus "All settings…". This remains a *second view of the same
-   state*, not a second store: change it in either place and both update.
+   Format-on-save / Lint-on-save controls plus "All settings…". This remains a _second view of the same
+   state_, not a second store: change it in either place and both update.
 10. **Remember the window.** Window geometry, sidebar visibility and widths, and the split ratio are
     owned by the backend (`SetUILayout`), persisted when they change, flushed on close, and **restored
     before the window is shown** so it never appears at a default size and then jumps. Last writer
@@ -103,7 +104,7 @@ Open the app on a machine where you have never run it. It appears at a sensible 
 theme, with no tabs — and the empty screen offers you something to do rather than a blank pane. Drag
 the sidebar and the split divider, collapse the sidebar, resize the window, quit, and reopen: it comes
 back exactly the way you left it, without flashing a default layout first. Open the Settings dialog,
-see its groups, change the theme from the expanded Settings *menu* instead, and confirm the Phase 02
+see its groups, change the theme from the expanded Settings _menu_ instead, and confirm the Phase 02
 controls still agree after their shells were expanded.
 Press Reset to defaults and get the defaults. Trigger the same error five times and get one message,
 not five. Narrow the window to 375 pixels and find that everything is still reachable — nothing has

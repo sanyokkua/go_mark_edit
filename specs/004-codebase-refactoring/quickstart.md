@@ -18,6 +18,7 @@ dependency install.
 ```bash
 rm -rf frontend/dist/assets frontend/dist/index.html; scripts/test unit
 ```
+
 Expected: passes with no native toolchain and no `frontend/dist`; no test file is found under
 `frontend/src`, `frontend/public` or a Go production package except the three white-box files listed
 in plan.md; the run makes no network call (verify with `nettop`/`lsof -i` while it runs).
@@ -27,12 +28,14 @@ in plan.md; the run makes no network call (verify with `nettop`/`lsof -i` while 
 ```bash
 time scripts/verify
 ```
+
 Expected: six lines Lint, Format, Build, Unit, Integration, E2E each `ok`; every tool appears once in
 `.specify/baseline/runs/<run-id>/summary.json`; the wall-clock time is recorded in plan.md at close.
 
 ```bash
 scripts/verify lint; scripts/verify --skip e2e
 ```
+
 Expected: only the Lint stage runs; the second form runs five stages and prints `e2e: skipped`.
 
 ## 3. Format coverage (FR-063)
@@ -40,6 +43,7 @@ Expected: only the Lint stage runs; the second form runs five stages and prints 
 ```bash
 scripts/format --check
 ```
+
 Expected: exit 0 on a formatted tree; after touching the formatting of one file of each type
 (`.md`, `.yml`, `.json`, `.css`, `.ts`, `.go`, `.sh`, `.sql`) the check exits 1 naming that file;
 the ignore list is exactly the root `.prettierignore`.
@@ -50,6 +54,7 @@ the ignore list is exactly the root `.prettierignore`.
 scripts/baseline            # right after the scripts task, before any other edit
 scripts/baseline --compare  # at close
 ```
+
 Expected: `.specify/baseline/004-codebase-refactoring.json` validates against
 `contracts/baseline-record.schema.json`; a missing record or input makes `--compare` fail closed
 (non-zero, naming the input); at close every recorded finding is gone and nothing new appears (one
@@ -61,11 +66,13 @@ sentence in plan.md).
 scripts/build && git status --porcelain && echo CLEAN
 scripts/build --version 9.9.9 && /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/bin/GoMarkEdit.app/Contents/Info.plist
 ```
+
 Expected: `CLEAN` with no paths listed; `9.9.9`; a build without `--version` reports `dev` in About.
 
 ```bash
 env PATH=/usr/bin:/bin scripts/build; echo "exit=$?"
 ```
+
 Expected (FR-071): a non-zero exit and a message naming `wails` as the missing tool, nothing built.
 
 ## 6. Real-backend E2E (FR-025, FR-026, SC-002)
@@ -73,6 +80,7 @@ Expected (FR-071): a non-zero exit and a message naming `wails` as the missing t
 ```bash
 scripts/test e2e
 ```
+
 Expected: a `wails dev` child process starts with `HOME`/`XDG_CONFIG_HOME` under a temporary
 directory; `ps` shows one Go process per run; the eight cases of
 [contracts/e2e-harness.md](contracts/e2e-harness.md) run once each with zero retries; the seeded
@@ -87,6 +95,7 @@ git worktree add ../gme-archive archive/v1-linear-history-2026-09
 # UI: run the new E2E case against the worktree's wails dev (E2E_REPO is defined in contracts/e2e-harness.md)
 E2E_REPO=../gme-archive scripts/test e2e -- --grep "<case title>"
 ```
+
 Expected: each Story 1 regression fails on the worktree and passes on this tree; the failure is
 recorded in plan.md's table (date, commit `bc185c9`, host, observed failure).
 
@@ -95,6 +104,7 @@ recorded in plan.md's table (date, commit `bc185c9`, host, observed failure).
 ```bash
 scripts/verify lint
 ```
+
 Try, then revert, each of: an import of `logic/store` from `ui/components`; a `createPortal` outside
 `ui/components/Popup`; a `[data-theme]` selector in a widget stylesheet; a `T123` comment in
 `internal/appmodel`; a `.only` in a test. Expected: each fails the Lint stage naming the file.
@@ -112,6 +122,7 @@ it finds `scripts/verify` and the Popup consumer inventory without asking; `scri
 git ls-files | grep -cE 'evidence/|surface/.*\.png$|^test-results/|^frontend/evidence|^cmd/native-evidence|^frontend/public/.*\.test\.|^frontend/src/dev/|^frontend/e2e/|^frontend/scripts/archtest|^sqlc\.yaml$|^internal/gate/|^internal/db/(store|queries)/'
 git ls-files -z | xargs -0 du -ch | tail -1
 ```
+
 Expected: `0`; the total is about 56 MB smaller than at `2b889cb` (65 MB → ≈ 9 MB).
 
 ## 11. Walkthrough and offline start (FR-027, FR-028, SC-003)
@@ -126,5 +137,6 @@ plan.md: the walkthrough (date, commit, host, outcome) and the cold start with n
 ```bash
 gh workflow run release.yml -f version=9.9.9 --ref feature/004-codebase-refactoring
 ```
+
 Expected: the macOS job runs all six stages and uploads `GoMarkEdit-9.9.9-macos-arm64.zip` as a
 workflow artifact; no GitHub Release is created; the unzipped app's About dialog reports `9.9.9`.

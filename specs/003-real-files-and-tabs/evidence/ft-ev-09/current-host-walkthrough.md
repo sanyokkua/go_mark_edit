@@ -8,20 +8,20 @@ on screen.
 
 ## Journeys
 
-| # | Journey | Result |
-|---|---|---|
-| 1 | **Startup** | Window opens with one `Untitled` tab, Split arrangement, live preview. All four menus present. |
-| 2 | **Edit** | Typed Markdown into the editor; preview re-rendered live; tab gained its dirty dot; caret and word count updated to `Ln 3, Col 33` / `8 words`. |
-| 3 | **Settings** | Menu opens; theme swatches, Appearance, Default open mode, Markdown standard, three save toggles, All settings…. |
-| 4 | **Autosave toggle** | Clicking the **visible switch** flips it on↔off, and the projection round-trips: the status bar moved `Autosave on` → `Autosave off` → `Autosave on`. |
-| 5 | **Deferred settings** | `Format on save` and `Lint on save` render visibly unavailable; `Autosave` renders fully enabled. |
-| 6 | **View menu** | Opens with Toggle Sidebar (⌘\), Toggle Assistant (unavailable), Editor/Split/**Preview** with Split ticked, Line numbers, Word wrap, Distraction-free reading (unavailable), Full screen (F11). |
-| 7 | **Theme switch** | Liquid Glass → Minimal repaints the entire surface: backdrop, accents, toggles, tab strip, status bar. |
-| 8 | **Many tabs** | Grew to **15 tabs**. Tabs keep their full width and the strip fills edge to edge rather than shrinking them. |
-| 9 | **Tab switching** | Returning to tab 1 restored its content, its **per-document Split arrangement**, and its caret position — while other tabs stayed Editor-only. |
-| 10 | **Close a tab** | Closing a dirty tab raises `Save changes before closing?` naming the target, with Cancel / Discard / Save. |
-| 11 | **Close plan prompt dismissal** | See below — including a correction to an overstated claim. |
-| 12 | **Quit** | `Save changes before quitting?` with Cancel / Discard all / Save all. Cancel returned to the window with all tabs intact; Discard all exited the process cleanly, with no `GoMarkEdit` process left running. |
+| #   | Journey                         | Result                                                                                                                                                                                                       |
+| --- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Startup**                     | Window opens with one `Untitled` tab, Split arrangement, live preview. All four menus present.                                                                                                               |
+| 2   | **Edit**                        | Typed Markdown into the editor; preview re-rendered live; tab gained its dirty dot; caret and word count updated to `Ln 3, Col 33` / `8 words`.                                                              |
+| 3   | **Settings**                    | Menu opens; theme swatches, Appearance, Default open mode, Markdown standard, three save toggles, All settings….                                                                                             |
+| 4   | **Autosave toggle**             | Clicking the **visible switch** flips it on↔off, and the projection round-trips: the status bar moved `Autosave on` → `Autosave off` → `Autosave on`.                                                        |
+| 5   | **Deferred settings**           | `Format on save` and `Lint on save` render visibly unavailable; `Autosave` renders fully enabled.                                                                                                            |
+| 6   | **View menu**                   | Opens with Toggle Sidebar (⌘\), Toggle Assistant (unavailable), Editor/Split/**Preview** with Split ticked, Line numbers, Word wrap, Distraction-free reading (unavailable), Full screen (F11).              |
+| 7   | **Theme switch**                | Liquid Glass → Minimal repaints the entire surface: backdrop, accents, toggles, tab strip, status bar.                                                                                                       |
+| 8   | **Many tabs**                   | Grew to **15 tabs**. Tabs keep their full width and the strip fills edge to edge rather than shrinking them.                                                                                                 |
+| 9   | **Tab switching**               | Returning to tab 1 restored its content, its **per-document Split arrangement**, and its caret position — while other tabs stayed Editor-only.                                                               |
+| 10  | **Close a tab**                 | Closing a dirty tab raises `Save changes before closing?` naming the target, with Cancel / Discard / Save.                                                                                                   |
+| 11  | **Close plan prompt dismissal** | See below — including a correction to an overstated claim.                                                                                                                                                   |
+| 12  | **Quit**                        | `Save changes before quitting?` with Cancel / Discard all / Save all. Cancel returned to the window with all tabs intact; Discard all exited the process cleanly, with no `GoMarkEdit` process left running. |
 
 ## The close-app trap — correction to an overstated claim
 
@@ -34,7 +34,7 @@ The sequence performed was:
    `Untitled` as the target. The plan was collecting.
 2. `Escape` did nothing.
 3. A click outside the box made it disappear.
-4. Closing a *different* tab then succeeded, 15 → 14, and quitting raised the
+4. Closing a _different_ tab then succeeded, 15 → 14, and quitting raised the
    quit prompt normally.
 
 Step 3 was read as "the plan was abandoned". It was not. `ClosePrompt.tsx:48`
@@ -89,7 +89,7 @@ remains fully answerable from the keyboard.
 the box and the tab untouched, and `Escape` cancels.
 
 **A side effect worth noting:** removing the backdrop path removes one of the
-ways a plan could be abandoned, which makes the supersede fix *less* likely to
+ways a plan could be abandoned, which makes the supersede fix _less_ likely to
 be needed — and correspondingly harder to trigger by hand. It remains the right
 defence for the paths that stay, such as a renderer error or a window closing
 mid-prompt, and its unit evidence stands.
@@ -97,14 +97,14 @@ mid-prompt, and its unit evidence stands.
 ## One observation withdrawn
 
 ~~The title-bar `+` control does not create a tab.~~ **Withdrawn — this was a
-   misidentification on my part, corrected on review.** The two controls at the
-   trailing end of the menu row are **Toggle Sidebar** and **Toggle Assistant**
-   (`ShellMenuRow.tsx:743-763`). The second renders an assistant icon that reads
-   as a `+` at this size; it is `disabled` because the Assistant is a deferred
-   feature, and it carries the `action.unavailable` tooltip. It is *meant* to be
-   present and inert, so the whole control inventory is visible while the
-   Assistant is still to come. `ShellMenuRow.test.tsx:442-480` already asserts it
-   is disabled. **Not a defect.**
+misidentification on my part, corrected on review.** The two controls at the
+trailing end of the menu row are **Toggle Sidebar** and **Toggle Assistant**
+(`ShellMenuRow.tsx:743-763`). The second renders an assistant icon that reads
+as a `+` at this size; it is `disabled` because the Assistant is a deferred
+feature, and it carries the `action.unavailable` tooltip. It is _meant_ to be
+present and inert, so the whole control inventory is visible while the
+Assistant is still to come. `ShellMenuRow.test.tsx:442-480` already asserts it
+is disabled. **Not a defect.**
 
 Item 1 is logged as follow-up work and is fixed in this phase; item 2 required
 no change.

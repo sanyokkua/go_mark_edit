@@ -17,7 +17,7 @@ This is the last phase. After it, the product is done.
 2. **Custom instructions.** Standing text the user writes once that is included in every run.
 3. **The tool loop.** A bounded loop where the model may call a small set of read-mostly tools — read
    the document, read the selection, list workspace files, read a workspace file, propose an edit.
-   Bounded by iteration count *and* wall-clock. Least privilege: allowlisted, no writes, no shell, no
+   Bounded by iteration count _and_ wall-clock. Least privilege: allowlisted, no writes, no shell, no
    network of its own.
 4. **Streaming.** Tokens appear as they arrive, with cancellation still working mid-stream.
 5. **When it does not fit.** An explicit context budget. Warn before sending something too large.

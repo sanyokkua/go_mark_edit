@@ -78,16 +78,19 @@ Concretely:
 ## Pros and cons of the options
 
 ### Option A — native chrome everywhere
+
 - Good: nothing to own; correct by construction on every platform; the macOS menu problem solves itself.
 - Bad: the mockup becomes wrong, and the three themes stop at the window edge — Liquid Glass in
   particular is defined by a translucent, rounded window that a native frame cannot express.
 
 ### Option B — frameless, React menus only
+
 - Good: exactly the mockup; one menu implementation.
 - Bad: **no clipboard and no undo on macOS.** This is disqualifying and is the whole reason this ADR
   exists rather than a line in a phase document.
 
-### Option C — frameless, plus a native macOS menu *(chosen)*
+### Option C — frameless, plus a native macOS menu _(chosen)_
+
 - Good: the mockup's appearance with the platform's keyboard contract.
 - Bad: two menu surfaces to keep consistent on one platform; mitigated by the single registry.
 
@@ -95,8 +98,8 @@ Concretely:
 
 - Design decisions: DD-28, DD-29, DD-30 (token-only theming), DD-01 (cross-platform Wails v2)
 - Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md`,
-  ../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#structure`,
+../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#structure`,
   ../../_archive-2026-07-28-specification/01_Product/12_KEYBOARD_SHORTCUTS.md`,
-  `specification/07_Phases/PHASE_03_IT_LOOKS_DESIGNED.md` (step 1)
+`specification/07_Phases/PHASE_03_IT_LOOKS_DESIGNED.md` (step 1)
 - Mockup: `specification/mockups/gomarkedit-mockup.html` — the title bar and `.lights`
 - Stories: the Phase 03 stories, not yet written.

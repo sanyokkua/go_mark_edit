@@ -44,11 +44,11 @@ availability bypassing the action registry); the fourth was a stale test.
 Run to completion on the tree at `40d4e120`, which contains the four committed
 Phase 18 defect fixes and none of the uncommitted Settings work:
 
-| Suite | Failing cases |
-|---|---:|
-| `editor-stage.test.ts` | 78 |
-| `window-shell.test.ts` | 28 |
-| **Total** | **106** (33 passed, 25.4 minutes) |
+| Suite                  |                     Failing cases |
+| ---------------------- | --------------------------------: |
+| `editor-stage.test.ts` |                                78 |
+| `window-shell.test.ts` |                                28 |
+| **Total**              | **106** (33 passed, 25.4 minutes) |
 
 **These are pre-existing.** They are not caused by any Phase 18 change: the same
 two suites were re-run on the working tree with the Settings work restored and
@@ -59,18 +59,18 @@ compared case-by-case (`mytree-e2e.log`).
 Every one of the 106 reduces to four stale expectations, counted across the
 failing cases:
 
-| Count | The locator that never resolves | Why |
-|---:|---|---|
-| 36 | `getByRole('tab', { name: 'release-notes.md' })` | The suite expects a seeded document named after the mockup's tab; production opens `Untitled`. |
-| 36 | `…getByRole('radio', { name: 'Follows system' })` | Production's appearance option is **`Auto (system)`**, which is what the binding draws (`mockup.html:615`). The test still uses the pre-convergence wording. |
-| 24 | `getByRole('menuitem', { name: 'Appearance' })` | Production exposes Appearance as a `radiogroup` with that accessible name, not a `menuitem`. |
-| 6 | `[data-viewport-popup="editor-overflow"] … 'Bold'` | The overflow toolbar structure changed. |
+| Count | The locator that never resolves                    | Why                                                                                                                                                          |
+| ----: | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|    36 | `getByRole('tab', { name: 'release-notes.md' })`   | The suite expects a seeded document named after the mockup's tab; production opens `Untitled`.                                                               |
+|    36 | `…getByRole('radio', { name: 'Follows system' })`  | Production's appearance option is **`Auto (system)`**, which is what the binding draws (`mockup.html:615`). The test still uses the pre-convergence wording. |
+|    24 | `getByRole('menuitem', { name: 'Appearance' })`    | Production exposes Appearance as a `radiogroup` with that accessible name, not a `menuitem`.                                                                 |
+|     6 | `[data-viewport-popup="editor-overflow"] … 'Bold'` | The overflow toolbar structure changed.                                                                                                                      |
 
 By assertion type: 66 timeouts waiting for a locator that never appears, 18
 `toBeVisible`, 18 `toBeDisabled`, 3 numeric bound checks.
 
 **None of these is a product defect.** In each case production matches the
-binding and the test describes the surface as it was *before* it was converged —
+binding and the test describes the surface as it was _before_ it was converged —
 the identical failure mode as FT-VS-07's `Open Recent` submenu, which had been
 red since the T070 File-popup convergence and is fixed in Phase 18.
 
@@ -101,22 +101,22 @@ Three of the four root causes are fixed, all by correcting the test to the
 surface the binding actually specifies. Production was the correct side in every
 case; nothing in production changed.
 
-| Fix | Cases |
-|---|---:|
-| `editor-stage.test.ts:5` — the appearance modes constant now spells the compact popup's `Auto (system)` (`mockup.html:615`) instead of the Settings **dialog**'s `Follows system`. Two surfaces, two catalogue keys; these cases drive the popup. | — |
-| `editor-stage.test.ts` — the plain `/` route opens an `Untitled` document; `release-notes.md` is a parity-fixture name that route never produces. | — |
-| `window-shell.test.ts` — `openSettings` clicked a menuitem named `Appearance`, but the binding opens the settings screen from its `All settings…` row (`mockup.html:624`); `Appearance` is the popup's group label and its radiogroup name, not an item. | — |
-| **Combined** | **39 fixed** |
+| Fix                                                                                                                                                                                                                                                      |        Cases |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -----------: |
+| `editor-stage.test.ts:5` — the appearance modes constant now spells the compact popup's `Auto (system)` (`mockup.html:615`) instead of the Settings **dialog**'s `Follows system`. Two surfaces, two catalogue keys; these cases drive the popup.        |            — |
+| `editor-stage.test.ts` — the plain `/` route opens an `Untitled` document; `release-notes.md` is a parity-fixture name that route never produces.                                                                                                        |            — |
+| `window-shell.test.ts` — `openSettings` clicked a menuitem named `Appearance`, but the binding opens the settings screen from its `All settings…` row (`mockup.html:624`); `Appearance` is the popup's group label and its radiogroup name, not an item. |            — |
+| **Combined**                                                                                                                                                                                                                                             | **39 fixed** |
 
-| Suite | Before | After |
-|---|---:|---:|
-| `editor-stage.test.ts` | 78 failed / 30 passed | **45 failed / 63 passed** |
-| `window-shell.test.ts` | 28 failed / 2 passed | **22 failed / 8 passed** |
-| **Total** | **106 failed / 32 passed** | **67 failed / 71 passed** |
+| Suite                  |                     Before |                     After |
+| ---------------------- | -------------------------: | ------------------------: |
+| `editor-stage.test.ts` |      78 failed / 30 passed | **45 failed / 63 passed** |
+| `window-shell.test.ts` |       28 failed / 2 passed |  **22 failed / 8 passed** |
+| **Total**              | **106 failed / 32 passed** | **67 failed / 71 passed** |
 
 ## The 67 that remain, and why they were not repaired here
 
-They are not more of the same. Each needs a judgement about the test's *intent*
+They are not more of the same. Each needs a judgement about the test's _intent_
 that should not be rushed:
 
 - **T069 × 27** ("retains the mockup chrome hierarchy") asserts the document
@@ -140,7 +140,7 @@ drive a number down would be exactly the failure this whole phase is about.
 The 106 stale cases are **deliberately not repaired in Phase 18**, and this is a
 scope decision rather than an oversight:
 
-- They are stale *tests*, not product defects. The product is correct against
+- They are stale _tests_, not product defects. The product is correct against
   the binding in all four clusters.
 - Repairing them means re-deriving expected labels, roles and fixtures for 106
   cases across two suites — work comparable in size to the rest of Phase 18, and
@@ -179,10 +179,10 @@ during collection, before a single browser case executed.
 
 ### How long
 
-| Commit | What it did |
-|---|---|
-| `c7771c8b` (STORY-018) | set `testMatch: 'e2e/**/*.test.ts'`; never narrowed afterwards |
-| `7744cc82` (T034) | added `e2e/parity/*.test.ts`, the first Jest tests under `e2e/` |
+| Commit                 | What it did                                                     |
+| ---------------------- | --------------------------------------------------------------- |
+| `c7771c8b` (STORY-018) | set `testMatch: 'e2e/**/*.test.ts'`; never narrowed afterwards  |
+| `7744cc82` (T034)      | added `e2e/parity/*.test.ts`, the first Jest tests under `e2e/` |
 
 From T034 onward the two globs overlapped. Every individual-file run
 (`npx playwright test e2e/window-shell.test.ts`) worked, which is how the 106

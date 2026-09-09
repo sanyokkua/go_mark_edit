@@ -15,7 +15,7 @@ width 14 pt — 1066–1094 device px, matching the measured band (1067–1093).
 
 But the canvas is not what paints it. Reading its own pixels through `getContext('2d')`
 returns **`[0, 0, 0, 0]`** at every sample: fully transparent, which is correct for an empty
-document with no decorations. The colour comes from what shows *through* it — Monaco's
+document with no decorations. The colour comes from what shows _through_ it — Monaco's
 **vertical scrollbar slider**, `background: rgba(255, 255, 255, 0.2)`, occupying the same
 band.
 
@@ -23,10 +23,10 @@ band.
 
 The slider's parent toggles on pointer hover, and the arithmetic closes exactly:
 
-| Pointer | Parent class | Parent `opacity` | Pixel over the `20,20,22` pane |
-|---|---|---|---|
-| away | `invisible scrollbar vertical fade` | `0` | `22,22,28` |
-| over the editor | `visible scrollbar vertical` | `1` | `69,69,73` |
+| Pointer         | Parent class                        | Parent `opacity` | Pixel over the `20,20,22` pane |
+| --------------- | ----------------------------------- | ---------------- | ------------------------------ |
+| away            | `invisible scrollbar vertical fade` | `0`              | `22,22,28`                     |
+| over the editor | `visible scrollbar vertical`        | `1`              | `69,69,73`                     |
 
 `rgba(255,255,255,0.2)` composited over `20,20,22` is `0.2×255 + 0.8×20 = 67` — the host's
 measured `67,67,69`. The browser's `48,48,50` sits between the hidden and shown values,
@@ -42,14 +42,14 @@ Re-captured with the pointer parked away from the editor on both sides, and the 
 slider verified as `invisible scrollbar vertical fade`, `opacity: 0` at the moment of capture.
 On the host, the band reads `20,20,22` at every sampled x — identical to the surrounding pane.
 
-| | clause 11 as first measured | with the slider controlled |
-|---|---|---|
-| identical | 90.08% | **91.18%** |
-| within ±16 | 7.70% | 7.73% |
-| differing > 16 | 2.22% | **1.09%** |
-| — divider band | 28,000 px | **217 px** |
-| — frame edges | 11,042 px | 11,095 px |
-| — glyph edges | 15,313 px | 15,338 px |
+|                | clause 11 as first measured | with the slider controlled |
+| -------------- | --------------------------- | -------------------------- |
+| identical      | 90.08%                      | **91.18%**                 |
+| within ±16     | 7.70%                       | 7.73%                      |
+| differing > 16 | 2.22%                       | **1.09%**                  |
+| — divider band | 28,000 px                   | **217 px**                 |
+| — frame edges  | 11,042 px                   | 11,095 px                  |
+| — glyph edges  | 15,313 px                   | 15,338 px                  |
 
 The band collapses by **99.2%**. The two categories that survive are unchanged, which is the
 check that nothing else moved: only the slider did.
@@ -75,7 +75,7 @@ think to check, and because it is **mid-transition** values that do the damage: 
 or fully hidden slider differs obviously and would have been spotted, while a half-faded one
 produces a plausible-looking constant delta that reads exactly like a renderer difference.
 
-Note also that equalising one variable *created* this one: the drag that matched the workspace
+Note also that equalising one variable _created_ this one: the drag that matched the workspace
 width is what showed the scrollbar. Controlling comparison state is not a checklist run once —
 each control can disturb another.
 

@@ -36,21 +36,21 @@ Revision 1 was produced by a previous agent session. This revision:
 
 ## 1. Verdict on the owner's thesis
 
-The owner's statement was: *the project drifted in ideas and architecture during AI implementation; my principles
+The owner's statement was: _the project drifted in ideas and architecture during AI implementation; my principles
 were broken; no reuse of common components; copy-paste and duplicated code; stubs mixed with implementation; tests
 mixed with production code; incorrect structures; tests that verify bureaucracy; the current basis will fail future
-features.* Each part was checked.
+features._ Each part was checked.
 
-| Owner's statement | Verdict | Decisive evidence |
-| --- | --- | --- |
-| Ideas and architecture drifted during implementation | **Confirmed.** The initial specification (`50d692d`, `02_Architecture/03_FRONTEND_REACT.md`) prescribed a three-layer UI library (`primitives` → `components` such as Button, IconButton, TabBar, Toolbar, MenuBar, StatusBar → `widgets`). None of TabBar, Toolbar, MenuBar, Button, IconButton, ContextMenu, Popover or Tooltip exists; the widgets became monoliths (`App.tsx` 2,179 lines, `DocumentTabs.tsx` 1,355, `ShellMenuRow.tsx` 1,041). The 2026-07-28 conversion replaced the prescription with a description of "what exists today" (`docs/delivery/architecture/structure.md`). | §4.1, §5.2 |
-| Principles were broken | **Confirmed for reuse, offline-scope, documentation and test conventions.** Held for: Go-owned state, handler envelopes, adapter-only `wailsjs/` imports, token-only colours, CGO-free SQLite. | §4, §5 |
-| No reuse of common components; copy-paste; duplicated code | **Confirmed.** Five popup style owners, six dismissal/placement implementations, four modal lifecycles, two segmented-radio algorithms, three shortcut listeners, two formatting-command builders (Appendix D R1–R20 plus §5.2 new findings). | §5.2 |
-| Stubs mixed with implementation | **Confirmed, in three forms.** (a) Production widgets branch on a `?parity-case` URL parameter to fake states for screenshots; (b) production Go services expose test-only hooks (`SetBeforeSaveAsRecheck`, `SetWriteCommitObserver`, injected clocks); (c) a 2,024-line TypeScript re-implementation of the Go backend (`frontend/src/dev/bridge-mock`) is the backend that every "E2E" test runs against; (d) a test file is shipped inside the binary (`frontend/public/theme-bootstrap.test.mjs` → `dist` → `//go:embed`). | §5.3, §5.4, §5.5 |
-| Tests mixed with production code | **Confirmed.** All 66 Go test files sit beside production code in the production package; 72 Jest files sit under `frontend/src`; one test lives in `frontend/public`. Note: this colocation was encoded in the very first agent configuration (`50d692d:CLAUDE.md` rule globs `internal/**/*_test.go`, `frontend/src/**/*.test.ts(x)`) and restated on 2026-07-28 (`structure.md` "A Go test sits beside the code it tests"), so it is a convention the agents inherited and never questioned rather than one they invented late. | §5.4 |
-| Incorrect structures | **Confirmed.** `ui/primitives/ViewMenu.tsx` is a feature menu that imports the action registry, dispatcher and store types (violates `rules.md#components-take-props`); `frontend/src/dev` is compiled into the E2E truth; `cmd/native-evidence` is a second Wails composition for evidence capture; `test-results/.last-run.json` is tracked at repo root; 42 MB of `specs/**/evidence` is committed. | §5.4, §5.6, §5.8 |
-| Tests verify bureaucracy | **Confirmed.** `spec_clause_count_test.go` counts `- Q:` lines in `spec.md` and compares them with a phrase in `plan.md`; `native_evidence_safeguards_test.go` runs two `go build`s inside `go test`; component tests read CSS files as text and assert declarations; ~73 % of frontend test titles start with a task or requirement ID. The project's own rule file forbids exactly this (`docs/delivery/architecture/rules.md:686–705`, "A test proves behaviour, not a document"). | §5.4 |
-| The current basis will fail future features | **Supported.** Eight reproduced product defects in the first real-file feature (Appendix A), a Save that destroys Undo, an E2E suite that cannot see the Go backend, and a lifecycle model spread over many per-document maps make each new capability (Phase 06 rendering, Phase 07 folders, Phase 08 OS integration, AI phases) more expensive than the last. The refactoring is justified; a rewrite of the stack is not. | §4, §6 |
+| Owner's statement                                          | Verdict                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Decisive evidence |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Ideas and architecture drifted during implementation       | **Confirmed.** The initial specification (`50d692d`, `02_Architecture/03_FRONTEND_REACT.md`) prescribed a three-layer UI library (`primitives` → `components` such as Button, IconButton, TabBar, Toolbar, MenuBar, StatusBar → `widgets`). None of TabBar, Toolbar, MenuBar, Button, IconButton, ContextMenu, Popover or Tooltip exists; the widgets became monoliths (`App.tsx` 2,179 lines, `DocumentTabs.tsx` 1,355, `ShellMenuRow.tsx` 1,041). The 2026-07-28 conversion replaced the prescription with a description of "what exists today" (`docs/delivery/architecture/structure.md`). | §4.1, §5.2        |
+| Principles were broken                                     | **Confirmed for reuse, offline-scope, documentation and test conventions.** Held for: Go-owned state, handler envelopes, adapter-only `wailsjs/` imports, token-only colours, CGO-free SQLite.                                                                                                                                                                                                                                                                                                                                                                                                 | §4, §5            |
+| No reuse of common components; copy-paste; duplicated code | **Confirmed.** Five popup style owners, six dismissal/placement implementations, four modal lifecycles, two segmented-radio algorithms, three shortcut listeners, two formatting-command builders (Appendix D R1–R20 plus §5.2 new findings).                                                                                                                                                                                                                                                                                                                                                  | §5.2              |
+| Stubs mixed with implementation                            | **Confirmed, in three forms.** (a) Production widgets branch on a `?parity-case` URL parameter to fake states for screenshots; (b) production Go services expose test-only hooks (`SetBeforeSaveAsRecheck`, `SetWriteCommitObserver`, injected clocks); (c) a 2,024-line TypeScript re-implementation of the Go backend (`frontend/src/dev/bridge-mock`) is the backend that every "E2E" test runs against; (d) a test file is shipped inside the binary (`frontend/public/theme-bootstrap.test.mjs` → `dist` → `//go:embed`).                                                                 | §5.3, §5.4, §5.5  |
+| Tests mixed with production code                           | **Confirmed.** All 66 Go test files sit beside production code in the production package; 72 Jest files sit under `frontend/src`; one test lives in `frontend/public`. Note: this colocation was encoded in the very first agent configuration (`50d692d:CLAUDE.md` rule globs `internal/**/*_test.go`, `frontend/src/**/*.test.ts(x)`) and restated on 2026-07-28 (`structure.md` "A Go test sits beside the code it tests"), so it is a convention the agents inherited and never questioned rather than one they invented late.                                                             | §5.4              |
+| Incorrect structures                                       | **Confirmed.** `ui/primitives/ViewMenu.tsx` is a feature menu that imports the action registry, dispatcher and store types (violates `rules.md#components-take-props`); `frontend/src/dev` is compiled into the E2E truth; `cmd/native-evidence` is a second Wails composition for evidence capture; `test-results/.last-run.json` is tracked at repo root; 42 MB of `specs/**/evidence` is committed.                                                                                                                                                                                         | §5.4, §5.6, §5.8  |
+| Tests verify bureaucracy                                   | **Confirmed.** `spec_clause_count_test.go` counts `- Q:` lines in `spec.md` and compares them with a phrase in `plan.md`; `native_evidence_safeguards_test.go` runs two `go build`s inside `go test`; component tests read CSS files as text and assert declarations; ~73 % of frontend test titles start with a task or requirement ID. The project's own rule file forbids exactly this (`docs/delivery/architecture/rules.md:686–705`, "A test proves behaviour, not a document").                                                                                                          | §5.4              |
+| The current basis will fail future features                | **Supported.** Eight reproduced product defects in the first real-file feature (Appendix A), a Save that destroys Undo, an E2E suite that cannot see the Go backend, and a lifecycle model spread over many per-document maps make each new capability (Phase 06 rendering, Phase 07 folders, Phase 08 OS integration, AI phases) more expensive than the last. The refactoring is justified; a rewrite of the stack is not.                                                                                                                                                                   | §4, §6            |
 
 Two nuances matter for the refactoring specification. First, several architectural boundaries **did hold** and are worth
 keeping (Go-owned model, adapter isolation, envelopes, tokens, CGO-free SQLite, additive migrations). Second, some of the
@@ -100,40 +100,40 @@ assistant. Backend-owned state, envelopes and CGO-free SQLite remain.
 
 ### 3.1 Fresh checks in this revision
 
-| Check | Result | What it establishes |
-| --- | --- | --- |
-| Working tree at start | Clean except three mode-only (`755`→`644`) diffs under `frontend/wailsjs/runtime/` | The tree is the audited commit; `just build` dirties generated files (a tooling defect, §5.6). |
-| Owner popup-border defect (U1) in Chromium via the ordinary Vite route | **Reproduced.** Pointer-opened About/View/File menus become `document.activeElement`, match `:focus-visible`, and their computed `box-shadow` is the two-layer focus ring with the drop shadow gone. Keyboard-opened menus keep the drop shadow. Screenshot matches the owner's. | The cause is the global `*:focus-visible { box-shadow: var(--focus-ring) }` rule in `base.css:104–107` replacing the popup surface shadow; it is not a theme-initialisation bug (§5.1). |
-| Origin of the reuse principle | Present in the initial spec: `50d692d:specification/02_Architecture/03_FRONTEND_REACT.md` lines 36 and 69–71 prescribe `ui/widgets → ui/components → ui/primitives → ui/styles` with Button, IconButton, TabBar, Toolbar, MenuBar, ContextMenu, Popover, Tooltip, Tabs, Switch. | The agents dropped a prescribed component library; they did not lack the instruction. |
-| Origin of the mockup-parity escalation | `50d692d:specification/mockups/README.md`: mockup is "the visual acceptance reference". `3af7c58` (2026-07-28 conversion): "Tier A binding … a visible difference … is a defect" (`docs/delivery/spec/surface/README.md:10–18`). `specs/003` then required zero-tolerance pixel parity (546 cases / 1,638 executions). | The pixel-parity programme is an escalation introduced by agents in two steps, not an owner requirement. |
-| Origin of ID-in-title test names | `50d692d:specification/06_Process_and_Traceability/03_TRACEABILITY.md:47–50` gives `it('STORY-031-AC-1 renders a GFM table…')` as the model; carried through `Proves: <feature>#<anchor>` (2026-07-28) and `// Proves: FR-…` + "a task id may lead the title" (`AGENTS.md`). | The convention was designed for a traceability generator that was deleted on 2026-07-25 (`927d15f`); the naming outlived its only consumer. |
-| Origin of colocated tests | `50d692d:CLAUDE.md` rule globs; `docs/delivery/architecture/structure.md` "Naming and file layout". | Inherited convention; contradicts the owner's stated vision (V4). |
-| `just` recipe and comment counts | 34 recipes, 32 comment lines, 167 lines | Confirms revision-1 count. |
-| Test-file inventory | 66 Go test files (all in production packages), 95 frontend test files (72 under `src`, 20 under `e2e`, 1 under `public`, 1 under `scripts`, 1 copy in `dist`) | Confirms revision-1 inventory. |
-| Test titles containing IDs | 520 of 711 `describe/it/test` titles in `frontend/src` and `frontend/e2e` (73 %); most frequent leading tokens: `T045` ×18, `T157` ×15, `T084` ×14, `T142` ×12, `T030` ×12 | Confirms and quantifies U2. |
-| Requirement/task IDs in production (non-test) source | 489 occurrences across `frontend/src`, `internal`, `cmd`, `main.go`; top files `App.tsx` (43), `DocumentTabs.tsx` (38), `AppModelHandler.ts` mock (22) | Confirms U2 at scale. |
-| `ui/primitives` and `ui/components` importing `logic/` | `ViewMenu.tsx` imports `actionRegistry`, `actionDispatcher`, store types; `Banner`, `StatusBar`, `ViewModeToggle` import store types only | A "primitive" that dispatches actions violates the project's own layering rule (`rules.md:494–498`). |
-| Theme-conditional CSS | `[data-theme]`/`[data-mode]` selectors: `tokens.css` 19, `DocumentTabs.module.css` 12, `EditorView.module.css` 11, `EditorChrome.module.css` 7, `SettingsMenu.module.css` 3, `AppShell` 2, `StatusBar` 2; plus 12 parity-only `[data-parity-shell]` rules in `DocumentTabs.module.css` | Theme skins leak into widget stylesheets instead of tokens; parity-capture rules live in production CSS. |
-| Repository weight | `specs/` 42 MB (mostly `evidence/`), `docs/` 15 MB, `frontend/src` 2.0 MB, `internal` 1.1 MB; `test-results/.last-run.json` tracked at root | Evidence artefacts outweigh the product by an order of magnitude. |
-| Branch state | `master` at `85205ba` (2026-07-20), 363 commits behind; `origin/feature/v1-implementation` at `544372d` (2026-08-19); local audit/retrospective branches point at the same commit as the feature branch; zero merge commits in 367 | The prescribed task-branch/squash protocol did not leave a trace; integration is one long linear branch never merged. |
+| Check                                                                  | Result                                                                                                                                                                                                                                                                                                                 | What it establishes                                                                                                                                                                     |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Working tree at start                                                  | Clean except three mode-only (`755`→`644`) diffs under `frontend/wailsjs/runtime/`                                                                                                                                                                                                                                     | The tree is the audited commit; `just build` dirties generated files (a tooling defect, §5.6).                                                                                          |
+| Owner popup-border defect (U1) in Chromium via the ordinary Vite route | **Reproduced.** Pointer-opened About/View/File menus become `document.activeElement`, match `:focus-visible`, and their computed `box-shadow` is the two-layer focus ring with the drop shadow gone. Keyboard-opened menus keep the drop shadow. Screenshot matches the owner's.                                       | The cause is the global `*:focus-visible { box-shadow: var(--focus-ring) }` rule in `base.css:104–107` replacing the popup surface shadow; it is not a theme-initialisation bug (§5.1). |
+| Origin of the reuse principle                                          | Present in the initial spec: `50d692d:specification/02_Architecture/03_FRONTEND_REACT.md` lines 36 and 69–71 prescribe `ui/widgets → ui/components → ui/primitives → ui/styles` with Button, IconButton, TabBar, Toolbar, MenuBar, ContextMenu, Popover, Tooltip, Tabs, Switch.                                        | The agents dropped a prescribed component library; they did not lack the instruction.                                                                                                   |
+| Origin of the mockup-parity escalation                                 | `50d692d:specification/mockups/README.md`: mockup is "the visual acceptance reference". `3af7c58` (2026-07-28 conversion): "Tier A binding … a visible difference … is a defect" (`docs/delivery/spec/surface/README.md:10–18`). `specs/003` then required zero-tolerance pixel parity (546 cases / 1,638 executions). | The pixel-parity programme is an escalation introduced by agents in two steps, not an owner requirement.                                                                                |
+| Origin of ID-in-title test names                                       | `50d692d:specification/06_Process_and_Traceability/03_TRACEABILITY.md:47–50` gives `it('STORY-031-AC-1 renders a GFM table…')` as the model; carried through `Proves: <feature>#<anchor>` (2026-07-28) and `// Proves: FR-…` + "a task id may lead the title" (`AGENTS.md`).                                           | The convention was designed for a traceability generator that was deleted on 2026-07-25 (`927d15f`); the naming outlived its only consumer.                                             |
+| Origin of colocated tests                                              | `50d692d:CLAUDE.md` rule globs; `docs/delivery/architecture/structure.md` "Naming and file layout".                                                                                                                                                                                                                    | Inherited convention; contradicts the owner's stated vision (V4).                                                                                                                       |
+| `just` recipe and comment counts                                       | 34 recipes, 32 comment lines, 167 lines                                                                                                                                                                                                                                                                                | Confirms revision-1 count.                                                                                                                                                              |
+| Test-file inventory                                                    | 66 Go test files (all in production packages), 95 frontend test files (72 under `src`, 20 under `e2e`, 1 under `public`, 1 under `scripts`, 1 copy in `dist`)                                                                                                                                                          | Confirms revision-1 inventory.                                                                                                                                                          |
+| Test titles containing IDs                                             | 520 of 711 `describe/it/test` titles in `frontend/src` and `frontend/e2e` (73 %); most frequent leading tokens: `T045` ×18, `T157` ×15, `T084` ×14, `T142` ×12, `T030` ×12                                                                                                                                             | Confirms and quantifies U2.                                                                                                                                                             |
+| Requirement/task IDs in production (non-test) source                   | 489 occurrences across `frontend/src`, `internal`, `cmd`, `main.go`; top files `App.tsx` (43), `DocumentTabs.tsx` (38), `AppModelHandler.ts` mock (22)                                                                                                                                                                 | Confirms U2 at scale.                                                                                                                                                                   |
+| `ui/primitives` and `ui/components` importing `logic/`                 | `ViewMenu.tsx` imports `actionRegistry`, `actionDispatcher`, store types; `Banner`, `StatusBar`, `ViewModeToggle` import store types only                                                                                                                                                                              | A "primitive" that dispatches actions violates the project's own layering rule (`rules.md:494–498`).                                                                                    |
+| Theme-conditional CSS                                                  | `[data-theme]`/`[data-mode]` selectors: `tokens.css` 19, `DocumentTabs.module.css` 12, `EditorView.module.css` 11, `EditorChrome.module.css` 7, `SettingsMenu.module.css` 3, `AppShell` 2, `StatusBar` 2; plus 12 parity-only `[data-parity-shell]` rules in `DocumentTabs.module.css`                                 | Theme skins leak into widget stylesheets instead of tokens; parity-capture rules live in production CSS.                                                                                |
+| Repository weight                                                      | `specs/` 42 MB (mostly `evidence/`), `docs/` 15 MB, `frontend/src` 2.0 MB, `internal` 1.1 MB; `test-results/.last-run.json` tracked at root                                                                                                                                                                            | Evidence artefacts outweigh the product by an order of magnitude.                                                                                                                       |
+| Branch state                                                           | `master` at `85205ba` (2026-07-20), 363 commits behind; `origin/feature/v1-implementation` at `544372d` (2026-08-19); local audit/retrospective branches point at the same commit as the feature branch; zero merge commits in 367                                                                                     | The prescribed task-branch/squash protocol did not leave a trace; integration is one long linear branch never merged.                                                                   |
 
 Limits: no native (WebKit) screenshots could be taken in either revision; the native walkthrough evidence is revision 1's
 accessibility journal. No Windows or Linux run. No full gate rerun in this revision (revision 1's host logs stand).
 
 ### 3.2 Fact-check of revision 1
 
-| Revision-1 claim | Status after re-verification |
-| --- | --- |
-| C1–C8 backend defects (Save As/autosave ordering, unlocked map read, retained write buffers, silent autosave failure, Darwin hard-link identity, Save remounts editor, Open shows Not saved, non-transactional settings update) | **Confirmed by source re-inspection** at the cited files; the independent review in the evidence folder already validated the probes. Line numbers in Appendix A are those of `883fd05` and remain valid. |
-| U1 cause "source-supported hypothesis" | **Upgraded to reproduced (Chromium)**; mechanism confirmed, see §5.1. |
-| B1 verify.sh false PASS, B2 network-scanner same-line bypass | **Confirmed** by the preserved fixtures; B2 remains a fact about the checker, not proof the app phones home, which matches the owner's clarification. |
-| "34 recipes", "66 Go test files all in production package", "1,909-byte test file embedded in dist" | **Confirmed.** |
-| "About three quarters of frontend static titles embed identifiers" | **Confirmed** (520/711 including `describe`). |
-| H01 retrospective errors (validators "never written", traceability.yaml as FR join, sanitizer as future work) | **Confirmed** by git (`a240936`, `fc785fe`, `857636a` add; `53af8e4` deletes; `927d15f` deletes `docs/traceability.yaml` five days before Spec Kit; `59b379a` adds `rehype-sanitize`). |
-| R1–R20 reuse findings | **Confirmed**, with the additions in §5.2 (a systematic inventory shows the split is wider than R1–R20 lists). |
-| "`frontend/src/dev` and `cmd` are legitimate" | **Partly revised.** Their existence has a reason, but both are symptoms of the missing real-backend E2E harness; the refactoring should replace, not preserve, the mock-as-E2E-truth arrangement (§5.5, §5.6). |
-| "Do not delete the entire test suite" | **Kept**, sharpened: §5.4 gives a file-level keep/rewrite/delete mapping. |
-| Revision 1's own structure | Findings were interleaved with process caveats and ~40 % of the text was defensive qualification; this revision keeps the qualifications where they change the decision and moves the rest to the appendices. |
+| Revision-1 claim                                                                                                                                                                                                                | Status after re-verification                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1–C8 backend defects (Save As/autosave ordering, unlocked map read, retained write buffers, silent autosave failure, Darwin hard-link identity, Save remounts editor, Open shows Not saved, non-transactional settings update) | **Confirmed by source re-inspection** at the cited files; the independent review in the evidence folder already validated the probes. Line numbers in Appendix A are those of `883fd05` and remain valid.      |
+| U1 cause "source-supported hypothesis"                                                                                                                                                                                          | **Upgraded to reproduced (Chromium)**; mechanism confirmed, see §5.1.                                                                                                                                          |
+| B1 verify.sh false PASS, B2 network-scanner same-line bypass                                                                                                                                                                    | **Confirmed** by the preserved fixtures; B2 remains a fact about the checker, not proof the app phones home, which matches the owner's clarification.                                                          |
+| "34 recipes", "66 Go test files all in production package", "1,909-byte test file embedded in dist"                                                                                                                             | **Confirmed.**                                                                                                                                                                                                 |
+| "About three quarters of frontend static titles embed identifiers"                                                                                                                                                              | **Confirmed** (520/711 including `describe`).                                                                                                                                                                  |
+| H01 retrospective errors (validators "never written", traceability.yaml as FR join, sanitizer as future work)                                                                                                                   | **Confirmed** by git (`a240936`, `fc785fe`, `857636a` add; `53af8e4` deletes; `927d15f` deletes `docs/traceability.yaml` five days before Spec Kit; `59b379a` adds `rehype-sanitize`).                         |
+| R1–R20 reuse findings                                                                                                                                                                                                           | **Confirmed**, with the additions in §5.2 (a systematic inventory shows the split is wider than R1–R20 lists).                                                                                                 |
+| "`frontend/src/dev` and `cmd` are legitimate"                                                                                                                                                                                   | **Partly revised.** Their existence has a reason, but both are symptoms of the missing real-backend E2E harness; the refactoring should replace, not preserve, the mock-as-E2E-truth arrangement (§5.5, §5.6). |
+| "Do not delete the entire test suite"                                                                                                                                                                                           | **Kept**, sharpened: §5.4 gives a file-level keep/rewrite/delete mapping.                                                                                                                                      |
+| Revision 1's own structure                                                                                                                                                                                                      | Findings were interleaved with process caveats and ~40 % of the text was defensive qualification; this revision keeps the qualifications where they change the decision and moves the rest to the appendices.  |
 
 ## 4. Root causes — why it went wrong
 
@@ -143,8 +143,8 @@ Each cause below is tied to evidence in §5. They are ordered by how much of the
 initial specification named the primitives and components (`Button`, `IconButton`, `TabBar`, `Toolbar`, `MenuBar`,
 `ContextMenu`, `Popover`, `Tooltip`, `Dialog` wrapper) and the layering `widgets → components → primitives → tokens`
 (`50d692d:…/03_FRONTEND_REACT.md:36,69–71`). The 2026-07-28 conversion (`3af7c58`) replaced that prescription with an
-inventory of what existed and the rule *"a shared helper with one caller: nowhere — inline it until there is a second
-caller"* (`docs/delivery/architecture/structure.md`). Agents implementing one task at a time each had "one caller", so
+inventory of what existed and the rule _"a shared helper with one caller: nowhere — inline it until there is a second
+caller"_ (`docs/delivery/architecture/structure.md`). Agents implementing one task at a time each had "one caller", so
 every family grew a private copy: six popup surfaces, ten popup lifecycles, four modal lifecycles, eleven button styles
 (§5.2). The owner's screenshots (border ring, misplaced tab menu, inconsistent menus) are the visible result.
 
@@ -205,23 +205,23 @@ them were deleted on 2026-07-25 (`rules.md:686–705`).
 Severity: **P1** fix before any new capability; **P2** part of the refactoring; **P3** cleanup once replacements exist.
 "Reproduced" means observed by execution in this or the previous revision; "source" means confirmed by reading the code.
 
-| ID | P | Finding | Status | § |
-| --- | --- | --- | --- | --- |
-| UI-1 | P1 | Popup loses its shadow and shows the focus ring when opened by pointer | reproduced (Chromium) | 5.1 |
-| C1 | P1 | Save As and autosave publish out of order; destination reported clean with stale bytes | reproduced | App. A |
-| C2 | P1 | Refusal label reads the document map without the lock | reproduced (race detector) | App. A |
-| C6 | P1 | Explicit Save remounts the editor; Undo and focus lost | reproduced (native) | App. A |
-| B1 | P1 | `verify.sh` reports PASS with missing baseline inputs | reproduced | App. B |
-| C3, C4, C5, C7, C8 | P2 | Retained write buffers; silent autosave failure; hard-link identity; Open shows Not saved; non-transactional settings | reproduced | App. A |
-| UI-2…UI-18 | P2 | Six popup surfaces, ten lifecycles, no Button/Bar/Tab/Pane/Sidebar primitives, God components, theme geometry in widget CSS, parity residue, dead tokens | source | 5.2 |
-| R14–R16, R19 | P2 | Tab menu anchor, invisible shortcuts, clipped menus at 400 px, Details omits word count | reproduced (browser) | App. D |
-| BE-1…BE-8 | P2 | Lifecycle across ten maps; test seams on the production API; six copy-paste families; layering leaks; dropped errors; concurrency risks; diary comments; dead exports | source | 5.3 |
-| T-1…T-5 | P2 | E2E never reaches Go; 20 % of test code is pixel parity; tests coupled to `specs/`/`docs/`; 19 % infrastructure; redundant suites | source | 5.4 |
-| DOC-1…DOC-6 | P2/P3 | Diary comments; ID titles; missing contracts; contradictory authority; README; spec inconsistencies | source | 5.5 |
-| TL-1…TL-10 | P2 | Six gate lists; 34 recipes; format covers half; build dirties tree; CI by hand; heuristic lint; no owner scripts; second host root; TS backend; hygiene | source | 5.6, 5.8 |
-| PR-1…PR-5 | P2 | Four authorities; dead command references; `AGENTS.md` war stories; mandatory hooks one side cannot run; two live workflows | source | 5.7 |
-| H-1…H-9 | context | Ten process regimes; evidence 4.8× product; tasks-as-diary; retrospective errors; branch protocol never executed; docs clutter | git | 5.9 |
-| B2–B10, H01–H15, R1–R20 | P2/P3 | Revision-1 tooling, history and reuse findings, all re-verified | source | App. B–D |
+| ID                      | P       | Finding                                                                                                                                                               | Status                     | §        |
+| ----------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- | -------- |
+| UI-1                    | P1      | Popup loses its shadow and shows the focus ring when opened by pointer                                                                                                | reproduced (Chromium)      | 5.1      |
+| C1                      | P1      | Save As and autosave publish out of order; destination reported clean with stale bytes                                                                                | reproduced                 | App. A   |
+| C2                      | P1      | Refusal label reads the document map without the lock                                                                                                                 | reproduced (race detector) | App. A   |
+| C6                      | P1      | Explicit Save remounts the editor; Undo and focus lost                                                                                                                | reproduced (native)        | App. A   |
+| B1                      | P1      | `verify.sh` reports PASS with missing baseline inputs                                                                                                                 | reproduced                 | App. B   |
+| C3, C4, C5, C7, C8      | P2      | Retained write buffers; silent autosave failure; hard-link identity; Open shows Not saved; non-transactional settings                                                 | reproduced                 | App. A   |
+| UI-2…UI-18              | P2      | Six popup surfaces, ten lifecycles, no Button/Bar/Tab/Pane/Sidebar primitives, God components, theme geometry in widget CSS, parity residue, dead tokens              | source                     | 5.2      |
+| R14–R16, R19            | P2      | Tab menu anchor, invisible shortcuts, clipped menus at 400 px, Details omits word count                                                                               | reproduced (browser)       | App. D   |
+| BE-1…BE-8               | P2      | Lifecycle across ten maps; test seams on the production API; six copy-paste families; layering leaks; dropped errors; concurrency risks; diary comments; dead exports | source                     | 5.3      |
+| T-1…T-5                 | P2      | E2E never reaches Go; 20 % of test code is pixel parity; tests coupled to `specs/`/`docs/`; 19 % infrastructure; redundant suites                                     | source                     | 5.4      |
+| DOC-1…DOC-6             | P2/P3   | Diary comments; ID titles; missing contracts; contradictory authority; README; spec inconsistencies                                                                   | source                     | 5.5      |
+| TL-1…TL-10              | P2      | Six gate lists; 34 recipes; format covers half; build dirties tree; CI by hand; heuristic lint; no owner scripts; second host root; TS backend; hygiene               | source                     | 5.6, 5.8 |
+| PR-1…PR-5               | P2      | Four authorities; dead command references; `AGENTS.md` war stories; mandatory hooks one side cannot run; two live workflows                                           | source                     | 5.7      |
+| H-1…H-9                 | context | Ten process regimes; evidence 4.8× product; tasks-as-diary; retrospective errors; branch protocol never executed; docs clutter                                        | git                        | 5.9      |
+| B2–B10, H01–H15, R1–R20 | P2/P3   | Revision-1 tooling, history and reuse findings, all re-verified                                                                                                       | source                     | App. B–D |
 
 ### 5.1 UI-1 — Popup border at startup (owner's screenshots): reproduced, cause identified
 
@@ -255,7 +255,7 @@ Severity: **P1** fix before any new capability; **P2** part of the refactoring; 
   a test per family. The refactoring should make the fix in one shared Popup component and prove it with a computed-style
   assertion for pointer- and keyboard-opened menus in every family.
 - **Fix direction (not a design decision).** Scope the focus indicator to interactive controls (`button, [role=menuitem],
-  input, …`) or express it as `outline`/`outline-offset` so it composes with elevation; keep a visible keyboard focus
+input, …`) or express it as `outline`/`outline-offset` so it composes with elevation; keep a visible keyboard focus
   indicator on items; assert the container's shadow is unchanged when it receives programmatic focus.
 
 ### 5.2 UI composition and reuse
@@ -280,22 +280,22 @@ StatusBar, ViewModeToggle (unused). **No Button, IconButton, TabBar, Toolbar, Me
 Switch, Dialog wrapper.** The behaviour those would have owned is implemented inside `ShellMenuRow.tsx` (1,041 lines),
 `DocumentTabs.tsx` (1,355), `EditorChrome.tsx` (591), `SettingsMenu.tsx` (610), `EditorContextMenu.tsx` (286),
 `TabContextMenu.tsx` (273) and `App.tsx` (2,179). The 2026-07-28 conversion replaced the prescription with an inventory
-of "what exists today" (`docs/delivery/architecture/structure.md`) and added the rule *"a shared helper with one caller:
-nowhere — inline it until there is a second caller"*, which, applied by agents one task at a time, produced the second,
+of "what exists today" (`docs/delivery/architecture/structure.md`) and added the rule _"a shared helper with one caller:
+nowhere — inline it until there is a second caller"_, which, applied by agents one task at a time, produced the second,
 third and sixth copies documented below.
 
 #### 5.2.2 Popups: six surface owners, ten lifecycle implementations
 
 **UI-2 Popup surface styling has six owners** (R1 said five). Values differ in ways a user can see:
 
-| Owner | Surface: bg / border / radius / shadow / min-width / padding | Row: padding / radius / hover / disabled |
-| --- | --- | --- |
-| `primitives/MenuSurface.module.css:64–118` (Settings, View) | `--elevated` / `--stroke` / 12px / `--win-shadow` / 250px / 6px | 7px 10px / 8px / `--hover` / .48 |
-| `widgets/ShellMenuRow.module.css:86–101,202–266` (File, About, narrow overflow) | `--surface-raised` / `--border` / 12px / `--win-shadow` / 250px / 6px | 7px 10px / 7px then patched to 8px by `.fileMenu .item` (`:150–166`) / `--surface` + border / .48 |
-| `widgets/DocumentTabs.module.css:219–232,280–284` (tab context) | `--surface-raised` / `--border` / 12px / **`--context-menu-shadow`** (Material redefines it, `tokens.css:231`) / 250px / 6px | 7px 10px / **none** / **no hover rule** / .48 |
-| `widgets/EditorContextMenu.module.css:10–53` (editor context) | `--surface-raised` / `--border` / **8px** / `--win-shadow` / **14rem** / **4px** | **6px 10px** / 8px / `--surface` + border / .48 |
-| `widgets/EditorChrome.module.css:380–442` (toolbar overflow) | `--surface-raised` / `--border` / 12px (11px narrow rule is dead: overridden by inline `borderRadius:'12px'` at `EditorChrome.tsx:500`) / `--win-shadow` / 250px / 6px | 7px 10px + `min-height 29/32px` / 8px / `--hover` / — |
-| `components/StatusBar.module.css:101–120` (Document details) | `--surface-raised` / `--border` / **0.5rem** / **none** / 250px / `--control-padding` | n/a |
+| Owner                                                                           | Surface: bg / border / radius / shadow / min-width / padding                                                                                                           | Row: padding / radius / hover / disabled                                                          |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `primitives/MenuSurface.module.css:64–118` (Settings, View)                     | `--elevated` / `--stroke` / 12px / `--win-shadow` / 250px / 6px                                                                                                        | 7px 10px / 8px / `--hover` / .48                                                                  |
+| `widgets/ShellMenuRow.module.css:86–101,202–266` (File, About, narrow overflow) | `--surface-raised` / `--border` / 12px / `--win-shadow` / 250px / 6px                                                                                                  | 7px 10px / 7px then patched to 8px by `.fileMenu .item` (`:150–166`) / `--surface` + border / .48 |
+| `widgets/DocumentTabs.module.css:219–232,280–284` (tab context)                 | `--surface-raised` / `--border` / 12px / **`--context-menu-shadow`** (Material redefines it, `tokens.css:231`) / 250px / 6px                                           | 7px 10px / **none** / **no hover rule** / .48                                                     |
+| `widgets/EditorContextMenu.module.css:10–53` (editor context)                   | `--surface-raised` / `--border` / **8px** / `--win-shadow` / **14rem** / **4px**                                                                                       | **6px 10px** / 8px / `--surface` + border / .48                                                   |
+| `widgets/EditorChrome.module.css:380–442` (toolbar overflow)                    | `--surface-raised` / `--border` / 12px (11px narrow rule is dead: overridden by inline `borderRadius:'12px'` at `EditorChrome.tsx:500`) / `--win-shadow` / 250px / 6px | 7px 10px + `min-height 29/32px` / 8px / `--hover` / —                                             |
+| `components/StatusBar.module.css:101–120` (Document details)                    | `--surface-raised` / `--border` / **0.5rem** / **none** / 250px / `--control-padding`                                                                                  | n/a                                                                                               |
 
 `ShellMenuRow.module.css:202–266` re-declares `.item/.groupLabel/.separator` that `MenuSurface.module.css:81–183` already
 owns, with group-label padding `5px 10px 3px` versus `7px 10px 3px` — the drift the MenuSurface header comment says was
@@ -305,18 +305,18 @@ This is exactly what the owner perceived as "menubar popups and editor popups us
 **UI-3 Popup lifecycle is implemented ten times** (open, Escape, outside-pointer, focus restore, arrow navigation,
 geometry clamp):
 
-| Site | Escape | Outside pointer | Focus restore | Arrow nav | Clamp |
-| --- | --- | --- | --- | --- | --- |
-| File/About desktop, Radix (`ShellMenuRow.tsx:686–782,815–869`) | Radix + own document listener `:494–504` | Radix | own `:283–287` | Radix | disabled by CSS; token inset |
-| Narrow overflow, Radix (`:622–683`) | Radix | Radix | — | Radix | Radix |
-| Narrow File/About, raw `role=menu` (`:908–1003`) | document listener | **none** | `:283–287` | **none** | own `:303–330` |
-| Narrow View (`:289–301,606–613`) | Radix | own listener (queries by aria-label) | `:283–287` | Radix | 1×1 anchor span |
-| SettingsMenu (`SettingsMenu.tsx:399–506`) | document listener **and** onKeyDown | own `:487–494` | `:480–484` | **none** | own clamp + `maxBlockSize`, hardcoded `{left:150, top:42}` `:438` |
-| ViewMenu desktop (`ViewMenu.tsx:150–166`) | Radix | Radix | via ShellMenuRow | Radix | disabled; token inset |
-| TabContextMenu (`:160–180,233–247`) | document listener | document listener | DocumentTabs `:1325–1339` | own cycling | **none** (CSS `right: var(--app-gap); top: 3rem`) |
-| EditorContextMenu (`:91–125`) | document listener (gated) | document listener (**ungated**, runs while closed, `:102–110`) | `openerRef`, never cleared | **none** | own clamp |
-| Toolbar overflow (`EditorChrome.tsx:292–367`) | document listener | document listener | `:292–296` | **none** | own clamp with magic −18/−19 (`:347,351`) |
-| Status Details (`StatusBar.tsx:112–147`) | **none** | **none** | — | — | CSS |
+| Site                                                           | Escape                                   | Outside pointer                                                | Focus restore              | Arrow nav   | Clamp                                                             |
+| -------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------- | -------------------------- | ----------- | ----------------------------------------------------------------- |
+| File/About desktop, Radix (`ShellMenuRow.tsx:686–782,815–869`) | Radix + own document listener `:494–504` | Radix                                                          | own `:283–287`             | Radix       | disabled by CSS; token inset                                      |
+| Narrow overflow, Radix (`:622–683`)                            | Radix                                    | Radix                                                          | —                          | Radix       | Radix                                                             |
+| Narrow File/About, raw `role=menu` (`:908–1003`)               | document listener                        | **none**                                                       | `:283–287`                 | **none**    | own `:303–330`                                                    |
+| Narrow View (`:289–301,606–613`)                               | Radix                                    | own listener (queries by aria-label)                           | `:283–287`                 | Radix       | 1×1 anchor span                                                   |
+| SettingsMenu (`SettingsMenu.tsx:399–506`)                      | document listener **and** onKeyDown      | own `:487–494`                                                 | `:480–484`                 | **none**    | own clamp + `maxBlockSize`, hardcoded `{left:150, top:42}` `:438` |
+| ViewMenu desktop (`ViewMenu.tsx:150–166`)                      | Radix                                    | Radix                                                          | via ShellMenuRow           | Radix       | disabled; token inset                                             |
+| TabContextMenu (`:160–180,233–247`)                            | document listener                        | document listener                                              | DocumentTabs `:1325–1339`  | own cycling | **none** (CSS `right: var(--app-gap); top: 3rem`)                 |
+| EditorContextMenu (`:91–125`)                                  | document listener (gated)                | document listener (**ungated**, runs while closed, `:102–110`) | `openerRef`, never cleared | **none**    | own clamp                                                         |
+| Toolbar overflow (`EditorChrome.tsx:292–367`)                  | document listener                        | document listener                                              | `:292–296`                 | **none**    | own clamp with magic −18/−19 (`:347,351`)                         |
+| Status Details (`StatusBar.tsx:112–147`)                       | **none**                                 | **none**                                                       | —                          | —           | CSS                                                               |
 
 The 8px clamp margin and below/above flip are copied four times (`SettingsMenu.tsx:406–468`, `EditorContextMenu.tsx:74–85`,
 `EditorChrome.tsx:324–352`, `ShellMenuRow.tsx:315–329`); `document.querySelector('.application-frame')` appears seven
@@ -416,13 +416,13 @@ tab `×`/`+` glyphs), MenuTrigger (bypassed by the toolbar-overflow `<summary>` 
 
 #### 5.2.6 God components
 
-| File | Lines | Concerns held together |
-| --- | ---: | --- |
-| `App.tsx` | 2,179 | bootstrap/retry; menu-request routing; four dialog open states; two normalization flows; two external-conflict flows; close plans incl. native close/quit/recovery; the write pipeline; New/Open/Recent/Reopen/Activate entry commands; remediation, toasts and live region; shell-menu prop assembly (`:237–405`); editor session install. 19 `useState`, 7 `useRef`, 36 `useCallback`, 11 selectors, 29 adapter call sites across six adapters. |
-| `DocumentTabs.tsx` | 1,355 | tab strip; drag-reorder engine (`:775–1022`); foreground external-change sweep and prompt (`:382–527,1345`); tab shortcut listener (`:1039–1107`); remediation slot; live-region announcer; context-menu host and focus restore. |
-| `ShellMenuRow.tsx` | 1,041 | four menus × two layouts; `useShellShortcuts` installation (`:452–492`); narrow popup geometry; menu-request handling; File availability rules; window-row actions. |
-| `EditorChrome.tsx` | 591 | toolbar; overflow popup engine; arrangement radio; editor shortcuts; application-menu overflow; tabs mount. |
-| `SettingsMenu.tsx` | 610 | quick-theme swatches; mode radiogroup; popup lifecycle and clamp; settings entry points. |
+| File               | Lines | Concerns held together                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------ | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `App.tsx`          | 2,179 | bootstrap/retry; menu-request routing; four dialog open states; two normalization flows; two external-conflict flows; close plans incl. native close/quit/recovery; the write pipeline; New/Open/Recent/Reopen/Activate entry commands; remediation, toasts and live region; shell-menu prop assembly (`:237–405`); editor session install. 19 `useState`, 7 `useRef`, 36 `useCallback`, 11 selectors, 29 adapter call sites across six adapters. |
+| `DocumentTabs.tsx` | 1,355 | tab strip; drag-reorder engine (`:775–1022`); foreground external-change sweep and prompt (`:382–527,1345`); tab shortcut listener (`:1039–1107`); remediation slot; live-region announcer; context-menu host and focus restore.                                                                                                                                                                                                                  |
+| `ShellMenuRow.tsx` | 1,041 | four menus × two layouts; `useShellShortcuts` installation (`:452–492`); narrow popup geometry; menu-request handling; File availability rules; window-row actions.                                                                                                                                                                                                                                                                               |
+| `EditorChrome.tsx` |   591 | toolbar; overflow popup engine; arrangement radio; editor shortcuts; application-menu overflow; tabs mount.                                                                                                                                                                                                                                                                                                                                       |
+| `SettingsMenu.tsx` |   610 | quick-theme swatches; mode radiogroup; popup lifecycle and clamp; settings entry points.                                                                                                                                                                                                                                                                                                                                                          |
 
 ### 5.3 Go backend
 
@@ -430,15 +430,15 @@ The layering intent largely held (no import cycles; `apperr` imports nothing int
 disk I/O happens outside the model mutex). The problems are concentration, hand-synchronised lifecycle state, test seams on
 the production API, and copy-paste of the same six patterns. Line numbers are at `883fd05`.
 
-| Package | Size | Note |
-| --- | --- | --- |
-| `internal/appmodel` | ≈6,700 lines in 26 files; `service.go` 1,040, `save.go` 719, `close_plan.go` 716, `conflict.go` 631, `file_lifecycle.go` 451 | Model, save/autosave/conflict/close machinery, three SQLite repositories and the bound handler in one package |
-| `internal/apperr` | `results.go` 567 (55 type declarations, 13 hand-written `*Result` envelopes), `classified_error.go` 288 | The DTO dumping ground `KNOWN_ISSUES.md` item 8 predicted |
-| `internal/application` | 6 files, 769 lines | Composition root, lifecycle handler, native close/window |
-| `internal/settings` | 894 lines | Typed groups over one KV table, sqlc used here only |
-| `internal/file` | ≈1,200 lines | Paths, classified reads, atomic replace, clipboard/reveal ports — the cleanest package |
-| `internal/gate` | 30 lines | Stage-3 seam, no production importer |
-| `cmd/native-evidence` | ≈1,600 lines (build-tagged) | Second host root (§5.6 TL-8) |
+| Package                | Size                                                                                                                         | Note                                                                                                          |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `internal/appmodel`    | ≈6,700 lines in 26 files; `service.go` 1,040, `save.go` 719, `close_plan.go` 716, `conflict.go` 631, `file_lifecycle.go` 451 | Model, save/autosave/conflict/close machinery, three SQLite repositories and the bound handler in one package |
+| `internal/apperr`      | `results.go` 567 (55 type declarations, 13 hand-written `*Result` envelopes), `classified_error.go` 288                      | The DTO dumping ground `KNOWN_ISSUES.md` item 8 predicted                                                     |
+| `internal/application` | 6 files, 769 lines                                                                                                           | Composition root, lifecycle handler, native close/window                                                      |
+| `internal/settings`    | 894 lines                                                                                                                    | Typed groups over one KV table, sqlc used here only                                                           |
+| `internal/file`        | ≈1,200 lines                                                                                                                 | Paths, classified reads, atomic replace, clipboard/reveal ports — the cleanest package                        |
+| `internal/gate`        | 30 lines                                                                                                                     | Stage-3 seam, no production importer                                                                          |
+| `cmd/native-evidence`  | ≈1,600 lines (build-tagged)                                                                                                  | Second host root (§5.6 TL-8)                                                                                  |
 
 **BE-1 Document lifecycle state is spread over ten maps and eight counters, synchronised by hand.** `AppModelService`
 (`service.go:23–64`) has 40 fields: one `RWMutex`; five maps keyed by document id (`documents`, `autosaveTimers`,
@@ -465,14 +465,14 @@ and `native_evidence` tags are confined to `cmd/` — the leakage is through the
 
 **BE-3 Six copy-paste families.**
 
-| Pattern | Copies | Evidence |
-| --- | ---: | --- |
-| Handler `defer/recover` envelope | 35 blocks, ≈216 lines, 24 distinct panic messages; `context()`/`zlog()` helpers ×3; panic format constant ×2 | `appmodel/handler.go` (26 methods), `settings/handler.go` (9), `application/handler.go` (6). No shared guard helper. `SettingsHandler` takes a concrete `*SettingsService` while `AppModelHandler` takes an interface. |
-| Lock → snapshot → mutate → publish → unlock | 21 sites (`snapshotLocked()` ×21, `publishLocked(` ×21); 80 `Lock()` vs 127 `Unlock()`, 31 `RLock()` vs 52 `RUnlock()` because unlocking is manual per branch | Two divergent emit paths: `publishLocked` (`service.go:924–940`, rolls back on failure) versus inline `defer recover(); EmitStatePatch` copies in `save.go:397–406,441–446` that do not. `snapshotLocked` deep-copies the whole state on every mutation, including each `UpdateBuffer` (`document.go:57`). |
-| KV repository code | four repositories on the same `settings` table | sqlc (`sqlc.yaml`, 2 queries) is used by one consumer (`settings/repository_sqlite.go:213–283`) and even there `ResetAppearance` inlines the upsert literal (`:155–172`). Raw `SELECT value FROM settings WHERE key = ?` at `layout_repository_sqlite.go:29`, `file_metadata_repository_sqlite.go:26`, `recent_files_repository_sqlite.go:136`; upsert literal ×3; versioned-JSON envelope decode ×3; two SQLite-busy classifiers (`recent…:211` vs `db/db.go:252`); `sameRecentFiles` ≡ `sameStringSlice` in one package. The settings repository unrolls 5 `Get*` and 5 `Update*` by hand; `UpdateAppearance/Markdown/Editor` have no transaction (C8) while `ResetAppearance` does. |
-| Classified error construction | 5 per-domain wrappers + 10 result-wrapping helpers + 22 direct calls, all of shape (category, subject, message, remediation, id) → Result | `file_lifecycle.go:448`, `save.go:656–678`, `close_plan.go:503,703`, `conflict.go:619`, `copy_path.go:102,107` (byte-identical bodies differing in return type), `tab_session.go:64`, `tab_reorder.go:69` |
-| `*Result` envelopes | 13 hand-written structs, two error vocabularies (`*WireError` ×5, `*ClassifiedError` ×8), 3 pure-synonym aliases | `apperr/results.go` |
-| Host wiring | ≈60 verbatim lines between `main.go:160–234` and `cmd/native-evidence/main_native_evidence.go:150–306` (options, close coordinator, native-window adapter, menu wrapper, Bind/EnumBind) | The driver's own comment (`:122–130`) records the drift this caused |
+| Pattern                                     |                                                                                                                                                                                  Copies | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Handler `defer/recover` envelope            |                                                                            35 blocks, ≈216 lines, 24 distinct panic messages; `context()`/`zlog()` helpers ×3; panic format constant ×2 | `appmodel/handler.go` (26 methods), `settings/handler.go` (9), `application/handler.go` (6). No shared guard helper. `SettingsHandler` takes a concrete `*SettingsService` while `AppModelHandler` takes an interface.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Lock → snapshot → mutate → publish → unlock |                           21 sites (`snapshotLocked()` ×21, `publishLocked(` ×21); 80 `Lock()` vs 127 `Unlock()`, 31 `RLock()` vs 52 `RUnlock()` because unlocking is manual per branch | Two divergent emit paths: `publishLocked` (`service.go:924–940`, rolls back on failure) versus inline `defer recover(); EmitStatePatch` copies in `save.go:397–406,441–446` that do not. `snapshotLocked` deep-copies the whole state on every mutation, including each `UpdateBuffer` (`document.go:57`).                                                                                                                                                                                                                                                                                                                                                                             |
+| KV repository code                          |                                                                                                                                          four repositories on the same `settings` table | sqlc (`sqlc.yaml`, 2 queries) is used by one consumer (`settings/repository_sqlite.go:213–283`) and even there `ResetAppearance` inlines the upsert literal (`:155–172`). Raw `SELECT value FROM settings WHERE key = ?` at `layout_repository_sqlite.go:29`, `file_metadata_repository_sqlite.go:26`, `recent_files_repository_sqlite.go:136`; upsert literal ×3; versioned-JSON envelope decode ×3; two SQLite-busy classifiers (`recent…:211` vs `db/db.go:252`); `sameRecentFiles` ≡ `sameStringSlice` in one package. The settings repository unrolls 5 `Get*` and 5 `Update*` by hand; `UpdateAppearance/Markdown/Editor` have no transaction (C8) while `ResetAppearance` does. |
+| Classified error construction               |                                               5 per-domain wrappers + 10 result-wrapping helpers + 22 direct calls, all of shape (category, subject, message, remediation, id) → Result | `file_lifecycle.go:448`, `save.go:656–678`, `close_plan.go:503,703`, `conflict.go:619`, `copy_path.go:102,107` (byte-identical bodies differing in return type), `tab_session.go:64`, `tab_reorder.go:69`                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `*Result` envelopes                         |                                                                        13 hand-written structs, two error vocabularies (`*WireError` ×5, `*ClassifiedError` ×8), 3 pure-synonym aliases | `apperr/results.go`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Host wiring                                 | ≈60 verbatim lines between `main.go:160–234` and `cmd/native-evidence/main_native_evidence.go:150–306` (options, close coordinator, native-window adapter, menu wrapper, Bind/EnumBind) | The driver's own comment (`:122–130`) records the drift this caused                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 **BE-4 Layering leaks.** `appmodel` imports the Wails runtime (`runtime_emitter.go:8`) and `bootstrap` (for `Version()`,
 `service.go:15,375`); it hosts three repositories and `database/sql`, so the "Repository" layer lives inside the service
@@ -520,37 +520,37 @@ distinction; WAL + busy timeout + additive goose migrations + corruption quarant
 
 Inventory at `883fd05`: 66 Go test files (14,944 lines) and 94 frontend test files (33,980 lines; Jest 79, Playwright 11,
 `node --test` 2, one fixture test), against 12,171 lines of Go and 20,785 lines of frontend production code. The
-categories below were assigned per file by reading each file; counts marked *est.* are heuristic.
+categories below were assigned per file by reading each file; counts marked _est._ are heuristic.
 
 #### 5.4.1 Classification
 
-| Go test kind | Files | Examples |
-| --- | ---: | --- |
-| Behaviour through exported API, real files or real SQLite | 27 | `internal/file/codec_test.go`, `internal/settings/repository_sqlite_test.go`, `internal/db/*`, `internal/application/*` |
-| Behaviour through unexported state or helpers | 22 | `internal/appmodel/{save,service,close_plan,conflict,autosave,…}_test.go`, `internal/file/atomic_replace*_test.go` |
-| DTO shape / reflection | 4 | `internal/apperr/results_test.go:12–75` (key sets), `internal/application/host_ports_wiring_test.go` (reflect over unexported fields), `internal/appmodel/document_consumer_test.go:31–58` (two dummy consumers that only `_ = snapshot.X`) |
-| Source-text / repository-file assertions | 1 | `main_test.go`: walks `frontend/src` for substrings (`:197–226`), reads `go.mod`/`justfile`/`wails.json` for `CGO_ENABLED=1` (`:590–640`), fails if `".md"` appears twice in `main.go` (`:784`), reads `wailsjs/*.d.ts` (`:430,449`), shells `git ls-files` (`:546`) |
-| Paperwork (reads specification documents) | 2 | `spec_clause_count_test.go:33–43` (counts `- Q:` bullets in `specs/003/spec.md` and compares with a phrase in `plan.md` and an evidence ledger); `internal/apperr/contract_table_test.go:23` (parses a markdown table out of `specs/003/spec.md`) |
-| Architecture lint (AST) | 2 | `architecture_test.go` (9 gates), `internal/apperr/architecture_test.go` |
-| Build pipeline inside `go test` | 4 | `native_evidence_safeguards_test.go:16–55` (two full `go build`s of the desktop app, `go tool nm`, `node …check-boundaries.mjs` twice); `cmd/native-evidence/*_test.go` ×3 (build-tagged, never run by `just go-test`) |
-| Mock asserting the mock | 2 | `internal/file/clipboard_test.go`, `reveal_test.go` (adapter forwards an argument; test asserts the closure got it) |
-| Helper-only files | 2 | `internal/appmodel/layout_test_helpers_test.go` (with a `var _ = …` list to silence unused-helper lint), `internal/file/document_fixtures_test.go` |
+| Go test kind                                              | Files | Examples                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Behaviour through exported API, real files or real SQLite |    27 | `internal/file/codec_test.go`, `internal/settings/repository_sqlite_test.go`, `internal/db/*`, `internal/application/*`                                                                                                                                              |
+| Behaviour through unexported state or helpers             |    22 | `internal/appmodel/{save,service,close_plan,conflict,autosave,…}_test.go`, `internal/file/atomic_replace*_test.go`                                                                                                                                                   |
+| DTO shape / reflection                                    |     4 | `internal/apperr/results_test.go:12–75` (key sets), `internal/application/host_ports_wiring_test.go` (reflect over unexported fields), `internal/appmodel/document_consumer_test.go:31–58` (two dummy consumers that only `_ = snapshot.X`)                          |
+| Source-text / repository-file assertions                  |     1 | `main_test.go`: walks `frontend/src` for substrings (`:197–226`), reads `go.mod`/`justfile`/`wails.json` for `CGO_ENABLED=1` (`:590–640`), fails if `".md"` appears twice in `main.go` (`:784`), reads `wailsjs/*.d.ts` (`:430,449`), shells `git ls-files` (`:546`) |
+| Paperwork (reads specification documents)                 |     2 | `spec_clause_count_test.go:33–43` (counts `- Q:` bullets in `specs/003/spec.md` and compares with a phrase in `plan.md` and an evidence ledger); `internal/apperr/contract_table_test.go:23` (parses a markdown table out of `specs/003/spec.md`)                    |
+| Architecture lint (AST)                                   |     2 | `architecture_test.go` (9 gates), `internal/apperr/architecture_test.go`                                                                                                                                                                                             |
+| Build pipeline inside `go test`                           |     4 | `native_evidence_safeguards_test.go:16–55` (two full `go build`s of the desktop app, `go tool nm`, `node …check-boundaries.mjs` twice); `cmd/native-evidence/*_test.go` ×3 (build-tagged, never run by `just go-test`)                                               |
+| Mock asserting the mock                                   |     2 | `internal/file/clipboard_test.go`, `reveal_test.go` (adapter forwards an argument; test asserts the closure got it)                                                                                                                                                  |
+| Helper-only files                                         |     2 | `internal/appmodel/layout_test_helpers_test.go` (with a `var _ = …` list to silence unused-helper lint), `internal/file/document_fixtures_test.go`                                                                                                                   |
 
 All 66 Go test files are white-box (`package <prod>`, zero `_test` packages); an estimated 32 reference unexported
 identifiers. `save_test.go` calls `flushAutosave`, `inspectDocument`, `mintDocumentID`, `openDocument`, `prepareWriteDisk`,
 `refusedWrite`, `snapshotForWrite`; `layout_repository_sqlite_test.go` touches unexported fields 45 times. Moving these
 tests out of the package is therefore an API-boundary change, not a file move (V4).
 
-| Frontend test kind | Files | Notes |
-| --- | ---: | --- |
-| Behaviour (RTL, hooks, reducers, adapter over a mocked bridge) | ~55 | `logic/**` (25 files), primitives (7), and widgets such as `ClosePrompt`, `TabContextMenu`, `EditorContextMenu`, `PreviewPane`, `AppearanceControls`, `SettingsDialog`, `Launcher` |
-| Behaviour mixed with source-text assertions | 15 | 197 `expect()`s against file text out of 2,228 (*est.* 9 %): `AppShell.test.tsx` 41, `ShellMenuRow.test.tsx` 35 (reads four CSS files and two `.tsx`), `DocumentTabs.test.tsx` 25 (eight `readFileSync`), `EditorView.test.tsx` 17, `EditorChrome.test.tsx` 16, `App.test.tsx` 10 (asserts `AppShell.tsx` contains no `fetch` by regex, `:402–410`; asserts `source.toContain('settingsOpen \|\|')`, `:363–370`) |
-| Pure source-text | 3 | `ui/styles/tokens.test.ts` (528 lines grepping CSS), `CodeEditor.bundle.test.ts` (reads `package.json`, spawns the network scanner), `public/theme-bootstrap.test.mjs` |
-| Architecture lint via the TypeScript compiler API | 1 | `useDocumentCommands.test.ts:200–215` |
-| Tests of the mock bridge itself | 3 | `src/dev/bridge-mock/*.test.ts`: 681 lines testing a 2,351-line fake |
-| Pixel-parity harness unit tests (Jest under `e2e/parity`) | 9 | 1,982 lines; e.g. `manifest.test.ts` "contains exactly 306 primary keys"; `accounting.test.ts:28` reads `playwright.config.ts` as text |
-| Playwright pixel parity | 3 | `targeted-parity` 1,667, `real-files-parity` 1,222, `interactive-states` 185 = 3,074 lines |
-| Playwright behavioural journeys | 8 | 5,087 lines (`real-files-and-tabs` 1,216, `window-shell` 920, `narrow-width` 806, `core-editor` 740, `editor-stage` 681, `offline-and-controls` 358, `launcher-binding` 184, `appearance` 182) |
+| Frontend test kind                                             | Files | Notes                                                                                                                                                                                                                                                                                                                                                                                                            |
+| -------------------------------------------------------------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Behaviour (RTL, hooks, reducers, adapter over a mocked bridge) |   ~55 | `logic/**` (25 files), primitives (7), and widgets such as `ClosePrompt`, `TabContextMenu`, `EditorContextMenu`, `PreviewPane`, `AppearanceControls`, `SettingsDialog`, `Launcher`                                                                                                                                                                                                                               |
+| Behaviour mixed with source-text assertions                    |    15 | 197 `expect()`s against file text out of 2,228 (_est._ 9 %): `AppShell.test.tsx` 41, `ShellMenuRow.test.tsx` 35 (reads four CSS files and two `.tsx`), `DocumentTabs.test.tsx` 25 (eight `readFileSync`), `EditorView.test.tsx` 17, `EditorChrome.test.tsx` 16, `App.test.tsx` 10 (asserts `AppShell.tsx` contains no `fetch` by regex, `:402–410`; asserts `source.toContain('settingsOpen \|\|')`, `:363–370`) |
+| Pure source-text                                               |     3 | `ui/styles/tokens.test.ts` (528 lines grepping CSS), `CodeEditor.bundle.test.ts` (reads `package.json`, spawns the network scanner), `public/theme-bootstrap.test.mjs`                                                                                                                                                                                                                                           |
+| Architecture lint via the TypeScript compiler API              |     1 | `useDocumentCommands.test.ts:200–215`                                                                                                                                                                                                                                                                                                                                                                            |
+| Tests of the mock bridge itself                                |     3 | `src/dev/bridge-mock/*.test.ts`: 681 lines testing a 2,351-line fake                                                                                                                                                                                                                                                                                                                                             |
+| Pixel-parity harness unit tests (Jest under `e2e/parity`)      |     9 | 1,982 lines; e.g. `manifest.test.ts` "contains exactly 306 primary keys"; `accounting.test.ts:28` reads `playwright.config.ts` as text                                                                                                                                                                                                                                                                           |
+| Playwright pixel parity                                        |     3 | `targeted-parity` 1,667, `real-files-parity` 1,222, `interactive-states` 185 = 3,074 lines                                                                                                                                                                                                                                                                                                                       |
+| Playwright behavioural journeys                                |     8 | 5,087 lines (`real-files-and-tabs` 1,216, `window-shell` 920, `narrow-width` 806, `core-editor` 740, `editor-stage` 681, `offline-and-controls` 358, `launcher-binding` 184, `appearance` 182)                                                                                                                                                                                                                   |
 
 CSS modules are mapped to an identity proxy in Jest (`src/test/styleMock.ts`), so no Jest test can observe real styling;
 that is why fifteen files grep stylesheets instead. `App.test.tsx` (3,292 lines, 50 tests) mocks `AppShell`, `EditorView`,
@@ -586,13 +586,13 @@ adapter above it).
 
 #### 5.4.2 Naming and anchors
 
-| Metric | Count |
-| --- | ---: |
-| Frontend `it`/`test` titles | 715 |
-| …containing a task/requirement ID | **520 (73 %)**, 519 of them starting with it |
-| ID mentions in frontend tests: `T###` / `FR-FT` / `STORY` / `FR-WS` / `SC-FT` | 626 / 278 / 119 / 55 / 20 |
-| Go `func Test…` names containing an ID | 2 of 293 |
-| `// Proves:` comments in Go / TS | 182 (46 files) / 223 |
+| Metric                                                                        |                                        Count |
+| ----------------------------------------------------------------------------- | -------------------------------------------: |
+| Frontend `it`/`test` titles                                                   |                                          715 |
+| …containing a task/requirement ID                                             | **520 (73 %)**, 519 of them starting with it |
+| ID mentions in frontend tests: `T###` / `FR-FT` / `STORY` / `FR-WS` / `SC-FT` |                    626 / 278 / 119 / 55 / 20 |
+| Go `func Test…` names containing an ID                                        |                                     2 of 293 |
+| `// Proves:` comments in Go / TS                                              |                         182 (46 files) / 223 |
 
 Representative titles: `STORY-001-AC-2 renders the blank application root`; `T058 includes the Shortcuts dialog in the
 shared modal suppression state` (asserts source text); `T033 applies the contained tab-strip metrics and fixed add-control
@@ -610,15 +610,15 @@ back.
 
 #### 5.4.3 Production ↔ test entanglement
 
-| Location | Entanglement |
-| --- | --- |
-| `frontend/public/theme-bootstrap.test.mjs` → `frontend/dist/theme-bootstrap.test.mjs` → `main.go:26` `//go:embed all:frontend/dist` | A Node test file is embedded in the release binary (1,909 bytes; byte-identical copies). |
-| `frontend/src/test/{setup,i18nShim,styleMock}.ts` | Test shims under `src/`; `i18nShim` replaces the real catalogue for widget tests. |
-| `frontend/src/logic/fixtures/real-file-fixtures.test.ts` | A "fixtures" directory containing only a test that imports `e2e/helpers`. |
-| `frontend/src/logic/adapter/nativeEvidenceRuntime.ts` | Evidence-harness adapter in the production adapter directory; `frontend/evidence/check-boundaries.mjs:69,88` exists solely to police that production never imports it. |
-| `AppShell.tsx:54–63`, `EditorView.tsx:270–279`, `CodeEditor.tsx:156–160,218` | `?parity-case` URL branches alter production rendering for screenshot capture; `scripts/archtest-allowlist.json` formally allows exactly these three. |
-| `internal/appmodel/service.go:192 SetConflictReadersForTesting`, `:266 SetClipboardWriter`, `:273 SetRevealPort`, `:281 SetBeforeSaveAsRecheck`, `:289 SetWriteExecutorForTesting` | Exported on the production service with zero production callers. `:297 SetWriteCommitObserver` has one caller: the evidence driver. |
-| `frontend/src/dev/bridge-mock` | 3,032 lines (2,351 non-test) re-implementing all 24 `AppModelHandler` bindings plus seven `setMock*` controls and parity fixtures (`AppModelHandler.ts:246–333`); it is the backend of every browser test. |
+| Location                                                                                                                                                                           | Entanglement                                                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/public/theme-bootstrap.test.mjs` → `frontend/dist/theme-bootstrap.test.mjs` → `main.go:26` `//go:embed all:frontend/dist`                                                | A Node test file is embedded in the release binary (1,909 bytes; byte-identical copies).                                                                                                                   |
+| `frontend/src/test/{setup,i18nShim,styleMock}.ts`                                                                                                                                  | Test shims under `src/`; `i18nShim` replaces the real catalogue for widget tests.                                                                                                                          |
+| `frontend/src/logic/fixtures/real-file-fixtures.test.ts`                                                                                                                           | A "fixtures" directory containing only a test that imports `e2e/helpers`.                                                                                                                                  |
+| `frontend/src/logic/adapter/nativeEvidenceRuntime.ts`                                                                                                                              | Evidence-harness adapter in the production adapter directory; `frontend/evidence/check-boundaries.mjs:69,88` exists solely to police that production never imports it.                                     |
+| `AppShell.tsx:54–63`, `EditorView.tsx:270–279`, `CodeEditor.tsx:156–160,218`                                                                                                       | `?parity-case` URL branches alter production rendering for screenshot capture; `scripts/archtest-allowlist.json` formally allows exactly these three.                                                      |
+| `internal/appmodel/service.go:192 SetConflictReadersForTesting`, `:266 SetClipboardWriter`, `:273 SetRevealPort`, `:281 SetBeforeSaveAsRecheck`, `:289 SetWriteExecutorForTesting` | Exported on the production service with zero production callers. `:297 SetWriteCommitObserver` has one caller: the evidence driver.                                                                        |
+| `frontend/src/dev/bridge-mock`                                                                                                                                                     | 3,032 lines (2,351 non-test) re-implementing all 24 `AppModelHandler` bindings plus seven `setMock*` controls and parity fixtures (`AppModelHandler.ts:246–333`); it is the backend of every browser test. |
 
 #### 5.4.4 File-level disposition (input for the refactoring spec)
 
@@ -638,7 +638,7 @@ back.
   into `ShellMenuRow.test.tsx` minus its 35 text asserts; slim `DocumentTabs.test.tsx` to behaviour; rewrite `App.test.tsx`
   without mocking `AppShell`/`EditorView`, keeping startup/hydration/notification journeys (≤ 15 tests). **Integration,
   Go:** `internal/application/*` (real composition root + SQLite) and the Wails-options tests in `main_test.go:25–190,
-  241–540`.
+241–540`.
 - **E2E with the real Go backend (new).** Port the eight behavioural Playwright journeys to a harness that launches the real
   composition (the `cmd/native-evidence` driver is the seed); strip `parity-case` from `narrow-width`/`real-files-and-tabs`.
   Delete the pixel-parity stack (`targeted-parity`, `real-files-parity`, `interactive-states`, `targeted-manifest.ts`,
@@ -653,13 +653,12 @@ back.
 - **Titles:** rewrite the 520 ID-led titles as behaviour sentences; drop or keep the 405 `Proves:` comments only where an
   accurate mapping is still wanted.
 
-
 ### 5.5 Documentation, comments and naming
 
 **DOC-1 Source comments are development diaries.** The owner's example is representative. `MarkdownView.tsx:15–28` spends
 fourteen lines on parent-component history, a requirement ID (`FR-FT-005`), a host-specific timing (1.5 s for 2 MiB under
-WebKit) and a past-bug narrative to say: *"Reuse the rendered Markdown while `source` is unchanged; unrelated parent
-updates must not rerun the parser."* The same pattern in Go: `close_drain.go:7–40`, `classified_error.go:62–84`,
+WebKit) and a past-bug narrative to say: _"Reuse the rendered Markdown while `source` is unchanged; unrelated parent
+updates must not rerun the parser."_ The same pattern in Go: `close_drain.go:7–40`, `classified_error.go:62–84`,
 `file_lifecycle.go:206–223` (history of a deleted function), the same T117 story told three times (BE-7). In CSS:
 `DocumentTabs.module.css:42,381–383`, `playwright.config.ts:19–70` (a 50-line rasterisation essay), `justfile:104–137`,
 `lefthook.yml:1–6`, `main.yml:3–12`. Counts: 489 task/requirement IDs in non-test production source; 23 `T###` and 32
@@ -688,7 +687,6 @@ first was turned into request-API policing, the second — the owner's actual re
 sentence the initial spec did not contain (`50d692d:specification/mockups/README.md`: "visual acceptance reference").
 `docs/delivery/plan/phase-06-rich-and-safe.md:54` says "Nothing blocking" and then lists unresolved choices (revision-1 H14).
 
-
 ### 5.6 Tooling: commands, scripts, CI, hooks
 
 **TL-1 The gate list is defined six times in executable form and five times in prose.** Executable: `justfile:155–164`
@@ -697,18 +695,18 @@ sentence the initial spec did not contain (`50d692d:specification/mockups/README
 `WORKFLOW.md:214–226`, `main.yml:3–12` header, `lefthook.yml:1–6` header. The pre-push list omits `archtest` entirely
 while `lefthook.yml:1` calls `just check` "the authoritative gate".
 
-| Tool | Runs in one `scripts/release-stack.sh` | Where |
-| --- | ---: | --- |
-| `go test -race` full suite | 3 | check, direct, verify |
-| `go test -run TestArchitecture` | 3 | archtest, check, verify |
-| full Wails `go build` | **6** | `native_evidence_safeguards_test.go:22,30` builds two binaries inside every full Go test run |
-| Jest | 3 | check, `npm test`, verify |
-| `tsc --noEmit` | 5 | `frontend-build` ×2, `typecheck` ×2, `wails build` |
-| ESLint | 5 | style ×2, architecture config ×3 via `archtest.mjs` |
-| `archtest.mjs` (incl. network scan) | 3 (+3 more scans in `postbuild`) | |
-| `wails generate module` | 3 | gen-check ×2, trailing cleanup |
-| golangci-lint / gofmt / prettier | 2 each | |
-| `CGO_ENABLED=0 go build ./...` | 3 | each archtest |
+| Tool                                | Runs in one `scripts/release-stack.sh` | Where                                                                                        |
+| ----------------------------------- | -------------------------------------: | -------------------------------------------------------------------------------------------- |
+| `go test -race` full suite          |                                      3 | check, direct, verify                                                                        |
+| `go test -run TestArchitecture`     |                                      3 | archtest, check, verify                                                                      |
+| full Wails `go build`               |                                  **6** | `native_evidence_safeguards_test.go:22,30` builds two binaries inside every full Go test run |
+| Jest                                |                                      3 | check, `npm test`, verify                                                                    |
+| `tsc --noEmit`                      |                                      5 | `frontend-build` ×2, `typecheck` ×2, `wails build`                                           |
+| ESLint                              |                                      5 | style ×2, architecture config ×3 via `archtest.mjs`                                          |
+| `archtest.mjs` (incl. network scan) |       3 (+3 more scans in `postbuild`) |                                                                                              |
+| `wails generate module`             |                                      3 | gen-check ×2, trailing cleanup                                                               |
+| golangci-lint / gofmt / prettier    |                                 2 each |                                                                                              |
+| `CGO_ENABLED=0 go build ./...`      |                                      3 | each archtest                                                                                |
 
 **TL-2 `justfile`: 34 recipes, 167 lines, 32 comment lines.** Wanted roles: `setup`, `build`, `fmt` (incomplete),
 `baseline`, `verify`. Fourteen one-line aliases. Redundant: `go-format-check` (golangci already enables the gofmt formatter,
@@ -738,24 +736,24 @@ Playwright against the mock; `release-skeleton` is an `echo`. `native_evidence_s
 
 **TL-6 Architecture "lint" is scattered and partly name-based.**
 
-| Rule | Where | Assessment |
-| --- | --- | --- |
-| Bound handlers return `*Result`, no `context`, recover first | `architecture_test.go:124,154,179` | Genuine; but discovery is "type name ends in `Handler`" (`:101–114`), so a renamed type escapes. Derive the set from `main.go` `Bind:`. |
-| Only the composition root calls `New*` | `:224` | Regex on selector names; `Make…` or a func value bypasses. The real rule is import direction → `depguard`. |
-| Migrations add-only | `:264` (+ `justfile:91–101` twin) | Keep the cheap SQL lint; drop the CI-blind twin. |
-| No `net`/flock imports | `:301–364` | Aliased import or `net.Dialer{}` bypasses → `depguard`/`forbidigo`. |
-| Document struct has identity + content accessor | `:365` | Forward-compatibility paperwork. |
-| Only `UpdateBuffer` has a param named content/text/value | `:434` | Rename the parameter and it passes. |
-| Remediation × category table | `:506` | A unit test misfiled as architecture. |
-| CGO-free by grepping `go.mod`/`main.go`/`justfile`/`wails.json` | `main_test.go:590–624` | Duplicates `cgo-free-check`; a test that reads the `justfile`. |
-| wailsjs files tracked at 100755 | `main_test.go:545–589` | Encodes the mode-bit saga; failing on this checkout. |
-| adapter-only `wailsjs` import | `eslint.architecture.config.js:25` **and** `check-boundaries.mjs:19–65` | Keep once, in the main ESLint config. |
-| Colour literals only in `tokens.css` | `archtest.mjs:89–130` | Useful intent; template strings bypass → stylelint. |
-| `?parity-case` branch budget | `archtest.mjs:151–190` | Harness paperwork. |
-| Prohibited network calls | `archtest.mjs:194`, `package.json` `postbuild`, `architecture_test.go:301` | Keep one per language, reframed as asset-bundling (V1). |
-| Evidence-driver import lists, marker strings | `check-boundaries.mjs:19–199`, `native_evidence_safeguards_test.go` | Builds two binaries and greps `go tool nm` for a substring. |
-| Spec markdown files agree on "44" | `spec_clause_count_test.go` | Paperwork. |
-| Removed recipes/scripts stay removed | `baseline_verify_test.sh:146–160` | Paperwork; no caller. |
+| Rule                                                            | Where                                                                      | Assessment                                                                                                                              |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Bound handlers return `*Result`, no `context`, recover first    | `architecture_test.go:124,154,179`                                         | Genuine; but discovery is "type name ends in `Handler`" (`:101–114`), so a renamed type escapes. Derive the set from `main.go` `Bind:`. |
+| Only the composition root calls `New*`                          | `:224`                                                                     | Regex on selector names; `Make…` or a func value bypasses. The real rule is import direction → `depguard`.                              |
+| Migrations add-only                                             | `:264` (+ `justfile:91–101` twin)                                          | Keep the cheap SQL lint; drop the CI-blind twin.                                                                                        |
+| No `net`/flock imports                                          | `:301–364`                                                                 | Aliased import or `net.Dialer{}` bypasses → `depguard`/`forbidigo`.                                                                     |
+| Document struct has identity + content accessor                 | `:365`                                                                     | Forward-compatibility paperwork.                                                                                                        |
+| Only `UpdateBuffer` has a param named content/text/value        | `:434`                                                                     | Rename the parameter and it passes.                                                                                                     |
+| Remediation × category table                                    | `:506`                                                                     | A unit test misfiled as architecture.                                                                                                   |
+| CGO-free by grepping `go.mod`/`main.go`/`justfile`/`wails.json` | `main_test.go:590–624`                                                     | Duplicates `cgo-free-check`; a test that reads the `justfile`.                                                                          |
+| wailsjs files tracked at 100755                                 | `main_test.go:545–589`                                                     | Encodes the mode-bit saga; failing on this checkout.                                                                                    |
+| adapter-only `wailsjs` import                                   | `eslint.architecture.config.js:25` **and** `check-boundaries.mjs:19–65`    | Keep once, in the main ESLint config.                                                                                                   |
+| Colour literals only in `tokens.css`                            | `archtest.mjs:89–130`                                                      | Useful intent; template strings bypass → stylelint.                                                                                     |
+| `?parity-case` branch budget                                    | `archtest.mjs:151–190`                                                     | Harness paperwork.                                                                                                                      |
+| Prohibited network calls                                        | `archtest.mjs:194`, `package.json` `postbuild`, `architecture_test.go:301` | Keep one per language, reframed as asset-bundling (V1).                                                                                 |
+| Evidence-driver import lists, marker strings                    | `check-boundaries.mjs:19–199`, `native_evidence_safeguards_test.go`        | Builds two binaries and greps `go tool nm` for a substring.                                                                             |
+| Spec markdown files agree on "44"                               | `spec_clause_count_test.go`                                                | Paperwork.                                                                                                                              |
+| Removed recipes/scripts stay removed                            | `baseline_verify_test.sh:146–160`                                          | Paperwork; no caller.                                                                                                                   |
 
 **TL-7 `scripts/` does not contain the owner's five scripts.** It contains `baseline.sh` (257 lines), `verify.sh` (197),
 `evidence_id.sh` (76), `release-stack.sh` (178), `baseline_verify_test.sh` (163, no caller, and a cleanup trap that can
@@ -793,17 +791,17 @@ one this session's harness loaded) still describes the July regime (`specificati
 
 **PR-2 Instructions reference commands and files that do not exist.**
 
-| Reference | Where | Exists |
-| --- | --- | --- |
-| `just story-check` | `WORKFLOW.md:88,109,169,221,226,260,270–271`; `.agents/commands/build-story.md:28`; `plan-story.md:86` | No — and `baseline_verify_test.sh:151–155` asserts it must not exist |
-| `just spec-check` | `WORKFLOW.md:144,222,226`; `plan-story.md:167`, `reconcile.md:20`, `finish-phase.md:20` | No |
-| `scripts/check_story.py`, `scripts/check_proves.py` | `build-story.md:28,118`; `plan-story.md:86` | No (deleted `53af8e4`) |
-| `sync-agent-files.py --apply` | `AGENTS.md:268` | No |
-| `.claude/commands` "mirrors `.agents/commands`" | `AGENTS.md:262` | No — `.claude/` holds only `skills/` |
-| `jest.config.js` | `AGENTS.md:193`; `playwright.config.ts:6` | No — it is `jest.config.mjs` |
-| `justfile:145` for `check` | `AGENTS.md:184` | Wrong line (`:145` is `sqlc diff`; `check` is `:155`) |
-| "the 10 `speckit-*` skills" | `AGENTS.md:265` | `.agents/skills` has 17; seven extension skills exist only on the Codex side and in neither integration manifest |
-| KNOWN_ISSUES #9 "CI only on a tag", #15 "archtest in no CI job" | `KNOWN_ISSUES.md:127–139,256–273` | Stale since 2026-08-16 (`main.yml:15–23,66–67`) |
+| Reference                                                       | Where                                                                                                  | Exists                                                                                                           |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `just story-check`                                              | `WORKFLOW.md:88,109,169,221,226,260,270–271`; `.agents/commands/build-story.md:28`; `plan-story.md:86` | No — and `baseline_verify_test.sh:151–155` asserts it must not exist                                             |
+| `just spec-check`                                               | `WORKFLOW.md:144,222,226`; `plan-story.md:167`, `reconcile.md:20`, `finish-phase.md:20`                | No                                                                                                               |
+| `scripts/check_story.py`, `scripts/check_proves.py`             | `build-story.md:28,118`; `plan-story.md:86`                                                            | No (deleted `53af8e4`)                                                                                           |
+| `sync-agent-files.py --apply`                                   | `AGENTS.md:268`                                                                                        | No                                                                                                               |
+| `.claude/commands` "mirrors `.agents/commands`"                 | `AGENTS.md:262`                                                                                        | No — `.claude/` holds only `skills/`                                                                             |
+| `jest.config.js`                                                | `AGENTS.md:193`; `playwright.config.ts:6`                                                              | No — it is `jest.config.mjs`                                                                                     |
+| `justfile:145` for `check`                                      | `AGENTS.md:184`                                                                                        | Wrong line (`:145` is `sqlc diff`; `check` is `:155`)                                                            |
+| "the 10 `speckit-*` skills"                                     | `AGENTS.md:265`                                                                                        | `.agents/skills` has 17; seven extension skills exist only on the Codex side and in neither integration manifest |
+| KNOWN_ISSUES #9 "CI only on a tag", #15 "archtest in no CI job" | `KNOWN_ISSUES.md:127–139,256–273`                                                                      | Stale since 2026-08-16 (`main.yml:15–23,66–67`)                                                                  |
 
 **PR-3 `AGENTS.md` is one third war stories.** Of 269 lines, `:183–254` (72 lines, 34 % of the "what will bite you"
 section) are dated incidents: 2026-08-13/14 failures, T034/T173, `619px`, `~332 antialiasing pixels`, `2,554 vs 709
@@ -830,17 +828,17 @@ skills for mandatory hooks).
 
 ### 5.8 Repository hygiene
 
-| Item | Evidence |
-| --- | --- |
-| Committed evidence outweighs the product | `specs/` 42 MB (21 MB under `specs/002/evidence`), `docs/` 15 MB; `frontend/src` 2.0 MB, `internal` 1.1 MB |
-| Playwright artefact tracked at repo root | `test-results/.last-run.json`; `.gitignore:35` covers only `frontend/test-results/` |
-| Generated bindings dirtied by the build | `frontend/wailsjs/runtime/*` mode 755→644 after `just build` (observed); `main_test.go:545–589` then fails |
-| Four root Go test files | `main_test.go` 28.8 KB, `architecture_test.go` 19.3 KB, `native_evidence_safeguards_test.go`, `spec_clause_count_test.go` |
-| Authority pointer not in the repository | `.specify/feature.json` is gitignored (`.specify/.gitignore:6`) |
-| `master` is dead | `85205ba` (2026-07-20), 363 commits behind; its `CLAUDE.md` describes the `specification/` + `just trace` regime; `origin/feature/v1-implementation` is 19 days behind local |
-| Duplicate/parallel documentation trees | `docs/_archive-2026-07-28-specification/` (214 files at `50d692d`), `docs/delivery/` (spec + architecture + plan + work + 27 ADRs), `specs/001–003` (spec/plan/tasks/research/data-model/quickstart/checklists/contracts/evidence), `docs/superpowers/plans`, `docs/reference/wails-dev`, `.specify/memory` |
-| Untracked audit output | `docs/audits/` 13 MB (this audit; to be committed deliberately) |
-| Node version unpinned | CI Node 22 (`main.yml:37,83`), host Node 24.19; no `.nvmrc`/`engines` |
+| Item                                     | Evidence                                                                                                                                                                                                                                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Committed evidence outweighs the product | `specs/` 42 MB (21 MB under `specs/002/evidence`), `docs/` 15 MB; `frontend/src` 2.0 MB, `internal` 1.1 MB                                                                                                                                                                                                  |
+| Playwright artefact tracked at repo root | `test-results/.last-run.json`; `.gitignore:35` covers only `frontend/test-results/`                                                                                                                                                                                                                         |
+| Generated bindings dirtied by the build  | `frontend/wailsjs/runtime/*` mode 755→644 after `just build` (observed); `main_test.go:545–589` then fails                                                                                                                                                                                                  |
+| Four root Go test files                  | `main_test.go` 28.8 KB, `architecture_test.go` 19.3 KB, `native_evidence_safeguards_test.go`, `spec_clause_count_test.go`                                                                                                                                                                                   |
+| Authority pointer not in the repository  | `.specify/feature.json` is gitignored (`.specify/.gitignore:6`)                                                                                                                                                                                                                                             |
+| `master` is dead                         | `85205ba` (2026-07-20), 363 commits behind; its `CLAUDE.md` describes the `specification/` + `just trace` regime; `origin/feature/v1-implementation` is 19 days behind local                                                                                                                                |
+| Duplicate/parallel documentation trees   | `docs/_archive-2026-07-28-specification/` (214 files at `50d692d`), `docs/delivery/` (spec + architecture + plan + work + 27 ADRs), `specs/001–003` (spec/plan/tasks/research/data-model/quickstart/checklists/contracts/evidence), `docs/superpowers/plans`, `docs/reference/wails-dev`, `.specify/memory` |
+| Untracked audit output                   | `docs/audits/` 13 MB (this audit; to be committed deliberately)                                                                                                                                                                                                                                             |
+| Node version unpinned                    | CI Node 22 (`main.yml:37,83`), host Node 24.19; no `.nvmrc`/`engines`                                                                                                                                                                                                                                       |
 
 ### 5.9 History and specification drift
 
@@ -850,19 +848,19 @@ zero tags). Full tables are in
 
 **H-1 Ten process regimes in seven weeks.**
 
-| Date | Commit | Regime | Size |
-| --- | --- | --- | --- |
-| 07-17 | `50d692d` | Claude agent pipeline, `specification/`, `docs/traceability.yaml` | 118 files, +11,566 |
-| 07-20 | `c90c088`, `85205ba` | CODEX dual config (`.codex/agents`, 93 `.agents/skills`, `AGENTS.md`) | 101 files, +10,287 |
-| 07-20…23 | STORY-001…032 | Phase/story + traceability in use; tracking rewrite `6aa7abc` | 81 files, +7,517/−1,546 |
-| 07-25 | `927d15f` | "Changing the approach": traceability, 81 skills, 27 stories, 6 ADRs, 16 phase files deleted | 327 files, +2,640/**−29,924** |
-| 07-28 | `3af7c58` | `docs/delivery` conversion; `.claude/agents` and `.codex/agents` deleted; `baseline.sh`, `verify.sh`, `archtest.mjs` added | 324 files, +9,915/−10,276 |
-| 07-29 | `a240936` | Python validators (`check_proves.py`, `check_story.py`, `validate_spec.py`, `upgrade_check.py`) | 135 files, +4,000/−760 |
-| 07-30 | `b9d8a05`, `53af8e4` | Spec Kit + constitution; the validators deleted the same day inside a `feat:` commit | +7,288; +4,226/−1,505 |
-| 08-07 | `3ddb781`… | Evidence regime (baselines into `specs/*/evidence`, coverage logs in VCS) | small |
-| 08-09…11 | `7744cc8`, `e95a081` | Pixel-parity harness; checkpoint commit of the parity worktree | `e95a081`: 88 files, **+39,828** |
-| 08-15 | `cb48e68`, `cf8cff1` | "Proves:" rule applied to 38 test files; Spec Kit extensions (ralph, superpowers bridge, memory loader) | +14,716 |
-| 08-16…21 | `559cec7`, `4f39195`, `35de8f2` | CI parity gate; `release-stack.sh`; retrospective | |
+| Date     | Commit                          | Regime                                                                                                                     | Size                             |
+| -------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| 07-17    | `50d692d`                       | Claude agent pipeline, `specification/`, `docs/traceability.yaml`                                                          | 118 files, +11,566               |
+| 07-20    | `c90c088`, `85205ba`            | CODEX dual config (`.codex/agents`, 93 `.agents/skills`, `AGENTS.md`)                                                      | 101 files, +10,287               |
+| 07-20…23 | STORY-001…032                   | Phase/story + traceability in use; tracking rewrite `6aa7abc`                                                              | 81 files, +7,517/−1,546          |
+| 07-25    | `927d15f`                       | "Changing the approach": traceability, 81 skills, 27 stories, 6 ADRs, 16 phase files deleted                               | 327 files, +2,640/**−29,924**    |
+| 07-28    | `3af7c58`                       | `docs/delivery` conversion; `.claude/agents` and `.codex/agents` deleted; `baseline.sh`, `verify.sh`, `archtest.mjs` added | 324 files, +9,915/−10,276        |
+| 07-29    | `a240936`                       | Python validators (`check_proves.py`, `check_story.py`, `validate_spec.py`, `upgrade_check.py`)                            | 135 files, +4,000/−760           |
+| 07-30    | `b9d8a05`, `53af8e4`            | Spec Kit + constitution; the validators deleted the same day inside a `feat:` commit                                       | +7,288; +4,226/−1,505            |
+| 08-07    | `3ddb781`…                      | Evidence regime (baselines into `specs/*/evidence`, coverage logs in VCS)                                                  | small                            |
+| 08-09…11 | `7744cc8`, `e95a081`            | Pixel-parity harness; checkpoint commit of the parity worktree                                                             | `e95a081`: 88 files, **+39,828** |
+| 08-15    | `cb48e68`, `cf8cff1`            | "Proves:" rule applied to 38 test files; Spec Kit extensions (ralph, superpowers bridge, memory loader)                    | +14,716                          |
+| 08-16…21 | `559cec7`, `4f39195`, `35de8f2` | CI parity gate; `release-stack.sh`; retrospective                                                                          |                                  |
 
 `AGENTS.md` rewritten 15 times, `justfile` 13, `CLAUDE.md` 6; the constitution has one commit. Process configuration:
 +46,807/−21,222 lines over 755 file touches.
@@ -875,16 +873,16 @@ files/tabs vertical (≈12 minutes per "task").
 
 **H-3 Where the lines went.**
 
-| Area | Inserted | Ratio to product |
-| --- | ---: | ---: |
-| `specs/*/evidence/**` | 189,593 | 4.8× |
-| Process configs (`.claude`, `.agents`, `.codex`, `.specify`, `AGENTS.md`, `CLAUDE.md`, `justfile`) | 46,807 | 1.2× |
-| Product (`frontend/src` non-test + `internal` non-test + root Go) | ≈39,900 | 1× (≈8.6 % of all insertions) |
-| Frontend tests / Go tests | 24,313 / 17,768 | |
-| Pixel parity (`e2e/parity` + targeted/real-files parity) | 12,660 | |
-| `scripts/` | 4,583 (3,693 deleted) | |
-| `specs/*/tasks.md` | 4,100 | |
-| Bridge mock | 3,156 | |
+| Area                                                                                               |              Inserted |              Ratio to product |
+| -------------------------------------------------------------------------------------------------- | --------------------: | ----------------------------: |
+| `specs/*/evidence/**`                                                                              |               189,593 |                          4.8× |
+| Process configs (`.claude`, `.agents`, `.codex`, `.specify`, `AGENTS.md`, `CLAUDE.md`, `justfile`) |                46,807 |                          1.2× |
+| Product (`frontend/src` non-test + `internal` non-test + root Go)                                  |               ≈39,900 | 1× (≈8.6 % of all insertions) |
+| Frontend tests / Go tests                                                                          |       24,313 / 17,768 |                               |
+| Pixel parity (`e2e/parity` + targeted/real-files parity)                                           |                12,660 |                               |
+| `scripts/`                                                                                         | 4,583 (3,693 deleted) |                               |
+| `specs/*/tasks.md`                                                                                 |                 4,100 |                               |
+| Bridge mock                                                                                        |                 3,156 |                               |
 
 **H-4 `tasks.md` is a laboratory notebook.** `specs/003-real-files-and-tabs/tasks.md` was touched by 192 of 367 commits
 (52 %; next most-churned file `App.tsx` 52). It grew from 683 lines / 39 tasks (`3fcde38`, Aug 7) to 2,475 lines / 196
@@ -893,17 +891,17 @@ characters (longest 5,452), thirteen appended "Convergence — Session …" phas
 
 **H-5 Specification drift (original intent → current).**
 
-| Original clause | Current state | Classification |
-| --- | --- | --- |
-| Frameless window with own title bar (`the-app-window.md#frameless-window`; ADR-0028 accepted) | `main.go:166 Frameless: false` since `011d2b5`; `specs/001/spec.md:58–62` clarification 2026-08-01; ADR-0028 never superseded | Owner-approved change, unrecorded as a decision |
-| Mockup as "visual acceptance reference" (`50d692d:…/mockups/README.md`) | "Tier A binding … a visible difference is a defect" (`3af7c58`); zero-tolerance 546-case harness (`7744cc8`); withdrawn (`23ba4b5`); 9 `Superseded` + 6 `Amended` markers and 44 `- Q:` clarifications in `specs/003/spec.md` | Agent-invented contract, later retracted |
-| Offline: bundle every asset (`constraints.md:158–166`); "nothing leaves the device" verified by a five-minute monitor (`:134–154`) | Request-API regex scanner + five-minute browser test on the mock; no packaged-app offline test | Over-reading of the monitor sentence; the bundling requirement has no executable proof |
-| Toolbar folds into `»` overflow at 768 px (`formatting-text.md:163–174`) | Implemented as overflow; owner now wants horizontal scrolling | Design decision pending (D1) |
-| Tab context menu "is about the tab" (`working-in-tabs.md:106–111`) | Rendered at the shell's right edge (UI-4) | Defect |
-| Layout write-through persistence (ADR-0013) | `specs/003/spec.md:711` "launches with no restored tab set" | Narrowed, undocumented |
-| Tests "naming the story id" (`50d692d:CLAUDE.md`; `03_TRACEABILITY.md`) | `Proves:` + task-id prefixes re-imposed by `cb48e68` after the generator was deleted; 47 of 315 `Proves:` tags cite retired STORY anchors (`KNOWN_ISSUES` #17) | Inherited convention, escalated, now unpoliced |
-| Authority: `docs/delivery/spec` "remains authoritative" (`constitution.md:24,169`) | `AGENTS.md:10,138,260`: `specs/<feature>/` authoritative, `docs/delivery` "legacy reference-only" | Contradiction between live process documents |
-| Component library prescribed (`03_FRONTEND_REACT.md:69–71`) | Not built; `structure.md` documents the absence | Silent drop (RC-1) |
+| Original clause                                                                                                                    | Current state                                                                                                                                                                                                                 | Classification                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Frameless window with own title bar (`the-app-window.md#frameless-window`; ADR-0028 accepted)                                      | `main.go:166 Frameless: false` since `011d2b5`; `specs/001/spec.md:58–62` clarification 2026-08-01; ADR-0028 never superseded                                                                                                 | Owner-approved change, unrecorded as a decision                                        |
+| Mockup as "visual acceptance reference" (`50d692d:…/mockups/README.md`)                                                            | "Tier A binding … a visible difference is a defect" (`3af7c58`); zero-tolerance 546-case harness (`7744cc8`); withdrawn (`23ba4b5`); 9 `Superseded` + 6 `Amended` markers and 44 `- Q:` clarifications in `specs/003/spec.md` | Agent-invented contract, later retracted                                               |
+| Offline: bundle every asset (`constraints.md:158–166`); "nothing leaves the device" verified by a five-minute monitor (`:134–154`) | Request-API regex scanner + five-minute browser test on the mock; no packaged-app offline test                                                                                                                                | Over-reading of the monitor sentence; the bundling requirement has no executable proof |
+| Toolbar folds into `»` overflow at 768 px (`formatting-text.md:163–174`)                                                           | Implemented as overflow; owner now wants horizontal scrolling                                                                                                                                                                 | Design decision pending (D1)                                                           |
+| Tab context menu "is about the tab" (`working-in-tabs.md:106–111`)                                                                 | Rendered at the shell's right edge (UI-4)                                                                                                                                                                                     | Defect                                                                                 |
+| Layout write-through persistence (ADR-0013)                                                                                        | `specs/003/spec.md:711` "launches with no restored tab set"                                                                                                                                                                   | Narrowed, undocumented                                                                 |
+| Tests "naming the story id" (`50d692d:CLAUDE.md`; `03_TRACEABILITY.md`)                                                            | `Proves:` + task-id prefixes re-imposed by `cb48e68` after the generator was deleted; 47 of 315 `Proves:` tags cite retired STORY anchors (`KNOWN_ISSUES` #17)                                                                | Inherited convention, escalated, now unpoliced                                         |
+| Authority: `docs/delivery/spec` "remains authoritative" (`constitution.md:24,169`)                                                 | `AGENTS.md:10,138,260`: `specs/<feature>/` authoritative, `docs/delivery` "legacy reference-only"                                                                                                                             | Contradiction between live process documents                                           |
+| Component library prescribed (`03_FRONTEND_REACT.md:69–71`)                                                                        | Not built; `structure.md` documents the absence                                                                                                                                                                               | Silent drop (RC-1)                                                                     |
 
 **H-6 Retrospective-003 re-check.** Supported: `traceability.yaml` churn and deletion date; 26 ADRs with none during Spec
 Kit; `tasks.md` touched in 192 commits; 195/196 tasks checked; first parity run 0/1,620 in 30.6 min. Not supported:
@@ -948,81 +946,81 @@ prove, and (g) leaving one current authority and one set of agent instructions.
 
 **Epic A — Product defects (fix first, each with a failing regression test at the owning boundary)**
 
-| ID | Requirement | Source |
-| --- | --- | --- |
-| RF-A1 | A menu opened by pointer or keyboard keeps its surface shadow; the focus indicator is shown on interactive controls only and composes with elevation. Verified by a computed-style check for every popup family in every theme. | §5.1 |
-| RF-A2 | Save As, autosave and explicit Save publish results in commit order for one document; a later commit can never be overwritten by an earlier one's publication; the adopted destination's bytes equal the reported clean content. | C1 |
-| RF-A3 | Refusal formatting never reads model state outside the lock (or captures the label with the snapshot); `go test -race` covers concurrent stale Save and NewDocument. | C2 |
-| RF-A4 | Closing a document releases every per-document resource (coordinators, timers, tokens, reservations, normalizations, conflicts) through one disposal function; a retained-state test opens/saves/closes N documents and asserts zero retained coordinators. | C3, BE-1 |
-| RF-A5 | Autosave failures reach the user through the same classified-error channel as manual Save (category, remediation, dedupe); success stays silent. | C4 |
-| RF-A6 | File identity uses typed per-platform stat fields; opening a hard link or the just-saved path focuses the existing tab on macOS and Linux. | C5 |
-| RF-A7 | Explicit Save preserves the Monaco model, undo stack, selection and focus; only explicit reload/recovery replaces the buffer. | C6 |
-| RF-A8 | Open emits the same effective metadata as GetState; a clean opened file shows "Saved". | C7 |
-| RF-A9 | Each settings group update is one transaction; a rejected update leaves the previous group intact across DB reopen. | C8 |
-| RF-A10 | Tab context menu opens at the invocation point (pointer) or the focused tab (keyboard), clamped to the frame; shortcuts are rendered; menubar popups fit the frame at every width ≥ minimum; Details lists every dropped status fact. | R14–R16, R19 |
-| RF-A11 | Second click on any menubar trigger closes its menu; menu keyboard behaviour is identical in every family. | UI-5, R2 |
+| ID     | Requirement                                                                                                                                                                                                                                                 | Source       |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| RF-A1  | A menu opened by pointer or keyboard keeps its surface shadow; the focus indicator is shown on interactive controls only and composes with elevation. Verified by a computed-style check for every popup family in every theme.                             | §5.1         |
+| RF-A2  | Save As, autosave and explicit Save publish results in commit order for one document; a later commit can never be overwritten by an earlier one's publication; the adopted destination's bytes equal the reported clean content.                            | C1           |
+| RF-A3  | Refusal formatting never reads model state outside the lock (or captures the label with the snapshot); `go test -race` covers concurrent stale Save and NewDocument.                                                                                        | C2           |
+| RF-A4  | Closing a document releases every per-document resource (coordinators, timers, tokens, reservations, normalizations, conflicts) through one disposal function; a retained-state test opens/saves/closes N documents and asserts zero retained coordinators. | C3, BE-1     |
+| RF-A5  | Autosave failures reach the user through the same classified-error channel as manual Save (category, remediation, dedupe); success stays silent.                                                                                                            | C4           |
+| RF-A6  | File identity uses typed per-platform stat fields; opening a hard link or the just-saved path focuses the existing tab on macOS and Linux.                                                                                                                  | C5           |
+| RF-A7  | Explicit Save preserves the Monaco model, undo stack, selection and focus; only explicit reload/recovery replaces the buffer.                                                                                                                               | C6           |
+| RF-A8  | Open emits the same effective metadata as GetState; a clean opened file shows "Saved".                                                                                                                                                                      | C7           |
+| RF-A9  | Each settings group update is one transaction; a rejected update leaves the previous group intact across DB reopen.                                                                                                                                         | C8           |
+| RF-A10 | Tab context menu opens at the invocation point (pointer) or the focused tab (keyboard), clamped to the frame; shortcuts are rendered; menubar popups fit the frame at every width ≥ minimum; Details lists every dropped status fact.                       | R14–R16, R19 |
+| RF-A11 | Second click on any menubar trigger closes its menu; menu keyboard behaviour is identical in every family.                                                                                                                                                  | UI-5, R2     |
 
 **Epic B — Reusable UI library (the owner's PDF and the original spec's `primitives/components/widgets` layering)**
 
-| ID | Requirement |
-| --- | --- |
-| RF-B1 | One `Popup` (surface + lifecycle: open/close, Escape, outside pointer, focus restore, arrow navigation, clamp/flip against the application frame, portal policy) used by File, Settings, View, About, narrow overflow, tab context, editor context, toolbar overflow and Document details. Content, anchor (trigger / point / element bounds) and size variant are inputs. Radix may remain the engine underneath. |
-| RF-B2 | One `MenuItem` row (label, icon slot, accelerator slot, disabled, checked/radio variants) rendered by every menu; the accelerator derives from the action registry once. |
-| RF-B3 | One `Bar` horizontal frame with leading/main/trailing slots used by the menubar, the tab bar and the formatting toolbar; overflow policy (scroll vs `»` menu) is a property decided per bar by the owner (§6.4 D1). |
-| RF-B4 | One `Island` group and one `ToolButton` (icon and text variants, selection-preserving mousedown, disabled/pressed/checked states) used by the toolbar and, where applicable, the tab bar and menubar right-side tools; one `Button` for dialogs, toasts and launcher. |
-| RF-B5 | One `Tab` and one `TabBar` (horizontal scrolling, drag reorder, add/close controls) with theme skins expressed as tokens, not selectors in the widget stylesheet. |
-| RF-B6 | One `Pane` frame (header slots, body, accessory/banner slot) hosting the Monaco editor and the preview renderer as content; paused/failed preview banners are placed from explicit state, not by CSS reaching into renderer descendants. |
-| RF-B7 | One `StatusBar` item/pill model: facts are declared once with row/detail/drop priority; Details always exposes hidden facts. |
-| RF-B8 | One `Sidebar` frame (side, width, resize, collapse, content) consumed by the workspace panel now and the assistant later; layout policy stays backend-authoritative. |
-| RF-B9 | One `ModalShell` used by every dialog and prompt (Settings, About, Shortcuts, Normalization, Close, External change, Recovery). |
-| RF-B10 | `Segmented` is the only radio-group implementation (toolbar arrangement, Settings mode, dialog controls). `Icon` is the only glyph source; `--icon-size/--icon-stroke` control it. |
-| RF-B11 | Theme skins live in `tokens.css` (values) and, where structure must differ, in the shared component's stylesheet; widget stylesheets contain no `[data-theme]`/`[data-mode]` selectors and no parity selectors. Dead tokens removed; undefined tokens defined or removed. |
-| RF-B12 | Command policy has one owner: availability, shortcut admission and aliases come from the action registry for File, toolbar, tab context and keyboard alike; formatting commands are built by one runner; settings writes go through one settings command owner; outcomes are typed and reported once. |
-| RF-B13 | `App.tsx`, `DocumentTabs.tsx`, `ShellMenuRow.tsx`, `EditorChrome.tsx` are decomposed so that no file mixes more than one of: composition, command orchestration, drag engine, popup engine, shortcut installation. The menubar is not rendered through the appearance controller. |
-| RF-B14 | `ui/primitives` and `ui/components` import neither the store, the adapters nor the action registry (the existing `rules.md#components-take-props`, made mechanical by ESLint). |
+| ID     | Requirement                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| RF-B1  | One `Popup` (surface + lifecycle: open/close, Escape, outside pointer, focus restore, arrow navigation, clamp/flip against the application frame, portal policy) used by File, Settings, View, About, narrow overflow, tab context, editor context, toolbar overflow and Document details. Content, anchor (trigger / point / element bounds) and size variant are inputs. Radix may remain the engine underneath. |
+| RF-B2  | One `MenuItem` row (label, icon slot, accelerator slot, disabled, checked/radio variants) rendered by every menu; the accelerator derives from the action registry once.                                                                                                                                                                                                                                           |
+| RF-B3  | One `Bar` horizontal frame with leading/main/trailing slots used by the menubar, the tab bar and the formatting toolbar; overflow policy (scroll vs `»` menu) is a property decided per bar by the owner (§6.4 D1).                                                                                                                                                                                                |
+| RF-B4  | One `Island` group and one `ToolButton` (icon and text variants, selection-preserving mousedown, disabled/pressed/checked states) used by the toolbar and, where applicable, the tab bar and menubar right-side tools; one `Button` for dialogs, toasts and launcher.                                                                                                                                              |
+| RF-B5  | One `Tab` and one `TabBar` (horizontal scrolling, drag reorder, add/close controls) with theme skins expressed as tokens, not selectors in the widget stylesheet.                                                                                                                                                                                                                                                  |
+| RF-B6  | One `Pane` frame (header slots, body, accessory/banner slot) hosting the Monaco editor and the preview renderer as content; paused/failed preview banners are placed from explicit state, not by CSS reaching into renderer descendants.                                                                                                                                                                           |
+| RF-B7  | One `StatusBar` item/pill model: facts are declared once with row/detail/drop priority; Details always exposes hidden facts.                                                                                                                                                                                                                                                                                       |
+| RF-B8  | One `Sidebar` frame (side, width, resize, collapse, content) consumed by the workspace panel now and the assistant later; layout policy stays backend-authoritative.                                                                                                                                                                                                                                               |
+| RF-B9  | One `ModalShell` used by every dialog and prompt (Settings, About, Shortcuts, Normalization, Close, External change, Recovery).                                                                                                                                                                                                                                                                                    |
+| RF-B10 | `Segmented` is the only radio-group implementation (toolbar arrangement, Settings mode, dialog controls). `Icon` is the only glyph source; `--icon-size/--icon-stroke` control it.                                                                                                                                                                                                                                 |
+| RF-B11 | Theme skins live in `tokens.css` (values) and, where structure must differ, in the shared component's stylesheet; widget stylesheets contain no `[data-theme]`/`[data-mode]` selectors and no parity selectors. Dead tokens removed; undefined tokens defined or removed.                                                                                                                                          |
+| RF-B12 | Command policy has one owner: availability, shortcut admission and aliases come from the action registry for File, toolbar, tab context and keyboard alike; formatting commands are built by one runner; settings writes go through one settings command owner; outcomes are typed and reported once.                                                                                                              |
+| RF-B13 | `App.tsx`, `DocumentTabs.tsx`, `ShellMenuRow.tsx`, `EditorChrome.tsx` are decomposed so that no file mixes more than one of: composition, command orchestration, drag engine, popup engine, shortcut installation. The menubar is not rendered through the appearance controller.                                                                                                                                  |
+| RF-B14 | `ui/primitives` and `ui/components` import neither the store, the adapters nor the action registry (the existing `rules.md#components-take-props`, made mechanical by ESLint).                                                                                                                                                                                                                                     |
 
 **Epic C — Go lifecycle ownership**
 
-| ID | Requirement |
-| --- | --- |
-| RF-C1 | One per-document lifecycle owner (path identity, buffer revision, write ordering, disk commit, publication epoch, close/disposal); stale publications are rejected by commit identity; I/O stays outside the model lock. |
-| RF-C2 | One handler guard helper replaces the 35 recover blocks; one classified-failure constructor replaces the fifteen wrappers; envelopes share embedded failure structs. |
-| RF-C3 | One KV repository helper (get/upsert/tx/versioned JSON) used by settings, layout, recents and file metadata; sqlc is either used by all of them or removed. |
+| ID    | Requirement                                                                                                                                                                                                                                     |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-C1 | One per-document lifecycle owner (path identity, buffer revision, write ordering, disk commit, publication epoch, close/disposal); stale publications are rejected by commit identity; I/O stays outside the model lock.                        |
+| RF-C2 | One handler guard helper replaces the 35 recover blocks; one classified-failure constructor replaces the fifteen wrappers; envelopes share embedded failure structs.                                                                            |
+| RF-C3 | One KV repository helper (get/upsert/tx/versioned JSON) used by settings, layout, recents and file metadata; sqlc is either used by all of them or removed.                                                                                     |
 | RF-C4 | Test seams (`Set*ForTesting`, `SetBeforeSaveAsRecheck`, extra constructors, package variables in `main.go`) are removed from the production API in favour of constructor options/ports; the composition root is the only place that wires them. |
-| RF-C5 | `appmodel` does not import the Wails runtime or `bootstrap`; the event emitter adapter lives in `application`. |
-| RF-C6 | Every discarded error on a user-visible path (autosave, layout persistence, publication rollback, reset read-back) is either surfaced or logged with a stated reason. |
+| RF-C5 | `appmodel` does not import the Wails runtime or `bootstrap`; the event emitter adapter lives in `application`.                                                                                                                                  |
+| RF-C6 | Every discarded error on a user-visible path (autosave, layout persistence, publication rollback, reset read-back) is either surfaced or logged with a stated reason.                                                                           |
 
 **Epic D — Tests**
 
-| ID | Requirement |
-| --- | --- |
+| ID    | Requirement                                                                                                                                                                                                                                            |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | RF-D1 | Test roots: `tests/go/{unit,integration}` or per-package `_test` packages plus `tests/integration` (owner's choice, §6.4 D3); `frontend/tests/{unit,integration,e2e}`. No test file under `frontend/src`, `frontend/public` or embedded in the binary. |
-| RF-D2 | Unit tests run from a cold checkout without `frontend/dist`, without a native toolchain and without network. |
-| RF-D3 | E2E drives the real Go composition (built binary or `wails dev`) with a disposable profile and temporary files; it asserts disk bytes and restart state; it includes a cold-start offline acceptance of the packaged app (V1). |
-| RF-D4 | No test asserts on source text, CSS declarations, DTO field order, struct field counts, or the content of specification/documentation files. Architecture constraints live in the Lint stage. |
-| RF-D5 | Test titles are behaviour sentences; requirement mapping, if kept, lives in a comment or an external ledger. |
-| RF-D6 | The pixel-parity harness, the parity URL branches and the evidence driver are removed once RF-D3 exists; the mock bridge, if kept, is a dev-only convenience with no tests of its own. |
-| RF-D7 | Every product defect in Epic A has a regression test that fails on `883fd05`. |
+| RF-D2 | Unit tests run from a cold checkout without `frontend/dist`, without a native toolchain and without network.                                                                                                                                           |
+| RF-D3 | E2E drives the real Go composition (built binary or `wails dev`) with a disposable profile and temporary files; it asserts disk bytes and restart state; it includes a cold-start offline acceptance of the packaged app (V1).                         |
+| RF-D4 | No test asserts on source text, CSS declarations, DTO field order, struct field counts, or the content of specification/documentation files. Architecture constraints live in the Lint stage.                                                          |
+| RF-D5 | Test titles are behaviour sentences; requirement mapping, if kept, lives in a comment or an external ledger.                                                                                                                                           |
+| RF-D6 | The pixel-parity harness, the parity URL branches and the evidence driver are removed once RF-D3 exists; the mock bridge, if kept, is a dev-only convenience with no tests of its own.                                                                 |
+| RF-D7 | Every product defect in Epic A has a regression test that fails on `883fd05`.                                                                                                                                                                          |
 
 **Epic E — Commands and CI**
 
-| ID | Requirement |
-| --- | --- |
-| RF-E1 | `scripts/build`, `scripts/test <unit|integration|e2e|all>`, `scripts/verify`, `scripts/format [--check]`, `scripts/baseline` are the only entry points; `justfile` recipes are one-line aliases; lefthook and GitHub Actions call the scripts. |
-| RF-E2 | Each tool runs at most once per `verify`; frontend is built at most once; no `go build` inside `go test`. |
-| RF-E3 | `format` covers every tracked text file type with a documented ignore list; `format --check` is what `verify` and CI run. |
-| RF-E4 | `baseline` records commit, dirty diff identity, tool versions, per-stage exit codes and machine-readable failure identities; missing inputs fail closed; comparison never reports green while failures remain. |
+| ID    | Requirement                                                                                                                                                                                                         |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-E1 | `scripts/build`, `scripts/test <unit                                                                                                                                                                                | integration | e2e | all>`, `scripts/verify`, `scripts/format [--check]`, `scripts/baseline`are the only entry points;`justfile` recipes are one-line aliases; lefthook and GitHub Actions call the scripts. |
+| RF-E2 | Each tool runs at most once per `verify`; frontend is built at most once; no `go build` inside `go test`.                                                                                                           |
+| RF-E3 | `format` covers every tracked text file type with a documented ignore list; `format --check` is what `verify` and CI run.                                                                                           |
+| RF-E4 | `baseline` records commit, dirty diff identity, tool versions, per-stage exit codes and machine-readable failure identities; missing inputs fail closed; comparison never reports green while failures remain.      |
 | RF-E5 | Generated bindings do not dirty the tree after a build (fix the mode-bit problem once). Node version pinned. Dead recipes (`package`, `sqlc-check`, `vuln`, `release-stack`, hook wrappers) removed or implemented. |
-| RF-E6 | CI runs `scripts/verify` and the real-backend E2E on at least the macOS host; the release job is either implemented or removed. |
+| RF-E6 | CI runs `scripts/verify` and the real-backend E2E on at least the macOS host; the release job is either implemented or removed.                                                                                     |
 
 **Epic F — Authority and agent instructions**
 
-| ID | Requirement |
-| --- | --- |
-| RF-F1 | One normative tree (owner's choice, §6.4 D5); the other is archived with a pointer; `README.md`, `AGENTS.md`, constitution and `docs/delivery/README.md` agree. |
+| ID    | Requirement                                                                                                                                                                                           |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-F1 | One normative tree (owner's choice, §6.4 D5); the other is archived with a pointer; `README.md`, `AGENTS.md`, constitution and `docs/delivery/README.md` agree.                                       |
 | RF-F2 | `AGENTS.md` ≤ 100 lines: rules, the five commands, the authority pointer; incident narratives move to a lessons file. Every referenced command and path exists (checked by a smoke test in `verify`). |
-| RF-F3 | One workflow (Spec Kit), one set of skills present on both agent sides; unused extensions and the legacy `/plan-*` command files removed. |
-| RF-F4 | A short current architecture map (component library, lifecycle owner, command graph) replaces `structure.md`'s inventory; ADRs record the decisions in §6.4. |
+| RF-F3 | One workflow (Spec Kit), one set of skills present on both agent sides; unused extensions and the legacy `/plan-*` command files removed.                                                             |
+| RF-F4 | A short current architecture map (component library, lifecycle owner, command graph) replaces `structure.md`'s inventory; ADRs record the decisions in §6.4.                                          |
 
 ### 6.3 Non-goals
 
@@ -1032,18 +1030,18 @@ original specification text to fit the code; deviations are recorded as decision
 
 ### 6.4 Decisions the owner must make before specifying
 
-| # | Decision | Options and current state |
-| --- | --- | --- |
-| D1 | Formatting toolbar overflow policy | Owner's PDF: horizontally scrollable bar. Original spec (`formatting-text.md:163–174`) and `specs/003:1233–1237`: `»` overflow menu at 768 px. Pick one; reuse works with either. |
-| D2 | Tool-button geometry | Owner: square icon tools. Active spec: height 30 px, min-width 30 px, inline padding 8 px. |
-| D3 | Go test placement | (a) external `_test` packages beside the code, or (b) `tests/go/{unit,integration}`; (b) forces the public-API rewrite of ~32 white-box files. |
-| D4 | Fate of the pixel-parity harness | Delete (recommended) vs keep a small visual smoke set. The mockup remains a design reference either way. |
-| D5 | Normative tree | Keep Spec Kit `specs/` (recommended; original spec archived as intent) or return to `docs/delivery/`. |
-| D6 | Mock bridge | Delete, or keep for `just dev-ui` only. |
-| D7 | Remote document images/stylesheets policy (`images-and-remote-content.md`) | Reconcile with "network only for AI". |
-| D8 | Deferred controls | Keep visible-but-disabled future items (Assistant, Export, Open Folder) or hide until implemented. |
-| D9 | Native window frame | Native frame was an approved change (ADR-0028 superseded); confirm it stands. |
-| D10 | `Document details` disclosure, `Toggle Assistant` items and other UI not in the original spec | Keep as amendments or remove. |
+| #   | Decision                                                                                      | Options and current state                                                                                                                                                         |
+| --- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Formatting toolbar overflow policy                                                            | Owner's PDF: horizontally scrollable bar. Original spec (`formatting-text.md:163–174`) and `specs/003:1233–1237`: `»` overflow menu at 768 px. Pick one; reuse works with either. |
+| D2  | Tool-button geometry                                                                          | Owner: square icon tools. Active spec: height 30 px, min-width 30 px, inline padding 8 px.                                                                                        |
+| D3  | Go test placement                                                                             | (a) external `_test` packages beside the code, or (b) `tests/go/{unit,integration}`; (b) forces the public-API rewrite of ~32 white-box files.                                    |
+| D4  | Fate of the pixel-parity harness                                                              | Delete (recommended) vs keep a small visual smoke set. The mockup remains a design reference either way.                                                                          |
+| D5  | Normative tree                                                                                | Keep Spec Kit `specs/` (recommended; original spec archived as intent) or return to `docs/delivery/`.                                                                             |
+| D6  | Mock bridge                                                                                   | Delete, or keep for `just dev-ui` only.                                                                                                                                           |
+| D7  | Remote document images/stylesheets policy (`images-and-remote-content.md`)                    | Reconcile with "network only for AI".                                                                                                                                             |
+| D8  | Deferred controls                                                                             | Keep visible-but-disabled future items (Assistant, Export, Open Folder) or hide until implemented.                                                                                |
+| D9  | Native window frame                                                                           | Native frame was an approved change (ADR-0028 superseded); confirm it stands.                                                                                                     |
+| D10 | `Document details` disclosure, `Toggle Assistant` items and other UI not in the original spec | Keep as amendments or remove.                                                                                                                                                     |
 
 ### 6.5 Suggested sequence
 
@@ -1064,15 +1062,15 @@ missing command.
 
 Everything cited above is preserved under `2026-09-07-project-health-evidence/`. Revision-2 additions:
 
-| File | Content |
-| --- | --- |
-| `audit-revision-1-unverified.md` | Revision 1 of this document, unchanged. |
-| `focus-ring-probe.mjs.txt`, `focus-ring-probe.json`, `focus-ring-probe-fresh-about-chromium.png`, `focus-ring-probe-view-chromium.png` | The Chromium reproduction of UI-1: script, measured results, screenshots. |
-| `investigation-ui-reuse.md` | Full UI composition inventory (popup lifecycles, surface values, button styles, theme-conditional CSS, inline literals, primitive adoption, God-component inventory). |
-| `investigation-tests.md` | Per-file test classification, naming counts, spec coupling, entanglement list, proposed file mapping. |
-| `investigation-tooling.md` | Gate-step matrix, recipe classification, format coverage, dead references, `AGENTS.md` analysis, Spec Kit extensions, `cmd/` and `dev/` analysis, architecture-rule inventory, proposed scripts. |
-| `investigation-backend.md` | Package map, service field inventory, test-seam table, duplication counts, import graph, comment analysis, concurrency risks. |
-| `investigation-history.md` | Regime timeline, commit classification, effort sinks, spec-drift table, retrospective check, branch analysis, docs clutter. |
+| File                                                                                                                                   | Content                                                                                                                                                                                          |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `audit-revision-1-unverified.md`                                                                                                       | Revision 1 of this document, unchanged.                                                                                                                                                          |
+| `focus-ring-probe.mjs.txt`, `focus-ring-probe.json`, `focus-ring-probe-fresh-about-chromium.png`, `focus-ring-probe-view-chromium.png` | The Chromium reproduction of UI-1: script, measured results, screenshots.                                                                                                                        |
+| `investigation-ui-reuse.md`                                                                                                            | Full UI composition inventory (popup lifecycles, surface values, button styles, theme-conditional CSS, inline literals, primitive adoption, God-component inventory).                            |
+| `investigation-tests.md`                                                                                                               | Per-file test classification, naming counts, spec coupling, entanglement list, proposed file mapping.                                                                                            |
+| `investigation-tooling.md`                                                                                                             | Gate-step matrix, recipe classification, format coverage, dead references, `AGENTS.md` analysis, Spec Kit extensions, `cmd/` and `dev/` analysis, architecture-rule inventory, proposed scripts. |
+| `investigation-backend.md`                                                                                                             | Package map, service field inventory, test-seam table, duplication counts, import graph, comment analysis, concurrency risks.                                                                    |
+| `investigation-history.md`                                                                                                             | Regime timeline, commit classification, effort sinks, spec-drift table, retrospective check, branch analysis, docs clutter.                                                                      |
 
 Revision-1 evidence (host gate/build/E2E logs, Go probe overlays and logs, SQLite atomicity probe, verify/network
 false-pass fixtures, native walkthrough journal, owner screenshots and PDF, history index, the July 25 audit) is unchanged

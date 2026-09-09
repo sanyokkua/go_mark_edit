@@ -89,7 +89,7 @@ genuinely manual and belongs in the release-candidate checklist.
 
 ## 6. Network policy revision (the LLM assistant)
 
-The assistant phases revise the offline policy from *absolute* to *scoped* (DD-32 as revised;
+The assistant phases revise the offline policy from _absolute_ to _scoped_ (DD-32 as revised;
 ADR-0011). The revision is deliberately narrow and does not weaken §§1–5 for any earlier phase:
 
 - **Zero background network in every stage.** No stage ever performs an update check, telemetry ping,

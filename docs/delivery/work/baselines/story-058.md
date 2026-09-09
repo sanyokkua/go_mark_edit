@@ -2,12 +2,12 @@
 
 Captured by `just baseline STORY-058`. Do not edit by hand.
 
-| | |
-|---|---|
-| commit | `0a7f21d` (`0a7f21dde4b596faedd804175454d5f6ee8f1cbb`) |
-| captured | 2026-07-28 18:44 UTC |
+|              |                                                           |
+| ------------ | --------------------------------------------------------- |
+| commit       | `0a7f21d` (`0a7f21dde4b596faedd804175454d5f6ee8f1cbb`)    |
+| captured     | 2026-07-28 18:44 UTC                                      |
 | working tree | **dirty — uncommitted changes are part of this baseline** |
-| coverage | 69.0% (mean of 11 packages) |
+| coverage     | 69.0% (mean of 11 packages)                               |
 
 ## Gates
 
@@ -15,26 +15,26 @@ Captured by `just baseline STORY-058`. Do not edit by hand.
 `UNRELIABLE` — non-zero **and** nothing extracted: the gate did not analyse anything, and a
 later diff against it would pass whatever is written.
 
-| gate | command | exit | verdict | findings |
-|---|---|---|---|---|
-| lint | `just lint` | 0 | clean | 0 |
-| test | `just test` | 0 | clean | 0 |
-| fmt-check | `just fmt-check` | 0 | clean | 0 |
-| typecheck | `just typecheck` | 0 | clean | 0 |
-| archtest | `just archtest` | 0 | clean | 0 |
-| frontend-build | `just frontend-build` | 0 | clean | 0 |
+| gate           | command               | exit | verdict | findings |
+| -------------- | --------------------- | ---- | ------- | -------- |
+| lint           | `just lint`           | 0    | clean   | 0        |
+| test           | `just test`           | 0    | clean   | 0        |
+| fmt-check      | `just fmt-check`      | 0    | clean   | 0        |
+| typecheck      | `just typecheck`      | 0    | clean   | 0        |
+| archtest       | `just archtest`       | 0    | clean   | 0        |
+| frontend-build | `just frontend-build` | 0    | clean   | 0        |
 
 Raw output for every gate is kept in `story-058.logs/`.
 
 ## Failing tests at baseline (0)
 
-*(none)*
+_(none)_
 
 ## Static-analysis findings at baseline (0)
 
 A finding present here was not caused by this story. A finding absent here was.
 
-*(none)*
+_(none)_
 
 ---
 
@@ -42,11 +42,11 @@ A finding present here was not caused by this story. A finding absent here was.
 
 **This file was regenerated. The original is in git.** It recorded:
 
-| gate | exit | findings, as recorded |
-|---|---|---|
-| static analysis (`just lint`) | non-zero — status **5** | **0** |
-| tests | 0 | 0 |
-| everything else | 0 | — |
+| gate                          | exit                    | findings, as recorded |
+| ----------------------------- | ----------------------- | --------------------- |
+| static analysis (`just lint`) | non-zero — status **5** | **0**                 |
+| tests                         | 0                       | 0                     |
+| everything else               | 0                       | —                     |
 
 A status of **5** with zero findings is the `UNRELIABLE` condition: the gate exited non-zero having parsed
 nothing, so it analysed nothing. Recorded as "0 static-analysis findings at baseline", every later

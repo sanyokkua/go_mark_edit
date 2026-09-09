@@ -54,13 +54,13 @@ refEditorBox {"x":236.203125,"y":302,"width":511.296875,"height":418.1875}
 actEditorBox {"x":236.203125,"y":302,"width":511.296875,"height":418.1875}
 ```
 
-| Step | Total differing | Monaco (excluded) | Chrome | Preview | **Unexplained** |
-|---|---:|---:|---:|---:|---:|
-| Before this session | 121,810 | 17,481 | 13,186 | 91,143 | 104,329 |
-| Binding Minimal pane/toolbar rules | 104,189 | 17,481 | 6,609 | 80,099 | 86,708 |
-| Reference preview variant + Monaco exclusion | 42,575 | 17,481 | 6,577 | 18,517 | 25,094 |
-| Binding preview code-block styling | 27,490 | 17,481 | 6,577 | 3,432 | 10,009 |
-| Arrangement segment keeps its binding surface | 23,597 | 17,481 | 2,683 | 3,433 | **6,116** |
+| Step                                          | Total differing | Monaco (excluded) | Chrome | Preview | **Unexplained** |
+| --------------------------------------------- | --------------: | ----------------: | -----: | ------: | --------------: |
+| Before this session                           |         121,810 |            17,481 | 13,186 |  91,143 |         104,329 |
+| Binding Minimal pane/toolbar rules            |         104,189 |            17,481 |  6,609 |  80,099 |          86,708 |
+| Reference preview variant + Monaco exclusion  |          42,575 |            17,481 |  6,577 |  18,517 |          25,094 |
+| Binding preview code-block styling            |          27,490 |            17,481 |  6,577 |   3,432 |          10,009 |
+| Arrangement segment keeps its binding surface |          23,597 |            17,481 |  2,683 |   3,433 |       **6,116** |
 
 ## What remains in this region
 

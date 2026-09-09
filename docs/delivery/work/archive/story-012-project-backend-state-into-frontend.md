@@ -42,9 +42,11 @@ estimate: L
 # STORY-012 — Project backend application state into the frontend
 
 ## Goal
+
 Hydrate and continuously reconcile a disposable frontend view of the backend application model so UI features can render document metadata and layout without creating a second source of truth or retaining document content in Redux.
 
 ## In scope
+
 - Add `appModelAdapter` query/command wrappers and its single owned `state:patch` subscription with a disposer.
 - Add `documents` and `ui` projection slices, one-time `GetState` hydration, and content-free patch reconciliation.
 - Add a process-scoped, idempotent bootstrap outside React effects: cache one initialization Promise, call `GetState` once, install one adapter-owned listener, hydrate once, and expose a disposer.
@@ -54,12 +56,14 @@ Hydrate and continuously reconcile a disposable frontend view of the backend app
 - Update the overfitted done STORY-006 store test only as required to preserve its lasting invariant—notifications plus projection/no-content—rather than expecting notification state to be the store's only slice.
 
 ## Out of scope
+
 - Rendering Monaco is owned by STORY-013; synchronizing its working buffer and the editable command seam are owned by STORY-019.
 - Rendering Markdown, composing document panes, and live-preview state, owned by STORY-014, STORY-015, and STORY-017.
 - Optimistic frontend ownership of document or layout changes; every UI mutation remains a backend command.
 - Persisting document content or application state in `localStorage` or SQLite.
 
 ## Spec inputs
+
 - `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer` — keep generated bindings and Wails runtime imports inside typed adapter singletons using `guardArity` and `unwrap`.
 - `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#store` — represent documents and UI as metadata-only Redux slices hydrated from and reconciled with the backend model.
 - `../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership` — hydrate once through `GetState`, reconcile `state:*` patches, and keep only ephemeral view scaffolding in the webview.
@@ -68,6 +72,7 @@ Hydrate and continuously reconcile a disposable frontend view of the backend app
 - `07_Phases/PHASE_01_CORE_EDITOR.md#scope` — introduce the documents/UI projection and single Phase-01 hydration handoff without file, tab, or persistence behavior.
 
 ## Design constraints
+
 - The Go `internal/appmodel` remains authoritative; Redux is a derived projection containing document metadata and UI state only (DD-62, DD-63, DD-64; ADR-0014).
 - Only `logic/adapter/` imports generated `wailsjs/` bindings or the Wails runtime; every query and command is guarded by `guardArity`, unwrapped through the existing envelope/toast path, and exposed by the adapter singleton.
 - Command completion does not directly mutate projection state. A later `state:patch` from the backend is the only mutation source after hydration.
@@ -81,38 +86,47 @@ Hydrate and continuously reconcile a disposable frontend view of the backend app
 ## Acceptance criteria
 
 ### STORY-012-AC-1
+
 **Satisfies:** PH01-R02, PH01-R05
 App-model hydration returns the active buffer separately while Redux stores only document metadata and UI state.
 
 ### STORY-012-AC-2
+
 **Satisfies:** PH01-R02
 Process-scoped initialization caches one Promise, calls `GetState` once, and hydrates `documents` and `ui` exactly once even when React StrictMode mounts the application twice.
 
 ### STORY-012-AC-3
+
 **Satisfies:** PH01-R02, PH01-R05
 A newer revisioned `state:patch` updates dirty/count/view/UI fields without adding content to any slice, while duplicate or stale revisions are ignored.
 
 ### STORY-012-AC-4
+
 **Satisfies:** PH01-R02
 `appModelAdapter` exposes guarded, unwrapped query/command methods; commands do not optimistically mutate projection state.
 
 ### STORY-012-AC-5
+
 **Satisfies:** PH01-R02
 Event initialization installs one adapter-owned listener before reconciliation begins, and its disposer prevents duplicate or leaked subscriptions across repeated bootstrap consumers.
 
 ### STORY-012-AC-6
+
 **Satisfies:** PH01-R02
 The frontend-only bridge mock mirrors `StateResult`, command envelopes, and runtime patch events.
 
 ### STORY-012-AC-7
+
 **Satisfies:** PH01-R02, PH01-R05
 The actual application bootstrap hands the separate hydration `ActiveBuffer` to ephemeral root/editor-session state while Redux contains only document metadata and UI state.
 
 ### STORY-012-AC-8
+
 **Satisfies:** PH01-R02
 **Given** `GetState` rejects or returns an error envelope, **when** application bootstrap runs, **then** the normal toast path reports the error, Redux remains a safe empty projection, and no state-patch listener leaks.
 
 ## Test plan
+
 Each Jest test name begins with its matching `STORY-012-AC-N` id.
 
 - STORY-012-AC-1 — unit — `frontend/src/logic/store/appModelProjection.test.ts` — `it('STORY-012-AC-1 strips content while hydrating projection metadata')`.
@@ -125,6 +139,7 @@ Each Jest test name begins with its matching `STORY-012-AC-N` id.
 - STORY-012-AC-8 — integration — `frontend/src/App.test.tsx` — `it('STORY-012-AC-8 keeps bootstrap safe when GetState fails')`.
 
 ## Definition of done
+
 - [ ] Every acceptance criterion has a passing test whose Jest name begins with its `STORY-012-AC-N` id.
 - [ ] Every edge case in `edge_cases:` has a passing test; this story declares none.
 - [ ] The process-scoped bootstrap is StrictMode-safe, calls `GetState`/hydrates once, owns one disposable listener, hands off `ActiveBuffer` ephemerally, and fails to a toast plus safe empty projection without leaks.

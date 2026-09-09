@@ -82,18 +82,21 @@ existing sanitizer, higher-tier literal behavior, and zero-network guarantee.
 ## Acceptance criteria
 
 ### STORY-031-AC-1
+
 **Satisfies:** PH01-R11
 
 A GFM document with one definition and repeated references renders one accessible footnote definition plus
 stable unique reference ids and a back-reference for each occurrence.
 
 ### STORY-031-AC-2
+
 **Satisfies:** PH01-R11
 
 Malicious footnote labels/content cannot emit script, event handler, dangerous URL, or duplicate unsafe id;
 the remaining document renders safely. (satisfies EC-RENDER-5)
 
 ### STORY-031-AC-3
+
 **Satisfies:** PH01-R11
 
 **Given** instrumented `fetch`, `XMLHttpRequest`, `WebSocket`, and supported resource-bearing DOM request
@@ -117,7 +120,7 @@ math/directive and other higher-tier syntax remains literal. (satisfies EC-RENDE
 - [ ] References, repeated references, definitions, backlinks, stable ids, and keyboard/a11y labels are proved.
 - [ ] Existing raw-HTML/dangerous-URL/resource-request protections remain green.
 - [ ] The real-render offline test instruments fetch, XHR, WebSocket, supported DOM resource requests, and
-  rendered resource attributes and observes zero attempted requests.
+      rendered resource attributes and observes zero attempted requests.
 - [ ] Frontend formatting, lint, typecheck, and Jest gates pass.
 - [ ] Backend authority, adapter-only Wails access, token-only styling, and offline behavior remain intact.
 - [ ] `just trace` and `just trace-check` are run during implementation; the module inventory is unchanged.

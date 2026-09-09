@@ -45,7 +45,7 @@ The test drove `locator.check()` / `uncheck()` on the **hidden 1px input**,
 which Playwright can click directly. That exercised a control no user can reach,
 so the suite was measuring a path that did not exist in the product. What it
 then hit was a React controlled-checkbox desync: the click flipped the DOM
-*property* without any state change, React's diff saw no change to the `checked`
+_property_ without any state change, React's diff saw no change to the `checked`
 prop and never reset it, so the element reported
 
 ```
@@ -128,7 +128,10 @@ It is not supposed to. `mockup.html:604` draws recents as indented rows inside
 the File popup itself:
 
 ```html
-<div class="mi sub"><svg class="ic"><use href="#i-file"/></svg> release-notes.md</div>…
+<div class="mi sub">
+  <svg class="ic"><use href="#i-file" /></svg> release-notes.md
+</div>
+…
 ```
 
 and `ShellMenuRow.tsx:583-590` says so explicitly — "There is no separate Open
@@ -139,7 +142,7 @@ been failing ever since and nobody saw it, because `just check` does not run
 Playwright.
 
 The test now asserts the full ordered row list of the File popup, which proves
-the six recents *and* the binding's grouping around them:
+the six recents _and_ the binding's grouping around them:
 
 ```
 New File, New Window, Open File…, Open Folder…,

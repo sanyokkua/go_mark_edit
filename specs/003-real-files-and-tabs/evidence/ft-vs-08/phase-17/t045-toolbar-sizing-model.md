@@ -13,7 +13,7 @@ the binding source hash.
 
 `t045-editor-chrome.md` recorded that production pinned measured integer control
 widths where the binding derives fractional ones from text metrics. Production's
-tokens already *were* the binding's rule —
+tokens already _were_ the binding's rule —
 `--toolbar-action-min-width: 30px`, `--toolbar-action-padding-inline: 8px`,
 `--toolbar-group-gap: 3px`, `--toolbar-group-padding: 3px`,
 `--arrangement-option-padding: 5px 12px` are `mockup.html:285–291` exactly. The
@@ -23,16 +23,16 @@ zeroed the padding, so a width stopped being a function of its own content.
 Those overrides are deleted. Nothing replaced them: the base rules already
 express `.tbtn{min-width:30px;height:30px;padding:0 8px}`.
 
-| Toolbar child | Reference | Production before | Production after |
-|---|---|---|---|
-| group 1 (bold…inline-code) | x 246.203125, w **135.078125** | x 246.203125, w **135** | **exact** |
-| group 2 (headings) | x **385.28125**, w 107.953125 | x **385.203125**, w **108** | **exact** |
-| group 3 (lists) | x **497.234375**, w 129 | x **497.203125** | **exact** |
-| group 4 (link/image/table) | x **630.234375**, w 102 | x **630.203125** | **exact** |
-| arrangement segment | x 1068.765625, w **181.03125** | x 1068.515625, w **181.28125** | **exact** |
-| segment · Editor | w **56.234375** | w **58.0625** | **exact** |
-| segment · Split (selected) | w **50.03125** | w **48.453125** | **exact** |
-| segment · Preview | w 66.765625 | w 66.765625 | **exact** |
+| Toolbar child              | Reference                      | Production before              | Production after |
+| -------------------------- | ------------------------------ | ------------------------------ | ---------------- |
+| group 1 (bold…inline-code) | x 246.203125, w **135.078125** | x 246.203125, w **135**        | **exact**        |
+| group 2 (headings)         | x **385.28125**, w 107.953125  | x **385.203125**, w **108**    | **exact**        |
+| group 3 (lists)            | x **497.234375**, w 129        | x **497.203125**               | **exact**        |
+| group 4 (link/image/table) | x **630.234375**, w 102        | x **630.203125**               | **exact**        |
+| arrangement segment        | x 1068.765625, w **181.03125** | x 1068.515625, w **181.28125** | **exact**        |
+| segment · Editor           | w **56.234375**                | w **58.0625**                  | **exact**        |
+| segment · Split (selected) | w **50.03125**                 | w **48.453125**                | **exact**        |
+| segment · Preview          | w 66.765625                    | w 66.765625                    | **exact**        |
 
 ## Why the segment could never be pinned
 
@@ -56,14 +56,14 @@ controlled probe isolated the cause: neutralising **only** production's
 deferred-availability opacity, and changing nothing else, drops the region from
 965 to **214** pixels and the maximum channel delta from 114 to 54.
 
-| Toolbar cluster | Page x | Pixels | Cause |
-|---|---|---:|---|
-| Image icon | 676–688 | 127 | `image` is a deferred action — `opacity: 0.48` |
-| Format | 745–793 | 242 | `format` is deferred |
-| Compact | 816–879 | 336 | `compact` is deferred |
-| Lint | 901–933 | 148 | `lint` is deferred |
-| Link icon | 639–653 | 41 | icon path approximation (pre-existing) |
-| Segment outer edge | 4 clusters | 71 | antialiased boundary |
+| Toolbar cluster    | Page x     | Pixels | Cause                                          |
+| ------------------ | ---------- | -----: | ---------------------------------------------- |
+| Image icon         | 676–688    |    127 | `image` is a deferred action — `opacity: 0.48` |
+| Format             | 745–793    |    242 | `format` is deferred                           |
+| Compact            | 816–879    |    336 | `compact` is deferred                          |
+| Lint               | 901–933    |    148 | `lint` is deferred                             |
+| Link icon          | 639–653    |     41 | icon path approximation (pre-existing)         |
+| Segment outer edge | 4 clusters |     71 | antialiased boundary                           |
 
 `image`, `format`, `compact` and `lint` are `deferred(...)` in
 `frontend/src/logic/actions/actionRegistry.ts` (`:354`, `:362`, `:371` and the
@@ -93,14 +93,14 @@ Same harness, same production state — the preview figure below is unchanged at
 the point of the toolbar fix, which confirms the two harnesses measure the same
 capture as the recorded table.
 
-| Region | Recorded (`t045-editor-chrome.md`) | After |
-|---|---:|---:|
-| Monaco (reviewed exclusion, Feature 002) | 17,481 | 22,842 |
-| Chrome (toolbar) | 2,683 | **965** |
-| Tab strip | — | **0** |
-| Preview | 3,433 | **5** |
-| Rest of the region | — | **0** |
-| **Unexplained** (total − Monaco) | **6,116** | **970** |
+| Region                                   | Recorded (`t045-editor-chrome.md`) |   After |
+| ---------------------------------------- | ---------------------------------: | ------: |
+| Monaco (reviewed exclusion, Feature 002) |                             17,481 |  22,842 |
+| Chrome (toolbar)                         |                              2,683 | **965** |
+| Tab strip                                |                                  — |   **0** |
+| Preview                                  |                              3,433 |   **5** |
+| Rest of the region                       |                                  — |   **0** |
+| **Unexplained** (total − Monaco)         |                          **6,116** | **970** |
 
 Monaco's own raster is not comparable between runs and is the named reviewed
 exclusion; it does not count. The preview figure is closed by
@@ -137,13 +137,14 @@ The binding does that with an empty element, not with alignment:
 ```html
 <button class="tbtn txt" title="Lint — ⌥⇧L">✓ Lint</button>
 <div class="tgrp tg-over"><button class="tbtn" title="More">»</button></div>
-<div class="tsp"></div>                                     <!-- mockup.html:673 -->
+<div class="tsp"></div>
+<!-- mockup.html:673 -->
 <div class="seg" id="viewseg">…</div>
 ```
 
 with `.tsp{flex:1}` (`:289`) and `.app[data-w="375"] .tsp{display:none}` (`:61`).
 
-Production had no spacer at all, and its order put the segment *before* the
+Production had no spacer at all, and its order put the segment _before_ the
 overflow trigger rather than after it. Both are now corrected: the toolbar ends
 `… deferred actions → overflow → spacer → segment`, matching the binding's own
 order, and `.spacer` carries `flex: 1` with the same 376px collapse.
@@ -156,12 +157,12 @@ than sitting beside them.
 
 ### Verified
 
-| | Reference | Production |
-|---|---|---|
-| spacer `flex-grow` | `1` (`.tsp`) | `1` (`.spacer`) |
-| segment is the toolbar's last child | yes | yes |
-| segment inset from trailing edge at 1280px | — | 10px, exactly the toolbar's `padding-right` |
-| at 375px | `.tsp` `display:none` | spacer and segment `display:none`, overflow trigger shown |
+|                                            | Reference             | Production                                                |
+| ------------------------------------------ | --------------------- | --------------------------------------------------------- |
+| spacer `flex-grow`                         | `1` (`.tsp`)          | `1` (`.spacer`)                                           |
+| segment is the toolbar's last child        | yes                   | yes                                                       |
+| segment inset from trailing edge at 1280px | —                     | 10px, exactly the toolbar's `padding-right`               |
+| at 375px                                   | `.tsp` `display:none` | spacer and segment `display:none`, overflow trigger shown |
 
 `EditorChrome.test.tsx` locks the order structurally — the segment is the
 toolbar's last child, the spacer sits between it and the overflow trigger, and

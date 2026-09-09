@@ -47,16 +47,16 @@ count.
 `npx playwright test e2e/targeted-parity.test.ts` — **15 passed, 0 failed**
 (20.3s), with the rule active.
 
-| Slice key | Declared terms | Fired |
-|---|---:|---|
-| `targeted:file-menu:1280:minimal-light` | 1 | no |
-| `targeted:settings-menu:1280:minimal-light` | 4 | no |
-| `targeted:settings-overflow:375:minimal-light` | 1 | no |
-| `targeted:view-menu:1280:minimal-light` | 2 | no |
-| `targeted:about-menu:1280:minimal-light` | 1 | no |
-| `targeted:closed-menubar:1280:glass-light` | 1 | no |
-| `targeted:closed-menubar:1280:glass-dark` | 1 | no |
-| `targeted:toolbar:1280:minimal-light` | 1 | no |
+| Slice key                                      | Declared terms | Fired |
+| ---------------------------------------------- | -------------: | ----- |
+| `targeted:file-menu:1280:minimal-light`        |              1 | no    |
+| `targeted:settings-menu:1280:minimal-light`    |              4 | no    |
+| `targeted:settings-overflow:375:minimal-light` |              1 | no    |
+| `targeted:view-menu:1280:minimal-light`        |              2 | no    |
+| `targeted:about-menu:1280:minimal-light`       |              1 | no    |
+| `targeted:closed-menubar:1280:glass-light`     |              1 | no    |
+| `targeted:closed-menubar:1280:glass-dark`      |              1 | no    |
+| `targeted:toolbar:1280:minimal-light`          |              1 | no    |
 
 **No ceiling in `attributed-residuals.ts` needed tightening.** Every declared
 term still reports within its band, which is the expected result for numbers

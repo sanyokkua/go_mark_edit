@@ -13,18 +13,18 @@ retain a visible blocked-by-conflict tab state.
 
 ## Contract evidence
 
-| Case | Evidence | Result |
-|---|---|---|
-| Editable decision order and invalidation | `ExternalChangePrompt decisions and invalidation` verifies File changed on disk, Skip initial focus, disabled Keep mine after Yours invalidation, and Skip/Escape decision callbacks | pass |
-| Bounded first hunk | `conflict preview enforces both 12-line and 4096-byte bounds without splitting a code point` verifies both side truncation markers, bounded labels, and no replacement character in the rendered preview | pass |
-| Truncation disclosure | `truncated side is visibly identified` verifies the side-specific truncation marker | pass |
-| Metadata-only comparison | `metadata-only conflict shows characteristic differences` verifies BOM characteristics and no empty comparison region | pass |
-| Read-only recovery | `read-only conflict offers Reload and Cancel only with Cancel focused` verifies the two allowed actions and absence of Keep mine/Skip | pass |
-| Queued-tab projection | `queued conflict tabs render blocked-by-conflict` verifies every waiting tab exposes the blocked state and accessible name | pass |
-| Shared modal focus contract | `ModalShell focus contract` verifies initial focus, Tab/Shift+Tab trapping, Escape, backdrop routing, and focus restoration | pass |
-| Typed bridge ordering | `T020 guards every conflict decision with its exact bridge argument order` verifies all five guarded adapter calls | pass |
-| Mock bridge parity | `mock conflict bridge preserves bounded preview and decision outcomes` verifies detection, authorization, Skip, Cancel, and blocked projection | pass |
-| Browser journey | `FT-VS-04 shows the bounded external-change prompt and safe Skip decision` verifies prompt title, On disk/Yours, exact button order, Skip focus, and dismissal | pass |
+| Case                                     | Evidence                                                                                                                                                                                                 | Result |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Editable decision order and invalidation | `ExternalChangePrompt decisions and invalidation` verifies File changed on disk, Skip initial focus, disabled Keep mine after Yours invalidation, and Skip/Escape decision callbacks                     | pass   |
+| Bounded first hunk                       | `conflict preview enforces both 12-line and 4096-byte bounds without splitting a code point` verifies both side truncation markers, bounded labels, and no replacement character in the rendered preview | pass   |
+| Truncation disclosure                    | `truncated side is visibly identified` verifies the side-specific truncation marker                                                                                                                      | pass   |
+| Metadata-only comparison                 | `metadata-only conflict shows characteristic differences` verifies BOM characteristics and no empty comparison region                                                                                    | pass   |
+| Read-only recovery                       | `read-only conflict offers Reload and Cancel only with Cancel focused` verifies the two allowed actions and absence of Keep mine/Skip                                                                    | pass   |
+| Queued-tab projection                    | `queued conflict tabs render blocked-by-conflict` verifies every waiting tab exposes the blocked state and accessible name                                                                               | pass   |
+| Shared modal focus contract              | `ModalShell focus contract` verifies initial focus, Tab/Shift+Tab trapping, Escape, backdrop routing, and focus restoration                                                                              | pass   |
+| Typed bridge ordering                    | `T020 guards every conflict decision with its exact bridge argument order` verifies all five guarded adapter calls                                                                                       | pass   |
+| Mock bridge parity                       | `mock conflict bridge preserves bounded preview and decision outcomes` verifies detection, authorization, Skip, Cancel, and blocked projection                                                           | pass   |
+| Browser journey                          | `FT-VS-04 shows the bounded external-change prompt and safe Skip decision` verifies prompt title, On disk/Yours, exact button order, Skip focus, and dismissal                                           | pass   |
 
 The application-level Save/Save As path also consumes the same prompt: Keep
 mine resumes the suspended write with the backend's single-use authorization;

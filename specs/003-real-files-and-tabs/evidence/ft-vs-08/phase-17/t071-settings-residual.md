@@ -13,15 +13,15 @@ with an exact split at the current 709.
 
 Popup region 251×549 on both pages, bounds and computed styles already matching.
 
-| Location | Pixels | Max channel delta |
-|---|---:|---:|
-| Popup outer boundary (within 12px of any edge) | **416** | — |
-| Theme swatch 1, the Liquid Glass gradient | **286** | 8 |
-| Two stray pairs at y 417–418 and y 483–484 | **4** | ≤8 |
-| Everything else in the popup interior | **0** | — |
-| **Total** | **709** | |
+| Location                                       |  Pixels | Max channel delta |
+| ---------------------------------------------- | ------: | ----------------: |
+| Popup outer boundary (within 12px of any edge) | **416** |                 — |
+| Theme swatch 1, the Liquid Glass gradient      | **286** |                 8 |
+| Two stray pairs at y 417–418 and y 483–484     |   **4** |                ≤8 |
+| Everything else in the popup interior          |   **0** |                 — |
+| **Total**                                      | **709** |                   |
 
-Note what is *not* in that table: the second and third theme swatches differ by
+Note what is _not_ in that table: the second and third theme swatches differ by
 **zero** pixels. The earlier note attributed 423 pixels to "the three theme
 swatches"; only the first one differs, and only where it is a gradient.
 
@@ -33,13 +33,13 @@ The binding declares
 (`linear-gradient(135deg,#7aa2ff,#c58bff)`, `:613`). Production's computed values
 are the same declaration:
 
-| Property | Reference `<i>` | Production `<button>` |
-|---|---|---|
-| box | 22×22 | 22×22 |
-| `background-image` | `linear-gradient(135deg, rgb(122,162,255), rgb(197,139,255))` | **identical** |
-| `border-radius` | `6px` | `6px` |
-| `border` | `1px solid rgb(228,228,231)` | **identical** |
-| selected outline | `2px solid rgb(16,185,129)`, offset `2px` | **identical** |
+| Property           | Reference `<i>`                                               | Production `<button>` |
+| ------------------ | ------------------------------------------------------------- | --------------------- |
+| box                | 22×22                                                         | 22×22                 |
+| `background-image` | `linear-gradient(135deg, rgb(122,162,255), rgb(197,139,255))` | **identical**         |
+| `border-radius`    | `6px`                                                         | `6px`                 |
+| `border`           | `1px solid rgb(228,228,231)`                                  | **identical**         |
+| selected outline   | `2px solid rgb(16,185,129)`, offset `2px`                     | **identical**         |
 
 And the pixels differ by ±1 on a single channel, alternating sign along the
 gradient axis — read directly from row y=44:
@@ -111,10 +111,10 @@ the portal anchoring, the real checkbox input, and the accelerator span.
 disagreed with the binding, and converting without fixing them would have
 imported the drift:
 
-| Declaration | Binding | `MenuSurface` before | `SettingsMenu` before |
-|---|---|---|---|
-| `.lab` / `.groupLabel` padding | `7px 10px 3px` (`mockup.html:244`) | `5px 10px 3px` | `7px 10px 3px` |
-| `.tgl` / `.toggle` cursor | `pointer` (`mockup.html:248`) | *(absent)* | `pointer` |
+| Declaration                    | Binding                            | `MenuSurface` before | `SettingsMenu` before |
+| ------------------------------ | ---------------------------------- | -------------------- | --------------------- |
+| `.lab` / `.groupLabel` padding | `7px 10px 3px` (`mockup.html:244`) | `5px 10px 3px`       | `7px 10px 3px`        |
+| `.tgl` / `.toggle` cursor      | `pointer` (`mockup.html:248`)      | _(absent)_           | `pointer`             |
 
 `ShellMenuRow.module.css` carried `.fileMenu .groupLabel{padding-block-start:7px}`
 — a per-menu correction of the shared primitive back to the binding, which is
@@ -139,10 +139,10 @@ keeps a real span and a local `.shortcut` rule.
 
 **No regression, measured both ways:**
 
-| Slice | Before | After |
-|---|---:|---:|
-| T060 Settings popup, 1280px Minimal Light | 709 | **709** |
-| T060 Settings overflow, 375px Minimal Light | 205 | **205** |
+| Slice                                       | Before |   After |
+| ------------------------------------------- | -----: | ------: |
+| T060 Settings popup, 1280px Minimal Light   |    709 | **709** |
+| T060 Settings overflow, 375px Minimal Light |    205 | **205** |
 
 Both are unchanged, so the interior stays at the zero recorded above and the
 conversion introduced no production style difference. The 709 and 205 remain
@@ -163,11 +163,11 @@ projection regression cases recorded in `toggle-sidebar-projection.md`.
 **Measured**: 2026-08-13, on freshly regenerated artifacts, with the same
 per-pixel classifier used to reproduce the 1280 split above.
 
-| Location | Pixels | Max channel delta |
-|---|---:|---:|
-| Popup outer boundary (within 12px of any edge) | **205** | 216 |
-| Everything in the popup interior | **0** | 0 |
-| **Total** | **205** | |
+| Location                                       |  Pixels | Max channel delta |
+| ---------------------------------------------- | ------: | ----------------: |
+| Popup outer boundary (within 12px of any edge) | **205** |               216 |
+| Everything in the popup interior               |   **0** |                 0 |
+| **Total**                                      | **205** |                   |
 
 **The 375px residual is entirely the popup's own antialiased outer boundary.**
 The interior differs by exactly zero pixels — cleaner than the 1280 case, which
@@ -194,10 +194,10 @@ not been measured.
 
 ## Both slices, complete
 
-| Slice | Total | Boundary | Interior | Interior cause |
-|---|---:|---:|---:|---|
-| Settings popup, 1280 | 709 | 416 | 293 | 289 on the Liquid Glass swatch's gradient dither (±1/channel); 4 at two isolated points; the two solid swatches differ by zero |
-| Settings overflow, 375 | **205** | **205** | **0** | — |
+| Slice                  |   Total | Boundary | Interior | Interior cause                                                                                                                 |
+| ---------------------- | ------: | -------: | -------: | ------------------------------------------------------------------------------------------------------------------------------ |
+| Settings popup, 1280   |     709 |      416 |      293 | 289 on the Liquid Glass swatch's gradient dither (±1/channel); 4 at two isolated points; the two solid swatches differ by zero |
+| Settings overflow, 375 | **205** |  **205** |    **0** | —                                                                                                                              |
 
 Every one of the 914 pixels across both slices now has a written, proven cause,
 and none is closable by editing the Settings popup:
@@ -224,8 +224,7 @@ and the immutable mockup and its source hash untouched.
 
 ## A trap this measurement uncovered
 
-The first re-measurement of the Settings popup reported **2,554** pixels, not
-709. The cause was not production: `playwright.config.ts` sets
+The first re-measurement of the Settings popup reported **2,554** pixels, not 709. The cause was not production: `playwright.config.ts` sets
 `reuseExistingServer: !process.env.CI` for the reference server on port 4174, so
 a server started before a `reference-adapter.ts` edit keeps serving the **old**
 adaptation for the rest of the session.

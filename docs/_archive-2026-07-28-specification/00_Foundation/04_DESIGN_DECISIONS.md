@@ -73,7 +73,7 @@ relevant row. Where a decision is architecturally significant it also has an ADR
 ## 5. Formatting, linting & standards
 
 - **DD-16** Provide **Format** (pretty-print: pad tables, normalize markers/wrap) and **Compact**
-  (a conservative whitespace-tightening, *not* aggressive minify — Markdown whitespace can be
+  (a conservative whitespace-tightening, _not_ aggressive minify — Markdown whitespace can be
   meaningful). Both are frontend operations (Prettier / remark-stringify). (ADR-0003)
 - **DD-17** Provide **Lint** for consistency (list-marker style, emphasis style, heading style, etc.)
   using `remark-lint`; findings shown as editor squiggles + a status-bar count.
@@ -91,8 +91,8 @@ relevant row. Where a decision is architecturally significant it also has an ADR
   (setting). CodeMirror 6 is a documented future option. (ADR-0002)
 - **DD-21** **Local image paths resolve relative to the current document** (GitHub/GitLab semantics),
   served through a guarded Wails `AssetServer` handler with a directory **allowlist** (the document's
-  folder + workspace root); path traversal is rejected. *(Configured roots were cut on 2026-07-25 —
-  no setting for them was ever defined; ADR-0030, `01_Product/19_SANITIZATION_AND_CSP.md`.)*
+  folder + workspace root); path traversal is rejected. _(Configured roots were cut on 2026-07-25 —
+  no setting for them was ever defined; ADR-0030, `01_Product/19_SANITIZATION_AND_CSP.md`.)_
 - **DD-22** **Remote content in documents (images/CSS)** is governed by a policy setting: **Ask**
   (default; shows an in-preview banner), **Always allow**, **Always block**. The app itself makes no
   network calls; only document-referenced remote assets are affected, and only per this policy.
@@ -225,7 +225,7 @@ Refines `01_Product/03_FILES_TABS_WORKSPACE.md#drag-and-drop-open`. Drag-and-dro
 it does not move, copy, or reorder anything on disk. It is a pre-assistant capability (it consumes the tab set and the folder
 workspace) and adds **no network**.
 
-- **DD-56** *(narrowed by DD-77 / ADR-0033: the app also creates files and folders in the workspace.)*
+- **DD-56** _(narrowed by DD-77 / ADR-0033: the app also creates files and folders in the workspace.)_
   The window accepts **drag-and-drop of files and folders**. A dropped **file** opens in a
   **new tab**, or in the **current tab if no document is open** (or the current tab is an empty, never-saved
   buffer). Dropping **multiple files** opens each in its own tab. Dropped documents open in the
@@ -256,7 +256,7 @@ These decisions cover the **application-level** window/chrome layout, which is d
 **per-document** view state of DD-10 (each tab's own arrangement, scroll, and cursor). Recorded in
 `docs/adr/0013-window-ui-layout-state.md`.
 
-- **DD-60** **Window & UI-layout state persists** across sessions and windows as *application-level*
+- **DD-60** **Window & UI-layout state persists** across sessions and windows as _application-level_
   layout. This layout is part of the backend-owned application model (DD-62): the frontend toggles it by
   dispatching a **command**, and the backend updates the model, emits the change, and persists it. The
   persisted layout covers: the native **window size and maximized state**; **folder-sidebar**
@@ -293,7 +293,7 @@ the webview as the **View/Controller**.
   model's memory and lifecycle and eliminates dual-source drift. Backed by a dedicated `internal/appmodel`
   service (`02_Architecture/01_MODULE_INVENTORY.md`). It does not change the file-first rule
   (DD-11): documents on disk remain the persistence source of truth; `internal/appmodel` is the in-memory
-  *working* model, and the app still opens clean.
+  _working_ model, and the app still opens clean.
 - **DD-63** **The frontend is a thin view/controller — a projection of the backend model, never a store of
   truth.** The React/Redux store is a **derived, disposable projection**: hydrated from the backend by a
   query at startup / window-open and kept in sync by backend **`state:*` events**; every UI interaction is
@@ -303,7 +303,7 @@ the webview as the **View/Controller**.
   `localStorage` — the active editor's working buffer (DD-64), transient focus/scroll, dialog-open flags —
   **never a second source of truth**. Inactive documents' content is **not** retained in the webview; it
   lives only in Go, so webview memory stays bounded to what is on screen and Go manages the rest.
-- **DD-64** **The active editor buffer is a debounced-synced working copy.** Monaco holds the *visible*
+- **DD-64** **The active editor buffer is a debounced-synced working copy.** Monaco holds the _visible_
   document's editable text for responsiveness — an unavoidable property of an in-webview editor. Edits
   update the webview immediately and are **debounce-pushed** to the backend via an `UpdateBuffer` command;
   the backend model stays authoritative for content, dirty state, autosave, and save, and **every other

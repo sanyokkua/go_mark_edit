@@ -72,7 +72,7 @@ the secret itself. At request time the app reads that variable from the process 
 it per the scheme (`Authorization: Bearer <value>` or the profile's API-key header).
 
 - The **secret value is never persisted** — not in the KV store, not in the `providers` table, not in
-  exported settings — and **never logged** (DD-45, DD-33). Only the variable *name* is stored.
+  exported settings — and **never logged** (DD-45, DD-33). Only the variable _name_ is stored.
 - **None** is the correct scheme for local providers that need no auth (Ollama/LM Studio/llama.cpp
   default).
 - **EC-LLM-8 — Missing credential.** If the referenced environment variable is unset (or empty) when a
@@ -122,7 +122,7 @@ than failing.
 context length — rather than library defaults. A diagnostic that exercises a code path production never
 takes is a diagnostic that passes while production fails.
 
-**Test connection is deliberately generous:** *any* response from the server means reachable, including
+**Test connection is deliberately generous:** _any_ response from the server means reachable, including
 a 404 and a 429. Only `auth` / `missing_credential` and `unreachable` / `timeout` are failures. A
 connection test that fails on a 404 is really testing the path, and the path is what Test models is for.
 
@@ -147,7 +147,7 @@ Per selected model, configurable with sensible defaults (DD-52; mockup **Model**
 - **Temperature** — sampling temperature (mockup default `0.3`). Also shown as a chip in the composer
   row (`🌡 temp 0.3`).
 - **Max output tokens** — the `max_tokens` **wire field**, capping generation (mockup default `2048`).
-  It is *related to* the reply reserve the tokenizer accounts for, but it is **not the same number**
+  It is _related to_ the reply reserve the tokenizer accounts for, but it is **not the same number**
   (`18_TOKENIZER_AND_CONTEXT.md#reply-reserve`): the reserve is a budgeting figure the fit meter
   subtracts, and equating them means a user who raises one to be safe silently raises the other.
   **`maxOutputTokens` must be less than `contextWindow`** — deriving one from the other silently
@@ -171,11 +171,11 @@ outside the session's environment.
 
 The settings field therefore explains **where** to set it, per platform, next to the field itself:
 
-| Platform | Where it must be set |
-|---|---|
-| macOS | `launchctl setenv OPENAI_API_KEY …` for the current login session, or a `launchd` user agent to make it persist. Setting it in `~/.zshrc` works **only** if you launch GoMarkEdit from a terminal. |
-| Windows | A user environment variable (System → Environment Variables), not a `set` in one console. |
-| Linux | The session environment — `~/.profile` for most display managers, or a systemd user environment. A `~/.bashrc` export reaches terminals only. |
+| Platform | Where it must be set                                                                                                                                                                               |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS    | `launchctl setenv OPENAI_API_KEY …` for the current login session, or a `launchd` user agent to make it persist. Setting it in `~/.zshrc` works **only** if you launch GoMarkEdit from a terminal. |
+| Windows  | A user environment variable (System → Environment Variables), not a `set` in one console.                                                                                                          |
+| Linux    | The session environment — `~/.profile` for most display managers, or a systemd user environment. A `~/.bashrc` export reaches terminals only.                                                      |
 
 The app **reads the variable at call time, never at launch**, so setting it and then reopening the app is
 enough — a full logout is not required on macOS once `launchctl setenv` has run.
@@ -190,17 +190,17 @@ table; none of them carries its own copy. Three disagreeing sources for one rang
 ends up offering a timeout the backend rejects — in the reference implementation the UI accepted
 1–3600 seconds, the validator accepted 1–600, and the seeder wrote 60.
 
-| Setting | Range | Step | Default |
-|---|---|---|---|
-| Request timeout | 1 – 600 s | 5 | 60 |
-| Max retries | 0 – 10 | 1 | 3 |
-| Run wall-clock budget | 10 – 600 s | 10 | 120 |
-| Temperature | 0 – 2 | 0.05 | 0.3 |
-| Max output tokens | 1 – 32 000 | 256 | 2 048 |
-| Context length (`num_ctx`) | 1 024 – 200 000 | 1 024 | 8 192 |
-| Agent iterations | 1 – 16 | 1 | 8 |
-| Safety margin | 5 – 40 % | 5 | 15 |
-| Reply reserve | 256 – 8 192 tokens | 256 | 1 024 |
+| Setting                    | Range              | Step  | Default |
+| -------------------------- | ------------------ | ----- | ------- |
+| Request timeout            | 1 – 600 s          | 5     | 60      |
+| Max retries                | 0 – 10             | 1     | 3       |
+| Run wall-clock budget      | 10 – 600 s         | 10    | 120     |
+| Temperature                | 0 – 2              | 0.05  | 0.3     |
+| Max output tokens          | 1 – 32 000         | 256   | 2 048   |
+| Context length (`num_ctx`) | 1 024 – 200 000    | 1 024 | 8 192   |
+| Agent iterations           | 1 – 16             | 1     | 8       |
+| Safety margin              | 5 – 40 %           | 5     | 15      |
+| Reply reserve              | 256 – 8 192 tokens | 256   | 1 024   |
 
 Cross-field: **`maxOutputTokens < contextWindow`**, and **`replyReserve ≤ maxOutputTokens`**.
 
@@ -209,8 +209,8 @@ Out-of-range values are **rejected with the range named**, never clamped.
 ## Base URL, and the `/v1` trap
 
 Providers disagree about whether the base URL includes `/v1`, and naive concatenation produces
-`/v1/v1/chat/completions` → a 404 → classified as `model_not_found`, which tells the user their *model*
-is wrong when their *URL* is wrong. LM Studio's own server UI shows `http://localhost:1234/v1`;
+`/v1/v1/chat/completions` → a 404 → classified as `model_not_found`, which tells the user their _model_
+is wrong when their _URL_ is wrong. LM Studio's own server UI shows `http://localhost:1234/v1`;
 OpenRouter's documentation says `https://openrouter.ai/api/v1`; Ollama's is a bare origin.
 
 **The stored form is canonical:** a parseable `http`/`https` URL ending in a trailing slash. Paths are
@@ -256,7 +256,7 @@ Assistant configuration is persisted locally (DD-46; F4 additive growth of the s
 - **Providers are stored** in a `providers` table introduced as an **additive migration** (no rewrite of
   the pre-assistant schema); scalar AI preferences (params, estimator, margins, strategies, max iterations)
   live as KV keys alongside existing settings groups.
-- **No secret is ever stored** — only the environment-variable *name* per provider (DD-45).
+- **No secret is ever stored** — only the environment-variable _name_ per provider (DD-45).
 - Historical run transcripts, if retained, store a **snapshot** of the provider/model name at run time
   (DD-55); renaming or reconfiguring a provider later never rewrites that history.
 

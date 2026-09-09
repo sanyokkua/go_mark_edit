@@ -83,8 +83,8 @@ other.
 
 - Design decisions: DD-41, DD-42, DD-62, DD-63, DD-64
 - Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model`,
-  ../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`,
+../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`,
   ../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open`,
-  ../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open`,
+../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open`,
   ../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams`
 - Stories: STORY-029, STORY-030

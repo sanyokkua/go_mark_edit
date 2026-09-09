@@ -9,13 +9,13 @@ Two lineages of Feature 003's authority artifacts existed at once. Constitution 
 it is explicitly resolved and approved. This is that resolution, recorded before the merge rather
 than implied by it.
 
-| | Task-branch chain | `feature/v1-implementation` |
-| --- | --- | --- |
-| Tip at measurement | `3842e1d3` | `f1fa1916` |
-| Commits the other lacks | **122** | **1** |
-| `spec.md` | 1,608 lines | 1,513 lines |
-| `tasks.md` | 1,097 lines, highest task **T103** | 994 lines, highest task **T085** |
-| `Superseded 2026-08-14` markers in `spec.md` | **8** | **0** |
+|                                              | Task-branch chain                  | `feature/v1-implementation`      |
+| -------------------------------------------- | ---------------------------------- | -------------------------------- |
+| Tip at measurement                           | `3842e1d3`                         | `f1fa1916`                       |
+| Commits the other lacks                      | **122**                            | **1**                            |
+| `spec.md`                                    | 1,608 lines                        | 1,513 lines                      |
+| `tasks.md`                                   | 1,097 lines, highest task **T103** | 994 lines, highest task **T085** |
+| `Superseded 2026-08-14` markers in `spec.md` | **8**                              | **0**                            |
 
 Common ancestor: `7744cc824` "test(ui): add immutable zero-tolerance parity harness", **2026-08-09**.
 

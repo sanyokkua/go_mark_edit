@@ -14,7 +14,7 @@ tool round trip (~5.6 s) is coarser than the quantity being measured, so no time
 around a keystroke-dispatching call can bound the keystroke-to-write interval.
 
 That reasoning is correct and the conclusion drawn from it was too strong. It rules out
-measuring the interval *against an external clock*. It does not rule out measuring it
+measuring the interval _against an external clock_. It does not rule out measuring it
 **against itself**.
 
 The autosave is a trailing-edge debounce of some period `d`. Type three characters spaced
@@ -23,7 +23,7 @@ The autosave is a trailing-edge debounce of some period `d`. Type three characte
 - if `s > d`, the timer expires between keystrokes and each one produces its own write;
 - if `s < d`, each keystroke resets the timer and the three coalesce into one write.
 
-The transition is at `s = d`. Counting writes needs no anchor at all — only the *number* of
+The transition is at `s = d`. Counting writes needs no anchor at all — only the _number_ of
 writes, and `s` is set by the harness rather than observed. Bisecting `s` therefore measures
 `d` absolutely, and the round trip is irrelevant because every keystroke in a probe is
 dispatched inside a single batched call.
@@ -33,18 +33,18 @@ observation is of the real on-disk effect, not of a status surface.
 
 ## Small document (40 bytes)
 
-| nominal `s` | writes | verdict |
-|---|---|---|
-| 3.0 s | 3 | separate — `s > d` |
-| 1.0 s | 3 | separate — `s > d` |
-| 0.96875 s | 3 | separate — `s > d` |
-| **0.9375 s** | **1** | **coalesced — `s < d`** |
-| 0.875 s | 1 | coalesced |
-| 0.75 s | 1 | coalesced |
-| 0.625 s | 1 | coalesced |
-| 0.5 s | 1 | coalesced |
-| 0.25 s | 1 | coalesced |
-| 0.125 s | 1 | coalesced |
+| nominal `s`  | writes | verdict                 |
+| ------------ | ------ | ----------------------- |
+| 3.0 s        | 3      | separate — `s > d`      |
+| 1.0 s        | 3      | separate — `s > d`      |
+| 0.96875 s    | 3      | separate — `s > d`      |
+| **0.9375 s** | **1**  | **coalesced — `s < d`** |
+| 0.875 s      | 1      | coalesced               |
+| 0.75 s       | 1      | coalesced               |
+| 0.625 s      | 1      | coalesced               |
+| 0.5 s        | 1      | coalesced               |
+| 0.25 s       | 1      | coalesced               |
+| 0.125 s      | 1      | coalesced               |
 
 Monotone, with no inversion anywhere in the ten probes — which is itself the check that the
 method is sound, since a debounce must produce exactly one transition.
@@ -60,10 +60,10 @@ measured from the separated probes — consecutive writes came 3.021 s and 3.040
 Same bracket, on a document one byte over the live-preview limit so the preview is paused
 (see the defect below — at exactly the limit this measurement cannot be taken at all).
 
-| nominal `s` | writes | verdict |
-|---|---|---|
-| 0.9375 s | 1 | coalesced — unchanged from the small document |
-| 0.96875 s | 2 (1.019 s apart) | **partially** separated |
+| nominal `s` | writes            | verdict                                       |
+| ----------- | ----------------- | --------------------------------------------- |
+| 0.9375 s    | 1                 | coalesced — unchanged from the small document |
+| 0.96875 s   | 2 (1.019 s apart) | **partially** separated                       |
 
 At 0.96875 s the small document separated fully into three writes and the large one into
 two, so `d` is marginally longer at 2 MiB — consistent with the write of 2 MiB itself

@@ -44,9 +44,11 @@ estimate: M
 # STORY-014 — Build the base GFM Markdown preview
 
 ## Goal
+
 Render safe, accessible GFM from an in-memory Markdown string so users can preview core tables, task lists, strikethrough, and links entirely offline while higher rendering tiers remain deferred.
 
 ## In scope
+
 - Add one centralized Phase-01 renderer configuration using `react-markdown`, `remark-gfm`, and a sanitize-last pipeline.
 - Add a presentational `MarkdownView` rooted at `.gme-preview` with token-only preview styling.
 - Render GFM tables, read-only task lists, strikethrough, and autolinks into accessible DOM.
@@ -56,12 +58,14 @@ Render safe, accessible GFM from an in-memory Markdown string so users can previ
 - Prove separately that renderer dependencies/build artifacts contain no remote runtime import or fetch path.
 
 ## Out of scope
+
 - Minimal/Full standard selection/plugin mapping, footnotes, syntax highlighting, KaTeX, Mermaid, and `MermaidBlock`, owned by Phase 04 under the phase-specific scope even where broader rendering chapters describe the eventual complete pipeline.
 - Live-preview debounce and backend-accepted source ownership, owned by STORY-017.
 - Remote-document asset policy and guarded local image handling, owned by Phase 09.
 - Reading mode and its full-chrome-hidden layout, owned by Phase 04.
 
 ## Spec inputs
+
 - `../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering` — use the specified react-markdown family as the rendering foundation and deliver the GFM subset for this phase.
 - `../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline` — centralize the offline webview renderer and mount output below a `.gme-preview` root.
 - `../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features` — render tables, read-only task lists, strikethrough, and literal autolinks at the GFM tier.
@@ -73,6 +77,7 @@ Render safe, accessible GFM from an in-memory Markdown string so users can previ
 - `07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope` — assign footnotes, standard/plugin mapping, highlighting, KaTeX, and Mermaid to the Phase-04 renderer expansion.
 
 ## Design constraints
+
 - Phase 01 has one fixed base GFM tier. Footnotes and Minimal/Full mapping remain Phase 04 despite broader frozen descriptions of the eventual GFM/full pipeline; math/directive syntax stays literal to satisfy EC-RENDER-6.
 - Mermaid is not a Full-only feature: Phase 01 deliberately lacks `MermaidBlock`, so a `mermaid` fence renders as an ordinary sanitized code block and imports no Mermaid renderer.
 - The pipeline disables raw document HTML and sanitizes last; it never executes document HTML, event handlers, dangerous URLs, or scripts (EC-RENDER-5).
@@ -85,30 +90,37 @@ Render safe, accessible GFM from an in-memory Markdown string so users can previ
 ## Acceptance criteria
 
 ### STORY-014-AC-1
+
 **Satisfies:** PH01-R11
 One renderer module configures `react-markdown`, `remark-gfm`, raw-HTML-disabled processing, and sanitize-last behavior for the fixed Phase-01 base GFM tier.
 
 ### STORY-014-AC-2
+
 **Satisfies:** PH01-R11
 Tables, task lists, strikethrough, and autolinks render with accessible DOM and read-only task checkboxes.
 
 ### STORY-014-AC-3
+
 **Satisfies:** PH01-R11
 Math/directive and other higher-tier syntax remain literal, while a Mermaid fence renders as an ordinary safe code block; no deferred extension renderer is loaded. (satisfies EC-RENDER-6)
 
 ### STORY-014-AC-4
+
 **Satisfies:** PH01-R11
 The preview uses the `.gme-preview` root and token-only styling; raw document HTML is disabled/sanitized last and dangerous URLs are stripped without execution. (satisfies EC-RENDER-5)
 
 ### STORY-014-AC-5
+
 **Satisfies:** PH01-R11
 Remote or local Markdown image/resource input renders non-fetching alt text/placeholder output with no fetchable `src` and triggers no document-supplied request. (satisfies EC-RENDER-7)
 
 ### STORY-014-AC-6
+
 **Satisfies:** PH01-R11
 Renderer dependencies and production assets contain no runtime remote import, CDN URL, or fetch path.
 
 ## Test plan
+
 Each Jest test name begins with its matching `STORY-014-AC-N` id.
 
 - STORY-014-AC-1 — unit — `frontend/src/logic/markdown/renderer.test.ts` — `it('STORY-014-AC-1 centralizes the base GFM pipeline')`.
@@ -119,6 +131,7 @@ Each Jest test name begins with its matching `STORY-014-AC-N` id.
 - STORY-014-AC-6 — architecture — `frontend/src/logic/markdown/renderer.test.ts` — `it('STORY-014-AC-6 keeps renderer dependencies and assets offline')`.
 
 ## Definition of done
+
 - [ ] Every acceptance criterion has a passing test whose Jest name begins with its `STORY-014-AC-N` id.
 - [ ] EC-RENDER-5, EC-RENDER-6, and EC-RENDER-7 each have a passing named test.
 - [ ] GFM output is accessible/read-only where required; raw HTML/dangerous URLs cannot execute; image/resource input cannot initiate a request; Mermaid remains an ordinary safe code block.

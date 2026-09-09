@@ -19,18 +19,18 @@ production, so this is a mandated reconciliation rather than an open question.
 Both popups already agree on the frame: `x` 216.203125, width 250, padding 6px,
 row padding `7px 10px`, row font `13px Inter`. Only the contents differ.
 
-| # | Reference `#m-view` (h **282**) | y | h | Production (h **284**) | y | h |
-|---|---|---:|---:|---|---:|---:|
-| 1 | Toggle Sidebar · `Ctrl \` | 7 | 30 | Editor | 7 | 30 |
-| 2 | Toggle Assistant · `Ctrl J` | 37 | 30 | Split | 37 | 30 |
-| 3 | Show Editor · ✓ | 67 | 30 | Preview | 67 | 30 |
-| 4 | Show Preview · ✓ | 97 | 30 | Toggle Sidebar | 97 | 30 |
-| 5 | **separator** | 132 | 1 | Toggle Assistant | 127 | 30 |
-| 6 | Line numbers · **switch** | 138 | **33** | Line numbers | 157 | 30 |
-| 7 | Word wrap · **switch** | 171 | **33** | Word wrap | 187 | 30 |
-| 8 | **separator** | 209 | 1 | Distraction-free reading | 217 | 30 |
-| 9 | Distraction-free reading · `Ctrl ⏎` | 215 | 30 | Full screen | 247 | 30 |
-| 10 | Full screen · `F11` | 245 | 30 | — | — | — |
+| #   | Reference `#m-view` (h **282**)     |   y |      h | Production (h **284**)   |   y |   h |
+| --- | ----------------------------------- | --: | -----: | ------------------------ | --: | --: |
+| 1   | Toggle Sidebar · `Ctrl \`           |   7 |     30 | Editor                   |   7 |  30 |
+| 2   | Toggle Assistant · `Ctrl J`         |  37 |     30 | Split                    |  37 |  30 |
+| 3   | Show Editor · ✓                     |  67 |     30 | Preview                  |  67 |  30 |
+| 4   | Show Preview · ✓                    |  97 |     30 | Toggle Sidebar           |  97 |  30 |
+| 5   | **separator**                       | 132 |      1 | Toggle Assistant         | 127 |  30 |
+| 6   | Line numbers · **switch**           | 138 | **33** | Line numbers             | 157 |  30 |
+| 7   | Word wrap · **switch**              | 171 | **33** | Word wrap                | 187 |  30 |
+| 8   | **separator**                       | 209 |      1 | Distraction-free reading | 217 |  30 |
+| 9   | Distraction-free reading · `Ctrl ⏎` | 215 |     30 | Full screen              | 247 |  30 |
+| 10  | Full screen · `F11`                 | 245 |     30 | —                        |   — |   — |
 
 The 2px height difference that T061 reports as `bounds.bottom: 455 != 457` is a
 coincidence, not the defect: production's nine uniform 30px rows happen to total
@@ -39,7 +39,7 @@ Closing the height by adjusting a row would hide the real difference.
 
 ## What has to change, in order
 
-1. **Row order.** Toggle Sidebar and Toggle Assistant come *first* in the
+1. **Row order.** Toggle Sidebar and Toggle Assistant come _first_ in the
    binding, before the visibility rows. Production puts them fourth and fifth.
 2. **Arrangement rows.** The binding has two checkbox rows — `Show Editor ✓` and
    `Show Preview ✓` — not three radios. `ViewMenu` already implements exactly
@@ -58,7 +58,7 @@ Closing the height by adjusting a row would hide the real difference.
    Line numbers and Word wrap. This is what makes those two rows 33px rather
    than 30px, so the switch is load-bearing for the geometry, not decoration.
 6. **Accelerators.** `.mi .k{color:var(--faint);font-size:11px;
-   font-family:var(--mono)}` (`:241`) on Toggle Sidebar (`Ctrl \`), Toggle
+font-family:var(--mono)}` (`:241`) on Toggle Sidebar (`Ctrl \`), Toggle
    Assistant (`Ctrl J`), Distraction-free reading (`Ctrl ⏎`) and Full screen
    (`F11`). The File popup already renders accelerators through this primitive,
    so there is a working precedent to follow rather than a new mechanism.

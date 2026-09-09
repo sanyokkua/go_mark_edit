@@ -6,7 +6,6 @@
 > with `../delivery/spec/` or `../delivery/architecture/`, those win. Do not write new work against
 > it.
 
-
 GoMarkEdit is a native, **offline-first** desktop **Markdown editor & viewer** for Windows, macOS and
 Linux, built with **Wails v2** (Go backend + React/TypeScript frontend). This folder describes what the
 app should be.
@@ -51,7 +50,7 @@ specification/
   mockups/              gomarkedit-mockup.html — the visual reference
 ```
 
-Decisions made *during* implementation live outside this folder, in `../docs/adr/` (ADR-0013 onward).
+Decisions made _during_ implementation live outside this folder, in `../docs/adr/` (ADR-0013 onward).
 Stories live in `../docs/stories/`.
 
 ## Reference convention

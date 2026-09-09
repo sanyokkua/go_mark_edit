@@ -49,15 +49,18 @@ estimate: L
 # STORY-016 — Add the core editor status bar
 
 ## Goal
+
 Show users the active cursor location and backend-derived document metadata in the editor chrome so the first untitled document communicates position, word count, encoding, line endings, and arrangement without treating frontend text as authoritative.
 
 ## In scope
+
 - Add a presentational `StatusBar` for one-based cursor position, backend-derived word count, encoding, line ending, and current arrangement.
 - Feed cursor position from ephemeral Monaco events and all document/view metadata from the reconciled Redux projection.
 - Compose the status bar into `EditorView`; format canonical `utf-8`/`lf` wire values as `UTF-8`/`LF` labels.
 - Add the dependency-free, bundled i18n seam needed by the new status-bar strings: an eager Vite locale-resource discovery path, English fallback, named interpolation, locale-aware number formatting, and typed `t()`/`setLocale()`/`availableLocales` exports.
 
 ## Out of scope
+
 - Autosave, lint counts, file warnings, binary/non-UTF-8 warnings, and save state, owned by later phases.
 - Computing word count from Monaco text or storing content in Redux; the backend's Unicode whitespace-token rule is authoritative.
 - Persisting cursor position or per-path file metadata, owned by later document and settings work.
@@ -67,6 +70,7 @@ Show users the active cursor location and backend-derived document metadata in t
 - Migrating pre-existing UI literals globally or exposing the Settings Language UI, both owned by the later i18n/settings stories.
 
 ## Spec inputs
+
 - `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — include the status bar in editor chrome and use the specified Split, UTF-8/LF, and source-editor defaults.
 - `../../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings` — display encoding and line ending explicitly; Phase 01 uses the untitled UTF-8/LF defaults before file I/O exists.
 - `../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n` and `../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#i18n-layer` — status-bar strings pass through a lightweight, offline i18n layer with English shipped.
@@ -77,6 +81,7 @@ Show users the active cursor location and backend-derived document metadata in t
 - `07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope` — defer Markdown-standard selection/badge presentation to the Phase-04 rendering expansion.
 
 ## Design constraints
+
 - Word count and view arrangement come only from reconciled backend metadata; neither `StatusBar` nor a selector reads Monaco content or stores document text in Redux (DD-62, DD-63, DD-64; ADR-0014).
 - Cursor line/column are one-based ephemeral active-editor state supplied by STORY-019 and update immediately without becoming authoritative application state; restorable cursor/selection still synchronizes through backend-owned `DocView`.
 - `StatusBar` remains presentational, typed, and independent of generated bindings; only `logic/adapter/` may import `wailsjs/`.
@@ -91,30 +96,37 @@ Show users the active cursor location and backend-derived document metadata in t
 ## Acceptance criteria
 
 ### STORY-016-AC-1
+
 **Satisfies:** PH01-R13
 Given typed initial props, `StatusBar` renders `Ln 1, Col 1`, `0 words`, `UTF-8`, `LF`, and `Split`.
 
 ### STORY-016-AC-2
+
 **Satisfies:** PH01-R13
 Monaco cursor changes wired through `EditorView` display one-based line and column values immediately while restorable synchronization remains STORY-019.
 
 ### STORY-016-AC-3
+
 **Satisfies:** PH01-R13
 A backend metadata patch reconciled through `EditorView` changes the word count without reading Monaco content or storing content in Redux.
 
 ### STORY-016-AC-4
+
 **Satisfies:** PH01-R13
 A reconciled backend view patch updates the arrangement label through the store-connected `EditorView`.
 
 ### STORY-016-AC-5
+
 **Satisfies:** PH01-R13
 Before Phase 02 file I/O, canonical `utf-8`/`lf` wire values are formatted by the UI as the explicit `UTF-8`/`LF` untitled labels.
 
 ### STORY-016-AC-6
+
 **Satisfies:** PH01-R16
 `StatusBar` resolves cursor, word-count, encoding, line-ending, and arrangement labels through the typed i18n seam, including named interpolation and locale-aware number formatting.
 
 ## Test plan
+
 Each Jest test name begins with its matching `STORY-016-AC-N` id.
 
 - STORY-016-AC-1 — unit — `frontend/src/ui/components/StatusBar.test.tsx` — `it('STORY-016-AC-1 renders initial untitled metadata')`.
@@ -127,6 +139,7 @@ Each Jest test name begins with its matching `STORY-016-AC-N` id.
 - EC-I18N-2 — unit — `frontend/src/i18n/catalog.test.ts` — `it('EC-I18N-2 discovers a dropped-in locale resource without component changes')`.
 
 ## Definition of done
+
 - [ ] Every acceptance criterion has a passing test whose Jest name begins with its `STORY-016-AC-N` id.
 - [ ] Every edge case in `edge_cases:` has a passing test.
 - [ ] StatusBar unit tests prove props only; catalog tests prove i18n interpolation, fallback, formatting, and resource discovery; store-connected EditorView tests prove live cursor wiring and backend-derived word/view/encoding/line-ending provenance without document content in Redux.

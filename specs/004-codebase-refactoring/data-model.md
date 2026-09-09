@@ -10,18 +10,18 @@ them without re-deriving the rules. Persistence stays one SQLite key-value table
 
 One record per open document, owned by the lifecycle owner; every other map in the service goes.
 
-| Field | Type | Rule |
-|---|---|---|
-| `id` | string | minted once at open; never reused within a process |
-| `identity` | `file.Identity{Device, Inode}` typed per platform (signed on Darwin) or `path:<resolved>` only when the platform exposes neither | equality decides "already open" (FR-005) |
-| `canonicalPath` | string or empty for untitled | updated only by Save As adoption |
-| `bufferRevision` | uint64 | advanced by every accepted `UpdateBuffer` |
-| `committedRevision` | uint64 | the buffer revision whose bytes are on disk |
-| `publicationCommitID` | uint64 | monotonically increasing per document; a publication carrying a lower id is rejected (FR-001) |
-| `writeQueue` | existing per-document write coordinator | serialises Save, Save As and autosave for the document; results applied in commit order |
-| `autosave` | timer entry, generation | cancelled and released by disposal |
-| `activationToken`, `saveReservation`, `normalization`, `conflict`, `keepMine` | per-document sub-records | all released by disposal |
-| `baseline`, `baselineOrigin`, `failedWrite`, `detached`, `metadata` | as today | `effectiveMetadata()` is the only projector used by Open, patches and `GetState` (FR-007) |
+| Field                                                                         | Type                                                                                                                             | Rule                                                                                          |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `id`                                                                          | string                                                                                                                           | minted once at open; never reused within a process                                            |
+| `identity`                                                                    | `file.Identity{Device, Inode}` typed per platform (signed on Darwin) or `path:<resolved>` only when the platform exposes neither | equality decides "already open" (FR-005)                                                      |
+| `canonicalPath`                                                               | string or empty for untitled                                                                                                     | updated only by Save As adoption                                                              |
+| `bufferRevision`                                                              | uint64                                                                                                                           | advanced by every accepted `UpdateBuffer`                                                     |
+| `committedRevision`                                                           | uint64                                                                                                                           | the buffer revision whose bytes are on disk                                                   |
+| `publicationCommitID`                                                         | uint64                                                                                                                           | monotonically increasing per document; a publication carrying a lower id is rejected (FR-001) |
+| `writeQueue`                                                                  | existing per-document write coordinator                                                                                          | serialises Save, Save As and autosave for the document; results applied in commit order       |
+| `autosave`                                                                    | timer entry, generation                                                                                                          | cancelled and released by disposal                                                            |
+| `activationToken`, `saveReservation`, `normalization`, `conflict`, `keepMine` | per-document sub-records                                                                                                         | all released by disposal                                                                      |
+| `baseline`, `baselineOrigin`, `failedWrite`, `detached`, `metadata`           | as today                                                                                                                         | `effectiveMetadata()` is the only projector used by Open, patches and `GetState` (FR-007)     |
 
 Transitions: `Opening → Open → (Editing ⇄ Writing) → Committed → Published → Closing → Disposed`.
 `dispose(id)` is the single exit and runs after every started write finished; after it, no field of
@@ -42,13 +42,13 @@ untitled document, `ResolveClosePlan`) → no deadline. The notice lifecycle is 
 
 ## CloseRequest (`internal/application/shutdown.go`) — FR-016, FR-017, FR-018, FR-057
 
-| Field | Type |
-|---|---|
-| `id` | string, one per native close or quit request (monotonic counter plus process nonce) |
-| `state` | one of the states of [contracts/shutdown-protocol.md](contracts/shutdown-protocol.md) |
-| `requestedAt`, `deadline` (10 s) | timestamps |
-| `frontendReady` | bool, set by `WindowReady` |
-| `dirtyDocuments` | names of documents with unsaved changes at decision time |
+| Field                            | Type                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------- |
+| `id`                             | string, one per native close or quit request (monotonic counter plus process nonce)   |
+| `state`                          | one of the states of [contracts/shutdown-protocol.md](contracts/shutdown-protocol.md) |
+| `requestedAt`, `deadline` (10 s) | timestamps                                                                            |
+| `frontendReady`                  | bool, set by `WindowReady`                                                            |
+| `dirtyDocuments`                 | names of documents with unsaved changes at decision time                              |
 
 `GetState` projects `pendingClose: {id}` so a frontend that becomes ready later discovers the request.
 
@@ -61,11 +61,11 @@ error-code enum binding is unchanged.
 
 ## KVEntry (`internal/kv`) — FR-008, FR-053
 
-| Column | Meaning |
-|---|---|
-| `key` | dotted namespace: `appearance.*`, `view.*`, `markdown.*`, `format.*`, `lint.*`, `content.*`, `editor.*`, `file.*` (settings); `layout.*` (layout); `recent.files` (recents); `document.view.*` (file metadata) |
-| `value` | text; scalars as text, structures as versioned JSON `{"version": N, …}` |
-| `type` | `string`, `bool`, `layout.versioned`, `recent.files.v1`, … |
+| Column  | Meaning                                                                                                                                                                                                        |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key`   | dotted namespace: `appearance.*`, `view.*`, `markdown.*`, `format.*`, `lint.*`, `content.*`, `editor.*`, `file.*` (settings); `layout.*` (layout); `recent.files` (recents); `document.view.*` (file metadata) |
+| `value` | text; scalars as text, structures as versioned JSON `{"version": N, …}`                                                                                                                                        |
+| `type`  | `string`, `bool`, `layout.versioned`, `recent.files.v1`, …                                                                                                                                                     |
 
 Rules: `Tx(func(tx) error)` wraps every group update (a settings group is one transaction); `Get`
 returns "absent" distinctly from a decode failure; unknown versions read as absent; rows the
@@ -90,12 +90,12 @@ space runs out; Details lists every fact the row dropped.
 
 ## LinkTarget and ImageSource — FR-014, FR-049
 
-| Kind | Condition | Outcome |
-|---|---|---|
-| `anchor` | `#fragment` | scroll the preview |
-| `localDocument` | relative or absolute path, extension in {`.md`, `.markdown`, `.mdown`, `.txt`}, resolved after symlinks inside the document's folder | open through the normal open flow |
-| `external` | `https:` or `http:` | system browser |
-| `refused` | any other scheme, outside the folder, or an untitled document | one auto-dismissing warning notice naming the target and the reason |
+| Kind            | Condition                                                                                                                            | Outcome                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `anchor`        | `#fragment`                                                                                                                          | scroll the preview                                                  |
+| `localDocument` | relative or absolute path, extension in {`.md`, `.markdown`, `.mdown`, `.txt`}, resolved after symlinks inside the document's folder | open through the normal open flow                                   |
+| `external`      | `https:` or `http:`                                                                                                                  | system browser                                                      |
+| `refused`       | any other scheme, outside the folder, or an untitled document                                                                        | one auto-dismissing warning notice naming the target and the reason |
 
 `ImageSource`: `local` when the resolved path is inside the document's folder and the file is at most
 20 MB → served by the asset route; otherwise `placeholder` with the alt text and no notice.

@@ -14,7 +14,7 @@ owner asked that the **application-level UI layout** also be remembered between 
 which sidebars are open, the Editor/Split/Preview arrangement, pane visibility, and (once the assistant exists) the
 assistant sidebar — so a returning user, and every newly opened window, starts in the layout they last
 left. Because GoMarkEdit runs **multiple windows/instances with no single-instance lock** (DD-08,
-ADR-0006), two windows can change layout independently, which raises the question of *which* window's
+ADR-0006), two windows can change layout independently, which raises the question of _which_ window's
 state is authoritative. This ADR records the persistence model and the multi-window conflict rule, and
 introduces **DD-60** and **DD-61**.
 
@@ -52,15 +52,18 @@ before a window is shown, falling back to defaults on a missing/invalid value.
 ## Pros and cons of the options
 
 ### Option A — Write-through, last-writer-by-change
-- Good: authoritative value is the most recent *change*; close order is irrelevant; deterministic.
+
+- Good: authoritative value is the most recent _change_; close order is irrelevant; deterministic.
 - Bad: many tiny writes (mitigated by debouncing the only high-frequency source, resize).
 
 ### Option B — Save on close (last-closer-wins)
+
 - Good: fewest writes.
 - Bad: a window that changed nothing can overwrite another window's recent change purely by closing later
   — the exact behaviour the owner rejected.
 
 ### Option C — Per-window identity
+
 - Good: richest fidelity across monitors/windows.
 - Bad: no stable window identity across launches; complex; out of scope for a single-user v1 editor.
 
@@ -68,7 +71,7 @@ before a window is shown, falling back to defaults on a missing/invalid value.
 
 - Design decisions: DD-10, DD-11, DD-13, DD-27, DD-60, DD-61
 - Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#window-state`,
-  ../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence`,
+../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence`,
   ../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state`,
-  ../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#13-window--ui-layout-state`
+../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#13-window--ui-layout-state`
 - Stories: STORY-098

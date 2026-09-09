@@ -72,7 +72,7 @@ not.
 ## Measurement 5 refutes the revision hypothesis
 
 Measurements 1–4 are sound observations, but 4 compared a real patch against a
-synthetic one that differed in **two** ways — its revision *and* its payload
+synthetic one that differed in **two** ways — its revision _and_ its payload
 shape — and attributed the difference to the revision. Holding the revision
 fixed and varying only the shape reverses the conclusion.
 
@@ -89,7 +89,7 @@ TypeError: patch.orderedDocumentIds is not iterable
 Revision 21 is strictly greater than the store's revision and is still lost,
 while 20 and 22 apply. The revision guard is not involved. Independently: after
 a fresh load the store's `ui.revision` and the backend's revision agree exactly,
-and a synthetic patch at the *same* revision as a dropped real one applies.
+and a synthetic patch at the _same_ revision as a dropped real one applies.
 
 ## The line
 
@@ -97,7 +97,7 @@ and a synthetic patch at the *same* revision as a dropped real one applies.
 
 ```ts
 if (patch.orderedDocumentIds !== undefined) {
-  state.orderedIds = [...patch.orderedDocumentIds];   // ← throws on null
+  state.orderedIds = [...patch.orderedDocumentIds]; // ← throws on null
 }
 ```
 
@@ -184,8 +184,8 @@ not changed and remains authoritative.
 
 ## A second, separate observation — decided and closed
 
-**Decision (product owner, this session):** dragging the divider to zero *means
-hide*, and showing the workspace again uses the binding width. A workspace that
+**Decision (product owner, this session):** dragging the divider to zero _means
+hide_, and showing the workspace again uses the binding width. A workspace that
 is visible at zero width is not a state the application should be able to reach.
 
 Both halves are implemented as single backend commands, in
@@ -211,7 +211,7 @@ a "previous width" the backend does not store.
 `SetUILayout` debounces continuous fields by 250ms and applies discrete ones at
 once, so the combined command opened the workspace at its old width of 0 and
 widened it a quarter of a second later — a weak reprise of the symptom the
-restore exists to remove. A width arriving *with* a visibility change is one
+restore exists to remove. A width arriving _with_ a visibility change is one
 discrete intent, not the stream a drag produces, so it is no longer held back
 (`internal/appmodel/service.go`). A width sent on its own is still debounced,
 which the existing `TestSetUILayoutDebouncesWorkspaceWidthUntilAcknowledged`
@@ -236,7 +236,7 @@ is visible with no width.
 ### How the zero got there
 
 Worth recording, because it changes what the case is. The persisted `0` was
-*dragged*, not shipped: the dev database held
+_dragged_, not shipped: the dev database held
 `layout.workspace.width = {value: 0, sequence: 426}`, and a sequence that high is
 what a long drag produces, one write per debounced step. The production database
 held `255` at sequence 249. So this was an ordinary user action reaching a state
@@ -258,11 +258,11 @@ What the authorities say:
 - The spec treats the two as independent persisted properties:
   "`Ctrl/Cmd+\` shows and hides the sidebar" and "the edge is draggable and the
   width is persisted" (`docs/delivery/spec/product/a-folder-of-notes.md`,
-  *The sidebar's visibility and width persist*). It is silent on visible-at-zero.
+  _The sidebar's visibility and width persist_). It is silent on visible-at-zero.
 - The binding fixes the sidebar's own width at **216px**
   (`docs/delivery/spec/surface/mockup.html:254`, `.sidebar{width:216px…}`), which
   is the same value `AppShell` already falls back to (`sidebarWidth ?? 216`).
-  That fallback is nullish-only, so a *persisted* `0` beats it.
+  That fallback is nullish-only, so a _persisted_ `0` beats it.
 - Zero is reachable by design, not corruption: the divider drag clamps with
   `Math.max(0, …)` and the separator advertises `aria-valuemin={0}`.
 

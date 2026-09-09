@@ -7,8 +7,8 @@
     <style>
       :root {
         --font:
-          Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        --mono: "SFMono-Regular", Consolas, monospace;
+          Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        --mono: 'SFMono-Regular', Consolas, monospace;
         --dur-fast: 120ms;
         --dur-base: 180ms;
         --dur-slow: 300ms;
@@ -57,7 +57,7 @@
         }
       }
 
-      body[data-theme="glass"][data-mode="dark"] {
+      body[data-theme='glass'][data-mode='dark'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas:
           radial-gradient(1200px 700px at 15% -10%, #3b2f7a 0, transparent 55%),
@@ -88,11 +88,11 @@
         --blur: blur(28px) saturate(160%);
         --win-radius: 16px;
         --font:
-          -apple-system, "SF Pro Display", "Segoe UI", Inter, system-ui,
+          -apple-system, 'SF Pro Display', 'Segoe UI', Inter, system-ui,
           sans-serif;
       }
 
-      body[data-theme="glass"][data-mode="light"] {
+      body[data-theme='glass'][data-mode='light'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas:
           radial-gradient(1100px 700px at 12% -12%, #b7c2ff 0, transparent 55%),
@@ -123,11 +123,11 @@
         --blur: blur(28px) saturate(150%);
         --win-radius: 16px;
         --font:
-          -apple-system, "SF Pro Display", "Segoe UI", Inter, system-ui,
+          -apple-system, 'SF Pro Display', 'Segoe UI', Inter, system-ui,
           sans-serif;
       }
 
-      body[data-theme="material"][data-mode="light"] {
+      body[data-theme='material'][data-mode='light'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas: #d9d7e6;
         --app-bg: #faf8ff;
@@ -152,10 +152,10 @@
         --hover: #eceaf6;
         --win-shadow: 0 30px 70px rgba(30, 30, 60, 0.28);
         --win-radius: 16px;
-        --font: "Roboto", "Segoe UI", Inter, system-ui, sans-serif;
+        --font: 'Roboto', 'Segoe UI', Inter, system-ui, sans-serif;
       }
 
-      body[data-theme="material"][data-mode="dark"] {
+      body[data-theme='material'][data-mode='dark'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas: #0e0e13;
         --app-bg: #16161c;
@@ -180,10 +180,10 @@
         --hover: #2a2a34;
         --win-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
         --win-radius: 16px;
-        --font: "Roboto", "Segoe UI", Inter, system-ui, sans-serif;
+        --font: 'Roboto', 'Segoe UI', Inter, system-ui, sans-serif;
       }
 
-      body[data-theme="minimal"][data-mode="light"] {
+      body[data-theme='minimal'][data-mode='light'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas: #e9e9ec;
         --app-bg: #fbfbfa;
@@ -208,10 +208,10 @@
         --hover: #f4f4f3;
         --win-shadow: 0 24px 60px rgba(20, 20, 40, 0.16);
         --win-radius: 12px;
-        --font: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+        --font: 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
       }
 
-      body[data-theme="minimal"][data-mode="dark"] {
+      body[data-theme='minimal'][data-mode='dark'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas: #0c0c0e;
         --app-bg: #141416;
@@ -236,10 +236,10 @@
         --hover: #1e1e21;
         --win-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
         --win-radius: 12px;
-        --font: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+        --font: 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
       }
 
-      body[data-mode="light"] {
+      body[data-mode='light'] {
         --md-heading: #3056d3;
         --md-strong: #b45309;
         --md-emphasis: #7c3aed;
@@ -264,7 +264,7 @@
         --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
       }
 
-      body[data-mode="dark"] {
+      body[data-mode='dark'] {
         --md-heading: #8fb4ff;
         --md-strong: #ffd479;
         --md-emphasis: #c58bff;
@@ -330,7 +330,7 @@
         cursor: pointer;
       }
 
-      button[aria-pressed="true"] {
+      button[aria-pressed='true'] {
         color: var(--accent-ink);
         border-color: var(--accent);
         background: var(--accent-soft);
@@ -727,31 +727,31 @@
         color: var(--muted);
       }
 
-      .app[data-width="768"] .workspace {
+      .app[data-width='768'] .workspace {
         width: 46px;
       }
 
-      .app[data-width="768"] .workspace-header span,
-      .app[data-width="768"] .workspace-item span {
+      .app[data-width='768'] .workspace-header span,
+      .app[data-width='768'] .workspace-item span {
         display: none;
       }
 
-      .app[data-width="768"] .workspace-header,
-      .app[data-width="768"] .workspace-item {
+      .app[data-width='768'] .workspace-header,
+      .app[data-width='768'] .workspace-item {
         justify-content: center;
         text-align: center;
       }
 
-      .app[data-width="375"] .brand-name,
-      .app[data-width="375"] .desktop-menu {
+      .app[data-width='375'] .brand-name,
+      .app[data-width='375'] .desktop-menu {
         display: none;
       }
 
-      .app[data-width="375"] .overflow-button {
+      .app[data-width='375'] .overflow-button {
         display: inline-flex;
       }
 
-      .app[data-width="375"] .workspace {
+      .app[data-width='375'] .workspace {
         position: absolute;
         inset: 44px auto 0 0;
         z-index: 12;
@@ -761,24 +761,24 @@
         box-shadow: var(--win-shadow);
       }
 
-      .app[data-width="375"].sidebar-open .workspace {
+      .app[data-width='375'].sidebar-open .workspace {
         transform: none;
       }
 
-      .app[data-width="375"] .panes {
+      .app[data-width='375'] .panes {
         flex-direction: column;
       }
 
-      .app[data-width="375"] .editor {
+      .app[data-width='375'] .editor {
         border-right: 0;
         border-bottom: 1px solid var(--stroke-soft);
       }
 
-      .app[data-width="375"] .pane {
+      .app[data-width='375'] .pane {
         padding: 14px;
       }
 
-      .app[data-width="375"] .document-label {
+      .app[data-width='375'] .document-label {
         max-width: 116px;
       }
     </style>
@@ -1053,20 +1053,20 @@
 
     <script>
       const body = document.body;
-      const app = document.getElementById("app");
+      const app = document.getElementById('app');
       const dialogs = {
-        settings: document.getElementById("settings-dialog"),
-        about: document.getElementById("about-dialog"),
-        startup: document.getElementById("startup-dialog"),
+        settings: document.getElementById('settings-dialog'),
+        about: document.getElementById('about-dialog'),
+        startup: document.getElementById('startup-dialog'),
       };
-      const toasts = document.getElementById("toasts");
+      const toasts = document.getElementById('toasts');
 
       function closeTransient() {
         document
-          .querySelectorAll(".dropdown.open")
-          .forEach((node) => node.classList.remove("open"));
-        Object.values(dialogs).forEach((node) => node.classList.remove("open"));
-        toasts.classList.remove("open");
+          .querySelectorAll('.dropdown.open')
+          .forEach((node) => node.classList.remove('open'));
+        Object.values(dialogs).forEach((node) => node.classList.remove('open'));
+        toasts.classList.remove('open');
       }
 
       function select(group, value) {
@@ -1074,7 +1074,7 @@
           .querySelectorAll(`[data-control="${group}"] button`)
           .forEach((button) => {
             button.setAttribute(
-              "aria-pressed",
+              'aria-pressed',
               String(button.dataset.value === value),
             );
           });
@@ -1082,84 +1082,84 @@
 
       document
         .querySelector('[data-control="theme"]')
-        .addEventListener("click", (event) => {
+        .addEventListener('click', (event) => {
           const value = event.target.dataset.value;
           if (!value) return;
           body.dataset.theme = value;
-          select("theme", value);
+          select('theme', value);
         });
 
       document
         .querySelector('[data-control="mode"]')
-        .addEventListener("click", (event) => {
+        .addEventListener('click', (event) => {
           const value = event.target.dataset.value;
           if (!value) return;
           body.dataset.mode = value;
-          select("mode", value);
+          select('mode', value);
         });
 
       document
         .querySelector('[data-control="width"]')
-        .addEventListener("click", (event) => {
+        .addEventListener('click', (event) => {
           const value = event.target.dataset.value;
           if (!value) return;
           app.dataset.width = value;
-          app.style.setProperty("--demo-width", `${value}px`);
-          app.classList.remove("sidebar-open");
-          select("width", value);
+          app.style.setProperty('--demo-width', `${value}px`);
+          app.classList.remove('sidebar-open');
+          select('width', value);
         });
 
       document
         .querySelector('[data-control="state"]')
-        .addEventListener("click", (event) => {
+        .addEventListener('click', (event) => {
           const value = event.target.dataset.value;
           if (!value) return;
           closeTransient();
-          if (dialogs[value]) dialogs[value].classList.add("open");
-          if (value === "notifications") toasts.classList.add("open");
-          select("state", value);
+          if (dialogs[value]) dialogs[value].classList.add('open');
+          if (value === 'notifications') toasts.classList.add('open');
+          select('state', value);
         });
 
-      document.querySelectorAll("[data-menu]").forEach((button) => {
-        button.addEventListener("click", () => {
+      document.querySelectorAll('[data-menu]').forEach((button) => {
+        button.addEventListener('click', () => {
           const menu = button.dataset.menu;
           closeTransient();
-          if (menu === "settings")
-            document.getElementById("settings-menu").classList.add("open");
-          if (menu === "view")
-            document.getElementById("view-menu").classList.add("open");
-          if (menu === "about") dialogs.about.classList.add("open");
-          if (menu === "overflow")
-            document.getElementById("overflow-menu").classList.add("open");
+          if (menu === 'settings')
+            document.getElementById('settings-menu').classList.add('open');
+          if (menu === 'view')
+            document.getElementById('view-menu').classList.add('open');
+          if (menu === 'about') dialogs.about.classList.add('open');
+          if (menu === 'overflow')
+            document.getElementById('overflow-menu').classList.add('open');
         });
       });
 
-      document.querySelectorAll("[data-overflow-action]").forEach((button) => {
-        button.addEventListener("click", () => {
+      document.querySelectorAll('[data-overflow-action]').forEach((button) => {
+        button.addEventListener('click', () => {
           const action = button.dataset.overflowAction;
           closeTransient();
-          if (action === "settings") dialogs.settings.classList.add("open");
-          if (action === "view")
-            document.getElementById("view-menu").classList.add("open");
-          if (action === "about") dialogs.about.classList.add("open");
+          if (action === 'settings') dialogs.settings.classList.add('open');
+          if (action === 'view')
+            document.getElementById('view-menu').classList.add('open');
+          if (action === 'about') dialogs.about.classList.add('open');
         });
       });
 
-      document.querySelectorAll("[data-open]").forEach((button) => {
-        button.addEventListener("click", () => {
+      document.querySelectorAll('[data-open]').forEach((button) => {
+        button.addEventListener('click', () => {
           closeTransient();
-          dialogs[button.dataset.open].classList.add("open");
+          dialogs[button.dataset.open].classList.add('open');
         });
       });
 
-      document.querySelectorAll("[data-close]").forEach((button) => {
-        button.addEventListener("click", closeTransient);
+      document.querySelectorAll('[data-close]').forEach((button) => {
+        button.addEventListener('click', closeTransient);
       });
 
       document
-        .getElementById("sidebar-button")
-        .addEventListener("click", () => {
-          app.classList.toggle("sidebar-open");
+        .getElementById('sidebar-button')
+        .addEventListener('click', () => {
+          app.classList.toggle('sidebar-open');
         });
     </script>
   </body>

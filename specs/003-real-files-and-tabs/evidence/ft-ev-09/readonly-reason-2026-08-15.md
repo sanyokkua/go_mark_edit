@@ -14,9 +14,9 @@ interesting reasons. Neither failure is visible to any existing test layer.
 
 ## 1. Stale-instance guard
 
-| Walk | Binary mtime | Process start |
-|---|---|---|
-| title-bar attempt | 2026-08-15 15:18:39 | 15:18:45 |
+| Walk                   | Binary mtime        | Process start                                                                                |
+| ---------------------- | ------------------- | -------------------------------------------------------------------------------------------- |
+| title-bar attempt      | 2026-08-15 15:18:39 | 15:18:45                                                                                     |
 | details-region attempt | 2026-08-15 15:25:26 | **15:25:48** (relaunched: the first launch shared the binary's second, which is not a guard) |
 
 Autosave off. Fixtures: `boundary-10mib-plus-one.md` (10,485,761 bytes) and
@@ -33,10 +33,10 @@ exists the discriminator is gone.
 `readOnlyReason` (`frontend/src/ui/components/readOnlyReason.ts`) maps `capability` — the finer
 signal — onto two reasons:
 
-| Go capability | Set by | Reason |
-|---|---|---|
-| `large-read-only` | `document_reader.go:276-278`, size > 10 MiB | *over the 10 MiB editing limit* |
-| `unsafe-read-only` | `:266-275`, invalid UTF-8 / NUL byte / lone CR | *its contents cannot be rewritten safely* |
+| Go capability      | Set by                                         | Reason                                    |
+| ------------------ | ---------------------------------------------- | ----------------------------------------- |
+| `large-read-only`  | `document_reader.go:276-278`, size > 10 MiB    | _over the 10 MiB editing limit_           |
+| `unsafe-read-only` | `:266-275`, invalid UTF-8 / NUL byte / lone CR | _its contents cannot be rewritten safely_ |
 
 The three unsafe sub-reasons are **not** distinguishable in the frontend: Go records them in
 `ClassifiedRead.Warning`, and `apperr.DocumentMetadata` has no `Warning` field, so the distinction
@@ -47,7 +47,7 @@ dies at the bridge. The copy is honest about the class rather than guessing whic
 **The mock emitted a value Go never produces.** `AppModelHandler.ts` seeded
 `capability: 'read-only'` for `status-read-only` and `tab-detached`. Go emits exactly `writable`,
 `unsafe-read-only`, `large-read-only` or `refused` (`document_reader.go:25-28`) — `read-only` is a
-save *status*. No browser case could reach the capability branch even in principle. Worse,
+save _status_. No browser case could reach the capability branch even in principle. Worse,
 `appModel.test.ts:88` **asserted** the impossible value, so the fixture was pinned in place by a
 test. Both corrected; the assertion carries a comment naming the Go line.
 
@@ -65,7 +65,7 @@ The suffix worked: on the real binary the title bar rendered
 It then ellipsised, at **full window width**. `.identity` is capped at `max-width: 40ch` — the
 binding's own value, `mockup.html:70` — and the filename plus its parent already compete for it.
 The cap drops to `16ch` at ≤376px (`DocumentIdentity.module.css`), narrow enough to truncate the
-word `Read-only` itself. A surface that can lose the *state* is a worse home for the *reason* than
+word `Read-only` itself. A surface that can lose the _state_ is a worse home for the _reason_ than
 one that does not, so this half was reverted and
 `T108 keeps the title-bar status to the bare state, without the reason` now pins the decision so it
 is not retried.
@@ -97,10 +97,10 @@ parity-contract decision rather than a one-line change — `overflow` is itself 
 
 ## 6. Gates
 
-| Gate | Result |
-|---|---|
-| `just check` | **exit 0** — 551 frontend tests / 77 suites, every Go package `ok`. Diffed against the `258d1d32` baseline: no new findings. |
-| `just e2e-test` | **259 passed, exit 0** — the baseline, no `T026` flake. Parity accounting 150/150 attempted, 150 passed, 0 unaccounted. |
+| Gate            | Result                                                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `just check`    | **exit 0** — 551 frontend tests / 77 suites, every Go package `ok`. Diffed against the `258d1d32` baseline: no new findings. |
+| `just e2e-test` | **259 passed, exit 0** — the baseline, no `T026` flake. Parity accounting 150/150 attempted, 150 passed, 0 unaccounted.      |
 
 The six `T063` palette cases pass unchanged, confirming the status row's own contract is untouched:
 the reason lives inside the disclosure, which the row does not render at rest.

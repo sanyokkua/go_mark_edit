@@ -439,22 +439,22 @@ remain the product outcome index and do not permit a task to claim an unspecifie
 
 ##### Native window shell acceptance map
 
-| Requirement                     | Primary acceptance evidence                                                                                     |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Requirement                     | Primary acceptance evidence                                                                                                                                |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-WS-001, FR-WS-002            | Current-slice scenario 3 plus one current-host native framed-window walkthrough; Windows/Linux runtime checks are deferred to whole-application completion |
-| FR-WS-003, FR-WS-004, FR-WS-005 | Current-slice scenario 2 using native movement, resizing, full screen, and the exact minimum size               |
-| FR-WS-006                       | Current-slice scenario 1 plus independent missing, invalid, oversized, and off-screen saved values              |
-| FR-WS-007, FR-WS-008            | Current-slice scenarios 4 and 11 across all 18 width/palette combinations                                       |
-| FR-WS-009, FR-WS-010            | Current-slice scenarios 1 and 6, including a document with saved view and one without                           |
-| FR-WS-011, FR-WS-012            | Current-slice scenario 5 plus stale, failed-write, immediate, paused, and close-flush cases                     |
-| FR-WS-013                       | Current-slice scenario 9 for first failure, repeated failure, and successful Retry                              |
-| FR-WS-014                       | Current-slice scenarios 2, 7, and 11 using menus, keyboard, and an open modal                                   |
-| FR-WS-015                       | Current-slice scenario 7 for acknowledgement, rejection, atomic reset, and second-window retention              |
-| FR-WS-016                       | Current-slice scenario 8 for every severity, timing boundary, capacity, all-error queue, and safe remediation   |
-| FR-WS-017                       | Current-slice scenarios 4 and 7 using keyboard-only operation, longer catalogue text, focus, and reduced motion |
-| FR-WS-018                       | Current-slice scenario 10 with static safeguards, a short automated request log, and current-host observation   |
-| FR-WS-019                       | The build-identity edge case with an injected release version and an uninjected development version             |
-| FR-WS-020                       | Current-slice scenario 11 and direct inspection of every visible shell menu, group, and region                  |
+| FR-WS-003, FR-WS-004, FR-WS-005 | Current-slice scenario 2 using native movement, resizing, full screen, and the exact minimum size                                                          |
+| FR-WS-006                       | Current-slice scenario 1 plus independent missing, invalid, oversized, and off-screen saved values                                                         |
+| FR-WS-007, FR-WS-008            | Current-slice scenarios 4 and 11 across all 18 width/palette combinations                                                                                  |
+| FR-WS-009, FR-WS-010            | Current-slice scenarios 1 and 6, including a document with saved view and one without                                                                      |
+| FR-WS-011, FR-WS-012            | Current-slice scenario 5 plus stale, failed-write, immediate, paused, and close-flush cases                                                                |
+| FR-WS-013                       | Current-slice scenario 9 for first failure, repeated failure, and successful Retry                                                                         |
+| FR-WS-014                       | Current-slice scenarios 2, 7, and 11 using menus, keyboard, and an open modal                                                                              |
+| FR-WS-015                       | Current-slice scenario 7 for acknowledgement, rejection, atomic reset, and second-window retention                                                         |
+| FR-WS-016                       | Current-slice scenario 8 for every severity, timing boundary, capacity, all-error queue, and safe remediation                                              |
+| FR-WS-017                       | Current-slice scenarios 4 and 7 using keyboard-only operation, longer catalogue text, focus, and reduced motion                                            |
+| FR-WS-018                       | Current-slice scenario 10 with static safeguards, a short automated request log, and current-host observation                                              |
+| FR-WS-019                       | The build-identity edge case with an injected release version and an uninjected development version                                                        |
+| FR-WS-020                       | Current-slice scenario 11 and direct inspection of every visible shell menu, group, and region                                                             |
 
 #### Product-wide behavior
 

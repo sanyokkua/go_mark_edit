@@ -7,7 +7,7 @@ evidence remains unchanged.
 
 - `just baseline 002-editor-stage-formatting` was rerun with the existing usable Go module
   cache after the initial sandbox-only lint attempt returned `UNRELIABLE` (`context loading
-  failed: no go files to analyze`). The trustworthy baseline is clean: frontend build, format,
+failed: no go files to analyze`). The trustworthy baseline is clean: frontend build, format,
   typecheck, lint, test, architecture, and coverage gates all exited 0; recorded coverage was
   65.5%.
 - Before production edits, the new focused popup/theme tests failed: context menu remained under
@@ -34,15 +34,15 @@ evidence remains unchanged.
 
 From `frontend/`, each command used one Playwright worker:
 
-| Command selector | Result |
-| --- | --- |
-| `T019` | 27/27 passed: 1280/768/375 × three themes × three modes, reachability and local-only request instrumentation |
-| `T055` | 27/27 passed: formatting, undo, context menu, overflow, responsive boundaries, and local-only requests |
-| `T069` | 27/27 passed: theme-independent mockup chrome hierarchy |
-| `T070` | 27/27 passed: popup ownership, viewport geometry, focus, and deferred boundaries |
-| `just check` | passed: 262 frontend tests plus Go race tests, build, lint, architecture, CGO-free, and migration checks |
-| `just verify 002-editor-stage-formatting` | M1–M6 passed against the trustworthy baseline |
-| `just build` | passed: fresh `build/bin/GoMarkEdit.app` for `darwin/arm64` |
+| Command selector                          | Result                                                                                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `T019`                                    | 27/27 passed: 1280/768/375 × three themes × three modes, reachability and local-only request instrumentation |
+| `T055`                                    | 27/27 passed: formatting, undo, context menu, overflow, responsive boundaries, and local-only requests       |
+| `T069`                                    | 27/27 passed: theme-independent mockup chrome hierarchy                                                      |
+| `T070`                                    | 27/27 passed: popup ownership, viewport geometry, focus, and deferred boundaries                             |
+| `just check`                              | passed: 262 frontend tests plus Go race tests, build, lint, architecture, CGO-free, and migration checks     |
+| `just verify 002-editor-stage-formatting` | M1–M6 passed against the trustworthy baseline                                                                |
+| `just build`                              | passed: fresh `build/bin/GoMarkEdit.app` for `darwin/arm64`                                                  |
 
 The new E2E assertions verify body containment, popup markers, viewport bounds, and the
 body-ported overflow locator at all required browser-matrix combinations. The first full T055

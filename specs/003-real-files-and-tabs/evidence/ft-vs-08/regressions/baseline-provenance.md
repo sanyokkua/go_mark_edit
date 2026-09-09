@@ -4,7 +4,7 @@
 > file before citing anything below.**
 >
 > This document was written on 2026-08-14 at commit `27420663`, and its
-> measurement of *provenance* still stands: Feature 003 accepted zero
+> measurement of _provenance_ still stands: Feature 003 accepted zero
 > screenshot-baseline changes. What no longer stands is everything it says about
 > **25 stale baselines awaiting owner re-approval**, including the per-suite
 > failure counts (`window-shell 12/30`, `appearance 17/18`, `core-editor 6/7`)
@@ -15,7 +15,7 @@
 > It is retained rather than rewritten because it is the measurement that
 > justified the deletion. Retaining it silently was the actual defect T095
 > named: the paragraph above this phase cited this file as proof the obligation
-> was *satisfied*, while the file itself said it was *outstanding*.
+> was _satisfied_, while the file itself said it was _outstanding_.
 
 **Requirement**: FR-FT-057 — "Every accepted screenshot or style-baseline change
 MUST map to an explicit Feature 003 visual requirement and MUST preserve
@@ -40,16 +40,16 @@ accepted change maps to a Feature 003 visual requirement — is satisfied
 vacuously: there are no accepted changes to map.
 
 That is the good half. The other half is that those baselines have not been
-re-approved *either*, and they no longer describe the application.
+re-approved _either_, and they no longer describe the application.
 
 ## The 25 unchanged baselines
 
-| Suite | Images | Last written |
-|---|---:|---|
-| `frontend/e2e/window-shell.test.ts-snapshots/` | 18 | `848856ef`, 2026-08-06 |
-| `frontend/e2e/appearance.test.ts-snapshots/` | 6 | `848856ef`, 2026-08-06 |
-| `frontend/e2e/core-editor.test.ts-snapshots/` | 1 | `848856ef`, 2026-08-06 |
-| **Total** | **25** | |
+| Suite                                          | Images | Last written           |
+| ---------------------------------------------- | -----: | ---------------------- |
+| `frontend/e2e/window-shell.test.ts-snapshots/` |     18 | `848856ef`, 2026-08-06 |
+| `frontend/e2e/appearance.test.ts-snapshots/`   |      6 | `848856ef`, 2026-08-06 |
+| `frontend/e2e/core-editor.test.ts-snapshots/`  |      1 | `848856ef`, 2026-08-06 |
+| **Total**                                      | **25** |                        |
 
 Since that commit, **48 commits have changed `frontend/src/ui/widgets/` or
 `frontend/src/ui/styles/`**. The `appearance-glass-light` diff shows the scale
@@ -72,11 +72,11 @@ requirement is recorded as an owner action in
 Every image is in the third category below — none were replaced, and none were
 found to be still-correct.
 
-| Disposition | Count | Meaning |
-|---|---:|---|
-| Accepted change, mapped to a Feature 003 FR | **0** | none were changed |
-| Unchanged and still correct | **0** | none still match |
-| Unchanged and now stale, awaiting owner re-approval | **25** | all of them |
+| Disposition                                         |  Count | Meaning           |
+| --------------------------------------------------- | -----: | ----------------- |
+| Accepted change, mapped to a Feature 003 FR         |  **0** | none were changed |
+| Unchanged and still correct                         |  **0** | none still match  |
+| Unchanged and now stale, awaiting owner re-approval | **25** | all of them       |
 
 ## Behaviour preservation, which is the other half of FR-FT-057
 
@@ -84,16 +84,16 @@ The requirement is not only about images. "MUST preserve unaffected Feature
 001/002 baselines and **behavior**" is the part that can be settled here, and it
 is settled: **every behavioural assertion in every end-to-end suite passes.**
 
-| Suite | Result | Notes |
-|---|---|---|
-| `editor-stage.test.ts` | 108 / 108 | Feature 002 editor stage |
-| `narrow-width.test.ts` | 20 / 20 | added this phase |
-| `targeted-parity.test.ts` | 15 / 15 | |
-| `real-files-and-tabs.test.ts` | all passing | |
-| `interactive-states.test.ts`, `launcher-binding.test.ts` | all passing | |
-| `core-editor.test.ts` | 6 / 7 | the 1 is a stale baseline |
-| `window-shell.test.ts` | 12 / 30 | the 18 are stale baselines |
-| `appearance.test.ts` | 17 / 18 | the 1 is a stale baseline |
+| Suite                                                    | Result      | Notes                      |
+| -------------------------------------------------------- | ----------- | -------------------------- |
+| `editor-stage.test.ts`                                   | 108 / 108   | Feature 002 editor stage   |
+| `narrow-width.test.ts`                                   | 20 / 20     | added this phase           |
+| `targeted-parity.test.ts`                                | 15 / 15     |                            |
+| `real-files-and-tabs.test.ts`                            | all passing |                            |
+| `interactive-states.test.ts`, `launcher-binding.test.ts` | all passing |                            |
+| `core-editor.test.ts`                                    | 6 / 7       | the 1 is a stale baseline  |
+| `window-shell.test.ts`                                   | 12 / 30     | the 18 are stale baselines |
+| `appearance.test.ts`                                     | 17 / 18     | the 1 is a stale baseline  |
 
 The verdicts behind each repaired case, and which side was wrong in each, are in
 `phase-18/t081-failing-case-verdicts.md`. Two of the six failing bodies were
@@ -124,12 +124,12 @@ components` (2026-08-14) — the same commit that withdrew the whole-screen pari
 contract those images encoded. The deletion matches this document's table
 exactly:
 
-| Suite | Images deleted in `23ba4b50` |
-|---|---:|
-| `frontend/e2e/window-shell.test.ts-snapshots/` | 18 |
-| `frontend/e2e/appearance.test.ts-snapshots/` | 6 |
-| `frontend/e2e/core-editor.test.ts-snapshots/` | 1 |
-| **Total** | **25** |
+| Suite                                          | Images deleted in `23ba4b50` |
+| ---------------------------------------------- | ---------------------------: |
+| `frontend/e2e/window-shell.test.ts-snapshots/` |                           18 |
+| `frontend/e2e/appearance.test.ts-snapshots/`   |                            6 |
+| `frontend/e2e/core-editor.test.ts-snapshots/`  |                            1 |
+| **Total**                                      |                       **25** |
 
 Verified at 2026-08-15 against the working tree:
 
@@ -154,11 +154,11 @@ Run 2026-08-15 at commit `d5c806f1` plus the working-tree change that became
 `98212244`. `just e2e-test` — **258 passed, 0 failed, exit 0**, 5.2 minutes.
 The three suites this document reported as red are green outright:
 
-| Suite | This document, 2026-08-14 | Fresh run, 2026-08-15 |
-|---|---|---|
-| `window-shell.test.ts` | 12 / 30 — "the 18 are stale baselines" | **30 / 30** |
-| `appearance.test.ts` | 17 / 18 — "the 1 is a stale baseline" | **3 / 3** |
-| `core-editor.test.ts` | 6 / 7 — "the 1 is a stale baseline" | **7 / 7** |
+| Suite                  | This document, 2026-08-14              | Fresh run, 2026-08-15 |
+| ---------------------- | -------------------------------------- | --------------------- |
+| `window-shell.test.ts` | 12 / 30 — "the 18 are stale baselines" | **30 / 30**           |
+| `appearance.test.ts`   | 17 / 18 — "the 1 is a stale baseline"  | **3 / 3**             |
+| `core-editor.test.ts`  | 6 / 7 — "the 1 is a stale baseline"    | **7 / 7**             |
 
 `appearance.test.ts` reports 3 rather than 18 because the six per-palette
 screenshot cases went with the images; what remains is the behavioural

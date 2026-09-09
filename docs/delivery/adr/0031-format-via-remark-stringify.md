@@ -89,15 +89,18 @@ Chosen: **B**.
 ## Pros and cons of the options
 
 ### Option A — Prettier, drop the style settings
+
 - Good: one well-known formatter; no serialization decisions to make.
 - Bad: breaks a stated user-facing promise, and does nothing about the frontmatter problem, which is
   the more serious of the two.
 
-### Option B — remark-stringify, drop Prettier *(chosen)*
+### Option B — remark-stringify, drop Prettier _(chosen)_
+
 - Good: honours the settings, one serializer, fixes the round-trip hazard, smaller bundle.
 - Bad: output differs from Prettier's; more decisions to write down.
 
 ### Option C — both, switching on whether settings are default
+
 - Good: familiar output for the common case.
 - Bad: two formatters means two behaviours for one button, and the switch is invisible to the user. A
   document formatted on a machine with default settings and again on one without would churn.
@@ -106,7 +109,7 @@ Chosen: **B**.
 
 - Design decisions: DD-16, DD-17 (canonical style), DD-71 (autosave never formats)
 - Spec clauses: ../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md`,
-  ../../_archive-2026-07-28-specification/01_Product/04_MARKDOWN_STANDARDS.md`,
+../../_archive-2026-07-28-specification/01_Product/04_MARKDOWN_STANDARDS.md`,
   ../../_archive-2026-07-28-specification/05_Dependencies/02_FRONTEND_DEPENDENCIES.md` §3
 - Phase: `specification/07_Phases/PHASE_10_TIDY_AND_SHARE.md`
 - Stories: the Phase 10 stories, not yet written.

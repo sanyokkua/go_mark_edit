@@ -18,7 +18,7 @@ The assistant phases introduce the LLM assistant, whose entire purpose is to sen
 and get a rewrite back — which, for a remote provider, is a network call. The original "never open a
 socket" invariant, read literally, forbids the assistant to exist. We must decide how to reconcile the
 assistant with the offline promise **without** weakening the promise into "the app talks to the network
-whenever it likes." The revision must be precise about *what* traffic is allowed, *when*, *to whom*, and
+whenever it likes." The revision must be precise about _what_ traffic is allowed, _when_, _to whom_, and
 what remains categorically forbidden. This ADR revises DD-32 and records the resulting network posture;
 it locks the revised DD-32 and DD-54.
 
@@ -27,7 +27,7 @@ it locks the revised DD-32 and DD-54.
 - **Keep the privacy promise meaningful.** Users chose GoMarkEdit partly because it doesn't phone home;
   the assistant must not become a backdoor for background traffic (DD-32, DD-33, DD-54).
 - **The assistant is inherently a network feature for remote providers.** Its whole job is to send text to
-  a model — so *some* precisely-scoped outbound traffic must be permitted (DD-38+).
+  a model — so _some_ precisely-scoped outbound traffic must be permitted (DD-38+).
 - **Local-first by default.** A default install should stay fully on-device; the default provider is a
   **local** server, so no bytes leave the machine unless the user opts into a remote provider (DD-32
   revised, DD-54).
@@ -41,7 +41,7 @@ it locks the revised DD-32 and DD-54.
 ## Considered options
 
 - **Offline-first, except user-invoked provider calls** — no background/unsolicited network of any kind;
-  the *only* outbound requests are user-invoked LLM inferences to the user-configured provider; default
+  the _only_ outbound requests are user-invoked LLM inferences to the user-configured provider; default
   provider is local; telemetry/auto-update remain never.
 - **Fully offline (no LLM)** — keep the absolute "zero network" invariant and drop the LLM assistant
   entirely (or restrict it to a hypothetical fully-embedded local model with no socket).
@@ -61,7 +61,7 @@ Precisely:
   configured**, and **only on user action** — never automatic, never background, never on a timer or
   launch, and never to any other host.
 
-  *Amended 2026-07-25.* This clause previously read "an LLM **inference**", which forbade the provider
+  _Amended 2026-07-25._ This clause previously read "an LLM **inference**", which forbade the provider
   settings tab from working: Test connection, Test models, Test inference and Test tools are all
   user-invoked calls to the configured endpoint, and none of them is an inference in the narrow sense.
   Model discovery is the same. The clause now names the category — **a user-invoked request to the
@@ -69,6 +69,7 @@ Precisely:
   host is still only the one the user configured, the trigger is still only a user action, and the
   count of permitted destinations is still one. The amendment removes a contradiction; it does not open
   a door.
+
 - **The default provider is local** (on-device, e.g. a local model server), so a **default install stays
   fully on-device** — zero bytes leave the machine until the user opts into a remote provider and supplies
   their own endpoint/credentials.
@@ -77,7 +78,7 @@ Precisely:
 - **Telemetry and auto-update remain never** (DD-33, DD-34); the revision opens exactly one narrowly-scoped
   door and nothing else.
 
-The guiding formulation is: the invariant is **"no *background/unsolicited* network,"** not "never open a
+The guiding formulation is: the invariant is **"no _background/unsolicited_ network,"** not "never open a
 socket." Document text leaves the machine only when the user invokes an action/chat and only to the
 configured provider; a local provider keeps everything on-device (DD-54). The privacy settings state this
 plainly so the user always knows when and where their text can go.

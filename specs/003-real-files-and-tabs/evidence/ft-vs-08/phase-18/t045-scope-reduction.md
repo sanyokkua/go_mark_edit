@@ -21,11 +21,11 @@ One combination, `primary_editor-split_1280_minimal-light`, is measured and
 
 The same run measured the raw figures over the identical region:
 
-| Case | Region | Raw differing | Comparator's unexplained |
-|---|---|---:|---:|
-| `primary_editor-only_1280_minimal-light` | 1024×546 | 23,019 | — |
-| `primary_editor-split_1280_minimal-light` | 1024×546 | 23,024 | **182** |
-| `primary_preview-only_1280_minimal-light` | 1024×546 | 177 | — |
+| Case                                      | Region   | Raw differing | Comparator's unexplained |
+| ----------------------------------------- | -------- | ------------: | -----------------------: |
+| `primary_editor-only_1280_minimal-light`  | 1024×546 |        23,019 |                        — |
+| `primary_editor-split_1280_minimal-light` | 1024×546 |        23,024 |                  **182** |
+| `primary_preview-only_1280_minimal-light` | 1024×546 |           177 |                        — |
 
 ## Why the other 17 add no signal
 
@@ -53,11 +53,11 @@ it.
 
 **Approved scope: 3 combinations at 1280px, one per colour family.**
 
-| # | Combination | Why |
-|---|---|---|
-| 1 | `editor-split` 1280 `minimal-light` | the measured, fully attributed baseline |
-| 2 | `editor-split` 1280 `glass-light` | Glass is the structurally distinct family — translucency, blur, saturation, continuous canvas (FR-FT-053) |
-| 3 | `editor-split` 1280 `material-light` | Material is the filled-hierarchy family with pill tabs (FR-FT-053) |
+| #   | Combination                          | Why                                                                                                       |
+| --- | ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| 1   | `editor-split` 1280 `minimal-light`  | the measured, fully attributed baseline                                                                   |
+| 2   | `editor-split` 1280 `glass-light`    | Glass is the structurally distinct family — translucency, blur, saturation, continuous canvas (FR-FT-053) |
+| 3   | `editor-split` 1280 `material-light` | Material is the filled-hierarchy family with pill tabs (FR-FT-053)                                        |
 
 ## What is dropped, explicitly
 

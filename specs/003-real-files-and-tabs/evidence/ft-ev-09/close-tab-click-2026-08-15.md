@@ -12,7 +12,7 @@ defect in the same row was found, confirmed on the host, and fixed.**
 
 - `File ▸ Close Tab` by click closed the tab in **6 of 6** attempts across five distinct states,
   including the "stable two-tab state" T111 names.
-- The one state where the click *is* inert is **zero documents** — the launcher, reached by closing
+- The one state where the click _is_ inert is **zero documents** — the launcher, reached by closing
   the last tab. There `Close Tab` rendered **enabled**, beside `Save` and `Save As…` which greyed
   correctly, and the click did nothing with no message. That is the enabled-while-inert class T110
   left open, and it is what this task fixes.
@@ -21,10 +21,10 @@ defect in the same row was found, confirmed on the host, and fixed.**
 
 `open` raises an existing process, so a walk can describe a build that is not in the tree.
 
-| | |
-|---|---|
-| binary mtime | `build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit` — **2026-08-15 14:38:23** |
-| process start | pid 60079 — **Sat Aug 15 14:38:46 2026** |
+|               |                                                                                |
+| ------------- | ------------------------------------------------------------------------------ |
+| binary mtime  | `build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit` — **2026-08-15 14:38:23** |
+| process start | pid 60079 — **Sat Aug 15 14:38:46 2026**                                       |
 
 Process start is later than the binary, so this is not a raised older instance. The binary was
 built from unmodified production source: at build time the only edits in the tree were
@@ -54,14 +54,14 @@ and no refusal was observed on the host in any of the six closes below.
 
 ## 3. The A1 walk — unmodified `258d1d32`
 
-| # | Starting state | Action | Result |
-|---|---|---|---|
-| 1 | 2 tabs (⌘N from 1) | `File ▸ Close Tab` | **closed** → 1 tab |
-| 2 | 3 tabs | `File ▸ Close Tab` | **closed** → 2 tabs |
-| 3 | 2 tabs, active switched to tab 1 **by clicking the tab** | `File ▸ Close Tab` | **closed** → 1 tab |
-| 4 | 2 tabs — `fixture-a.md` + `Untitled` | `File ▸ Close Tab` | **closed** `Untitled` → `fixture-a.md` remains, titled `gomarkedit-walkthrough / fixture-a.md · Saved` |
-| 5 | 1 tab (`fixture-a.md`) | `File ▸ Close Tab` | **closed** → 0 documents, launcher `Start a document` |
-| 6 | 2 tabs, window resized to **≈640px** (the narrow render site) | `File ▸ Close Tab` | **closed** → 1 tab |
+| #   | Starting state                                                | Action             | Result                                                                                                 |
+| --- | ------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------ |
+| 1   | 2 tabs (⌘N from 1)                                            | `File ▸ Close Tab` | **closed** → 1 tab                                                                                     |
+| 2   | 3 tabs                                                        | `File ▸ Close Tab` | **closed** → 2 tabs                                                                                    |
+| 3   | 2 tabs, active switched to tab 1 **by clicking the tab**      | `File ▸ Close Tab` | **closed** → 1 tab                                                                                     |
+| 4   | 2 tabs — `fixture-a.md` + `Untitled`                          | `File ▸ Close Tab` | **closed** `Untitled` → `fixture-a.md` remains, titled `gomarkedit-walkthrough / fixture-a.md · Saved` |
+| 5   | 1 tab (`fixture-a.md`)                                        | `File ▸ Close Tab` | **closed** → 0 documents, launcher `Start a document`                                                  |
+| 6   | 2 tabs, window resized to **≈640px** (the narrow render site) | `File ▸ Close Tab` | **closed** → 1 tab                                                                                     |
 
 Row 6 matters because the narrow popup is a different render site — `ShellMenuRow.tsx:918-926`, a
 plain `<button onClick>` portalled to `document.body` — rather than the wide Radix
@@ -112,11 +112,11 @@ This is the test-double-fidelity class again: the state exists only on the host.
 
 ## 5. What changed
 
-| Change | File | Why |
-|---|---|---|
+| Change                                                                       | File                              | Why                                                                                                                                                        |
+| ---------------------------------------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `fileActionDisabled` consults `fileActionInvoker` through an explicit id set | `ShellMenuRow.tsx:59-76, 365-390` | The confirmed defect. A row whose handler is absent now greys. The `exit`/`onQuit === undefined` clause is folded in — it was the same rule spelled twice. |
-| Popup dismissal hoisted above the `invoke === undefined` guard | `ShellMenuRow.tsx:502-513` | The narrow site does not self-dismiss; the guard must not strand an open menu. |
-| Close-plan refusals report through `reportClassifiedError` | `App.tsx:544-564, 596, 641, 676` | T107's treatment, third arrow. See §6. |
+| Popup dismissal hoisted above the `invoke === undefined` guard               | `ShellMenuRow.tsx:502-513`        | The narrow site does not self-dismiss; the guard must not strand an open menu.                                                                             |
+| Close-plan refusals report through `reportClassifiedError`                   | `App.tsx:544-564, 596, 641, 676`  | T107's treatment, third arrow. See §6.                                                                                                                     |
 
 `internal/application/native_menu.go`, `useShellShortcuts.ts`, `shellActions.ts` and
 `actionRegistry.ts` are **unchanged**. `close-tab`'s registry availability is deliberately left as
@@ -146,7 +146,7 @@ onto `io`. Go's two distinct refusals —
 with the fix stashed, `T111 surfaces the close plan refusal with the backend message intact` fails
 with exactly that substitution.
 
-Adding a `conflict` catalog entry would **not** have fixed it — it would substitute a *different*
+Adding a `conflict` catalog entry would **not** have fixed it — it would substitute a _different_
 generic sentence and still merge the two. `reportClassifiedError` passes `error.message` through
 verbatim, which is why T107 chose it.
 
@@ -167,23 +167,23 @@ strings verbatim and a category-only assertion would let a reword silently chang
 reads. Passing 5×5 under `-race`.
 
 Recorded honestly: these are **characterization coverage, not red-first** — both Go branches
-already worked. The red-first tests are the frontend ones. The first draft of the drain test *did*
+already worked. The red-first tests are the frontend ones. The first draft of the drain test _did_
 fail, and informatively: it fired the autosave clock first, which made the executor run **before**
-`PrepareClose`, so bumping the tab set raced the *first* check and asserted the wrong branch. Not
+`PrepareClose`, so bumping the tab set raced the _first_ check and asserted the wrong branch. Not
 firing the clock forces `flushAutosaveMode`'s `entry != nil && done == nil` arm
 (`autosave.go:118`), so `PrepareClose` itself invokes the executor — making the executor call
 positive proof that the first check already passed. Channels only, no sleeps.
 
-`TestCloseReevaluatesRevisionAfterAutosaveDrain` is left alone; it asserts the *matching*-revision
+`TestCloseReevaluatesRevisionAfterAutosaveDrain` is left alone; it asserts the _matching_-revision
 path despite its name, and the two new tests cover the mismatching one.
 
 **Frontend, all confirmed red before the fix and green after:**
 
-| Test | File | Fails without |
-|---|---|---|
-| `T111 disables the File menu Close Tab row when no close callback is bound` | `ShellMenuRow.test.tsx` | B1 — the row rendered enabled |
-| `T111 surfaces the close plan refusal with the backend message intact` | `App.test.tsx` | B3 — message became "The file operation could not be completed." |
-| `T111 leaves Mod+W unclaimed when no close callback is bound` | `ShellMenuRow.test.tsx` | *(green both ways — a guard against a fix that hardcodes availability)* |
+| Test                                                                        | File                    | Fails without                                                           |
+| --------------------------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------------- |
+| `T111 disables the File menu Close Tab row when no close callback is bound` | `ShellMenuRow.test.tsx` | B1 — the row rendered enabled                                           |
+| `T111 surfaces the close plan refusal with the backend message intact`      | `App.test.tsx`          | B3 — message became "The file operation could not be completed."        |
+| `T111 leaves Mod+W unclaimed when no close callback is bound`               | `ShellMenuRow.test.tsx` | _(green both ways — a guard against a fix that hardcodes availability)_ |
 
 The disabled-row assertion reads the same triple the parity harness reads
 (`disabled || aria-disabled || data-disabled`), so the two instruments cannot disagree.
@@ -192,11 +192,11 @@ The disabled-row assertion reads the same triple the parity harness reads
 
 Binary rebuilt **14:54:10**, process started **14:54:16** — newer, so not a raised older instance.
 
-| State | `Close Tab` | Beside it | Click |
-|---|---|---|---|
-| 1 document open | **enabled** | `Save`, `Save As…` enabled; `Export to PDF…` greyed (deferred) | **closes** → 0 documents |
-| 0 documents (launcher) | **greyed** | `Save`, `Save As…` greyed; **`Exit` still enabled** | — |
-| 1 document again (`New File`) | **enabled** again | as above | **closes** → 0 documents |
+| State                         | `Close Tab`       | Beside it                                                      | Click                    |
+| ----------------------------- | ----------------- | -------------------------------------------------------------- | ------------------------ |
+| 1 document open               | **enabled**       | `Save`, `Save As…` enabled; `Export to PDF…` greyed (deferred) | **closes** → 0 documents |
+| 0 documents (launcher)        | **greyed**        | `Save`, `Save As…` greyed; **`Exit` still enabled**            | —                        |
+| 1 document again (`New File`) | **enabled** again | as above                                                       | **closes** → 0 documents |
 
 Verified at magnification in all three states. Before the fix, the launcher-state `Close Tab`
 rendered at the same brightness as `Exit`; it now renders at `--disabled-opacity` with them.
@@ -209,9 +209,9 @@ The row is now honest in both directions — it greys when it cannot act and re-
 
 ## 8. Gates
 
-| Gate | Result |
-|---|---|
-| `just check` | **exit 0**; 547 frontend tests passed / 77 suites, every Go package `ok`. Diffed against the `258d1d32` baseline: no new findings, the same 2 pre-existing. |
+| Gate            | Result                                                                                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `just check`    | **exit 0**; 547 frontend tests passed / 77 suites, every Go package `ok`. Diffed against the `258d1d32` baseline: no new findings, the same 2 pre-existing.     |
 | `just e2e-test` | **259 passed, exit 0** — exactly the baseline, in 5.2m. No `T026` flake. Parity accounting: 150/150 planned verifications attempted, 150 passed, 0 unaccounted. |
 
 The File-popup parity contract was checked **before** touching `fileActionDisabled`:

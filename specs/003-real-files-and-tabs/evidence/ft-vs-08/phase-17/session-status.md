@@ -32,17 +32,17 @@ into FR-FT-055, FR-FT-056, the edge-case bullet on excluded regions, and the
 
 ## Task status
 
-| Task | Status |
-|---|---|
-| T069 Settings localization | **complete** |
-| T045 editor-region geometry | 6,116 → **182** unexplained px; every one characterised |
-| T070 File-popup fail-closed parity | 181 unexplained px |
-| T072 View popup | **converged** — 9,036 → 165 px, bounds match; see `t072-view-presentation.md` |
-| T072 Glass menubar | **diagnosed, not closed** — cause is the compositing backdrop, not the menubar; see `t072-glass-compositing.md` |
-| T071 Settings waiver removal | waiver removed and gating; 709 px **fully attributed** — see `t071-settings-residual.md` |
-| T073, T074, T075 | not started |
-| T065, T066, T067, T068 | not started |
-| T035–T039, T044, T054 | not started |
+| Task                               | Status                                                                                                          |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| T069 Settings localization         | **complete**                                                                                                    |
+| T045 editor-region geometry        | 6,116 → **182** unexplained px; every one characterised                                                         |
+| T070 File-popup fail-closed parity | 181 unexplained px                                                                                              |
+| T072 View popup                    | **converged** — 9,036 → 165 px, bounds match; see `t072-view-presentation.md`                                   |
+| T072 Glass menubar                 | **diagnosed, not closed** — cause is the compositing backdrop, not the menubar; see `t072-glass-compositing.md` |
+| T071 Settings waiver removal       | waiver removed and gating; 709 px **fully attributed** — see `t071-settings-residual.md`                        |
+| T073, T074, T075                   | not started                                                                                                     |
+| T065, T066, T067, T068             | not started                                                                                                     |
+| T035–T039, T044, T054              | not started                                                                                                     |
 
 ## Targeted slice results
 
@@ -51,22 +51,22 @@ slice below was re-run individually by name — the file is
 `test.describe.configure({ mode: 'serial' })`, so a single failure skips the
 rest and "not reached" never meant "passing".
 
-| Slice | Result |
-|---|---|
-| T058 closed menubar, minimal-light | **passed** |
-| T058 closed menubar, minimal-dark | **passed** |
-| T058 closed menubar, material-light | **passed** |
-| T058 closed menubar, material-dark | **passed** |
-| T058 closed menubar, glass-light | 6,187 unexplained px — backdrop compositing, diagnosed |
-| T058 closed menubar, glass-dark | 6,380 unexplained px — every pixel of the 220×29 region |
-| T059 File popup | 181 unexplained px |
-| T060 Settings popup | 709 unexplained px |
-| T060 Settings overflow, 375px | 205 unexplained px |
-| T061 View popup | **165 unexplained px**, bounds match (was `bounds.bottom: 455 != 457` with 9,036) |
-| T061 About popup | 1,489 unexplained px |
-| T062 tabs and toolbar | **passed** |
-| T063 editor-status states | **passed** |
-| T064 paused preview | **passed** |
+| Slice                               | Result                                                                            |
+| ----------------------------------- | --------------------------------------------------------------------------------- |
+| T058 closed menubar, minimal-light  | **passed**                                                                        |
+| T058 closed menubar, minimal-dark   | **passed**                                                                        |
+| T058 closed menubar, material-light | **passed**                                                                        |
+| T058 closed menubar, material-dark  | **passed**                                                                        |
+| T058 closed menubar, glass-light    | 6,187 unexplained px — backdrop compositing, diagnosed                            |
+| T058 closed menubar, glass-dark     | 6,380 unexplained px — every pixel of the 220×29 region                           |
+| T059 File popup                     | 181 unexplained px                                                                |
+| T060 Settings popup                 | 709 unexplained px                                                                |
+| T060 Settings overflow, 375px       | 205 unexplained px                                                                |
+| T061 View popup                     | **165 unexplained px**, bounds match (was `bounds.bottom: 455 != 457` with 9,036) |
+| T061 About popup                    | 1,489 unexplained px                                                              |
+| T062 tabs and toolbar               | **passed**                                                                        |
+| T063 editor-status states           | **passed**                                                                        |
+| T064 paused preview                 | **passed**                                                                        |
 
 ## Renderer determinism — T062 and T064 were measuring noise
 
@@ -85,16 +85,16 @@ should be struck from the T045 chrome residual list below.
 
 ## Editor-region convergence, 1280px Minimal Light `editor-split`
 
-| Step | Total | Monaco (excluded) | Chrome | Preview | **Unexplained** |
-|---|---:|---:|---:|---:|---:|
-| Session start | 121,810 | 17,481 | 13,186 | 91,143 | 104,329 |
-| Binding Minimal pane and toolbar rules | 104,189 | 17,481 | 6,609 | 80,099 | 86,708 |
-| Reference preview variant + Monaco exclusion | 42,575 | 17,481 | 6,577 | 18,517 | 25,094 |
-| Binding preview code-block styling | 27,490 | 17,481 | 6,577 | 3,432 | 10,009 |
-| Arrangement segment keeps its binding surface | 23,597 | 17,481 | 2,683 | 3,433 | 6,116 |
-| Content-derived toolbar widths + segment `--muted` | — | — | 965 | 3,433 | 4,398 |
-| Preview line-height, inner `code` family, emphasis | — | — | 965 | 5 | 1,190 |
-| Deferred toolbar controls in the reference variant | — | — | **177** | **5** | **182** |
+| Step                                               |   Total | Monaco (excluded) |  Chrome | Preview | **Unexplained** |
+| -------------------------------------------------- | ------: | ----------------: | ------: | ------: | --------------: |
+| Session start                                      | 121,810 |            17,481 |  13,186 |  91,143 |         104,329 |
+| Binding Minimal pane and toolbar rules             | 104,189 |            17,481 |   6,609 |  80,099 |          86,708 |
+| Reference preview variant + Monaco exclusion       |  42,575 |            17,481 |   6,577 |  18,517 |          25,094 |
+| Binding preview code-block styling                 |  27,490 |            17,481 |   6,577 |   3,432 |          10,009 |
+| Arrangement segment keeps its binding surface      |  23,597 |            17,481 |   2,683 |   3,433 |           6,116 |
+| Content-derived toolbar widths + segment `--muted` |       — |                 — |     965 |   3,433 |           4,398 |
+| Preview line-height, inner `code` family, emphasis |       — |                 — |     965 |       5 |           1,190 |
+| Deferred toolbar controls in the reference variant |       — |                 — | **177** |   **5** |         **182** |
 
 Monaco's own raster is the named reviewed exclusion and is not comparable
 between runs, so only the Unexplained column is meaningful across rows.
@@ -134,22 +134,22 @@ the popup itself, and must not be masked.
 
 Exact splits, replacing the earlier estimates:
 
-| Popup | Total | Boundary | Interior | Interior cause |
-|---|---:|---:|---:|---|
-| Settings, 1280 | 709 | 416 | 293 | 286 on the Liquid Glass swatch's gradient dither (±1/channel); the two solid swatches differ by zero |
-| View, 1280 | 165 | 163 | 2 | the Line numbers toggle's rounded right edge, delta 8 |
+| Popup          | Total | Boundary | Interior | Interior cause                                                                                       |
+| -------------- | ----: | -------: | -------: | ---------------------------------------------------------------------------------------------------- |
+| Settings, 1280 |   709 |      416 |      293 | 286 on the Liquid Glass swatch's gradient dither (±1/channel); the two solid swatches differ by zero |
+| View, 1280     |   165 |      163 |        2 | the Line numbers toggle's rounded right edge, delta 8                                                |
 
 `t071-settings-residual.md` records the Settings split in full, including the
 control that proves the swatch term is dither phase and not a style difference.
 
 ## Gate state
 
-| Gate | Result |
-|---|---|
-| `just frontend-build` | OK |
-| `just fmt-check` | OK |
-| `just lint` | OK — 0 errors, the 2 baseline `react-refresh` warnings |
-| `just typecheck` | OK |
-| `just frontend-test` | OK — 74 suites / 466 tests |
-| `just go-vet`, `just go-test`, `just archtest` | OK |
-| `just gen-check` | fails on generator file-mode drift only (100644 → 100755 on three `frontend/wailsjs/runtime/` files, no content change) |
+| Gate                                           | Result                                                                                                                  |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `just frontend-build`                          | OK                                                                                                                      |
+| `just fmt-check`                               | OK                                                                                                                      |
+| `just lint`                                    | OK — 0 errors, the 2 baseline `react-refresh` warnings                                                                  |
+| `just typecheck`                               | OK                                                                                                                      |
+| `just frontend-test`                           | OK — 74 suites / 466 tests                                                                                              |
+| `just go-vet`, `just go-test`, `just archtest` | OK                                                                                                                      |
+| `just gen-check`                               | fails on generator file-mode drift only (100644 → 100755 on three `frontend/wailsjs/runtime/` files, no content change) |

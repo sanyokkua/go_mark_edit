@@ -184,7 +184,7 @@ endpoint honours it. Since `17_PROVIDERS_MODELS_SETTINGS.md` promises that the c
 drives the budget, routing Ollama through `/v1` makes that promise false without failing.
 
 So the Ollama profile sets `NativeChatPath: "api/chat"`, and that endpoint has **a different request
-shape *and* a different response shape**: `options{temperature, num_ctx, num_predict}` going out;
+shape _and_ a different response shape**: `options{temperature, num_ctx, num_predict}` going out;
 `message.content`, `done_reason`, `prompt_eval_count` and `eval_count` coming back, instead of
 `choices[]`, `finish_reason` and `usage`. One decoder for all six kinds is therefore wrong, and the
 decoder is selected by profile.
@@ -200,7 +200,7 @@ the version you ship, not against a note. That is what `docs/testing/LIVE_TESTIN
 
 One Ollama server on one port serves a model that supports tool calls and a model that does not, at the
 same time. A local-first user's installed catalogue is mostly the second kind. So **tool support is
-recorded against `(providerId, modelId)`**, probed by the *Test tools* verification
+recorded against `(providerId, modelId)`**, probed by the _Test tools_ verification
 (`17_PROVIDERS_MODELS_SETTINGS.md#verification`), and the assistant **degrades to a single-shot path**
 when it is absent rather than failing (ADR-0034).
 
@@ -215,7 +215,7 @@ it would like to read.
 Local model catalogues are full of them, and hosted APIs are not — so this is a genuine kind-level
 capability, `StripThinkTags`, true for `ollama`, `lmstudio` and `llamacpp`.
 
-The blocks are stripped **before** the empty-content check, so a response that is *entirely* reasoning
+The blocks are stripped **before** the empty-content check, so a response that is _entirely_ reasoning
 becomes `empty_completion` with an actionable message rather than a `<think>` blob rendered into the
 user's chat.
 
@@ -246,30 +246,30 @@ A retry neither consumes an agent iteration nor emits a new iteration progress e
 
 The mapping from transport/status to `ErrorCode` is fixed:
 
-| Outcome | ErrorCode | Retryable |
-|---|---|---|
-| Transport error — connection refused / DNS / reset | `provider_unreachable` | yes |
-| Deadline exceeded / slow response past budget | `timeout` | yes |
-| `context.Canceled` (user/shutdown) | `cancelled` | no |
-| HTTP 401 / 403 | `auth` | no |
-| Env-var name set but unresolved before send | `missing_credential` | no |
-| HTTP 404 (model/endpoint) | `model_not_found` | no |
-| HTTP 429 | `rate_limited` | yes (honor `Retry-After`) |
-| HTTP 400 recognized as context overflow | `context_window` | no |
-| HTTP 400 recognized as "model does not support tools" | `tools_unsupported` | **no** |
-| `finish_reason == "length"` | `output_truncated` | no |
-| Other non-2xx upstream failure | `upstream` | yes |
-| 2xx but empty/blank completion | `empty_completion` | **no** |
+| Outcome                                               | ErrorCode              | Retryable                 |
+| ----------------------------------------------------- | ---------------------- | ------------------------- |
+| Transport error — connection refused / DNS / reset    | `provider_unreachable` | yes                       |
+| Deadline exceeded / slow response past budget         | `timeout`              | yes                       |
+| `context.Canceled` (user/shutdown)                    | `cancelled`            | no                        |
+| HTTP 401 / 403                                        | `auth`                 | no                        |
+| Env-var name set but unresolved before send           | `missing_credential`   | no                        |
+| HTTP 404 (model/endpoint)                             | `model_not_found`      | no                        |
+| HTTP 429                                              | `rate_limited`         | yes (honor `Retry-After`) |
+| HTTP 400 recognized as context overflow               | `context_window`       | no                        |
+| HTTP 400 recognized as "model does not support tools" | `tools_unsupported`    | **no**                    |
+| `finish_reason == "length"`                           | `output_truncated`     | no                        |
+| Other non-2xx upstream failure                        | `upstream`             | yes                       |
+| 2xx but empty/blank completion                        | `empty_completion`     | **no**                    |
 
 Three rows changed on 2026-07-25 and the reasons are worth keeping:
 
 - **`empty_completion` is not retryable.** It looks transient and is not. On a reasoning-style model with
   a low output cap, the cap is consumed entirely by hidden reasoning tokens before any visible output
-  begins — a deterministic *configuration* outcome. Retrying spends three more identical inferences to
+  begins — a deterministic _configuration_ outcome. Retrying spends three more identical inferences to
   produce the same nothing. Its message says which setting to change.
 - **`upstream` is retryable**, not "sometimes". A rule an implementer has to guess at is not a rule.
 - **`output_truncated` is new**, and it is the most actionable diagnostic in the whole surface.
-  `finish_reason` is currently captured and never read — in this specification *and* in the reference
+  `finish_reason` is currently captured and never read — in this specification _and_ in the reference
   implementation. `"length"` means "raise Max output tokens", and it must never surface as
   `empty_completion` or `tool_failed`.
 
@@ -285,14 +285,14 @@ not tell a rejected credential from a rate limit from a mistyped model name.
 the recognition is specified rather than left to a regex somebody invents.
 
 **Phrasing varies across providers and within one provider.** The same llama.cpp backend has been
-observed emitting both *"exceeds the available context size"* and *"greater than the context length
-(n_keep: … >= n_ctx: …)"* depending on runtime and quantisation. Recognition is therefore a small set,
+observed emitting both _"exceeds the available context size"_ and _"greater than the context length
+(n_keep: … >= n_ctx: …)"_ depending on runtime and quantisation. Recognition is therefore a small set,
 case-insensitively: `context_length_exceeded`, or `n_ctx`, or `context` together with one of `exceed`,
 `too long`, `greater than`.
 
 **Extracting the limit has a trap.** Try `n_ctx:\s*(\d+)` **first**. A generic
 `context (size|length)[^\d]{0,20}(\d+)` applied to `n_keep: 8530 >= n_ctx: 2048` captures **8530** —
-the amount *requested* — and shows the user a context limit that is not their context limit.
+the amount _requested_ — and shows the user a context limit that is not their context limit.
 
 Every mapped error becomes an `apperr.AppError` with a user-facing title/message and the sanitized
 `WireError` surfaced through the standard envelope + toast path (`02_Architecture/06_ERROR_HANDLING.md`).
@@ -391,13 +391,13 @@ type Registry interface {
 }
 ```
 
-| Tool | Purpose | Source | Privilege |
-|---|---|---|---|
-| `read_document` | Return the current document's full text | `internal/appmodel` canonical buffer, via the F2 content accessor (DD-62/DD-64) | read-only |
-| `read_selection` | Return the current selection (or empty) | `internal/appmodel` per-document view state (F2/F7 selection accessor) | read-only |
-| `list_workspace_files` | List `.md`/`.markdown`/`.mdown`/`.txt` files under the workspace root | `internal/workspace` | read-only; **only when a folder workspace is open** |
-| `read_workspace_file` | Read one workspace file by relative path | `internal/workspace` + asset allowlist | read-only; allowlisted, traversal-rejected |
-| `propose_edit` | Return a proposed replacement as a **diff** | computed against scoped content | **never writes**; returns a diff for review |
+| Tool                   | Purpose                                                               | Source                                                                          | Privilege                                           |
+| ---------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `read_document`        | Return the current document's full text                               | `internal/appmodel` canonical buffer, via the F2 content accessor (DD-62/DD-64) | read-only                                           |
+| `read_selection`       | Return the current selection (or empty)                               | `internal/appmodel` per-document view state (F2/F7 selection accessor)          | read-only                                           |
+| `list_workspace_files` | List `.md`/`.markdown`/`.mdown`/`.txt` files under the workspace root | `internal/workspace`                                                            | read-only; **only when a folder workspace is open** |
+| `read_workspace_file`  | Read one workspace file by relative path                              | `internal/workspace` + asset allowlist                                          | read-only; allowlisted, traversal-rejected          |
+| `propose_edit`         | Return a proposed replacement as a **diff**                           | computed against scoped content                                                 | **never writes**; returns a diff for review         |
 
 Rules:
 
@@ -482,7 +482,7 @@ Every classification rule in this document assumes the whole response body is in
 it is not, and each of these is a distinct failure the fallback above does not cover.
 
 - **The error arrives inside a 200.** Status-based classification keys off a non-2xx response. With
-  server-sent events an upstream failure arrives as an error frame *inside* an already-successful
+  server-sent events an upstream failure arrives as an error frame _inside_ an already-successful
   response, so `auth`, `rate_limited` and `context_window` become invisible unless the decoder also
   parses in-stream error frames. It must.
 - **Reasoning blocks cannot be stripped incrementally.** You cannot regex a closed `<think>…</think>`
@@ -500,7 +500,7 @@ it is not, and each of these is a distinct failure the fallback above does not c
   above shows `if ToolCalls:` as though the array were atomic; under streaming it is assembled, not
   received.
 
-**Cancelling mid-stream** aborts the HTTP read *and* decides the terminal state, through the same single
+**Cancelling mid-stream** aborts the HTTP read _and_ decides the terminal state, through the same single
 normalisation point as every other cancel (`07_LARGE_FILES_AND_CONCURRENCY.md#cancelling-a-run`). The
 partial text stays in the transcript, marked as cancelled.
 
@@ -526,12 +526,12 @@ backend, `EventsOn` on the adapter), not through the bound method's return value
 and dispatches into the `run` slice (`logic/store/assistant/`). All payloads carry the `runId` from the
 originating `RunAgentRequest` so the UI can correlate concurrent-looking updates to the single active run.
 
-| Event | Payload | Meaning |
-|---|---|---|
-| `agent:progress` | `{ runId, phase, iteration, tool? }` | Loop advanced: `phase ∈ {infer, tool, final}`; `tool` present when `phase="tool"` |
-| `agent:token` | `{ runId, delta }` | Streaming: a chunk of assistant text to append to the transcript |
-| `agent:done` | `{ runId, stopReason, transcriptSummary }` | Run finished; carries a summary of the session transcript (DD-55) |
-| `agent:error` | `{ runId, error: WireError }` | Run failed; `error` is the sanitized envelope error (same shape as any `*Result.Error`) |
+| Event            | Payload                                    | Meaning                                                                                 |
+| ---------------- | ------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `agent:progress` | `{ runId, phase, iteration, tool? }`       | Loop advanced: `phase ∈ {infer, tool, final}`; `tool` present when `phase="tool"`       |
+| `agent:token`    | `{ runId, delta }`                         | Streaming: a chunk of assistant text to append to the transcript                        |
+| `agent:done`     | `{ runId, stopReason, transcriptSummary }` | Run finished; carries a summary of the session transcript (DD-55)                       |
+| `agent:error`    | `{ runId, error: WireError }`              | Run failed; `error` is the sanitized envelope error (same shape as any `*Result.Error`) |
 
 `agent:error` reuses the exact `WireError` shape from `02_Architecture/06_ERROR_HANDLING.md`, so the
 adapter's normal `notifyError` toast path handles it with no special casing. The bound `RunResult`
@@ -546,23 +546,23 @@ string enum exposed to TypeScript via **EnumBind** (`02_Architecture/06_ERROR_HA
 the base catalog (`busy`, `timeout`, `cancelled`, `validation`, `internal`) keep their existing meaning;
 the assistant-specific additions are:
 
-| Code | When | Retryable |
-|---|---|---|
-| `busy` | Single-flight gate held — another inference (run or TestInference) is active | no |
-| `provider_unreachable` | Transport failure reaching the endpoint (refused / DNS / reset) | yes |
-| `timeout` | Inference exceeded the app-owned deadline | yes |
-| `auth` | Endpoint returned 401/403 (bad/rejected credential) | no |
-| `missing_credential` | Configured env-var name is unset in the environment | no |
-| `model_not_found` | 404 — configured model/endpoint path not found | no |
-| `context_window` | Prompt overflowed the model's context window (400, or the reactive backstop) | no |
-| `rate_limited` | 429 — provider throttling; backoff honors `Retry-After` | yes |
-| `upstream` | Other non-2xx upstream failure not otherwise classified | sometimes |
-| `empty_completion` | 2xx but the model returned no usable text | yes |
-| `cancelled` | User or shutdown cancelled the run | no |
-| `tool_failed` | A tool call had invalid arguments or failed to execute | no |
-| `agent_limit` | Loop hit the iteration or wall-clock limit without converging | no |
-| `validation` | Bad request argument / precondition on a bound LLM method | no |
-| `internal` | Catch-all / panic fallback | yes |
+| Code                   | When                                                                         | Retryable |
+| ---------------------- | ---------------------------------------------------------------------------- | --------- |
+| `busy`                 | Single-flight gate held — another inference (run or TestInference) is active | no        |
+| `provider_unreachable` | Transport failure reaching the endpoint (refused / DNS / reset)              | yes       |
+| `timeout`              | Inference exceeded the app-owned deadline                                    | yes       |
+| `auth`                 | Endpoint returned 401/403 (bad/rejected credential)                          | no        |
+| `missing_credential`   | Configured env-var name is unset in the environment                          | no        |
+| `model_not_found`      | 404 — configured model/endpoint path not found                               | no        |
+| `context_window`       | Prompt overflowed the model's context window (400, or the reactive backstop) | no        |
+| `rate_limited`         | 429 — provider throttling; backoff honors `Retry-After`                      | yes       |
+| `upstream`             | Other non-2xx upstream failure not otherwise classified                      | sometimes |
+| `empty_completion`     | 2xx but the model returned no usable text                                    | yes       |
+| `cancelled`            | User or shutdown cancelled the run                                           | no        |
+| `tool_failed`          | A tool call had invalid arguments or failed to execute                       | no        |
+| `agent_limit`          | Loop hit the iteration or wall-clock limit without converging                | no        |
+| `validation`           | Bad request argument / precondition on a bound LLM method                    | no        |
+| `internal`             | Catch-all / panic fallback                                                   | yes       |
 
 Each maps from the provider service's classification (see
 [Provider abstraction](#provider-abstraction)) or the loop, becomes an `AppError` with a user-facing
@@ -582,7 +582,7 @@ Assistant configuration extends `internal/settings` **additively** (F4; DD-46):
   table, so most of them need no migration at all.
 - `ModelConfig{ name, temperature, maxOutputTokens, contextWindow, … }` captures the per-model inference
   parameters (DD-52).
-- **Secrets are never persisted.** Only the env-var *name* is stored; the value is read from
+- **Secrets are never persisted.** Only the env-var _name_ is stored; the value is read from
   `os.Getenv` at call time and never written to the DB or a log
   (DD-45; `03_NonFunctional/03_SECURITY_AND_PRIVACY.md`).
 - The **session transcript** (messages + tool calls + applied edits) is kept in memory for the current
@@ -608,7 +608,7 @@ The assistant is built entirely by **consuming** the seams reserved before it
   transform (Format-after-apply) because Format/Lint are callable functions, not only toolbar handlers.
 - **F9 — reusable DiffView.** The edit-proposal card renders the `propose_edit` diff with the standalone
   diff component reused from the Format/Lint flow, rather than a bespoke renderer.
-- **F6 / offline scoping.** The provider HTTP client is the *only* outbound socket in the app, opened
+- **F6 / offline scoping.** The provider HTTP client is the _only_ outbound socket in the app, opened
   **only** on user action to the **user-configured** provider (local by default). Before the assistant exists, remain
-  zero-network; the invariant is "no *background/unsolicited* network," not "never open a socket"
+  zero-network; the invariant is "no _background/unsolicited_ network," not "never open a socket"
   (DD-32; `03_NonFunctional/04_OFFLINE.md`).

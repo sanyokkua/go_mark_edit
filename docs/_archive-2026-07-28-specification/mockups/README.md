@@ -38,7 +38,7 @@ The URL hash encodes `#<theme>-<mode>/<screen>`, so spec clauses can link an exa
 ## Role in the spec
 
 UI stories cite `mockups/gomarkedit-mockup.html` (optionally with a state hash) as the **visual
-acceptance reference**. The file is frozen with the spec: changing the UI means changing this file *and*
+acceptance reference**. The file is frozen with the spec: changing the UI means changing this file _and_
 the clause it backs, never drifting one from the other. The normative token values remain
 `../01_Product/10_THEMING.md#canonical-theme-tokens`.
 
@@ -70,21 +70,21 @@ both directions — carrying tokens the token table did not name, and drawing fe
 **Widths.** A **Width** control in the harness sets the app frame to **375 / 768 / 1280**, so all three
 are demonstrable without resizing the browser. What each shows:
 
-| | 768 | 375 |
-|---|---|---|
-| Assistant region | hidden | hidden |
-| Sidebar | 46 px icon rail | overlay, opened by the ☰ in the title bar |
-| Editor + preview | side by side | stacked |
-| Toolbar | list/link groups fold into the `»` overflow menu | plus the text buttons and the view segmented control |
-| Menu bar | in the title bar | folded into the overflow menu |
-| Status bar | drops the provider | drops provider, autosave, encoding, EOL, counts and caret |
+|                  | 768                                              | 375                                                       |
+| ---------------- | ------------------------------------------------ | --------------------------------------------------------- |
+| Assistant region | hidden                                           | hidden                                                    |
+| Sidebar          | 46 px icon rail                                  | overlay, opened by the ☰ in the title bar                |
+| Editor + preview | side by side                                     | stacked                                                   |
+| Toolbar          | list/link groups fold into the `»` overflow menu | plus the text buttons and the view segmented control      |
+| Menu bar         | in the title bar                                 | folded into the overflow menu                             |
+| Status bar       | drops the provider                               | drops provider, autosave, encoding, EOL, counts and caret |
 
 The status bar drops in **one fixed order** (`../01_Product/02_EDITOR_AND_VIEWER_MODES.md#status-bar`),
 so an item is never in two different places at two widths. Problems and Reading are never dropped.
 
 **States added on 2026-07-25**, grouped as they appear in the Screen selector:
 
-- **Empty** — the launcher (no tabs open, which is the first screen of *every* launch since there is no
+- **Empty** — the launcher (no tabs open, which is the first screen of _every_ launch since there is no
   session restore), the empty workspace tree, a filter that matched nothing, and the **reserved-but-empty
   assistant region** that every phase before the assistant actually looks like.
 - **Busy** — a gated long operation with progress and an in-place Cancel, the paused-preview banner with
@@ -106,5 +106,5 @@ Nothing structural. Two smaller things a story may want and this file does not d
 - **Loading placeholders** — Monaco booting, a large tree enumerating. The Mermaid one is drawn; these
   two are momentary states that a still image communicates poorly.
 
-Both are noted rather than drawn deliberately: a mockup is a reference for what a surface *looks like*,
+Both are noted rather than drawn deliberately: a mockup is a reference for what a surface _looks like_,
 and a gesture mid-flight is better specified in prose than faked in HTML.

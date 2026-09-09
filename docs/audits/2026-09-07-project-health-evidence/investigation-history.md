@@ -6,44 +6,44 @@ Repo: 367 commits, 2026-07-17 → 2026-09-07, 0 merge commits, 0 tags. All four 
 
 ## 1. Process-change timeline
 
-| Date | Commit | Regime introduced / removed | Size |
-|---|---|---|---|
-| 07-17 | `50d692d` | **R1 Claude agent pipeline**: `.claude/agents/{architect,coder,debugger,docs-writer,investigator,spec-conformance-reviewer}`, rules, skills, `specification/`, `docs/traceability.yaml` | 118 files, +11,566 |
-| 07-20 | `c90c088`, `85205ba` | **R2 CODEX dual config**: `.codex/agents` ×7, `.agents/skills` ×93, `AGENTS.md` | 101 files, +10,287 |
-| 07-20→23 | `21346f8`…`b6b5c16`, `0ddffef`, `39efb7a` | **R3 Phase/STORY + traceability** in use (STORY-001…032, "Phase 01/02 planned" +638/+1,742 lines of stories) | 34 STORY commits |
-| 07-22 | `6aa7abc` | R3 tracking rewrite: new `06_Process_and_Traceability`, `scripts/trace*.mjs`, phase-evidence, 5 new stories | 81 files, +7,517/−1,546 |
-| 07-23 | `914ea17`, `7671d5a` | ADR-0018/0019 evidence-process amendments (network capture, committed evidence) | small |
-| 07-25 | `927d15f` | **R4 "Changing the approach" cleanup**: deleted 81 `.agents/skills`, 27 `docs/stories`, `docs/traceability.yaml` + `scripts/trace*.mjs`, 6 ADRs, phase-evidence, 16 phase files; added `.claude/commands/{plan-phase,build-story,…}` | 327 files, +2,640/**−29,924** |
-| 07-28 | `3af7c58` | **R5 docs/delivery conversion**: `specification/` → `docs/_archive-2026-07-28-specification/`; new `docs/delivery/{spec,architecture,work,plan}`; deleted `.claude/agents` and `.codex/agents`; added `archtest.mjs`, `scripts/baseline.sh`, `verify.sh` | 324 files, +9,915/−10,276 |
-| 07-29 | `a240936` ("Fixed spec") | **R6 Python validators**: `scripts/check_proves.py` (113), `check_story.py` (330), `validate_spec.py` (404), `upgrade_check.py` (350), baselines under `docs/delivery/work/baselines` | 135 files, +4,000/−760 |
-| 07-30 | `b9d8a05` | **R7 Spec Kit + constitution** (`.specify/`, speckit skills in both `.agents` and `.claude`) | 39 files, +7,288 |
-| 07-30 | `53af8e4` ("feat: complete appearance verification") | R6 killed inside a feature commit: the four validators deleted, `specs/001` appearance-contract added | 69 files, +4,226/−1,505 |
-| 08-06 | `c025ab4` | "agent memory standard", `.agentsync.json`, `lefthook.yml`, `.agents/commands` reshuffle | 20 files |
-| 08-07 | `3ddb781`, `216bcf7`, `9b87718` | **R8 evidence regime**: baselines routed into `specs/*/evidence`, coverage logs under VCS | small |
-| 08-09→11 | `7744cc8`, `e95a081` | **R9 pixel-parity harness**: "immutable zero-tolerance parity harness"; checkpoint commit of parity worktree | `e95a081`: 88 files, **+39,828** |
-| 08-14 | `23ba4b5`, `3befc43` | Parity contract withdrawn/retargeted; branch-divergence "resolution" | 9 `Superseded` markers in `specs/003/spec.md` |
-| 08-15 | `cb48e68` | "Proves:" rule written into `AGENTS.md` and applied to 38 test files | 39 files |
-| 08-15 | `cf8cff1` ("Speckit updates") | **R10 Spec Kit extensions** (`.specify/extensions/` ×53: ralph, superpowers-bridge, memory-loader) | 86 files, **+14,716** |
-| 08-16/17 | `559cec7`, `4f39195` | CI parity gate; `scripts/release-stack.sh` | +238, +259 |
-| 08-21 | `35de8f2` | Retrospective-003 | +505 |
-| 09-07 | `883fd05` | Skill/dep refresh | 23 files |
+| Date     | Commit                                               | Regime introduced / removed                                                                                                                                                                                                                              | Size                                          |
+| -------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 07-17    | `50d692d`                                            | **R1 Claude agent pipeline**: `.claude/agents/{architect,coder,debugger,docs-writer,investigator,spec-conformance-reviewer}`, rules, skills, `specification/`, `docs/traceability.yaml`                                                                  | 118 files, +11,566                            |
+| 07-20    | `c90c088`, `85205ba`                                 | **R2 CODEX dual config**: `.codex/agents` ×7, `.agents/skills` ×93, `AGENTS.md`                                                                                                                                                                          | 101 files, +10,287                            |
+| 07-20→23 | `21346f8`…`b6b5c16`, `0ddffef`, `39efb7a`            | **R3 Phase/STORY + traceability** in use (STORY-001…032, "Phase 01/02 planned" +638/+1,742 lines of stories)                                                                                                                                             | 34 STORY commits                              |
+| 07-22    | `6aa7abc`                                            | R3 tracking rewrite: new `06_Process_and_Traceability`, `scripts/trace*.mjs`, phase-evidence, 5 new stories                                                                                                                                              | 81 files, +7,517/−1,546                       |
+| 07-23    | `914ea17`, `7671d5a`                                 | ADR-0018/0019 evidence-process amendments (network capture, committed evidence)                                                                                                                                                                          | small                                         |
+| 07-25    | `927d15f`                                            | **R4 "Changing the approach" cleanup**: deleted 81 `.agents/skills`, 27 `docs/stories`, `docs/traceability.yaml` + `scripts/trace*.mjs`, 6 ADRs, phase-evidence, 16 phase files; added `.claude/commands/{plan-phase,build-story,…}`                     | 327 files, +2,640/**−29,924**                 |
+| 07-28    | `3af7c58`                                            | **R5 docs/delivery conversion**: `specification/` → `docs/_archive-2026-07-28-specification/`; new `docs/delivery/{spec,architecture,work,plan}`; deleted `.claude/agents` and `.codex/agents`; added `archtest.mjs`, `scripts/baseline.sh`, `verify.sh` | 324 files, +9,915/−10,276                     |
+| 07-29    | `a240936` ("Fixed spec")                             | **R6 Python validators**: `scripts/check_proves.py` (113), `check_story.py` (330), `validate_spec.py` (404), `upgrade_check.py` (350), baselines under `docs/delivery/work/baselines`                                                                    | 135 files, +4,000/−760                        |
+| 07-30    | `b9d8a05`                                            | **R7 Spec Kit + constitution** (`.specify/`, speckit skills in both `.agents` and `.claude`)                                                                                                                                                             | 39 files, +7,288                              |
+| 07-30    | `53af8e4` ("feat: complete appearance verification") | R6 killed inside a feature commit: the four validators deleted, `specs/001` appearance-contract added                                                                                                                                                    | 69 files, +4,226/−1,505                       |
+| 08-06    | `c025ab4`                                            | "agent memory standard", `.agentsync.json`, `lefthook.yml`, `.agents/commands` reshuffle                                                                                                                                                                 | 20 files                                      |
+| 08-07    | `3ddb781`, `216bcf7`, `9b87718`                      | **R8 evidence regime**: baselines routed into `specs/*/evidence`, coverage logs under VCS                                                                                                                                                                | small                                         |
+| 08-09→11 | `7744cc8`, `e95a081`                                 | **R9 pixel-parity harness**: "immutable zero-tolerance parity harness"; checkpoint commit of parity worktree                                                                                                                                             | `e95a081`: 88 files, **+39,828**              |
+| 08-14    | `23ba4b5`, `3befc43`                                 | Parity contract withdrawn/retargeted; branch-divergence "resolution"                                                                                                                                                                                     | 9 `Superseded` markers in `specs/003/spec.md` |
+| 08-15    | `cb48e68`                                            | "Proves:" rule written into `AGENTS.md` and applied to 38 test files                                                                                                                                                                                     | 39 files                                      |
+| 08-15    | `cf8cff1` ("Speckit updates")                        | **R10 Spec Kit extensions** (`.specify/extensions/` ×53: ralph, superpowers-bridge, memory-loader)                                                                                                                                                       | 86 files, **+14,716**                         |
+| 08-16/17 | `559cec7`, `4f39195`                                 | CI parity gate; `scripts/release-stack.sh`                                                                                                                                                                                                               | +238, +259                                    |
+| 08-21    | `35de8f2`                                            | Retrospective-003                                                                                                                                                                                                                                        | +505                                          |
+| 09-07    | `883fd05`                                            | Skill/dep refresh                                                                                                                                                                                                                                        | 23 files                                      |
 
 **Count:** 10 distinguishable process regimes in 7 weeks (R1–R10), two of which (R6 validators, R9 whole-screen parity) lived ≤5 days. `AGENTS.md` was rewritten 15 times, `justfile` 13, `CLAUDE.md` 6; the constitution has exactly 1 commit (ratified 07-30, never amended — `.specify/memory/constitution.md:188`). `master`'s `CLAUDE.md` still describes R1 (`specification/INDEX.md`, `just trace`, `docs/traceability.yaml`, the six-agent pipeline) — all deleted in `927d15f`/`3af7c58`. Process-config churn totals **+46,807/−21,222 lines across 755 file-touches**, more than all product code written (below).
 
 ## 2. Commit-volume classification (367)
 
-| Type (subject prefix) | n | % | Notes |
-|---|---:|---:|---|
-| fix | 90 | 24.5 | 70 of them in ISO week 33 (Aug 10–16) |
-| docs | 72 | 19.6 | `docs(evidence)` 35, `docs(tasks)` 14, `docs(spec)` 13 |
-| test | 54 | 14.7 | `test(parity)` 15, `test(evidence)` 13 |
-| feat | 54 | 14.7 | `feat(files)` 17, `feat(tabs)` 8 |
-| Unprefixed process/spec/plan ("Planned…", "Created tasks", "Speckit updates", "Fixed spec"…) | 35 | 9.5 | |
-| STORY-NNN (July feature work) | 34 | 9.3 | |
-| refactor | 15 | 4.1 | 6 are `refactor(parity)` |
-| chore | 5 | 1.4 | incl. `e95a081` +39,828 lines |
-| Phase | 3 | 0.8 | |
-| build / style / perf / ci | 5 | 1.4 | |
+| Type (subject prefix)                                                                        |   n |    % | Notes                                                  |
+| -------------------------------------------------------------------------------------------- | --: | ---: | ------------------------------------------------------ |
+| fix                                                                                          |  90 | 24.5 | 70 of them in ISO week 33 (Aug 10–16)                  |
+| docs                                                                                         |  72 | 19.6 | `docs(evidence)` 35, `docs(tasks)` 14, `docs(spec)` 13 |
+| test                                                                                         |  54 | 14.7 | `test(parity)` 15, `test(evidence)` 13                 |
+| feat                                                                                         |  54 | 14.7 | `feat(files)` 17, `feat(tabs)` 8                       |
+| Unprefixed process/spec/plan ("Planned…", "Created tasks", "Speckit updates", "Fixed spec"…) |  35 |  9.5 |                                                        |
+| STORY-NNN (July feature work)                                                                |  34 |  9.3 |                                                        |
+| refactor                                                                                     |  15 |  4.1 | 6 are `refactor(parity)`                               |
+| chore                                                                                        |   5 |  1.4 | incl. `e95a081` +39,828 lines                          |
+| Phase                                                                                        |   3 |  0.8 |                                                        |
+| build / style / perf / ci                                                                    |   5 |  1.4 |                                                        |
 
 Cross-cuts: 53 commits (14.4%) are evidence-labelled (`docs/test/fix(evidence)`, `test(deferred)`); 30 (8.2%) are parity-scoped; subject keyword "evidence" appears in 60 commits, "parity" in 50. **Product feature work = feat + STORY = 88 (24%)**; fixes 24.5%; paperwork (docs + unprefixed + Phase + chore) = 115 (31%); tests 15% (over half of which test the harness/evidence rather than the product).
 
@@ -53,25 +53,25 @@ Aug 8: 29 commits between 17:59 and 23:58 (6 h), 18 of them `feat` — New/Open,
 
 ## 3. Effort sinks (whole history, `git log --numstat`)
 
-| Area | Insertions | Deletions | File-touches |
-|---|---:|---:|---:|
-| `specs/*/evidence/**` | **189,593** | 44,341 | 543 |
-| Process configs (`.claude/.agents/.codex/.specify/AGENTS/CLAUDE/justfile`) | 46,807 | 21,222 | 755 |
-| `frontend/src` non-test (product) | 28,499 | 5,898 | 716 |
-| `frontend/src` tests | 24,313 | 1,401 | 405 |
-| `specification/` (pre-07-28 frozen spec) | 18,401 | 5,240 | 275 |
-| docs other (old stories/traceability/phase-evidence/reference/superpowers) | 18,068 | 13,102 | 352 |
-| `specs/*` spec/plan/contracts | 18,016 | 3,039 | 109 |
-| Go tests | 17,768 | 2,824 | 206 |
-| `internal/` non-test (product) | 11,092 | 738 | 240 |
-| `frontend/e2e/parity/**` | 6,599 | 295 | 91 |
-| targeted/real-files parity e2e | 6,061 | 2,708 | 56 |
-| `docs/delivery/spec` | 6,110 | 183 | 56 |
-| other e2e + snapshots | 5,956 | 338 | 76 |
-| `scripts/` | 4,583 | 3,693 | 64 |
-| `specs/*/tasks.md` | 4,100 | 789 | 202 |
-| `frontend/src/dev/bridge-mock` | 3,156 | 124 | 54 |
-| `docs/delivery/work` (baselines/archive) | 2,984 | 590 | 159 |
+| Area                                                                       |  Insertions | Deletions | File-touches |
+| -------------------------------------------------------------------------- | ----------: | --------: | -----------: |
+| `specs/*/evidence/**`                                                      | **189,593** |    44,341 |          543 |
+| Process configs (`.claude/.agents/.codex/.specify/AGENTS/CLAUDE/justfile`) |      46,807 |    21,222 |          755 |
+| `frontend/src` non-test (product)                                          |      28,499 |     5,898 |          716 |
+| `frontend/src` tests                                                       |      24,313 |     1,401 |          405 |
+| `specification/` (pre-07-28 frozen spec)                                   |      18,401 |     5,240 |          275 |
+| docs other (old stories/traceability/phase-evidence/reference/superpowers) |      18,068 |    13,102 |          352 |
+| `specs/*` spec/plan/contracts                                              |      18,016 |     3,039 |          109 |
+| Go tests                                                                   |      17,768 |     2,824 |          206 |
+| `internal/` non-test (product)                                             |      11,092 |       738 |          240 |
+| `frontend/e2e/parity/**`                                                   |       6,599 |       295 |           91 |
+| targeted/real-files parity e2e                                             |       6,061 |     2,708 |           56 |
+| `docs/delivery/spec`                                                       |       6,110 |       183 |           56 |
+| other e2e + snapshots                                                      |       5,956 |       338 |           76 |
+| `scripts/`                                                                 |       4,583 |     3,693 |           64 |
+| `specs/*/tasks.md`                                                         |       4,100 |       789 |          202 |
+| `frontend/src/dev/bridge-mock`                                             |       3,156 |       124 |           54 |
+| `docs/delivery/work` (baselines/archive)                                   |       2,984 |       590 |          159 |
 
 Product code (frontend non-test + `internal` non-test + go root) ≈ **39,900 insertions ≈ 8.6%** of ~462k total; evidence alone is 4.8× product. Current tree: product 33,555 lines (`frontend/src` 22,967 + Go 10,588) vs frontend unit tests 23,593, Go tests 12,784, e2e 15,275 (parity 6,304), bridge-mock 3,032 (`AppModelHandler.ts` alone 2,024).
 
@@ -79,37 +79,37 @@ Product code (frontend non-test + `internal` non-test + go root) ≈ **39,900 in
 
 ## 4. Spec drift — original intent vs current
 
-Rows marked *not checked by this investigation* were verified separately in the main audit (§5.9 H-5) where indicated.
+Rows marked _not checked by this investigation_ were verified separately in the main audit (§5.9 H-5) where indicated.
 
-| Original clause | Current spec / implementation | Classification |
-|---|---|---|
-| `docs/delivery/spec/product/the-app-window.md#frameless-window` + ADR-0028 "Draw our own title bar" (`docs/delivery/adr/`, lines 51, 90) | `main.go:166 Frameless: false` since `011d2b5` (08-02); `specs/001/spec.md:58-62` clarification 2026-08-01 "Do not implement frameless windows, custom title controls"; `specs/003/spec.md:28,713` "obsolete custom titlebar". ADR-0028 still `accepted`, no successor | **Contradiction** (owner-clarified, but never recorded in ADR/original spec; `KNOWN_ISSUES` #13 now dead) |
-| ADR-0013 write-through window/layout persistence | `specs/003/spec.md:711` "launches with no restored tab set" | Deferred/narrowed, undocumented |
-| Original mockup role | `7744cc8` (08-09) "immutable zero-tolerance parity harness": 546 cases / 1,638 comparisons, first run 0 passed/1,620 failed, 39.5 min (`specs/003/evidence/ft-vs-08/phase-18/t035-run.md:4,19,30`); withdrawn `23ba4b5` (08-14), 9 `Superseded` + 6 `Amended` markers in `specs/003/spec.md`, 44 `- Q:` clarifications | **Agent-invented contract**, later retracted; consumed W33. (Main audit verified: `50d692d` mockup README says "visual acceptance reference"; `3af7c58` introduced "Tier A binding".) |
-| Offline: `constraints.md` 134-166 | `94a23c7` "deny outbound requests for five continuous minutes" as evidence; request-API scanner in `check-production-network.mjs` | Over-reading of the monitor sentence (main audit §5.9) |
-| Toolbar overflow vs scrolling | Overflow implemented; contested in evidence (`73974f3`, `evidence/ft-vs-08/phase-17/t045-toolbar-sizing-model.md`) | Design decision pending (main audit D1) |
-| Tab context menu placement | Rendered at the shell's right edge | Defect (main audit UI-4) |
-| Traceability: original `CLAUDE.md` (`50d692d`) "a story is done only when every AC has a passing test naming the story id" | `docs/traceability.yaml` deleted `927d15f`; FR-FT-057 baseline traceability skipped (T157, `decisions-phase-21.md`); `Proves:` tags 52.6%/27.9% honoured (retro §5.5); `check_proves.py` gone | Deferred → silently dropped |
-| Authority | `AGENTS.md:10` says `specs/<feature>/` is authoritative; `constitution.md:24,169` says `docs/delivery/spec` "remains authoritative"; `AGENTS.md:138,260` calls it "legacy reference-only" | Contradiction between the two live process documents |
+| Original clause                                                                                                                          | Current spec / implementation                                                                                                                                                                                                                                                                                          | Classification                                                                                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/delivery/spec/product/the-app-window.md#frameless-window` + ADR-0028 "Draw our own title bar" (`docs/delivery/adr/`, lines 51, 90) | `main.go:166 Frameless: false` since `011d2b5` (08-02); `specs/001/spec.md:58-62` clarification 2026-08-01 "Do not implement frameless windows, custom title controls"; `specs/003/spec.md:28,713` "obsolete custom titlebar". ADR-0028 still `accepted`, no successor                                                 | **Contradiction** (owner-clarified, but never recorded in ADR/original spec; `KNOWN_ISSUES` #13 now dead)                                                                             |
+| ADR-0013 write-through window/layout persistence                                                                                         | `specs/003/spec.md:711` "launches with no restored tab set"                                                                                                                                                                                                                                                            | Deferred/narrowed, undocumented                                                                                                                                                       |
+| Original mockup role                                                                                                                     | `7744cc8` (08-09) "immutable zero-tolerance parity harness": 546 cases / 1,638 comparisons, first run 0 passed/1,620 failed, 39.5 min (`specs/003/evidence/ft-vs-08/phase-18/t035-run.md:4,19,30`); withdrawn `23ba4b5` (08-14), 9 `Superseded` + 6 `Amended` markers in `specs/003/spec.md`, 44 `- Q:` clarifications | **Agent-invented contract**, later retracted; consumed W33. (Main audit verified: `50d692d` mockup README says "visual acceptance reference"; `3af7c58` introduced "Tier A binding".) |
+| Offline: `constraints.md` 134-166                                                                                                        | `94a23c7` "deny outbound requests for five continuous minutes" as evidence; request-API scanner in `check-production-network.mjs`                                                                                                                                                                                      | Over-reading of the monitor sentence (main audit §5.9)                                                                                                                                |
+| Toolbar overflow vs scrolling                                                                                                            | Overflow implemented; contested in evidence (`73974f3`, `evidence/ft-vs-08/phase-17/t045-toolbar-sizing-model.md`)                                                                                                                                                                                                     | Design decision pending (main audit D1)                                                                                                                                               |
+| Tab context menu placement                                                                                                               | Rendered at the shell's right edge                                                                                                                                                                                                                                                                                     | Defect (main audit UI-4)                                                                                                                                                              |
+| Traceability: original `CLAUDE.md` (`50d692d`) "a story is done only when every AC has a passing test naming the story id"               | `docs/traceability.yaml` deleted `927d15f`; FR-FT-057 baseline traceability skipped (T157, `decisions-phase-21.md`); `Proves:` tags 52.6%/27.9% honoured (retro §5.5); `check_proves.py` gone                                                                                                                          | Deferred → silently dropped                                                                                                                                                           |
+| Authority                                                                                                                                | `AGENTS.md:10` says `specs/<feature>/` is authoritative; `constitution.md:24,169` says `docs/delivery/spec` "remains authoritative"; `AGENTS.md:138,260` calls it "legacy reference-only"                                                                                                                              | Contradiction between the two live process documents                                                                                                                                  |
 
-**(g) Test-naming rule origin.** The owner's original instruction (initial `CLAUDE.md`, `50d692d`) required tests that *name the story id*, and the initial traceability document gave `it('STORY-031-AC-1 …')` as the model. The `Proves: FR-…` / task-id-prefix machinery is an agent extrapolation: `scripts/check_proves.py` first appeared in `a240936` (07-29, "Fixed spec"), was deleted one day later in `53af8e4`, and the rule was re-imposed by `cb48e68` (08-15, "name the rule each proving test exercises", `AGENTS.md` + 38 test files). The constitution (`b9d8a05`) was authored by the Spec Kit skill in one shot and never amended.
+**(g) Test-naming rule origin.** The owner's original instruction (initial `CLAUDE.md`, `50d692d`) required tests that _name the story id_, and the initial traceability document gave `it('STORY-031-AC-1 …')` as the model. The `Proves: FR-…` / task-id-prefix machinery is an agent extrapolation: `scripts/check_proves.py` first appeared in `a240936` (07-29, "Fixed spec"), was deleted one day later in `53af8e4`, and the rule was re-imposed by `cb48e68` (08-15, "name the rule each proving test exercises", `AGENTS.md` + 38 test files). The constitution (`b9d8a05`) was authored by the Spec Kit skill in one shot and never amended.
 
 ## 5. Retrospective-003 claim check (`docs/delivery/retrospective-003.md`)
 
-| Claim (line) | Verdict | Evidence |
-|---|---|---|
-| `traceability.yaml` "fourth-most-churned (40 commits)", deleted 07-25 in `927d15f` (:98-100) | Supported (41 commits, rank 4) | `git log -- docs/traceability.yaml` |
-| "…Spec Kit migration was never finished, and that single omission is why…" (:102) | **Misattributed** | Deletion (07-25) predates Spec Kit (`b9d8a05`, 07-30) by 5 days; it was the R4 cleanup, not an unfinished migration |
-| "anchor checker that was specified but never written… `check_proves.py` does not exist" (:384-386) | **Unsupported** | Written in `a240936` (113 lines) with `check_story.py` (extended `fc785fe`, `857636a`), `validate_spec.py`, `upgrade_check.py`; all four **deleted in `53af8e4`** (07-30) inside a `feat:` commit |
-| "Phase 06 introduces the sanitiser" (:423-424) | **Unsupported** | `rehype-sanitize` in `frontend/src/logic/markdown/renderer.ts` since `96672e1` (STORY-014, 07-21), present at `59b379a` and at HEAD |
-| 26 ADRs, last 07-25, zero during Spec Kit (:233) | Supported | no `--diff-filter=A` under `docs/delivery/adr` after 07-29 |
-| `tasks.md` touched in 192 commits (:164) | Supported | 192/367 |
-| 195/196 tasks checked, 0 unchecked (:222) | Supported | 195 `[x]`, 0 `[ ]`, 196 T-ids |
-| T173 spans 14 commits, T191 13 (:190-193) | Overstated | `git log --grep`: 8 and 6 |
-| "13,036 parity capture files" (:207) | Not in git | 464 files on disk / 173 tracked; per-case captures are gitignored (`.gitignore:40`) |
-| parity 6,304 lines; `AppModelHandler.ts` 2,024 (:203-206) | Supported | `wc -l` |
-| First parity run 0/1,620, 30.6 min (:337-338) | Supported | `t035-run.md:4,19,30` |
-| T075 "decision required" while work continued (:360) | Supported | `tasks.md:956,970` (T082 rescopes T075 later) |
+| Claim (line)                                                                                       | Verdict                        | Evidence                                                                                                                                                                                          |
+| -------------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `traceability.yaml` "fourth-most-churned (40 commits)", deleted 07-25 in `927d15f` (:98-100)       | Supported (41 commits, rank 4) | `git log -- docs/traceability.yaml`                                                                                                                                                               |
+| "…Spec Kit migration was never finished, and that single omission is why…" (:102)                  | **Misattributed**              | Deletion (07-25) predates Spec Kit (`b9d8a05`, 07-30) by 5 days; it was the R4 cleanup, not an unfinished migration                                                                               |
+| "anchor checker that was specified but never written… `check_proves.py` does not exist" (:384-386) | **Unsupported**                | Written in `a240936` (113 lines) with `check_story.py` (extended `fc785fe`, `857636a`), `validate_spec.py`, `upgrade_check.py`; all four **deleted in `53af8e4`** (07-30) inside a `feat:` commit |
+| "Phase 06 introduces the sanitiser" (:423-424)                                                     | **Unsupported**                | `rehype-sanitize` in `frontend/src/logic/markdown/renderer.ts` since `96672e1` (STORY-014, 07-21), present at `59b379a` and at HEAD                                                               |
+| 26 ADRs, last 07-25, zero during Spec Kit (:233)                                                   | Supported                      | no `--diff-filter=A` under `docs/delivery/adr` after 07-29                                                                                                                                        |
+| `tasks.md` touched in 192 commits (:164)                                                           | Supported                      | 192/367                                                                                                                                                                                           |
+| 195/196 tasks checked, 0 unchecked (:222)                                                          | Supported                      | 195 `[x]`, 0 `[ ]`, 196 T-ids                                                                                                                                                                     |
+| T173 spans 14 commits, T191 13 (:190-193)                                                          | Overstated                     | `git log --grep`: 8 and 6                                                                                                                                                                         |
+| "13,036 parity capture files" (:207)                                                               | Not in git                     | 464 files on disk / 173 tracked; per-case captures are gitignored (`.gitignore:40`)                                                                                                               |
+| parity 6,304 lines; `AppModelHandler.ts` 2,024 (:203-206)                                          | Supported                      | `wc -l`                                                                                                                                                                                           |
+| First parity run 0/1,620, 30.6 min (:337-338)                                                      | Supported                      | `t035-run.md:4,19,30`                                                                                                                                                                             |
+| T075 "decision required" while work continued (:360)                                               | Supported                      | `tasks.md:956,970` (T082 rescopes T075 later)                                                                                                                                                     |
 
 ## 6. Branch / authority
 
@@ -119,20 +119,20 @@ Rows marked *not checked by this investigation* were verified separately in the 
 
 ## 7. docs/ clutter
 
-| Subtree | Files / lines / size | Status |
-|---|---|---|
-| `docs/_archive-2026-07-28-specification/` | 48 / 9,431 / 652K | Dead (WORKFLOW.md:205 "not normative"); kept so ADR-0003/0014/0034 links resolve |
-| `docs/delivery/spec/` | 28 / 7,079 / 516K | Contested authority (constitution says authoritative, AGENTS.md says legacy) |
-| `docs/delivery/adr/` | 26 ADRs + README, 2,950 lines | Live; ADR-0028 contradicted; ~9 forward-looking ADRs unbuilt; 8 process ADRs already deleted |
-| `docs/delivery/plan/` | 20 / 2,069 | Stale: `roadmap.md:8-21` still "Phase 02 in progress — STORY-058 built" |
-| `docs/delivery/work/` (+`archive/`, `baselines/`) | 9+26+68 files, ~5,300 lines | Dead (old-format stories, retired baselines) |
-| `docs/delivery/WORKFLOW.md` | 276 lines | Dead (describes the R4 `/plan-phase` flow) |
-| `docs/delivery/architecture/` | 11 / 1,934 | Live |
-| `docs/reference/wails-dev/` | 13 / 2,390 | Dead, unreferenced (orphaned skill copy) |
-| `docs/superpowers/` | 1 / 32 | Dead |
-| `docs/audits/` | 54 files, 13M | Untracked at the time of the investigation |
-| `specs/001|002|003/evidence` | 26 / 43 / 464 files; 708K / **21M** / 9.9M | Live; 002 holds 7.3–7.5M PNGs |
-| `.specify/` `.agents/` `.claude/` | 76 / 27 / 10 files | Live but duplicated skills in two trees; `.codex/` gone |
+| Subtree                                           | Files / lines / size          | Status                                                                                       |
+| ------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------- |
+| `docs/_archive-2026-07-28-specification/`         | 48 / 9,431 / 652K             | Dead (WORKFLOW.md:205 "not normative"); kept so ADR-0003/0014/0034 links resolve             |
+| `docs/delivery/spec/`                             | 28 / 7,079 / 516K             | Contested authority (constitution says authoritative, AGENTS.md says legacy)                 |
+| `docs/delivery/adr/`                              | 26 ADRs + README, 2,950 lines | Live; ADR-0028 contradicted; ~9 forward-looking ADRs unbuilt; 8 process ADRs already deleted |
+| `docs/delivery/plan/`                             | 20 / 2,069                    | Stale: `roadmap.md:8-21` still "Phase 02 in progress — STORY-058 built"                      |
+| `docs/delivery/work/` (+`archive/`, `baselines/`) | 9+26+68 files, ~5,300 lines   | Dead (old-format stories, retired baselines)                                                 |
+| `docs/delivery/WORKFLOW.md`                       | 276 lines                     | Dead (describes the R4 `/plan-phase` flow)                                                   |
+| `docs/delivery/architecture/`                     | 11 / 1,934                    | Live                                                                                         |
+| `docs/reference/wails-dev/`                       | 13 / 2,390                    | Dead, unreferenced (orphaned skill copy)                                                     |
+| `docs/superpowers/`                               | 1 / 32                        | Dead                                                                                         |
+| `docs/audits/`                                    | 54 files, 13M                 | Untracked at the time of the investigation                                                   |
+| `specs/001                                        | 002                           | 003/evidence`                                                                                | 26 / 43 / 464 files; 708K / **21M** / 9.9M | Live; 002 holds 7.3–7.5M PNGs |
+| `.specify/` `.agents/` `.claude/`                 | 76 / 27 / 10 files            | Live but duplicated skills in two trees; `.codex/` gone                                      |
 
 Repo: 1,108 tracked files, **400 are `.md`**; pack 42 MiB.
 

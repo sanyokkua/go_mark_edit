@@ -6,10 +6,10 @@ Audited source commit: `883fd053b9b30911248a304cf5f57d8cebe81795`. Both working 
 
 ## Results
 
-| Probe | Exit | Elapsed | Demonstrated consequence | Positive control |
-| --- | ---: | ---: | --- | --- |
-| Exact Go CloseCoordinator, stdlib-only temporary module | 0 | 3.632 s | First close without a receiver emits once and vetoes. Registering a receiver then closing again still vetoes with zero deliveries and no second emission. | Cancel permits a fresh request to be emitted/delivered; Authorize requests one Quit and the simulated native callback consumes its permit without veto. |
-| Exact settingsProjection.ts, TypeScript 5.9.3 transpilation in Node v24.19.0 | 0 | 0.178 s | First settings read rejects; after the adapter recovers, Retry returns the identical rejected Promise, with getSettings call count still 1. | Explicit dispose resets the cache; next bootstrap resolves, calls become 2, reset then hydrate are dispatched. |
+| Probe                                                                        | Exit | Elapsed | Demonstrated consequence                                                                                                                                  | Positive control                                                                                                                                        |
+| ---------------------------------------------------------------------------- | ---: | ------: | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exact Go CloseCoordinator, stdlib-only temporary module                      |    0 | 3.632 s | First close without a receiver emits once and vetoes. Registering a receiver then closing again still vetoes with zero deliveries and no second emission. | Cancel permits a fresh request to be emitted/delivered; Authorize requests one Quit and the simulated native callback consumes its permit without veto. |
+| Exact settingsProjection.ts, TypeScript 5.9.3 transpilation in Node v24.19.0 |    0 | 0.178 s | First settings read rejects; after the adapter recovers, Retry returns the identical rejected Promise, with getSettings call count still 1.               | Explicit dispose resets the cache; next bootstrap resolves, calls become 2, reset then hydrate are dispatched.                                          |
 
 ## Exact execution and preserved evidence
 
@@ -34,9 +34,9 @@ The artifact directory contains:
 
 ## Source SHA-256
 
-| Audited file | SHA-256 |
-| --- | --- |
-| `internal/application/close_coordinator.go` | `3882b4ca93e6c044971aed6f42d6a402b866221bc661c70277b0452bf5fb1806` |
+| Audited file                                     | SHA-256                                                            |
+| ------------------------------------------------ | ------------------------------------------------------------------ |
+| `internal/application/close_coordinator.go`      | `3882b4ca93e6c044971aed6f42d6a402b866221bc661c70277b0452bf5fb1806` |
 | `frontend/src/logic/store/settingsProjection.ts` | `c590c769bdb29c172161d1248706b49a65cba15fdb93a199522d02364831ca40` |
 
 ## Raw Go stdout

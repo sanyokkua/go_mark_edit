@@ -7,7 +7,7 @@
 # Notifications, progress, and empty states
 
 How the app tells you something happened, that something is happening, or that there is nothing here
-yet. Realises DD-68. `02_Architecture/06_ERROR_HANDLING.md` owns the error *envelope*; this document
+yet. Realises DD-68. `02_Architecture/06_ERROR_HANDLING.md` owns the error _envelope_; this document
 owns what the user reads.
 
 ## Table of Contents
@@ -40,12 +40,12 @@ failure raised by a dialog is visible.
 
 ## Severity, duration and stacking
 
-| Severity | Auto-dismiss | Used for |
-|---|---|---|
-| `success` | 4 s | An operation completed and the user could not otherwise tell |
-| `info` | 6 s | Context the user did not ask for but benefits from |
-| `warning` | 8 s | Something degraded; the app continued |
-| `error` | never — manual dismiss only | Something the user asked for did not happen |
+| Severity  | Auto-dismiss                | Used for                                                     |
+| --------- | --------------------------- | ------------------------------------------------------------ |
+| `success` | 4 s                         | An operation completed and the user could not otherwise tell |
+| `info`    | 6 s                         | Context the user did not ask for but benefits from           |
+| `warning` | 8 s                         | Something degraded; the app continued                        |
+| `error`   | never — manual dismiss only | Something the user asked for did not happen                  |
 
 Errors do not auto-dismiss. A message you must read before it vanishes is a message you will miss.
 
@@ -101,33 +101,33 @@ generates a support question. Every `ErrorCode` in `02_Architecture/06_ERROR_HAN
 
 The remediation sentence says what to do, not what went wrong:
 
-| Code | Title | Remediation |
-|---|---|---|
-| `not_found` | Couldn't find that file | It may have been moved or deleted. Check the path and try again. |
-| `permission` | No permission to open that file | Check the file's permissions, or open a copy from somewhere you can write. |
-| `io` | Couldn't finish reading or writing | The disk may be full or the file may be in use. Try again. |
-| `unsupported` | That file is too large to open | GoMarkEdit opens documents up to the size in Settings → Editor. |
-| `busy` | Something else is running | Wait for the current operation to finish, or cancel it. |
-| `cancelled` | Cancelled | *(no remediation — this is a normal outcome, and it is not an error toast)* |
-| `internal` | Something went wrong inside GoMarkEdit | The details are in the log. Settings → Diagnostics → Open logs folder. |
-| `missing_credential` | The API key isn't set | Set the environment variable named in Settings → AI → Providers, then restart GoMarkEdit. |
-| `provider_unreachable` | Couldn't reach the AI provider | Check the base URL in Settings → AI → Providers, and that the provider is running. |
-| `context_window` | The document is too long for this model | Select a smaller part, or raise the context length in Settings → AI → Context. |
-| `output_truncated` | The model ran out of room to answer | Raise Max output tokens in Settings → AI → Context, then try again. |
-| `tools_unsupported` | This model can't use tools | GoMarkEdit will use a simpler single-step mode. Choose a different model for workspace-wide actions. |
+| Code                   | Title                                   | Remediation                                                                                          |
+| ---------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `not_found`            | Couldn't find that file                 | It may have been moved or deleted. Check the path and try again.                                     |
+| `permission`           | No permission to open that file         | Check the file's permissions, or open a copy from somewhere you can write.                           |
+| `io`                   | Couldn't finish reading or writing      | The disk may be full or the file may be in use. Try again.                                           |
+| `unsupported`          | That file is too large to open          | GoMarkEdit opens documents up to the size in Settings → Editor.                                      |
+| `busy`                 | Something else is running               | Wait for the current operation to finish, or cancel it.                                              |
+| `cancelled`            | Cancelled                               | _(no remediation — this is a normal outcome, and it is not an error toast)_                          |
+| `internal`             | Something went wrong inside GoMarkEdit  | The details are in the log. Settings → Diagnostics → Open logs folder.                               |
+| `missing_credential`   | The API key isn't set                   | Set the environment variable named in Settings → AI → Providers, then restart GoMarkEdit.            |
+| `provider_unreachable` | Couldn't reach the AI provider          | Check the base URL in Settings → AI → Providers, and that the provider is running.                   |
+| `context_window`       | The document is too long for this model | Select a smaller part, or raise the context length in Settings → AI → Context.                       |
+| `output_truncated`     | The model ran out of room to answer     | Raise Max output tokens in Settings → AI → Context, then try again.                                  |
+| `tools_unsupported`    | This model can't use tools              | GoMarkEdit will use a simpler single-step mode. Choose a different model for workspace-wide actions. |
 
 Two rules govern the whole table, and both come from watching a shipped application get them wrong:
 
 1. **The message never contains an operation prefix, a file-system path from an internal error, or a
    raw `err.Error()`.** Those belong in the log.
 2. **The inner cause reaches the user.** When one failure wraps another — a tool failure caused by a
-   rate limit, a run failure caused by a rejected credential — the notification shows the *inner* title
+   rate limit, a run failure caused by a rejected credential — the notification shows the _inner_ title
    and remediation. Collapsing everything into one outer code means the user cannot tell "my key was
    rejected" from "I typed the model name wrong", which is exactly the state a reviewed reference
    implementation shipped in.
 
-Where a provider supplies a retry delay (`Retry-After`), it is shown: *"Rate limited — try again in
-about 20 seconds."* Parsing it and then using it only internally, as that same implementation did, gives
+Where a provider supplies a retry delay (`Retry-After`), it is shown: _"Rate limited — try again in
+about 20 seconds."_ Parsing it and then using it only internally, as that same implementation did, gives
 the user no guidance at the one moment they need it.
 
 ## Progress and cancel
@@ -155,17 +155,17 @@ this is what a user sees on **every** launch. It is a launcher, not a blank pane
 
 > **GoMarkEdit**
 > New file · Open file… · Open folder…
-> *Recent* — the six most recent documents and folders, each with its containing folder beneath it.
+> _Recent_ — the six most recent documents and folders, each with its containing folder beneath it.
 
 **Empty workspace tree** — a folder is open and contains nothing GoMarkEdit shows:
 
 > No Markdown files in this folder.
-> *New file* · *Open a different folder…*
+> _New file_ · _Open a different folder…_
 
 **Tree filter matched nothing:**
 
 > Nothing matches "<query>".
-> *Clear filter*
+> _Clear filter_
 
 **No recent files** — first run:
 
@@ -191,7 +191,7 @@ Two rules for all of them:
 - **EC-NOTIF-3** — An error is raised while a modal dialog is open → the toast is visible above it
   (`--z-toast` exceeds `--z-modal`).
 - **EC-NOTIF-4** — Autosave writes successfully → no toast, ever. Only the status bar changes.
-- **EC-NOTIF-5** — Autosave *fails* → a coalesced `error` toast keyed to the document, and the document
+- **EC-NOTIF-5** — Autosave _fails_ → a coalesced `error` toast keyed to the document, and the document
   stays dirty. The user is never told it was saved when it was not.
 - **EC-NOTIF-6** — A gated operation is cancelled → the gate is released, the trigger control returns to
   its normal label, and the report names the completed count rather than the loop index.

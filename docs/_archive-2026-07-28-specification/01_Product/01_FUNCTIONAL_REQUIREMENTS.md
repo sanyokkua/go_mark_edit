@@ -435,7 +435,7 @@ Owned by `20_NOTIFICATIONS_AND_EMPTY_STATES.md`; DD-68.
   early. Errors are never evicted.
 - **EC-NOTIF-3** — An error is raised while a modal dialog is open → the toast is visible above it.
 - **EC-NOTIF-4** — Autosave writes successfully → no toast, ever. Only the status bar changes.
-- **EC-NOTIF-5** — Autosave *fails* → a coalesced error toast keyed to the document, and the document
+- **EC-NOTIF-5** — Autosave _fails_ → a coalesced error toast keyed to the document, and the document
   stays dirty. The user is never told it was saved when it was not.
 - **EC-NOTIF-6** — A gated operation is cancelled → gate released, the trigger control returns to its
   normal label, and the report names the completed count rather than the loop index.

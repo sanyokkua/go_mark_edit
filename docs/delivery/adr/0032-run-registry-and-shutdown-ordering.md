@@ -15,9 +15,9 @@ Three separate parts of the specification require something the specification ne
 says an in-flight gated operation is cancelled on shutdown; DD-47 says the agent loop checks
 cancellation each iteration; `CodeCancelled` exists in the error catalog. There is no run registry, no
 bound `Cancel` method, and no statement that the `OnStartup` context is the parent of every derived
-context. `PHASE_12_ASSISTANT_REWRITES.md` lists this as unsettled in as many words: *"nothing defines
+context. `PHASE_12_ASSISTANT_REWRITES.md` lists this as unsettled in as many words: _"nothing defines
 the bound method, the run registry, what happens when cancel and completion race, or which of the two
-produces the terminal result."*
+produces the terminal result."_
 
 **A cancellable quit is required and cannot be built where the specification puts it.**
 `PHASE_05_REAL_FILES.md` requires that closing the window with dirty tabs asks Save / Discard / Cancel,
@@ -62,7 +62,7 @@ appears in no request path. One bound `CancelRun(runId)` serves every feature; c
 already-finished id is a **success no-op**, not an error, because the caller cannot know which it is.
 
 **Exactly one terminal outcome.** A run that is cancelled while an operation is in flight surfaces as
-`CodeCancelled` and is normalized into the *same* result, log and event shape as a run cancelled between
+`CodeCancelled` and is normalized into the _same_ result, log and event shape as a run cancelled between
 steps. The race between cancel-arrives and work-completes is resolved once, at one point in the code,
 rather than at each call site. A user-facing message reports what actually **completed**, never the loop
 index — "cancelled after step 1" when step 1 never finished is a message that lies.
@@ -106,15 +106,18 @@ directory should cost you your logs, not your text editor.
 ## Pros and cons of the options
 
 ### Option A — cancellation per feature
+
 - Good: each feature owns exactly what it needs.
 - Bad: three implementations of the cancel/complete race, and the shutdown path has to know about all
   of them. The gate is already shared; the cancellation should be too.
 
-### Option B — one registry, one sequence *(chosen)*
+### Option B — one registry, one sequence _(chosen)_
+
 - Good: one place to reason about, one place to test the race, one order to state.
 - Bad: a small amount of ceremony at every call site.
 
 ### Option C — timeouts instead of cancellation
+
 - Good: nothing to register.
 - Bad: the user cannot stop a 2-minute local inference they started by mistake, and quitting cannot be
   clean. Timeouts are a backstop, not a cancel button.
@@ -123,9 +126,9 @@ directory should cost you your logs, not your text editor.
 
 - Design decisions: DD-47, DD-60, DD-61; new DD-70 (limits)
 - Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#lifecycle`,
-  ../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md`,
+../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md`,
   ../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md`,
-  ../../_archive-2026-07-28-specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`
+../../_archive-2026-07-28-specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md`
 - Phases: `specification/07_Phases/PHASE_05_REAL_FILES.md` (the quit prompt),
   `specification/07_Phases/PHASE_10_TIDY_AND_SHARE.md` (export),
   `specification/07_Phases/PHASE_12_ASSISTANT_REWRITES.md` (closes its open question)

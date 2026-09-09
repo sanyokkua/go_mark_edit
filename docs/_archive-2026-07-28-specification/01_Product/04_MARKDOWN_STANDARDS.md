@@ -68,17 +68,17 @@ reader who sees it re-rendered as a stray rule plus mangled text concludes the a
 also a correctness requirement: Format round-trips through the AST, so a standard that cannot parse
 frontmatter is a standard whose Format destroys it (ADR-0031).
 
-| Capability | remark/rehype plugin(s) | Minimal | GFM | Full |
-|---|---|:--:|:--:|:--:|
-| Core CommonMark parse | `react-markdown` (remark-parse core) | yes | yes | yes |
-| Tables / task lists / strikethrough / autolinks | `remark-gfm` | no | yes | yes |
-| Footnotes | `remark-gfm` (footnotes) | no | yes | yes |
-| Math (`$…$`, `$$…$$`) | `remark-math` + `rehype-katex` | no | no | yes |
-| Directives / admonitions | `remark-directive` (+ handler) | no | no | yes |
-| Frontmatter (YAML) | `remark-frontmatter` | no | **yes** | yes |
-| Code highlighting | `rehype-highlight` | yes | yes | yes |
-| Mermaid fences | `components` override → MermaidBlock (DD-19) | yes | yes | yes |
-| HTML sanitization | security level (`05_RENDERING_AND_EXTENSIONS.md#sanitization`) | yes | yes | yes |
+| Capability                                      | remark/rehype plugin(s)                                        | Minimal |   GFM   | Full |
+| ----------------------------------------------- | -------------------------------------------------------------- | :-----: | :-----: | :--: |
+| Core CommonMark parse                           | `react-markdown` (remark-parse core)                           |   yes   |   yes   | yes  |
+| Tables / task lists / strikethrough / autolinks | `remark-gfm`                                                   |   no    |   yes   | yes  |
+| Footnotes                                       | `remark-gfm` (footnotes)                                       |   no    |   yes   | yes  |
+| Math (`$…$`, `$$…$$`)                           | `remark-math` + `rehype-katex`                                 |   no    |   no    | yes  |
+| Directives / admonitions                        | `remark-directive` (+ handler)                                 |   no    |   no    | yes  |
+| Frontmatter (YAML)                              | `remark-frontmatter`                                           |   no    | **yes** | yes  |
+| Code highlighting                               | `rehype-highlight`                                             |   yes   |   yes   | yes  |
+| Mermaid fences                                  | `components` override → MermaidBlock (DD-19)                   |   yes   |   yes   | yes  |
+| HTML sanitization                               | security level (`05_RENDERING_AND_EXTENSIONS.md#sanitization`) |   yes   |   yes   | yes  |
 
 Note: GFM footnotes are folded into `remark-gfm`; Full re-uses the GFM set and adds the extension
 plugins. The exact plugin objects and options live in the frontend `logic/markdown` module

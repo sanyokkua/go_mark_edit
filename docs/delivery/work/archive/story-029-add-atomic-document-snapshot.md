@@ -95,6 +95,7 @@ selection, and revision so later asset and assistant work cannot combine fields 
 ## Acceptance criteria
 
 ### STORY-029-AC-1
+
 **Satisfies:** PH01-R01, PH01-R09
 
 The existing `DocumentContentAccessor.SnapshotActive(ctx)` accepts no document id and returns a
@@ -102,12 +103,14 @@ The existing `DocumentContentAccessor.SnapshotActive(ctx)` accepts no document i
 revision; `DocumentSnapshot` is the only new exported top-level symbol.
 
 ### STORY-029-AC-2
+
 **Satisfies:** PH01-R01
 
 Concurrent active-document change, mutation, and snapshot tests under `go test -race` observe only one
 coherent active document's pre-mutation or post-mutation field set and no data race.
 
 ### STORY-029-AC-3
+
 **Satisfies:** PH01-R01, PH01-R09
 
 **Given** no document is active, **when** `SnapshotActive(ctx)` is called, **then** it returns a zero
@@ -115,12 +118,14 @@ coherent active document's pre-mutation or post-mutation field set and no data r
 target semantics through the normal service `(T, error)` contract.
 
 ### STORY-029-AC-4
+
 **Satisfies:** PH01-R01
 
 Taking a snapshot does not change the model revision and emits no event; document content remains absent
 from `state:patch` and Redux DTOs.
 
 ### STORY-029-AC-5
+
 **Satisfies:** PH01-R09
 
 A compile-time test instantiates real fake PH09 and PH12 consumer types against
@@ -144,12 +149,12 @@ Wails binding, frontend type, document-id argument, separate field read, or Mona
 
 - [ ] Every AC has a passing Go test whose first leading-comment line names its `STORY-029-AC-N` id.
 - [ ] Race-enabled tests prove one-lock active snapshot coherence under concurrent active-document, content,
-  selection, and revision changes.
+      selection, and revision changes.
 - [ ] API review proves `DocumentSnapshot` is the sole new exported top-level symbol and the existing
-  `DocumentContentAccessor`/`ContentAccessor()` path is replaced rather than duplicated.
+      `DocumentContentAccessor`/`ContentAccessor()` path is replaced rather than duplicated.
 - [ ] No Wails binding, generated file, Redux DTO, or patch content field is introduced.
 - [ ] `gofmt`, `go vet`, `golangci-lint`, and `go test -race ./...` pass.
 - [ ] Handler/service layering, existing `apperr.NotFound`, `internal/apperr` leaf ownership, and backend
-  authority remain intact with no `internal/apperr` production edit.
+      authority remain intact with no `internal/apperr` production edit.
 - [ ] Adapter-only Wails access, token-only theming, and offline behavior remain intact.
 - [ ] `just trace` and `just trace-check` are run during implementation; the module inventory is unchanged.

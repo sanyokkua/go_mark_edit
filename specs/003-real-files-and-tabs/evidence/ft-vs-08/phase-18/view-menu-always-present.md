@@ -26,14 +26,14 @@ menus. A user could not see what View contained, or learn that it exists.
 
 The cut is which props are read off `activeDocument`:
 
-| View row | Value source | With no document |
-|---|---|---|
-| Editor / Split / Preview | `activeDocument.view.arrangement` | **unavailable** |
-| Toggle Sidebar | `state.ui.layout.sidebarVisible` | unchanged |
-| Toggle Assistant | registry, deferred | unchanged (already unavailable) |
-| Line numbers, Word wrap | editor settings | unchanged |
-| Distraction-free reading | registry, deferred | unchanged (already unavailable) |
-| Full screen | window adapter | unchanged |
+| View row                 | Value source                      | With no document                |
+| ------------------------ | --------------------------------- | ------------------------------- |
+| Editor / Split / Preview | `activeDocument.view.arrangement` | **unavailable**                 |
+| Toggle Sidebar           | `state.ui.layout.sidebarVisible`  | unchanged                       |
+| Toggle Assistant         | registry, deferred                | unchanged (already unavailable) |
+| Line numbers, Word wrap  | editor settings                   | unchanged                       |
+| Distraction-free reading | registry, deferred                | unchanged (already unavailable) |
+| Full screen              | window adapter                    | unchanged                       |
 
 Only the arrangement group needs an open document to mean anything. The rest
 keep working, so nothing was disabled that still had an effect.
@@ -47,21 +47,21 @@ keep working, so nothing was disabled that still had an effect.
   `.row[data-disabled]` rule in `MenuSurface.module.css:113-118` styles them with
   no new CSS.
 - `App.tsx` always builds `viewMenuProps`, with `documentOpen: activeDocument
-  !== undefined` and defaults for the three document-derived values.
+!== undefined` and defaults for the three document-derived values.
 - `view.menu.noDocument` added to the catalogue; no literal string was
   introduced.
 
 `ShellMenuRow`'s `viewMenuProps?` stays optional. It is a reusable component and
 the parity harness has a legitimate caller with no view props; what changed is
-that the *application* always supplies them.
+that the _application_ always supplies them.
 
 ## Evidence
 
-| Test | Proves |
-|---|---|
-| `ViewMenu.test.tsx` — "offers the View menu with no document open…" | The menu opens, and each arrangement row carries `data-availability="unavailable"` and `data-disabled`; the Line numbers row does **not**, so only the document-backed rows were touched. |
-| `ViewMenu.test.tsx` — "leaves the arrangement rows available once a document is open" | The same rows are `enabled` and not disabled when a document exists. |
-| `App.test.tsx` — `FR-ED-004 offers all four menus with no document open` | Through the **real** `App`, with the projection hydrated to zero documents: all four triggers present, and the arrangement rows unavailable. |
+| Test                                                                                  | Proves                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ViewMenu.test.tsx` — "offers the View menu with no document open…"                   | The menu opens, and each arrangement row carries `data-availability="unavailable"` and `data-disabled`; the Line numbers row does **not**, so only the document-backed rows were touched. |
+| `ViewMenu.test.tsx` — "leaves the arrangement rows available once a document is open" | The same rows are `enabled` and not disabled when a document exists.                                                                                                                      |
+| `App.test.tsx` — `FR-ED-004 offers all four menus with no document open`              | Through the **real** `App`, with the projection hydrated to zero documents: all four triggers present, and the arrangement rows unavailable.                                              |
 
 **The App-level test was confirmed to catch the regression.** Restoring the old
 conditional and re-running it:
@@ -87,14 +87,14 @@ Targeted parity re-run by name. `data-availability` drives no CSS rule in
 rows is semantic only — confirmed by the pixel counts being **identical** to the
 values recorded before this change:
 
-| Slice | Recorded before | Now |
-|---|---:|---:|
-| T059 File popup | 181 | **181** |
-| T060 Settings popup | 709 | **709** |
-| T061 View popup | 165 | **165** |
-| T062 tabs and toolbar | pass | **pass** |
-| T063 editor-status | pass | **pass** |
-| T064 paused preview | pass | **pass** |
+| Slice                 | Recorded before |      Now |
+| --------------------- | --------------: | -------: |
+| T059 File popup       |             181 |  **181** |
+| T060 Settings popup   |             709 |  **709** |
+| T061 View popup       |             165 |  **165** |
+| T062 tabs and toolbar |            pass | **pass** |
+| T063 editor-status    |            pass | **pass** |
+| T064 paused preview   |            pass | **pass** |
 
 `T058 glass-light` still fails at its already-diagnosed backdrop-compositing
 residual; because the targeted file is `test.describe.configure({ mode:

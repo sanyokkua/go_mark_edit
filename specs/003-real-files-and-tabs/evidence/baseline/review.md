@@ -4,14 +4,14 @@ Companion to `baseline.md`, which is generated and must not be hand-edited. This
 T002 inspection of every gate exit code, raw log, and reliability judgment. Raw output remains
 unabridged in `baseline.logs/`; this note does not replace it.
 
-| | |
-|---|---|
-| capture | `GOCACHE=/private/tmp/gomarkedit-gocache GOLANGCI_LINT_CACHE=/private/tmp/gomarkedit-lint-cache just baseline 003-real-files-and-tabs` |
-| commit | `4abb423` (`4abb423a1beeb1a361752e232abba50f4cac19fe`) |
-| captured | 2026-08-08 15:55 UTC |
-| working tree | clean |
-| coverage | 64.9% (mean of 11 packages) |
-| verdict | **RELIABLE — safe to build on; baseline test failures retained** |
+|              |                                                                                                                                        |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| capture      | `GOCACHE=/private/tmp/gomarkedit-gocache GOLANGCI_LINT_CACHE=/private/tmp/gomarkedit-lint-cache just baseline 003-real-files-and-tabs` |
+| commit       | `4abb423` (`4abb423a1beeb1a361752e232abba50f4cac19fe`)                                                                                 |
+| captured     | 2026-08-08 15:55 UTC                                                                                                                   |
+| working tree | clean                                                                                                                                  |
+| coverage     | 64.9% (mean of 11 packages)                                                                                                            |
+| verdict      | **RELIABLE — safe to build on; baseline test failures retained**                                                                       |
 
 ## Why this baseline is trustworthy
 
@@ -20,15 +20,15 @@ local cache loader could not load the Go context. Per the repository rule, that 
 as `UNRELIABLE`, its generated evidence was discarded, and the unchanged official gate was rerun
 with usable local Go and golangci-lint caches. The corrected capture has no `UNRELIABLE` gate.
 
-| gate | exit | verdict | inspected evidence |
-|---|---:|---|---|
-| `frontend-build` | 0 | clean | Vite emitted real chunks and the production network guard reported `ok` |
-| `fmt-check` | 0 | clean | Go format check was empty and Prettier reported all files matched |
-| `typecheck` | 0 | clean | `tsc --noEmit` completed with no diagnostics |
-| `lint` | 0 | clean | golangci-lint printed `0 issues.` and ESLint ran to completion |
-| `test` | 1 | ok-with-findings | Go race tests ran and three parsed failures were retained below |
-| `archtest` | 0 | clean | Go architecture, CGO-free build, migration, and frontend checks ran and passed |
-| `coverage` | 0 | n/a | All 11 packages reported coverage percentages in `coverage.log` |
+| gate             | exit | verdict          | inspected evidence                                                             |
+| ---------------- | ---: | ---------------- | ------------------------------------------------------------------------------ |
+| `frontend-build` |    0 | clean            | Vite emitted real chunks and the production network guard reported `ok`        |
+| `fmt-check`      |    0 | clean            | Go format check was empty and Prettier reported all files matched              |
+| `typecheck`      |    0 | clean            | `tsc --noEmit` completed with no diagnostics                                   |
+| `lint`           |    0 | clean            | golangci-lint printed `0 issues.` and ESLint ran to completion                 |
+| `test`           |    1 | ok-with-findings | Go race tests ran and three parsed failures were retained below                |
+| `archtest`       |    0 | clean            | Go architecture, CGO-free build, migration, and frontend checks ran and passed |
+| `coverage`       |    0 | n/a              | All 11 packages reported coverage percentages in `coverage.log`                |
 
 `baseline.logs/*.code` was inspected for all seven gates. Every corresponding raw `.log` was
 inspected; no gate is unreliable. Architecture is green outright and was not baseline-diffed.

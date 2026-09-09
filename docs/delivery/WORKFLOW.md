@@ -34,7 +34,7 @@ build will overturn.
 
 ### `/plan-phase NN` — turn a phase into a list of stories
 
-**Run it when** you are starting a phase: the previous phase has a verdict of *finished*, or this is
+**Run it when** you are starting a phase: the previous phase has a verdict of _finished_, or this is
 the first phase in the project.
 
 **Before you run it**, read `docs/delivery/plan/phase-NN-*.md` yourself. If its
@@ -53,7 +53,7 @@ story.
 **STATUS:** stub — not buildable. Run `/plan-story NNN` to expand.
 ```
 
-A stub is a *placeholder with enough context to judge the slicing* — the outcome in prose, and a
+A stub is a _placeholder with enough context to judge the slicing_ — the outcome in prose, and a
 one-line summary of each rule it owns carrying that rule's real values. It is deliberately not
 buildable, and `/build-story` refuses it.
 
@@ -126,8 +126,8 @@ a "well, they'd also need to look at…", it is not finished.
 **What you get.** Code, tests carrying `// Proves: <feature>#<anchor>` on their first comment line,
 and a story file whose Definition of Done is filled in top to bottom.
 
-**What to do with it.** Read the report's last section — *what I had to decide that the story did not
-cover*. Every entry there is a small specification gap that will otherwise be rediscovered later at
+**What to do with it.** Read the report's last section — _what I had to decide that the story did not
+cover_. Every entry there is a small specification gap that will otherwise be rediscovered later at
 higher cost. Fix them in the feature file now, or record them.
 
 Check the DoD has no blank rows. A blank row is a failure, not an omission.
@@ -152,7 +152,7 @@ actually happened at each step rather than that it was done. Records the run.
 **What you get.** A verdict, a live-test report at `docs/delivery/plan/testing/reports/<date>.md`, new
 rows in `live-plan.md`, and new entries in `docs/delivery/plan/KNOWN_ISSUES.md`.
 
-**What to do with it.** The verdict is binary. *Finished with caveats* is not a verdict — it teaches
+**What to do with it.** The verdict is binary. _Finished with caveats_ is not a verdict — it teaches
 everyone that the gate is negotiable, and it is how a phase ships broken. If something does not hold,
 the phase is not finished: plan a story for it and come back.
 
@@ -162,18 +162,18 @@ the phase is not finished: plan a story for it and come back.
 
 ### `/reconcile NN` — put the documents and the code back in agreement
 
-**Run it when** a phase has a verdict of *finished*. Also run it any time you suspect drift — after a
+**Run it when** a phase has a verdict of _finished_. Also run it any time you suspect drift — after a
 hotfix, after a merge, or when something in the spec reads as untrue.
 
 **What it does.** Diffs what actually shipped against what `spec/` and `architecture/` say, runs
 `just story-check` over every story in the phase to find truncated rule copies, and resolves every
 difference in exactly one of three directions:
 
-| The difference | Resolution |
-|---|---|
-| The document was right, the code is wrong | A defect. It goes into `KNOWN_ISSUES.md` and gets a story. |
-| The code was right, the document is stale | Propose the edit, **with the reason**. You approve it, then it is made. |
-| Both are wrong | An open question in the feature file. Nothing is written until it is answered. |
+| The difference                            | Resolution                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------ |
+| The document was right, the code is wrong | A defect. It goes into `KNOWN_ISSUES.md` and gets a story.                     |
+| The code was right, the document is stale | Propose the edit, **with the reason**. You approve it, then it is made.        |
+| Both are wrong                            | An open question in the feature file. Nothing is written until it is answered. |
 
 **What you get.** A list of differences with a proposed direction for each, and — after your
 approval — edits to `spec/` or `architecture/`.
@@ -188,22 +188,22 @@ documents being wrong, it is caused by documents being corrected quietly.
 
 ## What lives where
 
-| Path | What it is | Who edits it |
-|---|---|---|
-| `docs/delivery/spec/product/*.md` | What the software does. One file per feature. **Normative.** | You, and `/reconcile` with your approval |
-| `docs/delivery/spec/surface/mockup.html` | Every screen and state, six palettes × light/dark. **Normative, Tier A.** | You |
-| `docs/delivery/spec/constraints.md` | Rules every feature obeys. **Normative.** | You |
-| `docs/delivery/architecture/` | `README`, `stack`, `structure`, `rules`, `release`, `patterns/`. **Normative.** | You |
-| `docs/delivery/adr/` | One file per consequential decision, with the options and why. | Anyone, append-only; accepted records are superseded, never edited |
-| `docs/delivery/plan/roadmap.md` | Phases 00–13, in order. | You |
-| `docs/delivery/plan/phase-NN-*.md` | One per phase. | You |
-| `docs/delivery/plan/KNOWN_ISSUES.md` | Real defects, with the phase that fixes each. | Any command |
-| `docs/delivery/plan/testing/` | The live plan and dated run reports. | `/finish-phase` |
-| `docs/delivery/work/story-NNN-*.md` | Stories, stub then expanded then built. | The planning commands |
-| `docs/delivery/work/archive/` | Built stories, and the story-number discontinuities. | `/reconcile` |
-| `docs/delivery/work/baselines/` | What was already broken before each story, with exit codes and raw logs. | `/build-story` |
-| `docs/_archive-2026-07-28-specification/` | The pre-conversion specification. **Historical, not normative.** | Nobody |
-| `docs/` outside `delivery/` | Ordinary project documentation. **Descriptive.** | Anyone, freely |
+| Path                                      | What it is                                                                      | Who edits it                                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `docs/delivery/spec/product/*.md`         | What the software does. One file per feature. **Normative.**                    | You, and `/reconcile` with your approval                           |
+| `docs/delivery/spec/surface/mockup.html`  | Every screen and state, six palettes × light/dark. **Normative, Tier A.**       | You                                                                |
+| `docs/delivery/spec/constraints.md`       | Rules every feature obeys. **Normative.**                                       | You                                                                |
+| `docs/delivery/architecture/`             | `README`, `stack`, `structure`, `rules`, `release`, `patterns/`. **Normative.** | You                                                                |
+| `docs/delivery/adr/`                      | One file per consequential decision, with the options and why.                  | Anyone, append-only; accepted records are superseded, never edited |
+| `docs/delivery/plan/roadmap.md`           | Phases 00–13, in order.                                                         | You                                                                |
+| `docs/delivery/plan/phase-NN-*.md`        | One per phase.                                                                  | You                                                                |
+| `docs/delivery/plan/KNOWN_ISSUES.md`      | Real defects, with the phase that fixes each.                                   | Any command                                                        |
+| `docs/delivery/plan/testing/`             | The live plan and dated run reports.                                            | `/finish-phase`                                                    |
+| `docs/delivery/work/story-NNN-*.md`       | Stories, stub then expanded then built.                                         | The planning commands                                              |
+| `docs/delivery/work/archive/`             | Built stories, and the story-number discontinuities.                            | `/reconcile`                                                       |
+| `docs/delivery/work/baselines/`           | What was already broken before each story, with exit codes and raw logs.        | `/build-story`                                                     |
+| `docs/_archive-2026-07-28-specification/` | The pre-conversion specification. **Historical, not normative.**                | Nobody                                                             |
+| `docs/` outside `delivery/`               | Ordinary project documentation. **Descriptive.**                                | Anyone, freely                                                     |
 
 **Normative** means the document is the authority. Code that disagrees with it is wrong, and the
 document is never edited to match the code except through `/reconcile`. That single rule is what makes
@@ -213,15 +213,15 @@ the specification worth reading six months from now.
 
 ## The checks, and when to run them
 
-| Command | What it checks | When |
-|---|---|---|
-| `just check` | Every code gate: generated bindings, build, format, lint, types, tests, vet, architecture. | Before every commit — `lefthook` runs it too |
-| `just baseline STORY-NNN` | Records what is already broken, with each gate's exit code and verdict. | Before the first edit of a story |
-| `just verify STORY-NNN` | Re-runs the gates and diffs them against that baseline. Refuses an `UNRELIABLE` baseline. | When the story's code is done |
-| `just story-check NNN` | One story: stub state, copy fidelity row by row, architecture glob match, anchors, rule count. | After `/plan-story`, before `/build-story` |
-| `just spec-check` | The whole tree: writing rules, revision level, every `// Proves:` tag. | Before finishing a phase |
-| `just e2e-test` | Playwright journeys, against the mock bridge. | Before finishing a phase |
-| `just archtest` | The boundaries nothing else can check. **Never diffed. Must be green.** | Part of `just check` |
+| Command                   | What it checks                                                                                 | When                                         |
+| ------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `just check`              | Every code gate: generated bindings, build, format, lint, types, tests, vet, architecture.     | Before every commit — `lefthook` runs it too |
+| `just baseline STORY-NNN` | Records what is already broken, with each gate's exit code and verdict.                        | Before the first edit of a story             |
+| `just verify STORY-NNN`   | Re-runs the gates and diffs them against that baseline. Refuses an `UNRELIABLE` baseline.      | When the story's code is done                |
+| `just story-check NNN`    | One story: stub state, copy fidelity row by row, architecture glob match, anchors, rule count. | After `/plan-story`, before `/build-story`   |
+| `just spec-check`         | The whole tree: writing rules, revision level, every `// Proves:` tag.                         | Before finishing a phase                     |
+| `just e2e-test`           | Playwright journeys, against the mock bridge.                                                  | Before finishing a phase                     |
+| `just archtest`           | The boundaries nothing else can check. **Never diffed. Must be green.**                        | Part of `just check`                         |
 
 `just spec-check` and `just story-check` are deliberately **not** part of `just check`. Documentation
 drift is worth knowing about, but it is not a reason to block a commit that changes code.
@@ -248,16 +248,16 @@ drift is worth knowing about, but it is not a reason to block a commit that chan
 
 ## When something goes wrong
 
-| Symptom | What it actually means | Do this |
-|---|---|---|
-| The agent asks a question you cannot answer without opening two files | It is speaking in anchors | Point it at the `## Communication` section of `AGENTS.md` |
-| The story is enormous and the build stalls halfway | The slice was too big | Split it: `/plan-story` on a narrower stub, move the rest to a new story |
-| A gate passes but the feature is visibly broken | The gate is measuring nothing | Read `work/baselines/story-NNN.exit`. A line containing `=UNRELIABLE=` means it never ran |
-| `just verify` refuses to run | The baseline has an `UNRELIABLE` gate, or predates exit-code recording | Fix the gate, then `just baseline STORY-NNN` again. Do not work around it |
-| Code and spec disagree and nobody knows which is right | Drift, caught late | `/reconcile NN`. Never resolve it by editing the spec quietly |
-| The implementer keeps inventing decisions | The feature file has gaps | The gaps are listed in the build report's last section. Close them there |
-| A story cannot be written self-contained | The feature file is missing something | It goes back to the feature file. Do not let the story go hunting instead |
-| A shipped feature is missing part of a rule | The rule was copied truncated | `just story-check NNN` names the rows. The gap becomes a new story, not a rewrite of the old one |
+| Symptom                                                               | What it actually means                                                 | Do this                                                                                          |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| The agent asks a question you cannot answer without opening two files | It is speaking in anchors                                              | Point it at the `## Communication` section of `AGENTS.md`                                        |
+| The story is enormous and the build stalls halfway                    | The slice was too big                                                  | Split it: `/plan-story` on a narrower stub, move the rest to a new story                         |
+| A gate passes but the feature is visibly broken                       | The gate is measuring nothing                                          | Read `work/baselines/story-NNN.exit`. A line containing `=UNRELIABLE=` means it never ran        |
+| `just verify` refuses to run                                          | The baseline has an `UNRELIABLE` gate, or predates exit-code recording | Fix the gate, then `just baseline STORY-NNN` again. Do not work around it                        |
+| Code and spec disagree and nobody knows which is right                | Drift, caught late                                                     | `/reconcile NN`. Never resolve it by editing the spec quietly                                    |
+| The implementer keeps inventing decisions                             | The feature file has gaps                                              | The gaps are listed in the build report's last section. Close them there                         |
+| A story cannot be written self-contained                              | The feature file is missing something                                  | It goes back to the feature file. Do not let the story go hunting instead                        |
+| A shipped feature is missing part of a rule                           | The rule was copied truncated                                          | `just story-check NNN` names the rows. The gap becomes a new story, not a rewrite of the old one |
 
 ---
 

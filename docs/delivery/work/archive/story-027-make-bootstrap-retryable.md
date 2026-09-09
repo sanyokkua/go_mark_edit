@@ -85,6 +85,7 @@ listeners and queued patches from the failed attempt to corrupt the successful r
 ## Acceptance criteria
 
 ### STORY-027-AC-1
+
 **Satisfies:** PH01-R02
 
 **Given** the first production bootstrap snapshot fails, **when** `App` renders the localized startup failure
@@ -93,12 +94,14 @@ hydrates the projection, the failure surface clears, and the returned active buf
 session.
 
 ### STORY-027-AC-2
+
 **Satisfies:** PH01-R02
 
 Patches and listener callbacks retained by a failed attempt cannot mutate or queue into the retried
 projection, and the failed attempt leaves no partial document/UI state.
 
 ### STORY-027-AC-3
+
 **Satisfies:** PH01-R02
 
 **Given** the production `App` path is rendered inside `React.StrictMode`, **when** mount/effect cleanup and
@@ -107,6 +110,7 @@ the next retry starts fresh, and one successful active buffer is handed to the p
 exactly once.
 
 ### STORY-027-AC-4
+
 **Satisfies:** PH01-R02, PH01-R16
 
 The production startup-failure surface exposes an accessible status and Retry button whose text resolves
@@ -130,12 +134,12 @@ notification toast.
 
 - [ ] Every AC has a passing Jest test whose name begins with its `STORY-027-AC-N` id.
 - [ ] Controlled attempts prove failed-first/successful-second, stale listener/queue isolation, repeated retry,
-  StrictMode single-flight behavior, and exact active-buffer handoff.
+      StrictMode single-flight behavior, and exact active-buffer handoff.
 - [ ] App/RTL proves the actual production failure UI invokes a fresh retry, clears only on success, and hands
-  the successful active buffer to the editor session.
+      the successful active buffer to the editor session.
 - [ ] Startup error and Retry labels use bundled i18n keys; the dedicated widget is accessible and token-only.
 - [ ] Redux/local storage contain no document content and no command mutates projection optimistically.
 - [ ] Frontend formatting, lint, typecheck, and Jest gates pass.
 - [ ] Adapter-only Wails access, Result envelopes, backend authority, token-only styling, and offline behavior
-  remain intact.
+      remain intact.
 - [ ] `just trace` and `just trace-check` are run during implementation; the module inventory is unchanged.

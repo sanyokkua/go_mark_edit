@@ -4,21 +4,54 @@
 
 ```typescript
 import {
-    EventsOn, EventsOff, EventsOffAll, EventsOnce, EventsOnMultiple, EventsEmit,
-    WindowSetTitle, WindowMaximise, WindowUnmaximise, WindowMinimise, WindowUnminimise,
-    WindowToggleMaximise, WindowFullscreen, WindowUnfullscreen,
-    WindowSetSize, WindowGetSize, WindowSetPosition, WindowGetPosition,
-    WindowCenter, WindowSetAlwaysOnTop,
-    WindowShow, WindowHide,
-    WindowSetSystemDefaultTheme, WindowSetLightTheme, WindowSetDarkTheme,
-    WindowReload, WindowReloadApp,
-    WindowIsMaximised, WindowIsMinimised, WindowIsFullscreen, WindowIsNormal,
-    WindowPrint,
-    Quit, Hide, Show, BrowserOpenURL, Environment,
-    ClipboardGetText, ClipboardSetText,
-    ScreenGetAll,
-    LogDebug, LogInfo, LogWarning, LogError, LogFatal, LogTrace, LogPrint,
-} from '@wailsapp/runtime'
+  EventsOn,
+  EventsOff,
+  EventsOffAll,
+  EventsOnce,
+  EventsOnMultiple,
+  EventsEmit,
+  WindowSetTitle,
+  WindowMaximise,
+  WindowUnmaximise,
+  WindowMinimise,
+  WindowUnminimise,
+  WindowToggleMaximise,
+  WindowFullscreen,
+  WindowUnfullscreen,
+  WindowSetSize,
+  WindowGetSize,
+  WindowSetPosition,
+  WindowGetPosition,
+  WindowCenter,
+  WindowSetAlwaysOnTop,
+  WindowShow,
+  WindowHide,
+  WindowSetSystemDefaultTheme,
+  WindowSetLightTheme,
+  WindowSetDarkTheme,
+  WindowReload,
+  WindowReloadApp,
+  WindowIsMaximised,
+  WindowIsMinimised,
+  WindowIsFullscreen,
+  WindowIsNormal,
+  WindowPrint,
+  Quit,
+  Hide,
+  Show,
+  BrowserOpenURL,
+  Environment,
+  ClipboardGetText,
+  ClipboardSetText,
+  ScreenGetAll,
+  LogDebug,
+  LogInfo,
+  LogWarning,
+  LogError,
+  LogFatal,
+  LogTrace,
+  LogPrint,
+} from '@wailsapp/runtime';
 ```
 
 ---
@@ -46,13 +79,14 @@ EventsEmit(eventName: string, ...data: any[]): void
 ```
 
 Always clean up listeners in React components:
+
 ```typescript
 useEffect(() => {
-    const cancel = EventsOn("data:updated", (payload) => {
-        // handle update
-    })
-    return cancel  // called on unmount
-}, [])
+  const cancel = EventsOn('data:updated', (payload) => {
+    // handle update
+  });
+  return cancel; // called on unmount
+}, []);
 ```
 
 ---

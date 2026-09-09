@@ -14,7 +14,7 @@ The launcher was **two different components in one file**.
 `Launcher.tsx:37-39` reads `?parity-case` off the URL and adds a
 `styles.parityLauncher` class. Everything resembling the binding lived in
 `.parityLauncher …` overrides (`Launcher.module.css:67-154`). The default
-branch — the panel a real user sees, and the *first screen of every launch*
+branch — the panel a real user sees, and the _first screen of every launch_
 because there is no session restore — was a different design entirely: a
 bordered `--surface` card with `--dialog-padding` and `--win-radius`,
 left-aligned, `--control-padding` buttons, no accent primary, no uppercase
@@ -26,8 +26,12 @@ parity branch.** The shipped branch was never compared with anything.
 It also carried two `font-size` declarations reading tokens that do not exist:
 
 ```css
-.panel h1 { font-size: var(--launcher-title-size); }   /* :28 */
-.panel h2 { font-size: var(--launcher-section-size); } /* :32 */
+.panel h1 {
+  font-size: var(--launcher-title-size);
+} /* :28 */
+.panel h2 {
+  font-size: var(--launcher-section-size);
+} /* :32 */
 ```
 
 Neither `--launcher-title-size` nor `--launcher-section-size` is defined
@@ -40,27 +44,27 @@ at body size** instead of 20px and 10.5px.
 
 The binding's rules were already in the file — trapped inside overrides that
 only applied on the parity route. They are now the base rules, so the shipped
-launcher *is* the design, and `.parityLauncher` keeps only what the harness
+launcher _is_ the design, and `.parityLauncher` keeps only what the harness
 genuinely needs: the fixed reference content-band heights (313 / 316 / 301px)
 and the flex/overflow adjustments the T045 test names.
 
 Every declaration now carries its `mockup.html` line. Rules restored that
 production had simply dropped:
 
-| Binding rule | Was | Now |
-|---|---|---|
-| `.lc .acts button{border:1px solid var(--stroke)}` (:109) | absent — user-agent border | applied |
-| `.lc .acts button{border-radius:9px}` (:109) | absent | applied |
-| `.lc .acts button{background:var(--surface)}` (:109) | absent — user-agent background | applied |
-| `.lc .acts button{padding:8px 14px}` (:109) | `--control-padding` (6px 10px) | applied |
-| `.lc h2{font-size:20px}` (:106) | undefined token → inherited | `20px` |
-| `.lc .rec .lbl{font-size:10.5px…}` (:111) | undefined token → inherited | applied with letter-spacing and uppercase |
-| `.lc .rec .r{padding:6px 8px}` (:112) | `8px 14px` even on the parity route | `6px 8px` |
-| `.lc{no card}` (:105) | `--surface` card with border, radius and `--dialog-padding` | no background, border, radius or padding |
-| `.lc{text-align:center}` (:105) | left-aligned | centred |
-| `.lc .rec{border-top:1px solid var(--stroke-soft)}` (:111) | absent | applied |
-| rows adjacent, no gap | `--control-gap`, and `1px` on the parity route | no gap |
-| `.lc .sub{color:var(--muted)}` (:107) | `--text-muted` | `--muted` |
+| Binding rule                                               | Was                                                         | Now                                       |
+| ---------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------- |
+| `.lc .acts button{border:1px solid var(--stroke)}` (:109)  | absent — user-agent border                                  | applied                                   |
+| `.lc .acts button{border-radius:9px}` (:109)               | absent                                                      | applied                                   |
+| `.lc .acts button{background:var(--surface)}` (:109)       | absent — user-agent background                              | applied                                   |
+| `.lc .acts button{padding:8px 14px}` (:109)                | `--control-padding` (6px 10px)                              | applied                                   |
+| `.lc h2{font-size:20px}` (:106)                            | undefined token → inherited                                 | `20px`                                    |
+| `.lc .rec .lbl{font-size:10.5px…}` (:111)                  | undefined token → inherited                                 | applied with letter-spacing and uppercase |
+| `.lc .rec .r{padding:6px 8px}` (:112)                      | `8px 14px` even on the parity route                         | `6px 8px`                                 |
+| `.lc{no card}` (:105)                                      | `--surface` card with border, radius and `--dialog-padding` | no background, border, radius or padding  |
+| `.lc{text-align:center}` (:105)                            | left-aligned                                                | centred                                   |
+| `.lc .rec{border-top:1px solid var(--stroke-soft)}` (:111) | absent                                                      | applied                                   |
+| rows adjacent, no gap                                      | `--control-gap`, and `1px` on the parity route              | no gap                                    |
+| `.lc .sub{color:var(--muted)}` (:107)                      | `--text-muted`                                              | `--muted`                                 |
 
 **The mockup has no global `button {}` reset** (`mockup.html` has no such rule),
 so each of the border / radius / background declarations is load-bearing. Base
@@ -86,12 +90,12 @@ missing declaration, or the user-agent fallback that replaces it.
 `frontend/e2e/launcher-binding.test.ts` is new and reads computed style off the
 real control, in four cases:
 
-| Case | Asserts |
-|---|---|
+| Case            | Asserts                                                                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | frame and block | `.launcher` display/alignment/padding, no overflow, and `.lc`'s 430px width, centring, and **absence** of card background, border, radius and padding |
-| type scale | title 20px/4px, message 12.5px/18px in `--muted`, section label 10.5px uppercase with 0.945px tracking in `--faint` |
-| actions | secondary button 8px 14px, radius 9px, 1px solid `--stroke`, `--surface` background, 12.5px; primary `--accent` on `--accent-contrast` at weight 600 |
-| recents | `--stroke-soft` top rule, 12px padding, rows flex with 9px gap at 6px 8px, radius 8px, and `--hover` on hover |
+| type scale      | title 20px/4px, message 12.5px/18px in `--muted`, section label 10.5px uppercase with 0.945px tracking in `--faint`                                   |
+| actions         | secondary button 8px 14px, radius 9px, 1px solid `--stroke`, `--surface` background, 12.5px; primary `--accent` on `--accent-contrast` at weight 600  |
+| recents         | `--stroke-soft` top rule, 12px padding, rows flex with 9px gap at 6px 8px, radius 8px, and `--hover` on hover                                         |
 
 Colour comparisons resolve the token through a throwaway element so the browser
 converts hex to `rgb()`; the assertion stays exact rather than being loosened to

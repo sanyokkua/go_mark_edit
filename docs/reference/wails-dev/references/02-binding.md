@@ -33,6 +33,7 @@ wailsjs/
 ```
 
 Regenerate after any Go struct/method change:
+
 ```bash
 wails generate module
 ```
@@ -41,13 +42,16 @@ wails generate module
 
 ```typescript
 // Import bound methods
-import { MyMethod, AnotherMethod } from '../../../wailsjs/go/mypackage/MyStruct'
+import {
+  MyMethod,
+  AnotherMethod,
+} from '../../../wailsjs/go/mypackage/MyStruct';
 
 // Import shared models
-import { mypackage } from '../../../wailsjs/go/models'
+import { mypackage } from '../../../wailsjs/go/models';
 
 // Call — always returns a Promise
-const result = await MyMethod("input")
+const result = await MyMethod('input');
 ```
 
 ## Complex Struct Arguments
@@ -55,14 +59,14 @@ const result = await MyMethod("input")
 For complex struct return types, Wails generates a `.createFrom()` static method on the model. Use it when constructing model instances manually (e.g., in tests or when passing complex args):
 
 ```typescript
-import { mypackage } from '../../../wailsjs/go/models'
+import { mypackage } from '../../../wailsjs/go/models';
 
 // Don't construct raw objects manually:
 // const cfg = { host: "localhost", port: 8080 }  // bad
 
 // Use the generated factory:
-const cfg = mypackage.Config.createFrom({ host: "localhost", port: 8080 })
-await SaveConfig(cfg)
+const cfg = mypackage.Config.createFrom({ host: 'localhost', port: 8080 });
+await SaveConfig(cfg);
 ```
 
 ## EnumBind
@@ -70,6 +74,7 @@ await SaveConfig(cfg)
 Exposes Go const groups as TypeScript enums in `models.ts`.
 
 **Go side:**
+
 ```go
 type Priority int
 const (
@@ -85,12 +90,13 @@ EnumBind: []interface{}{
 ```
 
 **TypeScript side** (after `wails generate module`):
+
 ```typescript
-import { mypackage } from '../../../wailsjs/go/models'
+import { mypackage } from '../../../wailsjs/go/models';
 
 // Use enum values
-const p: mypackage.Priority = mypackage.Priority.High
-await SetTaskPriority(p)
+const p: mypackage.Priority = mypackage.Priority.High;
+await SetTaskPriority(p);
 ```
 
 ## Context Parameter Stripping
@@ -104,8 +110,9 @@ func (a *App) ProcessFile(ctx context.Context, path string) (string, error) {
 ```
 
 Generated TypeScript signature:
+
 ```typescript
-export function ProcessFile(path: string): Promise<string>
+export function ProcessFile(path: string): Promise<string>;
 ```
 
 The `ctx` is injected by Wails automatically — the frontend never passes it.
@@ -173,10 +180,10 @@ pointer with `omitempty`.
 
 ```typescript
 // Adapter layer (logic/adapter/) — wrap the generated binding with guardArity, then unwrap
-const res = await appModelAdapter.openDoc(req)  // a command; always resolves
+const res = await appModelAdapter.openDoc(req); // a command; always resolves
 if (res.error) {
-    dispatch(notifyError(res.error))             // typed WireError → toast
-    return
+  dispatch(notifyError(res.error)); // typed WireError → toast
+  return;
 }
 // No local dispatch of model data: the backend mutated the authoritative model and the
 // resulting change arrives as a `state:patch` event that reconciles the Redux projection

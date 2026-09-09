@@ -8,11 +8,11 @@ Repository: `/Users/ok/Development/GitHub/go_mark_edit`; source HEAD `883fd053b9
 
 All 27 regular files under `.agents` were read. The ten Claude core bodies were checked against the reviewed Codex bodies: after removing Claude-only metadata and translating `/speckit-` to `$speckit-`, all ten are identical. All symlinks were resolved. Additional support was read where it controls invocation, ownership or the findings below. The complete per-file inventory, byte/line counts, SHA-256 values, tool snapshot and ownership checks are in `/tmp/gomark-agent-assets-inventory.txt`.
 
-| Surface | Regular files | Directory symlinks | Regular bytes | Regular lines |
-| --- | ---: | ---: | ---: | ---: |
-| `.agents` | 27 | 0 | 198,320 | 3,802 |
-| `.claude` | 10 | 5 | 134,360 | 2,476 |
-| Total | 37 | 5 | 332,680 | 6,278 |
+| Surface   | Regular files | Directory symlinks | Regular bytes | Regular lines |
+| --------- | ------------: | -----------------: | ------------: | ------------: |
+| `.agents` |            27 |                  0 |       198,320 |         3,802 |
+| `.claude` |            10 |                  5 |       134,360 |         2,476 |
+| Total     |            37 |                  5 |       332,680 |         6,278 |
 
 These are 37 independently stored files plus five aliases, not 42 independent policy owners. There are no commands under `.claude/commands`, no agent-tree hook scripts, settings files, subagent definitions or rules directories. The actual root `CLAUDE.md:1–5` is a thin `@AGENTS.md` pointer; `AGENTS.md` has 269 lines and is the only AGENTS file found outside dependencies/git.
 
@@ -22,32 +22,32 @@ These are 37 independently stored files plus five aliases, not 42 independent po
 
 The following table enumerates every file via explicit directory/name patterns. Detailed literal paths for all 42 entries are in the companion inventory. “Generated/change policy” means retain separate generated adapters if that capability is retained; update the governing source/extension instead of forcing identical bytes.
 
-| File(s) | Ownership and disposition |
-| --- | --- |
-| `.agents/commands/build-story.md` | Legacy project body; archive/remove from active dispatch after preserving behavior assertions and trustworthy baseline guidance. Missing validators already PR-2. |
-| `.agents/commands/finish-phase.md` | Legacy project body; preserve consumer-level verification guidance, correct development/mock explanation; retire redundant phase ceremony. |
-| `.agents/commands/plan-phase.md` | Legacy project body; retire migrated route; preserve dependency/scope reasoning, remove arbitrary story-size stops. |
-| `.agents/commands/plan-story.md` | Legacy project body; retire copied-rule expansion and duplicated rule inventory after preserving current acceptance intent. |
-| `.agents/commands/reconcile.md` | Legacy project body; remove evidence-deletion contradiction before any reuse; retain explicit discrepancy decisions. |
-| `.agents/skills/{build-story,finish-phase,plan-phase,plan-story,reconcile}/SKILL.md` | Five 11-line pointers to the above bodies (`:6–11`); sound single-owner structure. Retire with their capabilities, not independently. |
-| `.claude/skills/{build-story,finish-phase,plan-phase,plan-story,reconcile}` | Five valid directory symlinks to `../../.agents/skills/<name>`; intentional aliases. |
-| `.agents/skills/speckit-analyze/SKILL.md` and corresponding `.claude/skills/...` | Generated pair; retain useful read-only consistency analysis as optional tool. |
-| `speckit-checklist/SKILL.md` in both core skill trees | Generated pair; change blanket checklist-blocking policy; distinguish requirements review from implementation proof. |
-| `speckit-clarify/SKILL.md` in both | Generated pair; allow meaningful answers longer than five words; clarify based on decision consequence. |
-| `speckit-constitution/SKILL.md` in both | Generated pair; optional governance maintenance, not default coding ceremony. Keep current owner intent in one short source. |
-| `speckit-converge/SKILL.md` in both | Generated pair; change evidence claims, executor restriction and repeated-task append behavior. |
-| `speckit-implement/SKILL.md` in both | Generated pair; load original spec, scope checklist gates, align actual verification requirements. |
-| `speckit-plan/SKILL.md` in both | Generated pair; retain proportional planning; avoid making full framework/research mandatory for every reversible fix. |
-| `speckit-specify/SKILL.md` in both | Generated pair; correct hook/branch assumption and numerical clarification cutoff. |
-| `speckit-tasks/SKILL.md` in both | Generated pair; align optional-test rule with product evidence needs and avoid using task formatting as quality evidence. |
-| `speckit-taskstoissues/SKILL.md` in both | Generated pair; explicit opt-in only, feature-scoped deduplication and available connector required. |
-| `.agents/skills/speckit-memory-loader-load/SKILL.md` | Extension-generated; replace repeated full context dumping with targeted/load-once context, or disable if root pointer suffices. |
-| `.agents/skills/speckit-ralph-run/SKILL.md` | Extension-generated; disable/remove from normal route until scope, permission and outcome contract repaired. |
-| `.agents/skills/speckit-ralph-iterate/SKILL.md` | Extension-generated; same disposition; task ownership and scoped staging required if retained. |
-| `.agents/skills/speckit-speckit-superpowers-bridge-handoff/SKILL.md` | Extension-generated; optional only if a second executor is deliberately retained. Otherwise remove lifecycle ceremony. |
-| `.agents/skills/speckit-speckit-superpowers-bridge-guard/SKILL.md` | Extension-generated; claimed guard policy must match implementation if retained. |
-| `.agents/skills/speckit-speckit-superpowers-bridge-execute/SKILL.md` | Extension-generated; remove incompatible converge precondition and stale orchestration reference if retained. |
-| `.agents/skills/speckit-superpowers-bridge/SKILL.md` | Generated alias for execute; do not independently rewrite or count as a separate workflow. Retain only if useful alias. |
+| File(s)                                                                              | Ownership and disposition                                                                                                                                         |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.agents/commands/build-story.md`                                                    | Legacy project body; archive/remove from active dispatch after preserving behavior assertions and trustworthy baseline guidance. Missing validators already PR-2. |
+| `.agents/commands/finish-phase.md`                                                   | Legacy project body; preserve consumer-level verification guidance, correct development/mock explanation; retire redundant phase ceremony.                        |
+| `.agents/commands/plan-phase.md`                                                     | Legacy project body; retire migrated route; preserve dependency/scope reasoning, remove arbitrary story-size stops.                                               |
+| `.agents/commands/plan-story.md`                                                     | Legacy project body; retire copied-rule expansion and duplicated rule inventory after preserving current acceptance intent.                                       |
+| `.agents/commands/reconcile.md`                                                      | Legacy project body; remove evidence-deletion contradiction before any reuse; retain explicit discrepancy decisions.                                              |
+| `.agents/skills/{build-story,finish-phase,plan-phase,plan-story,reconcile}/SKILL.md` | Five 11-line pointers to the above bodies (`:6–11`); sound single-owner structure. Retire with their capabilities, not independently.                             |
+| `.claude/skills/{build-story,finish-phase,plan-phase,plan-story,reconcile}`          | Five valid directory symlinks to `../../.agents/skills/<name>`; intentional aliases.                                                                              |
+| `.agents/skills/speckit-analyze/SKILL.md` and corresponding `.claude/skills/...`     | Generated pair; retain useful read-only consistency analysis as optional tool.                                                                                    |
+| `speckit-checklist/SKILL.md` in both core skill trees                                | Generated pair; change blanket checklist-blocking policy; distinguish requirements review from implementation proof.                                              |
+| `speckit-clarify/SKILL.md` in both                                                   | Generated pair; allow meaningful answers longer than five words; clarify based on decision consequence.                                                           |
+| `speckit-constitution/SKILL.md` in both                                              | Generated pair; optional governance maintenance, not default coding ceremony. Keep current owner intent in one short source.                                      |
+| `speckit-converge/SKILL.md` in both                                                  | Generated pair; change evidence claims, executor restriction and repeated-task append behavior.                                                                   |
+| `speckit-implement/SKILL.md` in both                                                 | Generated pair; load original spec, scope checklist gates, align actual verification requirements.                                                                |
+| `speckit-plan/SKILL.md` in both                                                      | Generated pair; retain proportional planning; avoid making full framework/research mandatory for every reversible fix.                                            |
+| `speckit-specify/SKILL.md` in both                                                   | Generated pair; correct hook/branch assumption and numerical clarification cutoff.                                                                                |
+| `speckit-tasks/SKILL.md` in both                                                     | Generated pair; align optional-test rule with product evidence needs and avoid using task formatting as quality evidence.                                         |
+| `speckit-taskstoissues/SKILL.md` in both                                             | Generated pair; explicit opt-in only, feature-scoped deduplication and available connector required.                                                              |
+| `.agents/skills/speckit-memory-loader-load/SKILL.md`                                 | Extension-generated; replace repeated full context dumping with targeted/load-once context, or disable if root pointer suffices.                                  |
+| `.agents/skills/speckit-ralph-run/SKILL.md`                                          | Extension-generated; disable/remove from normal route until scope, permission and outcome contract repaired.                                                      |
+| `.agents/skills/speckit-ralph-iterate/SKILL.md`                                      | Extension-generated; same disposition; task ownership and scoped staging required if retained.                                                                    |
+| `.agents/skills/speckit-speckit-superpowers-bridge-handoff/SKILL.md`                 | Extension-generated; optional only if a second executor is deliberately retained. Otherwise remove lifecycle ceremony.                                            |
+| `.agents/skills/speckit-speckit-superpowers-bridge-guard/SKILL.md`                   | Extension-generated; claimed guard policy must match implementation if retained.                                                                                  |
+| `.agents/skills/speckit-speckit-superpowers-bridge-execute/SKILL.md`                 | Extension-generated; remove incompatible converge precondition and stale orchestration reference if retained.                                                     |
+| `.agents/skills/speckit-superpowers-bridge/SKILL.md`                                 | Generated alias for execute; do not independently rewrite or count as a separate workflow. Retain only if useful alias.                                           |
 
 ## New source findings
 
@@ -112,4 +112,5 @@ Epic F should express the owner's current intent rather than prescribe another m
 **State:** Complete bounded source inventory and findings; 32 core/shared manifest hashes and three extension manifest hashes match, all five symlinks resolve, and all ten core pairs normalize as intended. No execution-path validation was claimed.
 **Command:** none — parent integrates audit findings; implementation requires its own authorized scope.
 **Prompt:**
+
 > Read `/tmp/gomark-agent-assets-review.md`, `/tmp/gomark-agent-assets-inventory.txt` and the current owner-edited `docs/audits/2026-09-07-project-health-audit.md`. Integrate the new source-confirmed execution/evidence hazards and generated ownership facts into the audit without changing repository instructions, skills, configuration or application code. Preserve the distinction between a launcher hazard and a demonstrated cause of historical app bugs.

@@ -76,7 +76,7 @@ consumers of one component.
 
 ## F10 — The visual layer is a token system, from the start
 
-*Added 2026-07-25, because the previous plan violated it.*
+_Added 2026-07-25, because the previous plan violated it._
 
 Every visual value is a design token resolved through `data-theme` × `data-mode`. No component ships a
 hardcoded colour, and no component assumes a single appearance. There was no such constraint among

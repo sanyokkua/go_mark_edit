@@ -37,7 +37,7 @@ preserve it: `---` parses as a thematic break plus a setext heading and is re-se
 Every Hugo, Jekyll, Astro and Obsidian document opens that way. The same class of failure applies to a
 GFM table formatted at Minimal, and to `$$…$$` maths formatted without `remark-math`.
 
-The format pipeline is therefore always *more* capable than the render pipeline. That asymmetry is
+The format pipeline is therefore always _more_ capable than the render pipeline. That asymmetry is
 deliberate.
 
 ## Format
@@ -64,7 +64,7 @@ eye.
 Three serialization choices follow, each stated because a library default would otherwise decide it:
 
 - **Prose line breaks are preserved, never reflowed.** "Normalizes wrapping" above means normalising
-  *trailing* whitespace and blank-line runs, not re-wrapping paragraphs. Reflowing rewrites every
+  _trailing_ whitespace and blank-line runs, not re-wrapping paragraphs. Reflowing rewrites every
   paragraph on every Format, which makes an unreadable diff of any version-controlled document and is
   not idempotent between two people with different widths.
 - **Ordered lists keep their existing numbering style.** A list written `1. 1. 1.` stays that way; a
@@ -122,18 +122,18 @@ status-bar count. Lint never modifies the document; it only reports.
 
 The canonical rule set enforces GoMarkEdit's house style. Defaults align with the canonical style below.
 
-| Rule (remark-lint) | Enforces | Default |
-|---|---|---|
-| `unordered-list-marker-style` | Consistent bullet marker | `-` |
-| `emphasis-marker` | Consistent emphasis marker | `_` |
-| `strong-marker` | Consistent strong marker | `*` (i.e. `**bold**`) |
-| `heading-style` | ATX vs Setext | `atx` (`#`) |
-| `list-item-indent` | Consistent list indentation | consistent |
-| `no-multiple-toplevel-headings` | Single H1 per document | warn |
-| `no-trailing-spaces` | No trailing whitespace | error |
-| `no-consecutive-blank-lines` | Collapse blank runs | warn |
-| `fenced-code-flag` | Code fences declare a language | warn |
-| `final-newline` | File ends with a newline | error |
+| Rule (remark-lint)              | Enforces                       | Default               |
+| ------------------------------- | ------------------------------ | --------------------- |
+| `unordered-list-marker-style`   | Consistent bullet marker       | `-`                   |
+| `emphasis-marker`               | Consistent emphasis marker     | `_`                   |
+| `strong-marker`                 | Consistent strong marker       | `*` (i.e. `**bold**`) |
+| `heading-style`                 | ATX vs Setext                  | `atx` (`#`)           |
+| `list-item-indent`              | Consistent list indentation    | consistent            |
+| `no-multiple-toplevel-headings` | Single H1 per document         | warn                  |
+| `no-trailing-spaces`            | No trailing whitespace         | error                 |
+| `no-consecutive-blank-lines`    | Collapse blank runs            | warn                  |
+| `fenced-code-flag`              | Code fences declare a language | warn                  |
+| `final-newline`                 | File ends with a newline       | error                 |
 
 Rules are configuration, not code; adjusting the set is a settings/config change, not a rendering
 change. Findings above/below thresholds still surface as markers.

@@ -148,8 +148,8 @@ projection with one `GetState` query and stays in sync via `state:patch` events 
 There is **no single-instance guard** — a second launch simply starts another process
 (DD-08; ADR-0006).
 
-**`OnDomReady`** runs after the webview has loaded the frontend. Nothing that must happen *before the
-window is shown* may live there — `restoreWindowState` is deliberately in `OnStartup` for exactly that
+**`OnDomReady`** runs after the webview has loaded the frontend. Nothing that must happen _before the
+window is shown_ may live there — `restoreWindowState` is deliberately in `OnStartup` for exactly that
 reason (DD-60). `OnDomReady` is for work that needs a live frontend: dispatching a queued OS open
 target, and emitting the first `state:patch` if anything changed during startup.
 
@@ -170,10 +170,30 @@ opens (DD-07, DD-25, DD-26). Declared associations live in `wails.json` `info.fi
 {
   "info": {
     "fileAssociations": [
-      { "ext": "md",       "name": "Markdown Document", "role": "Editor", "iconName": "gomarkedit-doc" },
-      { "ext": "markdown", "name": "Markdown Document", "role": "Editor", "iconName": "gomarkedit-doc" },
-      { "ext": "mdown",    "name": "Markdown Document", "role": "Editor", "iconName": "gomarkedit-doc" },
-      { "ext": "txt",      "name": "Text Document",     "role": "Editor", "iconName": "gomarkedit-doc" }
+      {
+        "ext": "md",
+        "name": "Markdown Document",
+        "role": "Editor",
+        "iconName": "gomarkedit-doc"
+      },
+      {
+        "ext": "markdown",
+        "name": "Markdown Document",
+        "role": "Editor",
+        "iconName": "gomarkedit-doc"
+      },
+      {
+        "ext": "mdown",
+        "name": "Markdown Document",
+        "role": "Editor",
+        "iconName": "gomarkedit-doc"
+      },
+      {
+        "ext": "txt",
+        "name": "Text Document",
+        "role": "Editor",
+        "iconName": "gomarkedit-doc"
+      }
     ]
   }
 }

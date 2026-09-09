@@ -5,10 +5,10 @@ The canonical icon source and its deterministic processing pipeline. Normative d
 
 ## Files
 
-| File | Role |
-|---|---|
-| `appicon-source.png` | **Canonical source** — the "MD>GO" glass-tile artwork exactly as provided by the owner (square, dark backdrop around a rounded glass tile). Never edited in place. |
-| `process_icon.py` | **Deterministic pipeline**: crops the tile out of the dark backdrop, makes everything outside the tile's rounded-rect silhouette transparent, and exports a 1024×1024 `appicon.png`. Re-runnable at any time; same input → same output. |
+| File                 | Role                                                                                                                                                                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `appicon-source.png` | **Canonical source** — the "MD>GO" glass-tile artwork exactly as provided by the owner (square, dark backdrop around a rounded glass tile). Never edited in place.                                                                      |
+| `process_icon.py`    | **Deterministic pipeline**: crops the tile out of the dark backdrop, makes everything outside the tile's rounded-rect silhouette transparent, and exports a 1024×1024 `appicon.png`. Re-runnable at any time; same input → same output. |
 
 > `appicon-source.png` must be placed here by the owner (it is the artwork supplied with the icon
 > request). If it is missing, `process_icon.py` fails fast with a clear message.

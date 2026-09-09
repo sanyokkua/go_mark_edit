@@ -15,10 +15,10 @@ Scenario `explicit-save-latency`, `cmd/native-evidence/explicit_save_latency_sce
 Run 2026-08-15, darwin/arm64, via
 `go test -tags native_evidence ./cmd/native-evidence -run TestExplicitSaveWalkthroughTimesBothSCFT002Fixtures -v`.
 
-| Fixture | Shape | dispatch→commit | dispatch→confirmation | fixture span | ready→confirmation | On disk | Origin | Within 30 s |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| **A** | new untitled → one representative line → Save As into a fresh empty directory | 13.686 ms | 13.803 ms | 14.114 ms | 14.115 ms | 43 B | `save-as` | **yes** |
-| **B** | open a 1,024-byte fixture → change exactly one character → explicit Save | 9.181 ms | 9.230 ms | 9.647 ms | 248.001 ms | 1,024 B | `explicit-save` | **yes** |
+| Fixture | Shape                                                                         | dispatch→commit | dispatch→confirmation | fixture span | ready→confirmation | On disk | Origin          | Within 30 s |
+| ------- | ----------------------------------------------------------------------------- | --------------: | --------------------: | -----------: | -----------------: | ------: | --------------- | ----------- |
+| **A**   | new untitled → one representative line → Save As into a fresh empty directory |       13.686 ms |             13.803 ms |    14.114 ms |          14.115 ms |    43 B | `save-as`       | **yes**     |
+| **B**   | open a 1,024-byte fixture → change exactly one character → explicit Save      |        9.181 ms |              9.230 ms |     9.647 ms |         248.001 ms | 1,024 B | `explicit-save` | **yes**     |
 
 Both fixtures clear the 30-second budget by roughly three orders of magnitude.
 
@@ -38,7 +38,7 @@ interval, which is the whole point.
 The path is the production one: the real `internal/appmodel` constructors, the real write
 coordinator, and `internal/file`'s atomic replace. Commits are filtered by origin — only
 `SaveOriginSaveAs` and `SaveOriginExplicitSave` are timed; autosave, open and reload commits are
-counted into `ignoredCommits` and never timed. That filter is what makes this an *explicit-save*
+counted into `ignoredCommits` and never timed. That filter is what makes this an _explicit-save_
 measurement rather than a repeat of T024.
 
 ## SC-FT-002's directory obligation, enforced rather than described
@@ -72,7 +72,7 @@ the origin filter, and a non-recursive-snapshot guard.
 2. **Not the `just build` artifact.** It is the `native_evidence`-tagged driver — the same
    limitation T024's autosave harness carries. The write path is byte-identical; the driver is not.
 3. **Not a stopwatch on the packaged `.app`.** Process launch and Wails startup precede `readyAt`
-   by construction, so "ready" is honoured in the sense of *ready*, not *launched*.
+   by construction, so "ready" is honoured in the sense of _ready_, not _launched_.
 4. **One process, two fixtures**, as described above.
 
 Every one of these is also written into the report's own `metadata` (`measurementScope`,

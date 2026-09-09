@@ -45,17 +45,19 @@ A setting is authoritative only after settingsAdapter.updateAppearance resolves.
 ## Rules this story owns
 
 ### Three themes, and no way to add a fourth {#three-themes}
-*(from docs/delivery/spec/product/themes-and-appearance.md#three-themes — copied verbatim)*
+
+_(from docs/delivery/spec/product/themes-and-appearance.md#three-themes — copied verbatim)_
 
 - The app ships exactly three themes: glass (Liquid Glass), material (Material) and minimal (Minimal). The default is **Material**.
 - There is no theme editor, no imported theme file, and no custom accent colour.
 
 Examples: a persisted theme of material → Material · a persisted theme of dracula → falls back to Material, see #invalid-settings-fall-back.
 
-*Why no custom accent:* each theme's accent is part of its identity and is chosen to stay legible against that theme's own surfaces. A user-chosen hue would have to be validated against six backgrounds, three status colours and both syntax palettes, and there is no way to do that at the moment they pick it.
+_Why no custom accent:_ each theme's accent is part of its identity and is chosen to stay legible against that theme's own surfaces. A user-chosen hue would have to be validated against six backgrounds, three status colours and both syntax palettes, and there is no way to do that at the moment they pick it.
 
 ### The choice and the resolved value are stored separately {#choice-and-resolved-are-separate}
-*(from docs/delivery/spec/product/themes-and-appearance.md#choice-and-resolved-are-separate — copied verbatim)*
+
+_(from docs/delivery/spec/product/themes-and-appearance.md#choice-and-resolved-are-separate — copied verbatim)_
 
 - Two values are kept: the user's **choice**, one of auto, light, dark; and the **resolved** appearance, one of light, dark.
 - The data-mode attribute always carries the resolved value. The literal string auto never reaches the DOM.
@@ -64,7 +66,8 @@ Examples: a persisted theme of material → Material · a persisted theme of dra
 Examples: choice auto on a light system → stored choice auto, data-mode="light" · restart on a now-dark system → still auto, now data-mode="dark" · storing only light because that is what it resolved to on first run → Auto is silently destroyed and the user's setting never worked.
 
 ### Every visual value is a token on the root element {#tokens-on-the-root-element}
-*(from docs/delivery/spec/product/themes-and-appearance.md#tokens-on-the-root-element — copied verbatim)*
+
+_(from docs/delivery/spec/product/themes-and-appearance.md#tokens-on-the-root-element — copied verbatim)_
 
 - Colours, spacing, radii, fonts, shadows, durations and stacking levels are CSS custom properties whose values are selected by data-theme and data-mode on document.documentElement.
 - Both attributes are set on the document element and on no other element.
@@ -73,29 +76,31 @@ Examples: choice auto on a light system → stored choice auto, data-mode="light
 Examples: a dropdown rendered through a portal at the end of body picks up the theme, because the attribute is above it · setting the attributes on the app shell instead → every menu, tooltip and toast renders unthemed.
 
 ### Each theme has one accent, one radius and one font across both appearances {#theme-identity-is-stable}
-*(from docs/delivery/spec/product/themes-and-appearance.md#theme-identity-is-stable — copied verbatim)*
+
+_(from docs/delivery/spec/product/themes-and-appearance.md#theme-identity-is-stable — copied verbatim)_
 
 - Within a theme, --accent, --win-radius, --font and the blur and shadow character are the same in light and dark. Only surfaces and text invert.
 
-| Token | Liquid Glass | Material | Minimal |
-|---|---|---|---|
-| --accent | #7aa2ff | #4f6bed | #10b981 |
-| --accent2 (gradients only) | #c58bff | #4f6bed | #10b981 |
-| --accent-ink | #cdd8ff | #0a1a52 | #047857 |
-| --accent-soft | rgba(122,162,255,.16) | #dfe4ff | #ecfdf5 |
-| --accent-contrast | #0b1024 | #ffffff | #ffffff |
-| --win-radius | 16px | 16px | 12px |
-| --win-shadow | 0 24px 80px rgba(0,0,0,.55) | 0 12px 32px rgba(27,27,34,.16) | 0 8px 24px rgba(31,35,40,.10) |
-| --blur | blur(28px) saturate(160%) | none | none |
-| --font | system stack | Roboto stack | Inter stack |
-| --mono | SF Mono, JetBrains Mono, ui-monospace | same | same |
+| Token                      | Liquid Glass                          | Material                       | Minimal                       |
+| -------------------------- | ------------------------------------- | ------------------------------ | ----------------------------- |
+| --accent                   | #7aa2ff                               | #4f6bed                        | #10b981                       |
+| --accent2 (gradients only) | #c58bff                               | #4f6bed                        | #10b981                       |
+| --accent-ink               | #cdd8ff                               | #0a1a52                        | #047857                       |
+| --accent-soft              | rgba(122,162,255,.16)                 | #dfe4ff                        | #ecfdf5                       |
+| --accent-contrast          | #0b1024                               | #ffffff                        | #ffffff                       |
+| --win-radius               | 16px                                  | 16px                           | 12px                          |
+| --win-shadow               | 0 24px 80px rgba(0,0,0,.55)           | 0 12px 32px rgba(27,27,34,.16) | 0 8px 24px rgba(31,35,40,.10) |
+| --blur                     | blur(28px) saturate(160%)             | none                           | none                          |
+| --font                     | system stack                          | Roboto stack                   | Inter stack                   |
+| --mono                     | SF Mono, JetBrains Mono, ui-monospace | same                           | same                          |
 
 The values above are each theme's **native** appearance — Glass dark, Material light, Minimal light. The counterpart appearance inverts surfaces and text and keeps everything else.
 
 Examples: Material dark keeps --accent: #4f6bed and --win-radius: 16px · Material dark with a different accent → the theme reads as a fourth theme rather than the same one at night.
 
 ### Roboto and Inter are bundled {#fonts-are-bundled}
-*(from docs/delivery/spec/product/themes-and-appearance.md#fonts-are-bundled — copied verbatim)*
+
+_(from docs/delivery/spec/product/themes-and-appearance.md#fonts-are-bundled — copied verbatim)_
 
 - Roboto and Inter ship as woff2 subsets in frontend/src/ui/fonts/ and are loaded from the bundle.
 - Nothing is fetched at runtime.
@@ -103,20 +108,22 @@ Examples: Material dark keeps --accent: #4f6bed and --win-radius: 16px · Materi
 Examples: the app launched with no network → Material still renders in Roboto · the fonts left unbundled → Material and Minimal both fall back to the same system stack and two of the three themes stop being distinguishable, which is checkable rather than a matter of taste.
 
 ### Status colours follow the appearance, not the theme {#status-colours-follow-appearance}
-*(from docs/delivery/spec/product/themes-and-appearance.md#status-colours-follow-appearance — copied verbatim)*
+
+_(from docs/delivery/spec/product/themes-and-appearance.md#status-colours-follow-appearance — copied verbatim)_
 
 - --ok, --warn and --err have two values each, keyed by data-mode only.
 
-| Token | Light | Dark |
-|---|---|---|
-| --ok | #1f8a54 | #39d98a |
+| Token  | Light   | Dark    |
+| ------ | ------- | ------- |
+| --ok   | #1f8a54 | #39d98a |
 | --warn | #b7791f | #ffcf6b |
-| --err | #b3261e | #ff7a90 |
+| --err  | #b3261e | #ff7a90 |
 
 Examples: an error toast in Minimal light and in Material light → the same red.
 
 ### Selection, focus and scrollbars are tokens {#interaction-tokens}
-*(from docs/delivery/spec/product/themes-and-appearance.md#interaction-tokens — copied verbatim)*
+
+_(from docs/delivery/spec/product/themes-and-appearance.md#interaction-tokens — copied verbatim)_
 
 - --selection-bg and --selection-fg set the text-selection colours, and they apply to ::selection in the preview **and** to the editor's own selection colour.
 - --focus-ring is a two-layer ring, 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent), so it reads on every surface.
@@ -125,25 +132,27 @@ Examples: an error toast in Minimal light and in Material light → the same red
 Examples: selecting a paragraph in dark Liquid Glass → the app's selection colour, not the operating system's default blue · six palettes shipped with default operating-system scrollbars → six palettes that all look unfinished.
 
 ### Overlay stacking is a fixed scale {#stacking-scale}
-*(from docs/delivery/spec/product/themes-and-appearance.md#stacking-scale — copied verbatim)*
+
+_(from docs/delivery/spec/product/themes-and-appearance.md#stacking-scale — copied verbatim)_
 
 - Nothing sets a numeric z-index. Every stacked surface uses one of eight tokens.
 
-| Token | Value | Used by |
-|---|---|---|
-| --z-base | 1 | raised in-flow content |
-| --z-sticky | 10 | sticky headers, tab strip |
-| --z-resize | 20 | window resize zones |
-| --z-dropdown | 30 | menus and comboboxes |
-| --z-overlay | 60 | modal scrim |
-| --z-modal | 70 | dialogs |
-| --z-popover | 80 | tooltips/popovers |
-| --z-toast | 90 | notifications |
+| Token        | Value | Used by                   |
+| ------------ | ----- | ------------------------- |
+| --z-base     | 1     | raised in-flow content    |
+| --z-sticky   | 10    | sticky headers, tab strip |
+| --z-resize   | 20    | window resize zones       |
+| --z-dropdown | 30    | menus and comboboxes      |
+| --z-overlay  | 60    | modal scrim               |
+| --z-modal    | 70    | dialogs                   |
+| --z-popover  | 80    | tooltips/popovers         |
+| --z-toast    | 90    | notifications             |
 
 Examples: an error raised by a dialog → the toast is visible above the dialog, because --z-toast exceeds --z-modal.
 
 ### Motion is tokenised and the theme flip is not animated {#motion-tokens}
-*(from docs/delivery/spec/product/themes-and-appearance.md#motion-tokens — copied verbatim)*
+
+_(from docs/delivery/spec/product/themes-and-appearance.md#motion-tokens — copied verbatim)_
 
 - Every animated property uses --dur-fast (120ms), --dur-base (180ms) or --dur-slow (300ms), with --ease-out (cubic-bezier(.2,.8,.2,1)) or --ease-in-out (cubic-bezier(.4,0,.2,1)).
 - **While** the operating system reports prefers-reduced-motion: reduce, one rule sets every duration token to 0ms.
@@ -177,76 +186,84 @@ No change belongs in internal/settings, internal/db, generated wailsjs, Redux, o
 ## Technical constraints
 
 ### Only the adapter imports wailsjs {#only-the-adapter-imports-wailsjs}
+
 **Applies to:** frontend/src/**  
 **Enforced by:** just archtest
 
 - Files under frontend/src/logic/adapter/ may import from wailsjs/. No other file may.
 - Each generated binding is wrapped once in guardArity and exposed on an adapter singleton.
 
-*Do instead of:* importing a binding directly or mocking wailsjs in a test.
+_Do instead of:_ importing a binding directly or mocking wailsjs in a test.
 
 ### The envelope is unwrapped in one place {#unwrap-in-one-place}
+
 **Applies to:** frontend/src/logic/**  
 **Enforced by:** review
 
 - unwrap(result) is the only code that inspects an apperr result. It raises the error's toast and throws; callers get payload or exception.
 
-*Do instead of:* per-call-site error branches or swallowing an error.
+_Do instead of:_ per-call-site error branches or swallowing an error.
 
 ### No colour outside a token {#no-colour-outside-a-token}
+
 **Applies to:** frontend/src/ui/**  
 **Enforced by:** just archtest
 
 - No hex colour, rgb(), rgba(), hsl() or CSS colour keyword appears anywhere under frontend/src/ui/ except in frontend/src/ui/styles/tokens.css.
 - A component reads var(--token-name). A new visual value is a new token first.
 
-*Do instead of:* a literal disabled-state colour or an inline style colour.
+_Do instead of:_ a literal disabled-state colour or an inline style colour.
 
 ### The theme is set on the document element only {#theme-on-the-root-element}
+
 **Applies to:** frontend/src/logic/theme/**, frontend/src/ui/**  
 **Enforced by:** review
 
 - data-theme and data-mode are set on document.documentElement and nowhere else.
 - data-mode is always resolved light or dark. The literal auto never reaches the DOM.
 
-*Do instead of:* a themed app-shell wrapper or passing a theme prop to every component.
+_Do instead of:_ a themed app-shell wrapper or passing a theme prop to every component.
 
 ### Every user-visible string goes through t() {#strings-go-through-t}
+
 **Applies to:** frontend/src/**  
 **Enforced by:** just archtest, review
 
 - Text a user reads is a key in frontend/src/i18n/locales/en.json, rendered with t().
 - This includes button labels, headings, placeholders, error messages, tooltips and accessible labels.
 
-*Do instead of:* a literal placeholder or template-literal sentence fragments.
+_Do instead of:_ a literal placeholder or template-literal sentence fragments.
 
 ### Presentational components take props, not the store {#components-take-props}
+
 **Applies to:** frontend/src/ui/components/**, frontend/src/ui/primitives/**  
 **Enforced by:** review
 
 - Nothing under ui/components or ui/primitives imports logic/store or logic/adapter.
 - Data and callbacks arrive as props. Wiring happens in ui/widgets.
 
-*Do instead of:* useSelector in a leaf component.
+_Do instead of:_ useSelector in a leaf component.
 
 ### The shell reserves three regions {#shell-reserves-three-regions}
+
 **Applies to:** frontend/src/ui/widgets/**, frontend/src/ui/styles/**  
 **Enforced by:** review
 
 - AppShell lays out left file-tree, centre document, and right assistant regions; the right grid slot, width token, and show/hide plumbing exist even while empty.
 - While the assistant does not exist, its right-region width is var(--shell-assistant-collapsed-width), which is 0.
 
-*Do instead of:* a two-column shell intended to grow later.
+_Do instead of:_ a two-column shell intended to grow later.
 
 ### A test proves behaviour, not a document {#tests-prove-behaviour}
-**Applies to:** frontend/src/**/*.test.ts and frontend/src/**/*.test.tsx  
+
+**Applies to:** frontend/src/**/\*.test.ts and frontend/src/**/*.test.tsx
 **Enforced by:** review
 
 - A test asserts a user-visible outcome or returned value, not document contents.
 - The subject is rendered, not mocked. Collaborators are mocked at logic/adapter, never wailsjs.
 - Frontend queries use accessible role, label, or text, not class or test id.
 
-*Do instead of:* call-count assertions, large snapshots, or deleting failing tests.
+_Do instead of:_ call-count assertions, large snapshots, or deleting failing tests.
 
 Relevant patterns: [adding a theme token](../architecture/patterns/adding-a-theme-token.md), [adding a provider](../architecture/patterns/adding-a-provider.md), and [writing a test](../architecture/patterns/writing-a-test.md).
 
@@ -256,48 +273,48 @@ Relevant patterns: [adding a theme token](../architecture/patterns/adding-a-them
 
 Before any source edit, /build-story 058 runs just baseline STORY-058 and records it in ../baselines/story-058.md. A red architecture gate or a failure masking these paths stops the implementation.
 
-| Check | Baseline result |
-|---|---|
-| Format | pass (exit 0) |
-| Types | pass (exit 0) |
+| Check           | Baseline result                   |
+| --------------- | --------------------------------- |
+| Format          | pass (exit 0)                     |
+| Types           | pass (exit 0)                     |
 | Static analysis | exit 5, with no findings recorded |
-| Tests | pass (exit 0) |
-| Architecture | pass (exit 0) |
-| Frontend build | pass (exit 0) |
-| Coverage | 69.0% (mean of 11 packages) |
+| Tests           | pass (exit 0)                     |
+| Architecture    | pass (exit 0)                     |
+| Frontend build  | pass (exit 0)                     |
+| Coverage        | 69.0% (mean of 11 packages)       |
 
 ### Mechanical
 
-| # | Check | Command | Passes when |
-|---|---|---|---|
-| M1 | Format | just fmt-check | exit 0 |
-| M2 | Types | just typecheck | exit 0, or exact baseline error set |
-| M3 | Static analysis | just lint | no finding absent from baseline |
-| M4 | Tests | just test | baseline-passing tests remain passing and all new tests pass |
-| M5 | Architecture | just archtest | exit 0; never diffed, weakened, or suppressed |
-| M6 | Build | just frontend-build and just build | exit 0 |
-| M7 | New code tested | manual | every changed source file is tested |
-| M8 | No placeholders | git diff baseline..HEAD | no TODO or no-op production logic |
-| M9 | Gate configs untouched | git diff --name-only baseline..HEAD | gate configs and .github unchanged |
-| M10 | Normative docs untouched | git diff --name-only baseline..HEAD -- docs/delivery/spec/ docs/delivery/architecture/ | empty |
-| M11 | Descriptive docs current | manual | live plan updated; no stale descriptive docs |
+| #   | Check                    | Command                                                                                | Passes when                                                  |
+| --- | ------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| M1  | Format                   | just fmt-check                                                                         | exit 0                                                       |
+| M2  | Types                    | just typecheck                                                                         | exit 0, or exact baseline error set                          |
+| M3  | Static analysis          | just lint                                                                              | no finding absent from baseline                              |
+| M4  | Tests                    | just test                                                                              | baseline-passing tests remain passing and all new tests pass |
+| M5  | Architecture             | just archtest                                                                          | exit 0; never diffed, weakened, or suppressed                |
+| M6  | Build                    | just frontend-build and just build                                                     | exit 0                                                       |
+| M7  | New code tested          | manual                                                                                 | every changed source file is tested                          |
+| M8  | No placeholders          | git diff baseline..HEAD                                                                | no TODO or no-op production logic                            |
+| M9  | Gate configs untouched   | git diff --name-only baseline..HEAD                                                    | gate configs and .github unchanged                           |
+| M10 | Normative docs untouched | git diff --name-only baseline..HEAD -- docs/delivery/spec/ docs/delivery/architecture/ | empty                                                        |
+| M11 | Descriptive docs current | manual                                                                                 | live plan updated; no stale descriptive docs                 |
 
 ### This story — rule-to-evidence map
 
-| Rule | Proven by | Kind |
-|---|---|---|
-| themes-and-appearance#three-themes | normalizesOnlyDocumentedThemes in frontend/src/logic/theme/theme.test.ts | unit |
-| themes-and-appearance#choice-and-resolved-are-separate | keepsAutoChoiceWhileApplyingResolvedMode in frontend/src/logic/theme/theme.test.ts | unit |
-| themes-and-appearance#tokens-on-the-root-element | setsAttributesOnlyOnDocumentElement in frontend/src/logic/theme/theme.test.ts | unit |
-| themes-and-appearance#theme-identity-is-stable | keepsThemeIdentityTokensStableAcrossModes in frontend/src/ui/styles/tokens.test.ts | style |
-| themes-and-appearance#fonts-are-bundled | loadsBundledRobotoAndInterFaces in frontend/src/ui/styles/tokens.test.ts | style |
-| themes-and-appearance#status-colours-follow-appearance | usesSameStatusTokensForThemesInAMode in frontend/src/ui/styles/tokens.test.ts | style |
-| themes-and-appearance#interaction-tokens | exposesSelectionFocusAndScrollbarTokens in frontend/src/ui/styles/tokens.test.ts | style |
-| themes-and-appearance#stacking-scale | definesEightNamedStackingTokens in frontend/src/ui/styles/tokens.test.ts | style |
-| themes-and-appearance#motion-tokens | removesTokenizedMotionWhenReducedMotionIsRequested in frontend/src/ui/styles/tokens.test.ts | style |
-| constraints#every-action-is-reachable-by-keyboard | changesAppearanceFromKeyboardReachableControls in frontend/src/ui/widgets/AppearanceControls.test.tsx | component |
-| constraints#every-string-goes-through-t | rendersAppearanceControlLabelsFromCatalogue in frontend/src/ui/widgets/AppearanceControls.test.tsx | component |
-| all, end to end | changesBothControlsOnlyAfterPersistedWriteSucceeds in frontend/src/ui/widgets/AppearanceControls.test.tsx | component |
+| Rule                                                   | Proven by                                                                                                 | Kind      |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | --------- |
+| themes-and-appearance#three-themes                     | normalizesOnlyDocumentedThemes in frontend/src/logic/theme/theme.test.ts                                  | unit      |
+| themes-and-appearance#choice-and-resolved-are-separate | keepsAutoChoiceWhileApplyingResolvedMode in frontend/src/logic/theme/theme.test.ts                        | unit      |
+| themes-and-appearance#tokens-on-the-root-element       | setsAttributesOnlyOnDocumentElement in frontend/src/logic/theme/theme.test.ts                             | unit      |
+| themes-and-appearance#theme-identity-is-stable         | keepsThemeIdentityTokensStableAcrossModes in frontend/src/ui/styles/tokens.test.ts                        | style     |
+| themes-and-appearance#fonts-are-bundled                | loadsBundledRobotoAndInterFaces in frontend/src/ui/styles/tokens.test.ts                                  | style     |
+| themes-and-appearance#status-colours-follow-appearance | usesSameStatusTokensForThemesInAMode in frontend/src/ui/styles/tokens.test.ts                             | style     |
+| themes-and-appearance#interaction-tokens               | exposesSelectionFocusAndScrollbarTokens in frontend/src/ui/styles/tokens.test.ts                          | style     |
+| themes-and-appearance#stacking-scale                   | definesEightNamedStackingTokens in frontend/src/ui/styles/tokens.test.ts                                  | style     |
+| themes-and-appearance#motion-tokens                    | removesTokenizedMotionWhenReducedMotionIsRequested in frontend/src/ui/styles/tokens.test.ts               | style     |
+| constraints#every-action-is-reachable-by-keyboard      | changesAppearanceFromKeyboardReachableControls in frontend/src/ui/widgets/AppearanceControls.test.tsx     | component |
+| constraints#every-string-goes-through-t                | rendersAppearanceControlLabelsFromCatalogue in frontend/src/ui/widgets/AppearanceControls.test.tsx        | component |
+| all, end to end                                        | changesBothControlsOnlyAfterPersistedWriteSucceeds in frontend/src/ui/widgets/AppearanceControls.test.tsx | component |
 
 Each test's first line is // Proves: feature#anchor. Style tests assert observable computed custom-property outcomes, never scan source.
 

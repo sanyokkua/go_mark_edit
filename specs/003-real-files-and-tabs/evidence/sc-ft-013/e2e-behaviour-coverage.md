@@ -24,11 +24,11 @@ satisfy A, and no reorganisation short of a large combinatorial expansion would 
 `just e2e-test`, 2026-08-16, on the T158 branch based on `ae597753`. Host darwin/arm64, node
 v24.18.0, Playwright 1.61.1.
 
-| Field | Value |
-|---|---|
-| exit code | **0** |
-| result | **268 passed**, 0 failed, 5 workers, 5.1 minutes |
-| `[parity states]` | **40/40** additional states covered by a named assertion |
+| Field                 | Value                                                                            |
+| --------------------- | -------------------------------------------------------------------------------- |
+| exit code             | **0**                                                                            |
+| result                | **268 passed**, 0 failed, 5 workers, 5.1 minutes                                 |
+| `[parity states]`     | **40/40** additional states covered by a named assertion                         |
 | `[parity accounting]` | **150/150** planned verifications attempted, 150 passed, 0 failed, 0 unaccounted |
 
 **One flake, recorded rather than hidden.** The first attempt of this stack was 267 passed / **1
@@ -45,12 +45,12 @@ Jest files and new markdown, none of which Playwright loads.
 
 The widths are **1280 / 768 / 375** — not 1024 — declared per file rather than centrally.
 
-| Suite | Matrix | What it asserts at every cell |
-|---|---|---|
-| `frontend/e2e/window-shell.test.ts` T026 (`:400`) | 3 widths × 6 palettes = 18 | `data-theme`/`data-mode`, `--dur-base: 0ms`, workspace presence and width (216 / 46 / absent), toolbar overflow, `scrollWidth <= innerWidth`, in-viewport geometry, the resolved Monaco background, zero runtime errors. **This is the one place real behavioural assertions run the full cross-product.** |
-| `frontend/e2e/editor-stage.test.ts` (`:15`, `:137`, `:319`, `:453`) | 3 widths × 3 themes × 3 modes = 108 | The mockup chrome hierarchy and the reachable Editor-stage journeys. The modes are `Auto (system)` / `Light` / `Dark`, so this is the six palettes **plus** three Auto variants — broader on one axis, not narrower |
-| `frontend/e2e/appearance.test.ts` (`:46`) | 3 widths × 6 palettes, one test | Attribute flip, Monaco visible, no horizontal overflow. Its scrollbar-colour assertion is gated to `width === 1280` |
-| `frontend/e2e/targeted-parity.test.ts` T063 (`:1437`) | 6 palettes at 1280 | The six backend-authoritative editor-status states against `data-status-state`, the title bar, status-item text and the binding colour token. This is the 36-key behaviour half |
+| Suite                                                               | Matrix                              | What it asserts at every cell                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/e2e/window-shell.test.ts` T026 (`:400`)                   | 3 widths × 6 palettes = 18          | `data-theme`/`data-mode`, `--dur-base: 0ms`, workspace presence and width (216 / 46 / absent), toolbar overflow, `scrollWidth <= innerWidth`, in-viewport geometry, the resolved Monaco background, zero runtime errors. **This is the one place real behavioural assertions run the full cross-product.** |
+| `frontend/e2e/editor-stage.test.ts` (`:15`, `:137`, `:319`, `:453`) | 3 widths × 3 themes × 3 modes = 108 | The mockup chrome hierarchy and the reachable Editor-stage journeys. The modes are `Auto (system)` / `Light` / `Dark`, so this is the six palettes **plus** three Auto variants — broader on one axis, not narrower                                                                                        |
+| `frontend/e2e/appearance.test.ts` (`:46`)                           | 3 widths × 6 palettes, one test     | Attribute flip, Monaco visible, no horizontal overflow. Its scrollbar-colour assertion is gated to `width === 1280`                                                                                                                                                                                        |
+| `frontend/e2e/targeted-parity.test.ts` T063 (`:1437`)               | 6 palettes at 1280                  | The six backend-authoritative editor-status states against `data-status-state`, the title bar, status-item text and the binding colour token. This is the 36-key behaviour half                                                                                                                            |
 
 ## What does not
 
@@ -96,7 +96,7 @@ by `just check`, not by `just e2e-test`. And there is no contrast-ratio gate any
 ## The negative clause is roughly one-quarter proven
 
 `frontend/e2e/offline-and-controls.test.ts:194`
-(*FR-FT-049 keeps every deferred surface unavailable rather than absent or working*) is the only test
+(_FR-FT-049 keeps every deferred surface unavailable rather than absent or working_) is the only test
 that asserts any of it, at 1280 in the default palette, once. It asserts that no action in
 `open-folder`, `new-window`, `toggle-assistant`, `distraction-free-reading`, `image`, `format`,
 `compact`, `lint` has registry availability `available`; that three toolbar controls and two

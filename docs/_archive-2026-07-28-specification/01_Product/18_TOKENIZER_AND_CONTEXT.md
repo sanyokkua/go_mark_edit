@@ -58,7 +58,7 @@ The reserve and **Max output tokens** are related but **not the same number**
 ### For a full rewrite, the reserve follows the scope
 
 **This is arithmetic, not a preference.** Proofread on a whole document requires the model to emit the
-*entire corrected document* as the argument of an edit proposal. With the defaults above — an 8 192
+_entire corrected document_ as the argument of an edit proposal. With the defaults above — an 8 192
 window and a 1 024-token reserve — a 5 000-token document **passes the fit check** and then truncates at
 1 024 tokens of output, producing a broken JSON argument, a schema-validation failure, and a user told
 "a tool call had invalid arguments." Which is true, and useless.
@@ -102,8 +102,8 @@ meter gets.
 Live testing of a comparable application found that setting `contextWindow` to 200 000 against real
 Ollama **succeeded**: the provider silently reloaded the model at its own 131 072 ceiling. The provider
 clamped; the application never knew. Across a whole test matrix the worst observed outcome was a clean
-timeout, and the reactive over-context test case had to be recorded as *skipped — not reachable with
-the configured providers*.
+timeout, and the reactive over-context test case had to be recorded as _skipped — not reachable with
+the configured providers_.
 
 So the reactive backstop mostly does not fire. What you get instead is a timeout, or a silently
 truncated prompt and a plausible-looking but incomplete answer — which is worse than an error, because
@@ -117,7 +117,7 @@ over-context strategy (DD-50; mockup **AI Context** → "If document exceeds con
 
 - **Warn (default).** The app **warns** and offers to **process the selection instead** or a single
   chunk, rather than sending an over-budget request. The user chooses; nothing is sent until they do.
-- **Chunk — cut from v1.** *Decided 2026-07-25 (`07_Phases/PHASE_13_CONVERSATION.md`).* Nothing defines
+- **Chunk — cut from v1.** _Decided 2026-07-25 (`07_Phases/PHASE_13_CONVERSATION.md`)._ Nothing defines
   chunk boundaries, overlap size, ordering, or how conflicting overlaps reconcile into **one** reviewable
   edit — and the last of those is the hard part, because the product's central promise is that every
   change arrives as a single proposal you review before applying. Building it would mean inventing the
@@ -161,7 +161,7 @@ history strategy", options **Sliding window** / **Summarize**):
 
 - **Sliding window (default).** Keep the most recent turns that fit the history allocation and drop the
   oldest; the current directive and scoped document are never dropped in favour of history.
-- **Summarize — cut from v1.** *Decided 2026-07-25.* Nothing defines the summary prompt, its output
+- **Summarize — cut from v1.** _Decided 2026-07-25._ Nothing defines the summary prompt, its output
   schema, how its own token cost is accounted for **while the gate is held**, or what happens when the
   summarising call itself fails. It is an inference inside an inference, and it is unspecified at every
   one of those points.

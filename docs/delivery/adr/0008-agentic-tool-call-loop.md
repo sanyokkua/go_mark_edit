@@ -29,7 +29,7 @@ DD-40, DD-41, DD-42, and DD-47.
 
 - **Variable, request-dependent context needs.** Some requests need no reads, some need several; the flow
   must let the model decide what to read rather than hard-coding a fixed pipeline (DD-40, DD-44).
-- **Runaway-agent safety.** An agentic loop must be *bounded* — hard iteration and wall-clock limits — so
+- **Runaway-agent safety.** An agentic loop must be _bounded_ — hard iteration and wall-clock limits — so
   it can never spin indefinitely or spend unbounded tokens. This is a well-established requirement for
   tool-using agents.
 - **Least-privilege, read-mostly tools.** The tool surface must expose only what's needed (document,
@@ -49,7 +49,7 @@ DD-40, DD-41, DD-42, and DD-47.
   requested tool calls to a least-privilege registry, append observations, and iterate until the model
   returns final text or a hard limit is hit; cancellation checked each iteration and before each tool.
 - **Fixed single-prompt templates** — one prompt per action, filled with the scoped document, sent once;
-  the response *is* the result. No tools, no iteration.
+  the response _is_ the result. No tools, no iteration.
 - **Rigid predefined multi-step chain** — a hard-coded linear sequence of prompts (e.g. read → analyze →
   rewrite) executed the same way for every request.
 
@@ -121,7 +121,7 @@ aborts promptly — between turns or mid-tool — and `OnShutdown` cancels any i
 
 - Good: More capable than a single prompt; deterministic step order is easy to test.
 - Bad: The fixed sequence is wrong for many requests — it runs steps that aren't needed and can't add one
-  that is; brittle as actions grow; still doesn't let the *model* decide what context to fetch. Rejected as
+  that is; brittle as actions grow; still doesn't let the _model_ decide what context to fetch. Rejected as
   a rigid middle ground that keeps the chain's costs without the loop's adaptivity.
 
 ## Links

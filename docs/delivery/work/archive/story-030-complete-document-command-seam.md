@@ -99,36 +99,42 @@ arrangement, with explicit outcomes when that editor session is absent, detached
 ## Acceptance criteria
 
 ### STORY-030-AC-1
+
 **Satisfies:** PH01-R09, PH01-R10
 
 A non-editor sibling can read discriminated current working content and selection for the expected active
 document in Editor, Split, and Preview arrangements.
 
 ### STORY-030-AC-2
+
 **Satisfies:** PH01-R09
 
 **Given** no mounted session handle, **when** any command is called, **then** it returns `unavailable` and
 performs no edit or buffer synchronization.
 
 ### STORY-030-AC-3
+
 **Satisfies:** PH01-R09, PH01-R10
 
 **Given** the active tab/session changes after a consumer captures the expected id, **when** it reads or
 replaces, **then** it returns `document-mismatch` and never reads or edits the new document.
 
 ### STORY-030-AC-4
+
 **Satisfies:** PH01-R09
 
 `replaceRange` and `replaceAll` each apply exactly one Monaco undo edit to the matching working copy and send
 the resulting complete text through the normal `UpdateBuffer` queue.
 
 ### STORY-030-AC-5
+
 **Satisfies:** PH01-R09, PH01-R10
 
 Detached/unmounted handles return `unavailable`, stale handles return `document-mismatch`, and neither case
 silently succeeds or mutates projection, editor, backend, or disk state.
 
 ### STORY-030-AC-6
+
 **Satisfies:** PH01-R10
 
 Architecture tests reject direct Monaco imports, editor-handle ownership, or alternate content access in a
@@ -153,7 +159,7 @@ non-editor sibling while accepting the public document command seam.
 
 - [ ] Every AC has a passing Jest test whose name begins with its `STORY-030-AC-N` id.
 - [ ] Tests cover Editor, Split, Preview, no session, detached handle, active-tab change, stale identity, and
-  a sibling with no Monaco dependency.
+      a sibling with no Monaco dependency.
 - [ ] Replacement tests prove one undo edit and exactly the existing `UpdateBuffer` queue path.
 - [ ] Working text remains ephemeral/noncanonical until flush; Redux/events/local storage remain content-free.
 - [ ] Frontend formatting, lint, typecheck, and Jest gates pass.

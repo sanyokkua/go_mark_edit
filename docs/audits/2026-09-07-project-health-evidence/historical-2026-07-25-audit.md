@@ -29,19 +29,19 @@ and nothing in it repairs the broken Phase 01 gate.
 
 ## 2. Measured gate status
 
-| Gate | Command | Result |
-|---|---|---|
-| Traceability | `node scripts/trace-check.mjs` | PASS (exit 0) |
-| Phase structure | `node scripts/phase-check.mjs` | PASS — 16 phase documents valid |
-| Phase 00 completion | `node scripts/phase-complete-check.mjs 00` | PASS |
-| Phase 01 completion | `node scripts/phase-complete-check.mjs 01` | **FAIL (exit 1)** |
-| Phase 01 preview checkpoint | `… 01 --checkpoint preview` | PASS |
-| Phase 01 editing checkpoint | `… 01 --checkpoint editing` | PASS |
-| Phase 02 completion | `node scripts/phase-complete-check.mjs 02` | FAIL (expected — phase unstarted) |
-| Go tests | `go test ./...` | **302 pass, 2 FAIL** |
-| Frontend tests | `jest` | PASS — 27 suites / 100 tests |
-| Typecheck | `tsc --noEmit` | PASS |
-| `go vet` / `gofmt -l` | — | clean |
+| Gate                        | Command                                    | Result                            |
+| --------------------------- | ------------------------------------------ | --------------------------------- |
+| Traceability                | `node scripts/trace-check.mjs`             | PASS (exit 0)                     |
+| Phase structure             | `node scripts/phase-check.mjs`             | PASS — 16 phase documents valid   |
+| Phase 00 completion         | `node scripts/phase-complete-check.mjs 00` | PASS                              |
+| Phase 01 completion         | `node scripts/phase-complete-check.mjs 01` | **FAIL (exit 1)**                 |
+| Phase 01 preview checkpoint | `… 01 --checkpoint preview`                | PASS                              |
+| Phase 01 editing checkpoint | `… 01 --checkpoint editing`                | PASS                              |
+| Phase 02 completion         | `node scripts/phase-complete-check.mjs 02` | FAIL (expected — phase unstarted) |
+| Go tests                    | `go test ./...`                            | **302 pass, 2 FAIL**              |
+| Frontend tests              | `jest`                                     | PASS — 27 suites / 100 tests      |
+| Typecheck                   | `tsc --noEmit`                             | PASS                              |
+| `go vet` / `gofmt -l`       | —                                          | clean                             |
 
 Phase 01 failure output:
 
@@ -56,20 +56,20 @@ phase-complete-check: PH01-E07 visual approval revision is stale
 
 All 12 requirements have real code, a proving test, and a `done` story.
 
-| ID | Plain meaning | Implemented | Code | Story |
-|---|---|---|---|---|
-| PH00-R01 | Native process boots a blank embedded React app through one composition root | yes | `main.go:19`, `main.go:48`, `internal/application/application_context_holder.go:36` | STORY-001 |
-| PH00-R02 | Concrete Result envelopes; no error cause crosses the bridge | yes | `internal/apperr/results.go`, `internal/apperr/wire.go:20`, `internal/settings/handler.go:27` | STORY-002, 005 |
-| PH00-R03 | Two-phase DI, pre-DB logging, dev-isolated paths, terminal init failure → dialog + non-zero exit | yes | `main.go:28`, `main.go:87`, `application_context_holder.go:67` | STORY-003, 005, 009 |
-| PH00-R04 | Pure-Go SQLite, additive migrations, WAL + busy timeout, no single-instance lock | yes | `internal/db/db.go:20`, `:137`, `:215`, `:261` | STORY-004 |
-| PH00-R05 | Typed settings registry, growable, per-scalar fallback | yes | `internal/settings/model.go:39`, `repository_sqlite.go`, `handler.go` | STORY-005, 009 |
-| PH00-R06 | Frontend talks only through adapter singletons | yes | `frontend/src/logic/adapter/index.ts:1`, `envelope.ts:10`, `bridgeGuard.ts` | STORY-006 |
-| PH00-R07 | Shell reserves the Stage-3 right region; token-only styling | **partial** | `ui/widgets/AppShell.tsx:16`, `ui/styles/tokens.css` | STORY-007 |
-| PH00-R08 | Dev works with the real bridge or the backend-free mock | yes | `frontend/vite.config.ts:8`, `src/dev/bridge-mock/**` | STORY-006 |
-| PH00-R09 | Reproducible fmt/lint/type/test/build/gen/trace gates | yes | `justfile`, `.github/workflows/main.yml`, `lefthook.yml` | STORY-008, 010 |
-| PH00-R10 | ADR-0001…0006 accepted, indexed, not duplicated | yes | `specification/08_Decisions/`, `docs/adr/README.md` | STORY-008, 010 |
-| PH00-R11 | Dependency-free generic single-flight gate, no consumer yet | yes | `internal/gate/gate.go:10` | STORY-003 |
-| PH00-R12 | Story/trace/phase validators enforce schema and completion | **partial** | `scripts/*.mjs` | STORY-024, 033 |
+| ID       | Plain meaning                                                                                    | Implemented | Code                                                                                          | Story               |
+| -------- | ------------------------------------------------------------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------- | ------------------- |
+| PH00-R01 | Native process boots a blank embedded React app through one composition root                     | yes         | `main.go:19`, `main.go:48`, `internal/application/application_context_holder.go:36`           | STORY-001           |
+| PH00-R02 | Concrete Result envelopes; no error cause crosses the bridge                                     | yes         | `internal/apperr/results.go`, `internal/apperr/wire.go:20`, `internal/settings/handler.go:27` | STORY-002, 005      |
+| PH00-R03 | Two-phase DI, pre-DB logging, dev-isolated paths, terminal init failure → dialog + non-zero exit | yes         | `main.go:28`, `main.go:87`, `application_context_holder.go:67`                                | STORY-003, 005, 009 |
+| PH00-R04 | Pure-Go SQLite, additive migrations, WAL + busy timeout, no single-instance lock                 | yes         | `internal/db/db.go:20`, `:137`, `:215`, `:261`                                                | STORY-004           |
+| PH00-R05 | Typed settings registry, growable, per-scalar fallback                                           | yes         | `internal/settings/model.go:39`, `repository_sqlite.go`, `handler.go`                         | STORY-005, 009      |
+| PH00-R06 | Frontend talks only through adapter singletons                                                   | yes         | `frontend/src/logic/adapter/index.ts:1`, `envelope.ts:10`, `bridgeGuard.ts`                   | STORY-006           |
+| PH00-R07 | Shell reserves the Stage-3 right region; token-only styling                                      | **partial** | `ui/widgets/AppShell.tsx:16`, `ui/styles/tokens.css`                                          | STORY-007           |
+| PH00-R08 | Dev works with the real bridge or the backend-free mock                                          | yes         | `frontend/vite.config.ts:8`, `src/dev/bridge-mock/**`                                         | STORY-006           |
+| PH00-R09 | Reproducible fmt/lint/type/test/build/gen/trace gates                                            | yes         | `justfile`, `.github/workflows/main.yml`, `lefthook.yml`                                      | STORY-008, 010      |
+| PH00-R10 | ADR-0001…0006 accepted, indexed, not duplicated                                                  | yes         | `specification/08_Decisions/`, `docs/adr/README.md`                                           | STORY-008, 010      |
+| PH00-R11 | Dependency-free generic single-flight gate, no consumer yet                                      | yes         | `internal/gate/gate.go:10`                                                                    | STORY-003           |
+| PH00-R12 | Story/trace/phase validators enforce schema and completion                                       | **partial** | `scripts/*.mjs`                                                                               | STORY-024, 033      |
 
 ### PH00-R07 is proven against a mock of itself
 
@@ -102,12 +102,12 @@ proof of PH00-R12, and it fails — see §5.
 All 16 requirements have real code, a proving test, and a `done` story. Both implementation checkpoints
 pass. Partial requirements:
 
-| ID | Plain meaning | Status | Detail |
-|---|---|---|---|
+| ID       | Plain meaning                                                                         | Status      | Detail                                                                                                                                                                                                                                                                     |
+| -------- | ------------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PH01-R04 | Flush pending buffer before blur/switch/close; buffer + view before hiding the editor | **partial** | Blur (`frontend/src/logic/hooks/useSyncedBuffer.ts:151`) and hide (`frontend/src/logic/store/docViewCommands.ts:65`) exist. Switch / close / save flushes do not — there are no tabs or saves in Phase 01. Phase 02's `PH02-C01` contract assumes the seam already exists. |
-| PH01-R10 | A non-editor sibling can consume the document-command seam | **partial** | `frontend/src/ui/widgets/editorSession.ts:47` provides the context and it is wired in `App.tsx:74`, but no production sibling consumes it — only test siblings. Acceptable for Stage 1/2; PH05/PH12 are the first real consumers. |
-| PH01-R12 | Preview debounced; stale completions discarded; very large input may pause | **partial** | Debounce (`appModelAdapter.ts:249`) and generation guard (`useLivePreview.ts:36`) exist. `editor.pauseLivePreview` and any large-file threshold do not exist anywhere in the repository. |
-| PH01-R16 | Core status strings resolve through the bundled i18n catalog | **partial** | The catalog and active → en → key fallback work (`i18n/catalog.ts:70`). Hardcoded English remains in `ui/components/ViewModeToggle.tsx:5`, `ui/widgets/EditorView.tsx:166`, and `ui/widgets/AppShell.tsx:18`. |
+| PH01-R10 | A non-editor sibling can consume the document-command seam                            | **partial** | `frontend/src/ui/widgets/editorSession.ts:47` provides the context and it is wired in `App.tsx:74`, but no production sibling consumes it — only test siblings. Acceptable for Stage 1/2; PH05/PH12 are the first real consumers.                                          |
+| PH01-R12 | Preview debounced; stale completions discarded; very large input may pause            | **partial** | Debounce (`appModelAdapter.ts:249`) and generation guard (`useLivePreview.ts:36`) exist. `editor.pauseLivePreview` and any large-file threshold do not exist anywhere in the repository.                                                                                   |
+| PH01-R16 | Core status strings resolve through the bundled i18n catalog                          | **partial** | The catalog and active → en → key fallback work (`i18n/catalog.ts:70`). Hardcoded English remains in `ui/components/ViewModeToggle.tsx:5`, `ui/widgets/EditorView.tsx:166`, and `ui/widgets/AppShell.tsx:18`.                                                              |
 
 The remaining twelve requirements (R01, R02, R03, R05, R06, R07, R08, R09, R11, R13, R14, R15) are
 fully implemented with substantial test coverage — R01 has 18 collected tests, R08 has 19.
@@ -140,7 +140,7 @@ The second symptom is the Go test. `phase_validation_test.go:538-546` hardcodes 
 "acceptance criterion is not proven by a done story"
 ```
 
-The last two were resolved by STORY-032. The checker now emits the two *stale-revision* blockers
+The last two were resolved by STORY-032. The checker now emits the two _stale-revision_ blockers
 instead, so the assertion fails. The test is factually out of date as well as failing.
 
 Knock-on effect: `PH00-E02`, `PH00-E05` and `PH00-E06` all name `just check` as their blocking proof
@@ -167,7 +167,7 @@ PH00-E09, whose freshness cell reads `current HEAD`.
 - Contrast `docs/phase-evidence/PH01-wails-runtime.md:1-16`, which does all of this correctly.
 - The staleness check exists but is wired only to PH01-E06 and PH01-E07
   (`phase-complete-check.mjs:71,98`). For Phase 00 the validator asks only for a `Status`, a non-empty
-  `Owner`, *any* non-empty `Revision`, and a well-formed `Date`. The `current HEAD` obligation is
+  `Owner`, _any_ non-empty `Revision`, and a well-formed `Date`. The `current HEAD` obligation is
   documentation-only.
 - There is no accepted ADR deferring Windows/Linux runtime proof for Phase 00 — ADR-0016 is scoped to
   Phase 01.
@@ -243,7 +243,7 @@ development.
 
 **D-4 — The normalization-authorization issuer is unowned.**
 ADR-0024:49-51 says the backend issues a single-use authorization bound to document identity, canonical
-content revision, and the chosen normalization. Three stories *consume* it — STORY-037-AC-5 (validates),
+content revision, and the chosen normalization. Three stories _consume_ it — STORY-037-AC-5 (validates),
 STORY-040-AC-4 (obtains), STORY-044-AC-5 (gathers) — and none creates it. Each of 037 and 044 has
 committed to exactly one aggregate exported seam (`ApplySave`, `ApplyClose`) that excludes issuance.
 
@@ -262,7 +262,7 @@ but never the default for a document that has never touched disk. The first Save
 therefore undefined.
 
 **D-7 — PH02-R07's definition of dirty is never asserted.**
-The phase text says dirty is *computed* from canonical backend content versus disk content. Every story
+The phase text says dirty is _computed_ from canonical backend content versus disk content. Every story
 treats dirty as a stored flag. No AC states the equality rule or proves that editing back to the on-disk
 bytes clears dirty.
 
@@ -320,8 +320,7 @@ record and leave the frozen ledger permanently wrong.
 New/Open/Save/Save As controls (AC-6). STORY-051 depends on 18 stories, covers 9 evidence rows, and needs
 real native runs plus human approval — it is a phase gate, not an M coding session.
 
-**D-19 — STORY-040-AC-2 asserts that Format and Lint are unavailable.** Those features arrive in Phase
-05. The assertion is vacuous today and will not detect a regression when they land.
+**D-19 — STORY-040-AC-2 asserts that Format and Lint are unavailable.** Those features arrive in Phase 05. The assertion is vacuous today and will not detect a regression when they land.
 
 **D-20 — STORY-033 does not say that `checkpoints` becomes optional.** `scripts/phase-resolution.mjs:394`
 requires an exact `checkpoints` key with `preview`/`editing` and hardcodes the Phase-01 required ids.
@@ -351,7 +350,7 @@ bodies flags the contradiction for a reader who opens only the frozen phase docu
    `internal/appmodel/service.go:72,82` dereferences `activeDocument` unconditionally — it will panic on
    an empty tab set. Stories 035/036/039/041 assume the change; no story owns the DTO edit.
 2. **`subscribeStatePatches` silently drops a second subscriber.**
-   `frontend/src/logic/adapter/appModelAdapter.ts:374` returns the *existing* dispose function and
+   `frontend/src/logic/adapter/appModelAdapter.ts:374` returns the _existing_ dispose function and
    discards the new `onPatch` callback when a subscription already exists. Harmless with one consumer;
    Phase 02 adds tab, save and external-change listeners.
 3. **Line-ending and encoding i18n keys are missing.** `ui/components/StatusBar.tsx:14` derives
@@ -369,19 +368,19 @@ bodies flags the contradiction for a reader who opens only the frozen phase docu
 
 Recorded as tickets, highest priority first. See `docs/stories/` for the authored stories.
 
-| Item | Owner |
-|---|---|
-| Restore Phase 01 completion validation (red test + descendant-freshness rule) | STORY-052, ADR-0027 |
-| Bring Phase 00 runtime evidence to the evidence schema and validate its freshness | STORY-053 |
-| Prove the three-region shell against the real component | STORY-054 |
-| Keep the dev bridge mock in parity with the Go appmodel | STORY-055 |
-| App-chrome file commands (split from STORY-041-AC-6) | STORY-056 |
-| Phase 02 current-host runtime evidence exception | ADR-0026, STORY-033, STORY-051 |
-| D-4 issuer ownership, D-6 new-document encoding | STORY-037, STORY-035 |
-| D-5 open composition, zero-document DTOs | STORY-035 |
-| D-7 dirty definition | STORY-038 |
-| D-10 … D-13 dependency and ownership edges | STORY-040, 041, 048 |
-| D-14 … D-16 hygiene | STORY-034…046 |
+| Item                                                                              | Owner                          |
+| --------------------------------------------------------------------------------- | ------------------------------ |
+| Restore Phase 01 completion validation (red test + descendant-freshness rule)     | STORY-052, ADR-0027            |
+| Bring Phase 00 runtime evidence to the evidence schema and validate its freshness | STORY-053                      |
+| Prove the three-region shell against the real component                           | STORY-054                      |
+| Keep the dev bridge mock in parity with the Go appmodel                           | STORY-055                      |
+| App-chrome file commands (split from STORY-041-AC-6)                              | STORY-056                      |
+| Phase 02 current-host runtime evidence exception                                  | ADR-0026, STORY-033, STORY-051 |
+| D-4 issuer ownership, D-6 new-document encoding                                   | STORY-037, STORY-035           |
+| D-5 open composition, zero-document DTOs                                          | STORY-035                      |
+| D-7 dirty definition                                                              | STORY-038                      |
+| D-10 … D-13 dependency and ownership edges                                        | STORY-040, 041, 048            |
+| D-14 … D-16 hygiene                                                               | STORY-034…046                  |
 
 Deliberately not ticketed: `editor.pauseLivePreview` (Phase 04), CI branch gating and `verify-ui` in CI
 (Phase 15), the PH01-E08 network trace (removed by ADR-0018).

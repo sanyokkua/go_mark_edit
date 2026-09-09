@@ -33,11 +33,11 @@ preferences, and small view state.
 Config/DB/logs locations (via `internal/file`, with a `-Dev` suffix under `wails dev` so a dev session
 never touches production data):
 
-| Platform | Folder |
-|---|---|
-| macOS | `~/Library/Application Support/GoMarkEdit` |
-| Linux | `~/.config/GoMarkEdit` |
-| Windows | `%APPDATA%\GoMarkEdit` |
+| Platform | Folder                                     |
+| -------- | ------------------------------------------ |
+| macOS    | `~/Library/Application Support/GoMarkEdit` |
+| Linux    | `~/.config/GoMarkEdit`                     |
+| Windows  | `%APPDATA%\GoMarkEdit`                     |
 
 ## In-memory application model
 
@@ -49,10 +49,10 @@ tab set + active tab, the open workspace reference, and the UI/layout state. The
 
 Two properties matter for persistence:
 
-- **Most of the model is intentionally *not* persisted.** Consistent with file-first (DD-11), the app
+- **Most of the model is intentionally _not_ persisted.** Consistent with file-first (DD-11), the app
   opens clean: the model starts empty, with no session/tab restore and no document content in the DB.
   Only the **durable subset** is written to SQLite — settings, recent files/folders, and window/UI-layout
-  state (DD-10, DD-60/DD-61) — as a projection *out* of the model, via the settings/recent repositories.
+  state (DD-10, DD-60/DD-61) — as a projection _out_ of the model, via the settings/recent repositories.
 - **Document content lives only in Go memory** (the `appmodel` buffers) and on disk, never in the DB and
   never (for inactive tabs) in the webview — this is the memory-ownership win of DD-62/DD-63
   (`07_LARGE_FILES_AND_CONCURRENCY.md#large-file-strategy`).
@@ -69,28 +69,28 @@ migration** — only a new dotted key:
 
 ```sql
 CREATE TABLE settings (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL,
-    type  TEXT NOT NULL   -- 'string' | 'int' | 'float' | 'bool'
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  type TEXT NOT NULL -- 'string' | 'int' | 'float' | 'bool'
 );
 ```
 
 Representative keys (authoritative list in `01_Product/11_SETTINGS.md` `#persistence`):
 
-| Key prefix | Examples | Notes |
-|---|---|---|
-| `appearance.*` | `appearance.theme` (`liquid-glass`/`material`/`minimal`), `appearance.mode` (`auto`/`light`/`dark`) | DD-28, DD-29 |
-| `editor.*` | `editor.autosave` (bool, default true), `editor.wordWrap`, `editor.minimap`, `editor.pauseLivePreview` | DD-12, DD-20 |
-| `markdown.*` | `markdown.standard` (`minimal`/`gfm`/`full`) | DD-14 |
-| `format.*` / `lint.*` | `format.onSave`, `lint.onSave` | DD-18 |
-| `export.*` | `export.pdfStyle` (`theme`/`clean`) | DD-24 |
-| `content.*` | `content.remotePolicy` (`ask`/`allow`/`block`) | DD-22 |
-| `view.*` | `view.defaultOpenMode` (`editor`/`viewer`, default `editor`) | DD-27 |
-| `lang.*` | `lang.locale` (`en`) | DD-35 |
-| `window.*` | `window.width`, `window.height`, `window.maximized` | window geometry; see `#window-state` (DD-60) |
-| `ui.*` | `ui.sidebarVisible`, `ui.sidebarWidth`, `ui.viewArrangement` (`editor`/`split`/`preview`), `ui.editorPaneVisible`, `ui.previewPaneVisible`, `ui.splitRatio`, `ui.assistantVisible`, `ui.assistantWidth` (assistant) | application-level UI-layout state; see `#window-state` (DD-60/DD-61/DD-74) |
-| `log.*` | `log.fileEnabled`, `log.level`, `log.directory`, `log.maxSizeMB`, `log.maxBackups`, `log.maxAgeDays`, `log.compress` | logging configuration, applied by `Init` when the logger is reconfigured. `02_BACKEND_GO.md` has always assumed these existed; they are defined in `01_Product/11_SETTINGS.md#diagnostics-group`. |
-| `view.readingFontSize`, `view.readingWidth` | reading typography (DD-72) | `01_Product/11_SETTINGS.md#editor-group` |
+| Key prefix                                  | Examples                                                                                                                                                                                                            | Notes                                                                                                                                                                                             |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `appearance.*`                              | `appearance.theme` (`liquid-glass`/`material`/`minimal`), `appearance.mode` (`auto`/`light`/`dark`)                                                                                                                 | DD-28, DD-29                                                                                                                                                                                      |
+| `editor.*`                                  | `editor.autosave` (bool, default true), `editor.wordWrap`, `editor.minimap`, `editor.pauseLivePreview`                                                                                                              | DD-12, DD-20                                                                                                                                                                                      |
+| `markdown.*`                                | `markdown.standard` (`minimal`/`gfm`/`full`)                                                                                                                                                                        | DD-14                                                                                                                                                                                             |
+| `format.*` / `lint.*`                       | `format.onSave`, `lint.onSave`                                                                                                                                                                                      | DD-18                                                                                                                                                                                             |
+| `export.*`                                  | `export.pdfStyle` (`theme`/`clean`)                                                                                                                                                                                 | DD-24                                                                                                                                                                                             |
+| `content.*`                                 | `content.remotePolicy` (`ask`/`allow`/`block`)                                                                                                                                                                      | DD-22                                                                                                                                                                                             |
+| `view.*`                                    | `view.defaultOpenMode` (`editor`/`viewer`, default `editor`)                                                                                                                                                        | DD-27                                                                                                                                                                                             |
+| `lang.*`                                    | `lang.locale` (`en`)                                                                                                                                                                                                | DD-35                                                                                                                                                                                             |
+| `window.*`                                  | `window.width`, `window.height`, `window.maximized`                                                                                                                                                                 | window geometry; see `#window-state` (DD-60)                                                                                                                                                      |
+| `ui.*`                                      | `ui.sidebarVisible`, `ui.sidebarWidth`, `ui.viewArrangement` (`editor`/`split`/`preview`), `ui.editorPaneVisible`, `ui.previewPaneVisible`, `ui.splitRatio`, `ui.assistantVisible`, `ui.assistantWidth` (assistant) | application-level UI-layout state; see `#window-state` (DD-60/DD-61/DD-74)                                                                                                                        |
+| `log.*`                                     | `log.fileEnabled`, `log.level`, `log.directory`, `log.maxSizeMB`, `log.maxBackups`, `log.maxAgeDays`, `log.compress`                                                                                                | logging configuration, applied by `Init` when the logger is reconfigured. `02_BACKEND_GO.md` has always assumed these existed; they are defined in `01_Product/11_SETTINGS.md#diagnostics-group`. |
+| `view.readingFontSize`, `view.readingWidth` | reading typography (DD-72)                                                                                                                                                                                          | `01_Product/11_SETTINGS.md#editor-group`                                                                                                                                                          |
 
 Repository accessors are typed `Get*Config`/`Update*Config` groups built on
 `getBool/getInt/getFloat/getString` + `UpsertSetting`. Reads and writes go through the settings
@@ -136,7 +136,7 @@ The native window's size and maximized state, plus the **application-level UI-la
 each window reopens the way the user left it (DD-10, DD-60). This layout state comprises: window size +
 maximized; **folder-sidebar** visibility and width; the **view arrangement** (Editor / Split / Preview)
 and individual **pane visibility**; and, once the assistant exists, the **assistant-sidebar** visibility and width. It is
-*application-level* — shared across windows and distinct from the *per-document* view mode below.
+_application-level_ — shared across windows and distinct from the _per-document_ view mode below.
 
 **Write-through on change.** Every layout mutation persists the moment it happens: a discrete toggle
 (show/hide a sidebar, switch arrangement) writes **immediately** through the settings service; a

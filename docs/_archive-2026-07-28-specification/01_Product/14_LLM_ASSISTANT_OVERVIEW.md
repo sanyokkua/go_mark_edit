@@ -38,7 +38,7 @@ Editor/Viewer (F1).
 - **Header** — the label "Assistant" and a **provider/model chip** (e.g. `Ollama · qwen2.5:7b ▾`) with
   a status dot. Clicking the chip opens the **AI / Providers** settings tab
   (`17_PROVIDERS_MODELS_SETTINGS.md`).
-- **Scope + token meter** — an *Apply to* segmented control (**Whole document** / **Selection**) and a
+- **Scope + token meter** — an _Apply to_ segmented control (**Whole document** / **Selection**) and a
   live **token-fit meter** (a bar plus `≈ N tokens … · fits · M ctx`) that re-estimates as scope
   changes (DD-43, DD-50; see `18_TOKENIZER_AND_CONTEXT.md#fit-meter`).
 - **Quick-actions bar** — a grid of preconfigured action buttons (Proofread, Improve clarity,
@@ -88,25 +88,25 @@ DD-42), or both. There is no fourth "silent apply" mode.
 ## Scope: selection vs document
 
 Every action and instruction runs against a **scope**: the **Selection** or the **Whole document**
-(DD-43). The *Apply to* segmented control in the sidebar header sets it explicitly, and the token meter
+(DD-43). The _Apply to_ segmented control in the sidebar header sets it explicitly, and the token meter
 re-estimates immediately when it changes (the mockup switches `≈ 1,480 tokens of document` ↔
 `≈ 96 tokens of selection`).
 
 **Default scope resolution.** The scope for a run is resolved by this fixed precedence (highest first),
 which keeps the behaviour unambiguous and testable:
 
-1. **Explicit user choice** — if the user has set the *Apply to* control for this run, that value wins
+1. **Explicit user choice** — if the user has set the _Apply to_ control for this run, that value wins
    (DD-43).
 2. **Non-empty selection** — otherwise, if the editor has a non-empty selection when the run starts,
    scope is **Selection** (DD-43, the selection-if-present rule).
 3. **Action's catalog default** — otherwise, if the invoked action declares its own default scope, that
    value is used (DD-39; `15_ACTIONS_LIBRARY.md#action-model`).
-4. **Global setting** — otherwise the *Default action scope* setting applies (default **Whole document**;
+4. **Global setting** — otherwise the _Default action scope_ setting applies (default **Whole document**;
    `11_SETTINGS.md#editor-group`, `#defaults`).
 
 Steps 3–4 both resolve to **Whole document** by default, so with no selection and no override a run
-targets the whole document, consistent with DD-43. The user can always override per run via the *Apply
-to* control.
+targets the whole document, consistent with DD-43. The user can always override per run via the _Apply
+to_ control.
 
 **Apply semantics.** A **Selection**-scoped edit replaces only the selected range in the buffer; a
 **Whole document**-scoped edit replaces the whole buffer — both via the document-command seam (F3/F7),
@@ -150,7 +150,7 @@ The assistant is **additive only**: it consumes the seams the earlier phases res
   widget directly (DD-42).
 - The **single-flight gate** (F5), the `apperr` Result-envelope path, logging, and file services are
   reused as-is; inference becomes "a long operation" the generic gate guards (DD-47).
-- The offline invariant was always **scoped, not absolute** (F6): "no *background/unsolicited* network".
+- The offline invariant was always **scoped, not absolute** (F6): "no _background/unsolicited_ network".
   The user-invoked provider client slots into the reserved HTTP-client seam without fighting the
   architecture (DD-32).
 - The settings registry accepts the new **AI / Providers** and **AI Context** groups and the additive

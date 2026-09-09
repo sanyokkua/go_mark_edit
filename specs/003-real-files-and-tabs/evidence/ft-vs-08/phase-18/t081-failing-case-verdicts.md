@@ -20,15 +20,15 @@ every appearance of being stale.
 
 ## Verdicts
 
-| # | Test body | Cases | Verdict |
-|---|---|---:|---|
-| 1 | `window-shell.test.ts:475` T040 Settings popup | 3 | **PRODUCTION WRONG** |
-| 2 | `core-editor.test.ts:230` STORY-022-AC-5 | 1 | **PRODUCTION WRONG** (fixed by T077) |
-| 3 | `window-shell.test.ts:345` T026 shell matrix | 18 | TEST WRONG (4 stale expectations) |
-| 4 | `window-shell.test.ts:549` T026 shell actions | 1 | TEST WRONG (same helper) |
-| 5 | `core-editor.test.ts:522` STORY-018-AC-3 | 1 | TEST WRONG (2 stale expectations) |
-| 6 | `core-editor.test.ts:608` STORY-032-AC-3 | 1 | TEST WRONG |
-| 7 | `appearance.test.ts:49` six palettes | 1 | TEST WRONG — stale baseline, **owner approval required** |
+| #   | Test body                                      | Cases | Verdict                                                  |
+| --- | ---------------------------------------------- | ----: | -------------------------------------------------------- |
+| 1   | `window-shell.test.ts:475` T040 Settings popup |     3 | **PRODUCTION WRONG**                                     |
+| 2   | `core-editor.test.ts:230` STORY-022-AC-5       |     1 | **PRODUCTION WRONG** (fixed by T077)                     |
+| 3   | `window-shell.test.ts:345` T026 shell matrix   |    18 | TEST WRONG (4 stale expectations)                        |
+| 4   | `window-shell.test.ts:549` T026 shell actions  |     1 | TEST WRONG (same helper)                                 |
+| 5   | `core-editor.test.ts:522` STORY-018-AC-3       |     1 | TEST WRONG (2 stale expectations)                        |
+| 6   | `core-editor.test.ts:608` STORY-032-AC-3       |     1 | TEST WRONG                                               |
+| 7   | `appearance.test.ts:49` six palettes           |     1 | TEST WRONG — stale baseline, **owner approval required** |
 
 ### 1. The Settings popup escaped the window — a real defect
 
@@ -75,12 +75,12 @@ checks inventory plus availability as `actionRegistry` defines it.
 
 Four separate stale expectations in that one helper:
 
-| Expectation | Why it is stale |
-|---|---|
-| action bar matched by glyph text `'☰'`, `'✦'` | `ca124e41` replaced those spans with `<Icon>` SVGs for FR-FT-052's monochrome treatment, so `allTextContents()` reads two empty strings. The `☰` never matched the binding either — `mockup.html:595` draws `▤` |
-| `release-notes.md` / `spec-draft.md` as tabs | the plain `/` route seeds one `Untitled` (`AppModelHandler.ts:311`); those two names are the File menu's disabled recent **placeholders**, not tabs |
-| `Open Recent` as a `menuitem` | wide, the binding presents recents as indented rows under a group label with no trigger row (`mockup.html:604`), so it is a label and never an item — the same shape as `Appearance` being a radiogroup name. Narrow, the popup **does** use a trigger plus submenu, so the assertion is now width-aware |
-| `Image` looked up inside the toolbar | at 768 and below it relocates into the overflow popup, which portals into `.application-frame` |
+| Expectation                                    | Why it is stale                                                                                                                                                                                                                                                                                          |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| action bar matched by glyph text `'☰'`, `'✦'` | `ca124e41` replaced those spans with `<Icon>` SVGs for FR-FT-052's monochrome treatment, so `allTextContents()` reads two empty strings. The `☰` never matched the binding either — `mockup.html:595` draws `▤`                                                                                         |
+| `release-notes.md` / `spec-draft.md` as tabs   | the plain `/` route seeds one `Untitled` (`AppModelHandler.ts:311`); those two names are the File menu's disabled recent **placeholders**, not tabs                                                                                                                                                      |
+| `Open Recent` as a `menuitem`                  | wide, the binding presents recents as indented rows under a group label with no trigger row (`mockup.html:604`), so it is a label and never an item — the same shape as `Appearance` being a radiogroup name. Narrow, the popup **does** use a trigger plus submenu, so the assertion is now width-aware |
+| `Image` looked up inside the toolbar           | at 768 and below it relocates into the overflow popup, which portals into `.application-frame`                                                                                                                                                                                                           |
 
 Also corrected: the 1280 workspace width asserted **256**, where the binding says
 **216** (`mockup.html:254` `.sidebar{width:216px}`, exported as
@@ -126,15 +126,15 @@ root causes" was an underestimate by construction.
 
 **Every behavioural assertion in every end-to-end suite now passes.**
 
-| Suite | Result |
-|---|---|
-| `editor-stage.test.ts` | 108 / 108 |
-| `narrow-width.test.ts` (new) | 20 / 20 |
-| `targeted-parity.test.ts` | 15 / 15 |
-| `real-files-and-tabs.test.ts`, `interactive-states.test.ts`, `launcher-binding.test.ts` | all passing |
-| `core-editor.test.ts` | 6 / 7 — the 1 is a stale baseline |
-| `window-shell.test.ts` | 12 / 30 — the 18 are stale baselines |
-| `appearance.test.ts` | 17 / 18 — the 1 is a stale baseline |
+| Suite                                                                                   | Result                               |
+| --------------------------------------------------------------------------------------- | ------------------------------------ |
+| `editor-stage.test.ts`                                                                  | 108 / 108                            |
+| `narrow-width.test.ts` (new)                                                            | 20 / 20                              |
+| `targeted-parity.test.ts`                                                               | 15 / 15                              |
+| `real-files-and-tabs.test.ts`, `interactive-states.test.ts`, `launcher-binding.test.ts` | all passing                          |
+| `core-editor.test.ts`                                                                   | 6 / 7 — the 1 is a stale baseline    |
+| `window-shell.test.ts`                                                                  | 12 / 30 — the 18 are stale baselines |
+| `appearance.test.ts`                                                                    | 17 / 18 — the 1 is a stale baseline  |
 
 **The only remaining failures anywhere are the 25 committed screenshot
 baselines**, which were written by `848856ef` on 2026-08-06 — before this

@@ -56,7 +56,7 @@ The error envelope is defined as follows (DD-03; ADR-0004 wiring context; full c
 
 - `apperr.AppError` is the single typed backend error: `Code ErrorCode`, `Title`, `Message`,
   `Details map[string]string` (safe allowlist only — never secrets or absolute paths beyond what the
-  user already knows), `Retryable bool`, and an **unexported `cause error`** that is *never*
+  user already knows), `Retryable bool`, and an **unexported `cause error`** that is _never_
   serialized.
 - `apperr.WireError` is the JSON shape crossing the bridge — identical fields **minus** `cause`.
 - `apperr.ToWire(log zerolog.Logger, err error) WireError` logs the full error chain (including
@@ -142,23 +142,23 @@ new package, nil repo in the constructor, real repo in `Init`, `Bind` in `main.g
 
 One package per row of the module inventory (`02_Architecture/01_MODULE_INVENTORY.md`):
 
-| Package | Role | Entry points |
-|---|---|---|
-| `internal/appmodel` | **Authoritative in-memory application model** (open docs + content, tabs, workspace ref, UI/layout); query + commands; emits `state:*` events (DD-62–64) | `AppModelHandler/Service`, `GetState`, `Apply*` commands |
-| `internal/apperr` | Error/`ErrorCode` catalog, `AppError`, `WireError`, `ToWire`, all `*Result` + DTOs | `apperr.go`, `wire.go`, `results.go` |
-| `internal/bootstrap` | Pre-DB console logger; `IsDevBuild` build tag | `NewLogger`, `IsDevBuild` |
-| `internal/logging` | Configured zerolog + lumberjack file sink; implements Wails logger; `Reconfigure` | `logging.Logger` |
-| `internal/file` | OS path resolution (config/logs/db dirs), `-Dev` isolation | `FileUtilsServiceAPI` |
-| `internal/db` | SQLite open (modernc), WAL + `busy_timeout`, goose migrations, sqlc `store/` | `Open`, `Database` |
-| `internal/settings` | KV settings groups (theme, appearance, standard, policies, view-mode) H/S/R | `SettingsHandler/Service`, `SettingsRepositoryAPI` |
-| `internal/recent` | Recent files & folders, "reopen last"; MRU, prune-missing H/S/R | `RecentHandler/Service` |
-| `internal/docs` | Document open/save/save-as, native dialogs, encoding + line-ending preservation | `DocsHandler/Service` |
-| `internal/workspace` | Open-folder → recursive filtered tree; lazy children | `WorkspaceHandler/Service` |
-| `internal/assets` | Guarded `AssetServer.Handler`; relative-to-document + allowlist | `NewAssetHandler` |
-| `internal/export` | PDF export orchestration via webview print | `ExportHandler/Service` |
-| `internal/fileassoc` | `OnFileOpen`/argv → open request; per-OS open-path helper | `ResolveOpenTarget`, `OpenPathArgs` |
-| `internal/gate` | Single-flight guard for long ops | `Gate.TryAcquire/Release` |
-| `internal/application` | DI root; two-phase wiring; holds ctx | `NewApplicationContextHolder`, `Init` |
+| Package                | Role                                                                                                                                                     | Entry points                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `internal/appmodel`    | **Authoritative in-memory application model** (open docs + content, tabs, workspace ref, UI/layout); query + commands; emits `state:*` events (DD-62–64) | `AppModelHandler/Service`, `GetState`, `Apply*` commands |
+| `internal/apperr`      | Error/`ErrorCode` catalog, `AppError`, `WireError`, `ToWire`, all `*Result` + DTOs                                                                       | `apperr.go`, `wire.go`, `results.go`                     |
+| `internal/bootstrap`   | Pre-DB console logger; `IsDevBuild` build tag                                                                                                            | `NewLogger`, `IsDevBuild`                                |
+| `internal/logging`     | Configured zerolog + lumberjack file sink; implements Wails logger; `Reconfigure`                                                                        | `logging.Logger`                                         |
+| `internal/file`        | OS path resolution (config/logs/db dirs), `-Dev` isolation                                                                                               | `FileUtilsServiceAPI`                                    |
+| `internal/db`          | SQLite open (modernc), WAL + `busy_timeout`, goose migrations, sqlc `store/`                                                                             | `Open`, `Database`                                       |
+| `internal/settings`    | KV settings groups (theme, appearance, standard, policies, view-mode) H/S/R                                                                              | `SettingsHandler/Service`, `SettingsRepositoryAPI`       |
+| `internal/recent`      | Recent files & folders, "reopen last"; MRU, prune-missing H/S/R                                                                                          | `RecentHandler/Service`                                  |
+| `internal/docs`        | Document open/save/save-as, native dialogs, encoding + line-ending preservation                                                                          | `DocsHandler/Service`                                    |
+| `internal/workspace`   | Open-folder → recursive filtered tree; lazy children                                                                                                     | `WorkspaceHandler/Service`                               |
+| `internal/assets`      | Guarded `AssetServer.Handler`; relative-to-document + allowlist                                                                                          | `NewAssetHandler`                                        |
+| `internal/export`      | PDF export orchestration via webview print                                                                                                               | `ExportHandler/Service`                                  |
+| `internal/fileassoc`   | `OnFileOpen`/argv → open request; per-OS open-path helper                                                                                                | `ResolveOpenTarget`, `OpenPathArgs`                      |
+| `internal/gate`        | Single-flight guard for long ops                                                                                                                         | `Gate.TryAcquire/Release`                                |
+| `internal/application` | DI root; two-phase wiring; holds ctx                                                                                                                     | `NewApplicationContextHolder`, `Init`                    |
 
 Composition root: **`main.go`** (embed, `wails.Run`, `Bind`, `EnumBind`, `OnStartup`→`Init`,
 `OnShutdown`, `Mac.OnFileOpen`).

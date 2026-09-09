@@ -14,17 +14,17 @@ pages before and after; only pixels moved.
 The binding gives the pane header exactly one emphasis, and production had
 neither half of it:
 
-| Fragment | Binding | Production before |
-|---|---|---|
-| `● Preview · live` | `rgb(4,120,87)` — `.pane-h .live{color:var(--accent-ink)}` (mockup.html:301) | `rgb(154,161,171)` (`--faint`) |
-| `sel 42w` | `rgb(4,120,87)` — nested `<span style="color:var(--accent-ink)">` (mockup.html:726) | `rgb(154,161,171)` (`--faint`) |
+| Fragment           | Binding                                                                             | Production before              |
+| ------------------ | ----------------------------------------------------------------------------------- | ------------------------------ |
+| `● Preview · live` | `rgb(4,120,87)` — `.pane-h .live{color:var(--accent-ink)}` (mockup.html:301)        | `rgb(154,161,171)` (`--faint`) |
+| `sel 42w`          | `rgb(4,120,87)` — nested `<span style="color:var(--accent-ink)">` (mockup.html:726) | `rgb(154,161,171)` (`--faint`) |
 
 Everything else already matched byte-for-byte: text, x position, width, family,
 10px size, `0.9px` letter-spacing, uppercase transform, weight 400.
 
-| Region | Before | After |
-|---|---|---|
-| Editor pane header | 214 px (max Δ 150) | **0** |
+| Region              | Before             | After |
+| ------------------- | ------------------ | ----- |
+| Editor pane header  | 214 px (max Δ 150) | **0** |
 | Preview pane header | 413 px (max Δ 150) | **0** |
 
 `sel 42w` moved into its own span to carry the colour, so it now comes from the
@@ -40,10 +40,10 @@ The binding draws both in a 24-unit box and renders them at 15px
 Production approximated the paths in the 15-unit space. Adopting the source
 viewBox follows the decision already recorded for `file`.
 
-| Button | Before | After |
-|---|---|---|
-| Link | 139 px (max Δ 220) | **41 px** (max Δ 41) |
-| Image | 151 px (max Δ 206) | **127 px** (max Δ 114) |
+| Button | Before             | After                  |
+| ------ | ------------------ | ---------------------- |
+| Link   | 139 px (max Δ 220) | **41 px** (max Δ 41)   |
+| Image  | 151 px (max Δ 206) | **127 px** (max Δ 114) |
 
 ## Format / Compact / Lint labels — improved
 
@@ -55,11 +55,11 @@ The binding's `.tbtn` (mockup.html:287) sets a size but never a family, so a
 `--text` overrode. Both are scoped to the parity route, exactly like the
 existing glyph treatment.
 
-| Button | Before | After |
-|---|---|---|
-| Format | 276 px (max Δ 144) | **240 px** (max Δ 74) |
+| Button  | Before             | After                 |
+| ------- | ------------------ | --------------------- |
+| Format  | 276 px (max Δ 144) | **240 px** (max Δ 74) |
 | Compact | 422 px (max Δ 144) | **342 px** (max Δ 86) |
-| Lint | 211 px (max Δ 255) | **181 px** |
+| Lint    | 211 px (max Δ 255) | **181 px**            |
 
 ## What remains, and why
 
@@ -68,13 +68,13 @@ offset that production cannot currently reproduce**, because production pins
 measured integer widths where the binding derives fractional ones from text
 metrics:
 
-| Toolbar child | Reference | Production |
-|---|---|---|
-| group 1 (bold…inline-code) | x 246.203125, w **135.078125** | x 246.203125, w **135** |
-| group 2 (headings) | x **385.28125**, w 107.953125 | x **385.203125**, w 108 |
-| group 3 (lists) | x **497.234375** | x **497.203125** |
-| group 4 (link/image/table) | x **630.234375** | x **630.203125** |
-| arrangement segment | x **1068.765625**, w **181.03125** | x **1068.515625**, w **181.28125** |
+| Toolbar child              | Reference                          | Production                         |
+| -------------------------- | ---------------------------------- | ---------------------------------- |
+| group 1 (bold…inline-code) | x 246.203125, w **135.078125**     | x 246.203125, w **135**            |
+| group 2 (headings)         | x **385.28125**, w 107.953125      | x **385.203125**, w 108            |
+| group 3 (lists)            | x **497.234375**                   | x **497.203125**                   |
+| group 4 (link/image/table) | x **630.234375**                   | x **630.203125**                   |
+| arrangement segment        | x **1068.765625**, w **181.03125** | x **1068.515625**, w **181.28125** |
 
 The binding sizes every control from content — `.tbtn{min-width:30px;padding:0
 8px}`, `.tgrp{gap:3px;padding:3px}`, `.seg button{font:inherit;font-size:11.5px;

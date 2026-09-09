@@ -34,7 +34,7 @@ instructions in the composer; the assistant answers, may read context via tools,
 Each turn appends to the transcript shown in the sidebar (user bubble, assistant bubble, interleaved
 tool-call rows and edit cards).
 
-- **Per-tab session history.** History is kept **per document/tab for the session** and is *not*
+- **Per-tab session history.** History is kept **per document/tab for the session** and is _not_
   persisted across app launches in v1 (DD-44). Switching tabs shows that document's own transcript;
   closing a tab discards its transcript. A run transcript (messages + tool calls + applied edits) is
   available for the current session (DD-55); persistent history is optional and, if ever added, stores
@@ -63,7 +63,7 @@ The loop is the single execution path for all three interaction modes
 so the user can see what the agent read and did.
 
 - **EC-LLM-1 — Runaway loop.** If the model keeps calling tools without converging, the loop stops at
-  the **max-iteration** limit (default 8, configurable — mockup *AI Context* → "Max agent tool
+  the **max-iteration** limit (default 8, configurable — mockup _AI Context_ → "Max agent tool
   iterations"), returns whatever partial result exists, and posts a clear "Reached the tool-iteration
   limit" notice instead of continuing indefinitely (DD-40).
 
@@ -89,7 +89,7 @@ All tools are exposed through the reserved seams: document/selection via the doc
 
 Tool access is **least-privilege and read-mostly** (DD-41):
 
-- **Read-only by default.** Only `propose_edit` produces change, and it produces a *proposal*, not a
+- **Read-only by default.** Only `propose_edit` produces change, and it produces a _proposal_, not a
   write. There is **no** arbitrary filesystem, shell, process, or network tool.
 - **Document vs workspace.** `read_document`/`read_selection` are always available (they read the open
   buffer). Workspace tools (`list_workspace_files`, `read_workspace_file`) are available **only when a
@@ -126,7 +126,7 @@ The model **never writes files directly** (DD-42). When it wants to change conte
 **coloured diff** (deletions struck through, insertions highlighted), and an action row.
 
 A proposal reuses the reusable diff component (F9) built for Format/Lint. A run may return
-zero proposals (a pure chat answer) or one proposal; the model returns the *intended* new text and the
+zero proposals (a pure chat answer) or one proposal; the model returns the _intended_ new text and the
 app computes the diff against the current scope for display.
 
 - **EC-LLM-12 — No / malformed edit.** If the model claims an edit but `propose_edit` returns empty or
@@ -143,13 +143,14 @@ The user decides what happens to a proposal (DD-42). The card's action row offer
   flows to disk only through the normal save/autosave path — nothing is written to disk by the assistant
   itself.
 - **Re-run** — runs the action again, against the current buffer. This is the remedy for a proposal you
-  do not like *and* for a proposal that has gone stale because you edited the document while it was
+  do not like _and_ for a proposal that has gone stale because you edited the document while it was
   running.
 
   There is **no partial apply.** Accepting individual hunks was refused on 2026-07-25
   (`00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons`): it needs conflict
   handling between accepted and rejected hunks for a benefit nobody asked for, and the proposal is
   already reviewable in full before anything is applied. The mockup's Partial button has been removed.
+
 - **Discard** — drops the proposal; the transcript keeps a record that it was discarded (DD-55).
 
 After Apply, the app may optionally run **Format** on the applied region (reusing the callable Format
@@ -204,6 +205,7 @@ Hard limits keep the agent bounded and the app responsive (DD-40, DD-47):
   At the defaults that is 8 × 4 × 60 s ≈ **32 minutes** of one click holding the gate, if nothing
   pre-empts it. The run budget is what pre-empts it, and every attempt's deadline is
   `min(perAttemptTimeout, timeRemainingInRunBudget)` (ADR-0034).
+
 - **No-progress detection** — the loop stops if the model requests the **same tool with the same
   arguments twice in a row**. An iteration cap alone does not help here: a small model that calls
   `read_document` identically will do it eight times and spend the whole budget learning nothing.

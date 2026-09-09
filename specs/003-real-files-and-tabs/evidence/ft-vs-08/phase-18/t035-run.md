@@ -6,26 +6,26 @@
 
 ## The counts, from `parity/manifest-report.json`
 
-| Count | Value |
-|---|---:|
-| planned | 1,638 |
-| logical cases | 546 |
-| repetitions | 3 |
-| attempted | 1,638 |
-| referenceReady | 1,620 |
-| actualReady | 1,368 |
-| comparisonCompleted | 1,350 |
-| **passed** | **0** |
-| **failed** | **1,620** |
-| unresolved | 18 |
+| Count               |     Value |
+| ------------------- | --------: |
+| planned             |     1,638 |
+| logical cases       |       546 |
+| repetitions         |         3 |
+| attempted           |     1,638 |
+| referenceReady      |     1,620 |
+| actualReady         |     1,368 |
+| comparisonCompleted |     1,350 |
+| **passed**          |     **0** |
+| **failed**          | **1,620** |
+| unresolved          |        18 |
 
 Per-row accounting across all 1,638:
 
-| completed | passed | failed | unresolved | rows |
-|---|---|---|---|---:|
-| ✓ | ✗ | ✓ | ✗ | 1,350 |
-| ✗ | ✗ | ✓ | ✗ | 270 |
-| ✗ | ✗ | ✗ | ✓ | 18 |
+| completed | passed | failed | unresolved |  rows |
+| --------- | ------ | ------ | ---------- | ----: |
+| ✓         | ✗      | ✓      | ✗          | 1,350 |
+| ✗         | ✗      | ✓      | ✗          |   270 |
+| ✗         | ✗      | ✗      | ✓          |    18 |
 
 **Unchanged from the recorded baseline** (0 passed / 1,620 failed of 1,638).
 Phase 18 neither improved nor regressed the unrestricted matrix, which is the
@@ -41,16 +41,16 @@ precisely, document, hand forward.
 region's computed styles. The comparator reports them prefixed `Feature 002
 region:`, and the same eight assertions fail in every one of the 432:
 
-| Property | Reference (binding) | Production |
-|---|---|---|
+| Property      | Reference (binding)                                           | Production                                                |
+| ------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
 | `font-family` | `"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace` | `Inter, -apple-system, "Segoe UI", system-ui, sans-serif` |
-| `font-size` | `13px` | `16px` |
-| `line-height` | `23.4px` | `normal` |
-| `overflow` | `auto` | `hidden` |
-| `overflow-x` | `auto` | `hidden` |
-| `overflow-y` | `auto` | `hidden` |
-| `min-width` | `auto` | `0px` |
-| `min-height` | `auto` | `0px` |
+| `font-size`   | `13px`                                                        | `16px`                                                    |
+| `line-height` | `23.4px`                                                      | `normal`                                                  |
+| `overflow`    | `auto`                                                        | `hidden`                                                  |
+| `overflow-x`  | `auto`                                                        | `hidden`                                                  |
+| `overflow-y`  | `auto`                                                        | `hidden`                                                  |
+| `min-width`   | `auto`                                                        | `0px`                                                     |
+| `min-height`  | `auto`                                                        | `0px`                                                     |
 
 A further **126** cases also fail `width` and `height` in that region.
 
@@ -62,11 +62,11 @@ These are the font and the scrolling, exactly as decision 9 names them. They are
 Raw differing pixels, measured on the freshly captured artifacts at 1280px
 Minimal Light with the same classifier used for the targeted residuals:
 
-| Case | Region | Raw differing | Max delta |
-|---|---|---:|---:|
-| `primary_editor-only_1280_minimal-light` | 1024×546 | **23,019** | 248 |
-| `primary_editor-split_1280_minimal-light` | 1024×546 | **23,024** | 248 |
-| `primary_preview-only_1280_minimal-light` | 1024×546 | **177** | 41 |
+| Case                                      | Region   | Raw differing | Max delta |
+| ----------------------------------------- | -------- | ------------: | --------: |
+| `primary_editor-only_1280_minimal-light`  | 1024×546 |    **23,019** |       248 |
+| `primary_editor-split_1280_minimal-light` | 1024×546 |    **23,024** |       248 |
+| `primary_preview-only_1280_minimal-light` | 1024×546 |       **177** |        41 |
 
 The contrast is the finding. The two editor families differ by ~23,000 pixels
 each; the preview family, over the identical region and at the identical width

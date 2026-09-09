@@ -32,7 +32,7 @@ intervals of **5.036 s** and **5.037 s**.
 
 **The magnitude of the latency.** SC-FT-007 bounds it at 5,000 ms and the harness
 distribution T181 compares against is p50 ≈ 1.25 s, p95 ≈ 1.33 s, max ≈ 1.34 s.
-Measuring that needs a timestamp on the *keystroke*, and the only keystroke source
+Measuring that needs a timestamp on the _keystroke_, and the only keystroke source
 available here is a tool call whose round trip was measured at **~5.6 s** earlier
 in this session — coarser than the quantity being measured. An anchor cannot bound
 an interval shorter than itself.

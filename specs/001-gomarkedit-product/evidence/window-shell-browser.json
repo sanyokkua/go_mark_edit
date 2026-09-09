@@ -10,11 +10,7 @@
   },
   "matrix": {
     "cases": 18,
-    "viewportWidths": [
-      375,
-      768,
-      1280
-    ],
+    "viewportWidths": [375, 768, 1280],
     "palettes": [
       "glass-light",
       "glass-dark",
@@ -47,9 +43,7 @@
   },
   "requests": {
     "count": 151,
-    "origins": [
-      "http://127.0.0.1:4173"
-    ],
+    "origins": ["http://127.0.0.1:4173"],
     "allLocal": true,
     "fullLog": [
       {
@@ -1193,4 +1187,3 @@
     }
   }
 }
-

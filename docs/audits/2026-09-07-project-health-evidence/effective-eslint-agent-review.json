@@ -6,15 +6,9 @@
     "@typescript-eslint/no-floating-promises": null,
     "@typescript-eslint/no-misused-promises": null,
     "no-restricted-imports": null,
-    "react-hooks/rules-of-hooks": [
-      2
-    ],
-    "react-hooks/exhaustive-deps": [
-      1
-    ],
-    "react-hooks/set-state-in-effect": [
-      2
-    ],
+    "react-hooks/rules-of-hooks": [2],
+    "react-hooks/exhaustive-deps": [1],
+    "react-hooks/set-state-in-effect": [2],
     "react-refresh/only-export-components": [
       1,
       {

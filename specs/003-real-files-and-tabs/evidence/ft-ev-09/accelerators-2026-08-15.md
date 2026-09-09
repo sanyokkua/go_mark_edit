@@ -8,17 +8,17 @@ handler dispatched any of them.
 
 ## 1. The probe that came before the fix
 
-T110's frontend root cause was already located, but the evidence that the keystroke *reached the
-application* was circular: `host-walkthrough-2026-08-15.md` justified it with the 2026-08-14
+T110's frontend root cause was already located, but the evidence that the keystroke _reached the
+application_ was circular: `host-walkthrough-2026-08-15.md` justified it with the 2026-08-14
 `⌘S`-committed-a-write observation, which is precisely the observation T110 asked to re-examine.
 Remove it and nothing in this tree showed any `⌘` accelerator ever firing on the packaged binary —
-every recorded `⌘` observation was of advertised *text*, never a pressed key.
+every recorded `⌘` observation was of advertised _text_, never a pressed key.
 
 That left a second possible layer: WKWebView never delivering `⌘`-modified keydown to JS at all,
 in which case a frontend fix would pass every gate and still fail on the host. The Playwright
 suite cannot see it — it runs a real Chromium against the mock bridge, where `⌘` always reaches JS.
 
-**Method.** Rebuild, launch, and press an accelerator that is *already wired* — `⌘,` (Settings) is
+**Method.** Rebuild, launch, and press an accelerator that is _already wired_ — `⌘,` (Settings) is
 in `createShellActionCatalogue` — beside one that is not. `⌘,` has no side effect that can happen
 on its own, so it carries no autosave confound.
 
@@ -26,11 +26,11 @@ Stale-instance guard, per the trap recorded in `host-walkthrough-2026-08-15.md`:
 **12:33:29**, process started **12:34:38**. The process is newer than the binary, so it is the
 fresh build and not a raised older instance.
 
-| Key | Wired before the fix? | Result on `4e141037` |
-|---|---|---|
-| `⌘,` | yes (shell catalogue) | **Settings menu opened** |
-| `⌘\` | yes (shell catalogue) | live |
-| `⌘N` ×7 | no | **nothing; still exactly one tab** |
+| Key     | Wired before the fix? | Result on `4e141037`               |
+| ------- | --------------------- | ---------------------------------- |
+| `⌘,`    | yes (shell catalogue) | **Settings menu opened**           |
+| `⌘\`    | yes (shell catalogue) | live                               |
+| `⌘N` ×7 | no                    | **nothing; still exactly one tab** |
 
 **Verdict: the defect is entirely in the frontend.** Same webview, same keyboard, same modifier —
 the only difference between `⌘,` and `⌘N` was whether anything listened. The native-menu
@@ -42,7 +42,7 @@ Screenshots: `host-screenshots/` (Settings opened by `⌘,`; unchanged single-ta
 ## 2. The tests, failing first
 
 Nothing existing could have caught this. `actionRegistry.test.ts:55` asserts the registry
-*declares* `Mod+N`; `useShellShortcuts.test.tsx` drives the hook with synthetic actions it builds
+_declares_ `Mod+N`; `useShellShortcuts.test.tsx` drives the hook with synthetic actions it builds
 itself. Neither asks whether `ShellMenuRow` — which both renders the accelerator text and installs
 the only global keydown listener — passes the file actions to that hook.
 
@@ -52,20 +52,20 @@ binds to `ctrlKey` — the convention already used by the neighbouring suites.
 
 Before the fix: **7 failed, 30 passed**. After: **37 passed**. The seven:
 
-| Test | Accelerator |
-|---|---|
-| `T110 dispatches the advertised File accelerator Mod+N › runs new-file …` | `⌘N` |
-| `… Mod+O › runs open-file …` | `⌘O` |
-| `… Mod+S › runs save …` | `⌘S` |
-| `… Mod+Shift+S › runs save-as …` | `⌘⇧S` |
-| `… Mod+W › runs close-tab …` | `⌘W` |
-| `… Mod+Shift+Alt+T › runs reopen …` | `⌥⇧⌘T` |
-| `T110 closes the active document when the File menu Close Tab row is clicked` | (click) |
+| Test                                                                          | Accelerator |
+| ----------------------------------------------------------------------------- | ----------- |
+| `T110 dispatches the advertised File accelerator Mod+N › runs new-file …`     | `⌘N`        |
+| `… Mod+O › runs open-file …`                                                  | `⌘O`        |
+| `… Mod+S › runs save …`                                                       | `⌘S`        |
+| `… Mod+Shift+S › runs save-as …`                                              | `⌘⇧S`       |
+| `… Mod+W › runs close-tab …`                                                  | `⌘W`        |
+| `… Mod+Shift+Alt+T › runs reopen …`                                           | `⌥⇧⌘T`      |
+| `T110 closes the active document when the File menu Close Tab row is clicked` | (click)     |
 
 **Two of the new tests passed before the fix, and are recorded as guards rather than as proof.**
 `T110 leaves Save and Save As unclaimed on a document that is not writable` and `T110 leaves every
 File accelerator inert while a modal is open` pass trivially when nothing is wired — dead code
-fires nothing. Their value is against a *wrong* fix: `useShellShortcuts.ts:38-41` calls
+fires nothing. Their value is against a _wrong_ fix: `useShellShortcuts.ts:38-41` calls
 `preventDefault()` only after `isAvailable()` returns true, so an implementation hardcoding
 `isAvailable: () => true` would go green on all six accelerators while silently swallowing `⌘S` on
 a read-only document. Nothing else would catch that.
@@ -82,7 +82,7 @@ first, with the explicit save then finding the document clean and no-opping.
 
 **That mechanism is wrong.** There was no explicit save to no-op: `⌘S` had no listener. The
 `0 elements` result above is the measurement — a `save-success` notification is emitted only by
-`finishWrite`'s explicit path, so its absence means no explicit save was *attempted*, not that one
+`finishWrite`'s explicit path, so its absence means no explicit save was _attempted_, not that one
 was attempted and found the document clean. The label read `Autosaved` because the one-second Go
 autosave had already committed with `SaveOriginAutosave` and nothing else ever ran.
 
@@ -108,7 +108,7 @@ menu subtree; `ShellMenuRow` renders under `.application-menu` via `AppearanceCo
 different subtree from the tabs. It is now threaded through `ApplicationMenuState` and bound to the
 active document and tab-set revision in `ApplicationShellMenu`.
 
-**A second defect fixed by the same prop.** `File ▸ Close Tab` rendered *enabled* and its click was
+**A second defect fixed by the same prop.** `File ▸ Close Tab` rendered _enabled_ and its click was
 a silent no-op — `dispatchFileAction` had no `close-tab` arm, so `invoke` was `undefined` and it
 returned early. `ShellMenuRow` had no close callback in its props at all, which is the same
 missing prop `⌘W` needed. Covered by the click-parity test above.
@@ -123,14 +123,14 @@ Binary rebuilt at **13:27:50**, process started **13:27:56** — newer than the 
 raised older instance. Autosave **off** throughout, which removes the confound that made T104's
 second symptom ambiguous in the first place.
 
-| Accelerator | Observed on the real binary |
-|---|---|
-| `⌘N` | **works** — one tab to three |
-| `⌘W` | **works** — three to two, then two to one, twice |
-| `⌘S` | **works** — status reads `Saved` (not `Autosaved`), and the edit is on disk |
-| `⌘O` | **works** — opens the real native Open dialog |
-| `⌘⇧S` | **works** — opens the real native Save As dialog |
-| `⌥⇧⌘T` | advertised and correctly greyed (no reopenable file in this session); dispatch not exercised |
+| Accelerator | Observed on the real binary                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------- |
+| `⌘N`        | **works** — one tab to three                                                                 |
+| `⌘W`        | **works** — three to two, then two to one, twice                                             |
+| `⌘S`        | **works** — status reads `Saved` (not `Autosaved`), and the edit is on disk                  |
+| `⌘O`        | **works** — opens the real native Open dialog                                                |
+| `⌘⇧S`       | **works** — opens the real native Save As dialog                                             |
+| `⌥⇧⌘T`      | advertised and correctly greyed (no reopenable file in this session); dispatch not exercised |
 
 Glyph rendering was checked at magnification: `⌘N`, `⌘O`, `⌥⇧⌘T`, `⌘S`, `⌘⇧S`, `⌘W`, with `Exit`
 deliberately bare and the three deferred rows greyed with no accelerator.
@@ -167,7 +167,7 @@ The Settings menu advertises `Ctrl ,` on macOS while the key that works is `⌘,
 `SettingsMenu.tsx:285-287` renders the raw i18n string `settings.menu.allSettings.accelerator`,
 hardcoded to `"Ctrl ,"` at `frontend/src/i18n/locales/en.json:129`, instead of going through
 `formatShortcut(..., currentPlatform())` the way `ShellMenuRow`'s `shortcutForMenuItem` does. Same
-defect class as T110 — advertised accelerator text decoupled from the registry — but a *wrong*
+defect class as T110 — advertised accelerator text decoupled from the registry — but a _wrong_
 label rather than an inert key, on a different menu, and under the parity contract.
 
 Critically, the literal `Ctrl ,` **matches the immutable reference** (`mockup.html:624`), and the

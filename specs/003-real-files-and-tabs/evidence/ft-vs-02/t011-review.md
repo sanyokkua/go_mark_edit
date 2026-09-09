@@ -14,4 +14,3 @@ Date: 2026-08-08
 - `EncodeDocument` writes canonical UTF-8 with the recorded LF/CRLF and BOM characteristics, refuses mixed endings, and preserves a `none` file without a terminator until content contains a break, which selects LF.
 - `DiskVersion.Equal` compares existence, byte size, nanosecond modification time, permission bits, and optional platform file identity in one implementation.
 - `CurrentDiskVersion` returns an explicit absent version for a missing path and preserves non-not-found stat errors.
-

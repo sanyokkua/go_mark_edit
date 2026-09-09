@@ -15,13 +15,13 @@ The fixture was
 
 ## Demonstrated on the current host
 
-| Scenario | Evidence | Observed result |
-| --- | --- | --- |
-| Native Open of a real file | [`opened-fixture.jpeg`](artifacts/t021/opened-fixture.jpeg), earlier raw fixture logs | `conflict.md` opened from the native picker with UTF-8/LF metadata and Saved status. |
-| Manual local edit followed by Save | [`ui-conflict-reload-final.raw.log`](logs/t021/ui-conflict-reload-final.raw.log) | Save was initiated from the real File menu after the editor buffer was changed. |
-| External replacement by another process | [`external-replacement-final.raw.log`](logs/t021/external-replacement-final.raw.log) | The shell replaced the file with 41 bytes and hash `bb21eb0e...5e8c977`; the app did not write during the replacement. |
-| Bounded comparison prompt | [`conflict-prompt-final.jpeg`](artifacts/t021/conflict-prompt-final.jpeg), [`ui-conflict-reload-final.raw.log`](logs/t021/ui-conflict-reload-final.raw.log) | The prompt showed the first changed hunk, exact 41/37-byte side sizes, both texts, and Reload/Keep mine/Skip actions. Accessibility state reported Skip focused. |
-| Reload from disk | [`reload-final.jpeg`](artifacts/t021/reload-final.jpeg), [`ui-conflict-reload-final.raw.log`](logs/t021/ui-conflict-reload-final.raw.log) | Prompt dismissed; editor and live preview both showed the external text; status was Saved; disk hash stayed unchanged. |
+| Scenario                                | Evidence                                                                                                                                                    | Observed result                                                                                                                                                  |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Native Open of a real file              | [`opened-fixture.jpeg`](artifacts/t021/opened-fixture.jpeg), earlier raw fixture logs                                                                       | `conflict.md` opened from the native picker with UTF-8/LF metadata and Saved status.                                                                             |
+| Manual local edit followed by Save      | [`ui-conflict-reload-final.raw.log`](logs/t021/ui-conflict-reload-final.raw.log)                                                                            | Save was initiated from the real File menu after the editor buffer was changed.                                                                                  |
+| External replacement by another process | [`external-replacement-final.raw.log`](logs/t021/external-replacement-final.raw.log)                                                                        | The shell replaced the file with 41 bytes and hash `bb21eb0e...5e8c977`; the app did not write during the replacement.                                           |
+| Bounded comparison prompt               | [`conflict-prompt-final.jpeg`](artifacts/t021/conflict-prompt-final.jpeg), [`ui-conflict-reload-final.raw.log`](logs/t021/ui-conflict-reload-final.raw.log) | The prompt showed the first changed hunk, exact 41/37-byte side sizes, both texts, and Reload/Keep mine/Skip actions. Accessibility state reported Skip focused. |
+| Reload from disk                        | [`reload-final.jpeg`](artifacts/t021/reload-final.jpeg), [`ui-conflict-reload-final.raw.log`](logs/t021/ui-conflict-reload-final.raw.log)                   | Prompt dismissed; editor and live preview both showed the external text; status was Saved; disk hash stayed unchanged.                                           |
 
 The current-host run found and fixed two bridge/UI lifecycle defects before
 this final capture: nanosecond disk versions now cross the bridge as exact text,

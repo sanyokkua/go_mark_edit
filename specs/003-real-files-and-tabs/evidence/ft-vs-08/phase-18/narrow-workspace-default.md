@@ -21,7 +21,7 @@ projected value to `false` while narrow, until the user chooses otherwise. This
 **splits the source of truth**: `App.tsx` passes the raw preference to
 `ShellMenuRow` for the toggle, while `AppShell` renders the override. The toggle
 then computes `!displayed` → `true`, dispatches `setWorkspaceVisible(true)`, the
-preference was *already* `true`, nothing changes, and the panel stays shut. Two
+preference was _already_ `true`, nothing changes, and the panel stays shut. Two
 components holding different ideas of one value is precisely what Constitution
 III exists to prevent. Measured: `editor-stage` 108 → 90 passing.
 
@@ -33,7 +33,7 @@ A viewport condition would be writing a durable user preference.
 
 ## What it actually needs
 
-A third value: the workspace's *presentation* at narrow width is not the same
+A third value: the workspace's _presentation_ at narrow width is not the same
 thing as the user's stored preference, and the model currently has only one
 field for both. Resolving it means deciding one of:
 
@@ -41,7 +41,7 @@ field for both. Resolving it means deciding one of:
   than the backend, with the backend preference governing wide layout only; or
 - a second backend field distinguishing "preferred when there is room" from
   "open right now"; or
-- leaving the panel open and changing the *layout* so the overlay no longer
+- leaving the panel open and changing the _layout_ so the overlay no longer
   covers the tab strip — which fixes the reachability complaint without touching
   state at all, and is the smallest change of the three.
 

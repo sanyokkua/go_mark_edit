@@ -76,7 +76,7 @@ _GATE: Passed before Phase 0 research and passed again after Phase 1 design._
 | Vertical slices            | The batch produces a usable framed native shell, durable layout, Settings/error surfaces, responsive behavior, and direct evidence. Launcher and file behavior remain behind real command dependencies.             | PASS   |
 | Backend authority          | Appmodel owns acknowledged layout and persistence intent; Redux renders projections; frontend Wails access is adapter-only; close flush stays synchronous in Go lifecycle ownership.                                | PASS   |
 | Offline, private, safe     | Static source/bundle safeguards plus one short request-instrumented browser journey prove zero outbound attempts; no duration claim substitutes for request evidence.                                               | PASS   |
-| Data and platforms         | SQLite remains CGO-free/WAL; conditional per-field writes protect newest change; native behavior is checked on the current host now, while Windows/Linux runtime tests wait for whole-application completion. | PASS   |
+| Data and platforms         | SQLite remains CGO-free/WAL; conditional per-field writes protect newest change; native behavior is checked on the current host now, while Windows/Linux runtime tests wait for whole-application completion.       | PASS   |
 | Accessible coherent UI     | The in-app row, Settings, notifications, sidebar states, focus lifecycle, localization, longer text, reduced motion, and all six palettes are explicit obligations.                                                 | PASS   |
 | Evidence before completion | A reliable baseline precedes edits; direct backend, adapter, browser, performance, native, and build evidence is named in [quickstart.md](quickstart.md).                                                           | PASS   |
 
@@ -221,28 +221,28 @@ These owner keys identify the responsibility preserved by the regenerated `tasks
 exactly one primary implementation task; tests and evidence support owners without claiming the
 requirement independently.
 
-| Requirement | Plan owner | Complete responsibility                                                         | Direct evidence                                                             |
-| ----------- | ---------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| FR-WS-001   | OWS-001    | Framed multi-process native composition                                         | Go option/composition tests; current-host independent-window case           |
+| Requirement | Plan owner | Complete responsibility                                                         | Direct evidence                                                                               |
+| ----------- | ---------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| FR-WS-001   | OWS-001    | Framed multi-process native composition                                         | Go option/composition tests; current-host independent-window case                             |
 | FR-WS-002   | OWS-002    | OS frame/controls on all platforms and macOS App/Edit roles                     | option/menu tests; current-host frame inspection; final whole-application cross-platform gate |
-| FR-WS-003   | OWS-003    | OS-owned movement and title gestures; no app drag interception                  | source/component absence checks; native movement/title-gesture case         |
-| FR-WS-004   | OWS-004    | F11 and public native full-screen state transition                              | action/adapter tests; native full-screen case                               |
-| FR-WS-005   | OWS-005    | OS-owned resizing and exact 375 x 480 minimum                                   | option tests; native resize/minimum case                                    |
-| FR-WS-006   | OWS-006    | Hidden restore, independent validation, usable-display correction, show-once    | lifecycle/repository tests; cold-start cases                                |
-| FR-WS-007   | OWS-007    | Three structural regions with zero-width empty Assistant reservation            | rendered shell tests; browser inspection                                    |
-| FR-WS-008   | OWS-008    | Exact 768/375 transformations, menu overflow, and no fake tab strip             | complete 18-case Playwright matrix                                          |
-| FR-WS-009   | OWS-009    | Exact durable and excluded layout field model                                   | repository/appmodel tests; relaunch case                                    |
-| FR-WS-010   | OWS-010    | Per-document arrangement with application fallback precedence                   | appmodel tests for saved/unsaved views                                      |
-| FR-WS-011   | OWS-011    | Immediate/debounced/synchronous-close persistence and newest-change arbitration | fake-clock tests; two-connection stale-close test                           |
-| FR-WS-012   | OWS-012    | Acknowledged projection, failure retention, notification, stale-winner reload   | service/appmodel failure/conflict tests                                     |
-| FR-WS-013   | OWS-013    | Hidden startup failure and Retry recovery                                       | lifecycle/UI tests; current-host repeated-failure case                      |
-| FR-WS-014   | OWS-014    | One action catalogue, in-app Settings/View/About row, modal suppression         | registry uniqueness; keyboard/menu journeys                                 |
-| FR-WS-015   | OWS-015    | Synchronized Appearance surfaces and atomic delivered-only reset                | repository/service/handler/projection/UI/second-window tests                |
-| FR-WS-016   | OWS-016    | Notification severity, banners, timing, capacity, dedup, and error queue        | fake-timer tests; browser queue journey                                     |
-| FR-WS-017   | OWS-017    | Catalogue, focus, palettes, longer text, reduced motion, accessibility          | a11y tests; 18-case matrix; timing evidence                                 |
-| FR-WS-018   | OWS-018    | Zero-request shell and no prohibited controls                                   | source/bundle guards; short request-instrumented log                        |
-| FR-WS-019   | OWS-019    | Single injected build version with exact `dev` fallback                         | Go injection and About rendering tests                                      |
-| FR-WS-020   | OWS-020    | Absence of every future-behavior facsimile                                      | rendered absence assertions; browser and real-build inspection              |
+| FR-WS-003   | OWS-003    | OS-owned movement and title gestures; no app drag interception                  | source/component absence checks; native movement/title-gesture case                           |
+| FR-WS-004   | OWS-004    | F11 and public native full-screen state transition                              | action/adapter tests; native full-screen case                                                 |
+| FR-WS-005   | OWS-005    | OS-owned resizing and exact 375 x 480 minimum                                   | option tests; native resize/minimum case                                                      |
+| FR-WS-006   | OWS-006    | Hidden restore, independent validation, usable-display correction, show-once    | lifecycle/repository tests; cold-start cases                                                  |
+| FR-WS-007   | OWS-007    | Three structural regions with zero-width empty Assistant reservation            | rendered shell tests; browser inspection                                                      |
+| FR-WS-008   | OWS-008    | Exact 768/375 transformations, menu overflow, and no fake tab strip             | complete 18-case Playwright matrix                                                            |
+| FR-WS-009   | OWS-009    | Exact durable and excluded layout field model                                   | repository/appmodel tests; relaunch case                                                      |
+| FR-WS-010   | OWS-010    | Per-document arrangement with application fallback precedence                   | appmodel tests for saved/unsaved views                                                        |
+| FR-WS-011   | OWS-011    | Immediate/debounced/synchronous-close persistence and newest-change arbitration | fake-clock tests; two-connection stale-close test                                             |
+| FR-WS-012   | OWS-012    | Acknowledged projection, failure retention, notification, stale-winner reload   | service/appmodel failure/conflict tests                                                       |
+| FR-WS-013   | OWS-013    | Hidden startup failure and Retry recovery                                       | lifecycle/UI tests; current-host repeated-failure case                                        |
+| FR-WS-014   | OWS-014    | One action catalogue, in-app Settings/View/About row, modal suppression         | registry uniqueness; keyboard/menu journeys                                                   |
+| FR-WS-015   | OWS-015    | Synchronized Appearance surfaces and atomic delivered-only reset                | repository/service/handler/projection/UI/second-window tests                                  |
+| FR-WS-016   | OWS-016    | Notification severity, banners, timing, capacity, dedup, and error queue        | fake-timer tests; browser queue journey                                                       |
+| FR-WS-017   | OWS-017    | Catalogue, focus, palettes, longer text, reduced motion, accessibility          | a11y tests; 18-case matrix; timing evidence                                                   |
+| FR-WS-018   | OWS-018    | Zero-request shell and no prohibited controls                                   | source/bundle guards; short request-instrumented log                                          |
+| FR-WS-019   | OWS-019    | Single injected build version with exact `dev` fallback                         | Go injection and About rendering tests                                                        |
+| FR-WS-020   | OWS-020    | Absence of every future-behavior facsimile                                      | rendered absence assertions; browser and real-build inspection                                |
 
 The delivered [appearance-contract.md](appearance-contract.md) is consumed, not re-owned. Current-host
 native evidence is required for this slice and every intermediate stage; it must be labelled with the

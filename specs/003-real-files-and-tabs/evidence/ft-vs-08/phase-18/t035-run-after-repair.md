@@ -11,11 +11,11 @@ unknown share of its pixel figures were not measurements. See
 
 ## Accounting
 
-| | Planned | Attempted | Ready | Completed | Passed | Failed | Unresolved |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| **Pixel comparison** | 1,530 | 1,530 | 1,530 | 1,512 | **0** | 1,512 | 18 |
-| **Behaviour verification** | 108 | 108 | 108 | — | **108** | **0** | — |
-| **Total** | 1,638 | 1,638 | | | | | |
+|                            | Planned | Attempted | Ready | Completed |  Passed | Failed | Unresolved |
+| -------------------------- | ------: | --------: | ----: | --------: | ------: | -----: | ---------: |
+| **Pixel comparison**       |   1,530 |     1,530 | 1,530 |     1,512 |   **0** |  1,512 |         18 |
+| **Behaviour verification** |     108 |       108 |   108 |         — | **108** |  **0** |          — |
+| **Total**                  |   1,638 |     1,638 |       |           |         |        |            |
 
 546 logical keys = 510 pixel-compared + 36 behaviour-verified.
 
@@ -29,13 +29,13 @@ than passed.
 
 **Capture determinism: 138 unstable keys → 0.**
 
-| | Reference | Actual |
-|---|---:|---:|
-| captures | 1,512 | 1,512 |
-| needed settling | **0** | **0** |
-| saw more than one raster | **0** | **0** |
-| max attempts | 3 | 3 |
-| max settle | 1,122 ms | 938 ms |
+|                          | Reference | Actual |
+| ------------------------ | --------: | -----: |
+| captures                 |     1,512 |  1,512 |
+| needed settling          |     **0** |  **0** |
+| saw more than one raster |     **0** |  **0** |
+| max attempts             |         3 |      3 |
+| max settle               |  1,122 ms | 938 ms |
 
 `unstableLogicalKeys: 0`. Every key produced one hash across all three
 repetitions, which is what FR-FT-054 requires and what the previous run could
@@ -58,20 +58,20 @@ drift below is addressed.
 
 ## Where the 1,512 failures are, on trustworthy numbers
 
-| Cases | Cause |
-|---:|---|
-| 1,080 | pixel drift only — every compared style matched, pixels did not |
-| 432 | Feature 002 editor-region computed styles (8 properties, handed forward by clarification) |
+| Cases | Cause                                                                                     |
+| ----: | ----------------------------------------------------------------------------------------- |
+| 1,080 | pixel drift only — every compared style matched, pixels did not                           |
+|   432 | Feature 002 editor-region computed styles (8 properties, handed forward by clarification) |
 
 Pixel distribution across the 1,512:
 
 | Threshold | Under it |
-|---|---:|
-| 200 px | **36** |
-| 1,000 | 117 |
-| 5,000 | 240 |
-| 20,000 | 348 |
-| 100,000 | 729 |
+| --------- | -------: |
+| 200 px    |   **36** |
+| 1,000     |      117 |
+| 5,000     |      240 |
+| 20,000    |      348 |
+| 100,000   |      729 |
 
 Minimum 165, median **104,781**, maximum 760,837.
 

@@ -30,11 +30,11 @@ The same real development bridge was inspected at all required widths through
 the controlled local page. Every row below represents all six combinations:
 Liquid Glass/Material/Minimal × Light/Dark.
 
-| Width | Page client/scroll width | Tab client/scroll width | Glass Light blur | Glass Dark blur | Material/Minimal blur |
-|---:|---:|---:|---|---|---|
-| 1280 | 1280 / 1280 | 988 / 988 | `blur(28px) saturate(1.5)` | `blur(28px) saturate(1.6)` | none |
-| 768 | 768 / 768 | 698 / 698 | `blur(28px) saturate(1.5)` | `blur(28px) saturate(1.6)` | none |
-| 375 | 375 / 375 | 351 / 512, contained `overflow-x:auto` | `blur(28px) saturate(1.5)` | `blur(28px) saturate(1.6)` | none |
+| Width | Page client/scroll width |                Tab client/scroll width | Glass Light blur           | Glass Dark blur            | Material/Minimal blur |
+| ----: | -----------------------: | -------------------------------------: | -------------------------- | -------------------------- | --------------------- |
+|  1280 |              1280 / 1280 |                              988 / 988 | `blur(28px) saturate(1.5)` | `blur(28px) saturate(1.6)` | none                  |
+|   768 |                768 / 768 |                              698 / 698 | `blur(28px) saturate(1.5)` | `blur(28px) saturate(1.6)` | none                  |
+|   375 |                375 / 375 | 351 / 512, contained `overflow-x:auto` | `blur(28px) saturate(1.5)` | `blur(28px) saturate(1.6)` | none                  |
 
 Fresh measured popup rectangles remained within their viewport:
 

@@ -10,11 +10,11 @@ of `#app.no-assistant .content` against `section[aria-label="Editor view"]`.
 The residual sat in three row bands. Every one had a named cause; none was
 masked.
 
-| Band (y, preview-relative) | Pixels | Cause |
-|---|---:|---|
-| 366–393 | 3,208 | code block line-height and inner `code` family |
-| 252–265 | 220 | image-fallback emphasis colour |
-| 238 | 5 | list bullet marker — still open |
+| Band (y, preview-relative) | Pixels | Cause                                          |
+| -------------------------- | -----: | ---------------------------------------------- |
+| 366–393                    |  3,208 | code block line-height and inner `code` family |
+| 252–265                    |    220 | image-fallback emphasis colour                 |
+| 238                        |      5 | list bullet marker — still open                |
 
 ## Code block — line-height
 
@@ -25,11 +25,11 @@ about 14px at its 12px size. Production's `.preview` carries
 and pushed every code line 2px down inside the block, and made the block itself
 40px tall in the reference against 44px in production.
 
-| Property | Reference | Production before | After |
-|---|---|---|---|
-| `pre` line-height | `normal` | `18px` | `normal` |
-| `pre` height | 40 | 44 | 40 |
-| `code` y | 728 (13 below `pre`) | 636 (15 below `pre`) | matched |
+| Property          | Reference            | Production before    | After    |
+| ----------------- | -------------------- | -------------------- | -------- |
+| `pre` line-height | `normal`             | `18px`               | `normal` |
+| `pre` height      | 40                   | 44                   | 40       |
+| `code` y          | 728 (13 below `pre`) | 636 (15 below `pre`) | matched  |
 
 ## Code block — the inner `code` family
 
@@ -40,10 +40,10 @@ but has **no rule for a `code` inside a `pre`**. Chromium's UA rule
 so the binding renders the block's text in the platform's generic monospace,
 not in JetBrains Mono. Measured computed values confirm it:
 
-| Element | Reference `font-family` | Production before |
-|---|---|---|
-| `.preview pre` | `"JetBrains Mono", ui-monospace, …` | same |
-| `.preview pre code` | **`monospace`** | `"JetBrains Mono", ui-monospace, …` |
+| Element             | Reference `font-family`             | Production before                   |
+| ------------------- | ----------------------------------- | ----------------------------------- |
+| `.preview pre`      | `"JetBrains Mono", ui-monospace, …` | same                                |
+| `.preview pre code` | **`monospace`**                     | `"JetBrains Mono", ui-monospace, …` |
 
 Production's `.preview :is(code, pre)` applied the theme stack to the inner
 element as well; `.preview pre code` now restates the generic keyword. Inline

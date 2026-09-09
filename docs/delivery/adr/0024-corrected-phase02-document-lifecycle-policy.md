@@ -105,11 +105,11 @@ change requires a new decision. Phase 02 has no Compare-later state.
 
 - Design decisions: DD-10, DD-11, DD-12, DD-15, DD-27, DD-60, DD-62, DD-63, DD-64
 - Spec clauses: ../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#documents--files-docs`,
-  ../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state`,
+../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state`,
   ../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#default-open-mode`,
-  ../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#save-as`,
+../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#save-as`,
   ../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#dirty-state`,
-  ../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings`,
+../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings`,
   `specification/07_Phases/PHASE_05_REAL_FILES.md` (its "Questions to settle first")
 - Stories: STORY-033, STORY-034, STORY-035, STORY-037, STORY-038, STORY-040, STORY-041, STORY-042,
   STORY-043, STORY-044, STORY-045, STORY-046, STORY-048, STORY-049, STORY-051

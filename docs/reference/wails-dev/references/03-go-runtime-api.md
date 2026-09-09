@@ -235,6 +235,7 @@ runtime.LogSetLogLevel(ctx, level logger.LogLevel)
 ```
 
 Logger levels (from `github.com/wailsapp/wails/v2/pkg/logger`):
+
 ```go
 logger.TRACE, logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR
 ```

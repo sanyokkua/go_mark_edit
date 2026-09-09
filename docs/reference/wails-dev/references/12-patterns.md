@@ -17,6 +17,7 @@ func (a *App) startup(ctx context.Context) {
 ```
 
 Wire it:
+
 ```go
 app := &App{}
 wails.Run(&options.App{
@@ -76,10 +77,10 @@ On the frontend, a returned error becomes a rejected Promise:
 
 ```typescript
 try {
-    const result = await ProcessPrompt(req)
-    dispatch(setResult(result))
+  const result = await ProcessPrompt(req);
+  dispatch(setResult(result));
 } catch (err) {
-    dispatch(setError(String(err)))
+  dispatch(setError(String(err)));
 }
 ```
 
@@ -105,13 +106,19 @@ func (a *App) StartLongTask(input string) {
 
 ```typescript
 useEffect(() => {
-    const cancels = [
-        EventsOn("task:started",  () => setStatus("running")),
-        EventsOn("task:complete", (r) => { setResult(r); setStatus("done") }),
-        EventsOn("task:error",    (e) => { setError(e);  setStatus("error") }),
-    ]
-    return () => cancels.forEach(c => c())
-}, [])
+  const cancels = [
+    EventsOn('task:started', () => setStatus('running')),
+    EventsOn('task:complete', (r) => {
+      setResult(r);
+      setStatus('done');
+    }),
+    EventsOn('task:error', (e) => {
+      setError(e);
+      setStatus('error');
+    }),
+  ];
+  return () => cancels.forEach((c) => c());
+}, []);
 ```
 
 ---
@@ -121,14 +128,14 @@ useEffect(() => {
 When constructing model instances to pass back to bound Go methods, use the generated `.createFrom()` factory instead of raw object literals. This ensures the correct prototype and any validation Wails adds.
 
 ```typescript
-import { mypackage } from '../../../wailsjs/go/models'
+import { mypackage } from '../../../wailsjs/go/models';
 
 // Don't do this:
-const cfg = { host: "localhost", port: 8080 }
+const cfg = { host: 'localhost', port: 8080 };
 
 // Do this:
-const cfg = mypackage.Config.createFrom({ host: "localhost", port: 8080 })
-await SaveConfig(cfg)
+const cfg = mypackage.Config.createFrom({ host: 'localhost', port: 8080 });
+await SaveConfig(cfg);
 ```
 
 ---
@@ -138,15 +145,15 @@ await SaveConfig(cfg)
 After registering enums with `EnumBind` and running `wails generate module`, import from `models.ts`:
 
 ```typescript
-import { mypackage } from '../../../wailsjs/go/models'
+import { mypackage } from '../../../wailsjs/go/models';
 
 // Use as a type-safe enum
-const priority: mypackage.Priority = mypackage.Priority.High
-await SetTaskPriority(priority)
+const priority: mypackage.Priority = mypackage.Priority.High;
+await SetTaskPriority(priority);
 
 // Compare
 if (task.priority === mypackage.Priority.Low) {
-    // ...
+  // ...
 }
 ```
 
@@ -158,30 +165,31 @@ Never call `wailsjs/go/` bindings directly from React components or Redux slices
 
 ```typescript
 // logic/adapter/services.ts
-import { ProcessPrompt as _ProcessPrompt } from '../../../wailsjs/go/actions/ActionHandler'
-import { IActionHandler } from './interfaces'
+import { ProcessPrompt as _ProcessPrompt } from '../../../wailsjs/go/actions/ActionHandler';
+import { IActionHandler } from './interfaces';
 
 export class ActionHandlerAdapter implements IActionHandler {
-    async processPrompt(req: PromptRequest): Promise<string> {
-        return _ProcessPrompt(req)
-    }
+  async processPrompt(req: PromptRequest): Promise<string> {
+    return _ProcessPrompt(req);
+  }
 }
 
 // In tests, inject a mock:
 const mockAdapter: IActionHandler = {
-    processPrompt: jest.fn().mockResolvedValue("test result"),
-}
+  processPrompt: jest.fn().mockResolvedValue('test result'),
+};
 ```
 
 Redux thunks use the adapter via `thunkAPI.extra`:
+
 ```typescript
 export const runPrompt = createAsyncThunk(
-    'actions/runPrompt',
-    async (req, thunkAPI) => {
-        const { adapter } = thunkAPI.extra as { adapter: IActionHandler }
-        return adapter.processPrompt(req)
-    }
-)
+  'actions/runPrompt',
+  async (req, thunkAPI) => {
+    const { adapter } = thunkAPI.extra as { adapter: IActionHandler };
+    return adapter.processPrompt(req);
+  },
+);
 ```
 
 ---
@@ -191,18 +199,18 @@ export const runPrompt = createAsyncThunk(
 `LogDebug`, `LogInfo`, etc. from `@wailsapp/runtime` route through the Go logger. They appear in the terminal running `wails dev`, alongside backend logs. Use them for unified logging across both sides.
 
 ```typescript
-import { LogDebug, LogError } from '@wailsapp/runtime'
+import { LogDebug, LogError } from '@wailsapp/runtime';
 
 async function loadSettings() {
-    LogDebug("Loading settings")
-    try {
-        const settings = await GetSettings()
-        LogDebug(`Settings loaded: ${settings.provider}`)
-        return settings
-    } catch (err) {
-        LogError(`Failed to load settings: ${err}`)
-        throw err
-    }
+  LogDebug('Loading settings');
+  try {
+    const settings = await GetSettings();
+    LogDebug(`Settings loaded: ${settings.provider}`);
+    return settings;
+  } catch (err) {
+    LogError(`Failed to load settings: ${err}`);
+    throw err;
+  }
 }
 ```
 

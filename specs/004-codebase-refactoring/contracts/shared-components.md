@@ -116,15 +116,15 @@ Consumers: the application shell (single mount).
 
 ## Widgets after decomposition (FR-046)
 
-| Widget | Owner of |
-|---|---|
+| Widget                                                                                                                               | Owner of                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `app/App.tsx` + `app/useBootstrap.ts`, `app/useShutdown.ts`, `app/useCommands.ts` (further hooks only as the decomposition requires) | composition; startup steps; the frontend half of the shutdown protocol; command orchestration and shortcuts (write pipeline and notification delivery are owned by `useCommands` or a hook split from it) |
-| `widgets/Menubar/` | File, Settings, View, About and the narrow overflow menu, all through Bar + Popup + MenuItem; availability from the registry |
-| `widgets/DocumentTabs/` | TabBar consumer; the external-change sweep and the single `ExternalChangePrompt` mount move to the app layer (today mounted in both `App.tsx` and `DocumentTabs.tsx`) |
-| `widgets/FormattingToolbar/` | Bar + Island + ToolButton + Segmented; composable without tabs |
-| `widgets/EditorStage/` | Pane × 2, arrangement, preview banner from state |
-| `widgets/dialogs/*` | ModalShell consumers |
-| `widgets/StartupFailure/` | per-step message, Retry, Quit |
+| `widgets/Menubar/`                                                                                                                   | File, Settings, View, About and the narrow overflow menu, all through Bar + Popup + MenuItem; availability from the registry                                                                              |
+| `widgets/DocumentTabs/`                                                                                                              | TabBar consumer; the external-change sweep and the single `ExternalChangePrompt` mount move to the app layer (today mounted in both `App.tsx` and `DocumentTabs.tsx`)                                     |
+| `widgets/FormattingToolbar/`                                                                                                         | Bar + Island + ToolButton + Segmented; composable without tabs                                                                                                                                            |
+| `widgets/EditorStage/`                                                                                                               | Pane × 2, arrangement, preview banner from state                                                                                                                                                          |
+| `widgets/dialogs/*`                                                                                                                  | ModalShell consumers                                                                                                                                                                                      |
+| `widgets/StartupFailure/`                                                                                                            | per-step message, Retry, Quit                                                                                                                                                                             |
 
 The menubar is not rendered through the appearance controller; `AppearanceControls` becomes a
 settings-only widget.

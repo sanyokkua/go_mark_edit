@@ -11,9 +11,9 @@ them wherever the viewport allowed. They now follow the File-popup conversion:
 portalled into `.application-frame` and anchored at the binding coordinates,
 with the popper wrapper neutralised so it contributes no placement of its own.
 
-| Popup | Binding source | Token |
-|---|---|---|
-| View | `#m-view{left:196px}` + `.dropdown{top:42px}` | `--view-menu-popup-left`, `--menu-popup-top` |
+| Popup | Binding source                                 | Token                                         |
+| ----- | ---------------------------------------------- | --------------------------------------------- |
+| View  | `#m-view{left:196px}` + `.dropdown{top:42px}`  | `--view-menu-popup-left`, `--menu-popup-top`  |
 | About | `#m-about{left:240px}` + `.dropdown{top:42px}` | `--about-menu-popup-left`, `--menu-popup-top` |
 
 The narrow (375px) View anchor keeps its row-relative placement: the binding
@@ -44,18 +44,18 @@ About {"relLeft":240,"relTop":42,"items":4}
 The View popup's inventory does not match the binding and is the reason for the
 residual height difference:
 
-| Reference `#m-view` | Production |
-|---|---|
-| Toggle Sidebar `Ctrl \` | Editor / Split / Preview arrangement radios (90px group) |
-| Toggle Assistant `Ctrl J` | Toggle Sidebar |
-| Show Editor ✓ | Toggle Assistant |
-| Show Preview ✓ | Line numbers |
-| *separator* | Word wrap |
-| Line numbers (33px switch row) | Distraction-free reading |
-| Word wrap (33px switch row) | Full screen |
-| *separator* | *(no separators)* |
-| Distraction-free reading | |
-| Full screen `F11` | |
+| Reference `#m-view`            | Production                                               |
+| ------------------------------ | -------------------------------------------------------- |
+| Toggle Sidebar `Ctrl \`        | Editor / Split / Preview arrangement radios (90px group) |
+| Toggle Assistant `Ctrl J`      | Toggle Sidebar                                           |
+| Show Editor ✓                  | Toggle Assistant                                         |
+| Show Preview ✓                 | Line numbers                                             |
+| _separator_                    | Word wrap                                                |
+| Line numbers (33px switch row) | Distraction-free reading                                 |
+| Word wrap (33px switch row)    | Full screen                                              |
+| _separator_                    | _(no separators)_                                        |
+| Distraction-free reading       |                                                          |
+| Full screen `F11`              |                                                          |
 
 Reconciling this touches Feature 002-owned View behaviour (the arrangement
 radios have no binding counterpart, and the binding's Show Editor / Show Preview

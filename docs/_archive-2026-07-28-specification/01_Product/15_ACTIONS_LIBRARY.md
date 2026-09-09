@@ -34,8 +34,8 @@ An action is a data record with these fields (DD-39):
 - **id** — stable machine identifier (e.g. `proofread`, `reformat.confluence`), used by stories,
   telemetry-free logs, and the run transcript.
 - **label** — the user-facing button text (e.g. "Proofread"), routed through the i18n layer (DD-35).
-- **category** — grouping for the actions bar and future menus (e.g. *Correct*, *Reformat*,
-  *Summarize*, *Rewrite*).
+- **category** — grouping for the actions bar and future menus (e.g. _Correct_, _Reformat_,
+  _Summarize_, _Rewrite_).
 - **family** — which **shared** system prompt this action uses. Actions do **not** each carry their own.
 - **directive** — the specific instruction that seeds the loop ("Fix grammar and typos…"), a sentence or
   two on top of the family prompt.
@@ -79,7 +79,7 @@ the disclosure into a copy of the document.
 ### Prompt hardening
 
 The model is fed arbitrary Markdown: a document from the internet, from a colleague, from a repository —
-and, once workspace tools exist, the contents of *other* files. **That content may itself contain text
+and, once workspace tools exist, the contents of _other_ files. **That content may itself contain text
 shaped like an instruction** (DD-76).
 
 Every family prompt therefore opens with the same clause, and it is not paraphrased per family:
@@ -154,7 +154,7 @@ scope**.
 ## Reformat targets
 
 The **Reformat** category rewrites the document's **structure and presentation** for a specific
-destination while keeping the underlying information. Unlike Proofread, these actions *are* allowed to
+destination while keeping the underlying information. Unlike Proofread, these actions _are_ allowed to
 restructure — that is their intent — but they **must not invent facts or drop information**; they
 re-shape existing content. The shipped reformat targets are aimed at development and writing workflows:
 **Confluence/Wiki**, **Article**, and **Q&A**. Each is specified below. All three default to **Whole
@@ -201,19 +201,19 @@ Common preservation contract for reformat targets: preserve the **factual conten
 
 Additional shipped actions (data records like the rest):
 
-- **Summarize** — *Intent:* produce a concise summary of the scope (a lead paragraph and/or bullet
-  points). *Must preserve:* factual accuracy; no invented detail. *Expected output:* by default a
+- **Summarize** — _Intent:_ produce a concise summary of the scope (a lead paragraph and/or bullet
+  points). _Must preserve:_ factual accuracy; no invented detail. _Expected output:_ by default a
   proposed edit that **prepends or replaces** with the summary per its directive, or, when invoked as a
-  question in chat, a summary message with no edit. *Default scope:* Whole document.
-- **Improve clarity** — *Intent:* rewrite for clarity and readability (shorter sentences, plainer
-  wording) without changing meaning. *Must preserve:* meaning, formatting, code, links. *Expected
-  output:* a proposed edit. *Default scope:* Selection if present, else Whole document.
-- **Make formal** — *Intent:* raise the register to a formal/professional tone. *Must preserve:*
-  meaning, structure, code, links. *Expected output:* a proposed edit. *Default scope:* Selection if
+  question in chat, a summary message with no edit. _Default scope:_ Whole document.
+- **Improve clarity** — _Intent:_ rewrite for clarity and readability (shorter sentences, plainer
+  wording) without changing meaning. _Must preserve:_ meaning, formatting, code, links. _Expected
+  output:_ a proposed edit. _Default scope:_ Selection if present, else Whole document.
+- **Make formal** — _Intent:_ raise the register to a formal/professional tone. _Must preserve:_
+  meaning, structure, code, links. _Expected output:_ a proposed edit. _Default scope:_ Selection if
   present, else Whole document.
-- **Make concise** — *Intent:* tighten wording and remove redundancy while keeping every point.
-  *Must preserve:* all distinct points, meaning, code, links. *Expected output:* a proposed edit.
-  *Default scope:* Selection if present, else Whole document.
+- **Make concise** — _Intent:_ tighten wording and remove redundancy while keeping every point.
+  _Must preserve:_ all distinct points, meaning, code, links. _Expected output:_ a proposed edit.
+  _Default scope:_ Selection if present, else Whole document.
 
 The exact shipped set is finalized in the catalog module (`internal/llm/actions/`); the mockup shows a
 representative subset in the actions grid. Adding or removing an item is a data change (see
@@ -236,7 +236,7 @@ in British English"). It obeys the same proposal/preservation/apply rules as cat
 Because actions are data (id, label, category, system prompt, directive, default scope), **new actions
 are added without code changes where possible** (DD-39): a new record in the action catalog
 (`internal/llm/actions/`) surfaces a new button. Labels flow through i18n (DD-35), so a locale adds
-translations without touching action logic. The custom-instruction path guarantees that *any*
+translations without touching action logic. The custom-instruction path guarantees that _any_
 uncatalogued intent is still reachable, so the shipped catalog is a convenience layer, not a ceiling.
 
 Constraints on additions: an action must fit the proposal model (read context → return message and/or

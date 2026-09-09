@@ -39,11 +39,11 @@ at `http://localhost:34115/` (the same dev bridge, not `just dev-ui`) at all
 three required widths. Every palette/mode selection returned authoritative
 root state, page-scroll, and blur values:
 
-| Width | Six palette results | Page scroll | Tab-strip result |
-|---|---|---:|---|
-| 1280 | Glass Light/Dark → `theme=glass`, `blur(28px) saturate(150%/160%)`; Material and Minimal Light/Dark → `blur=none` | 1280/1280 | contained `overflow-x:auto`, 988/988 |
-| 768 | Same six root/blur results | 768/768 | contained `overflow-x:auto`, 698/698 |
-| 375 | Same six root/blur results | 375/375 | contained `overflow-x:auto`, 512/351 |
+| Width | Six palette results                                                                                               | Page scroll | Tab-strip result                     |
+| ----- | ----------------------------------------------------------------------------------------------------------------- | ----------: | ------------------------------------ |
+| 1280  | Glass Light/Dark → `theme=glass`, `blur(28px) saturate(150%/160%)`; Material and Minimal Light/Dark → `blur=none` |   1280/1280 | contained `overflow-x:auto`, 988/988 |
+| 768   | Same six root/blur results                                                                                        |     768/768 | contained `overflow-x:auto`, 698/698 |
+| 375   | Same six root/blur results                                                                                        |     375/375 | contained `overflow-x:auto`, 512/351 |
 
 At 1280 the real File, Settings, View, and About menus opened and their
 measured surfaces stayed within the viewport. At 768 the real toolbar overflow

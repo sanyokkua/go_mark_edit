@@ -15,13 +15,13 @@ action behavior". Four of those five nouns were entirely missing. All are now
 present, each built from the binding primitive that already had a working
 precedent elsewhere in the codebase rather than a new mechanism:
 
-| Change | Binding source | Implementation |
-|---|---|---|
-| Row order | `#m-view` (:626–:633) | Toggle Sidebar and Toggle Assistant now lead |
-| Grouping | `.sep` (:243) | Two `DropdownMenu.Separator`s, after the visibility rows and after Word wrap |
-| Indicators | `.tick`, `.tick.off` (:245) | 14px box, reserved when off so rows stay aligned |
-| Switches | `.tgl` (:248–:250) | 34×19 pill with a 14px knob, mirroring `SettingsMenu.module.css` |
-| Accelerators | `.mi .k` (:241) | `data-shortcut` + `content: attr(...)`, mirroring `ShellMenuRow.module.css` |
+| Change       | Binding source              | Implementation                                                               |
+| ------------ | --------------------------- | ---------------------------------------------------------------------------- |
+| Row order    | `#m-view` (:626–:633)       | Toggle Sidebar and Toggle Assistant now lead                                 |
+| Grouping     | `.sep` (:243)               | Two `DropdownMenu.Separator`s, after the visibility rows and after Word wrap |
+| Indicators   | `.tick`, `.tick.off` (:245) | 14px box, reserved when off so rows stay aligned                             |
+| Switches     | `.tgl` (:248–:250)          | 34×19 pill with a 14px knob, mirroring `SettingsMenu.module.css`             |
+| Accelerators | `.mi .k` (:241)             | `data-shortcut` + `content: attr(...)`, mirroring `ShellMenuRow.module.css`  |
 
 The accelerators are derived from the action registry through `formatShortcut`,
 not written into the menu, so the value the menu shows and the value the
@@ -38,19 +38,19 @@ This is the intermediate state, and it is what isolated the one remaining
 divergence. The reference column is the unadapted `#m-view`; the variant below
 brings it to production's inventory and its height to 312.
 
-| Reference `#m-view` (h **282**) | y | h | Production (h **312**) | y | h |
-|---|---:|---:|---|---:|---:|
-| Toggle Sidebar `Ctrl \` | 7 | 30 | Toggle Sidebar `⌘\` | 7 | 30 |
-| Toggle Assistant `Ctrl J` | 37 | 30 | Toggle Assistant *(no accelerator)* | 37 | 30 |
-| Show Editor ✓ | 67 | 30 | Editor ✓ | 67 | 30 |
-| Show Preview ✓ | 97 | 30 | Split ✓ | 97 | 30 |
-| — | — | — | **Preview ✓** | **127** | **30** |
-| separator | 132 | 1 | separator | 162 | 1 |
-| Line numbers · switch | 138 | **33** | Line numbers · switch | 168 | **33** |
-| Word wrap · switch | 171 | **33** | Word wrap · switch | 201 | **33** |
-| separator | 209 | 1 | separator | 239 | 1 |
-| Distraction-free reading `Ctrl ⏎` | 215 | 30 | Distraction-free reading *(none)* | 245 | 30 |
-| Full screen `F11` | 245 | 30 | Full screen `F11` | 275 | 30 |
+| Reference `#m-view` (h **282**)   |   y |      h | Production (h **312**)              |       y |      h |
+| --------------------------------- | --: | -----: | ----------------------------------- | ------: | -----: |
+| Toggle Sidebar `Ctrl \`           |   7 |     30 | Toggle Sidebar `⌘\`                 |       7 |     30 |
+| Toggle Assistant `Ctrl J`         |  37 |     30 | Toggle Assistant _(no accelerator)_ |      37 |     30 |
+| Show Editor ✓                     |  67 |     30 | Editor ✓                            |      67 |     30 |
+| Show Preview ✓                    |  97 |     30 | Split ✓                             |      97 |     30 |
+| —                                 |   — |      — | **Preview ✓**                       | **127** | **30** |
+| separator                         | 132 |      1 | separator                           |     162 |      1 |
+| Line numbers · switch             | 138 | **33** | Line numbers · switch               |     168 | **33** |
+| Word wrap · switch                | 171 | **33** | Word wrap · switch                  |     201 | **33** |
+| separator                         | 209 |      1 | separator                           |     239 |      1 |
+| Distraction-free reading `Ctrl ⏎` | 215 |     30 | Distraction-free reading _(none)_   |     245 |     30 |
+| Full screen `F11`                 | 245 |     30 | Full screen `F11`                   |     275 |     30 |
 
 Every row that exists on both sides now has the same height, and the first four
 sit at identical offsets. The whole 30px height difference is one extra row.
@@ -104,7 +104,7 @@ region from the mockup's own `.mi`, `.sep`, `.k`, `.tick`/`.tick.off` and
 once:
 
 1. Editor / Split / Preview replace `Show Editor` / `Show Preview`. The mockup
-   draws both of its rows ticked, which *is* the split arrangement, so Split
+   draws both of its rows ticked, which _is_ the split arrangement, so Split
    carries the tick and the other two carry `.tick.off` — the 14px box keeps its
    width either way, so no row moves.
 2. `Toggle Assistant` and `Distraction-free reading` carry the reviewed
@@ -127,12 +127,12 @@ does the same. That single rule accounted for **1,404** of the residual pixels.
 
 ## Slice result
 
-| Step | Bounds | Unexplained pixels |
-|---|---|---:|
-| Session start | `height: 282 != 284` | 9,036 |
-| Binding order, grouping, indicators, switches, accelerators | `height: 282 != 312` | 15,330 |
-| Reference variant for `#m-view` | **match** | 1,569 |
-| Production's deferred rows dimmed | **match** | **165** |
+| Step                                                        | Bounds               | Unexplained pixels |
+| ----------------------------------------------------------- | -------------------- | -----------------: |
+| Session start                                               | `height: 282 != 284` |              9,036 |
+| Binding order, grouping, indicators, switches, accelerators | `height: 282 != 312` |             15,330 |
+| Reference variant for `#m-view`                             | **match**            |              1,569 |
+| Production's deferred rows dimmed                           | **match**            |            **165** |
 
 The intermediate rise is not a regression: the extra arrangement row displaced
 every row below it, so rows that previously happened to overlap no longer did.
@@ -142,10 +142,10 @@ five missing presentation requirements.
 
 ## What remains — 165 px, 163 of them boundary
 
-| Location | Pixels | Cause |
-|---|---:|---|
+| Location                                                        |  Pixels | Cause                                                                                                                                    |
+| --------------------------------------------------------------- | ------: | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | Popup outer boundary (`x ≤ 11`, `x ≥ 238`, `y ≤ 11`, `y ≥ 300`) | **163** | the popup's own antialiased edge and 12px corners, plus the single column of content beside it that the fractional bounding box includes |
-| Line numbers toggle, right edge (`x 232`, `y 183–184`) | **2** | max channel delta 8 on the accent pill's rounded edge |
+| Line numbers toggle, right edge (`x 232`, `y 183–184`)          |   **2** | max channel delta 8 on the accent pill's rounded edge                                                                                    |
 
 The boundary pixels are the pattern already recorded for the File and Settings
 popups: an opaque popup blending with the chrome behind it. They close when that

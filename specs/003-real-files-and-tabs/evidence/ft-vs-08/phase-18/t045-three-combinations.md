@@ -8,24 +8,24 @@ reducing T045 to three combinations at 1280px, one per colour family
 
 ## The measurement
 
-| Combination | Unattributed pixels | Feature 002 style rows | Reference hash stable | Actual hash stable |
-|---|---:|---:|---|---|
-| `primary:editor-split:1280:minimal-light` | **182** | 8 | yes (3/3) | yes (3/3) |
-| `primary:editor-split:1280:material-light` | **72,996** | 8 | yes (3/3) | yes (3/3) |
-| `primary:editor-split:1280:glass-light` | **309,561** | 8 | yes (3/3) | **no — 2 distinct** |
+| Combination                                | Unattributed pixels | Feature 002 style rows | Reference hash stable | Actual hash stable  |
+| ------------------------------------------ | ------------------: | ---------------------: | --------------------- | ------------------- |
+| `primary:editor-split:1280:minimal-light`  |             **182** |                      8 | yes (3/3)             | yes (3/3)           |
+| `primary:editor-split:1280:material-light` |          **72,996** |                      8 | yes (3/3)             | yes (3/3)           |
+| `primary:editor-split:1280:glass-light`    |         **309,561** |                      8 | yes (3/3)             | **no — 2 distinct** |
 
 Each figure is identical across all three repetitions.
 
 ## The reduction did the job it was reduced to do
 
-The scope reduction kept three combinations for one stated reason: *"Three is
+The scope reduction kept three combinations for one stated reason: _"Three is
 enough to catch a palette-specific mistake. That is the only failure mode a
-wider sweep could find that the measured combination cannot."*
+wider sweep could find that the measured combination cannot."_
 
 **It caught one immediately.** Minimal is at 182 pixels — the residual already
 characterised in the phase-17 T045 evidence. Material is **400×** that, and
 Glass **1,700×**. The single measured combination that the earlier evidence
-rested on was the *best* of the three by three orders of magnitude, and reading
+rested on was the _best_ of the three by three orders of magnitude, and reading
 it as representative would have been badly wrong.
 
 This is worth stating plainly because the reduction was argued on the grounds

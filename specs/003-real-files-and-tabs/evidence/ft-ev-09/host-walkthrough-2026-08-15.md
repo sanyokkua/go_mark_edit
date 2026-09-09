@@ -12,7 +12,7 @@ relaunch-without-session-restore claim. Covered in siblings rather than here: th
 
 **The per-clause map now exists**: [`../sc-ft-011/walkthrough-clause-map.md`](../sc-ft-011/walkthrough-clause-map.md),
 written by T158. Read it before citing this file for SC-FT-011 — it names nine covered clauses and
-**two that nothing in the tree covers**: preserved *permissions* after a real save (no artifact
+**two that nothing in the tree covers**: preserved _permissions_ after a real save (no artifact
 checks a file mode; the `ls -la` listings carry one as an unexamined by-product), and the mapped
 webview chrome compared against the same-browser result (`host-screenshots/README.md` explicitly
 disclaims that comparison). It also records that clause 10's demonstrated/deferred/host-unverified
@@ -46,16 +46,16 @@ Verified 10,485,760 before and after.
 
 ## Results
 
-| Check | Observed | Verdict |
-| --- | --- | --- |
-| Startup, fresh build | One Untitled tab, Split arrangement, `Autosave off` in the status bar | **PASS** |
-| Startup after a 40-document session | Still **one** Untitled tab — see below | **PASS** |
-| `New File` from the File menu | Creates a tab each time; drove 1 → 40 | **PASS** |
-| The 41st document | Refused. Toast: `Untitled` / **"The window already contains 40 documents."** / `Dismiss` | **PASS** |
-| Opening 52,428,801 bytes | Refused. Toast: `boundary-50mib-plus-one.md` / **"The document exceeds the 50 MiB limit."** / `Dismiss` | **PASS** |
-| Refused open leaves no recent entry | `boundary-50mib-plus-one.md` is absent from `Open Recent`, while the five files that did open are present | **PASS** |
-| `File ▸ Exit` | Terminates the process; no prompt when the 40 untitled documents are all empty | **PASS** |
-| `⌘N` | **Does nothing.** See the finding below | **FAIL — filed as T110** |
+| Check                               | Observed                                                                                                  | Verdict                  |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Startup, fresh build                | One Untitled tab, Split arrangement, `Autosave off` in the status bar                                     | **PASS**                 |
+| Startup after a 40-document session | Still **one** Untitled tab — see below                                                                    | **PASS**                 |
+| `New File` from the File menu       | Creates a tab each time; drove 1 → 40                                                                     | **PASS**                 |
+| The 41st document                   | Refused. Toast: `Untitled` / **"The window already contains 40 documents."** / `Dismiss`                  | **PASS**                 |
+| Opening 52,428,801 bytes            | Refused. Toast: `boundary-50mib-plus-one.md` / **"The document exceeds the 50 MiB limit."** / `Dismiss`   | **PASS**                 |
+| Refused open leaves no recent entry | `boundary-50mib-plus-one.md` is absent from `Open Recent`, while the five files that did open are present | **PASS**                 |
+| `File ▸ Exit`                       | Terminates the process; no prompt when the 40 untitled documents are all empty                            | **PASS**                 |
+| `⌘N`                                | **Does nothing.** See the finding below                                                                   | **FAIL — filed as T110** |
 
 Screenshots and their classification: `host-screenshots/README.md`.
 

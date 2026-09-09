@@ -77,7 +77,7 @@ Four lifecycle rules, each of which a shipped implementation gets wrong:
   per render, and a theme change mid-flight yields interleaved palettes across diagrams. Both reference
   implementations do this.
 - **A fresh id per render.** `mermaid.render(id, src)` injects a temporary node into the document and
-  removes it on success. Re-entrant renders sharing one id collide, and a *failed* parse can leave the
+  removes it on success. Re-entrant renders sharing one id collide, and a _failed_ parse can leave the
   orphan behind permanently. Mint `${blockId}-r${n}` with a per-block counter.
 - **`parse()` before `render()`.** This is the mechanism behind EC-RENDER-1: parsing first yields a
   clean syntax-error message instead of a half-built node.

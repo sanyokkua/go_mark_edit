@@ -76,16 +76,16 @@ On 2026-08-04, after T043-T047 and the deferred-keyboard regression repair:
 
 ## Phase 13 final verification (2026-08-05)
 
-| Gate | Result |
-| --- | --- |
-| `just fmt-check`, `just typecheck`, `just lint` | Passed; ESLint and golangci-lint reported no findings. |
-| `just test` | Passed: 54 Jest suites / 253 tests and Go race tests. |
-| `just archtest` | Passed all backend, adapter, token, and offline boundaries. |
-| `just gen-check` | Passed after `wails generate module`; the six generator-owned binding updates are staged and none were hand-edited. |
-| `just e2e-test` and direct `editor-stage.test.ts` | Passed; the complete current 108-path editor-stage width/palette/mode matrix completed without error. |
-| `just build` | Passed and produced the signed `darwin/arm64` GoMarkEdit bundle exercised in the native retry. |
-| `just verify 002-editor-stage-formatting` | Passed M1-M6. |
-| `git diff --check` and `git diff --cached --check` | Passed. |
+| Gate                                               | Result                                                                                                              |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `just fmt-check`, `just typecheck`, `just lint`    | Passed; ESLint and golangci-lint reported no findings.                                                              |
+| `just test`                                        | Passed: 54 Jest suites / 253 tests and Go race tests.                                                               |
+| `just archtest`                                    | Passed all backend, adapter, token, and offline boundaries.                                                         |
+| `just gen-check`                                   | Passed after `wails generate module`; the six generator-owned binding updates are staged and none were hand-edited. |
+| `just e2e-test` and direct `editor-stage.test.ts`  | Passed; the complete current 108-path editor-stage width/palette/mode matrix completed without error.               |
+| `just build`                                       | Passed and produced the signed `darwin/arm64` GoMarkEdit bundle exercised in the native retry.                      |
+| `just verify 002-editor-stage-formatting`          | Passed M1-M6.                                                                                                       |
+| `git diff --check` and `git diff --cached --check` | Passed.                                                                                                             |
 
 No current gate was unreliable or treated as a substitute for the live and packaged checks.
 
@@ -131,11 +131,11 @@ renderer, and network behavior remained unavailable or inert.
 This is an evidence-only rerun: no application source, task scope, or deferred boundary was changed. The raw
 terminal records are retained separately so a summary cannot be mistaken for raw proof:
 
-| Command | Exact retained record | Result |
-| --- | --- | --- |
-| unrestricted `just e2e-test` | `phase-16-e2e.raw.log` | **FAIL**: Playwright ran all 148 tests; 105 passed and 43 failed in 3.0m; the wrapper exited 1. |
+| Command                                   | Exact retained record     | Result                                                                                                                                 |
+| ----------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| unrestricted `just e2e-test`              | `phase-16-e2e.raw.log`    | **FAIL**: Playwright ran all 148 tests; 105 passed and 43 failed in 3.0m; the wrapper exited 1.                                        |
 | `just verify 002-editor-stage-formatting` | `phase-16-verify.raw.log` | PASS: the verifier ran build, format, types, lint, tests, architecture, and reported M1–M6 PASS against the reliable feature baseline. |
-| `just build` | `phase-16-build.raw.log` | PASS: Wails v2.12.0 produced and self-signed the fresh `darwin/arm64` bundle. |
+| `just build`                              | `phase-16-build.raw.log`  | PASS: Wails v2.12.0 produced and self-signed the fresh `darwin/arm64` bundle.                                                          |
 
 The E2E failure is real rather than an unreliable/no-analysis result: the raw runner output names 43 failed
 tests. It includes all 18 T070 popup-ownership cases plus current appearance, core-editor, and window-shell
@@ -152,11 +152,11 @@ The Phase 16 failure remains historical evidence: it was neither removed nor rel
 the real View opener capture and T082 reconciled the current browser journeys, fresh records are retained
 separately:
 
-| Command | Retained raw record | Result |
-| --- | --- | --- |
-| unrestricted `just e2e-test` | `phase-17-e2e.raw.log` | PASS: `verify:ui`/Playwright completed successfully with the current 148-test inventory. |
-| isolated-cache `just verify 002-editor-stage-formatting` | `phase-17-verify.raw.log` | PASS against the reliable baseline; no no-analysis lint result occurred. |
-| `just build` | `phase-17-build.raw.log` | PASS: freshly packaged and self-signed `darwin/arm64` bundle. |
+| Command                                                  | Retained raw record       | Result                                                                                   |
+| -------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------- |
+| unrestricted `just e2e-test`                             | `phase-17-e2e.raw.log`    | PASS: `verify:ui`/Playwright completed successfully with the current 148-test inventory. |
+| isolated-cache `just verify 002-editor-stage-formatting` | `phase-17-verify.raw.log` | PASS against the reliable baseline; no no-analysis lint result occurred.                 |
+| `just build`                                             | `phase-17-build.raw.log`  | PASS: freshly packaged and self-signed `darwin/arm64` bundle.                            |
 
 Focused evidence also passed: the red T081 unit assertion reproduced File incorrectly receiving focus after
 View dismissal; its repaired `ShellMenuRow`/`ViewMenu` run passed 2 suites and 9 tests, TypeScript passed, and
@@ -168,10 +168,10 @@ ownership and View focus restoration; the packaged app is documented separately 
 The Phase 16 failed records remain unchanged. The new records below are unabridged command streams, not
 summaries; their command output contains each runner's final result and exit code.
 
-| Command | Retained raw record | Exact result |
-| --- | --- | --- |
-| unrestricted `just e2e-test` | `phase-18-e2e.raw.log` | **FAIL**: 147 passed and 1 failed in 1.4m. The failure is the 13-pixel `appearance-minimal-light.png` screenshot mismatch; the wrapper reports `verify-ui` and `e2e-test` exit code 1. |
-| isolated-cache `just verify 002-editor-stage-formatting` | `phase-18-verify.raw.log` | **FAIL**: M1 format, M3 static analysis, and M4 tests failed; M2 types, M5 architecture, and M6 build passed. The verifier reports `verify ...: FAILED` and exit code 1. |
+| Command                                                  | Retained raw record       | Exact result                                                                                                                                                                           |
+| -------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| unrestricted `just e2e-test`                             | `phase-18-e2e.raw.log`    | **FAIL**: 147 passed and 1 failed in 1.4m. The failure is the 13-pixel `appearance-minimal-light.png` screenshot mismatch; the wrapper reports `verify-ui` and `e2e-test` exit code 1. |
+| isolated-cache `just verify 002-editor-stage-formatting` | `phase-18-verify.raw.log` | **FAIL**: M1 format, M3 static analysis, and M4 tests failed; M2 types, M5 architecture, and M6 build passed. The verifier reports `verify ...: FAILED` and exit code 1.               |
 
 The failures are real and analyzed rather than unreliable: `appearance.test.ts` is not Prettier-formatted and
 its minimal-light screenshot is unstable; `ShellMenuRow.tsx` has one unused callback and three render-time ref

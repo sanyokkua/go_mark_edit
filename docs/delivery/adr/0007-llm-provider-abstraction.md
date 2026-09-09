@@ -31,7 +31,7 @@ locks DD-45, DD-46, and DD-52.
 - **CGO-free, dependency-light backend.** The Go backend is deliberately minimal; pulling in a large
   third-party LLM SDK (often cloud-vendor-specific, frequently churning) works against that and against
   the offline/local-first posture.
-- **Secrets must never touch disk or logs.** An API key may only be *referenced* by the name of an
+- **Secrets must never touch disk or logs.** An API key may only be _referenced_ by the name of an
   environment variable; the value is resolved at call time and attached to a header, never stored (DD-45,
   DD-54, security/privacy spec).
 - **Discovery + pre-save verification.** The AI/Providers settings tab needs to list an endpoint's models
@@ -46,7 +46,7 @@ locks DD-45, DD-46, and DD-52.
 
 - **Single OpenAI-compatible client + per-kind profiles + factory** — one `OpenAICompatibleProvider`
   holding an `*http.Client` and a `ProviderProfile`; a `ProviderFactory` maps a kind to `(builder,
-  profile)`. Base URL, auth scheme, path templates, and discovery strategy live in the profile.
+profile)`. Base URL, auth scheme, path templates, and discovery strategy live in the profile.
 - **Per-provider bespoke clients** — a distinct client type per kind (an Ollama client, an OpenAI client,
   an Azure client, …), each with its own request/response code.
 - **A third-party LLM SDK** — adopt an existing multi-provider Go LLM library and let it own transport,
@@ -85,7 +85,7 @@ configurable with sensible defaults, sent as pointer fields so "unset" is distin
 - Positive: The default provider is **local**, so a default install talks only to an on-device endpoint;
   remote providers are strictly opt-in and require the user to supply their own base URL and credential
   reference (DD-45, DD-54; see ADR-0011).
-- Positive: Secrets never persist — the DB and logs only ever hold an env-var *name*, which is the
+- Positive: Secrets never persist — the DB and logs only ever hold an env-var _name_, which is the
   strongest available guarantee against key leakage on a shared or backed-up machine (DD-45).
 - Positive: Model discovery and pre-save verification give the user a clear "does this config actually
   work?" answer before committing, reducing silent misconfiguration (DD-46).

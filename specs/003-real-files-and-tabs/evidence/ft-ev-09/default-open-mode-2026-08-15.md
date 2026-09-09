@@ -20,11 +20,11 @@ and reset correctly, and reached nothing.
 `open` raises an already-running process, so host evidence can describe a build that is not in the
 tree. Checked explicitly:
 
-| | |
-|---|---|
-| binary built | `Aug 15 22:45:23 2026` — `build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit` |
-| running instances before launch | none (`ps -eo pid,lstart,comm \| grep GoMarkEdit`) |
-| process observed | pid 57615, started `Sat Aug 15 22:46:26 2026` |
+|                                 |                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| binary built                    | `Aug 15 22:45:23 2026` — `build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit` |
+| running instances before launch | none (`ps -eo pid,lstart,comm \| grep GoMarkEdit`)                            |
+| process observed                | pid 57615, started `Sat Aug 15 22:46:26 2026`                                 |
 
 The observed process started **after** the binary was written, so it is that binary.
 
@@ -72,10 +72,10 @@ covers and the case `TestPersistedDefaultOpenModeSurvivesRestart` pins.
 
 ## Covering tests
 
-| Test | What it holds |
-|---|---|
-| `internal/application/default_open_mode_wiring_test.go` `TestPersistedDefaultOpenModeSurvivesRestart` | Two real holder + `Init` cycles against one SQLite file — the startup push, which is the defect |
-| …`TestUpdateAppearancePropagatesDefaultOpenModeToDocumentModel` | The observer, both directions |
-| …`TestResetAppearanceReturnsTheDocumentModelToEditor` | A reset does not leave the model and the store disagreeing |
-| …`TestStartupLeavesDefaultOpenModeAtEditorWhenTheStoreCannotBeRead` | An unreadable store keeps the documented default |
-| `internal/appmodel/open_lifecycle_test.go` `TestOpenInReadingModeOpensDirectlyIntoPreview` | The behavioural half: Reading resolves `ArrangementPreview` and outranks a persisted arrangement. No test exercised `OpenModeViewer` at all before this one |
+| Test                                                                                                  | What it holds                                                                                                                                               |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `internal/application/default_open_mode_wiring_test.go` `TestPersistedDefaultOpenModeSurvivesRestart` | Two real holder + `Init` cycles against one SQLite file — the startup push, which is the defect                                                             |
+| …`TestUpdateAppearancePropagatesDefaultOpenModeToDocumentModel`                                       | The observer, both directions                                                                                                                               |
+| …`TestResetAppearanceReturnsTheDocumentModelToEditor`                                                 | A reset does not leave the model and the store disagreeing                                                                                                  |
+| …`TestStartupLeavesDefaultOpenModeAtEditorWhenTheStoreCannotBeRead`                                   | An unreadable store keeps the documented default                                                                                                            |
+| `internal/appmodel/open_lifecycle_test.go` `TestOpenInReadingModeOpensDirectlyIntoPreview`            | The behavioural half: Reading resolves `ArrangementPreview` and outranks a persisted arrangement. No test exercised `OpenModeViewer` at all before this one |

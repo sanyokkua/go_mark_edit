@@ -37,11 +37,11 @@ meaningless. Anyone embedding raw HTML in Markdown is not looking for a restrict
 
 ## What each standard permits
 
-| Standard | Raw HTML | Mechanism | Cost |
-|---|---|---|---|
-| **Minimal** | escaped | react-markdown's default | nothing — no package, no configuration |
-| **GFM** (default) | escaped | react-markdown's default | nothing |
-| **Full** | a bounded subset | `rehype-raw` then `rehype-sanitize` | a full tree reparse |
+| Standard          | Raw HTML         | Mechanism                           | Cost                                   |
+| ----------------- | ---------------- | ----------------------------------- | -------------------------------------- |
+| **Minimal**       | escaped          | react-markdown's default            | nothing — no package, no configuration |
+| **GFM** (default) | escaped          | react-markdown's default            | nothing                                |
+| **Full**          | a bounded subset | `rehype-raw` then `rehype-sanitize` | a full tree reparse                    |
 
 **The safe path is also the lazy path**, and that is deliberate. At Minimal and GFM, a document
 containing `<script>alert(1)</script>` renders the literal text `<script>alert(1)</script>` — safe,
@@ -94,7 +94,7 @@ asset scheme. Everything else is dropped and the element renders as inert text. 
 ### The extension that is not optional
 
 The stock schema **strips KaTeX's MathML and highlight.js's `className`**. Adding `rehype-sanitize`
-without extending it therefore makes Full render *less* than GFM does: the formulas disappear and every
+without extending it therefore makes Full render _less_ than GFM does: the formulas disappear and every
 code block goes monochrome. The most likely first symptom of "we added security" is "the maths broke."
 
 So the schema also permits: the MathML element set KaTeX emits (`math`, `semantics`, `annotation`,
@@ -123,19 +123,19 @@ and `\includegraphics` emit URLs the sanitizer never inspects.
 One policy for the whole application process, at every standard. It is **not** derived from the
 Markdown standard: the standard is a per-document setting and the CSP is a per-process one.
 
-| Directive | Value | Why |
-|---|---|---|
-| `default-src` | `'self'` | Deny by default. |
-| `script-src` | `'self'` | No inline script, no `eval`, no CDN. |
-| `style-src` | `'self' 'unsafe-inline'` | Monaco and KaTeX both set inline styles on elements they create. This is the one concession, and it is why `style` is refused on document elements. |
-| `img-src` | `'self'` + the asset scheme, and `https:` **only while the content policy permits it** | DD-22's Ask / Always allow / Always block is enforced here as well as in the renderer. |
-| `font-src` | `'self'` | Every font is bundled. |
-| `connect-src` | `'self'`, plus the configured provider origin once the assistant is configured | The single outbound socket in the product. |
-| `worker-src` | `'self' blob:` | **Monaco's editor worker does not load without `blob:`.** Discovering this during a phase is worse than writing it down now. |
-| `frame-src` | `'none'` | `iframe` is refused by the allowlist; this makes it structural. |
-| `object-src` | `'none'` | |
-| `base-uri` | `'none'` | Backs the refusal of `<base>`. |
-| `form-action` | `'none'` | Nothing in the app submits a form. |
+| Directive     | Value                                                                                  | Why                                                                                                                                                 |
+| ------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default-src` | `'self'`                                                                               | Deny by default.                                                                                                                                    |
+| `script-src`  | `'self'`                                                                               | No inline script, no `eval`, no CDN.                                                                                                                |
+| `style-src`   | `'self' 'unsafe-inline'`                                                               | Monaco and KaTeX both set inline styles on elements they create. This is the one concession, and it is why `style` is refused on document elements. |
+| `img-src`     | `'self'` + the asset scheme, and `https:` **only while the content policy permits it** | DD-22's Ask / Always allow / Always block is enforced here as well as in the renderer.                                                              |
+| `font-src`    | `'self'`                                                                               | Every font is bundled.                                                                                                                              |
+| `connect-src` | `'self'`, plus the configured provider origin once the assistant is configured         | The single outbound socket in the product.                                                                                                          |
+| `worker-src`  | `'self' blob:`                                                                         | **Monaco's editor worker does not load without `blob:`.** Discovering this during a phase is worse than writing it down now.                        |
+| `frame-src`   | `'none'`                                                                               | `iframe` is refused by the allowlist; this makes it structural.                                                                                     |
+| `object-src`  | `'none'`                                                                               |                                                                                                                                                     |
+| `base-uri`    | `'none'`                                                                               | Backs the refusal of `<base>`.                                                                                                                      |
+| `form-action` | `'none'`                                                                               | Nothing in the app submits a form.                                                                                                                  |
 
 `connect-src` is the directive that makes the offline invariant enforceable rather than merely
 intended: before a provider is configured it names no external origin, so a stray `fetch` fails at the

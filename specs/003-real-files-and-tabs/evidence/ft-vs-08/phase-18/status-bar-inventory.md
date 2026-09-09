@@ -10,25 +10,25 @@
 
 `mockup.html:837-845`, the whole `.statusbar` row, in order:
 
-| Position | Element | Production |
-|---|---|---|
-| leading | `.sb-std` Markdown · GFM | kept |
-| leading | `.sb-caret` Ln 3, Col 12 | kept |
-| leading | `.sb-count` 231 words | kept |
-| — | `.ssp` spacer (`flex:1`) | kept |
-| trailing | `.sb-enc` UTF-8 | kept |
-| trailing | `.sb-eol` LF | kept |
-| trailing | `.sb-autosave` Autosave: On | kept |
-| trailing | `⚠ 1` lint count | deferred, not drawn |
+| Position | Element                              | Production          |
+| -------- | ------------------------------------ | ------------------- |
+| leading  | `.sb-std` Markdown · GFM             | kept                |
+| leading  | `.sb-caret` Ln 3, Col 12             | kept                |
+| leading  | `.sb-count` 231 words                | kept                |
+| —        | `.ssp` spacer (`flex:1`)             | kept                |
+| trailing | `.sb-enc` UTF-8                      | kept                |
+| trailing | `.sb-eol` LF                         | kept                |
+| trailing | `.sb-autosave` Autosave: On          | kept                |
+| trailing | `⚠ 1` lint count                     | deferred, not drawn |
 | trailing | `.sb-provider` Ollama · last call OK | deferred, not drawn |
-| trailing | `◱ Reading` pill | deferred, not drawn |
+| trailing | `◱ Reading` pill                     | deferred, not drawn |
 
 **The binding draws no save status and no arrangement label in this row.**
 Production had added both.
 
 ## Why each was a duplicate
 
-**`Not saved`.** The binding puts the save status in the *title bar*:
+**`Not saved`.** The binding puts the save status in the _title bar_:
 `mockup.html:594` — `<div class="doc-name"><span class="save-dot"></span>Notes /
 release-notes.md · autosaved</div>`. Production already renders that through
 `DocumentIdentity.tsx:56`. The status-bar copy was a second rendering of the
@@ -86,7 +86,7 @@ fact reachable from the status region after the visible copy was removed.
 `frontend/e2e/parity/state-contract.ts:354` already reads
 
 ```ts
-saveState: statusFromText(statusText) || identityStatus
+saveState: statusFromText(statusText) || identityStatus;
 ```
 
 The reference has no status text in `.statusbar`, so it always fell through to
@@ -99,17 +99,17 @@ production was the outlier.** No contract change was needed.
 Every assertion that named a removed element was moved to the surface that now
 owns the behaviour, and the de-duplication itself is now asserted:
 
-| Test | Before | After |
-|---|---|---|
-| `StatusBar.test.tsx` STORY-016-AC-1 | `getByText('Split')` | dropped from the row; arrangement absence asserted in a new case |
-| `StatusBar.test.tsx` T015 | `toHaveTextContent('Saved')` | row must **not** contain it; details region must |
-| `StatusBar.test.tsx` (new) | — | no `[data-status-item="arrangement"]`, no Editor/Split/Preview text |
-| `StatusBar.test.tsx` write-in-flight | text `Unsaved changes` + `Saving` | `Saving` present while in flight, **and the item leaves the row at rest** |
-| `AppShell.test.tsx` T042 | `toHaveTextContent('Saved')` | `data-status-state="saved"` — the authoritative projection |
-| `EditorView.integration.test.tsx` STORY-016-AC-4 | `toHaveTextContent('Split')` / `('Preview')` | pane visibility before and after the patch |
-| `real-files-and-tabs.test.ts` FT-VS-02 | `footer` has `Saved` | identity header has `Saved` |
-| `real-files-and-tabs.test.ts` FT-VS-05 | `footer` has `Not saved` | identity header has it **and** footer must not |
-| `targeted-parity.test.ts` T063 | `status` contains the state text | identity header contains it **and** status must not |
+| Test                                             | Before                                       | After                                                                     |
+| ------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------- |
+| `StatusBar.test.tsx` STORY-016-AC-1              | `getByText('Split')`                         | dropped from the row; arrangement absence asserted in a new case          |
+| `StatusBar.test.tsx` T015                        | `toHaveTextContent('Saved')`                 | row must **not** contain it; details region must                          |
+| `StatusBar.test.tsx` (new)                       | —                                            | no `[data-status-item="arrangement"]`, no Editor/Split/Preview text       |
+| `StatusBar.test.tsx` write-in-flight             | text `Unsaved changes` + `Saving`            | `Saving` present while in flight, **and the item leaves the row at rest** |
+| `AppShell.test.tsx` T042                         | `toHaveTextContent('Saved')`                 | `data-status-state="saved"` — the authoritative projection                |
+| `EditorView.integration.test.tsx` STORY-016-AC-4 | `toHaveTextContent('Split')` / `('Preview')` | pane visibility before and after the patch                                |
+| `real-files-and-tabs.test.ts` FT-VS-02           | `footer` has `Saved`                         | identity header has `Saved`                                               |
+| `real-files-and-tabs.test.ts` FT-VS-05           | `footer` has `Not saved`                     | identity header has it **and** footer must not                            |
+| `targeted-parity.test.ts` T063                   | `status` contains the state text             | identity header contains it **and** status must not                       |
 
 Nothing was skipped, narrowed or removed; two assertions became stronger by
 adding the negative case that proves the duplicate is gone.
@@ -121,10 +121,10 @@ lint 0 errors and the 2 baseline `react-refresh` warnings, typecheck clean.
 
 Targeted parity re-run by name after the change:
 
-| Slice | Result |
-|---|---|
-| T062 tabs and toolbar | **passed** — the protected zero-pixel slice is unaffected |
-| T063 editor-status, six states | **passed** |
+| Slice                          | Result                                                    |
+| ------------------------------ | --------------------------------------------------------- |
+| T062 tabs and toolbar          | **passed** — the protected zero-pixel slice is unaffected |
+| T063 editor-status, six states | **passed**                                                |
 
 ## A finding this uncovered: `just check` does not run the parity suites
 

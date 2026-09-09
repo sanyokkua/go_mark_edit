@@ -1,5 +1,5 @@
 ---
-description: "Dependency-ordered implementation tasks for Codebase Refactoring"
+description: 'Dependency-ordered implementation tasks for Codebase Refactoring'
 ---
 
 # Tasks: Codebase Refactoring
@@ -46,7 +46,7 @@ archive worktree), Phases 3–9 are G3–G9 with story labels, Phase 10 is G10 (
 
 **Purpose**: the five entry-point scripts and everything that calls them (US5).
 
-- [ ] T001 Create the five entry-point scripts under `scripts/` and everything that calls them
+- [x] T001 Create the five entry-point scripts under `scripts/` and everything that calls them
   - **Implements**: FR-060, FR-061, FR-062, FR-063, FR-064, FR-065, FR-066, FR-067, FR-068, FR-070, FR-071, SC-006; `contracts/scripts-cli.md`, `contracts/ci-workflows.md`, `contracts/baseline-record.schema.json`; R1, R2, R3, R4, R13, R14, R15, R16; planning decisions 1, 4, 5; ordering notes 1 and 3.
   - **Scope**:
     - the five scripts: create `scripts/build`, `scripts/test`, `scripts/verify`, `scripts/format`, `scripts/baseline` (bash, `set -euo pipefail`, mode 755, no extension, `-h`/`--help`, every failure exits non-zero naming the cause). `scripts/build`: toolchain check naming the missing tool (`wails`, `go`, `node`, `npm`, GTK/WebKit headers on Linux) → `wails generate module` → `node frontend/scripts/generate-editor-themes.mjs` → `wails build` (`-ldflags "-X github.com/sanyokkua/go_mark_edit/internal/bootstrap.version=<v>"` when `--version` is given; `-tags webkit2_41` on Linux) → restore `frontend/wailsjs/**` modes from `git ls-files -s` → on macOS with `--version`, `plutil -replace` of `CFBundleShortVersionString` and `CFBundleVersion` in the built bundle → `git status --porcelain` empty, else fail listing the paths; the bundle scan is added by T037. `scripts/build setup [--with-browser]`: `go mod download`, `go install github.com/wailsapp/wails/v2/cmd/wails@<go.mod version>`, golangci-lint and shfmt at the pins, `npm ci --prefix frontend`, `npx playwright install chromium` with the flag, `lefthook install`; `scripts/build dev` = `wails dev`. `scripts/test <unit|integration|e2e|all>` writes one JSON per runner under `.specify/baseline/runs/<run-id>/`. `scripts/verify [<stage>] [--skip e2e]` runs Lint → Format → Build → Unit → Integration → E2E, stops at the first failure, writes `summary.json`, and records `--skip e2e` as `skipped`, never as passed. `scripts/baseline [--compare]` per the contract: the record is not written when any stage is `unreliable`; `--compare` fails closed on a missing record or field and exits 0 only when no finding remains, nothing is new and no stage regressed. `scripts/format [--check]`: `gofmt` for `*.go`, Prettier from the root for `md yml yaml json css ts tsx js mjs cjs html svg sql`, `shfmt -i 2 -ci` for the five scripts, `scripts/lib/*.sh` and every tracked `*.sh`.
@@ -67,14 +67,14 @@ and the worktree the Story 1 archive runs need.
 
 **⚠️ CRITICAL**: T002 runs before any implementation edit other than T001 (FR-064).
 
-- [ ] T002 Run `scripts/baseline` on the otherwise untouched tree and write `.specify/baseline/004-codebase-refactoring.json`
+- [x] T002 Run `scripts/baseline` on the otherwise untouched tree and write `.specify/baseline/004-codebase-refactoring.json`
   - **Implements**: FR-064, SC-006 prerequisite; quickstart 4; constitution VII; `contracts/baseline-record.schema.json`.
   - **Scope**: no source edit. The record is written to `.specify/baseline/004-codebase-refactoring.json` (gitignored by T001). An `unreliable` verdict (non-zero exit, nothing parsed) is fixed at its runner — the T001 scripts or the existing runner config — with that fix included in the recorded dirty diff, then the baseline is re-run; no other edit is made before the record exists.
   - **Evidence**: the file validates against `contracts/baseline-record.schema.json` (six stages, none `unreliable`); the record's `commit` is the current HEAD and `dirtyDiffSha256`/`untrackedPaths` cover the T001 files; the commit hash and each stage's verdict are noted in the record file itself.
   - **Depends on**: T001.
   - **Branch**: feature branch; no commit (the record is ignored).
 
-- [ ] T003 Reformat every tracked text file once with `scripts/format` and commit the result
+- [x] T003 Reformat every tracked text file once with `scripts/format` and commit the result
   - **Implements**: FR-063; R4; planning decision 1 (`.sql` migrations and archived docs included).
   - **Scope**: every tracked text file the three format owners cover; nothing else changes in the commit.
   - **Evidence**: `scripts/format --check` exits 0; touching the formatting of one file of each type (`.md`, `.yml`, `.json`, `.css`, `.ts`, `.go`, `.sh`, `.sql`) makes it exit 1 naming that file (quickstart 3).
@@ -516,18 +516,18 @@ walkthrough, networking-disabled cold start, release dry run, archive worktree r
 
 ### Phase Dependencies (the plan's binding group order)
 
-| Phase | Group | Must precede |
-|---|---|---|
-| 1 | G1 scripts | everything |
-| 2 | G2 baseline, reformat, worktree | every implementation edit |
-| 3 | G3 shutdown and requests | Phase 5 cases 2–6 |
-| 4 | G4 lifecycle owner | Phase 6 |
-| 5 | G5 real-backend E2E | deletion of the mock and parity stack (Phase 7) |
-| 6 | G6 component library and decomposition | Phase 7 |
-| 7 | G7 tests and lint | Phase 8 |
-| 8 | G8 authority and instructions | Phase 10 |
-| 9 | G9 repository cleanup | Phase 10 |
-| 10 | G10 close | feature close |
+| Phase | Group                                  | Must precede                                    |
+| ----- | -------------------------------------- | ----------------------------------------------- |
+| 1     | G1 scripts                             | everything                                      |
+| 2     | G2 baseline, reformat, worktree        | every implementation edit                       |
+| 3     | G3 shutdown and requests               | Phase 5 cases 2–6                               |
+| 4     | G4 lifecycle owner                     | Phase 6                                         |
+| 5     | G5 real-backend E2E                    | deletion of the mock and parity stack (Phase 7) |
+| 6     | G6 component library and decomposition | Phase 7                                         |
+| 7     | G7 tests and lint                      | Phase 8                                         |
+| 8     | G8 authority and instructions          | Phase 10                                        |
+| 9     | G9 repository cleanup                  | Phase 10                                        |
+| 10    | G10 close                              | feature close                                   |
 
 ### Hard ordering rules
 

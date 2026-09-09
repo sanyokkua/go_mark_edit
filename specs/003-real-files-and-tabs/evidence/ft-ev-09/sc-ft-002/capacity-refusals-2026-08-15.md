@@ -12,9 +12,9 @@ cause, one fix, two obligations closed.
 
 The Go backend writes exactly the messages the specification asks for:
 
-| Refusal | Site | Message |
-| --- | --- | --- |
-| over 50 MiB | `internal/file/document_reader.go:211` | `The document exceeds the 50 MiB limit.` |
+| Refusal       | Site                                      | Message                                     |
+| ------------- | ----------------------------------------- | ------------------------------------------- |
+| over 50 MiB   | `internal/file/document_reader.go:211`    | `The document exceeds the 50 MiB limit.`    |
 | 41st document | `internal/appmodel/file_lifecycle.go:184` | `The window already contains 40 documents.` |
 
 Both are `apperr.ClassifiedCapacityLimit` with `apperr.RemediationCancel`, and both cross the Wails
@@ -25,12 +25,12 @@ boundary intact — `apperr.OpenResult.Error *ClassifiedError` carries a `messag
 
 The frontend then threw it away. Every entry handler read only its success field:
 
-| Path | Site before the fix |
-| --- | --- |
-| New | `frontend/src/App.tsx:386-398` — reads `result.data`; `result.error` never inspected |
-| Open | `frontend/src/App.tsx:399-411` — reads `result.activeBuffer` only |
-| Open Recent | `frontend/src/App.tsx:412-424` — reads `result.activeBuffer` only |
-| Reopen last | `frontend/src/App.tsx:426-438` — reads `result.activeBuffer` only |
+| Path            | Site before the fix                                                                                       |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| New             | `frontend/src/App.tsx:386-398` — reads `result.data`; `result.error` never inspected                      |
+| Open            | `frontend/src/App.tsx:399-411` — reads `result.activeBuffer` only                                         |
+| Open Recent     | `frontend/src/App.tsx:412-424` — reads `result.activeBuffer` only                                         |
+| Reopen last     | `frontend/src/App.tsx:426-438` — reads `result.activeBuffer` only                                         |
 | `+` tab control | `frontend/src/ui/widgets/DocumentTabs.tsx:583-586` — `void (onNewDocument(…))`, result discarded outright |
 
 The save path had this right all along (`App.tsx:970-971` branches on
@@ -49,8 +49,8 @@ implemented **no capacity check at all** — `NewDocument` and `OpenDocument`
 browser test could reach a refusal even in principle. The Go tests assert the model contract and
 stop at the boundary. Nothing in between ever asked whether the message arrived.
 
-This is T104's defect class with the arrow reversed. T104 was *the frontend never calls the
-backend*; this is *the frontend receives the backend's answer and discards it*.
+This is T104's defect class with the arrow reversed. T104 was _the frontend never calls the
+backend_; this is _the frontend receives the backend's answer and discards it_.
 
 ### The fix
 
@@ -67,12 +67,12 @@ backend*; this is *the frontend receives the backend's answer and discards it*.
 
 Four tests, each confirmed to fail before the fix and pass after.
 
-| Test | File | Asserts |
-| --- | --- | --- |
-| `FR-FT-004 surfaces the 40-document refusal raised by the new-tab control` | `frontend/src/ui/widgets/DocumentTabs.test.tsx` | one toast, code `capacity-limit`, message `The window already contains 40 documents.` |
-| `FR-FT-005 reports the 50 MiB open refusal with the limit named` | `frontend/src/App.test.tsx` | one toast, code `capacity-limit`, message `The document exceeds the 50 MiB limit.` |
-| `FT-VS-09 refuses the forty-first document and names the limit` | `frontend/e2e/real-files-and-tabs.test.ts` | 40 tabs → click `New tab` → **still 40 tabs**, plus a visible message containing `40 documents` |
-| `FT-VS-09 refuses an over-50-MiB file and names the limit` | `frontend/e2e/real-files-and-tabs.test.ts` | tab count unchanged, plus a visible message containing `50 MiB` |
+| Test                                                                       | File                                            | Asserts                                                                                         |
+| -------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `FR-FT-004 surfaces the 40-document refusal raised by the new-tab control` | `frontend/src/ui/widgets/DocumentTabs.test.tsx` | one toast, code `capacity-limit`, message `The window already contains 40 documents.`           |
+| `FR-FT-005 reports the 50 MiB open refusal with the limit named`           | `frontend/src/App.test.tsx`                     | one toast, code `capacity-limit`, message `The document exceeds the 50 MiB limit.`              |
+| `FT-VS-09 refuses the forty-first document and names the limit`            | `frontend/e2e/real-files-and-tabs.test.ts`      | 40 tabs → click `New tab` → **still 40 tabs**, plus a visible message containing `40 documents` |
+| `FT-VS-09 refuses an over-50-MiB file and names the limit`                 | `frontend/e2e/real-files-and-tabs.test.ts`      | tab count unchanged, plus a visible message containing `50 MiB`                                 |
 
 The two Playwright cases belong to the `chromium` project and run **once**; `repeatEach: 3` applies
 only to the `parity` project, whose `testMatch` is `e2e/targeted-parity.test.ts`.
@@ -97,7 +97,7 @@ rather than discarding it. Neither layer closes the capacity clause alone.
 For that stand-in to be worth anything the mock's refusal has to be shaped exactly as Go shapes it,
 so the category, message and remediation were copied from the Go source rather than invented, and
 the guard was placed on the distinct-insertion branch only — after the duplicate-identity focus
-return — because FR-FT-004 requires Open to canonicalize and deduplicate *before* applying the
+return — because FR-FT-004 requires Open to canonicalize and deduplicate _before_ applying the
 limit, leaving "focus an already-open tab" valid at capacity.
 
 One deliberate inexactness, recorded rather than hidden: Go refuses on the stat'd file size, and
@@ -124,12 +124,12 @@ evidence of the defect.
 ## F-2 is also a defect, and is filed rather than fixed
 
 The second observation — read-only opens with no visible reason — is likewise real. The read-only
-*state* is visible in two places (`DocumentIdentity.tsx:40-42` and `StatusBar.tsx:98-113`), and both
+_state_ is visible in two places (`DocumentIdentity.tsx:40-42` and `StatusBar.tsx:98-113`), and both
 render the bare word `Read-only` from `status.saveStatus.read-only` / `status.readOnlyWarning`.
 Neither states why. The discriminating fields survive on the metadata and are projected —
 `documentsSlice.ts:43` carries `sizeClass`, set to `large` at `file_lifecycle.go:345-348` — but no
 component reads them for display. The only read-only explanation string that exists,
-`save.readOnly`, fires when a Save is *attempted*, and Save is disabled for these documents.
+`save.readOnly`, fires when a Save is _attempted_, and Save is disabled for these documents.
 
 It is filed as its own task rather than fixed here because the status row is under the parity
 contract (`STATUS_ITEM_SELECTORS` in `frontend/e2e/parity/state-contract.ts`, which maps `.sb-count`

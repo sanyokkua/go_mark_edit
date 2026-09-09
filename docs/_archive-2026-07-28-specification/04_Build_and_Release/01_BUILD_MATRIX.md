@@ -25,11 +25,11 @@ stays minimal and reproducible.
 
 ## 1. Supported OS baseline
 
-| OS | Minimum baseline | Webview engine | Notes |
-|---|---|---|---|
-| Windows | **Windows 10+** (x64) | WebView2 (Evergreen runtime) | Runtime bootstrapped by the installer if absent (DD-01). |
-| macOS | **macOS 12+ (Monterey)** | WKWebView (system) | `LSMinimumSystemVersion` set in `Info.plist`. Universal not required — separate arm64/amd64 artifacts. |
-| Linux | **Modern Linux** with GTK3 + WebKit2GTK 4.1 | WebKitGTK (`webkit2gtk-4.1`) | Baseline is a current LTS such as Ubuntu 24.04; the `webkit2_41` build tag selects the 4.1 ABI. |
+| OS      | Minimum baseline                            | Webview engine               | Notes                                                                                                  |
+| ------- | ------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Windows | **Windows 10+** (x64)                       | WebView2 (Evergreen runtime) | Runtime bootstrapped by the installer if absent (DD-01).                                               |
+| macOS   | **macOS 12+ (Monterey)**                    | WKWebView (system)           | `LSMinimumSystemVersion` set in `Info.plist`. Universal not required — separate arm64/amd64 artifacts. |
+| Linux   | **Modern Linux** with GTK3 + WebKit2GTK 4.1 | WebKitGTK (`webkit2gtk-4.1`) | Baseline is a current LTS such as Ubuntu 24.04; the `webkit2_41` build tag selects the 4.1 ABI.        |
 
 These map to DD-01. There is no 32-bit target and no Windows-on-ARM target in v1.
 
@@ -38,12 +38,12 @@ These map to DD-01. There is no 32-bit target and no Windows-on-ARM target in v1
 Each release produces one primary artifact per row. Artifact naming embeds the version and platform
 (`GoMarkEdit-<version>-<platform>`), matching the release job in `03_CI_AND_HOOKS.md`.
 
-| Platform | Runner | Output | Release asset | Build tags |
-|---|---|---|---|---|
-| `darwin/arm64` | `macos-latest` (Apple Silicon) | `GoMarkEdit.app` bundle | `GoMarkEdit-<v>-macos-arm64.app.zip` | — |
-| `darwin/amd64` | `macos-13` (Intel) | `GoMarkEdit.app` bundle | `GoMarkEdit-<v>-macos-amd64.app.zip` | — |
-| `windows/amd64` | `windows-latest` | `GoMarkEdit.exe` (+ NSIS installer) | `GoMarkEdit-<v>-windows-amd64.exe`, `GoMarkEdit-<v>-windows-amd64-installer.exe` | — |
-| `linux/amd64` | `ubuntu-24.04` | ELF binary (+ `.deb`/`.rpm` via nfpm) | `GoMarkEdit-<v>-linux-amd64`, `.deb`, `.rpm` | `webkit2_41` |
+| Platform        | Runner                         | Output                                | Release asset                                                                    | Build tags   |
+| --------------- | ------------------------------ | ------------------------------------- | -------------------------------------------------------------------------------- | ------------ |
+| `darwin/arm64`  | `macos-latest` (Apple Silicon) | `GoMarkEdit.app` bundle               | `GoMarkEdit-<v>-macos-arm64.app.zip`                                             | —            |
+| `darwin/amd64`  | `macos-13` (Intel)             | `GoMarkEdit.app` bundle               | `GoMarkEdit-<v>-macos-amd64.app.zip`                                             | —            |
+| `windows/amd64` | `windows-latest`               | `GoMarkEdit.exe` (+ NSIS installer)   | `GoMarkEdit-<v>-windows-amd64.exe`, `GoMarkEdit-<v>-windows-amd64-installer.exe` | —            |
+| `linux/amd64`   | `ubuntu-24.04`                 | ELF binary (+ `.deb`/`.rpm` via nfpm) | `GoMarkEdit-<v>-linux-amd64`, `.deb`, `.rpm`                                     | `webkit2_41` |
 
 - **macOS** ships **both arm64 and amd64** as separate `.app.zip` artifacts (DD-01). The `.app`
   bundle is zipped with `-X` to preserve the executable bit on `Contents/MacOS/GoMarkEdit` (see the
@@ -137,13 +137,13 @@ GoMarkEdit keeps a **dev build fully isolated** from a production install so a `
 touches real user settings, the real DB, or real logs (`internal/file`
 in `02_Architecture/01_MODULE_INVENTORY.md`):
 
-| Concern | Production | `wails dev` |
-|---|---|---|
-| Config/DB/logs root (macOS) | `~/Library/Application Support/GoMarkEdit` | `~/Library/Application Support/GoMarkEdit-Dev` |
-| Config/DB/logs root (Linux) | `~/.config/GoMarkEdit` | `~/.config/GoMarkEdit-Dev` |
-| Config/DB/logs root (Windows) | `%APPDATA%\GoMarkEdit` | `%APPDATA%\GoMarkEdit-Dev` |
-| Log level | WARNING | DEBUG |
-| Frontend | embedded `frontend/dist` | Vite dev server (hot reload) |
+| Concern                       | Production                                 | `wails dev`                                    |
+| ----------------------------- | ------------------------------------------ | ---------------------------------------------- |
+| Config/DB/logs root (macOS)   | `~/Library/Application Support/GoMarkEdit` | `~/Library/Application Support/GoMarkEdit-Dev` |
+| Config/DB/logs root (Linux)   | `~/.config/GoMarkEdit`                     | `~/.config/GoMarkEdit-Dev`                     |
+| Config/DB/logs root (Windows) | `%APPDATA%\GoMarkEdit`                     | `%APPDATA%\GoMarkEdit-Dev`                     |
+| Log level                     | WARNING                                    | DEBUG                                          |
+| Frontend                      | embedded `frontend/dist`                   | Vite dev server (hot reload)                   |
 
 Isolation is driven by an `isDev` signal (`internal/bootstrap.IsDevBuild` build tag +
 `internal/file` path resolution). `just dev` runs `wails dev`; `just dev-ui` runs the frontend alone

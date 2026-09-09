@@ -10,8 +10,8 @@
 
 This document examines the three delivered Spec Kit features — `001-gomarkedit-product`,
 `002-editor-stage-formatting`, `003-real-files-and-tabs` — and the 361 commits that produced them.
-It asks four questions the owner raised: *what went wrong, is the architecture still sound, is the
-work still tracked honestly, and can we proceed to the next phases?*
+It asks four questions the owner raised: _what went wrong, is the architecture still sound, is the
+work still tracked honestly, and can we proceed to the next phases?_
 
 Every figure here was measured, not estimated. Each is followed by the command that produces it, so
 any claim can be re-checked at a later commit. Nothing in this document is an assertion you have to
@@ -19,7 +19,7 @@ take on trust.
 
 **Method:** static analysis of the repository at `544372de` plus git history since the merge base
 with `master` (`85205ba7`, 2026-07-20). No test suite was executed for this document; where test
-*results* are cited they come from committed evidence artifacts, and that is stated at the point of
+_results_ are cited they come from committed evidence artifacts, and that is stated at the point of
 use. The specific runtime defects the owner has observed were deliberately **not** hunted here — the
 point of §7 is that the gates should find them, and doing it by hand again would prove the opposite
 of what we want.
@@ -30,10 +30,10 @@ of what we want.
 
 Six of fourteen roadmap phases are delivered. Features 001–003 cover roadmap phases 00–05.
 
-| | Phases | Phase-spec lines |
-|---|---|---:|
-| Delivered | 00–05 | 534 |
-| Remaining | 06–13 | **691** |
+|           | Phases | Phase-spec lines |
+| --------- | ------ | ---------------: |
+| Delivered | 00–05  |              534 |
+| Remaining | 06–13  |          **691** |
 
 ```sh
 wc -l docs/delivery/plan/phase-*.md
@@ -60,11 +60,11 @@ wrong, and acting on it would make the next phase worse.
 
 Requirement coverage inverts it:
 
-| Feature | Tasks checked | Declared FRs | FRs with a resolvable proving test |
-|---|---|---:|---:|
-| 001 | 43 / 43 (100%) | 100 | **14** |
-| 002 | 97 / 97 (100%) | 27 | **3** |
-| 003 | 195 / 196 (99%) | 58 | **56** |
+| Feature | Tasks checked   | Declared FRs | FRs with a resolvable proving test |
+| ------- | --------------- | -----------: | ---------------------------------: |
+| 001     | 43 / 43 (100%)  |          100 |                             **14** |
+| 002     | 97 / 97 (100%)  |           27 |                              **3** |
+| 003     | 195 / 196 (99%) |           58 |                             **56** |
 
 ```sh
 grep -c '^- \[[xX]\]' specs/003-real-files-and-tabs/tasks.md
@@ -128,9 +128,9 @@ are **zero** `.only`, `xit`, `fit`, `test.fixme`, commented-out test blocks, or 
 directives in tests.
 
 **Clean, honest history.** 361 commits, **0 merge commits, 0 reverts**, 81% Conventional Commits, one
-author. Commit bodies record negative results plainly — *"proved nothing"*, *"the first injection
-attempt was itself a false negative"*, *"an injection that does not land looks exactly like an
-assertion that cannot fail"*. That is unusually good engineering writing, and it is why this
+author. Commit bodies record negative results plainly — _"proved nothing"_, _"the first injection
+attempt was itself a false negative"_, _"an injection that does not land looks exactly like an
+assertion that cannot fail"_. That is unusually good engineering writing, and it is why this
 retrospective was possible at all.
 
 **The investigation quality is high.** The problem with the 35 `docs(evidence)` commits is their
@@ -149,11 +149,11 @@ superset of the local gate.
 
 ### 5.1 Planning accuracy collapsed, monotonically
 
-| Feature | Planned tasks | Appended after planning | Appended % | Convergence phases |
-|---|---:|---:|---:|---:|
-| 001 | 36 | 7 | 16% | 4 |
-| 002 | 42 | 55 | 57% | 15 |
-| 003 | 39 | **157** | **80%** | 13 (+4 dated in-flight appends) |
+| Feature | Planned tasks | Appended after planning | Appended % |              Convergence phases |
+| ------- | ------------: | ----------------------: | ---------: | ------------------------------: |
+| 001     |            36 |                       7 |        16% |                               4 |
+| 002     |            42 |                      55 |        57% |                              15 |
+| 003     |            39 |                 **157** |    **80%** | 13 (+4 dated in-flight appends) |
 
 This is not one bad feature. It is a worsening trend across three, and by 003 the plan predicted
 **one task in five**. `plan.md` covers 39 of 196 tasks and documents its own drift in a
@@ -175,10 +175,10 @@ git log master..HEAD --name-only --pretty=format: | sort | uniq -c | sort -rn | 
 ### 5.3 The work changed character on 2026-08-12
 
 | Commit type | Before 08-12 (n=123) | On/after 08-12 (n=238) |
-|---|---:|---:|
-| `feat` | 33 | 21 |
-| `fix` | 10 | **80** |
-| `docs` | 1 | **70** |
+| ----------- | -------------------: | ---------------------: |
+| `feat`      |                   33 |                     21 |
+| `fix`       |                   10 |                 **80** |
+| `docs`      |                    1 |                 **70** |
 
 Two-thirds of the branch's commits fall in the last eight active days, and they are predominantly
 investigation. In the **last 30 commits, 2 are `feat` (6.7%)**; `docs` + `refactor` + `test` are 22
@@ -187,16 +187,16 @@ commits)** and **`parity` (50)** — neither is a product feature.
 
 Single tasks consumed extraordinary effort: **T173 spans 14 commits** with bodies labelled "Second
 pass", "Third pass", "Fourth pass" and "T173 stays open"; **T191 spans 13 commits**, its last body
-reading *"the fifth of five causes, each individually necessary and each producing an identical
-symptom."*
+reading _"the fifth of five causes, each individually necessary and each producing an identical
+symptom."_
 
 ### 5.4 The verification apparatus outgrew the product
 
-| | Lines |
-|---|---:|
+|                                                                                |      Lines |
+| ------------------------------------------------------------------------------ | ---------: |
 | Product code (Go `internal/` + `main.go`; frontend `src/` excl. dev and tests) | **29,005** |
-| Test and verification infrastructure | **59,903** |
-| Spec and docs prose | **53,600** |
+| Test and verification infrastructure                                           | **59,903** |
+| Spec and docs prose                                                            | **53,600** |
 
 Product code is roughly **20% of the repository**. Specific consequences:
 
@@ -248,15 +248,15 @@ green signal while measuring nothing.
 
 **1. `just check` never ran the interface tests — and still doesn't.**
 The gate is exactly `gen-check, frontend-build, fmt-check, lint, typecheck, frontend-test, go-vet,
-archtest, go-test`. Its own comment in the justfile admits: *"A green `check` therefore says nothing
-about interface behaviour."*
+archtest, go-test`. Its own comment in the justfile admits: _"A green `check` therefore says nothing
+about interface behaviour."_
 
 **2. `just e2e-test` died at collection for weeks.**
 `playwright.config.ts` matched `e2e/**/*.test.ts`, which swallowed the seven Jest unit tests under
 `e2e/parity/` that `jest.config.mjs` owns. Playwright with no filter died with
 `ReferenceError: it is not defined` **before one browser case ran** — true from the T034 harness
-commit until 2026-08-14. Running a single file always worked, which is why nobody noticed. *A runner
-that never starts is indistinguishable, in a scrollback, from one nobody invoked.*
+commit until 2026-08-14. Running a single file always worked, which is why nobody noticed. _A runner
+that never starts is indistinguishable, in a scrollback, from one nobody invoked._
 
 **3. Piping a gate hid its exit code.**
 `just check | tail` returns `tail`'s status. A failed gate read green, and the `&&` after it still ran.
@@ -296,8 +296,8 @@ mandate has **never** been machine-checked, which is why 27.9% TypeScript anchor
 
 Two of these are genuine gaps; one commonly-cited item is **not**.
 
-- **Not a gap.** `just vuln` (govulncheck) and `just sqlc-check` are defined but uncalled *on
-  purpose*. Both the justfile and AGENTS.md state "Security gates (sqlc-check, vuln) join later."
+- **Not a gap.** `just vuln` (govulncheck) and `just sqlc-check` are defined but uncalled _on
+  purpose_. Both the justfile and AGENTS.md state "Security gates (sqlc-check, vuln) join later."
   They are staged work, not oversight — the same category as `just package` exiting non-zero
   deliberately. Do not "fix" them.
 - **A real gap.** `just go-test` runs `./internal/... .` — **not `./cmd/...`**. Combined with the
@@ -319,11 +319,11 @@ grep -rn 'baseline_verify_test' justfile .github/workflows/ lefthook.yml
 **The constitution is not the problem.** It is unusually good, and Principle VII predicted this exact
 failure in writing:
 
-> *"A green aggregate label alone is never evidence of completion."*
-> *"Mock-bridge browser tests MUST be complemented by numbered live cases for real files, processes,
-> platforms, providers, and the built binary."*
+> _"A green aggregate label alone is never evidence of completion."_
+> _"Mock-bridge browser tests MUST be complemented by numbered live cases for real files, processes,
+> platforms, providers, and the built binary."_
 
-Feature 003 **followed it faithfully**. That is precisely *why* there are 35 evidence commits, host
+Feature 003 **followed it faithfully**. That is precisely _why_ there are 35 evidence commits, host
 walkthroughs, and 13,036 capture files. The rigour was real and it was correctly directed.
 
 Two things turned faithful compliance into overrun.
@@ -357,7 +357,7 @@ least scalable tool available, and it is what §8 exists to fix.
 
 ### 7.3 A structural accelerant: a blocking decision that blocked nothing
 
-T075 sat marked *"decision required before implementation"* while implementation continued around it.
+T075 sat marked _"decision required before implementation"_ while implementation continued around it.
 Work downstream accrued and had to be redone. **A label is not a dependency.** If a task blocks
 others, it must block them in the task graph.
 
@@ -384,8 +384,8 @@ Wire it into `just check`. This converts "unmeasurable" back into a number that 
 ### P0-2 · Build the anchor checker that was specified but never written
 
 `check_proves.py` is named in KNOWN_ISSUES as the enforcement mechanism and does not exist. AGENTS.md
-already states the rule it should enforce: *"An anchor asserting a claim the body does not make is
-worse than no anchor — it converts a coverage gap into a false record of coverage."*
+already states the rule it should enforce: _"An anchor asserting a claim the body does not make is
+worse than no anchor — it converts a coverage gap into a false record of coverage."_
 **Done when:** the gate fails against a deliberately broken anchor, then passes once fixed.
 
 ### P0-3 · Give Principle VII a budget
@@ -405,8 +405,8 @@ Definition of Done — ask them of every criterion **before** committing:
    compared, no paired capture can exist.
 2. **Can the code under test move it?** If the residual is set by the renderer, the task cannot close it.
 3. **Does it contain an absolute quantifier over an unmeasured space?**
-4. **Does it depend on a decision marked "required before implementation"?** Then it must *block its
-   dependents in the task graph* — not merely carry a label.
+4. **Does it depend on a decision marked "required before implementation"?** Then it must _block its
+   dependents in the task graph_ — not merely carry a label.
 
 Also correct **Principle I's authority pointer** to `specs/<feature>/`, with `docs/delivery/` named as
 migrated reference, matching what AGENTS.md already says. Update the Sync Impact Report and amendment
@@ -414,13 +414,13 @@ date per the governance clause.
 
 ### P0-4 · Close the mock/real divergence structurally
 
-The mock is 2,024 hand-written lines with no conformance test, and it is what Playwright *and CI*
+The mock is 2,024 hand-written lines with no conformance test, and it is what Playwright _and CI_
 exercise. Add a conformance test asserting the mock implements exactly the generated binding surface
 (names and arity), and that it honours all five of Go's `dirty` conditions — three are currently
 absent.
 **Done when:** the test fails against a deliberately removed mock method, then passes.
 
-### P0-5 · Mechanise `#rendered-html-is-sanitised` *before* Phase 06 needs it
+### P0-5 · Mechanise `#rendered-html-is-sanitised` _before_ Phase 06 needs it
 
 Phase 06 introduces the sanitiser, the fixed CSP, the local-image handler with path-traversal
 rejection, and the app's first sanctioned network egress. That rule is currently one of the 26 of 38
@@ -436,7 +436,7 @@ pixel count.
 - Re-capture a clean baseline at HEAD; the committed one is dirty and 22 commits stale.
 - Leave `just vuln` and `just sqlc-check` alone — they are deliberately staged for a later phase.
 - **Owner action:** set the branch-protection rule that makes the existing CI actually block a merge.
-  `lefthook.yml` records that CI "still does not *block* a merge — that needs a branch protection
+  `lefthook.yml` records that CI "still does not _block_ a merge — that needs a branch protection
   rule, which is the repository owner's to set." This is the cheapest correctness win available.
 
 ### P1-1 · Reconcile the tracking artifacts

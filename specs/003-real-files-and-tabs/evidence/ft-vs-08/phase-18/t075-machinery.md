@@ -40,14 +40,14 @@ existing `adaptDeferredToolbarControls` / `adaptViewMenu` adapters.
 
 Six files change:
 
-| File | Change |
-|---|---|
-| `e2e/parity/reference-adapter.ts` | a `status-*` variant family, an `adaptStatusBar(html, state)` rewriting `.sb-eol`, `.sb-count`, `.sb-autosave` and the `.doc-name` suffix per state, an entry in `variantRules`, and the new constants added to the hand-listed `REFERENCE_ADAPTER_HASH` object |
-| `e2e/parity/reference-adapter.test.ts` | `:53` asserts the variant list **exactly**; it fails until updated |
-| `e2e/targeted-manifest.ts` | widen `family` (it has no `'editor-only'`), `activeScreen`, `referenceVariant`, `referenceSelector`, `actualSelector`, `regionId`, `openSurface` — seven closed unions — plus six entries and an integrity block |
-| `e2e/targeted-parity.test.ts` | replace the production-only T063 body (`comparisonAttempted: false`) with the shared comparing body, and add the test-name and evidence-root branches |
-| `e2e/parity/state-contract.ts` | `.sb-count` and `.sb-autosave` have **no** reference↔production selector mapping today; the six states need them |
-| evidence tree | six new paired artifact sets |
+| File                                   | Change                                                                                                                                                                                                                                                          |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `e2e/parity/reference-adapter.ts`      | a `status-*` variant family, an `adaptStatusBar(html, state)` rewriting `.sb-eol`, `.sb-count`, `.sb-autosave` and the `.doc-name` suffix per state, an entry in `variantRules`, and the new constants added to the hand-listed `REFERENCE_ADAPTER_HASH` object |
+| `e2e/parity/reference-adapter.test.ts` | `:53` asserts the variant list **exactly**; it fails until updated                                                                                                                                                                                              |
+| `e2e/targeted-manifest.ts`             | widen `family` (it has no `'editor-only'`), `activeScreen`, `referenceVariant`, `referenceSelector`, `actualSelector`, `regionId`, `openSurface` — seven closed unions — plus six entries and an integrity block                                                |
+| `e2e/targeted-parity.test.ts`          | replace the production-only T063 body (`comparisonAttempted: false`) with the shared comparing body, and add the test-name and evidence-root branches                                                                                                           |
+| `e2e/parity/state-contract.ts`         | `.sb-count` and `.sb-autosave` have **no** reference↔production selector mapping today; the six states need them                                                                                                                                                |
+| evidence tree                          | six new paired artifact sets                                                                                                                                                                                                                                    |
 
 ## Two traps recorded so the next attempt does not pay for them
 

@@ -211,11 +211,11 @@ before the first implementation edit and never treat an unreliable gate as passi
 
 The research pass resolves all Technical Context questions:
 
-| Question | Resolution | Governing authority |
-|---|---|---|
-| Which state owns editor display settings? | Existing Go `internal/settings` typed group, surfaced through the established adapter; UI is an acknowledged projection. | FR-ED-022, FR-ED-024, `application-state.md` |
-| Which path mutates editor source? | `useDocumentCommands`/`CodeEditor` bounded edit seam; one Monaco edit operation. | FR-ED-012–017, `command-boundaries.md` |
-| Which actions are real in this slice? | Phase 04 inline/selection actions plus existing layout/sidebar/appearance/About/full-screen consumers. | Migration matrix, FR-ED-004, FR-ED-010, FR-ED-017–018 |
+| Question                                   | Resolution                                                                                                                                              | Governing authority                                                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Which state owns editor display settings?  | Existing Go `internal/settings` typed group, surfaced through the established adapter; UI is an acknowledged projection.                                | FR-ED-022, FR-ED-024, `application-state.md`                       |
+| Which path mutates editor source?          | `useDocumentCommands`/`CodeEditor` bounded edit seam; one Monaco edit operation.                                                                        | FR-ED-012–017, `command-boundaries.md`                             |
+| Which actions are real in this slice?      | Phase 04 inline/selection actions plus existing layout/sidebar/appearance/About/full-screen consumers.                                                  | Migration matrix, FR-ED-004, FR-ED-010, FR-ED-017–018              |
 | Which actions are visible but unavailable? | File inventory, visual tab fixture, right-side control, Image, Format, Compact, Lint, Assistant/reading future items, and deferred file/settings items. | Clarifications, FR-ED-002–006, FR-ED-008, FR-ED-010, FR-ED-026–027 |
-| How is narrow layout proven? | Registry-derived overflow at 768/375, bounding-box/no-clipping assertions at three widths, and six-palette browser journeys. | FR-ED-007/009/023, SC-ED-001/005 |
-| What is the completion gate? | Reliable pre-edit baseline, named focused tests, architecture/offline checks, full current gates, ED-LIVE-001–005, and real `just build`. | Constitution VII and SC-ED-007 |
+| How is narrow layout proven?               | Registry-derived overflow at 768/375, bounding-box/no-clipping assertions at three widths, and six-palette browser journeys.                            | FR-ED-007/009/023, SC-ED-001/005                                   |
+| What is the completion gate?               | Reliable pre-edit baseline, named focused tests, architecture/offline checks, full current gates, ED-LIVE-001–005, and real `just build`.               | Constitution VII and SC-ED-007                                     |

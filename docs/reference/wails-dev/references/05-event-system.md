@@ -37,9 +37,9 @@ func (a *App) startup(ctx context.Context) {
 
 ```typescript
 // TypeScript: emit from frontend
-import { EventsEmit } from '@wailsapp/runtime'
+import { EventsEmit } from '@wailsapp/runtime';
 
-EventsEmit("user:action", "save")
+EventsEmit('user:action', 'save');
 ```
 
 ---
@@ -95,14 +95,14 @@ Always return the cancel function from `useEffect`. Failing to do so leaks liste
 ```typescript
 // Correct — cleanup on unmount
 useEffect(() => {
-    const cancel = EventsOn("data:updated", handler)
-    return cancel
-}, [])
+  const cancel = EventsOn('data:updated', handler);
+  return cancel;
+}, []);
 
 // Wrong — leaks on each mount
 useEffect(() => {
-    EventsOn("data:updated", handler)  // no cleanup!
-}, [])
+  EventsOn('data:updated', handler); // no cleanup!
+}, []);
 ```
 
 ---
@@ -114,10 +114,10 @@ Go side: `data ...interface{}` — emit any JSON-serializable value.
 TypeScript side: receives `any`. Use type guards or `zod` to validate:
 
 ```typescript
-EventsOn("file:dropped", (path: unknown) => {
-    if (typeof path !== "string") return
-    handleFilePath(path)
-})
+EventsOn('file:dropped', (path: unknown) => {
+  if (typeof path !== 'string') return;
+  handleFilePath(path);
+});
 ```
 
 For structured payloads, pass a single object:
@@ -131,9 +131,12 @@ runtime.EventsEmit(a.ctx, "task:result", map[string]interface{}{
 ```
 
 ```typescript
-EventsOn("task:result", (payload: { id: string; status: string; output: string }) => {
-    updateTask(payload)
-})
+EventsOn(
+  'task:result',
+  (payload: { id: string; status: string; output: string }) => {
+    updateTask(payload);
+  },
+);
 ```
 
 ---
@@ -177,12 +180,12 @@ outcome; events are the incremental channel. Only the frontend `logic/adapter/` 
 
 ### Event contract
 
-| Event name | Payload shape | When emitted |
-|---|---|---|
-| `agent:progress` | `{ runId, phase, iteration, tool? }` | Loop advanced; `phase ∈ {infer, tool, final}`; `tool` set when `phase="tool"` |
-| `agent:token` | `{ runId, delta }` | Streaming: a chunk of assistant text to append to the transcript |
-| `agent:done` | `{ runId, stopReason, transcriptSummary }` | Run finished (incl. a cancelled stop reason) — final event, always emitted |
-| `agent:error` | `{ runId, error: WireError }` | Run failed; `error` is the standard sanitized envelope error |
+| Event name       | Payload shape                              | When emitted                                                                  |
+| ---------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| `agent:progress` | `{ runId, phase, iteration, tool? }`       | Loop advanced; `phase ∈ {infer, tool, final}`; `tool` set when `phase="tool"` |
+| `agent:token`    | `{ runId, delta }`                         | Streaming: a chunk of assistant text to append to the transcript              |
+| `agent:done`     | `{ runId, stopReason, transcriptSummary }` | Run finished (incl. a cancelled stop reason) — final event, always emitted    |
+| `agent:error`    | `{ runId, error: WireError }`              | Run failed; `error` is the standard sanitized envelope error                  |
 
 `WireError` shape: `{ code: ErrorCode, message: string, details?: Record<string,string> }`. Because
 `agent:error` reuses that exact shape, the adapter's normal `notifyError` toast path handles it with no
@@ -210,27 +213,48 @@ runtime.EventsEmit(ctx, "agent:progress", progressPayload{
 ### TypeScript listener (adapter layer)
 
 ```typescript
-import { EventsOn } from '@wailsapp/runtime'
-import { store } from 'logic/store'
-import { setProgress, appendToken, setDone, setError } from 'logic/store/assistant/run'
+import { EventsOn } from '@wailsapp/runtime';
+import { store } from 'logic/store';
+import {
+  setProgress,
+  appendToken,
+  setDone,
+  setError,
+} from 'logic/store/assistant/run';
 
 // Subscribed once inside logic/adapter/, tied to the active runId
 export function subscribeAgentEvents(runId: string): () => void {
-    const cancelProgress = EventsOn('agent:progress', (p) => {
-        if (p.runId === runId) store.dispatch(setProgress({ phase: p.phase, iteration: p.iteration, tool: p.tool }))
-    })
-    const cancelToken = EventsOn('agent:token', (p) => {
-        if (p.runId === runId) store.dispatch(appendToken(p.delta))
-    })
-    const cancelError = EventsOn('agent:error', (p) => {
-        if (p.runId === runId) store.dispatch(setError(p.error))
-    })
-    const cancelDone = EventsOn('agent:done', (p) => {
-        if (p.runId !== runId) return
-        store.dispatch(setDone({ stopReason: p.stopReason, transcriptSummary: p.transcriptSummary }))
-        cancelProgress(); cancelToken(); cancelError(); cancelDone()
-    })
-    return () => { cancelProgress(); cancelToken(); cancelError(); cancelDone() }
+  const cancelProgress = EventsOn('agent:progress', (p) => {
+    if (p.runId === runId)
+      store.dispatch(
+        setProgress({ phase: p.phase, iteration: p.iteration, tool: p.tool }),
+      );
+  });
+  const cancelToken = EventsOn('agent:token', (p) => {
+    if (p.runId === runId) store.dispatch(appendToken(p.delta));
+  });
+  const cancelError = EventsOn('agent:error', (p) => {
+    if (p.runId === runId) store.dispatch(setError(p.error));
+  });
+  const cancelDone = EventsOn('agent:done', (p) => {
+    if (p.runId !== runId) return;
+    store.dispatch(
+      setDone({
+        stopReason: p.stopReason,
+        transcriptSummary: p.transcriptSummary,
+      }),
+    );
+    cancelProgress();
+    cancelToken();
+    cancelError();
+    cancelDone();
+  });
+  return () => {
+    cancelProgress();
+    cancelToken();
+    cancelError();
+    cancelDone();
+  };
 }
 ```
 

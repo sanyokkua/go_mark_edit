@@ -19,7 +19,7 @@ STORY-058 built stays as it is.
 ## How it works now
 
 - `frontend/src/ui/styles/tokens.css` declares 108 distinct custom properties across eight selector
-  blocks: `:root` (which *is* Material light — there is no `[data-theme='material']` selector, because
+  blocks: `:root` (which _is_ Material light — there is no `[data-theme='material']` selector, because
   Material is the base), `:root[data-theme='glass']` and `:root[data-theme='minimal']` for the
   theme-identity overrides, `:root[data-mode='dark']` for the shared dark inversion, and the four
   `[data-theme][data-mode]` combinations at lines 161–192. A `@media (prefers-reduced-motion: reduce)`
@@ -30,7 +30,7 @@ STORY-058 built stays as it is.
 - Why they are missing: STORY-058 copied this rule with 11 of its 24 table rows. The implementer built
   exactly what was in front of them. `just story-check 058` reports it; nothing in 2026-07 could,
   because no check counted table rows and the story's static-analysis gate had recorded `exit 5,
-  0 findings` and could not fail. Both are written up in `../plan/KNOWN_ISSUES.md` items 6 and 14.
+0 findings` and could not fail. Both are written up in `../plan/KNOWN_ISSUES.md` items 6 and 14.
 - `frontend/src/ui/styles/tokens.test.ts` already asserts computed custom-property values by mounting
   a document element with `data-theme` and `data-mode` set — it does not scan the stylesheet source.
   Extend that file; do not add a new pattern.
@@ -39,38 +39,38 @@ STORY-058 built stays as it is.
 
 ## Rules this story owns
 
-
 ### Each theme has one accent, one radius and one font across both appearances {#theme-identity-is-stable}
-*(from `spec/product/themes-and-appearance.md#theme-identity-is-stable` — copied verbatim)*
+
+_(from `spec/product/themes-and-appearance.md#theme-identity-is-stable` — copied verbatim)_
 
 - Within a theme, `--accent`, `--win-radius`, `--font` and the blur and shadow character are the same in
   light and dark. Only surfaces and text invert.
 
-| Token | Liquid Glass | Material | Minimal |
-|---|---|---|---|
-| `--accent` | `#7aa2ff` | `#4f6bed` | `#10b981` |
-| `--accent2` (gradients only) | `#c58bff` | `#4f6bed` | `#10b981` |
-| `--accent-ink` (text on `--accent-soft`) | `#cdd8ff` | `#0a1a52` | `#047857` |
-| `--accent-soft` | `rgba(122,162,255,.16)` | `#dfe4ff` | `#ecfdf5` |
-| `--accent-contrast` (text on `--accent`) | `#0b1024` | `#ffffff` | `#ffffff` |
-| `--canvas` (window backdrop) | aurora: radials `#3b2f7a` + `#1d4e8f` + `#7a2f6a` over linear `#0d1022 → #0a0d1c → #0b0f1e` | `#d9d7e6` | `#e9e9ec` |
-| `--app-bg` | `rgba(255,255,255,.10)` | `#faf8ff` | `#fbfbfa` |
-| `--surface` | `rgba(28,30,54,.82)` | `#ffffff` | `#ffffff` |
-| `--elevated` | `rgba(28,30,54,.82)` | `#f3f1fb` | `#ffffff` |
-| `--surface-2` | `rgba(255,255,255,.07)` | `#eceaf6` | `#f3f3f2` |
-| `--surface-3` | `rgba(255,255,255,.16)` | `#e6e3f2` | `#eaeae9` |
-| `--stroke` | `rgba(255,255,255,.18)` | `#e3e1ee` | `#e4e4e7` |
-| `--stroke-soft` | `rgba(255,255,255,.11)` | `#eceaf6` | `#ececee` |
-| `--text` | `#eaf0ff` | `#1b1b22` | `#1f2328` |
-| `--muted` | `rgba(234,240,255,.60)` | `#5c5c69` | `#6b7280` |
-| `--faint` | `rgba(234,240,255,.32)` | `#9aa1ab` | `#9aa1ab` |
-| `--hover` | `rgba(255,255,255,.16)` | `rgba(0,0,0,.05)` | `rgba(0,0,0,.04)` |
-| `--user-bubble` | `rgba(122,162,255,.14)` | `#dfe4ff` | `#ecfdf5` |
-| `--win-radius` | `16px` | `16px` | `12px` |
-| `--win-shadow` | `0 24px 80px rgba(0,0,0,.55)` | `0 12px 32px rgba(27,27,34,.16)` | `0 8px 24px rgba(31,35,40,.10)` |
-| `--blur` | `blur(28px) saturate(160%)` | `none` | `none` |
-| `--font` | system stack — `-apple-system, "SF Pro Display", "Segoe UI", Inter, …` | `"Roboto", "Segoe UI", Inter, …` | `"Inter", -apple-system, …` |
-| `--mono` | `"SF Mono", "JetBrains Mono", ui-monospace, …` | same | same |
+| Token                                    | Liquid Glass                                                                                | Material                         | Minimal                         |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------- |
+| `--accent`                               | `#7aa2ff`                                                                                   | `#4f6bed`                        | `#10b981`                       |
+| `--accent2` (gradients only)             | `#c58bff`                                                                                   | `#4f6bed`                        | `#10b981`                       |
+| `--accent-ink` (text on `--accent-soft`) | `#cdd8ff`                                                                                   | `#0a1a52`                        | `#047857`                       |
+| `--accent-soft`                          | `rgba(122,162,255,.16)`                                                                     | `#dfe4ff`                        | `#ecfdf5`                       |
+| `--accent-contrast` (text on `--accent`) | `#0b1024`                                                                                   | `#ffffff`                        | `#ffffff`                       |
+| `--canvas` (window backdrop)             | aurora: radials `#3b2f7a` + `#1d4e8f` + `#7a2f6a` over linear `#0d1022 → #0a0d1c → #0b0f1e` | `#d9d7e6`                        | `#e9e9ec`                       |
+| `--app-bg`                               | `rgba(255,255,255,.10)`                                                                     | `#faf8ff`                        | `#fbfbfa`                       |
+| `--surface`                              | `rgba(28,30,54,.82)`                                                                        | `#ffffff`                        | `#ffffff`                       |
+| `--elevated`                             | `rgba(28,30,54,.82)`                                                                        | `#f3f1fb`                        | `#ffffff`                       |
+| `--surface-2`                            | `rgba(255,255,255,.07)`                                                                     | `#eceaf6`                        | `#f3f3f2`                       |
+| `--surface-3`                            | `rgba(255,255,255,.16)`                                                                     | `#e6e3f2`                        | `#eaeae9`                       |
+| `--stroke`                               | `rgba(255,255,255,.18)`                                                                     | `#e3e1ee`                        | `#e4e4e7`                       |
+| `--stroke-soft`                          | `rgba(255,255,255,.11)`                                                                     | `#eceaf6`                        | `#ececee`                       |
+| `--text`                                 | `#eaf0ff`                                                                                   | `#1b1b22`                        | `#1f2328`                       |
+| `--muted`                                | `rgba(234,240,255,.60)`                                                                     | `#5c5c69`                        | `#6b7280`                       |
+| `--faint`                                | `rgba(234,240,255,.32)`                                                                     | `#9aa1ab`                        | `#9aa1ab`                       |
+| `--hover`                                | `rgba(255,255,255,.16)`                                                                     | `rgba(0,0,0,.05)`                | `rgba(0,0,0,.04)`               |
+| `--user-bubble`                          | `rgba(122,162,255,.14)`                                                                     | `#dfe4ff`                        | `#ecfdf5`                       |
+| `--win-radius`                           | `16px`                                                                                      | `16px`                           | `12px`                          |
+| `--win-shadow`                           | `0 24px 80px rgba(0,0,0,.55)`                                                               | `0 12px 32px rgba(27,27,34,.16)` | `0 8px 24px rgba(31,35,40,.10)` |
+| `--blur`                                 | `blur(28px) saturate(160%)`                                                                 | `none`                           | `none`                          |
+| `--font`                                 | system stack — `-apple-system, "SF Pro Display", "Segoe UI", Inter, …`                      | `"Roboto", "Segoe UI", Inter, …` | `"Inter", -apple-system, …`     |
+| `--mono`                                 | `"SF Mono", "JetBrains Mono", ui-monospace, …`                                              | same                             | same                            |
 
 The values above are each theme's **native** appearance — Glass dark, Material light, Minimal light. The
 counterpart appearance inverts surfaces and text and keeps everything else.
@@ -88,7 +88,7 @@ different accent → the theme reads as a fourth theme rather than the same one 
 3. Decide each token's dark counterpart and add it to `:root[data-mode='dark']` and to the four
    `[data-theme][data-mode]` blocks, following the rule's own statement that the table gives each
    theme's **native** appearance — Glass dark, Material light, Minimal light — and that the
-   counterpart appearance *inverts surfaces and text and keeps everything else*. `--canvas`,
+   counterpart appearance _inverts surfaces and text and keeps everything else_. `--canvas`,
    `--elevated`, `--surface-2`, `--surface-3`, `--stroke`, `--stroke-soft`, `--muted`, `--faint` and
    `--hover` are surface-and-text tokens and therefore invert; `--user-bubble` is an accent
    derivative and follows `--accent-soft`, which does not.
@@ -116,9 +116,9 @@ first; it is exactly this job — and [writing a test](../architecture/patterns/
 
 ## Technical constraints
 
-
 ### Only the adapter imports `wailsjs/` {#only-the-adapter-imports-wailsjs}
-*(from `architecture/rules.md#only-the-adapter-imports-wailsjs` — copied verbatim)*
+
+_(from `architecture/rules.md#only-the-adapter-imports-wailsjs` — copied verbatim)_
 
 **Applies to:** `frontend/src/**`
 **Enforced by:** `just archtest` (ESLint `no-restricted-imports`)
@@ -131,16 +131,17 @@ first; it is exactly this job — and [writing a test](../architecture/patterns/
 Examples: `import { GetState } from '../../wailsjs/go/appmodel/AppModelHandler'` inside `EditorView.tsx`
 → rejected by lint · the same import inside `logic/adapter/services.ts` → correct.
 
-*Why:* `wailsjs/` is generated and its shape changes with every backend signature change. One wrapping
+_Why:_ `wailsjs/` is generated and its shape changes with every backend signature change. One wrapping
 layer means a signature change has one place to fix, and it is also the only seam the tests can mock —
 a component that imports the binding directly cannot be tested without a running Go process.
 
-*Do instead of:* importing a binding directly "just for one call" · mocking `wailsjs/` in a test.
+_Do instead of:_ importing a binding directly "just for one call" · mocking `wailsjs/` in a test.
 
 ---
 
 ### No colour outside a token {#no-colour-outside-a-token}
-*(from `architecture/rules.md#no-colour-outside-a-token` — copied verbatim)*
+
+_(from `architecture/rules.md#no-colour-outside-a-token` — copied verbatim)_
 
 **Applies to:** `frontend/src/ui/**`
 **Enforced by:** `just archtest` (colour-literal scan)
@@ -152,15 +153,16 @@ a component that imports the binding directly cannot be tested without a running
 Examples: `border: 1px solid var(--editor-pane-border-color)` → correct · `color: #16201e` in a module
 CSS file → rejected · `background: white` in a `.tsx` inline style → rejected.
 
-*Why:* there are three themes and each has a light and a dark appearance — six combinations. A literal
+_Why:_ there are three themes and each has a light and a dark appearance — six combinations. A literal
 colour is correct in at most one of them, and it is invisible in the other five until someone switches.
 
-*Do instead of:* a literal "just for the disabled state" · a colour in an inline `style` prop.
+_Do instead of:_ a literal "just for the disabled state" · a colour in an inline `style` prop.
 
 ---
 
 ### The theme is set on the document element only {#theme-on-the-root-element}
-*(from `architecture/rules.md#theme-on-the-root-element` — copied verbatim)*
+
+_(from `architecture/rules.md#theme-on-the-root-element` — copied verbatim)_
 
 **Applies to:** `frontend/src/logic/theme/**`, `frontend/src/ui/**`
 **Enforced by:** review
@@ -171,16 +173,17 @@ colour is correct in at most one of them, and it is invisible in the other five 
 Examples: a dropdown rendered through a Radix portal inherits the theme because it is inside the same
 document element · setting `data-theme` on the app shell instead → every portal renders unthemed.
 
-*Why:* Radix renders overlays into a portal at the end of `<body>`, outside the React tree. Only an
+_Why:_ Radix renders overlays into a portal at the end of `<body>`, outside the React tree. Only an
 attribute on the root element covers them.
 
-*Do instead of:* wrapping the app in a themed div · passing the theme down as a prop to style each
+_Do instead of:_ wrapping the app in a themed div · passing the theme down as a prop to style each
 component.
 
 ---
 
 ### Every user-visible string goes through `t()` {#strings-go-through-t}
-*(from `architecture/rules.md#strings-go-through-t` — copied verbatim)*
+
+_(from `architecture/rules.md#strings-go-through-t` — copied verbatim)_
 
 **Applies to:** `frontend/src/**`
 **Enforced by:** `just archtest` (ESLint), review
@@ -192,16 +195,17 @@ component.
 Examples: `t('editor.emptyState.title')` → correct · `<button>Save</button>` → rejected ·
 `aria-label="Close tab"` → rejected, `aria-label={t('tabs.close')}` → correct.
 
-*Why:* a hard-coded string is invisible to translation and, more immediately, invisible to review — the
+_Why:_ a hard-coded string is invisible to translation and, more immediately, invisible to review — the
 catalogue is where all the product's copy can be read and made consistent in one sitting.
 
-*Do instead of:* a literal "because it is only a placeholder" · a template literal assembling a sentence
+_Do instead of:_ a literal "because it is only a placeholder" · a template literal assembling a sentence
 from fragments, which cannot be translated as one.
 
 ---
 
 ### The shell reserves three regions {#shell-reserves-three-regions}
-*(from `architecture/rules.md#shell-reserves-three-regions` — copied verbatim)*
+
+_(from `architecture/rules.md#shell-reserves-three-regions` — copied verbatim)_
 
 **Applies to:** `frontend/src/ui/widgets/**`, `frontend/src/ui/styles/**`
 **Enforced by:** review
@@ -216,15 +220,16 @@ Examples: opening the assistant later sets one token and mounts one child → co
 column to the grid when the assistant is built → rejected, because every layout test and every width
 breakpoint written before then has to be redone.
 
-*Why:* changing the shell's structure late invalidates the responsive verification of every screen built
+_Why:_ changing the shell's structure late invalidates the responsive verification of every screen built
 on top of it.
 
-*Do instead of:* a two-column layout with the intention of "adding a column when we get there".
+_Do instead of:_ a two-column layout with the intention of "adding a column when we get there".
 
 ---
 
 ### The app makes no background network call {#no-background-network}
-*(from `architecture/rules.md#no-background-network` — copied verbatim)*
+
+_(from `architecture/rules.md#no-background-network` — copied verbatim)_
 
 **Applies to:** `**`
 **Enforced by:** `just archtest`, review
@@ -235,23 +240,24 @@ on top of it.
 - **When** the assistant exists, the only outbound requests are inferences to the provider the user
   configured, and only in direct response to the user invoking an action or sending a message. The
   default provider is a local one, so a default install still talks to nothing off the machine.
-- Remote images and stylesheets referenced *inside a user's document* are a separate matter: the user
+- Remote images and stylesheets referenced _inside a user's document_ are a separate matter: the user
   chooses Ask, Always allow or Always block, and this rule does not cover them.
 
 Examples: launching the app with a network monitor open and using it for five minutes → zero requests ·
 a `<link>` to Google Fonts in `index.html` → rejected · `fetch('https://api.github.com/…')` to check for
 a new version → rejected.
 
-*Why:* people write private things in a text editor. "It only sends a version number" is a promise the
+_Why:_ people write private things in a text editor. "It only sends a version number" is a promise the
 user cannot verify, so the product's answer is that there is nothing to verify.
 
-*Do instead of:* an opt-out update check · loading KaTeX or Mermaid from a CDN instead of bundling it ·
+_Do instead of:_ an opt-out update check · loading KaTeX or Mermaid from a CDN instead of bundling it ·
 a "anonymous usage statistics" toggle.
 
 ---
 
 ### A test proves behaviour, not a document {#tests-prove-behaviour}
-*(from `architecture/rules.md#tests-prove-behaviour` — copied verbatim)*
+
+_(from `architecture/rules.md#tests-prove-behaviour` — copied verbatim)_
 
 **Applies to:** `internal/**/*_test.go`, `main_test.go`, `frontend/src/**/*.test.ts`, `frontend/src/**/*.test.tsx`
 **Enforced by:** review
@@ -269,11 +275,11 @@ Examples: `expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()` �
 `jest.mock('./AppShell')` inside `AppShell.test.tsx` → rejected, and this mistake is live in the
 repository today · a Go test asserting a phase document contains a heading → rejected.
 
-*Why:* a test that reads a document passes while the software is broken, and roughly 4,200 lines of
+_Why:_ a test that reads a document passes while the software is broken, and roughly 4,200 lines of
 exactly that were deleted from this repository on 2026-07-25. A mocked subject asserts that the mock
 works.
 
-*Do instead of:* asserting a function was called · snapshotting a large DOM tree as the primary
+_Do instead of:_ asserting a function was called · snapshotting a large DOM tree as the primary
 assertion · deleting a failing test to make the suite green.
 
 ## Definition of done
@@ -287,40 +293,40 @@ exists. `just lint` exits 0 today, so a non-zero here is new and is a defect to 
 
 ### Mechanical
 
-| # | Check | Command | Passes when |
-|---|---|---|---|
-| M1 | Format | `just fmt-check` | exit 0 |
-| M2 | Types | `just typecheck` | exit 0, or exactly the baseline error set |
-| M3 | Static analysis | `just lint` | no finding absent from the baseline, **and the gate exited 0** |
-| M4 | Tests | `just test` | every baseline-passing test still passes; all new tests pass |
-| M5 | Architecture | `just archtest` | exit 0. Never diffed, never weakened, never suppressed |
-| M6 | Build | `just frontend-build` and `just build` | exit 0 |
-| M7 | New code is tested | manual, against the diff | both added tests fail if a token is removed |
-| M8 | No placeholders added | `git diff <sha>..HEAD` | no `TODO`, no token declared as `initial` or `unset` to fill a gap |
-| M9 | Gate configs untouched | `git diff --name-only <sha>..HEAD` | no change to `frontend/scripts/archtest-allowlist.json`, `.golangci.yml`, an eslint config, the `justfile`, `.github/` or `lefthook.yml` |
-| M10 | Normative docs untouched | `git diff --name-only <sha>..HEAD -- docs/delivery/spec/ docs/delivery/architecture/` | empty |
-| M11 | Descriptive docs current | manual | `../plan/KNOWN_ISSUES.md` item 6's "still incomplete" paragraph is updated to say the ten tokens shipped |
-| M12 | Every `Proves:` tag resolves | `just spec-check` | no tag names an anchor that does not exist |
-| M13 | Scope declared | `git diff --name-only <sha>..HEAD` | exactly the two files in `## Where the code goes` |
+| #   | Check                        | Command                                                                               | Passes when                                                                                                                              |
+| --- | ---------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| M1  | Format                       | `just fmt-check`                                                                      | exit 0                                                                                                                                   |
+| M2  | Types                        | `just typecheck`                                                                      | exit 0, or exactly the baseline error set                                                                                                |
+| M3  | Static analysis              | `just lint`                                                                           | no finding absent from the baseline, **and the gate exited 0**                                                                           |
+| M4  | Tests                        | `just test`                                                                           | every baseline-passing test still passes; all new tests pass                                                                             |
+| M5  | Architecture                 | `just archtest`                                                                       | exit 0. Never diffed, never weakened, never suppressed                                                                                   |
+| M6  | Build                        | `just frontend-build` and `just build`                                                | exit 0                                                                                                                                   |
+| M7  | New code is tested           | manual, against the diff                                                              | both added tests fail if a token is removed                                                                                              |
+| M8  | No placeholders added        | `git diff <sha>..HEAD`                                                                | no `TODO`, no token declared as `initial` or `unset` to fill a gap                                                                       |
+| M9  | Gate configs untouched       | `git diff --name-only <sha>..HEAD`                                                    | no change to `frontend/scripts/archtest-allowlist.json`, `.golangci.yml`, an eslint config, the `justfile`, `.github/` or `lefthook.yml` |
+| M10 | Normative docs untouched     | `git diff --name-only <sha>..HEAD -- docs/delivery/spec/ docs/delivery/architecture/` | empty                                                                                                                                    |
+| M11 | Descriptive docs current     | manual                                                                                | `../plan/KNOWN_ISSUES.md` item 6's "still incomplete" paragraph is updated to say the ten tokens shipped                                 |
+| M12 | Every `Proves:` tag resolves | `just spec-check`                                                                     | no tag names an anchor that does not exist                                                                                               |
+| M13 | Scope declared               | `git diff --name-only <sha>..HEAD`                                                    | exactly the two files in `## Where the code goes`                                                                                        |
 
 ### This story — rule-to-evidence map
 
-| Rule | Proven by | Kind | Must not |
-|---|---|---|---|
-| `themes-and-appearance#theme-identity-is-stable` | `frontend/src/ui/styles/tokens.test.ts::resolvesEveryTableTokenInAllSixPalettes` | unit | assert that `tokens.css` *contains* a token name — read the computed value off the root element in each palette, or the test passes on a commented-out declaration |
-| `themes-and-appearance#theme-identity-is-stable` | `frontend/src/ui/styles/tokens.test.ts::keepsIdentityTokensStableBetweenLightAndDark` | unit | compare only one theme — the rule is about all three, and Material is the one whose base values live in `:root` rather than a theme selector |
+| Rule                                             | Proven by                                                                             | Kind | Must not                                                                                                                                                           |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `themes-and-appearance#theme-identity-is-stable` | `frontend/src/ui/styles/tokens.test.ts::resolvesEveryTableTokenInAllSixPalettes`      | unit | assert that `tokens.css` _contains_ a token name — read the computed value off the root element in each palette, or the test passes on a commented-out declaration |
+| `themes-and-appearance#theme-identity-is-stable` | `frontend/src/ui/styles/tokens.test.ts::keepsIdentityTokensStableBetweenLightAndDark` | unit | compare only one theme — the rule is about all three, and Material is the one whose base values live in `:root` rather than a theme selector                       |
 
 Each test's first comment line carries `// Proves: themes-and-appearance#theme-identity-is-stable`.
 
 ### Walkthrough — a person does this on a real build
 
-| # | Do this | Expect | What actually happened |
-|---|---|---|---|
-| 1 | `just build`, launch the binary, open the webview inspector on the document element | All twenty-three tokens from the table resolve to a value. Specifically `--faint` is non-empty, where before this story it resolved to nothing | |
-| 2 | Switch to Liquid Glass, then Dark | `--stroke` and `--stroke-soft` both change, and `--accent` stays `#7aa2ff` | |
-| 3 | Switch to Material Dark | `--accent` is still `#4f6bed` and `--win-radius` is still `16px` — identity is stable; only surfaces and text inverted | |
-| 4 | Look at the window | **Nothing visible changed.** A visible change means a component was edited, which is outside this story's scope | |
-| 5 | `grep -c -- '--faint:' frontend/src/ui/styles/tokens.css` | non-zero — the concrete test that the gap closed | |
+| #   | Do this                                                                             | Expect                                                                                                                                         | What actually happened |
+| --- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| 1   | `just build`, launch the binary, open the webview inspector on the document element | All twenty-three tokens from the table resolve to a value. Specifically `--faint` is non-empty, where before this story it resolved to nothing |                        |
+| 2   | Switch to Liquid Glass, then Dark                                                   | `--stroke` and `--stroke-soft` both change, and `--accent` stays `#7aa2ff`                                                                     |                        |
+| 3   | Switch to Material Dark                                                             | `--accent` is still `#4f6bed` and `--win-radius` is still `16px` — identity is stable; only surfaces and text inverted                         |                        |
+| 4   | Look at the window                                                                  | **Nothing visible changed.** A visible change means a component was edited, which is outside this story's scope                                |                        |
+| 5   | `grep -c -- '--faint:' frontend/src/ui/styles/tokens.css`                           | non-zero — the concrete test that the gap closed                                                                                               |                        |
 
 ### Unblocks
 

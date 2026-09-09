@@ -25119,9 +25119,7 @@
         "settleMs": 1173,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 471813 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 471813 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 471813 unexplained pixels"
     },
     {
@@ -25159,9 +25157,7 @@
         "settleMs": 1173,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 471813 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 471813 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 471813 unexplained pixels"
     },
     {
@@ -25199,9 +25195,7 @@
         "settleMs": 1173,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 471813 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 471813 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 471813 unexplained pixels"
     },
     {
@@ -25239,9 +25233,7 @@
         "settleMs": 1288,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 546368 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 546368 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 546368 unexplained pixels"
     },
     {
@@ -25279,9 +25271,7 @@
         "settleMs": 1288,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 546368 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 546368 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 546368 unexplained pixels"
     },
     {
@@ -25319,9 +25309,7 @@
         "settleMs": 1288,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 546368 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 546368 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 546368 unexplained pixels"
     },
     {
@@ -25359,9 +25347,7 @@
         "settleMs": 889,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 67122 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 67122 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 67122 unexplained pixels"
     },
     {
@@ -25399,9 +25385,7 @@
         "settleMs": 889,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 67122 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 67122 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 67122 unexplained pixels"
     },
     {
@@ -25439,9 +25423,7 @@
         "settleMs": 889,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 67122 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 67122 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 67122 unexplained pixels"
     },
     {
@@ -25479,9 +25461,7 @@
         "settleMs": 899,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 77522 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 77522 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 77522 unexplained pixels"
     },
     {
@@ -25519,9 +25499,7 @@
         "settleMs": 899,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 77522 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 77522 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 77522 unexplained pixels"
     },
     {
@@ -25559,9 +25537,7 @@
         "settleMs": 899,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 77522 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 77522 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 77522 unexplained pixels"
     },
     {
@@ -25599,9 +25575,7 @@
         "settleMs": 902,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 177 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 177 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 177 unexplained pixels"
     },
     {
@@ -25639,9 +25613,7 @@
         "settleMs": 902,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 177 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 177 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 177 unexplained pixels"
     },
     {
@@ -25679,9 +25651,7 @@
         "settleMs": 902,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 177 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 177 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 177 unexplained pixels"
     },
     {
@@ -25719,9 +25689,7 @@
         "settleMs": 875,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 165 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 165 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 165 unexplained pixels"
     },
     {
@@ -25759,9 +25727,7 @@
         "settleMs": 875,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 165 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 165 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 165 unexplained pixels"
     },
     {
@@ -25799,9 +25765,7 @@
         "settleMs": 875,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 165 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 165 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 165 unexplained pixels"
     },
     {
@@ -25839,9 +25803,7 @@
         "settleMs": 1040,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 369465 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 369465 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 369465 unexplained pixels"
     },
     {
@@ -25879,9 +25841,7 @@
         "settleMs": 1040,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 369465 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 369465 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 369465 unexplained pixels"
     },
     {
@@ -25919,9 +25879,7 @@
         "settleMs": 1040,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 369465 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 369465 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 369465 unexplained pixels"
     },
     {
@@ -25959,9 +25917,7 @@
         "settleMs": 1139,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 376539 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 376539 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 376539 unexplained pixels"
     },
     {
@@ -25999,9 +25955,7 @@
         "settleMs": 1139,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 376539 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 376539 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 376539 unexplained pixels"
     },
     {
@@ -26039,9 +25993,7 @@
         "settleMs": 1139,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 376539 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 376539 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 376539 unexplained pixels"
     },
     {
@@ -26079,9 +26031,7 @@
         "settleMs": 872,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 51404 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 51404 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 51404 unexplained pixels"
     },
     {
@@ -26119,9 +26069,7 @@
         "settleMs": 872,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 51404 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 51404 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 51404 unexplained pixels"
     },
     {
@@ -26159,9 +26107,7 @@
         "settleMs": 872,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 51404 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 51404 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 51404 unexplained pixels"
     },
     {
@@ -26199,9 +26145,7 @@
         "settleMs": 864,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 57683 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 57683 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 57683 unexplained pixels"
     },
     {
@@ -26239,9 +26183,7 @@
         "settleMs": 864,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 57683 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 57683 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 57683 unexplained pixels"
     },
     {
@@ -26279,9 +26221,7 @@
         "settleMs": 864,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 57683 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 57683 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 57683 unexplained pixels"
     },
     {
@@ -26319,9 +26259,7 @@
         "settleMs": 852,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 3803 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 3803 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 3803 unexplained pixels"
     },
     {
@@ -26359,9 +26297,7 @@
         "settleMs": 852,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 3803 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 3803 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 3803 unexplained pixels"
     },
     {
@@ -26399,9 +26335,7 @@
         "settleMs": 852,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 3803 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 3803 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 3803 unexplained pixels"
     },
     {
@@ -26439,9 +26373,7 @@
         "settleMs": 880,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 3783 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 3783 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 3783 unexplained pixels"
     },
     {
@@ -26479,9 +26411,7 @@
         "settleMs": 880,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 3783 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 3783 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 3783 unexplained pixels"
     },
     {
@@ -26519,9 +26449,7 @@
         "settleMs": 880,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 3783 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 3783 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 3783 unexplained pixels"
     },
     {
@@ -26559,9 +26487,7 @@
         "settleMs": 924,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197351 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197351 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197351 unexplained pixels"
     },
     {
@@ -26599,9 +26525,7 @@
         "settleMs": 924,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197351 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197351 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197351 unexplained pixels"
     },
     {
@@ -26639,9 +26563,7 @@
         "settleMs": 924,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197351 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197351 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197351 unexplained pixels"
     },
     {
@@ -26679,9 +26601,7 @@
         "settleMs": 952,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197667 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197667 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197667 unexplained pixels"
     },
     {
@@ -26719,9 +26639,7 @@
         "settleMs": 952,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197667 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197667 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197667 unexplained pixels"
     },
     {
@@ -26759,9 +26677,7 @@
         "settleMs": 952,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197667 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197667 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197667 unexplained pixels"
     },
     {
@@ -26799,9 +26715,7 @@
         "settleMs": 823,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 101470 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 101470 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 101470 unexplained pixels"
     },
     {
@@ -26839,9 +26753,7 @@
         "settleMs": 823,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 101470 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 101470 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 101470 unexplained pixels"
     },
     {
@@ -26879,9 +26791,7 @@
         "settleMs": 823,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 101470 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 101470 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 101470 unexplained pixels"
     },
     {
@@ -26919,9 +26829,7 @@
         "settleMs": 860,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 99595 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 99595 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 99595 unexplained pixels"
     },
     {
@@ -26959,9 +26867,7 @@
         "settleMs": 860,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 99595 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 99595 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 99595 unexplained pixels"
     },
     {
@@ -26999,9 +26905,7 @@
         "settleMs": 860,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 99595 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 99595 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 99595 unexplained pixels"
     },
     {
@@ -27039,9 +26943,7 @@
         "settleMs": 867,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 74390 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 74390 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 74390 unexplained pixels"
     },
     {
@@ -27079,9 +26981,7 @@
         "settleMs": 867,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 74390 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 74390 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 74390 unexplained pixels"
     },
     {
@@ -27119,9 +27019,7 @@
         "settleMs": 867,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 74390 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 74390 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 74390 unexplained pixels"
     },
     {
@@ -27159,9 +27057,7 @@
         "settleMs": 866,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 72583 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 72583 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 72583 unexplained pixels"
     },
     {
@@ -27199,9 +27095,7 @@
         "settleMs": 866,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 72583 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 72583 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 72583 unexplained pixels"
     },
     {
@@ -27239,9 +27133,7 @@
         "settleMs": 866,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 72583 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 72583 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 72583 unexplained pixels"
     },
     {
@@ -29913,9 +29805,7 @@
         "settleMs": 1070,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 100972 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 100972 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 100972 unexplained pixels"
     },
     {
@@ -29953,9 +29843,7 @@
         "settleMs": 1070,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 100972 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 100972 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 100972 unexplained pixels"
     },
     {
@@ -29993,9 +29881,7 @@
         "settleMs": 1070,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 100972 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 100972 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 100972 unexplained pixels"
     },
     {
@@ -30033,9 +29919,7 @@
         "settleMs": 1100,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 116754 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 116754 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 116754 unexplained pixels"
     },
     {
@@ -30073,9 +29957,7 @@
         "settleMs": 1100,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 116754 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 116754 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 116754 unexplained pixels"
     },
     {
@@ -30113,9 +29995,7 @@
         "settleMs": 1100,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 116754 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 116754 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 116754 unexplained pixels"
     },
     {
@@ -30399,9 +30279,7 @@
         "settleMs": 877,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 709 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 709 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 709 unexplained pixels"
     },
     {
@@ -30439,9 +30317,7 @@
         "settleMs": 877,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 709 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 709 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 709 unexplained pixels"
     },
     {
@@ -30479,9 +30355,7 @@
         "settleMs": 877,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 709 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 709 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 709 unexplained pixels"
     },
     {
@@ -30519,9 +30393,7 @@
         "settleMs": 861,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 1209 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 1209 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 1209 unexplained pixels"
     },
     {
@@ -30559,9 +30431,7 @@
         "settleMs": 861,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 1209 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 1209 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 1209 unexplained pixels"
     },
     {
@@ -30599,9 +30469,7 @@
         "settleMs": 861,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 1209 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 1209 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 1209 unexplained pixels"
     },
     {
@@ -30639,9 +30507,7 @@
         "settleMs": 1526,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 108935 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 108935 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 108935 unexplained pixels"
     },
     {
@@ -30679,9 +30545,7 @@
         "settleMs": 1526,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 108935 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 108935 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 108935 unexplained pixels"
     },
     {
@@ -30719,9 +30583,7 @@
         "settleMs": 1526,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 108935 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 108935 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 108935 unexplained pixels"
     },
     {
@@ -30759,9 +30621,7 @@
         "settleMs": 1025,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 131234 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 131234 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 131234 unexplained pixels"
     },
     {
@@ -30799,9 +30659,7 @@
         "settleMs": 1025,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 131234 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 131234 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 131234 unexplained pixels"
     },
     {
@@ -30839,9 +30697,7 @@
         "settleMs": 1025,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 131234 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 131234 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 131234 unexplained pixels"
     },
     {
@@ -31125,9 +30981,7 @@
         "settleMs": 855,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 606 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 606 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 606 unexplained pixels"
     },
     {
@@ -31165,9 +31019,7 @@
         "settleMs": 855,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 606 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 606 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 606 unexplained pixels"
     },
     {
@@ -31205,9 +31057,7 @@
         "settleMs": 855,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 606 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 606 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 606 unexplained pixels"
     },
     {
@@ -31245,9 +31095,7 @@
         "settleMs": 860,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 634 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 634 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 634 unexplained pixels"
     },
     {
@@ -31285,9 +31133,7 @@
         "settleMs": 860,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 634 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 634 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 634 unexplained pixels"
     },
     {
@@ -31325,9 +31171,7 @@
         "settleMs": 860,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 634 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 634 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 634 unexplained pixels"
     },
     {
@@ -44445,9 +44289,7 @@
         "settleMs": 2047,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 590603 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 590603 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 590603 unexplained pixels"
     },
     {
@@ -44485,9 +44327,7 @@
         "settleMs": 2047,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 590603 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 590603 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 590603 unexplained pixels"
     },
     {
@@ -44525,9 +44365,7 @@
         "settleMs": 2047,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 590603 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 590603 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 590603 unexplained pixels"
     },
     {
@@ -44565,9 +44403,7 @@
         "settleMs": 1783,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 757027 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 757027 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 757027 unexplained pixels"
     },
     {
@@ -44605,9 +44441,7 @@
         "settleMs": 1783,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 757027 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 757027 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 757027 unexplained pixels"
     },
     {
@@ -44645,9 +44479,7 @@
         "settleMs": 1783,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 757027 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 757027 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 757027 unexplained pixels"
     },
     {
@@ -44685,9 +44517,7 @@
         "settleMs": 1563,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 361233 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 361233 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 361233 unexplained pixels"
     },
     {
@@ -44725,9 +44555,7 @@
         "settleMs": 1563,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 361233 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 361233 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 361233 unexplained pixels"
     },
     {
@@ -44765,9 +44593,7 @@
         "settleMs": 1563,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 361233 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 361233 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 361233 unexplained pixels"
     },
     {
@@ -44805,9 +44631,7 @@
         "settleMs": 1051,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 374956 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 374956 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 374956 unexplained pixels"
     },
     {
@@ -44845,9 +44669,7 @@
         "settleMs": 1051,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 374956 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 374956 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 374956 unexplained pixels"
     },
     {
@@ -44885,9 +44707,7 @@
         "settleMs": 1051,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 374956 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 374956 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 374956 unexplained pixels"
     },
     {
@@ -44925,9 +44745,7 @@
         "settleMs": 1060,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 224057 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 224057 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 224057 unexplained pixels"
     },
     {
@@ -44965,9 +44783,7 @@
         "settleMs": 1060,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 224057 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 224057 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 224057 unexplained pixels"
     },
     {
@@ -45005,9 +44821,7 @@
         "settleMs": 1060,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 224057 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 224057 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 224057 unexplained pixels"
     },
     {
@@ -45045,9 +44859,7 @@
         "settleMs": 1067,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 207498 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 207498 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 207498 unexplained pixels"
     },
     {
@@ -45085,9 +44897,7 @@
         "settleMs": 1067,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 207498 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 207498 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 207498 unexplained pixels"
     },
     {
@@ -45125,9 +44935,7 @@
         "settleMs": 1067,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 207498 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 207498 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 207498 unexplained pixels"
     },
     {
@@ -45165,9 +44973,7 @@
         "settleMs": 1675,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 409645 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 409645 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 409645 unexplained pixels"
     },
     {
@@ -45205,9 +45011,7 @@
         "settleMs": 1675,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 409645 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 409645 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 409645 unexplained pixels"
     },
     {
@@ -45245,9 +45049,7 @@
         "settleMs": 1675,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 409645 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 409645 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 409645 unexplained pixels"
     },
     {
@@ -45285,9 +45087,7 @@
         "settleMs": 1417,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 456404 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 456404 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 456404 unexplained pixels"
     },
     {
@@ -45325,9 +45125,7 @@
         "settleMs": 1417,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 456404 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 456404 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 456404 unexplained pixels"
     },
     {
@@ -45365,9 +45163,7 @@
         "settleMs": 1417,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 456404 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 456404 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 456404 unexplained pixels"
     },
     {
@@ -45405,9 +45201,7 @@
         "settleMs": 1429,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 260514 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 260514 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 260514 unexplained pixels"
     },
     {
@@ -45445,9 +45239,7 @@
         "settleMs": 1429,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 260514 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 260514 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 260514 unexplained pixels"
     },
     {
@@ -45485,9 +45277,7 @@
         "settleMs": 1429,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 260514 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 260514 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 260514 unexplained pixels"
     },
     {
@@ -45525,9 +45315,7 @@
         "settleMs": 986,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 272770 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 272770 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 272770 unexplained pixels"
     },
     {
@@ -45565,9 +45353,7 @@
         "settleMs": 986,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 272770 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 272770 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 272770 unexplained pixels"
     },
     {
@@ -45605,9 +45391,7 @@
         "settleMs": 986,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 272770 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 272770 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 272770 unexplained pixels"
     },
     {
@@ -45645,9 +45429,7 @@
         "settleMs": 970,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 161952 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 161952 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 161952 unexplained pixels"
     },
     {
@@ -45685,9 +45467,7 @@
         "settleMs": 970,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 161952 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 161952 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 161952 unexplained pixels"
     },
     {
@@ -45725,9 +45505,7 @@
         "settleMs": 970,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 161952 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 161952 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 161952 unexplained pixels"
     },
     {
@@ -45765,9 +45543,7 @@
         "settleMs": 966,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 152073 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 152073 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 152073 unexplained pixels"
     },
     {
@@ -45805,9 +45581,7 @@
         "settleMs": 966,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 152073 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 152073 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 152073 unexplained pixels"
     },
     {
@@ -45845,9 +45619,7 @@
         "settleMs": 966,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 152073 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 152073 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 152073 unexplained pixels"
     },
     {
@@ -46731,9 +46503,7 @@
         "settleMs": 2023,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 644516 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 644516 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 644516 unexplained pixels"
     },
     {
@@ -46771,9 +46541,7 @@
         "settleMs": 2023,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 644516 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 644516 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 644516 unexplained pixels"
     },
     {
@@ -46811,9 +46579,7 @@
         "settleMs": 2023,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 644516 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 644516 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 644516 unexplained pixels"
     },
     {
@@ -46851,9 +46617,7 @@
         "settleMs": 1760,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 760166 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 760166 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 760166 unexplained pixels"
     },
     {
@@ -46891,9 +46655,7 @@
         "settleMs": 1760,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 760166 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 760166 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 760166 unexplained pixels"
     },
     {
@@ -46931,9 +46693,7 @@
         "settleMs": 1760,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 760166 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 760166 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 760166 unexplained pixels"
     },
     {
@@ -46971,9 +46731,7 @@
         "settleMs": 1437,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 318858 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 318858 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 318858 unexplained pixels"
     },
     {
@@ -47011,9 +46769,7 @@
         "settleMs": 1437,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 318858 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 318858 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 318858 unexplained pixels"
     },
     {
@@ -47051,9 +46807,7 @@
         "settleMs": 1437,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 318858 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 318858 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 318858 unexplained pixels"
     },
     {
@@ -47091,9 +46845,7 @@
         "settleMs": 1191,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 334347 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 334347 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 334347 unexplained pixels"
     },
     {
@@ -47131,9 +46883,7 @@
         "settleMs": 1191,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 334347 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 334347 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 334347 unexplained pixels"
     },
     {
@@ -47171,9 +46921,7 @@
         "settleMs": 1191,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 334347 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 334347 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 334347 unexplained pixels"
     },
     {
@@ -47211,9 +46959,7 @@
         "settleMs": 1207,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 274408 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 274408 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 274408 unexplained pixels"
     },
     {
@@ -47251,9 +46997,7 @@
         "settleMs": 1207,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 274408 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 274408 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 274408 unexplained pixels"
     },
     {
@@ -47291,9 +47035,7 @@
         "settleMs": 1207,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 274408 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 274408 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 274408 unexplained pixels"
     },
     {
@@ -47331,9 +47073,7 @@
         "settleMs": 1191,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 292778 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 292778 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 292778 unexplained pixels"
     },
     {
@@ -47371,9 +47111,7 @@
         "settleMs": 1191,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 292778 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 292778 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 292778 unexplained pixels"
     },
     {
@@ -47411,9 +47149,7 @@
         "settleMs": 1191,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 292778 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 292778 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 292778 unexplained pixels"
     },
     {
@@ -47451,9 +47187,7 @@
         "settleMs": 1350,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 450852 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 450852 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 450852 unexplained pixels"
     },
     {
@@ -47491,9 +47225,7 @@
         "settleMs": 1350,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 450852 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 450852 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 450852 unexplained pixels"
     },
     {
@@ -47531,9 +47263,7 @@
         "settleMs": 1350,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 450852 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 450852 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 450852 unexplained pixels"
     },
     {
@@ -47571,9 +47301,7 @@
         "settleMs": 1432,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 458898 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 458898 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 458898 unexplained pixels"
     },
     {
@@ -47611,9 +47339,7 @@
         "settleMs": 1432,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 458898 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 458898 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 458898 unexplained pixels"
     },
     {
@@ -47651,9 +47377,7 @@
         "settleMs": 1432,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 458898 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 458898 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 458898 unexplained pixels"
     },
     {
@@ -47691,9 +47415,7 @@
         "settleMs": 1079,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 255834 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 255834 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 255834 unexplained pixels"
     },
     {
@@ -47731,9 +47453,7 @@
         "settleMs": 1079,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 255834 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 255834 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 255834 unexplained pixels"
     },
     {
@@ -47771,9 +47491,7 @@
         "settleMs": 1079,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 255834 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 255834 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 255834 unexplained pixels"
     },
     {
@@ -47811,9 +47529,7 @@
         "settleMs": 1060,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 267132 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 267132 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 267132 unexplained pixels"
     },
     {
@@ -47851,9 +47567,7 @@
         "settleMs": 1060,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 267132 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 267132 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 267132 unexplained pixels"
     },
     {
@@ -47891,9 +47605,7 @@
         "settleMs": 1060,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 267132 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 267132 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 267132 unexplained pixels"
     },
     {
@@ -47931,9 +47643,7 @@
         "settleMs": 1086,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 232573 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 232573 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 232573 unexplained pixels"
     },
     {
@@ -47971,9 +47681,7 @@
         "settleMs": 1086,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 232573 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 232573 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 232573 unexplained pixels"
     },
     {
@@ -48011,9 +47719,7 @@
         "settleMs": 1086,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 232573 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 232573 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 232573 unexplained pixels"
     },
     {
@@ -48051,9 +47757,7 @@
         "settleMs": 1035,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 251436 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 251436 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 251436 unexplained pixels"
     },
     {
@@ -48091,9 +47795,7 @@
         "settleMs": 1035,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 251436 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 251436 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 251436 unexplained pixels"
     },
     {
@@ -48131,9 +47833,7 @@
         "settleMs": 1035,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 251436 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 251436 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 251436 unexplained pixels"
     },
     {
@@ -49017,9 +48717,7 @@
         "settleMs": 2196,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 683019 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 683019 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 683019 unexplained pixels"
     },
     {
@@ -49057,9 +48755,7 @@
         "settleMs": 2196,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 683019 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 683019 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 683019 unexplained pixels"
     },
     {
@@ -49097,9 +48793,7 @@
         "settleMs": 2196,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 683019 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 683019 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 683019 unexplained pixels"
     },
     {
@@ -49137,9 +48831,7 @@
         "settleMs": 2312,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 760837 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 760837 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 760837 unexplained pixels"
     },
     {
@@ -49177,9 +48869,7 @@
         "settleMs": 2312,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 760837 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 760837 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 760837 unexplained pixels"
     },
     {
@@ -49217,9 +48907,7 @@
         "settleMs": 2312,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 760837 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 760837 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 760837 unexplained pixels"
     },
     {
@@ -49257,9 +48945,7 @@
         "settleMs": 1636,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 451923 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 451923 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 451923 unexplained pixels"
     },
     {
@@ -49297,9 +48983,7 @@
         "settleMs": 1636,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 451923 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 451923 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 451923 unexplained pixels"
     },
     {
@@ -49337,9 +49021,7 @@
         "settleMs": 1636,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 451923 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 451923 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 451923 unexplained pixels"
     },
     {
@@ -49377,9 +49059,7 @@
         "settleMs": 1619,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 469293 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 469293 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 469293 unexplained pixels"
     },
     {
@@ -49417,9 +49097,7 @@
         "settleMs": 1619,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 469293 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 469293 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 469293 unexplained pixels"
     },
     {
@@ -49457,9 +49135,7 @@
         "settleMs": 1619,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 469293 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 469293 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 469293 unexplained pixels"
     },
     {
@@ -49497,9 +49173,7 @@
         "settleMs": 1590,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 387897 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 387897 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 387897 unexplained pixels"
     },
     {
@@ -49537,9 +49211,7 @@
         "settleMs": 1590,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 387897 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 387897 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 387897 unexplained pixels"
     },
     {
@@ -49577,9 +49249,7 @@
         "settleMs": 1590,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 387897 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 387897 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 387897 unexplained pixels"
     },
     {
@@ -49617,9 +49287,7 @@
         "settleMs": 1611,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 394905 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 394905 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 394905 unexplained pixels"
     },
     {
@@ -49657,9 +49325,7 @@
         "settleMs": 1611,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 394905 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 394905 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 394905 unexplained pixels"
     },
     {
@@ -49697,9 +49363,7 @@
         "settleMs": 1611,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 394905 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 394905 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 394905 unexplained pixels"
     },
     {
@@ -49737,9 +49401,7 @@
         "settleMs": 2020,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 452566 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 452566 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 452566 unexplained pixels"
     },
     {
@@ -49777,9 +49439,7 @@
         "settleMs": 2020,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 452566 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 452566 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 452566 unexplained pixels"
     },
     {
@@ -49817,9 +49477,7 @@
         "settleMs": 2020,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 452566 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 452566 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 452566 unexplained pixels"
     },
     {
@@ -49857,9 +49515,7 @@
         "settleMs": 1987,
         "distinctRasters": 3
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 458852 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 458852 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 458852 unexplained pixels"
     },
     {
@@ -49897,9 +49553,7 @@
         "settleMs": 1987,
         "distinctRasters": 3
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 458852 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 458852 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 458852 unexplained pixels"
     },
     {
@@ -49937,9 +49591,7 @@
         "settleMs": 1987,
         "distinctRasters": 3
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 458852 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 458852 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 458852 unexplained pixels"
     },
     {
@@ -49977,9 +49629,7 @@
         "settleMs": 1511,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 331269 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 331269 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 331269 unexplained pixels"
     },
     {
@@ -50017,9 +49667,7 @@
         "settleMs": 1511,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 331269 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 331269 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 331269 unexplained pixels"
     },
     {
@@ -50057,9 +49705,7 @@
         "settleMs": 1511,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 331269 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 331269 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 331269 unexplained pixels"
     },
     {
@@ -50097,9 +49743,7 @@
         "settleMs": 1699,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 341311 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 341311 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 341311 unexplained pixels"
     },
     {
@@ -50137,9 +49781,7 @@
         "settleMs": 1699,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 341311 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 341311 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 341311 unexplained pixels"
     },
     {
@@ -50177,9 +49819,7 @@
         "settleMs": 1699,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 341311 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 341311 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 341311 unexplained pixels"
     },
     {
@@ -50217,9 +49857,7 @@
         "settleMs": 1697,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 278401 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 278401 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 278401 unexplained pixels"
     },
     {
@@ -50257,9 +49895,7 @@
         "settleMs": 1697,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 278401 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 278401 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 278401 unexplained pixels"
     },
     {
@@ -50297,9 +49933,7 @@
         "settleMs": 1697,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 278401 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 278401 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 278401 unexplained pixels"
     },
     {
@@ -50337,9 +49971,7 @@
         "settleMs": 1693,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 286567 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 286567 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 286567 unexplained pixels"
     },
     {
@@ -50377,9 +50009,7 @@
         "settleMs": 1693,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 286567 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 286567 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 286567 unexplained pixels"
     },
     {
@@ -50417,9 +50047,7 @@
         "settleMs": 1693,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 286567 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 286567 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 286567 unexplained pixels"
     },
     {
@@ -53571,9 +53199,7 @@
         "settleMs": 2206,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 395101 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 395101 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 395101 unexplained pixels"
     },
     {
@@ -53611,9 +53237,7 @@
         "settleMs": 2206,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 395101 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 395101 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 395101 unexplained pixels"
     },
     {
@@ -53651,9 +53275,7 @@
         "settleMs": 2206,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 395101 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 395101 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 395101 unexplained pixels"
     },
     {
@@ -53691,9 +53313,7 @@
         "settleMs": 1835,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 642087 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 642087 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 642087 unexplained pixels"
     },
     {
@@ -53731,9 +53351,7 @@
         "settleMs": 1835,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 642087 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 642087 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 642087 unexplained pixels"
     },
     {
@@ -53771,9 +53389,7 @@
         "settleMs": 1835,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 642087 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 642087 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 642087 unexplained pixels"
     },
     {
@@ -53811,9 +53427,7 @@
         "settleMs": 1139,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 261835 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 261835 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 261835 unexplained pixels"
     },
     {
@@ -53851,9 +53465,7 @@
         "settleMs": 1139,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 261835 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 261835 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 261835 unexplained pixels"
     },
     {
@@ -53891,9 +53503,7 @@
         "settleMs": 1139,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 261835 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 261835 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 261835 unexplained pixels"
     },
     {
@@ -53931,9 +53541,7 @@
         "settleMs": 1134,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 280883 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 280883 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 280883 unexplained pixels"
     },
     {
@@ -53971,9 +53579,7 @@
         "settleMs": 1134,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 280883 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 280883 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 280883 unexplained pixels"
     },
     {
@@ -54011,9 +53617,7 @@
         "settleMs": 1134,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 280883 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 280883 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 280883 unexplained pixels"
     },
     {
@@ -54051,9 +53655,7 @@
         "settleMs": 1132,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 89783 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 89783 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 89783 unexplained pixels"
     },
     {
@@ -54091,9 +53693,7 @@
         "settleMs": 1132,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 89783 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 89783 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 89783 unexplained pixels"
     },
     {
@@ -54131,9 +53731,7 @@
         "settleMs": 1132,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 89783 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 89783 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 89783 unexplained pixels"
     },
     {
@@ -54171,9 +53769,7 @@
         "settleMs": 1124,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 81405 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 81405 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 81405 unexplained pixels"
     },
     {
@@ -54211,9 +53807,7 @@
         "settleMs": 1124,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 81405 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 81405 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 81405 unexplained pixels"
     },
     {
@@ -54251,9 +53845,7 @@
         "settleMs": 1124,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 81405 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 81405 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 81405 unexplained pixels"
     },
     {
@@ -54291,9 +53883,7 @@
         "settleMs": 1839,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 233981 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 233981 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 233981 unexplained pixels"
     },
     {
@@ -54331,9 +53921,7 @@
         "settleMs": 1839,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 233981 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 233981 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 233981 unexplained pixels"
     },
     {
@@ -54371,9 +53959,7 @@
         "settleMs": 1839,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 233981 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 233981 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 233981 unexplained pixels"
     },
     {
@@ -54411,9 +53997,7 @@
         "settleMs": 1533,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 429586 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 429586 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 429586 unexplained pixels"
     },
     {
@@ -54451,9 +54035,7 @@
         "settleMs": 1533,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 429586 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 429586 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 429586 unexplained pixels"
     },
     {
@@ -54491,9 +54073,7 @@
         "settleMs": 1533,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 429586 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 429586 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 429586 unexplained pixels"
     },
     {
@@ -54531,9 +54111,7 @@
         "settleMs": 1055,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 148519 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 148519 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 148519 unexplained pixels"
     },
     {
@@ -54571,9 +54149,7 @@
         "settleMs": 1055,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 148519 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 148519 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 148519 unexplained pixels"
     },
     {
@@ -54611,9 +54187,7 @@
         "settleMs": 1055,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 148519 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 148519 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 148519 unexplained pixels"
     },
     {
@@ -54651,9 +54225,7 @@
         "settleMs": 1030,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 153378 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 153378 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 153378 unexplained pixels"
     },
     {
@@ -54691,9 +54263,7 @@
         "settleMs": 1030,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 153378 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 153378 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 153378 unexplained pixels"
     },
     {
@@ -54731,9 +54301,7 @@
         "settleMs": 1030,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 153378 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 153378 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 153378 unexplained pixels"
     },
     {
@@ -54771,9 +54339,7 @@
         "settleMs": 1018,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 57787 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 57787 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 57787 unexplained pixels"
     },
     {
@@ -54811,9 +54377,7 @@
         "settleMs": 1018,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 57787 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 57787 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 57787 unexplained pixels"
     },
     {
@@ -54851,9 +54415,7 @@
         "settleMs": 1018,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 57787 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 57787 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 57787 unexplained pixels"
     },
     {
@@ -54891,9 +54453,7 @@
         "settleMs": 1034,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 54938 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 54938 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 54938 unexplained pixels"
     },
     {
@@ -54931,9 +54491,7 @@
         "settleMs": 1034,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 54938 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 54938 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 54938 unexplained pixels"
     },
     {
@@ -54971,9 +54529,7 @@
         "settleMs": 1034,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 54938 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 54938 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 54938 unexplained pixels"
     },
     {
@@ -55857,9 +55413,7 @@
         "settleMs": 2158,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 454796 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 454796 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 454796 unexplained pixels"
     },
     {
@@ -55897,9 +55451,7 @@
         "settleMs": 2158,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 454796 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 454796 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 454796 unexplained pixels"
     },
     {
@@ -55937,9 +55489,7 @@
         "settleMs": 2158,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 454796 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 454796 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 454796 unexplained pixels"
     },
     {
@@ -55977,9 +55527,7 @@
         "settleMs": 1872,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 658952 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 658952 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 658952 unexplained pixels"
     },
     {
@@ -56017,9 +55565,7 @@
         "settleMs": 1872,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 658952 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 658952 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 658952 unexplained pixels"
     },
     {
@@ -56057,9 +55603,7 @@
         "settleMs": 1872,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 658952 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 658952 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 658952 unexplained pixels"
     },
     {
@@ -56097,9 +55641,7 @@
         "settleMs": 1174,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 294839 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 294839 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 294839 unexplained pixels"
     },
     {
@@ -56137,9 +55679,7 @@
         "settleMs": 1174,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 294839 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 294839 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 294839 unexplained pixels"
     },
     {
@@ -56177,9 +55717,7 @@
         "settleMs": 1174,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 294839 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 294839 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 294839 unexplained pixels"
     },
     {
@@ -56217,9 +55755,7 @@
         "settleMs": 1135,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 314236 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 314236 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 314236 unexplained pixels"
     },
     {
@@ -56257,9 +55793,7 @@
         "settleMs": 1135,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 314236 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 314236 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 314236 unexplained pixels"
     },
     {
@@ -56297,9 +55831,7 @@
         "settleMs": 1135,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 314236 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 314236 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 314236 unexplained pixels"
     },
     {
@@ -56337,9 +55869,7 @@
         "settleMs": 1140,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 196301 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 196301 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 196301 unexplained pixels"
     },
     {
@@ -56377,9 +55907,7 @@
         "settleMs": 1140,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 196301 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 196301 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 196301 unexplained pixels"
     },
     {
@@ -56417,9 +55945,7 @@
         "settleMs": 1140,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 196301 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 196301 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 196301 unexplained pixels"
     },
     {
@@ -56457,9 +55983,7 @@
         "settleMs": 1123,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 179689 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 179689 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 179689 unexplained pixels"
     },
     {
@@ -56497,9 +56021,7 @@
         "settleMs": 1123,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 179689 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 179689 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 179689 unexplained pixels"
     },
     {
@@ -56537,9 +56059,7 @@
         "settleMs": 1123,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 179689 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 179689 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 179689 unexplained pixels"
     },
     {
@@ -56577,9 +56097,7 @@
         "settleMs": 1856,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 271012 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 271012 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 271012 unexplained pixels"
     },
     {
@@ -56617,9 +56135,7 @@
         "settleMs": 1856,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 271012 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 271012 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 271012 unexplained pixels"
     },
     {
@@ -56657,9 +56173,7 @@
         "settleMs": 1856,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 271012 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 271012 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 271012 unexplained pixels"
     },
     {
@@ -56697,9 +56211,7 @@
         "settleMs": 1482,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 441621 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 441621 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 441621 unexplained pixels"
     },
     {
@@ -56737,9 +56249,7 @@
         "settleMs": 1482,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 441621 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 441621 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 441621 unexplained pixels"
     },
     {
@@ -56777,9 +56287,7 @@
         "settleMs": 1482,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 441621 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 441621 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 441621 unexplained pixels"
     },
     {
@@ -56817,9 +56325,7 @@
         "settleMs": 1061,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 182242 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 182242 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 182242 unexplained pixels"
     },
     {
@@ -56857,9 +56363,7 @@
         "settleMs": 1061,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 182242 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 182242 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 182242 unexplained pixels"
     },
     {
@@ -56897,9 +56401,7 @@
         "settleMs": 1061,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 182242 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 182242 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 182242 unexplained pixels"
     },
     {
@@ -56937,9 +56439,7 @@
         "settleMs": 1045,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 187604 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 187604 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 187604 unexplained pixels"
     },
     {
@@ -56977,9 +56477,7 @@
         "settleMs": 1045,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 187604 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 187604 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 187604 unexplained pixels"
     },
     {
@@ -57017,9 +56515,7 @@
         "settleMs": 1045,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 187604 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 187604 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 187604 unexplained pixels"
     },
     {
@@ -57057,9 +56553,7 @@
         "settleMs": 1015,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 145891 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 145891 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 145891 unexplained pixels"
     },
     {
@@ -57097,9 +56591,7 @@
         "settleMs": 1015,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 145891 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 145891 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 145891 unexplained pixels"
     },
     {
@@ -57137,9 +56629,7 @@
         "settleMs": 1015,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 145891 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 145891 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 145891 unexplained pixels"
     },
     {
@@ -57177,9 +56667,7 @@
         "settleMs": 1029,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 136816 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 136816 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 136816 unexplained pixels"
     },
     {
@@ -57217,9 +56705,7 @@
         "settleMs": 1029,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 136816 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 136816 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 136816 unexplained pixels"
     },
     {
@@ -57257,9 +56743,7 @@
         "settleMs": 1029,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 136816 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 136816 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 136816 unexplained pixels"
     },
     {
@@ -58143,9 +57627,7 @@
         "settleMs": 2227,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 456568 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 456568 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 456568 unexplained pixels"
     },
     {
@@ -58183,9 +57665,7 @@
         "settleMs": 2227,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 456568 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 456568 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 456568 unexplained pixels"
     },
     {
@@ -58223,9 +57703,7 @@
         "settleMs": 2227,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 456568 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 456568 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 456568 unexplained pixels"
     },
     {
@@ -58263,9 +57741,7 @@
         "settleMs": 1778,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 661724 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 661724 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 661724 unexplained pixels"
     },
     {
@@ -58303,9 +57779,7 @@
         "settleMs": 1778,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 661724 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 661724 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 661724 unexplained pixels"
     },
     {
@@ -58343,9 +57817,7 @@
         "settleMs": 1778,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 661724 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 661724 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 661724 unexplained pixels"
     },
     {
@@ -58383,9 +57855,7 @@
         "settleMs": 1160,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 293145 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 293145 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 293145 unexplained pixels"
     },
     {
@@ -58423,9 +57893,7 @@
         "settleMs": 1160,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 293145 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 293145 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 293145 unexplained pixels"
     },
     {
@@ -58463,9 +57931,7 @@
         "settleMs": 1160,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 293145 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 293145 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 293145 unexplained pixels"
     },
     {
@@ -58503,9 +57969,7 @@
         "settleMs": 1161,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 312901 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 312901 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 312901 unexplained pixels"
     },
     {
@@ -58543,9 +58007,7 @@
         "settleMs": 1161,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 312901 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 312901 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 312901 unexplained pixels"
     },
     {
@@ -58583,9 +58045,7 @@
         "settleMs": 1161,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 312901 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 312901 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 312901 unexplained pixels"
     },
     {
@@ -58623,9 +58083,7 @@
         "settleMs": 1156,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 196309 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 196309 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 196309 unexplained pixels"
     },
     {
@@ -58663,9 +58121,7 @@
         "settleMs": 1156,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 196309 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 196309 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 196309 unexplained pixels"
     },
     {
@@ -58703,9 +58159,7 @@
         "settleMs": 1156,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 196309 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 196309 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 196309 unexplained pixels"
     },
     {
@@ -58743,9 +58197,7 @@
         "settleMs": 1136,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 177133 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 177133 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 177133 unexplained pixels"
     },
     {
@@ -58783,9 +58235,7 @@
         "settleMs": 1136,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 177133 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 177133 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 177133 unexplained pixels"
     },
     {
@@ -58823,9 +58273,7 @@
         "settleMs": 1136,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 177133 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 177133 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 177133 unexplained pixels"
     },
     {
@@ -58863,9 +58311,7 @@
         "settleMs": 1888,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 270092 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 270092 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 270092 unexplained pixels"
     },
     {
@@ -58903,9 +58349,7 @@
         "settleMs": 1888,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 270092 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 270092 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 270092 unexplained pixels"
     },
     {
@@ -58943,9 +58387,7 @@
         "settleMs": 1888,
         "distinctRasters": 2
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 270092 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 270092 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 270092 unexplained pixels"
     },
     {
@@ -58983,9 +58425,7 @@
         "settleMs": 1479,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 439481 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 439481 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 439481 unexplained pixels"
     },
     {
@@ -59023,9 +58463,7 @@
         "settleMs": 1479,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 439481 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 439481 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 439481 unexplained pixels"
     },
     {
@@ -59063,9 +58501,7 @@
         "settleMs": 1479,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 439481 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 439481 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 439481 unexplained pixels"
     },
     {
@@ -59103,9 +58539,7 @@
         "settleMs": 1059,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 176716 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 176716 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 176716 unexplained pixels"
     },
     {
@@ -59143,9 +58577,7 @@
         "settleMs": 1059,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 176716 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 176716 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 176716 unexplained pixels"
     },
     {
@@ -59183,9 +58615,7 @@
         "settleMs": 1059,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 176716 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 176716 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 176716 unexplained pixels"
     },
     {
@@ -59223,9 +58653,7 @@
         "settleMs": 1052,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 182515 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 182515 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 182515 unexplained pixels"
     },
     {
@@ -59263,9 +58691,7 @@
         "settleMs": 1052,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 182515 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 182515 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 182515 unexplained pixels"
     },
     {
@@ -59303,9 +58729,7 @@
         "settleMs": 1052,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 182515 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 182515 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 182515 unexplained pixels"
     },
     {
@@ -59343,9 +58767,7 @@
         "settleMs": 1025,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 142173 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 142173 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 142173 unexplained pixels"
     },
     {
@@ -59383,9 +58805,7 @@
         "settleMs": 1025,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 142173 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 142173 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 142173 unexplained pixels"
     },
     {
@@ -59423,9 +58843,7 @@
         "settleMs": 1025,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 142173 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 142173 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 142173 unexplained pixels"
     },
     {
@@ -59463,9 +58881,7 @@
         "settleMs": 1029,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 130512 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 130512 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 130512 unexplained pixels"
     },
     {
@@ -59503,9 +58919,7 @@
         "settleMs": 1029,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 130512 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 130512 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 130512 unexplained pixels"
     },
     {
@@ -59543,9 +58957,7 @@
         "settleMs": 1029,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 130512 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 130512 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 130512 unexplained pixels"
     },
     {
@@ -79150,9 +78562,7 @@
         "settleMs": 1233,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 100972 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 100972 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 100972 unexplained pixels"
     },
     {
@@ -79191,9 +78601,7 @@
         "settleMs": 1233,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 100972 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 100972 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 100972 unexplained pixels"
     },
     {
@@ -79232,9 +78640,7 @@
         "settleMs": 1233,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 100972 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 100972 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 100972 unexplained pixels"
     },
     {
@@ -79273,9 +78679,7 @@
         "settleMs": 1459,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 116754 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 116754 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 116754 unexplained pixels"
     },
     {
@@ -79314,9 +78718,7 @@
         "settleMs": 1459,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 116754 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 116754 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 116754 unexplained pixels"
     },
     {
@@ -79355,9 +78757,7 @@
         "settleMs": 1459,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 116754 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 116754 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 116754 unexplained pixels"
     },
     {
@@ -79648,9 +79048,7 @@
         "settleMs": 987,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 709 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 709 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 709 unexplained pixels"
     },
     {
@@ -79689,9 +79087,7 @@
         "settleMs": 987,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 709 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 709 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 709 unexplained pixels"
     },
     {
@@ -79730,9 +79126,7 @@
         "settleMs": 987,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 709 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 709 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 709 unexplained pixels"
     },
     {
@@ -79771,9 +79165,7 @@
         "settleMs": 957,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 1209 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 1209 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 1209 unexplained pixels"
     },
     {
@@ -79812,9 +79204,7 @@
         "settleMs": 957,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 1209 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 1209 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 1209 unexplained pixels"
     },
     {
@@ -79853,9 +79243,7 @@
         "settleMs": 957,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 1209 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 1209 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 1209 unexplained pixels"
     },
     {
@@ -84748,9 +84136,7 @@
         "settleMs": 994,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197584 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197584 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197584 unexplained pixels"
     },
     {
@@ -84789,9 +84175,7 @@
         "settleMs": 994,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197584 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197584 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197584 unexplained pixels"
     },
     {
@@ -84830,9 +84214,7 @@
         "settleMs": 994,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197584 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197584 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197584 unexplained pixels"
     },
     {
@@ -84871,9 +84253,7 @@
         "settleMs": 977,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197806 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197806 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197806 unexplained pixels"
     },
     {
@@ -84912,9 +84292,7 @@
         "settleMs": 977,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197806 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197806 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197806 unexplained pixels"
     },
     {
@@ -84953,9 +84331,7 @@
         "settleMs": 977,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197806 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197806 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197806 unexplained pixels"
     },
     {
@@ -84994,9 +84370,7 @@
         "settleMs": 900,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 167119 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 167119 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 167119 unexplained pixels"
     },
     {
@@ -85035,9 +84409,7 @@
         "settleMs": 900,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 167119 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 167119 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 167119 unexplained pixels"
     },
     {
@@ -85076,9 +84448,7 @@
         "settleMs": 900,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 167119 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 167119 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 167119 unexplained pixels"
     },
     {
@@ -85117,9 +84487,7 @@
         "settleMs": 900,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 167978 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 167978 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 167978 unexplained pixels"
     },
     {
@@ -85158,9 +84526,7 @@
         "settleMs": 900,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 167978 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 167978 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 167978 unexplained pixels"
     },
     {
@@ -85199,9 +84565,7 @@
         "settleMs": 900,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 167978 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 167978 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 167978 unexplained pixels"
     },
     {
@@ -85240,9 +84604,7 @@
         "settleMs": 927,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 59792 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 59792 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 59792 unexplained pixels"
     },
     {
@@ -85281,9 +84643,7 @@
         "settleMs": 927,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 59792 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 59792 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 59792 unexplained pixels"
     },
     {
@@ -85322,9 +84682,7 @@
         "settleMs": 927,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 59792 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 59792 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 59792 unexplained pixels"
     },
     {
@@ -85363,9 +84721,7 @@
         "settleMs": 892,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 56846 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 56846 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 56846 unexplained pixels"
     },
     {
@@ -85404,9 +84760,7 @@
         "settleMs": 892,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 56846 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 56846 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 56846 unexplained pixels"
     },
     {
@@ -85445,9 +84799,7 @@
         "settleMs": 892,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 56846 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 56846 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 56846 unexplained pixels"
     },
     {
@@ -85486,9 +84838,7 @@
         "settleMs": 969,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197601 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197601 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197601 unexplained pixels"
     },
     {
@@ -85527,9 +84877,7 @@
         "settleMs": 969,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197601 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197601 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197601 unexplained pixels"
     },
     {
@@ -85568,9 +84916,7 @@
         "settleMs": 969,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197601 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197601 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197601 unexplained pixels"
     },
     {
@@ -85609,9 +84955,7 @@
         "settleMs": 984,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197810 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197810 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197810 unexplained pixels"
     },
     {
@@ -85650,9 +84994,7 @@
         "settleMs": 984,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197810 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197810 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197810 unexplained pixels"
     },
     {
@@ -85691,9 +85033,7 @@
         "settleMs": 984,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197810 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197810 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197810 unexplained pixels"
     },
     {
@@ -85732,9 +85072,7 @@
         "settleMs": 949,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 174208 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 174208 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 174208 unexplained pixels"
     },
     {
@@ -85773,9 +85111,7 @@
         "settleMs": 949,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 174208 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 174208 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 174208 unexplained pixels"
     },
     {
@@ -85814,9 +85150,7 @@
         "settleMs": 949,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 174208 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 174208 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 174208 unexplained pixels"
     },
     {
@@ -85855,9 +85189,7 @@
         "settleMs": 945,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 175420 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 175420 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 175420 unexplained pixels"
     },
     {
@@ -85896,9 +85228,7 @@
         "settleMs": 945,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 175420 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 175420 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 175420 unexplained pixels"
     },
     {
@@ -85937,9 +85267,7 @@
         "settleMs": 945,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 175420 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 175420 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 175420 unexplained pixels"
     },
     {
@@ -85978,9 +85306,7 @@
         "settleMs": 926,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 63781 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 63781 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 63781 unexplained pixels"
     },
     {
@@ -86019,9 +85345,7 @@
         "settleMs": 926,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 63781 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 63781 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 63781 unexplained pixels"
     },
     {
@@ -86060,9 +85384,7 @@
         "settleMs": 926,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 63781 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 63781 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 63781 unexplained pixels"
     },
     {
@@ -86101,9 +85423,7 @@
         "settleMs": 925,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 60897 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 60897 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 60897 unexplained pixels"
     },
     {
@@ -86142,9 +85462,7 @@
         "settleMs": 925,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 60897 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 60897 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 60897 unexplained pixels"
     },
     {
@@ -86183,9 +85501,7 @@
         "settleMs": 925,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 60897 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 60897 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 60897 unexplained pixels"
     },
     {
@@ -86224,9 +85540,7 @@
         "settleMs": 975,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197586 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197586 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197586 unexplained pixels"
     },
     {
@@ -86265,9 +85579,7 @@
         "settleMs": 975,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197586 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197586 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197586 unexplained pixels"
     },
     {
@@ -86306,9 +85618,7 @@
         "settleMs": 975,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197586 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197586 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197586 unexplained pixels"
     },
     {
@@ -86347,9 +85657,7 @@
         "settleMs": 999,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197808 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197808 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197808 unexplained pixels"
     },
     {
@@ -86388,9 +85696,7 @@
         "settleMs": 999,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197808 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197808 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197808 unexplained pixels"
     },
     {
@@ -86429,9 +85735,7 @@
         "settleMs": 999,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 197808 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 197808 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 197808 unexplained pixels"
     },
     {
@@ -86470,9 +85774,7 @@
         "settleMs": 957,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 167807 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 167807 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 167807 unexplained pixels"
     },
     {
@@ -86511,9 +85813,7 @@
         "settleMs": 957,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 167807 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 167807 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 167807 unexplained pixels"
     },
     {
@@ -86552,9 +85852,7 @@
         "settleMs": 957,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 167807 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 167807 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 167807 unexplained pixels"
     },
     {
@@ -86593,9 +85891,7 @@
         "settleMs": 925,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 168636 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 168636 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 168636 unexplained pixels"
     },
     {
@@ -86634,9 +85930,7 @@
         "settleMs": 925,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 168636 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 168636 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 168636 unexplained pixels"
     },
     {
@@ -86675,9 +85969,7 @@
         "settleMs": 925,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 168636 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 168636 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 168636 unexplained pixels"
     },
     {
@@ -86716,9 +86008,7 @@
         "settleMs": 957,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 60708 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 60708 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 60708 unexplained pixels"
     },
     {
@@ -86757,9 +86047,7 @@
         "settleMs": 957,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 60708 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 60708 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 60708 unexplained pixels"
     },
     {
@@ -86798,9 +86086,7 @@
         "settleMs": 957,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 60708 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 60708 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 60708 unexplained pixels"
     },
     {
@@ -86839,9 +86125,7 @@
         "settleMs": 933,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 57767 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 57767 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 57767 unexplained pixels"
     },
     {
@@ -86880,9 +86164,7 @@
         "settleMs": 933,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 57767 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 57767 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 57767 unexplained pixels"
     },
     {
@@ -86921,9 +86203,7 @@
         "settleMs": 933,
         "distinctRasters": 1
       },
-      "diagnostics": [
-        "zero-tolerance pixel drift: 57767 unexplained pixels"
-      ],
+      "diagnostics": ["zero-tolerance pixel drift: 57767 unexplained pixels"],
       "error": "zero-tolerance pixel drift: 57767 unexplained pixels"
     },
     {

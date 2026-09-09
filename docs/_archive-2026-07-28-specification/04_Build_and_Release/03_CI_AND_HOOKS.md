@@ -18,11 +18,11 @@ but every gate below is in scope by Phase 08.
 2. [Git hooks (Lefthook)](#2-git-hooks-lefthook)
 3. [Ordering: why frontend builds before Go](#3-ordering-why-frontend-builds-before-go)
 4. [CI gate set](#4-ci-gate-set)
-4b. [Two targets, and why both are needed](#4b-two-targets-and-why-both-are-needed)
-4c. [Coverage floors](#4c-coverage-floors)
-4d. [The renderer's golden-file corpus](#4d-the-renderers-golden-file-corpus)
-4e. [remark and rehype are ESM-only, and Jest is not](#4e-remark-and-rehype-are-esm-only-and-jest-is-not)
-4f. [Build the matrix before you need it, and test the upgrade](#4f-build-the-matrix-before-you-need-it-and-test-the-upgrade)
+   4b. [Two targets, and why both are needed](#4b-two-targets-and-why-both-are-needed)
+   4c. [Coverage floors](#4c-coverage-floors)
+   4d. [The renderer's golden-file corpus](#4d-the-renderers-golden-file-corpus)
+   4e. [remark and rehype are ESM-only, and Jest is not](#4e-remark-and-rehype-are-esm-only-and-jest-is-not)
+   4f. [Build the matrix before you need it, and test the upgrade](#4f-build-the-matrix-before-you-need-it-and-test-the-upgrade)
 5. [GitHub Actions build & release matrix](#5-github-actions-build--release-matrix)
 6. [How work is tracked](#6-how-work-is-tracked)
 7. [Example lefthook.yml](#7-example-lefthookyml)
@@ -35,22 +35,22 @@ but every gate below is in scope by Phase 08.
 The canonical developer entry points mirror `CLAUDE.md` § Commands. `just` is the task runner; every
 command is a thin wrapper so CI, hooks, and humans invoke identical logic.
 
-| Command | Does | Notes |
-|---|---|---|
-| `just setup` | Install Go + frontend deps; install git hooks (`lefthook install`) | One-time bootstrap. |
-| `just dev` | `wails dev` (hot reload, real Go bridge) | Uses `GoMarkEdit-Dev` isolation (`01_BUILD_MATRIX.md` §7). |
-| `just dev-ui` | Frontend-only Vite server against the bridge mock | No Go backend. |
-| `just build` | `wails build` → `build/bin` | Prod artifact for the host OS. |
-| `just gen` | `wails generate module` | Regenerate TS bindings after any bound-signature change. |
-| `just fmt` | `gofmt -w` + `prettier --write` | Auto-fix. |
-| `just fmt-check` | `gofmt -l` + `prettier --check` | Non-mutating gate. |
-| `just lint` | `golangci-lint run` + `eslint` | |
-| `just typecheck` | `tsc --noEmit` | |
-| `just test` | `go test -race ./...` + `jest` | Race detector always on. |
-| `just verify-ui` | Playwright responsive + smoke | Target A: bridge-mock. |
-| `just gen-check` | `wails generate module` then fail on `frontend/wailsjs/` drift | Bindings-in-sync gate. |
-| `just sqlc-check` | `sqlc diff` | Schema/query codegen drift gate. |
-| `just check` | `fmt-check` + `lint` + `typecheck` + `test` + arch/drift checks | Full local CI mirror. |
+| Command           | Does                                                               | Notes                                                      |
+| ----------------- | ------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `just setup`      | Install Go + frontend deps; install git hooks (`lefthook install`) | One-time bootstrap.                                        |
+| `just dev`        | `wails dev` (hot reload, real Go bridge)                           | Uses `GoMarkEdit-Dev` isolation (`01_BUILD_MATRIX.md` §7). |
+| `just dev-ui`     | Frontend-only Vite server against the bridge mock                  | No Go backend.                                             |
+| `just build`      | `wails build` → `build/bin`                                        | Prod artifact for the host OS.                             |
+| `just gen`        | `wails generate module`                                            | Regenerate TS bindings after any bound-signature change.   |
+| `just fmt`        | `gofmt -w` + `prettier --write`                                    | Auto-fix.                                                  |
+| `just fmt-check`  | `gofmt -l` + `prettier --check`                                    | Non-mutating gate.                                         |
+| `just lint`       | `golangci-lint run` + `eslint`                                     |                                                            |
+| `just typecheck`  | `tsc --noEmit`                                                     |                                                            |
+| `just test`       | `go test -race ./...` + `jest`                                     | Race detector always on.                                   |
+| `just verify-ui`  | Playwright responsive + smoke                                      | Target A: bridge-mock.                                     |
+| `just gen-check`  | `wails generate module` then fail on `frontend/wailsjs/` drift     | Bindings-in-sync gate.                                     |
+| `just sqlc-check` | `sqlc diff`                                                        | Schema/query codegen drift gate.                           |
+| `just check`      | `fmt-check` + `lint` + `typecheck` + `test` + arch/drift checks    | Full local CI mirror.                                      |
 
 ## 2. Git hooks (Lefthook)
 
@@ -149,7 +149,7 @@ end-to-end test today runs against the version that is wrong, and no test can se
 Three mechanisms keep them honest, and they are complementary rather than alternatives:
 
 1. **A shared fixture corpus** — one JSON file of `(input, expected)` cases consumed by a Go table test
-   *and* by a Jest test over the mock, so both implementations answer the same questions.
+   _and_ by a Jest test over the mock, so both implementations answer the same questions.
 2. **A surface check** — a test enumerating the exported methods of each
    `frontend/src/dev/bridge-mock/go/<pkg>/<Handler>.ts` against the generated
    `frontend/wailsjs/go/<pkg>/<Handler>.d.ts`, failing on any method present in one and missing from the
@@ -176,8 +176,8 @@ coverage percentage is exactly the metric such a test satisfies.
 ## 4d. The renderer's golden-file corpus
 
 The renderer is the product, and it is the one subsystem where "it looked right when I checked" is
-least trustworthy: three standard levels each map to a different plugin set, so the *same input renders
-differently on purpose*, and a regression looks exactly like an intended difference.
+least trustworthy: three standard levels each map to a different plugin set, so the _same input renders
+differently on purpose_, and a regression looks exactly like an intended difference.
 
 `frontend/src/logic/markdown/__fixtures__/` holds input `.md` files with their expected sanitized HTML,
 **three variants each — one per standard level**, since the whole point of the level selector is that
@@ -208,7 +208,7 @@ free ESM transform a Next.js setup would.
 
 The strategy is **mock at the boundary, and cover the real pipeline elsewhere**: `moduleNameMapper`
 entries map each ESM package to a small CJS stub, and a hand-written stub for `react-markdown` still
-invokes the `a` and `code` overrides so the override *logic* is genuinely tested. The real pipeline —
+invokes the `a` and `code` overrides so the override _logic_ is genuinely tested. The real pipeline —
 plugins, sanitization, KaTeX, Mermaid — is covered by the golden corpus run in a browser, and by
 Playwright.
 
@@ -227,12 +227,12 @@ is the signal to reconsider.
 artifacts. A release job that has never run is not a release pipeline — and the corollary is that the
 first tag should not also be the first time `wails build` has been attempted on Windows.
 
-A compile-only job across all four targets, on `pull_request`, proves the code *builds* everywhere
+A compile-only job across all four targets, on `pull_request`, proves the code _builds_ everywhere
 without anyone owning three machines. It also resolves a real tension the phase-02 audit recorded: work
 was blocked because cross-platform runtime proof was demanded on a macOS-only machine with no waiver.
 Compile proof is automatable; **runtime proof stays a documented, honestly-scoped manual step**, and
-Phase 08 already handles that well — *"where a platform is not available to test on, say so plainly in
-the release notes rather than implying it was verified."*
+Phase 08 already handles that well — _"where a platform is not available to test on, say so plainly in
+the release notes rather than implying it was verified."_
 
 **Migrations are tested forward, from committed fixtures.** Migrations are additive-only and
 sqlc-generated, and `just sqlc-check` proves the store matches the queries. Nothing proves the thing
@@ -258,15 +258,15 @@ workflow's file name:
   Playwright Chromium, Wails CLI, sqlc, govulncheck).
 - **`build`** — matrix, one native runner per artifact (`01_BUILD_MATRIX.md` §2, §5):
 
-  | platform | runner | build tags | artifact |
-  |---|---|---|---|
-  | `darwin/arm64` | `macos-latest` | — | `GoMarkEdit.app` → `.app.zip` |
-  | `darwin/amd64` | `macos-13` | — | `GoMarkEdit.app` → `.app.zip` |
-  | `windows/amd64` | `windows-latest` | — | `GoMarkEdit.exe` + NSIS installer |
-  | `linux/amd64` | `ubuntu-24.04` | `webkit2_41` | binary + `.deb`/`.rpm` (nfpm) |
+  | platform        | runner           | build tags   | artifact                          |
+  | --------------- | ---------------- | ------------ | --------------------------------- |
+  | `darwin/arm64`  | `macos-latest`   | —            | `GoMarkEdit.app` → `.app.zip`     |
+  | `darwin/amd64`  | `macos-13`       | —            | `GoMarkEdit.app` → `.app.zip`     |
+  | `windows/amd64` | `windows-latest` | —            | `GoMarkEdit.exe` + NSIS installer |
+  | `linux/amd64`   | `ubuntu-24.04`   | `webkit2_41` | binary + `.deb`/`.rpm` (nfpm)     |
 
   Each build patches `wails.json` with the release version, runs `wails build --platform … -ldflags
-  "-X gomarkedit/internal/settings.AppVersion=<v>"`, fixes executable permissions, and uploads the
+"-X gomarkedit/internal/settings.AppVersion=<v>"`, fixes executable permissions, and uploads the
   artifact.
 
 - **`create-release`** — needs `[determine-version, build, test]`; downloads all artifacts, renames
@@ -281,7 +281,7 @@ README). There is no traceability gate and no generated traceability record.
 
 There used to be: `just trace`, `just trace-check`, `just phase-check` and
 `just phase-complete-check NN`, backed by roughly 2,000 lines of custom validators and 2,200 lines of
-Go tests that tested those validators. They were removed on 2026-07-25. They validated the *form* of
+Go tests that tested those validators. They were removed on 2026-07-25. They validated the _form_ of
 documents rather than the behaviour of the application; `phase-complete-check 00` reported a phase
 complete while the test suite was red, because for automated evidence it only checked that a recipe
 name appeared in a file; and the only failing test in the repository was one of them — failing because
@@ -309,24 +309,24 @@ pre-commit:
     # `glob` does not support brace expansion ("*.{ts,tsx}") — use a YAML array
     # of single-pattern globs instead.
     go-fmt:
-      glob: "*.go"
+      glob: '*.go'
       run: gofmt -l -w {staged_files}
       stage_fixed: true
     go-vet:
-      glob: "*.go"
+      glob: '*.go'
       run: go vet ./...
     go-lint:
-      glob: "*.go"
+      glob: '*.go'
       run: golangci-lint run --new-from-rev=HEAD --fix ./...
       stage_fixed: true
     fe-prettier:
-      root: "frontend/"
-      glob: ["*.ts", "*.tsx", "*.css"]
+      root: 'frontend/'
+      glob: ['*.ts', '*.tsx', '*.css']
       run: npx prettier --write {staged_files}
       stage_fixed: true
     fe-eslint:
-      root: "frontend/"
-      glob: ["*.ts", "*.tsx"]
+      root: 'frontend/'
+      glob: ['*.ts', '*.tsx']
       run: npx eslint --fix {staged_files}
       stage_fixed: true
 
@@ -337,13 +337,13 @@ pre-push:
   commands:
     01-bindings:
       priority: 1
-      run: sh scripts/hooks/pre-push-bindings-drift.sh   # wails generate module
+      run: sh scripts/hooks/pre-push-bindings-drift.sh # wails generate module
     02-frontend:
       priority: 2
-      run: sh scripts/hooks/pre-push-frontend.sh         # npm build + format:check + lint + tsc + jest + verify:ui/smoke + audit
+      run: sh scripts/hooks/pre-push-frontend.sh # npm build + format:check + lint + tsc + jest + verify:ui/smoke + audit
     03-go:
       priority: 3
-      run: sh scripts/hooks/pre-push-go.sh               # gofmt -l + go vet + go test -race + govulncheck + wails doctor + sqlc diff
+      run: sh scripts/hooks/pre-push-go.sh # gofmt -l + go vet + go test -race + govulncheck + wails doctor + sqlc diff
 ```
 
 ## 8. Example .golangci.yml
@@ -352,7 +352,7 @@ A small, low-noise linter set (`default: none` + explicit enable), scoped in
 `pre-commit` via `--new-from-rev=HEAD`. The sqlc-generated store is excluded (never hand-edited).
 
 ```yaml
-version: "2"
+version: '2'
 linters:
   default: none
   enable:
@@ -374,7 +374,7 @@ linters:
       - linters: [errcheck]
         path: _test\.go
     paths:
-      - internal/db/store       # sqlc-generated — never hand-edited
+      - internal/db/store # sqlc-generated — never hand-edited
       - third_party$
       - builtin$
       - examples$
@@ -455,23 +455,23 @@ check: fmt-check lint typecheck test gen-check sqlc-check vuln
 
 ## 10. Work order: the gates this document describes but the repository does not run
 
-**Everything in §4 above is what the gate set *should* be. Some of it is not wired.** That is stated
+**Everything in §4 above is what the gate set _should_ be. Some of it is not wired.** That is stated
 here rather than implied, because a document describing gates that do not run is worse than no
 document — it makes a reader believe the branch is protected.
 
 As of 2026-07-25:
 
-| Gate | Specified | In `justfile` | In pre-push | In CI |
-|---|---|---|---|---|
-| `gofmt`, `go vet`, `go test -race`, `golangci-lint`, `tsc`, `eslint`, `prettier`, `jest` | yes | yes | yes | yes |
-| `verify-ui` | yes | yes | **no** | **no** |
-| `verify-smoke` | yes | **recipe does not exist** | no | no |
-| `govulncheck` | yes | yes (`just vuln`) | **no** | **no** |
-| `npm audit` | yes | **no** | no | no |
-| `sqlc diff` | yes | yes (`just sqlc-check`) | **no** | **no** |
-| `wails doctor` | yes | **no** | no | no |
-| coverage floors | yes | **no** | no | no |
-| offline asset scan | yes | **no** | no | no |
+| Gate                                                                                     | Specified | In `justfile`             | In pre-push | In CI  |
+| ---------------------------------------------------------------------------------------- | --------- | ------------------------- | ----------- | ------ |
+| `gofmt`, `go vet`, `go test -race`, `golangci-lint`, `tsc`, `eslint`, `prettier`, `jest` | yes       | yes                       | yes         | yes    |
+| `verify-ui`                                                                              | yes       | yes                       | **no**      | **no** |
+| `verify-smoke`                                                                           | yes       | **recipe does not exist** | no          | no     |
+| `govulncheck`                                                                            | yes       | yes (`just vuln`)         | **no**      | **no** |
+| `npm audit`                                                                              | yes       | **no**                    | no          | no     |
+| `sqlc diff`                                                                              | yes       | yes (`just sqlc-check`)   | **no**      | **no** |
+| `wails doctor`                                                                           | yes       | **no**                    | no          | no     |
+| coverage floors                                                                          | yes       | **no**                    | no          | no     |
+| offline asset scan                                                                       | yes       | **no**                    | no          | no     |
 
 And the largest one: **CI triggers only on a release tag** (`push: tags: v*.*.*` plus
 `workflow_dispatch`). There is no `pull_request` and no `push: branches`, so **nothing above gates a

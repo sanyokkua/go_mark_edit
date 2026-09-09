@@ -78,46 +78,47 @@ Wails auto-generated files in `wailsjs/` are not valid in the Jest environment. 
 
 ```js
 module.exports = {
-    moduleNameMapper: {
-        // Mock all wailsjs bindings
-        '^../../../wailsjs/go/(.*)$': '<rootDir>/src/__mocks__/wailsjs-go.js',
-        '^@wailsapp/runtime$':        '<rootDir>/src/__mocks__/wails-runtime.js',
-    },
-    transformIgnorePatterns: [
-        '/node_modules/',
-        '/wailsjs/',
-    ],
-}
+  moduleNameMapper: {
+    // Mock all wailsjs bindings
+    '^../../../wailsjs/go/(.*)$': '<rootDir>/src/__mocks__/wailsjs-go.js',
+    '^@wailsapp/runtime$': '<rootDir>/src/__mocks__/wails-runtime.js',
+  },
+  transformIgnorePatterns: ['/node_modules/', '/wailsjs/'],
+};
 ```
 
 ### Mock files
 
 `src/__mocks__/wailsjs-go.js` — mock all bound methods:
+
 ```js
 module.exports = {
-    ProcessPrompt:    jest.fn().mockResolvedValue("mocked response"),
-    GetSettings:      jest.fn().mockResolvedValue({ provider: "ollama" }),
-    SaveSettings:     jest.fn().mockResolvedValue(undefined),
-    // add more as needed
-}
+  ProcessPrompt: jest.fn().mockResolvedValue('mocked response'),
+  GetSettings: jest.fn().mockResolvedValue({ provider: 'ollama' }),
+  SaveSettings: jest.fn().mockResolvedValue(undefined),
+  // add more as needed
+};
 ```
 
 `src/__mocks__/wails-runtime.js` — mock the Wails runtime:
+
 ```js
 module.exports = {
-    EventsOn:     jest.fn().mockReturnValue(() => {}),  // returns cancel fn
-    EventsOff:    jest.fn(),
-    EventsEmit:   jest.fn(),
-    EventsOnce:   jest.fn().mockReturnValue(() => {}),
-    LogDebug:     jest.fn(),
-    LogInfo:      jest.fn(),
-    LogError:     jest.fn(),
-    ClipboardGetText: jest.fn().mockResolvedValue(""),
-    ClipboardSetText: jest.fn().mockResolvedValue(true),
-    WindowSetTitle:   jest.fn(),
-    Quit:             jest.fn(),
-    Environment:      jest.fn().mockResolvedValue({ buildType: "dev", platform: "darwin", arch: "amd64" }),
-}
+  EventsOn: jest.fn().mockReturnValue(() => {}), // returns cancel fn
+  EventsOff: jest.fn(),
+  EventsEmit: jest.fn(),
+  EventsOnce: jest.fn().mockReturnValue(() => {}),
+  LogDebug: jest.fn(),
+  LogInfo: jest.fn(),
+  LogError: jest.fn(),
+  ClipboardGetText: jest.fn().mockResolvedValue(''),
+  ClipboardSetText: jest.fn().mockResolvedValue(true),
+  WindowSetTitle: jest.fn(),
+  Quit: jest.fn(),
+  Environment: jest
+    .fn()
+    .mockResolvedValue({ buildType: 'dev', platform: 'darwin', arch: 'amd64' }),
+};
 ```
 
 ---
@@ -127,24 +128,24 @@ module.exports = {
 Redux async thunks can be tested without a real Wails backend by injecting a mock adapter:
 
 ```typescript
-import { configureStore } from '@reduxjs/toolkit'
-import { processPrompt } from './actionsSlice'
+import { configureStore } from '@reduxjs/toolkit';
+import { processPrompt } from './actionsSlice';
 
 // Replace the adapter with a mock
 const mockAdapter = {
-    processPrompt: jest.fn().mockResolvedValue("mocked result"),
-}
+  processPrompt: jest.fn().mockResolvedValue('mocked result'),
+};
 
 test('processPrompt dispatches fulfilled', async () => {
-    const store = configureStore({
-        reducer: { actions: actionsReducer },
-        middleware: (getDefault) =>
-            getDefault({ thunk: { extraArgument: { adapter: mockAdapter } } }),
-    })
+  const store = configureStore({
+    reducer: { actions: actionsReducer },
+    middleware: (getDefault) =>
+      getDefault({ thunk: { extraArgument: { adapter: mockAdapter } } }),
+  });
 
-    await store.dispatch(processPrompt({ text: "hello", promptId: "p1" }))
-    expect(store.getState().actions.result).toBe("mocked result")
-})
+  await store.dispatch(processPrompt({ text: 'hello', promptId: 'p1' }));
+  expect(store.getState().actions.result).toBe('mocked result');
+});
 ```
 
 **GoMarkEdit note:** this thunk-result-in-a-slice pattern applies only to ephemeral frontend state

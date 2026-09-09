@@ -33,7 +33,7 @@ settings). The formatting toolbar acts on the current selection or line: bold, i
 inline code, headings 1–3, bullet/numbered/task lists, quote, link, image, table, plus the Format and
 Lint document actions.
 
-**States.** An Editor document is *clean* or *dirty* (see `03_FILES_TABS_WORKSPACE.md#dirty-state`).
+**States.** An Editor document is _clean_ or _dirty_ (see `03_FILES_TABS_WORKSPACE.md#dirty-state`).
 Typing mutates the editor's working buffer, which debounce-syncs to the backend application model where
 the dirty flag is derived (DD-62/DD-64); formatting actions mutate only the targeted range. The
 preview reflects the backend's copy of the buffer after the debounce window (DD-20, DD-64).
@@ -100,7 +100,7 @@ comparing two distant parts of one document. A document with no headings does no
 panes move independently and nothing pretends otherwise.
 
 **Right-clicking in the editor** opens a context menu: Cut · Copy · Paste · Paste as plain text ·
-*(separator)* · Bold · Italic · Link · *(separator)* · Format document · Compact · *(separator)* ·
+_(separator)_ · Bold · Italic · Link · _(separator)_ · Format document · Compact · _(separator)_ ·
 Command palette. Every item dispatches through the shortcut registry and shows its accelerator, so the
 menu is a discovery surface for the bindings rather than a second set of behaviours. On macOS the
 platform's own Edit menu owns the clipboard accelerators (ADR-0028); these entries invoke the same
@@ -137,17 +137,17 @@ status bar shows **Reading** only, because reading mode hides the segmented cont
 A single row along the bottom of the window, present in every arrangement and hidden only in reading
 mode. It is a summary surface, not a control panel: two items are interactive and the rest are read-only.
 
-| Item | Example | Interactive | Source |
-|---|---|---|---|
-| Standard | `Markdown · GFM` | no | `04_MARKDOWN_STANDARDS.md` |
-| Caret position | `Ln 3, Col 12` | no | editor |
-| Counts | `231 words` | no | backend document model (DD-62). With a selection active it shows the selection's counts instead, prefixed `sel`. |
-| Encoding | `UTF-8` | no | `03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings` |
-| Line endings | `LF` | no | same |
-| Autosave | `Autosave: On` | no | `11_SETTINGS.md` |
-| Problems | `⚠ 1` | **yes** — opens the problems list | `06_FORMAT_AND_LINT.md#problems-surface` |
-| Provider | `Ollama · last call OK` | no | the assistant |
-| Reading | `Reading` | **yes** — enters reading mode | this document |
+| Item           | Example                 | Interactive                       | Source                                                                                                           |
+| -------------- | ----------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Standard       | `Markdown · GFM`        | no                                | `04_MARKDOWN_STANDARDS.md`                                                                                       |
+| Caret position | `Ln 3, Col 12`          | no                                | editor                                                                                                           |
+| Counts         | `231 words`             | no                                | backend document model (DD-62). With a selection active it shows the selection's counts instead, prefixed `sel`. |
+| Encoding       | `UTF-8`                 | no                                | `03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings`                                                           |
+| Line endings   | `LF`                    | no                                | same                                                                                                             |
+| Autosave       | `Autosave: On`          | no                                | `11_SETTINGS.md`                                                                                                 |
+| Problems       | `⚠ 1`                   | **yes** — opens the problems list | `06_FORMAT_AND_LINT.md#problems-surface`                                                                         |
+| Provider       | `Ollama · last call OK` | no                                | the assistant                                                                                                    |
+| Reading        | `Reading`               | **yes** — enters reading mode     | this document                                                                                                    |
 
 **Character count** is not shown by default; word count is what Markdown authors work in. It is
 available in the counts item's tooltip.

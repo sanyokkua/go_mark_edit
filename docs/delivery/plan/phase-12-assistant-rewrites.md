@@ -42,8 +42,8 @@ it and click Apply.
 
 ## Questions to settle first
 
-- **Cancelling a run that is already in flight.** — *Settled 2026-07-25 by
-  `../adr/0032-run-registry-and-shutdown-ordering.md`, recorded 2026-07-28.* One bound
+- **Cancelling a run that is already in flight.** — _Settled 2026-07-25 by
+  `../adr/0032-run-registry-and-shutdown-ordering.md`, recorded 2026-07-28._ One bound
   `CancelRun(runId)` against a mutex-guarded run registry. **Exactly one terminal outcome per run:** a
   run cancelled mid-flight surfaces as `CodeCancelled` and is normalised into the same result, log and
   event shape as one cancelled between steps, so the cancel-arrives-versus-work-completes race is

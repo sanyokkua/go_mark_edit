@@ -47,42 +47,42 @@ below.
 
 ## Appearance group
 
-| Setting | Control | Values | Notes |
-|---|---|---|---|
-| Theme | segmented / swatches | Liquid Glass, Material, Minimal | DD-28; drives tokens (`10_THEMING.md`) |
-| Color mode | segmented | Auto, Light, Dark | DD-29; Auto follows OS live |
-| Default open mode | segmented | Reading (Viewer), Editor | DD-27; applied to every file-system open (OS/association, drag-and-drop, workspace tree, Open dialog); default **Editor**. Not new files. |
+| Setting           | Control              | Values                          | Notes                                                                                                                                     |
+| ----------------- | -------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Theme             | segmented / swatches | Liquid Glass, Material, Minimal | DD-28; drives tokens (`10_THEMING.md`)                                                                                                    |
+| Color mode        | segmented            | Auto, Light, Dark               | DD-29; Auto follows OS live                                                                                                               |
+| Default open mode | segmented            | Reading (Viewer), Editor        | DD-27; applied to every file-system open (OS/association, drag-and-drop, workspace tree, Open dialog); default **Editor**. Not new files. |
 
 ## Editor group
 
-| Setting | Control | Values | Notes |
-|---|---|---|---|
-| Autosave | toggle | on / off | DD-12; existing files only |
-| Live preview | toggle | on / off | debounced; may pause for large files (DD-20) |
-| Line numbers | toggle | on / off | Monaco gutter |
-| Word wrap | toggle | on / off | soft wrap |
-| Default action scope | segmented | Whole document, Selection | Assistant default scope (DD-43); the runtime selection-if-present rule still overrides (`14_LLM_ASSISTANT_OVERVIEW.md#scope-selection-vs-document`). Inert until the assistant exists. |
-| Font size | select | 13 / 14 / 16 px | editor font size, monospace pane only |
-| Reading font size | select | 15 / 17 / 19 px | the preview and reading mode. `Ctrl/Cmd +` / `-` / `0` adjust it live (DD-72). Reading beautifully is a headline goal; a fixed size is not it. |
-| Reading width | select | Narrow (60ch) / Comfortable (72ch) / Wide (90ch) | the measure of the reading column (DD-72) |
+| Setting              | Control   | Values                                           | Notes                                                                                                                                                                                  |
+| -------------------- | --------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Autosave             | toggle    | on / off                                         | DD-12; existing files only                                                                                                                                                             |
+| Live preview         | toggle    | on / off                                         | debounced; may pause for large files (DD-20)                                                                                                                                           |
+| Line numbers         | toggle    | on / off                                         | Monaco gutter                                                                                                                                                                          |
+| Word wrap            | toggle    | on / off                                         | soft wrap                                                                                                                                                                              |
+| Default action scope | segmented | Whole document, Selection                        | Assistant default scope (DD-43); the runtime selection-if-present rule still overrides (`14_LLM_ASSISTANT_OVERVIEW.md#scope-selection-vs-document`). Inert until the assistant exists. |
+| Font size            | select    | 13 / 14 / 16 px                                  | editor font size, monospace pane only                                                                                                                                                  |
+| Reading font size    | select    | 15 / 17 / 19 px                                  | the preview and reading mode. `Ctrl/Cmd +` / `-` / `0` adjust it live (DD-72). Reading beautifully is a headline goal; a fixed size is not it.                                         |
+| Reading width        | select    | Narrow (60ch) / Comfortable (72ch) / Wide (90ch) | the measure of the reading column (DD-72)                                                                                                                                              |
 
 ## Markdown group
 
-| Setting | Control | Values | Notes |
-|---|---|---|---|
-| Standard | segmented | Minimal, GFM, Full | DD-14; parsing + rendering (`04_MARKDOWN_STANDARDS.md`) |
-| Format on save | toggle | on / off | DD-18 |
-| Lint on save | toggle | on / off | DD-18 |
-| Bullet marker | segmented | `-`, `*`, `+` | canonical `-` (DD-18) |
-| Emphasis | segmented | `_ _`, `* *` | canonical `_` (DD-18) |
-| Heading style | select | ATX (`#`), Setext | canonical ATX (DD-18) |
+| Setting        | Control   | Values             | Notes                                                   |
+| -------------- | --------- | ------------------ | ------------------------------------------------------- |
+| Standard       | segmented | Minimal, GFM, Full | DD-14; parsing + rendering (`04_MARKDOWN_STANDARDS.md`) |
+| Format on save | toggle    | on / off           | DD-18                                                   |
+| Lint on save   | toggle    | on / off           | DD-18                                                   |
+| Bullet marker  | segmented | `-`, `*`, `+`      | canonical `-` (DD-18)                                   |
+| Emphasis       | segmented | `_ _`, `* *`       | canonical `_` (DD-18)                                   |
+| Heading style  | select    | ATX (`#`), Setext  | canonical ATX (DD-18)                                   |
 
 ## Export group
 
-| Setting | Control | Values | Notes |
-|---|---|---|---|
-| PDF styling | segmented | Current theme, Clean document | DD-24; `07_EXPORT.md#styled-vs-clean`. **Current theme always exports on a light background** — a dark theme prints as an unreadable page (`10_THEMING.md#print-and-export`). |
-| HTML export | segmented | Standalone (styles inlined), Fragment (body only) | Standalone opens in a browser as-is; Fragment is what you paste into a CMS or a wiki |
+| Setting     | Control   | Values                                            | Notes                                                                                                                                                                         |
+| ----------- | --------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PDF styling | segmented | Current theme, Clean document                     | DD-24; `07_EXPORT.md#styled-vs-clean`. **Current theme always exports on a light background** — a dark theme prints as an unreadable page (`10_THEMING.md#print-and-export`). |
+| HTML export | segmented | Standalone (styles inlined), Fragment (body only) | Standalone opens in a browser as-is; Fragment is what you paste into a CMS or a wiki                                                                                          |
 
 ## Content privacy group
 
@@ -91,12 +91,12 @@ requests** rows are informational, read-only affirmations of the non-negotiable 
 not user-adjustable; only **External images / CSS** is a user choice, and **Diagnostic logs** is an
 action button.
 
-| Setting | Control | Values | Notes |
-|---|---|---|---|
-| External images / CSS | segmented | Ask, Always allow, Always block | DD-22; `09_ASSETS_AND_SECURITY.md#remote-content-policy` |
-| Background network | read-only, off | (disabled) | no update checks, telemetry, or asset/CDN fetches — off and not toggleable (DD-32 as revised, DD-33) |
-| Telemetry / analytics | read-only, off | (disabled) | never collected (DD-33) — not toggleable |
-| LLM requests | read-only, informational | "on-demand" | Once the assistant exists: outbound only to your configured provider, only on user action; a local provider stays on-device (DD-32 as revised, DD-54; `14_LLM_ASSISTANT_OVERVIEW.md#privacy-and-network`) |
+| Setting               | Control                  | Values                          | Notes                                                                                                                                                                                                     |
+| --------------------- | ------------------------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| External images / CSS | segmented                | Ask, Always allow, Always block | DD-22; `09_ASSETS_AND_SECURITY.md#remote-content-policy`                                                                                                                                                  |
+| Background network    | read-only, off           | (disabled)                      | no update checks, telemetry, or asset/CDN fetches — off and not toggleable (DD-32 as revised, DD-33)                                                                                                      |
+| Telemetry / analytics | read-only, off           | (disabled)                      | never collected (DD-33) — not toggleable                                                                                                                                                                  |
+| LLM requests          | read-only, informational | "on-demand"                     | Once the assistant exists: outbound only to your configured provider, only on user action; a local provider stays on-device (DD-32 as revised, DD-54; `14_LLM_ASSISTANT_OVERVIEW.md#privacy-and-network`) |
 
 The **Diagnostic logs** action moved to the Diagnostics group below, where the settings that control
 those logs also live.
@@ -107,27 +107,27 @@ those logs also live.
 settings on startup. **No such setting existed.** This group defines them, and gives the "Open logs
 folder" button something to be about.
 
-| Setting | Control | Values | Default | Notes |
-|---|---|---|---|---|
-| Write logs to a file | toggle | on / off | On | Off keeps console output in a dev build and writes nothing in a release build |
-| Log level | select | `debug`, `info`, `warn`, `error` | `warn` in a release build, `debug` in a dev build | An empty stored value resolves to the build-appropriate default rather than failing |
-| Log folder | read-only path + action | — | the platform log folder | "Open logs folder" reveals it in the file manager |
-| Max file size | number (MB) | 1 – 100 | 10 | rotation threshold |
-| Keep files | number | 1 – 20 | 5 | rotated files retained |
-| Keep for | number (days) | 1 – 365 | 30 | age at which a rotated file is deleted |
-| Compress rotated files | toggle | on / off | On | |
+| Setting                | Control                 | Values                           | Default                                           | Notes                                                                               |
+| ---------------------- | ----------------------- | -------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Write logs to a file   | toggle                  | on / off                         | On                                                | Off keeps console output in a dev build and writes nothing in a release build       |
+| Log level              | select                  | `debug`, `info`, `warn`, `error` | `warn` in a release build, `debug` in a dev build | An empty stored value resolves to the build-appropriate default rather than failing |
+| Log folder             | read-only path + action | —                                | the platform log folder                           | "Open logs folder" reveals it in the file manager                                   |
+| Max file size          | number (MB)             | 1 – 100                          | 10                                                | rotation threshold                                                                  |
+| Keep files             | number                  | 1 – 20                           | 5                                                 | rotated files retained                                                              |
+| Keep for               | number (days)           | 1 – 365                          | 30                                                | age at which a rotated file is deleted                                              |
+| Compress rotated files | toggle                  | on / off                         | On                                                |                                                                                     |
 
 **A development build differs from a release build in more than its folder.** The `-Dev` config, database
 and log folders are the visible part (DD-67); these are the rest, and they are listed because "dev and
 prod differ" without an enumeration is a thing people discover one at a time:
 
-| | Development (`wails dev`, a local `wails build`) | Release |
-|---|---|---|
-| Default log level | `debug` | `warn` |
-| Console output | yes, alongside the file | file only |
-| HTTP client debug logging | available | never |
-| Version reported | `dev` | the tag (DD-65) |
-| Frontend served from | Vite at `:34115` | the embedded bundle |
+|                           | Development (`wails dev`, a local `wails build`) | Release             |
+| ------------------------- | ------------------------------------------------ | ------------------- |
+| Default log level         | `debug`                                          | `warn`              |
+| Console output            | yes, alongside the file                          | file only           |
+| HTTP client debug logging | available                                        | never               |
+| Version reported          | `dev`                                            | the tag (DD-65)     |
+| Frontend served from      | Vite at `:34115`                                 | the embedded bundle |
 
 Logs are local files and are never transmitted (DD-33). **No log line contains a secret, an API key, a
 document's contents, or a user's file path beyond what is needed to identify a file**
@@ -139,9 +139,9 @@ currently exits before the window appears, which trades a text editor for a diag
 
 ## Language group
 
-| Setting | Control | Values | Notes |
-|---|---|---|---|
-| UI language | select | English (only shipped) | DD-35; i18n-ready (`13_I18N.md`) |
+| Setting     | Control | Values                 | Notes                            |
+| ----------- | ------- | ---------------------- | -------------------------------- |
+| UI language | select  | English (only shipped) | DD-35; i18n-ready (`13_I18N.md`) |
 
 ## Every setting declares a type, a range and a default
 
@@ -193,35 +193,35 @@ background work", and it is written down because it is the first question multi-
 
 ## Defaults
 
-| Setting | Default |
-|---|---|
-| Theme | Material |
-| Color mode (appearance) | Auto |
-| Default open mode | Editor |
-| Autosave | On |
-| Live preview | On |
-| Line numbers | On |
-| Word wrap | Off |
-| Default action scope (assistant) | Whole document |
-| Font size | 14 px |
-| Reading font size | 17 px |
-| Reading width | Comfortable (72ch) |
-| Markdown standard | GFM |
-| Format on save | Off |
-| Lint on save | On |
-| Bullet marker | `-` |
-| Emphasis | `_` |
-| Heading style | ATX (`#`) |
-| PDF styling | Current theme |
-| HTML export | Standalone |
-| External images / CSS | Ask |
-| UI language | English |
-| Write logs to a file | On |
-| Log level | `warn` (release) / `debug` (dev) |
-| Max log file size | 10 MB |
-| Keep log files | 5 |
-| Keep logs for | 30 days |
-| Compress rotated logs | On |
+| Setting                          | Default                          |
+| -------------------------------- | -------------------------------- |
+| Theme                            | Material                         |
+| Color mode (appearance)          | Auto                             |
+| Default open mode                | Editor                           |
+| Autosave                         | On                               |
+| Live preview                     | On                               |
+| Line numbers                     | On                               |
+| Word wrap                        | Off                              |
+| Default action scope (assistant) | Whole document                   |
+| Font size                        | 14 px                            |
+| Reading font size                | 17 px                            |
+| Reading width                    | Comfortable (72ch)               |
+| Markdown standard                | GFM                              |
+| Format on save                   | Off                              |
+| Lint on save                     | On                               |
+| Bullet marker                    | `-`                              |
+| Emphasis                         | `_`                              |
+| Heading style                    | ATX (`#`)                        |
+| PDF styling                      | Current theme                    |
+| HTML export                      | Standalone                       |
+| External images / CSS            | Ask                              |
+| UI language                      | English                          |
+| Write logs to a file             | On                               |
+| Log level                        | `warn` (release) / `debug` (dev) |
+| Max log file size                | 10 MB                            |
+| Keep log files                   | 5                                |
+| Keep logs for                    | 30 days                          |
+| Compress rotated logs            | On                               |
 
 ## Edge cases
 

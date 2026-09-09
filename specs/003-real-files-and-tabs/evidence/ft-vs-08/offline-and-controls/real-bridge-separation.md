@@ -50,9 +50,9 @@ mock was taught to refuse.
 
 So the separation guarantee cuts both ways, and both halves belong in the record:
 
-| Guarantee | Consequence |
-| --- | --- |
-| The mock cannot leak into production | A shipped binary always talks to Go |
+| Guarantee                                    | Consequence                                  |
+| -------------------------------------------- | -------------------------------------------- |
+| The mock cannot leak into production         | A shipped binary always talks to Go          |
 | Production bindings cannot load in a browser | A browser test can never prove a Go contract |
 
 The second is why `AGENTS.md` says a live check against `dev-ui` never substitutes for walking the
@@ -61,13 +61,13 @@ its result.
 
 ## Where each contract is actually proved
 
-| Contract | Browser | Go | Real binary |
-| --- | --- | --- | --- |
-| 40-document cap exists | ✗ cannot | `TestOpenRefusesFortyFirstWithoutMutation` | `host-walkthrough-2026-08-15.md` |
-| The interface honours a refusal | `FT-VS-09` ×2 | ✗ n/a | `host-screenshots/02`, `03` |
-| Over-50-MiB refusal names the limit | `FT-VS-09` | `document_reader_test.go:154` | `host-screenshots/03` |
-| No outbound request | `offline-and-controls.test.ts:73`, five continuous minutes | — | — |
-| Deferred surfaces unavailable | `offline-and-controls.test.ts:194` | — | — |
+| Contract                            | Browser                                                    | Go                                         | Real binary                      |
+| ----------------------------------- | ---------------------------------------------------------- | ------------------------------------------ | -------------------------------- |
+| 40-document cap exists              | ✗ cannot                                                   | `TestOpenRefusesFortyFirstWithoutMutation` | `host-walkthrough-2026-08-15.md` |
+| The interface honours a refusal     | `FT-VS-09` ×2                                              | ✗ n/a                                      | `host-screenshots/02`, `03`      |
+| Over-50-MiB refusal names the limit | `FT-VS-09`                                                 | `document_reader_test.go:154`              | `host-screenshots/03`            |
+| No outbound request                 | `offline-and-controls.test.ts:73`, five continuous minutes | —                                          | —                                |
+| Deferred surfaces unavailable       | `offline-and-controls.test.ts:194`                         | —                                          | —                                |
 
 The two offline rows are browser-only by nature — they assert the absence of network activity in
 the page, which is where the production bundle's network guard also runs

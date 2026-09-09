@@ -9,30 +9,30 @@ so nothing was changed.
 ## What the difference actually looks like
 
 T058 glass-light reports 6,187 unexplained pixels and glass-dark 6,380. The
-menubar is 220×29 = **6,380 pixels**, so in glass-dark *every* pixel differs.
+menubar is 220×29 = **6,380 pixels**, so in glass-dark _every_ pixel differs.
 
 The difference is not a shape, an edge or a glyph. It is a near-uniform
 brightening of the whole region, production over reference:
 
 | Signed delta (act − ref) | Pixels |
-|---|---:|
-| `+4/+5/+5` | 946 |
-| `+4/+5/+4` | 747 |
-| `+3/+4/+4` | 548 |
-| `+5/+6/+6` | 496 |
-| `+5/+6/+5` | 435 |
+| ------------------------ | -----: |
+| `+4/+5/+5`               |    946 |
+| `+4/+5/+4`               |    747 |
+| `+3/+4/+4`               |    548 |
+| `+5/+6/+6`               |    496 |
+| `+5/+6/+5`               |    435 |
 
 Maximum channel delta 7. Every compared bound and computed style already
 matched, and the canvas gradient is byte-identical — verified property by
 property, not assumed:
 
-| Property | Reference | Production |
-|---|---|---|
-| `body` background-image | four gradients, `radial-gradient(1100px 700px at 12% -12%, …)` first | **identical string** |
-| `body` background-color / size / position / attachment / origin | `rgba(0,0,0,0)`, `auto`, `0% 0%`, `scroll`, `padding-box` | **identical** |
-| `html` background | none | **identical** |
-| `body` rect | `0,0 1280×720` | **identical** |
-| frame background / backdrop-filter / box-shadow | `rgba(255,255,255,0.42)`, `blur(28px) saturate(1.5)`, `rgba(50,60,120,0.28) 0 34px 90px` | **identical** |
+| Property                                                        | Reference                                                                                | Production           |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------- |
+| `body` background-image                                         | four gradients, `radial-gradient(1100px 700px at 12% -12%, …)` first                     | **identical string** |
+| `body` background-color / size / position / attachment / origin | `rgba(0,0,0,0)`, `auto`, `0% 0%`, `scroll`, `padding-box`                                | **identical**        |
+| `html` background                                               | none                                                                                     | **identical**        |
+| `body` rect                                                     | `0,0 1280×720`                                                                           | **identical**        |
+| frame background / backdrop-filter / box-shadow                 | `rgba(255,255,255,0.42)`, `blur(28px) saturate(1.5)`, `rgba(50,60,120,0.28) 0 34px 90px` | **identical**        |
 
 So the per-element styles are not the story. The compositing stack is.
 
@@ -40,7 +40,7 @@ So the per-element styles are not the story. The compositing stack is.
 
 `backdrop-filter: blur(28px) saturate(1.5)` on the application frame samples the
 **backdrop image**, not merely the pixels under the element. Two properties of
-the *reference page's own layout* therefore reach into the compared region.
+the _reference page's own layout_ therefore reach into the compared region.
 
 ### 1. The mockup harness bleeds through the blur
 
@@ -57,11 +57,11 @@ moves the dominant delta from `+4/+5/+5` to `-9/-7/0`.
 Both pages scroll to 0 and both bodies are `0,0 1280×720`, but the app's
 document position differs because the mockup's harness occupies space above it:
 
-| | Reference `#app` | Production `.application-frame` |
-|---|---:|---:|
-| document y | **224** | **130** |
-| document x | 19.203125 | 19.203125 |
-| scrollY | 0 | 0 |
+|            | Reference `#app` | Production `.application-frame` |
+| ---------- | ---------------: | ------------------------------: |
+| document y |          **224** |                         **130** |
+| document x |        19.203125 |                       19.203125 |
+| scrollY    |                0 |                               0 |
 
 The first gradient is anchored `at 12% -12%` with a 700px vertical extent, so it
 is steeply position-dependent over exactly this range. Moving the reference app
@@ -74,12 +74,12 @@ That is why the observed delta is small and uniform: the harness brightens the
 reference's backdrop while the 94px offset darkens it, and the residue is the
 difference.
 
-| Reference state | Differing px | Max delta | Dominant delta |
-|---|---:|---:|---|
-| As captured | 6,187 | 7 | `+4/+5/+5` |
-| App moved to production's document y | 6,220 | 19 | `-17/-12/+3` |
-| Harness chrome hidden | 6,204 | 10 | `-9/-7/0` |
-| **Both** | 6,154 | **4** | **`-3/-2/0`** |
+| Reference state                      | Differing px | Max delta | Dominant delta |
+| ------------------------------------ | -----------: | --------: | -------------- |
+| As captured                          |        6,187 |         7 | `+4/+5/+5`     |
+| App moved to production's document y |        6,220 |        19 | `-17/-12/+3`   |
+| Harness chrome hidden                |        6,204 |        10 | `-9/-7/0`      |
+| **Both**                             |        6,154 |     **4** | **`-3/-2/0`**  |
 
 Neutralising both roughly halves the maximum channel delta. A third, smaller
 effect remains — production's menubar carries `transform: matrix(1,0,0,1,177.125,0)`

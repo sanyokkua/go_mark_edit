@@ -8,16 +8,16 @@ state needed to make the Phase 04 slice observable and dependency-complete.
 
 **Owner**: `frontend/src/logic/actions/`
 
-| Field | Type/values | Validation and behavior |
-|---|---|---|
-| `id` | Stable action identifier | Unique across the Editor-stage registry. It is the identity dispatched by every surface. |
-| `labelKey` | Translation-catalogue key | Must resolve through `t(...)`; no user-visible literal labels. |
-| `accessibilityKey` | Translation-catalogue key | Provides the accessible name/description used by buttons, menu items, tooltips, and dialogs. |
-| `scope` | `editor`, `document`, `window`, or `application` | Dispatch checks editor focus, writable current document, window focus, and modal suppression as applicable. |
-| `shortcut` | Platform-neutral combination or absent | One frozen binding; renderer maps `Ctrl/Cmd`, `Alt/Option`, Shift, and platform glyphs without rebinding existing keys. |
-| `availability` | `available` or `deferred` | Deferred entries render a localized unavailable state and never call a successful command. |
-| `invoke` | Typed command callback | The only production dispatch route. Native macOS clipboard/edit roles remain outside this registry. |
-| `surfaces` | Ordered surface membership | Menu, toolbar, tooltip, overflow, context menu, and shortcuts dialog derive membership/order from the registry. |
+| Field              | Type/values                                      | Validation and behavior                                                                                                 |
+| ------------------ | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `id`               | Stable action identifier                         | Unique across the Editor-stage registry. It is the identity dispatched by every surface.                                |
+| `labelKey`         | Translation-catalogue key                        | Must resolve through `t(...)`; no user-visible literal labels.                                                          |
+| `accessibilityKey` | Translation-catalogue key                        | Provides the accessible name/description used by buttons, menu items, tooltips, and dialogs.                            |
+| `scope`            | `editor`, `document`, `window`, or `application` | Dispatch checks editor focus, writable current document, window focus, and modal suppression as applicable.             |
+| `shortcut`         | Platform-neutral combination or absent           | One frozen binding; renderer maps `Ctrl/Cmd`, `Alt/Option`, Shift, and platform glyphs without rebinding existing keys. |
+| `availability`     | `available` or `deferred`                        | Deferred entries render a localized unavailable state and never call a successful command.                              |
+| `invoke`           | Typed command callback                           | The only production dispatch route. Native macOS clipboard/edit roles remain outside this registry.                     |
+| `surfaces`         | Ordered surface membership                       | Menu, toolbar, tooltip, overflow, context menu, and shortcuts dialog derive membership/order from the registry.         |
 
 ### Registry invariants
 
@@ -32,28 +32,28 @@ state needed to make the Phase 04 slice observable and dependency-complete.
 
 The existing focused-editor exception remains the only ephemeral document state.
 
-| Field | Owner | Meaning |
-|---|---|---|
-| `documentId` | `EditorSessionProvider` / Go appmodel identity | The document identity captured by a command. |
-| `token` | `EditorSessionProvider` | Prevents stale action objects from mutating a replacement editor session. |
-| `content` | Monaco model during focus | Immediate source working copy; it is flushed through `useSyncedBuffer`/`appModelAdapter` before canonical consumers read it. |
-| `selection` / `caret` | Monaco model | One-based source range/caret used to choose selected-range or current-line formatting. |
-| `scroll` / `undoHistory` | Monaco model | Must survive display-setting updates, state patches, and formatting dispatch except for the intentional one-edit undo entry. |
+| Field                    | Owner                                          | Meaning                                                                                                                      |
+| ------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `documentId`             | `EditorSessionProvider` / Go appmodel identity | The document identity captured by a command.                                                                                 |
+| `token`                  | `EditorSessionProvider`                        | Prevents stale action objects from mutating a replacement editor session.                                                    |
+| `content`                | Monaco model during focus                      | Immediate source working copy; it is flushed through `useSyncedBuffer`/`appModelAdapter` before canonical consumers read it. |
+| `selection` / `caret`    | Monaco model                                   | One-based source range/caret used to choose selected-range or current-line formatting.                                       |
+| `scroll` / `undoHistory` | Monaco model                                   | Must survive display-setting updates, state patches, and formatting dispatch except for the intentional one-edit undo entry. |
 
 The command boundary returns `available`, `unavailable`, or `document-mismatch`. A failed or mismatched
 command cannot manufacture a backend success or reset the focused editor from projected full content.
 
 ## Formatting operation
 
-| Field | Type/values | Rule |
-|---|---|---|
-| `actionId` | Registry action identity | Selects the canonical transformation. |
-| `scope` | `selected-range` or `current-line` | Non-empty selection uses only that range; empty selection uses only its current line or caret insertion point. |
-| `sourceRange` | Monaco `EditorRange` | Bounded, normalized, and identity-checked before mutation. |
-| `replacement` | Markdown source string | Produced by the pure formatting transformation; no rich/WYSIWYG replacement. |
-| `caret/selection intent` | Monaco position/range | Leaves the user in the useful editing position; marker-pair insertion places the caret between markers. |
-| `undo boundary` | One edit | One `executeEdits` operation is bracketed by the existing undo stops. |
-| `terminal outcome` | `mutated`, `unavailable`, or `document-mismatch` | No partial edit; deferred actions use `unavailable` and do not report success. |
+| Field                    | Type/values                                      | Rule                                                                                                           |
+| ------------------------ | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `actionId`               | Registry action identity                         | Selects the canonical transformation.                                                                          |
+| `scope`                  | `selected-range` or `current-line`               | Non-empty selection uses only that range; empty selection uses only its current line or caret insertion point. |
+| `sourceRange`            | Monaco `EditorRange`                             | Bounded, normalized, and identity-checked before mutation.                                                     |
+| `replacement`            | Markdown source string                           | Produced by the pure formatting transformation; no rich/WYSIWYG replacement.                                   |
+| `caret/selection intent` | Monaco position/range                            | Leaves the user in the useful editing position; marker-pair insertion places the caret between markers.        |
+| `undo boundary`          | One edit                                         | One `executeEdits` operation is bracketed by the existing undo stops.                                          |
+| `terminal outcome`       | `mutated`, `unavailable`, or `document-mismatch` | No partial edit; deferred actions use `unavailable` and do not report success.                                 |
 
 ### Formatting validation rules
 
@@ -71,11 +71,11 @@ command cannot manufacture a backend success or reset the focused editor from pr
 
 **Canonical owner**: existing Go `internal/settings` service/repository and typed Wails result.
 
-| Field | Values | Default | Visible consumer |
-|---|---|---|---|
-| `lineNumbers` | `on` / `off` | `on` | Monaco line-number option and Editor settings menu/dialog. |
-| `wordWrap` | `on` / `off` | `off` | Monaco word-wrap option and Editor settings menu/dialog. |
-| `fontSize` | `13`, `14`, `16` | `14` | Monaco font-size option and Editor settings menu/dialog. |
+| Field         | Values           | Default | Visible consumer                                           |
+| ------------- | ---------------- | ------- | ---------------------------------------------------------- |
+| `lineNumbers` | `on` / `off`     | `on`    | Monaco line-number option and Editor settings menu/dialog. |
+| `wordWrap`    | `on` / `off`     | `off`   | Monaco word-wrap option and Editor settings menu/dialog.   |
+| `fontSize`    | `13`, `14`, `16` | `14`    | Monaco font-size option and Editor settings menu/dialog.   |
 
 Each setting is validated before persistence, persisted through the existing additive KV settings path, and
 projected only after acknowledgement. An invalid or failed write retains the prior acknowledged value. The
@@ -87,15 +87,15 @@ formatting; future Markdown Standard, Format-on-save, and Lint-on-save behavior 
 
 ## Editor-stage chrome state
 
-| State | Canonical/derived owner | Allowed values and invariants |
-|---|---|---|
-| `menu` | React interaction state derived from registry | One File/Settings/View/About row below the native title bar; open menu is focusable and modal-safe. |
-| `toolbarOverflow` | React interaction state | Closed, 768-width overflow, or 375-width overflow; items relocate, never disappear. |
-| `tabPresentation` | Static visual fixture | Representative `release-notes.md`/`spec-draft.md`, modified dot, close/add affordances; no tab identity/order/persistence/commands. |
-| `sidebarVisible` / `sidebarWidth` | Existing Go/appmodel layout projection | Existing left sidebar action remains functional. Responsive rail/off-canvas presentation does not persist a responsive-only width. |
-| `arrangement` | Existing per-document `DocView` projection | Editor, Split, or Preview; one pane remains visible and existing flush-before-hide behavior is preserved. |
-| `rightSidebarControl` | Static registry/surface state | Inspectable visual-only control; no right panel, Assistant state, layout state, provider call, or placeholder. |
-| `appearance` | Consumed Go settings/appearance lifecycle | Three themes × light/dark/auto resolution, root `data-theme`/`data-mode`, centralized tokens, focus, and reduced motion. |
+| State                             | Canonical/derived owner                       | Allowed values and invariants                                                                                                       |
+| --------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `menu`                            | React interaction state derived from registry | One File/Settings/View/About row below the native title bar; open menu is focusable and modal-safe.                                 |
+| `toolbarOverflow`                 | React interaction state                       | Closed, 768-width overflow, or 375-width overflow; items relocate, never disappear.                                                 |
+| `tabPresentation`                 | Static visual fixture                         | Representative `release-notes.md`/`spec-draft.md`, modified dot, close/add affordances; no tab identity/order/persistence/commands. |
+| `sidebarVisible` / `sidebarWidth` | Existing Go/appmodel layout projection        | Existing left sidebar action remains functional. Responsive rail/off-canvas presentation does not persist a responsive-only width.  |
+| `arrangement`                     | Existing per-document `DocView` projection    | Editor, Split, or Preview; one pane remains visible and existing flush-before-hide behavior is preserved.                           |
+| `rightSidebarControl`             | Static registry/surface state                 | Inspectable visual-only control; no right panel, Assistant state, layout state, provider call, or placeholder.                      |
+| `appearance`                      | Consumed Go settings/appearance lifecycle     | Three themes × light/dark/auto resolution, root `data-theme`/`data-mode`, centralized tokens, focus, and reduced motion.            |
 
 ## State transitions
 
@@ -120,4 +120,3 @@ formatting; future Markdown Standard, Format-on-save, and Lint-on-save behavior 
 This plan must not introduce canonical `FileMenuCommand`, `Tab`, `WorkspaceEntry`, `AssistantPanel`,
 `ProviderCall`, `RichRendererPlugin`, `ProblemList`, or `TidyMarkdownOperation` entities. Their source
 anchors remain Deferred in the active migration matrix and belong to downstream slices.
-

@@ -17,7 +17,7 @@ action registry — `ShellMenuRow`'s `shortcutForMenuItem` — which is why the 
 correctly on the same host.
 
 Same defect class as T110 (advertised accelerator text decoupled from the registry), but the
-opposite failure: T110's keys were inert, this one was *wrong*.
+opposite failure: T110's keys were inert, this one was _wrong_.
 
 **This was the last instance in production.** `ShortcutsDialog.tsx:119-121` already derives its
 entries with `formatShortcut(entry.shortcut, platform)`, so the Settings row was the only
@@ -64,19 +64,19 @@ silently diverging from it.
 
 ## Tests, failing first
 
-| Test | Asserts |
-|---|---|
-| `T112 advertises the Settings accelerator the platform actually dispatches` | the rendered text equals `formatShortcut(getAction('settings').shortcut, currentPlatform())` — written against the registry, not a literal, so it cannot drift from the binding `useShellShortcuts` matches |
-| `T112 keeps no hardcoded accelerator string in the catalogue` | the key is gone from the catalogue; a literal left behind renders whatever platform it was written for |
-| `T112 expresses the Settings accelerator for the host in the reference variant` | the adapted reference carries the host's accelerator and the compared popup no longer carries `Ctrl ,` |
-| `T112 fails closed when the source loses the Settings accelerator` | the adapter throws rather than silently serving an unadapted reference |
+| Test                                                                            | Asserts                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `T112 advertises the Settings accelerator the platform actually dispatches`     | the rendered text equals `formatShortcut(getAction('settings').shortcut, currentPlatform())` — written against the registry, not a literal, so it cannot drift from the binding `useShellShortcuts` matches |
+| `T112 keeps no hardcoded accelerator string in the catalogue`                   | the key is gone from the catalogue; a literal left behind renders whatever platform it was written for                                                                                                      |
+| `T112 expresses the Settings accelerator for the host in the reference variant` | the adapted reference carries the host's accelerator and the compared popup no longer carries `Ctrl ,`                                                                                                      |
+| `T112 fails closed when the source loses the Settings accelerator`              | the adapter throws rather than silently serving an unadapted reference                                                                                                                                      |
 
 Before the fix the first two failed. Two **existing** `T069` assertions also had to move, and were
 updated rather than weakened:
 
 - `T069 draws every visible Settings popup string from the catalogue` enforced "no hardcoded
   literal survives" by requiring every rendered string to be a catalogue value. The accelerator is
-  now legitimately *not* catalogue copy. The test now accepts catalogue values **plus** the
+  now legitimately _not_ catalogue copy. The test now accepts catalogue values **plus** the
   registry-derived accelerator, computed from `getAction`. The rule still bites — a stray literal
   belongs to neither source — while naming the registry as a second legitimate origin instead of
   exempting the row from the check.

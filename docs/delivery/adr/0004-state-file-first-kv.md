@@ -52,9 +52,10 @@ preferences and short recent-lists, written infrequently. Crucially, the app **o
 session is auto-restored and there are **no swap/recovery files** (DD-11); the user reopens work via
 File → Open Recent or "Reopen last file/folder", and autosave only ever touches files that already
 exist on disk (DD-12). Because instances are multi-process (DD-08), the KV database is opened with WAL
-+ `busy_timeout` so concurrent instances share it safely (DD-13, detailed in ADR-0006). No secrets are
-stored — GoMarkEdit has no accounts, no network, and no credentials (DD-32, DD-33), so a keychain buys
-nothing.
+
+- `busy_timeout` so concurrent instances share it safely (DD-13, detailed in ADR-0006). No secrets are
+  stored — GoMarkEdit has no accounts, no network, and no credentials (DD-32, DD-33), so a keychain buys
+  nothing.
 
 ### Consequences
 

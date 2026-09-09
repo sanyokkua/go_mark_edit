@@ -7,10 +7,10 @@ parity substitutions but deliberately did not judge them.
 
 39 rules keyed on `AppShell`'s `data-parity-shell` / `data-parity-family` attributes:
 
-| File | Rules |
-|---|---|
-| `frontend/src/ui/widgets/EditorChrome.module.css` | 34 |
-| `frontend/src/ui/widgets/EditorView.module.css` | 5 |
+| File                                              | Rules |
+| ------------------------------------------------- | ----- |
+| `frontend/src/ui/widgets/EditorChrome.module.css` | 34    |
+| `frontend/src/ui/widgets/EditorView.module.css`   | 5     |
 
 `base.css`'s four rules are outside this set — T173 already classified them as capture
 conditions (they give the browser the mockup's bounded window geometry, which production
@@ -100,7 +100,7 @@ real theme CSS, unrelated to parity. `just check` caught it at `tokens.test.ts`'
 test exists to hold.
 
 The cause is worth naming because it is a general shape: the script located each block by
-walking back to the preceding blank line, and then consumed *every* trailing newline after
+walking back to the preceding blank line, and then consumed _every_ trailing newline after
 deleting. Iteration N therefore destroyed the delimiter iteration N+1 navigated by, and the
 next pass walked past a healthy rule into the one before it. A loop that both reads a
 delimiter and destroys it corrupts its own next step. The fix consumes exactly one newline.

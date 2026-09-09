@@ -58,38 +58,38 @@ func (a *App) startup(ctx context.Context) { a.ctx = ctx }
 
 ## Quick-Reference
 
-| Operation | Go | TypeScript |
-|---|---|---|
-| Emit event to frontend | `runtime.EventsEmit(a.ctx, "name", data)` | — |
-| Listen for event in Go | `runtime.EventsOn(ctx, "name", func(data ...any){})` | — |
-| Emit event to Go | — | `EventsEmit("name", data)` |
-| Listen for event in TS | — | `EventsOn("name", (data) => {})` |
-| Open file dialog | `runtime.OpenFileDialog(a.ctx, opts)` | — |
-| Show message dialog | `runtime.MessageDialog(a.ctx, opts)` | — |
-| Set window title | `runtime.WindowSetTitle(a.ctx, "title")` | `WindowSetTitle("title")` |
-| Maximize window | `runtime.WindowMaximise(a.ctx)` | `WindowMaximise()` |
-| Minimize window | `runtime.WindowMinimise(a.ctx)` | `WindowMinimise()` |
-| Quit app | `runtime.Quit(a.ctx)` | `Quit()` |
-| Open URL in browser | `runtime.BrowserOpenURL(a.ctx, url)` | `BrowserOpenURL(url)` |
-| Get clipboard | `runtime.ClipboardGetText(a.ctx)` | `ClipboardGetText()` |
-| Set clipboard | `runtime.ClipboardSetText(a.ctx, text)` | `ClipboardSetText(text)` |
+| Operation              | Go                                                   | TypeScript                       |
+| ---------------------- | ---------------------------------------------------- | -------------------------------- |
+| Emit event to frontend | `runtime.EventsEmit(a.ctx, "name", data)`            | —                                |
+| Listen for event in Go | `runtime.EventsOn(ctx, "name", func(data ...any){})` | —                                |
+| Emit event to Go       | —                                                    | `EventsEmit("name", data)`       |
+| Listen for event in TS | —                                                    | `EventsOn("name", (data) => {})` |
+| Open file dialog       | `runtime.OpenFileDialog(a.ctx, opts)`                | —                                |
+| Show message dialog    | `runtime.MessageDialog(a.ctx, opts)`                 | —                                |
+| Set window title       | `runtime.WindowSetTitle(a.ctx, "title")`             | `WindowSetTitle("title")`        |
+| Maximize window        | `runtime.WindowMaximise(a.ctx)`                      | `WindowMaximise()`               |
+| Minimize window        | `runtime.WindowMinimise(a.ctx)`                      | `WindowMinimise()`               |
+| Quit app               | `runtime.Quit(a.ctx)`                                | `Quit()`                         |
+| Open URL in browser    | `runtime.BrowserOpenURL(a.ctx, url)`                 | `BrowserOpenURL(url)`            |
+| Get clipboard          | `runtime.ClipboardGetText(a.ctx)`                    | `ClipboardGetText()`             |
+| Set clipboard          | `runtime.ClipboardSetText(a.ctx, text)`              | `ClipboardSetText(text)`         |
 
 ## Reference Index
 
-| Topic | Reference File |
-|---|---|
-| App options & lifecycle hooks | `references/01-app-setup.md` |
-| Go method binding rules | `references/02-binding.md` |
-| Go runtime API (complete) | `references/03-go-runtime-api.md` |
-| Frontend TypeScript API | `references/04-frontend-ts-api.md` |
-| Event system patterns | `references/05-event-system.md` |
-| Menu system | `references/06-menu-system.md` |
-| Platform options (Mac/Win/Linux) | `references/07-platform-options.md` |
-| Asset server & embedding | `references/08-asset-server.md` |
+| Topic                                     | Reference File                       |
+| ----------------------------------------- | ------------------------------------ |
+| App options & lifecycle hooks             | `references/01-app-setup.md`         |
+| Go method binding rules                   | `references/02-binding.md`           |
+| Go runtime API (complete)                 | `references/03-go-runtime-api.md`    |
+| Frontend TypeScript API                   | `references/04-frontend-ts-api.md`   |
+| Event system patterns                     | `references/05-event-system.md`      |
+| Menu system                               | `references/06-menu-system.md`       |
+| Platform options (Mac/Win/Linux)          | `references/07-platform-options.md`  |
+| Asset server & embedding                  | `references/08-asset-server.md`      |
 | Single instance, drag/drop, context menus | `references/09-advanced-features.md` |
-| Testing patterns | `references/10-testing.md` |
-| Debugging & tooling | `references/11-debugging.md` |
-| Common patterns & best practices | `references/12-patterns.md` |
+| Testing patterns                          | `references/10-testing.md`           |
+| Debugging & tooling                       | `references/11-debugging.md`         |
+| Common patterns & best practices          | `references/12-patterns.md`          |
 
 ---
 
@@ -192,12 +192,12 @@ There is **no chain concept** in GoMarkEdit. The assistant LLM assistant runs an
 incremental channel. Every payload carries the `runId` from the originating `RunAgentRequest`. See
 `references/05-event-system.md §GoMarkEdit Agent Events` for the full contract.
 
-| Event | Payload | When |
-|---|---|---|
-| `agent:progress` | `{ runId, phase, iteration, tool? }` | Loop advanced; `phase ∈ {infer, tool, final}`; `tool` set when `phase="tool"` |
-| `agent:token` | `{ runId, delta }` | Streaming: a chunk of assistant text to append to the transcript |
-| `agent:done` | `{ runId, stopReason, transcriptSummary }` | Run finished (incl. cancelled stop reason) |
-| `agent:error` | `{ runId, error: WireError }` | Run failed; `error` is the standard sanitized envelope |
+| Event            | Payload                                    | When                                                                          |
+| ---------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| `agent:progress` | `{ runId, phase, iteration, tool? }`       | Loop advanced; `phase ∈ {infer, tool, final}`; `tool` set when `phase="tool"` |
+| `agent:token`    | `{ runId, delta }`                         | Streaming: a chunk of assistant text to append to the transcript              |
+| `agent:done`     | `{ runId, stopReason, transcriptSummary }` | Run finished (incl. cancelled stop reason)                                    |
+| `agent:error`    | `{ runId, error: WireError }`              | Run failed; `error` is the standard sanitized envelope                        |
 
 ### Single-flight gate + bounded, cancellable agent loop
 

@@ -1,10 +1,5 @@
 {
-  "command": [
-    "rtk",
-    "proxy",
-    "node",
-    "projection_probe.cjs"
-  ],
+  "command": ["rtk", "proxy", "node", "projection_probe.cjs"],
   "cwd": "/private/tmp/gomark-lifecycle-probes-t1_oan_z/node",
   "environment_overrides": {},
   "external_timeout_seconds": 30,

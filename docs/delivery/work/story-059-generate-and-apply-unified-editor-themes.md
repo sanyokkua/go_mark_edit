@@ -18,9 +18,9 @@ renderer.
   `spec/product/themes-and-appearance.md#two-syntax-palettes`
   Two token families, each keyed by appearance only and never by theme: nine `--md-*` tokens
   (`--md-heading`, `--md-strong`, `--md-emphasis`, `--md-quote`, `--md-link`, `--md-comment`,
-  `--md-marker`, `--code-fg`, `--gutter`) colouring the Markdown *source*, and eight `--hl-*` tokens
+  `--md-marker`, `--code-fg`, `--gutter`) colouring the Markdown _source_, and eight `--hl-*` tokens
   (`--hl-keyword`, `--hl-string`, `--hl-comment`, `--hl-number`, `--hl-function`, `--hl-type`,
-  `--hl-attr`, `--hl-punct`) colouring programming-language tokens *inside a fenced block* — each with
+  `--hl-attr`, `--hl-punct`) colouring programming-language tokens _inside a fenced block_ — each with
   one light and one dark value, so sixteen values rather than forty-eight.
 
 - **The editor theme is generated from these tokens** —

@@ -40,34 +40,34 @@ Read their "Phase 02" as **today's Phase 05 — "I can open, edit and save real 
 
 ## Index
 
-| ADR | Title | Status |
-|---|---|---|
-| [0001](0001-wails-v2-cgo-free.md) | Build on Wails v2 (not v3), CGO-free Go | accepted |
-| [0002](0002-editor-engine-monaco.md) | Editor engine: Monaco for v1 | accepted |
-| [0003](0003-rendering-format-pdf.md) | remark/rehype rendering; Prettier/remark format; webview-print PDF | accepted |
-| [0004](0004-state-file-first-kv.md) | State: file-first + SQLite KV | accepted |
-| [0005](0005-token-theming.md) | Token-driven theming; three built-in themes | accepted |
-| [0006](0006-multi-instance.md) | Multiple instances; shared settings DB via WAL | accepted |
-| [0007](0007-llm-provider-abstraction.md) | LLM provider abstraction (OpenAI-compatible + profiles) | accepted |
-| [0008](0008-agentic-tool-call-loop.md) | Agentic tool-call loop (not a fixed prompt chain) | accepted |
-| [0009](0009-tokenizer-context-budget.md) | Offline tokenizer + explicit context budgeting | accepted |
-| [0010](0010-assistant-sidebar-apply-edit.md) | Assistant sidebar; edits applied via editor command seam | accepted |
-| [0011](0011-network-policy-llm-exception.md) | Network policy: offline except user-invoked provider calls | accepted |
-| [0012](0012-drag-and-drop.md) | Drag-and-drop opens files/folders via native path-based file drop | accepted |
-| [0013](0013-window-ui-layout-state.md) | Persist window & UI-layout state with write-through, last-writer-wins | accepted |
-| [0014](0014-backend-authoritative-state.md) | Make the Go backend the single source of truth for application state | accepted |
-| [0015](0015-cicd-versioning-icon.md) | Tag-driven versioning, derived icons, isolated builds | accepted |
-| [0017](0017-coordinated-document-seams.md) | Coordinate backend snapshots with document-bound editor commands | accepted |
-| [0021](0021-identity-bound-active-buffer-acknowledgements.md) | Bind active-buffer acknowledgements to document identity and revision | accepted |
-| [0022](0022-commit-writes-and-resynchronize-projection.md) | Commit successful file writes and resynchronize failed projections | accepted |
-| [0024](0024-corrected-phase02-document-lifecycle-policy.md) | Document lifecycle: open modes, suffixless Save As, read-only unsafe bytes, normalization authorization | accepted |
-| [0028](0028-window-chrome-and-native-menu.md) | Draw our own title bar, and install a native application menu on macOS | accepted |
-| [0029](0029-generated-editor-themes.md) | Generate editor and preview colours at build time from one syntax-token family | accepted |
-| [0030](0030-sanitization-allowlist-and-csp.md) | Constrain document HTML with a level-derived allowlist and a fixed CSP | accepted |
-| [0031](0031-format-via-remark-stringify.md) | Format with remark-stringify over the maximal plugin set; Prettier is dev-time only | accepted |
-| [0032](0032-run-registry-and-shutdown-ordering.md) | A cancellable-run registry, an `OnBeforeClose` veto, and one deterministic shutdown order | accepted |
-| [0033](0033-additive-only-workspace-operations.md) | Workspace file operations are additive only: create, never rename, move or delete | accepted |
-| [0034](0034-assistant-execution-contract.md) | Per-model capability, one wall-clock budget, a scope-sized reply reserve | accepted |
+| ADR                                                           | Title                                                                                                   | Status   |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------- |
+| [0001](0001-wails-v2-cgo-free.md)                             | Build on Wails v2 (not v3), CGO-free Go                                                                 | accepted |
+| [0002](0002-editor-engine-monaco.md)                          | Editor engine: Monaco for v1                                                                            | accepted |
+| [0003](0003-rendering-format-pdf.md)                          | remark/rehype rendering; Prettier/remark format; webview-print PDF                                      | accepted |
+| [0004](0004-state-file-first-kv.md)                           | State: file-first + SQLite KV                                                                           | accepted |
+| [0005](0005-token-theming.md)                                 | Token-driven theming; three built-in themes                                                             | accepted |
+| [0006](0006-multi-instance.md)                                | Multiple instances; shared settings DB via WAL                                                          | accepted |
+| [0007](0007-llm-provider-abstraction.md)                      | LLM provider abstraction (OpenAI-compatible + profiles)                                                 | accepted |
+| [0008](0008-agentic-tool-call-loop.md)                        | Agentic tool-call loop (not a fixed prompt chain)                                                       | accepted |
+| [0009](0009-tokenizer-context-budget.md)                      | Offline tokenizer + explicit context budgeting                                                          | accepted |
+| [0010](0010-assistant-sidebar-apply-edit.md)                  | Assistant sidebar; edits applied via editor command seam                                                | accepted |
+| [0011](0011-network-policy-llm-exception.md)                  | Network policy: offline except user-invoked provider calls                                              | accepted |
+| [0012](0012-drag-and-drop.md)                                 | Drag-and-drop opens files/folders via native path-based file drop                                       | accepted |
+| [0013](0013-window-ui-layout-state.md)                        | Persist window & UI-layout state with write-through, last-writer-wins                                   | accepted |
+| [0014](0014-backend-authoritative-state.md)                   | Make the Go backend the single source of truth for application state                                    | accepted |
+| [0015](0015-cicd-versioning-icon.md)                          | Tag-driven versioning, derived icons, isolated builds                                                   | accepted |
+| [0017](0017-coordinated-document-seams.md)                    | Coordinate backend snapshots with document-bound editor commands                                        | accepted |
+| [0021](0021-identity-bound-active-buffer-acknowledgements.md) | Bind active-buffer acknowledgements to document identity and revision                                   | accepted |
+| [0022](0022-commit-writes-and-resynchronize-projection.md)    | Commit successful file writes and resynchronize failed projections                                      | accepted |
+| [0024](0024-corrected-phase02-document-lifecycle-policy.md)   | Document lifecycle: open modes, suffixless Save As, read-only unsafe bytes, normalization authorization | accepted |
+| [0028](0028-window-chrome-and-native-menu.md)                 | Draw our own title bar, and install a native application menu on macOS                                  | accepted |
+| [0029](0029-generated-editor-themes.md)                       | Generate editor and preview colours at build time from one syntax-token family                          | accepted |
+| [0030](0030-sanitization-allowlist-and-csp.md)                | Constrain document HTML with a level-derived allowlist and a fixed CSP                                  | accepted |
+| [0031](0031-format-via-remark-stringify.md)                   | Format with remark-stringify over the maximal plugin set; Prettier is dev-time only                     | accepted |
+| [0032](0032-run-registry-and-shutdown-ordering.md)            | A cancellable-run registry, an `OnBeforeClose` veto, and one deterministic shutdown order               | accepted |
+| [0033](0033-additive-only-workspace-operations.md)            | Workspace file operations are additive only: create, never rename, move or delete                       | accepted |
+| [0034](0034-assistant-execution-contract.md)                  | Per-model capability, one wall-clock budget, a scope-sized reply reserve                                | accepted |
 
 Ids 0016, 0018, 0019, 0020, 0023, 0025, 0026 and 0027 were used by the eight process ADRs deleted on
 2026-07-25. They are not reused. ADR-0024 absorbed the content of the superseded ADR-0020.

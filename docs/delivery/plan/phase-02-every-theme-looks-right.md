@@ -41,7 +41,7 @@ Phase 06 activates that stylesheet when it introduces preview syntax highlightin
    compact Settings menu. Both call the existing backend settings command, read the same persisted
    values and update together. Phase 03 expands these shells without replacing this state path.
 5. **Auto follows the system.** An Auto appearance that resolves to light or dark and changes live
-   when the OS does, without a restart. Keep the user's *choice* and the *resolved* value as two
+   when the OS does, without a restart. Keep the user's _choice_ and the _resolved_ value as two
    separate persisted things — collapsing them into one is exactly how an app loses Auto.
 6. **No flash on boot.** The theme lives in SQLite behind the Go bridge, so without a deliberate
    answer the webview paints in a default palette and then corrects itself. Decide the mechanism and

@@ -81,15 +81,18 @@ The tree is refreshed after a create by inserting the known node, not by re-enum
 ## Pros and cons of the options
 
 ### Option A — fully read-only
+
 - Good: maximally consistent with DD-56/DD-59 as written; nothing to build.
 - Bad: the folder sidebar becomes a viewer. The primary persona keeps a folder of notes and would have
   to leave the app to add one to it.
 
-### Option B — additive only *(chosen)*
+### Option B — additive only _(chosen)_
+
 - Good: fixes the real hole; needs no watcher, no undo, no reconciliation.
 - Bad: an asymmetry a user might find odd — I can make a file here but not rename it.
 
 ### Option C — the full set
+
 - Good: everything the mockup drew; a genuinely complete file manager.
 - Bad: needs a watcher the specification deliberately does not have, an undo story that does not exist,
   reconciliation with open tabs and the recent list, and OS-trash semantics on three platforms. Large,
@@ -99,7 +102,7 @@ The tree is refreshed after a create by inserting the known node, not by re-enum
 
 - Design decisions: DD-56, DD-59 (narrowed by this ADR), new DD-77
 - Spec clauses: ../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#file-operations`,
-  ../../_archive-2026-07-28-specification/00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons`
+../../_archive-2026-07-28-specification/00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons`
 - Mockup: `specification/mockups/gomarkedit-mockup.html` — `#ctxmenu` and the sidebar header buttons
 - Phase: `specification/07_Phases/PHASE_07_A_FOLDER_OF_NOTES.md`
 - Stories: the Phase 07 stories, not yet written.

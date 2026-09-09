@@ -8,16 +8,16 @@ covering P0–P2 honestly is worth more than covering everything superficially.
 ```markdown
 # Live testing report — 2026-07-25
 
-**Commit:** <sha>  ·  **Build:** `just build`, darwin/arm64
+**Commit:** <sha> · **Build:** `just build`, darwin/arm64
 **Plan version:** 1.0
 **Environment:** macOS 15.2 · Ollama 0.5.4 (small=gemma2:2b, mid=llama3.1:8b) · LM Studio not running
-**Sections run:** P0, P1, P2  ·  **Not run:** P3–P9 (not yet shipped)
+**Sections run:** P0, P1, P2 · **Not run:** P3–P9 (not yet shipped)
 
 ## Result
 
 | Section | Cases | Pass | Fail | Skipped |
-|---|---|---|---|---|
-| P0 | 8 | 7 | 1 | 0 |
+| ------- | ----- | ---- | ---- | ------- |
+| P0      | 8     | 7    | 1    | 0       |
 
 ## Findings
 
@@ -37,10 +37,10 @@ database. `internal/application/application.go:210`.
 
 ## Model behaviour
 
-*Only when a section involving a provider was run. This is not pass/fail — see `../README.md`.*
+_Only when a section involving a provider was run. This is not pass/fail — see `../README.md`._
 
 | Action | Model | Input | Output | Judgement |
-|---|---|---|---|---|
+| ------ | ----- | ----- | ------ | --------- |
 
 ## Plan gaps found
 

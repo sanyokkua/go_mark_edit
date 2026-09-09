@@ -61,17 +61,17 @@ visual tab fixture and no canonical tab lifecycle
 
 ## Constitution Check
 
-*GATE: PASS before Phase 0 research. Re-checked and PASS after Phase 1 design.*
+_GATE: PASS before Phase 0 research. Re-checked and PASS after Phase 1 design._
 
-| Principle | Planning application | Result |
-|---|---|---|
-| I. Normative specification is the authority | The active `spec.md` owns behavior; `docs/delivery/spec/surface/mockup.html` remains read-only visual authority; every migrated source row remains Owned, Consumed, or Deferred. No normative file is changed. | PASS |
-| II. Self-contained vertical slices | Six ordered plan slices name concrete paths, dependencies, complete owned requirements, and direct tests/live cases. No task requires an implementer to invent File, tab, renderer, Assistant, or tidy behavior. | PASS |
-| III. Backend authority and explicit boundaries | Editor settings use the existing Go settings service and adapter; document edits use `useDocumentCommands` and Monaco session identity; Redux remains projection; any new Wails handler follows the consumed typed boundary. | PASS |
-| IV. Offline, private, and safe | Link emits Markdown source only; deferred actions perform no I/O, network, telemetry, or provider call; source/bundle guards and request instrumentation are named. | PASS |
-| V. Data and cross-platform operation | SQLite remains additive and CGO-free; generated bindings are regenerated; OS framing/movement/resize and native macOS Edit roles remain consumed rather than reimplemented. | PASS |
-| VI. Accessible, tokenized, coherent interfaces | Registry-derived labels and accelerators, catalogue strings, visible focus, reduced motion, six palettes, long-label reachability, and real responsive controls are explicit obligations. | PASS |
-| VII. Evidence before completion | Implementation must capture a reliable pre-edit baseline, inspect named tests, run current gates, exercise live controls, and walk the real build. Unreliable gates are hard stops. | PASS |
+| Principle                                      | Planning application                                                                                                                                                                                                         | Result |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| I. Normative specification is the authority    | The active `spec.md` owns behavior; `docs/delivery/spec/surface/mockup.html` remains read-only visual authority; every migrated source row remains Owned, Consumed, or Deferred. No normative file is changed.               | PASS   |
+| II. Self-contained vertical slices             | Six ordered plan slices name concrete paths, dependencies, complete owned requirements, and direct tests/live cases. No task requires an implementer to invent File, tab, renderer, Assistant, or tidy behavior.             | PASS   |
+| III. Backend authority and explicit boundaries | Editor settings use the existing Go settings service and adapter; document edits use `useDocumentCommands` and Monaco session identity; Redux remains projection; any new Wails handler follows the consumed typed boundary. | PASS   |
+| IV. Offline, private, and safe                 | Link emits Markdown source only; deferred actions perform no I/O, network, telemetry, or provider call; source/bundle guards and request instrumentation are named.                                                          | PASS   |
+| V. Data and cross-platform operation           | SQLite remains additive and CGO-free; generated bindings are regenerated; OS framing/movement/resize and native macOS Edit roles remain consumed rather than reimplemented.                                                  | PASS   |
+| VI. Accessible, tokenized, coherent interfaces | Registry-derived labels and accelerators, catalogue strings, visible focus, reduced motion, six palettes, long-label reachability, and real responsive controls are explicit obligations.                                    | PASS   |
+| VII. Evidence before completion                | Implementation must capture a reliable pre-edit baseline, inspect named tests, run current gates, exercise live controls, and walk the real build. Unreliable gates are hard stops.                                          | PASS   |
 
 No constitutional exception or unresolved clarification remains. The only resolved planning ambiguity is
 recorded in [research.md](research.md): Heading 1/2/3 use the explicit ATX FR-ED-014 behavior in this
@@ -285,15 +285,15 @@ FR-ED-008, FR-ED-009, FR-ED-010.
 `frontend/src/ui/styles/tokens.css` only for catalogue/token additions; `frontend/e2e/editor-stage.test.ts`.
 
 **Proof**: `EditorChrome.test.tsx` and `ShellMenuRow.test.tsx` cover inventories, deferred states, ordering,
-  overflow, sidebar controls, focus, the shared `toggle-assistant` identity, and no Assistant/tab behavior;
-  `AppShell.test.tsx` and
-  `EditorView.test.tsx` cover one-pane/layout preservation. The E2E matrix covers all 18 width/palette
-  combinations, root attributes, visible focus, bounding-box clipping, and actual pointer/keyboard reachability.
+overflow, sidebar controls, focus, the shared `toggle-assistant` identity, and no Assistant/tab behavior;
+`AppShell.test.tsx` and
+`EditorView.test.tsx` cover one-pane/layout preservation. The E2E matrix covers all 18 width/palette
+combinations, root attributes, visible focus, bounding-box clipping, and actual pointer/keyboard reachability.
 
 ### ED-VS-05 — Registry-derived context menu and shortcuts discovery
 
 **Depends on**: ED-VS-01 registry/dispatcher and ED-VS-04 EditorChrome/menu integration; ED-VS-02 formatting
-  dispatch.
+dispatch.
 
 **Primary owner**: FR-ED-019, FR-ED-023.
 
@@ -352,59 +352,59 @@ ordinary framed-window continuity.
 Exactly one plan slice is the primary owner of every active FR-ED requirement. Supporting tests may exercise
 another slice but do not create a second owner.
 
-| Requirement | Primary owner | Responsibility |
-|---|---|---|
-| FR-ED-001 | ED-VS-04 | Menu row below the native title bar and OS-shell preservation. |
-| FR-ED-002 | ED-VS-04 | Visual-only File menu inventory. |
-| FR-ED-003 | ED-VS-04 | Settings inventory, Editor group, and deferred future settings. |
-| FR-ED-004 | ED-VS-04 | View inventory, working arrangements/sidebar/full-screen, and the shared deferred Toggle Assistant action. |
-| FR-ED-005 | ED-VS-04 | About inventory, local About behavior, and unavailable future links/logs. |
-| FR-ED-006 | ED-VS-04 | Visual tab presentation without canonical tab state or lifecycle. |
-| FR-ED-007 | ED-VS-04 | Functional left sidebar/workspace visibility and responsive presentation. |
-| FR-ED-008 | ED-VS-04 | Right-side visual surface sharing the deferred Toggle Assistant identity with no Assistant state or panel. |
-| FR-ED-009 | ED-VS-04 | Complete toolbar groups and 768/375 overflow relocation. |
-| FR-ED-010 | ED-VS-04 | Visible Format/Compact/Lint controls with explicit deferred availability. |
-| FR-ED-011 | ED-VS-01 | One canonical action registry and derived visible surfaces. |
-| FR-ED-012 | ED-VS-02 | Bounded selection/current-line formatting through the shared seam. |
-| FR-ED-013 | ED-VS-02 | Emphasis/code marker pair toggle and caret insertion. |
-| FR-ED-014 | ED-VS-02 | ATX heading add/replace/remove behavior. |
-| FR-ED-015 | ED-VS-02 | List conversion/removal, canonical `1. ` numbered markers without auto-renumbering, and acknowledged marker preferences. |
-| FR-ED-016 | ED-VS-02 | Quote, Link, Table, and deferred Image action semantics. |
-| FR-ED-017 | ED-VS-02 | Phase 04 bounded behavior and one-edit contract; later document actions deferred. |
-| FR-ED-018 | ED-VS-06 | Deferred Format/Compact/Lint no-gate, deterministic no-mutation outcome. |
-| FR-ED-019 | ED-VS-05 | Exact registry-derived editor context menu and separators. |
-| FR-ED-020 | ED-VS-01 | Frozen Editor-stage shortcut bindings and platform resolution. |
-| FR-ED-021 | ED-VS-01 | Scope, focus, writable-document, window-focus, and modal suppression. |
-| FR-ED-022 | ED-VS-03 | Acknowledged line-number, wrap, and 13/14/16 font-size settings. |
-| FR-ED-023 | ED-VS-05 | Localization, semantic roles, focus, reduced motion, and centralized tokens. |
-| FR-ED-024 | ED-VS-02 | Go/appmodel authority, Redux projection, and identity-bound editor working copy. |
-| FR-ED-025 | ED-VS-03 | Adapter-only Wails access and typed handler/generated-binding boundary. |
-| FR-ED-026 | ED-VS-06 | Native frame, offline, no remote assets/telemetry, and no Assistant behavior. |
-| FR-ED-027 | ED-VS-06 | No hidden File/tab/workspace/renderer/Assistant dependency or fake success. |
+| Requirement | Primary owner | Responsibility                                                                                                           |
+| ----------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| FR-ED-001   | ED-VS-04      | Menu row below the native title bar and OS-shell preservation.                                                           |
+| FR-ED-002   | ED-VS-04      | Visual-only File menu inventory.                                                                                         |
+| FR-ED-003   | ED-VS-04      | Settings inventory, Editor group, and deferred future settings.                                                          |
+| FR-ED-004   | ED-VS-04      | View inventory, working arrangements/sidebar/full-screen, and the shared deferred Toggle Assistant action.               |
+| FR-ED-005   | ED-VS-04      | About inventory, local About behavior, and unavailable future links/logs.                                                |
+| FR-ED-006   | ED-VS-04      | Visual tab presentation without canonical tab state or lifecycle.                                                        |
+| FR-ED-007   | ED-VS-04      | Functional left sidebar/workspace visibility and responsive presentation.                                                |
+| FR-ED-008   | ED-VS-04      | Right-side visual surface sharing the deferred Toggle Assistant identity with no Assistant state or panel.               |
+| FR-ED-009   | ED-VS-04      | Complete toolbar groups and 768/375 overflow relocation.                                                                 |
+| FR-ED-010   | ED-VS-04      | Visible Format/Compact/Lint controls with explicit deferred availability.                                                |
+| FR-ED-011   | ED-VS-01      | One canonical action registry and derived visible surfaces.                                                              |
+| FR-ED-012   | ED-VS-02      | Bounded selection/current-line formatting through the shared seam.                                                       |
+| FR-ED-013   | ED-VS-02      | Emphasis/code marker pair toggle and caret insertion.                                                                    |
+| FR-ED-014   | ED-VS-02      | ATX heading add/replace/remove behavior.                                                                                 |
+| FR-ED-015   | ED-VS-02      | List conversion/removal, canonical `1. ` numbered markers without auto-renumbering, and acknowledged marker preferences. |
+| FR-ED-016   | ED-VS-02      | Quote, Link, Table, and deferred Image action semantics.                                                                 |
+| FR-ED-017   | ED-VS-02      | Phase 04 bounded behavior and one-edit contract; later document actions deferred.                                        |
+| FR-ED-018   | ED-VS-06      | Deferred Format/Compact/Lint no-gate, deterministic no-mutation outcome.                                                 |
+| FR-ED-019   | ED-VS-05      | Exact registry-derived editor context menu and separators.                                                               |
+| FR-ED-020   | ED-VS-01      | Frozen Editor-stage shortcut bindings and platform resolution.                                                           |
+| FR-ED-021   | ED-VS-01      | Scope, focus, writable-document, window-focus, and modal suppression.                                                    |
+| FR-ED-022   | ED-VS-03      | Acknowledged line-number, wrap, and 13/14/16 font-size settings.                                                         |
+| FR-ED-023   | ED-VS-05      | Localization, semantic roles, focus, reduced motion, and centralized tokens.                                             |
+| FR-ED-024   | ED-VS-02      | Go/appmodel authority, Redux projection, and identity-bound editor working copy.                                         |
+| FR-ED-025   | ED-VS-03      | Adapter-only Wails access and typed handler/generated-binding boundary.                                                  |
+| FR-ED-026   | ED-VS-06      | Native frame, offline, no remote assets/telemetry, and no Assistant behavior.                                            |
+| FR-ED-027   | ED-VS-06      | No hidden File/tab/workspace/renderer/Assistant dependency or fake success.                                              |
 
 ## Owned/Consumed/Deferred source traceability
 
 The full matrix remains in [spec.md](spec.md). The plan preserves its disposition as follows:
 
-| Source authority group | Disposition | Plan boundary |
-|---|---|---|
-| Phase 04 `what-you-get`; build steps 1–4 and 6–8; `done-when` | Owned | ED-VS-01/02/03/04/05 and named formatting/registry/chrome/live evidence. |
-| Phase 04 build step 5 (TSV/CSV table paste) | Deferred | No paste converter; downstream paste slice owns it. |
-| Phase 04 `where-the-details-are`; `questions-to-settle-first` | Owned/Consumed | Mockup and existing `useDocumentCommands` are used; empty-selection behavior is resolved in the active spec. |
-| Phase 10 tidy/share `what-you-get`, build steps, details, and questions | Deferred | Format/Compact/Lint document behavior, formatter/linter, diff, on-save, PDF/export remain downstream. |
-| `writing-in-the-editor.md` source editor, buffer sync, no text echo, preview/input bounds | Consumed | Existing editor/session/appmodel/preview contracts remain sole owners. |
-| `writing-in-the-editor.md` tab limit/per-document tabs, find/scroll, new problems behavior | Deferred | Visual tab fixture only; no tab/search/problems owner. |
-| `writing-in-the-editor.md` one-pane/divider/arrangement/defaults | Consumed/Owned | Layout/arrangement consumed; explicit line-number/wrap/font defaults owned by ED-VS-03. |
-| `formatting-text.md` scope, canonical markers, toggles, headings, lists, table, context menu, overflow | Owned | ED-VS-02/04/05 with pure transformation and surface tests. |
-| `formatting-text.md` image drop/paste, bitmap writes, tabular/rich paste | Deferred | No file/asset/clipboard converter behavior. |
-| `keyboard-shortcuts.md` registry/scopes/frozen map/platform/dialog/formatting | Owned | ED-VS-01 and ED-VS-05. |
-| `keyboard-shortcuts.md` macOS clipboard/edit roles | Consumed | Feature 001 native role contract; no duplicate in-app handler. |
-| `keyboard-shortcuts.md` file/search/reading future bindings | Deferred | No file, search, quick-open, command-palette implementation. |
-| `settings.md` immediate writes, validation, registry/reset/persistence/appearance | Consumed | Existing typed settings lifecycle and appearance owner remain in force. |
-| `settings.md` Editor group | Owned/Deferred | ED-VS-03 owns line numbers/wrap/13/14/16; autosave/reading/live-preview future behavior remains deferred. |
-| `settings.md` Markdown group | Owned/Deferred | Existing marker preferences feed ED-VS-02; Standard/Format-on-save/Lint-on-save behavior remains deferred. |
-| `docs/delivery/spec/surface/mockup.html` named Editor-stage screens | Owned shape | ED-VS-04/05 implement the visual shape; this spec supplies behavior. |
-| Mockup context-menu/tab-menu/diff/problems/diagnostics/Assistant-reserved screens | Deferred/visual shape | Only explicitly requested visual tab/control fixtures appear; no downstream behavior is created. |
+| Source authority group                                                                                 | Disposition                       | Plan boundary                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 04 `what-you-get`; build steps 1–4 and 6–8; `done-when`                                          | Owned                             | ED-VS-01/02/03/04/05 and named formatting/registry/chrome/live evidence.                                                                                              |
+| Phase 04 build step 5 (TSV/CSV table paste)                                                            | Deferred                          | No paste converter; downstream paste slice owns it.                                                                                                                   |
+| Phase 04 `where-the-details-are`; `questions-to-settle-first`                                          | Owned/Consumed                    | Mockup and existing `useDocumentCommands` are used; empty-selection behavior is resolved in the active spec.                                                          |
+| Phase 10 tidy/share `what-you-get`, build steps, details, and questions                                | Deferred                          | Format/Compact/Lint document behavior, formatter/linter, diff, on-save, PDF/export remain downstream.                                                                 |
+| `writing-in-the-editor.md` source editor, buffer sync, no text echo, preview/input bounds              | Consumed                          | Existing editor/session/appmodel/preview contracts remain sole owners.                                                                                                |
+| `writing-in-the-editor.md` tab limit/per-document tabs, find/scroll, new problems behavior             | Deferred                          | Visual tab fixture only; no tab/search/problems owner.                                                                                                                |
+| `writing-in-the-editor.md` one-pane/divider/arrangement/defaults                                       | Consumed/Owned                    | Layout/arrangement consumed; explicit line-number/wrap/font defaults owned by ED-VS-03.                                                                               |
+| `formatting-text.md` scope, canonical markers, toggles, headings, lists, table, context menu, overflow | Owned                             | ED-VS-02/04/05 with pure transformation and surface tests.                                                                                                            |
+| `formatting-text.md` image drop/paste, bitmap writes, tabular/rich paste                               | Deferred                          | No file/asset/clipboard converter behavior.                                                                                                                           |
+| `keyboard-shortcuts.md` registry/scopes/frozen map/platform/dialog/formatting                          | Owned                             | ED-VS-01 and ED-VS-05.                                                                                                                                                |
+| `keyboard-shortcuts.md` macOS clipboard/edit roles                                                     | Consumed                          | Feature 001 native role contract; no duplicate in-app handler.                                                                                                        |
+| `keyboard-shortcuts.md` file/search/reading future bindings                                            | Deferred                          | No file, search, quick-open, command-palette implementation.                                                                                                          |
+| `settings.md` immediate writes, validation, registry/reset/persistence/appearance                      | Consumed                          | Existing typed settings lifecycle and appearance owner remain in force.                                                                                               |
+| `settings.md` Editor group                                                                             | Owned/Deferred                    | ED-VS-03 owns line numbers/wrap/13/14/16; autosave/reading/live-preview future behavior remains deferred.                                                             |
+| `settings.md` Markdown group                                                                           | Owned/Deferred                    | Existing marker preferences feed ED-VS-02; Standard/Format-on-save/Lint-on-save behavior remains deferred.                                                            |
+| `docs/delivery/spec/surface/mockup.html` named Editor-stage screens                                    | Owned shape                       | ED-VS-04/05 implement the visual shape; this spec supplies behavior.                                                                                                  |
+| Mockup context-menu/tab-menu/diff/problems/diagnostics/Assistant-reserved screens                      | Deferred/visual shape             | Only explicitly requested visual tab/control fixtures appear; no downstream behavior is created.                                                                      |
 | Feature 001 application-state, command-boundaries, delivery-stages, window-shell, appearance contracts | Consumed with narrow supersession | Preserve authority, tokens, focus, layout, offline, OS frame, and existing actions; supersede only prior visual absence of File, visual tabs, and right-side control. |
 
 ## Downstream entry gates preserved

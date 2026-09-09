@@ -46,33 +46,33 @@ menu (ADR-0028). Once any of those renders an accelerator label, the binding beh
 
 Three bindings changed on 2026-07-25, before anything rendered a label, and they are the last changes:
 
-| Was | Now | Why |
-|---|---|---|
-| `Ctrl/Cmd+P` — Export to PDF | `Ctrl/Cmd+P` — **Quick open** | In an application with tabs, a file tree and Monaco, `Ctrl+P` is where people reach for quick-open. `Ctrl+P`-as-print is a *browser* convention, and this is not a browser. (DD-73) |
-| — | `Ctrl/Cmd+Shift+E` — **Export to PDF** | Where Export moved. |
-| `Ctrl/Cmd+K O` — Open folder | `Ctrl/Cmd+Shift+O` — **Open folder** | The chord was unreachable in the normal case: with the editor focused — which is the default state of the whole application — `Ctrl+K` fires Link, so Open folder had no working shortcut at all. The old resolution rule was correct and the consequence was unacceptable. |
+| Was                          | Now                                    | Why                                                                                                                                                                                                                                                                         |
+| ---------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Ctrl/Cmd+P` — Export to PDF | `Ctrl/Cmd+P` — **Quick open**          | In an application with tabs, a file tree and Monaco, `Ctrl+P` is where people reach for quick-open. `Ctrl+P`-as-print is a _browser_ convention, and this is not a browser. (DD-73)                                                                                         |
+| —                            | `Ctrl/Cmd+Shift+E` — **Export to PDF** | Where Export moved.                                                                                                                                                                                                                                                         |
+| `Ctrl/Cmd+K O` — Open folder | `Ctrl/Cmd+Shift+O` — **Open folder**   | The chord was unreachable in the normal case: with the editor focused — which is the default state of the whole application — `Ctrl+K` fires Link, so Open folder had no working shortcut at all. The old resolution rule was correct and the consequence was unacceptable. |
 
 ## Format shortcuts
 
 Editor-scope actions that transform the selection or current line.
 
-| Action | Binding | Scope |
-|---|---|---|
-| Bold | `Ctrl+B` | editor |
-| Italic | `Ctrl+I` | editor |
-| Strikethrough | `Ctrl+Shift+X` | editor |
-| Inline code | `Ctrl+E` | editor |
-| Link | `Ctrl+K` | editor |
-| Image | `Ctrl+Shift+I` | editor |
-| Heading 1 / 2 / 3 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` | editor |
-| Bullet list | `Ctrl+Shift+8` | editor |
-| Numbered list | `Ctrl+Shift+7` | editor |
-| Task list | `Ctrl+Shift+9` | editor |
-| Quote | `Ctrl+Shift+.` | editor |
-| Table | `Ctrl+Shift+T` *(insert a table skeleton)* | editor |
-| Format document | `Alt+Shift+F` | document |
-| Compact document | `Alt+Shift+C` | document |
-| Lint document | `Alt+Shift+L` | document |
+| Action            | Binding                                    | Scope    |
+| ----------------- | ------------------------------------------ | -------- |
+| Bold              | `Ctrl+B`                                   | editor   |
+| Italic            | `Ctrl+I`                                   | editor   |
+| Strikethrough     | `Ctrl+Shift+X`                             | editor   |
+| Inline code       | `Ctrl+E`                                   | editor   |
+| Link              | `Ctrl+K`                                   | editor   |
+| Image             | `Ctrl+Shift+I`                             | editor   |
+| Heading 1 / 2 / 3 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3`             | editor   |
+| Bullet list       | `Ctrl+Shift+8`                             | editor   |
+| Numbered list     | `Ctrl+Shift+7`                             | editor   |
+| Task list         | `Ctrl+Shift+9`                             | editor   |
+| Quote             | `Ctrl+Shift+.`                             | editor   |
+| Table             | `Ctrl+Shift+T` _(insert a table skeleton)_ | editor   |
+| Format document   | `Alt+Shift+F`                              | document |
+| Compact document  | `Alt+Shift+C`                              | document |
+| Lint document     | `Alt+Shift+L`                              | document |
 
 **Compact** previously had no button, no menu item and no binding, in three documents that all required
 it (`06_FORMAT_AND_LINT.md#compact`). It has all three now.
@@ -81,21 +81,21 @@ it (`06_FORMAT_AND_LINT.md#compact`). It has all three now.
 
 Global/document actions for the document lifecycle (`03_FILES_TABS_WORKSPACE.md`).
 
-| Action | Binding | Scope |
-|---|---|---|
-| New file | `Ctrl+N` | global |
-| New window | `Ctrl+Shift+N` | global |
-| Open file | `Ctrl+O` | global |
-| Open folder | `Ctrl+Shift+O` | global |
-| Reopen last closed tab | `Ctrl+Shift+Alt+T` | global |
-| Save | `Ctrl+S` | document |
-| Save As | `Ctrl+Shift+S` | document |
-| Export to PDF | `Ctrl+Shift+E` | document |
-| Export as HTML | *(menu only)* | document |
-| Close tab | `Ctrl+W` | document |
-| Next tab | `Ctrl+Tab` *(also `Ctrl+PageDown`)* | global |
-| Previous tab | `Ctrl+Shift+Tab` *(also `Ctrl+PageUp`)* | global |
-| Exit | `Ctrl+Q` | global |
+| Action                 | Binding                                 | Scope    |
+| ---------------------- | --------------------------------------- | -------- |
+| New file               | `Ctrl+N`                                | global   |
+| New window             | `Ctrl+Shift+N`                          | global   |
+| Open file              | `Ctrl+O`                                | global   |
+| Open folder            | `Ctrl+Shift+O`                          | global   |
+| Reopen last closed tab | `Ctrl+Shift+Alt+T`                      | global   |
+| Save                   | `Ctrl+S`                                | document |
+| Save As                | `Ctrl+Shift+S`                          | document |
+| Export to PDF          | `Ctrl+Shift+E`                          | document |
+| Export as HTML         | _(menu only)_                           | document |
+| Close tab              | `Ctrl+W`                                | document |
+| Next tab               | `Ctrl+Tab` _(also `Ctrl+PageDown`)_     | global   |
+| Previous tab           | `Ctrl+Shift+Tab` _(also `Ctrl+PageUp`)_ | global   |
+| Exit                   | `Ctrl+Q`                                | global   |
 
 `Ctrl+Shift+T` is the Table binding above, so **Reopen last closed tab** takes
 `Ctrl+Shift+Alt+T`. Tab-by-number is unavailable: `Ctrl+1/2/3` are headings, and heading bindings are
@@ -107,15 +107,15 @@ Phase 09 (`07_Phases/PHASE_09_FIND_ANYTHING.md`) builds all of these over one re
 bindings are reserved here so that nothing binds over them in the meantime — in particular over
 Monaco's built-in find, which would otherwise be shadowed by an app-level handler.
 
-| Action | Binding | Scope |
-|---|---|---|
-| Find in document | `Ctrl+F` | editor |
-| Replace in document | `Ctrl+H` | editor |
-| Find next / previous | `F3` / `Shift+F3` | editor |
-| Quick open by filename | `Ctrl+P` | global |
-| Command palette | `Ctrl+Shift+P` | global |
-| Search in folder | `Ctrl+Shift+F` | global |
-| Toggle outline | `Ctrl+Shift+U` | global |
+| Action                 | Binding           | Scope  |
+| ---------------------- | ----------------- | ------ |
+| Find in document       | `Ctrl+F`          | editor |
+| Replace in document    | `Ctrl+H`          | editor |
+| Find next / previous   | `F3` / `Shift+F3` | editor |
+| Quick open by filename | `Ctrl+P`          | global |
+| Command palette        | `Ctrl+Shift+P`    | global |
+| Search in folder       | `Ctrl+Shift+F`    | global |
+| Toggle outline         | `Ctrl+Shift+U`    | global |
 
 `Ctrl+F` and `Ctrl+H` are **Monaco's own** find and replace widget, not a reimplementation. What the
 registry owns is the reservation and the requirement that the widget is themed — it is a distinct
@@ -126,16 +126,16 @@ dark Liquid Glass window is unmissable.
 
 Global actions for layout and modes (`02_EDITOR_AND_VIEWER_MODES.md`).
 
-| Action | Binding | Scope |
-|---|---|---|
-| Toggle sidebar | `Ctrl+\` | global |
+| Action                          | Binding      | Scope    |
+| ------------------------------- | ------------ | -------- |
+| Toggle sidebar                  | `Ctrl+\`     | global   |
 | Reading mode (distraction-free) | `Ctrl+Enter` | document |
-| Increase reading size | `Ctrl+=` | global |
-| Decrease reading size | `Ctrl+-` | global |
-| Reset reading size | `Ctrl+0` | global |
-| Settings (All settings…) | `Ctrl+,` | global |
-| Keyboard shortcuts dialog | `Ctrl+?` | global |
-| Full screen | `F11` | global |
+| Increase reading size           | `Ctrl+=`     | global   |
+| Decrease reading size           | `Ctrl+-`     | global   |
+| Reset reading size              | `Ctrl+0`     | global   |
+| Settings (All settings…)        | `Ctrl+,`     | global   |
+| Keyboard shortcuts dialog       | `Ctrl+?`     | global   |
+| Full screen                     | `F11`        | global   |
 
 Reading size uses `Ctrl+=/-/0` rather than `Ctrl++/-/0` because `Ctrl+1/2/3` are already headings and
 `+` requires Shift on most layouts. It scales the preview and the reader, not the editor — the editor's
@@ -147,11 +147,11 @@ The primary modifier is **`Ctrl`** on Windows/Linux and **`Cmd`** on macOS; `Alt
 macOS. Bindings are declared once with a platform-agnostic "primary modifier" token and resolved at
 runtime:
 
-| Token | Windows / Linux | macOS |
-|---|---|---|
-| Primary | `Ctrl` | `Cmd` |
-| Secondary | `Alt` | `Option` |
-| Shift | `Shift` | `Shift` |
+| Token     | Windows / Linux | macOS    |
+| --------- | --------------- | -------- |
+| Primary   | `Ctrl`          | `Cmd`    |
+| Secondary | `Alt`           | `Option` |
+| Shift     | `Shift`         | `Shift`  |
 
 Thus `Ctrl+B` displays and fires as `Cmd+B` on macOS, `Alt+Shift+F` as `Option+Shift+F`, and so on.
 Menus/tooltips render the platform-correct glyphs (e.g. `⌘`, `⌥`, `⇧`, `⏎`) matching the mockup. `F11`

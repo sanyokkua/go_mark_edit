@@ -32,7 +32,7 @@ rendered, sat in the accessibility tree, was reachable by `aria-controls`, and p
 - **Playwright visibility assertion.** `real-files-and-tabs.test.ts:286` already asserted
   `toBeVisible()` **on this exact region**, and passed, for the entire time the panel was invisible.
   T113's entry predicted `toBeVisible` would have caught this; it does not. Playwright defines
-  visible as *a non-empty bounding box and no `visibility: hidden`*, and a clipped box still has a
+  visible as _a non-empty bounding box and no `visibility: hidden`_, and a clipped box still has a
   bounding box. This is the correction that matters most: the recorded lesson "use `toBeVisible` for
   anything that must be seen" is not sufficient for a clip.
 - **jsdom.** `StatusBar.test.tsx` and `AppShell.test.tsx` have no layout at all.
@@ -76,7 +76,7 @@ across the row. The clip is also load-bearing in its own right: `narrow-width.te
 wrapping.
 
 **(b) portal into `.application-frame`, as `ViewMenu` and `EditorChrome` do — rejected.** Those
-popups portal because they are placed by binding coordinates *in the frame*; this disclosure is
+popups portal because they are placed by binding coordinates _in the frame_; this disclosure is
 placed by the row it belongs to. The frame's right edge is not the row's right edge — `.shell`
 reserves `--shell-assistant-collapsed-width` to the right of `.document` — so a frame-anchored panel
 needs offset arithmetic that re-breaks whenever the shell columns change. `.application-frame` also
@@ -115,10 +115,10 @@ sidebar" contract still holds exactly.
 
 ## 6. Gates
 
-| Gate | Baseline | This branch |
-|---|---|---|
-| `just check` | exit 0, 551 tests / 77 suites | exit 0, **552 tests / 77 suites** (+1: the T113 structural test) |
-| `just e2e-test` | 259 passed | exit 0, **259 passed**, parity accounting **150/150** |
+| Gate            | Baseline                      | This branch                                                      |
+| --------------- | ----------------------------- | ---------------------------------------------------------------- |
+| `just check`    | exit 0, 551 tests / 77 suites | exit 0, **552 tests / 77 suites** (+1: the T113 structural test) |
+| `just e2e-test` | 259 passed                    | exit 0, **259 passed**, parity accounting **150/150**            |
 
 All six T063 palette cases pass, each three times (`repeatEach: 3` on the parity project). `T026` did
 not need a re-run — every shell-matrix case passed first time.
@@ -133,10 +133,10 @@ disk (`targeted-parity.test.ts`). No other state's list changed.
 **Stale-instance guard.** Any running instance was killed before the build, because `open` raises the
 old process rather than starting the new one.
 
-| | Time |
-|---|---|
+|                                                            | Time                    |
+| ---------------------------------------------------------- | ----------------------- |
 | `build/bin/GoMarkEdit.app/Contents/MacOS/GoMarkEdit` mtime | 2026-08-15 **16:26:51** |
-| process 4382 start (`ps -o lstart`) | 2026-08-15 **16:27:07** |
+| process 4382 start (`ps -o lstart`)                        | 2026-08-15 **16:27:07** |
 
 Sixteen seconds later, and a different second from the binary's — the earlier walk in
 `readonly-reason-2026-08-15.md` noted that sharing the binary's second is not a guard. PID 4382 was
@@ -146,10 +146,10 @@ the app does not act on — the file was opened from `File ▸ Open Recent` inst
 **What was observed.** Autosave off. Window moved to (10, 50) at 840×760 points, because the status
 row otherwise sits inside the screen's bottom Dock strip.
 
-| Document | Panel contents |
-|---|---|
+| Document                                                                                 | Panel contents                                                                                |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `boundary-10mib-plus-one.md`, **10,485,761 bytes** (10 MiB + 1, inside FR-FT-005's band) | `UTF-8` `LF` `Read-only` `Autosave off` — and **`Read-only · over the 10 MiB editing limit`** |
-| fresh `⌘N` `Untitled` | `UTF-8` `LF` `Not saved` `Autosave off`, and correctly no read-only line |
+| fresh `⌘N` `Untitled`                                                                    | `UTF-8` `LF` `Not saved` `Autosave off`, and correctly no read-only line                      |
 
 The panel paints flush above the status row, wrapping to a second line at this window width. Captures:
 

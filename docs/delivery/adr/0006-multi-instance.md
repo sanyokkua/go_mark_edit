@@ -64,7 +64,7 @@ each instance is a fully independent process.
   per-instance writes, but it is a real semantic the code must not assume away.
 - Negative: WAL leaves side-car files (`-wal`, `-shm`) next to the DB; they are normal but must be kept
   with the DB when copying/backing it up.
-- Negative: There is no coordination of *which* instance owns a given file — two windows can open the
+- Negative: There is no coordination of _which_ instance owns a given file — two windows can open the
   same file independently; with autosave (DD-12) this is a possible concurrent-write-to-same-file edge
   case that file-level handling (not this DB decision) must consider.
 - Neutral: GoMarkEdit deliberately uses no single-instance lock; the choice is documented here so the
@@ -92,7 +92,7 @@ each instance is a fully independent process.
 - Good: One process owns state (no DB contention) while still feeling multi-window if the primary opens
   extra windows; new-file launches route to the running app.
 - Bad: Substantial complexity — an IPC channel, a primary/secondary handshake, lifecycle and
-  crash-of-primary handling — all to *simulate* what DD-08 wants natively; still fundamentally
+  crash-of-primary handling — all to _simulate_ what DD-08 wants natively; still fundamentally
   single-process, so a true independent second instance is impossible. Over-engineered for the goal.
 
 ## Links

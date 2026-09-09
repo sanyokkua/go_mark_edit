@@ -92,11 +92,11 @@ just e2e-test
 
 The suite must cover all 18 combinations:
 
-| Width | Appearance combinations |
-|---|---|
-| 1280 | Glass/Material/Minimal × Auto/Light/Dark |
-| 768 | Glass/Material/Minimal × Auto/Light/Dark |
-| 375 | Glass/Material/Minimal × Auto/Light/Dark |
+| Width | Appearance combinations                  |
+| ----- | ---------------------------------------- |
+| 1280  | Glass/Material/Minimal × Auto/Light/Dark |
+| 768   | Glass/Material/Minimal × Auto/Light/Dark |
+| 375   | Glass/Material/Minimal × Auto/Light/Dark |
 
 For each combination, operate real controls and inspect:
 
@@ -160,4 +160,3 @@ Retain raw outputs and human-readable manifests under
 `specs/002-editor-stage-formatting/evidence/`, including the baseline, focused test results, browser/request
 observations, live cases, and current-host build walkthrough. A passing label without inspectable evidence is
 not completion.
-

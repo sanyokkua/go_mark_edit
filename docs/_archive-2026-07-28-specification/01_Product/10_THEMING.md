@@ -58,7 +58,7 @@ There is no separate editor theme setting.
 
 "Unified" needs a mechanism, not just an assertion, because **Monaco cannot read CSS custom
 properties**. It takes literal colours through `monaco.editor.defineTheme()`. So the editor's colours
-are *generated* from this document's token values at build time rather than inherited at runtime — see
+are _generated_ from this document's token values at build time rather than inherited at runtime — see
 [Editor theme](#editor-theme) and ADR-0029. The same generation feeds the preview's highlight
 stylesheet, which is what makes a Go snippet look identical on the left and the right of a split view.
 
@@ -88,32 +88,32 @@ tokens differ. `tokens.css` is authored from this table; do not drift it. Every 
 hue, one corner radius, and one font family across both appearances**; only surfaces/text invert between
 Light and Dark.
 
-| Token | Liquid Glass (native: Dark) | Material (native: Light) | Minimal (native: Light) |
-|---|---|---|---|
-| `--accent` | `#7aa2ff` | `#4f6bed` | `#10b981` |
-| `--accent2` (secondary hue, gradients only) | `#c58bff` | `#4f6bed` | `#10b981` |
-| `--accent-ink` (text on accent-soft) | `#cdd8ff` | `#0a1a52` | `#047857` |
-| `--accent-soft` (accent container) | `rgba(122,162,255,.16)` | `#dfe4ff` | `#ecfdf5` |
-| `--accent-contrast` (text on accent) | `#0b1024` | `#ffffff` | `#ffffff` |
-| `--canvas` (window backdrop) | aurora: radials `#3b2f7a` + `#1d4e8f` + `#7a2f6a` over linear `#0d1022 → #0a0d1c → #0b0f1e` | `#d9d7e6` | `#e9e9ec` |
-| `--app-bg` (app surface / base) | `rgba(255,255,255,.10)` (translucent) | `#faf8ff` | `#fbfbfa` |
-| `--surface` (panel / card) | `rgba(28,30,54,.82)` | `#ffffff` | `#ffffff` |
-| `--elevated` | `rgba(28,30,54,.82)` | `#f3f1fb` | `#ffffff` |
-| `--surface-2` | `rgba(255,255,255,.07)` | `#eceaf6` | `#f3f3f2` |
-| `--surface-3` | `rgba(255,255,255,.16)` | `#e6e3f2` | `#eaeae9` |
-| `--stroke` | `rgba(255,255,255,.18)` | `#e3e1ee` (outline `#c6c5d4`) | `#e4e4e7` |
-| `--stroke-soft` | `rgba(255,255,255,.11)` | `#eceaf6` | `#ececee` |
-| `--text` | `#eaf0ff` | `#1b1b22` | `#1f2328` |
-| `--muted` | `rgba(234,240,255,.60)` | `#5c5c69` | `#6b7280` |
-| `--faint` | `rgba(234,240,255,.32)` | `#9aa1ab` | `#9aa1ab` |
-| `--hover` (row/menu hover overlay) | `rgba(255,255,255,.16)` | `rgba(0,0,0,.05)` | `rgba(0,0,0,.04)` |
-| `--user-bubble` (assistant chat, user turn) | `rgba(122,162,255,.14)` | `#dfe4ff` | `#ecfdf5` |
-| `--win-radius` | **16px** | **16px** | **12px** |
-| `--win-shadow` | `0 24px 80px rgba(0,0,0,.55)` | `0 12px 32px rgba(27,27,34,.16)` | `0 8px 24px rgba(31,35,40,.10)` |
-| `--blur` (backdrop filter) | `blur(28px) saturate(160%)` | `none` | `none` |
-| `--font` (UI + prose) | system/SF (`-apple-system, "SF Pro Display", "Segoe UI", Inter, …`) | **Roboto** (`"Roboto", "Segoe UI", Inter, …`) | **Inter** (`"Inter", -apple-system, …`) |
-| `--mono` (code + editor) | `"SF Mono", "JetBrains Mono", ui-monospace, …` | same | same |
-| Character | translucent, soft-glow, glossy top highlight | solid, elevation shadows, rounded pill controls | flat, hairline borders, typography-forward |
+| Token                                       | Liquid Glass (native: Dark)                                                                 | Material (native: Light)                        | Minimal (native: Light)                    |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------ |
+| `--accent`                                  | `#7aa2ff`                                                                                   | `#4f6bed`                                       | `#10b981`                                  |
+| `--accent2` (secondary hue, gradients only) | `#c58bff`                                                                                   | `#4f6bed`                                       | `#10b981`                                  |
+| `--accent-ink` (text on accent-soft)        | `#cdd8ff`                                                                                   | `#0a1a52`                                       | `#047857`                                  |
+| `--accent-soft` (accent container)          | `rgba(122,162,255,.16)`                                                                     | `#dfe4ff`                                       | `#ecfdf5`                                  |
+| `--accent-contrast` (text on accent)        | `#0b1024`                                                                                   | `#ffffff`                                       | `#ffffff`                                  |
+| `--canvas` (window backdrop)                | aurora: radials `#3b2f7a` + `#1d4e8f` + `#7a2f6a` over linear `#0d1022 → #0a0d1c → #0b0f1e` | `#d9d7e6`                                       | `#e9e9ec`                                  |
+| `--app-bg` (app surface / base)             | `rgba(255,255,255,.10)` (translucent)                                                       | `#faf8ff`                                       | `#fbfbfa`                                  |
+| `--surface` (panel / card)                  | `rgba(28,30,54,.82)`                                                                        | `#ffffff`                                       | `#ffffff`                                  |
+| `--elevated`                                | `rgba(28,30,54,.82)`                                                                        | `#f3f1fb`                                       | `#ffffff`                                  |
+| `--surface-2`                               | `rgba(255,255,255,.07)`                                                                     | `#eceaf6`                                       | `#f3f3f2`                                  |
+| `--surface-3`                               | `rgba(255,255,255,.16)`                                                                     | `#e6e3f2`                                       | `#eaeae9`                                  |
+| `--stroke`                                  | `rgba(255,255,255,.18)`                                                                     | `#e3e1ee` (outline `#c6c5d4`)                   | `#e4e4e7`                                  |
+| `--stroke-soft`                             | `rgba(255,255,255,.11)`                                                                     | `#eceaf6`                                       | `#ececee`                                  |
+| `--text`                                    | `#eaf0ff`                                                                                   | `#1b1b22`                                       | `#1f2328`                                  |
+| `--muted`                                   | `rgba(234,240,255,.60)`                                                                     | `#5c5c69`                                       | `#6b7280`                                  |
+| `--faint`                                   | `rgba(234,240,255,.32)`                                                                     | `#9aa1ab`                                       | `#9aa1ab`                                  |
+| `--hover` (row/menu hover overlay)          | `rgba(255,255,255,.16)`                                                                     | `rgba(0,0,0,.05)`                               | `rgba(0,0,0,.04)`                          |
+| `--user-bubble` (assistant chat, user turn) | `rgba(122,162,255,.14)`                                                                     | `#dfe4ff`                                       | `#ecfdf5`                                  |
+| `--win-radius`                              | **16px**                                                                                    | **16px**                                        | **12px**                                   |
+| `--win-shadow`                              | `0 24px 80px rgba(0,0,0,.55)`                                                               | `0 12px 32px rgba(27,27,34,.16)`                | `0 8px 24px rgba(31,35,40,.10)`            |
+| `--blur` (backdrop filter)                  | `blur(28px) saturate(160%)`                                                                 | `none`                                          | `none`                                     |
+| `--font` (UI + prose)                       | system/SF (`-apple-system, "SF Pro Display", "Segoe UI", Inter, …`)                         | **Roboto** (`"Roboto", "Segoe UI", Inter, …`)   | **Inter** (`"Inter", -apple-system, …`)    |
+| `--mono` (code + editor)                    | `"SF Mono", "JetBrains Mono", ui-monospace, …`                                              | same                                            | same                                       |
+| Character                                   | translucent, soft-glow, glossy top highlight                                                | solid, elevation shadows, rounded pill controls | flat, hairline borders, typography-forward |
 
 Derived (counterpart) appearances — **Glass Light, Material Dark, Minimal Dark** — keep the same
 accent hue, window radius, font, blur and shadow character, and invert surfaces/text to the opposite
@@ -133,47 +133,47 @@ hard-codes a number that a theme might want to change, and so that overlay stack
 
 **Status colours** are appearance-scoped (light vs dark), not theme-scoped:
 
-| Token | Light | Dark |
-|---|---|---|
-| `--ok` | `#1f8a54` | `#39d98a` |
+| Token    | Light     | Dark      |
+| -------- | --------- | --------- |
+| `--ok`   | `#1f8a54` | `#39d98a` |
 | `--warn` | `#b7791f` | `#ffcf6b` |
-| `--err` | `#b3261e` | `#ff7a90` |
+| `--err`  | `#b3261e` | `#ff7a90` |
 
 **Interaction tokens** — every one of these is a surface a user sees constantly and that looks broken
 when it falls back to a browser or OS default:
 
-| Token | Meaning | Notes |
-|---|---|---|
-| `--selection-bg` | text-selection background | Without it, a dark Liquid Glass document gets the OS default blue. Applies to `::selection` **and** to the editor's selection colour. |
-| `--selection-fg` | text-selection foreground | |
-| `--focus-ring` | the visible focus indicator | A two-layer ring (`0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent)`) so it reads on every surface. Every phase's "reachable by keyboard alone" is untestable without it. |
-| `--scrollbar-track` | scrollbar trough | Six palettes with default OS scrollbars looks like six unfinished palettes. |
-| `--scrollbar-thumb` | scrollbar thumb | |
-| `--scrollbar-thumb-hover` | scrollbar thumb, hovered | |
+| Token                     | Meaning                     | Notes                                                                                                                                                                     |
+| ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--selection-bg`          | text-selection background   | Without it, a dark Liquid Glass document gets the OS default blue. Applies to `::selection` **and** to the editor's selection colour.                                     |
+| `--selection-fg`          | text-selection foreground   |                                                                                                                                                                           |
+| `--focus-ring`            | the visible focus indicator | A two-layer ring (`0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent)`) so it reads on every surface. Every phase's "reachable by keyboard alone" is untestable without it. |
+| `--scrollbar-track`       | scrollbar trough            | Six palettes with default OS scrollbars looks like six unfinished palettes.                                                                                               |
+| `--scrollbar-thumb`       | scrollbar thumb             |                                                                                                                                                                           |
+| `--scrollbar-thumb-hover` | scrollbar thumb, hovered    |                                                                                                                                                                           |
 
 **Stacking** — a fixed scale, so a portal never has to guess a number. The mockup currently hard-codes
 `z-index` at 1, 2, 10, 30, 60, 70, 75, 78, 80 and 90; those become:
 
-| Token | Value | Used by |
-|---|---|---|
-| `--z-base` | `1` | in-flow raised content |
-| `--z-sticky` | `10` | sticky headers, the tab strip |
-| `--z-dropdown` | `30` | menus, context menus, comboboxes |
-| `--z-overlay` | `60` | the modal scrim |
-| `--z-modal` | `70` | dialogs |
-| `--z-popover` | `80` | tooltips and popovers over dialogs |
-| `--z-toast` | `90` | notifications, above everything |
+| Token          | Value | Used by                            |
+| -------------- | ----- | ---------------------------------- |
+| `--z-base`     | `1`   | in-flow raised content             |
+| `--z-sticky`   | `10`  | sticky headers, the tab strip      |
+| `--z-dropdown` | `30`  | menus, context menus, comboboxes   |
+| `--z-overlay`  | `60`  | the modal scrim                    |
+| `--z-modal`    | `70`  | dialogs                            |
+| `--z-popover`  | `80`  | tooltips and popovers over dialogs |
+| `--z-toast`    | `90`  | notifications, above everything    |
 
 **Motion** — durations and easings are tokens so that a theme can differ and so a single rule can
 disable them:
 
-| Token | Value |
-|---|---|
-| `--dur-fast` | `120ms` |
-| `--dur-base` | `180ms` |
-| `--dur-slow` | `300ms` |
-| `--ease-out` | `cubic-bezier(.2,.8,.2,1)` |
-| `--ease-in-out` | `cubic-bezier(.4,0,.2,1)` |
+| Token           | Value                      |
+| --------------- | -------------------------- |
+| `--dur-fast`    | `120ms`                    |
+| `--dur-base`    | `180ms`                    |
+| `--dur-slow`    | `300ms`                    |
+| `--ease-out`    | `cubic-bezier(.2,.8,.2,1)` |
+| `--ease-in-out` | `cubic-bezier(.4,0,.2,1)`  |
 
 Every animated property uses one of these, and a single `@media (prefers-reduced-motion: reduce)` rule
 collapses all durations to `0ms`. The theme flip itself is **not** animated: a 300 ms cross-fade of six
@@ -186,19 +186,19 @@ is why the mockup has one set of code colours and needs two.
 
 **`--md-*` — the Markdown source, in the editor.** These colour the document you are typing: the `#` of
 a heading, the `**` of bold, a link's target, a blockquote's `>`. They exist only in the editor; the
-preview shows the *result*, not the syntax.
+preview shows the _result_, not the syntax.
 
-| Token | Colours | Light | Dark |
-|---|---|---|---|
-| `--md-heading` | `#`, heading text | `#3056d3` | `#8fb4ff` |
-| `--md-strong` | `**bold**` | `#b45309` | `#ffd479` |
-| `--md-emphasis` | `_italic_`, inline maths | `#7c3aed` | `#c58bff` |
-| `--md-quote` | `>` blockquote | `#0369a1` | `#7fe3b5` |
-| `--md-link` | link text, target, image path | `#be123c` | `#ff9d7a` |
-| `--md-comment` | HTML comments, fence info strings | `#9aa1ab` | `#8a93b8` |
-| `--md-marker` | list bullets, numbers, `---` | `#9aa1ab` | `#8a93b8` |
-| `--code-fg` | base foreground for any monospace surface | `#30343b` | `#dfe6ff` |
-| `--gutter` | line numbers | `#c9ccd3` | `rgba(255,255,255,.22)` |
+| Token           | Colours                                   | Light     | Dark                    |
+| --------------- | ----------------------------------------- | --------- | ----------------------- |
+| `--md-heading`  | `#`, heading text                         | `#3056d3` | `#8fb4ff`               |
+| `--md-strong`   | `**bold**`                                | `#b45309` | `#ffd479`               |
+| `--md-emphasis` | `_italic_`, inline maths                  | `#7c3aed` | `#c58bff`               |
+| `--md-quote`    | `>` blockquote                            | `#0369a1` | `#7fe3b5`               |
+| `--md-link`     | link text, target, image path             | `#be123c` | `#ff9d7a`               |
+| `--md-comment`  | HTML comments, fence info strings         | `#9aa1ab` | `#8a93b8`               |
+| `--md-marker`   | list bullets, numbers, `---`              | `#9aa1ab` | `#8a93b8`               |
+| `--code-fg`     | base foreground for any monospace surface | `#30343b` | `#dfe6ff`               |
+| `--gutter`      | line numbers                              | `#c9ccd3` | `rgba(255,255,255,.22)` |
 
 These eight are the mockup's existing values, promoted to normative names. Until 2026-07-25 they lived
 only in the mockup's CSS as `--c-h`, `--c-b`, `--c-em`, `--c-q`, `--c-c`, `--c-fn`, `--c-code` and
@@ -209,16 +209,16 @@ new; the rest are renames of values that were already fixed.
 used **twice**: by the highlight.js stylesheet in the preview, and by the generated Monaco theme for the
 embedded language inside a fence. One family, two consumers — that is what makes the split view agree.
 
-| Token | Colours | Light | Dark |
-|---|---|---|---|
-| `--hl-keyword` | `func`, `if`, `return` | `#7c3aed` | `#c58bff` |
-| `--hl-string` | string and character literals | `#0369a1` | `#7fe3b5` |
-| `--hl-comment` | comments | `#9aa1ab` | `#8a93b8` |
-| `--hl-number` | numeric and boolean literals | `#b45309` | `#ffd479` |
-| `--hl-function` | function and method names | `#3056d3` | `#8fb4ff` |
-| `--hl-type` | types, classes, constants | `#0f766e` | `#5eead4` |
-| `--hl-attr` | attributes, properties, tags | `#be123c` | `#ff9d7a` |
-| `--hl-punct` | operators and punctuation | `#5c5c69` | `#9aa1ab` |
+| Token           | Colours                       | Light     | Dark      |
+| --------------- | ----------------------------- | --------- | --------- |
+| `--hl-keyword`  | `func`, `if`, `return`        | `#7c3aed` | `#c58bff` |
+| `--hl-string`   | string and character literals | `#0369a1` | `#7fe3b5` |
+| `--hl-comment`  | comments                      | `#9aa1ab` | `#8a93b8` |
+| `--hl-number`   | numeric and boolean literals  | `#b45309` | `#ffd479` |
+| `--hl-function` | function and method names     | `#3056d3` | `#8fb4ff` |
+| `--hl-type`     | types, classes, constants     | `#0f766e` | `#5eead4` |
+| `--hl-attr`     | attributes, properties, tags  | `#be123c` | `#ff9d7a` |
+| `--hl-punct`    | operators and punctuation     | `#5c5c69` | `#9aa1ab` |
 
 This family is **new**: the mockup had no equivalent, because it renders a fenced block as flat text.
 Six of the eight reuse a `--md-*` hue deliberately — a keyword and an emphasis marker being the same
@@ -228,7 +228,7 @@ and `--hl-punct` are the two genuinely new hues.
 **Both families are scoped by appearance, not by theme** — sixteen values, not forty-eight. Glass Light
 and Minimal Light show the same code colours. This is deliberate: syntax colouring is a legibility
 system, and three variants of it would be three sets to keep readable for no gain the user asked for.
-The theme still changes everything *around* the code — the fence background, the border, the font, the
+The theme still changes everything _around_ the code — the fence background, the border, the font, the
 gutter.
 
 Shipping `rehype-highlight` without a stylesheet that maps these tokens onto its classes produces a
@@ -244,25 +244,25 @@ traceable to a token in this document.
 
 Each generated theme sets, at minimum:
 
-| Monaco key | From |
-|---|---|
-| `editor.background` | `--app-bg` |
-| `editor.foreground` | `--text` |
-| `editorLineNumber.foreground` | `--gutter` |
-| `editorLineNumber.activeForeground` | `--text` |
-| `editorCursor.foreground` | `--accent` |
-| `editor.selectionBackground` | `--selection-bg` |
-| `editor.selectionHighlightBackground` | `--selection-bg` at reduced alpha |
-| `editor.lineHighlightBackground` | `--hover` |
-| `editorGutter.background` | `--app-bg` |
-| `editorWidget.background` / `.border` | `--surface` / `--stroke` |
-| `editorSuggestWidget.*` | `--surface`, `--text`, `--accent-soft` |
-| `minimap.background` | `--app-bg` |
+| Monaco key                                        | From                                            |
+| ------------------------------------------------- | ----------------------------------------------- |
+| `editor.background`                               | `--app-bg`                                      |
+| `editor.foreground`                               | `--text`                                        |
+| `editorLineNumber.foreground`                     | `--gutter`                                      |
+| `editorLineNumber.activeForeground`               | `--text`                                        |
+| `editorCursor.foreground`                         | `--accent`                                      |
+| `editor.selectionBackground`                      | `--selection-bg`                                |
+| `editor.selectionHighlightBackground`             | `--selection-bg` at reduced alpha               |
+| `editor.lineHighlightBackground`                  | `--hover`                                       |
+| `editorGutter.background`                         | `--app-bg`                                      |
+| `editorWidget.background` / `.border`             | `--surface` / `--stroke`                        |
+| `editorSuggestWidget.*`                           | `--surface`, `--text`, `--accent-soft`          |
+| `minimap.background`                              | `--app-bg`                                      |
 | `scrollbarSlider.background` / `.hoverBackground` | `--scrollbar-thumb` / `--scrollbar-thumb-hover` |
-| `editorError.foreground` | `--err` |
-| `editorWarning.foreground` | `--warn` |
-| token rules for the Markdown grammar | the `--md-*` family |
-| token rules for embedded fenced languages | the `--hl-*` family |
+| `editorError.foreground`                          | `--err`                                         |
+| `editorWarning.foreground`                        | `--warn`                                        |
+| token rules for the Markdown grammar              | the `--md-*` family                             |
+| token rules for embedded fenced languages         | the `--hl-*` family                             |
 
 `editorWidget.background` is not an incidental entry: it is the **find widget**, which ships white by
 default and is unmissable in a dark Liquid Glass window. Find and replace is a Phase 09 feature, but its

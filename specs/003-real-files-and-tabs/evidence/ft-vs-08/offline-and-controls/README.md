@@ -9,14 +9,14 @@ surface gains behaviour), and the actual-control half of SC-FT-010.
 
 `five-minute-request-denial.json` / `.log`.
 
-| | |
-|---|---:|
-| observed | **303,011 ms (5.05 minutes)** |
-| interactions performed | **30** |
-| sample interval | 10,000 ms |
-| **outbound requests denied** | **0** |
+|                              |                               |
+| ---------------------------- | ----------------------------: |
+| observed                     | **303,011 ms (5.05 minutes)** |
+| interactions performed       |                        **30** |
+| sample interval              |                     10,000 ms |
+| **outbound requests denied** |                         **0** |
 
-The distinction that matters: the harness routes **every** request and *aborts*
+The distinction that matters: the harness routes **every** request and _aborts_
 anything whose origin is not `http://127.0.0.1:4173` (`data:` and `blob:` are
 treated as local). Counting requests proves only that someone looked; denying
 them means a request that did happen would also change the application's
@@ -49,7 +49,7 @@ The toolbar renders `format`, `compact` and `lint` disabled; the View menu
 renders `Toggle Assistant` and `Distraction-free reading` disabled.
 
 **The zero-width Assistant is measured, not assumed.** The Assistant is a grid
-*track*, not an element — `AppShell.module.css:23` gives the third column
+_track_, not an element — `AppShell.module.css:23` gives the third column
 `var(--shell-assistant-collapsed-width)`, which `tokens.css:184` sets to `0` —
 so it is read off the resolved `grid-template-columns`. Measured at 1280:
 
@@ -66,12 +66,12 @@ recorded here because it is the failure mode this kind of assertion invites.
 
 Covered by suites rather than by this file, and all green:
 
-| Concern | Suite |
-|---|---|
-| pointer/keyboard reachability at 1280/768/375, all six palettes | `editor-stage.test.ts` — 108/108 |
-| narrow-width control reach, drop order, wrapping, prompts, launcher, preview | `narrow-width.test.ts` — 20/20 |
-| shell chrome inventory and availability, focus ring, popup containment | `window-shell.test.ts` — all behavioural assertions |
-| tab roving tabindex, Home/End, arrows, Copy path, Reveal, hostile labels | `DocumentTabs.test.tsx` — 27/27 |
+| Concern                                                                      | Suite                                               |
+| ---------------------------------------------------------------------------- | --------------------------------------------------- |
+| pointer/keyboard reachability at 1280/768/375, all six palettes              | `editor-stage.test.ts` — 108/108                    |
+| narrow-width control reach, drop order, wrapping, prompts, launcher, preview | `narrow-width.test.ts` — 20/20                      |
+| shell chrome inventory and availability, focus ring, popup containment       | `window-shell.test.ts` — all behavioural assertions |
+| tab roving tabindex, Home/End, arrows, Copy path, Reveal, hostile labels     | `DocumentTabs.test.tsx` — 27/27                     |
 
 ## What is not proven here
 

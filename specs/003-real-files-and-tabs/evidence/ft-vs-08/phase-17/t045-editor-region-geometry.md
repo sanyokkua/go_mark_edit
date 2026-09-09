@@ -23,15 +23,15 @@ Differing pixels: **121,810** of 559,104.
 
 An earlier probe appeared to show a 334px width difference. That was a probe
 error, not production drift: `.assistant{transition:width}` means the
-zero-Assistant class must be applied *after* `freezeParityPixels` zeroes
+zero-Assistant class must be applied _after_ `freezeParityPixels` zeroes
 transition durations, or the capture reads a mid-animation width.
 
 ## Two binding rules the production Minimal theme was missing
 
-| Binding rule (mockup.html) | Production before | Effect |
-|---|---|---|
-| `body[data-theme="minimal"] .tgrp{background:none;padding:0}` | kept `padding: 3px` | every toolbar group was 36px tall instead of 30 and every button after the first group drifted right by an accumulating 3–15px |
-| `body[data-theme="minimal"] .body{gap:0;padding:0}` | zeroed `.editorView` padding but not `.panes` padding | both panes were offset by `8px 10px`, doubling every line of pane content in the diff |
+| Binding rule (mockup.html)                                    | Production before                                     | Effect                                                                                                                         |
+| ------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `body[data-theme="minimal"] .tgrp{background:none;padding:0}` | kept `padding: 3px`                                   | every toolbar group was 36px tall instead of 30 and every button after the first group drifted right by an accumulating 3–15px |
+| `body[data-theme="minimal"] .body{gap:0;padding:0}`           | zeroed `.editorView` padding but not `.panes` padding | both panes were offset by `8px 10px`, doubling every line of pane content in the diff                                          |
 
 Two more values were reading from the wrong token:
 
@@ -61,11 +61,11 @@ Differing pixels: **121,810 → 104,189**.
 
 ## Where the remaining 104,189 pixels are
 
-| Region | Differing pixels | Owner |
-|---|---:|---|
-| Chrome — tabs, toolbar, pane headers (`y < 127`) | **6,609** | Feature 003 (T045/T073) |
-| Editor pane content (`y ≥ 127`, `x < 511`) | 17,481 | Feature 002 — Monaco |
-| Preview pane content (`y ≥ 127`, `x ≥ 511`) | 80,099 | deferred rich rendering |
+| Region                                           | Differing pixels | Owner                   |
+| ------------------------------------------------ | ---------------: | ----------------------- |
+| Chrome — tabs, toolbar, pane headers (`y < 127`) |        **6,609** | Feature 003 (T045/T073) |
+| Editor pane content (`y ≥ 127`, `x < 511`)       |           17,481 | Feature 002 — Monaco    |
+| Preview pane content (`y ≥ 127`, `x ≥ 511`)      |           80,099 | deferred rich rendering |
 
 **93.7% of the remaining drift is inside the two pane content areas that this
 feature explicitly does not own.**
@@ -106,7 +106,7 @@ without weakening a protected control. Two source-preserving options:
 
 1. **Narrow the mapped region** to the chrome the feature owns (tabs, toolbar,
    arrangement segment, pane shells and headers, status), and compare the pane
-   *content* only through the basic-preview typography metrics the direct
+   _content_ only through the basic-preview typography metrics the direct
    acceptance table already lists. This matches the spec's "excluded rather than
    reproduced" wording but is a reviewed selector-mapping change.
 2. **Extend the Feature 003 reference variant** (the FR-FT-056 mechanism this

@@ -58,14 +58,17 @@ Wails/packaging-derived `.icns`/`.ico`/association icons.
 ## Pros and cons of the options
 
 ### Option A — Reference three-job pipeline
+
 - Good: proven on the same stack; version computed once and shared; full gate job blocks bad releases.
 - Bad: single YAML grows large; matrix debugging is per-OS.
 
 ### Option B — Version file in repo
+
 - Good: version visible in the tree.
 - Bad: two sources of truth (file vs tag); requires bump automation; drift risk — rejected.
 
 ### Option C — goreleaser / split workflows
+
 - Good: rich packaging ecosystem.
 - Bad: goreleaser's Wails/webview support is indirect; more tooling to learn; unnecessary for 3 targets.
 
@@ -73,8 +76,8 @@ Wails/packaging-derived `.icns`/`.ico`/association icons.
 
 - Design decisions: DD-07, DD-25, DD-34, DD-65, DD-66, DD-67
 - Spec clauses: ../../_archive-2026-07-28-specification/04_Build_and_Release/04_VERSIONING_ICON_AND_CICD.md`,
-  ../../_archive-2026-07-28-specification/04_Build_and_Release/01_BUILD_MATRIX.md#7-dev-vs-prod-isdev-folder-isolation`,
+../../_archive-2026-07-28-specification/04_Build_and_Release/01_BUILD_MATRIX.md#7-dev-vs-prod-isdev-folder-isolation`,
   ../../_archive-2026-07-28-specification/04_Build_and_Release/02_PACKAGING_AND_ASSOCIATIONS.md#2-app-icon-requirements`,
-  ../../_archive-2026-07-28-specification/04_Build_and_Release/03_CI_AND_HOOKS.md#4-ci-gate-set`,
+../../_archive-2026-07-28-specification/04_Build_and_Release/03_CI_AND_HOOKS.md#4-ci-gate-set`,
   ../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#15-versioning-app-icon--cicd`
 - Stories: STORY-103..107 (Phase 15)

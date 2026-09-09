@@ -70,7 +70,7 @@ remains dirty.
 
 - Design decisions: DD-15, DD-62, DD-63, DD-64
 - Spec clauses: ../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#new-open-save`,
-  ../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#file-io`,
+../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#file-io`,
   ../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model`,
-  ../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`
+../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`
 - Stories: STORY-037, STORY-038, STORY-039

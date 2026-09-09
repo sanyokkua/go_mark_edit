@@ -49,7 +49,7 @@
 - [x] Feature 003 variants for the file-only launcher, unavailable Open Folder, absent recent folders, and
       Reload/Keep mine/Skip prompt are defined without broad screenshot masks — the launcher variants are defined in
       `frontend/e2e/parity/reference-adapter.ts` and paired by the passing `T057 pairs file-only launcher variants
-      before any screenshot comparison`, which asserts Open folder disabled on both pages and the recent-file list
+before any screenshot comparison`, which asserts Open folder disabled on both pages and the recent-file list
       on each; no mask is involved, and the reload-prompt variants are carried by the same adapter.
 - [x] OS-owned framing/native dialogs, populated workspace, Assistant/provider, and deferred rich-rendering regions
       are explicitly excluded without weakening the mapped webview comparison

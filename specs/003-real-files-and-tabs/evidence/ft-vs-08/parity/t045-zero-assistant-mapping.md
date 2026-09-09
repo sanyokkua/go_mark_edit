@@ -16,11 +16,11 @@ The raw mockup source remains immutable and its SHA-256 remains
 
 With transitions frozen, the served reference reported the following mapped-region values:
 
-| Viewport | App class | Content left | Content width | Content right | Assistant display | Assistant width |
-| ---: | --- | ---: | ---: | ---: | --- | ---: |
-| 1280 | `app no-assistant` | 236.203 | 1023.594 | 1259.797 | `flex` | 0px |
-| 768 | `app no-assistant` | 227.281 | 528.188 | 755.469 | `none` | 0px |
-| 375 | `app no-assistant` | 6.625 | 361.750 | 368.375 | `none` | 0px |
+| Viewport | App class          | Content left | Content width | Content right | Assistant display | Assistant width |
+| -------: | ------------------ | -----------: | ------------: | ------------: | ----------------- | --------------: |
+|     1280 | `app no-assistant` |      236.203 |      1023.594 |      1259.797 | `flex`            |             0px |
+|      768 | `app no-assistant` |      227.281 |       528.188 |       755.469 | `none`            |             0px |
+|      375 | `app no-assistant` |        6.625 |       361.750 |       368.375 | `none`            |             0px |
 
 ## Verification
 

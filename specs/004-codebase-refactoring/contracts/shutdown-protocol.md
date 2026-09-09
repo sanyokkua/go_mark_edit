@@ -6,14 +6,14 @@ Owner: `internal/application/shutdown.go` (backend) with its frontend half in
 
 ## Inputs
 
-| Input | Source |
-|---|---|
-| native close or quit request | Wails `OnBeforeClose` (window close button, ⌘Q, the macOS application menu) and `runtime.Quit()` from the page |
-| `WindowReady(request)` | the frontend, once its projection is hydrated and the shell mounted |
-| `AuthorizeQuit(request, closeID)` / `CancelQuit(request, closeID)` | the frontend, in answer to a close request |
-| `Quit` button on the startup-failure screen | the frontend, before ready |
-| write completion | the lifecycle owner's write queue |
-| native confirmation answer | the confirmation port (`runtime.MessageDialog`, wired at the composition root) |
+| Input                                                              | Source                                                                                                         |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| native close or quit request                                       | Wails `OnBeforeClose` (window close button, ⌘Q, the macOS application menu) and `runtime.Quit()` from the page |
+| `WindowReady(request)`                                             | the frontend, once its projection is hydrated and the shell mounted                                            |
+| `AuthorizeQuit(request, closeID)` / `CancelQuit(request, closeID)` | the frontend, in answer to a close request                                                                     |
+| `Quit` button on the startup-failure screen                        | the frontend, before ready                                                                                     |
+| write completion                                                   | the lifecycle owner's write queue                                                                              |
+| native confirmation answer                                         | the confirmation port (`runtime.MessageDialog`, wired at the composition root)                                 |
 
 ## States
 
@@ -67,7 +67,7 @@ deadline still runs from the original request.
 
 `id` is minted per native request (monotonic counter plus process nonce). Every answer carries it; an
 answer for another id is refused and logged. The frontend's own bridge `Request.ID` is separate: it
-identifies the *call*, the close `id` identifies the *request being answered*.
+identifies the _call_, the close `id` identifies the _request being answered_.
 
 ## Observability
 

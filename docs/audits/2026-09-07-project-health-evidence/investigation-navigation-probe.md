@@ -4,12 +4,12 @@
 
 Run: 2026-09-08, 07:39:34–07:39:43 UTC. Source HEAD `883fd053b9b30911248a304cf5f57d8cebe81795`. Owner has confirmed the affected app was launched with `just dev` / `wails dev`.
 
-| Request | Status/type | Actual React root and entry present | `/wails/runtime.js` included | `/wails/ipc.js` included |
-| --- | --- | --- | --- | --- |
-| Direct Vite `/` | 200, text/html | Yes | No | No |
-| Actual Wails dev handler `/` | 200, text/html | Yes | Yes | Yes |
-| Direct Vite `/audit-next.md` | 200, text/html | Yes | No | No |
-| Actual Wails dev handler `/audit-next.md` | 200, text/html | Yes | No | No |
+| Request                                   | Status/type    | Actual React root and entry present | `/wails/runtime.js` included | `/wails/ipc.js` included |
+| ----------------------------------------- | -------------- | ----------------------------------- | ---------------------------- | ------------------------ |
+| Direct Vite `/`                           | 200, text/html | Yes                                 | No                           | No                       |
+| Actual Wails dev handler `/`              | 200, text/html | Yes                                 | Yes                          | Yes                      |
+| Direct Vite `/audit-next.md`              | 200, text/html | Yes                                 | No                           | No                       |
+| Actual Wails dev handler `/audit-next.md` | 200, text/html | Yes                                 | No                           | No                       |
 
 The Wails missing-path response is **byte-identical** to the direct Vite fallback response: 600 bytes, SHA256 `adb4faa571058124f45e3057beea7cd19fd9ce8ce6e95c4d4f3d56ebfd9d66ba`. It includes `<div id="root">` and `/src/main.tsx`, but neither Wails script. The Wails root response is 703 bytes, SHA256 `5c75746e0b67d632f20903160c02db89b12f7e0a9c9dd7c5c43bf93501d3e656`; it includes both Wails script tags and the normal dev spinner.
 
@@ -27,11 +27,11 @@ The source mechanism remains `pkg/assetserver/assetserver.go:140–183,200–205
 
 ## Exits, cleanup, and limitations
 
-* Probe and supervisor exited **0**. All ten checks passed. The checks named `...missing-markdown-...injection` mean **expected absence matched**, not that missing-path injection occurred; the script arrays and raw HTTP responses are the primary evidence.
-* First attempt exited 1 before probing because the sandbox denied the local listener (`EPERM`). That raw failure was preserved as `attempt1-*`. The bounded retry received automatic approval and succeeded.
-* Cleanup sent SIGTERM only to the task-owned Vite process group; the supervisor reaped it with exit `-15`. Subsequent exact-group `pgrep` checks returned 1 with no output for both probe and server groups, and the exact-port `lsof` check returned 1 with no listener. Initial sandbox process-list checks failed and were preserved separately; the elevated checks confirmed cleanup.
-* Tracked repository diff SHA256 was unchanged before and after: `f2e9e27126cb21cda07b4f0b9dc3bd9fdc6a574298acc06fcd5cc5b906c1cd2b`. The preexisting generated-runtime mode changes and untracked audit directory remain. No repository files, native app, user settings, or document profiles were changed. No gates or UI tests were run.
-* This used a deliberately missing `/audit-next.md`, not the owner's exact link target. It establishes a concrete failing development-server path. It does not establish the incident's exact URL, execute React, show StartupFailure, prove unsaved-data loss, or explain macOS Force Quit. Packaged native asset handling remains a different case.
+- Probe and supervisor exited **0**. All ten checks passed. The checks named `...missing-markdown-...injection` mean **expected absence matched**, not that missing-path injection occurred; the script arrays and raw HTTP responses are the primary evidence.
+- First attempt exited 1 before probing because the sandbox denied the local listener (`EPERM`). That raw failure was preserved as `attempt1-*`. The bounded retry received automatic approval and succeeded.
+- Cleanup sent SIGTERM only to the task-owned Vite process group; the supervisor reaped it with exit `-15`. Subsequent exact-group `pgrep` checks returned 1 with no output for both probe and server groups, and the exact-port `lsof` check returned 1 with no listener. Initial sandbox process-list checks failed and were preserved separately; the elevated checks confirmed cleanup.
+- Tracked repository diff SHA256 was unchanged before and after: `f2e9e27126cb21cda07b4f0b9dc3bd9fdc6a574298acc06fcd5cc5b906c1cd2b`. The preexisting generated-runtime mode changes and untracked audit directory remain. No repository files, native app, user settings, or document profiles were changed. No gates or UI tests were run.
+- This used a deliberately missing `/audit-next.md`, not the owner's exact link target. It establishes a concrete failing development-server path. It does not establish the incident's exact URL, execute React, show StartupFailure, prove unsaved-data loss, or explain macOS Force Quit. Packaged native asset handling remains a different case.
 
 ## Artifacts
 
@@ -41,11 +41,11 @@ Task directory: `/tmp/gomark-navigation-probe.Ig0rZh`.
 
 Key files:
 
-* `evidence/probe-summary.txt` — observations and checks.
-* `evidence/wails-root.http.txt`, `evidence/wails-missing-markdown.http.txt` — the decisive raw responses.
-* `evidence/probe-source.go.txt`, `evidence/vite-config-source.mjs.txt`, `evidence/supervisor-source.py.txt` — exact source copies.
-* `evidence/run-metadata.txt` — baseline, commands, input hashes, exits, and unchanged tracked-diff evidence.
-* `evidence/cleanup-verification-elevated.txt` — no remaining task-owned process groups or listener.
-* `evidence/manifest.txt` — per-artifact bytes and SHA256.
+- `evidence/probe-summary.txt` — observations and checks.
+- `evidence/wails-root.http.txt`, `evidence/wails-missing-markdown.http.txt` — the decisive raw responses.
+- `evidence/probe-source.go.txt`, `evidence/vite-config-source.mjs.txt`, `evidence/supervisor-source.py.txt` — exact source copies.
+- `evidence/run-metadata.txt` — baseline, commands, input hashes, exits, and unchanged tracked-diff evidence.
+- `evidence/cleanup-verification-elevated.txt` — no remaining task-owned process groups or listener.
+- `evidence/manifest.txt` — per-artifact bytes and SHA256.
 
 Original executable source hashes: Go probe `31f7ff805126e5e26d0582954a1aa3e163d1893b0b37d13a05d30bc6ee382204`; Vite wrapper `862ed80a92f97d9fbe871b09ccd032fcaff3ca4c1745b139235786480eae8730`; supervisor `0f6005d3f6d4a1113e814947b47ae75287df87afd4b836caf2057b31f436dfa4`. They remain unchanged from the successful run.

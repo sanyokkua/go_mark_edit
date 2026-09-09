@@ -34,8 +34,8 @@ with no default.
 
 **3. A whole-document rewrite cannot fit in the specified reply reserve.** This is arithmetic, not
 opinion. `18_TOKENIZER_AND_CONTEXT.md` checks `estimate(prompt) + margin + replyReserve ≤ contextWindow`
-with a default reserve of 1024 tokens. Proofreading a document requires the model to emit the *entire
-corrected document* as a `propose_edit` argument. A 5,000-token document passes the fit check and then
+with a default reserve of 1024 tokens. Proofreading a document requires the model to emit the _entire
+corrected document_ as a `propose_edit` argument. A 5,000-token document passes the fit check and then
 truncates at 1,024 tokens of output, producing a broken JSON argument, a schema-validation failure, and
 a message telling the user "a tool call had invalid arguments" — which is true and useless.
 
@@ -82,7 +82,7 @@ it is how the assistant works on half the models its default provider will be po
   outside them.
 - A retry neither consumes an iteration nor emits a new iteration progress event.
 - Two further termination rules, because an iteration cap alone does not stop a small model: stop when
-  the model requests the *same tool with the same arguments* twice in a row, and end the run on the
+  the model requests the _same tool with the same arguments_ twice in a row, and end the run on the
   second **consecutive** argument-validation failure. A single validation failure returns an error
   observation **with the schema echoed back** and consumes one iteration — for a small model, malformed
   arguments are the normal case, not an exception.
@@ -118,15 +118,18 @@ inferences to produce the same nothing. Its message says what to change.
 ## Pros and cons of the options
 
 ### Option A — require tool support
+
 - Good: one execution path; the cleanest implementation.
 - Bad: the assistant does not work on the default provider's most common models. "Install a different
   model" is not an acceptable answer from a local-first application.
 
-### Option B — per-model detection with a single-shot fallback *(chosen)*
+### Option B — per-model detection with a single-shot fallback _(chosen)_
+
 - Good: works everywhere; degrades on a known axis rather than an unknown one.
 - Bad: two paths.
 
 ### Option C — never use tools
+
 - Good: simplest of all; works on everything.
 - Bad: gives up reading the workspace, which is the entire premise of "have a conversation about my
   notes". Correct for the rewrite actions, insufficient for the product.
@@ -137,9 +140,9 @@ inferences to produce the same nothing. Its message says what to change.
 - Narrows: ADR-0007 (provider abstraction), ADR-0008 (agentic tool-call loop),
   ADR-0009 (tokenizer and context budget)
 - Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md`,
-  ../../_archive-2026-07-28-specification/01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md`,
+../../_archive-2026-07-28-specification/01_Product/16_CHAT_AND_AGENTIC_WORKFLOW.md`,
   ../../_archive-2026-07-28-specification/01_Product/17_PROVIDERS_MODELS_SETTINGS.md`,
-  ../../_archive-2026-07-28-specification/01_Product/18_TOKENIZER_AND_CONTEXT.md`
+../../_archive-2026-07-28-specification/01_Product/18_TOKENIZER_AND_CONTEXT.md`
 - Phases: `specification/07_Phases/PHASE_11_AI_PROVIDER.md` (Test tools, the wall-clock default),
   `specification/07_Phases/PHASE_12_ASSISTANT_REWRITES.md`,
   `specification/07_Phases/PHASE_13_CONVERSATION.md`

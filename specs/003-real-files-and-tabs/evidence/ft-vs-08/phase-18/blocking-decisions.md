@@ -18,13 +18,13 @@ T068**, which each require the matrix to be green.
 `phase-18/t035-run.md` records it. The editor region's computed styles differ from the binding
 on **eight properties**:
 
-| Property | Reference (binding) | Production |
-|---|---|---|
-| `font-family` | `"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace` | `Inter, -apple-system, "Segoe UI", system-ui, sans-serif` |
-| `font-size` | `13px` | `16px` |
-| `line-height` | `23.4px` | `normal` |
-| `overflow`, `overflow-x`, `overflow-y` | `auto` | `hidden` |
-| `min-width`, `min-height` | `auto` | `0px` |
+| Property                               | Reference (binding)                                           | Production                                                |
+| -------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
+| `font-family`                          | `"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace` | `Inter, -apple-system, "Segoe UI", system-ui, sans-serif` |
+| `font-size`                            | `13px`                                                        | `16px`                                                    |
+| `line-height`                          | `23.4px`                                                      | `normal`                                                  |
+| `overflow`, `overflow-x`, `overflow-y` | `auto`                                                        | `hidden`                                                  |
+| `min-width`, `min-height`              | `auto`                                                        | `0px`                                                     |
 
 Those eight assertions fail in **432 of the 1,638 comparisons**; a further 126 also fail
 `width` and `height` in that region. The pixel weight, over the identical region at 1280px
@@ -47,7 +47,7 @@ exactly what does not match, so the attribution mechanism refuses them by design
 ### The options
 
 1. **Feature 002 adopts the binding's editor typography and scrolling** (`JetBrains Mono
-   13px/23.4px`, `overflow: auto`). Unblocks 432 comparisons and moves ~23,000 pixels per
+13px/23.4px`, `overflow: auto`). Unblocks 432 comparisons and moves ~23,000 pixels per
    editor-family case toward zero. It changes the shipped editing experience, which is why it
    belongs to Feature 002 and not to a parity metric.
 2. **Amend FR-FT-055 so a named cross-feature region exclusion may also record its owning
@@ -55,7 +55,7 @@ exactly what does not match, so the attribution mechanism refuses them by design
    binding. FR-FT-055 currently says such an exclusion "MUST still assert the excluded region's
    bounds and computed styles exactly" — which contradicts the exclusion's own premise that
    another feature owns the region. The bounds requirement stays; the style requirement becomes
-   *recorded and bounded* rather than *matching*, on the same footing as an attributed pixel
+   _recorded and bounded_ rather than _matching_, on the same footing as an attributed pixel
    residual: the exact set of differing properties and both sides' values are declared, and the
    comparison **fails if that set changes**. Real editor drift is still caught; the
    already-decided Feature 002 difference stops being counted as Feature 003 drift.
@@ -70,7 +70,7 @@ Bounding the difference — declared property set, both sides' values, fails on 
 every property of the attributed-residual mechanism that makes it safe, and it is the same
 shape the codebase already uses for pixels.
 
-Option 1 remains the better *product* outcome if Feature 002 wants it; option 2 does not
+Option 1 remains the better _product_ outcome if Feature 002 wants it; option 2 does not
 prevent it and would simply stop firing when it landed.
 
 ---
@@ -87,12 +87,12 @@ of **T066**, which depends on `appearance.test.ts` and the `window-shell` T026 m
 Every committed baseline in these three suites was written by commit `848856ef` on
 **2026-08-06**:
 
-| Suite | Images |
-|---|---:|
-| `frontend/e2e/window-shell.test.ts-snapshots/` | 18 |
-| `frontend/e2e/appearance.test.ts-snapshots/` | 6 |
-| `frontend/e2e/core-editor.test.ts-snapshots/` | 1 |
-| **Total** | **25** |
+| Suite                                          | Images |
+| ---------------------------------------------- | -----: |
+| `frontend/e2e/window-shell.test.ts-snapshots/` |     18 |
+| `frontend/e2e/appearance.test.ts-snapshots/`   |      6 |
+| `frontend/e2e/core-editor.test.ts-snapshots/`  |      1 |
+| **Total**                                      | **25** |
 
 Since that commit, **48 commits have changed `frontend/src/ui/widgets/` or
 `frontend/src/ui/styles/`**. The images therefore depict an application that no longer exists.

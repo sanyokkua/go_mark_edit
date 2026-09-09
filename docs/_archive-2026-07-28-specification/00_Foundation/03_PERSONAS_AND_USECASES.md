@@ -12,7 +12,7 @@
   reformatting of line endings), and keyboard-driven formatting. Values offline, no telemetry, MIT.
 - **P2 — The note-taker.** Keeps a folder of `.md`/`.txt` notes. Wants to open the folder as a tree,
   jump between files in tabs, autosave, and a clean reading view. Cares about a pleasant theme.
-- **P3 — The reader.** Double-clicks a `.md` file from the OS to *read* it (rendered), not edit it.
+- **P3 — The reader.** Double-clicks a `.md` file from the OS to _read_ it (rendered), not edit it.
   Wants GoMarkEdit to be the default handler and to open straight into a distraction-free view — sets
   the **default open mode** to **Reading (Viewer)** (DD-27; the shipped default is Editor).
 

@@ -3,11 +3,11 @@
 Some things about GoMarkEdit cannot be proven by a mocked bridge, and a few cannot be proven by any
 automated test at all. This folder is where those are written down, executed, and recorded.
 
-| File | What it is |
-|---|---|
-| `live-plan.md` | The standing plan. Grows one section per phase. |
-| `reports/` | Dated records of actually running it, each naming the commit under test. |
-| `tools/fault_proxy.py` | A reverse proxy that makes a provider fail on demand. |
+| File                   | What it is                                                               |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `live-plan.md`         | The standing plan. Grows one section per phase.                          |
+| `reports/`             | Dated records of actually running it, each naming the commit under test. |
+| `tools/fault_proxy.py` | A reverse proxy that makes a provider fail on demand.                    |
 
 ## Why this exists at all
 
@@ -16,7 +16,7 @@ idea, and this folder is what stops it from being executed once and forgotten.
 
 The specification deliberately has **no completion validator and no evidence file** — roughly 2,000
 lines of validators plus 2,200 lines of tests-for-validators were deleted on 2026-07-25 because they
-validated the *form of documents* rather than the *behaviour of the application*, and because one of
+validated the _form of documents_ rather than the _behaviour of the application_, and because one of
 them reported a phase complete while the test suite was red. That decision stands.
 
 But deleting the machinery left nothing at all in its place. A dated report in plain prose, naming a

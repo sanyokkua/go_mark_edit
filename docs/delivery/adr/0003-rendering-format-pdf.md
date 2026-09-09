@@ -50,16 +50,17 @@ bundle heavyweight native tooling. This ADR locks DD-16, DD-19, and DD-23.
 ## Decision outcome
 
 Chosen: **rendering via `react-markdown` + `remark-gfm`/`remark-math`/`rehype-katex`/`rehype-highlight`
-+ Mermaid `components` override; Format/Compact via Prettier/`remark-stringify`; lint via `remark-lint`;
-and PDF export via the webview's `window.print()` against a print-scoped view.** The render and format
-pipelines are effectively pre-decided by the mandate to adopt a proven pipeline and the one-ecosystem benefit.
-For PDF, the webview print path is the only option that is fully offline, ships nothing extra, and
-reuses the exact rendered DOM the user already sees — the printed output is the preview under a
-print-scoped stylesheet, with a setting to choose **Current theme** or **Clean document** (DD-24). v1
-deliberately does **not** implement paginated layout controls (headers/footers/page numbers/margins as
-first-class settings). Should precise, headless, reproducible PDF become a hard requirement, the
-documented upgrade path is a headless-Chromium (`chromedp`) exporter behind the same export boundary —
-recorded here, not adopted now.
+
+- Mermaid `components` override; Format/Compact via Prettier/`remark-stringify`; lint via `remark-lint`;
+  and PDF export via the webview's `window.print()` against a print-scoped view.** The render and format
+  pipelines are effectively pre-decided by the mandate to adopt a proven pipeline and the one-ecosystem benefit.
+  For PDF, the webview print path is the only option that is fully offline, ships nothing extra, and
+  reuses the exact rendered DOM the user already sees — the printed output is the preview under a
+  print-scoped stylesheet, with a setting to choose **Current theme** or **Clean document** (DD-24). v1
+  deliberately does **not** implement paginated layout controls (headers/footers/page numbers/margins as
+  first-class settings). Should precise, headless, reproducible PDF become a hard requirement, the
+  documented upgrade path is a headless-Chromium (`chromedp`) exporter behind the same export boundary —
+  recorded here, not adopted now.
 
 ### Consequences
 

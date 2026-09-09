@@ -23,7 +23,7 @@ Splitting them meant building the same machinery twice.
 2. **The diff view.** A standalone, themed, keyboard-navigable diff, reused three times — by
    **Preview changes** below, by the external-change prompt (the external-change prompt), and by the assistant in
    Phase 12. Build it as a standalone component taking a before string and an after string now, with both
-callers in mind. Monaco's `DiffEditor` is already in the bundle and costs nothing
+   callers in mind. Monaco's `DiffEditor` is already in the bundle and costs nothing
    extra.
 
    **Format applies directly; it does not open a diff first.** `../spec/product/tidying-markdown.md` says
@@ -31,13 +31,14 @@ callers in mind. Monaco's `DiffEditor` is already in the bundle and costs nothin
    preservation that a single undo step requires. Undo is the review mechanism, because Format is exactly one
    undo step by construction.
 
-   The diff is reachable **on demand** — a *Preview changes* item beside Format — for the case where a
+   The diff is reachable **on demand** — a _Preview changes_ item beside Format — for the case where a
    user wants to look before committing to a large reformat. Never automatically, and never on save.
+
 3. **Lint.** Run consistency rules over the document, show findings as squiggles at the right
    positions in the editor, and put a problems count in the status bar. Clicking a finding jumps to it.
 4. **On demand and on save.** Format-on-save and lint-on-save as settings, running before the write so
    what lands on disk is what you were shown. Defaults: format-on-save **off**, lint-on-save **on**.
-   **Neither runs on autosave**  — autosave is on by default and debounced, so formatting on it
+   **Neither runs on autosave** — autosave is on by default and debounced, so formatting on it
    would reflow the document under the cursor several times a minute.
 5. **Export to PDF.** Export what is rendered, in two flavours: Current theme, and Clean — a neutral
    print stylesheet. This phase owns the `printing-forces-light` behaviour: Current theme keeps the
@@ -62,7 +63,7 @@ Print ownership was settled on 2026-07-28: Phase 10, not Phase 02, owns
 `printing-forces-light`; Phase 02 supplies only the reusable theme tokens.
 
 - **Who holds the gate during a Format, and who releases it if the frontend dies mid-operation?** —
-  *Settled 2026-07-25 by `../adr/0032-run-registry-and-shutdown-ordering.md`, recorded 2026-07-28.*
+  _Settled 2026-07-25 by `../adr/0032-run-registry-and-shutdown-ordering.md`, recorded 2026-07-28._
   **Go holds it.** Every long-running operation derives its context from the `OnStartup` context,
   registers its cancel function in a mutex-guarded run registry owned by the composition root, and
   `defer`s both the `delete` and the `cancel` on exit — so the release is crash-safe by construction

@@ -16,11 +16,11 @@
    Hash format:  #<theme>-<mode>/<screen>   e.g. #material-light/settings-ai-providers
    ===================================================================== */
       :root {
-        --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+        --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
         --blur: none;
         --win-radius: 16px;
         --font:
-          "Inter", -apple-system, "Segoe UI", system-ui, sans-serif; /* stacking scale — no component picks its own z-index */
+          'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif; /* stacking scale — no component picks its own z-index */
         --z-base: 1;
         --z-sticky: 10;
         --z-dropdown: 30;
@@ -105,44 +105,44 @@
    Phase 03's acceptance is "correct at 375, 768 and 1280". Pick a width above.
    Driven by data-w on .app rather than @media so all three are demonstrable
    without resizing the browser. */
-      .app[data-w="1280"] {
+      .app[data-w='1280'] {
         width: min(1280px, 97vw);
       }
-      .app[data-w="768"] {
+      .app[data-w='768'] {
         width: min(768px, 97vw);
       }
-      .app[data-w="375"] {
+      .app[data-w='375'] {
         width: min(375px, 97vw);
       }
 
       /* 768 — the assistant is the first region to go; the sidebar becomes an icon rail. */
-      .app[data-w="768"] .assistant {
+      .app[data-w='768'] .assistant {
         display: none;
       }
-      .app[data-w="768"] .sidebar {
+      .app[data-w='768'] .sidebar {
         width: 46px;
       }
-      .app[data-w="768"] .sidebar .sb-h span,
-      .app[data-w="768"] .sidebar .row > span:not(.ic):not(.tw),
-      .app[data-w="768"] .sidebar .sb-f {
+      .app[data-w='768'] .sidebar .sb-h span,
+      .app[data-w='768'] .sidebar .row > span:not(.ic):not(.tw),
+      .app[data-w='768'] .sidebar .sb-f {
         display: none;
       }
-      .app[data-w="768"] .sidebar .row {
+      .app[data-w='768'] .sidebar .row {
         justify-content: center;
         padding: 6px 0;
       }
-      .app[data-w="768"] .tgrp.tg-over {
+      .app[data-w='768'] .tgrp.tg-over {
         display: flex;
       }
-      .app[data-w="768"] .tgrp.tg-hide {
+      .app[data-w='768'] .tgrp.tg-hide {
         display: none;
       }
 
       /* 375 — panes stack, the sidebar overlays, the tab strip scrolls. */
-      .app[data-w="375"] .assistant {
+      .app[data-w='375'] .assistant {
         display: none;
       }
-      .app[data-w="375"] .sidebar {
+      .app[data-w='375'] .sidebar {
         position: absolute;
         inset: 0 auto 0 0;
         width: 230px;
@@ -151,16 +151,16 @@
         transform: translateX(-102%);
         transition: transform var(--dur-base) var(--ease-out);
       }
-      .app[data-w="375"].sidebar-open .sidebar {
+      .app[data-w='375'].sidebar-open .sidebar {
         transform: none;
       }
-      .app[data-w="375"] .body {
+      .app[data-w='375'] .body {
         position: relative;
         padding: 6px;
         flex-direction: column;
         gap: 6px;
       }
-      .app[data-w="375"] .pane {
+      .app[data-w='375'] .pane {
         min-height: 0;
         flex: 1;
       }
@@ -177,29 +177,29 @@
       .toolbar .tbtn.txt {
         white-space: nowrap;
       }
-      .app[data-w="375"] .tbtn.txt {
+      .app[data-w='375'] .tbtn.txt {
         display: none;
       }
-      .app[data-w="375"] .tsp {
+      .app[data-w='375'] .tsp {
         display: none;
       }
       /* the in-app menu row collapses into the overflow menu too */
-      .app[data-w="375"] .app-menu-row .menu,
-      .app[data-w="375"] .brand-name {
+      .app[data-w='375'] .app-menu-row .menu,
+      .app[data-w='375'] .brand-name {
         display: none;
       }
       /* the menu bar folds into the overflow menu at 375 */
-      .app[data-w="375"] .ovf-menu .ovf-menus {
+      .app[data-w='375'] .ovf-menu .ovf-menus {
         display: block;
       }
       .ovf-menu .ovf-menus {
         display: none;
       }
       /* the caret indicator is the fifth item to drop */
-      .app[data-w="375"] .sb-caret {
+      .app[data-w='375'] .sb-caret {
         display: none;
       }
-      .app[data-w="375"] .statusbar {
+      .app[data-w='375'] .statusbar {
         gap: 8px;
         padding: 0 8px;
       }
@@ -209,39 +209,39 @@
         text-overflow: ellipsis;
         max-width: 40ch;
       }
-      .app[data-w="375"] .doc-name {
+      .app[data-w='375'] .doc-name {
         max-width: 16ch;
       }
-      .app[data-w="375"] .tabs {
+      .app[data-w='375'] .tabs {
         overflow-x: auto;
         flex-wrap: nowrap;
         scrollbar-width: none;
       }
-      .app[data-w="375"] .tabs::-webkit-scrollbar {
+      .app[data-w='375'] .tabs::-webkit-scrollbar {
         display: none;
       }
-      .app[data-w="375"] .tab {
+      .app[data-w='375'] .tab {
         flex: none;
       }
-      .app[data-w="375"] .tgrp.tg-over {
+      .app[data-w='375'] .tgrp.tg-over {
         display: flex;
       }
-      .app[data-w="375"] .tgrp.tg-hide,
-      .app[data-w="375"] #viewseg {
+      .app[data-w='375'] .tgrp.tg-hide,
+      .app[data-w='375'] #viewseg {
         display: none;
       }
 
       /* Status bar drops in ONE fixed order (02_EDITOR_AND_VIEWER_MODES.md#status-bar):
    provider -> autosave -> encoding/EOL -> counts -> caret -> standard.
    Problems and Reading are never dropped. */
-      .app[data-w="768"] .sb-provider {
+      .app[data-w='768'] .sb-provider {
         display: none;
       }
-      .app[data-w="375"] .sb-provider,
-      .app[data-w="375"] .sb-autosave,
-      .app[data-w="375"] .sb-enc,
-      .app[data-w="375"] .sb-eol,
-      .app[data-w="375"] .sb-count {
+      .app[data-w='375'] .sb-provider,
+      .app[data-w='375'] .sb-autosave,
+      .app[data-w='375'] .sb-enc,
+      .app[data-w='375'] .sb-eol,
+      .app[data-w='375'] .sb-count {
         display: none;
       }
 
@@ -278,7 +278,7 @@
       #navBtn {
         display: none;
       }
-      .app[data-w="375"] #navBtn {
+      .app[data-w='375'] #navBtn {
         display: inline-flex;
       }
       .ovf-menu .mi {
@@ -439,7 +439,7 @@
         font-size: 11.5px;
       }
       /* the trigger becomes Cancel in place — it never appears somewhere new */
-      .app.busy .tbtn[title^="Format"] {
+      .app.busy .tbtn[title^='Format'] {
         background: var(--accent);
         color: var(--accent-contrast);
       }
@@ -627,7 +627,7 @@
       }
 
       /* ---------------- CANONICAL TOKEN BLOCKS (match design-1/2/3 natives) ---------------- */
-      body[data-theme="glass"][data-mode="dark"] {
+      body[data-theme='glass'][data-mode='dark'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas:
           radial-gradient(1200px 700px at 15% -10%, #3b2f7a 0, transparent 55%),
@@ -658,10 +658,10 @@
         --blur: blur(28px) saturate(160%);
         --win-radius: 16px;
         --font:
-          -apple-system, "SF Pro Display", "Segoe UI", Inter, system-ui,
+          -apple-system, 'SF Pro Display', 'Segoe UI', Inter, system-ui,
           sans-serif;
       }
-      body[data-theme="glass"][data-mode="light"] {
+      body[data-theme='glass'][data-mode='light'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas:
           radial-gradient(1100px 700px at 12% -12%, #b7c2ff 0, transparent 55%),
@@ -692,10 +692,10 @@
         --blur: blur(28px) saturate(150%);
         --win-radius: 16px;
         --font:
-          -apple-system, "SF Pro Display", "Segoe UI", Inter, system-ui,
+          -apple-system, 'SF Pro Display', 'Segoe UI', Inter, system-ui,
           sans-serif;
       }
-      body[data-theme="material"][data-mode="light"] {
+      body[data-theme='material'][data-mode='light'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas: #d9d7e6;
         --app-bg: #faf8ff;
@@ -720,9 +720,9 @@
         --hover: #eceaf6;
         --win-shadow: 0 30px 70px rgba(30, 30, 60, 0.28);
         --win-radius: 16px;
-        --font: "Roboto", "Segoe UI", Inter, system-ui, sans-serif;
+        --font: 'Roboto', 'Segoe UI', Inter, system-ui, sans-serif;
       }
-      body[data-theme="material"][data-mode="dark"] {
+      body[data-theme='material'][data-mode='dark'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas: #0e0e13;
         --app-bg: #16161c;
@@ -747,9 +747,9 @@
         --hover: #2a2a34;
         --win-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
         --win-radius: 16px;
-        --font: "Roboto", "Segoe UI", Inter, system-ui, sans-serif;
+        --font: 'Roboto', 'Segoe UI', Inter, system-ui, sans-serif;
       }
-      body[data-theme="minimal"][data-mode="light"] {
+      body[data-theme='minimal'][data-mode='light'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas: #e9e9ec;
         --app-bg: #fbfbfa;
@@ -774,9 +774,9 @@
         --hover: #f4f4f3;
         --win-shadow: 0 24px 60px rgba(20, 20, 40, 0.16);
         --win-radius: 12px;
-        --font: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+        --font: 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
       }
-      body[data-theme="minimal"][data-mode="dark"] {
+      body[data-theme='minimal'][data-mode='dark'] {
         --focus-ring: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--accent);
         --canvas: #0c0c0e;
         --app-bg: #141416;
@@ -801,9 +801,9 @@
         --hover: #1e1e21;
         --win-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
         --win-radius: 12px;
-        --font: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+        --font: 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
       }
-      body[data-mode="light"] {
+      body[data-mode='light'] {
         --md-heading: #3056d3;
         --md-strong: #b45309;
         --md-emphasis: #7c3aed;
@@ -827,7 +827,7 @@
         --scrollbar-thumb: rgba(0, 0, 0, 0.18);
         --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
       }
-      body[data-mode="dark"] {
+      body[data-mode='dark'] {
         --md-heading: #8fb4ff;
         --md-strong: #ffd479;
         --md-emphasis: #c58bff;
@@ -956,8 +956,8 @@
         position: relative;
         backdrop-filter: var(--blur);
       }
-      body[data-theme="glass"] .app::before {
-        content: "";
+      body[data-theme='glass'] .app::before {
+        content: '';
         position: absolute;
         inset: 0;
         pointer-events: none;
@@ -1138,7 +1138,7 @@
         flex: none;
       }
       .tgl::after {
-        content: "";
+        content: '';
         position: absolute;
         top: 1.5px;
         left: 1.5px;
@@ -1329,19 +1329,19 @@
         cursor: pointer;
         font-size: 15px;
       }
-      body[data-theme="minimal"] .tab {
+      body[data-theme='minimal'] .tab {
         border-radius: 0;
         border: 0;
         border-bottom: 2px solid transparent;
         background: none;
         padding: 8px 12px;
       }
-      body[data-theme="minimal"] .tab.active {
+      body[data-theme='minimal'] .tab.active {
         background: none;
         border-bottom-color: var(--text);
         font-weight: 500;
       }
-      body[data-theme="material"] .tab {
+      body[data-theme='material'] .tab {
         border-radius: 18px;
         padding: 8px 15px;
       }
@@ -1360,7 +1360,7 @@
         border-radius: 11px;
         padding: 3px;
       }
-      body[data-theme="minimal"] .tgrp {
+      body[data-theme='minimal'] .tgrp {
         background: none;
         padding: 0;
       }
@@ -1428,7 +1428,7 @@
         padding: 8px 10px;
         min-height: 0;
       }
-      body[data-theme="minimal"] .body {
+      body[data-theme='minimal'] .body {
         gap: 0;
         padding: 0;
       }
@@ -1442,12 +1442,12 @@
         flex-direction: column;
         overflow: hidden;
       }
-      body[data-theme="minimal"] .pane {
+      body[data-theme='minimal'] .pane {
         background: none;
         border: 0;
         border-radius: 0;
       }
-      body[data-theme="minimal"] .pane + .pane {
+      body[data-theme='minimal'] .pane + .pane {
         border-left: 1px solid var(--stroke);
       }
       .app.only-editor #pane-preview,
@@ -1612,7 +1612,7 @@
         border-radius: 6px;
         background: var(--accent-soft);
         color: var(--accent-ink);
-        font-family: "Times New Roman", serif;
+        font-family: 'Times New Roman', serif;
         font-style: italic;
       }
       .mermaid {
@@ -2084,7 +2084,7 @@
         background: var(--surface-2);
         border: 1px solid var(--stroke-soft);
       }
-      body[data-theme="minimal"] .pill {
+      body[data-theme='minimal'] .pill {
         background: none;
         border: 0;
       }
@@ -2097,7 +2097,7 @@
         background: var(--app-bg);
         backdrop-filter: var(--blur);
       }
-      body[data-theme="glass"] .reader {
+      body[data-theme='glass'] .reader {
         background: var(--canvas);
       }
       .app.reading .reader {
@@ -2525,38 +2525,38 @@
       }
 
       /* ============ THEME CHARACTER (glass frosted+glossy both modes, material elevation) ============ */
-      body[data-theme="glass"] .pane,
-      body[data-theme="glass"] .sidebar,
-      body[data-theme="glass"] .assistant,
-      body[data-theme="glass"] .toolbar,
-      body[data-theme="glass"] .tabs,
-      body[data-theme="glass"] .dropdown,
-      body[data-theme="glass"] .modal,
-      body[data-theme="glass"] .editcard,
-      body[data-theme="glass"] .bubble,
-      body[data-theme="glass"] .as-scope,
-      body[data-theme="glass"] .as-actions,
-      body[data-theme="glass"] .composer,
-      body[data-theme="glass"] .statusbar,
-      body[data-theme="glass"] .banner,
-      body[data-theme="glass"] .toast,
-      body[data-theme="glass"] .ctxmenu,
-      body[data-theme="glass"] .dropzone .box {
+      body[data-theme='glass'] .pane,
+      body[data-theme='glass'] .sidebar,
+      body[data-theme='glass'] .assistant,
+      body[data-theme='glass'] .toolbar,
+      body[data-theme='glass'] .tabs,
+      body[data-theme='glass'] .dropdown,
+      body[data-theme='glass'] .modal,
+      body[data-theme='glass'] .editcard,
+      body[data-theme='glass'] .bubble,
+      body[data-theme='glass'] .as-scope,
+      body[data-theme='glass'] .as-actions,
+      body[data-theme='glass'] .composer,
+      body[data-theme='glass'] .statusbar,
+      body[data-theme='glass'] .banner,
+      body[data-theme='glass'] .toast,
+      body[data-theme='glass'] .ctxmenu,
+      body[data-theme='glass'] .dropzone .box {
         backdrop-filter: var(--blur);
         -webkit-backdrop-filter: var(--blur);
       }
-      body[data-theme="glass"] .pane,
-      body[data-theme="glass"] .toolbar,
-      body[data-theme="glass"] .sidebar,
-      body[data-theme="glass"] .assistant {
+      body[data-theme='glass'] .pane,
+      body[data-theme='glass'] .toolbar,
+      body[data-theme='glass'] .sidebar,
+      body[data-theme='glass'] .assistant {
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
       }
-      body[data-theme="glass"] .seg button.active,
-      body[data-theme="glass"] .switch button.on,
-      body[data-theme="glass"] .send,
-      body[data-theme="glass"] .btn-apply,
-      body[data-theme="glass"] .pick button.on,
-      body[data-theme="glass"] .screens button.on {
+      body[data-theme='glass'] .seg button.active,
+      body[data-theme='glass'] .switch button.on,
+      body[data-theme='glass'] .send,
+      body[data-theme='glass'] .btn-apply,
+      body[data-theme='glass'] .pick button.on,
+      body[data-theme='glass'] .screens button.on {
         background: linear-gradient(
           135deg,
           var(--accent),
@@ -2567,25 +2567,25 @@
         box-shadow: 0 4px 16px
           color-mix(in srgb, var(--accent) 42%, transparent);
       }
-      body[data-theme="glass"] .brand .logo {
+      body[data-theme='glass'] .brand .logo {
         box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 60%, transparent);
       }
-      body[data-theme="material"] .pane,
-      body[data-theme="material"] .dropdown,
-      body[data-theme="material"] .modal,
-      body[data-theme="material"] .editcard,
-      body[data-theme="material"] .act,
-      body[data-theme="material"] .provchip,
-      body[data-theme="material"] .toast,
-      body[data-theme="material"] .ctxmenu {
+      body[data-theme='material'] .pane,
+      body[data-theme='material'] .dropdown,
+      body[data-theme='material'] .modal,
+      body[data-theme='material'] .editcard,
+      body[data-theme='material'] .act,
+      body[data-theme='material'] .provchip,
+      body[data-theme='material'] .toast,
+      body[data-theme='material'] .ctxmenu {
         box-shadow:
           0 1px 2px rgba(30, 30, 60, 0.1),
           0 1px 3px rgba(30, 30, 60, 0.08);
       }
-      body[data-theme="material"][data-mode="dark"] .pane,
-      body[data-theme="material"][data-mode="dark"] .dropdown,
-      body[data-theme="material"][data-mode="dark"] .modal,
-      body[data-theme="material"][data-mode="dark"] .act {
+      body[data-theme='material'][data-mode='dark'] .pane,
+      body[data-theme='material'][data-mode='dark'] .dropdown,
+      body[data-theme='material'][data-mode='dark'] .modal,
+      body[data-theme='material'][data-mode='dark'] .act {
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
       }
     </style>
@@ -4225,36 +4225,36 @@
     </p>
 
     <script>
-      const app = document.getElementById("app"),
+      const app = document.getElementById('app'),
         body = document.body;
-      const NATIVE = { glass: "dark", material: "light", minimal: "light" };
-      let theme = "material",
-        appearance = "light";
-      const mql = window.matchMedia("(prefers-color-scheme: dark)");
+      const NATIVE = { glass: 'dark', material: 'light', minimal: 'light' };
+      let theme = 'material',
+        appearance = 'light';
+      const mql = window.matchMedia('(prefers-color-scheme: dark)');
       const resolveMode = () =>
-        appearance === "auto" ? (mql.matches ? "dark" : "light") : appearance;
+        appearance === 'auto' ? (mql.matches ? 'dark' : 'light') : appearance;
       function applyThemeMode() {
-        body.setAttribute("data-theme", theme);
-        body.setAttribute("data-mode", resolveMode());
+        body.setAttribute('data-theme', theme);
+        body.setAttribute('data-mode', resolveMode());
         document
-          .querySelectorAll("#themeSwitch button")
-          .forEach((b) => b.classList.toggle("on", b.dataset.theme === theme));
+          .querySelectorAll('#themeSwitch button')
+          .forEach((b) => b.classList.toggle('on', b.dataset.theme === theme));
         document
-          .querySelectorAll("#modeSwitch button")
+          .querySelectorAll('#modeSwitch button')
           .forEach((b) =>
-            b.classList.toggle("on", b.dataset.appear === appearance),
+            b.classList.toggle('on', b.dataset.appear === appearance),
           );
         document
-          .querySelectorAll("#m-settings .swatches i")
+          .querySelectorAll('#m-settings .swatches i')
           .forEach((i) =>
-            i.classList.toggle("sel", i.dataset.setTheme === theme),
+            i.classList.toggle('sel', i.dataset.setTheme === theme),
           );
-        document.querySelectorAll("[data-set-appear]").forEach((x) => {
-          const t = x.querySelector(".tick");
-          if (t) t.classList.toggle("off", x.dataset.setAppear !== appearance);
+        document.querySelectorAll('[data-set-appear]').forEach((x) => {
+          const t = x.querySelector('.tick');
+          if (t) t.classList.toggle('off', x.dataset.setAppear !== appearance);
         });
-        document.getElementById("autoNote").textContent =
-          appearance === "auto" ? "follows system · " + resolveMode() : "";
+        document.getElementById('autoNote').textContent =
+          appearance === 'auto' ? 'follows system · ' + resolveMode() : '';
         renderTokens();
         writeHash();
       }
@@ -4267,295 +4267,295 @@
         appearance = a;
         applyThemeMode();
       }
-      document.getElementById("themeSwitch").addEventListener("click", (e) => {
-        const b = e.target.closest("button");
+      document.getElementById('themeSwitch').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
         if (b) setTheme(b.dataset.theme);
       });
-      document.getElementById("modeSwitch").addEventListener("click", (e) => {
-        const b = e.target.closest("button");
+      document.getElementById('modeSwitch').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
         if (b) setAppear(b.dataset.appear);
       });
       document
-        .querySelectorAll("#m-settings [data-set-theme]")
+        .querySelectorAll('#m-settings [data-set-theme]')
         .forEach((i) =>
-          i.addEventListener("click", () => setTheme(i.dataset.setTheme, true)),
+          i.addEventListener('click', () => setTheme(i.dataset.setTheme, true)),
         );
       document
-        .querySelectorAll("#m-settings [data-set-appear]")
+        .querySelectorAll('#m-settings [data-set-appear]')
         .forEach((i) =>
-          i.addEventListener("click", () => setAppear(i.dataset.setAppear)),
+          i.addEventListener('click', () => setAppear(i.dataset.setAppear)),
         );
-      mql.addEventListener("change", () => {
-        if (appearance === "auto") applyThemeMode();
+      mql.addEventListener('change', () => {
+        if (appearance === 'auto') applyThemeMode();
       });
 
       /* ---- screens ---- */
-      let screen = "editor-split";
+      let screen = 'editor-split';
       const CLASSES = [
-        "no-sidebar",
-        "no-assistant",
-        "only-editor",
-        "only-preview",
-        "reading",
-        "dragging",
-        "ctx",
-        "toasting",
-        "show-banner",
-        "empty",
-        "tree-is-empty",
-        "tree-no-match",
-        "busy",
-        "paused",
-        "problems-open",
-        "assistant-reserved",
-        "focusdemo",
-        "diffing",
-        "tabctx",
-        "edctx",
-        "ovf",
-        "sidebar-open",
+        'no-sidebar',
+        'no-assistant',
+        'only-editor',
+        'only-preview',
+        'reading',
+        'dragging',
+        'ctx',
+        'toasting',
+        'show-banner',
+        'empty',
+        'tree-is-empty',
+        'tree-no-match',
+        'busy',
+        'paused',
+        'problems-open',
+        'assistant-reserved',
+        'focusdemo',
+        'diffing',
+        'tabctx',
+        'edctx',
+        'ovf',
+        'sidebar-open',
       ];
       function resetApp() {
         CLASSES.forEach((c) => app.classList.remove(c));
         closeMenus();
         [
-          "setModal",
-          "shModal",
-          "aboutModal",
-          "dropPrompt",
-          "savePrompt",
-          "quitPrompt",
-          "reloadPrompt",
-          "startupFailure",
-        ].forEach((id) => document.getElementById(id).classList.remove("show"));
-        body.classList.remove("show-tokens");
+          'setModal',
+          'shModal',
+          'aboutModal',
+          'dropPrompt',
+          'savePrompt',
+          'quitPrompt',
+          'reloadPrompt',
+          'startupFailure',
+        ].forEach((id) => document.getElementById(id).classList.remove('show'));
+        body.classList.remove('show-tokens');
         document
-          .querySelectorAll("#viewseg button")
+          .querySelectorAll('#viewseg button')
           .forEach((b) =>
-            b.classList.toggle("active", b.dataset.view === "split"),
+            b.classList.toggle('active', b.dataset.view === 'split'),
           );
       }
       function showScreen(name) {
         screen = name;
         resetApp();
         document
-          .querySelectorAll("#screenNav button")
-          .forEach((b) => b.classList.toggle("on", b.dataset.screen === name));
+          .querySelectorAll('#screenNav button')
+          .forEach((b) => b.classList.toggle('on', b.dataset.screen === name));
         switch (name) {
-          case "editor-only":
-            app.classList.add("only-editor");
-            setView("edit");
+          case 'editor-only':
+            app.classList.add('only-editor');
+            setView('edit');
             break;
-          case "preview-only":
-            app.classList.add("only-preview");
-            setView("preview");
+          case 'preview-only':
+            app.classList.add('only-preview');
+            setView('preview');
             break;
-          case "reading":
-            app.classList.add("reading");
+          case 'reading':
+            app.classList.add('reading');
             break;
-          case "no-sidebar":
-            app.classList.add("no-sidebar");
+          case 'no-sidebar':
+            app.classList.add('no-sidebar');
             break;
-          case "no-assistant":
-            app.classList.add("no-assistant");
+          case 'no-assistant':
+            app.classList.add('no-assistant');
             break;
-          case "menu-file":
-            openMenu("file");
+          case 'menu-file':
+            openMenu('file');
             break;
-          case "menu-settings":
-            openMenu("settings");
+          case 'menu-settings':
+            openMenu('settings');
             break;
-          case "menu-view":
-            openMenu("view");
+          case 'menu-view':
+            openMenu('view');
             break;
-          case "menu-about":
-            openMenu("about");
+          case 'menu-about':
+            openMenu('about');
             break;
-          case "context-menu":
-            app.classList.add("ctx");
+          case 'context-menu':
+            app.classList.add('ctx');
             positionCtx(360, 150);
             break;
-          case "assistant-chat":
+          case 'assistant-chat':
             seedChat();
             break;
-          case "assistant-selection":
+          case 'assistant-selection':
             document.querySelector('#scopeSeg [data-scope="sel"]').click();
             break;
-          case "settings-appearance":
-            openSettings("appearance");
+          case 'settings-appearance':
+            openSettings('appearance');
             break;
-          case "settings-ai-providers":
-            openSettings("ai-providers");
+          case 'settings-ai-providers':
+            openSettings('ai-providers');
             break;
-          case "settings-ai-context":
-            openSettings("ai-context");
+          case 'settings-ai-context':
+            openSettings('ai-context');
             break;
-          case "shortcuts":
-            document.getElementById("shModal").classList.add("show");
+          case 'shortcuts':
+            document.getElementById('shModal').classList.add('show');
             break;
-          case "about":
-            document.getElementById("aboutModal").classList.add("show");
+          case 'about':
+            document.getElementById('aboutModal').classList.add('show');
             break;
-          case "toasts":
-            app.classList.add("toasting");
+          case 'toasts':
+            app.classList.add('toasting');
             break;
-          case "banner":
-            app.classList.add("show-banner");
+          case 'banner':
+            app.classList.add('show-banner');
             break;
-          case "drop-overlay":
-            app.classList.add("dragging");
+          case 'drop-overlay':
+            app.classList.add('dragging');
             break;
-          case "drop-prompt":
-            document.getElementById("dropPrompt").classList.add("show");
+          case 'drop-prompt':
+            document.getElementById('dropPrompt').classList.add('show');
             break;
-          case "tokens":
-            body.classList.add("show-tokens");
+          case 'tokens':
+            body.classList.add('show-tokens');
             break;
-          case "empty":
-            app.classList.add("empty");
+          case 'empty':
+            app.classList.add('empty');
             break;
-          case "empty-tree":
-            app.classList.add("tree-is-empty");
+          case 'empty-tree':
+            app.classList.add('tree-is-empty');
             break;
-          case "filter-empty":
-            app.classList.add("tree-no-match");
+          case 'filter-empty':
+            app.classList.add('tree-no-match');
             break;
-          case "busy":
-            app.classList.add("busy");
+          case 'busy':
+            app.classList.add('busy');
             break;
-          case "paused-preview":
-            app.classList.add("paused");
+          case 'paused-preview':
+            app.classList.add('paused');
             break;
-          case "problems":
-            app.classList.add("problems-open");
+          case 'problems':
+            app.classList.add('problems-open');
             break;
-          case "assistant-reserved":
-            app.classList.add("assistant-reserved");
+          case 'assistant-reserved':
+            app.classList.add('assistant-reserved');
             break;
-          case "focus":
-            app.classList.add("focusdemo");
+          case 'focus':
+            app.classList.add('focusdemo');
             break;
-          case "diff-view":
-            app.classList.add("diffing");
+          case 'diff-view':
+            app.classList.add('diffing');
             break;
-          case "tab-menu":
-            app.classList.add("tabctx");
+          case 'tab-menu':
+            app.classList.add('tabctx');
             break;
-          case "editor-menu":
-            app.classList.add("edctx");
+          case 'editor-menu':
+            app.classList.add('edctx');
             break;
-          case "toolbar-overflow":
-            app.dataset.w = "768";
-            app.classList.add("ovf");
+          case 'toolbar-overflow':
+            app.dataset.w = '768';
+            app.classList.add('ovf');
             break;
-          case "save-prompt":
-            document.getElementById("savePrompt").classList.add("show");
+          case 'save-prompt':
+            document.getElementById('savePrompt').classList.add('show');
             break;
-          case "quit-prompt":
-            document.getElementById("quitPrompt").classList.add("show");
+          case 'quit-prompt':
+            document.getElementById('quitPrompt').classList.add('show');
             break;
-          case "reload-prompt":
-            document.getElementById("reloadPrompt").classList.add("show");
+          case 'reload-prompt':
+            document.getElementById('reloadPrompt').classList.add('show');
             break;
-          case "startup-failure":
-            document.getElementById("startupFailure").classList.add("show");
+          case 'startup-failure':
+            document.getElementById('startupFailure').classList.add('show');
             break;
-          case "settings-editor":
-            openSettings("editor");
+          case 'settings-editor':
+            openSettings('editor');
             break;
-          case "settings-markdown":
-            openSettings("markdown");
+          case 'settings-markdown':
+            openSettings('markdown');
             break;
-          case "settings-export":
-            openSettings("export");
+          case 'settings-export':
+            openSettings('export');
             break;
-          case "settings-privacy":
-            openSettings("privacy");
+          case 'settings-privacy':
+            openSettings('privacy');
             break;
-          case "settings-language":
-            openSettings("language");
+          case 'settings-language':
+            openSettings('language');
             break;
-          case "settings-diagnostics":
-            openSettings("diagnostics");
+          case 'settings-diagnostics':
+            openSettings('diagnostics');
             break;
         }
         writeHash();
       }
-      document.getElementById("screenNav").addEventListener("click", (e) => {
-        const b = e.target.closest("button");
+      document.getElementById('screenNav').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
         if (b) showScreen(b.dataset.screen);
       });
-      app.dataset.w = "1280";
-      document.getElementById("widthSwitch").addEventListener("click", (e) => {
-        const b = e.target.closest("button");
+      app.dataset.w = '1280';
+      document.getElementById('widthSwitch').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
         if (!b) return;
         document
-          .querySelectorAll("#widthSwitch button")
-          .forEach((x) => x.classList.toggle("on", x === b));
+          .querySelectorAll('#widthSwitch button')
+          .forEach((x) => x.classList.toggle('on', x === b));
         app.dataset.w = b.dataset.w;
-        app.classList.remove("sidebar-open", "ovf");
+        app.classList.remove('sidebar-open', 'ovf');
       });
       function setView(v) {
         document
-          .querySelectorAll("#viewseg button")
-          .forEach((b) => b.classList.toggle("active", b.dataset.view === v));
-        document.getElementById("pane-editor").style.display =
-          v === "preview" ? "none" : "flex";
-        document.getElementById("pane-preview").style.display =
-          v === "edit" ? "none" : "flex";
+          .querySelectorAll('#viewseg button')
+          .forEach((b) => b.classList.toggle('active', b.dataset.view === v));
+        document.getElementById('pane-editor').style.display =
+          v === 'preview' ? 'none' : 'flex';
+        document.getElementById('pane-preview').style.display =
+          v === 'edit' ? 'none' : 'flex';
       }
-      document.getElementById("viewseg").addEventListener("click", (e) => {
-        const b = e.target.closest("button");
+      document.getElementById('viewseg').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
         if (b) setView(b.dataset.view);
       });
 
       /* ---- menus ---- */
-      const menus = ["file", "settings", "view", "about"];
+      const menus = ['file', 'settings', 'view', 'about'];
       function closeMenus() {
         menus.forEach((m) =>
-          document.getElementById("m-" + m).classList.remove("show"),
+          document.getElementById('m-' + m).classList.remove('show'),
         );
         document
-          .querySelectorAll(".menu>button")
-          .forEach((b) => b.classList.remove("open"));
+          .querySelectorAll('.menu>button')
+          .forEach((b) => b.classList.remove('open'));
       }
       function openMenu(m) {
         closeMenus();
-        document.getElementById("m-" + m).classList.add("show");
+        document.getElementById('m-' + m).classList.add('show');
         document
           .querySelector('.menu>button[data-menu="' + m + '"]')
-          .classList.add("open");
+          .classList.add('open');
       }
-      document.querySelectorAll(".menu>button").forEach((btn) =>
-        btn.addEventListener("click", (e) => {
+      document.querySelectorAll('.menu>button').forEach((btn) =>
+        btn.addEventListener('click', (e) => {
           e.stopPropagation();
           const m = btn.dataset.menu,
-            open = document.getElementById("m-" + m).classList.contains("show");
+            open = document.getElementById('m-' + m).classList.contains('show');
           closeMenus();
           if (!open) openMenu(m);
         }),
       );
       document
-        .querySelectorAll(".dropdown,.modal,.ctxmenu")
+        .querySelectorAll('.dropdown,.modal,.ctxmenu')
         .forEach((d) =>
-          d.addEventListener("click", (e) => e.stopPropagation()),
+          d.addEventListener('click', (e) => e.stopPropagation()),
         );
-      document.addEventListener("click", () => {
+      document.addEventListener('click', () => {
         closeMenus();
-        app.classList.remove("ctx");
+        app.classList.remove('ctx');
       });
 
       /* ---- context menu ---- */
       function positionCtx(x, y) {
-        const c = document.getElementById("ctxmenu");
-        c.style.left = x + "px";
-        c.style.top = y + "px";
+        const c = document.getElementById('ctxmenu');
+        c.style.left = x + 'px';
+        c.style.top = y + 'px';
       }
       function ctxAt(e) {
         e.preventDefault();
         e.stopPropagation();
         const r = app.getBoundingClientRect();
-        app.classList.add("ctx");
+        app.classList.add('ctx');
         positionCtx(e.clientX - r.left, e.clientY - r.top);
       }
       window.ctxAt = ctxAt;
@@ -4580,7 +4580,7 @@
       <div class="set"><div class="l">Bullet marker</div><div class="pick"><button class="on">-</button><button>*</button><button>+</button></div></div>
       <div class="set"><div class="l">Emphasis</div><div class="pick"><button class="on">_ _</button><button>* *</button></div></div>
       <div class="set"><div class="l">Heading style</div><select class="selbox"><option selected>ATX (#)</option><option>Setext</option></select></div>`,
-        "ai-providers": `<div class="grp-h">Provider</div>
+        'ai-providers': `<div class="grp-h">Provider</div>
       <div class="set"><div class="l">Active provider<small>Local providers keep everything on-device</small></div><select class="selbox"><option selected>Ollama (local)</option><option>LM Studio (local)</option><option>llama.cpp (local)</option><option>OpenAI</option><option>Azure OpenAI</option><option>OpenAI-compatible…</option></select></div>
       <div class="set"><div class="l">Base URL</div><input class="inpt" value="http://127.0.0.1:11434"></div>
       <div class="set"><div class="l">Auth<small>API key read from an env-var name (never stored)</small></div><div style="display:flex;gap:8px"><select class="selbox"><option selected>None</option><option>Bearer</option><option>Api-Key</option></select><input class="inpt" placeholder="ENV_VAR_NAME" style="min-width:120px"></div></div>
@@ -4592,7 +4592,7 @@
       <div class="set"><div class="l">Max output tokens</div><input class="inpt" value="2048" style="min-width:70px"></div>
       <div class="set"><div class="l">Context length (num_ctx)</div><input class="inpt" value="8192" style="min-width:70px"></div>
       <p class="note">Tool-call agent loop, single in-flight inference, retries with backoff. Document text is sent only to this provider, only when you invoke an action or chat.</p>`,
-        "ai-context": `<div class="grp-h">Context &amp; tokenizer</div>
+        'ai-context': `<div class="grp-h">Context &amp; tokenizer</div>
       <div class="set"><div class="l">Token estimator<small>Offline estimate; a safety margin is reserved</small></div><select class="selbox"><option selected>tiktoken (cl100k) + margin</option><option>chars ÷ 4 heuristic</option></select></div>
       <div class="set"><div class="l">Safety margin</div><input class="inpt" value="15 %" style="min-width:70px"></div>
       <div class="set"><div class="l">Reserve for reply</div><input class="inpt" value="1024 tok" style="min-width:90px"></div>
@@ -4621,48 +4621,48 @@
       <div class="set"><div class="l">Reset all settings<small>Returns every setting to its default. Window size, layout and recent files are not touched.</small></div><button class="tbtn" style="border:1px solid var(--err);color:var(--err);padding:6px 12px;border-radius:8px">Reset to defaults</button></div>`,
       };
       function renderPane(id) {
-        document.getElementById("mpane").innerHTML =
+        document.getElementById('mpane').innerHTML =
           paneHTML[id] || paneHTML.appearance;
-        document.querySelectorAll("#mpane .pick button").forEach((b) =>
-          b.addEventListener("click", () => {
+        document.querySelectorAll('#mpane .pick button').forEach((b) =>
+          b.addEventListener('click', () => {
             b.parentElement
-              .querySelectorAll("button")
-              .forEach((x) => x.classList.remove("on"));
-            b.classList.add("on");
+              .querySelectorAll('button')
+              .forEach((x) => x.classList.remove('on'));
+            b.classList.add('on');
             const p = b.parentElement;
-            if (p.dataset.drive === "theme") setTheme(b.dataset.t, true);
-            if (p.dataset.drive === "appear") setAppear(b.dataset.a);
+            if (p.dataset.drive === 'theme') setTheme(b.dataset.t, true);
+            if (p.dataset.drive === 'appear') setAppear(b.dataset.a);
           }),
         );
-        document.querySelectorAll("#mpane .tgl").forEach((t) =>
-          t.addEventListener("click", () => {
-            if (t.style.pointerEvents !== "none") t.classList.toggle("on");
+        document.querySelectorAll('#mpane .tgl').forEach((t) =>
+          t.addEventListener('click', () => {
+            if (t.style.pointerEvents !== 'none') t.classList.toggle('on');
           }),
         );
       }
       function openSettings(tab) {
-        document.getElementById("setModal").classList.add("show");
+        document.getElementById('setModal').classList.add('show');
         const t = document.querySelector('.mtab[data-mtab="' + tab + '"]');
         document
-          .querySelectorAll(".mtab")
-          .forEach((x) => x.classList.remove("on"));
-        if (t) t.classList.add("on");
+          .querySelectorAll('.mtab')
+          .forEach((x) => x.classList.remove('on'));
+        if (t) t.classList.add('on');
         renderPane(tab);
       }
-      document.querySelectorAll(".mtab").forEach((t) =>
-        t.addEventListener("click", () => {
+      document.querySelectorAll('.mtab').forEach((t) =>
+        t.addEventListener('click', () => {
           document
-            .querySelectorAll(".mtab")
-            .forEach((x) => x.classList.remove("on"));
-          t.classList.add("on");
+            .querySelectorAll('.mtab')
+            .forEach((x) => x.classList.remove('on'));
+          t.classList.add('on');
           renderPane(t.dataset.mtab);
         }),
       );
 
       /* ---- assistant chat demo ---- */
-      const chat = document.getElementById("chat");
+      const chat = document.getElementById('chat');
       function addMsg(html) {
-        const d = document.createElement("div");
+        const d = document.createElement('div');
         d.innerHTML = html;
         chat.appendChild(d.firstElementChild);
         chat.scrollTop = chat.scrollHeight;
@@ -4671,7 +4671,7 @@
         return `<div class="editcard"><div class="eh">✎ Proposed edit — release-notes.md</div><div class="diff">We are <span class="del">exited</span><span class="ins">excited</span> to <span class="del">anounce</span><span class="ins">announce</span> the new <span class="del">relase</span><span class="ins">release</span>. This <span class="del">verison</span><span class="ins">version</span> brings <span class="del">alot</span><span class="ins">a lot</span> of <span class="del">improvments</span><span class="ins">improvements</span> and <span class="del">fixs</span><span class="ins">fixes</span> users asked for.</div><div class="ea"><button class="btn-apply">Apply</button><button class="btn-disc">Discard</button></div></div>`;
       }
       function seedChat() {
-        chat.innerHTML = "";
+        chat.innerHTML = '';
         addMsg(
           '<div class="msg user"><div class="who">You</div><div class="bubble"><b>Proofread</b> → release-notes.md</div></div>',
         );
@@ -4680,7 +4680,7 @@
         );
       }
       function runAction(name) {
-        app.classList.remove("no-assistant");
+        app.classList.remove('no-assistant');
         addMsg(
           `<div class="msg user"><div class="who">You</div><div class="bubble"><b>${name}</b> → whole document</div></div>`,
         );
@@ -4693,12 +4693,12 @@
         );
       }
       function sendChat() {
-        const t = document.getElementById("composerInput");
-        const v = t.value.trim() || "Make the tone more formal.";
+        const t = document.getElementById('composerInput');
+        const v = t.value.trim() || 'Make the tone more formal.';
         addMsg(
           `<div class="msg user"><div class="who">You</div><div class="bubble">${v}</div></div>`,
         );
-        t.value = "";
+        t.value = '';
         setTimeout(
           () =>
             addMsg(
@@ -4710,55 +4710,55 @@
       window.runAction = runAction;
       window.sendChat = sendChat;
       window.showScreen = showScreen;
-      document.getElementById("scopeSeg").addEventListener("click", (e) => {
-        const b = e.target.closest("button");
+      document.getElementById('scopeSeg').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
         if (!b) return;
         document
-          .querySelectorAll("#scopeSeg button")
-          .forEach((x) => x.classList.remove("active"));
-        b.classList.add("active");
-        const sel = b.dataset.scope === "sel";
-        document.getElementById("tokfill").style.width = sel ? "6%" : "18%";
-        document.getElementById("tokfill").style.background = "var(--ok)";
-        document.getElementById("toktext").textContent = sel
-          ? "≈ 96 tokens of selection"
-          : "≈ 1,480 tokens of document";
+          .querySelectorAll('#scopeSeg button')
+          .forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        const sel = b.dataset.scope === 'sel';
+        document.getElementById('tokfill').style.width = sel ? '6%' : '18%';
+        document.getElementById('tokfill').style.background = 'var(--ok)';
+        document.getElementById('toktext').textContent = sel
+          ? '≈ 96 tokens of selection'
+          : '≈ 1,480 tokens of document';
       });
 
       /* ---- tokens reference ---- */
       function renderTokens() {
         const cs = getComputedStyle(body);
         const a = [
-          "--accent",
-          "--accent2",
-          "--accent-soft",
-          "--accent-ink",
-          "--ok",
-          "--warn",
-          "--err",
+          '--accent',
+          '--accent2',
+          '--accent-soft',
+          '--accent-ink',
+          '--ok',
+          '--warn',
+          '--err',
         ];
         const s = [
-          "--canvas",
-          "--app-bg",
-          "--surface",
-          "--surface-2",
-          "--surface-3",
-          "--elevated",
-          "--stroke",
-          "--text",
-          "--muted",
-          "--faint",
+          '--canvas',
+          '--app-bg',
+          '--surface',
+          '--surface-2',
+          '--surface-3',
+          '--elevated',
+          '--stroke',
+          '--text',
+          '--muted',
+          '--faint',
         ];
         const cell = (n) =>
-          `<div class="tokcard"><div class="sw" style="background:${cs.getPropertyValue(n) || "#8884"}"></div><div class="nm">${n}</div></div>`;
-        document.getElementById("tg1").innerHTML = a.map(cell).join("");
-        document.getElementById("tg2").innerHTML = s.map(cell).join("");
+          `<div class="tokcard"><div class="sw" style="background:${cs.getPropertyValue(n) || '#8884'}"></div><div class="nm">${n}</div></div>`;
+        document.getElementById('tg1').innerHTML = a.map(cell).join('');
+        document.getElementById('tg2').innerHTML = s.map(cell).join('');
       }
 
       /* ---- hash deep-linking ---- */
       function writeHash() {
         const h = `#${theme}-${appearance}/${screen}`;
-        if (location.hash !== h) history.replaceState(null, "", h);
+        if (location.hash !== h) history.replaceState(null, '', h);
       }
       function readHash() {
         const m =
@@ -4772,23 +4772,23 @@
           showScreen(m[3]);
         } else {
           applyThemeMode();
-          showScreen("editor-split");
+          showScreen('editor-split');
         }
       }
-      window.addEventListener("hashchange", readHash);
+      window.addEventListener('hashchange', readHash);
 
       /* keyboard niceties */
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") showScreen("editor-split");
-        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') showScreen('editor-split');
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
           e.preventDefault();
-          showScreen(screen === "reading" ? "editor-split" : "reading");
+          showScreen(screen === 'reading' ? 'editor-split' : 'reading');
         }
       });
       document
-        .getElementById("composerInput")
-        .addEventListener("keydown", (e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
+        .getElementById('composerInput')
+        .addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendChat();
           }

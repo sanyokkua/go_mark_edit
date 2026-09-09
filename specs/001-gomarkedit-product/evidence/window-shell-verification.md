@@ -45,16 +45,16 @@ retained gate logs. Verification also inspected the immutable alias baseline
 `docs/delivery/work/baselines/story-063.md`, because `just verify 001-gomarkedit-product` is wired to that
 pre-edit baseline rather than the feature-named T001 capture.
 
-| Command | Exit | Reliability | Findings | Comparison | Verdict |
-| ------- | ---: | ----------- | -------- | ---------- | ------- |
-| `just fmt-check` | 0 | clean | none | Matches T001 clean baseline; no new format drift remains. | PASS |
-| `just typecheck` | 0 | clean | none | Matches T001 clean baseline; no new type errors. | PASS |
-| `just lint` | 0 | clean | none | Matches T001 clean baseline; no new static-analysis findings. The first sandboxed rerun was `UNRELIABLE` (`no go files to analyze`), so the authoritative result is the host-cache rerun. | PASS |
-| `just test` | 0 | clean | none | Matches T001 clean baseline; no new test failures. Final run passed 42 suites / 174 tests. | PASS |
-| `just archtest` | 0 | clean | no blocking findings; frontend archtest reports stale reserve notices for `ViewModeToggle.tsx`, `AppShell.tsx`, and `EditorView.tsx` after their known allowed callsites disappeared | Matches T001 clean baseline at the gate level: architecture stayed green. Output is greener than T001 at the string-violation callsites, but the allowlist now over-reserves those files. | PASS |
-| `just frontend-build` | 0 | clean | no blocking findings; Vite retained dynamic-import and chunk-size warnings, and the production-network guard passed | Matches T001 clean baseline; no new failing frontend-build findings. | PASS |
-| `just build` | 0 | clean | none | T001 did not retain a `just build` row, so there is no direct T001 comparison. This is the additional current-host native-build gate required by T034, and it succeeded on `darwin/arm64`. | PASS |
-| `just verify 001-gomarkedit-product` | 0 | clean | none | Compared against the immutable `story-063` verification baseline by contract, not the feature-named T001 row set. `M1` through `M6` all passed. | PASS |
+| Command                              | Exit | Reliability | Findings                                                                                                                                                                             | Comparison                                                                                                                                                                                 | Verdict |
+| ------------------------------------ | ---: | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| `just fmt-check`                     |    0 | clean       | none                                                                                                                                                                                 | Matches T001 clean baseline; no new format drift remains.                                                                                                                                  | PASS    |
+| `just typecheck`                     |    0 | clean       | none                                                                                                                                                                                 | Matches T001 clean baseline; no new type errors.                                                                                                                                           | PASS    |
+| `just lint`                          |    0 | clean       | none                                                                                                                                                                                 | Matches T001 clean baseline; no new static-analysis findings. The first sandboxed rerun was `UNRELIABLE` (`no go files to analyze`), so the authoritative result is the host-cache rerun.  | PASS    |
+| `just test`                          |    0 | clean       | none                                                                                                                                                                                 | Matches T001 clean baseline; no new test failures. Final run passed 42 suites / 174 tests.                                                                                                 | PASS    |
+| `just archtest`                      |    0 | clean       | no blocking findings; frontend archtest reports stale reserve notices for `ViewModeToggle.tsx`, `AppShell.tsx`, and `EditorView.tsx` after their known allowed callsites disappeared | Matches T001 clean baseline at the gate level: architecture stayed green. Output is greener than T001 at the string-violation callsites, but the allowlist now over-reserves those files.  | PASS    |
+| `just frontend-build`                |    0 | clean       | no blocking findings; Vite retained dynamic-import and chunk-size warnings, and the production-network guard passed                                                                  | Matches T001 clean baseline; no new failing frontend-build findings.                                                                                                                       | PASS    |
+| `just build`                         |    0 | clean       | none                                                                                                                                                                                 | T001 did not retain a `just build` row, so there is no direct T001 comparison. This is the additional current-host native-build gate required by T034, and it succeeded on `darwin/arm64`. | PASS    |
+| `just verify 001-gomarkedit-product` |    0 | clean       | none                                                                                                                                                                                 | Compared against the immutable `story-063` verification baseline by contract, not the feature-named T001 row set. `M1` through `M6` all passed.                                            | PASS    |
 
 Minimal repairs required before the final clean sweep were: formatting `internal/appmodel/service.go` and
 `frontend/src/logic/adapter/appModelAdapter.ts`, removing the unused
@@ -109,13 +109,13 @@ the honest stale reserve notices for `ViewModeToggle.tsx`, `AppShell.tsx`, and `
 
 ### Focused automated and real-bridge results
 
-| Command / check | Exit | Result |
-| --- | ---: | --- |
-| `npm --prefix frontend test -- --runInBand src/App.test.tsx src/ui/widgets/ShellMenuRow.test.tsx src/ui/widgets/AppearanceControls.test.tsx src/ui/widgets/SettingsDialog.test.tsx src/ui/widgets/AppShell.test.tsx` | 0 | PASS — 5 suites, 33 tests. |
-| `npm --prefix frontend run typecheck` | 0 | PASS. |
-| `npm --prefix frontend run lint` | 0 | PASS. |
-| focused Playwright grep `T039|T040|T041` | 0 | PASS — 8 tests. |
-| `just build` | 0 | PASS — fresh darwin/arm64 packaged application. |
+| Command / check                                                                                                                                                                                                      | Exit | Result                                          |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---: | ----------------------------------------------- |
+| `npm --prefix frontend test -- --runInBand src/App.test.tsx src/ui/widgets/ShellMenuRow.test.tsx src/ui/widgets/AppearanceControls.test.tsx src/ui/widgets/SettingsDialog.test.tsx src/ui/widgets/AppShell.test.tsx` |    0 | PASS — 5 suites, 33 tests.                      |
+| `npm --prefix frontend run typecheck`                                                                                                                                                                                |    0 | PASS.                                           |
+| `npm --prefix frontend run lint`                                                                                                                                                                                     |    0 | PASS.                                           |
+| focused Playwright grep `T039                                                                                                                                                                                        | T040 | T041`                                           | 0   | PASS — 8 tests. |
+| `just build`                                                                                                                                                                                                         |    0 | PASS — fresh darwin/arm64 packaged application. |
 
 `just dev` printed the real bridge at `http://localhost:34115`. The in-app browser exercised the
 actual bridge at 1280 × 720 and 375 × 480. Desktop popup bounds were x=8, y=53, width=480,
@@ -152,19 +152,19 @@ The approved test-only driver and retained observations are indexed by
 before the driver and boundary checker existed. After implementation and final formatting, the current
 results are:
 
-| Command / check | Exit | Result |
-| --- | ---: | --- |
-| `go test -run TestNativeEvidence -count=1 .` | 0 | PASS — 2 safeguards: tagged-driver/release exclusion and existing-boundary-only scenario entry. |
-| `node frontend/evidence/check-boundaries.mjs` | 0 | PASS — pending-close, both stale-close roles, startup-retry, divider acknowledgement, and notifications. |
-| `npm --prefix frontend run typecheck` | 0 | PASS. |
-| `npm --prefix frontend run lint` | 0 | PASS. |
-| `just fmt-check` | 0 | PASS after removing only disposable `frontend/dist-native-evidence` build output. |
-| `just test` | 0 | PASS — 42 frontend suites / 174 tests and complete Go race suite, including the 2 new safeguards. |
-| `just archtest` | 0 | PASS — Go architecture, CGO-free build, migration immutability, frontend boundaries/colours/offline. |
-| `just build` | 0 | PASS — fresh ordinary darwin/arm64 production app bundle, no evidence build tag. |
-| `just gen` | 0 | PASS — generated Wails bindings restored through supported generation. |
-| `just verify 001-gomarkedit-product` | 0 | PASS — M1 format, M2 types, M3 static analysis, M4 tests, M5 architecture, and M6 build all pass against immutable STORY-063 evidence. |
-| `git diff --check` | 0 | PASS. |
+| Command / check                               | Exit | Result                                                                                                                                 |
+| --------------------------------------------- | ---: | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `go test -run TestNativeEvidence -count=1 .`  |    0 | PASS — 2 safeguards: tagged-driver/release exclusion and existing-boundary-only scenario entry.                                        |
+| `node frontend/evidence/check-boundaries.mjs` |    0 | PASS — pending-close, both stale-close roles, startup-retry, divider acknowledgement, and notifications.                               |
+| `npm --prefix frontend run typecheck`         |    0 | PASS.                                                                                                                                  |
+| `npm --prefix frontend run lint`              |    0 | PASS.                                                                                                                                  |
+| `just fmt-check`                              |    0 | PASS after removing only disposable `frontend/dist-native-evidence` build output.                                                      |
+| `just test`                                   |    0 | PASS — 42 frontend suites / 174 tests and complete Go race suite, including the 2 new safeguards.                                      |
+| `just archtest`                               |    0 | PASS — Go architecture, CGO-free build, migration immutability, frontend boundaries/colours/offline.                                   |
+| `just build`                                  |    0 | PASS — fresh ordinary darwin/arm64 production app bundle, no evidence build tag.                                                       |
+| `just gen`                                    |    0 | PASS — generated Wails bindings restored through supported generation.                                                                 |
+| `just verify 001-gomarkedit-product`          |    0 | PASS — M1 format, M2 types, M3 static analysis, M4 tests, M5 architecture, and M6 build all pass against immutable STORY-063 evidence. |
+| `git diff --check`                            |    0 | PASS.                                                                                                                                  |
 
 The direct native walkthrough additionally reviewed T039's new code as test-only, confirmed no
 placeholder/no-op on a production path, retained the declared evidence-only scope, and completed the
@@ -185,12 +185,12 @@ immutable comparison point.
 
 The native-shell evidence was revalidated without weakening its release boundary:
 
-| Command / check | Exit | Result |
-| --- | ---: | --- |
-| `go test -run TestNativeEvidence -count=1 .` | 0 | PASS — test-only driver remains release-excluded and enters through existing boundaries. |
-| `node frontend/evidence/check-boundaries.mjs` | 0 | PASS — adapter-only Wails boundary plus pending-close, stale-close, Retry, divider acknowledgement, and notification routes. |
-| `cd frontend && npm exec -- playwright test e2e/window-shell.test.ts --grep 'T039|T040|T041' --reporter=list` | 0 | PASS — 8 focused regressions. |
-| `git diff --check` | 0 | PASS. |
+| Command / check                                                                   | Exit | Result                                                                                                                       |
+| --------------------------------------------------------------------------------- | ---: | ---------------------------------------------------------------------------------------------------------------------------- |
+| `go test -run TestNativeEvidence -count=1 .`                                      |    0 | PASS — test-only driver remains release-excluded and enters through existing boundaries.                                     |
+| `node frontend/evidence/check-boundaries.mjs`                                     |    0 | PASS — adapter-only Wails boundary plus pending-close, stale-close, Retry, divider acknowledgement, and notification routes. |
+| `cd frontend && npm exec -- playwright test e2e/window-shell.test.ts --grep 'T039 | T040 | T041' --reporter=list`                                                                                                       | 0   | PASS — 8 focused regressions. |
+| `git diff --check`                                                                |    0 | PASS.                                                                                                                        |
 
 The focused Playwright command must run from `frontend/` so its configured base URL loads; a
 repository-root invocation fails before navigation and is not evidence. The existing current-host

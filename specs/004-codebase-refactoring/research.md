@@ -5,8 +5,8 @@
 Every technical unknown of the plan was resolved by reading the working tree at `2b889cb` (the
 audit's line numbers refer to `883fd05`; the archived tree is `bc185c9`, tag
 `archive/v1-linear-history-2026-09`). Each entry records the decision, the rationale, and the
-alternatives considered. Facts marked *verified* were read in the code during planning; facts marked
-*spike* are confirmed by the first task that depends on them.
+alternatives considered. Facts marked _verified_ were read in the code during planning; facts marked
+_spike_ are confirmed by the first task that depends on them.
 
 ## R1 — Entry-point scripts
 
@@ -23,7 +23,7 @@ not tool-formatted).
 
 **Rationale**: the spec fixes the five names and forbids any other recipe than a one-line alias
 (FR-060). Bash is already the language of every hook and script; three shells in one gate path
-(zsh in `just`, bash scripts, `sh` hooks — *verified*) is one of the drift sources.
+(zsh in `just`, bash scripts, `sh` hooks — _verified_) is one of the drift sources.
 
 **Alternatives**: a Go task runner (`go run ./tools/task`) — rejected, it puts the stage graph behind a
 compile step and adds a sixth toolchain path; keeping `just` recipes as owners — rejected by FR-060.
@@ -41,7 +41,7 @@ lockfile. CI reads the same sources: `actions/setup-go` with
 `scripts/build setup`. `wails.json`'s `frontend:install` becomes `npm ci`.
 
 **Rationale**: CI installs Wails CLI 2.12.0 while `go.mod` requires 2.15.0, and Node is 22 in CI
-versus 24 on the host with no pin file (*verified*). FR-070 wants one declaration shared by local
+versus 24 on the host with no pin file (_verified_). FR-070 wants one declaration shared by local
 runs, hooks and CI; deriving from manifests that already exist avoids a second copy.
 
 **Alternatives**: `.tool-versions`/mise — rejected (no Wails plugin, one more tool to install);
@@ -84,7 +84,7 @@ migration's text is source; its additive-only rule concerns the data it applies,
 compares migrations by whitespace-normalised text). The first run is one reformat commit.
 
 **Rationale**: `just fmt` formats less than half the repository today (424 Markdown files, 12 YAML,
-22 shell scripts, the `justfile` and all root JSON are untouched — *verified*), and the pre-commit
+22 shell scripts, the `justfile` and all root JSON are untouched — _verified_), and the pre-commit
 and pre-push hooks format different sets. The owner confirmed that migrations, docs and archives are
 source for formatting purposes and that only Spec Kit-owned paths are exempt.
 
@@ -134,7 +134,7 @@ SQLite database opened by `db.Open`, and the real composition root where the beh
 test-only production API is removed (`SetConflictReadersForTesting`, `SetWriteExecutorForTesting`,
 `SetBeforeSaveAsRecheck`, `SetLayoutTimer`, `NewAppModelServiceWithLayoutRepositoryAndTimer`,
 `NewAppModelServiceWithAutosaveTimer`, the package variable `stableReadBeforeHashHook`, the three
-package variables in `main.go` — all *verified*) and replaced by functional options on the production
+package variables in `main.go` — all _verified_) and replaced by functional options on the production
 constructors, wired only in `main.go`: `WithClock`, `WithAutosaveTimer`, `WithWriteExecutor`,
 `WithConflictReaders`, `WithDialogs`, `WithEmitter`, `WithVersion`, `WithNativeConfirmation`. The
 write snapshot exposes its encoded bytes so an injected executor can write them.
@@ -149,8 +149,8 @@ for maps — rejected (test-only API).
 
 **Decision**: Jest with jsdom, the real Redux store, the real `en.json` catalogue (the `i18nShim`
 mapping goes), and CSS Modules mapped to their class names. The Wails globals are replaced by a
-*command recorder* (`frontend/tests/support/commandRecorder.ts`): every generated binding call is
-recorded with its arguments and returns a promise that never settles; a *state-patch driver* emits
+_command recorder_ (`frontend/tests/support/commandRecorder.ts`): every generated binding call is
+recorded with its arguments and returns a promise that never settles; a _state-patch driver_ emits
 `state:patch` and `state:error` through the same `EventsOn` registration. Tests assert the commands
 dispatched and the projection after patches. Fake timers reach the 10-second bound. Nothing answers a
 command.
@@ -172,7 +172,7 @@ named by `E2E_REPO`, the lever for the archive runs of FR-031) with the process 
 waits for the served URL, and kills the process tree at the end of the case; a case that asserts
 state after a restart relaunches through the same fixture. One launch per case is required because
 cases differ in profile contents before launch (a directory at `settings.db`, a rejecting trigger, a
-held lock). The dev build resolves its profile to `<config root>/GoMarkEdit-Dev/` (*verified*:
+held lock). The dev build resolves its profile to `<config root>/GoMarkEdit-Dev/` (_verified_:
 `internal/file/paths.go`, `os.UserConfigDir()`), so the redirect isolates `settings.db` and the logs.
 Before launch, `go run ./tools/e2e-seed <profile-dir> seed-recents <files…>` creates and migrates the
 database through `internal/db.Open` and writes the `recent.files` row with the production key-value
@@ -181,11 +181,11 @@ exclusive transaction and releases it on `SIGTERM` or timeout (the accepted leve
 completion case — owner decision 2026-09-08). Files are opened through the Recents menu. Chromium
 drives `http://localhost:34115`, where the Wails dev server serves the page with its runtime and IPC
 scripts and dispatches binding calls and events over the `/wails/ipc` websocket; `window.runtime.Quit()`
-from that page reaches `OnBeforeClose` on the same path as the native close button (*verified* in
+from that page reaches `OnBeforeClose` on the same path as the native close button (_verified_ in
 the pinned Wails source). On Linux `scripts/build` passes `-tags webkit2_41` (Ubuntu 24.04 ships
 WebKitGTK 4.1). `wails dev` also opens the application's own native window, a second frontend on the same backend
 that stays idle while Chromium drives the page; cases tolerate it (it receives the same events and
-answers nothing the case did not trigger). *Spike* (first harness task): `wails dev` does not
+answers nothing the case did not trigger). _Spike_ (first harness task): `wails dev` does not
 relaunch the app after a quit; the `assetserver.Options.Handler` route is reached in browser mode
 because the dev server falls through to it when Vite answers 404 (an `<img>` request does not carry
 `Accept: text/html`, so Vite's SPA fallback does not apply). If the first spike fails (the
@@ -216,7 +216,7 @@ after eviction the request is fresh. Event names live in one Go file (`internal/
 and one TypeScript module (`logic/adapter/events.ts`).
 
 **Rationale**: FR-019 to FR-021; generated Wails calls have no timeout and no metadata channel
-(*verified*: the adapter has no `AbortController` or per-call timer; `main.go` binds 35 methods).
+(_verified_: the adapter has no `AbortController` or per-call timer; `main.go` binds 35 methods).
 
 **Alternatives**: a per-call timeout only in the frontend — rejected (a late result could be applied
 twice after Retry without backend identity).
@@ -232,7 +232,7 @@ wired at the root) names the documents with unsaved changes and offers "Quit and
 State machine in [contracts/shutdown-protocol.md](contracts/shutdown-protocol.md).
 
 **Rationale**: FR-016 to FR-018, FR-057; the audit's APP-2/APP-5 (emit once, veto forever; frontend
-clears its pending flag before the backend confirms — *verified*).
+clears its pending flag before the backend confirms — _verified_).
 
 ## R11 — Document lifecycle owner
 
@@ -247,7 +247,7 @@ existing `snapshotForWrite`, `executeWrite`, `waitForIdle`, `effectiveDocumentMe
 `internal/file` atomic replace are preserved.
 
 **Rationale**: FR-001/003/007/051; audit BE-1 (nine maps synchronised by hand, `writeCoordinators`
-never deleted — *verified*) and BE-6.
+never deleted — _verified_) and BE-6.
 
 ## R12 — One key-value repository helper, sqlc removed
 
@@ -257,7 +257,7 @@ group update is one transaction. `sqlc.yaml`, `internal/db/queries` and `interna
 deleted. The refactored build starts from defaults, leaves rows it does not own untouched and writes
 no migration.
 
-**Rationale**: FR-008/053; four repositories on one table, sqlc used by one (*verified*).
+**Rationale**: FR-008/053; four repositories on one table, sqlc used by one (_verified_).
 
 ## R13 — Version stamping
 
@@ -269,7 +269,7 @@ on macOS it then writes `CFBundleShortVersionString` and `CFBundleVersion` into 
 
 **Rationale**: FR-068; the symbol exists (`internal/bootstrap/version.go`) but no build path passes
 it, and `wails.json` has no `info` block, while `build/darwin/Info.plist` is a Wails template that
-reads `{{.Info.ProductVersion}}` (*verified*), so with no `info` block the bundle carries no version.
+reads `{{.Info.ProductVersion}}` (_verified_), so with no `info` block the bundle carries no version.
 
 **Alternatives**: writing `info.productVersion` into `wails.json` before the build (go_text's CI does
 this with `jq`) — rejected (dirties the tree, FR-065); a restore step after the build would be a
@@ -283,7 +283,7 @@ second mechanism for the same value.
 is empty for the whole tree.
 
 **Rationale**: FR-065; three `runtime/` files are stored at `644` and `go/` files at `755`
-(*verified*), which is the mode churn the old release script compensated for.
+(_verified_), which is the mode churn the old release script compensated for.
 
 ## R15 — Baseline record and comparison
 
@@ -299,7 +299,7 @@ any finding or failing stage remains; the record and the comparison are computed
 `tools/verify/results.mjs`, the same script that writes every `scripts/verify` run. The root `.gitignore` gains `.specify/baseline/` (the
 `.specify/.gitignore` is Spec Kit-owned and is not edited).
 
-**Rationale**: FR-064; the old verifier reported PASS with missing inputs (*verified*: `comm` errors
+**Rationale**: FR-064; the old verifier reported PASS with missing inputs (_verified_: `comm` errors
 discarded).
 
 ## R16 — CI workflows
@@ -317,7 +317,7 @@ architecture map), so the workflow needs no notes template. Details in
 [contracts/ci-workflows.md](contracts/ci-workflows.md).
 
 **Rationale**: FR-066 to FR-068; the current workflow re-lists nine steps by hand and the release job
-is an `echo` (*verified*).
+is an `echo` (_verified_).
 
 ## R17 — Preview links and local images
 
@@ -335,7 +335,7 @@ or 404, which the renderer shows as the existing placeholder; web images keep th
 are recorded as durable decisions in the architecture map.
 
 **Rationale**: FR-014/049; today anchors are ordinary links and a relative href navigates the page
-(*verified*; the dev-server chain is reproduced in the audit).
+(_verified_; the dev-server chain is reproduced in the audit).
 
 **Alternatives**: returning image bytes as base64 through a bridge call — rejected (20 MB through
 IPC per image); resolving local links purely in the frontend — rejected (the folder check needs the
@@ -351,7 +351,6 @@ with the walkthrough step list); durable decisions carried from the legacy ADRs 
 assistant ADRs 0007–0010/0034 listed as planned decisions; this feature's decisions (D1–D12 plus
 the three planning decisions); open decisions (signing and notarisation, an `apperr`/wire split,
 Windows verification, the remote-content policy owned by the rendering feature).
-
 
 ## R19 — Popup implementation basis
 

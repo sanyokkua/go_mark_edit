@@ -42,7 +42,7 @@ of truth. This introduces **DD-62 / DD-63 / DD-64**.
 Chosen: **Option A**. The Go backend is the single source of truth for the whole live model
 (`internal/appmodel`); the frontend is a derived, disposable projection that renders backend snapshots
 and dispatches commands. The one unavoidable piece of frontend state — Monaco's buffer for the
-*visible* document — is treated as a working copy that debounce-syncs to Go (DD-64), with a flush on
+_visible_ document — is treated as a working copy that debounce-syncs to Go (DD-64), with a flush on
 blur/switch/close/save. Inactive documents' content is never held in the webview. Option C was rejected
 as too chatty/latency-prone in a webview; Option B was rejected because it is precisely the dual-source
 design the owner wants to remove.
@@ -61,14 +61,17 @@ design the owner wants to remove.
 ## Pros and cons of the options
 
 ### Option A — Backend-authoritative + projection + debounced buffer
+
 - Good: single truth; bounded webview memory; clean MVC; testable command/query/event contract.
 - Bad: new module + sync plumbing; more IPC than status quo.
 
 ### Option B — Frontend-authoritative Redux
+
 - Good: simplest; least IPC.
 - Bad: two sources of truth; all open-doc content in webview memory — the problem being solved.
 
 ### Option C — Command-per-edit
+
 - Good: purest single-source, even for the active buffer.
 - Bad: IPC chatter/latency in a webview; risk to editing responsiveness.
 
@@ -76,8 +79,8 @@ design the owner wants to remove.
 
 - Design decisions: DD-04, DD-09, DD-10, DD-11, DD-60, DD-62, DD-63, DD-64
 - Spec clauses: ../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow`,
-  ../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model`,
+../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model`,
   ../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership`,
-  ../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model`,
+../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model`,
   ../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership`
 - Stories: STORY-099 (and the Phase 01/02 stories that consume `internal/appmodel`)

@@ -1,4 +1,5 @@
 Not privileged to set domain environment.
+
 # STORY-063 — Complete and apply unified editor palettes
 
 **STATUS:** planned — ready to build.
@@ -11,7 +12,9 @@ Open a Markdown document containing headings, links and a fenced Go block, then 
 ## Rules this story owns
 
 ### Markdown source and code inside fences are two different palettes {#two-syntax-palettes}
-*(from `spec/product/themes-and-appearance.md#two-syntax-palettes` — copied verbatim)*
+
+_(from `spec/product/themes-and-appearance.md#two-syntax-palettes` — copied verbatim)_
+
 - The `--md-*` family colours the Markdown **source** in the editor: the `#` of a heading, the `**` of
   bold, a link's target, a blockquote's `>`.
 - The `--hl-*` family colours **programming-language tokens inside a fenced block**, and it is used
@@ -19,67 +22,69 @@ Open a Markdown document containing headings, links and a fenced Go block, then 
   06 activates in the preview.
 - Both families are keyed by appearance only, not by theme. Sixteen values, not forty-eight.
 
-| `--md-*` token | Colours | Light | Dark |
-|---|---|---|---|
-| `--md-heading` | `#`, heading text | `#3056d3` | `#8fb4ff` |
-| `--md-strong` | `**bold**` | `#b45309` | `#ffd479` |
-| `--md-emphasis` | `_italic_`, inline maths | `#7c3aed` | `#c58bff` |
-| `--md-quote` | `>` blockquote | `#0369a1` | `#7fe3b5` |
-| `--md-link` | link text, target, image path | `#be123c` | `#ff9d7a` |
-| `--md-comment` | HTML comments, fence info strings | `#9aa1ab` | `#8a93b8` |
-| `--md-marker` | list bullets, numbers, `---` | `#9aa1ab` | `#8a93b8` |
-| `--code-fg` | base foreground for any monospace surface | `#30343b` | `#dfe6ff` |
-| `--gutter` | line numbers | `#c9ccd3` | `rgba(255,255,255,.22)` |
+| `--md-*` token  | Colours                                   | Light     | Dark                    |
+| --------------- | ----------------------------------------- | --------- | ----------------------- |
+| `--md-heading`  | `#`, heading text                         | `#3056d3` | `#8fb4ff`               |
+| `--md-strong`   | `**bold**`                                | `#b45309` | `#ffd479`               |
+| `--md-emphasis` | `_italic_`, inline maths                  | `#7c3aed` | `#c58bff`               |
+| `--md-quote`    | `>` blockquote                            | `#0369a1` | `#7fe3b5`               |
+| `--md-link`     | link text, target, image path             | `#be123c` | `#ff9d7a`               |
+| `--md-comment`  | HTML comments, fence info strings         | `#9aa1ab` | `#8a93b8`               |
+| `--md-marker`   | list bullets, numbers, `---`              | `#9aa1ab` | `#8a93b8`               |
+| `--code-fg`     | base foreground for any monospace surface | `#30343b` | `#dfe6ff`               |
+| `--gutter`      | line numbers                              | `#c9ccd3` | `rgba(255,255,255,.22)` |
 
-| `--hl-*` token | Colours | Light | Dark |
-|---|---|---|---|
-| `--hl-keyword` | `func`, `if`, `return` | `#7c3aed` | `#c58bff` |
-| `--hl-string` | string and character literals | `#0369a1` | `#7fe3b5` |
-| `--hl-comment` | comments | `#9aa1ab` | `#8a93b8` |
-| `--hl-number` | numeric and boolean literals | `#b45309` | `#ffd479` |
-| `--hl-function` | function and method names | `#3056d3` | `#8fb4ff` |
-| `--hl-type` | types, classes, constants | `#0f766e` | `#5eead4` |
-| `--hl-attr` | attributes, properties, tags | `#be123c` | `#ff9d7a` |
-| `--hl-punct` | operators and punctuation | `#5c5c69` | `#9aa1ab` |
+| `--hl-*` token  | Colours                       | Light     | Dark      |
+| --------------- | ----------------------------- | --------- | --------- |
+| `--hl-keyword`  | `func`, `if`, `return`        | `#7c3aed` | `#c58bff` |
+| `--hl-string`   | string and character literals | `#0369a1` | `#7fe3b5` |
+| `--hl-comment`  | comments                      | `#9aa1ab` | `#8a93b8` |
+| `--hl-number`   | numeric and boolean literals  | `#b45309` | `#ffd479` |
+| `--hl-function` | function and method names     | `#3056d3` | `#8fb4ff` |
+| `--hl-type`     | types, classes, constants     | `#0f766e` | `#5eead4` |
+| `--hl-attr`     | attributes, properties, tags  | `#be123c` | `#ff9d7a` |
+| `--hl-punct`    | operators and punctuation     | `#5c5c69` | `#9aa1ab` |
 
 Examples: a Go snippet in Glass light and in Minimal light → identical token colours, different fence
 background, border, font and gutter · the generated Monaco rules and preview stylesheet disagreeing on
 `--hl-keyword` → a build failure before Phase 06 activates the stylesheet.
 
-*Why one syntax palette across themes:* syntax colouring is a legibility system. Three variants of it
+_Why one syntax palette across themes:_ syntax colouring is a legibility system. Three variants of it
 would be three sets to keep readable, for no benefit anybody asked for. The theme still changes
 everything around the code.
 
 ### Each theme has one accent, one radius and one font across both appearances {#theme-identity-is-stable}
-*(from `spec/product/themes-and-appearance.md#theme-identity-is-stable` — copied verbatim)*
+
+_(from `spec/product/themes-and-appearance.md#theme-identity-is-stable` — copied verbatim)_
+
 - Within a theme, `--accent`, `--win-radius`, `--font` and the blur and shadow character are the same in
   light and dark. Only surfaces and text invert.
 
-| Token | Liquid Glass | Material | Minimal |
-|---|---|---|---|
-| `--accent` | `#7aa2ff` | `#4f6bed` | `#10b981` |
-| `--accent2` (gradients only) | `#c58bff` | `#4f6bed` | `#10b981` |
-| `--accent-ink` (text on `--accent-soft`) | `#cdd8ff` | `#0a1a52` | `#047857` |
-| `--accent-soft` | `rgba(122,162,255,.16)` | `#dfe4ff` | `#ecfdf5` |
-| `--accent-contrast` (text on `--accent`) | `#0b1024` | `#ffffff` | `#ffffff` |
-| `--canvas` (window backdrop) | aurora: radials `#3b2f7a` + `#1d4e8f` + `#7a2f6a` over linear `#0d1022 → #0a0d1c → #0b0f1e` | `#d9d7e6` | `#e9e9ec` |
-| `--app-bg` | `rgba(255,255,255,.10)` | `#faf8ff` | `#fbfbfa` |
-| `--surface` | `rgba(28,30,54,.82)` | `#ffffff` | `#ffffff` |
-| `--elevated` | `rgba(28,30,54,.82)` | `#f3f1fb` | `#ffffff` |
-| `--surface-2` | `rgba(255,255,255,.07)` | `#eceaf6` | `#f3f3f2` |
-| `--surface-3` | `rgba(255,255,255,.16)` | `#e6e3f2` | `#eaeae9` |
-| `--stroke` | `rgba(255,255,255,.18)` | `#e3e1ee` | `#e4e4e7` |
-| `--stroke-soft` | `rgba(255,255,255,.11)` | `#eceaf6` | `#ececee` |
-| `--text` | `#eaf0ff` | `#1b1b22` | `#1f2328` |
-| `--muted` | `rgba(234,240,255,.60)` | `#5c5c69` | `#6b7280` |
-| `--faint` | `rgba(234,240,255,.32)` | `#9aa1ab` | `#9aa1ab` |
-| `--hover` | `rgba(255,255,255,.16)` | `rgba(0,0,0,.05)` | `rgba(0,0,0,.04)` |
-| `--user-bubble` | `rgba(122,162,255,.14)` | `#dfe4ff` | `#ecfdf5` |
-| `--win-radius` | `16px` | `16px` | `12px` |
-| `--win-shadow` | `0 24px 80px rgba(0,0,0,.55)` | `0 12px 32px rgba(27,27,34,.16)` | `0 8px 24px rgba(31,35,40,.10)` |
-| `--blur` | `blur(28px) saturate(160%)` | `none` | `none` |
-| `--font` | system stack — `-apple-system, "SF Pro Display", "Segoe UI", Inter, …` | `"Roboto", "Segoe UI", Inter, …` | `"Inter", -apple-system, …` |
-| `--mono` | `"SF Mono", "JetBrains Mono", ui-monospace, …` | same | same |
+| Token                                    | Liquid Glass                                                                                | Material                         | Minimal                         |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------- |
+| `--accent`                               | `#7aa2ff`                                                                                   | `#4f6bed`                        | `#10b981`                       |
+| `--accent2` (gradients only)             | `#c58bff`                                                                                   | `#4f6bed`                        | `#10b981`                       |
+| `--accent-ink` (text on `--accent-soft`) | `#cdd8ff`                                                                                   | `#0a1a52`                        | `#047857`                       |
+| `--accent-soft`                          | `rgba(122,162,255,.16)`                                                                     | `#dfe4ff`                        | `#ecfdf5`                       |
+| `--accent-contrast` (text on `--accent`) | `#0b1024`                                                                                   | `#ffffff`                        | `#ffffff`                       |
+| `--canvas` (window backdrop)             | aurora: radials `#3b2f7a` + `#1d4e8f` + `#7a2f6a` over linear `#0d1022 → #0a0d1c → #0b0f1e` | `#d9d7e6`                        | `#e9e9ec`                       |
+| `--app-bg`                               | `rgba(255,255,255,.10)`                                                                     | `#faf8ff`                        | `#fbfbfa`                       |
+| `--surface`                              | `rgba(28,30,54,.82)`                                                                        | `#ffffff`                        | `#ffffff`                       |
+| `--elevated`                             | `rgba(28,30,54,.82)`                                                                        | `#f3f1fb`                        | `#ffffff`                       |
+| `--surface-2`                            | `rgba(255,255,255,.07)`                                                                     | `#eceaf6`                        | `#f3f3f2`                       |
+| `--surface-3`                            | `rgba(255,255,255,.16)`                                                                     | `#e6e3f2`                        | `#eaeae9`                       |
+| `--stroke`                               | `rgba(255,255,255,.18)`                                                                     | `#e3e1ee`                        | `#e4e4e7`                       |
+| `--stroke-soft`                          | `rgba(255,255,255,.11)`                                                                     | `#eceaf6`                        | `#ececee`                       |
+| `--text`                                 | `#eaf0ff`                                                                                   | `#1b1b22`                        | `#1f2328`                       |
+| `--muted`                                | `rgba(234,240,255,.60)`                                                                     | `#5c5c69`                        | `#6b7280`                       |
+| `--faint`                                | `rgba(234,240,255,.32)`                                                                     | `#9aa1ab`                        | `#9aa1ab`                       |
+| `--hover`                                | `rgba(255,255,255,.16)`                                                                     | `rgba(0,0,0,.05)`                | `rgba(0,0,0,.04)`               |
+| `--user-bubble`                          | `rgba(122,162,255,.14)`                                                                     | `#dfe4ff`                        | `#ecfdf5`                       |
+| `--win-radius`                           | `16px`                                                                                      | `16px`                           | `12px`                          |
+| `--win-shadow`                           | `0 24px 80px rgba(0,0,0,.55)`                                                               | `0 12px 32px rgba(27,27,34,.16)` | `0 8px 24px rgba(31,35,40,.10)` |
+| `--blur`                                 | `blur(28px) saturate(160%)`                                                                 | `none`                           | `none`                          |
+| `--font`                                 | system stack — `-apple-system, "SF Pro Display", "Segoe UI", Inter, …`                      | `"Roboto", "Segoe UI", Inter, …` | `"Inter", -apple-system, …`     |
+| `--mono`                                 | `"SF Mono", "JetBrains Mono", ui-monospace, …`                                              | same                             | same                            |
 
 The values above are each theme's **native** appearance — Glass dark, Material light, Minimal light. The
 counterpart appearance inverts surfaces and text and keeps everything else.
@@ -88,7 +93,9 @@ Examples: Material dark keeps `--accent: #4f6bed` and `--win-radius: 16px` · Ma
 different accent → the theme reads as a fourth theme rather than the same one at night.
 
 ### The editor theme is generated from these tokens {#editor-theme-is-generated}
-*(from `spec/product/themes-and-appearance.md#editor-theme-is-generated` — copied verbatim)*
+
+_(from `spec/product/themes-and-appearance.md#editor-theme-is-generated` — copied verbatim)_
+
 - Six Monaco themes — three themes × light and dark — are generated at build time from the tables above.
   No colour appears in a `defineTheme()` call that is not traceable to a token here.
 - Each generated theme sets at least: `editor.background` from `--app-bg`, `editor.foreground` from
@@ -102,7 +109,7 @@ different accent → the theme reads as a fourth theme rather than the same one 
   `editorError.foreground` from `--err`, `editorWarning.foreground` from `--warn`, plus token rules for
   the Markdown grammar from `--md-*` and for embedded fenced languages from `--hl-*`.
 
-*Why generated:* Monaco cannot read a CSS custom property. It takes literal colours through
+_Why generated:_ Monaco cannot read a CSS custom property. It takes literal colours through
 `monaco.editor.defineTheme()`, so "the editor and the preview share one theme" needs a mechanism, not an
 assertion.
 
@@ -131,17 +138,17 @@ this is where colours are decided.
 Monaco 0.52's bundled Monarch tokenizers define the following scopes. The generator emits exactly these
 rules, including dotted descendants. It does not infer scopes from source text or add a second tokenizer.
 
-| Grammar | Monaco scope(s) | Generated token | Deliberate boundary |
-|---|---|---|---|
-| Markdown | `keyword` | `--md-heading` | Monaco uses `keyword` for both ATX headings and list markers; headings take precedence. |
-| Markdown | `meta.separator`, `keyword.table.*` | `--md-marker` | Covers thematic and table separators; list markers share `keyword` above. |
-| Markdown | `strong` | `--md-strong` | Covers `**bold**` and `__bold__`. |
-| Markdown | `emphasis` | `--md-emphasis` | Covers `_italic_` and `*italic*`. |
-| Markdown | `comment`, `comment.*` | `--md-quote` | Covers blockquote markers and HTML comments; Monaco does not distinguish them. |
-| Markdown | `string.link`, `string.target` | `--md-link` | Covers link text, targets, and image paths. |
-| Markdown | `string`, `variable.source` | `--md-comment` and `--code-fg` respectively | Fences use `string`; embedded fenced content uses `variable.source` until its embedded grammar takes over. |
-| Go | `keyword`, `keyword.*`, `string`, `comment`, `comment.*`, `number`, `number.*`, `delimiter`, `delimiter.*`, `annotation` | matching `--hl-keyword`, `--hl-string`, `--hl-comment`, `--hl-number`, `--hl-punct`, `--hl-attr` | These are the distinct bundled Go scopes. |
-| Go | `identifier`, `keyword.type`, `keyword.const` | `--hl-function`, `--hl-type`, `--hl-type` | Go's bundled Monarch grammar does not classify individual function, type, or constant names; these generic scopes are the available boundary. |
+| Grammar  | Monaco scope(s)                                                                                                          | Generated token                                                                                  | Deliberate boundary                                                                                                                           |
+| -------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Markdown | `keyword`                                                                                                                | `--md-heading`                                                                                   | Monaco uses `keyword` for both ATX headings and list markers; headings take precedence.                                                       |
+| Markdown | `meta.separator`, `keyword.table.*`                                                                                      | `--md-marker`                                                                                    | Covers thematic and table separators; list markers share `keyword` above.                                                                     |
+| Markdown | `strong`                                                                                                                 | `--md-strong`                                                                                    | Covers `**bold**` and `__bold__`.                                                                                                             |
+| Markdown | `emphasis`                                                                                                               | `--md-emphasis`                                                                                  | Covers `_italic_` and `*italic*`.                                                                                                             |
+| Markdown | `comment`, `comment.*`                                                                                                   | `--md-quote`                                                                                     | Covers blockquote markers and HTML comments; Monaco does not distinguish them.                                                                |
+| Markdown | `string.link`, `string.target`                                                                                           | `--md-link`                                                                                      | Covers link text, targets, and image paths.                                                                                                   |
+| Markdown | `string`, `variable.source`                                                                                              | `--md-comment` and `--code-fg` respectively                                                      | Fences use `string`; embedded fenced content uses `variable.source` until its embedded grammar takes over.                                    |
+| Go       | `keyword`, `keyword.*`, `string`, `comment`, `comment.*`, `number`, `number.*`, `delimiter`, `delimiter.*`, `annotation` | matching `--hl-keyword`, `--hl-string`, `--hl-comment`, `--hl-number`, `--hl-punct`, `--hl-attr` | These are the distinct bundled Go scopes.                                                                                                     |
+| Go       | `identifier`, `keyword.type`, `keyword.const`                                                                            | `--hl-function`, `--hl-type`, `--hl-type`                                                        | Go's bundled Monarch grammar does not classify individual function, type, or constant names; these generic scopes are the available boundary. |
 
 The generator test constructs representative Markdown and Go token values for every row and asserts the
 resolved foreground values. It must not inspect the generator's source or claim that Monaco emits a more
@@ -170,48 +177,49 @@ Relevant patterns: [adding a theme token](../architecture/patterns/adding-a-them
 
 ## Architecture match table
 
-| Rule anchor | Applies to | Matched by | Injected |
-|---|---|---|---|
-| `#handler-returns-a-result` | `internal/**/handler*.go`, `main.go` | — | no |
-| `#bound-handlers-take-no-context` | `internal/**/handler*.go` | — | no |
-| `#panic-becomes-internal-error` | `internal/**/handler*.go` | — | no |
-| `#apperr-imports-nothing-internal` | `internal/apperr/**` | — | no |
-| `#cause-stays-local` | `internal/apperr/**`, `internal/**/handler*.go` | — | no |
-| `#error-codes-are-enum-bound` | `internal/apperr/apperr.go`, `main.go` | — | no |
-| `#one-hop-per-layer` | `internal/**/*.go` | — | no |
-| `#one-composition-root` | `internal/**/*.go`, `main.go` | — | no |
-| `#interfaces-live-with-their-type` | `internal/**/*.go` | — | no |
-| `#generated-store-is-not-edited` | `internal/db/store/**` | — | no |
-| `#migrations-only-add` | `internal/db/migrations/**` | — | no |
-| `#preferences-use-the-kv-table` | `internal/settings/**`, `internal/db/migrations/**` | — | no |
-| `#sqlite-is-multi-process-safe` | `internal/db/**` | — | no |
-| `#no-single-instance-lock` | `main.go`, `internal/**/*.go` | — | no |
-| `#documents-have-identity` | `internal/appmodel/**` | — | no |
-| `#store-is-a-projection` | `frontend/src/logic/store/**`, `frontend/src/logic/adapter/**` | — | no |
-| `#no-buffer-echo` | `internal/appmodel/**`, `frontend/src/logic/hooks/**` | — | no |
-| `#one-document-seam` | `frontend/src/logic/hooks/**`, `frontend/src/ui/widgets/**` | — | no |
-| `#only-the-adapter-imports-wailsjs` | `frontend/src/**` | generated theme data, UI setup/tests | yes |
-| `#guard-arity` | `frontend/src/logic/adapter/**` | — | no |
-| `#unwrap-in-one-place` | `frontend/src/logic/**` | generated theme data | yes |
-| `#no-colour-outside-a-token` | `frontend/src/ui/**` | `tokens.css`, Monaco setup/tests | yes |
-| `#theme-on-the-root-element` | `frontend/src/logic/theme/**`, `frontend/src/ui/**` | generated data, tokens, Monaco setup | yes |
-| `#strings-go-through-t` | `frontend/src/**` | generated data, UI setup/tests | yes |
-| `#components-take-props` | `frontend/src/ui/components/**`, `frontend/src/ui/primitives/**` | Monaco setup/tests | yes |
-| `#shell-reserves-three-regions` | `frontend/src/ui/widgets/**`, `frontend/src/ui/styles/**` | `tokens.css` | yes |
-| `#build-is-cgo-free` | `go.mod`, `internal/**/*.go`, `main.go` | — | no |
-| `#no-background-network` | `**` | every declared path | yes |
-| `#rendered-html-is-sanitised` | `frontend/src/logic/markdown/**`, `frontend/src/ui/components/**` | Monaco setup/tests | yes |
-| `#logs-stay-local` | `internal/**/*.go` | — | no |
-| `#one-long-operation-at-a-time` | `internal/gate/**`, `internal/export/**`, `internal/llm/**` | — | no |
-| `#bindings-have-no-drift` | `frontend/wailsjs/**`, `internal/**/handler*.go`, `main.go` | — | no |
-| `#format-and-lint-are-functions` | `frontend/src/logic/format/**`, `frontend/src/logic/lint/**` | — | no |
-| `#diff-view-has-two-consumers` | `frontend/src/ui/components/**` | Monaco setup/tests | yes |
-| `#tests-prove-behaviour` | `internal/**/*_test.go`, `main_test.go`, `frontend/src/**/*.test.ts`, `frontend/src/**/*.test.tsx` | token and Monaco setup tests | yes |
+| Rule anchor                         | Applies to                                                                                         | Matched by                           | Injected |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------ | -------- |
+| `#handler-returns-a-result`         | `internal/**/handler*.go`, `main.go`                                                               | —                                    | no       |
+| `#bound-handlers-take-no-context`   | `internal/**/handler*.go`                                                                          | —                                    | no       |
+| `#panic-becomes-internal-error`     | `internal/**/handler*.go`                                                                          | —                                    | no       |
+| `#apperr-imports-nothing-internal`  | `internal/apperr/**`                                                                               | —                                    | no       |
+| `#cause-stays-local`                | `internal/apperr/**`, `internal/**/handler*.go`                                                    | —                                    | no       |
+| `#error-codes-are-enum-bound`       | `internal/apperr/apperr.go`, `main.go`                                                             | —                                    | no       |
+| `#one-hop-per-layer`                | `internal/**/*.go`                                                                                 | —                                    | no       |
+| `#one-composition-root`             | `internal/**/*.go`, `main.go`                                                                      | —                                    | no       |
+| `#interfaces-live-with-their-type`  | `internal/**/*.go`                                                                                 | —                                    | no       |
+| `#generated-store-is-not-edited`    | `internal/db/store/**`                                                                             | —                                    | no       |
+| `#migrations-only-add`              | `internal/db/migrations/**`                                                                        | —                                    | no       |
+| `#preferences-use-the-kv-table`     | `internal/settings/**`, `internal/db/migrations/**`                                                | —                                    | no       |
+| `#sqlite-is-multi-process-safe`     | `internal/db/**`                                                                                   | —                                    | no       |
+| `#no-single-instance-lock`          | `main.go`, `internal/**/*.go`                                                                      | —                                    | no       |
+| `#documents-have-identity`          | `internal/appmodel/**`                                                                             | —                                    | no       |
+| `#store-is-a-projection`            | `frontend/src/logic/store/**`, `frontend/src/logic/adapter/**`                                     | —                                    | no       |
+| `#no-buffer-echo`                   | `internal/appmodel/**`, `frontend/src/logic/hooks/**`                                              | —                                    | no       |
+| `#one-document-seam`                | `frontend/src/logic/hooks/**`, `frontend/src/ui/widgets/**`                                        | —                                    | no       |
+| `#only-the-adapter-imports-wailsjs` | `frontend/src/**`                                                                                  | generated theme data, UI setup/tests | yes      |
+| `#guard-arity`                      | `frontend/src/logic/adapter/**`                                                                    | —                                    | no       |
+| `#unwrap-in-one-place`              | `frontend/src/logic/**`                                                                            | generated theme data                 | yes      |
+| `#no-colour-outside-a-token`        | `frontend/src/ui/**`                                                                               | `tokens.css`, Monaco setup/tests     | yes      |
+| `#theme-on-the-root-element`        | `frontend/src/logic/theme/**`, `frontend/src/ui/**`                                                | generated data, tokens, Monaco setup | yes      |
+| `#strings-go-through-t`             | `frontend/src/**`                                                                                  | generated data, UI setup/tests       | yes      |
+| `#components-take-props`            | `frontend/src/ui/components/**`, `frontend/src/ui/primitives/**`                                   | Monaco setup/tests                   | yes      |
+| `#shell-reserves-three-regions`     | `frontend/src/ui/widgets/**`, `frontend/src/ui/styles/**`                                          | `tokens.css`                         | yes      |
+| `#build-is-cgo-free`                | `go.mod`, `internal/**/*.go`, `main.go`                                                            | —                                    | no       |
+| `#no-background-network`            | `**`                                                                                               | every declared path                  | yes      |
+| `#rendered-html-is-sanitised`       | `frontend/src/logic/markdown/**`, `frontend/src/ui/components/**`                                  | Monaco setup/tests                   | yes      |
+| `#logs-stay-local`                  | `internal/**/*.go`                                                                                 | —                                    | no       |
+| `#one-long-operation-at-a-time`     | `internal/gate/**`, `internal/export/**`, `internal/llm/**`                                        | —                                    | no       |
+| `#bindings-have-no-drift`           | `frontend/wailsjs/**`, `internal/**/handler*.go`, `main.go`                                        | —                                    | no       |
+| `#format-and-lint-are-functions`    | `frontend/src/logic/format/**`, `frontend/src/logic/lint/**`                                       | —                                    | no       |
+| `#diff-view-has-two-consumers`      | `frontend/src/ui/components/**`                                                                    | Monaco setup/tests                   | yes      |
+| `#tests-prove-behaviour`            | `internal/**/*_test.go`, `main_test.go`, `frontend/src/**/*.test.ts`, `frontend/src/**/*.test.tsx` | token and Monaco setup tests         | yes      |
 
 ## Technical constraints
 
 ### Only the adapter imports `wailsjs/` {#only-the-adapter-imports-wailsjs}
-*(from `architecture/rules.md#only-the-adapter-imports-wailsjs` — copied verbatim)*
+
+_(from `architecture/rules.md#only-the-adapter-imports-wailsjs` — copied verbatim)_
 **Applies to:** `frontend/src/**`
 **Enforced by:** `just archtest` (ESLint `no-restricted-imports`)
 
@@ -223,16 +231,17 @@ Relevant patterns: [adding a theme token](../architecture/patterns/adding-a-them
 Examples: `import { GetState } from '../../wailsjs/go/appmodel/AppModelHandler'` inside `EditorView.tsx`
 → rejected by lint · the same import inside `logic/adapter/services.ts` → correct.
 
-*Why:* `wailsjs/` is generated and its shape changes with every backend signature change. One wrapping
+_Why:_ `wailsjs/` is generated and its shape changes with every backend signature change. One wrapping
 layer means a signature change has one place to fix, and it is also the only seam the tests can mock —
 a component that imports the binding directly cannot be tested without a running Go process.
 
-*Do instead of:* importing a binding directly "just for one call" · mocking `wailsjs/` in a test.
+_Do instead of:_ importing a binding directly "just for one call" · mocking `wailsjs/` in a test.
 
 ---
 
 ### The envelope is unwrapped in one place {#unwrap-in-one-place}
-*(from `architecture/rules.md#unwrap-in-one-place` — copied verbatim)*
+
+_(from `architecture/rules.md#unwrap-in-one-place` — copied verbatim)_
 **Applies to:** `frontend/src/logic/**`
 **Enforced by:** review
 
@@ -242,14 +251,15 @@ a component that imports the binding directly cannot be tested without a running
 Examples: `const state = unwrap(await appModel.GetState())` → correct · `if (res.error) { … }` at a call
 site → rejected, because the next call site will handle it differently.
 
-*Why:* the error message a user sees should not depend on which call produced it.
+_Why:_ the error message a user sees should not depend on which call produced it.
 
-*Do instead of:* per-call-site error branches · swallowing `res.error` and returning `undefined`.
+_Do instead of:_ per-call-site error branches · swallowing `res.error` and returning `undefined`.
 
 ---
 
 ### No colour outside a token {#no-colour-outside-a-token}
-*(from `architecture/rules.md#no-colour-outside-a-token` — copied verbatim)*
+
+_(from `architecture/rules.md#no-colour-outside-a-token` — copied verbatim)_
 **Applies to:** `frontend/src/ui/**`
 **Enforced by:** `just archtest` (colour-literal scan)
 
@@ -260,15 +270,16 @@ site → rejected, because the next call site will handle it differently.
 Examples: `border: 1px solid var(--editor-pane-border-color)` → correct · `color: #16201e` in a module
 CSS file → rejected · `background: white` in a `.tsx` inline style → rejected.
 
-*Why:* there are three themes and each has a light and a dark appearance — six combinations. A literal
+_Why:_ there are three themes and each has a light and a dark appearance — six combinations. A literal
 colour is correct in at most one of them, and it is invisible in the other five until someone switches.
 
-*Do instead of:* a literal "just for the disabled state" · a colour in an inline `style` prop.
+_Do instead of:_ a literal "just for the disabled state" · a colour in an inline `style` prop.
 
 ---
 
 ### The theme is set on the document element only {#theme-on-the-root-element}
-*(from `architecture/rules.md#theme-on-the-root-element` — copied verbatim)*
+
+_(from `architecture/rules.md#theme-on-the-root-element` — copied verbatim)_
 **Applies to:** `frontend/src/logic/theme/**`, `frontend/src/ui/**`
 **Enforced by:** review
 
@@ -278,16 +289,17 @@ colour is correct in at most one of them, and it is invisible in the other five 
 Examples: a dropdown rendered through a Radix portal inherits the theme because it is inside the same
 document element · setting `data-theme` on the app shell instead → every portal renders unthemed.
 
-*Why:* Radix renders overlays into a portal at the end of `<body>`, outside the React tree. Only an
+_Why:_ Radix renders overlays into a portal at the end of `<body>`, outside the React tree. Only an
 attribute on the root element covers them.
 
-*Do instead of:* wrapping the app in a themed div · passing the theme down as a prop to style each
+_Do instead of:_ wrapping the app in a themed div · passing the theme down as a prop to style each
 component.
 
 ---
 
 ### Every user-visible string goes through `t()` {#strings-go-through-t}
-*(from `architecture/rules.md#strings-go-through-t` — copied verbatim)*
+
+_(from `architecture/rules.md#strings-go-through-t` — copied verbatim)_
 **Applies to:** `frontend/src/**`
 **Enforced by:** `just archtest` (ESLint), review
 
@@ -298,16 +310,17 @@ component.
 Examples: `t('editor.emptyState.title')` → correct · `<button>Save</button>` → rejected ·
 `aria-label="Close tab"` → rejected, `aria-label={t('tabs.close')}` → correct.
 
-*Why:* a hard-coded string is invisible to translation and, more immediately, invisible to review — the
+_Why:_ a hard-coded string is invisible to translation and, more immediately, invisible to review — the
 catalogue is where all the product's copy can be read and made consistent in one sitting.
 
-*Do instead of:* a literal "because it is only a placeholder" · a template literal assembling a sentence
+_Do instead of:_ a literal "because it is only a placeholder" · a template literal assembling a sentence
 from fragments, which cannot be translated as one.
 
 ---
 
 ### Presentational components take props, not the store {#components-take-props}
-*(from `architecture/rules.md#components-take-props` — copied verbatim)*
+
+_(from `architecture/rules.md#components-take-props` — copied verbatim)_
 **Applies to:** `frontend/src/ui/components/**`, `frontend/src/ui/primitives/**`
 **Enforced by:** review
 
@@ -317,15 +330,16 @@ from fragments, which cannot be translated as one.
 Examples: `StatusBar` takes `{ wordCount, lineEnding, encoding }` → correct · `StatusBar` calling
 `useSelector` → rejected.
 
-*Why:* a component that selects from the store needs a real store in every test that renders it, and it
+_Why:_ a component that selects from the store needs a real store in every test that renders it, and it
 cannot be reused in a second context with a different source of data.
 
-*Do instead of:* `useSelector` inside a leaf component to avoid prop-drilling through one level.
+_Do instead of:_ `useSelector` inside a leaf component to avoid prop-drilling through one level.
 
 ---
 
 ### The shell reserves three regions {#shell-reserves-three-regions}
-*(from `architecture/rules.md#shell-reserves-three-regions` — copied verbatim)*
+
+_(from `architecture/rules.md#shell-reserves-three-regions` — copied verbatim)_
 **Applies to:** `frontend/src/ui/widgets/**`, `frontend/src/ui/styles/**`
 **Enforced by:** review
 
@@ -339,15 +353,16 @@ Examples: opening the assistant later sets one token and mounts one child → co
 column to the grid when the assistant is built → rejected, because every layout test and every width
 breakpoint written before then has to be redone.
 
-*Why:* changing the shell's structure late invalidates the responsive verification of every screen built
+_Why:_ changing the shell's structure late invalidates the responsive verification of every screen built
 on top of it.
 
-*Do instead of:* a two-column layout with the intention of "adding a column when we get there".
+_Do instead of:_ a two-column layout with the intention of "adding a column when we get there".
 
 ---
 
 ### The app makes no background network call {#no-background-network}
-*(from `architecture/rules.md#no-background-network` — copied verbatim)*
+
+_(from `architecture/rules.md#no-background-network` — copied verbatim)_
 **Applies to:** `**`
 **Enforced by:** `just archtest`, review
 
@@ -357,23 +372,24 @@ on top of it.
 - **When** the assistant exists, the only outbound requests are inferences to the provider the user
   configured, and only in direct response to the user invoking an action or sending a message. The
   default provider is a local one, so a default install still talks to nothing off the machine.
-- Remote images and stylesheets referenced *inside a user's document* are a separate matter: the user
+- Remote images and stylesheets referenced _inside a user's document_ are a separate matter: the user
   chooses Ask, Always allow or Always block, and this rule does not cover them.
 
 Examples: launching the app with a network monitor open and using it for five minutes → zero requests ·
 a `<link>` to Google Fonts in `index.html` → rejected · `fetch('https://api.github.com/…')` to check for
 a new version → rejected.
 
-*Why:* people write private things in a text editor. "It only sends a version number" is a promise the
+_Why:_ people write private things in a text editor. "It only sends a version number" is a promise the
 user cannot verify, so the product's answer is that there is nothing to verify.
 
-*Do instead of:* an opt-out update check · loading KaTeX or Mermaid from a CDN instead of bundling it ·
+_Do instead of:_ an opt-out update check · loading KaTeX or Mermaid from a CDN instead of bundling it ·
 a "anonymous usage statistics" toggle.
 
 ---
 
 ### Rendered HTML is always sanitised {#rendered-html-is-sanitised}
-*(from `architecture/rules.md#rendered-html-is-sanitised` — copied verbatim)*
+
+_(from `architecture/rules.md#rendered-html-is-sanitised` — copied verbatim)_
 **Applies to:** `frontend/src/logic/markdown/**`, `frontend/src/ui/components/**`
 **Enforced by:** review
 
@@ -384,16 +400,17 @@ a "anonymous usage statistics" toggle.
 Examples: a document containing `<img src=x onerror="…">` → the attribute is stripped and the image
 renders inert · removing the sanitiser to make a plugin's output render → rejected.
 
-*Why:* the preview renders a file that arrived from somewhere else, inside a webview that can call the
+_Why:_ the preview renders a file that arrived from somewhere else, inside a webview that can call the
 Go backend. Unsanitised HTML in that position is remote code execution against the user's machine.
 
-*Do instead of:* trusting the plugin set's output · widening the schema until the symptom disappears
+_Do instead of:_ trusting the plugin set's output · widening the schema until the symptom disappears
 instead of allowing the specific element the pipeline emits.
 
 ---
 
 ### The diff view has two consumers {#diff-view-has-two-consumers}
-*(from `architecture/rules.md#diff-view-has-two-consumers` — copied verbatim)*
+
+_(from `architecture/rules.md#diff-view-has-two-consumers` — copied verbatim)_
 **Applies to:** `frontend/src/ui/components/**`
 **Enforced by:** review
 
@@ -403,14 +420,15 @@ instead of allowing the specific element the pipeline emits.
 Examples: `<DiffView before={original} after={formatted} />` used by both → correct · a diff rendered
 inside the assistant's proposal card → rejected, because the format preview then needs a second one.
 
-*Why:* two diff renderers disagree about what a change looks like, and the user notices.
+_Why:_ two diff renderers disagree about what a change looks like, and the user notices.
 
-*Do instead of:* building the diff inline in whichever feature needs it first.
+_Do instead of:_ building the diff inline in whichever feature needs it first.
 
 ---
 
 ### A test proves behaviour, not a document {#tests-prove-behaviour}
-*(from `architecture/rules.md#tests-prove-behaviour` — copied verbatim)*
+
+_(from `architecture/rules.md#tests-prove-behaviour` — copied verbatim)_
 **Applies to:** `internal/**/*_test.go`, `main_test.go`, `frontend/src/**/*.test.ts`, `frontend/src/**/*.test.tsx`
 **Enforced by:** review
 
@@ -427,40 +445,40 @@ Examples: `expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()` �
 `jest.mock('./AppShell')` inside `AppShell.test.tsx` → rejected, and this mistake is live in the
 repository today · a Go test asserting a phase document contains a heading → rejected.
 
-*Why:* a test that reads a document passes while the software is broken, and roughly 4,200 lines of
+_Why:_ a test that reads a document passes while the software is broken, and roughly 4,200 lines of
 exactly that were deleted from this repository on 2026-07-25. A mocked subject asserts that the mock
 works.
 
-*Do instead of:* asserting a function was called · snapshotting a large DOM tree as the primary
+_Do instead of:_ asserting a function was called · snapshotting a large DOM tree as the primary
 assertion · deleting a failing test to make the suite green.
 
 ## Definition of done
 
 ### Baseline — captured at `cf52e78`, `2026-07-29 08:46 UTC` → `../baselines/story-063.md`
 
-| | at baseline |
-|---|---|
-| tests | all pass, 0 fail |
+|                 | at baseline                                                           |
+| --------------- | --------------------------------------------------------------------- |
+| tests           | all pass, 0 fail                                                      |
 | static analysis | 0 findings · types clean · format clean · build ok · coverage `69.0%` |
 
 Capture it with `just baseline STORY-063` **before writing any code**, and paste the two rows above from what it printed. If the baseline is red in the same area or an architecture gate does not pass, stop rather than starting.
 
 ### Mechanical — identical in every story
 
-| # | Check | Command | Passes when |
-|---|---|---|---|
-| M1 | Format | `just fmt-check` | exit 0 |
-| M2 | Types | `just typecheck` | exit 0, or exactly the baseline error set |
-| M3 | Static analysis | `just lint` | no finding absent from the baseline |
-| M4 | Tests | `just test` | every baseline-passing test still passes; baseline failures unchanged; all new tests pass |
-| M5 | Architecture | `just archtest` | **exit 0.** Never diffed, never weakened, never suppressed |
-| M6 | Build | `just frontend-build` and `just build` | exit 0 |
-| M7 | New code is tested | manual, against the diff | every added or changed source file is touched by at least one test |
-| M8 | No placeholders added | `git diff <sha>..HEAD` | the diff introduces no unfinished marker, no `TODO`, no no-op return standing in for logic |
-| M9 | Gate configs untouched | `git diff --name-only <sha>..HEAD` | no change to `.golangci.yml`, `frontend/eslint.config.js`, `frontend/eslint.architecture.config.js`, `frontend/scripts/archtest-allowlist.json`, `justfile`, `.github/`, `lefthook.yml` — or the change is named and justified below |
-| M10 | Normative docs untouched | `git diff --name-only <sha>..HEAD -- docs/delivery/spec/ docs/delivery/architecture/` | empty. A needed change is a reconcile item, not a commit |
-| M11 | Descriptive docs current | manual | P1-2 says Monaco-only before Phase 06 and preserves Phase 06 preview ownership |
-| M12 | Generated assets current | `cd frontend && npm run build && git diff --exit-code -- src/logic/theme/generatedEditorThemes.ts src/logic/theme/generatedHighlight.css` | build produces no uncommitted derived asset change |
+| #   | Check                    | Command                                                                                                                                   | Passes when                                                                                                                                                                                                                          |
+| --- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M1  | Format                   | `just fmt-check`                                                                                                                          | exit 0                                                                                                                                                                                                                               |
+| M2  | Types                    | `just typecheck`                                                                                                                          | exit 0, or exactly the baseline error set                                                                                                                                                                                            |
+| M3  | Static analysis          | `just lint`                                                                                                                               | no finding absent from the baseline                                                                                                                                                                                                  |
+| M4  | Tests                    | `just test`                                                                                                                               | every baseline-passing test still passes; baseline failures unchanged; all new tests pass                                                                                                                                            |
+| M5  | Architecture             | `just archtest`                                                                                                                           | **exit 0.** Never diffed, never weakened, never suppressed                                                                                                                                                                           |
+| M6  | Build                    | `just frontend-build` and `just build`                                                                                                    | exit 0                                                                                                                                                                                                                               |
+| M7  | New code is tested       | manual, against the diff                                                                                                                  | every added or changed source file is touched by at least one test                                                                                                                                                                   |
+| M8  | No placeholders added    | `git diff <sha>..HEAD`                                                                                                                    | the diff introduces no unfinished marker, no `TODO`, no no-op return standing in for logic                                                                                                                                           |
+| M9  | Gate configs untouched   | `git diff --name-only <sha>..HEAD`                                                                                                        | no change to `.golangci.yml`, `frontend/eslint.config.js`, `frontend/eslint.architecture.config.js`, `frontend/scripts/archtest-allowlist.json`, `justfile`, `.github/`, `lefthook.yml` — or the change is named and justified below |
+| M10 | Normative docs untouched | `git diff --name-only <sha>..HEAD -- docs/delivery/spec/ docs/delivery/architecture/`                                                     | empty. A needed change is a reconcile item, not a commit                                                                                                                                                                             |
+| M11 | Descriptive docs current | manual                                                                                                                                    | P1-2 says Monaco-only before Phase 06 and preserves Phase 06 preview ownership                                                                                                                                                       |
+| M12 | Generated assets current | `cd frontend && npm run build && git diff --exit-code -- src/logic/theme/generatedEditorThemes.ts src/logic/theme/generatedHighlight.css` | build produces no uncommitted derived asset change                                                                                                                                                                                   |
 
 `just verify STORY-063` runs M1–M6, M9 and M10 and prints them as a pass/fail table against the baseline, naming the specific new finding or newly-failing test. M7, M8 and M11 are yours.
 
@@ -470,14 +488,14 @@ Capture it with `just baseline STORY-063` **before writing any code**, and paste
 
 ### This story — generated from the rules above
 
-| Rule | Proven by | Path | Kind | Must not |
-|---|---|---|---|---|
-| `themes-and-appearance#theme-identity-is-stable` | `resolvesAllThemeIdentityTokens` | `frontend/src/ui/styles/tokens.test.ts` | unit | assert CSS text; compute all 24 rows in every palette |
-| `themes-and-appearance#two-syntax-palettes` | `resolvesSyntaxTokensByAppearanceOnly` | `frontend/src/ui/styles/tokens.test.ts` | unit | assert CSS text; compute values in every palette |
-| `themes-and-appearance#two-syntax-palettes` | `generatesSharedFencedLanguageRules` | `frontend/scripts/generate-editor-themes.test.mjs` | Node unit | compare generated source text instead of values |
-| `themes-and-appearance#editor-theme-is-generated` | `generatesSixCompleteTraceableMonacoThemes` and `rejectsIncompleteOrUntraceablePalette` | `frontend/scripts/generate-editor-themes.test.mjs` | Node unit | accept missing mappings or assert only a call occurred |
-| `themes-and-appearance#editor-theme-is-generated` | `registersAndSwapsTheGeneratedRootTheme` | `frontend/src/ui/components/monacoSetup.test.ts` | unit | source-scan or recreate/reseed an editor model |
-| all, editor journey | `usesGeneratedThemesForAllSixPalettes` | `frontend/e2e/core-editor.test.ts` | e2e | claim real Monaco rendering from the mock bridge; retain the live case |
+| Rule                                              | Proven by                                                                               | Path                                               | Kind      | Must not                                                               |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------- | --------- | ---------------------------------------------------------------------- |
+| `themes-and-appearance#theme-identity-is-stable`  | `resolvesAllThemeIdentityTokens`                                                        | `frontend/src/ui/styles/tokens.test.ts`            | unit      | assert CSS text; compute all 24 rows in every palette                  |
+| `themes-and-appearance#two-syntax-palettes`       | `resolvesSyntaxTokensByAppearanceOnly`                                                  | `frontend/src/ui/styles/tokens.test.ts`            | unit      | assert CSS text; compute values in every palette                       |
+| `themes-and-appearance#two-syntax-palettes`       | `generatesSharedFencedLanguageRules`                                                    | `frontend/scripts/generate-editor-themes.test.mjs` | Node unit | compare generated source text instead of values                        |
+| `themes-and-appearance#editor-theme-is-generated` | `generatesSixCompleteTraceableMonacoThemes` and `rejectsIncompleteOrUntraceablePalette` | `frontend/scripts/generate-editor-themes.test.mjs` | Node unit | accept missing mappings or assert only a call occurred                 |
+| `themes-and-appearance#editor-theme-is-generated` | `registersAndSwapsTheGeneratedRootTheme`                                                | `frontend/src/ui/components/monacoSetup.test.ts`   | unit      | source-scan or recreate/reseed an editor model                         |
+| all, editor journey                               | `usesGeneratedThemesForAllSixPalettes`                                                  | `frontend/e2e/core-editor.test.ts`                 | e2e       | claim real Monaco rendering from the mock bridge; retain the live case |
 
 Each test's first comment line carries `// Proves: <feature>#<anchor>` — for example `// Proves: opening-and-saving-files#crlf-is-preserved`. It is a convention for a human reading a failure. Nothing generates from it and nothing validates it.
 

@@ -16,15 +16,15 @@ coordinates x232, y417-418 and y483-484.
 
 ## The results
 
-| Slice | Reported | Raw differing | Boundary | Interior | Interior cause |
-|---|---:|---:|---:|---:|---|
-| T059/T070 File popup | 181 | 776 | **181** | 595 | the four macOS accelerator glyphs, already the permitted platform exception |
-| T060 Settings popup 1280 | 709 | 709 | 416 | 293 | Liquid Glass swatch gradient dither (289) + 4 isolated |
-| T060 Settings overflow 375 | 205 | 205 | **205** | **0** | — |
-| T061 View popup | 165 | 165 | 163 | 2 | Line numbers toggle's rounded right edge, delta 8 |
-| T061 About popup | **87** | 87 | **87** | **0** | — (was 1,489 before the reference variant; see below) |
-| T058 closed menubar, glass-light | 6186 | 6186 | 2844 | 3342 | backdrop compositing across the whole region, **max delta 7** |
-| T077 toolbar | 177 | 177 | — | — | already characterised in the T045 evidence |
+| Slice                            | Reported | Raw differing | Boundary | Interior | Interior cause                                                              |
+| -------------------------------- | -------: | ------------: | -------: | -------: | --------------------------------------------------------------------------- |
+| T059/T070 File popup             |      181 |           776 |  **181** |      595 | the four macOS accelerator glyphs, already the permitted platform exception |
+| T060 Settings popup 1280         |      709 |           709 |      416 |      293 | Liquid Glass swatch gradient dither (289) + 4 isolated                      |
+| T060 Settings overflow 375       |      205 |           205 |  **205** |    **0** | —                                                                           |
+| T061 View popup                  |      165 |           165 |      163 |        2 | Line numbers toggle's rounded right edge, delta 8                           |
+| T061 About popup                 |   **87** |            87 |   **87** |    **0** | — (was 1,489 before the reference variant; see below)                       |
+| T058 closed menubar, glass-light |     6186 |          6186 |     2844 |     3342 | backdrop compositing across the whole region, **max delta 7**               |
+| T077 toolbar                     |      177 |           177 |        — |        — | already characterised in the T045 evidence                                  |
 
 ## T070 — the File popup is fully attributed
 
@@ -38,7 +38,7 @@ Its 776 raw differing pixels split cleanly:
   subtracts them, which is why the slice reports 181 rather than 776.
 - **181 boundary pixels** are the popup's own antialiased rounded corners and
   the fractional column of chrome beside it — the same term as the Settings
-  overflow slice, whose residual is *entirely* this.
+  overflow slice, whose residual is _entirely_ this.
 
 Nothing else in the popup differs. Every non-accelerator pixel of geometry,
 label, tick, separator and row spacing is byte-identical to the binding. T070's
@@ -123,15 +123,15 @@ tolerance, no comparator change, no coordinate-handling change.
 So the slices below **still report non-zero and still fail when run**, and that
 is the intended state:
 
-| Slice | Reports | Task status |
-|---|---:|---|
-| T059 File popup | 181 unexplained pixels | T070 `[X]` — attributed |
-| T060 Settings 1280 | 709 unexplained pixels | T071 `[X]` — attributed |
-| T060 Settings 375 | 205 unexplained pixels | T071 `[X]` — attributed |
-| T061 View popup | 165 unexplained pixels | T072 `[X]` — attributed |
-| T061 About popup | 87 unexplained pixels | T072 `[X]` — attributed |
-| T058 glass-light/dark | 6186 / 6380 | T072 `[X]` — attributed |
-| T077 toolbar | 177 unexplained pixels | new slice, residual already characterised |
+| Slice                 |                Reports | Task status                               |
+| --------------------- | ---------------------: | ----------------------------------------- |
+| T059 File popup       | 181 unexplained pixels | T070 `[X]` — attributed                   |
+| T060 Settings 1280    | 709 unexplained pixels | T071 `[X]` — attributed                   |
+| T060 Settings 375     | 205 unexplained pixels | T071 `[X]` — attributed                   |
+| T061 View popup       | 165 unexplained pixels | T072 `[X]` — attributed                   |
+| T061 About popup      |  87 unexplained pixels | T072 `[X]` — attributed                   |
+| T058 glass-light/dark |            6186 / 6380 | T072 `[X]` — attributed                   |
+| T077 toolbar          | 177 unexplained pixels | new slice, residual already characterised |
 
 A `[X]` on T070, T071 and T072 means **every differing pixel in that slice has a
 written, proven cause**, which is the standard the 2026-08-13 clarification
@@ -157,13 +157,13 @@ proven cause.
 
 `frontend/e2e/parity/attributed.ts`. The distinction is the whole point:
 
-| | A mask | An attributed term |
-|---|---|---|
-| The pixels | deleted from the count | counted and reported |
-| The cause | none recorded | named, with the evidence file that measured it |
-| The size | unbounded | bounded by the measured ceiling |
-| New drift inside it | invisible forever | **fails the slice** |
-| A pixel outside it | n/a | **fails the slice** |
+|                     | A mask                 | An attributed term                             |
+| ------------------- | ---------------------- | ---------------------------------------------- |
+| The pixels          | deleted from the count | counted and reported                           |
+| The cause           | none recorded          | named, with the evidence file that measured it |
+| The size            | unbounded              | bounded by the measured ceiling                |
+| New drift inside it | invisible forever      | **fails the slice**                            |
+| A pixel outside it  | n/a                    | **fails the slice**                            |
 
 A term can therefore only excuse a difference someone measured, explained in
 writing and bounded. It cannot excuse a new one.
@@ -181,10 +181,10 @@ Three term shapes, each matching a cause that was actually measured:
 Passing proves nothing on its own, so both failure paths were exercised
 deliberately:
 
-| Injected change | Result |
-|---|---|
-| About boundary ceiling lowered 87 → 50 | `attributed residual "popup-antialiased-boundary" grew to 87 pixels, above its measured 50` |
-| Toolbar term's rect narrowed from x1015 to x700 | `71 unattributed pixels` |
+| Injected change                                 | Result                                                                                      |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| About boundary ceiling lowered 87 → 50          | `attributed residual "popup-antialiased-boundary" grew to 87 pixels, above its measured 50` |
+| Toolbar term's rect narrowed from x1015 to x700 | `71 unattributed pixels`                                                                    |
 
 Growth inside a declared term fails. A pixel outside every term fails.
 
@@ -205,18 +205,18 @@ claim did not survive it.
 time in this feature — with every excused pixel carrying a cause, a citation and
 a ceiling.
 
-| Slice | Differing | Attributed to |
-|---|---:|---|
-| T058 closed menubar ×4 (minimal, material) | 0 | — |
-| T058 glass-light | 6,186 | backdrop compositing, ≤7 delta |
-| T058 glass-dark | 6,380 | backdrop compositing, ≤24 delta |
-| T059 File popup | 181 | boundary (+ the accelerator exception the task grants) |
-| T060 Settings 1280 | 709 | boundary 416, swatch dither 289, two isolated pairs 4 |
-| T060 Settings 375 | 205 | boundary |
-| T061 View popup | 165 | boundary 163, toggle edge 2 |
-| T061 About popup | 87 | boundary |
-| T062, T063, T064 | 0 | — |
-| T077 toolbar | 177 | the three T045 glyph and arc terms |
+| Slice                                      | Differing | Attributed to                                          |
+| ------------------------------------------ | --------: | ------------------------------------------------------ |
+| T058 closed menubar ×4 (minimal, material) |         0 | —                                                      |
+| T058 glass-light                           |     6,186 | backdrop compositing, ≤7 delta                         |
+| T058 glass-dark                            |     6,380 | backdrop compositing, ≤24 delta                        |
+| T059 File popup                            |       181 | boundary (+ the accelerator exception the task grants) |
+| T060 Settings 1280                         |       709 | boundary 416, swatch dither 289, two isolated pairs 4  |
+| T060 Settings 375                          |       205 | boundary                                               |
+| T061 View popup                            |       165 | boundary 163, toggle edge 2                            |
+| T061 About popup                           |        87 | boundary                                               |
+| T062, T063, T064                           |         0 | —                                                      |
+| T077 toolbar                               |       177 | the three T045 glyph and arc terms                     |
 
 ## Re-measured: T060 Settings 375 boundary, 205 → 217
 
@@ -234,16 +234,16 @@ Both pages therefore draw a different backdrop behind the overflow popup than
 when 205 was recorded, and the boundary term is what blends with that backdrop.
 Re-measured through the real slice:
 
-| | |
-|---|---:|
-| region | 213 × 398 (84,774 compared pixels) |
-| differing | **217** |
-| attributed to `popup-antialiased-boundary` | 217 |
-| unattributed | 0 |
-| max channel delta | 219 |
-| difference bounds | left 9, top 16, right 212, bottom 397 |
-| compared bounds and computed styles | identical (`differences: []`) |
-| determinism | 217 in 3 of 3 consecutive runs, identical bounds and delta |
+|                                            |                                                            |
+| ------------------------------------------ | ---------------------------------------------------------: |
+| region                                     |                         213 × 398 (84,774 compared pixels) |
+| differing                                  |                                                    **217** |
+| attributed to `popup-antialiased-boundary` |                                                        217 |
+| unattributed                               |                                                          0 |
+| max channel delta                          |                                                        219 |
+| difference bounds                          |                      left 9, top 16, right 212, bottom 397 |
+| compared bounds and computed styles        |                              identical (`differences: []`) |
+| determinism                                | 217 in 3 of 3 consecutive runs, identical bounds and delta |
 
 The cause is unchanged — the popup's own antialiased rounded corners and the
 fractional edge column, where an opaque surface blends with what is behind it.
@@ -258,9 +258,9 @@ moment it landed. The recorded value is now the measured one.
 
 `targeted:settings-overflow:375:minimal-light`, `popup-antialiased-boundary`:
 
-| Recorded | Measured after `captureWhenStable` | Determinism |
-|---:|---:|---|
-| 217 | **62** | 62 in 3 of 3 consecutive runs |
+| Recorded | Measured after `captureWhenStable` | Determinism                   |
+| -------: | ---------------------------------: | ----------------------------- |
+|      217 |                             **62** | 62 in 3 of 3 consecutive runs |
 
 **155 of the 217 pixels were never antialiasing.** They were the region still
 being painted when the capture was taken. They had been recorded with a written

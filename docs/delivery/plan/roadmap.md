@@ -3,22 +3,22 @@
 What we build, in what order, and why that order. Each phase ends with a sentence a user would say out
 loud. Every dependency points backwards — no phase needs something a later phase delivers.
 
-| # | What the user gets | Depends on | State |
-|---|---|---|---|
-| [00](phase-00-it-runs.md) | The app opens | — | **done** |
-| [01](phase-01-type-and-see.md) | I can type Markdown and watch it render | 00 | **done** |
-| [02](phase-02-every-theme-looks-right.md) | Every theme looks right, including my code | 01 | **in progress** — STORY-058 built; 062, 059, 060, 061 to go |
-| [03](phase-03-it-looks-designed.md) | It looks like a real app, not a web page | 02 | |
-| [04](phase-04-write-markdown.md) | I can write Markdown, not just type it | 03 | |
-| [05](phase-05-real-files.md) | I can open, edit and save real files, in tabs | 04 | |
-| [06](phase-06-rich-and-safe.md) | My documents render richly and safely | 05 | |
-| [07](phase-07-a-folder-of-notes.md) | I can work on a whole folder of notes | 05 | |
-| [08](phase-08-install-it.md) | I can install it, and double-clicking a `.md` opens it | 07 | |
-| [09](phase-09-find-anything.md) | I can find anything in this file, and jump anywhere in the app | 07 | |
-| [10](phase-10-tidy-and-share.md) | My Markdown stays tidy, and I can share it as a PDF | 06 | |
-| [11](phase-11-ai-provider.md) | I can point the app at an AI provider | 05 | |
-| [12](phase-12-assistant-rewrites.md) | The assistant can proofread and rewrite my document | 10, 11 | |
-| [13](phase-13-conversation.md) | I can have a conversation about my notes | 09, 12 | |
+| #                                         | What the user gets                                             | Depends on | State                                                       |
+| ----------------------------------------- | -------------------------------------------------------------- | ---------- | ----------------------------------------------------------- |
+| [00](phase-00-it-runs.md)                 | The app opens                                                  | —          | **done**                                                    |
+| [01](phase-01-type-and-see.md)            | I can type Markdown and watch it render                        | 00         | **done**                                                    |
+| [02](phase-02-every-theme-looks-right.md) | Every theme looks right, including my code                     | 01         | **in progress** — STORY-058 built; 062, 059, 060, 061 to go |
+| [03](phase-03-it-looks-designed.md)       | It looks like a real app, not a web page                       | 02         |                                                             |
+| [04](phase-04-write-markdown.md)          | I can write Markdown, not just type it                         | 03         |                                                             |
+| [05](phase-05-real-files.md)              | I can open, edit and save real files, in tabs                  | 04         |                                                             |
+| [06](phase-06-rich-and-safe.md)           | My documents render richly and safely                          | 05         |                                                             |
+| [07](phase-07-a-folder-of-notes.md)       | I can work on a whole folder of notes                          | 05         |                                                             |
+| [08](phase-08-install-it.md)              | I can install it, and double-clicking a `.md` opens it         | 07         |                                                             |
+| [09](phase-09-find-anything.md)           | I can find anything in this file, and jump anywhere in the app | 07         |                                                             |
+| [10](phase-10-tidy-and-share.md)          | My Markdown stays tidy, and I can share it as a PDF            | 06         |                                                             |
+| [11](phase-11-ai-provider.md)             | I can point the app at an AI provider                          | 05         |                                                             |
+| [12](phase-12-assistant-rewrites.md)      | The assistant can proofread and rewrite my document            | 10, 11     |                                                             |
+| [13](phase-13-conversation.md)            | I can have a conversation about my notes                       | 09, 12     |                                                             |
 
 ## Why this order
 

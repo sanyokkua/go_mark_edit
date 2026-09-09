@@ -70,7 +70,7 @@ The CSS custom property name must **exactly match** `CSSDropProperty` (default: 
 
 ```css
 .drop-zone {
-    --wails-drop-target: drop;  /* value must match CSSDropValue */
+  --wails-drop-target: drop; /* value must match CSSDropValue */
 }
 ```
 
@@ -98,8 +98,8 @@ CSSDragValue:    "drag",
 
 ```css
 .titlebar {
-    --wails-draggable: drag;
-    -webkit-app-region: drag;  /* also add this for WebKit */
+  --wails-draggable: drag;
+  -webkit-app-region: drag; /* also add this for WebKit */
 }
 ```
 
@@ -108,10 +108,11 @@ CSSDragValue:    "drag",
 ```
 
 Elements inside the drag region that need to be clickable should override:
+
 ```css
 .titlebar button {
-    --wails-draggable: no-drag;
-    -webkit-app-region: no-drag;
+  --wails-draggable: no-drag;
+  -webkit-app-region: no-drag;
 }
 ```
 
@@ -134,17 +135,17 @@ Override the default context menu policy on specific elements using the CSS cust
 ```css
 /* Force show the browser context menu on this element */
 .always-right-clickable {
-    --default-contextmenu: show;
+  --default-contextmenu: show;
 }
 
 /* Suppress the context menu on this element */
 .no-context-menu {
-    --default-contextmenu: hide;
+  --default-contextmenu: hide;
 }
 
 /* Inherit the application's default policy */
 .inherit-policy {
-    --default-contextmenu: default;
+  --default-contextmenu: default;
 }
 ```
 

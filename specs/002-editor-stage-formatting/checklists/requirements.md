@@ -25,7 +25,7 @@
 ## Feature Readiness
 
 - [x] All functional requirements have clear acceptance criteria; future File, Tabs, and right-sidebar
-  surfaces are explicitly visual-only while the existing left workspace/sidebar behavior remains real
+      surfaces are explicitly visual-only while the existing left workspace/sidebar behavior remains real
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into the user-facing requirement statements

@@ -43,9 +43,11 @@ estimate: L
 # STORY-015 — Compose the split editor and preview with backend-owned view modes
 
 ## Goal
+
 Let users switch the active document among source-only, side-by-side, and rendered-only arrangements while preserving the existing application shell and treating the backend's reconciled view state as the rendered truth.
 
 ## In scope
+
 - Add accessible `Segmented` and `ViewModeToggle` controls for Editor, Split, and Preview arrangements.
 - Add `EditorView` and `PreviewView` composition in the reserved center region, including responsive split panes, pane headers, standard badge, and existing chrome.
 - Add tokenized responsive auto-fit equal-width panes that stack vertically at narrow widths without horizontal overflow.
@@ -53,6 +55,7 @@ Let users switch the active document among source-only, side-by-side, and render
 - Keep the left shell region and collapsed empty assistant region structurally intact.
 
 ## Out of scope
+
 - Full-chrome-hidden reading mode and `ReaderView`, owned by Phase 04.
 - Persisting per-path document arrangements or application-level layout, owned by Phases 02 and 08.
 - Divider dragging and arbitrary pane sizing, which are outside v1 unless a later story adds them.
@@ -60,6 +63,7 @@ Let users switch the active document among source-only, side-by-side, and render
 - Live accepted-snapshot preview synchronization and the status bar, owned by STORY-017 and STORY-016.
 
 ## Spec inputs
+
 - `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view` — compose evenly sized responsive Editor and Preview panes, prevent both from being hidden, and retain pane headers/badges.
 - `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` — provide a primary segmented control with exactly one active Editor, Split, or Preview arrangement.
 - `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state` — read document arrangement from the backend projection and change it through `SetDocView`.
@@ -69,6 +73,7 @@ Let users switch the active document among source-only, side-by-side, and render
 - `mockups/README.md#role-in-the-spec` — treat the canonical mockup as the binding structural/visual reference while behavioral clauses remain authoritative.
 
 ## Design constraints
+
 - View arrangement remains backend-owned and in-memory for the Phase-01 untitled document; Redux is only a `GetState`/`state:patch` projection (DD-62, DD-63, DD-64; ADR-0014).
 - Selecting a segment dispatches `SetDocView` through the store/adapter command path; no component or thunk optimistically changes projected view state.
 - The integration path is `ViewModeToggle` → store command → mock backend `state:patch` → projection → `EditorView` render; a presentational toggle test alone cannot prove the round trip.
@@ -82,30 +87,37 @@ Let users switch the active document among source-only, side-by-side, and render
 ## Acceptance criteria
 
 ### STORY-015-AC-1
+
 **Satisfies:** PH01-R08
 Split mode applies the tokenized responsive auto-fit/equal-pane CSS contract in the existing center region, including the narrow stacking rule, while preserving the left and collapsed assistant slots; measured viewport overflow is owned by STORY-018.
 
 ### STORY-015-AC-2
+
 **Satisfies:** PH01-R08
 Selecting Editor, Split, or Preview dispatches `SetDocView`; an `EditorView`/store integration proves the mock backend patch is reconciled before rendered panes change.
 
 ### STORY-015-AC-3
+
 **Satisfies:** PH01-R08
 Editor shows source only, Split shows both panes, and Preview shows rendered content with chrome.
 
 ### STORY-015-AC-4
+
 **Satisfies:** PH01-R08
 The segmented arrangement and shared `SetDocView` invariant cannot hide both panes; View-menu UI is deferred to Phase 08.
 
 ### STORY-015-AC-5
+
 **Satisfies:** PH01-R08
 The segmented primitive exposes one selected option; Arrow keys move selection, Home/End select the first/last option, and focus remains on the selected segment.
 
 ### STORY-015-AC-6
+
 **Satisfies:** PH01-R08
 Pane headers and the segmented control match the editor-split mockup structure using token-only CSS Modules.
 
 ## Test plan
+
 Each Jest test name begins with its matching `STORY-015-AC-N` id.
 
 - STORY-015-AC-1 — unit — `frontend/src/ui/widgets/EditorView.test.tsx` — `it('STORY-015-AC-1 applies the responsive split layout contract')`.
@@ -116,6 +128,7 @@ Each Jest test name begins with its matching `STORY-015-AC-N` id.
 - STORY-015-AC-6 — unit — `frontend/src/ui/widgets/EditorView.test.tsx` — `it('STORY-015-AC-6 matches the split-view structure')`.
 
 ## Definition of done
+
 - [ ] Every acceptance criterion has a passing test whose Jest name begins with its `STORY-015-AC-N` id.
 - [ ] Every edge case in `edge_cases:` has a passing test; this story declares none.
 - [ ] Editor/Split/Preview changes are proven through command → mock backend patch → projection → render, can never hide both panes, and preserve the F1 shell.

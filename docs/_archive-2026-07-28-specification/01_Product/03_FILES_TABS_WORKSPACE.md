@@ -108,7 +108,7 @@ wrong thing until 2026-07-25.) While an autosave write is in flight the dot is m
 removed, so a tab never looks saved before it is.
 
 **Right-clicking a tab** opens a tab context menu: Close · Close others · Close to the right · Copy
-path · Reveal in file manager. The mockup wired the tab's context menu to the *file tree's* menu, which
+path · Reveal in file manager. The mockup wired the tab's context menu to the _file tree's_ menu, which
 offered operations that do not apply to a tab.
 
 **Tab keyboard navigation** is `Ctrl/Cmd+Tab` / `Ctrl/Cmd+Shift+Tab` (and `Ctrl+PageDown` /
@@ -150,12 +150,12 @@ are skipped with an indicator (EC-WS-4); symlink cycles are bounded (EC-WS-5).
 The app **creates** files and folders in the workspace. It **never** renames, moves, deletes or
 reorders anything on disk (DD-77, ADR-0033).
 
-| Operation | Where | Behaviour |
-|---|---|---|
-| **New file** | sidebar header button; tree context menu | Creates an empty `.md` in the selected folder, or the workspace root when nothing is selected, and opens it in a tab. The name is typed inline in the tree. |
-| **New folder** | sidebar header button; tree context menu | Creates an empty directory in the same place, named inline. |
-| **Reveal in file manager** | tree context menu; tab context menu | Hands the path to the platform. Named this way on every platform — not "Reveal in Finder", which is true on one of three. |
-| **Copy path** | tree context menu; tab context menu | The absolute path to the clipboard. |
+| Operation                  | Where                                    | Behaviour                                                                                                                                                   |
+| -------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **New file**               | sidebar header button; tree context menu | Creates an empty `.md` in the selected folder, or the workspace root when nothing is selected, and opens it in a tab. The name is typed inline in the tree. |
+| **New folder**             | sidebar header button; tree context menu | Creates an empty directory in the same place, named inline.                                                                                                 |
+| **Reveal in file manager** | tree context menu; tab context menu      | Hands the path to the platform. Named this way on every platform — not "Reveal in Finder", which is true on one of three.                                   |
+| **Copy path**              | tree context menu; tab context menu      | The absolute path to the clipboard.                                                                                                                         |
 
 **A name that already exists is refused**, with a message naming the conflict. Nothing is ever
 overwritten and nothing is silently renamed to `file (2).md`.
@@ -300,7 +300,7 @@ formatting — a predictable outcome. Converting it would mean guessing at the s
 and a wrong guess is harder to repair than plain text is to re-format.
 
 **Dropping a non-image, non-Markdown file** — a `.zip`, a `.pdf` — still opens nothing and shows a toast
-(EC-DND-5). That rule is about *opening*, and it now says so.
+(EC-DND-5). That rule is about _opening_, and it now says so.
 
 ## Edge cases
 

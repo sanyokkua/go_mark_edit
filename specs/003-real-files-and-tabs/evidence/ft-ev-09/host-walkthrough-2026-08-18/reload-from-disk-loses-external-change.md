@@ -1,7 +1,7 @@
 # Reload from disk discards the external change and then overwrites it
 
 **Build:** `just build` at commit `478e6702`, binary mtime 2026-08-18 15:29:46,
-process started 15:29:53 (started *after* the binary was written, so this is not a
+process started 15:29:53 (started _after_ the binary was written, so this is not a
 stale instance — the trap recorded against earlier host evidence).
 **Host:** macOS, Darwin 25.5.0. **Found by:** the T186 host walkthrough.
 
@@ -25,7 +25,7 @@ stale instance — the trap recorded against earlier host evidence).
 ## Why this is data loss rather than a cosmetic bug
 
 Step 6 is the load-bearing one. The reload decision clears the conflict state and
-marks the document clean *without* taking the disk content, so the before-write
+marks the document clean _without_ taking the disk content, so the before-write
 check at step 7 has nothing left to compare against and the write proceeds
 silently. A user who is told "changed on disk", chooses the option that means
 "take theirs", and then keeps typing, loses the other process's work without ever
@@ -65,7 +65,7 @@ necessary:
 
 1. `applyReload` replaced `document.content` without incrementing
    `ContentRevision` (`document.go:65` increments it for every ordinary edit).
-2. `ReloadFromDisk` reported the *pre*-reload revision, which the frontend's
+2. `ReloadFromDisk` reported the _pre_-reload revision, which the frontend's
    activation guard compares against the projection — so it rejected the
    acknowledgement.
 3. `useSyncedBuffer`'s activation memo depended on `[documentId]` alone, so the

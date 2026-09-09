@@ -43,9 +43,11 @@ estimate: M
 # STORY-022 — Preserve the active Monaco session across view arrangements
 
 ## Goal
+
 Let users move through Editor, Split, and Preview arrangements without losing or recreating the active editing session, including its unsent text, cursor, selection, undo history, and layout.
 
 ## In scope
+
 - Keep the active `CodeEditor` and its Monaco model/session mounted while Preview-only hides the editor pane.
 - Flush pending buffer and per-document view synchronization before the explicit command that hides the editor crosses the adapter boundary.
 - Re-show the same editor/model when returning to Editor or Split, preserving text, cursor, selection, undo history, scroll, and editor geometry.
@@ -53,12 +55,14 @@ Let users move through Editor, Split, and Preview arrangements without losing or
 - Add a store-connected `EditorView` regression suite and a responsive Playwright edit → Preview → Editor/Split round trip.
 
 ## Out of scope
+
 - Exposing the document-command API to a non-editor sibling, owned by STORY-023.
 - File-backed tabs, switching documents, close/save/autosave, and durable per-document state, owned by Phase 02 and Phase 08.
 - Chrome-hidden reading mode and its entry/exit scroll restoration, owned by Phase 04.
 - Replacing Monaco or creating a second editor/model for Preview-only.
 
 ## Spec inputs
+
 - `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode` — retain Monaco's responsive working buffer and source-editing behavior while other views consume backend-accepted state.
 - `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view` — implement Editor-only, Split, and Preview-only as pane visibility arrangements without invalidating the editor session.
 - `../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle` — keep exactly one backend-owned arrangement active and synchronize the primary and secondary controls.
@@ -70,6 +74,7 @@ Let users move through Editor, Split, and Preview arrangements without losing or
 - `07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist` — preserve cursor/selection, view-mode behavior, responsive Monaco geometry, and the content-free patch invariant.
 
 ## Design constraints
+
 - Preview-only changes visibility; it does not unmount or dispose the active `CodeEditor`, Monaco editor instance, model, undo stack, or ephemeral session refs.
 - A transition that will hide the editor first awaits `flushBuffer(documentId)` and `flushDocView(documentId)`, then submits its explicit arrangement intent through STORY-021's per-document queue.
 - Returning to Editor or Split reveals the same session. Bootstrap `ActiveBuffer` seeds a document identity only once and is never reapplied as an arrangement side effect.
@@ -82,26 +87,32 @@ Let users move through Editor, Split, and Preview arrangements without losing or
 ## Acceptance criteria
 
 ### STORY-022-AC-1
+
 **Satisfies:** PH01-R04
 **Given** pending buffer or view synchronization, **when** the user selects Preview-only, **then** both pending states are flushed before the explicit hide arrangement is sent.
 
 ### STORY-022-AC-2
+
 **Satisfies:** PH01-R06
 **When** Preview-only becomes the accepted backend arrangement, the active Monaco editor and model remain mounted but hidden, with no editor/model disposal or replacement.
 
 ### STORY-022-AC-3
+
 **Satisfies:** PH01-R06
 **Given** an edit, cursor, selection, scroll position, undo history, and editor geometry before Preview-only, **when** the user returns to Editor or Split, **then** the same session restores those exact values and bootstrap content is not reseeded.
 
 ### STORY-022-AC-4
+
 **Satisfies:** PH01-R06
 **Given** a focused editor with a local working edit, **when** a backend metadata patch is reconciled, **then** the patch contains no document text and does not call Monaco `setValue` or move the cursor/selection. (satisfies EC-DOCS-12)
 
 ### STORY-022-AC-5
+
 **Satisfies:** PH01-R06
 At 375, 768, and 1280 px, a Playwright edit → Preview → Editor round trip preserves the edited source and usable Monaco geometry without horizontal overflow or console errors.
 
 ## Test plan
+
 - STORY-022-AC-1 — integration — `frontend/src/ui/widgets/EditorView.integration.test.tsx` — `it('STORY-022-AC-1 flushes session state before hiding the editor')`.
 - STORY-022-AC-2 — integration — `frontend/src/ui/widgets/EditorView.integration.test.tsx` — `it('STORY-022-AC-2 keeps Monaco mounted while preview-only is visible')`.
 - STORY-022-AC-3 — integration — `frontend/src/ui/widgets/EditorView.integration.test.tsx` — `it('STORY-022-AC-3 restores the exact Monaco session without bootstrap reseeding')`.
@@ -109,6 +120,7 @@ At 375, 768, and 1280 px, a Playwright edit → Preview → Editor round trip pr
 - STORY-022-AC-5 — e2e-smoke — `frontend/e2e/core-editor.test.ts` — `test('STORY-022-AC-5 round trips an edit through Preview responsively')`.
 
 ## Definition of done
+
 - [ ] Every acceptance criterion has a passing Jest or Playwright test whose name begins with its `STORY-022-AC-N` id.
 - [ ] EC-DOCS-12 has exact proof in the store-connected focused-editor patch test.
 - [ ] Integration tests prove flush-before-hide, no unmount/disposal, exact session/undo restoration, and no bootstrap reseed or `setValue` echo.

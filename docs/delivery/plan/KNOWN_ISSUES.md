@@ -12,7 +12,7 @@ Some entries record a **trajectory** rather than a defect, and say what would tu
 ## 1. A second `state:patch` subscriber is silently discarded
 
 `frontend/src/logic/adapter/appModelAdapter.ts:374` — when a subscription already exists,
-`subscribeStatePatches` returns the *existing* dispose function and throws the new callback away.
+`subscribeStatePatches` returns the _existing_ dispose function and throws the new callback away.
 
 Harmless today because there is exactly one consumer. The files phase adds two more (tab/save state,
 external-change detection), and they will simply never receive events. Needs a registered-listener
@@ -100,7 +100,7 @@ probably a bounded retry in the helper rather than a longer timeout.
 
 The rule "`internal/apperr` imports no other internal package" is correct and enforced by
 `internal/apperr/architecture_test.go`. Its side effect is that every type needing to cross a package
-boundary gets pushed *into* `apperr` to dodge an import cycle, because `apperr` is the only package
+boundary gets pushed _into_ `apperr` to dodge an import cycle, because `apperr` is the only package
 everything may already import.
 
 The reference application this architecture came from shows where that ends: its `apperr` owns not just
@@ -110,14 +110,14 @@ whose entire job is copying a `db.ProviderPreset` into an `apperr.ProviderPreset
 package can stay free of `apperr` imports.
 
 GoMarkEdit is on the same path: `02_BACKEND_GO.md` and `01_MODULE_INVENTORY.md` both describe
-`internal/apperr` as owning *"all `*Result` + DTOs"*, and the assistant phases add a large number of
+`internal/apperr` as owning _"all `*Result` + DTOs"_, and the assistant phases add a large number of
 payload types.
 
 **The fix, when it is worth doing:** split into `internal/apperr` (`AppError`, `ErrorCode`, `WireError`,
 `ToWire` — errors only) and a second leaf package (`internal/wire`) for the `*Result` envelopes and
 cross-package DTOs. Both stay at the bottom of the import graph; neither becomes a dumping ground.
 
-**The trigger:** the first time a *non-error* type is added to `apperr` purely to break an import cycle
+**The trigger:** the first time a _non-error_ type is added to `apperr` purely to break an import cycle
 between two packages that are not `apperr`. Doing it before then is churn; doing it during the assistant
 phases is a painful refactor across a much larger surface.
 
@@ -175,9 +175,9 @@ workaround is not mistaken for over-engineering and deleted.**
 GoMarkEdit's window is frameless: `../spec/product/the-app-window.md#frameless-window`. Two open Wails
 issues mean the platform's own resize borders cannot be relied on.
 
-| Issue | What it does to a frameless window |
-|---|---|
-| [wails#1062](https://github.com/wailsapp/wails/issues/1062) | On Windows, a frameless window can have **no resize controls at all**. The user cannot resize it by any edge or corner. |
+| Issue                                                       | What it does to a frameless window                                                                                                                                                                              |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [wails#1062](https://github.com/wailsapp/wails/issues/1062) | On Windows, a frameless window can have **no resize controls at all**. The user cannot resize it by any edge or corner.                                                                                         |
 | [wails#1087](https://github.com/wailsapp/wails/issues/1087) | Where resize borders do exist, the resize cursor appears **too far inside** the window. The hit area overlaps controls near the edge and **swallows their clicks** — the button looks enabled and does nothing. |
 
 Between them, relying on the platform gives three different broken behaviours on three platforms, and
@@ -191,8 +191,8 @@ and below every overlay, inert while maximised or full screen. The same reasonin
 `#the-title-bar-is-the-drag-region` and `#double-clicking-the-title-bar-toggles-maximise`: a frameless
 window gets none of those for free either.
 
-`0028-window-chrome-and-native-menu.md` named this cost when it chose frameless — *"we own window
-dragging, double-click-to-zoom, snap behaviour and the resize edges"* — and the specification did not
+`0028-window-chrome-and-native-menu.md` named this cost when it chose frameless — _"we own window
+dragging, double-click-to-zoom, snap behaviour and the resize edges"_ — and the specification did not
 follow through until 2026-07-28.
 
 **Do not delete the zones as redundant with the OS.** They are not redundant; on Windows there may be
@@ -212,20 +212,20 @@ missing rows have **zero occurrences** in the shipped `frontend/src/ui/styles/to
 Counted as `var(--token)` references in `../spec/surface/mockup.html`, and as any occurrence at all in
 `frontend/src/`. Each of the ten is declared six times in the mockup — once per palette.
 
-| Token | Anywhere in `frontend/src/` | `var()` uses in the Tier-A mockup |
-|---|---|---|
-| `--canvas` | 0 | 2 |
-| `--elevated` | 0 | 9 |
-| `--surface-2` | 0 | 16 |
-| `--surface-3` | 0 | 9 |
-| `--stroke` | 0 | 40 |
-| `--stroke-soft` | 0 | 43 |
-| `--muted` | 0 | 46 |
-| `--faint` | 0 | 54 |
-| `--hover` | 0 | 9 |
-| `--user-bubble` | 0 | 1 |
+| Token           | Anywhere in `frontend/src/` | `var()` uses in the Tier-A mockup |
+| --------------- | --------------------------- | --------------------------------- |
+| `--canvas`      | 0                           | 2                                 |
+| `--elevated`    | 0                           | 9                                 |
+| `--surface-2`   | 0                           | 16                                |
+| `--surface-3`   | 0                           | 9                                 |
+| `--stroke`      | 0                           | 40                                |
+| `--stroke-soft` | 0                           | 43                                |
+| `--muted`       | 0                           | 46                                |
+| `--faint`       | 0                           | 54                                |
+| `--hover`       | 0                           | 9                                 |
+| `--user-bubble` | 0                           | 1                                 |
 
-The eleven rows that *were* copied are all present, 2–3 occurrences each. `check_story.py` finds
+The eleven rows that _were_ copied are all present, 2–3 occurrences each. `check_story.py` finds
 truncation in eight further rules in the same story, and flags the story as oversized: **9 rules
 against a ceiling of 5**.
 
@@ -273,11 +273,11 @@ blocked, which is the user's call rather than a documentation change — the sam
 
 ## 16. A user-visible string disagrees between the specification and the code
 
-| Where | Text |
-|---|---|
-| `../spec/product/the-app-window.md` (When things go wrong) | `GoMarkEdit could not start` · `GoMarkEdit could not initialize its local settings. Please try again.` |
-| `../spec/product/settings.md` (When things go wrong) | the same two strings |
-| `frontend/src/i18n/locales/en.json:14` (`startup.failure.message`) | `The application could not start. Try again.` |
+| Where                                                              | Text                                                                                                   |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `../spec/product/the-app-window.md` (When things go wrong)         | `GoMarkEdit could not start` · `GoMarkEdit could not initialize its local settings. Please try again.` |
+| `../spec/product/settings.md` (When things go wrong)               | the same two strings                                                                                   |
+| `frontend/src/i18n/locales/en.json:14` (`startup.failure.message`) | `The application could not start. Try again.`                                                          |
 
 The shipped screen says "The application", not "GoMarkEdit", and drops the sentence naming what
 failed — which is the part that tells a user where to look.
@@ -298,16 +298,16 @@ now M12 of the Definition of Done and it fails `just verify` today.
 Every test's first comment line is supposed to carry `// Proves: <feature>#<anchor>`, and the anchor
 is supposed to exist in `../spec/`. **114 tags across 25 files resolve to nothing**, in three groups:
 
-| Shape | Count of distinct tags | Example | Why it resolves nowhere |
-|---|---|---|---|
-| `STORY-NNN-AC-#N` | most of them | `STORY-011-AC-#3` in `internal/appmodel/service_test.go:72` | The retired story format numbered acceptance criteria per story. Those stories are archived and the numbering scheme is gone. |
-| `EC-<AREA>-#N` | 2 | `EC-I18N-#1` | The retired edge-case registry, removed with the design-decision registry on 2026-07-25. |
-| `all#end-to-end` | 1 | `frontend/src/ui/widgets/AppearanceControls.test.tsx:61` | Never an anchor at all. STORY-058's Definition of Done had a literal `all, end to end` row and it was transcribed into the tag. |
+| Shape             | Count of distinct tags | Example                                                     | Why it resolves nowhere                                                                                                         |
+| ----------------- | ---------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `STORY-NNN-AC-#N` | most of them           | `STORY-011-AC-#3` in `internal/appmodel/service_test.go:72` | The retired story format numbered acceptance criteria per story. Those stories are archived and the numbering scheme is gone.   |
+| `EC-<AREA>-#N`    | 2                      | `EC-I18N-#1`                                                | The retired edge-case registry, removed with the design-decision registry on 2026-07-25.                                        |
+| `all#end-to-end`  | 1                      | `frontend/src/ui/widgets/AppearanceControls.test.tsx:61`    | Never an anchor at all. STORY-058's Definition of Done had a literal `all, end to end` row and it was transcribed into the tag. |
 
 Only **19 rules** in the whole specification are claimed by any tag.
 
 **Why it matters, and why it is not urgent.** The tests themselves pass and test real behaviour; the
-tag is a comment. What is lost is the ability to answer *"which test proves this rule?"* — which is the
+tag is a comment. What is lost is the ability to answer _"which test proves this rule?"_ — which is the
 question `/finish-phase` step 2 asks for every rule in every story, and the question that catches a
 rule nobody tested. A tag pointing at nothing reads as coverage and is not.
 

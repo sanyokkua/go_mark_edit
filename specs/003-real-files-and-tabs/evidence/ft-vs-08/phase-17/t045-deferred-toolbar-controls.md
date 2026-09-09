@@ -9,7 +9,7 @@
 `image`, `format`, `compact` and `lint` are `deferred(...)` in
 `frontend/src/logic/actions/actionRegistry.ts`, so production draws them
 visibly unavailable at `--disabled-opacity: 0.48`. `spec.md:1129` forbids
-Feature 003 from changing *any* deferred outcome, and
+Feature 003 from changing _any_ deferred outcome, and
 `EditorChrome.test.tsx:37` asserts `Format` is disabled.
 
 The immutable mockup has no disabled state anywhere. So the toolbar comparison
@@ -18,10 +18,10 @@ stopped measuring geometry and collapsed into a colour difference.
 Measured, not assumed. A controlled probe neutralised **only** the
 deferred-availability opacity in production and changed nothing else:
 
-| Toolbar region, 1280px Minimal Light | Differing pixels | Max channel delta |
-|---|---:|---:|
-| As captured | 965 | 114 |
-| With production's disabled opacity forced to 1 | **214** | 54 |
+| Toolbar region, 1280px Minimal Light           | Differing pixels | Max channel delta |
+| ---------------------------------------------- | ---------------: | ----------------: |
+| As captured                                    |              965 |               114 |
+| With production's disabled opacity forced to 1 |          **214** |                54 |
 
 751 of the 965 pixels were the dimming alone.
 
@@ -52,13 +52,13 @@ production's deferred behaviour.
 
 ## Measured effect
 
-| Region, 1280px Minimal Light `editor-split` | Recorded | After |
-|---|---:|---:|
-| Chrome (toolbar) | 2,683 | **177** |
-| Tab strip | — | **0** |
-| Preview | 3,433 | **5** |
-| Rest of the region | — | **0** |
-| **Unexplained** (total − Monaco exclusion) | **6,116** | **182** |
+| Region, 1280px Minimal Light `editor-split` |  Recorded |   After |
+| ------------------------------------------- | --------: | ------: |
+| Chrome (toolbar)                            |     2,683 | **177** |
+| Tab strip                                   |         — |   **0** |
+| Preview                                     |     3,433 |   **5** |
+| Rest of the region                          |         — |   **0** |
+| **Unexplained** (total − Monaco exclusion)  | **6,116** | **182** |
 
 The inverse probe confirms the attribution: with the reference now dimmed,
 forcing production's disabled controls back to full opacity raises the toolbar
@@ -66,23 +66,23 @@ region from 177 to 963.
 
 ## What remains in the toolbar — 177 px, all characterised
 
-| Cluster | Page x | Pixels | Cause |
-|---|---|---:|---|
-| Link icon | 639–653 | 41 | icon path approximation, pre-existing |
-| Format marker | 763–769 | 39 | `::before` inline-box segmentation |
-| Lint marker | 920–922 | 26 | same |
-| Segment edges | 4 clusters | 71 | **cause not identified** |
+| Cluster       | Page x     | Pixels | Cause                                 |
+| ------------- | ---------- | -----: | ------------------------------------- |
+| Link icon     | 639–653    |     41 | icon path approximation, pre-existing |
+| Format marker | 763–769    |     39 | `::before` inline-box segmentation    |
+| Lint marker   | 920–922    |     26 | same                                  |
+| Segment edges | 4 clusters |     71 | **cause not identified**              |
 
 **The marker residual is structural and measured.** The binding draws
 `⌁ Format` as one text run; production draws `::before{content:'⌁ '}` plus the
 catalogue label, which Chromium measures as two inline boxes and rounds
 separately. Measured in-page, in one font context:
 
-| Content | One text run | Two inline boxes | Δ |
-|---|---:|---:|---:|
-| `⌁ Format` | 48.828125 | 48.84375 | +0.015625 |
-| `⇥ Compact` | 63.359375 | 63.375 | +0.015625 |
-| `✓ Lint` | 31.859375 | 31.875 | +0.015625 |
+| Content     | One text run | Two inline boxes |         Δ |
+| ----------- | -----------: | ---------------: | --------: |
+| `⌁ Format`  |    48.828125 |         48.84375 | +0.015625 |
+| `⇥ Compact` |    63.359375 |           63.375 | +0.015625 |
+| `✓ Lint`    |    31.859375 |           31.875 | +0.015625 |
 
 That +1/64px is exactly the button-width difference observed, and it shifts the
 centred glyphs by half of it. Closing it needs the marker inside the label's own

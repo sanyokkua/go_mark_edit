@@ -33,7 +33,7 @@ so a default install still never leaves the machine.
    an actual inference returns, and test that the model can make a **tool call** — which is what tells
    you whether it can drive the assistant at all. Real calls, on your click, against the currently
    selected model, showing what came back or what failed.
-5. **Secrets by reference only.** An API key is configured as the *name of an environment variable*,
+5. **Secrets by reference only.** An API key is configured as the _name of an environment variable_,
    never the value. The value is read at call time and never persisted, never logged, never included
    in an error or an event.
 6. **The settings screens.** An AI / Providers group to configure providers and models, and an AI
@@ -58,7 +58,7 @@ so a default install still never leaves the machine.
 **Nothing blocking — the four former questions were settled on 2026-07-25.**
 
 - **The network policy no longer forbids this phase.** ADR-0011 said the only permitted outbound call
-  was an LLM *inference*, which made Test connection and model discovery contradictions. It now names
+  was an LLM _inference_, which made Test connection and model discovery contradictions. It now names
   the category — a **user-invoked request to the configured provider** — of which inference is one kind.
   Same host, same trigger, same count of permitted destinations.
 - **Custom headers hold no secret**, and one case-insensitive redaction rule covers logs, drafts,

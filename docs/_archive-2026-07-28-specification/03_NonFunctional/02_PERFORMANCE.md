@@ -81,6 +81,7 @@ guarantees.
   documented future option if Monaco's footprint becomes dominant (ADR-0002).
 
 ## 6. Memory
+
 7. Hard limits
 
 - One process holds one webview, one open SQLite connection (single-writer pool), and the Go-owned
@@ -101,17 +102,17 @@ section rather than restating it — two documents holding the same number is ho
 A budget you cannot enforce is not a specification. Each row therefore states what happens **at** the
 limit, not only what the limit is.
 
-| Limit | Value | At the limit |
-|---|---|---|
-| Openable file size | **50 MB** | The file is refused with a message naming the limit. It is not partially loaded. |
-| Read-only threshold | **10 MB** | Opens, but read-only: no editing, no autosave, and an inline banner saying why. Editing a file this size through a full-text bridge sync is not something the architecture supports. |
-| Live-preview pause | **2 MB** | The preview stops updating on every keystroke and shows a **Refresh preview** action in an inline banner. This is `EC-DOCS-4` and `EC-RENDER-4`, which have required "a configurable threshold" with no number, unit or comparison. **It is not configurable in v1** — one number that always behaves the same beats a setting nobody can reason about. |
-| Open tabs | **40** | Opening the 41st is refused with a message. Every open document's content is held in Go memory (DD-62), so this is a real bound, not a UI preference. |
-| Folder entries enumerated | **20,000** per workspace | Enumeration stops and the tree shows what it has plus a note that the folder is too large to index. Opening a home directory is a plausible accident. |
-| Folder depth | **12** levels | Deeper directories are not descended into. Bounds symlink cycles as well (`EC-WS-5`). |
-| Search results | **1,000** | The list stops and says how many were found. |
-| Lint markers decorated | **1,000** | The count stays accurate; only the first thousand get squiggles. The problems list shows all of them (`06_FORMAT_AND_LINT.md#problems-surface`). |
-| Undo history | Monaco's default | Not overridden. |
+| Limit                     | Value                    | At the limit                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Openable file size        | **50 MB**                | The file is refused with a message naming the limit. It is not partially loaded.                                                                                                                                                                                                                                                                        |
+| Read-only threshold       | **10 MB**                | Opens, but read-only: no editing, no autosave, and an inline banner saying why. Editing a file this size through a full-text bridge sync is not something the architecture supports.                                                                                                                                                                    |
+| Live-preview pause        | **2 MB**                 | The preview stops updating on every keystroke and shows a **Refresh preview** action in an inline banner. This is `EC-DOCS-4` and `EC-RENDER-4`, which have required "a configurable threshold" with no number, unit or comparison. **It is not configurable in v1** — one number that always behaves the same beats a setting nobody can reason about. |
+| Open tabs                 | **40**                   | Opening the 41st is refused with a message. Every open document's content is held in Go memory (DD-62), so this is a real bound, not a UI preference.                                                                                                                                                                                                   |
+| Folder entries enumerated | **20,000** per workspace | Enumeration stops and the tree shows what it has plus a note that the folder is too large to index. Opening a home directory is a plausible accident.                                                                                                                                                                                                   |
+| Folder depth              | **12** levels            | Deeper directories are not descended into. Bounds symlink cycles as well (`EC-WS-5`).                                                                                                                                                                                                                                                                   |
+| Search results            | **1,000**                | The list stops and says how many were found.                                                                                                                                                                                                                                                                                                            |
+| Lint markers decorated    | **1,000**                | The count stays accurate; only the first thousand get squiggles. The problems list shows all of them (`06_FORMAT_AND_LINT.md#problems-surface`).                                                                                                                                                                                                        |
+| Undo history              | Monaco's default         | Not overridden.                                                                                                                                                                                                                                                                                                                                         |
 
 **Refusal is a first-class outcome.** Each of these produces a classified error or an inline banner with
 a written message (`20_NOTIFICATIONS_AND_EMPTY_STATES.md`), never a hang, never a silent truncation, and

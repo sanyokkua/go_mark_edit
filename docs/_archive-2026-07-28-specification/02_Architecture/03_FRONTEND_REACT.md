@@ -64,17 +64,17 @@ exposes typed singletons per backend vertical (`appModelAdapter`, `docsAdapter`,
 ```ts
 // unwrap: throws + auto-toasts on an envelope error; returns data otherwise.
 export function unwrap<T>(res: { data?: T; error?: apperr.WireError }): T {
-    if (res.error) {
-        store.dispatch(notifyError(res.error)); // auto-toast (see 06_ERROR_HANDLING.md #toasts)
-        throw res.error;
-    }
-    return res.data as T;
+  if (res.error) {
+    store.dispatch(notifyError(res.error)); // auto-toast (see 06_ERROR_HANDLING.md #toasts)
+    throw res.error;
+  }
+  return res.data as T;
 }
 
 // guardArity: rejects immediately on an arg-count mismatch (a raw Wails call would hang forever).
 export function guardArity<TArgs extends unknown[], TResult>(
-    methodName: string,
-    bound: (...args: TArgs) => Promise<TResult>,
+  methodName: string,
+  bound: (...args: TArgs) => Promise<TResult>,
 ): (...args: TArgs) => Promise<TResult>;
 ```
 
@@ -106,16 +106,16 @@ typed `rejectValue` carrying the envelope error, so components can branch on `Wi
 // Command: ask the backend to save its authoritative buffer. No document content is read
 // from the store — the backend owns it. Pending editor edits are flushed first (DD-64).
 export const saveDocument = createAsyncThunk<
-    void,                                        // Returned (state arrives via state:* event)
-    { tabId: string },                           // ThunkArg
-    { state: RootState; rejectValue: WireError }  // ThunkApiConfig
+  void, // Returned (state arrives via state:* event)
+  { tabId: string }, // ThunkArg
+  { state: RootState; rejectValue: WireError } // ThunkApiConfig
 >('documents/save', async ({ tabId }, { rejectWithValue }) => {
-    try {
-        await appModelAdapter.flushBuffer(tabId); // push any debounced edit (DD-64)
-        await docsAdapter.save({ tabId });        // backend saves its own canonical content
-    } catch (e) {
-        return rejectWithValue(parseError(e)); // logic/utils/parseError normalizes unknown → WireError
-    }
+  try {
+    await appModelAdapter.flushBuffer(tabId); // push any debounced edit (DD-64)
+    await docsAdapter.save({ tabId }); // backend saves its own canonical content
+  } catch (e) {
+    return rejectWithValue(parseError(e)); // logic/utils/parseError normalizes unknown → WireError
+  }
 });
 ```
 
@@ -136,9 +136,11 @@ thereafter it subscribes to backend `state:*` events and applies each patch:
 
 ```ts
 // logic/adapter — hydrate once, then reconcile from backend events.
-const snapshot = unwrap(await appModel.GetState());   // full AppState projection
+const snapshot = unwrap(await appModel.GetState()); // full AppState projection
 store.dispatch(hydrateState(snapshot));
-runtime.EventsOn('state:patch', (patch: AppStatePatch) => store.dispatch(applyStatePatch(patch)));
+runtime.EventsOn('state:patch', (patch: AppStatePatch) =>
+  store.dispatch(applyStatePatch(patch)),
+);
 ```
 
 **Active buffer sync (DD-64).** `CodeEditor`'s `onChange` updates Monaco immediately and debounce-pushes
@@ -148,8 +150,8 @@ the backend's derived state delivered via `state:patch`:
 
 ```ts
 const pushBuffer = useDebouncedCallback(
-    (tabId: string, text: string) => appModelAdapter.updateBuffer(tabId, text), // command → model (DD-64)
-    BUFFER_SYNC_MS,
+  (tabId: string, text: string) => appModelAdapter.updateBuffer(tabId, text), // command → model (DD-64)
+  BUFFER_SYNC_MS,
 );
 // on blur / tab switch / close / save the pending push is flushed first (appModelAdapter.flushBuffer).
 ```
@@ -162,7 +164,7 @@ document (`02_BACKEND_GO.md#application-model`, `07_LARGE_FILES_AND_CONCURRENCY.
 The sentence above and "each tab keeps its own undo history" are in tension, and the tension has to be
 resolved rather than left for an implementer to discover: **Monaco's undo stack lives on the model, and
 the model holds the text.** Disposing a background tab's model to bound memory throws away its undo
-history; keeping it means that document's text *is* in the webview after all.
+history; keeping it means that document's text _is_ in the webview after all.
 
 The resolution:
 
@@ -209,19 +211,29 @@ drives **two** attributes so three
 themes × light/dark coexist under one layout (DD-28, DD-29, DD-30; ADR-0005):
 
 ```ts
-export function resolveEffectiveTheme(mode: 'auto' | 'light' | 'dark'): 'light' | 'dark' {
-    if (mode === 'dark' || mode === 'light') return mode;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+export function resolveEffectiveTheme(
+  mode: 'auto' | 'light' | 'dark',
+): 'light' | 'dark' {
+  if (mode === 'dark' || mode === 'light') return mode;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
 }
 
-export function applyTheme(theme: 'liquid-glass' | 'material' | 'minimal', effective: 'light' | 'dark'): void {
-    const root = document.documentElement;
-    root.setAttribute('data-theme', theme);   // which token set
-    root.setAttribute('data-mode', effective); // light | dark within it
+export function applyTheme(
+  theme: 'liquid-glass' | 'material' | 'minimal',
+  effective: 'light' | 'dark',
+): void {
+  const root = document.documentElement;
+  root.setAttribute('data-theme', theme); // which token set
+  root.setAttribute('data-mode', effective); // light | dark within it
 }
 
 export function initTheme(theme: ThemeId, mode: ThemeMode): 'light' | 'dark';
-export function watchSystemTheme(mode: ThemeMode, onChange: (eff: 'light' | 'dark') => void): () => void;
+export function watchSystemTheme(
+  mode: ThemeMode,
+  onChange: (eff: 'light' | 'dark') => void,
+): () => void;
 ```
 
 `watchSystemTheme` subscribes to `prefers-color-scheme` and updates live while mode is `auto` (DD-29);
@@ -252,16 +264,21 @@ plain `npm run dev` — never in `npm run dev -- --mode wails` (real bridge) or 
 
 ```ts
 function bridgeMockPlugin(): Plugin {
-    return {
-        name: 'vite-plugin-bridge-mock',
-        enforce: 'pre',
-        resolveId(id) {
-            const h = id.match(/wailsjs\/go\/(?:[^/]+)\/(\w+Handler)$/);
-            if (h) return path.resolve(__dirname, `src/dev/bridge-mock/go/main/${h[1]}.ts`);
-            if (/wailsjs\/runtime$/.test(id)) return path.resolve(__dirname, 'src/dev/bridge-mock/runtime/index.ts');
-            return undefined;
-        },
-    };
+  return {
+    name: 'vite-plugin-bridge-mock',
+    enforce: 'pre',
+    resolveId(id) {
+      const h = id.match(/wailsjs\/go\/(?:[^/]+)\/(\w+Handler)$/);
+      if (h)
+        return path.resolve(
+          __dirname,
+          `src/dev/bridge-mock/go/main/${h[1]}.ts`,
+        );
+      if (/wailsjs\/runtime$/.test(id))
+        return path.resolve(__dirname, 'src/dev/bridge-mock/runtime/index.ts');
+      return undefined;
+    },
+  };
 }
 // isMockMode = mode !== 'wails' && mode !== 'production'
 ```
@@ -289,14 +306,14 @@ const markdownComponents: Components = {
 
 The active plugin set is selected by the Markdown-standard setting (DD-14):
 
-| Standard | remark | rehype |
-|---|---|---|
-| **Minimal (CommonMark)** | — | `rehype-highlight` |
-| **GFM** (default) | `remark-gfm` | `rehype-highlight` |
-| **Full** | `remark-gfm`, `remark-math`, footnotes, directives/admonitions, frontmatter | `rehype-katex`, `rehype-highlight` |
+| Standard                 | remark                                                                      | rehype                             |
+| ------------------------ | --------------------------------------------------------------------------- | ---------------------------------- |
+| **Minimal (CommonMark)** | —                                                                           | `rehype-highlight`                 |
+| **GFM** (default)        | `remark-gfm`                                                                | `rehype-highlight`                 |
+| **Full**                 | `remark-gfm`, `remark-math`, footnotes, directives/admonitions, frontmatter | `rehype-katex`, `rehype-highlight` |
 
 All assets (KaTeX fonts, Mermaid, highlight themes) are bundled; the pipeline makes no network request
-(DD-32; `03_NonFunctional/04_OFFLINE.md`). Remote *document* assets are governed by the content policy
+(DD-32; `03_NonFunctional/04_OFFLINE.md`). Remote _document_ assets are governed by the content policy
 and the guarded asset server, not by this pipeline (`09_ASSETS_AND_SECURITY.md`). Sanitization,
 preview debounce, and the standard→plugin mapping are specified normatively in
 `01_Product/05_RENDERING_AND_EXTENSIONS.md`.
