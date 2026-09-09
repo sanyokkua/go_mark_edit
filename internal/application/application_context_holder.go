@@ -18,15 +18,17 @@ import (
 // ApplicationContextHolder stores the Wails lifecycle context for application
 // services that are added by later stories. It is intentionally not Wails-bound.
 type ApplicationContextHolder struct {
-	mu sync.Mutex
+	mu      sync.Mutex
+	retryMu sync.Mutex
 
 	ctx        context.Context
 	startupErr error
 
 	DB *db.Database
 
-	fileService file.FileUtilsServiceAPI
-	appLogger   *logging.Logger
+	fileService        file.FileUtilsServiceAPI
+	appLogger          *logging.Logger
+	settingsRepository settings.SettingsRepositoryAPI
 
 	SettingsService     *settings.SettingsService
 	SettingsHandler     *settings.SettingsHandler
@@ -38,9 +40,24 @@ type ApplicationContextHolder struct {
 	Shutdown            *ShutdownOwner
 }
 
+// ApplicationContextOptions supplies persistence seams that must be available
+// before startup begins. Production leaves SettingsRepository nil so Init can
+// inject the SQLite repository; integration hosts can provide a repository
+// that models a failing or recovering settings store.
+type ApplicationContextOptions struct {
+	SettingsRepository settings.SettingsRepositoryAPI
+}
+
 // NewApplicationContextHolder constructs the phase-one dependency graph with
 // nil persistence. Init injects its concrete SQLite repository after startup.
 func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger *logging.Logger, outcomeCaches ...*bridge.OutcomeCache) *ApplicationContextHolder {
+	return NewApplicationContextHolderWithOptions(fileService, appLogger, ApplicationContextOptions{}, outcomeCaches...)
+}
+
+// NewApplicationContextHolderWithOptions constructs the phase-one graph with
+// explicit persistence options for hosts that need to exercise startup
+// recovery without replacing a service after construction.
+func NewApplicationContextHolderWithOptions(fileService file.FileUtilsServiceAPI, appLogger *logging.Logger, options ApplicationContextOptions, outcomeCaches ...*bridge.OutcomeCache) *ApplicationContextHolder {
 	outcomes := bridge.NewOutcomeCache()
 	if len(outcomeCaches) > 0 && outcomeCaches[0] != nil {
 		outcomes = outcomeCaches[0]
@@ -60,10 +77,11 @@ func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger
 		file.NewPlatformRevealPort(),
 	)
 	holder := &ApplicationContextHolder{
-		fileService:     fileService,
-		appLogger:       appLogger,
-		SettingsService: settingsService,
-		AppModelService: appModelService,
+		fileService:        fileService,
+		appLogger:          appLogger,
+		settingsRepository: options.SettingsRepository,
+		SettingsService:    settingsService,
+		AppModelService:    appModelService,
 	}
 	// The join the 2026-08-14 walkthrough found missing. Settings owns the
 	// autosave preference and the document model owns the scheduler; this is the
@@ -194,7 +212,11 @@ func (holder *ApplicationContextHolder) Init(ctx context.Context) error {
 		return holder.startupErr
 	}
 
-	holder.SettingsService.SetRepository(settings.NewSqliteSettingsRepository(database))
+	var repository settings.SettingsRepositoryAPI = settings.NewSqliteSettingsRepository(database)
+	if holder.settingsRepository != nil {
+		repository = holder.settingsRepository
+	}
+	holder.SettingsService.SetRepository(repository)
 	holder.AppModelService.SetLayoutRepository(appmodel.NewSqliteLayoutRepository(database))
 	holder.AppModelService.SetFileMetadataRepository(appmodel.NewSqliteFileMetadataRepository(database))
 	holder.AppModelService.SetRecentFilesRepository(appmodel.NewSqliteRecentFilesRepository(database))
@@ -243,10 +265,38 @@ func (holder *ApplicationContextHolder) StartupReady() bool {
 }
 
 func (holder *ApplicationContextHolder) RetryStartup(ctx context.Context) error {
+	holder.retryMu.Lock()
+	defer holder.retryMu.Unlock()
+
 	if err := holder.Init(ctx); err != nil {
 		return err
 	}
+	if err := holder.refreshPersistedSettings(ctx); err != nil {
+		return err
+	}
 	return holder.RestoreNativeWindow(ctx)
+}
+
+// refreshPersistedSettings is the recoverable half of RetryStartup. Init is
+// intentionally idempotent once SQLite is open, so a retry must still perform
+// a real settings read and republish the two preferences that affect the
+// document model.
+func (holder *ApplicationContextHolder) refreshPersistedSettings(ctx context.Context) error {
+	stored, err := holder.SettingsService.Get(ctx)
+	if err != nil {
+		holder.mu.Lock()
+		holder.startupErr = err
+		holder.mu.Unlock()
+		holder.AppModelService.SetStartupError(err)
+		return err
+	}
+	holder.AppModelService.SetAutosaveEnabled(stored.File.Autosave)
+	holder.AppModelService.SetDefaultOpenMode(stored.Appearance.DefaultOpenMode)
+	holder.mu.Lock()
+	holder.startupErr = nil
+	holder.mu.Unlock()
+	holder.AppModelService.SetStartupError(nil)
+	return nil
 }
 
 // FrontendReady forwards the independent webview readiness signal to the

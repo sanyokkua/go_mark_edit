@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-09T21:01:48Z",
+  "updated_at": "2026-09-09T21:38:29Z",
   "feature_directory": "specs/004-codebase-refactoring",
   "source_of_truth": {
     "constitution": ".specify/memory/constitution.md",
@@ -24,11 +24,11 @@
   "artifact_owner": "claude",
   "review_only_agents": [],
   "notes": null,
-  "last_snapshot_id": "20260909T210148058Z-executing",
+  "last_snapshot_id": "20260909T213829187Z-executing",
   "instructions": "Use /speckit-superpowers-bridge (Claude Code) or $speckit-superpowers-bridge (Codex). The bridge orchestrates native Superpowers skills against tasks.md; do not run speckit.implement and do not invoke superpowers:writing-plans / :brainstorming for an active Spec Kit feature.",
   "artifacts_sha256": {
     "spec.md": "72ef974230cfd6b3582938c7d810020d46f566a182691b25f7eae032e16a1440",
     "plan.md": "794eec8169b8b533b154bb437780ae30a7a29abe6f2131555619afd7ac7eee25",
-    "tasks.md": "003b3a20c2478231bea7a203ad98b2fca1c26ac5c3b038ba3f96e20f52e01b2d"
+    "tasks.md": "3be090dfd64759b0c6e4fd51cd61e8cace481080cf07454c1ecda681c2c40de3"
   }
 }

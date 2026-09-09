@@ -27,10 +27,7 @@ import {
   setPreviewPaneVisible,
   setViewArrangement,
 } from './logic/store/docViewCommands';
-import {
-  bootstrapAppModelProjection,
-  type AppModelBootstrapResult,
-} from './logic/store/appModelProjection';
+import type { AppModelBootstrapResult } from './logic/store/appModelProjection';
 import { hydrateProjection } from './logic/store/appModelProjectionActions';
 import type {
   ActiveBuffer,
@@ -57,10 +54,8 @@ import {
   documentWriteAdapter,
   nativeLifecycleAdapter,
 } from './logic/adapter';
-import { setBootstrapStatus as setCommandBootstrapStatus } from './logic/adapter/command';
 import { parseError } from './logic/utils/parseError';
 import { useEditorSettings } from './logic/settings/editorSettings';
-import { bootstrapSettingsProjection } from './logic/store/settingsProjection';
 import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
 import NotificationBanner from './ui/primitives/Banner';
 import LiveRegion from './ui/primitives/LiveRegion';
@@ -92,9 +87,8 @@ import ClosePrompt from './ui/widgets/ClosePrompt';
 import { tabLabelsFor } from './ui/widgets/tabLabel';
 import { ModalStateProvider } from './ui/widgets/modalState';
 import ModalShell from './ui/primitives/ModalShell';
+import { useBootstrap } from './app/useBootstrap';
 import { useShutdown, type ShutdownController } from './app/useShutdown';
-
-let activeRetry: Promise<AppModelBootstrapResult> | undefined;
 
 /**
  * Actions whose invoker already reported its own failure.
@@ -158,46 +152,6 @@ function closePlanDecisions(
       documentId: target.documentId,
     }));
 }
-
-function startAppModelBootstrap(
-  isRetry: boolean,
-): Promise<AppModelBootstrapResult> {
-  if (isRetry && activeRetry !== undefined) {
-    return activeRetry;
-  }
-  const attempt = import('./logic/adapter')
-    .then(
-      async ({
-        applicationAdapter,
-        appModelAdapter,
-        settingsAdapter,
-        windowAdapter,
-      }) => {
-        if (isRetry) {
-          await applicationAdapter.retryStartup();
-        }
-        const [result] = await Promise.all([
-          bootstrapAppModelProjection(appModelAdapter),
-          bootstrapSettingsProjection(settingsAdapter),
-        ]);
-        if (result.status === 'ready') {
-          await windowAdapter.windowReady();
-        }
-        return result;
-      },
-    )
-    .catch((): AppModelBootstrapResult => ({ status: 'failed' }));
-  if (!isRetry) {
-    return attempt;
-  }
-  const retryAttempt = attempt.finally((): void => {
-    activeRetry = undefined;
-  });
-  activeRetry = retryAttempt;
-  return retryAttempt;
-}
-
-type BootstrapStatus = 'loading' | 'ready' | 'failed';
 
 interface ApplicationMenuState {
   modalOpen: boolean;
@@ -432,12 +386,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
     null,
   );
   const [remediationAnnouncement, setRemediationAnnouncement] = useState('');
-  const [bootstrapStatus, setBootstrapStatus] =
-    useState<BootstrapStatus>('loading');
   const [hydratedPendingCloseId, setHydratedPendingCloseId] = useState<
     string | null
   >(null);
-  const [isRetrying, setIsRetrying] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [requestedApplicationMenu, setRequestedApplicationMenu] =
     useState<ApplicationMenuTarget | null>(null);
@@ -514,7 +465,6 @@ const AppContents: React.FC = (): React.JSX.Element => {
       );
   }, [documentsById, orderedDocumentIds]);
   const [version, setVersion] = useState('');
-  const bootstrapGeneration = useRef(0);
   const nativeClosePendingRef = useRef(false);
   const nativeCloseIdRef = useRef('');
   const shutdownControllerRef = useRef<ShutdownController | undefined>(
@@ -523,6 +473,24 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const recoveryQuitConfirmedRef = useRef(false);
   const recoveryQuitCancelRef = useRef<HTMLButtonElement | null>(null);
   const activeDocumentId = activeBuffer?.documentId;
+  const onBootstrapReady = useCallback(
+    (result: Extract<AppModelBootstrapResult, { status: 'ready' }>): void => {
+      replaceActiveBuffer(result.activeBuffer);
+      setVersion(result.applicationVersion);
+      setHydratedPendingCloseId(result.pendingCloseId ?? null);
+    },
+    [],
+  );
+  const bootstrap = useBootstrap({ onReady: onBootstrapReady });
+  const bootstrapStatus = bootstrap.status;
+  const isRetrying = bootstrap.isRetrying;
+  const startupFailure = bootstrap.failure;
+  const bootstrapRetry = bootstrap.retry;
+  const retryBootstrap = useCallback((): void => {
+    setHydratedPendingCloseId(null);
+    dispatch(resetNotifications());
+    bootstrapRetry();
+  }, [bootstrapRetry, dispatch]);
   /*
    * T128: the one install path for an active-buffer acknowledgement. Each of
    * the five acknowledging handlers claims a generation with `begin()` before
@@ -1934,55 +1902,6 @@ const AppContents: React.FC = (): React.JSX.Element => {
     ],
   );
 
-  const runBootstrap = useCallback(
-    (isRetry: boolean): void => {
-      const generation = bootstrapGeneration.current + 1;
-      bootstrapGeneration.current = generation;
-      setCommandBootstrapStatus('loading');
-      setHydratedPendingCloseId(null);
-      if (isRetry) {
-        setIsRetrying(true);
-        dispatch(resetNotifications());
-      }
-
-      void startAppModelBootstrap(isRetry).then(
-        (result: AppModelBootstrapResult): void => {
-          if (bootstrapGeneration.current !== generation) {
-            return;
-          }
-
-          setIsRetrying(false);
-          if (result.status === 'ready') {
-            replaceActiveBuffer(result.activeBuffer);
-            setVersion(result.applicationVersion);
-            setHydratedPendingCloseId(result.pendingCloseId ?? null);
-            setBootstrapStatus('ready');
-            setCommandBootstrapStatus('ready');
-            return;
-          }
-
-          setBootstrapStatus('failed');
-          setCommandBootstrapStatus('failed');
-        },
-      );
-    },
-    [dispatch],
-  );
-
-  useEffect((): (() => void) => {
-    let isCurrent = true;
-    void Promise.resolve().then((): void => {
-      if (isCurrent) {
-        runBootstrap(false);
-      }
-    });
-
-    return (): void => {
-      isCurrent = false;
-      bootstrapGeneration.current += 1;
-    };
-  }, [runBootstrap]);
-
   useEffect((): (() => void) | undefined => {
     if (bootstrapStatus !== 'ready') {
       return undefined;
@@ -2037,10 +1956,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
                 <div className="application-content">
                   {bootstrapStatus === 'failed' ? (
                     <StartupFailure
+                      failure={startupFailure}
                       isRetrying={isRetrying}
-                      onRetry={(): void => {
-                        runBootstrap(true);
-                      }}
+                      onQuit={nativeLifecycleAdapter.requestQuit}
+                      onRetry={retryBootstrap}
                     />
                   ) : bootstrapStatus === 'ready' ? (
                     <>
