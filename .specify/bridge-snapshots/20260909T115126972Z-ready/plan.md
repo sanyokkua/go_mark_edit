@@ -1,0 +1,605 @@
+# Implementation Plan: Codebase Refactoring
+
+**Branch**: `feature/004-codebase-refactoring` | **Date**: 2026-09-08 | **Spec**: [spec.md](spec.md)
+
+**Input**: Feature specification from `specs/004-codebase-refactoring/spec.md` (84 functional
+requirements, 15 success criteria, 7 user stories, 17 edge cases, 13 clarification sessions), the
+constitution v2.0.0, and the read-only audit `docs/audits/2026-09-07-project-health-audit.md`.
+
+**Note**: This plan was produced by `/speckit-plan`; task generation follows with `/speckit-tasks`.
+Design detail lives in [research.md](research.md), [data-model.md](data-model.md),
+[quickstart.md](quickstart.md) and [contracts/](contracts/).
+
+## Summary
+
+Feature 004 restores, fixes, consolidates and removes; it adds no capability except the local image
+rendering of FR-049. The approach, in dependency order: (1) five bash entry-point scripts behind
+thin `just` aliases, two hooks and two CI workflows, with `scripts/baseline` run immediately after
+them on the otherwise untouched tree; (2) one shutdown-protocol owner and request identities on every
+bridge call; (3) one document-lifecycle owner, one key-value helper, one handler guard and failure
+constructor, layering fixes; (4) the Story 1 defect fixes as first consumers, each with a regression
+test that fails on the archived tree; (5) a real-backend end-to-end harness that starts the
+application through `wails dev` with a redirected profile and drives it in Chromium; (6) a shared
+component library (Popup first, where the visible defects live) with a consumer inventory and a lint
+rule against second copies, then decomposition of the four god components; (7) tests relocated by
+their dependencies into separate roots with behaviour-sentence titles, and the mock, parity and
+evidence stacks deleted once the real E2E passes; (8) one authority (`specs/<feature>/` plus
+`docs/architecture.md`), rewritten instructions, the legacy workflow deleted; (9) the evidence trees
+removed; (10) a recorded close: baseline comparison, local walkthrough, networking-disabled cold
+start, measured verify duration, release dry run.
+
+## Technical Context
+
+All values were read from the working tree at `2b889cb` on 2026-09-08; none needs clarification.
+
+**Language/Version**: Go `1.25.7` (`go.mod`), TypeScript 5.9, React 19, Node `24` (pinned by this
+feature in `.nvmrc`; today host 24 / CI 22, no pin).
+
+**Primary Dependencies**: Wails `v2.15.0` (CI wrongly installs 2.12.0 today), `modernc.org/sqlite
+v1.54.0` (CGO-free), goose v3.27.2, zerolog, lumberjack; Redux Toolkit 2, Monaco 0.52, react-markdown
+10 + remark-gfm + rehype-sanitize, Radix dropdown/toast, Vite 7.
+
+**Storage**: one SQLite table `settings(key TEXT PRIMARY KEY, value TEXT, type TEXT)` under
+`os.UserConfigDir()/GoMarkEdit[-Dev]/settings.db`; namespaces `appearance.* view.* markdown.*
+format.* lint.* content.* editor.* file.*` (14 settings keys), `layout.*`, `recent.files`
+(`{"version":1,"entries":[…]}`, 6 entries max), `document.view.*`; WAL, busy timeout 5 s; goose
+migrations embedded. No profile written by the archived tree is read (FR-053).
+
+**Testing**: today 66 Go test files (all in-package), 81 Jest files (72 under `frontend/src`, 9
+under `frontend/e2e/parity`), 11 Playwright suites against a TypeScript mock bridge, 2 `node --test`
+files. Target: `tests/go/{unit,integration}` (external packages) plus three in-package white-box
+files; `frontend/tests/{unit,integration}` (Jest, jsdom) and `frontend/tests/e2e` (Playwright
+against `wails dev`); tiers defined by FR-022.
+
+**Target Platform**: macOS desktop (development and release runner, arm64), Linux desktop (push
+runner, Ubuntu 24.04, WebKitGTK 4.1); Windows not verified by this feature.
+
+**Project Type**: desktop application — one Go process, Wails v2 bridge, embedded React frontend.
+
+**Performance Goals**: no fixed budget for `scripts/verify` (FR-062; its duration is recorded at
+close); the stuck notice appears within 1 s of the 10 s bound (SC-014); the E2E stage runs each case
+once with zero retries.
+
+**Constraints**: the application runs without internet (FR-028/049); backend and SQLite CGO-free
+(the desktop artifact links the platform webview); no test hook, flag or build flavour in the binary
+(FR-025/054); no session restore; no new capability except FR-049; Spec Kit files untouched; Wails
+hands the frontend 35 bound methods on three handlers today (24 + 7 + 4), one new binding is added
+(`OpenPreviewLink`).
+
+**Scale/Scope**: ≈ 12 k lines of Go and ≈ 21 k lines of frontend production code, 49 k lines of
+test code (the audit's figure; counted on the tree with the mock, evidence and parity trees it is
+≈ 57 k), ≈ 55 MB of tracked evidence to remove; `AppModelService` has 39 fields and 9 maps; 39
+hand-written recover blocks.
+
+## Constitution Check
+
+*GATE: passed before Phase 0 research; re-evaluated after Phase 1 design — still passing.*
+
+| Principle | How this plan satisfies it | Evidence at close |
+|---|---|---|
+| I. One authority | Only `spec.md` (with the audit as read-only input) drives this plan; the plan creates `docs/architecture.md`, archives `docs/delivery` and makes README/AGENTS/CLAUDE name both authorities (G8). No requirement is weakened; three planning-time decisions are recorded below, not applied silently. | lint L25; SC-005 |
+| II. EARS, vertical slices, behaviour titles | Every test title becomes a behaviour sentence; the requirement mapping stays in `specs/` only (G7). Each task group is a user-observable slice with its regression evidence. | lint L22; SC-004 |
+| III. Backend authority and boundaries | `internal/bridge` guard + request identity (G3), adapter-only `wailsjs` and primitives/components import rules in lint (G7), constructor options instead of test seams (G4), one composition root. | lint L1–L4, L8–L9; FR-054 review |
+| IV. Offline, private, safe | One link handler (FR-014) and the local-image rule (FR-049) in G5; no network in the app; cold start with networking disabled recorded at close (G10); sanitisation unchanged. | SC-003; walkthrough step 1 |
+| V. Data and cross-platform | Lifecycle owner with commit-order publication and one disposal (G4); transactional settings groups; additive migrations enforced by archlint L5; typed file identity (FR-005); a timeout never discards data (shutdown contract). | Story 1 regressions 1–5, 8; Go integration |
+| VI. Accessible, tokenised, coherent | Six theme/mode computed-style E2E case; tokens-only colours and no theme selectors in widgets (L18–L21); availability from the registry (FR-045). | SC-007, SC-008 |
+| VII. Evidence before completion | Scripts first, then `scripts/baseline` before any other edit; six stages through `scripts/verify`; tests in separate roots; no source-text, DTO or document tests; the E2E stage drives the real process; every defect has a regression that fails on `bc185c9`; walkthrough recorded. | baseline comparison sentence; SC-001, SC-002 |
+| VIII. One implementation per behaviour | Shared components with consumer inventories and lint rules L11–L15; one guard, one failure constructor, one KV helper, one publish path, one shutdown owner; comments state contracts, not history (L22). | SC-009 |
+
+**Complexity Tracking**: no constitutional violation to justify.
+
+**Decisions taken during planning (owner, 2026-09-08)** — recorded here so they are not resolved silently:
+
+1. *Formatting scope.* Every tracked source and document file type is formatted by `scripts/format`,
+   `.sql` migrations and archived docs included (migrations are additive as data; their text is
+   source). The ignore list names only Spec Kit-owned paths, generated bindings, build output,
+   `node_modules`, lockfiles and the `justfile` (decision 4). This settles the apparent tension
+   between FR-063 and Principle V. So that the one-time reformat does not trip the
+   migration-immutability lint, L5 compares migration files by whitespace-normalised text.
+2. *`build/icon/process_icon.py`.* Deleted with its README steps (nothing invokes it, FR-060 spirit);
+   the icon source PNG and the generated icons stay (FR-082).
+3. *Lever for the late-completion E2E case.* The spec's "path whose read blocks" lever is inert in
+   this tree (the backend refuses non-regular files before reading). A second process holding an
+   exclusive SQLite transaction on the harness's own profile database is accepted as "profile
+   database contents" and is the lever for FR-026 case 6.
+4. *The `justfile` is not tool-formatted (FR-063).* Its only formatter is `just --fmt`, which would make
+   `just` a hard dependency of the Format stage, both hooks and CI. `just` stays an optional
+   developer convenience (seven one-line aliases, hand-formatted) and the file is the one non-Spec
+   Kit entry in the format ignore list.
+5. *Two script flags beyond FR-060's letter.* `scripts/build setup --with-browser` installs the
+   Chromium that only the E2E stage needs (the push runner, which skips E2E, never installs it), and
+   every script answers `-h`/`--help`. Neither adds a stage, a recipe or a `just` alias; FR-060's
+   inventory of entry points and sub-commands is unchanged.
+6. *Archive mechanism for Story 1 scenario 19 (FR-031).* The lost-cancellation ordering race lives
+   inside the frontend, has no environment lever and cannot be observed from the driven screen
+   without controlling backend timing. FR-031's throwaway clause names only a Go test; its frontend
+   analogue is used: a throwaway Jest test in the archive worktree against the archived `App.tsx`,
+   run once, its failure recorded, not ported, the refactored tree holding the equivalent test at
+   its public interface (the command recorder).
+7. *`docs/superpowers/` and `docs/reference/` stay.* `docs/superpowers/plans/` is the output of the
+   `speckit-superpowers-bridge` extension (one feature-003 plan), not extension code, so FR-077's
+   "Spec Kit core files and extensions are not modified" does not cover it; it is kept, formatted
+   like any other document (FR-063's ignore list is unchanged) and outside FR-080's label scope.
+   `docs/reference/wails-dev/` is developer reference material and stays as is.
+
+## Project Structure
+
+### Documentation (this feature)
+
+```text
+specs/004-codebase-refactoring/
+├── plan.md                         # this file
+├── research.md                     # R1–R19 decisions
+├── data-model.md                   # DocumentRecord, Request/Outcome, CloseRequest, KVEntry, …
+├── quickstart.md                   # runnable validation scenarios
+├── contracts/
+│   ├── scripts-cli.md              # the five scripts, aliases, hooks, toolchain declaration
+│   ├── baseline-record.schema.json # .specify/baseline/<feature>.json
+│   ├── bridge-requests.md          # request identity, pacing, outcome cache, events
+│   ├── shutdown-protocol.md        # close/quit state machine
+│   ├── e2e-harness.md              # wails dev launch, seeding tool, per-case levers
+│   ├── lint-rules.md               # L1–L27, each with its executable owner
+│   ├── shared-components.md        # component inputs and consumer inventories
+│   └── ci-workflows.md             # push.yml, release.yml
+├── checklists/requirements.md
+└── tasks.md                        # /speckit-tasks output (not created here)
+```
+
+### Source Code (repository root) — target layout
+
+```text
+scripts/{build,test,verify,format,baseline}   # bash entry points (755, no extension)
+scripts/lib/{common.sh,stages.sh}              # sourced libraries (644): toolchain table, stage graph
+tools/archlint/                                # Go AST lint (bound-handler shape, migrations, dead exports)
+tools/e2e-seed/                                # Go: migrate + seed a profile DB (seed-recents, add-trigger, hold-lock)
+tools/lint/{repo-rules.mjs,tokens.mjs}         # ID labels, test placement, instruction-file references; dead/undefined tokens
+tools/verify/results.mjs                       # Node: tool JSON → stage record; baseline record and comparison
+main.go                                        # composition root only: options wired here
+internal/
+├── apperr/          # error contract + envelopes embedding one Failure (leaf)
+├── bridge/          # Request, Guard, Fail, OutcomeCache, event names (leaf)
+├── kv/              # one key-value repository helper (Get, Upsert, Tx, versioned JSON)
+├── db/              # Open, migrations (store/ and queries/ removed)
+├── file/            # paths (typed identity), reader, atomic replace, ports  [W1, W2 white-box tests stay here]
+├── settings/        # typed groups over kv; one transaction per group update
+├── appmodel/        # lifecycle.go (DocumentRecord, dispose), publish.go (one path), save/close/conflict/autosave; no runtime, no bootstrap import; doc.go package documentation  [W3 white-box test stays here]
+├── application/     # holder, handlers, emitter.go (Wails emitter), shutdown.go, dialogs (incl. native confirmation port), preview_image.go (asset route)
+├── bootstrap/       # logger, version
+└── logging/
+tests/go/unit/<package>/            # external test packages, no disk/db/bridge
+tests/go/integration/<package>/     # temp files, temp SQLite, composition root
+frontend/
+├── src/app/                        # App.tsx (composition) + useBootstrap (startup steps), useShutdown (frontend half of the protocol), useCommands (command orchestration, shortcuts); further hooks only as the decomposition requires
+├── src/ui/primitives/              # Icon, Button, ToolButton, Segmented, Toast, Banner, LiveRegion, AppBrand
+├── src/ui/components/              # Popup, MenuItem, Bar, Island, TabBar, Pane, Sidebar, ModalShell, StatusBar, Notifications, CodeEditor, MarkdownView
+├── src/ui/widgets/                 # Menubar, FormattingToolbar, DocumentTabs, EditorStage, dialogs/, Launcher, StartupFailure, ViewMenu
+├── src/ui/styles/{tokens.css,base.css}
+├── src/logic/{adapter,store,actions,format,markdown,settings,theme,hooks,utils}
+├── src/i18n/
+├── public/theme-bootstrap.js       # (its test moves out)
+├── scripts/generate-editor-themes.mjs  # stays; run by scripts/build before wails build (its test moves out)
+├── tests/unit/                     # Jest, no DOM rendering of the app shell
+├── tests/integration/              # Jest + jsdom, real store and catalogue, command recorder
+├── tests/e2e/                      # Playwright against wails dev
+├── tests/support/                  # commandRecorder.ts, statePatches.ts, harness.ts, profile.ts
+├── jest.config.mjs, playwright.config.ts, eslint.config.js, stylelint.config.mjs
+└── tsconfig.json, tsconfig.test.json, tsconfig.node.json
+docs/architecture.md                # the architecture map
+docs/_archive-2026-09-delivery/     # former docs/delivery + README pointer
+docs/audits/2026-09-07-project-health-audit.md   # stays (its evidence folder leaves)
+.github/workflows/{push.yml,release.yml}
+.nvmrc · .prettierrc.json · .prettierignore · lefthook.yml · justfile (7 aliases) · .golangci.yml
+```
+
+**Structure Decision**: web-style split kept (Go backend + `frontend/`), with tests in dedicated
+roots per language (`tests/go/**`, `frontend/tests/**`) and tools in `tools/**`. Removed from the
+tree: `sqlc.yaml`, `internal/db/{store,queries}`, `internal/gate`, `cmd/native-evidence`,
+`frontend/evidence`, `frontend/src/dev`, `frontend/src/test`, `frontend/e2e`,
+`frontend/public/*.test.*`, `frontend/scripts/{archtest.mjs,archtest-allowlist.json,check-production-network.mjs,ensure-dist-placeholder.mjs,check-editor-themes.mjs}`
+(`generate-editor-themes.mjs` stays where it is, run by `scripts/build`; the clean-tree assertion
+replaces the up-to-date check), the old `scripts/*.sh` and `scripts/hooks/`, the four root
+`*_test.go`, `test-results/`, `specs/*/evidence`, `specs/*/surface/*.png`,
+`docs/audits/*-evidence`, `.agents/commands`, the five legacy skills and their `.claude/skills`
+symlinks, `.agentsync.json`, `build/icon/process_icon.py`. Run output of `scripts/verify` and the
+baseline record share one ignored directory, `.specify/baseline/`.
+
+**Retained (FR-082)** — explicitly outside the removal list: `build/appicon.png`,
+`build/icon/appicon-source.png` and the generated icons under `build/`,
+`frontend/src/ui/icons/file-tab-icons.svg`, `docs/audits/2026-09-07-project-health-audit.md`,
+`docs/_archive-2026-07-28-specification/` (48 tracked files), `docs/reference/wails-dev/` and
+`docs/superpowers/plans/` (planning decision 7).
+
+**Reuse first**: the frontend already has `ModalShell`, `Segmented`, `Icon`, `Toast`, `Banner`,
+`LiveRegion` and `AppBrand` under `ui/primitives`, `MenuSurface`/`MenuTrigger` (folded into Popup),
+and `CodeEditor`, `MarkdownView`, `StatusBar` under `ui/components`; the shared components of G6
+extend these in place (moving a file only where the layering table in
+`contracts/shared-components.md` requires it) rather than creating parallel implementations.
+Popup is built on the existing Radix DropdownMenu dependency (research R19).
+
+## Implementation strategy and task ordering
+
+Ten task groups; `/speckit-tasks` derives tasks from them. Order is binding where stated.
+
+| Group | Content | Must precede |
+|---|---|---|
+| **G1 — Scripts first** | `scripts/{build,test,verify,format,baseline}` + `scripts/lib/{common.sh,stages.sh}`, `tools/verify/results.mjs`, `.nvmrc`, `justfile` (7 aliases), `lefthook.yml` (2 hooks), `.github/workflows/{push,release}.yml`, root `.prettierrc.json`/`.prettierignore`, root `.gitignore` entry `.specify/baseline/`, deletion of the old `scripts/*.sh`, `scripts/hooks/`, `main.yml`. Interim tier mapping in `scripts/lib/stages.sh`, so that every baseline stage collects something: unit = `go test ./...` + the existing Jest config; integration = the Jest `*.integration.test.tsx` suites; e2e = the existing mock-backed Playwright suite. G7 replaces the mapping with the new roots. | everything |
+| **G2 — Baseline** | `scripts/baseline` on the otherwise untouched tree → `.specify/baseline/004-codebase-refactoring.json`; the reformat commit of `scripts/format` happens *after* the baseline. | every implementation edit |
+| **G3 — Shutdown and requests** | `internal/bridge` (Request, Guard, Fail, OutcomeCache, events), `Request` first parameter on all bindings, `application/shutdown.go`, native confirmation port, adapter pacing/deadline/notice, `pendingClose` in `GetState`, startup steps with per-step Retry/Quit (FR-015). Story 1 scenarios 15–19 with regressions. | G5 cases 2–6 |
+| **G4 — Lifecycle owner** | `appmodel/lifecycle.go`, `publish.go`, `internal/kv` (sqlc removed), transactional settings, emitter moved to `application`, `WithVersion`, constructor options replacing every seam, typed file identity, error surfacing (FR-056), package doc (FR-058), dead exports and `internal/gate` removed (FR-059). Story 1 scenarios 1–5, 7, 8 with regressions. | G6 |
+| **G5 — Real-backend E2E** | `tools/e2e-seed`, the per-case launch fixture (`tests/support/harness.ts`, `profile.ts`), `playwright.config.ts` (retries 0, forbidOnly, workers 1), cases 1–8 of the harness contract, ports of the eight behavioural journeys; link policy and `OpenPreviewLink` (FR-014), image asset route (FR-049). Story 1 regressions 6, 7, 14 land here; the menu regressions 9–13 land with the G6 component behind each. | deletion of the mock/parity stack (G7) |
+| **G6 — Component library and decomposition** | Popup + MenuItem (FR-034/035; fixes 9–12), Bar/Island/ToolButton/Button (FR-036–038), TabBar (FR-039), Pane (FR-040), Sidebar (FR-041), ModalShell (FR-042), Segmented/Icon (FR-043), StatusBar facts (FR-013), tokens and theme selectors (FR-044), registry-owned availability, one format runner, one settings command owner, typed outcomes (FR-045), decomposition of App/DocumentTabs/ShellMenuRow/EditorChrome (FR-046), FR-047 lint, FR-048. One family per task, each with its consumer inventory and lint rule. | G7 |
+| **G7 — Tests and lint** | Relocate and retitle every kept test; rewrite/merge per the coverage table; runner configs; typed ESLint, stylelint, archlint, `tools/lint/*`, `.only`, zero-collection; delete parity stack, `?parity-case` branches and allowlist, mock bridge, `cmd/native-evidence`, `frontend/evidence`, `nativeEvidenceRuntime.ts`, `just dev-ui` — only after `scripts/test e2e` is green on the real backend. Runner configs and `scripts/lib` package lists change together. | G8 |
+| **G8 — Authority and instructions** | `docs/architecture.md` (owners, inventories, walkthrough steps, decisions carried from the ADR list in research R18 with ADR-0028 recorded as superseded (FR-050), open decisions), `AGENTS.md` (product intent, the two authorities, five scripts and six stages, the baseline rule, ownership-first rule, branch convention, judgment list — FR-075/078/081), `CLAUDE.md` stays `@AGENTS.md`, `README.md`, the `.github/copilot-instructions.md` symlink stays, `docs/delivery` → `docs/_archive-2026-09-delivery/` with a README pointer (only after the map carries its decisions), legacy workflow, `.agents/commands`, the five legacy skills, their symlinks and `.agentsync.json` deleted with every reference, known-issues reconciliation (FR-084), labels removed from comments (FR-080). | G10 |
+| **G9 — Repository cleanup** | FR-082 removals, `.gitignore` rewrite (FR-083), dead tokens and undefined tokens (FR-044), `frontend/public/theme-bootstrap.test.mjs` out of the bundle. | G10 |
+| **G10 — Close** | Full `scripts/verify` with measured duration; `scripts/baseline --compare`; local `scripts/build` walkthrough sentence; networking-disabled cold start sentence; release dry run; fill the archive-run slots below. | feature close |
+
+Task branches are optional (a task big enough for several commits gets
+`feature/004-codebase-refactoring-<task>`, squash-merged back); small tasks commit to the feature
+branch. Never merge into `app_version_1_codebase` or `master` — the owner does.
+
+## Story 1 defects: regression level and archived-tree failure record (FR-031, SC-001)
+
+Archive mechanism: a git worktree of `archive/v1-linear-history-2026-09` (`bc185c9`). Two levels
+both trees share: **bridge call** (a Go test through the handler or exported service API; for a
+defect observable only inside the process, a throwaway in-package test written against the archived
+tree's own API, run once in the worktree, not ported) and **driven screen** (the new E2E case run
+once against the worktree's `wails dev`). Faster unit or integration tests for the same fix need
+not run on the archive. The "Archive run" column is filled during G3–G6 with
+*date · `bc185c9` · host · observed failure*; a defect not reproducible on the archive host gets its
+reason there instead and is verified by hand on the host it needs, that check recorded in the same
+slot (edge case 1).
+
+| # | Scenario | Regression test on this tree (tier, location) | Archive mechanism | Archive run (filled at BUILD) |
+|---|---|---|---|---|
+| 1 | Save As while an autosave is writing | Go integration `tests/go/integration/appmodel/save_as_test.go`: `SaveAs`/`UpdateBuffer`/`Save` through the handler with real files; asserts new-path bytes are the newest text, old path holds the committed autosave, clean only when disk equals editor | throwaway Go test in the worktree (port of the audit probe `TestAuditAutosavePublicationAfterSaveAs`) | *pending* |
+| 2 | Stale Save concurrent with New Document under `-race` | Go integration under `-race` through the handler; asserts no race report and the refusal names the right document | throwaway in the worktree with `-race` (process-internal) | *pending* |
+| 3 | Forty documents opened, edited, saved, closed retain nothing | in-package white-box W3 (`internal/appmodel/lifecycle_retention_test.go`) | throwaway in the worktree inspecting `writeCoordinators` after close (process-internal) | *pending* |
+| 4 | Autosave failure surfaces once per episode | Go integration: temp file made unwritable, emitter captured via `WithEmitter`; first failure shown, repeat silent, new category shown, success ends the episode | Go integration in the worktree through `NewAppModelServiceForHost` + emitter | *pending* |
+| 5 | Hard link focuses the existing tab | Go integration (`//go:build darwin || linux`), real hard link, handler `OpenDocument` → `focused` | same test compiled in the worktree | *pending* |
+| 6 | Explicit Save keeps undo, selection, focus | E2E: type, ⌘S, ⌘Z reverts, caret unchanged; plus frontend integration: activation token unchanged after a committed-write patch | E2E case against the worktree's `wails dev` | *pending* |
+| 7 | A clean opened file shows Saved | Go integration: Open patch metadata equals `GetState`; E2E: open via Recents → "Saved" | E2E against the worktree (open via Recents → status reads "Not saved"); the Go integration test is the faster test of FR-031 and is not run on the archive | *pending* |
+| 8 | A rejected Appearance update is atomic across restart | Go integration: real SQLite with a test-installed `BEFORE UPDATE` trigger on the second key; reopen through `db.Open`; every field unchanged | same test in the worktree via `SettingsHandler` | *pending* |
+| 9 | Menu shadow and focus ring, pointer and keyboard, six combos | E2E case 8 (computed style) | E2E against the worktree | *pending* |
+| 10 | Second click closes; identical keyboard behaviour in every family | E2E + frontend integration over every menu family | E2E against the worktree | *pending* |
+| 11 | Tab context menu at the pointer / focused tab, shortcuts shown | E2E geometry (left/middle/right tabs, scrolled strip, keyboard) + frontend integration | E2E against the worktree | *pending* |
+| 12 | Menus fully visible at every width ≥ minimum | E2E at 375×480, 377, 400, 450, 500 px | E2E against the worktree | *pending* |
+| 13 | Details lists every dropped fact | frontend integration (narrow StatusBar) + E2E at 375 px | E2E against the worktree | *pending* |
+| 14 | Preview link policy; page, bridge and session intact | E2E case 1 + unit (link classifier) + Go integration (`OpenPreviewLink` folder rule) | E2E against the worktree (dev-server chain: page reboots without the runtime) | *pending* |
+| 15 | Startup-failure screen can close and quit; dirty confirmation | E2E case 3 (unopenable DB → Quit exits) + Go integration (shutdown owner + confirmation port with a dirty document) | E2E against the worktree (no Quit control → fails) | *pending* |
+| 16 | A close request before ready is discovered later | E2E case 2 + Go integration (request before `WindowReady`) + frontend integration (`pendingClose` handled on ready) | E2E against the worktree (veto, no event, process alive) | *pending* |
+| 17 | Retry after a settings failure re-reads settings, single flight | E2E (trigger lever) for the write; frontend unit (projection attempt reset) and Go integration (failing repository) for the read | E2E against the worktree | *pending* |
+| 18 | The failure screen names the step, offers Quit always and Retry per step | E2E case 3 + frontend integration with fake timers for the 10 s rule per step | E2E against the worktree (message names settings for every failure) | *pending* |
+| 19 | A cancelled close stays pending until the backend confirms | frontend integration (command recorder: `CancelQuit` unanswered → still pending) + Go integration (stale id refused) | throwaway frontend test in the worktree against the archived `App.tsx` (planning decision 6) | *pending* |
+
+## White-box exception list (FR-023)
+
+A survey of all 66 in-package Go test files found every behaviour but three reachable after the
+refactor through public interfaces: handlers, exported service API, real temporary files and
+SQLite, and constructor options wired at the composition root (`WithClock`, `WithAutosaveTimer`,
+`WithWriteExecutor` — with the write snapshot's encoded bytes exported so an injected executor can
+write them —, `WithConflictReaders`, `WithDialogs`, `WithEmitter`, `WithVersion`,
+`WithNativeConfirmation`, repository interfaces). Map inspections become proxies: a 41st open after
+a refusal (reservation released), Save As to the same path not "already reserved", an old decision
+token refused, `CheckExternalChanges` reporting nothing, `CanReopenLastFile` in `AppState`,
+`chmod` for read-only and failed-write status rows, delete-then-check for detached. The corruption
+quarantine re-exec helper uses only `db.Open` and moves to `tests/go/integration/db` unchanged.
+
+| # | Behaviour | In-package file | Reason it is unreachable publicly |
+|---|---|---|---|
+| W1 | Atomic replace phase failures: write, chmod, fsync, close, version recheck, rename, directory sync | `internal/file/atomic_replace_test.go` | only the temp-file creation failure (dir `0o500`) and the recheck conflict can be provoked from outside; a failure between the rename steps or in `fsync`/`syncDir` cannot be induced by permissions; the unexported `atomicReplaceOps` stays |
+| W2 | Stable-read growth race between the read and the hash | `internal/file/document_reader_test.go` | the package swap variable `stableReadBeforeHashHook` is removed (FR-054) and replaced by an unexported function parameter used only in-package; the window is not hittable deterministically from outside |
+| W3 | Retention after close: no coordinator, encoded bytes, timer, token, reservation, normalisation or conflict record remains (Story 1 scenario 3) | `internal/appmodel/lifecycle_retention_test.go` | the write coordinator's encoded bytes have no behavioural observable and an exported inspector would be test-only API (FR-054); race detector on |
+
+No export shim is added; lint L23 lists exactly these three files as allowed.
+
+## Real-backend E2E: fault lever per case (FR-026)
+
+Verified during planning: `wails dev` serves the page at `localhost:34115` with the Wails runtime and
+IPC over a websocket; `window.runtime.Quit()` from that page reaches `OnBeforeClose` like the native
+close button; Vite's SPA fallback serves the index without the runtime for `/next.md`; a FIFO
+document path is refused before any read; garbage bytes at `settings.db` self-heal. Full setup,
+steps and assertions in [contracts/e2e-harness.md](contracts/e2e-harness.md).
+
+| # | Case | Lever | Verdict |
+|---|---|---|---|
+| 1 | Preview-link activation with bridge continuity | none (seeded document with all six link kinds) | drivable |
+| 2 | Close request before the frontend is ready | directory at `settings.db` → failure screen; `runtime.Quit()` | drivable; the native frame's own request is walkthrough step 13; frontend integration covers discovery on ready |
+| 3 | Failed startup → Retry → close/quit | same directory lever, removed before Retry | drivable |
+| 4 | Isolated settings rejection | seeded SQLite trigger raising `ABORT` on `appearance.%` writes | write half drivable; read half split (frontend integration + Go integration) because settings reads never fail on content |
+| 5 | Lost cancellation | none for the round trip (Quit → Cancel → Quit) | round trip drivable; the ordering race split (frontend integration with a deferred `CancelQuit` + Go integration) |
+| 6 | Late bridge completion | a second process holding an exclusive SQLite transaction on the profile DB (`tools/e2e-seed hold-lock`), released at ~12 s | drivable (planning decision 3); Go integration adds outcome-cache idempotence |
+| 7 | Local image renders; web and outside images show the placeholder | folder layout only | drivable through the asset-server route |
+| 8 | Computed style and theme, six combos, pointer and keyboard | none | drivable |
+
+Every case runs exactly once per stage run, no automatic retry, as a blocking check on the release
+runner.
+
+## Walkthrough step list (FR-027, FR-028)
+
+The list lives in `docs/architecture.md` (verification section); the performed walkthrough is one
+sentence per release in the GitHub Release notes and, for this feature, one sentence in the close-out
+below. Binary: `scripts/build` output, launched with networking disabled.
+
+1. Launch `build/bin/GoMarkEdit.app` from Finder with Wi-Fi off and Ethernet unplugged → the window shows; `nettop` shows no connection for the process.
+2. About → version reads `dev` (local build) or `X.Y.Z` (release artifact).
+3. File → Open (native dialog), pick a `.md` → a tab opens with status "Saved".
+4. Type, ⌘S → "Saved"; ⌘Z reverts the last edit; caret and focus unchanged.
+5. File → Save As (native dialog) → the new file's bytes equal the editor; the tab is clean.
+6. Open a hard link of the open file → the existing tab is focused; no second tab.
+7. Open a second file, edit, ⌘W → the Close prompt; Cancel returns, Discard closes, Save writes.
+8. In the preview: an anchor scrolls; a sibling `.md` opens in a tab; a `.md` outside the folder, `mailto:` and `file:` each show one refusal notice; `https:` opens the system browser (verify after reconnecting, or observe the browser attempt).
+9. A local image inside the folder renders; a web image shows the placeholder with its alt text.
+10. Open each menu (File, Settings, View, About) by pointer and by keyboard in Material, Glass and Minimal → the elevation shadow is present; a second click on the trigger closes the menu.
+11. Right-click a tab → the menu opens at the pointer and shows shortcuts; the context-menu key opens it at the focused tab.
+12. Resize to the minimum width → every menubar menu is fully inside the frame.
+13. ⌘Q with a dirty document → the native confirmation names it; Cancel returns to a working application.
+14. ⌘Q with everything saved → the application exits.
+15. Relaunch → Recents and the window layout are restored; no "Not saved" on a clean file.
+
+## Per-suite coverage before deletion or rewrite (FR-033, SC-013)
+
+Dispositions: **keep** (move to the new root, retitle, keep assertions), **rewrite** (same
+behaviours through the public API / real store), **merge** (into the named suite), **delete**
+(bureaucracy or infrastructure). "Covered by" names the surviving test, the E2E case (E#) or the
+walkthrough step (W#). A behaviour with no cover becomes its own task (marked *gap*).
+
+### Go (66 files)
+
+| File | Disposition | Behaviours it proved | Covered by |
+|---|---|---|---|
+| `architecture_test.go` (root) | delete | 9 AST gates on handler shape, wiring, migrations, network, identity | lint L1–L5, L26 (`tools/archlint`, depguard) |
+| `main_test.go` | rewrite → `tests/go/integration/application/options_test.go` | Wails options (startup recovery, embedded frontend, hidden framed window, native menu roles, close-flush hook, shutdown order, bindings, enum-bind covers all codes, picker filters) | same behaviours via `newAppOptions` through an exported `application.Options` builder; source-text/git/`go.mod` greps deleted (L27 covers the bundle) |
+| `native_evidence_safeguards_test.go` | delete | evidence driver excluded from release builds | driver deleted |
+| `spec_clause_count_test.go` | delete | counts `- Q:` lines in a spec | none needed (paperwork) |
+| `cmd/native-evidence/*_test.go` (3) | delete | latency scenarios, driver wiring | driver deleted; latency is not a requirement of this feature |
+| `internal/apperr/architecture_test.go` | delete | apperr imports nothing internal | lint L1 |
+| `internal/apperr/classified_error_test.go` | keep → `tests/go/unit/apperr` | category vocabulary, remediation allow/refuse, no identifier leakage | same |
+| `internal/apperr/contract_table_test.go` | delete | remediation table equals a markdown table in `specs/003` | a Go table test in `tests/go/unit/apperr/remediations_test.go` (the table is the contract) |
+| `internal/apperr/results_test.go` | rewrite → `tests/go/unit/apperr` | JSON wire shapes of transitions, committed-write results, DiskVersion timestamps | JSON round-trip tests kept; field-count/order test deleted (FR-029) |
+| `internal/apperr/wire_test.go` | keep → unit | `ToWire` strips the cause, keeps the classification | same |
+| `internal/application/application_test.go` | keep → `tests/go/integration/application` | two-phase settings init, readiness gating, close waits for layout flush, native window restore/clamp | same |
+| `internal/application/autosave_wiring_test.go`, `default_open_mode_wiring_test.go` | rewrite → integration | preference propagation, persistence across restart, unreadable store keeps default | through `Init` on a seeded temp DB and a failing `SettingsRepositoryAPI` passed at construction |
+| `internal/application/close_coordinator_test.go` | rewrite → integration `shutdown_test.go` | veto + one-shot permit, drain failure creates no permit, recovery quit drains | every transition of the shutdown contract |
+| `internal/application/document_dialogs_test.go`, `native_window_test.go` | keep → integration | dialog ports; restore hidden then show once | same |
+| `internal/application/host_ports_wiring_test.go` | delete | reflection over private fields | behavioural: `NewApplicationContextHolder` + PATH-stubbed `pbcopy` + `CopyPath` |
+| `internal/application/startup_retry_test.go` | delete | reflection on a method signature | lint L4 |
+| `internal/appmodel/autosave_test.go`, `autosave_disabled_test.go` | rewrite → integration | debounce, eligibility, no catch-up, conflict/deletion, disabled writes nothing, re-enable | `WithAutosaveTimer` fake; delete-then-check for detached; chmod for read-only |
+| `internal/appmodel/close_drain_test.go` | rewrite → integration | drain runs accepted work, waits for in-flight write, cancels impossible work, classifies layout failure | `DrainBeforeClose` with `WithWriteExecutor` and a failing layout repository |
+| `internal/appmodel/close_plan_test.go` (16) | rewrite → integration | plan completeness, save order and failure, conflict before save, Save-As resolution, waits for flush/autosave, revision re-evaluation, queued normalisations, zero state, supersede/repeat/refuse-while-saving, stale revision refusal | handler `PrepareClose`/`ResolveClosePlan`/`ExecuteClosePlan` with real files; encoded bytes read from disk |
+| `internal/appmodel/conflict_queue_test.go`, `identity_reservation_test.go`, `document_consumer_test.go` | delete | one modal in tab order (duplicate of a public test); novel reservations; compile shape | `TestConflictQueueOneModalInTabOrder` kept; reservation counting kept in `open_lifecycle`; shape test dropped |
+| `internal/appmodel/conflict_test.go` (16) | rewrite → integration | external conflict decisions, stable/unstable reread, no polling timer, blocked-by-conflict projection, keep-mine invalidation, skip cancels one write, missing file detaches, preview bounds, read-only reload/cancel | handler conflict methods with real files; preview bounds by rewriting a large file |
+| `internal/appmodel/copy_path_test.go`, `tab_reorder_test.go`, `tab_session_test.go` | keep/rewrite → integration | copy-path canonicalisation and clipboard failure, reveal revalidation; one-position move, past-edge no-op; order revision, activation ack, stale commands, close flushes autosave, timers cancelled | handler API; timer cancellation via the fake timer's `Pending()==0` |
+| `internal/appmodel/file_lifecycle_test.go`, `open_lifecycle_test.go` | keep → integration | new-document defaults, refuses stale or 41st, canonical duplicate focus, replaces only the empty untitled, stale recent entry, reading-mode open, one identity reservation, concurrent same-identity join, release on every terminal outcome | handler API (`maxOpenDocuments` as the literal 40) |
+| `internal/appmodel/file_metadata_repository_sqlite_test.go`, `recent_files_repository_sqlite_test.go`, `layout_repository_sqlite_test.go` (25) | rewrite → integration `kv_*_test.go` | round-trips, corrupt/unknown values fall back, newest-per-field winner, read/write race, legacy scalar, native dimension validation, debounce and acknowledgement, flush-before-close, latest-pending-only, stale-flush ordering | the `internal/kv` helper on a real temp DB; literal keys and JSON as the persisted contract; races via injected repository fakes |
+| `internal/appmodel/recent_files_test.go` (14) | rewrite → integration | MRU persistence and lazy prune, promotion transaction, two-instance commit order, stale snapshot rejection, promotion failure warning, autosave/reload keep recency, recently-closed retention, reopen-last, out-of-band commit observed | handler API + `GetState`; reflection scan deleted |
+| `internal/appmodel/runtime_emitter_test.go` | keep → `tests/go/unit/application` | emitter rejects a nil context | same, in its new package |
+| `internal/appmodel/save_status_test.go` | rewrite → integration | status precedence table, baseline origin restores the clean label, failed write leaves status unchanged | each row through real files (chmod, autosave vs explicit origin) and `GetState` |
+| `internal/appmodel/save_test.go` (18) | rewrite → integration | save/save-as, unsupported suffix, mixed-ending authorisation, collision and target drift, raw byte-hash recheck, reservation release, stable identity, refused-write naming, read-only pre-disk refusal, normalisation re-ask, cancel releases authorisation, unavailable dialogs offer Retry, CRLF/BOM preservation, permission preservation, failed save leaves the file intact | handler API with `WithConflictReaders`, `WithDialogs`, `WithWriteExecutor` |
+| `internal/appmodel/service_test.go` (17) | rewrite → unit + integration | clean untitled initial state, zero-document state, optional active tuple, link-time version identity, one revisioned content-free patch, at-least-one-pane, in-memory-only layout, document command seam, `SnapshotActive` contract, revision-ordered patches, publication-failure and nil-emitter rollback | `WithVersion` option test replaces the `exec.Command` build; the rest through the exported service and a recording emitter |
+| `internal/appmodel/write_coordinator_test.go` | rewrite → integration | committed-write projection failure, exact snapshot, stale revision no clean projection, newer edit stays dirty, explicit/autosave serialisation, commit reuse | handler `Save` with old revisions and `WithWriteExecutor` |
+| `internal/appmodel/handler_test.go` | rewrite → integration | typed results + panic recovery, conflict methods recover, rejected layout write, safe subject, open cancellation has no mutation | panic recovery through `bridge.Guard` (one test in `tests/go/unit/bridge`); the reflection half deleted (L4) |
+| `internal/appmodel/layout_test_helpers_test.go` | delete | helpers only | helpers move to `tests/go/integration/appmodel/helpers_test.go` |
+| `internal/bootstrap/*_test.go` (2) | keep → unit | logger before DB; version defaults to `dev` and honours the link-time identity | same |
+| `internal/db/database_test.go` | keep → integration | CGO-free WAL config, lock-contention retry, corrupt/unsupported schema handling with the re-exec helper | same (helper uses only `Open`); the flaky contention subtest gets a bounded retry (known issue 7) |
+| `internal/db/migrations_test.go` | rewrite → integration | additive migrations apply; sqlc queries apply | sqlc half dropped; additive check stays + lint L5 |
+| `internal/file/atomic_replace_test.go`, `_unix_test.go`, `_windows_test.go` | keep in place (W1) + public part → integration | phase failures; parent dir sync; Windows replace port | W1 exception; the public cases through `AtomicReplace` |
+| `internal/file/clipboard_test.go`, `reveal_test.go`, `clipboard_platform_test.go` | delete | mocks asserting the mock | `clipboard_unix_test.go` kept → integration (PATH stub) |
+| `internal/file/clipboard_unix_test.go`, `codec_test.go`, `disk_version_test.go`, `document_reader_test.go`, `paths_test.go` | keep → unit/integration (W2 part stays) | clipboard availability, encoding conventions, disk version equality, classified bounded reads, dev/prod path resolution and canonicalisation | same; `readBounded` via `ReadClassified(path, maxBytes)` |
+| `internal/file/document_fixtures_test.go` | delete | proves the fixtures | fixtures move to `tests/go/testdata` and are asserted by their consumers |
+| `internal/gate/gate_test.go` | delete | package deleted | — |
+| `internal/logging/logger_test.go` | keep → integration | rotating local sink | same |
+| `internal/settings/editor_settings_test.go`, `service_test.go`, `repository_sqlite_test.go`, `handler_test.go` | keep/rewrite → unit + integration | defaults, accepted font sizes, unsupported size rejected without a write, fallback matrix, `ResetAppearance` rollback, autosave default/persistence, unacknowledged change rejected, unsupported group refused | through `SettingsHandler` on a temp DB; group atomicity added (Story 1 #8); `upsertBool` future-key test through the `kv` helper; reflection half deleted |
+
+### Frontend Jest (81 files) and `node --test` (2)
+
+| File | Disposition | Behaviours it proved | Covered by |
+|---|---|---|---|
+| `src/App.test.tsx` (3,292 lines, 50) | rewrite → `tests/integration/app.test.tsx` (≤ 15 journeys) | root composition, four menus, modal suppression, startup-failure routing | real shell and editor rendered with the command recorder; startup steps per step; hydration; notification delivery; source-text asserts deleted |
+| `src/i18n/catalog.test.ts` | keep → unit | interpolation, fallback, locale discovery | same |
+| `src/logic/actions/*.test.ts(x)` (5) | keep → unit | dispatcher results, registry membership and availability, shell action catalogue, shortcut bindings, shell shortcuts routing | same; availability tests extended to File/toolbar/tab context/keyboard through the registry (FR-045) |
+| `src/logic/adapter/*.test.ts` (6) | keep/rewrite → unit | guarded New/Open, ordered lifecycle drain, flush via activation, DTO arity parity, unwrap/notify-once, exact call shapes, coalescing timer, window adapter | same through the fake bridge object; new: request ID on every call, pacing, deadline, Retry replay |
+| `src/logic/fixtures/real-file-fixtures.test.ts` | delete | tests a Playwright helper | the helper moves to `tests/support` and is exercised by the E2E cases |
+| `src/logic/format/formatting.test.ts` (17) | keep → unit | marker toggling, insertion, caret spans | same |
+| `src/logic/hooks/*.test.ts` (4) | keep → unit | document-command seam, lifecycle barrier, live preview bounds, synced buffer | same; the TS-AST scan in `useDocumentCommands.test.ts` deleted (lint L9) |
+| `src/logic/markdown/renderer.test.ts` | keep → unit (−5 source asserts) | GFM pipeline, offline assets, footnotes | same; new link-classifier and image-source tests |
+| `src/logic/settings/settingsCommands.test.ts` | keep → unit | retained projection on rejection, ack ordering | same, through the one settings command owner |
+| `src/logic/store/*.test.ts` (8) | keep → unit | projection stripping, dev-bridge dirty vs baseline, classified notification remediations, doc view commands, notification dedup/eviction, settings projection hydrates once, settings slice, store shape, layout commands | same; `settingsProjection` gains "a rejected attempt is retried fresh" |
+| `src/logic/theme/*.test.ts` (2), `src/logic/utils/parseError.test.ts` | keep → unit | startup mirror validation, theme normalisation, wire-error parsing | same |
+| `src/ui/components/CodeEditor.bundle.test.ts` | delete | local Monaco bundling; no network paths in src/dist | lint L27 (bundle scan in `scripts/build`) + W1 walkthrough step |
+| `src/ui/components/CodeEditor.test.tsx` (−4) | keep → unit | default tokens/options, gutter alignment | same; parity metric tests deleted |
+| `src/ui/components/MarkdownView.test.tsx`, `MarkdownView.memo.test.tsx` | merge → unit `markdownView.test.tsx` | GFM rendering, raw-HTML and dangerous-URL suppression, no re-parse on same source | same |
+| `src/ui/components/StatusBar.test.tsx` (−9 CSS asserts) | keep → unit | untitled metadata, landmark role, responsive details | facts model (FR-013): every dropped fact listed |
+| `src/ui/components/monacoThemes.test.ts` | keep → unit | theme registration and disposal | same |
+| `src/ui/primitives/*.test.tsx` (7) | keep → unit | banner, icon catalogue, live region, modal focus contract, segmented keys, toast order and stacking, view menu | same; ViewMenu test moves with the widget |
+| `src/ui/styles/tokens.test.ts` (528 lines) | delete | token presence, reduced motion, accent per appearance | lint L18–L21; E2E case 8 for rendered outcomes |
+| `src/ui/widgets/AboutDialog.test.tsx`, `ShortcutsDialog.test.tsx`, `SettingsDialog.test.tsx`, `NormalizationPrompt.test.tsx`, `ClosePrompt.test.tsx`, `ExternalChangePrompt.test.tsx` | keep → unit (through ModalShell) | version display, focus containment, registry-derived catalogue, Escape restores opener, narrow portal, decisions and bounds | same via the shared ModalShell |
+| `src/ui/widgets/AppShell.test.tsx` (−41 source asserts) | rewrite → integration | workspace/document regions, reserved assistant track, tokenised surface | real render; region layout by DOM, not CSS text |
+| `src/ui/widgets/AppearanceControls.test.tsx` | keep → unit | keyboard-reachable appearance change, Markdown Standard visible-but-unavailable, no change on rejection | same through the settings command owner |
+| `src/ui/widgets/DocumentIdentity.test.tsx`, `Launcher.test.tsx`, `PreviewPane.test.tsx`, `TabContextMenu.test.tsx`, `EditorContextMenu.test.tsx`, `foregroundFocus.test.ts`, `tabLabel.test.ts` | keep → unit | safe path display and five statuses; first-run and recents; 2 MiB pause boundary; typed context move and registry disabling; context-menu inventory and clamping; foreground focus restore; label disambiguation | same; the two context menus through the shared Popup |
+| `src/ui/widgets/DocumentTabs.test.tsx` (2,005 lines, 51) | rewrite → integration (slimmed) | tab metrics, add control, parity anchoring, context-menu shadow token, drag reorder, external-change sweep | behaviour only through TabBar; CSS greps and parity coordinates deleted; geometry in E2E case 11 |
+| `src/ui/widgets/EditorChrome.test.tsx` (−16) | rewrite → integration `formattingToolbar.test.tsx` | toolbar groups, arrangement placement, narrow overflow controls, formatting through commands, cross-palette identity | same through Bar/Island/ToolButton; overflow relocation in E2E narrow case |
+| `src/ui/widgets/EditorView.test.tsx`, `EditorView.integration.test.tsx` (2,144), `editorSession.integration.test.tsx` | merge → integration `editorStage.test.tsx` | responsive split layout, each arrangement, editor-only at minimum, long titles, translated preview, persisted palettes, sibling command exposure, content/selection in every arrangement, preview scroll restore | one suite with real Monaco stubbed only at the engine boundary; scroll restore asserts the retained offset |
+| `src/ui/widgets/SettingsMenu.test.tsx`, `ShellMenuRow.test.tsx` (1,221, −35 source asserts) | merge → integration `menubar.test.tsx` | portal menu and focus restore, acknowledged autosave control, accelerators/labels/separators, menu order, deferred inventories | same through Bar + Popup + MenuItem; second-click and key parity added |
+| `src/ui/widgets/StartupFailure.test.tsx` | rewrite → unit | safe recovery copy + Retry | per-step message, Retry per step, Quit always |
+| `src/dev/bridge-mock/*.test.ts` (3) | delete | the mock's own behaviour | mock deleted after E2E is green |
+| `e2e/parity/*.test.ts` (9) | delete | parity harness internals, manifest counts | harness deleted |
+| `public/theme-bootstrap.test.mjs`, `scripts/generate-editor-themes.test.mjs` | keep → `tests/unit/tooling/*.test.ts` (Jest) | pre-paint theme bootstrap; theme generator | same, one runner; the bootstrap script loaded from `public/` by the test |
+
+### Playwright (11 suites)
+
+| Suite | Disposition | Journeys it drove | Covered by |
+|---|---|---|---|
+| `appearance.test.ts` | port → E2E | six palettes from keyboard-reachable controls; pre-paint mirror; retain acknowledged palette on rejection | E2E case 8 + case 4 |
+| `core-editor.test.ts` | port → E2E (screenshot dropped) | responsive dimensions, edit round trip through Preview, Monaco focus across metadata change, live preview | E2E "editor round trip" case; Story 1 #6 |
+| `editor-stage.test.ts` | port → E2E (matrix reduced to three widths) | stage reachability, popup ownership/geometry, chrome hierarchy per width × theme × mode | E2E shell matrix + case 8 |
+| `interactive-states.test.ts` | delete (computed-style part ported) | trigger hover/focus-ring/open states; arrangement segment placement | E2E case 8; `menubar.test.tsx` |
+| `launcher-binding.test.ts` | port → E2E | launcher frame, type scale, actions, recents list | E2E "launcher" case (seeded Recents) |
+| `narrow-width.test.ts` | port → E2E (`?parity-case` stripped) | overflow-menu reachability at 375/768, relocated groups, unwrapped rows, contained prompts | E2E narrow case; Story 1 #12, #13 |
+| `offline-and-controls.test.ts` | partly port | five-minute network watch; deferred surfaces unavailable-not-absent; no custom frame | walkthrough step 1 + lint L27 (watch not ported); E2E "deferred controls" (FR-048); FR-050 |
+| `real-files-and-tabs.test.ts` (25) | port → E2E | File menu New/Open, Save flush and single confirmation, backend-confirmed tab moves, Reveal remediations, Retry on refused Save, bounded external-change prompt | E2E real-files cases via Recents; Save As at the bridge level (`WithDialogs`) |
+| `real-files-parity.test.ts`, `targeted-parity.test.ts` | delete | reference navigation, pixel comparison | none (pixels are not acceptance; behaviour and computed style are) |
+| `window-shell.test.ts` | port → E2E | shell matrix, minimum frame drops the workspace, Settings popup operable, close restores opener, long label and two-layer focus ring | E2E shell matrix + case 8 + Story 1 #12 |
+
+*Gap tasks*: none identified; every proved behaviour has a named cover or a deliberate drop with
+its reason (parity pixels, the five-minute watch, latency scenarios).
+
+## Known-issues reconciliation (FR-084)
+
+| # | Entry | Disposition |
+|---|---|---|
+| 1 | second `state:patch` subscriber discarded | already fixed (multiplexed listeners) → removed |
+| 2 | empty tab set panics | already fixed (zero-document state) → removed |
+| 3 | mock disagrees about dirty | removed with the mock |
+| 4 | shell tested against a mock of itself | fixed by the App suite rewrite |
+| 5 | CRLF/encoding labels fall back to raw keys | stale → removed (`en.json` holds `status.lineEnding.crlf` and `.mixed`; the backend emits only `utf-8`, which is catalogued) |
+| 6 | visual layer incomplete | stale → removed |
+| 7 | flaky database contention test | bounded retry in the helper (G7) |
+| 8 | `apperr` as a DTO dumping ground | open decision in the architecture map (`apperr`/wire split) |
+| 9, 15 | CI only on tags; archtest not in CI | stale → removed (push workflow runs all five stages) |
+| 10 | `internal/gate` unused | package deleted (FR-059) |
+| 11 | settings adapter has no consumer | stale → removed |
+| 12 | `just package` exit-1 stub | recipe removed (FR-065) |
+| 13 | frameless window resize zones | superseded: native frame kept (FR-050), recorded in the map |
+| 14 | STORY-058 truncated copy, gate never ran | stale → removed (baseline verdict `unreliable` covers the mechanism) |
+| 16 | startup failure string disagreement | fixed by FR-015 per-step messages |
+| 17 | 114 `Proves:` tags resolve nowhere | removed with all `Proves:` tags (FR-080) |
+
+## Acceptance-scenario evidence, Stories 2–7
+
+Story 1's nineteen scenarios are in the table above. Q# is a quickstart step, W# a walkthrough step,
+L# a lint rule, E# an E2E case of `contracts/e2e-harness.md`.
+
+| Scenario | Outcome | Evidence |
+|---|---|---|
+| 2.1 | unit stage from a cold checkout, no network | Q1 |
+| 2.2 | real Go process, seeded Recents, bytes and restart asserted | Q6; harness launch steps 1–5 |
+| 2.3 | offline cold start; web image placeholder, local image renders | W1, W8, W9 (Q11); the offline sentence below |
+| 2.4 | test placement | L23 |
+| 2.5 | no IDs; no source, CSS, DTO or document assertions | L22; the "Forbidden assertion kinds" deletions in `contracts/lint-rules.md` |
+| 2.6 | archive runs | the Story 1 table |
+| 2.7 | FR-026 cases once, no retry | E1–E8; `playwright.config.ts` `retries: 0` |
+| 2.8 | parity stack, branches, driver and mock deleted; `just dev-ui` gone | Q10 grep; L19 (zero parity selectors); the seven-alias `justfile` |
+| 2.9 | per-suite coverage named | the per-suite tables |
+| 3.1 | one Popup change reaches nine consumers | consumer inventory in `contracts/shared-components.md`; L11; E8 opens all nine |
+| 3.2 | identical keys in any two menus | `menubar.test.tsx` key-parity cases; E8 keyboard opening |
+| 3.3 | three bars are the shared Bar with slots and a per-bar overflow policy | `menubar.test.tsx`, `formattingToolbar.test.tsx`, TabBar unit test; the ported narrow case (`»` below 768 px, tab bar scrolls) |
+| 3.4 | six combos differ by tokens only; no theme selectors | E8; L19 |
+| 3.5 | lint fails on store imports and second implementations | Q8 (L9, L11–L15) |
+| 3.6 | identifiable owners | ownership table in `contracts/shared-components.md`; each named file present at converge |
+| 3.7 | four routes read availability from the registry | `actionRegistry` unit tests extended to the File menu, toolbar, tab context menu and shortcut routes |
+| 4.1 | one lifecycle owner; stale publication rejected | Go integration save/close suites; W3; the rewritten `service_test` case "revision-ordered patches, stale publication rejected" |
+| 4.2 | one guard, one failure constructor | L4; `bridge.Guard` unit test; `recover(` occurs only in `internal/bridge` (grep at converge) |
+| 4.3 | one key-value helper, sqlc gone | `kv_*_test.go`; `sqlc.yaml` and `internal/db/{store,queries}` absent (Q10) |
+| 4.4 | no test-only API | L6 |
+| 4.5 | `appmodel` imports | L2 |
+| 4.6 | no discarded error | Go integration tests for FR-056 (layout persistence failure, publication rollback, reset read-back, reopen view restore) |
+| 4.7 | FR-016–021 behaviour | shutdown Go integration; E2, E3, E5, E6; adapter unit tests |
+| 5.1 | exactly five scripts; one-line aliases | `ls scripts` (five entry points plus `lib/`); the seven-line `justfile`; Q2 |
+| 5.2 | hooks and CI call only the scripts | `contracts/ci-workflows.md` acceptance grep; the two-line `lefthook.yml` |
+| 5.3 | tools once, frontend once, no `go build` in `go test` | Q2 (`summary.json`) |
+| 5.4 | format coverage and ignore list | Q3 |
+| 5.5 | baseline fails closed | Q4 |
+| 5.6 | clean tree after build | Q5 |
+| 5.7 | blocking push run with a Linux build; dry run reports the version | push run id recorded at close; Q12 |
+| 5.8 | lint rules, `.only`, zero collection | Q8; L17, L24 |
+| 5.9 | one toolchain declaration | toolchain table in `contracts/scripts-cli.md`; `contracts/ci-workflows.md` rules |
+| 6.1 | five files name both authorities | the FR-072 row |
+| 6.2 | archive directory with pointer; ADRs carried | the FR-073 row |
+| 6.3 | every reference exists | L25 |
+| 6.4 | `AGENTS.md`/`CLAUDE.md` content | the FR-075 row |
+| 6.5 | legacy workflow deleted, no references | the FR-077 row |
+| 6.6 | no IDs in comments and docs | L22 |
+| 6.7 | map names owners and decisions | the FR-074 row |
+| 7.1 | tracked paths gone; audit and 2026-07-28 archive stay | Q10 |
+| 7.2 | `.gitignore` | converge read: run artefacts, IDE folders, build output each once; no contradiction; no feature rule |
+| 7.3 | tokens and exports | L21, L6 |
+
+## Requirement coverage
+
+| Requirement | Owning group | Named evidence |
+|---|---|---|
+| FR-001, FR-002, FR-003, FR-005, FR-007, FR-051 | G4 | Story 1 regressions 1, 2, 3, 5, 7; W3 |
+| FR-004, FR-056 | G4 | regression 4; Go integration for layout persistence, rollback, reset read-back, reopen view restore logging |
+| FR-006 | G5/G6 | regression 6 |
+| FR-008, FR-053 | G4 | regression 8; `kv` integration tests; sqlc files absent |
+| FR-009, FR-010, FR-011, FR-012, FR-034, FR-035 | G6 (Popup, MenuItem) + G5 | regressions 9–12; E2E case 8 |
+| FR-013 | G6 (StatusBar) | regression 13 |
+| FR-014 | G5 | regression 14; E2E case 1; unit link classifier |
+| FR-015 | G3 | regression 18; E2E case 3 |
+| FR-016, FR-017, FR-018, FR-057 | G3 | regressions 15, 16, 19; E2E cases 2, 3, 5; shutdown Go integration; walkthrough 13–14 |
+| FR-019, FR-020, FR-021 | G3 | E2E case 6; adapter unit tests; `OutcomeCache` unit tests; SC-014 timings |
+| FR-022, FR-023, FR-024, FR-029, FR-030 | G7 | lint L22–L24; quickstart 1; the white-box list |
+| FR-025, FR-026 | G5 | harness contract; E2E cases 1–8 |
+| FR-027, FR-028 | G10 | walkthrough and offline sentences below |
+| FR-031 | G3–G6 | the Story 1 table |
+| FR-032 | G7 | deletions after `scripts/test e2e` is green |
+| FR-033 | this plan | the coverage tables above |
+| FR-036, FR-037, FR-038, FR-039, FR-040, FR-041, FR-042, FR-043 | G6 | consumer inventories in `contracts/shared-components.md`; lint L11–L15; `menubar`, `formattingToolbar`, `editorStage` integration suites |
+| FR-044 | G6/G9 | lint L18–L21; `tools/lint/tokens.mjs` |
+| FR-045 | G6 | registry availability tests through four routes; one format runner; one settings owner |
+| FR-046 | G6 | ownership table in `contracts/shared-components.md` |
+| FR-047 | G7 | lint L9 |
+| FR-048 | G6 | E2E deferred-controls case; registry availability |
+| FR-050 | G8 | ADR-0028 recorded as superseded in the architecture map |
+| FR-049 | G5 | E2E case 7; asset route Go integration (folder rule, 20 MB) |
+| FR-052, FR-054, FR-055 | G4/G3 | lint L2, L4; `bridge.Guard` unit test; no test-only constructor, setter or swap variable (L6 reports them as callerless exports) |
+| FR-058 | G4 | `internal/appmodel/doc.go` reviewed against the lifecycle, lock order and event contract |
+| FR-059 | G4 | lint L6; `internal/gate` absent |
+| FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 | G1/G2/G10 | `contracts/scripts-cli.md`; quickstart 2–5; duration and comparison sentences below |
+| FR-066, FR-067, FR-068 | G1/G10 | `contracts/ci-workflows.md`; release dry run below |
+| FR-069, FR-079 | G7 | `contracts/lint-rules.md`; prose duplicates removed in G8 |
+| FR-070, FR-071 | G1 | toolchain table; Linux build with `webkit2_41` on the push runner; `scripts/build` with `wails` off `PATH` exits non-zero naming `wails` (quickstart 5); lint L26 names the CGO-free scope |
+| FR-072 | G8 | `README.md`, `AGENTS.md`, `CLAUDE.md`, the constitution and `docs/_archive-2026-09-delivery/README.md` each name `specs/<feature>/` and `docs/architecture.md` (grep at converge) |
+| FR-073 | G8 | `docs/_archive-2026-09-delivery/README.md` exists; the map's decisions section carries the ADR set of research R18 |
+| FR-074 | G8 | `docs/architecture.md` has the sections of R18: owners with consumer inventories, commands, lifecycle, shutdown, persistence, verification with the walkthrough steps, durable decisions, open decisions |
+| FR-075, FR-078, FR-081 | G8 | converge review of `AGENTS.md`/`CLAUDE.md` against the FR-075/FR-078 content list (product intent, the two authorities, five scripts and six stages, ownership-first rule, baseline rule, branch convention, judgment list) and the FR-075 exclusions (no dated incident, line limit, per-turn form or duplicated mechanical rule); fresh-session check (quickstart 9) |
+| FR-076 | G8 | lint L25 |
+| FR-077 | G8 | the legacy paths absent; a grep for `plan-story`, `build-story`, `plan-phase`, `finish-phase`, `reconcile`, `WORKFLOW.md`, `DOD_TEMPLATE.md` finds nothing outside `docs/_archive-*` and `specs/**`; lint L25 |
+| FR-080 | G8 | lint L22 |
+| FR-082, FR-083 | G9 | quickstart 10 |
+| FR-084 | G8 | the reconciliation table above |
+
+| Success criterion | Evidence |
+|---|---|
+| SC-001 | the Story 1 table, every archive slot filled |
+| SC-002 | quickstart 6; `playwright.config.ts` retries 0 |
+| SC-003 | offline sentence below |
+| SC-004 | lint L22–L24 green; every deletion named under "Forbidden assertion kinds" in `contracts/lint-rules.md` executed in G7 |
+| SC-005 | lint L22 and L25 green in `scripts/verify` |
+| SC-006 | `contracts/ci-workflows.md` acceptance; quickstart 2, 5 |
+| SC-007, SC-008 | E2E case 8; lint L19, L21 |
+| SC-009 | lint L11–L15 plus the token-change check (quickstart 9) |
+| SC-010 | W3 |
+| SC-011 | quickstart 9 |
+| SC-012 | quickstart 10 |
+| SC-013 | the coverage tables; the capability inventory below, each capability exercised by a named E2E case or walkthrough step; the action catalogue unit test asserts the same action set as at `bc185c9` |
+| SC-014 | six outcomes: notice within 1 s of the bound → E2E case 6; Retry applies once → case 6 variant A and a Go integration test re-sending `Save` with the same request id (one write on disk); 60 s / 256 eviction → `OutcomeCache` unit test with a fake clock; user-paced silence → adapter unit test with fake timers (`OpenDocument` unanswered for 15 s, no notice); Cancel then result → case 6 variant B; startup step held before ready → StartupFailure frontend integration with fake timers (failure screen, no notice) |
+| SC-015 | release dry run below |
+
+### Capability inventory (SC-013)
+
+| Capability | Exercised by |
+|---|---|
+| window | E2E shell matrix; walkthrough steps 1, 12 |
+| themes | E2E case 8; walkthrough step 10 |
+| settings | E2E case 4; the ported appearance journey |
+| editor | the ported core-editor round trip; Story 1 regression 6 |
+| preview | E2E cases 1, 7; walkthrough steps 8, 9 |
+| files | the ported real-files cases; walkthrough steps 3, 5 |
+| tabs | the ported real-files cases (backend-confirmed moves); Story 1 regression 11; walkthrough steps 6, 11 |
+| autosave | Story 1 regressions 1, 4; the ported explicit-Save flush case |
+| conflicts | the ported bounded external-change prompt; the Go integration conflict suite |
+| close | E2E cases 2, 3, 5; walkthrough steps 7, 13, 14 |
+| recents | the ported launcher case (seeded Recents); walkthrough step 15 |
+
+No capability is added: `OpenPreviewLink` applies FR-014's policy to links that already existed, and
+the image asset route is the one addition FR-049 allows.
+
+## Close-out record (filled at G10)
+
+- **Baseline comparison**: *pending* — one sentence: date, commit, findings gone / new / remaining.
+- **Walkthrough**: *pending* — one sentence: date, commit, host, outcome, against the binary built by `scripts/build`.
+- **Networking-disabled cold start**: *pending* — one sentence: date, commit, host, outcome (no outbound connection).
+- **`scripts/verify` duration**: *pending* — wall-clock of one full six-stage run on the developer host.
+- **Release dry run**: *pending* — run id, version input, artifact name, About dialog reading.
+- **Archive worktree**: `git worktree add ../gme-archive archive/v1-linear-history-2026-09` (`bc185c9`), removed after the last archive run.
