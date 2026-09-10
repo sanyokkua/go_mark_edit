@@ -2,9 +2,9 @@ import { useRef, useState } from 'react';
 
 import { t } from '../../i18n';
 import type { ConflictPreview } from '../../logic/store/appModelTypes';
+import ModalShell from '../components/ModalShell';
 import Button from '../primitives/Button';
-import ModalShell from '../primitives/ModalShell';
-import styles from '../primitives/ModalShell.module.css';
+import styles from '../components/ModalShell/ModalShell.module.css';
 import { safeBasenameOf } from './tabLabel';
 
 export type ExternalChangeDecision = 'reload' | 'keep-mine' | 'skip' | 'cancel';
@@ -52,10 +52,9 @@ const ExternalChangePrompt: React.FC<ExternalChangePromptProps> = ({
 
   return (
     <ModalShell
-      initialFocusRef={initialFocusRef}
-      labelledBy="external-change-title"
-      onBackdrop={(): void => choose(preview.readOnly ? 'cancel' : 'skip')}
-      onEscape={(): void => choose(preview.readOnly ? 'cancel' : 'skip')}
+      dismiss="backdrop"
+      initialFocus={initialFocusRef}
+      onRequestClose={(): void => choose(preview.readOnly ? 'cancel' : 'skip')}
       open
       title={title}
     >

@@ -89,7 +89,7 @@ import ClosePrompt from './ui/widgets/ClosePrompt';
 import { tabLabelsFor } from './ui/widgets/tabLabel';
 import { onApplicationForeground } from './ui/widgets/foregroundFocus';
 import { ModalStateProvider } from './ui/widgets/modalState';
-import ModalShell from './ui/primitives/ModalShell';
+import ModalShell from './ui/components/ModalShell';
 import { useBootstrap } from './app/useBootstrap';
 import { useShutdown, type ShutdownController } from './app/useShutdown';
 
@@ -2197,10 +2197,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
                   valid={closeConflictValid}
                 />
                 <ModalShell
-                  initialFocusRef={recoveryQuitCancelRef}
-                  labelledBy="recovery-quit-title"
-                  onBackdrop={onRecoveryQuitCancel}
-                  onEscape={onRecoveryQuitCancel}
+                  dismiss="backdrop"
+                  initialFocus={recoveryQuitCancelRef}
+                  onRequestClose={onRecoveryQuitCancel}
                   open={bootstrapStatus === 'ready' && recoveryQuitConfirmOpen}
                   title={t('recovery.quit.title')}
                 >

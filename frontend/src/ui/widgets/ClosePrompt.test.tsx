@@ -140,7 +140,7 @@ it('T138 gives the close prompt one dialog element on the parity route and off i
       dialogCount: 1,
       tag: 'SECTION',
       ariaModal: 'true',
-      labelledBy: 'close-prompt-title',
+      labelledBy: 'modal-shell-title',
       hasShellMarker: true,
       parentIsBody: true,
       backdropIsSibling: true,

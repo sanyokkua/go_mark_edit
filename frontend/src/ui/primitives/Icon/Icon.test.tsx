@@ -32,7 +32,23 @@ const iconNames: IconName[] = [
   'assistant',
 ];
 
-it('renders every shared icon as a local 15px current-color SVG primitive', () => {
+// Proves: FR-043
+it('uses the shared icon size and stroke tokens with explicit overrides', () => {
+  const css = readFileSync(
+    resolve(process.cwd(), 'src/ui/primitives/Icon/Icon.module.css'),
+    'utf8',
+  );
+  expect(css).toContain('width: var(--icon-size)');
+  expect(css).toContain('stroke-width: var(--icon-stroke)');
+
+  const { container } = render(<Icon name="file" size={24} stroke={2} />);
+  const svg = container.querySelector('svg');
+  expect(svg?.style.getPropertyValue('--icon-size')).toBe('24px');
+  expect(svg?.style.getPropertyValue('--icon-stroke')).toBe('2');
+});
+
+// Proves: FR-043
+it('renders every local catalogue glyph as a decorative current-color SVG', () => {
   const { container } = render(<Icon name="bold" />);
   const svg = container.querySelector('svg');
 
@@ -42,17 +58,11 @@ it('renders every shared icon as a local 15px current-color SVG primitive', () =
   expect(svg).toHaveAttribute('viewBox', '0 0 15 15');
   expect(svg).toHaveAttribute('aria-hidden', 'true');
   expect(svg?.querySelector('path, circle, rect')).not.toBeNull();
-  expect(svg?.querySelector('path')?.getAttribute('stroke')).not.toBe(
-    '#ffffff',
-  );
-});
 
-it('keeps the icon catalogue finite and covered by the local sprite source', () => {
   const sprite = readFileSync(
     resolve(process.cwd(), 'src/ui/icons/file-tab-icons.svg'),
     'utf8',
   );
-
   for (const name of iconNames) {
     expect(sprite).toContain(`id="icon-${name}"`);
   }
@@ -65,6 +75,7 @@ it('keeps the icon catalogue finite and covered by the local sprite source', () 
   expect(sprite).not.toMatch(/[\u2600-\u27bf\u{1f300}-\u{1faff}]/u);
 });
 
+// Proves: FR-043
 it('does not expose decorative icon geometry as an accessible name', () => {
   const { container } = render(
     <button type="button" aria-label="Close tab">

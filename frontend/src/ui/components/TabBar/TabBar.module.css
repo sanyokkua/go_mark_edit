@@ -140,8 +140,7 @@
 }
 
 .tabCloseGlyph {
-  font-size: 14px;
-  line-height: normal;
+  display: block;
 }
 
 .tabAdd {

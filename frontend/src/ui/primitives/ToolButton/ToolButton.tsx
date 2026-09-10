@@ -64,7 +64,7 @@ const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(
           onMouseDown?.(event);
         }}
       >
-        {icon === undefined ? null : <Icon name={icon} size={15} />}
+        {icon === undefined ? null : <Icon name={icon} />}
         {variant === 'text' || icon === undefined ? label : null}
       </button>
     );

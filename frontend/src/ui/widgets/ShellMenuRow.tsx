@@ -506,7 +506,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   onClick={(): void => setOverflowOpen(!overflowOpen)}
                   onOpen={(): void => setOverflowOpen(true)}
                 >
-                  <Icon name="more" size={15} />
+                  <Icon name="more" />
                 </PopupTrigger>
                 <Popup
                   anchor={{ trigger: overflowTrigger }}
@@ -856,7 +856,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   type="button"
                   onClick={(): void => dispatch(action('toggle-sidebar'))}
                 >
-                  <Icon name="sidebar" size={15} />
+                  <Icon name="sidebar" />
                 </button>
                 <button
                   aria-label={t(assistantAction.accessibilityKey)}
@@ -867,7 +867,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   title={t('action.unavailable')}
                   type="button"
                 >
-                  <Icon name="assistant" size={15} />
+                  <Icon name="assistant" />
                 </button>
               </div>
             ) : null}

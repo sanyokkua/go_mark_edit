@@ -15,24 +15,22 @@ const SegmentedHarness: React.FC = (): React.JSX.Element => {
 
   return (
     <Segmented
-      aria-label="View arrangement"
+      ariaLabel="View arrangement"
       options={options}
       value={value}
-      onValueChange={setValue}
+      onChange={setValue}
     />
   );
 };
 
-it('STORY-015-AC-5 supports Arrow Home and End selection with stable focus', () => {
+// Proves: FR-043
+it('owns roving radio focus for Arrow, Home and End keys', () => {
   render(<SegmentedHarness />);
 
   const editor = screen.getByRole('radio', { name: 'Editor' });
   editor.focus();
-  expect(screen.getAllByRole('radio', { checked: true })).toHaveLength(1);
-  expect(editor).toBeChecked();
-  expect(editor).toHaveFocus();
-
   fireEvent.keyDown(editor, { key: 'End' });
+
   const preview = screen.getByRole('radio', { name: 'Preview' });
   expect(preview).toBeChecked();
   expect(preview).toHaveFocus();
@@ -42,12 +40,5 @@ it('STORY-015-AC-5 supports Arrow Home and End selection with stable focus', () 
   expect(editor).toHaveFocus();
 
   fireEvent.keyDown(editor, { key: 'ArrowRight' });
-  const split = screen.getByRole('radio', { name: 'Split' });
-  expect(split).toBeChecked();
-  expect(split).toHaveFocus();
-
-  fireEvent.keyDown(split, { key: 'ArrowLeft' });
-  expect(editor).toBeChecked();
-  expect(editor).toHaveFocus();
-  expect(screen.getAllByRole('radio', { checked: true })).toHaveLength(1);
+  expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
 });

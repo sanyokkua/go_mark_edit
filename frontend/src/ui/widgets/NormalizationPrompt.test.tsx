@@ -31,7 +31,8 @@ it('Normalize line endings prompt focus and resumption', async () => {
   expect(onCancel).toHaveBeenCalledTimes(1);
 });
 
-it('T015 treats the backdrop as Cancel without adding a suppression choice', () => {
+// Proves: FR-042
+it('T015 treats the shared ModalShell backdrop as Cancel', () => {
   const onCancel = jest.fn();
 
   render(
@@ -45,7 +46,7 @@ it('T015 treats the backdrop as Cancel without adding a suppression choice', () 
   );
 
   fireEvent.pointerDown(
-    document.querySelector('[data-normalization-backdrop]') as HTMLElement,
+    document.querySelector('[data-modal-backdrop]') as HTMLElement,
   );
   expect(onCancel).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();

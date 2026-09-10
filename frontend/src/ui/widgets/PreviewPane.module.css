@@ -14,13 +14,7 @@
 .pausedIcon {
   display: inline-block;
   flex: none;
-  height: 15px;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.75;
   vertical-align: -2px;
-  width: 15px;
 }
 
 .pausedMessage {

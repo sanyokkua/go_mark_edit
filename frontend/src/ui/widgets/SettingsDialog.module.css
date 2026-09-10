@@ -1,51 +1,25 @@
-.overlay {
-  background: var(--overlay);
-  inset: 0;
-  position: fixed;
-  z-index: var(--z-overlay);
-}
-
-.content {
-  background: var(--surface-raised);
-  border: var(--control-border-width) solid var(--border);
-  border-radius: var(--win-radius);
-  box-shadow: var(--win-shadow);
-  color: var(--text);
+.normalizationBody {
   display: grid;
-  gap: var(--app-gap);
-  inset: 50% auto auto 50%;
-  max-height: calc(100vh - 2 * var(--app-gap));
-  max-width: min(32rem, calc(100vw - 2 * var(--app-gap)));
-  overflow: auto;
-  padding: var(--dialog-padding);
-  position: fixed;
-  transform: translate(-50%, -50%);
-  width: 100%;
-  z-index: var(--z-modal);
-}
-
-.content[data-normalization-prompt] {
   gap: 16px;
-  max-width: min(440px, 92vw);
   padding: 16px;
 }
 
-.content[data-normalization-prompt] header {
+.normalizationBody header {
   min-width: 0;
 }
 
-.content[data-normalization-prompt] p {
+.normalizationBody p {
   color: var(--text-muted);
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
 
-.content[data-normalization-prompt] .actions {
+.normalizationBody .actions {
   gap: 8px;
 }
 
-.content[data-normalization-prompt] .primary,
-.content[data-normalization-prompt] .secondary {
+.normalizationBody .primary,
+.normalizationBody .secondary {
   border-radius: 9px;
   padding: 8px 14px;
 }
@@ -79,10 +53,4 @@
 .secondary {
   background: var(--surface);
   color: var(--text);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .content {
-    scroll-behavior: auto;
-  }
 }

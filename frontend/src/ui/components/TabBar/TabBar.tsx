@@ -8,6 +8,7 @@ import {
 
 import Bar from '../Bar';
 import type { PopupAnchor } from '../Popup';
+import Icon from '../../primitives/Icon';
 import styles from './TabBar.module.css';
 
 export interface TabBarLabelParts {
@@ -413,9 +414,7 @@ const TabBar: React.FC<TabBarProps> = ({
                   type="button"
                   onClick={(): void => onClose(tab.id)}
                 >
-                  <span aria-hidden="true" className={styles.tabCloseGlyph}>
-                    ×
-                  </span>
+                  <Icon className={styles.tabCloseGlyph} name="close" />
                 </button>
               </div>
             );
@@ -433,7 +432,7 @@ const TabBar: React.FC<TabBarProps> = ({
             type="button"
             onClick={onAdd}
           >
-            +
+            <Icon name="add" />
           </button>
         </div>
       }

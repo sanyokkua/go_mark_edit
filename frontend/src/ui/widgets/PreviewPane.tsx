@@ -10,6 +10,7 @@ import { classifyImageSource } from '../../logic/markdown/imagePolicy';
 import type { OpenResult } from '../../logic/store/appModelTypes';
 import MarkdownView from '../components/MarkdownView';
 import Button from '../primitives/Button';
+import Icon from '../primitives/Icon';
 import styles from './PreviewPane.module.css';
 
 export const PREVIEW_BYTE_LIMIT = 2_097_152;
@@ -163,16 +164,7 @@ export const PreviewPausedStatus: React.FC<PreviewPausedStatusProps> = ({
     data-preview-paused-bar="true"
     role="status"
   >
-    <svg
-      aria-hidden="true"
-      className={styles.pausedIcon}
-      fill="none"
-      focusable="false"
-      viewBox="0 0 24 24"
-    >
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <path d="M14 2v6h6M8 13h8M8 17h5" />
-    </svg>
+    <Icon className={styles.pausedIcon} name="file" />
     <p className={styles.pausedMessage}>{t('preview.paused')}</p>
     {currentRefreshError === null ? null : (
       <p

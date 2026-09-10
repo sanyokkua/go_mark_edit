@@ -303,15 +303,18 @@ it('T045 restores the parity new-tab control surface', () => {
   );
 });
 
-it('T062 renders tab glyphs with the binding-compatible text and CSS primitives', () => {
+// Proves: FR-043
+it('T062 renders the shared Icon primitive for the tab glyphs', () => {
   hydrate([documentFor('one', '/repo/one.md', true)]);
   renderTabs();
 
   const tab = screen.getByRole('tab', { name: /one\.md/u });
   expect(tab.querySelector('[aria-label="Modified"] svg')).toBeNull();
-  expect(screen.getByRole('button', { name: 'New tab' })).toHaveTextContent(
-    '+',
-  );
+  expect(
+    screen
+      .getByRole('button', { name: 'New tab' })
+      .querySelector('[data-icon-name="add"]'),
+  ).not.toBeNull();
 });
 
 it('T062 makes the tablist the direct tab-and-add layout surface', () => {

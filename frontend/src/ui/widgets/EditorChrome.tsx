@@ -4,7 +4,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
 } from 'react';
 
 import { t } from '../../i18n';
@@ -37,6 +36,7 @@ import Bar from '../components/Bar';
 import Island from '../components/Island';
 import MenuItem from '../components/MenuItem';
 import { PopupSeparator } from '../components/Popup';
+import Segmented, { type SegmentedOption } from '../primitives/Segmented';
 import ToolButton from '../primitives/ToolButton';
 import styles from './EditorChrome.module.css';
 import { useModalState } from './modalStateContext';
@@ -64,6 +64,11 @@ const listActions = [
 const insertActions = ['link', 'image', 'table'] as const;
 const deferredActions = ['format', 'compact', 'lint'] as const;
 const arrangementValues = ['editor', 'split', 'preview'] as const;
+const arrangementOptions: readonly SegmentedOption<ViewArrangement>[] =
+  arrangementValues.map((value) => ({
+    label: t(action(value).accessibilityKey),
+    value,
+  }));
 
 const textualControlIds = new Set<ActionEntry['id']>([
   'format',
@@ -183,8 +188,6 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
   const modalOpen = useModalState();
   const requestApplicationMenu = useContext(ApplicationMenuRequestContext);
   const { markdownSettings } = useEditorSettings();
-  const arrangementRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const pendingArrangement = useRef<ViewArrangement | undefined>(undefined);
   const onActivate = useCallback(
     (entry: ActionEntry): void => {
       const formatActionId = formatActionIds[entry.id];
@@ -266,58 +269,6 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
     return (): void => document.removeEventListener('keydown', onKeyDown);
   }, [onKeyDown]);
 
-  useEffect((): void => {
-    if (pendingArrangement.current !== arrangement) return;
-
-    pendingArrangement.current = undefined;
-    arrangementRefs.current[arrangementValues.indexOf(arrangement)]?.focus();
-  }, [arrangement]);
-
-  const requestArrangement = (next: ViewArrangement): void => {
-    if (next !== arrangement) {
-      pendingArrangement.current = next;
-    }
-    onArrangementChange(next);
-  };
-
-  const arrangementButton = (next: ViewArrangement): React.JSX.Element => {
-    const entry = action(next);
-    const index = arrangementValues.indexOf(next);
-    return (
-      <ToolButton
-        aria-label={t(entry.accessibilityKey)}
-        checked={arrangement === next}
-        className={styles.action}
-        data-action-id={entry.id}
-        data-icon={entry.id}
-        ref={(element): void => {
-          arrangementRefs.current[index] = element;
-        }}
-        role="radio"
-        label={t(entry.accessibilityKey)}
-        preserveSelection={false}
-        variant="text"
-        onKeyDown={(event): void => {
-          const destination =
-            event.key === 'Home'
-              ? 0
-              : event.key === 'End'
-                ? arrangementValues.length - 1
-                : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-                  ? (index - 1 + arrangementValues.length) %
-                    arrangementValues.length
-                  : event.key === 'ArrowRight' || event.key === 'ArrowDown'
-                    ? (index + 1) % arrangementValues.length
-                    : undefined;
-          if (destination === undefined) return;
-          event.preventDefault();
-          requestArrangement(arrangementValues[destination]);
-        }}
-        onActivate={(): void => requestArrangement(next)}
-      />
-    );
-  };
-
   return (
     <ToolbarProjectionContext.Provider value={toolbarProjection}>
       <DocumentTabs
@@ -385,15 +336,15 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
             className={`${styles.group} ${styles.arrangement}`}
             label={t('editor.arrangement')}
           >
-            <div
-              aria-label={t('editor.arrangement')}
+            <Segmented
+              ariaLabel={t('editor.arrangement')}
               className={styles.overflowArrangement}
-              role="radiogroup"
-            >
-              {arrangementButton('editor')}
-              {arrangementButton('split')}
-              {arrangementButton('preview')}
-            </div>
+              onChange={onArrangementChange}
+              optionClassName={styles.action}
+              options={arrangementOptions}
+              preserveSelection={false}
+              value={arrangement}
+            />
           </Island>
         }
         overflowContent={

@@ -20,6 +20,7 @@ import Popup, {
   PopupTrigger,
 } from '../components/Popup';
 import popupStyles from '../components/Popup/Popup.module.css';
+import Segmented, { type SegmentedOption } from '../primitives/Segmented';
 import styles from './SettingsMenu.module.css';
 
 export interface SettingsMenuProps {
@@ -55,7 +56,7 @@ function settingsAccelerator(): string {
     : formatShortcut(binding, currentPlatform());
 }
 
-const themeOptions: readonly { label: string; value: Theme }[] = [
+const themeOptions: readonly SegmentedOption<Theme>[] = [
   { label: t('appearance.theme.glass'), value: 'glass' },
   { label: t('appearance.theme.material'), value: 'material' },
   { label: t('appearance.theme.minimal'), value: 'minimal' },
@@ -66,10 +67,7 @@ const themeOptions: readonly { label: string; value: Theme }[] = [
  * which differs from the full Settings dialog wording for the same choices.
  * Both come from the catalogue; neither is written into the component.
  */
-const modeOptions: readonly {
-  label: string;
-  value: AppearanceChoice;
-}[] = [
+const modeOptions: readonly SegmentedOption<AppearanceChoice>[] = [
   { label: t('settings.menu.appearance.auto'), value: 'auto' },
   { label: t('settings.menu.appearance.light'), value: 'light' },
   { label: t('settings.menu.appearance.dark'), value: 'dark' },
@@ -205,48 +203,23 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
   return (
     <div className={styles.settingsBody} data-settings-content>
       <PopupGroupLabel>{t('settings.menu.theme')}</PopupGroupLabel>
-      <div
-        aria-label={t('settings.menu.theme')}
+      <Segmented
+        ariaLabel={t('settings.menu.theme')}
         className={styles.swatches}
-        role="radiogroup"
-      >
-        {themeOptions.map((option) => (
-          <i
-            key={option.value}
-            aria-checked={theme === option.value}
-            aria-label={option.label}
-            className={`${styles.swatch} ${theme === option.value ? styles.swatchSelected : ''}`}
-            data-theme={option.value}
-            role="radio"
-            tabIndex={theme === option.value ? 0 : -1}
-            onKeyDown={(event): void => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                onThemeChange(option.value);
-              }
-            }}
-            onClick={(): void => onThemeChange(option.value)}
-          />
-        ))}
-      </div>
+        onChange={onThemeChange}
+        optionClassName={styles.swatch}
+        options={themeOptions}
+        value={theme}
+      />
       <PopupGroupLabel>{t('appearance.mode.label')}</PopupGroupLabel>
-      <div
-        aria-label={t('appearance.mode.label')}
+      <Segmented
+        ariaLabel={t('appearance.mode.label')}
         className={styles.options}
-        role="radiogroup"
-      >
-        {modeOptions.map((option) => (
-          <MenuItem
-            checked={mode === option.value}
-            className={popupStyles.row}
-            key={option.value}
-            label={option.label}
-            role="radio"
-            trailing={tick(mode === option.value)}
-            onSelect={(): void => onModeChange(option.value)}
-          />
-        ))}
-      </div>
+        onChange={onModeChange}
+        optionClassName={popupStyles.row}
+        options={modeOptions}
+        value={mode}
+      />
       <PopupSeparator />
       <PopupGroupLabel>{t('settings.openMode')}</PopupGroupLabel>
       {openModeOptions.map((option) => (

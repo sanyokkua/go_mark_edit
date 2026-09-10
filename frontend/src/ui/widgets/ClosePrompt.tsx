@@ -5,9 +5,9 @@ import type {
   CloseChoice,
   ClosePlanSummary,
 } from '../../logic/store/appModelTypes';
+import ModalShell from '../components/ModalShell';
 import Button from '../primitives/Button';
-import ModalShell from '../primitives/ModalShell';
-import styles from '../primitives/ModalShell.module.css';
+import styles from '../components/ModalShell/ModalShell.module.css';
 
 export interface ClosePromptProps {
   onChoice: (choice: CloseChoice) => Promise<void> | void;
@@ -50,8 +50,8 @@ const ClosePrompt: React.FC<ClosePromptProps> = ({
 
   return (
     <ModalShell
-      initialFocusRef={cancelRef}
-      labelledBy="close-prompt-title"
+      dismiss="escape"
+      initialFocus={cancelRef}
       /*
        * A click outside deliberately does nothing. This box asks whether to
        * keep unsaved work, and a stray click is the least deliberate gesture a
@@ -59,8 +59,7 @@ const ClosePrompt: React.FC<ClosePromptProps> = ({
        * Escape still cancels, so the box is dismissable by keyboard, and Cancel
        * takes focus when it opens.
        */
-      onBackdrop={(): void => undefined}
-      onEscape={(): void => choose('cancel')}
+      onRequestClose={(): void => choose('cancel')}
       open
       title={title}
     >

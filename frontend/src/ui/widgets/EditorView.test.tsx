@@ -454,7 +454,9 @@ it('STORY-015-AC-6 matches the split-view structure', () => {
   expect(within(previewPane).getByText('● Preview · live')).toBeVisible();
   expect(within(previewPane).getByText('GFM')).toBeVisible();
 
-  const segmentedStyles = readSource('src/ui/primitives/Segmented.module.css');
+  const segmentedStyles = readSource(
+    'src/ui/primitives/Segmented/Segmented.module.css',
+  );
   expect(segmentedStyles).toMatch(/var\(--segmented-[\w-]+\)/);
   expect(segmentedStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
 });

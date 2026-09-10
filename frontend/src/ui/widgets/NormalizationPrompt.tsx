@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { t } from '../../i18n';
+import ModalShell from '../components/ModalShell';
 import Button from '../primitives/Button';
 import styles from './SettingsDialog.module.css';
 
@@ -22,12 +23,6 @@ const NormalizationPrompt: React.FC<NormalizationPromptProps> = ({
   const cancelRef = useRef<HTMLButtonElement | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect((): void => {
-    if (open) {
-      cancelRef.current?.focus();
-    }
-  }, [open]);
-
   if (!open) {
     return null;
   }
@@ -39,29 +34,16 @@ const NormalizationPrompt: React.FC<NormalizationPromptProps> = ({
   };
 
   return (
-    <>
-      <div
-        aria-hidden="true"
-        className={styles.overlay}
-        data-normalization-backdrop
-        onPointerDown={onCancel}
-      />
-      <section
-        aria-labelledby="normalization-dialog-title"
-        aria-modal="true"
-        className={styles.content}
-        data-normalization-prompt
-        onKeyDown={(event): void => {
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            onCancel();
-          }
-        }}
-        role="dialog"
-        tabIndex={-1}
-      >
+    <ModalShell
+      dismiss="backdrop"
+      initialFocus={cancelRef}
+      onRequestClose={onCancel}
+      open
+      title={t('normalization.title')}
+      width="440px"
+    >
+      <div className={styles.normalizationBody} data-normalization-prompt>
         <header>
-          <h1 id="normalization-dialog-title">{t('normalization.title')}</h1>
           <p>
             {t('normalization.message', {
               ending: proposedEnding.toUpperCase(),
@@ -88,8 +70,8 @@ const NormalizationPrompt: React.FC<NormalizationPromptProps> = ({
             {t('normalization.cancel')}
           </Button>
         </footer>
-      </section>
-    </>
+      </div>
+    </ModalShell>
   );
 };
 

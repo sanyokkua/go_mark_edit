@@ -28,9 +28,13 @@ export type IconName =
   | 'task-list'
   | 'assistant';
 
-export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {
-  name: IconName;
-  size?: number;
+export interface IconProps extends Omit<
+  SVGProps<SVGSVGElement>,
+  'name' | 'stroke'
+> {
+  readonly name: IconName;
+  readonly size?: number | string;
+  readonly stroke?: number | string;
 }
 
 const iconShapes: Record<IconName, React.JSX.Element> = {
@@ -49,10 +53,8 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
   close: <path d="m3.5 3.5 8 8m0-8-8 8" />,
   editor: <path d="M2.5 2.5h10v10h-10zm2.5 2.5h5m-5 2.5h5m-5 2.5h3" />,
   /*
-   * The binding source draws the document glyph in a 24-unit box
-   * (mockup.html #i-file) and renders it at 15px, so its stroke resolves to
-   * 1.75 * 15/24. Keeping the source viewBox reproduces those pixels exactly
-   * instead of approximating the path in the 15-unit space.
+   * The document glyph uses a 24-unit box, so its source viewBox stays at 24
+   * units while the shared CSS token controls the rendered size.
    */
   file: (
     <>
@@ -68,12 +70,6 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
   'heading-3': (
     <path d="M2.5 3v9m0-4.5h4M6.5 3v9m3 1h1.6c1.1 0 1.6-.7 1.6-1.6S12.2 11 11 11h-.6m.6 0c1.2 0 1.8-.6 1.8-1.5S12.1 8 11 8H9.5" />
   ),
-  /*
-   * Binding source: mockup.html #i-image, drawn in a 24-unit box and rendered
-   * at 15px. Same reasoning as `file` above — keeping the source viewBox
-   * reproduces the binding's pixels instead of approximating the path in the
-   * 15-unit space.
-   */
   image: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -88,11 +84,10 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
     </>
   ),
   italic: <path d="M6 2.5h5M4 12.5h5m-2-10-2 10" />,
-  /* Binding source: mockup.html #i-link, drawn in a 24-unit box — see `image`. */
   link: (
     <>
-      <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
-      <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+      <path d="M6.2 9.8 5 11a2.5 2.5 0 0 1-3.5-3.5l2-2A2.5 2.5 0 0 1 7 5m1.8.2L10 4a2.5 2.5 0 0 1 3.5 3.5l-2 2A2.5 2.5 0 0 1 8 9" />
+      <path d="m5.5 7.5 4-.1" />
     </>
   ),
   more: (
@@ -146,24 +141,43 @@ const iconViewBoxes: Partial<Record<IconName, string>> = {
   link: '0 0 24 24',
 };
 
+function cssSize(value: number | string): string {
+  return typeof value === 'number' ? `${value}px` : value;
+}
+
+function cssStroke(value: number | string): string {
+  return String(value);
+}
+
 const Icon: React.FC<IconProps> = ({
   name,
-  size = 15,
+  size,
+  stroke,
   className,
+  style,
   ...props
-}: IconProps): React.JSX.Element => (
-  <svg
-    aria-hidden={props['aria-label'] === undefined ? true : undefined}
-    className={`${styles.icon} ${className ?? ''}`.trim()}
-    data-icon-name={name}
-    focusable="false"
-    height={size}
-    viewBox={iconViewBoxes[name] ?? '0 0 15 15'}
-    width={size}
-    {...props}
-  >
-    {iconShapes[name]}
-  </svg>
-);
+}: IconProps): React.JSX.Element => {
+  const tokenStyle = {
+    ...style,
+    ...(size === undefined ? {} : { '--icon-size': cssSize(size) }),
+    ...(stroke === undefined ? {} : { '--icon-stroke': cssStroke(stroke) }),
+  } as React.CSSProperties;
+
+  return (
+    <svg
+      {...props}
+      aria-hidden={props['aria-label'] === undefined ? true : undefined}
+      className={`${styles.icon} ${className ?? ''}`.trim()}
+      data-icon-name={name}
+      focusable="false"
+      height={size ?? 15}
+      style={tokenStyle}
+      viewBox={iconViewBoxes[name] ?? '0 0 15 15'}
+      width={size ?? 15}
+    >
+      {iconShapes[name]}
+    </svg>
+  );
+};
 
 export default Icon;
