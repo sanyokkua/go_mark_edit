@@ -2,10 +2,10 @@
   display: flex;
   flex: 1 1 0;
   flex-direction: row;
-  gap: var(--editor-view-gap);
+  gap: var(--editor-stage-gap);
   min-height: 0;
   min-width: 0;
-  padding: var(--pane-body-padding-block) var(--pane-body-padding-inline);
+  padding: var(--editor-stage-padding);
 }
 
 .paneLive {
@@ -13,7 +13,8 @@
 }
 
 .previewContent {
-  background: var(--surface);
+  background: var(--preview-content-background);
+  backdrop-filter: var(--preview-content-backdrop-filter);
   flex: 1 1 0;
   min-height: 0;
   min-width: 0;
@@ -27,19 +28,4 @@
     gap: 6px;
     padding: var(--pane-body-padding-block) var(--pane-body-padding-inline);
   }
-}
-
-@media (min-width: 377px) {
-  :global(:root[data-theme='minimal']) .stage {
-    gap: 0;
-    padding: 0;
-  }
-}
-
-:global(:root[data-theme='minimal']) .previewContent {
-  background: transparent;
-}
-
-:global(:root[data-theme='glass']) .previewContent {
-  backdrop-filter: var(--blur);
 }

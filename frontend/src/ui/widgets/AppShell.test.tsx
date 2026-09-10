@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -163,40 +164,47 @@ it('T040 keeps the empty workspace as a binding surface frame without enumeratio
   expect(workspaceRule).toMatch(/background:\s*var\(--surface-2\)/);
 });
 
-it('T045 keeps the parity shell route bounded to the binding window geometry', () => {
-  const shellSource = readSource('src/ui/widgets/WorkspaceLayout.tsx');
-  const baseStyles = readSource('src/ui/styles/base.css');
-  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-
-  expect(shellSource).toContain(
-    "data-parity-shell={parityShell ? 'true' : undefined}",
-  );
-  expect(shellSource).toContain('data-parity-family={parityFamily}');
-  expect(baseStyles).toMatch(
-    /\.application-frame:has\(\[data-parity-shell='true'\]\)/,
-  );
-  expect(baseStyles).toContain('width: 97vw;');
-  expect(baseStyles).toContain('height: min(792px, 86vh);');
-  expect(baseStyles).toContain('margin: 130px auto 0;');
-  expect(baseStyles).toContain('flex: 0 0 min(792px, 86vh);');
-  expect(baseStyles).toMatch(
-    /\.application-frame:has\(\[data-parity-shell='true'\]\)\s*\{[^}]*border:\s*1px solid var\(--stroke\);/s,
-  );
-  expect(baseStyles).toMatch(
-    /\.application-content:has\(\[data-parity-shell='true'\]\)\s*\{[^}]*overflow:\s*visible;/s,
+it('T045 keeps parity overflow visible only at the minimum viewport', () => {
+  const originalWidth = window.innerWidth;
+  const originalUrl = window.location.href;
+  window.history.replaceState(
+    {},
+    '',
+    '/?parity-case=primary:toolbar-overflow:375',
   );
 
-  const parityShellRule = shellStyles.match(
-    /\.shell\[data-parity-shell='true'\]\s*\{([^}]*)\}/,
-  )?.[1];
-  expect(parityShellRule).toBeDefined();
-  expect(parityShellRule).toMatch(/min-height:\s*2px/);
-  expect(shellStyles).toMatch(
-    /\.shell\[data-parity-shell='true'\]\s*\{[^}]*overflow:\s*visible;/s,
-  );
-  expect(shellStyles).toMatch(
-    /\.shell\[data-parity-shell='true'\] \.document\s*\{[^}]*overflow:\s*visible;/s,
-  );
+  try {
+    setViewportWidth(375);
+    renderShell();
+
+    const narrowShell = screen.getByTestId('application-shell');
+    const narrowDocument = screen.getByRole('main', {
+      name: 'Document area',
+    });
+    expect(narrowShell).toHaveStyle({
+      minHeight: '2px',
+      overflow: 'visible',
+    });
+    expect(narrowDocument).toHaveStyle({ overflow: 'visible' });
+
+    cleanup();
+    store.dispatch(resetProjection());
+    setViewportWidth(768);
+    renderShell();
+
+    const wideShell = screen.getByTestId('application-shell');
+    const wideDocument = screen.getByRole('main', {
+      name: 'Document area',
+    });
+    expect(wideShell).toHaveStyle({ minHeight: '2px' });
+    expect(wideShell.style.overflow).toBe('');
+    expect(wideDocument.style.overflow).toBe('');
+  } finally {
+    cleanup();
+    store.dispatch(resetProjection());
+    window.history.replaceState({}, '', originalUrl);
+    setViewportWidth(originalWidth);
+  }
 });
 
 it('FR-WS-008 renders an immediate non-durable divider width while sending the durable intent to Go', () => {
@@ -531,9 +539,7 @@ it('FR-WS-008 uses exact responsive presentations without durable responsive wri
 
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
   const editorStyles = readSource('src/ui/widgets/EditorStage.module.css');
-  const toolbarStyles = readSource(
-    'src/ui/widgets/EditorChrome.module.css',
-  );
+  const toolbarStyles = readSource('src/ui/widgets/EditorChrome.module.css');
   const baseStyles = readSource('src/ui/styles/base.css');
   expect(shellStyles).toMatch(
     /@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px/,

@@ -69,3 +69,208 @@
   display: grid;
   gap: var(--control-gap);
 }
+
+/* The reviewed reference toolbar keeps its visual adaptation with the Bar
+   component that owns the toolbar DOM. Widget styles provide the product
+   composition; this shared surface owns the temporary reference presentation. */
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id][data-icon] {
+  font-family: Arial, sans-serif;
+  font-size: 12.5px;
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='format'],
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='compact'],
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='lint'] {
+  color: var(--muted);
+  font-family: Arial, sans-serif;
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='bold']
+  > svg,
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='italic']
+  > svg,
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='strike']
+  > svg,
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='inline-code']
+  > svg,
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id^='heading-']
+  > svg,
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='bullet-list']
+  > svg,
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='numbered-list']
+  > svg,
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='task-list']
+  > svg,
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='quote']
+  > svg,
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='table']
+  > svg {
+  display: none;
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='bold']::after {
+  content: 'B';
+  font-weight: 700;
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='italic']::after {
+  content: 'I';
+  font-style: italic;
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='strike']::after {
+  content: 'S';
+  text-decoration: line-through;
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='inline-code']::after {
+  content: '</>';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='heading-1']::after {
+  content: 'H1';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='heading-2']::after {
+  content: 'H2';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='heading-3']::after {
+  content: 'H3';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='bullet-list']::after {
+  content: '•';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='numbered-list']::after {
+  content: '1.';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='task-list']::after {
+  content: '☑';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='quote']::after {
+  content: '❝';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='table']::after {
+  content: '▦';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='format']::before {
+  content: '⌁ ';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='compact']::before {
+  content: '⇥ ';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-action-id='lint']::before {
+  content: '✓ ';
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  .main
+  > [data-island-label]:has([data-action-id='format']) {
+  background: transparent;
+  gap: 4px;
+  padding: 0;
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  .main
+  > [data-island-label]:has([data-action-id='format'])
+  [data-action-id] {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-toolbar-arrangement] {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  gap: 0;
+  padding: var(--toolbar-group-padding);
+}
+
+:global(.application-frame:has([data-parity-shell='true']))
+  .bar[data-bar-role='toolbar']
+  [data-toolbar-arrangement]
+  [data-action-id] {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: var(--arrangement-option-padding);
+}
+
+@media (min-width: 769px) {
+  :global(.application-frame:has([data-parity-family='toolbar-overflow']))
+    .bar[data-bar-role='toolbar']
+    [data-bar-overflow-trigger='true'] {
+    display: inline-flex;
+  }
+}

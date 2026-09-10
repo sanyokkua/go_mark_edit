@@ -333,12 +333,13 @@ close scenarios also run on `wails dev` and in the walkthrough.
   - **Depends on**: T022.
   - **Branch**: `feature/004-codebase-refactoring-statusbar`; `refactor(ui): status facts model and one notification surface`.
 
-- [ ] T028 [US3] Move every theme difference out of widget stylesheets into tokens in `frontend/src/ui/styles/tokens.css` and remove dead and undefined tokens
+- [x] T028 [US3] Move every theme difference out of widget stylesheets into tokens in `frontend/src/ui/styles/tokens.css` and remove dead and undefined tokens
   - **Implements**: FR-044 (selectors and tokens halves), SC-008; scenarios 3.4, 7.3; contract "Tokens and themes".
   - **Scope**: remove every `[data-theme]`, `[data-mode]` and `data-parity*` selector from `frontend/src/ui/widgets/**/*.css` (structural differences into the shared component's stylesheet, values into `tokens.css`); declare `--icon-size` and `--icon-stroke` in `tokens.css`; remove every dead token from `tokens.css` and define every token that is used but undefined.
   - **Evidence**: `grep -rnE '\[data-(theme|mode|parity)' frontend/src/ui/widgets` prints nothing; every token in `frontend/src/ui/styles/tokens.css` referenced and every `var(--…)` declared (verified by `tools/lint/tokens.mjs` at T037); E2E case 8 (`menus.test.ts`) still green.
   - **Depends on**: T023, T024, T025, T026, T027.
   - **Branch**: feature branch; `refactor(ui): theme differences as tokens only`.
+  - **Run evidence (2026-09-10, Darwin 25.6.0 arm64)**: the exact widget selector scan passed; the standalone token audit found 219 declarations with no dead declarations or undefined `var(--…)` references; the affected rendered behavior suites passed 4 suites / 76 tests; `scripts/test unit` run `20260910T175253Z-49186` passed Go unit tests and 103 Jest suites / 699 tests; `scripts/test integration` run `20260910T175332Z-49510` passed 9 suites / 57 tests; real-backend `menus.test.ts` case 8 passed 1/1; the isolated appearance suite passed 5/5 across the two cases and three transition repeats; frontend Vite and raw Wails production builds exited 0; TypeScript, frontend architecture checks and `git diff --check` passed. Two full 21-case E2E runs reached 20/21 with only the existing appearance mode poll timing out (`light` observed as `dark`); the required case 8 and isolated appearance checks remained green. The repository format check added only the pre-existing `specs/004-codebase-refactoring/plan.md` warning.
 
 - [ ] T029 [US3] Make `frontend/src/logic/actions/actionRegistry.ts` the single availability reader, one format runner, one settings command owner and typed outcomes
   - **Implements**: FR-045, FR-048; data-model `ActionAvailability`; scenario 3.7; coverage table rows `logic/actions/*.test.ts(x)`, `settingsCommands.test.ts`, `AppearanceControls.test.tsx`.

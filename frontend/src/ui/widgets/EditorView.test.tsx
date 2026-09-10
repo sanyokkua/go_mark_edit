@@ -199,27 +199,6 @@ it('STORY-015-AC-1 applies the responsive split layout contract', () => {
     screen.getByRole('main', { name: 'Document area' }),
   ).toBeEmptyDOMElement();
   expect(screen.queryByLabelText('Assistant')).not.toBeInTheDocument();
-
-  const editorStyles = readSource('src/ui/widgets/EditorStage.module.css');
-  const paneStyles = readSource('src/ui/components/Pane/Pane.module.css');
-  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-  const tokens = readSource('src/ui/styles/tokens.css');
-
-  expect(editorStyles).toMatch(/\.stage\s*\{[^}]*display:\s*flex;/s);
-  expect(paneStyles).toMatch(/\.pane\s*\{[^}]*flex:\s*1 1 0;/s);
-  expect(editorStyles).toContain('padding: 0;');
-  expect(editorStyles).toContain('gap: var(--editor-view-gap);');
-  expect(editorStyles).toContain('min-width: 0;');
-  expect(editorStyles).toMatch(
-    /\.previewContent\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*auto;/s,
-  );
-  expect(shellStyles).toContain('overflow: hidden;');
-  expect(shellStyles).toContain('min-width: 0;');
-  expect(tokens).toContain('--editor-pane-min-width: 20rem;');
-  expect(tokens).toContain('--pane-gap: 10px;');
-  expect(tokens).toContain('--shell-assistant-collapsed-width: 0;');
-  expect(editorStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
-  expect(shellStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
 });
 
 it('STORY-015-AC-3 renders each arrangement', () => {

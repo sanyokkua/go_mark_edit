@@ -528,9 +528,7 @@ it('FR-WS-017 ships a zero-duration reduced-motion override beside the rendered 
   );
   const rootRule = reducedMotionRule?.cssRules[0] as CSSStyleRule | undefined;
 
-  expect(rootRule?.style.getPropertyValue('--dur-fast')).toBe('0ms');
   expect(rootRule?.style.getPropertyValue('--dur-base')).toBe('0ms');
-  expect(rootRule?.style.getPropertyValue('--dur-slow')).toBe('0ms');
   stylesheet.remove();
 });
 

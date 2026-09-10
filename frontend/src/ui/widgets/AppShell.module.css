@@ -23,10 +23,6 @@
     var(--shell-assistant-collapsed-width);
 }
 
-.shell[data-parity-shell='true'] {
-  min-height: 2px;
-}
-
 .shell[data-workspace-visible='false'] {
   --shell-workspace-column: 0px;
 }
@@ -64,14 +60,6 @@
     display: grid;
     grid-template-areas: 'workspace document assistant';
     position: relative;
-  }
-
-  .shell[data-parity-shell='true'] {
-    overflow: visible;
-  }
-
-  .shell[data-parity-shell='true'] .document {
-    overflow: visible;
   }
 
   .document {

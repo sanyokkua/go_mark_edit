@@ -318,6 +318,7 @@ const Bar: React.FC<BarProps> = ({
             overflowTriggerClassName ?? ''
           }`.trim()}
           expanded={overflowOpen}
+          data-bar-overflow-trigger="true"
           onClick={(): void => setOverflowOpen((open) => !open)}
           onOpen={(): void => setOverflowOpen(true)}
         >

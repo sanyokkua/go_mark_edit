@@ -69,7 +69,11 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
   const shellStyle = {
     '--shell-left-width': `${workspaceWidth}px`,
+    ...(parityShell ? { minHeight: '2px' } : undefined),
+    ...(parityShell && minimumWindow ? { overflow: 'visible' } : undefined),
   } as CSSProperties;
+  const documentStyle =
+    parityShell && minimumWindow ? { overflow: 'visible' } : undefined;
 
   return (
     <div
@@ -93,7 +97,11 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           width={workspaceWidth}
         />
       )}
-      <main aria-label={t('shell.document')} className={styles.document}>
+      <main
+        aria-label={t('shell.document')}
+        className={styles.document}
+        style={documentStyle}
+      >
         {children}
       </main>
     </div>

@@ -334,6 +334,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         trailing={
           <Island
             className={`${styles.group} ${styles.arrangement}`}
+            data-toolbar-arrangement="true"
             label={t('editor.arrangement')}
           >
             <Segmented

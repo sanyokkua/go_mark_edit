@@ -20,18 +20,12 @@
   white-space: nowrap;
 }
 
-.actionIcon {
-  align-items: center;
-  display: inline-flex;
-  justify-content: center;
-  min-inline-size: var(--icon-size);
-}
-
 .toolbar {
   align-items: center;
-  block-size: var(--toolbar-row-height);
   backdrop-filter: var(--blur);
+  block-size: var(--toolbar-row-height);
   border-bottom: var(--control-border-width) solid var(--stroke-soft);
+  box-shadow: var(--toolbar-shadow);
   display: flex;
   flex: 0 0 var(--toolbar-row-height);
   flex-wrap: nowrap;
@@ -40,28 +34,14 @@
   padding: var(--toolbar-row-padding);
 }
 
-:global(:root[data-theme='glass']) .toolbar {
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
-}
-
-/*
- * Binding source: mockup.html `.tsp{flex:1}` (:289), the empty element sitting
- * between the overflow group and the arrangement segment (:672–:673). It is what
- * holds the segment against the toolbar's trailing edge; without it the segment
- * packs against the Format/Compact/Lint buttons.
- *
- * Two earlier classes here, `.utilityGroup` and `.rightGroup`, were never
- * applied to anything — `.rightGroup` was a half-built `margin-inline-start:
- * auto` version of this. A spacer is the binding's own mechanism, so it replaces
- * them rather than sitting beside them.
- */
+/* Binding source: mockup.html `.tsp{flex:1}` (:289), the empty element sitting
+   between the overflow group and the arrangement segment (:672–:673). It is what
+   holds the segment against the toolbar's trailing edge; without it the segment
+   packs against the Format/Compact/Lint buttons. */
 .spacer {
   flex: 1;
 }
 
-/* Binding source: mockup.html `.app[data-w="375"] .tsp{display:none}` (:61).
-   The narrow layout relocates the segment into the overflow popup, so there is
-   nothing left to hold right and the remaining controls pack together. */
 @media (max-width: 376px) {
   .spacer {
     display: none;
@@ -78,8 +58,8 @@
   border-radius: var(--arrangement-option-radius);
   block-size: var(--toolbar-action-height);
   font-size: var(--toolbar-icon-label-font-size);
-  min-inline-size: var(--toolbar-action-min-width);
   max-width: 100%;
+  min-inline-size: var(--toolbar-action-min-width);
   overflow: hidden;
   padding-inline: var(--toolbar-action-padding-inline);
   text-overflow: ellipsis;
@@ -111,10 +91,15 @@
 }
 
 .group {
-  background: var(--surface-2);
+  backdrop-filter: var(--toolbar-group-backdrop-filter);
+  background: var(--toolbar-group-background);
   border: 0;
   border-radius: var(--toolbar-group-radius);
   padding: var(--toolbar-group-padding);
+}
+
+.group:not(.arrangement) {
+  padding: var(--toolbar-group-utility-padding);
 }
 
 .arrangement {
@@ -125,233 +110,6 @@
 .arrangement .action {
   block-size: auto;
   border-radius: var(--arrangement-option-radius);
-  font-size: 11.5px;
-  padding: var(--arrangement-option-padding);
-}
-
-/* Binding source: mockup.html `.tbtn{min-width:30px;height:30px;padding:0 8px}`
-   (:287). Every toolbar control derives its width from its own content inside
-   that box — a 30px floor, 8px of inline padding either side, and the 1px
-   transparent border the same rule declares. Nothing here may pin a measured
-   width: the binding's widths are fractional (`</>` is 36.078125px, `H1` is
-   33.984375px), a pinned integer is wrong in the fractional tail, and the error
-   accumulates left to right across the row. */
-
-/* The binding parity route retains the production action registry and
-   accessible labels, but its in-scope toolbar uses the binding's compact
-   glyph treatment and right-anchored arrangement segment. Ordinary startup
-   keeps the product icon treatment and responsive grouping above. */
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon] {
-  font-family: Arial, sans-serif;
-  font-size: 12.5px;
-}
-
-/* The binding's `.tbtn` (mockup.html:287) sets a size but never a family, so a
-   `<button>` keeps Chromium's UA form-control family — Arial. Production sets
-   `font: inherit` on `.action`, which is the better product choice, so the
-   binding family is scoped to the parity route exactly like the glyph
-   treatment above. `.tbtn.txt` (mockup.html:288) also carries `--muted`, which
-   `.action`'s `--text` would otherwise override. */
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-action-id='format'],
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-action-id='compact'],
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-action-id='lint'] {
-  color: var(--muted);
-  font-family: Arial, sans-serif;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='bold']
-  .actionIcon,
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='italic']
-  .actionIcon,
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='strike']
-  .actionIcon,
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='inline-code']
-  .actionIcon,
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon^='heading-']
-  .actionIcon,
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='bullet-list']
-  .actionIcon,
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='numbered-list']
-  .actionIcon,
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='task-list']
-  .actionIcon,
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='quote']
-  .actionIcon,
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='table']
-  .actionIcon {
-  display: none;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='bold']::after {
-  content: 'B';
-  font-weight: 700;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='italic']::after {
-  content: 'I';
-  font-style: italic;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='strike']::after {
-  content: 'S';
-  text-decoration: line-through;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='inline-code']::after {
-  content: '</>';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='heading-1']::after {
-  content: 'H1';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='heading-2']::after {
-  content: 'H2';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='heading-3']::after {
-  content: 'H3';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='bullet-list']::after {
-  content: '•';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='numbered-list']::after {
-  content: '1.';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='task-list']::after {
-  content: '☑';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='quote']::after {
-  content: '❝';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .action[data-icon='table']::after {
-  content: '▦';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  [data-action-id='format']::before {
-  content: '⌁ ';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  [data-action-id='compact']::before {
-  content: '⇥ ';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  [data-action-id='lint']::before {
-  content: '✓ ';
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  > .group:has([data-action-id='format']) {
-  background: transparent;
-  gap: 4px;
-  padding: 0;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  > .group:has([data-action-id='format'])
-  .action {
-  box-sizing: border-box;
-  flex: 0 0 auto;
-}
-
-/* Binding source: mockup.html `.seg{display:flex;padding:3px}` (:290). The
-   segment is right-anchored by the binding's `.tsp{flex:1}` spacer; production
-   reaches the same edge with an auto inline-start margin. Its width is the sum
-   of its own options, never a pinned figure. It is held against that edge by the
-   binding's own `.tsp` spacer, which both routes share — a second
-   `margin-inline-start: auto` here would be a parity-only mechanism doing the
-   same job, and the two would drift the moment either moved. */
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .arrangement {
-  box-sizing: border-box;
-  flex: 0 0 auto;
-  gap: 0;
-  padding: var(--toolbar-group-padding);
-}
-
-/* Binding source: mockup.html `.seg button{font:inherit;font-size:11.5px;
-   padding:5px 12px}` (:291). The segment options carry `data-icon`, so the
-   glyph rule above would otherwise give them the UA form-control family; this
-   restores the theme family the binding's `font: inherit` resolves to.
-   It restores the *family* only, deliberately. The `font` shorthand also
-   resets `font-weight`, which would defeat `.arrangement .action[aria-checked]`
-   below — production's mirror of `.seg button.active{font-weight:600}`
-   (mockup.html:292) — and freeze every option at 400. The selected option is
-   semibold and therefore wider, so the segment's width is only correct while
-   the weight still follows the selection. */
-:global(.application-frame:has([data-parity-shell='true']))
-  .toolbar
-  .arrangement
-  .action {
-  box-sizing: border-box;
-  flex: 0 0 auto;
-  font-family: inherit;
   font-size: 11.5px;
   padding: var(--arrangement-option-padding);
 }
@@ -386,9 +144,9 @@
 
 .applicationOverflowItems {
   display: none;
+  height: 119px;
   margin-block-start: 4px;
   padding-block-start: 0;
-  height: 119px;
 }
 
 .overflowAt768,
@@ -410,32 +168,6 @@
   flex: 1 1 auto;
 }
 
-:global(:root[data-theme='material']) .group {
-  background: var(--surface-2);
-  border-color: transparent;
-}
-
-/* Binding source: mockup.html `body[data-theme="minimal"] .tgrp{background:none;padding:0}`.
-   The arrangement segment is `.seg`, which the binding does not override under
-   Minimal, so it keeps its surface, border and 3px padding. */
-:global(:root[data-theme='minimal']) .group:not(.arrangement) {
-  background: transparent;
-  border-color: transparent;
-  backdrop-filter: none;
-  padding: 0;
-}
-
-:global(:root[data-theme='glass']) .group,
-:global(:root[data-theme='glass']) .tabItem {
-  backdrop-filter: var(--blur);
-  background: var(--surface-2);
-  border-color: transparent;
-}
-
-:global(:root[data-theme='glass']) .arrangement {
-  border-color: var(--stroke-soft);
-}
-
 @media (max-width: 768px) {
   .overflow {
     display: block;
@@ -449,14 +181,6 @@
 @media (min-width: 769px) {
   .overflow {
     display: none;
-  }
-}
-
-@media (min-width: 769px) {
-  :global(.application-frame:has([data-parity-family='toolbar-overflow']))
-    .toolbar
-    .overflow {
-    display: block;
   }
 }
 
@@ -476,20 +200,14 @@
   }
 }
 
-/* Binding source: mockup.html `.seg button{border:0;color:var(--muted)}`
-   (:291) and `.seg button.active{color:var(--accent-contrast);
-   font-weight:600}` (:292). The segment options carry no border of their own,
-   and only the selected option is semibold and drawn on the accent. The
-   unselected options are muted — `.action`'s `--text` is the toolbar default
-   and is wrong here. */
+/* The arrangement options are a segmented control: only the selected option
+   carries the accent foreground and semibold weight. */
 .arrangement .action {
   border-width: 0;
   color: var(--muted);
   font-weight: 400;
 }
 
-/* The muted colour above outranks `.action[aria-checked='true']` on source
-   order, so the selected option restates the accent foreground here. */
 .arrangement .action[aria-checked='true'] {
   color: var(--accent-contrast);
   font-weight: 600;
