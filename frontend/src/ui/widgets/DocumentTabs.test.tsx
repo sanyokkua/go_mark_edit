@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import type { MutableRefObject } from 'react';
+import { useEffect, useState, type MutableRefObject } from 'react';
 
 import {
   act,
@@ -12,9 +12,11 @@ import {
 } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
+import type { DocumentConflictAdapter } from '../../logic/adapter';
 import type {
   ClassifiedError,
   ConflictPreview,
+  ConflictResult,
   DocumentMetadata,
   DocumentTransitionResult,
   PathCommandResult,
@@ -31,7 +33,11 @@ import {
   type NotificationRemediation,
 } from '../../logic/store/notificationsSlice';
 import { getActionAvailability } from '../../logic/actions/actionRegistry';
+import { onApplicationForeground } from './foregroundFocus';
 import DocumentTabs from './DocumentTabs';
+import ExternalChangePrompt, {
+  type ExternalChangeDecision,
+} from './ExternalChangePrompt';
 import {
   TabRemediationContext,
   type TabRemediationExecutor,
@@ -85,17 +91,12 @@ function hydrate(
 }
 
 /*
- * A conflict adapter that answers "nothing changed" to everything. T133 made
- * `DocumentTabs` run FR-FT-020's foreground check on every window `focus`, so a
- * test that dispatches one — the two T142 cases below do, to prove FR-FT-037's
- * deferred focus restoration — otherwise falls through to the production
- * adapter and calls a Wails bridge that cannot exist under jsdom. Passing this
- * states the dependency instead of relying on the sweep's error handling to
- * hide it.
+ * A conflict adapter that answers "nothing changed" to everything. The app
+ * layer owns the foreground sweep now, so this is supplied only to the small
+ * app-layer harness used by tests that dispatch a focus event while proving
+ * deferred focus restoration.
  */
-function quietConflictAdapter(): NonNullable<
-  Parameters<typeof DocumentTabs>[0]['conflictAdapter']
-> {
+function quietConflictAdapter(): DocumentConflictAdapter {
   return {
     authorizeKeepMine: jest.fn(async () => ({ status: 'authorized' as const })),
     cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
@@ -109,14 +110,103 @@ function quietConflictAdapter(): NonNullable<
 
 function renderTabs(
   adapter: Parameters<typeof DocumentTabs>[0]['adapter'] = {},
-  conflictAdapter: Parameters<
-    typeof DocumentTabs
-  >[0]['conflictAdapter'] = undefined,
+  conflictAdapter: DocumentConflictAdapter | undefined = undefined,
 ): void {
   render(
     <Provider store={store}>
-      <DocumentTabs adapter={adapter} conflictAdapter={conflictAdapter} />
+      <TestAppTabLayer adapter={adapter} conflictAdapter={conflictAdapter} />
     </Provider>,
+  );
+}
+
+function TestAppTabLayer({
+  adapter,
+  conflictAdapter,
+}: {
+  adapter: Parameters<typeof DocumentTabs>[0]['adapter'];
+  conflictAdapter: DocumentConflictAdapter | undefined;
+}): React.JSX.Element {
+  const [preview, setPreview] = useState<ConflictPreview | null>(null);
+  const orderedIds = useAppSelector((state) => state.documents.orderedIds);
+  const documentsById = useAppSelector((state) => state.documents.byId);
+  const activeDocumentId = useAppSelector(
+    (state) => state.documents.activeDocumentId,
+  );
+  useEffect((): (() => void) | undefined => {
+    if (conflictAdapter === undefined) return undefined;
+    return onApplicationForeground((): void => {
+      void (async (): Promise<void> => {
+        for (const documentId of orderedIds) {
+          const document = documentsById[documentId];
+          if (document === undefined || document.path === '') continue;
+          const result = await conflictAdapter.checkExternalChanges(documentId);
+          if (
+            result.status === 'detected' &&
+            result.preview !== undefined &&
+            documentId === activeDocumentId
+          ) {
+            setPreview(result.preview);
+          }
+        }
+      })();
+    });
+  }, [activeDocumentId, conflictAdapter, documentsById, orderedIds]);
+  const valid =
+    preview === null ||
+    documentsById[preview.documentId]?.contentRevision === undefined ||
+    documentsById[preview.documentId]?.contentRevision ===
+      preview.contentRevision;
+  const onDecision = async (
+    decision: ExternalChangeDecision,
+  ): Promise<void> => {
+    const current = preview;
+    if (current === null || conflictAdapter === undefined) return;
+    let result: ConflictResult;
+    switch (decision) {
+      case 'reload':
+        result = await conflictAdapter.reloadFromDisk(
+          current.documentId,
+          current.contentRevision,
+          current.detectedDiskVersion,
+        );
+        break;
+      case 'keep-mine':
+        if (!valid) return;
+        result = await conflictAdapter.authorizeKeepMine(
+          current.documentId,
+          current.contentRevision,
+          current.path ?? '',
+          current.detectedDiskVersion,
+        );
+        break;
+      case 'skip':
+        result = await conflictAdapter.skipConflict(
+          current.documentId,
+          current.contentRevision,
+          current.detectedDiskVersion,
+        );
+        break;
+      case 'cancel':
+        result = await conflictAdapter.cancelConflict(
+          current.documentId,
+          current.contentRevision,
+          current.detectedDiskVersion,
+        );
+        break;
+    }
+    if (result.preview !== undefined) setPreview(result.preview);
+    else if (result.error === undefined) setPreview(null);
+  };
+  return (
+    <>
+      <DocumentTabs adapter={adapter} onExternalConflict={setPreview} />
+      <ExternalChangePrompt
+        onDecision={onDecision}
+        open={preview !== null}
+        preview={preview ?? undefined}
+        valid={valid}
+      />
+    </>
   );
 }
 
@@ -126,7 +216,7 @@ beforeEach(() => {
 
 it('T033 applies the contained tab-strip metrics and fixed add-control size', () => {
   const tabStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+    resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
     'utf8',
   );
 
@@ -157,7 +247,7 @@ it('T033 applies the contained tab-strip metrics and fixed add-control size', ()
 
 it('T045 bounds the parity tab menu to the reviewed reference anchor', () => {
   const tabStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+    resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
     'utf8',
   );
 
@@ -176,7 +266,7 @@ it('T045 bounds the parity tab menu to the reviewed reference anchor', () => {
 
 it('T045 uses the binding context-menu shadow token', () => {
   const tabStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+    resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
     'utf8',
   );
   const tokens = readFileSync(
@@ -193,7 +283,7 @@ it('T045 uses the binding context-menu shadow token', () => {
 
 it('T045 moves the narrow parity tab menu into the reviewed viewport position', () => {
   const tabStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+    resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
     'utf8',
   );
 
@@ -204,7 +294,7 @@ it('T045 moves the narrow parity tab menu into the reviewed viewport position', 
 
 it('T045 restores the parity new-tab control surface', () => {
   const tabStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+    resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
     'utf8',
   );
 
@@ -240,7 +330,7 @@ it('T062 makes the tablist the direct tab-and-add layout surface', () => {
 
 it('T062 keeps the minimal new-tab control as a block text control', () => {
   const tabStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+    resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
     'utf8',
   );
 
@@ -254,7 +344,7 @@ it('T062 keeps the minimal new-tab control as a block text control', () => {
 
 it('T045 raises the parity tab strip above the compressed shell menu hit area', () => {
   const tabStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+    resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
     'utf8',
   );
 
@@ -1936,7 +2026,6 @@ it('T140 reports a failed switch and leaves the outgoing tab active', async () =
     <Provider store={store}>
       <DocumentTabs
         adapter={{ activateDocument }}
-        conflictAdapter={quietConflictAdapter()}
         onActivateDocument={onActivateDocument}
       />
     </Provider>,
@@ -1982,10 +2071,7 @@ it('T140 flushes the outgoing document before the adapter fallback activates', a
   );
   render(
     <Provider store={store}>
-      <DocumentTabs
-        adapter={{ activateDocument, flushActiveSession }}
-        conflictAdapter={quietConflictAdapter()}
-      />
+      <DocumentTabs adapter={{ activateDocument, flushActiveSession }} />
     </Provider>,
   );
 
@@ -2013,10 +2099,7 @@ it('T140 refuses the fallback switch when the outgoing flush rejects', async () 
   );
   render(
     <Provider store={store}>
-      <DocumentTabs
-        adapter={{ activateDocument, flushActiveSession }}
-        conflictAdapter={quietConflictAdapter()}
-      />
+      <DocumentTabs adapter={{ activateDocument, flushActiveSession }} />
     </Provider>,
   );
 

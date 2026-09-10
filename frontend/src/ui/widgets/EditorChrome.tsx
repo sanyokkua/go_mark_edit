@@ -27,7 +27,10 @@ import {
   formatActionIds,
 } from '../../logic/format/formatting';
 import { DocumentCommandContext, EditorSessionContext } from './editorSession';
-import type { ViewArrangement } from '../../logic/store/appModelTypes';
+import type {
+  ConflictPreview,
+  ViewArrangement,
+} from '../../logic/store/appModelTypes';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import type { IconName } from '../primitives/Icon';
 import Bar from '../components/Bar';
@@ -46,6 +49,7 @@ export interface EditorChromeProps {
   tabAdapter?: DocumentTabsProps['adapter'];
   onActivateDocument?: DocumentTabsProps['onActivateDocument'];
   onCloseDocument?: DocumentTabsProps['onCloseDocument'];
+  onExternalConflict?: (preview: ConflictPreview) => void;
   onNewDocument?: DocumentTabsProps['onNewDocument'];
 }
 
@@ -170,6 +174,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
   tabAdapter,
   onActivateDocument,
   onCloseDocument,
+  onExternalConflict,
   onNewDocument,
 }: EditorChromeProps): React.JSX.Element => {
   const commands = useContext(DocumentCommandContext);
@@ -320,6 +325,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         modalOpen={modalOpen}
         onActivateDocument={onActivateDocument}
         onCloseDocument={onCloseDocument}
+        onExternalConflict={onExternalConflict}
         onNewDocument={onNewDocument}
       />
 

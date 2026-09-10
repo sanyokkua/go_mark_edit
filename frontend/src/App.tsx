@@ -38,6 +38,7 @@ import type {
   ClosePlanKind,
   ClosePlanResult,
   ClosePlanSummary,
+  ConflictResult,
   DocumentMetadata,
   DocumentTransitionResult,
   RecoverySurface,
@@ -86,6 +87,7 @@ import ExternalChangePrompt, {
 } from './ui/widgets/ExternalChangePrompt';
 import ClosePrompt from './ui/widgets/ClosePrompt';
 import { tabLabelsFor } from './ui/widgets/tabLabel';
+import { onApplicationForeground } from './ui/widgets/foregroundFocus';
 import { ModalStateProvider } from './ui/widgets/modalState';
 import ModalShell from './ui/primitives/ModalShell';
 import { useBootstrap } from './app/useBootstrap';
@@ -409,6 +411,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
     kind: 'save' | 'save-as';
     preview: ConflictPreview;
   } | null>(null);
+  const [tabExternalConflict, setTabExternalConflict] =
+    useState<ConflictPreview | null>(null);
   const [closePlan, setClosePlan] = useState<ClosePlanSummary | null>(null);
   const [closeNormalization, setCloseNormalization] = useState<{
     planId: string;
@@ -474,6 +478,42 @@ const AppContents: React.FC = (): React.JSX.Element => {
   const recoveryQuitConfirmedRef = useRef(false);
   const recoveryQuitCancelRef = useRef<HTMLButtonElement | null>(null);
   const activeDocumentId = activeBuffer?.documentId;
+  /*
+   * Foreground checks belong to the application, not to the tab widget. The
+   * widget renders the projection and emits commands; this layer owns the
+   * foreground external-change prompt and can therefore keep a detected buffer
+   * behind the guarded editor-session reload seam.
+   */
+  const foregroundCheckRunning = useRef(false);
+  const runForegroundChecks = useCallback((): void => {
+    if (foregroundCheckRunning.current) return;
+    foregroundCheckRunning.current = true;
+    void (async (): Promise<void> => {
+      try {
+        for (const documentId of orderedDocumentIds) {
+          const document = documentsById[documentId];
+          if (document === undefined || document.path === '') continue;
+          const result =
+            await documentConflictAdapter.checkExternalChanges(documentId);
+          if (
+            result.status === 'detected' &&
+            result.preview !== undefined &&
+            documentId === activeDocumentId
+          ) {
+            setTabExternalConflict(result.preview);
+          }
+        }
+      } catch {
+        // A foreground sweep that cannot run leaves backend state untouched.
+      } finally {
+        foregroundCheckRunning.current = false;
+      }
+    })();
+  }, [activeDocumentId, documentsById, orderedDocumentIds]);
+  useEffect(
+    (): (() => void) => onApplicationForeground(runForegroundChecks),
+    [runForegroundChecks],
+  );
   const onBootstrapReady = useCallback(
     (result: Extract<AppModelBootstrapResult, { status: 'ready' }>): void => {
       replaceActiveBuffer(result.activeBuffer);
@@ -719,14 +759,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
    */
   const [externalEpoch, setExternalEpoch] = useState(0);
   /*
-   * T191. Installs a buffer produced by a reload the tab strip drove.
+   * T191. Installs a buffer produced by a foreground external-change reload.
    *
-   * `DocumentTabs` owns an external-change prompt separate from this one, and
-   * the foreground check raises that one — but the strip cannot install a
-   * buffer itself, because `useGuardedActivation` is the single install seam
-   * and re-implementing its checks elsewhere is the defect T128 removed. So the
-   * strip reports the acknowledgement here and this claims a generation, offers
-   * it to the guard, and advances the epoch that restarts the editor session.
+   * The tab strip cannot install a buffer itself, because
+   * `useGuardedActivation` is the single install seam and re-implementing its
+   * checks elsewhere is the defect T128 removed. So the app-level prompt
+   * reports the acknowledgement here and this claims a generation, offers it
+   * to the guard, and advances the epoch that restarts the editor session.
    */
   const installExternalReload = useCallback(
     (acknowledgement: ActiveBuffer | undefined): void => {
@@ -740,6 +779,77 @@ const AppContents: React.FC = (): React.JSX.Element => {
       setExternalEpoch((epoch) => epoch + 1);
     },
     [activation],
+  );
+  const tabExternalConflictValid =
+    tabExternalConflict === null ||
+    documentsById[tabExternalConflict.documentId]?.contentRevision ===
+      undefined ||
+    documentsById[tabExternalConflict.documentId]?.contentRevision ===
+      tabExternalConflict.contentRevision;
+  const onTabExternalConflictDecision = useCallback(
+    async (decision: ExternalChangeDecision): Promise<void> => {
+      const preview = tabExternalConflict;
+      if (preview === null) return;
+      if (decision === 'keep-mine' && !tabExternalConflictValid) return;
+
+      let result: ConflictResult;
+      switch (decision) {
+        case 'reload':
+          result = await documentConflictAdapter.reloadFromDisk(
+            preview.documentId,
+            preview.contentRevision,
+            preview.detectedDiskVersion,
+          );
+          break;
+        case 'keep-mine':
+          result = await documentConflictAdapter.authorizeKeepMine(
+            preview.documentId,
+            preview.contentRevision,
+            preview.path ?? '',
+            preview.detectedDiskVersion,
+          );
+          break;
+        case 'skip':
+          result = await documentConflictAdapter.skipConflict(
+            preview.documentId,
+            preview.contentRevision,
+            preview.detectedDiskVersion,
+          );
+          break;
+        case 'cancel':
+          result = await documentConflictAdapter.cancelConflict(
+            preview.documentId,
+            preview.contentRevision,
+            preview.detectedDiskVersion,
+          );
+          break;
+      }
+
+      if (result.error !== undefined) {
+        reportClassifiedError(
+          dispatch,
+          result.error,
+          'The external-change decision could not be completed.',
+        );
+        if (result.preview !== undefined)
+          setTabExternalConflict(result.preview);
+        return;
+      }
+      if (result.preview !== undefined) {
+        setTabExternalConflict(result.preview);
+        return;
+      }
+      if (decision === 'reload') {
+        installExternalReload(result.activeBuffer);
+      }
+      setTabExternalConflict(null);
+    },
+    [
+      dispatch,
+      installExternalReload,
+      tabExternalConflict,
+      tabExternalConflictValid,
+    ],
   );
   const closeRequestRef = useRef<
     { kind: ClosePlanKind; targetDocumentIds: string[] } | undefined
@@ -1849,6 +1959,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
     shortcutsOpen ||
     normalization !== null ||
     externalConflict !== null ||
+    tabExternalConflict !== null ||
     closePlan !== null ||
     closeNormalization !== null ||
     closeConflict !== null ||
@@ -2000,6 +2111,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
                         }
                         onActivateDocument={onActivateDocument}
                         onCloseDocument={onCloseDocument}
+                        onExternalConflict={setTabExternalConflict}
                       />
                     </>
                   ) : null}
@@ -2069,6 +2181,14 @@ const AppContents: React.FC = (): React.JSX.Element => {
                   }
                   preview={externalConflict?.preview}
                   valid={externalConflictValid}
+                />
+                <ExternalChangePrompt
+                  onDecision={onTabExternalConflictDecision}
+                  open={
+                    bootstrapStatus === 'ready' && tabExternalConflict !== null
+                  }
+                  preview={tabExternalConflict ?? undefined}
+                  valid={tabExternalConflictValid}
                 />
                 <ExternalChangePrompt
                   onDecision={onCloseConflictDecision}

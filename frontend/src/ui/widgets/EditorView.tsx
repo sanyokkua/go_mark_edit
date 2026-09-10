@@ -27,6 +27,7 @@ import { notifyToast } from '../../logic/store/notificationsSlice';
 import type {
   ActiveBuffer,
   ClosePlanKind,
+  ConflictPreview,
   DocumentTransitionResult,
   DocumentView,
   TabTransitionResult,
@@ -97,6 +98,7 @@ export interface EditorViewProps {
     kind?: ClosePlanKind,
     targetDocumentIds?: string[],
   ) => Promise<TabTransitionResult>;
+  onExternalConflict?: (preview: ConflictPreview) => void;
   onLiveCursorChange?: (cursor: EditorPosition) => void;
 }
 
@@ -367,6 +369,7 @@ const EditorView: React.FC<EditorViewProps> = ({
   onNewDocument,
   onActivateDocument,
   onCloseDocument,
+  onExternalConflict,
   onLiveCursorChange: onLiveCursorChangeProp,
 }: EditorViewProps): React.JSX.Element | null => {
   const dispatch = useAppDispatch();
@@ -490,6 +493,7 @@ const EditorView: React.FC<EditorViewProps> = ({
         tabAdapter={tabAdapter}
         onActivateDocument={onActivateDocument}
         onCloseDocument={onCloseDocument}
+        onExternalConflict={onExternalConflict}
         onNewDocument={onNewDocument}
       />
       {/*

@@ -149,7 +149,7 @@ it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', (
    */
   expect(
     readFileSync(
-      resolve(process.cwd(), 'src/ui/widgets/DocumentTabs.module.css'),
+      resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
       'utf8',
     ),
   ).toContain('min-inline-size: max-content');

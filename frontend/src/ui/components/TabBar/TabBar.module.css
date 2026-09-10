@@ -1,21 +1,8 @@
 /*
- * Spec: "Overflowing tabs scroll" (working-in-tabs.md #tab-overflow-scrolls) —
- * "the strip scrolls. The layout does not break, and tabs do not shrink to
- * unreadable", whose counter-example, "tabs compressed to 30 px each", was the
- * shipped behaviour: 23 tabs at 1280px gave a 49px tab box and a 13px label,
- * leaving nothing to click but the close control.
- *
- * The strip becomes a scroll container only once its tabs stop fitting.
- * Chromium composites a scrollable area and drops LCD subpixel antialiasing
- * inside it, so declaring `overflow-x: auto` unconditionally re-rendered every
- * glyph in the row against the binding — identical bounds, identical computed
- * styles, 332 deterministically differing pixels confined to the tab labels and
- * the add control. A strip with nothing to scroll has no reason to be promoted,
- * which also keeps its computed `overflow` matching the binding at the widths
- * the comparator captures.
- *
- * `scrollbar-width: none` follows the binding's own scrolling strip
- * (`mockup.html:72`): no gutter is reserved in a row the binding sizes exactly.
+ * The tab strip is a component surface, so its geometry and family-specific
+ * treatment live with TabBar rather than with the widget that supplies its
+ * document commands. The tokens are shared with the shell and keep every
+ * palette/mode combination on the same contract.
  */
 .tabStrip[data-tabs-overflowing='true'] {
   overflow-x: auto;
@@ -38,20 +25,14 @@
   border-bottom: var(--control-border-width) solid var(--tabs-border-color);
   box-sizing: border-box;
   display: flex;
-  gap: 5px;
+  gap: var(--tabs-gap);
   max-width: 100%;
   min-width: auto;
   overflow: visible;
   padding: var(--tabs-row-padding);
+  backdrop-filter: var(--tab-strip-backdrop);
 }
 
-/*
- * T130, FR-FT-036: the insertion position a drag is showing. It exists only
- * while a pointer drag is in flight, so it never appears in a parity capture
- * and adds no flex child to the resting strip. `align-self: stretch` makes it
- * the height of the tab row rather than of its own empty content box, which is
- * what gives `expectPainted` a non-empty box to hit-test.
- */
 .tabInsertionIndicator {
   align-self: stretch;
   background: var(--accent);
@@ -69,40 +50,26 @@
   padding: 0;
 }
 
-/* Binding source: mockup.html `.tab{display:flex;align-items:center;gap:8px;
-   padding:7px 12px;border-radius:9px;font-size:12.5px;border:1px solid
-   transparent;max-width:190px}` (:272). `.tabItem` IS that box: the dot, the
-   label and the close control are its three flex children, so the box's own
-   12px padding is what keeps the close control off the trailing edge. Putting
-   the padding on the inner label button instead — and leaving the close control
-   at `padding: 0` — is what pinned the × against the edge.
-
-   Every tab carries the border and radius; `.tab.active` (:274) only fills it
-   in, so a tab does not change size when it becomes active. */
 .tabItem {
   align-items: center;
   background: transparent;
-  border: var(--control-border-width) solid transparent;
+  border: var(--tab-border);
+  border-bottom: var(--tab-underline);
   border-radius: var(--tab-radius);
   box-sizing: border-box;
   display: flex;
   font-size: var(--tab-label-font-size);
   gap: var(--tab-gap);
-  /*
-   * Binding source: mockup.html `.app[data-w="375"] .tab{flex:none}` (:74). A
-   * tab keeps its own width and the strip scrolls; it never shrinks to fit.
-   * `flex: 0 1 auto` against `min-width: 0` is what compressed every tab.
-   * `max-width` still truncates one long filename at the binding's 190px, which
-   * is not the same thing as compressing all of them.
-   */
   flex: none;
   max-width: var(--tab-max-width);
   padding: var(--tab-padding);
 }
 
 .tabItem:has(.tab[aria-selected='true']) {
-  background: var(--accent-soft);
-  border-color: var(--stroke-soft);
+  background: var(--tab-active-background);
+  border-color: var(--tab-active-border-color);
+  border-bottom: var(--tab-active-underline);
+  font-weight: var(--tab-active-font-weight);
 }
 
 .tab,
@@ -127,8 +94,6 @@
   padding: var(--tab-padding);
 }
 
-/* The label is a bare flex child of the tab box above — the box owns the
-   padding, the border and the radius. */
 .tab {
   align-items: center;
   border: 0;
@@ -150,7 +115,7 @@
 }
 
 .tab[aria-selected='true'] {
-  color: var(--text);
+  color: var(--tab-active-color);
   box-shadow: none;
 }
 
@@ -291,15 +256,6 @@
   font-size: var(--popup-row-font-size);
 }
 
-/* The binding themes the tab box and nothing else, with one rule per theme and
-   one for its active state. Because `.tabItem` is that box, each of these is a
-   direct transcription — no inner element needs a matching override, and the
-   Minimal underline is a real border rather than a pseudo-element standing in
-   for one. */
-
-/* Binding source: mockup.html
-   `body[data-theme="material"] .tab{border-radius:18px;padding:8px 15px}`
-   (:282). */
 :global(:root[data-theme='material']) .tabItem {
   border-radius: 18px;
   padding: 8px 15px;
@@ -316,10 +272,6 @@
   color: var(--accent-contrast);
 }
 
-/* Binding source: mockup.html
-   `body[data-theme="minimal"] .tab{border-radius:0;border:0;
-   border-bottom:2px solid transparent;background:none;padding:8px 12px}`
-   (:280). */
 :global(:root[data-theme='minimal']) .tabItem {
   background: none;
   border: 0;
@@ -328,9 +280,6 @@
   padding: 8px 12px;
 }
 
-/* Binding source: mockup.html
-   `body[data-theme="minimal"] .tab.active{background:none;
-   border-bottom-color:var(--text);font-weight:500}` (:281). */
 :global(:root[data-theme='minimal']) .tabItem:has(.tab[aria-selected='true']) {
   background: none;
   border-bottom-color: var(--text);
@@ -368,28 +317,6 @@
   }
 }
 
-/*
- * T144, FR-FT-035: "visual ellipsis MUST retain part of the distinguishing
- * suffix". Two budgets truncate this label and they are in different units.
- * `truncatedTabLabelParts(label, 42)` counts characters and elides inside the
- * basename, which is correct; `.tabLabel`'s `max-width: var(--tab-max-width)`
- * counts pixels and clips the *trailing* edge, which is where the ` \2014
- * suffix` segment lives. Measured in Chromium at the tab's own 12.5px Roboto,
- * the label has 129.33px to draw in — the 190px token less 60.67px of tab
- * chrome — and a realistic disambiguated label crosses that at 21 characters,
- * so the pixel clip always fired first and always removed the suffix.
- *
- * Reconciled in the layout rather than by lowering the character budget,
- * because no character count can express a pixel budget in a proportional
- * font: 42 is exactly how many `i` glyphs fit in 129.33px and only 11 `m` do.
- * The basename is the flex item that shrinks and carries the ellipsis; the
- * suffix never shrinks, so whatever the strip's width the distinguishing part
- * is the part that survives.
- *
- * Scoped with `:has()` so a label with no suffix — every tab in every parity
- * fixture, and the common case in use — keeps the single-text-node box it
- * always had, down to `min-width: auto`, which the parity comparator compares.
- */
 .tabLabel:has(> [data-tab-label-suffix]) {
   display: inline-flex;
   min-width: 0;
@@ -408,12 +335,6 @@
   white-space: nowrap;
 }
 
-/* FR-FT-036's reduced-opacity dragged tab: the user must be able to see which
-   tab is in flight, and the insertion indicator alone does not say which one
-   moved. `--disabled-opacity` is reused rather than a drag-specific token
-   added, because `tokens.test.ts` checks palette completeness and an opacity is
-   palette-independent — a second token would have to be declared in all six
-   combinations to carry the same number. T177. */
 .tabItem[data-tab-dragging='true'] {
   opacity: var(--disabled-opacity);
 }

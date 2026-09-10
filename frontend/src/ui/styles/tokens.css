@@ -112,6 +112,14 @@
   --tab-padding: 7px 12px;
   --tab-gap: 8px;
   --tab-radius: 9px;
+  --tab-border: var(--control-border-width) solid transparent;
+  --tab-underline: var(--control-border-width) solid transparent;
+  --tab-active-background: var(--accent-soft);
+  --tab-active-border-color: var(--stroke-soft);
+  --tab-active-underline: var(--control-border-width) solid var(--stroke-soft);
+  --tab-active-color: var(--text);
+  --tab-active-font-weight: 400;
+  --tab-strip-backdrop: none;
   --tab-max-width: 190px;
   --tab-row-height: 31px;
   --tab-label-font-size: 12.5px;

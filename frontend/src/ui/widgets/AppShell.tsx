@@ -15,6 +15,7 @@ import {
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import type {
   ClosePlanKind,
+  ConflictPreview,
   DocumentTransitionResult,
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
@@ -38,6 +39,7 @@ export interface AppShellProps {
     kind?: ClosePlanKind,
     targetDocumentIds?: string[],
   ) => Promise<TabTransitionResult>;
+  onExternalConflict?: (preview: ConflictPreview) => void;
   onOpenRecentFile?: (
     path: string,
     expectedTabSetRevision: number,
@@ -49,6 +51,7 @@ const AppShell: React.FC<AppShellProps> = ({
   onOpenDocument,
   onActivateDocument,
   onCloseDocument,
+  onExternalConflict,
   onOpenRecentFile,
 }: AppShellProps): React.JSX.Element => {
   const parityRoute =
@@ -300,6 +303,7 @@ const AppShell: React.FC<AppShellProps> = ({
           onNewDocument={onNewDocument}
           onActivateDocument={onActivateDocument}
           onCloseDocument={onCloseDocument}
+          onExternalConflict={onExternalConflict}
           onLiveCursorChange={setLiveCursor}
         />
         {hasActiveDocument && activeDocument !== undefined ? (

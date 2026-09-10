@@ -301,12 +301,13 @@ close scenarios also run on `wails dev` and in the walkthrough.
   - **Depends on**: T022.
   - **Branch**: `feature/004-codebase-refactoring-bar`; `refactor(ui): one Bar, Island, ToolButton and Button`.
 
-- [ ] T024 [US3] Create `frontend/src/ui/components/TabBar/` and make `widgets/DocumentTabs/` its consumer
+- [x] T024 [US3] Create `frontend/src/ui/components/TabBar/` and make `widgets/DocumentTabs/` its consumer
   - **Implements**: FR-039; contract section Tab and TabBar; Story 1 row 11 (anchor); scenario 3.3; coverage table row `DocumentTabs.test.tsx`.
   - **Scope**: create `ui/components/TabBar/` (`tabs[{id, label, dirty, readOnly, active}]`, `onActivate`, `onClose`, `onReorder`, `onAdd`, `onContextMenu(id, anchor)`; horizontal scrolling; drag reorder; add and close controls; context-menu anchor as pointer point or focused-tab bounds; tokens `--tab-radius`, `--tab-padding`, `--tab-underline`); `widgets/DocumentTabs/` consumes it; the external-change sweep and the single `ExternalChangePrompt` mount move to the app layer.
   - **Evidence**: a TabBar unit test — activation, close, add and reorder callbacks fire with the right ids; `frontend/tests/integration/documentTabs.test.tsx` (slimmed) — reorder, add and the external-change sweep through TabBar; the context menu anchors at the pointer point or the focused-tab bounds and shows the shortcuts (Story 1 row 11, frontend half); geometry in the T022 E2E case. `scripts/test unit` and `scripts/test integration` green.
   - **Depends on**: T022.
   - **Branch**: `feature/004-codebase-refactoring-tabbar`; `refactor(ui): one Tab and TabBar`.
+  - **Run evidence (2026-09-10, Darwin 25.6.0 arm64)**: `scripts/test unit` run `20260910T135220Z-53086` passed Go unit tests and 708 Jest tests; `scripts/test integration` run `20260910T134841Z-52409` passed 7 suites / 55 tests; `scripts/test e2e` run `20260910T135323Z-53412` passed all 21 real Wails cases once with zero retries; production TypeScript, TabBar/DocumentTabs focused tests, frontend architecture checks and changed-file Prettier checks passed. The repository-wide format wrapper still reports only the pre-existing `tests/go/integration/application/preview_link_test.go` and `specs/004-codebase-refactoring/plan.md` findings; lint remains baseline/environment-red with the pre-existing T023 Bar findings and missing test Node typings.
 
 - [ ] T025 [P] [US3] Create `frontend/src/ui/components/Pane/` and `frontend/src/ui/components/Sidebar/` and compose `widgets/EditorStage/` from two Panes
   - **Implements**: FR-040, FR-041; contract sections Pane and Sidebar; coverage table rows `EditorView.test.tsx`, `EditorView.integration.test.tsx`, `editorSession.integration.test.tsx`, `AppShell.test.tsx`.

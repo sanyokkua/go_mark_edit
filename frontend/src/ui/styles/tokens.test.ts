@@ -428,7 +428,7 @@ it('routes every current appearance surface through palette tokens', (): void =>
   }
 });
 
-const tabStyles = readSource('src/ui/widgets/DocumentTabs.module.css');
+const tabStyles = readSource('src/ui/components/TabBar/TabBar.module.css');
 const editorViewStyles = readSource('src/ui/widgets/EditorView.module.css');
 
 // Proves: FR-FT-053 — the three named per-family structural claims: "Liquid
