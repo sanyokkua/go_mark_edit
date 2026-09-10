@@ -211,7 +211,7 @@ roots and run the lint stage's title check.
 (FR-031); run once on the archived tree it fails, on the refactored tree it passes. The link and
 close scenarios also run on `wails dev` and in the walkthrough.
 
-- [ ] T015 [US2] Create the profile seeding tool `tools/e2e-seed/main.go`
+- [x] T015 [US2] Create the profile seeding tool `tools/e2e-seed/main.go`
   - **Implements**: FR-025; `contracts/e2e-harness.md` seeding section; R8; planning decision 3.
   - **Scope**: create `tools/e2e-seed/main.go` with `go run ./tools/e2e-seed <profile-dir> <command> …`: `seed-recents <file>…` (opens or creates the database through `internal/db.Open`, writes `recent.files` `{"version":1,"entries":[…]}` with at most 6 entries through `internal/kv`); `add-trigger appearance` (`CREATE TRIGGER e2e_reject BEFORE INSERT ON settings WHEN NEW.key LIKE 'appearance.%' BEGIN SELECT RAISE(ABORT, 'e2e'); END;` and the matching `BEFORE UPDATE` trigger); `hold-lock <seconds>` (`BEGIN IMMEDIATE` held until `SIGTERM` or the timeout, then rollback). Not part of the binary.
   - **Evidence**: each command run against a temp profile dir; `sqlite3` shows the recents row and the two triggers; a concurrent `db.Open` write waits while `hold-lock` runs and proceeds after release; `CGO_ENABLED=0 go build ./tools/...` passes.
