@@ -31,12 +31,33 @@ function bridgeMockPlugin(): Plugin {
   };
 }
 
+function previewImageBackendRoutePlugin(): Plugin {
+  return {
+    name: 'preview-image-backend-route',
+    configureServer(server): void {
+      server.middlewares.use((request, response, next): void => {
+        const path = request.url?.split('?', 1)[0];
+        if (path !== '/preview-image') {
+          next();
+          return;
+        }
+        response.statusCode = 404;
+        response.end();
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const isMockMode = mode !== 'wails' && mode !== 'production';
 
   return {
     base: './',
-    plugins: [react(), ...(isMockMode ? [bridgeMockPlugin()] : [])],
+    plugins: [
+      previewImageBackendRoutePlugin(),
+      react(),
+      ...(isMockMode ? [bridgeMockPlugin()] : []),
+    ],
     resolve: {
       alias: isMockMode
         ? {}

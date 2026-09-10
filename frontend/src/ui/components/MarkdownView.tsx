@@ -1,4 +1,10 @@
-import { Children, isValidElement, memo, type ReactNode } from 'react';
+import {
+  Children,
+  isValidElement,
+  memo,
+  useState,
+  type ReactNode,
+} from 'react';
 import Markdown from 'react-markdown';
 
 import { classifyLink, type LinkTarget } from '../../logic/markdown/linkPolicy';
@@ -7,6 +13,7 @@ import {
   baseGfmRemarkPlugins,
   markdownComponents,
   previewUrlTransform,
+  renderImageFallback,
 } from '../../logic/markdown/renderer';
 import styles from './MarkdownView.module.css';
 
@@ -15,6 +22,33 @@ export interface MarkdownViewProps {
   documentId?: string;
   documentPath?: string;
   onActivateLink?: (documentId: string, target: LinkTarget) => void;
+  imageSourceResolver?: (source: string) => string | undefined;
+}
+
+interface PreviewImageProps {
+  alt?: string;
+  source?: string;
+  title?: string;
+}
+
+function PreviewImage({
+  alt,
+  source,
+  title,
+}: PreviewImageProps): React.JSX.Element {
+  const [failedSource, setFailedSource] = useState<string>();
+  if (source === undefined || failedSource === source) {
+    return renderImageFallback(alt);
+  }
+
+  return (
+    <img
+      alt={alt ?? 'Image unavailable'}
+      onError={(): void => setFailedSource(source)}
+      src={source}
+      title={title}
+    />
+  );
 }
 
 function textContent(children: ReactNode): string {
@@ -61,6 +95,7 @@ const MarkdownView: React.FC<MarkdownViewProps> = memo(function MarkdownView({
   documentId,
   documentPath,
   onActivateLink,
+  imageSourceResolver,
 }: MarkdownViewProps): React.JSX.Element {
   const activateLink = (href: string | undefined): void => {
     if (href === undefined || documentId === undefined) return;
@@ -72,6 +107,12 @@ const MarkdownView: React.FC<MarkdownViewProps> = memo(function MarkdownView({
       <Markdown
         components={{
           ...markdownComponents,
+          img({ alt, node: _node, src, title }): React.JSX.Element {
+            void _node;
+            const source =
+              src === undefined ? undefined : imageSourceResolver?.(src);
+            return <PreviewImage alt={alt} source={source} title={title} />;
+          },
           a({
             children,
             href,

@@ -211,7 +211,8 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		Mac:           &mac.Options{DisableZoom: false},
 		Menu:          nativeMenuForPlatform(goruntime.GOOS),
 		AssetServer: &assetserver.Options{
-			Assets: assets,
+			Assets:  assets,
+			Handler: application.NewPreviewImageHandler(applicationContext.AppModelService),
 		},
 		OnStartup: func(ctx context.Context) {
 			applicationContext.SetContext(ctx)

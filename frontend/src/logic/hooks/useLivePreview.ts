@@ -10,6 +10,7 @@ export interface LivePreviewAdapter {
   ) => () => void;
   openPreviewLink?: (documentId: string, href: string) => Promise<OpenResult>;
   openExternalLink?: (href: string) => void;
+  resolvePreviewImage?: (documentId: string, source: string) => string;
 }
 
 interface PreviewSnapshot {

@@ -5,13 +5,10 @@ import remarkGfm from 'remark-gfm';
 import type { Schema } from 'hast-util-sanitize';
 import type { PluggableList } from 'unified';
 
-const attributesWithoutImageSource = { ...(defaultSchema.attributes ?? {}) };
-delete attributesWithoutImageSource.img;
-
 /**
- * The Phase 01 preview permits GFM's disabled task-list inputs but removes
- * every Markdown image source before React renders the tree. MarkdownView's
- * component override then presents only the image alt-text fallback.
+ * The preview keeps the sanitized image source available to MarkdownView's
+ * props-only policy seam. The component never spreads it into the DOM unless
+ * PreviewPane has classified it as a bounded local asset route.
  */
 export const baseGfmSanitizeSchema: Schema = {
   ...defaultSchema,
@@ -19,8 +16,8 @@ export const baseGfmSanitizeSchema: Schema = {
   // Re-prefixing them here breaks their matching internal href targets.
   clobberPrefix: '',
   attributes: {
-    ...attributesWithoutImageSource,
-    img: ['alt'],
+    ...defaultSchema.attributes,
+    img: ['alt', 'src'],
   },
   // `file:` is retained only so the preview link policy can refuse it with a
   // visible reason. MarkdownView prevents the anchor's default action, while
@@ -49,22 +46,25 @@ export const baseGfmRehypePlugins: PluggableList = [
 ];
 
 /**
- * Markdown image URLs are deliberately discarded until the Phase 09 guarded
- * asset and remote-content policy is available. Never spread image props here:
- * doing so could reintroduce a fetchable `src`.
+ * Image sources are passed to MarkdownView only as sanitized data. Never
+ * spread image props here: doing so could reintroduce a fetchable remote src.
  */
+export function renderImageFallback(alt?: string): React.JSX.Element {
+  const fallback = alt ?? 'Image unavailable';
+
+  return createElement(
+    'span',
+    {
+      'aria-label': fallback,
+      className: 'gme-preview-image-fallback',
+      role: 'img',
+    },
+    fallback,
+  );
+}
+
 export const markdownComponents: Components = {
   img({ alt }): React.JSX.Element {
-    const fallback = alt ?? 'Image unavailable';
-
-    return createElement(
-      'span',
-      {
-        'aria-label': fallback,
-        className: 'gme-preview-image-fallback',
-        role: 'img',
-      },
-      fallback,
-    );
+    return renderImageFallback(alt);
   },
 };

@@ -134,3 +134,34 @@ it('STORY-014-AC-5 (EC-RENDER-7) blocks document-supplied resource requests', ()
   expect(fallbacks[1]).not.toHaveAttribute('src');
   expect(assignedSources).toEqual([]);
 });
+
+// Proves: FR-049
+it('routes only the resolver-approved local image and keeps web images as placeholders', () => {
+  const resolveImage = jest.fn((source: string): string | undefined =>
+    source === './local.png'
+      ? '/preview-image?doc=doc-1&src=.%2Flocal.png'
+      : undefined,
+  );
+
+  render(
+    <MarkdownView
+      imageSourceResolver={resolveImage}
+      source={`![Local image](./local.png)
+
+![Remote image](https://example.test/preview.png)`}
+    />,
+  );
+
+  const localImage = screen.getByRole('img', { name: 'Local image' });
+  expect(localImage.tagName).toBe('IMG');
+  expect(localImage).toHaveAttribute(
+    'src',
+    '/preview-image?doc=doc-1&src=.%2Flocal.png',
+  );
+
+  const remoteImage = screen.getByRole('img', { name: 'Remote image' });
+  expect(remoteImage.tagName).toBe('SPAN');
+  expect(remoteImage).not.toHaveAttribute('src');
+  expect(resolveImage).toHaveBeenCalledWith('./local.png');
+  expect(resolveImage).toHaveBeenCalledWith('https://example.test/preview.png');
+});

@@ -87,6 +87,7 @@ export interface AppModelAdapter {
   ) => Promise<OpenResult>;
   openPreviewLink?: (documentId: string, href: string) => Promise<OpenResult>;
   openExternalLink?: (href: string) => void;
+  resolvePreviewImage?: (documentId: string, source: string) => string;
   reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
   activateDocument?: (
     documentId: string,
@@ -535,6 +536,8 @@ export function createAppModelAdapter(
             return openPreviewLink(documentId, href);
           },
     openExternalLink: bindings.openExternalLink,
+    resolvePreviewImage: (documentId: string, source: string): string =>
+      `/preview-image?doc=${encodeURIComponent(documentId)}&src=${encodeURIComponent(source)}`,
     reopenLastFile:
       documentLifecycle?.reopenLastFile === undefined
         ? undefined

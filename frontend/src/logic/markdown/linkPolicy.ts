@@ -61,7 +61,10 @@ function extension(path: string): string {
   return dot < 0 ? '' : basename.slice(dot).toLowerCase();
 }
 
-function localPath(href: string, documentPath: string): string | undefined {
+export function resolveLocalPath(
+  href: string,
+  documentPath: string,
+): string | undefined {
   const queryStart = href.search(/[?#]/);
   const pathPart = queryStart < 0 ? href : href.slice(0, queryStart);
   const decoded = decodePath(pathPart);
@@ -74,7 +77,10 @@ function localPath(href: string, documentPath: string): string | undefined {
   );
 }
 
-function isInsideFolder(path: string, documentPath: string): boolean {
+export function isInsideDocumentFolder(
+  path: string,
+  documentPath: string,
+): boolean {
   const folderEnd = documentPath.lastIndexOf('/');
   const folder = folderEnd < 0 ? '' : documentPath.slice(0, folderEnd);
   return path !== folder && path.startsWith(`${folder}/`);
@@ -101,9 +107,9 @@ export function classifyLink(href: string, documentPath?: string): LinkTarget {
     return refused(href, 'untitled-document');
   }
 
-  const path = localPath(trimmed, documentPath);
+  const path = resolveLocalPath(trimmed, documentPath);
   if (path === undefined) return refused(href, 'malformed');
-  if (!isInsideFolder(path, documentPath)) {
+  if (!isInsideDocumentFolder(path, documentPath)) {
     return refused(href, 'outside-document-folder');
   }
   if (!acceptedDocumentExtensions.has(extension(path))) {

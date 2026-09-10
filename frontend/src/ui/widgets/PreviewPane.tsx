@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { t } from '../../i18n';
 import type { LivePreviewAdapter } from '../../logic/hooks/useLivePreview';
@@ -6,6 +6,7 @@ import type {
   LinkRefusalReason,
   LinkTarget,
 } from '../../logic/markdown/linkPolicy';
+import { classifyImageSource } from '../../logic/markdown/imagePolicy';
 import type { OpenResult } from '../../logic/store/appModelTypes';
 import MarkdownView from '../components/MarkdownView';
 import styles from './PreviewPane.module.css';
@@ -29,7 +30,7 @@ export interface PreviewPaneProps {
   documentPath?: string;
   linkAdapter?: Pick<
     LivePreviewAdapter,
-    'openPreviewLink' | 'openExternalLink'
+    'openPreviewLink' | 'openExternalLink' | 'resolvePreviewImage'
   >;
   notificationOwner?: PreviewNotificationOwner;
   onRefresh: () => Promise<PreviewSnapshot>;
@@ -104,6 +105,17 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
   const warn = (target: string, reason: string): void => {
     notificationOwner?.warn(target, reason);
   };
+
+  const resolveImageSource = useCallback(
+    (source: string): string | undefined => {
+      const classified = classifyImageSource(source, documentPath);
+      if (classified.kind !== 'local' || documentId === undefined) {
+        return undefined;
+      }
+      return linkAdapter?.resolvePreviewImage?.(documentId, classified.source);
+    },
+    [documentId, documentPath, linkAdapter],
+  );
 
   const activateLink = (sourceDocumentId: string, target: LinkTarget): void => {
     switch (target.kind) {
@@ -222,6 +234,7 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
         <MarkdownView
           documentId={documentId}
           documentPath={documentPath}
+          imageSourceResolver={resolveImageSource}
           onActivateLink={activateLink}
           source={rendered.content}
         />
