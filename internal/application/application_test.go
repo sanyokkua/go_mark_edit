@@ -31,7 +31,9 @@ func TestApplicationContextInitializesSettingsInTwoPhases(t *testing.T) {
 	})
 
 	paths := &fakeFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}
-	holder := NewApplicationContextHolder(paths, logger)
+	holder := NewApplicationContextHolderWithOptions(paths, logger, ApplicationContextOptions{
+		AppModelOptions: []appmodel.AppModelOption{appmodel.WithEmitter(discardingLifecycleEmitter{})},
+	})
 	if holder.SettingsService == nil || holder.SettingsHandler == nil {
 		t.Fatal("phase-one composition must create settings service and handler")
 	}
@@ -68,11 +70,13 @@ func TestApplicationContextInitializesSettingsInTwoPhases(t *testing.T) {
 		t.Fatalf("handler after Init data = %+v, want documented defaults %+v", afterInit.Data, settings.DefaultSettings())
 	}
 
-	t.Run("wires durable application layout after SQLite opens", func(t *testing.T) {
-		if holder.AppModelService.LayoutRepository() == nil {
-			t.Fatal("phase-two Init did not inject the SQLite layout repository")
-		}
-	})
+	layoutWidth := 900
+	if err := holder.AppModelService.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &layoutWidth}); err != nil {
+		t.Fatalf("queue layout after phase-two Init: %v", err)
+	}
+	if err := holder.AppModelService.FlushPendingUILayout(); err != nil {
+		t.Fatalf("persist layout after phase-two Init: %v", err)
+	}
 
 	t.Run("main binding and generated TypeScript surface expose the handler", func(t *testing.T) {
 		_, sourceFile, _, ok := runtime.Caller(0)
@@ -186,7 +190,7 @@ func TestApplicationContextCloseWaitsForInFlightTimerLayoutFlush(t *testing.T) {
 		firstWriteStarted: make(chan appmodel.VersionedLayoutValue, 1),
 		releaseFirstWrite: make(chan error, 1),
 	}
-	service := appmodel.NewAppModelService(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.WithLayoutRepository(repository))
+	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.WithLayoutRepository(repository))
 	width := 300
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &width}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
@@ -286,7 +290,7 @@ func TestNativeWindowRestoreFallsBackIndependentlyAndClampsUsableDisplay(t *test
 				values[appmodel.LayoutWindowMaximized] = appmodel.VersionedLayoutValue{Version: 1, Value: test.maximized, WriterID: "test", Sequence: 1}
 			}
 			repository := lifecycleLayoutRepository{values: values}
-			model := appmodel.NewAppModelService(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.WithLayoutRepository(repository))
+			model := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.WithLayoutRepository(repository))
 			native := &lifecycleRecordingNativeWindow{usableWidth: test.usableWidth, usableHeight: test.usableHeight}
 			service := NewNativeWindowService(model, native)
 

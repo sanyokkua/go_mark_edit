@@ -28,20 +28,20 @@ type AtomicReplaceResult struct {
 	Version   DiskVersion
 }
 
-// AtomicReplacePhase identifies whether an AtomicReplaceError happened before
+// atomicReplacePhase identifies whether an AtomicReplaceError happened before
 // or after the target replacement committed.
-type AtomicReplacePhase string
+type atomicReplacePhase string
 
 const (
-	AtomicReplacePreCommit  AtomicReplacePhase = "pre-commit"
-	AtomicReplacePostCommit AtomicReplacePhase = "post-commit"
+	atomicReplacePreCommit  atomicReplacePhase = "pre-commit"
+	atomicReplacePostCommit atomicReplacePhase = "post-commit"
 )
 
 // AtomicReplaceError preserves the commit state while exposing only a safe,
 // classified error to callers. Cause remains local for errors.Is/errors.As.
 type AtomicReplaceError struct {
 	Committed  bool
-	Phase      AtomicReplacePhase
+	phase      atomicReplacePhase
 	Classified *apperr.ClassifiedError
 	Cause      error
 }
@@ -115,7 +115,7 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 	ops = withDefaultAtomicReplaceOps(ops)
 	target := request.TargetPath
 	if strings.TrimSpace(target) == "" {
-		return AtomicReplaceResult{}, newAtomicReplaceError(request.TargetPath, false, AtomicReplacePreCommit, apperr.ClassifiedIOFailure, errors.New("target path is empty"))
+		return AtomicReplaceResult{}, newAtomicReplaceError(request.TargetPath, false, atomicReplacePreCommit, apperr.ClassifiedIOFailure, errors.New("target path is empty"))
 	}
 
 	var expected DiskVersion
@@ -125,21 +125,21 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 		var err error
 		expected, err = ops.currentVersion(target)
 		if err != nil {
-			return AtomicReplaceResult{}, newAtomicReplaceError(target, false, AtomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
+			return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
 		}
 	}
 	baseline, err := CurrentDiskVersion(target)
 	if err != nil {
-		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, AtomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
+		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
 	}
 	if !baseline.Equal(expected) {
-		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, AtomicReplacePreCommit, apperr.ClassifiedConflict, errors.New("target disk version changed before replacement"))
+		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, apperr.ClassifiedConflict, errors.New("target disk version changed before replacement"))
 	}
 
 	directory := filepath.Dir(target)
 	temporary, err := ops.createTemp(directory)
 	if err != nil {
-		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, AtomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
+		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
 	}
 	temporaryPath := temporary.Name()
 	closed := false
@@ -154,7 +154,7 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 	}
 	failBeforeCommit := func(category apperr.ClassifiedErrorCategory, cause error) (AtomicReplaceResult, error) {
 		cleanup()
-		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, AtomicReplacePreCommit, category, cause)
+		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, category, cause)
 	}
 
 	for offset := 0; offset < len(request.Data); {
@@ -201,10 +201,10 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 
 	result.Version, err = CurrentDiskVersion(target)
 	if err != nil {
-		return result, newAtomicReplaceError(target, true, AtomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, err)
+		return result, newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, err)
 	}
 	if err := ops.syncDir(directory); err != nil {
-		return result, newAtomicReplaceError(target, true, AtomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, err)
+		return result, newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, err)
 	}
 	return result, nil
 }
@@ -248,7 +248,7 @@ func classifyAtomicReplaceCause(err error) apperr.ClassifiedErrorCategory {
 	return apperr.ClassifiedIOFailure
 }
 
-func newAtomicReplaceError(target string, committed bool, phase AtomicReplacePhase, category apperr.ClassifiedErrorCategory, cause error) *AtomicReplaceError {
+func newAtomicReplaceError(target string, committed bool, phase atomicReplacePhase, category apperr.ClassifiedErrorCategory, cause error) *AtomicReplaceError {
 	message := "The document could not be saved."
 	switch category {
 	case apperr.ClassifiedConflict:
@@ -274,7 +274,7 @@ func newAtomicReplaceError(target string, committed bool, phase AtomicReplacePha
 	}
 	return &AtomicReplaceError{
 		Committed:  committed,
-		Phase:      phase,
+		phase:      phase,
 		Classified: bridge.ClassifiedWithID(category, target, message, remediation, ""),
 		Cause:      cause,
 	}

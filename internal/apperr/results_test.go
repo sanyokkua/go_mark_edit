@@ -36,17 +36,6 @@ func TestResultEnvelopesExposeOnlyContractFields(t *testing.T) {
 			wantKeys: []string{"error"},
 		},
 		{
-			name:      "string result omits nil error",
-			value:     StringResult{Data: "document title"},
-			wantKeys:  []string{"data"},
-			absentKey: "error",
-		},
-		{
-			name:     "string result exposes data and error",
-			value:    StringResult{Data: "document title", Error: wire},
-			wantKeys: []string{"data", "error"},
-		},
-		{
 			name: "state result exposes its hydration payload",
 			value: StateResult{Data: &AppState{
 				Snapshot: AppStateSnapshot{Documents: map[string]DocumentMetadata{}},
@@ -187,7 +176,6 @@ func TestResultEnvelopeFieldContracts(t *testing.T) {
 		want  []string
 	}{
 		{"void", reflect.TypeFor[VoidResult](), []string{"Failure", "Error"}},
-		{"string", reflect.TypeFor[StringResult](), []string{"Failure", "Data", "Error"}},
 		{"state", reflect.TypeFor[StateResult](), []string{"Failure", "Data", "Error"}},
 	}
 	for _, tt := range cases {

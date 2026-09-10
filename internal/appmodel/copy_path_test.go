@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
-	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
 func TestCopyPathResolvesCanonicalPathAndClassifiesClipboardFailure(t *testing.T) {
@@ -21,7 +20,7 @@ func TestCopyPathResolvesCanonicalPathAndClassifiesClipboardFailure(t *testing.T
 	}
 	want := errors.New("clipboard failed")
 	var copied string
-	clipboard := file.ClipboardWriterFunc(func(value string) error {
+	clipboard := clipboardWriterFunc(func(value string) error {
 		copied = value
 		return want
 	})
@@ -47,7 +46,7 @@ func TestCopyPathSucceedsForDetachedDocument(t *testing.T) {
 		t.Fatalf("write fixture: %v", err)
 	}
 	var copied string
-	clipboard := file.ClipboardWriterFunc(func(value string) error { copied = value; return nil })
+	clipboard := clipboardWriterFunc(func(value string) error { copied = value; return nil })
 	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithClipboardWriter(clipboard))
 	state, _ := service.GetState(context.Background())
 	opened := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
@@ -73,7 +72,7 @@ func TestRevealInFileManagerRevalidatesExistenceAndClassifiesFailure(t *testing.
 		t.Fatalf("write fixture: %v", err)
 	}
 	calls := 0
-	reveal := file.RevealPortFunc(func(string) error { calls++; return fs.ErrNotExist })
+	reveal := revealPortFunc(func(string) error { calls++; return fs.ErrNotExist })
 	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRevealPort(reveal))
 	state, _ := service.GetState(context.Background())
 	opened := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
@@ -104,7 +103,7 @@ func TestRevealInFileManagerRevalidatesExistenceAndClassifiesFailure(t *testing.
 		t.Fatalf("restore fixture: %v", err)
 	}
 	// A fresh document exercises the invocation-time disappearance race.
-	service = NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRevealPort(file.RevealPortFunc(func(string) error { return fs.ErrNotExist })))
+	service = NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRevealPort(revealPortFunc(func(string) error { return fs.ErrNotExist })))
 	state, _ = service.GetState(context.Background())
 	opened = service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
 	race := service.RevealInFileManager(context.Background(), opened.DocumentID)
@@ -138,7 +137,7 @@ func TestRevealDisappearanceAtInvocationReportsNotFoundOfferingBothActions(t *te
 		t.Fatalf("write fixture: %v", err)
 	}
 	reveals := 0
-	reveal := file.RevealPortFunc(func(string) error { reveals++; return nil })
+	reveal := revealPortFunc(func(string) error { reveals++; return nil })
 	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRevealPort(reveal))
 	state, _ := service.GetState(context.Background())
 	opened := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)

@@ -179,7 +179,7 @@ close scenarios also run on `wails dev` and in the walkthrough.
   - **Depends on**: T011.
   - **Branch**: `feature/004-codebase-refactoring-options`; `refactor(appmodel): constructor options replace test seams; emitter and version move to application`.
 
-- [ ] T013 [US4] Surface every user-visible error, write `internal/appmodel/doc.go`, remove dead exports and `internal/gate`
+- [x] T013 [US4] Surface every user-visible error, write `internal/appmodel/doc.go`, remove dead exports and `internal/gate`
   - **Implements**: FR-056, FR-058, FR-059; known issue 10.
   - **Scope**: layout persistence failure, publication rollback, settings reset read-back and reopen view restore each surfaced to the user or logged with a stated reason; create `internal/appmodel/doc.go` (document lifecycle, lock order, event contract); delete `internal/gate/`; remove every exported symbol with no production caller except `ContentAccessor` and `DocumentCommands`.
   - **Evidence**: Go integration tests with a captured logger or emitter for each FR-056 path — a layout persistence failure is reported; a publication rollback is reported; a settings reset read-back failure is reported; a reopen view restore failure is reported. `doc.go` reviewed against `lifecycle.go`, `publish.go` and `internal/bridge/events.go`. `go build ./...` with `internal/gate` absent. `scripts/test integration` green.

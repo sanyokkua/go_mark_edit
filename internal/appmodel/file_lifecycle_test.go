@@ -74,9 +74,6 @@ func TestNewDocumentIgnoresTheReadingDefaultOpenMode(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	service.SetDefaultOpenMode(OpenModeViewer)
-	if got := service.DefaultOpenMode(); got != OpenModeViewer {
-		t.Fatalf("DefaultOpenMode() = %q, want the Reading default in force for this case", got)
-	}
 
 	before, err := service.GetState(context.Background())
 	if err != nil {

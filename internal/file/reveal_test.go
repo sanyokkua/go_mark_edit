@@ -8,7 +8,7 @@ import (
 func TestRevealPortFuncForwardsExactPathAndFailure(t *testing.T) {
 	want := errors.New("reveal unavailable")
 	var got string
-	port := RevealPortFunc(func(path string) error {
+	port := revealPortFunc(func(path string) error {
 		got = path
 		return want
 	})
@@ -18,6 +18,12 @@ func TestRevealPortFuncForwardsExactPathAndFailure(t *testing.T) {
 	if got != "/private/notes.md" {
 		t.Fatalf("Reveal path = %q, want exact path", got)
 	}
+}
+
+type revealPortFunc func(string) error
+
+func (port revealPortFunc) Reveal(path string) error {
+	return port(path)
 }
 
 func TestPlatformRevealPortIsAvailableOnSupportedHosts(t *testing.T) {

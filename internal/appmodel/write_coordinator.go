@@ -35,7 +35,7 @@ type CommittedWriteResult struct {
 }
 
 type WriteExecutor func(WriteSnapshot) (file.DiskVersion, error)
-type WritePublisher func(CommittedWriteResult) error
+type writePublisher func(CommittedWriteResult) error
 
 // WriteCommitObserver observes the coordinator's disk-commit acknowledgement.
 // It is intentionally separate from publication so evidence cannot substitute
@@ -46,15 +46,12 @@ type WriteCommitObserver func(CommittedWriteResult, SaveOrigin)
 type DocumentWriteCoordinator struct {
 	mu            sync.Mutex
 	executor      WriteExecutor
-	publisher     WritePublisher
+	publisher     writePublisher
 	lastCommitted *CommittedWriteResult
 }
 
-// WriteCoordinator is the concise contract-level name for a document coordinator.
-type WriteCoordinator = DocumentWriteCoordinator
-
-func NewDocumentWriteCoordinator(executor WriteExecutor, publishers ...WritePublisher) *DocumentWriteCoordinator {
-	var publisher WritePublisher
+func NewDocumentWriteCoordinator(executor WriteExecutor, publishers ...writePublisher) *DocumentWriteCoordinator {
+	var publisher writePublisher
 	if len(publishers) > 0 {
 		publisher = publishers[0]
 	}

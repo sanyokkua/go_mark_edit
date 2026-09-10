@@ -11,18 +11,10 @@ type Failure struct {
 	ID          string                  `json:"id,omitempty"`
 }
 
-// FailureCategoryValidation is the safe category used when a bridge request
-// is missing its required identity.
-const FailureCategoryValidation ClassifiedErrorCategory = "validation"
-
-// FailureCategoryInternal is the safe category used when a bound handler
-// panics at the bridge boundary.
-const FailureCategoryInternal ClassifiedErrorCategory = "internal"
-
 // ClassifiedValidation and ClassifiedInternal are the vocabulary names used
 // by bridge callers. They intentionally remain outside the domain-classified
 // error table: validation and panic failures are bridge protocol failures.
 const (
-	ClassifiedValidation = FailureCategoryValidation
-	ClassifiedInternal   = FailureCategoryInternal
+	ClassifiedValidation ClassifiedErrorCategory = "validation"
+	ClassifiedInternal   ClassifiedErrorCategory = "internal"
 )

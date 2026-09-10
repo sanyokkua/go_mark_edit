@@ -28,7 +28,7 @@ func TestReadClassifiedStableBoundsRawHashAndDetectsGrowth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("version before direct stable verification: %v", err)
 	}
-	classified, err := ReadClassified(path, 4)
+	classified, err := readClassified(path, 4)
 	if err != nil {
 		t.Fatalf("classified read before direct stable verification: %v", err)
 	}
@@ -81,12 +81,12 @@ func TestReadBoundedDoesNotConsumeBeyondLimit(t *testing.T) {
 }
 
 // readClassifiedAtDefaultLimit is what file.ReadClassifiedDocument used to be:
-// ReadClassified at the configured maximum. T137 deleted the exported alias —
-// nothing in production called it, and production calls ReadClassified with the
+// readClassified at the configured maximum. T137 deleted the exported alias —
+// nothing in production called it, and production calls readClassified with the
 // limit directly — but the classification behaviour these cases prove is real
 // and reachable, so they now drive the same function production does.
 func readClassifiedAtDefaultLimit(path string) (ClassifiedRead, error) {
-	return ReadClassified(path, MaxClassifiedReadBytes)
+	return readClassified(path, MaxClassifiedReadBytes)
 }
 
 // Proves: FR-FT-005 (partial — the size thresholds and refusal; the preview pause is proven by PreviewPane.test.tsx)
@@ -154,7 +154,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unsupported suffix should return a classified result: %v", err)
 	}
-	if unsupportedRead.Outcome != ReadOutcomeRefused || unsupportedRead.Error == nil || unsupportedRead.Error.Category != "unsupported-input" {
+	if unsupportedRead.Outcome != readOutcomeRefused || unsupportedRead.Error == nil || unsupportedRead.Error.Category != "unsupported-input" {
 		t.Fatalf("unsupported suffix result = %+v", unsupportedRead)
 	}
 	if strings.Contains(unsupportedRead.Error.Message, root) {
@@ -165,14 +165,14 @@ func TestReadClassifiedDocument(t *testing.T) {
 		name       string
 		size       int64
 		capability ReadCapability
-		outcome    ReadOutcome
+		outcome    readOutcome
 	}{
-		{name: "2MiB", size: fixtureSize2MiB, capability: CapabilityWritable, outcome: ReadOutcomeOpened},
-		{name: "2MiB+1", size: fixtureSize2MiBPlus1, capability: CapabilityWritable, outcome: ReadOutcomeOpened},
-		{name: "10MiB", size: fixtureSize10MiB, capability: CapabilityWritable, outcome: ReadOutcomeOpened},
-		{name: "10MiB+1", size: fixtureSize10MiBPlus1, capability: CapabilityLargeReadOnly, outcome: ReadOutcomeOpened},
-		{name: "50MiB", size: fixtureSize50MiB, capability: CapabilityLargeReadOnly, outcome: ReadOutcomeOpened},
-		{name: "50MiB+1", size: fixtureSize50MiBPlus1, capability: CapabilityRefused, outcome: ReadOutcomeRefused},
+		{name: "2MiB", size: fixtureSize2MiB, capability: CapabilityWritable, outcome: readOutcomeOpened},
+		{name: "2MiB+1", size: fixtureSize2MiBPlus1, capability: CapabilityWritable, outcome: readOutcomeOpened},
+		{name: "10MiB", size: fixtureSize10MiB, capability: CapabilityWritable, outcome: readOutcomeOpened},
+		{name: "10MiB+1", size: fixtureSize10MiBPlus1, capability: CapabilityLargeReadOnly, outcome: readOutcomeOpened},
+		{name: "50MiB", size: fixtureSize50MiB, capability: CapabilityLargeReadOnly, outcome: readOutcomeOpened},
+		{name: "50MiB+1", size: fixtureSize50MiBPlus1, capability: CapabilityRefused, outcome: readOutcomeRefused},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			path := filepath.Join(root, row.name+".md")
@@ -190,7 +190,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 			if classified.Characteristics.RawSizeBytes != row.size {
 				t.Fatalf("raw size = %d, want %d", classified.Characteristics.RawSizeBytes, row.size)
 			}
-			if row.outcome == ReadOutcomeRefused {
+			if row.outcome == readOutcomeRefused {
 				if classified.Error == nil || !strings.Contains(classified.Error.Message, "50 MiB") {
 					t.Fatalf("large refusal error = %+v", classified.Error)
 				}

@@ -29,9 +29,6 @@ func TestAutosaveDisabledWritesNothingToDisk(t *testing.T) {
 	}
 
 	service.SetAutosaveEnabled(false)
-	if service.AutosaveEnabled() {
-		t.Fatal("AutosaveEnabled() = true after SetAutosaveEnabled(false)")
-	}
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "edited while autosave is off\n"); err != nil {
 		t.Fatalf("edit: %v", err)
@@ -160,9 +157,6 @@ func TestAutosaveReEnabledResumesWriting(t *testing.T) {
 	}
 
 	service.SetAutosaveEnabled(true)
-	if !service.AutosaveEnabled() {
-		t.Fatal("AutosaveEnabled() = false after SetAutosaveEnabled(true)")
-	}
 	if err := service.UpdateBuffer(context.Background(), documentID, "while on\n"); err != nil {
 		t.Fatalf("edit while on: %v", err)
 	}

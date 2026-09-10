@@ -240,7 +240,7 @@ func (classified ClassifiedError) DeduplicationKey() string {
 	return fmt.Sprintf("%s:%s", classified.DocumentID, classified.Category)
 }
 
-func (classified ClassifiedError) Validate() error {
+func (classified ClassifiedError) validate() error {
 	if !containsClassifiedCategory(classified.Category) {
 		return fmt.Errorf("unknown classified error category %q", classified.Category)
 	}

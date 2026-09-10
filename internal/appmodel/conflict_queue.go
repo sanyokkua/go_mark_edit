@@ -51,7 +51,7 @@ func (queue *conflictQueue) Contains(documentID string) bool {
 	return ok
 }
 
-func (queue *conflictQueue) Current(order []string) (conflictQueueEntry, bool) {
+func (queue *conflictQueue) current(order []string) (conflictQueueEntry, bool) {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	if queue.active != "" {
@@ -70,7 +70,7 @@ func (queue *conflictQueue) Current(order []string) (conflictQueueEntry, bool) {
 	return conflictQueueEntry{}, false
 }
 
-func (queue *conflictQueue) BlockedDocumentIDs() []string {
+func (queue *conflictQueue) blockedDocumentIDs() []string {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	ids := make([]string, 0, len(queue.pending))
@@ -80,7 +80,7 @@ func (queue *conflictQueue) BlockedDocumentIDs() []string {
 	return ids
 }
 
-func (queue *conflictQueue) Len() int {
+func (queue *conflictQueue) len() int {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	return len(queue.pending)

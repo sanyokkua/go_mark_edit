@@ -32,22 +32,23 @@ func TestDocumentDialogsSaveAndOverwritePorts(t *testing.T) {
 	ctx := context.WithValue(context.Background(), dialogContextKey{}, "save-dialog")
 	saveCalls := 0
 	overwriteCalls := 0
-	dialogs := NewDocumentDialogsWithSave(
+	dialogs := NewDocumentDialogs(nil)
+	dialogs.SetSaveFilePicker(
 		func(got context.Context, request appmodel.SaveDialogRequest) (string, error) {
 			saveCalls++
 			if got != ctx || request.DefaultFilename != "Untitled.md" {
 				t.Fatalf("save dialog context/request = %v/%+v", got, request)
 			}
 			return "/tmp/Untitled.md", nil
-		},
+		})
+	dialogs.SetOverwriteConfirmer(
 		func(got context.Context, subject string) (bool, error) {
 			overwriteCalls++
 			if got != ctx || subject != "Untitled.md" {
 				t.Fatalf("overwrite context/subject = %v/%q", got, subject)
 			}
 			return true, nil
-		},
-	)
+		})
 	path, err := dialogs.ChooseSaveFile(ctx, appmodel.SaveDialogRequest{DefaultFilename: "Untitled.md"})
 	if err != nil || path != "/tmp/Untitled.md" || saveCalls != 1 {
 		t.Fatalf("save dialog result = %q/%v calls=%d", path, err, saveCalls)

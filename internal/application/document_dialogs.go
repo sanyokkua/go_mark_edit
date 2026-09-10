@@ -6,43 +6,28 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
 
-// OpenFileDialogOptions is the composition-root-neutral native picker contract.
-type OpenFileDialogOptions struct {
-	Title   string
-	Filters []FileFilter
-}
-
-type FileFilter struct {
-	DisplayName string
-	Pattern     string
-}
-
-type OpenFilePicker func(context.Context) (string, error)
-type SaveFilePicker func(context.Context, appmodel.SaveDialogRequest) (string, error)
-type OverwriteConfirmer func(context.Context, string) (bool, error)
+type openFilePicker func(context.Context) (string, error)
+type saveFilePicker func(context.Context, appmodel.SaveDialogRequest) (string, error)
+type overwriteConfirmer func(context.Context, string) (bool, error)
 
 // DocumentDialogs adapts one injected native picker. It owns no application model state.
 type DocumentDialogs struct {
-	openFile         OpenFilePicker
-	saveFile         SaveFilePicker
-	confirmOverwrite OverwriteConfirmer
+	openFile         openFilePicker
+	saveFile         saveFilePicker
+	confirmOverwrite overwriteConfirmer
 }
 
-func NewDocumentDialogs(openFile OpenFilePicker) *DocumentDialogs {
+func NewDocumentDialogs(openFile openFilePicker) *DocumentDialogs {
 	return &DocumentDialogs{openFile: openFile}
 }
 
-func NewDocumentDialogsWithSave(saveFile SaveFilePicker, confirmOverwrite OverwriteConfirmer) *DocumentDialogs {
-	return &DocumentDialogs{saveFile: saveFile, confirmOverwrite: confirmOverwrite}
-}
-
-func (dialogs *DocumentDialogs) SetSaveFilePicker(saveFile SaveFilePicker) {
+func (dialogs *DocumentDialogs) SetSaveFilePicker(saveFile saveFilePicker) {
 	if dialogs != nil {
 		dialogs.saveFile = saveFile
 	}
 }
 
-func (dialogs *DocumentDialogs) SetOverwriteConfirmer(confirmOverwrite OverwriteConfirmer) {
+func (dialogs *DocumentDialogs) SetOverwriteConfirmer(confirmOverwrite overwriteConfirmer) {
 	if dialogs != nil {
 		dialogs.confirmOverwrite = confirmOverwrite
 	}

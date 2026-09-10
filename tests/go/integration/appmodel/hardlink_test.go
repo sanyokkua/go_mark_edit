@@ -21,7 +21,7 @@ func TestOpeningAHardLinkFocusesTheExistingDocument(t *testing.T) {
 	if err := os.Link(original, link); err != nil {
 		t.Fatalf("create hard link: %v", err)
 	}
-	service := appmodel.NewAppModelService(appmodel.WithEmitter(&statePatchRecorder{}))
+	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(&statePatchRecorder{}))
 
 	first := service.OpenPath(context.Background(), original, 0)
 	if first.Status != appmodel.OpenStatusOpened {

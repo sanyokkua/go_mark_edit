@@ -31,7 +31,7 @@ func TestSaveAsDuringAutosaveKeepsBothDiskCopiesAndLeavesTheDocumentClean(t *tes
 	firstSnapshot := make(chan string, 1)
 	var writesMu sync.Mutex
 	writes := 0
-	service := appmodel.NewAppModelService(
+	service := appmodel.NewAppModelServiceForHost(
 		appmodel.WithEmitter(&statePatchRecorder{}),
 		appmodel.WithAutosaveTimer(clock),
 		appmodel.WithDialogs(nil, saveDialog{path: target}),

@@ -61,7 +61,6 @@ func TestResultEnvelopesEmbedOneFailure(t *testing.T) {
 	resultTypes := []reflect.Type{
 		reflect.TypeFor[apperr.VoidResult](),
 		reflect.TypeFor[apperr.ClassifiedVoidResult](),
-		reflect.TypeFor[apperr.StringResult](),
 		reflect.TypeFor[apperr.SettingsResult](),
 		reflect.TypeFor[apperr.DocumentTransitionResult](),
 		reflect.TypeFor[apperr.TabTransitionResult](),

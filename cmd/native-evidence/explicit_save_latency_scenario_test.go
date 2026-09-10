@@ -27,7 +27,7 @@ func newExplicitSaveScenarioForTest(t *testing.T) (*explicitSaveLatencyScenario,
 	if err != nil {
 		t.Fatalf("new explicit save scenario: %v", err)
 	}
-	model := appmodel.NewAppModelService(
+	model := appmodel.NewAppModelServiceForHost(
 		appmodel.WithEmitter(explicitSaveTestEmitter{}),
 		appmodel.WithDialogs(nil, scenario),
 		appmodel.WithWriteCommitObserver(scenario.recordCommit),

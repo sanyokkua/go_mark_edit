@@ -69,13 +69,6 @@ type ClassifiedVoidResult struct {
 	Error *ClassifiedError `json:"error,omitempty"`
 }
 
-// StringResult is the envelope for a single string payload.
-type StringResult struct {
-	Failure
-	Data  string     `json:"data"`
-	Error *WireError `json:"error,omitempty"`
-}
-
 // SettingsResult is the envelope for the complete typed settings registry.
 type SettingsResult struct {
 	Failure

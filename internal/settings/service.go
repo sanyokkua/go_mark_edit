@@ -185,7 +185,7 @@ func (service *SettingsService) ResetAppearance(ctx context.Context) error {
 	// the default ever changes.
 	restored, err := repository.GetAppearance(nonNilContext(ctx))
 	if err != nil {
-		return nil
+		return apperr.IO("read reset appearance", err)
 	}
 	service.notifyDefaultOpenMode(restored.DefaultOpenMode)
 	return nil

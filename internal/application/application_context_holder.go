@@ -212,9 +212,7 @@ func (holder *ApplicationContextHolder) Init(ctx context.Context) error {
 		repository = holder.settingsRepository
 	}
 	holder.SettingsService.SetRepository(repository)
-	if holder.AppModelService.LayoutRepository() == nil {
-		holder.AppModelService.SetLayoutRepository(appmodel.NewSqliteLayoutRepository(database))
-	}
+	holder.AppModelService.SetLayoutRepository(appmodel.NewSqliteLayoutRepository(database))
 	holder.AppModelService.SetFileMetadataRepository(appmodel.NewSqliteFileMetadataRepository(database))
 	holder.AppModelService.SetRecentFilesRepository(appmodel.NewSqliteRecentFilesRepository(database))
 	holder.DB = database
@@ -253,12 +251,6 @@ func (holder *ApplicationContextHolder) applyPersistedDefaultOpenMode(ctx contex
 		return
 	}
 	holder.AppModelService.SetDefaultOpenMode(stored.Appearance.DefaultOpenMode)
-}
-
-func (holder *ApplicationContextHolder) StartupReady() bool {
-	holder.mu.Lock()
-	defer holder.mu.Unlock()
-	return holder.DB != nil && holder.startupErr == nil
 }
 
 func (holder *ApplicationContextHolder) RetryStartup(ctx context.Context) error {

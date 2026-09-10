@@ -84,7 +84,7 @@ func TestStableRereadMetadataEqualResumesWrite(t *testing.T) {
 	if got := readConflictFile(t, path); got != "mine\n" {
 		t.Fatalf("resumed Save = %q", got)
 	}
-	if service.conflictQueue.Len() != 0 {
+	if service.conflictQueue.len() != 0 {
 		t.Fatalf("metadata-equal reread queued a conflict")
 	}
 }

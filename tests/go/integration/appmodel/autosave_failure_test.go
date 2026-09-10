@@ -26,7 +26,7 @@ func TestAutosaveFailureEpisodeShowsNewCategoriesOnceAndClearsOnSuccess(t *testi
 	clock := &manualAutosaveFactory{}
 	recorder := &autosaveErrorRecorder{}
 	attempt := 0
-	service := appmodel.NewAppModelService(
+	service := appmodel.NewAppModelServiceForHost(
 		appmodel.WithEmitter(recorder),
 		appmodel.WithAutosaveTimer(clock),
 		appmodel.WithWriteExecutor(func(snapshot appmodel.WriteSnapshot) (file.DiskVersion, error) {
@@ -108,7 +108,7 @@ func TestAutosaveFailureReporterLogsWhenEventDeliveryIsUnavailableOrFails(t *tes
 			}
 			clock := &manualAutosaveFactory{}
 			var logs bytes.Buffer
-			service := appmodel.NewAppModelService(
+			service := appmodel.NewAppModelServiceForHost(
 				appmodel.WithEmitter(emitter),
 				appmodel.WithLogger(zerolog.New(&logs)),
 				appmodel.WithAutosaveTimer(clock),
@@ -137,7 +137,6 @@ func autosaveFailure(path string, category apperr.ClassifiedErrorCategory, remed
 	classified := apperr.NewClassifiedError(category, path, "The autosave could not be completed.", remediation, "")
 	return &file.AtomicReplaceError{
 		Committed:  false,
-		Phase:      file.AtomicReplacePreCommit,
 		Classified: &classified,
 		Cause:      errors.New("fixture write refusal"),
 	}

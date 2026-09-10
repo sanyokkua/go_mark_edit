@@ -28,7 +28,9 @@ type statePublication struct {
 func (service *AppModelService) publishLocked(ctx context.Context, before applicationState, patch apperr.AppStatePatch) error {
 	if service.emitter == nil {
 		service.state = before
-		return apperr.Internal(errors.New("state patch emitter is required"))
+		err := apperr.Internal(errors.New("state patch emitter is required"))
+		service.logPublicationFailure(err, false, true)
+		return err
 	}
 
 	publication := service.beginPublicationLocked(before, patch, true)
@@ -40,7 +42,9 @@ func (service *AppModelService) publishLocked(ctx context.Context, before applic
 // bytes that AtomicReplace has already committed.
 func (service *AppModelService) publishCommittedLocked(ctx context.Context, before applicationState, patch apperr.AppStatePatch) error {
 	if service.emitter == nil {
-		return apperr.Internal(errors.New("state patch emitter is required"))
+		err := apperr.Internal(errors.New("state patch emitter is required"))
+		service.logPublicationFailure(err, false, false)
+		return err
 	}
 	publication := service.beginPublicationLocked(before, patch, false)
 	return service.publishPreparedLocked(ctx, publication)
@@ -55,6 +59,7 @@ func (service *AppModelService) publishPreparedLocked(ctx context.Context, publi
 		service.mu.Unlock()
 		service.publicationMu.Unlock()
 		service.mu.Lock()
+		service.logger.Error().Err(errStalePublication).Msg("state publication rejected because its commit identity is stale")
 		return apperr.Internal(errStalePublication)
 	}
 	service.mu.Unlock()
@@ -67,18 +72,37 @@ func (service *AppModelService) publishPreparedLocked(ctx context.Context, publi
 	service.mu.Lock()
 	defer service.publicationMu.Unlock()
 	if panicked {
-		if service.publicationCurrentLocked(publication) && publication.rollback {
+		rolledBack := service.publicationCurrentLocked(publication) && publication.rollback
+		if rolledBack {
 			service.state = publication.before
 		}
+		service.logPublicationFailure(nil, true, rolledBack)
 		return apperr.Internal(errors.New("emit state patch panicked"))
 	}
 	if emitErr != nil {
-		if service.publicationCurrentLocked(publication) && publication.rollback {
+		rolledBack := service.publicationCurrentLocked(publication) && publication.rollback
+		if rolledBack {
 			service.state = publication.before
 		}
+		service.logPublicationFailure(emitErr, false, rolledBack)
 		return apperr.Internal(fmt.Errorf("emit state patch: %w", emitErr))
 	}
 	return nil
+}
+
+func (service *AppModelService) logPublicationFailure(deliveryErr error, panicked, rolledBack bool) {
+	event := service.logger.Error().Bool("rolled_back", rolledBack)
+	if deliveryErr != nil {
+		event = event.Err(deliveryErr)
+	}
+	switch {
+	case panicked:
+		event.Msg("state publication rolled back after event delivery panic")
+	case rolledBack:
+		event.Msg("state publication rolled back after event delivery failure")
+	default:
+		event.Msg("state publication delivery failed after the state transition was committed")
+	}
 }
 
 func (service *AppModelService) beginPublicationLocked(before applicationState, patch apperr.AppStatePatch, rollback bool) statePublication {

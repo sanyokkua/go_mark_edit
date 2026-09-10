@@ -96,45 +96,12 @@ func IO(operation string, cause error) *AppError {
 	}
 }
 
-// Permission reports an OS permission failure without exposing its full path.
-func Permission(path string) *AppError {
-	return &AppError{
-		Code:    CodePermission,
-		Title:   "Permission denied",
-		Message: "Permission is required to access this item.",
-		Details: map[string]string{
-			"name": filepath.Base(path),
-		},
-	}
-}
-
 // Busy reports that an exclusive operation is already running.
 func Busy() *AppError {
 	return &AppError{
 		Code:    CodeBusy,
 		Title:   "Operation in progress",
 		Message: "Another operation is already in progress.",
-	}
-}
-
-// Timeout reports an operation that exceeded its budget.
-func Timeout(cause error) *AppError {
-	return &AppError{
-		Code:      CodeTimeout,
-		Title:     "Operation timed out",
-		Message:   "The operation took too long to complete.",
-		Retryable: true,
-		cause:     cause,
-	}
-}
-
-// Cancelled reports an operation cancelled by the user or application shutdown.
-func Cancelled(cause error) *AppError {
-	return &AppError{
-		Code:    CodeCancelled,
-		Title:   "Operation cancelled",
-		Message: "The operation was cancelled.",
-		cause:   cause,
 	}
 }
 

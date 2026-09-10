@@ -12,13 +12,6 @@ type RevealPort interface {
 	Reveal(path string) error
 }
 
-// RevealPortFunc adapts a function to RevealPort in tests and hosts.
-type RevealPortFunc func(string) error
-
-func (port RevealPortFunc) Reveal(path string) error {
-	return port(path)
-}
-
 // NewPlatformRevealPort returns the platform-native reveal implementation.
 func NewPlatformRevealPort() RevealPort {
 	return platformRevealPort{}

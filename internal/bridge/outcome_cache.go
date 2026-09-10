@@ -48,12 +48,6 @@ func NewOutcomeCache(clocks ...any) *OutcomeCache {
 	}
 }
 
-// NewOutcomeCacheWithClock is the explicit-clock spelling for callers that
-// prefer not to use the optional argument form.
-func NewOutcomeCacheWithClock(now func() time.Time) *OutcomeCache {
-	return NewOutcomeCache(now)
-}
-
 // Once validates the request, joins an in-flight call, or returns a retained
 // completed outcome. The function is executed at most once for a retained ID.
 func Once[T any](cache *OutcomeCache, request Request, fn func() T) (outcome T) {

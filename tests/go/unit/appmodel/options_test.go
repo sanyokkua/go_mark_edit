@@ -9,7 +9,7 @@ import (
 
 // Proves: FR-055
 func TestWithVersionReachesTheApplicationState(t *testing.T) {
-	service := appmodel.NewAppModelService(appmodel.WithVersion("test-version"))
+	service := appmodel.NewAppModelServiceForHost(appmodel.WithVersion("test-version"))
 
 	state, err := service.GetState(context.Background())
 	if err != nil {

@@ -199,9 +199,6 @@ func TestDrainBeforeCloseClassifiesALayoutFailure(t *testing.T) {
 	if classified.Remediation() != apperr.RemediationRetry {
 		t.Fatalf("drain failure remediation = %q, want %q", classified.Remediation(), apperr.RemediationRetry)
 	}
-	if err := classified.Validate(); err != nil {
-		t.Fatalf("drain failure is not a valid classified error: %v", err)
-	}
 }
 
 type noopDrainLayoutTimer struct{}

@@ -31,7 +31,7 @@ func (window *recordingNativeWindow) Show(context.Context)     { window.showCall
 // Restore clamps only dimensions to the public usable display, keeps native
 // maximization independent, and makes visibility a one-shot readiness action.
 func TestNativeWindowRestoresHiddenThenShowsOnce(t *testing.T) {
-	model := appmodel.NewAppModelService(appmodel.WithEmitter(discardingEmitter{}))
+	model := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(discardingEmitter{}))
 	width, height := 2400, 1600
 	maximized := true
 	if err := model.SetUILayout(context.Background(), apperr.UILayout{
@@ -50,12 +50,8 @@ func TestNativeWindowRestoresHiddenThenShowsOnce(t *testing.T) {
 	if native.width != 1280 || native.height != 900 || native.maximiseCalls != 1 || native.showCalls != 0 {
 		t.Fatalf("native restore = %+v, want clamped hidden maximized restore", native)
 	}
-	if err := service.ShowWhenFrontendReady(context.Background()); err != nil {
-		t.Fatalf("first frontend-ready: %v", err)
-	}
-	if err := service.ShowWhenFrontendReady(context.Background()); err != nil {
-		t.Fatalf("second frontend-ready: %v", err)
-	}
+	service.FrontendReady(context.Background())
+	service.FrontendReady(context.Background())
 	if native.showCalls != 1 {
 		t.Fatalf("show calls = %d, want exactly one", native.showCalls)
 	}

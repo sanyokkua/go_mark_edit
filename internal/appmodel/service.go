@@ -78,11 +78,6 @@ type pendingLayout struct {
 	values     map[string]VersionedLayoutValue
 }
 
-// NewAppModelService creates one clean, never-saved document for this process.
-func NewAppModelService(options ...AppModelOption) *AppModelService {
-	return newAppModelService(options...)
-}
-
 // NewAppModelServiceForHost is the production constructor. Host ports and the
 // application version are supplied explicitly through constructor options.
 func NewAppModelServiceForHost(options ...AppModelOption) *AppModelService {
@@ -135,19 +130,6 @@ func newAppModelService(options ...AppModelOption) *AppModelService {
 	return service
 }
 
-// NewEmptyAppModelService constructs the same backend state with no open
-// documents. It is used by the zero-document launcher and keeps the optional
-// active identity explicit instead of manufacturing a placeholder.
-func NewEmptyAppModelService(options ...AppModelOption) *AppModelService {
-	service := newAppModelService(options...)
-	service.mu.Lock()
-	service.state.documents = map[string]*openDocument{}
-	service.state.orderedDocumentIDs = nil
-	service.state.activeDocumentID = ""
-	service.mu.Unlock()
-	return service
-}
-
 // SetFileMetadataRepository configures optional per-path arrangement persistence.
 func (service *AppModelService) SetFileMetadataRepository(repository FileMetadataRepository) {
 	service.mu.Lock()
@@ -171,16 +153,6 @@ func (service *AppModelService) SetDefaultOpenMode(mode string) {
 	service.mu.Lock()
 	service.defaultOpenMode = mode
 	service.mu.Unlock()
-}
-
-// DefaultOpenMode reports the acknowledged setting Open applies before it resolves
-// a path's arrangement. It exists so the composition-root join can be asserted:
-// until T119 SetDefaultOpenMode had no production caller at all, and nothing could
-// observe that the stored preference never arrived.
-func (service *AppModelService) DefaultOpenMode() string {
-	service.mu.RLock()
-	defer service.mu.RUnlock()
-	return service.defaultOpenMode
 }
 
 // SetRuntimeContext supplies the Wails lifecycle context used by timer-driven
@@ -362,17 +334,14 @@ func (service *AppModelService) DocumentCommands() DocumentCommandAPI {
 }
 
 // SetLayoutRepository completes persistence wiring after application startup.
+// A constructor-injected repository wins so hosts can provide a durable test
+// or recovery port without it being replaced when SQLite opens.
 func (service *AppModelService) SetLayoutRepository(repository LayoutRepositoryAPI) {
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	service.layout = repository
-}
-
-// LayoutRepository exposes the configured persistence seam for composition checks.
-func (service *AppModelService) LayoutRepository() LayoutRepositoryAPI {
-	service.mu.RLock()
-	defer service.mu.RUnlock()
-	return service.layout
+	if service.layout == nil {
+		service.layout = repository
+	}
 }
 
 // RestoreUILayout reads each durable layout field independently. A corrupt or
@@ -387,6 +356,7 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 	}
 
 	restored := apperr.UILayout{}
+	var firstReadErr error
 	for _, field := range []string{
 		LayoutWindowWidth,
 		LayoutWindowHeight,
@@ -396,7 +366,13 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		LayoutArrangementBackup,
 	} {
 		value, found, err := repository.Read(ctx, field)
-		if err != nil || !found {
+		if err != nil {
+			if firstReadErr == nil {
+				firstReadErr = classifyLayoutReadError(field, err)
+			}
+			continue
+		}
+		if !found {
 			continue
 		}
 		switch field {
@@ -430,7 +406,7 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 	service.mu.Lock()
 	mergeUILayout(&service.state.ui, restored)
 	service.mu.Unlock()
-	return nil
+	return firstReadErr
 }
 
 func validArrangement(arrangement string) bool {
@@ -694,12 +670,34 @@ func classifyLayoutPersistenceError(err error) error {
 	return apperr.IO("update layout", err)
 }
 
+func classifyLayoutReadError(field string, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	var appError *apperr.AppError
+	if errors.As(err, &appError) {
+		return err
+	}
+
+	return apperr.IO("read layout "+field, err)
+}
+
 func (service *AppModelService) emitAsyncLayoutError(ctx context.Context, err error) {
 	if err == nil {
 		return
 	}
 
-	service.emitAsyncError(ctx, apperr.ToWire(zerolog.Nop(), err), "layout persistence failure could not be surfaced")
+	classified := bridge.ClassifiedWithID(
+		apperr.ClassifiedIOFailure,
+		"layout",
+		"The application layout could not be saved.",
+		apperr.RemediationRetry,
+		"",
+	)
+	wire := apperr.ClassifiedToWire(classified)
+	wire.Details["operation"] = "update layout"
+	service.emitAsyncError(ctx, wire, "layout persistence failure could not be surfaced")
 }
 
 func (service *AppModelService) emitAsyncError(ctx context.Context, wire apperr.WireError, reason string) {

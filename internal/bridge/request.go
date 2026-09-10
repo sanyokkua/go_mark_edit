@@ -26,9 +26,3 @@ func (request Request) Validate() error {
 func (request Request) IsValid() bool {
 	return request.Validate() == nil
 }
-
-// ValidateRequest is the package-level form for callers that do not need a
-// method value.
-func ValidateRequest(request Request) error {
-	return request.Validate()
-}

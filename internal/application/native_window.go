@@ -87,13 +87,6 @@ func (service *NativeWindowService) FrontendReady(ctx context.Context) {
 	service.showIfReadyLocked(ctx)
 }
 
-// ShowWhenFrontendReady retains the established service API while keeping the
-// readiness signal independent from backend restore.
-func (service *NativeWindowService) ShowWhenFrontendReady(ctx context.Context) error {
-	service.FrontendReady(ctx)
-	return nil
-}
-
 func (service *NativeWindowService) showIfReadyLocked(ctx context.Context) {
 	if service.shown || !service.restored || !service.frontendReady || service.native == nil {
 		return

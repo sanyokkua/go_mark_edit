@@ -354,13 +354,24 @@ func (service *AppModelService) ReopenLastFile(ctx context.Context, expectedTabS
 		return result
 	}
 	if result.DocumentID != "" {
-		_ = service.SetDocView(ctx, result.DocumentID, apperr.DocViewInput{
+		viewErr := service.SetDocView(ctx, result.DocumentID, apperr.DocViewInput{
 			EditorVisible:  entry.view.EditorVisible,
 			PreviewVisible: entry.view.PreviewVisible,
 			Cursor:         entry.view.Cursor,
 			Selection:      entry.view.Selection,
 			Scroll:         entry.view.Scroll,
 		})
+		if viewErr != nil {
+			warning := bridge.ClassifiedWithID(
+				apperr.ClassifiedPersistenceWarning,
+				"view",
+				"The file reopened, but its saved view could not be restored.",
+				apperr.RemediationNone,
+				result.DocumentID,
+			)
+			result.Error = warning
+			result.Failure = bridge.FailureFromClassified(warning)
+		}
 	}
 	service.consumeClosedEntry(ctx, entry.path)
 	return result

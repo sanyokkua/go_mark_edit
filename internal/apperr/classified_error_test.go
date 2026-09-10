@@ -40,7 +40,7 @@ func TestClassifiedErrorRemediationIsFixedVocabulary(t *testing.T) {
 	if classified.DedupKey != "doc-1:not-found" {
 		t.Fatalf("dedup key = %q", classified.DedupKey)
 	}
-	if err := classified.Validate(); err != nil {
+	if err := classified.validate(); err != nil {
 		t.Fatalf("validate classified error: %v", err)
 	}
 }
@@ -109,7 +109,7 @@ func TestClassifiedErrorRefusesARemediationItsCategoryForbids(t *testing.T) {
 			Category: category, SafeSubject: "notes.md", Message: "m",
 			Remediations: []ClassifiedRemediation{remediation},
 		}
-		if err := invalid.Validate(); err == nil {
+		if err := invalid.validate(); err == nil {
 			t.Fatalf("Validate accepted %q for category %q, which the contract forbids", remediation, category)
 		}
 		// Defence in depth: the constructor must not be able to build one either.
@@ -141,7 +141,7 @@ func TestClassifiedErrorKeepsTheRemediationItsCategoryAllows(t *testing.T) {
 		if built.Remediation() != row.remediation {
 			t.Fatalf("category %q dropped its allowed remediation %q, carries %v", row.category, row.remediation, built.Remediations)
 		}
-		if err := built.Validate(); err != nil {
+		if err := built.validate(); err != nil {
 			t.Fatalf("category %q with %q failed validation: %v", row.category, row.remediation, err)
 		}
 	}
