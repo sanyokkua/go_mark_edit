@@ -30,7 +30,7 @@ export type NotificationRemediationAction =
    * control is not a re-issue of anything — the failure it answers is a Reveal or
    * Copy path against a missing file, and the label the contract gives it says
    * what it does rather than that it repeats. Its command is `save` all the same,
-   * which is why `intent` carries that. T160.
+   * which is why `intent` carries that.
    */
   | 'save-to-recreate'
   | 'retry'
@@ -42,9 +42,8 @@ export type NotificationRemediationAction =
  *
  * Every member names something the application can actually execute; a caller
  * that cannot name one gets no control, which is what keeps a rendered button
- * from calling nothing. The entry members were added by T156: Go classifies a
- * stale tab-set refusal as `conflict` and sends `Retry`, and the contract's
- * `conflict` row (amended by T159) covers exactly that — re-reading
+ * from calling nothing. Go classifies a stale tab-set refusal as `conflict`
+ * and sends `Retry`; the `conflict` row covers exactly that — re-reading
  * `tabSetRevision` and re-issuing the same command.
  */
 export type NotificationRemediationIntent =
@@ -59,7 +58,7 @@ export type NotificationRemediationIntent =
   | 'activate-document'
   | 'command'
   /**
-   * Re-asks the native frame to close, after FR-FT-027's drain refused.
+   * Re-asks the native frame to close after its drain refused.
    *
    * It re-issues the *request*, not the authorization: the coordinator
    * cancelled the pending close when the drain failed, so there is nothing left
@@ -69,7 +68,7 @@ export type NotificationRemediationIntent =
    */
   | 'quit'
   /**
-   * Re-prepares a refused close, after FR-FT-033's stale tab-set check.
+   * Re-prepares a refused close after a stale tab-set check.
    *
    * Like `quit` this re-issues the *request* rather than the refused call, and
    * for the same reason: the plan id the failure carries is exactly what the
@@ -79,10 +78,10 @@ export type NotificationRemediationIntent =
    */
   | 'close-documents'
   /**
-   * Re-issues a refused tab move, after FR-FT-033's stale tab-set check.
+   * Re-issues a refused tab move after a stale tab-set check.
    *
-   * Executed by the tab strip rather than by App, because FR-FT-034 requires the
-   * completed move to be announced and the announcement is built from the
+   * Executed by the tab strip rather than by App because a completed move must be
+   * announced and the announcement is built from the
    * disambiguated tab label and the strip's length — see TabRemediationContext.
    */
   | 'reorder-document';
@@ -127,7 +126,7 @@ export interface Notification {
   /**
    * The controls offered with this failure, in contract order.
    *
-   * A list rather than one value because the contract specifies sets: a Reveal
+   * A list rather than one value because a failure can offer several actions: a Reveal
    * `system-command-failure` offers "Retry; a Reveal failure also offers Copy
    * path", and a detached `not-found` offers "Save to recreate plus Copy path".
    * Empty means message-only, which is what most of the eight categories are.

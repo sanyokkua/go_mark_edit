@@ -42,16 +42,6 @@ const AppShell: React.FC<AppShellProps> = ({
   onExternalConflict,
   onOpenRecentFile,
 }: AppShellProps): React.JSX.Element => {
-  const parityRoute =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('parity-case');
-  const parityCase =
-    typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('parity-case')
-      : null;
-  const parityFamily = parityCase?.startsWith('primary:toolbar-overflow:')
-    ? 'toolbar-overflow'
-    : undefined;
   const { fileSettings, markdownSettings } = useEditorSettings();
   const hasActiveDocument = useAppSelector(
     (state) =>
@@ -166,8 +156,6 @@ const AppShell: React.FC<AppShellProps> = ({
   return (
     <WorkspaceLayout
       documentState={hasActiveDocument ? 'active' : 'empty'}
-      parityFamily={parityFamily}
-      parityShell={parityRoute}
     >
       {!hasActiveDocument && showLauncher ? (
         <Launcher

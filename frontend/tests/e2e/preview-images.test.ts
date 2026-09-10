@@ -38,7 +38,6 @@ async function getState(page: Page): Promise<PreviewState> {
   });
 }
 
-// Proves: FR-049
 test('case 7 serves bounded in-folder images and keeps every other source inert', async ({
   app,
 }) => {

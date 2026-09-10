@@ -149,7 +149,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   }, []);
 
   /*
-   * FR-FT-037's focus chain, steps two to four: the current active tab, then
+   * The focus chain proceeds through the current active tab, then
    * the tab strip's New control, then the launcher's New control. The last
    * step is not decoration — closing the last document unmounts `EditorView`
    * and this whole strip with it, and `AppShell` renders `Launcher` in its
@@ -260,14 +260,14 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   );
 
   /*
-   * T140. Two defects, one shape: a switch that fails has to end in a reported
-   * refusal, never in a rejected promise, because every caller of
+   * A failed switch ends in a reported refusal, never in a rejected promise,
+   * because every caller of
    * `activateDocument` below discards its result with `void` and a rejection
    * there reaches the user as a dead tab click and an unhandled rejection.
    *
-   * The fallback branch had a second problem of its own. FR-FT-031 requires the
-   * outgoing document's state to be flushed and awaited "before activating the
-   * incoming document", and the shell's `onActivateDocument` does that — but
+   * The fallback branch also flushes and awaits the outgoing document's state
+   * before activating the incoming document, and the shell's
+   * `onActivateDocument` does that — but
    * when no shell handler is supplied this component went straight to
    * `adapter.activateDocument` with no flush at all, silently dropping the
    * outgoing document's newest caret, selection, scroll and view state.
@@ -309,7 +309,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         result.error !== undefined
       ) {
         /*
-         * T156. A refused activation is `conflict` — "The tab set changed; the
+         * A refused activation is `conflict` — "The tab set changed; the
          * switch must be retried." — and Go sends `Retry` with it. The command
          * is well defined: re-read `tabSetRevision` and activate the same tab
          * again. `retry.documentId` names it explicitly rather than relying on
@@ -340,7 +340,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       targetDocumentIds: string[] = [documentId],
     ): Promise<TabTransitionResult | undefined> => {
       /*
-       * T164. Whoever owns the command owns the report.
+       * The owner of the command also owns its report.
        *
        * When the shell supplies `onCloseDocument` it reports its own refusals
        * through `reportClosePlanError`, and it is the only frame that can offer
@@ -348,8 +348,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
        * Reporting here as well produced a real `×2` on the execute arm:
        * `completeClosePlan` reports the failure and then *returns* it, so this
        * saw the same error the shell had already announced, and the count
-       * rendered over the Retry control — the exact defect T188 made
-       * unrepeatable for activation.
+       * rendered over the Retry control, so activation reports only once.
        *
        * The prepare arm never showed it, because that path returns
        * `{status: 'noop'}` with no error, which is why this read as unreachable
@@ -384,7 +383,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   );
 
   /*
-   * FR-FT-034 lists three affordances that close the *targeted* tab: the close
+   * Three affordances close the *targeted* tab: the close
    * control, middle-click, and the tab-specific Close action. All three land
    * here rather than on `adapter.closeDocument`, because the shell installs
    * the dirty-close prompt on `onCloseDocument` — a middle-click that reached
@@ -409,13 +408,13 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   );
 
   /*
-   * T165. One move, one report, one announcement — kept together deliberately.
+   * Keep one move, one report, and one announcement together deliberately.
    *
-   * FR-FT-034 requires a completed move to be announced, and the announcement
+   * A completed move is announced, and the announcement
    * needs the disambiguated label and the strip's length, which only exist here.
    * Splitting the command from its announcement is what made a reorder Retry
    * impossible to add from App: the control would have moved the tab and said
-   * nothing, satisfying the remediation contract by breaking FR-FT-034.
+   * nothing, which would leave the remediation incomplete.
    *
    * The refusal now carries `reorder-document`, so the same function serves the
    * first attempt and the retry, and the announcement cannot be forgotten on one
@@ -531,7 +530,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       if (action === 'reveal-in-file-manager') {
         const result = await adapter.revealInFileManager?.(document.documentId);
         if (result?.error !== undefined) {
-          // FR-FT-037 pairs a Reveal failure with Copy path *and* a Retry that
+          // A Reveal failure offers Copy path *and* a Retry that
           // re-runs Reveal. `intent: 'reveal'` is what earns the second control:
           // both are real commands here, because the document is known.
           reportClassifiedError(
@@ -580,16 +579,16 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   /*
    * The tab strip's own accelerator listener. It answers for four registry
    * ids, not two: `next-tab` and `previous-tab` cycle the selection, and
-   * `move-tab-left`/`move-tab-right` reorder the active tab. FR-FT-034 binds
+   * `move-tab-left`/`move-tab-right` reorder the active tab. The latter pair uses
    * the latter pair to `Ctrl/Cmd+Shift+PageUp/PageDown`, and
-   * `shortcutForKeyEvent` has always resolved those bindings — until T129 the
-   * ids were simply in nobody's list, so the keys resolved to an action that
-   * nothing then dispatched. `useShellShortcuts` cannot cover them either: it
+   * `shortcutForKeyEvent` resolves those bindings, and this listener dispatches
+   * the two tab-context actions that are not listed in the shortcuts surface.
+   * `useShellShortcuts` cannot cover them either: it
    * is installed once over `actionsForSurface('file-menu')`, and the only
    * surface these two declare is `tab-context`.
    *
    * A Move goes through `handleTabAction`, the same path the context menu
-   * uses, so the command still carries the tab-set revision FR-FT-033
+   * uses, so the command still carries the tab-set revision the backend
    * requires and still produces the `editor.tab.moved` announcement.
    */
   useEffect((): (() => void) => {
@@ -604,7 +603,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
        * how their bindings came to resolve to an action nobody dispatched.
        * The registry is left alone: adding `shortcuts` to those two entries
        * would also list them in the keyboard-shortcuts dialog, which is a
-       * user-visible change FR-FT-034 does not ask for.
+       * user-visible change, so the registry remains unchanged.
        */
       const action = [
         ...actionsForSurface('shortcuts'),
@@ -630,7 +629,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         if (active === undefined) return;
         const targetIndex = current + (action.id === 'move-tab-left' ? -1 : 1);
         /*
-         * FR-FT-034: "Moving past an edge MUST succeed as a no-op without
+         * Moving past an edge succeeds as a no-op without
          * incrementing the tab-set revision." Clamping the index instead —
          * `Math.max(0, current - 1)` — would issue a reorder to the position
          * the tab already occupies, and the backend would answer it with a
@@ -667,9 +666,9 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         ];
       if (target !== undefined) void activateDocument(target.documentId);
     };
-    globalThis.document.addEventListener('keydown', navigate);
+    window.addEventListener('keydown', navigate);
     return (): void =>
-      globalThis.document.removeEventListener('keydown', navigate);
+      window.removeEventListener('keydown', navigate);
   }, [
     activateDocument,
     activeDocumentId,

@@ -166,7 +166,7 @@ func integerField(value reflect.Value, name string) (int64, bool) {
 	}
 	if field.CanUint() {
 		unsigned := field.Uint()
-		if unsigned > uint64(^uint64(0)>>1) {
+		if unsigned > ^uint64(0)>>1 {
 			return 0, false
 		}
 		return int64(unsigned), true

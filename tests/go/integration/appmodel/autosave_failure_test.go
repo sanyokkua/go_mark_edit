@@ -16,7 +16,6 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
-// Proves: FR-004
 func TestAutosaveFailureEpisodeShowsNewCategoriesOnceAndClearsOnSuccess(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "notes.md")
@@ -94,7 +93,6 @@ func TestAutosaveFailureEpisodeShowsNewCategoriesOnceAndClearsOnSuccess(t *testi
 	}
 }
 
-// Proves: FR-004
 func TestAutosaveFailureReporterLogsWhenEventDeliveryIsUnavailableOrFails(t *testing.T) {
 	for name, emitter := range map[string]appmodel.StatePatchEmitter{
 		"async event is unavailable": autosaveStateOnlyEmitter{},

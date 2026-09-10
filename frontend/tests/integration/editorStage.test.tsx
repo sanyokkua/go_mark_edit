@@ -67,7 +67,6 @@ afterEach(() => {
   store.dispatch(resetProjection());
 });
 
-// Proves: FR-040
 it('keeps the editor and preview content in explicit panes for split view', () => {
   const document = documentFor('split');
   store.dispatch(

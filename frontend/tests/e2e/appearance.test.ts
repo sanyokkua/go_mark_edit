@@ -39,7 +39,6 @@ async function stabilizeMonacoScrollbar(
   ).toHaveCSS('background-color', expectedColor);
 }
 
-// Proves: FR-033
 test('changes all six palettes through keyboard-reachable controls without overflow', async ({
   app,
 }) => {
@@ -82,7 +81,6 @@ test('changes all six palettes through keyboard-reachable controls without overf
   }
 });
 
-// Proves: FR-033
 test('applies the pre-paint theme mirror before backend reconciliation and keeps Settings focused', async ({
   app,
 }) => {

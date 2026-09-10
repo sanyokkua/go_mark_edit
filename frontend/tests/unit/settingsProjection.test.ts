@@ -26,12 +26,12 @@ afterEach((): void => {
 
 it('starts a fresh settings read after a rejected attempt', async () => {
   const getSettings = jest
-    .fn<SettingsAdapter['getSettings']>()
+    .fn<ReturnType<SettingsAdapter['getSettings']>, []>()
     .mockRejectedValueOnce(new Error('first read failed'))
     .mockResolvedValueOnce(settings);
   const adapter = {
     getSettings,
-  } as SettingsAdapter;
+  } as unknown as SettingsAdapter;
 
   await expect(bootstrapSettingsProjection(adapter)).rejects.toThrow(
     'first read failed',

@@ -84,7 +84,7 @@ func TestVersionedJSONDistinguishesValidUnknownAndCorruptValues(t *testing.T) {
 		Version int    `json:"version"`
 		Name    string `json:"name"`
 	}
-	found, err := kv.DecodeVersionedJSON(string(encoded), 1, &decoded)
+	found, err := kv.DecodeVersionedJSON(encoded, 1, &decoded)
 	if err != nil || !found {
 		t.Fatalf("decode current version = found %t, error %v", found, err)
 	}
@@ -101,8 +101,8 @@ func TestVersionedJSONDistinguishesValidUnknownAndCorruptValues(t *testing.T) {
 		t.Fatalf("decode corrupt value = found %t, error %v; want a decode error", found, err)
 	}
 	for name, corrupt := range map[string]string{
-		"trailing bytes":  string(encoded) + "garbage",
-		"second document": string(encoded) + ` {"version":1,"name":"other"}`,
+		"trailing bytes":  encoded + "garbage",
+		"second document": encoded + ` {"version":1,"name":"other"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			found, err := kv.DecodeVersionedJSON(corrupt, 1, &decoded)

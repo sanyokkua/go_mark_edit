@@ -15,7 +15,6 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
 
-// Proves: FR-049
 func TestPreviewImageHandlerServesOnlyBoundedInFolderImages(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()

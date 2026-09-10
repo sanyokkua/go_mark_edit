@@ -108,16 +108,10 @@ const AppContents: React.FC = (): React.JSX.Element => {
       : state.documents.byId[state.documents.activeDocumentId],
   );
   /*
-   * Named `replaceActiveBuffer`, not `setActiveBuffer`, and the rename is the
-   * point: an *activation acknowledgement* may not be installed through it.
-   * FR-FT-030 binds an acknowledgement to an identity and a revision and allows
-   * it to be applied "only while both values still match the confirmed active
-   * projection", so every acknowledgement goes through `activation.acknowledge`
-   * below. What is left here is the buffer handoff that is not an
-   * acknowledgement at all — startup, editor-state recovery, a completed close
-   * plan and an external-change reload — and a handler that reaches for the old
-   * name to install a command's answer now fails to compile rather than
-   * quietly reintroducing the unguarded install.
+   * `replaceActiveBuffer` is reserved for buffer handoffs that are not command
+   * acknowledgements. Command acknowledgements bind document identity and
+   * revision to the confirmed active projection and must go through
+   * `activation.acknowledge` so a stale result cannot overwrite another tab.
    */
   const [activeBuffer, replaceActiveBuffer] = useState<ActiveBuffer | null>(
     null,
@@ -160,7 +154,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
   );
   const documentsById = useAppSelector((state) => state.documents.byId);
   /*
-   * The documents FR-FT-016's second confirmation must name.
+   * The second confirmation names exactly the dirty documents that would be
+   * discarded.
    *
    * "Quit and discard newer unsaved changes MUST require a second confirmation
    * naming the affected documents" — and the affected set is exactly the one
@@ -257,12 +252,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
     bootstrapRetry();
   }, [bootstrapRetry, dispatch]);
   /*
-   * T128: the one install path for an active-buffer acknowledgement. Each of
+   * All active-buffer acknowledgements use this single guarded install path.
+   * Each of
    * the five acknowledging handlers claims a generation with `begin()` before
    * it issues its command and hands the answer to `acknowledge()`, which
    * applies it only once the projection confirms the identity and revision it
    * carries. Nothing here restates the guard, so a sixth handler cannot
-   * reintroduce the defect by forgetting a check it never had to write.
+   * reintroduce an unguarded installation by forgetting a check it never had to write.
    */
   const activation = useGuardedActivation(replaceActiveBuffer);
   const {
@@ -288,66 +284,25 @@ const AppContents: React.FC = (): React.JSX.Element => {
     setRecoverySurface,
   });
   /*
-   * FR-FT-005 and the classified-error table both require a refused entry to
-   * carry a message naming its limit, and the backend already writes one
-   * ("The document exceeds the 50 MiB limit.",
-   * `internal/file/document_reader.go:211`; "The window already contains 40
-   * documents.", `internal/appmodel/file_lifecycle.go:184`). Each handler below
-   * read only its success field, so every classified refusal on the entry paths
-   * was discarded — the save path had this right at `beginWrite` and the open
-   * path had no counterpart. `reportClassifiedError` is used rather than
-   * `reportWriteError` because it preserves the backend's message instead of
-   * substituting generic catalog copy.
+   * Entry refusals are reported through `reportClassifiedError`, which preserves
+   * the backend's category, remediation, and limit-specific message instead of
+   * replacing it with generic catalogue copy.
    */
   /*
-   * T156: the entry paths now name the command behind their `Retry`.
-   *
-   * Every refusal these four report on a stale tab set is `conflict` carrying
-   * `Retry` — "The tab set changed; Open must be retried."
-   * (`internal/appmodel/file_lifecycle.go:136,167`) — and the contract's
-   * `conflict` row covers exactly that pairing since T159. The command is
-   * well defined and identical for all four: re-read `tabSetRevision` from the
-   * backend and re-issue the same entry command against it. Until this, no
-   * intent was declared, so `remediationsFor` dropped the `Retry` Go had sent
-   * and the user was told to retry with nothing to retry with.
+   * Entry retries carry the command that failed. A stale tab-set refusal
+   * re-reads the current revision and re-issues that same entry command.
    */
   /*
-   * The write path's copy defect — T107's and T111's, third and last arrow.
-   *
-   * This dispatched `notifyError`, whose `prepare` runs `localizedErrorCopy` and
-   * replaces title and message with generic catalogue copy keyed by code. So the
-   * message Go built was discarded on every Save, Save As and conflict decision:
-   * the `title`, `message` and `retryable` assembled here were all dead, and a
-   * 50 MiB capacity refusal read exactly like an unrelated write failure —
-   * against FR-FT-005, which requires the refusal to name the limit.
-   *
-   * The eight-category ternary is gone rather than repaired. It ended
-   * `conflict ? 'io' : 'io'`, collapsing `conflict`, `capacity-limit` and
-   * `system-command-failure` onto one code, and `classifiedErrorCode` already
-   * maps all eight — rewriting it here would have duplicated that map.
-   *
-   * The `??` default is load-bearing and has no counterpart in T107/T111:
-   * `reportClassifiedError` returns early on `undefined`, whereas `notifyError`
-   * always produced a toast. Without it a refusal carrying no error would become
-   * silent, which is a worse defect than the one being fixed.
+   * Write refusals retain the backend's classified error. The optional error
+   * guard is intentional: a successful command result without an error does not
+   * create a notification.
    */
   /*
-   * The close plan is the entry paths' defect with a third arrow (T107, T111).
-   * Its refusals were reported, but through `notifyError`, whose
-   * `localizedErrorCopy` replaces title and message with generic copy keyed by
-   * code — and `conflict` has no catalog entry, so it collapses onto `io`. Go
-   * distinguishes its refusals precisely: "The tab set changed; close must be
-   * retried." (`internal/appmodel/close_plan.go:44`) and "The tab set changed
-   * while autosave work drained." (`:88`), each pinned by a test in
-   * `close_plan_test.go`. Both reached the user as "The file operation could
-   * not be completed." `reportClassifiedError` passes `error.message` through.
-   *
-   * Scoped to the three close-plan arms only. `reportWriteError`'s other
-   * callers — save, conflict resolution and native close — keep their copy
-   * contract.
+   * Close-plan refusals use the same classified reporting path as writes, so
+   * stale tab-set and drained-autosave messages remain visible to the user.
    */
   /*
-   * T164. The close request currently in flight, so a refusal can be re-issued.
+   * Keep the close request currently in flight so a refusal can be re-issued.
    *
    * A ref rather than a parameter threaded down the chain, because the request
    * genuinely outlives the call stack that started it. `onClosePlanChoice`,
@@ -363,13 +318,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
    */
   const [externalEpoch, setExternalEpoch] = useState(0);
   /*
-   * T191. Installs a buffer produced by a foreground external-change reload.
+   * Install a buffer produced by a foreground external-change reload.
    *
    * The tab strip cannot install a buffer itself, because
    * `useGuardedActivation` is the single install seam and re-implementing its
-   * checks elsewhere is the defect T128 removed. So the app-level prompt
-   * reports the acknowledgement here and this claims a generation, offers it
-   * to the guard, and advances the epoch that restarts the editor session.
+   * The tab strip reports the acknowledgement here because this layer owns the
+   * guarded activation seam. A generation check prevents a late reload from
+   * replacing the active document after a tab switch.
    */
   const installExternalReload = useCallback(
     (acknowledgement: ActiveBuffer | undefined): void => {
@@ -459,9 +414,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
     { kind: ClosePlanKind; targetDocumentIds: string[] } | undefined
   >(undefined);
   /*
-   * T165. The slot the tab strip fills with its own remediation executor.
+   * The tab strip fills this slot with its own remediation executor.
    *
-   * A reorder Retry has to run where the strip's state is, because FR-FT-034
+   * A reorder Retry has to run where the strip's state is because the completed
    * requires the completed move to be announced and the announcement is built
    * from the disambiguated label and the strip's length. See
    * `TabRemediationContext` for why this is a ref rather than a prop, and why
@@ -596,7 +551,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
              * `reportNativeCloseError`. Everything Go sends here is a
              * `ClassifiedError` it built and sanitized — the case the comment on
              * `reportNativeCloseError` excludes — so its own message survives
-             * and FR-FT-027's Retry becomes a control that re-asks the frame to
+             * and the classified Retry becomes a control that re-asks the frame to
              * close.
              */
             reportClassifiedError(
@@ -954,7 +909,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
     [activeBuffer, orderedDocumentIds, resolvePreparedClosePlan],
   );
   /*
-   * FR-FT-037 wants Copy path announced in a *transient polite* live region, not
+   * Copy path is announced in a *transient polite* live region, not
    * an assertive one, so this cannot ride the toast surface — a toast root is
    * `aria-live="assertive"`. Same clear/set/clear shape as the tab strip's own
    * announcer (`DocumentTabs.tsx:168-172`) so a repeat of the same string still
@@ -1059,7 +1014,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
         }
         case 'reveal': {
           /*
-           * The Retry the contract pairs with a Reveal failure. It has to re-run
+           * The Retry action pairs with a Reveal failure. It has to re-run
            * *Reveal*: while the toast could carry only one control this arm did
            * not exist, so the reveal caller had no honourable intent to name and
            * the mapping dropped Retry rather than hand it the copy-path command.
@@ -1077,7 +1032,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
             );
             return;
           }
-          // FR-FT-037 treats OS acceptance as success and requires no toast; the
+          // OS acceptance is success and requires no toast; the
           // failure that produced this control is resolved, so it goes.
           if (result?.status !== 'revealed') return;
           dispatch(dismissNotification(notificationId));
@@ -1104,9 +1059,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
           if (result === undefined) return;
           if (result.error !== undefined) {
             /*
-             * T170. A refused retry used to return in silence, leaving the
-             * standing toast with its original message and no sign the second
-             * attempt had failed too.
+             * A refused retry reports its new classified error and leaves the
+             * notification visible when the second attempt fails.
              *
              * Reported *here*, and only for `activate-document`. The other four
              * intents call `reportEntryError` inside their own handlers, so
@@ -1134,7 +1088,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
         case 'reorder-document': {
           /*
            * Delegated, not executed here. The strip owns the command and its
-           * FR-FT-034 announcement together; App owns the toast. If no strip is
+           * the move announcement together; App owns the toast. If no strip is
            * mounted the slot is empty and the toast stands — there is no tab to
            * move, so silently dismissing it would be a lie.
            */
@@ -1149,7 +1103,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
         }
         case 'close-documents': {
           /*
-           * T164. Re-prepares the close the backend refused as stale, with the
+           * Re-prepares a close that the backend refused as stale, with the
            * *original* kind and targets and a revision read fresh from the
            * backend — the same reasoning as the entry arm above, and the same
            * reason the plan id is not reused: the id is precisely what was
@@ -1172,8 +1126,8 @@ const AppContents: React.FC = (): React.JSX.Element => {
           /*
            * `onCloseDocument` reports its own refusal through
            * `reportClosePlanError`, which offers this control again against the
-           * newer revision. Reporting here too would be the `×2` T188 removed
-           * from the activation path.
+           * newer revision. The delegated handler reports any new refusal, so
+           * this path does not duplicate that notification.
            */
           if (result.error !== undefined) return;
           dispatch(dismissNotification(notificationId));
@@ -1181,7 +1135,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
         }
         case 'quit': {
           /*
-           * The Retry FR-FT-027 pairs with a drain failure. The pending close
+           * The Retry action pairs with a drain failure. The pending close
            * was cancelled when the drain refused, so this restarts the whole
            * sequence — close request, plan, drain, permit — rather than
            * re-authorizing a request that no longer exists.
@@ -1209,7 +1163,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
            * names, which for a Copy path or Reveal failure raised from the tab
            * context menu need not be the active one. It is `undefined` for a
            * plain Save retry, where `beginWrite` falls back to the active
-           * document exactly as before. T160.
+           * document exactly as before.
            */
           const result = await beginWrite(
             remediation.intent,
@@ -1292,10 +1246,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
       let result;
       /*
        * Claimed before the command is issued, exactly as the five activation
-       * handlers do. FR-FT-030 covers "activating a tab **or reloading the
+       * handlers do. The activation rule covers "activating a tab **or reloading the
        * active document**", and this is the sixth handler the guard's contract
        * anticipates — reload had been installing on an identity check alone.
-       * T169.
        */
       let reloadGeneration = 0;
       switch (decision) {
@@ -1343,13 +1296,13 @@ const AppContents: React.FC = (): React.JSX.Element => {
          * The fresher of the two answers is still preferred — the backend
          * publishes the reloaded text into the projection, and re-reading picks
          * it up — but neither is installed directly any more. `acknowledge`
-         * applies FR-FT-030's whole rule: the generation must still be current,
+         * applies the activation rule: the generation must still be current,
          * the acknowledgement's identity must be the document the reload named,
          * and the confirmed active projection must still agree on both identity
          * and revision. The old `else` arm installed `result.activeBuffer` with
          * no check at all, and it ran precisely when the refreshed state showed
          * a *different* active document — so a reload overtaken by a tab switch
-         * wrote its text over whatever the user had switched to. T169.
+         * wrote its text over whatever the user had switched to.
          */
         const acknowledgement =
           refreshedState.activeBuffer?.documentId === current.documentId
@@ -1361,7 +1314,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
           current.documentId,
         );
         /*
-         * T191. Restart the editor session so the reloaded text actually
+         * Restart the editor session so the reloaded text actually
          * reaches Monaco, which is seeded once per session. Bumped here and
          * nowhere else: this is the only path that replaces the document's text
          * with something the editor did not produce.
@@ -1436,7 +1389,7 @@ const AppContents: React.FC = (): React.JSX.Element => {
         (activeDocument.capability === undefined ||
           activeDocument.capability === 'writable'),
       // `detached` was a fourth conjunct here and it is the *other* half of the
-      // FR-FT-023 defect T160 removes. `writable` reaches `Menubar/Menubar.tsx`,
+      // `writable` reaches `Menubar/Menubar.tsx`,
       // which draws Save and Save As unavailable, so a detached document could
       // not even dispatch the write that `beginWrite` would then have refused.
       // Recreating the file is precisely what the requirement asks Save to do,
@@ -1571,14 +1524,14 @@ const AppContents: React.FC = (): React.JSX.Element => {
                 filename={normalization?.filename ?? ''}
                 onCancel={(): void => {
                   /*
-                   * FR-FT-011: the confirmation is single-use and "cancellation
+                   * The confirmation is single-use and "cancellation
                    * MUST resume nothing". Closing the prompt was resuming
                    * nothing already; what it was not doing is releasing the
                    * authorization it was raised with, so `service.normalizations`
                    * kept an entry per dismissal for the process lifetime and the
                    * next Save minted another. The token is handed back with the
                    * document it was minted against, because the release is bound
-                   * to both. T168.
+                   * to both.
                    */
                   if (normalization !== null) {
                     void documentWriteAdapter.cancelNormalization(

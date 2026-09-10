@@ -27,6 +27,9 @@
   --win-radius: 16px;
   --win-shadow: 0 12px 32px rgba(27, 27, 34, 0.16);
   --context-menu-shadow: var(--win-shadow);
+  --toast-shadow: 0 12px 32px rgba(27, 27, 34, 0.16);
+  --pane-shadow: 0 12px 32px rgba(27, 27, 34, 0.16);
+  --tab-context-menu-shadow: var(--context-menu-shadow);
   --blur: none;
   --glass-highlight: transparent;
   --font: GME Roboto, Roboto, system-ui, sans-serif;
@@ -221,6 +224,9 @@
   --font:
     -apple-system, 'SF Pro Display', 'Segoe UI', Inter, system-ui, sans-serif;
   --win-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  --toast-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  --pane-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  --tab-context-menu-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
   --blur: blur(28px) saturate(160%);
   --glass-highlight: rgba(255, 255, 255, 0.22);
   --toolbar-shadow: inset 0 1px 0 var(--glass-highlight);
@@ -231,6 +237,8 @@
   --context-menu-shadow:
     0 1px 2px rgba(30, 30, 60, 0.1), 0 1px 3px rgba(30, 30, 60, 0.08);
   --font: Roboto, 'Segoe UI', Inter, system-ui, sans-serif;
+  --tab-context-menu-shadow:
+    0 1px 2px rgba(30, 30, 60, 0.1), 0 1px 3px rgba(30, 30, 60, 0.08);
 }
 :root[data-theme='minimal'] {
   --accent: #10b981;
@@ -241,6 +249,9 @@
   --win-radius: 12px;
   --font: Inter, -apple-system, 'Segoe UI', system-ui, sans-serif;
   --win-shadow: 0 8px 24px rgba(31, 35, 40, 0.1);
+  --toast-shadow: 0 8px 24px rgba(31, 35, 40, 0.1);
+  --pane-shadow: 0 8px 24px rgba(31, 35, 40, 0.1);
+  --tab-context-menu-shadow: 0 8px 24px rgba(31, 35, 40, 0.1);
   --editor-stage-gap: 0;
   --editor-stage-padding: 0;
   --preview-content-background: transparent;
@@ -326,6 +337,9 @@
   --err: #c0324b;
   --hover: rgba(70, 84, 140, 0.12);
   --win-shadow: 0 34px 90px rgba(50, 60, 120, 0.28);
+  --toast-shadow: 0 34px 90px rgba(50, 60, 120, 0.28);
+  --pane-shadow: 0 34px 90px rgba(50, 60, 120, 0.28);
+  --tab-context-menu-shadow: 0 34px 90px rgba(50, 60, 120, 0.28);
   --blur: blur(28px) saturate(150%);
   --win-radius: 16px;
 }
@@ -354,6 +368,9 @@
   --err: #ff7a90;
   --hover: rgba(255, 255, 255, 0.16);
   --win-shadow: 0 40px 120px rgba(0, 0, 0, 0.55);
+  --toast-shadow: 0 40px 120px rgba(0, 0, 0, 0.55);
+  --pane-shadow: 0 40px 120px rgba(0, 0, 0, 0.55);
+  --tab-context-menu-shadow: 0 40px 120px rgba(0, 0, 0, 0.55);
   --blur: blur(28px) saturate(160%);
   --win-radius: 16px;
 }
@@ -378,6 +395,10 @@
   --err: #b3261e;
   --hover: #eceaf6;
   --win-shadow: 0 30px 70px rgba(30, 30, 60, 0.28);
+  --toast-shadow: 0 30px 70px rgba(30, 30, 60, 0.28);
+  --pane-shadow: 0 30px 70px rgba(30, 30, 60, 0.28);
+  --tab-context-menu-shadow:
+    0 1px 2px rgba(30, 30, 60, 0.1), 0 1px 3px rgba(30, 30, 60, 0.08);
   --blur: none;
   --win-radius: 16px;
 }
@@ -402,6 +423,8 @@
   --err: #ffb4ab;
   --hover: #2a2a34;
   --win-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+  --toast-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+  --pane-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
   --blur: none;
   --win-radius: 16px;
 }
@@ -429,6 +452,9 @@
   --err: #b91c1c;
   --hover: #f4f4f3;
   --win-shadow: 0 24px 60px rgba(20, 20, 40, 0.16);
+  --toast-shadow: 0 24px 60px rgba(20, 20, 40, 0.16);
+  --pane-shadow: 0 24px 60px rgba(20, 20, 40, 0.16);
+  --tab-context-menu-shadow: 0 24px 60px rgba(20, 20, 40, 0.16);
   --blur: none;
   --win-radius: 12px;
 }
@@ -453,6 +479,9 @@
   --err: #f87171;
   --hover: #1e1e21;
   --win-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --toast-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --pane-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --tab-context-menu-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
   --blur: none;
   --win-radius: 12px;
 }

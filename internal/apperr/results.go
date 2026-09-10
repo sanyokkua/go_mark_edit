@@ -62,8 +62,8 @@ type VoidResult struct {
 // VoidResult carries a WireError, whose code and Retryable flag are an internal
 // taxonomy: the frontend renders it through the generic notification catalogue
 // and can offer no remediation control, because a WireError names none. Native
-// close needs the other shape — FR-FT-027 requires a drain failure to reach the
-// user as a classified io-failure offering Retry — so it returns this instead.
+// close needs the other shape — a drain failure must reach the user as a
+// classified io-failure offering Retry — so it returns this instead.
 type ClassifiedVoidResult struct {
 	Failure
 	Error *ClassifiedError `json:"error,omitempty"`

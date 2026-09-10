@@ -86,10 +86,10 @@ function action(id: ActionEntry['id']): ActionEntry {
  * It exists so a toolbar button can *ask* the registry whether its command is
  * available instead of deciding for itself — `ActionButton` used to compute
  * `disabled` from the static `entry.availability.kind` alone, which cannot see
- * the document, so FR-FT-006's "Editing MUST be unavailable" was invisible here
+ * the document, so the editing capability was invisible here
  * and every formatting button stayed live on a file the backend refuses to
  * write. Re-deriving the capability rule locally is the `SettingsMenu` defect
- * AGENTS.md records; asking the registry is the fix. T178.
+ * AGENTS.md records; asking the registry is the fix.
  */
 const ToolbarProjectionContext = createContext<
   ProjectedActionState | undefined
@@ -111,7 +111,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
    * The static check stays first and unchanged, so a deferred action is still
    * deferred when no projection has arrived. The registry call only ever *adds*
    * a refusal, and with no `modalOpen`/tab context passed it can only fire the
-   * capability rule — this widens the disabled set by exactly FR-FT-006 and
+   * capability rule — this widens the disabled set only for unwritable documents
    * nothing else.
    */
   const unavailable =
@@ -224,8 +224,8 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
   );
 
   useEffect((): (() => void) => {
-    document.addEventListener('keydown', onKeyDown);
-    return (): void => document.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return (): void => window.removeEventListener('keydown', onKeyDown);
   }, [onKeyDown]);
 
   return (
@@ -320,7 +320,7 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
 };
 
 /*
- * T190. The tooltip is where an icon-first control advertises its accelerator.
+ * The tooltip is where an icon-first control advertises its accelerator.
  *
  * These buttons carry an icon and a localized accessible name, so unlike the
  * shell's text menus there is no row to put an accelerator beside — the tooltip

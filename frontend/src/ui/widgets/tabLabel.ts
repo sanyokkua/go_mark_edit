@@ -64,7 +64,7 @@ export function isolateUserText(value: string): string {
  * The safe basename of an arbitrary path, for copy that must never expose a
  * full canonical path.
  *
- * FR-FT-048 forbids private full paths in user-facing failure copy, and the
+ * User-facing failure copy never exposes private full paths, and the
  * classified error contract narrows every message to "the safe basename or the
  * document's shortest-unique disambiguated tab label". Callers outside the tab
  * strip have no document set to disambiguate against, so they get the same
@@ -137,7 +137,7 @@ export interface TruncatedTabLabel {
 }
 
 /**
- * The visual label, split at the point FR-FT-035 protects.
+ * The visual label is split at the point protected by the truncation rule.
  *
  * The requirement is that "visual ellipsis MUST retain part of the
  * distinguishing suffix", and there are two ellipses, in two different units.

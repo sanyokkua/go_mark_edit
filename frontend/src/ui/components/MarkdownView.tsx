@@ -83,7 +83,7 @@ function headingId(children: ReactNode): string | undefined {
  * gets a fresh prop identity on every parent render, and without this the whole
  * GFM pipeline ran again each time.
  *
- * That is invisible on a small note and decisive at the size FR-FT-005 requires
+ * That is invisible on a small note and decisive at the size needed for
  * live preview to keep working at: the shipped component takes about 1.5 s to
  * render 2 MiB of ordinary short-line prose under WebKit, and paying that per
  * keystroke is what makes an editor stop accepting keystrokes. `source` is the

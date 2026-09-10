@@ -42,7 +42,7 @@ export function outgoingFlushRefusal(): ClassifiedError {
  * Flush the outgoing document and say, in the classified vocabulary, whether it
  * worked.
  *
- * FR-FT-031 requires a tab switch to "flush and await the outgoing document's
+ * A tab switch must "flush and await the outgoing document's
  * newest text, caret, selection, scroll, and view state before activating the
  * incoming document", and requires failure to "leave the outgoing tab active
  * and install no incoming content". Returning a refusal rather than rejecting

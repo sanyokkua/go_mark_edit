@@ -10,7 +10,6 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
 
-// Proves: FR-014
 func TestOpenPreviewLinkEnforcesFolderAndDocumentPolicies(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()
@@ -54,7 +53,7 @@ func TestOpenPreviewLinkEnforcesFolderAndDocumentPolicies(t *testing.T) {
 	}
 
 	for name, href := range map[string]string{
-		"outside folder":  "../" + filepath.Base(filepath.Dir(outside)) + "/" + filepath.Base(outsideFile),
+		"outside folder":   "../" + filepath.Base(filepath.Dir(outside)) + "/" + filepath.Base(outsideFile),
 		"unsupported type": "./child.pdf",
 		"symlink escape":   "./escaping.md",
 	} {

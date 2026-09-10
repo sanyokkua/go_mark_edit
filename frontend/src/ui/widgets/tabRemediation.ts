@@ -21,20 +21,15 @@ export type TabRemediationExecutor = (
  * A slot the tab strip fills with its own remediation executor, so a reorder
  * Retry runs where the strip's state is.
  *
- * FR-FT-034 requires a completed move to be announced, and the announcement is
+ * A completed move is announced, and the announcement is
  * built from the *disambiguated* tab label and the length of the ordered strip
  * — `tabLabelsFor` plus `orderedDocuments`, both of which live in DocumentTabs.
- * `onRemediate` lives in App and has neither. A Retry that moved the tab and
- * said nothing would satisfy the remediation contract and break FR-FT-034,
- * which is why T156 declined to add the intent at all.
+ * `onRemediate` lives in App and has neither, so the command and announcement
+ * stay together. A retry that moved the tab without announcing it would leave the remediation
+ * incomplete. Keeping the command and announcement together prevents that split.
  *
- * The alternative was to give App enough of the strip's state to announce for
- * itself. `tabLabelsFor` is exported and App already selects `documents.byId`
- * and `orderedIds`, so it was available — and rejected: it puts the strip's
- * labelling rules in a second place, to be kept in step by hand. That is the
- * defect class T176 removed from the i18n copy map and T188's notes describe
- * again for adapter doubles. Keeping the command and its announcement together
- * is the point.
+ * App does not receive the strip's label map or ordered ids, so the strip owns
+ * both the command and its announcement instead of duplicating labelling rules.
  *
  * A ref rather than a callback prop because the direction is upward. App renders
  * the toast and receives the click; DocumentTabs is three levels below it

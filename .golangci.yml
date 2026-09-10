@@ -8,7 +8,53 @@ linters:
     - misspell
     - staticcheck
     - unconvert
-    - unused
+    - depguard
+  settings:
+    depguard:
+      rules:
+        apperr-boundary:
+          list-mode: lax
+          files:
+            - internal/apperr/**/*.go
+          deny:
+            - pkg: github.com/sanyokkua/go_mark_edit/internal
+              desc: the error contract is a leaf package
+        bridge-boundary:
+          list-mode: lax
+          files:
+            - internal/bridge/**/*.go
+          allow:
+            - github.com/sanyokkua/go_mark_edit/internal/apperr
+          deny:
+            - pkg: github.com/sanyokkua/go_mark_edit/internal
+              desc: bridge may depend only on apperr inside the application
+        appmodel-boundary:
+          list-mode: lax
+          files:
+            - internal/appmodel/**/*.go
+          deny:
+            - pkg: github.com/wailsapp/wails/v2
+              desc: appmodel must remain independent of the Wails runtime
+            - pkg: github.com/sanyokkua/go_mark_edit/internal/bootstrap
+              desc: appmodel must not depend on bootstrap composition
+        handler-boundary:
+          list-mode: lax
+          files:
+            - internal/**/handler.go
+          deny:
+            - pkg: github.com/sanyokkua/go_mark_edit/internal/db
+              desc: handlers call services rather than repositories
+            - pkg: github.com/sanyokkua/go_mark_edit/internal/file
+              desc: handlers call services rather than filesystem ports
+            - pkg: github.com/sanyokkua/go_mark_edit/internal/kv
+              desc: handlers call services rather than persistence helpers
+        no-main-import:
+          list-mode: lax
+          files:
+            - internal/**/*.go
+          deny:
+            - pkg: github.com/sanyokkua/go_mark_edit
+              desc: internal packages must not import the composition root
   exclusions:
     generated: lax
     paths:

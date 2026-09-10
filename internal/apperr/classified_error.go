@@ -60,27 +60,10 @@ var AllClassifiedRemediations = []ClassifiedRemediation{
 }
 
 /*
- * The contract's one-remediation-set-per-category table, made enforceable.
- *
- * `Validate` checked only that a remediation was in the *global* vocabulary, so
- * any category could carry any action and nothing noticed. That was invisible
- * while no remediation ever rendered; T116 wired the control, and a
- * `permission-denied` save began offering a Retry that cannot succeed — the very
- * reason the contract makes that row message-only.
- *
- * `RemediationNone` is allowed everywhere: message-only is always a valid outcome.
- *
- * `ClassifiedConflict` allows `RemediationRetry` because the contract's conflict
- * row says so. The row covers two collisions, not one: an *external change* — whose
- * actions are Reload from disk, Keep mine, Skip, and Cancel for a read-only
- * document — and a *stale tab-set or stale revision*, where re-issuing the command
- * against the fresh revision is the only action that can succeed.
- *
- * That second half was added by T159. Until then the row enumerated only the
- * external-change actions while this codebase already classified stale-revision
- * refusals as `conflict`, and this comment carried the disagreement as a filed
- * question. The owner amended the row rather than introducing a ninth category,
- * so the table below now matches the specification instead of diverging from it.
+ * Each error category has an explicit set of legal remediation actions.
+ * `RemediationNone` is represented by an empty set, while conflicts may offer
+ * both external-change actions and a retry against a fresh tab-set revision.
+ * The table is the source of truth used by validation and by fail-safe filtering.
  */
 var remediationsByCategory = map[ClassifiedErrorCategory][]ClassifiedRemediation{
 	ClassifiedNotFound:             {RemediationNone, RemediationSaveToRecreate, RemediationCopyPath},
@@ -93,7 +76,7 @@ var remediationsByCategory = map[ClassifiedErrorCategory][]ClassifiedRemediation
 	ClassifiedPersistenceWarning:   {RemediationNone},
 }
 
-// AllowedRemediations reports the remediations the contract permits for one
+// AllowedRemediations reports the remediations the table permits for one
 // category. An unknown category allows nothing, so it cannot pass Validate.
 func AllowedRemediations(category ClassifiedErrorCategory) []ClassifiedRemediation {
 	return remediationsByCategory[category]
@@ -116,7 +99,7 @@ type ClassifiedError struct {
 	SafeSubject string                  `json:"safeSubject,omitempty"`
 	Message     string                  `json:"message"`
 	// Remediations is the ordered set of actions offered with this failure, and it
-	// is a set because the contract specifies sets: `not-found` for a detached
+	// is a set because categories may allow several actions: `not-found` for a detached
 	// document offers "Save to recreate plus Copy path", and a Reveal
 	// `system-command-failure` offers "Retry; a Reveal failure also offers Copy
 	// path". A single field could not express either, so those rows were
@@ -169,19 +152,10 @@ func NewClassifiedErrorWithRemediations(category ClassifiedErrorCategory, subjec
 }
 
 /*
- * Fail safe, in the same shape as the subject guard above: an action the category
- * forbids is dropped rather than offered to a user it cannot help. Validate still
- * reports the forbidden member, so a wrong call site is caught by a test rather
- * than hidden here.
- *
- * Dropping per member rather than voiding the whole set generalises T123's rule
- * without weakening it. The property that matters is "never offer an action that
- * cannot work"; discarding a legal `Copy path` because the same caller also asked
- * for an illegal `Retry` would serve no one. For a one-element set the outcome is
- * identical to T123's coercion to message-only.
- *
- * RemediationNone is not a member of any set — an empty set *is* message-only —
- * so it is filtered out rather than stored alongside real actions.
+ * Fail safe: an action the category forbids is dropped rather than offered to a
+ * user it cannot help. Filtering is per member, so a valid action is retained
+ * even when a caller also requests an invalid one. `RemediationNone` is not
+ * stored; an empty result is the message-only representation.
  */
 func permittedRemediations(category ClassifiedErrorCategory, requested []ClassifiedRemediation) []ClassifiedRemediation {
 	permitted := make([]ClassifiedRemediation, 0, len(requested))
@@ -205,18 +179,9 @@ func permittedRemediations(category ClassifiedErrorCategory, requested []Classif
 const genericSubject = "document"
 
 /*
- * The last line of defence for "name only the safe basename or the disambiguated
- * tab label".
- *
- * Callers should pass a real label, and the write and external-change paths now do.
- * But `mintDocumentID` produces every synthetic id in the application — documents,
- * close plans and open reservations alike — and `filepath.Base` is a no-op on one,
- * so any of the ~46 helper call sites could put `doc-0000000000000003` in front of a
- * user. It stayed hidden while `localizedErrorCopy` overwrote the title; T117 made
- * the backend's subject the rendered title, and the leak became visible.
- *
- * Rejecting the shape here means a future call site cannot reintroduce it, which a
- * per-call-site fix alone would not prevent.
+ * Reject internal document identifiers before they become user-facing subjects.
+ * Callers should pass a safe basename or disambiguated tab label, but this guard
+ * protects future call sites that still hold a synthetic document id.
  */
 func isInternalIdentifier(subject string) bool {
 	const prefix = "doc-"

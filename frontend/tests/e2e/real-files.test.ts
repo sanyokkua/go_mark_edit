@@ -98,7 +98,6 @@ async function editDocument(page: Page, content: string): Promise<void> {
   await expect.poll(() => activeBufferContent(page)).toBe(content);
 }
 
-// Proves: FR-006
 test('creates a document, opens Recents, saves once, moves tabs, and restores saved state', async ({
   app,
 }) => {
@@ -164,7 +163,6 @@ test('creates a document, opens Recents, saves once, moves tabs, and restores sa
   expect(await readFile(first, 'utf8')).toBe(saved);
 });
 
-// Proves: FR-033
 test('reveals a missing real file and completes Save to recreate and Copy path remediations', async ({
   app,
 }) => {
@@ -224,7 +222,6 @@ test('reveals a missing real file and completes Save to recreate and Copy path r
   await expect(secondMissing).toHaveCount(0);
 });
 
-// Proves: FR-033
 test('offers Retry for a transient Save inspection refusal and commits after recovery', async ({
   app,
 }) => {
@@ -257,7 +254,6 @@ test('offers Retry for a transient Save inspection refusal and commits after rec
   }
 });
 
-// Proves: FR-033
 test('shows a bounded external-change prompt and keeps the active buffer on Skip', async ({
   app,
 }) => {

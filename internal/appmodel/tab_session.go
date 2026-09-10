@@ -40,7 +40,7 @@ func (service *AppModelService) ActivateDocument(ctx context.Context, documentID
 	return service.attachForegroundConflict(ctx, documentID, outcome)
 }
 
-// attachForegroundConflict is FR-FT-020's tab-activation occasion, which is why
+// attachForegroundConflict is the tab-activation occasion, which is why
 // it goes through CheckDocumentDisk: the requirement lists "tab activation and
 // window focus or resume" as separate events, and the two aliases exist so each
 // occasion reads as itself at its call site. Window focus and resume cannot be
@@ -75,7 +75,7 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	}
 	service.mu.Unlock()
 
-	// FR-FT-024: a pending working-copy flush must complete before the document
+	// A pending working-copy flush must complete before the document
 	// is removed. Evaluating Dirty first refused a tab whose autosave debounce
 	// was still pending, prompting for work the application had already accepted
 	// and was about to write. Running it synchronously is what turns that into a

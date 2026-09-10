@@ -2,7 +2,6 @@ import { classifyImageSource } from '../../../src/logic/markdown/imagePolicy';
 
 const documentPath = '/tmp/notes/readme.md';
 
-// Proves: FR-049
 it('classifies an in-folder relative image as a local source', () => {
   expect(classifyImageSource('./images/inside.png', documentPath)).toEqual({
     kind: 'local',
@@ -11,7 +10,6 @@ it('classifies an in-folder relative image as a local source', () => {
   });
 });
 
-// Proves: FR-049
 it('keeps web, absolute, and outside image sources as placeholders', () => {
   expect(
     classifyImageSource('https://example.test/image.png', documentPath),
@@ -31,7 +29,6 @@ it('keeps web, absolute, and outside image sources as placeholders', () => {
   });
 });
 
-// Proves: FR-049
 it('keeps an image source from an untitled document as a placeholder', () => {
   expect(classifyImageSource('./inside.png')).toMatchObject({
     kind: 'placeholder',

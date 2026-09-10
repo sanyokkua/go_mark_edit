@@ -64,7 +64,7 @@
 }
 
 :global(:root[data-theme='material']) .pane {
-  box-shadow: var(--win-shadow);
+  box-shadow: var(--pane-shadow);
 }
 
 :global(:root[data-theme='glass']) .pane {

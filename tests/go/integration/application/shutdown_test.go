@@ -221,8 +221,6 @@ func (model *shutdownModel) EndShutdownDrain() {
 }
 
 func (model *shutdownModel) DrainBeforeClose() *apperr.ClassifiedError {
-	model.mu.Lock()
-	model.mu.Unlock()
 	return nil
 }
 

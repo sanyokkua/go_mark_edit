@@ -30,7 +30,7 @@ export type ActionResult =
       value?: unknown;
     }
   /*
-   * T109: the backend's own refusal, carried rather than flattened. Every
+   * The backend's own refusal is carried rather than flattened. Every
    * carrier type in `appModelTypes.ts` — WriteResult, OpenResult,
    * TabTransitionResult, ConflictResult, PathCommandResult — pairs a `refused`
    * status with an optional ClassifiedError, and the dispatcher used to match

@@ -71,8 +71,8 @@ test('retrying a failed settings startup mounts the shell once and can quit clea
   await rm(settingsDatabase, { force: true, recursive: true });
   const retry = failure.getByRole('button', { name: 'Retry', exact: true });
   await retry.evaluate((button): void => {
-    button.click();
-    button.click();
+    (button as HTMLElement).click();
+    (button as HTMLElement).click();
   });
 
   await expect(app.page.getByRole('toolbar')).toBeVisible({ timeout: 20_000 });

@@ -32,7 +32,6 @@ afterEach(() => {
   });
 });
 
-// Proves: FR-034
 it.each([
   ['File', 'File', 'n', 'New File'],
   ['Settings', 'Settings menu', 'a', 'Autosave'],

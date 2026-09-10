@@ -106,7 +106,7 @@ func (document *DocumentRecord) setBufferRevision(revision uint64) {
 
 func (document *DocumentRecord) effectiveMetadata() apperr.DocumentMetadata {
 	metadata := document.metadata
-	status := saveStatusForDocument((*openDocument)(document))
+	status := saveStatusForDocument(document)
 	metadata.Status = string(status)
 	metadata.Dirty = status == SaveStatusUnsavedChanges
 	metadata.Detached = document.detached

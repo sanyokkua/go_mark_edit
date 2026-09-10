@@ -84,10 +84,11 @@ export interface DocumentWriteBindings {
   /**
    * Release the authorization a dismissed normalization prompt was raised with.
    *
-   * FR-FT-011 makes the mixed-ending confirmation single-use and requires that
+   * The mixed-ending confirmation is single-use and requires that
    * cancellation resume nothing. Confirming consumes the authorization;
    * dismissing had no way to release it, so it survived for the process
-   * lifetime and the next Save minted another. T168.
+   * lifetime and a later Save must not mint another authorization for the
+   * dismissed prompt.
    */
   cancelNormalization: (
     documentId: string,

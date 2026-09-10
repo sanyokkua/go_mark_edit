@@ -10,7 +10,6 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/settings"
 )
 
-// Proves: FR-056
 func TestResetAppearanceReadBackFailureIsReturnedToTheBridge(t *testing.T) {
 	repository := &resetReadBackFailureRepository{}
 	handler := settings.NewSettingsHandler(

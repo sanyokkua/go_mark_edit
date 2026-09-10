@@ -36,7 +36,7 @@ it('attaches a fresh bridge request id to every command call', () => {
   const invoker = createCommandInvoker({
     isReady: (): boolean => true,
     uuid: jest
-      .fn<() => string>()
+      .fn<string, []>()
       .mockReturnValueOnce('request-1')
       .mockReturnValueOnce('request-2'),
   });
@@ -122,7 +122,7 @@ it('withdraws two bounded notices independently when their results arrive', asyn
     isReady: (): boolean => true,
     noticeOwner,
     uuid: jest
-      .fn<() => string>()
+      .fn<string, []>()
       .mockReturnValueOnce('first-request')
       .mockReturnValueOnce('second-request'),
   });

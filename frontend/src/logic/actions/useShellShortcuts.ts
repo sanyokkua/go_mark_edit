@@ -17,9 +17,9 @@ export interface ShortcutAction {
   shortcutAliases?: readonly string[];
   dispatchContext?: Omit<ActionDispatchContext, 'invoke'>;
   /*
-   * T109: the keystroke's half of reporting a refusal. The click surface hands
+   * The keystroke path reports refusals just like the click surface. It hands
    * its result to `onActionResult`; without this the two would disagree about
-   * whether a refused command says anything, which is the class T110 closed for
+   * the result to `onActionResult` so a refused command is visible for both
    * the accelerators themselves.
    */
   onResult?: (result: ActionResult) => void;

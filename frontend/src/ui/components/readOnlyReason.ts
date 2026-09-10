@@ -1,7 +1,7 @@
 import { t } from '../../i18n';
 
 /*
- * FR-FT-005 requires a document between 10 MiB and 50 MiB to open read-only
+ * Documents between 10 MiB and 50 MiB open read-only
  * "with a visible reason". The reason cannot come from `status`:
  * `internal/appmodel/save_status.go:28-31` collapses every non-writable
  * capability onto the single `read-only` status, so by the time the status

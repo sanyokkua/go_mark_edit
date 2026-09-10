@@ -66,7 +66,7 @@ func (service *AppModelService) Save(ctx context.Context, documentID string, exp
 		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationNone)
 	}
 	path := document.metadata.Path
-	// FR-FT-011 requires a save to refuse before disk access when it has no
+	// Save refuses before disk access when it has no
 	// matching authorization. prepareWriteDisk below stats the file and can run a
 	// full stable re-read through inspectDocument, so the check has to happen
 	// here — it used to happen inside snapshotForWrite, one disk inspection too
@@ -239,11 +239,9 @@ func (service *AppModelService) RequestNormalization(documentID string, expected
 // CancelNormalization releases a normalization authorization that was minted for
 // a prompt the user then dismissed.
 //
-// FR-FT-011 makes the confirmation single-use and says "cancellation MUST resume
-// nothing". Confirming consumes the authorization; before T168 nothing released
-// it when the prompt was dismissed instead, so it survived for the process
-// lifetime, the next Save minted another, and service.normalizations was never
-// swept. T135 closed the same leak on the autosave arm.
+// The confirmation is single-use and cancellation resumes nothing. Confirming
+// consumes the authorization; dismissing releases it so a later Save cannot
+// reuse the token.
 //
 // Deliberately idempotent, and deliberately not an error when the token is
 // unknown or names another document. A dismissal can legitimately arrive after
@@ -676,7 +674,7 @@ func stableRawBytesHashWithReader(path string, expected file.DiskVersion, readVe
 /*
  * The label a classified error may show the user for a document.
  *
- * FR-FT-035's order: the disambiguated tab label where one exists, otherwise the
+ * The order is the disambiguated tab label where one exists, otherwise the
  * basename of the path, otherwise the title. `NewClassifiedError` still runs
  * `filepath.Base` over whatever this returns, so a full path can never escape even
  * if a caller passes one.

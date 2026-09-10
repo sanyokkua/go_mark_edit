@@ -31,31 +31,6 @@ import { useModalState } from './modalStateContext';
 
 export type EditorViewAdapter = EditorStageAdapter;
 
-/*
- * T173 kept this branch, and it is the only `?parity-case` read left in a
- * production component. It is a capture condition, which FR-FT-054 permits
- * explicitly — "seed a fixture and hold capture conditions fixed" — not a
- * fixture seed and not a component substitution.
- *
- * It cannot move anywhere better. The mock backend is the sanctioned home for
- * seeds, but this refresh never crosses the bridge: the callback dispatches
- * `refresh-preview` with `invoke: () => accepted`, entirely in the frontend,
- * so there is no backend call for a seed to intercept. The reference side
- * cannot express it either — the mockup is static HTML that already shows the
- * refreshing and failed states, and what is missing is a way to make
- * production hold them still long enough to be photographed. That is what
- * this does: it changes the timing and outcome of one async operation, and
- * renders no markup the application does not otherwise render.
- */
-function parityPreviewRefreshMode(): 'refreshing' | 'failed' | undefined {
-  if (typeof window === 'undefined') return undefined;
-  const key = new URLSearchParams(window.location.search).get('parity-case');
-  if (key === null) return undefined;
-  if (key.startsWith('state:preview-refreshing:')) return 'refreshing';
-  if (key.startsWith('state:preview-refresh-failed:')) return 'failed';
-  return undefined;
-}
-
 function fallbackView(): DocumentView {
   return {
     arrangement: 'editor',
@@ -152,13 +127,6 @@ const EditorView: React.FC<EditorViewProps> = ({
   );
   const onPreviewRefresh = useCallback(
     async (accepted: LivePreviewSnapshot): Promise<LivePreviewSnapshot> => {
-      const parityRefreshMode = parityPreviewRefreshMode();
-      if (parityRefreshMode === 'refreshing') {
-        return new Promise<LivePreviewSnapshot>(() => undefined);
-      }
-      if (parityRefreshMode === 'failed') {
-        throw new Error('Parity preview refresh failed.');
-      }
       const result = await dispatchAction('refresh-preview', {
         invoke: (): LivePreviewSnapshot => accepted,
         windowFocused: true,

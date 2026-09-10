@@ -27,11 +27,11 @@ type AppModelServiceAPI interface {
 	SetUILayout(ctx context.Context, layout apperr.UILayout) error
 	Save(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
 	// CancelNormalization takes no context: it only releases an in-memory
-	// authorization and touches neither disk nor the operating system. T168.
+	// authorization and touches neither disk nor the operating system.
 	CancelNormalization(documentID, token string) apperr.ClassifiedVoidResult
 	SaveAs(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
 	CheckExternalChanges(ctx context.Context, documentID string) apperr.ConflictResult
-	// ForegroundCheck is CheckExternalChanges named for FR-FT-020's window
+	// ForegroundCheck is CheckExternalChanges named for the window
 	// focus or resume occasion; the bound handler below calls it so the
 	// occasion is legible from the wire inwards.
 	ForegroundCheck(ctx context.Context, documentID string) apperr.ConflictResult
@@ -158,11 +158,11 @@ func (handler *AppModelHandler) ExecuteClosePlan(request bridge.Request, planID 
 // CancelNormalization releases the authorization a dismissed normalization
 // prompt was raised with.
 //
-// FR-FT-011 makes the mixed-ending confirmation single-use and requires that
+// The mixed-ending confirmation is single-use and requires that
 // "cancellation MUST resume nothing". Confirming consumes the authorization;
 // dismissing had no way to release it, because CancelNormalization existed in
 // the service and was not on the bound surface at all — this handler is what
-// gives the frontend a way to call it. T168.
+// gives the frontend a way to call it.
 func (handler *AppModelHandler) CancelNormalization(request bridge.Request, documentID string, decisionToken string) (res apperr.ClassifiedVoidResult) {
 	defer bridge.Guard(&res)
 	return bridge.Once(handler.outcomes, request, func() apperr.ClassifiedVoidResult {
@@ -279,7 +279,7 @@ func (handler *AppModelHandler) SaveAs(request bridge.Request, documentID string
 
 // CheckExternalChanges performs an explicit foreground-only version check.
 //
-// This is the bound surface for FR-FT-020's "window focus or resume" occasion,
+// This is the bound surface for the "window focus or resume" occasion,
 // and it delegates to ForegroundCheck to say so. Tab activation never reaches
 // here: the backend attaches its own check to every ActivateDocument through
 // attachForegroundConflict, which routes to CheckDocumentDisk. The webview is

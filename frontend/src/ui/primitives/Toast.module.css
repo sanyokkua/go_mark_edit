@@ -16,7 +16,7 @@
   border: var(--control-border-width) solid var(--border);
   border-inline-start: 3px solid var(--err);
   border-radius: var(--toast-radius);
-  box-shadow: var(--win-shadow);
+  box-shadow: var(--toast-shadow);
   color: var(--text);
   display: flex;
   flex-direction: column;

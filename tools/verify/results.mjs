@@ -170,7 +170,37 @@ function parseFindings(stage, log) {
   return [...unique.values()];
 }
 
+function goTestCollection(log) {
+  let sawGoEvent = false;
+  let testRuns = 0;
+  for (const rawLine of log.split('\n')) {
+    const line = rawLine.trim();
+    if (!line.startsWith('{')) continue;
+    try {
+      const event = JSON.parse(line);
+      if (
+        event === null ||
+        typeof event !== 'object' ||
+        typeof event.Package !== 'string' ||
+        typeof event.Action !== 'string'
+      )
+        continue;
+      sawGoEvent = true;
+      if (event.Action === 'run' && typeof event.Test === 'string') {
+        testRuns += 1;
+      }
+    } catch {
+      // Non-JSON diagnostics can be interleaved with Go's JSON event stream.
+    }
+  }
+  return { sawGoEvent, testRuns };
+}
+
 function countCollected(stage, log, findings) {
+  if (stage === 'unit' || stage === 'integration') {
+    const go = goTestCollection(log);
+    if (go.sawGoEvent) return go.testRuns;
+  }
   const markers = log.match(
     /(?:=== RUN|^ok |^PASS|^FAIL|Tests:|\bpassed\b|\bfailed\b|\btest\b)/gim,
   );
@@ -180,19 +210,33 @@ function countCollected(stage, log, findings) {
 }
 
 function makeStage({ name, command, exitCode, durationMs = 0, log = '' }) {
-  const findings = exitCode === 0 ? [] : parseFindings(name, log);
+  const go =
+    name === 'unit' || name === 'integration'
+      ? goTestCollection(log)
+      : { sawGoEvent: false, testRuns: 0 };
+  const zeroGoTests = exitCode === 0 && go.sawGoEvent && go.testRuns === 0;
+  const effectiveExitCode = zeroGoTests ? 1 : exitCode;
+  const findings = effectiveExitCode === 0 ? [] : parseFindings(name, log);
+  if (zeroGoTests) {
+    findings.push({
+      id: `go-test:${name}:zero-tests`,
+      tool: 'go-test',
+      location: name,
+      message: 'required Go package list collected zero tests',
+    });
+  }
   let verdict;
-  if (exitCode === 0) verdict = 'clean';
+  if (effectiveExitCode === 0) verdict = 'clean';
   else if (['format', 'build'].includes(name)) verdict = 'failing';
   else if (findings.length === 0) verdict = 'unreliable';
   else verdict = 'findings';
   return {
     name,
     commands: [command],
-    exitCode,
+    exitCode: effectiveExitCode,
     durationMs,
     verdict,
-    collected: countCollected(name, log, findings),
+    collected: zeroGoTests ? 0 : countCollected(name, log, findings),
     findings,
   };
 }
@@ -225,6 +269,7 @@ function stageCommand(args) {
     log: readText(logFile),
   });
   writeJson(output, stage);
+  if (stage.exitCode !== exitCode) process.exit(stage.exitCode);
 }
 
 function skippedCommand(args) {

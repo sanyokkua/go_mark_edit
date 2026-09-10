@@ -18,8 +18,6 @@ import styles from './AppShell.module.css';
 
 export interface WorkspaceLayoutProps extends PropsWithChildren {
   documentState: 'active' | 'empty';
-  parityFamily?: string;
-  parityShell?: boolean;
 }
 
 interface PendingWidth {
@@ -30,8 +28,6 @@ interface PendingWidth {
 const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   children,
   documentState,
-  parityFamily,
-  parityShell = false,
 }: WorkspaceLayoutProps): React.JSX.Element => {
   const dispatch = useAppDispatch();
   const minimumWindow = useMinimumWindow();
@@ -69,18 +65,12 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
   const shellStyle = {
     '--shell-left-width': `${workspaceWidth}px`,
-    ...(parityShell ? { minHeight: '2px' } : undefined),
-    ...(parityShell && minimumWindow ? { overflow: 'visible' } : undefined),
   } as CSSProperties;
-  const documentStyle =
-    parityShell && minimumWindow ? { overflow: 'visible' } : undefined;
 
   return (
     <div
       className={styles.shell}
       data-document-state={documentState}
-      data-parity-family={parityFamily}
-      data-parity-shell={parityShell ? 'true' : undefined}
       data-testid="application-shell"
       data-workspace-visible={String(workspaceVisible)}
       style={shellStyle}
@@ -100,7 +90,6 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
       <main
         aria-label={t('shell.document')}
         className={styles.document}
-        style={documentStyle}
       >
         {children}
       </main>

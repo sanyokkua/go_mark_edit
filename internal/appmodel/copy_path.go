@@ -63,8 +63,8 @@ func (service *AppModelService) RevealInFileManager(ctx context.Context, documen
 		if errors.Is(err, fs.ErrNotExist) {
 			// The file was there when the document was opened and is gone now. This
 			// collapsed into the known-missing case above and returned no error at
-			// all, so a user who chose Reveal saw nothing happen. FR-FT-037 requires
-			// it reported: detach, then one classified not-found offering the two
+			// all, so a user who chose Reveal saw nothing happen. The operation must
+			// report a detached, classified not-found result offering the two
 			// actions that can still help.
 			service.markDetached(ctx, documentID)
 			return revealDetachedFailure(documentID, subject)
@@ -101,7 +101,7 @@ func (service *AppModelService) markDetached(ctx context.Context, documentID str
 }
 
 /*
- * The two Reveal outcomes the contract specifies as pairs, in one place so a third
+ * The two Reveal outcomes are paired in one place so a third
  * call site cannot offer half of one.
  *
  * `not-found` for a detached document is "Save to recreate plus Copy path"; a Reveal

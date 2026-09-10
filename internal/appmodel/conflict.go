@@ -131,13 +131,8 @@ func (service *AppModelService) ReloadFromDisk(ctx context.Context, documentID s
 	}
 	service.conflictQueue.Remove(documentID)
 	projectionRevision, activeBuffer := service.activeBufferFor(documentID)
-	/*
-	 * The *reloaded* revision, not the expected one. T191: this reported the
-	 * pre-reload revision, and the frontend's activation guard
-	 * (`acceptsActivationAcknowledgement`) compares the acknowledgement's
-	 * revision against the projection's -- so the two disagreed by one and the
-	 * install was dropped silently, with no error path to notice it.
-	 */
+	// Return the revision produced by the reload. The frontend uses it to accept
+	// the acknowledgement only when its projection still names this revision.
 	reloadedRevision := service.contentRevisionOf(documentID)
 	return apperr.ConflictResult{Status: apperr.ConflictStatusReloaded, DocumentID: documentID, DocumentRevision: reloadedRevision, ProjectionRevision: projectionRevision, ActiveBuffer: activeBuffer}
 }
@@ -433,19 +428,8 @@ func (service *AppModelService) applyReload(ctx context.Context, documentID stri
 	document.baselineRawHash = stable.RawHash
 	document.baselineCharacteristics = read.Characteristics
 	document.baselineOrigin = SaveOriginReload
-	/*
-	 * A reload replaces the document's text, so it advances the content
-	 * revision exactly as an ordinary edit does (document.go:65). T191: it did
-	 * not, and the consequence was data loss rather than a stale pane. Every
-	 * revision-keyed consumer in the frontend read "same revision" and kept the
-	 * pre-reload buffer, while committedRevision below marked the document
-	 * clean -- which removed the before-write conflict check, so the next
-	 * keystroke's autosave wrote the stale buffer over the file and destroyed
-	 * the other process's change with no second prompt.
-	 *
-	 * committedRevision is then set to the *new* revision, which is what keeps
-	 * the document correctly clean: its buffer now equals what is on disk.
-	 */
+	/* A reload is a content replacement, so it advances the revision and marks
+	 * the document clean against the newly read disk contents. */
 	document.metadata.ContentRevision++
 	document.committedRevision = document.metadata.ContentRevision
 	document.failedWrite = false
@@ -574,7 +558,7 @@ func boundedConflictSide(content string) apperr.ConflictPreviewSide {
 		// Count this line only if some of it is actually in Text. When the budget
 		// lands exactly on a line boundary, remaining is 0 and the guard above
 		// breaks before the first rune, so lineCount+1 would name a line the
-		// reader cannot see — and FR-FT-021 needs the count to describe what is
+		// reader cannot see — and the preview needs the count to describe what is
 		// displayed. A partly rendered line is visible and still counts.
 		if rendered > 0 {
 			lineCount++

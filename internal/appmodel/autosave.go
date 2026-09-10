@@ -50,7 +50,6 @@ func (service *AppModelService) SetAutosaveEnabled(enabled bool) {
 
 func (service *AppModelService) scheduleAutosave(documentID string, revision uint64) {
 	service.mu.Lock()
-	document := service.state.documents[documentID]
 	if service.shutdownDraining || !service.autosaveEnabled || !service.autosaveEligibleLocked(documentID, revision) {
 		service.cancelAutosaveLocked(documentID)
 		service.mu.Unlock()
@@ -58,7 +57,7 @@ func (service *AppModelService) scheduleAutosave(documentID string, revision uin
 	}
 
 	service.cancelAutosaveLocked(documentID)
-	document = service.state.documents[documentID]
+	document := service.state.documents[documentID]
 	if document == nil {
 		service.mu.Unlock()
 		return
@@ -124,7 +123,7 @@ func (service *AppModelService) flushAutosaveMode(documentID string, runSchedule
 			// — detached, read-only, or its path cleared — and leaves the entry in
 			// place when it declines. Looping on an entry nothing will ever claim
 			// spins forever, which is a hung close rather than the completed flush
-			// FR-FT-024 requires. If the entry survived, nothing can run it:
+			// this invariant requires. If the entry survived, nothing can run it:
 			// cancel the debounce and stop.
 			service.mu.Lock()
 			remainingDocument := service.state.documents[documentID]

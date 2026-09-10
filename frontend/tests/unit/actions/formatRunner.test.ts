@@ -13,7 +13,9 @@ const markers: MarkdownMarkerPreferences = {
   headingStyle: 'atx',
 };
 
-function commands(replaceRange: jest.Mock): DocumentCommandAPI {
+function commands(
+  replaceRange: jest.MockedFunction<DocumentCommandAPI['replaceRange']>,
+): DocumentCommandAPI {
   return {
     getContent: (): DocumentCommandResult<string> => ({
       status: 'available',
@@ -27,11 +29,18 @@ function commands(replaceRange: jest.Mock): DocumentCommandAPI {
       },
     }),
     replaceRange,
-  } as DocumentCommandAPI;
+    replaceAll: (): DocumentCommandResult<void> => ({
+      status: 'available',
+      value: undefined,
+    }),
+  };
 }
 
 it('runs every registered formatting action through one command runner', () => {
-  const replaceRange = jest.fn(() => ({ status: 'available' }));
+  const replaceRange = jest.fn<
+    DocumentCommandResult<void>,
+    Parameters<DocumentCommandAPI['replaceRange']>
+  >(() => ({ status: 'available', value: undefined }));
 
   const result = runFormatAction({
     actionId: 'bold',
@@ -45,7 +54,10 @@ it('runs every registered formatting action through one command runner', () => {
 });
 
 it('refuses an action that is not a registered formatter without mutating the document', () => {
-  const replaceRange = jest.fn(() => ({ status: 'available' }));
+  const replaceRange = jest.fn<
+    DocumentCommandResult<void>,
+    Parameters<DocumentCommandAPI['replaceRange']>
+  >(() => ({ status: 'available', value: undefined }));
 
   const result = runFormatAction({
     actionId: 'format',

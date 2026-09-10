@@ -19,8 +19,6 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -98,8 +96,7 @@ func main() {
 }
 
 // supportedDocumentSuffixes is the one list of suffixes both native pickers
-// offer. FR-FT-002 names these four for Open and FR-FT-012 names the same four
-// for Save As.
+// offer. The picker uses these four suffixes for both Open and Save As.
 //
 // It was two identical literals, one per picker, which is how a filter set can
 // drift from the suffixes the backend accepts without anything noticing. The
@@ -114,7 +111,7 @@ func documentFileFilters() []runtime.FileFilter {
 
 // documentFileFiltersFor builds the picker filter for one host.
 //
-// FR-FT-002 requires the picker to filter *case-insensitively*, and only one of
+// The picker filters *case-insensitively*, and only one of
 // the three hosts needs help with that. macOS matches an `NSOpenPanel`'s
 // allowed types case-insensitively, and the Windows common item dialog matches
 // its filter spec case-insensitively, so on those hosts the four lowercase
@@ -199,21 +196,10 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		}),
 		application.WithShutdownLogger(appLogger),
 	)
-	return &options.App{
-		Title:         "GoMarkEdit",
-		Width:         1024,
-		Height:        768,
-		MinWidth:      375,
-		MinHeight:     480,
-		Frameless:     false,
-		DisableResize: false,
-		StartHidden:   true,
-		Mac:           &mac.Options{DisableZoom: false},
-		Menu:          nativeMenuForPlatform(goruntime.GOOS),
-		AssetServer: &assetserver.Options{
-			Assets:  assets,
-			Handler: application.NewPreviewImageHandler(applicationContext.AppModelService),
-		},
+	return application.NewOptions(application.Options{
+		Assets:         assets,
+		PreviewHandler: application.NewPreviewImageHandler(applicationContext.AppModelService),
+		Menu:           nativeMenuForPlatform(goruntime.GOOS),
 		OnStartup: func(ctx context.Context) {
 			applicationContext.SetContext(ctx)
 			if err := applicationContext.Init(ctx); err != nil {
@@ -243,7 +229,7 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		Bind:     []interface{}{applicationContext.AppModelHandler, applicationContext.SettingsHandler, applicationContext.ApplicationHandler},
 		EnumBind: []interface{}{apperr.AllErrorCodes},
 		Logger:   appLogger,
-	}
+	})
 }
 
 type wailsNativeWindow struct{}

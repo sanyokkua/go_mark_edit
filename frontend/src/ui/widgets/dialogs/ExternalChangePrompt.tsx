@@ -62,7 +62,7 @@ const ExternalChangePrompt: React.FC<ExternalChangePromptProps> = ({
         <p>
           {t('conflict.message', {
             /*
-             * FR-FT-048 forbids a private full path in user-facing copy, and
+             * User-facing copy never includes a private full path, and
              * the classified error contract narrows the subject to the safe
              * basename. `displayName` is already that; `path` is the full
              * canonical path and MUST be reduced before it is rendered.

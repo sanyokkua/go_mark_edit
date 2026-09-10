@@ -43,7 +43,7 @@ export function classifiedErrorCode(
  * This deliberately dispatches `notifyToast` rather than `notifyError`:
  * `notifyError` runs `localizedErrorCopy`, which replaces the message with
  * generic catalog copy keyed by code, and the catalog has no string naming
- * either limit. FR-FT-005 requires the refusal to name the 50 MiB limit, so the
+ * either limit. A refusal must name the 50 MiB limit, so the
  * message must survive the trip from Go.
  */
 export function reportClassifiedError(
@@ -72,9 +72,7 @@ export interface ClassifiedReportOptions {
    * Only `Retry` needs telling: every other member of the vocabulary names its
    * own command. Omitting it is the deliberate way to say "this caller cannot
    * re-issue what failed", and no Retry is then offered. That is what keeps the
-   * rendered button honest: until T116 nothing passed `onRemediate`, so every
-   * remediation was built and discarded, and a control that renders without a
-   * command behind it is the same defect wearing a button. A caller earns the
+   * rendered button honest: a caller earns the
    * control by naming the command.
    */
   intent?: NotificationRemediationIntent;
@@ -112,17 +110,13 @@ export interface ClassifiedReportOptions {
  * Three contract rows specify a set rather than a value, and two of them reach
  * a toast: a Reveal `system-command-failure` offers "Retry; a Reveal failure
  * also offers Copy path", and a detached `not-found` offers "Save to recreate
- * plus Copy path". Order follows the contract table, so Retry precedes Copy path.
+ * plus Copy path". Order follows the remediation table, so Retry precedes Copy path.
  *
- * `Save to recreate` was absent until **T160**, because nothing in the frontend
- * could run it: `beginWrite` refused a detached document outright — which
- * contradicted FR-FT-023 — and it wrote only the *active* document, so a control
- * carrying it would either refuse or save a different file than the toast names.
- * T160 removed both blockers, so the member is now mapped and the row is served
- * whole.
+ * `Save to recreate` is mapped to `beginWrite` with the document named by the
+ * notification. It must not fall back to a different active document.
  *
  * `Reload from disk`, `Keep mine`, `Skip` and `Cancel` are absent for a
- * different reason: the contract routes them through the external-change prompt
+ * different reason: the application routes them through the external-change prompt
  * and the close prompt, not through a toast.
  */
 /**
@@ -130,7 +124,7 @@ export interface ClassifiedReportOptions {
  *
  * The intent alone is not the promise — `open-recent` without a path and
  * `activate-document` without a document are both buttons that would call
- * nothing, which is the defect T116 removed. Naming each intent's arguments
+ * nothing. Naming each intent's arguments
  * here, once, is what keeps the check from drifting per call site.
  */
 function retryIsExecutable(
@@ -207,10 +201,10 @@ function remediationsFor(
       ...(retry?.reorder === undefined ? {} : { reorder: retry.reorder }),
     });
   }
-  // `Save to recreate` precedes `Copy path` because the contract's `not-found`
+  // `Save to recreate` precedes `Copy path` because the `not-found`
   // row names them in that order. Like `copy-path` it names its own command, so
   // it takes no intent from the caller — only the document the toast is about,
-  // which is the one whose file has gone. T160 gave it a command to run:
+  // which is the one whose file has gone. It has its own command to run:
   // `beginWrite` no longer refuses a detached document and now writes the
   // document it is handed rather than whichever one happens to be active.
   if (

@@ -77,13 +77,18 @@ capture_stage() {
   finished_ms="$(node -e 'process.stdout.write(String(Date.now()))')"
   duration_ms=$((finished_ms - started_ms))
 
+  local record_status=0
   node "$REPO_ROOT/tools/verify/results.mjs" stage \
     --name "$stage_name" \
     --command "$stage_command" \
     --exit-code "$exit_code" \
     --duration-ms "$duration_ms" \
     --log "$log_path" \
-    --output "$result_path"
+    --output "$result_path" || record_status=$?
+
+  if [[ "$record_status" -ne 0 && "$exit_code" -eq 0 ]]; then
+    return "$record_status"
+  fi
 
   return "$exit_code"
 }

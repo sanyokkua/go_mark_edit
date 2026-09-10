@@ -40,7 +40,7 @@ BEGIN
 END;`
 )
 
-const maxLockSeconds = int64((1<<63 - 1) / int64(time.Second))
+const maxLockSeconds = (1<<63 - 1) / int64(time.Second)
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -86,7 +86,9 @@ func run(args []string) error {
 		}()
 		select {
 		case <-ready:
-			fmt.Fprintln(os.Stdout, "lock acquired")
+			if _, err := fmt.Fprintln(os.Stdout, "lock acquired"); err != nil {
+				return err
+			}
 			return <-done
 		case err := <-done:
 			return err

@@ -192,7 +192,7 @@
   background: var(--surface-raised);
   border: var(--control-border-width) solid var(--border);
   border-radius: var(--popup-radius);
-  box-shadow: var(--context-menu-shadow);
+  box-shadow: var(--tab-context-menu-shadow);
   display: grid;
   gap: 0;
   min-inline-size: var(--popup-min-width);
@@ -201,52 +201,6 @@
   right: var(--app-gap);
   top: 3rem;
   z-index: var(--z-dropdown);
-}
-
-:global(.application-frame:has([data-parity-shell='true'])) .contextMenu {
-  backdrop-filter: var(--blur);
-  display: block;
-  border-radius: 11px;
-  gap: normal;
-  inline-size: 190px;
-  left: 210px;
-  min-inline-size: 190px;
-  padding: 5px;
-  right: auto;
-  top: 106px;
-}
-
-@media (max-width: 376px) {
-  :global(.application-frame:has([data-parity-shell='true'])) .contextMenu {
-    left: 172px;
-    top: -116px;
-  }
-}
-
-:global(.application-frame:has([data-parity-shell='true'])) .tabStrip {
-  z-index: calc(var(--z-sticky) + 1);
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .contextMenuItem[data-action-id='move-tab-left'],
-:global(.application-frame:has([data-parity-shell='true']))
-  .contextMenuItem[data-action-id='move-tab-right'] {
-  display: none;
-}
-
-:global(.application-frame:has([data-parity-shell='true']))
-  .contextMenuItem[data-action-id='copy-path'] {
-  margin-top: 11px;
-}
-
-:global(.application-frame:has([data-parity-shell='true'])) .contextMenuItem {
-  align-items: center;
-  display: flex;
-  font-size: 13px;
-  gap: 22px;
-  inline-size: 100%;
-  justify-content: space-between;
-  padding: 7px 10px;
 }
 
 .contextMenuItem {
@@ -296,14 +250,6 @@
 
 :global(:root[data-theme='glass']) .tabStrip {
   backdrop-filter: var(--blur);
-}
-
-:global(.application-frame:has([data-parity-shell='true'])) .tabAdd {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  color: var(--text);
-  font-size: 15px;
 }
 
 @media (prefers-reduced-motion: reduce) {

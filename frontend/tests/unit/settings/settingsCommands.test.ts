@@ -83,7 +83,7 @@ it('serializes settings writes and acknowledges them in persistence order', asyn
   });
   let releaseFirst: (() => void) | undefined;
   const adapter = {
-    updateAppearance: jest.fn((_: AppearanceSettings) => {
+    updateAppearance: jest.fn(() => {
       if (adapter.updateAppearance.mock.calls.length > 1) {
         return Promise.resolve();
       }
@@ -91,6 +91,10 @@ it('serializes settings writes and acknowledges them in persistence order', asyn
         releaseFirst = resolve;
       });
     }),
+    resetAppearance: jest.fn(async (): Promise<void> => undefined),
+    updateEditor: jest.fn(async (): Promise<void> => undefined),
+    updateFile: jest.fn(async (): Promise<void> => undefined),
+    updateMarkdown: jest.fn(async (): Promise<void> => undefined),
   };
   const owner = createSettingsCommandOwner(adapter);
   const first = owner.updateAppearance(

@@ -45,7 +45,6 @@ afterEach(() => {
   store.dispatch(resetProjection());
 });
 
-// Proves: FR-041
 it('renders workspace and document regions while reserving the assistant track', () => {
   renderShell({ sidebarVisible: true, sidebarWidth: 288 });
 

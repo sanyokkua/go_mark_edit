@@ -88,16 +88,13 @@ func NewApplicationContextHolderWithOptions(fileService file.FileUtilsServiceAPI
 		SettingsService:    settingsService,
 		AppModelService:    appModelService,
 	}
-	// The join the 2026-08-14 walkthrough found missing. Settings owns the
-	// autosave preference and the document model owns the scheduler; this is the
-	// only place that holds both, so it is where the preference becomes a
-	// command rather than a projection.
+	// Settings owns the autosave preference and the document model owns the
+	// scheduler; this composition root is the boundary where the preference
+	// becomes a command rather than a passive projection.
 	settingsService.SetAutosaveObserver(appModelService.SetAutosaveEnabled)
-	// The same join, one setting over (T119). SetDefaultOpenMode had zero
-	// production callers, so FR-FT-003's "acknowledged default open mode" never
-	// left the database. settings.OpenMode* and appmodel.OpenMode* are
-	// string-identical, so no conversion is needed — only this join, since
-	// settings must not import appmodel.
+	// The observer copies the persisted open-mode preference into the document
+	// model. The packages remain independent; this composition layer performs the
+	// conversion at their shared boundary.
 	settingsService.SetDefaultOpenModeObserver(appModelService.SetDefaultOpenMode)
 	holder.SettingsHandler = settings.NewSettingsHandler(settingsService, appLogger, holder.Context, outcomes)
 	holder.AppModelHandler = appmodel.NewAppModelHandler(appModelService, appLogger, holder.Context, outcomes)
@@ -241,8 +238,8 @@ func (holder *ApplicationContextHolder) applyPersistedAutosavePreference(ctx con
 // applyPersistedDefaultOpenMode pushes the stored preference into the document
 // model once at startup. The observer alone only fires when the setting is
 // written, so a stored preference of Reading would silently come back as Editor
-// at every launch — which is the half of T104's defect that a projection-only
-// test would not have caught either.
+// at every launch. Applying the stored value during bootstrap keeps the initial
+// document mode consistent with the preference before any observer fires.
 //
 // An unreadable store leaves the documented default of Editor in place.
 func (holder *ApplicationContextHolder) applyPersistedDefaultOpenMode(ctx context.Context) {
@@ -337,7 +334,7 @@ func (holder *ApplicationContextHolder) BeforeClose(ctx context.Context) bool {
 	return shutdown.BeforeClose(ctx)
 }
 
-// DrainBeforeClose runs FR-FT-027's full shutdown drain: accepted autosave and
+// DrainBeforeClose runs the full shutdown drain: accepted autosave and
 // editor work, then the SQLite layout intent. It is separate from
 // FlushBeforeClose, which stays the narrow Wails durability port used by the
 // veto hook and by Close.
@@ -355,11 +352,8 @@ func (holder *ApplicationContextHolder) DrainBeforeClose() *apperr.ClassifiedErr
 // creating the one-shot native close permit. A failed drain leaves the request
 // pending for Retry and can never create a permit.
 //
-// It returns a *apperr.ClassifiedError rather than an error because FR-FT-027
-// specifies the failure the user sees, not merely that one occurred: a
-// classified io-failure offering Retry. The previous apperr.IO wrapper reached
-// the frontend as an untyped WireError, which renders generic catalogue copy and
-// carries no remediation, so the window stayed open with nothing to press.
+// It returns a *apperr.ClassifiedError so the caller can show the failure as a
+// classified io-failure offering Retry. A plain WireError carries no remediation.
 func (holder *ApplicationContextHolder) AuthorizeQuit(ctx context.Context, closeID string) *apperr.ClassifiedError {
 	holder.mu.Lock()
 	shutdown := holder.Shutdown

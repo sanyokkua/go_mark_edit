@@ -7,7 +7,6 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
 
-// Proves: FR-055
 func TestWithVersionReachesTheApplicationState(t *testing.T) {
 	service := appmodel.NewAppModelServiceForHost(appmodel.WithVersion("test-version"))
 

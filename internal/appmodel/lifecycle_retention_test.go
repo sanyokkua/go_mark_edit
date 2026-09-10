@@ -16,8 +16,14 @@ type retentionTimer struct{}
 
 func (retentionTimer) Stop() bool { return true }
 
+type retentionEmitter struct{}
+
+func (retentionEmitter) EmitStatePatch(context.Context, apperr.AppStatePatch) error { return nil }
+
+func (retentionEmitter) EmitAsyncError(context.Context, apperr.WireError) error { return nil }
+
 func TestDisposeReleasesDocumentOwnedResources(t *testing.T) {
-	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
 	documentID := service.state.activeDocumentID
 	service.mu.Lock()
 	document := service.state.documents[documentID]
@@ -49,7 +55,7 @@ func TestDisposeReleasesDocumentOwnedResources(t *testing.T) {
 }
 
 func TestManyDocumentsCanBeSavedAndClosedWithoutRetainedRecords(t *testing.T) {
-	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
 	ctx := context.Background()
 	const documentsToExercise = 40
 	ids := make([]string, 0, documentsToExercise)
@@ -112,7 +118,7 @@ func TestManyDocumentsCanBeSavedAndClosedWithoutRetainedRecords(t *testing.T) {
 
 func TestClosingDocumentRejectsAWriteThatHasNotStarted(t *testing.T) {
 	var executor WriteExecutor
-	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		return executor(snapshot)
 	}))
 	path := filepath.Join(t.TempDir(), "closing.md")
@@ -154,7 +160,7 @@ func TestClosingDocumentRejectsAWriteThatHasNotStarted(t *testing.T) {
 }
 
 func TestCloseDocumentsSealsTheRecordBeforeWaitingForWrites(t *testing.T) {
-	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
 	documentID := service.state.activeDocumentID
 	service.mu.Lock()
 	service.state.documents[documentID].writeInFlight = true

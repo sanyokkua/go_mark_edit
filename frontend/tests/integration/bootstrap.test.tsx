@@ -10,6 +10,7 @@ import {
   useBootstrap,
   type BootstrapAdapters,
   type BootstrapStep,
+  type UseBootstrapOptions,
 } from '../../src/app/useBootstrap';
 import type { AppModelBootstrapResult } from '../../src/logic/store/appModelProjection';
 
@@ -49,7 +50,7 @@ function adapters(): BootstrapAdapters {
 }
 
 function Harness(
-  props: Omit<Parameters<typeof useBootstrap>[0], 'loadAdapters'> & {
+  props: Omit<UseBootstrapOptions, 'loadAdapters'> & {
     loadAdapters: () => Promise<BootstrapAdapters>;
   },
 ): React.JSX.Element {
@@ -130,7 +131,7 @@ it('retries only the failed step and ignores a second retry while it is running'
   const services = adapters();
   const retryModel = deferred<AppModelBootstrapResult>();
   const model = jest
-    .fn<() => Promise<AppModelBootstrapResult>>()
+    .fn<Promise<AppModelBootstrapResult>, []>()
     .mockRejectedValueOnce(new Error('model failed'))
     .mockReturnValueOnce(retryModel.promise);
   const settings = jest.fn(async (): Promise<void> => undefined);
@@ -170,7 +171,6 @@ it('retries only the failed step and ignores a second retry while it is running'
   expect(settings).toHaveBeenCalledTimes(1);
 });
 
-// Proves: FR-015 (a model hydration failure can identify the settings startup step)
 it('uses the failure step carried by a failed model bootstrap result', async () => {
   const services = adapters();
 
@@ -201,7 +201,7 @@ it('ignores the late answer from a timed-out attempt after a fresh retry succeed
   const abandoned = deferred<AppModelBootstrapResult>();
   const current = deferred<AppModelBootstrapResult>();
   const model = jest
-    .fn<() => Promise<AppModelBootstrapResult>>()
+    .fn<Promise<AppModelBootstrapResult>, []>()
     .mockReturnValueOnce(abandoned.promise)
     .mockReturnValueOnce(current.promise);
 

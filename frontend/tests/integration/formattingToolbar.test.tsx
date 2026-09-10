@@ -34,8 +34,7 @@ function rect(width: number, height = 30): DOMRect {
   } as DOMRect;
 }
 
-// Proves: FR-036, FR-037, FR-038 — the formatting toolbar is composed from the shared Bar, Island and ToolButton contracts.
-it('T023 renders grouped formatting controls with a trailing arrangement island', () => {
+it('renders grouped formatting controls with a trailing arrangement island', () => {
   renderToolbar();
 
   const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
@@ -57,8 +56,7 @@ it('T023 renders grouped formatting controls with a trailing arrangement island'
   );
 });
 
-// Proves: FR-037 — Bar measures groups and relocates only the groups that do not fit below its breakpoint.
-it('T023 moves measured groups into the shared overflow Popup below 768px', async () => {
+it('moves measured groups into the shared overflow Popup below 768px', async () => {
   const originalWidth = window.innerWidth;
   const originalRect = HTMLElement.prototype.getBoundingClientRect;
   Object.defineProperty(window, 'innerWidth', {
@@ -103,8 +101,7 @@ it('T023 moves measured groups into the shared overflow Popup below 768px', asyn
   }
 });
 
-// Proves: FR-038 — formatting controls preserve the editor command boundary instead of mutating UI state directly.
-it('T023 routes a formatting activation through the editor command context', async () => {
+it('routes a formatting activation through the editor command context', async () => {
   const replaceRange = jest.fn(() => ({
     status: 'available' as const,
     value: undefined,
@@ -149,8 +146,7 @@ it('T023 routes a formatting activation through the editor command context', asy
   );
 });
 
-// Proves: FR-038 — action identity and availability stay stable across the six token palettes.
-it('T023 keeps action identity stable across every theme and mode', () => {
+it('keeps action identity stable across every theme and mode', () => {
   const palettes = [
     ['glass', 'light'],
     ['glass', 'dark'],

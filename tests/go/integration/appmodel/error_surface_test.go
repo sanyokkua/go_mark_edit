@@ -16,7 +16,6 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
 
-// Proves: FR-056
 func TestLayoutPersistenceFailureIsEmittedAsClassifiedAsyncError(t *testing.T) {
 	timer := &manualLayoutTimer{}
 	emitter := &errorSurfaceEmitter{}
@@ -45,7 +44,6 @@ func TestLayoutPersistenceFailureIsEmittedAsClassifiedAsyncError(t *testing.T) {
 	}
 }
 
-// Proves: FR-056
 func TestLayoutRestoreReadFailureReturnsAStatedOperation(t *testing.T) {
 	service := appmodel.NewAppModelServiceForHost(
 		appmodel.WithEmitter(&errorSurfaceEmitter{}),
@@ -64,7 +62,6 @@ func TestLayoutRestoreReadFailureReturnsAStatedOperation(t *testing.T) {
 	}
 }
 
-// Proves: FR-056
 func TestPublicationRollbackLogsAStatedReason(t *testing.T) {
 	var logs bytes.Buffer
 	service := appmodel.NewAppModelServiceForHost(
@@ -90,7 +87,6 @@ func TestPublicationRollbackLogsAStatedReason(t *testing.T) {
 	}
 }
 
-// Proves: FR-056
 func TestReopenLastFileSurfacesViewRestoreFailure(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "notes.md")

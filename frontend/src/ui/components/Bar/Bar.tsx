@@ -224,6 +224,7 @@ const Bar: React.FC<BarProps> = ({
       if (first !== undefined) next.add(first.index);
     }
 
+    if (next.size === 0) setOverflowOpen(false);
     setOverflowIndexes((current) =>
       sameIndexes(current, next) ? current : next,
     );
@@ -253,11 +254,6 @@ const Bar: React.FC<BarProps> = ({
       observer?.disconnect();
     };
   }, [measure]);
-
-  useEffect((): void => {
-    if (isOverflowing) return;
-    setOverflowOpen(false);
-  }, [isOverflowing]);
 
   const overflowItems = mainItems.filter((_, index) =>
     overflowIndexes.has(index),
@@ -331,13 +327,13 @@ const Bar: React.FC<BarProps> = ({
       {isMenuOverflow ? (
         <Popup
           {...overflowPopupProps}
-          anchor={{ trigger: triggerRef.current }}
+          anchor={{ trigger: triggerRef }}
           aria-label={overflowPopupLabel}
           className={overflowPopupClassName}
           data-bar-overflow-popup="true"
           initialFocus="first"
           open={overflowOpen}
-          returnFocusTo={triggerRef.current}
+          returnFocusTo={triggerRef}
           role="menu"
           size="menu"
           onOpenChange={setOverflowOpen}

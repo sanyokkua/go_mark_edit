@@ -93,13 +93,13 @@ export function useSyncedBuffer(
   initialContent = '',
   /*
    * Advances only when the document's text is replaced by something other than
-   * the editor — today that is FR-FT-030's reload. It restarts the editor
+   * the editor — today that is an external reload. It restarts the editor
    * session, which is the only way `initialContent` reaches Monaco: `CodeEditor`
    * seeds it as `defaultValue` under `key={documentId}:{activationId}`.
    *
    * Deliberately not the content revision. Every keystroke bumps that, so
    * keying the session on it would remount Monaco per character and throw away
-   * undo history and cursor position. T191.
+   * undo history and cursor position.
    */
   externalEpoch = 0,
 ): SyncedBufferCallbacks {

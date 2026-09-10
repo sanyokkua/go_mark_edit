@@ -47,10 +47,9 @@ export interface CodeEditorProps {
   /**
    * Refuse keyboard input, for a document whose capability is not `writable`.
    *
-   * FR-FT-006 requires editing to be unavailable for input that opened
-   * tolerantly as read-only, and FR-FT-005 makes an over-large file equally
-   * unwritable. The registry and dispatcher stop the toolbar and the shortcuts;
-   * this is what stops typing. T178.
+   * Editing is unavailable for input that opened tolerantly as read-only, and
+   * an over-large file is equally unwritable. The registry and dispatcher stop
+   * the toolbar and shortcuts; this prop is what stops typing.
    */
   readOnly?: boolean;
   visible?: boolean;
@@ -129,37 +128,6 @@ function getEditorFontSize(): number {
   return Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 14;
 }
 
-/*
- * T173 kept the parity capture conditions below, against its own expectation,
- * because a measurement contradicted the reasoning for removing them.
- *
- * The argument for deleting them was that they pin pixels nothing compares:
- * FR-FT-055 makes the Monaco editor interior a named reviewed exclusion and
- * `reference-adapter.ts`'s variantRules exclude `monaco` from every variant.
- * That is true of the *region* and false of the *comparison*. Removing the font
- * family, size and line height grew T059's `popup-antialiased-boundary`
- * residual from its measured 181 pixels to 239, and reverting this file alone
- * put it back — the File popup composites over the editor, so its antialiased
- * edge is blended against whatever glyphs are behind it. An excluded region can
- * still be load-bearing for a comparison outside it.
- *
- * So these are capture conditions in the sense FR-FT-054 permits — "hold
- * capture conditions fixed" — and they are held here because Monaco owns its
- * own text raster and there is nowhere else to hold them. What was deleted is
- * the one thing in this file that was not a capture condition: a lint
- * decoration drawn over a hardcoded range of a hardcoded document id, which
- * photographed a finding no lint engine had produced.
- *
- * The archtest allowlist carries this file for that reason. Before removing the
- * allowance, re-measure T059 rather than reasoning from the region exclusion.
- */
-function isParityRoute(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('parity-case')
-  );
-}
-
 function modelPath(documentId: string, activationId?: string): string {
   const activationSuffix =
     activationId === undefined ? '' : `/${encodeURIComponent(activationId)}`;
@@ -215,7 +183,6 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     }: CodeEditorProps,
     ref,
   ): React.JSX.Element {
-    const parityRoute = isParityRoute();
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
     const onChangeRef = useRef(onChange);
     const onBlurRef = useRef(onBlur);
@@ -373,11 +340,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     };
 
     return (
-      <div
-        className={styles.editor}
-        data-editor-surface
-        data-parity-route={parityRoute ? 'true' : undefined}
-      >
+      <div className={styles.editor} data-editor-surface>
         <Suspense
           fallback={<div aria-busy="true" className={styles.loading} />}
         >
@@ -393,11 +356,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
               wordWrap,
               minimap: { enabled: minimap },
               readOnly,
-              fontFamily: parityRoute
-                ? '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace'
-                : undefined,
-              fontSize: parityRoute ? 13 : (fontSize ?? getEditorFontSize()),
-              lineHeight: parityRoute ? 23.4 : undefined,
+              fontSize: fontSize ?? getEditorFontSize(),
               padding: { top: 12, bottom: 12 },
             }}
             onChange={(value: string | undefined): void => {

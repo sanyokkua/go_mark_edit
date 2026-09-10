@@ -662,7 +662,7 @@ export interface NativeLifecycleAdapter {
    * could not be armed.
    *
    * A refusal is returned rather than thrown, and it is not routed through
-   * `unwrapPromise`. FR-FT-027 requires a drain failure to reach the user as a
+   * `unwrapPromise`. A drain failure reaches the user as a
    * classified `io-failure` offering Retry; `unwrapPromise` dispatches
    * `notifyError`, which renders generic catalogue copy from an internal
    * `WireError` code and can carry no remediation. Handing the caller the

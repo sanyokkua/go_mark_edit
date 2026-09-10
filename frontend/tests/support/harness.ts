@@ -7,7 +7,6 @@ import {
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { Readable } from 'node:stream';
 import { promisify } from 'node:util';
 
@@ -26,10 +25,7 @@ type WailsProcess = ChildProcessByStdio<null, Readable, Readable>;
 const DEV_SERVER_URL = 'http://localhost:34115';
 const STARTUP_TIMEOUT_MS = 120_000;
 const PROCESS_WAIT_TIMEOUT_MS = 10_000;
-const REPOSITORY_ROOT = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  '../../..',
-);
+const REPOSITORY_ROOT = resolve(process.cwd(), '..');
 
 interface ProcessSnapshot {
   pid: number;

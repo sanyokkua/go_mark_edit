@@ -1,6 +1,5 @@
 import { expect, test } from '../support/harness';
 
-// Proves: FR-048
 test('keeps deferred Assistant, Export, and Open Folder surfaces visible but disabled without a custom frame', async ({
   app,
 }) => {

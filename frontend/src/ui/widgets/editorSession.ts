@@ -52,12 +52,12 @@ const EditorSessionAttachmentContext =
 
 /**
  * How many times the active document's text has been replaced by something
- * other than the editor — today only FR-FT-030's reload.
+ * other than the editor, such as an external reload.
  *
  * It exists because Monaco is seeded once per editor session, so a replacement
  * that keeps the same document reaches the editor only if the session restarts.
  * Keying that on the content revision would restart it per keystroke; this
- * advances only for a replacement the editor did not originate. T191.
+ * advances only for a replacement the editor did not originate.
  */
 export const EditorSessionEpochContext = createContext(0);
 
@@ -67,7 +67,7 @@ export const EditorSessionEpochContext = createContext(0);
  * `DocumentTabs` owns an external-change prompt of its own, separate from the
  * one in `App`, and its reload arm is the one the foreground check actually
  * raises. It sits below this provider, so it cannot reach App's state — it
- * reports here instead and the provider adds its count to the epoch. T191.
+ * reports here instead and the provider adds its count to the epoch.
  */
 export type ExternalReloadInstaller = (
   acknowledgement: ActiveBuffer | undefined,
@@ -83,10 +83,10 @@ export interface EditorSessionProviderProps extends PropsWithChildren {
    * Installs a buffer the editor did not produce, and advances the epoch.
    *
    * Supplied by `App`, because the install has to go through the one guarded
-   * activation seam (T128/T169) rather than be re-implemented wherever a reload
+   * activation seam rather than be re-implemented wherever a reload
    * happens. `DocumentTabs` owns an external-change prompt of its own and calls
    * this; without it, its reload updated the backend and cleared the prompt
-   * while the editor kept the pre-reload text. T191.
+   * while the editor kept the pre-reload text.
    */
   onExternalReload?: ExternalReloadInstaller;
 }
@@ -221,15 +221,10 @@ export function acceptsActivationAcknowledgement(
 /**
  * The single install path for an active-buffer acknowledgement.
  *
- * FR-FT-030 binds an acknowledgement to an identity and a revision and allows
- * it to be applied "only while both values still match the confirmed active
- * projection". Before T128 that guard existed as
- * `acceptsActivationAcknowledgement` and nothing in production called it: all
- * five acknowledging handlers in `app/App.tsx` — New, Open, Open Recent, Reopen and
- * Activate — installed `result.data` / `result.activeBuffer` the moment it
- * arrived, so a switch that had already lost a race still overwrote the
- * winner's source. That is the cross-document text installation SC-FT-003
- * requires to be impossible.
+ * An acknowledgement is applied only while its document identity and revision
+ * still match the confirmed active projection. All callers use this guard before
+ * installing command results, preventing a late switch from overwriting another
+ * document's buffer.
  *
  * The guard is not re-stated at the call sites, because a rule that has to be
  * remembered five times is the shape of defect this replaces. A handler claims

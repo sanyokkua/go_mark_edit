@@ -27,16 +27,8 @@ const ClosePrompt: React.FC<ClosePromptProps> = ({
   const dirtyTargets = plan.targets.filter((target) => target.dirty);
   const isSingle = plan.kind === 'single' && dirtyTargets.length === 1;
   /*
-   * T138. There is no `?parity-case` branch here any more. This prompt used to
-   * substitute a document-specific heading and a raw untranslated English
-   * message on the parity route, which changed the dialog's accessible name —
-   * `aria-labelledby` points at the heading — so the harness measured a prompt
-   * that answered to a different name than the one that ships, and the message
-   * came from nowhere in the translation catalogue (FR-FT-047). Found while
-   * closing T138 on `ModalShell` and `SettingsDialog`: three e2e cases located
-   * this dialog by the production name and could no longer find it once
-   * `ModalShell` stopped moving `role="dialog"` onto the backdrop, which is
-   * what exposed the substitution.
+   * The prompt always uses translated copy and delegates dialog semantics to
+   * `ModalShell`, including its accessible title and keyboard dismissal.
    */
   const title =
     plan.kind === 'quit'

@@ -77,7 +77,6 @@ async function editorCaret(page: Page): Promise<{
   return { left: bounds.x, top: bounds.y };
 }
 
-// Proves: FR-006
 test('keeps the real editor model, undo history, caret, and focus across Save', async ({
   app,
 }) => {
@@ -126,7 +125,6 @@ test('keeps the real editor model, undo history, caret, and focus across Save', 
   expect(await readFile(source, 'utf8')).toBe(edited);
 });
 
-// Proves: FR-006
 test('keeps live Preview and Monaco focus while Save delivers metadata', async ({
   app,
 }) => {

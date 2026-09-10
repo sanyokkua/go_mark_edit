@@ -142,7 +142,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
     getActionAvailability(id).kind !== 'available';
 
   /*
-   * T155: two independent reasons a Settings row is not operable, and both must
+   * A Settings row is unavailable for either of two independent reasons, and both
    * be stated at every row.
    *
    * The registry is the authority on whether the action exists to be performed
@@ -150,7 +150,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
    * carried no registry term whatsoever, so a future `laterDeferred` on
    * `autosave` would have shipped an operable toggle. But an available action
    * with no writer wired is equally inoperable, and drawing a control that
-   * calls nothing is the defect T116 exists to remove. A row is operable only
+   * calls nothing is inoperable. A row is operable only
    * when the registry allows it *and* something is there to receive the change.
    *
    * `writer` is omitted by the open-mode and Markdown-standard lists, which

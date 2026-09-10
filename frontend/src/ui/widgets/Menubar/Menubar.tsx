@@ -36,6 +36,7 @@ import {
 } from '../../../logic/actions/useShellShortcuts';
 import { windowAdapter } from '../../../logic/adapter';
 import AppBrand from '../../primitives/AppBrand';
+import ToolButton from '../../primitives/ToolButton';
 import ViewMenu, { type ViewMenuProps } from './ViewMenu';
 import Icon from '../../primitives/Icon';
 import MenuItem from '../../components/MenuItem';
@@ -123,7 +124,7 @@ export interface MenubarProps {
   requestedMenu?: ApplicationMenuTarget | null;
   onRequestedMenuHandled?: () => void;
   /*
-   * T109: the File surfaces' dispatch results, handed to whoever owns a store
+   * File-surface dispatch results are handed to whoever owns the store
    * dispatch rather than reported here. Keeping the row free of `logic/store`
    * follows `EditorContextMenu`'s existing `onActionResult` prop, and means the
    * row's own tests need no Provider.
@@ -254,7 +255,7 @@ const Menubar: React.FC<MenubarProps> = ({
 
   /*
    * One table behind three surfaces: the accelerator text drawn beside a File
-   * row, the row's click, and the keystroke. T110 existed because the first was
+   * row, the row's click, and the keystroke. One table serves all three so the
    * read from the action registry while dispatch was read from a hand-written
    * catalogue of shell ids — two lists that drifted apart with every test still
    * green. Deriving all three from `fileActionInvoker` + `fileActionDisabled`
@@ -307,7 +308,7 @@ const Menubar: React.FC<MenubarProps> = ({
     [activeDocument, canReopenLastFile, documentId, recentFiles],
   );
   /*
-   * T111: a row whose handler is absent must grey out, never render enabled and
+   * A row whose handler is absent is greyed out and cannot dispatch.
    * do nothing. `App.tsx` passes `onCloseDocument` as undefined whenever there
    * is no active document — the launcher state, reached by closing the last tab
    * — and `Close Tab` then advertised itself as available while its click died
@@ -319,8 +320,7 @@ const Menubar: React.FC<MenubarProps> = ({
    * deferred ids, whose own rules are below and must keep governing them.
    *
    * `exit` used to spell this rule for itself (`onQuit === undefined`). It is
-   * the same rule, so it is folded in — two spellings of one rule is the drift
-   * T110 existed to remove.
+   * the same rule, so it is folded in rather than duplicated.
    */
   const fileActionDisabled = useCallback(
     (id: ActionId): boolean =>
@@ -436,11 +436,8 @@ const Menubar: React.FC<MenubarProps> = ({
   const fileActionLabel = (item: (typeof fileActions)[number]): string =>
     t(item.surfaceLabelKeys?.['file-menu'] ?? item.labelKey);
   /*
-   * FR-FT-042: with no recent files the menu shows the defined empty message.
-   * It used to show two disabled rows named `release-notes.md` and
-   * `spec-draft.md` instead — catalogue-backed, but invented filenames standing
-   * in for data that does not exist, which reads as history the user does not
-   * have.
+   * With no recent files the menu shows the defined empty message rather than
+   * fabricated filenames.
    */
   const displayedRecentFiles = recentFiles.slice(0, 6);
   const noRecentFiles = displayedRecentFiles.length === 0;
@@ -885,18 +882,16 @@ const Menubar: React.FC<MenubarProps> = ({
             {!narrow &&
             viewMenuProps?.onWorkspaceVisibilityChange !== undefined ? (
               <div className={styles.menuRowActions} data-menu-row-actions>
-                <button
-                  aria-label={t(sidebarAction.accessibilityKey)}
-                  aria-pressed={viewMenuProps.workspaceVisible ?? true}
+                <ToolButton
                   className={styles.rowAction}
                   data-action-id={sidebarAction.id}
-                  type="button"
-                  onClick={(): void => dispatch(action('toggle-sidebar'))}
-                >
-                  <Icon name="sidebar" />
-                </button>
-                <button
-                  aria-label={t(assistantAction.accessibilityKey)}
+                  icon="sidebar"
+                  label={t(sidebarAction.accessibilityKey)}
+                  pressed={viewMenuProps.workspaceVisible ?? true}
+                  variant="icon"
+                  onActivate={(): void => dispatch(action('toggle-sidebar'))}
+                />
+                <ToolButton
                   className={styles.rowAction}
                   data-action-id={assistantAction.id}
                   data-availability={
@@ -911,11 +906,11 @@ const Menubar: React.FC<MenubarProps> = ({
                       projectedState,
                     }).kind !== 'available'
                   }
+                  icon="assistant"
+                  label={t(assistantAction.accessibilityKey)}
                   title={t('action.unavailable')}
-                  type="button"
-                >
-                  <Icon name="assistant" />
-                </button>
+                  variant="icon"
+                />
               </div>
             ) : null}
           </>

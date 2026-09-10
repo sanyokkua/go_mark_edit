@@ -63,7 +63,6 @@ async function expectOneAutoDismissingWarning(
   await expect(warning).toHaveCount(0, { timeout: 10_000 });
 }
 
-// Proves: FR-014
 test('case 1 keeps preview link activation in the app session', async ({
   app,
 }) => {

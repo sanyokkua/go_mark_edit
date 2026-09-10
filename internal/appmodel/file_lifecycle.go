@@ -152,11 +152,11 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	// `CurrentDiskVersion` reports absence as `DiskVersion{}, nil` so a permission
 	// or IO failure cannot be mistaken for deletion (`disk_version.go:31-32`), and
 	// `ReadClassifiedStable` short-circuits on `!before.Exists` so the conflict path
-	// can mark an open document detached without raising (`conflict.go:121,297`,
-	// FR-FT-023). Neither `readErr` nor `read.Error` therefore fires here, `identity`
+	// can mark an open document detached without raising. Neither `readErr` nor
+	// `read.Error` therefore fires here, `identity`
 	// stays "", and the match loop below is satisfied by any untitled document — so
 	// an explicit stale choice focused an unrelated tab instead of refusing.
-	// FR-FT-040 requires the refusal, and it has to happen before identity is read.
+	// the refusal has to happen before identity is read.
 	if !stable.Version.Exists {
 		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedNotFound, "document", "The file no longer exists.", apperr.RemediationNone, "")
 	}
@@ -202,22 +202,10 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 }
 
 /*
- * There is deliberately no CancelPreparedOpen.
- *
- * FR-FT-004 names four events that end a reservation — "until activation,
- * commit, cancellation, or failure" — and the 2026-08-17 amendment records the
- * third as satisfied vacuously by this single-call design rather than as an
- * arm needing an implementation. OpenPath calls PrepareOpen and
- * CommitPreparedOpen in adjacent statements, every PrepareOpen refusal returns
- * before a reservation exists, and CommitPreparedOpen deletes the reservation
- * on every branch, so no reservation can outlive a prepare and there is nothing
- * to cancel between the two.
- *
- * T137 kept a CancelPreparedOpen so as not to delete a clause of the
- * requirement; T174 resolved the clause instead, and the function went with it.
- * Re-adding one means re-opening that decision, not filling a gap: it would
- * need the prepare/commit boundary exposed across the bridge first, which is
- * what would make the arm reachable and what the amendment declined.
+ * There is deliberately no CancelPreparedOpen. PrepareOpen and
+ * CommitPreparedOpen are adjacent operations: every refusal occurs before a
+ * reservation exists, and every commit path removes its reservation. Exposing
+ * a cancellation arm would require a new bridge-visible prepare/commit boundary.
  */
 
 // CommitPreparedOpen revalidates the tab revision and applies exactly one Open transition.

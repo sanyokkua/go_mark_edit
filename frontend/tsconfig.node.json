@@ -1,9 +1,25 @@
 {
   "compilerOptions": {
     "composite": true,
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
-    "allowSyntheticDefaultImports": true
+    "moduleResolution": "Bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "types": ["node"]
   },
-  "include": ["vite.config.ts", "playwright.config.ts"]
+  "include": [
+    "*.config.js",
+    "*.config.ts",
+    "public/theme-bootstrap.js",
+    "scripts/**/*.cjs",
+    "scripts/**/*.mjs",
+    "scripts/**/*.ts",
+    "../tools/**/*.mjs",
+    "../tools/**/*.ts"
+  ]
 }

@@ -2,7 +2,7 @@
  * How long to let the operating system hand the foreground to another
  * application before concluding that it never will.
  *
- * FR-FT-037 defers focus restoration until "the application regains foreground
+ * Focus restoration waits until "the application regains foreground
  * focus, since the file manager may briefly own it". A browser cannot observe
  * the file manager's window; all it sees is its own `focus` event. If the host
  * accepted the Reveal but never actually raised anything — a Finder window
@@ -57,7 +57,7 @@ export function whenApplicationRegainsForegroundFocus(
  * Run `enter` every time the application comes back to the foreground, for as
  * long as the returned canceller has not been called.
  *
- * FR-FT-020 requires a foreground version check on "window focus or resume" and
+ * A foreground version check runs on "window focus or resume" and
  * forbids Feature 003 from introducing "a background file watcher or polling
  * timer", so both halves are events and neither is a clock: `focus` is the
  * window regaining focus, and `visibilitychange` settling on `visible` is the

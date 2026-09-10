@@ -67,8 +67,8 @@ func (handler *ApplicationHandler) RetryStartup(request bridge.Request) (result 
 // permit. Wails calls this without a context argument; the captured lifecycle
 // context is the only runtime context used by the handler.
 //
-// It returns a ClassifiedVoidResult because FR-FT-027 requires a drain failure
-// to reach the user as a classified io-failure with Retry. A VoidResult can
+// It returns a ClassifiedVoidResult so a drain failure can reach the user as a
+// classified io-failure with Retry. A VoidResult can
 // carry only a WireError, which the frontend renders as generic catalogue copy
 // with no remediation control.
 func (handler *ApplicationHandler) AuthorizeQuit(request bridge.Request, closeID string) (result apperr.ClassifiedVoidResult) {

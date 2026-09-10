@@ -6,10 +6,6 @@ import {
   within,
 } from '@testing-library/react';
 
-jest.mock('../../src/i18n', () =>
-  jest.requireActual('../../src/test/i18nShim'),
-);
-
 jest.mock('../../src/app/useBootstrap', () => ({
   useBootstrap: jest.fn(),
 }));

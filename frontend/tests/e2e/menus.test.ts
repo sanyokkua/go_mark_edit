@@ -225,8 +225,7 @@ async function exerciseTabGeometry(page: Page): Promise<void> {
   await closePopupWithEscape(page, scrolledMenu);
 }
 
-// Proves: FR-034, FR-035, SC-007
-test('T022 case 8 keeps every Popup family framed across palettes and input modes', async ({
+test('case 8 keeps every Popup family framed across palettes and input modes', async ({
   app,
 }) => {
   await app.launch();
