@@ -186,7 +186,7 @@ close scenarios also run on `wails dev` and in the walkthrough.
   - **Depends on**: T012.
   - **Branch**: feature branch; `refactor(appmodel): surface dropped errors, package doc, dead exports and gate removed`.
 
-- [ ] T014 [US1] Run the Go-level Story 1 archive tests in `../gme-archive` for rows 1, 2, 3, 4, 5, 8 and the throwaway Jest tests for rows 17 and 19
+- [x] T014 [US1] Run the Go-level Story 1 archive tests in `../gme-archive` for rows 1, 2, 3, 4, 5, 8 and the throwaway Jest tests for rows 17 and 19
   - **Implements**: FR-031, SC-001; planning decision 6; edge cases 1 and 2; quickstart 7.
   - **Scope**: throwaway tests copied into `../gme-archive`, run once, not ported: row 1 a port of the audit probe `TestAuditAutosavePublicationAfterSaveAs`; row 2 with `-race`; row 3 inspecting `writeCoordinators` after close; row 4 through `NewAppModelServiceForHost` plus the emitter; row 5 the same hard-link test compiled there; row 8 through `SettingsHandler`; row 17 a Jest test against the archived `settingsProjection.ts` (the retained rejected promise is never retried); row 19 a Jest test against the archived `App.tsx`. Fill the "Archive run" column of `plan.md` for those eight rows with date · `bc185c9` · host · observed failure (or the host reason per edge case 1). No file in this repository other than `plan.md` changes.
   - **Evidence**: each run's failing output quoted in its slot; the equivalent test green on this tree (`scripts/test integration`).
