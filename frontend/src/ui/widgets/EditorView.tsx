@@ -23,6 +23,7 @@ import {
 } from '../../logic/hooks/useSyncedBuffer';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { setViewArrangement } from '../../logic/store/docViewCommands';
+import { notifyToast } from '../../logic/store/notificationsSlice';
 import type {
   ActiveBuffer,
   ClosePlanKind,
@@ -225,6 +226,8 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
 interface LivePreviewProps {
   activeBuffer: ActiveBuffer;
   adapter: LivePreviewAdapter;
+  documentPath: string;
+  onPreviewWarning: (target: string, reason: string) => void;
   onScrollChange: (scrollTop: number) => void;
   /**
    * The document's saved preview offset, supplied only on activation.
@@ -279,6 +282,8 @@ function parityPreviewRefreshMode(): 'refreshing' | 'failed' | undefined {
 const LivePreview: React.FC<LivePreviewProps> = ({
   activeBuffer,
   adapter,
+  documentPath,
+  onPreviewWarning,
   onScrollChange,
   savedScrollTop,
   claimScrollRestore,
@@ -319,6 +324,10 @@ const LivePreview: React.FC<LivePreviewProps> = ({
         <PreviewPane
           ariaLabel={null}
           accepted={accepted}
+          documentId={activeBuffer.documentId}
+          documentPath={documentPath}
+          linkAdapter={adapter}
+          notificationOwner={{ warn: onPreviewWarning }}
           onRefresh={async () => {
             const parityRefreshMode = parityPreviewRefreshMode();
             if (parityRefreshMode === 'refreshing') {
@@ -404,6 +413,20 @@ const EditorView: React.FC<EditorViewProps> = ({
       previewScrollHandlerRef.current = handler;
     },
     [],
+  );
+  const onPreviewWarning = useCallback(
+    (target: string, reason: string): void => {
+      dispatch(
+        notifyToast({
+          code: 'preview-link-refused',
+          message: t('preview.linkRefused.message', { reason, target }),
+          severity: 'warning',
+          subject: target,
+          title: t('preview.linkRefused.title'),
+        }),
+      );
+    },
+    [dispatch],
   );
 
   /*
@@ -518,6 +541,8 @@ const EditorView: React.FC<EditorViewProps> = ({
           key={`${activeBuffer.documentId}:${activeBuffer.content}`}
           activeBuffer={activeBuffer}
           adapter={adapter}
+          documentPath={activeDocument?.path ?? ''}
+          onPreviewWarning={onPreviewWarning}
           savedScrollTop={view.scroll.preview}
           claimScrollRestore={claimPreviewScrollRestore}
           visible={previewVisible}

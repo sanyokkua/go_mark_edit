@@ -20,6 +20,7 @@ type AppModelServiceAPI interface {
 	RevealInFileManager(ctx context.Context, documentID string) apperr.RevealResult
 	OpenFromDialog(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenResult
 	OpenPath(ctx context.Context, path string, expectedTabSetRevision uint64) apperr.OpenResult
+	OpenPreviewLink(ctx context.Context, documentID, href string) apperr.OpenResult
 	ReopenLastFile(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenResult
 	UpdateBuffer(ctx context.Context, documentID, content string) error
 	SetDocView(ctx context.Context, documentID string, view apperr.DocViewInput) error
@@ -62,6 +63,16 @@ func (handler *AppModelHandler) OpenRecentFile(request bridge.Request, path stri
 	defer bridge.Guard(&res)
 	return bridge.Once(handler.outcomes, request, func() apperr.OpenResult {
 		return handler.service.OpenPath(handler.context(), path, expectedTabSetRevision)
+	})
+}
+
+// OpenPreviewLink applies the preview's local-document policy before entering
+// the canonical open lifecycle. The handler owns the request envelope; the
+// service owns path resolution and tab mutation.
+func (handler *AppModelHandler) OpenPreviewLink(request bridge.Request, documentID, href string) (res apperr.OpenResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.OpenResult {
+		return handler.service.OpenPreviewLink(handler.context(), documentID, href)
 	})
 }
 

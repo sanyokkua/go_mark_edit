@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 
 import { appModelAdapter } from '../adapter';
 import type { AcceptedBuffer } from '../adapter/appModelAdapter';
-import type { ActiveBuffer } from '../store/appModelTypes';
+import type { ActiveBuffer, OpenResult } from '../store/appModelTypes';
 
 export interface LivePreviewAdapter {
   subscribeAcceptedBuffers: (
     listener: (buffer: AcceptedBuffer) => void,
   ) => () => void;
+  openPreviewLink?: (documentId: string, href: string) => Promise<OpenResult>;
+  openExternalLink?: (href: string) => void;
 }
 
 interface PreviewSnapshot {

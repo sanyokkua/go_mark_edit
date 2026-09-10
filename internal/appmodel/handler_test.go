@@ -29,6 +29,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		{"CopyPath", 3, reflect.TypeFor[apperr.CopyPathResult]()},
 		{"RevealInFileManager", 3, reflect.TypeFor[apperr.RevealResult]()},
 		{"OpenDocument", 3, reflect.TypeFor[apperr.OpenResult]()},
+		{"OpenPreviewLink", 4, reflect.TypeFor[apperr.OpenResult]()},
 		{"UpdateBuffer", 4, reflect.TypeFor[apperr.VoidResult]()},
 		{"SetDocView", 4, reflect.TypeFor[apperr.VoidResult]()},
 		{"SetUILayout", 3, reflect.TypeFor[apperr.VoidResult]()},
@@ -59,7 +60,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		})
 	}
 
-	for _, method := range []string{"GetState", "NewDocument", "OpenDocument", "ActivateDocument", "ReorderDocument", "CloseDocument", "CopyPath", "RevealInFileManager", "UpdateBuffer", "SetDocView", "SetUILayout", "Save", "SaveAs", "CancelNormalization"} {
+	for _, method := range []string{"GetState", "NewDocument", "OpenDocument", "OpenPreviewLink", "ActivateDocument", "ReorderDocument", "CloseDocument", "CopyPath", "RevealInFileManager", "UpdateBuffer", "SetDocView", "SetUILayout", "Save", "SaveAs", "CancelNormalization"} {
 		t.Run(method+" recovers without emitting a patch", func(t *testing.T) {
 			service := &fakeAppModelService{panicOn: method}
 			panickingHandler := NewAppModelHandler(service, nil, nil)
@@ -106,6 +107,11 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 				if opened.Status != apperr.OpenStatusRefused || opened.Error == nil || opened.Error.Category != apperr.ClassifiedSystemCommandFailure {
 					t.Fatalf("panic result = %+v, want a classified dialog error", opened)
 				}
+			case "OpenPreviewLink":
+				opened := panickingHandler.OpenPreviewLink(boundRequest(method), "doc", "./next.md")
+				if opened.Status != apperr.OpenStatusRefused || opened.Error == nil || opened.Error.Category != apperr.ClassifiedSystemCommandFailure {
+					t.Fatalf("panic result = %+v, want a classified preview-link error", opened)
+				}
 			case "UpdateBuffer":
 				result = panickingHandler.UpdateBuffer(boundRequest(method), "doc", "content")
 			case "SetDocView":
@@ -128,7 +134,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 					t.Fatalf("panic result = %+v, want a classified dismissal refusal", cancelled)
 				}
 			}
-			if method != "GetState" && method != "NewDocument" && method != "OpenDocument" && method != "ActivateDocument" && method != "ReorderDocument" && method != "CloseDocument" && method != "CopyPath" && method != "RevealInFileManager" && method != "Save" && method != "SaveAs" && method != "CancelNormalization" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
+			if method != "GetState" && method != "NewDocument" && method != "OpenDocument" && method != "OpenPreviewLink" && method != "ActivateDocument" && method != "ReorderDocument" && method != "CloseDocument" && method != "CopyPath" && method != "RevealInFileManager" && method != "Save" && method != "SaveAs" && method != "CancelNormalization" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
 				t.Fatalf("panic result = %+v, want an internal envelope", result)
 			}
 			if service.emissions != 0 {
@@ -225,6 +231,14 @@ func (service *fakeAppModelService) OpenFromDialog(_ context.Context, _ uint64) 
 
 func (service *fakeAppModelService) OpenPath(_ context.Context, _ string, _ uint64) apperr.OpenResult {
 	if service.panicOn == "OpenRecentFile" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
+}
+
+func (service *fakeAppModelService) OpenPreviewLink(_ context.Context, _, _ string) apperr.OpenResult {
+	if service.panicOn == "OpenPreviewLink" {
 		panic("service panic")
 	}
 	service.emissions++

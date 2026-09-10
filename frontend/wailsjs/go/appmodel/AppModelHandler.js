@@ -46,6 +46,10 @@ export function OpenDocument(arg1, arg2) {
   return window['go']['appmodel']['AppModelHandler']['OpenDocument'](arg1, arg2);
 }
 
+export function OpenPreviewLink(arg1, arg2, arg3) {
+  return window['go']['appmodel']['AppModelHandler']['OpenPreviewLink'](arg1, arg2, arg3);
+}
+
 export function OpenRecentFile(arg1, arg2, arg3) {
   return window['go']['appmodel']['AppModelHandler']['OpenRecentFile'](arg1, arg2, arg3);
 }

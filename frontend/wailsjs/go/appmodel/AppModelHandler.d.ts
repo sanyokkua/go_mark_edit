@@ -25,6 +25,8 @@ export function NewDocument(arg1:bridge.Request,arg2:number):Promise<apperr.Docu
 
 export function OpenDocument(arg1:bridge.Request,arg2:number):Promise<apperr.OpenResult>;
 
+export function OpenPreviewLink(arg1:bridge.Request,arg2:string,arg3:string):Promise<apperr.OpenResult>;
+
 export function OpenRecentFile(arg1:bridge.Request,arg2:string,arg3:number):Promise<apperr.OpenResult>;
 
 export function PrepareClose(arg1:bridge.Request,arg2:string,arg3:Array<string>,arg4:number):Promise<apperr.ClosePlanResult>;

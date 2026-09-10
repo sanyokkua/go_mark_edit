@@ -12,6 +12,7 @@ import {
   NewDocument,
   OpenDocument,
   OpenRecentFile,
+  OpenPreviewLink,
   ReopenLastFile,
   ActivateDocument,
   ReorderDocument,
@@ -42,6 +43,7 @@ import {
   WindowIsMaximised,
   WindowUnfullscreen,
   Quit,
+  BrowserOpenURL,
 } from 'wailsjs/runtime';
 import {
   RetryStartup,
@@ -114,6 +116,7 @@ const commandArities: Readonly<Record<string, number>> = {
   'AppModelHandler.NewDocument': 1,
   'AppModelHandler.OpenDocument': 1,
   'AppModelHandler.OpenRecentFile': 2,
+  'AppModelHandler.OpenPreviewLink': 2,
   'AppModelHandler.ReopenLastFile': 1,
   'AppModelHandler.ActivateDocument': 2,
   'AppModelHandler.ReorderDocument': 3,
@@ -399,6 +402,10 @@ const commandInvokerOpenRecentFile = command(
   'AppModelHandler.OpenRecentFile',
   OpenRecentFile,
 );
+const commandInvokerOpenPreviewLink = command(
+  'AppModelHandler.OpenPreviewLink',
+  OpenPreviewLink,
+);
 const commandInvokerReopenLastFile = command(
   'AppModelHandler.ReopenLastFile',
   ReopenLastFile,
@@ -565,6 +572,9 @@ const generatedAppModelBindings: AppModelBindings = {
     normalizeOpenResult(
       await commandInvokerOpenRecentFile(path, expectedTabSetRevision),
     ),
+  openPreviewLink: async (documentId, href) =>
+    normalizeOpenResult(await commandInvokerOpenPreviewLink(documentId, href)),
+  openExternalLink: (href) => BrowserOpenURL(href),
   reopenLastFile: async (expectedTabSetRevision) =>
     normalizeOpenResult(
       await commandInvokerReopenLastFile(expectedTabSetRevision),

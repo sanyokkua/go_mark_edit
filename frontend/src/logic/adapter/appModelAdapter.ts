@@ -39,6 +39,8 @@ export interface AppModelBindings {
     path: string,
     expectedTabSetRevision: number,
   ) => Promise<OpenResult>;
+  openPreviewLink?: (documentId: string, href: string) => Promise<OpenResult>;
+  openExternalLink?: (href: string) => void;
   reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
   activateDocument?: (
     documentId: string,
@@ -83,6 +85,8 @@ export interface AppModelAdapter {
     path: string,
     expectedTabSetRevision: number,
   ) => Promise<OpenResult>;
+  openPreviewLink?: (documentId: string, href: string) => Promise<OpenResult>;
+  openExternalLink?: (href: string) => void;
   reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
   activateDocument?: (
     documentId: string,
@@ -229,6 +233,10 @@ export function createAppModelAdapter(
           openRecentFile: bindings.openRecentFile,
           reopenLastFile: bindings.reopenLastFile,
         });
+  const openPreviewLink =
+    bindings.openPreviewLink === undefined
+      ? undefined
+      : guardArity('AppModelHandler.OpenPreviewLink', bindings.openPreviewLink);
   const activateDocument =
     bindings.activateDocument === undefined
       ? undefined
@@ -519,6 +527,14 @@ export function createAppModelAdapter(
               ) ?? { status: 'cancelled' }
             );
           },
+    openPreviewLink:
+      openPreviewLink === undefined
+        ? undefined
+        : async (documentId: string, href: string): Promise<OpenResult> => {
+            assertCommandsAvailable();
+            return openPreviewLink(documentId, href);
+          },
+    openExternalLink: bindings.openExternalLink,
     reopenLastFile:
       documentLifecycle?.reopenLastFile === undefined
         ? undefined

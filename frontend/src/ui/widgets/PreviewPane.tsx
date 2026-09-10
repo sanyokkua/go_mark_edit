@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { t } from '../../i18n';
+import type { LivePreviewAdapter } from '../../logic/hooks/useLivePreview';
+import type {
+  LinkRefusalReason,
+  LinkTarget,
+} from '../../logic/markdown/linkPolicy';
+import type { OpenResult } from '../../logic/store/appModelTypes';
 import MarkdownView from '../components/MarkdownView';
 import styles from './PreviewPane.module.css';
 
@@ -19,7 +25,18 @@ export interface PreviewRefreshError {
 export interface PreviewPaneProps {
   accepted: PreviewSnapshot;
   ariaLabel?: string | null;
+  documentId?: string;
+  documentPath?: string;
+  linkAdapter?: Pick<
+    LivePreviewAdapter,
+    'openPreviewLink' | 'openExternalLink'
+  >;
+  notificationOwner?: PreviewNotificationOwner;
   onRefresh: () => Promise<PreviewSnapshot>;
+}
+
+export interface PreviewNotificationOwner {
+  warn: (target: string, reason: string) => void;
 }
 
 function initialRenderedSnapshot(
@@ -28,9 +45,36 @@ function initialRenderedSnapshot(
   return accepted.byteLength <= PREVIEW_BYTE_LIMIT ? accepted : null;
 }
 
+function refusalReason(reason: LinkRefusalReason): string {
+  switch (reason) {
+    case 'empty':
+      return t('preview.linkRefused.reason.empty');
+    case 'scheme':
+      return t('preview.linkRefused.reason.scheme');
+    case 'malformed':
+      return t('preview.linkRefused.reason.malformed');
+    case 'untitled-document':
+      return t('preview.linkRefused.reason.untitled');
+    case 'outside-document-folder':
+      return t('preview.linkRefused.reason.outside');
+    case 'unsupported-extension':
+      return t('preview.linkRefused.reason.extension');
+  }
+}
+
+function openResultRefusal(result: OpenResult): string | undefined {
+  return result.status === 'refused'
+    ? (result.error?.message ?? t('preview.linkRefused.reason.open'))
+    : undefined;
+}
+
 const PreviewPane: React.FC<PreviewPaneProps> = ({
   accepted,
   ariaLabel = t('editor.previewPane'),
+  documentId,
+  documentPath,
+  linkAdapter,
+  notificationOwner,
   onRefresh,
 }: PreviewPaneProps): React.JSX.Element => {
   const [manualSnapshot, setManualSnapshot] = useState<PreviewSnapshot | null>(
@@ -56,6 +100,45 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
         : null;
   const currentRefreshError =
     refreshError?.revision === accepted.revision ? refreshError.error : null;
+
+  const warn = (target: string, reason: string): void => {
+    notificationOwner?.warn(target, reason);
+  };
+
+  const activateLink = (sourceDocumentId: string, target: LinkTarget): void => {
+    switch (target.kind) {
+      case 'anchor': {
+        const element = document.getElementById(target.fragment);
+        element?.scrollIntoView?.({ block: 'start' });
+        return;
+      }
+      case 'external':
+        if (linkAdapter?.openExternalLink === undefined) {
+          warn(target.href, t('preview.linkRefused.reason.browser'));
+          return;
+        }
+        linkAdapter.openExternalLink(target.href);
+        return;
+      case 'refused':
+        warn(target.href, refusalReason(target.reason));
+        return;
+      case 'localDocument':
+        if (linkAdapter?.openPreviewLink === undefined) {
+          warn(target.href, t('preview.linkRefused.reason.open'));
+          return;
+        }
+        void linkAdapter
+          .openPreviewLink(sourceDocumentId, target.href)
+          .then((result): void => {
+            const reason = openResultRefusal(result);
+            if (reason !== undefined) warn(target.href, reason);
+          })
+          .catch((): void => {
+            warn(target.href, t('preview.linkRefused.reason.open'));
+          });
+        return;
+    }
+  };
 
   const refresh = (): void => {
     if (activeRefreshRef.current !== null) {
@@ -136,7 +219,12 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
           </button>
         </div>
       ) : (
-        <MarkdownView source={rendered.content} />
+        <MarkdownView
+          documentId={documentId}
+          documentPath={documentPath}
+          onActivateLink={activateLink}
+          source={rendered.content}
+        />
       )}
     </section>
   );

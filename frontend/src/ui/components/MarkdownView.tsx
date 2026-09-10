@@ -1,15 +1,45 @@
-import { memo } from 'react';
+import { Children, isValidElement, memo, type ReactNode } from 'react';
 import Markdown from 'react-markdown';
 
+import { classifyLink, type LinkTarget } from '../../logic/markdown/linkPolicy';
 import {
   baseGfmRehypePlugins,
   baseGfmRemarkPlugins,
   markdownComponents,
+  previewUrlTransform,
 } from '../../logic/markdown/renderer';
 import styles from './MarkdownView.module.css';
 
 export interface MarkdownViewProps {
   source: string;
+  documentId?: string;
+  documentPath?: string;
+  onActivateLink?: (documentId: string, target: LinkTarget) => void;
+}
+
+function textContent(children: ReactNode): string {
+  return Children.toArray(children)
+    .map((child): string => {
+      if (typeof child === 'string' || typeof child === 'number') {
+        return String(child);
+      }
+      if (isValidElement<{ children?: ReactNode }>(child)) {
+        return textContent(child.props.children);
+      }
+      return '';
+    })
+    .join('');
+}
+
+function headingId(children: ReactNode): string | undefined {
+  const value = textContent(children)
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/gu, '')
+    .replace(/[^\p{Letter}\p{Number}]+/gu, '-')
+    .replace(/^-+|-+$/gu, '');
+  return value === '' ? undefined : value;
 }
 
 /*
@@ -28,14 +58,65 @@ export interface MarkdownViewProps {
  */
 const MarkdownView: React.FC<MarkdownViewProps> = memo(function MarkdownView({
   source,
+  documentId,
+  documentPath,
+  onActivateLink,
 }: MarkdownViewProps): React.JSX.Element {
+  const activateLink = (href: string | undefined): void => {
+    if (href === undefined || documentId === undefined) return;
+    onActivateLink?.(documentId, classifyLink(href, documentPath));
+  };
+
   return (
     <article className={`${styles.preview} gme-preview`}>
       <Markdown
-        components={markdownComponents}
+        components={{
+          ...markdownComponents,
+          a({
+            children,
+            href,
+            node: _node,
+            title,
+            ...linkProps
+          }): React.JSX.Element {
+            void _node;
+            return (
+              <a
+                {...linkProps}
+                href={href}
+                title={title}
+                onClick={(event): void => {
+                  event.preventDefault();
+                  activateLink(href);
+                }}
+              >
+                {children}
+              </a>
+            );
+          },
+          h1({ children }): React.JSX.Element {
+            return <h1 id={headingId(children)}>{children}</h1>;
+          },
+          h2({ children }): React.JSX.Element {
+            return <h2 id={headingId(children)}>{children}</h2>;
+          },
+          h3({ children }): React.JSX.Element {
+            return <h3 id={headingId(children)}>{children}</h3>;
+          },
+          h4({ children }): React.JSX.Element {
+            return <h4 id={headingId(children)}>{children}</h4>;
+          },
+          h5({ children }): React.JSX.Element {
+            return <h5 id={headingId(children)}>{children}</h5>;
+          },
+          h6({ children }): React.JSX.Element {
+            return <h6 id={headingId(children)}>{children}</h6>;
+          },
+        }}
         rehypePlugins={baseGfmRehypePlugins}
         remarkPlugins={baseGfmRemarkPlugins}
         skipHtml
+        urlTransform={previewUrlTransform}
       >
         {source}
       </Markdown>
