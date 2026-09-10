@@ -1,4 +1,5 @@
 import type { AppModelAdapter } from '../adapter/appModelAdapter';
+import { isWireError } from '../utils/parseError';
 import { notifyError } from './notificationsSlice';
 
 import {
@@ -17,7 +18,13 @@ export type AppModelBootstrapResult =
       applicationVersion: string;
       pendingCloseId?: string;
     }
-  | { status: 'failed' };
+  | {
+      status: 'failed';
+      failure?: {
+        category: string;
+        step: 'model' | 'settings';
+      };
+    };
 
 interface BootstrapAttempt {
   disposeAsyncErrors?: () => void;
@@ -100,9 +107,24 @@ async function initializeProjection(
       result.pendingCloseId = state.snapshot.pendingClose.id;
     }
     return result;
-  } catch {
+  } catch (error: unknown) {
+    const startupStep: 'model' | 'settings' | undefined =
+      isWireError(error) &&
+      (error.details?.startupStep === 'model' ||
+        error.details?.startupStep === 'settings')
+        ? error.details.startupStep
+        : undefined;
+    const failure =
+      startupStep === 'model' || startupStep === 'settings'
+        ? {
+            category: isWireError(error) ? error.code : 'internal',
+            step: startupStep,
+          }
+        : undefined;
     resetAttempt(attempt);
-    return { status: 'failed' };
+    return failure === undefined
+      ? { status: 'failed' }
+      : { failure, status: 'failed' };
   }
 }
 

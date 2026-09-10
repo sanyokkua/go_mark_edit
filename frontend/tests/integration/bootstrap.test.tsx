@@ -170,6 +170,31 @@ it('retries only the failed step and ignores a second retry while it is running'
   expect(settings).toHaveBeenCalledTimes(1);
 });
 
+// Proves: FR-015 (a model hydration failure can identify the settings startup step)
+it('uses the failure step carried by a failed model bootstrap result', async () => {
+  const services = adapters();
+
+  render(
+    <Harness
+      bootstrapModel={jest.fn(async (): Promise<AppModelBootstrapResult> => ({
+        failure: { category: 'internal', step: 'settings' },
+        status: 'failed',
+      }))}
+      bootstrapSettings={jest.fn(async (): Promise<void> => undefined)}
+      loadAdapters={jest.fn(async (): Promise<BootstrapAdapters> => services)}
+    />,
+  );
+
+  await waitFor(() => {
+    expect(
+      screen.getByRole('status', { name: 'Bootstrap status' }),
+    ).toHaveTextContent('failed');
+  });
+  expect(
+    screen.getByRole('status', { name: 'Bootstrap failure' }),
+  ).toHaveTextContent('settings:internal:false');
+});
+
 it('ignores the late answer from a timed-out attempt after a fresh retry succeeds', async () => {
   jest.useFakeTimers();
   const services = adapters();

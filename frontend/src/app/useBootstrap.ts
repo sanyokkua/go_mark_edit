@@ -214,7 +214,10 @@ export function useBootstrap(
 
           const firstStepIndex =
             retryStep === undefined ? 0 : STARTUP_STEPS.indexOf(retryStep);
-          if (firstStepIndex <= STARTUP_STEPS.indexOf('model')) {
+          if (
+            firstStepIndex <= STARTUP_STEPS.indexOf('model') ||
+            modelResultRef.current === null
+          ) {
             currentStep = 'model';
             const modelResult = await withTimeout(
               (): Promise<AppModelBootstrapResult> =>
@@ -222,7 +225,10 @@ export function useBootstrap(
               currentStep,
             );
             if (modelResult.status !== 'ready') {
-              throw new StartupStepError('model', 'internal');
+              throw new StartupStepError(
+                modelResult.failure?.step ?? 'model',
+                modelResult.failure?.category ?? 'internal',
+              );
             }
             modelResultRef.current = modelResult;
           }

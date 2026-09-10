@@ -211,14 +211,36 @@ func TestHandlerClassifiesLayoutPersistenceFailuresWithSafeSubject(t *testing.T)
 	}
 }
 
+// Proves: FR-015 (a failed local settings initialization is labeled as the settings startup step)
+func TestHandlerLabelsStartupStateFailureAsSettingsStep(t *testing.T) {
+	handler := NewAppModelHandler(&fakeAppModelService{
+		getStateError: errors.New("open settings database: /private/user/settings.db"),
+	}, nil, nil)
+
+	result := handler.GetState(boundRequest("startup-settings"))
+	if result.Data != nil || result.Error == nil {
+		t.Fatalf("startup state result = %+v, want only an error", result)
+	}
+	if result.Error.Code != apperr.CodeInternal {
+		t.Fatalf("startup state error code = %q, want internal", result.Error.Code)
+	}
+	if result.Error.Details["startupStep"] != "settings" {
+		t.Fatalf("startup state details = %+v, want settings step", result.Error.Details)
+	}
+	if strings.Contains(result.Error.Message, "/private/user/settings.db") || strings.Contains(result.Error.Title, "settings.db") {
+		t.Fatalf("startup state leaked private path: %+v", result.Error)
+	}
+}
+
 func boundRequest(id string) bridge.Request {
 	return bridge.Request{ID: id}
 }
 
 type fakeAppModelService struct {
-	panicOn     string
-	emissions   int
-	layoutError error
+	panicOn       string
+	emissions     int
+	getStateError error
+	layoutError   error
 }
 
 func (service *fakeAppModelService) OpenFromDialog(_ context.Context, _ uint64) apperr.OpenResult {
@@ -283,6 +305,9 @@ func (cancellationDialog) ChooseOpenFile(context.Context) (string, error) { retu
 func (service *fakeAppModelService) GetState(_ context.Context) (apperr.AppState, error) {
 	if service.panicOn == "GetState" {
 		panic("service panic")
+	}
+	if service.getStateError != nil {
+		return apperr.AppState{}, service.getStateError
 	}
 	return apperr.AppState{}, nil
 }

@@ -81,8 +81,12 @@ func (repository *SqliteRecentFilesRepository) withEntries(ctx context.Context, 
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	for attempt := 0; attempt < 3; attempt++ {
-		entries, retry, err := repository.withEntriesAttempt(ctx, mutate)
+	// The first optimistic attempt may fail its WAL write upgrade immediately;
+	// keep the same three busy-timeout windows after that fast failure so a
+	// writer held for the case-6 14-second lever can still complete the
+	// promotion instead of being reported as an early warning.
+	for attempt := 0; attempt < 4; attempt++ {
+		entries, retry, err := repository.withEntriesAttempt(ctx, mutate, attempt > 0)
 		if err == nil || !retry {
 			return entries, err
 		}
@@ -90,9 +94,13 @@ func (repository *SqliteRecentFilesRepository) withEntries(ctx context.Context, 
 	return nil, errors.New("recent files transaction remained busy")
 }
 
-func (repository *SqliteRecentFilesRepository) withEntriesAttempt(ctx context.Context, mutate func([]string) ([]string, bool, error)) ([]string, bool, error) {
+func (repository *SqliteRecentFilesRepository) withEntriesAttempt(ctx context.Context, mutate func([]string) ([]string, bool, error), immediate bool) ([]string, bool, error) {
 	var result []string
-	err := repository.store.Tx(ctx, func(transaction *kv.Tx) error {
+	transaction := repository.store.Tx
+	if immediate {
+		transaction = repository.store.TxImmediate
+	}
+	err := transaction(ctx, func(transaction *kv.Tx) error {
 		entries, err := readRecentFilesTx(ctx, transaction)
 		if err != nil {
 			return err

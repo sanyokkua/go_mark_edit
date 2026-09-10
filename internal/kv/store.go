@@ -96,9 +96,47 @@ func (store *Store) Tx(ctx context.Context, fn func(*Tx) error) error {
 	return nil
 }
 
+// TxImmediate runs fn in a write transaction that acquires SQLite's reserved
+// lock before the callback reads. A deferred transaction can read a WAL
+// snapshot and then fail its write upgrade immediately when another writer is
+// active, so write/read-modify-write callers use this form when waiting for
+// the busy timeout is part of their contract.
+func (store *Store) TxImmediate(ctx context.Context, fn func(*Tx) error) error {
+	if store == nil || store.database == nil {
+		return errors.New("key-value database is not configured")
+	}
+	if fn == nil {
+		return errors.New("key-value transaction callback is required")
+	}
+	ctx = normalizeContext(ctx)
+	connection, err := store.database.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("reserve key-value connection: %w", err)
+	}
+	transactionStarted := false
+	defer func() {
+		if transactionStarted {
+			_, _ = connection.ExecContext(context.Background(), "ROLLBACK")
+		}
+		_ = connection.Close()
+	}()
+	if _, err := connection.ExecContext(ctx, "BEGIN IMMEDIATE"); err != nil {
+		return fmt.Errorf("begin immediate key-value transaction: %w", err)
+	}
+	transactionStarted = true
+	if err := fn(&Tx{transaction: connection}); err != nil {
+		return err
+	}
+	if _, err := connection.ExecContext(ctx, "COMMIT"); err != nil {
+		return fmt.Errorf("commit immediate key-value transaction: %w", err)
+	}
+	transactionStarted = false
+	return nil
+}
+
 // Tx is the transaction-scoped view of the same key-value operations.
 type Tx struct {
-	transaction *sql.Tx
+	transaction queryExecutor
 }
 
 // Get reads a row without leaving the transaction.

@@ -210,6 +210,15 @@ func (handler *AppModelHandler) GetState(request bridge.Request) (res apperr.Sta
 		state, err := handler.service.GetState(handler.context())
 		if err != nil {
 			wire := apperr.ToWire(handler.zlog(), err)
+			// GetState has no ordinary failure path: the service returns an
+			// error only while phase-two local settings initialization is
+			// unavailable. Preserve that startup-step identity so the frontend
+			// can keep the failure on the Settings step without exposing the
+			// local cause.
+			if wire.Details == nil {
+				wire.Details = make(map[string]string)
+			}
+			wire.Details["startupStep"] = "settings"
 			return apperr.StateResult{Error: &wire}
 		}
 		return apperr.StateResult{Data: &state}
