@@ -508,7 +508,11 @@ it('T018 keeps the feature shell ordered and future behavior explicitly bounded 
     key: 'ArrowDown',
   });
   expect(
-    screen.getAllByRole('menuitem').map((item) => item.textContent),
+    screen
+      .getAllByRole('menuitem')
+      .map(
+        (item) => item.querySelector('span')?.textContent ?? item.textContent,
+      ),
   ).toEqual(['File', 'Settings', 'View', 'About']);
   fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
   assertFutureSurfacesBounded();

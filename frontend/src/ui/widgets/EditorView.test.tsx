@@ -35,12 +35,17 @@ jest.mock('../components/CodeEditor', () => {
   const MockCodeEditor = React.forwardRef<
     HTMLTextAreaElement,
     {
+      activationId?: string;
       initialValue: string;
     }
-  >(function MockCodeEditor({ initialValue }, ref): React.JSX.Element {
+  >(function MockCodeEditor(
+    { activationId, initialValue },
+    ref,
+  ): React.JSX.Element {
     return React.createElement('textarea', {
       'aria-label': 'Markdown source',
       defaultValue: initialValue,
+      key: activationId,
       ref,
     });
   });
@@ -59,7 +64,10 @@ import type {
 import { store } from '../../logic/store';
 import AppShell from './AppShell';
 import EditorView from './EditorView';
-import { EditorSessionContext } from './editorSession';
+import {
+  EditorSessionContext,
+  EditorSessionEpochContext,
+} from './editorSession';
 
 const readSource = (relativePath: string): string =>
   readFileSync(resolve(process.cwd(), relativePath), 'utf8');
@@ -347,6 +355,7 @@ it('T079 restores Split when the window widens again without writing an arrangem
   }
 });
 
+// Proves: FR-006
 it('replaces the same-document editor model when a Reload acknowledgement changes content', () => {
   const document = documentFor('split');
   store.dispatch(
@@ -359,11 +368,13 @@ it('replaces the same-document editor model when a Reload acknowledgement change
   );
   const rendered = render(
     <Provider store={store}>
-      <EditorSessionContext.Provider
-        value={{ documentId: document.documentId, content: '# mine\n' }}
-      >
-        <EditorView />
-      </EditorSessionContext.Provider>
+      <EditorSessionEpochContext.Provider value={0}>
+        <EditorSessionContext.Provider
+          value={{ documentId: document.documentId, content: '# mine\n' }}
+        >
+          <EditorView />
+        </EditorSessionContext.Provider>
+      </EditorSessionEpochContext.Provider>
     </Provider>,
   );
 
@@ -375,11 +386,13 @@ it('replaces the same-document editor model when a Reload acknowledgement change
   ).toBeInTheDocument();
   rendered.rerender(
     <Provider store={store}>
-      <EditorSessionContext.Provider
-        value={{ documentId: document.documentId, content: '# disk\n' }}
-      >
-        <EditorView />
-      </EditorSessionContext.Provider>
+      <EditorSessionEpochContext.Provider value={1}>
+        <EditorSessionContext.Provider
+          value={{ documentId: document.documentId, content: '# disk\n' }}
+        >
+          <EditorView />
+        </EditorSessionContext.Provider>
+      </EditorSessionEpochContext.Provider>
     </Provider>,
   );
 

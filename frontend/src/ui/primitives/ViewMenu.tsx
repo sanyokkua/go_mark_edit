@@ -1,28 +1,16 @@
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties, type RefObject } from 'react';
 
 import { t } from '../../i18n';
+import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import { getAction, type ActionId } from '../../logic/actions/actionRegistry';
 import {
   currentPlatform,
   formatShortcut,
 } from '../../logic/actions/shortcutRegistry';
-import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import type { ViewArrangement } from '../../logic/store/appModelTypes';
-import menu from './MenuSurface.module.css';
-import MenuTrigger from './MenuTrigger';
-import styles from './ViewMenu.module.css';
-
-/*
- * The binding View dropdown is absolutely positioned inside the application
- * frame at `#m-view{left:196px}` with `.dropdown{top:42px}`. Portal into that
- * frame so the popup shares the frame's containing block instead of being
- * placed by collision-aware viewport coordinates.
- */
-function applicationFrame(): HTMLElement | undefined {
-  if (typeof document === 'undefined') return undefined;
-  return document.querySelector<HTMLElement>('.application-frame') ?? undefined;
-}
+import MenuItem from '../components/MenuItem';
+import Popup, { PopupSeparator, PopupTrigger } from '../components/Popup';
+import popupStyles from '../components/Popup/Popup.module.css';
 
 export interface ViewMenuProps {
   editorVisible: boolean;
@@ -37,6 +25,8 @@ export interface ViewMenuProps {
   modal?: boolean;
   onTrigger?: () => void;
   onTriggerPointerDown?: (trigger: HTMLButtonElement) => void;
+  anchorRef?: RefObject<HTMLElement | null>;
+  anchorElement?: HTMLElement | null;
   anchorStyle?: CSSProperties;
   showTrigger?: boolean;
   triggerLabel?: string;
@@ -62,12 +52,13 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
   onWorkspaceVisibilityChange,
   previewVisible,
   workspaceVisible,
-  open,
+  open: controlledOpen,
   onOpenChange,
   modalOpen = false,
-  modal = true,
   onTrigger,
   onTriggerPointerDown,
+  anchorRef,
+  anchorElement,
   anchorStyle,
   showTrigger = true,
   triggerLabel = t('view.menu.trigger'),
@@ -80,6 +71,19 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
   onWordWrapChange,
   onFullscreen,
 }: ViewMenuProps): React.JSX.Element => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const [triggerElement, setTriggerElement] =
+    useState<HTMLButtonElement | null>(null);
+  const [hiddenAnchor, setHiddenAnchor] = useState<HTMLSpanElement | null>(
+    null,
+  );
+  const open = controlledOpen ?? internalOpen;
+
+  const setOpen = (next: boolean): void => {
+    setInternalOpen(next);
+    onOpenChange?.(next);
+  };
+
   const dispatchWindowAction = (
     actionId: ActionId,
     invoke: () => void,
@@ -94,13 +98,6 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
   const previewToggleDisabled = previewVisible && !editorVisible;
   const assistantAction = getAction('toggle-assistant');
 
-  /*
-   * Binding source: mockup.html `.mi .k` (:241), rendered through the same
-   * `data-shortcut` attribute the File popup already uses. Deriving it from the
-   * registry keeps the accelerator the menu shows and the one the keyboard
-   * handler honours the same value. A deferred action carries no registry
-   * shortcut, so its row simply has no accelerator.
-   */
   const acceleratorFor = (id: ActionId): string | undefined => {
     const { shortcut } = getAction(id);
     return shortcut === undefined
@@ -108,210 +105,189 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
       : formatShortcut(shortcut, currentPlatform());
   };
 
-  /* Binding source: mockup.html `.tick` (:245). The 14px box is reserved even
-     when off, so a selected and an unselected row stay the same width. */
   const tick = (selected: boolean): React.JSX.Element => (
     <span
       aria-hidden="true"
-      className={`${menu.tick} ${selected ? '' : menu.tickOff}`}
+      className={popupStyles.tick + (selected ? '' : ' ' + popupStyles.tickOff)}
     >
       ✓
     </span>
   );
 
-  /* Binding source: mockup.html `.tgl` (:248–:250). The 19px pill is what makes
-     these two rows 33px tall rather than 30px, so it carries the row geometry
-     and is not decoration. */
   const toggle = (checked: boolean): React.JSX.Element => (
-    <span aria-hidden="true" className={menu.toggle} data-checked={checked} />
+    <span
+      aria-hidden="true"
+      className={popupStyles.toggle}
+      data-checked={checked}
+    />
   );
 
-  const separator = <DropdownMenu.Separator className={menu.separator} />;
-  const trigger = (
-    <MenuTrigger
-      data-view-trigger
-      expanded={open ?? false}
-      onClick={(event): void => {
-        if (onTrigger === undefined) return;
-        event.preventDefault();
-        onTrigger();
-      }}
-      onOpen={(): void => onTrigger?.()}
-      onPointerDown={(event): void => {
-        onTriggerPointerDown?.(event.currentTarget);
-        if (onTrigger !== undefined) event.preventDefault();
-      }}
-    >
-      {triggerLabel}
-    </MenuTrigger>
-  );
+  const popupAnchor = {
+    trigger: showTrigger ? triggerElement : (anchorElement ?? hiddenAnchor),
+  };
 
   return (
-    <DropdownMenu.Root modal={modal} open={open} onOpenChange={onOpenChange}>
+    <>
       {showTrigger ? (
-        <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
-      ) : null}
-      {!showTrigger && anchorStyle !== undefined ? (
-        <DropdownMenu.Trigger asChild>
-          <span aria-hidden="true" style={anchorStyle} />
-        </DropdownMenu.Trigger>
-      ) : null}
-      <DropdownMenu.Portal container={applicationFrame()}>
-        <DropdownMenu.Content
-          aria-label={t('view.menu.label')}
-          aria-labelledby={showTrigger ? undefined : ''}
-          className={`${menu.surface} ${anchorStyle === undefined ? styles.bindingAnchored : ''}`}
-          collisionPadding={8}
-          data-viewport-popup="view-menu"
-        >
-          {/* Binding order, mockup.html `#m-view` (:626–:633): the two window
-              toggles lead, then the visibility rows, then a separator, the two
-              switch rows, a second separator, and finally the two window-state
-              rows. */}
-          {workspaceVisible === undefined ||
-          onWorkspaceVisibilityChange === undefined ? null : (
-            <DropdownMenu.CheckboxItem
-              checked={workspaceVisible}
-              className={menu.row}
-              data-shortcut={acceleratorFor('toggle-sidebar')}
-              onCheckedChange={(visible): void =>
-                dispatchWindowAction('toggle-sidebar', () =>
-                  onWorkspaceVisibilityChange(visible),
-                )
-              }
-            >
-              {t(
-                arrangement === undefined
-                  ? 'view.menu.showWorkspace'
-                  : getAction('toggle-sidebar').labelKey,
-              )}
-            </DropdownMenu.CheckboxItem>
-          )}
-          <DropdownMenu.Item
-            className={menu.row}
-            data-action-id={assistantAction.id}
-            data-availability={assistantAction.availability.kind}
-            data-shortcut={acceleratorFor(assistantAction.id)}
-            disabled={assistantAction.availability.kind === 'deferred'}
-            title={
-              assistantAction.availability.kind === 'deferred'
-                ? t('action.unavailable')
-                : undefined
+        <PopupTrigger
+          ref={setTriggerElement}
+          data-view-trigger
+          expanded={open}
+          onClick={(event): void => {
+            if (onTrigger === undefined) {
+              setOpen(!open);
+              return;
             }
-          >
-            {t(assistantAction.labelKey)}
-          </DropdownMenu.Item>
-          {arrangement === undefined || onArrangementChange === undefined ? (
-            <>
-              <DropdownMenu.CheckboxItem
-                checked={editorVisible}
-                className={menu.row}
-                disabled={editorToggleDisabled}
-                onCheckedChange={(visible): void =>
-                  dispatchWindowAction('editor', () =>
-                    onEditorVisibilityChange(visible),
-                  )
-                }
-              >
-                {t('view.menu.showEditor')}
-                {tick(editorVisible)}
-              </DropdownMenu.CheckboxItem>
-              <DropdownMenu.CheckboxItem
-                checked={previewVisible}
-                className={menu.row}
-                disabled={previewToggleDisabled}
-                onCheckedChange={(visible): void =>
-                  dispatchWindowAction('preview', () =>
-                    onPreviewVisibilityChange(visible),
-                  )
-                }
-              >
-                {t('view.menu.showPreview')}
-                {tick(previewVisible)}
-              </DropdownMenu.CheckboxItem>
-            </>
-          ) : (
-            <DropdownMenu.RadioGroup
-              aria-label={t('editor.arrangement')}
-              value={arrangement}
-              onValueChange={(value): void => {
-                if (
-                  value === 'editor' ||
-                  value === 'split' ||
-                  value === 'preview'
-                ) {
-                  dispatchWindowAction(value, () => onArrangementChange(value));
-                  onOpenChange?.(false);
-                }
-              }}
-            >
-              {(['editor', 'split', 'preview'] as const).map((value) => (
-                <DropdownMenu.RadioItem
-                  className={menu.row}
-                  data-availability={documentOpen ? 'enabled' : 'unavailable'}
-                  disabled={!documentOpen}
-                  key={value}
-                  title={documentOpen ? undefined : t('view.menu.noDocument')}
-                  value={value}
-                >
-                  {t(getAction(value).labelKey)}
-                  {tick(arrangement === value)}
-                </DropdownMenu.RadioItem>
-              ))}
-            </DropdownMenu.RadioGroup>
-          )}
-          {separator}
-          {lineNumbers === undefined ||
-          onLineNumbersChange === undefined ? null : (
-            <DropdownMenu.CheckboxItem
-              checked={lineNumbers}
-              className={menu.row}
-              onCheckedChange={(enabled): void =>
-                dispatchWindowAction('line-numbers', () =>
-                  onLineNumbersChange(enabled),
-                )
-              }
-            >
-              {t(getAction('line-numbers').labelKey)}
-              {toggle(lineNumbers)}
-            </DropdownMenu.CheckboxItem>
-          )}
-          {wordWrap === undefined || onWordWrapChange === undefined ? null : (
-            <DropdownMenu.CheckboxItem
-              checked={wordWrap}
-              className={menu.row}
-              onCheckedChange={(enabled): void =>
-                dispatchWindowAction('word-wrap', () =>
-                  onWordWrapChange(enabled),
-                )
-              }
-            >
-              {t(getAction('word-wrap').labelKey)}
-              {toggle(wordWrap)}
-            </DropdownMenu.CheckboxItem>
-          )}
-          {separator}
-          <DropdownMenu.Item
-            className={menu.row}
-            data-shortcut={acceleratorFor('distraction-free-reading')}
-            disabled
-          >
-            {t(getAction('distraction-free-reading').labelKey)}
-          </DropdownMenu.Item>
-          {onFullscreen === undefined ? null : (
-            <DropdownMenu.Item
-              className={menu.row}
-              data-shortcut={acceleratorFor('fullscreen')}
+            event.preventDefault();
+            onTrigger();
+          }}
+          onOpen={(): void => {
+            if (onTrigger === undefined) {
+              setOpen(true);
+            } else {
+              onTrigger();
+            }
+          }}
+          onPointerDown={(event): void => {
+            onTriggerPointerDown?.(event.currentTarget);
+            if (onTrigger !== undefined) event.preventDefault();
+          }}
+        >
+          {triggerLabel}
+        </PopupTrigger>
+      ) : null}
+      {!showTrigger && anchorRef === undefined && anchorStyle !== undefined ? (
+        <span ref={setHiddenAnchor} aria-hidden="true" style={anchorStyle} />
+      ) : null}
+      <Popup
+        anchor={popupAnchor}
+        aria-label={t('view.menu.label')}
+        data-viewport-popup="view-menu"
+        initialFocus="first"
+        open={open}
+        returnFocusTo={popupAnchor.trigger}
+        role="menu"
+        size="menu"
+        onOpenChange={setOpen}
+      >
+        {workspaceVisible === undefined ||
+        onWorkspaceVisibilityChange === undefined ? null : (
+          <MenuItem
+            checked={workspaceVisible}
+            accelerator={acceleratorFor('toggle-sidebar')}
+            label={
+              arrangement === undefined
+                ? t('view.menu.showWorkspace')
+                : t(getAction('toggle-sidebar').labelKey)
+            }
+            onSelect={(): void =>
+              dispatchWindowAction('toggle-sidebar', () =>
+                onWorkspaceVisibilityChange(!workspaceVisible),
+              )
+            }
+          />
+        )}
+        <MenuItem
+          data-action-id={assistantAction.id}
+          data-availability={assistantAction.availability.kind}
+          accelerator={acceleratorFor(assistantAction.id)}
+          disabled={assistantAction.availability.kind === 'deferred'}
+          label={t(assistantAction.labelKey)}
+          title={
+            assistantAction.availability.kind === 'deferred'
+              ? t('action.unavailable')
+              : undefined
+          }
+        />
+        {arrangement === undefined || onArrangementChange === undefined ? (
+          <>
+            <MenuItem
+              checked={editorVisible}
+              disabled={editorToggleDisabled}
+              label={t('view.menu.showEditor')}
+              trailing={tick(editorVisible)}
               onSelect={(): void =>
-                dispatchWindowAction('fullscreen', onFullscreen)
+                dispatchWindowAction('editor', () =>
+                  onEditorVisibilityChange(!editorVisible),
+                )
               }
-            >
-              {t(getAction('fullscreen').labelKey)}
-            </DropdownMenu.Item>
-          )}
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+            />
+            <MenuItem
+              checked={previewVisible}
+              disabled={previewToggleDisabled}
+              label={t('view.menu.showPreview')}
+              trailing={tick(previewVisible)}
+              onSelect={(): void =>
+                dispatchWindowAction('preview', () =>
+                  onPreviewVisibilityChange(!previewVisible),
+                )
+              }
+            />
+          </>
+        ) : (
+          <div aria-label={t('editor.arrangement')} role="group">
+            {(['editor', 'split', 'preview'] as const).map((value) => (
+              <MenuItem
+                checked={arrangement === value}
+                data-availability={documentOpen ? 'enabled' : 'unavailable'}
+                disabled={!documentOpen}
+                key={value}
+                label={t(getAction(value).labelKey)}
+                radio
+                title={documentOpen ? undefined : t('view.menu.noDocument')}
+                trailing={tick(arrangement === value)}
+                onSelect={(): void => {
+                  if (!documentOpen) return;
+                  dispatchWindowAction(value, () => onArrangementChange(value));
+                  setOpen(false);
+                }}
+              />
+            ))}
+          </div>
+        )}
+        <PopupSeparator />
+        {lineNumbers === undefined ||
+        onLineNumbersChange === undefined ? null : (
+          <MenuItem
+            checked={lineNumbers}
+            label={t(getAction('line-numbers').labelKey)}
+            trailing={toggle(lineNumbers)}
+            onSelect={(): void =>
+              dispatchWindowAction('line-numbers', () =>
+                onLineNumbersChange(!lineNumbers),
+              )
+            }
+          />
+        )}
+        {wordWrap === undefined || onWordWrapChange === undefined ? null : (
+          <MenuItem
+            checked={wordWrap}
+            label={t(getAction('word-wrap').labelKey)}
+            trailing={toggle(wordWrap)}
+            onSelect={(): void =>
+              dispatchWindowAction('word-wrap', () =>
+                onWordWrapChange(!wordWrap),
+              )
+            }
+          />
+        )}
+        <PopupSeparator />
+        <MenuItem
+          accelerator={acceleratorFor('distraction-free-reading')}
+          disabled
+          label={t(getAction('distraction-free-reading').labelKey)}
+        />
+        {onFullscreen === undefined ? null : (
+          <MenuItem
+            accelerator={acceleratorFor('fullscreen')}
+            label={t(getAction('fullscreen').labelKey)}
+            onSelect={(): void =>
+              dispatchWindowAction('fullscreen', onFullscreen)
+            }
+          />
+        )}
+      </Popup>
+    </>
   );
 };
 

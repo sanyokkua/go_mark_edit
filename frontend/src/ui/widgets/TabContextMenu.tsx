@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
-
-import { dispatchAction } from '../../logic/actions/actionDispatcher';
+import { t } from '../../i18n';
+import {
+  dispatchAction,
+  type ActionResult,
+} from '../../logic/actions/actionDispatcher';
 import {
   actionsForSurface,
   getAction,
@@ -9,18 +11,19 @@ import {
   type ActionId,
   type ProjectedActionState,
 } from '../../logic/actions/actionRegistry';
+import {
+  currentPlatform,
+  formatShortcut,
+} from '../../logic/actions/shortcutRegistry';
 import type {
   ClassifiedError,
   DocumentMetadata,
   PathCommandResult,
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
-import {
-  currentPlatform,
-  formatShortcut,
-} from '../../logic/actions/shortcutRegistry';
-import { t } from '../../i18n';
-import styles from './DocumentTabs.module.css';
+import type { PopupAnchor } from '../components/Popup';
+import MenuItem from '../components/MenuItem';
+import Popup from '../components/Popup';
 
 export interface TabContextAdapter {
   closeDocument?: (
@@ -59,6 +62,7 @@ function isTabContextAction(actionId: ActionId): actionId is TabContextAction {
 
 export interface TabContextMenuProps {
   adapter: TabContextAdapter;
+  anchor?: PopupAnchor;
   document: DocumentMetadata;
   index: number;
   orderedDocuments: readonly DocumentMetadata[];
@@ -72,30 +76,9 @@ export interface TabContextMenuProps {
 }
 
 export interface TabContextCloseOptions {
-  /**
-   * Hold the focus restoration until the application is in the foreground.
-   *
-   * Only a *successful* Reveal sets this. FR-FT-037 defers restoration "since
-   * the file manager may briefly own it", and a Reveal that was refused or is
-   * unavailable never handed the foreground to anyone — deferring that would
-   * strand focus until the user happened to switch away and back.
-   */
   deferFocusRestore?: boolean;
 }
 
-/*
- * The same derivation `SettingsMenu.settingsAccelerator` and
- * `ShellMenuRow.shortcutForMenuItem` use, so every popup in the shell advertises
- * its accelerator from one source — the action registry — rendered for the
- * running platform.
- *
- * T190 restored this to the shipped menu. It existed before, correct, but
- * rendered only on `?parity-case`, so the tests that asserted it described a
- * surface no user reaches while the shipped menu advertised nothing and three
- * sibling menus advertised everything. Undefined rather than an empty string for
- * a row with no binding: `DocumentTabs.module.css` keys the trailing box off the
- * attribute's presence, so an empty value would add a box with nothing in it.
- */
 function acceleratorFor(actionId: TabContextAction): string | undefined {
   const binding = getAction(actionId).shortcut;
   return binding === undefined
@@ -109,6 +92,7 @@ function errorResult(error: ClassifiedError | undefined): string {
 
 const TabContextMenu: React.FC<TabContextMenuProps> = ({
   adapter,
+  anchor = { point: { x: 0, y: 0 } },
   document,
   index,
   orderedDocuments,
@@ -117,20 +101,10 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
   onClose,
 }: TabContextMenuProps): React.JSX.Element => {
   void adapter;
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const firstActionRef = useRef<HTMLButtonElement | null>(null);
   const menuActions = actionsForSurface('tab-context')
     .map((entry) => entry.id)
     .filter(isTabContextAction);
 
-  /*
-   * T152: the rules below used to be recomputed here — `if (index === 0)
-   * unavailable.add('move-tab-left')` and five more — beside an identical set
-   * in `getActionAvailability`. They agreed, which is exactly how the
-   * `SettingsMenu` availability bug survived review: a second copy is right
-   * until the registry changes and nobody remembers this one exists. The menu
-   * now projects its own strip into the shape the registry reads and asks it.
-   */
   const projectedState: ProjectedActionState = {
     documents: Object.fromEntries(
       orderedDocuments.map((entry) => [
@@ -157,28 +131,6 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
     getActionAvailability(actionId, availabilityContext(actionId)).kind !==
     'available';
 
-  useEffect((): void => {
-    firstActionRef.current?.focus({ preventScroll: true });
-  }, []);
-
-  useEffect((): (() => void) => {
-    const dismiss = (event: PointerEvent): void => {
-      if (!menuRef.current?.contains(event.target as Node)) onClose();
-    };
-    const escape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-      }
-    };
-    globalThis.document.addEventListener('pointerdown', dismiss);
-    globalThis.document.addEventListener('keydown', escape);
-    return (): void => {
-      globalThis.document.removeEventListener('pointerdown', dismiss);
-      globalThis.document.removeEventListener('keydown', escape);
-    };
-  }, [onClose]);
-
   const activate = (actionId: TabContextAction): void => {
     if (isUnavailable(actionId)) return;
     void dispatchAction(actionId, {
@@ -204,69 +156,48 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
         }
       },
     }).then(
-      (result): void => {
-        /*
-         * `mutated` is what the dispatcher reports for a Reveal the host
-         * accepted: `revealed` matches none of its refusal branches. FR-FT-037
-         * treats OS acceptance as success, and success is the only outcome that
-         * owes the deferred restoration.
-         */
+      (result: ActionResult): void => {
         onClose({
           deferFocusRestore:
             actionId === 'reveal-in-file-manager' &&
             result.status === 'mutated',
         });
       },
-      (): void => {
-        onClose();
-      },
+      (): void => onClose(),
     );
   };
 
   return (
-    <div
+    <Popup
+      anchor={anchor}
       aria-label={t('editor.tab.contextMenu')}
-      className={styles.contextMenu}
       data-viewport-popup="tab-menu"
-      ref={menuRef}
+      initialFocus="first"
+      open
       role="menu"
-      onKeyDown={(event): void => {
-        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-        event.preventDefault();
-        const buttons = Array.from(
-          menuRef.current?.querySelectorAll<HTMLButtonElement>(
-            '[role="menuitem"]:not(:disabled)',
-          ) ?? [],
-        );
-        const current = buttons.indexOf(event.target as HTMLButtonElement);
-        const next =
-          event.key === 'ArrowDown'
-            ? (current + 1) % buttons.length
-            : (current - 1 + buttons.length) % buttons.length;
-        buttons[next]?.focus();
+      size="menu"
+      onOpenChange={(open): void => {
+        if (!open) onClose();
       }}
     >
       {menuActions.map((actionId) => {
         const entry = getAction(actionId);
         const disabled = isUnavailable(actionId);
+        const accelerator = acceleratorFor(actionId);
         return (
-          <button
+          <MenuItem
+            accelerator={accelerator}
+            aria-keyshortcuts={accelerator}
             aria-disabled={disabled || undefined}
-            className={styles.contextMenuItem}
             data-action-id={entry.id}
-            data-shortcut={acceleratorFor(actionId)}
             disabled={disabled}
             key={actionId}
-            ref={actionId === 'close-tab' ? firstActionRef : undefined}
-            role="menuitem"
-            type="button"
-            onClick={(): void => activate(actionId)}
-          >
-            {t(entry.labelKey)}
-          </button>
+            label={t(entry.labelKey)}
+            onSelect={(): void => activate(actionId)}
+          />
         );
       })}
-    </div>
+    </Popup>
   );
 };
 

@@ -63,14 +63,14 @@ it('T018 renders the complete toolbar groups and a real tab surface', () => {
  * sit between the overflow trigger and it.
  */
 it('T033 holds the arrangement segment at the toolbar trailing edge', () => {
-  const { container } = render(
-    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
-  );
+  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
 
   const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
   const children = Array.from(toolbar.children);
   const segment = screen.getByRole('radiogroup', { name: 'View arrangement' });
-  const overflow = container.querySelector('details');
+  const overflow = screen.getByRole('button', {
+    name: 'More actions',
+  }).parentElement;
   const spacer = toolbar.querySelector(':scope > div[aria-hidden="true"]');
 
   expect(children.at(-1)).toBe(segment);
@@ -107,16 +107,16 @@ it('T060 exposes real application-menu controls from the narrow toolbar overflow
 
     const overflow = screen.getByRole('menu', { name: 'More actions' });
     expect(
-      within(overflow).getByRole('button', { name: 'File' }),
+      within(overflow).getByRole('menuitem', { name: 'File' }),
     ).toBeEnabled();
     expect(
-      within(overflow).getByRole('button', { name: 'Settings' }),
+      within(overflow).getByRole('menuitem', { name: 'Settings' }),
     ).toBeEnabled();
     expect(
-      within(overflow).getByRole('button', { name: 'View' }),
+      within(overflow).getByRole('menuitem', { name: 'View' }),
     ).toBeEnabled();
     expect(
-      within(overflow).getByRole('button', { name: 'About' }),
+      within(overflow).getByRole('menuitem', { name: 'About' }),
     ).toBeEnabled();
   } finally {
     window.history.replaceState({}, '', originalUrl);
@@ -144,7 +144,15 @@ it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', (
   );
   expect(chromeStyles).toContain('border-radius: var(--toolbar-group-radius)');
   expect(chromeStyles).toContain('font-size: 11.5px');
-  expect(chromeStyles).toContain('min-inline-size: var(--popup-min-width)');
+  expect(chromeStyles).toContain(
+    'min-inline-size: var(--toolbar-action-min-width)',
+  );
+  expect(
+    readFileSync(
+      resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'),
+      'utf8',
+    ),
+  ).toContain('min-inline-size: var(--popup-min-width)');
   /*
    * The tab strip is DocumentTabs' surface, not EditorChrome's — EditorChrome
    * never referenced the tab classes that used to sit in its stylesheet. The
@@ -201,19 +209,16 @@ it('T068 uses icon-first toolbar controls while retaining localized accessible n
 });
 
 it('T072 scopes overflow relocation to the documented 768 and 375 width groups', () => {
-  const { container } = render(
-    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
-  );
-  fireEvent.click(
-    container.querySelector('summary[aria-label="More actions"]')!,
-  );
+  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
   expect(
     document.body.querySelector('[class*="overflowAt768"]'),
   ).not.toBeNull();
   expect(
     document.body.querySelector('[class*="overflowAt375"]'),
   ).not.toBeNull();
-  expect(screen.getAllByRole('button', { name: 'Link' })).toHaveLength(2);
+  expect(screen.getByRole('button', { name: 'Link' })).toBeInTheDocument();
+  expect(screen.getByRole('menuitem', { name: 'Link' })).toBeInTheDocument();
 });
 
 /*
@@ -232,12 +237,8 @@ it('T072 scopes overflow relocation to the documented 768 and 375 width groups',
  * `e2e/narrow-width.test.ts` pins what is actually reachable at each width.
  */
 it('T084 assigns every toolbar group to the overflow bucket its width owns', () => {
-  const { container } = render(
-    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
-  );
-  fireEvent.click(
-    container.querySelector('summary[aria-label="More actions"]')!,
-  );
+  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
 
   const overflow = screen.getByRole('menu', { name: 'More actions' });
   const idsIn = (selector: string): string[] =>
@@ -319,41 +320,44 @@ it('T084 assigns every toolbar group to the overflow bucket its width owns', () 
 });
 
 it('T070 closes the toolbar overflow on Escape and outside pointer input', () => {
-  const { container } = render(
+  render(
     <>
       <button type="button">Outside</button>
       <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />
     </>,
   );
-  const trigger = container.querySelector(
-    'summary[aria-label="More actions"]',
-  ) as HTMLElement;
+  const trigger = screen.getByRole('button', { name: 'More actions' });
 
   fireEvent.click(trigger);
-  expect(screen.getAllByRole('button', { name: 'Link' })).toHaveLength(2);
+  expect(screen.getByRole('button', { name: 'Link' })).toBeInTheDocument();
+  expect(screen.getByRole('menuitem', { name: 'Link' })).toBeInTheDocument();
   fireEvent.keyDown(document, { key: 'Escape' });
-  expect(screen.getAllByRole('button', { name: 'Link' })).toHaveLength(1);
+  expect(screen.getByRole('button', { name: 'Link' })).toBeInTheDocument();
+  expect(screen.queryByRole('menuitem', { name: 'Link' })).toBeNull();
   expect(trigger).toHaveFocus();
 
   fireEvent.click(trigger);
   fireEvent.pointerDown(screen.getByRole('button', { name: 'Outside' }));
-  expect(screen.getAllByRole('button', { name: 'Link' })).toHaveLength(1);
+  expect(screen.getByRole('button', { name: 'Link' })).toBeInTheDocument();
+  expect(screen.queryByRole('menuitem', { name: 'Link' })).toBeNull();
 });
 
-it('T094 renders toolbar overflow as a body-owned viewport popup', () => {
-  const { container } = render(
-    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
-  );
-  const trigger = container.querySelector(
-    'summary[aria-label="More actions"]',
-  ) as HTMLElement;
+it('T094 renders toolbar overflow as a body-owned Popup viewport surface', () => {
+  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+  const trigger = screen.getByRole('button', { name: 'More actions' });
 
   fireEvent.click(trigger);
 
   const popup = screen.getByRole('menu', { name: 'More actions' });
   expect(popup.parentElement).toBe(document.body);
   expect(popup).toHaveAttribute('data-viewport-popup', 'editor-overflow');
-  expect(popup).toHaveStyle({ position: 'fixed' });
+  expect(popup).toHaveAttribute('data-popup-size', 'menu');
+  expect(
+    readFileSync(
+      resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'),
+      'utf8',
+    ),
+  ).toMatch(/\.surface\s*\{[^}]*position:\s*absolute;/s);
 });
 
 it('T095 keeps the Editor-stage semantic action signature independent of palette', () => {
@@ -375,7 +379,7 @@ it('T095 keeps the Editor-stage semantic action signature independent of palette
     );
     const current = Array.from(
       rendered.container.querySelectorAll(
-        '[role="toolbar"] button, [role="radiogroup"] button',
+        '[role="toolbar"] button[data-action-id], [role="radiogroup"] button[data-action-id]',
       ),
     ).map((button) => {
       const control = button as HTMLButtonElement;

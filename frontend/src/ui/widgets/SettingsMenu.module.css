@@ -1,6 +1,7 @@
 /*
  * The popup surface, rows, group labels, separators, ticks and switches all
- * come from `MenuSurface.module.css`, which is the single owner of menu
+ * come from the shared Popup and MenuItem styles, which are the single owners of
+ * menu styling. Only what is specific to the Settings menu lives here: its menubar
  * styling. Only what is specific to the Settings menu lives here: its menubar
  * trigger, the theme swatches, and the two things the shared surface cannot
  * know about — where this popup is anchored, and its real checkbox input.
@@ -13,15 +14,6 @@
 
 .menu {
   position: relative;
-}
-
-/*
- * The popup is portalled and positioned from measured anchor coordinates, so it
- * takes `position: absolute` where the shared surface is `relative`. Composed
- * after `.surface` on the element for that one property.
- */
-.anchored {
-  position: absolute;
 }
 
 .settingsBody {
@@ -65,24 +57,6 @@
 
 .options {
   display: grid;
-}
-
-/*
- * Binding source: mockup.html `.mi .k` (:241) — the accelerator is a child
- * element there, and it stays one here.
- *
- * The shared surface draws accelerators from a `data-shortcut` attribute
- * through `.row::after`, which suits the File and View menus. This row keeps a
- * real node: pseudo-element content is not part of `textContent` and is
- * unevenly exposed to assistive technology, and "All settings…" is the one
- * Settings row that is actually actionable, so its accelerator has to be
- * readable. `.row:not([data-shortcut])::after` already resolves to
- * `content: none`, so the shared rule and this span do not both render.
- */
-.shortcut {
-  color: var(--faint);
-  font-family: var(--mono);
-  font-size: var(--popup-accelerator-font-size);
 }
 
 /*

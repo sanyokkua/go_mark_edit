@@ -1,6 +1,8 @@
 import { useState } from 'react';
 
 import type { EditorPosition } from './CodeEditor';
+import Popup, { PopupTrigger } from './Popup';
+import popupStyles from './Popup/Popup.module.css';
 import type { SaveStatus } from '../../logic/store/appModelTypes';
 import { formatNumber, t } from '../../i18n';
 import { readOnlyReason } from './readOnlyReason';
@@ -43,6 +45,8 @@ const StatusBar: React.FC<StatusBarProps> = ({
 }: StatusBarProps): React.JSX.Element => {
   const readOnlyDetail = readOnlyReason(capability);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsTrigger, setDetailsTrigger] =
+    useState<HTMLButtonElement | null>(null);
   const saveStatus = t(translationKey('saveStatus', status));
   const encodingLabel = t(translationKey('encoding', encoding));
   const lineEndingLabel = t(translationKey('lineEnding', lineEnding));
@@ -109,42 +113,44 @@ const StatusBar: React.FC<StatusBarProps> = ({
         <span className={styles.responsiveItem} data-status-item="autosave">
           {t(autosave ? 'status.autosave.on' : 'status.autosave.off')}
         </span>
-        <button
+        <PopupTrigger
           aria-controls="document-status-details"
           aria-expanded={detailsOpen}
           className={`${styles.detailsTrigger} ${styles.pill}`}
-          type="button"
+          expanded={detailsOpen}
+          ref={setDetailsTrigger}
+          onOpen={(): void => setDetailsOpen(true)}
           onClick={(): void => setDetailsOpen((open) => !open)}
         >
           {t('status.details')}
-        </button>
+        </PopupTrigger>
       </footer>
-      {/* Outside the row, inside the dock. `aria-controls` on the trigger above
-          is what ties the two together now that DOM containment no longer does
-          — the disclosure pattern never required containment, but the clip
-          did. */}
-      {detailsOpen ? (
-        <div
-          aria-label={t('status.details')}
-          className={styles.details}
-          id="document-status-details"
-          role="region"
-        >
-          <span>{encodingLabel}</span>
-          <span>{lineEndingLabel}</span>
-          <span>{saveStatus}</span>
+      <Popup
+        anchor={{ trigger: detailsTrigger }}
+        aria-label={t('status.details')}
+        className={popupStyles.details}
+        id="document-status-details"
+        initialFocus="popup"
+        open={detailsOpen}
+        returnFocusTo={detailsTrigger}
+        role="dialog-less region"
+        size="details"
+        onOpenChange={setDetailsOpen}
+      >
+        <span>{encodingLabel}</span>
+        <span>{lineEndingLabel}</span>
+        <span>{saveStatus}</span>
+        <span>
+          {t(autosave ? 'status.autosave.on' : 'status.autosave.off')}
+        </span>
+        {readOnly ? (
           <span>
-            {t(autosave ? 'status.autosave.on' : 'status.autosave.off')}
+            {readOnlyDetail === undefined
+              ? t('status.readOnlyWarning')
+              : `${t('status.readOnlyWarning')} · ${readOnlyDetail}`}
           </span>
-          {readOnly ? (
-            <span>
-              {readOnlyDetail === undefined
-                ? t('status.readOnlyWarning')
-                : `${t('status.readOnlyWarning')} · ${readOnlyDetail}`}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
+      </Popup>
     </div>
   );
 };

@@ -98,27 +98,6 @@
   white-space: nowrap;
 }
 
-.details {
-  background: var(--surface-raised);
-  border: var(--control-border-width) solid var(--border);
-  border-radius: var(--control-radius);
-  display: flex;
-  gap: var(--status-bar-gap);
-  padding: var(--control-padding);
-  max-width: calc(100vw - 16px);
-  min-width: min(250px, calc(100vw - 16px));
-  flex-wrap: wrap;
-  /* Anchored to `.dock`, which spans exactly the status row, so the panel sits
-     flush on the row's top edge with no arithmetic. The rule this replaced was
-     `transform: translateY(calc(-100% - var(--status-bar-min-height)))` off the
-     static position, which left an accidental one-row gap above the row — and,
-     being a transform, could not escape the row's clip in any case. */
-  bottom: 100%;
-  position: absolute;
-  right: var(--status-bar-padding-inline);
-  z-index: var(--z-popover);
-}
-
 @media (max-width: 768px) {
   .responsiveItem[data-status-item='cursor'],
   .responsiveItem[data-status-item='count'],

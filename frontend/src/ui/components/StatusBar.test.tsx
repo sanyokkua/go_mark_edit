@@ -11,6 +11,10 @@ it('T033 keeps the status surface at one exact 28px row with accessible details'
     resolve(process.cwd(), 'src/ui/components/StatusBar.module.css'),
     'utf8',
   );
+  const popupStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'),
+    'utf8',
+  );
 
   expect(statusStyles).toContain('height: var(--status-bar-min-height)');
   expect(statusStyles).toContain('max-height: var(--status-bar-min-height)');
@@ -18,8 +22,9 @@ it('T033 keeps the status surface at one exact 28px row with accessible details'
   expect(statusStyles).toContain(
     'padding-inline: var(--status-bar-padding-inline)',
   );
-  expect(statusStyles).toContain('flex-wrap: wrap');
-  expect(statusStyles).toContain('max-width: calc(100vw - 16px)');
+  expect(statusStyles).toContain('flex-wrap: nowrap');
+  expect(popupStyles).toContain('flex-wrap: wrap');
+  expect(popupStyles).toContain('max-inline-size: calc(100vw - 16px)');
 });
 
 // Proves: STORY-016-AC-1
@@ -179,6 +184,26 @@ it('StatusBar responsive detail keeps dropped file facts accessible', () => {
   expect(details).toHaveTextContent('Read-only');
 });
 
+// Proves: FR-034
+it('T022 opens Document details from the shared trigger keyboard contract', () => {
+  render(
+    <StatusBar
+      cursor={{ lineNumber: 2, column: 4 }}
+      encoding="utf-8"
+      lineEnding="lf"
+      wordCount={2}
+    />,
+  );
+
+  const trigger = screen.getByRole('button', { name: 'Document details' });
+  trigger.focus();
+  fireEvent.keyDown(trigger, { key: 'ArrowDown' });
+
+  expect(
+    screen.getByRole('region', { name: 'Document details' }),
+  ).toBeVisible();
+});
+
 it('T108 names why a large document is read-only, per FR-FT-005', () => {
   /*
    * FR-FT-005: a file over 10 MiB and no larger than 50 MiB opens read-only
@@ -244,13 +269,15 @@ it('T108 leaves the reason out when the document is writable', () => {
  */
 it('T113 docks the details region beside the row, outside the row that clips it', () => {
   render(
-    <StatusBar
-      cursor={{ lineNumber: 1, column: 1 }}
-      encoding="utf-8"
-      lineEnding="lf"
-      status="saved"
-      wordCount={4}
-    />,
+    <div className="application-frame">
+      <StatusBar
+        cursor={{ lineNumber: 1, column: 1 }}
+        encoding="utf-8"
+        lineEnding="lf"
+        status="saved"
+        wordCount={4}
+      />
+    </div>,
   );
 
   const status = screen.getByRole('status', { name: 'Document status' });
@@ -264,7 +291,7 @@ it('T113 docks the details region beside the row, outside the row that clips it'
 
   expect(dock).not.toBeNull();
   expect(dock).toHaveAttribute('data-status-dock', 'true');
-  expect(details.parentElement).toBe(dock);
+  expect(details.parentElement).toHaveClass('application-frame');
   expect(status.contains(details)).toBe(false);
 
   // The trigger is what states the relationship now that containment does not.

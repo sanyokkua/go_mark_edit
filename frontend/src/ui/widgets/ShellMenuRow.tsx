@@ -1,15 +1,11 @@
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
-  type CSSProperties,
   Fragment,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
 import type { DocumentMetadata } from '../../logic/store/appModelTypes';
@@ -40,7 +36,12 @@ import { windowAdapter } from '../../logic/adapter';
 import AppBrand from '../primitives/AppBrand';
 import ViewMenu, { type ViewMenuProps } from '../primitives/ViewMenu';
 import Icon from '../primitives/Icon';
-import MenuTrigger from '../primitives/MenuTrigger';
+import MenuItem from '../components/MenuItem';
+import Popup, {
+  PopupGroupLabel,
+  PopupSeparator,
+  PopupTrigger,
+} from '../components/Popup';
 import DocumentIdentity from './DocumentIdentity';
 import { safeRecentLabel } from './Launcher';
 import { isMinimumWindow } from './minimumWindow';
@@ -87,20 +88,9 @@ function shortcutForMenuItem(shortcut: string | undefined): string | undefined {
 function menuDecoration(id: ActionId): React.JSX.Element | null {
   return (
     <>
-      {fileMenuSeparators.has(id) ? (
-        <div
-          aria-hidden="true"
-          className={`${styles.separator} ${
-            id === 'export-pdf' || id === 'close-tab'
-              ? styles.fileMenuLateSeparator
-              : ''
-          }`}
-        />
-      ) : null}
+      {fileMenuSeparators.has(id) ? <PopupSeparator /> : null}
       {id === 'open-recent' ? (
-        <div aria-hidden="true" className={styles.groupLabel}>
-          {t('file.menu.recent.label')}
-        </div>
+        <PopupGroupLabel>{t('file.menu.recent.label')}</PopupGroupLabel>
       ) : null}
     </>
   );
@@ -139,17 +129,6 @@ interface ShellMenuRowProps {
 }
 
 /*
- * The binding File dropdown is absolutely positioned inside the application
- * frame at `left:96px; top:42px`. Portal into that frame so the popup shares
- * the frame's containing block instead of being placed by collision-aware
- * viewport coordinates.
- */
-function applicationFrame(): HTMLElement | undefined {
-  if (typeof document === 'undefined') return undefined;
-  return document.querySelector<HTMLElement>('.application-frame') ?? undefined;
-}
-
-/*
  * Deliberately the static read, not `useMinimumWindow`: the menu row samples
  * the width to place its popups, and re-rendering the row on every resize
  * would move an open popup out from under the pointer.
@@ -157,11 +136,6 @@ function applicationFrame(): HTMLElement | undefined {
 const isNarrowViewport = isMinimumWindow;
 
 type ActiveMenu = 'settings' | 'view' | 'file' | 'about' | null;
-
-interface PopupAnchor {
-  left: number;
-  top: number;
-}
 
 const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   modalOpen,
@@ -191,20 +165,39 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   const [activeMenu, setActiveMenu] = useState<ActiveMenu>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [narrow, setNarrow] = useState(isNarrowViewport);
-  const [narrowPopupAnchor, setNarrowPopupAnchor] = useState<PopupAnchor>({
-    left: 0,
-    top: 0,
-  });
-  const [menuRowOrigin, setMenuRowOrigin] = useState<PopupAnchor>({
-    left: 0,
-    top: 0,
-  });
-  const pendingViewOpen = useRef<boolean | null>(null);
-  const pendingViewOpenerRef = useRef<HTMLButtonElement | null>(null);
-  const menuOpenerRef = useRef<HTMLElement | null>(null);
   const menuRowRef = useRef<HTMLElement | null>(null);
   const overflowTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const narrowPopupRef = useRef<HTMLDivElement | null>(null);
+  const fileTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const aboutTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [overflowTrigger, setOverflowTrigger] =
+    useState<HTMLButtonElement | null>(null);
+  const [fileTrigger, setFileTrigger] = useState<HTMLButtonElement | null>(
+    null,
+  );
+  const [aboutTrigger, setAboutTrigger] = useState<HTMLButtonElement | null>(
+    null,
+  );
+  const captureOverflowTrigger = useCallback(
+    (element: HTMLButtonElement | null): void => {
+      overflowTriggerRef.current = element;
+      setOverflowTrigger(element);
+    },
+    [],
+  );
+  const captureFileTrigger = useCallback(
+    (element: HTMLButtonElement | null): void => {
+      fileTriggerRef.current = element;
+      setFileTrigger(element);
+    },
+    [],
+  );
+  const captureAboutTrigger = useCallback(
+    (element: HTMLButtonElement | null): void => {
+      aboutTriggerRef.current = element;
+      setAboutTrigger(element);
+    },
+    [],
+  );
   const settingsOpen = activeMenu === 'settings';
   const viewOpen = activeMenu === 'view';
   const fileOpen = activeMenu === 'file';
@@ -237,14 +230,6 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
    */
   const [handledMenuRequest, setHandledMenuRequest] =
     useState<ApplicationMenuTarget | null>(requestedMenu);
-  const pendingMenuOpener =
-    requestedMenu !== handledMenuRequest &&
-    requestedMenu !== null &&
-    !modalOpen &&
-    typeof document !== 'undefined' &&
-    document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
   if (requestedMenu !== handledMenuRequest) {
     setHandledMenuRequest(requestedMenu);
     if (requestedMenu !== null && !modalOpen) {
@@ -255,91 +240,14 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
 
   useEffect((): void => {
     if (requestedMenu === null || modalOpen) return;
-    // The opener is captured from the element focused when the request arrived,
-    // before the menu takes focus; in the narrow shell the overflow trigger owns
-    // the restoration target.
-    menuOpenerRef.current = narrow
-      ? overflowTriggerRef.current
-      : (pendingMenuOpener ?? menuOpenerRef.current);
     onRequestedMenuHandled?.();
-  }, [
-    modalOpen,
-    narrow,
-    onRequestedMenuHandled,
-    pendingMenuOpener,
-    requestedMenu,
-  ]);
+  }, [modalOpen, onRequestedMenuHandled, requestedMenu]);
 
   useEffect((): (() => void) => {
     const onResize = (): void => setNarrow(isNarrowViewport());
     window.addEventListener('resize', onResize);
     return (): void => window.removeEventListener('resize', onResize);
   }, []);
-
-  useEffect((): void => {
-    pendingViewOpen.current = null;
-  }, [viewOpen]);
-
-  useEffect((): void => {
-    if (activeMenu !== null) return;
-    menuOpenerRef.current?.focus();
-    menuOpenerRef.current = null;
-  }, [activeMenu]);
-
-  useEffect((): (() => void) | undefined => {
-    if (!narrow || !viewOpen) return undefined;
-
-    const dismiss = (event: PointerEvent): void => {
-      const menu = document.querySelector<HTMLElement>(
-        '[role="menu"][aria-label="View options"]',
-      );
-      if (menu?.contains(event.target as Node)) return;
-      setViewOpen(false);
-    };
-    document.addEventListener('pointerdown', dismiss);
-    return (): void => document.removeEventListener('pointerdown', dismiss);
-  }, [narrow, viewOpen]);
-
-  const updateNarrowPopupAnchor = useCallback((): void => {
-    const bounds = overflowTriggerRef.current?.getBoundingClientRect();
-    if (bounds === undefined) return;
-
-    const rowBounds = menuRowRef.current?.getBoundingClientRect();
-    if (rowBounds !== undefined) {
-      setMenuRowOrigin((current): PopupAnchor =>
-        current.left === rowBounds.left && current.top === rowBounds.top
-          ? current
-          : { left: rowBounds.left, top: rowBounds.top },
-      );
-    }
-    const margin = 8;
-    const popupBounds = narrowPopupRef.current?.getBoundingClientRect();
-    const minimumMenuWidth = popupBounds?.width || 160;
-    const popupHeight = popupBounds?.height || 0;
-    const maximumLeft = Math.max(
-      margin,
-      window.innerWidth - minimumMenuWidth - margin,
-    );
-    setNarrowPopupAnchor({
-      left: Math.min(Math.max(margin, bounds.left), maximumLeft),
-      top:
-        bounds.bottom + popupHeight <= window.innerHeight - margin
-          ? Math.max(margin, bounds.bottom)
-          : Math.max(margin, bounds.top - popupHeight - margin),
-    });
-  }, []);
-
-  useLayoutEffect((): (() => void) | undefined => {
-    if (!narrow || activeMenu === null) return undefined;
-
-    updateNarrowPopupAnchor();
-    window.addEventListener('resize', updateNarrowPopupAnchor);
-    window.addEventListener('scroll', updateNarrowPopupAnchor, true);
-    return (): void => {
-      window.removeEventListener('resize', updateNarrowPopupAnchor);
-      window.removeEventListener('scroll', updateNarrowPopupAnchor, true);
-    };
-  }, [activeMenu, narrow, updateNarrowPopupAnchor]);
 
   /*
    * One table behind three surfaces: the accelerator text drawn beside a File
@@ -491,18 +399,6 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   );
   useShellShortcuts(shortcutActions);
 
-  useEffect((): (() => void) => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') return;
-      setSettingsOpen(false);
-      setViewOpen(false);
-      setFileOpen(false);
-      setAboutOpen(false);
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return (): void => document.removeEventListener('keydown', onKeyDown);
-  }, []);
-
   const menuActions = actions.filter(
     (action): boolean =>
       action.id !== 'fullscreen' &&
@@ -575,22 +471,6 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     });
   };
   const requestViewOpen = (open: boolean): void => {
-    if (pendingViewOpen.current === open) {
-      return;
-    }
-    pendingViewOpen.current = open;
-    if (open) {
-      if (menuOpenerRef.current === null) {
-        menuOpenerRef.current =
-          pendingViewOpenerRef.current ??
-          (narrow
-            ? overflowTriggerRef.current
-            : document.activeElement instanceof HTMLElement
-              ? document.activeElement
-              : null);
-      }
-      pendingViewOpenerRef.current = null;
-    }
     setSettingsOpen(false);
     setViewOpen(open);
   };
@@ -603,14 +483,6 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     setAboutOpen(false);
     void dispatchShellAction(selected);
   };
-  const narrowMenuAnchor: CSSProperties = {
-    left: narrowPopupAnchor.left - menuRowOrigin.left,
-    top: narrowPopupAnchor.top - menuRowOrigin.top,
-    height: 1,
-    pointerEvents: 'none',
-    position: 'absolute',
-    width: 1,
-  };
   return (
     <nav
       ref={menuRowRef}
@@ -619,173 +491,269 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     >
       <AppBrand />
       {narrow ? (
-        <DropdownMenu.Root
-          modal={false}
-          open={!modalOpen && overflowOpen}
-          onOpenChange={(open): void => {
-            if (open) updateNarrowPopupAnchor();
-            setOverflowOpen(open);
-          }}
-        >
-          <DropdownMenu.Trigger asChild>
-            <MenuTrigger
-              ref={overflowTriggerRef}
-              aria-label={t('shell.overflow')}
-              data-settings-overflow
-              expanded={overflowOpen}
-            >
-              <Icon name="more" size={15} />
-            </MenuTrigger>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              aria-label={t('shell.menuLabel')}
-              className={`${styles.overflow} ${styles.radixOverflow}`}
-              collisionPadding={8}
-              data-viewport-popup="shell-overflow"
-              side="top"
-            >
-              <DropdownMenu.Item
-                className={styles.item}
+        <>
+          <PopupTrigger
+            ref={captureOverflowTrigger}
+            aria-label={t('shell.overflow')}
+            data-settings-overflow
+            expanded={overflowOpen}
+            onClick={(): void => setOverflowOpen(!overflowOpen)}
+            onOpen={(): void => setOverflowOpen(true)}
+          >
+            <Icon name="more" size={15} />
+          </PopupTrigger>
+          <Popup
+            anchor={{ trigger: overflowTrigger }}
+            aria-label={t('shell.menuLabel')}
+            data-viewport-popup="shell-overflow"
+            initialFocus="first"
+            open={!modalOpen && overflowOpen}
+            returnFocusTo={overflowTrigger}
+            role="menu"
+            size="menu"
+            onOpenChange={setOverflowOpen}
+          >
+            <MenuItem
+              label={t('shell.file')}
+              onSelect={(): void => {
+                setOverflowOpen(false);
+                setFileOpen(true);
+              }}
+            />
+            {menuActions.map((item) => (
+              <MenuItem
+                accelerator={shortcutForMenuItem(item.shortcut)}
+                disabled={!item.isAvailable()}
+                key={item.id}
+                label={
+                  item.id === 'about' ? t('shell.about') : t(item.labelKey)
+                }
                 onSelect={(): void => {
-                  updateNarrowPopupAnchor();
                   setOverflowOpen(false);
-                  setFileOpen(true);
+                  if (item.id === 'view') requestViewOpen(true);
+                  dispatch(item);
                 }}
-              >
-                {t('shell.file')}
-              </DropdownMenu.Item>
-              {menuActions.map((item) => (
-                <DropdownMenu.Item
-                  className={styles.item}
-                  data-shortcut={shortcutForMenuItem(item.shortcut)}
-                  disabled={!item.isAvailable()}
-                  key={item.id}
-                  onSelect={(event): void => {
-                    if (item.id === 'view') {
-                      event.preventDefault();
-                    }
-                    setOverflowOpen(false);
-                    if (item.id === 'view') {
-                      menuOpenerRef.current = overflowTriggerRef.current;
-                      requestViewOpen(true);
-                      dispatch(item);
-                    } else {
-                      dispatch(item);
-                    }
-                  }}
-                >
-                  {item.id === 'about' ? t('shell.about') : t(item.labelKey)}
-                </DropdownMenu.Item>
-              ))}
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
-      ) : (
-        <div className={styles.menu} data-shell-menu>
-          <DropdownMenu.Root
-            modal={false}
+              />
+            ))}
+          </Popup>
+
+          <Popup
+            anchor={{ trigger: overflowTrigger }}
+            aria-label={t('shell.file')}
+            className={styles.narrowOverflow}
+            data-viewport-popup="file-menu"
+            initialFocus="first"
             open={!modalOpen && fileOpen}
+            returnFocusTo={overflowTrigger}
+            role="menu"
+            size="menu"
             onOpenChange={setFileOpen}
           >
-            <DropdownMenu.Trigger asChild>
-              <MenuTrigger
-                expanded={fileOpen}
-                onClick={(event): void => {
-                  event.preventDefault();
-                  menuOpenerRef.current = event.currentTarget;
-                  setSettingsOpen(false);
-                  setViewOpen(false);
-                  setAboutOpen(false);
-                  setFileOpen(true);
-                }}
-                onOpen={(trigger): void => {
-                  menuOpenerRef.current = trigger;
-                  setSettingsOpen(false);
-                  setViewOpen(false);
-                  setAboutOpen(false);
-                  setFileOpen(true);
-                }}
-              >
-                {t('shell.file')}
-              </MenuTrigger>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal container={applicationFrame()}>
-              <DropdownMenu.Content
-                aria-label={t('shell.file')}
-                collisionPadding={8}
-                className={`${styles.overflow} ${styles.radixOverflow} ${styles.fileMenu}`}
-                data-viewport-popup="file-menu"
-              >
-                {fileActions.map((item) => (
-                  <Fragment key={item.id}>
-                    {menuDecoration(item.id)}
-                    {item.id === 'open-recent' ? (
-                      /*
-                       * The binding File menu presents recents as the group
-                       * label plus one indented row per file. There is no
-                       * separate Open Recent trigger row, so the canonical
-                       * open-recent command is dispatched from the rows
-                       * themselves.
-                       */
-                      noRecentFiles ? (
-                        recentEmptyMessage(`${styles.item} ${styles.subItem}`)
-                      ) : (
-                        displayedRecentFiles.map((path) => (
-                          <DropdownMenu.Item
-                            className={`${styles.item} ${styles.subItem}`}
-                            key={`recent-${path}`}
-                            onSelect={(): void => dispatchRecentFile(path)}
-                          >
-                            <Icon
-                              aria-hidden="true"
-                              className={styles.subItemIcon}
-                              name="file"
-                            />
-                            <span className={styles.subItemLabel}>
-                              {safeRecentLabel(path)}
-                            </span>
-                          </DropdownMenu.Item>
-                        ))
-                      )
-                    ) : item.id === 'reopen' ? (
-                      <DropdownMenu.Item
-                        aria-label={t(item.labelKey)}
-                        className={`${styles.item} ${styles.subItem}`}
-                        data-shortcut={shortcutForMenuItem(item.shortcut)}
-                        disabled={fileActionDisabled(item.id)}
-                        onSelect={(): void => dispatchFileAction(item.id)}
-                      >
-                        {/* The binding row is one text run: `↺ Reopen last
-                            file`. Keeping the glyph inside the label span keeps
-                            the row at two flex items so the accelerator alone
-                            takes the trailing edge. */}
-                        <span className={styles.subItemLabel}>
-                          {`↺ ${fileActionLabel(item)}`}
-                        </span>
-                      </DropdownMenu.Item>
-                    ) : (
-                      <DropdownMenu.Item
-                        aria-label={t(item.labelKey)}
-                        className={styles.item}
-                        data-shortcut={shortcutForMenuItem(item.shortcut)}
-                        disabled={fileActionDisabled(item.id)}
-                        onSelect={(): void => dispatchFileAction(item.id)}
-                      >
-                        {fileActionLabel(item)}
-                      </DropdownMenu.Item>
-                    )}
-                  </Fragment>
-                ))}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
+            {fileActions.map((item) => (
+              <Fragment key={item.id}>
+                {menuDecoration(item.id)}
+                {item.id === 'open-recent' ? (
+                  noRecentFiles ? (
+                    recentEmptyMessage(styles.subItem)
+                  ) : (
+                    displayedRecentFiles.map((path) => (
+                      <MenuItem
+                        className={styles.subItem}
+                        icon={
+                          <Icon
+                            aria-hidden="true"
+                            className={styles.subItemIcon}
+                            name="file"
+                          />
+                        }
+                        key={'recent-' + path}
+                        label={
+                          <span className={styles.subItemLabel}>
+                            {safeRecentLabel(path)}
+                          </span>
+                        }
+                        onSelect={(): void => dispatchRecentFile(path)}
+                      />
+                    ))
+                  )
+                ) : item.id === 'reopen' ? (
+                  <MenuItem
+                    aria-label={t(item.labelKey)}
+                    className={styles.subItem}
+                    accelerator={shortcutForMenuItem(item.shortcut)}
+                    disabled={fileActionDisabled(item.id)}
+                    label={
+                      <span className={styles.subItemLabel}>
+                        {'↺ ' + fileActionLabel(item)}
+                      </span>
+                    }
+                    onSelect={(): void => dispatchFileAction(item.id)}
+                  />
+                ) : (
+                  <MenuItem
+                    aria-label={t(item.labelKey)}
+                    accelerator={shortcutForMenuItem(item.shortcut)}
+                    disabled={fileActionDisabled(item.id)}
+                    label={fileActionLabel(item)}
+                    onSelect={(): void => dispatchFileAction(item.id)}
+                  />
+                )}
+              </Fragment>
+            ))}
+          </Popup>
+
+          <Popup
+            anchor={{ trigger: overflowTrigger }}
+            aria-label={t(action('about').labelKey)}
+            className={styles.narrowOverflow}
+            data-viewport-popup="about-menu"
+            initialFocus="first"
+            open={!modalOpen && aboutOpen}
+            returnFocusTo={overflowTrigger}
+            role="menu"
+            size="menu"
+            onOpenChange={setAboutOpen}
+          >
+            {aboutActions.map((item) => (
+              <Fragment key={item.id}>
+                {aboutMenuSeparators.has(item.id) ? <PopupSeparator /> : null}
+                <MenuItem
+                  accelerator={shortcutForMenuItem(item.shortcut)}
+                  disabled={item.availability.kind === 'deferred'}
+                  label={t(item.labelKey)}
+                  onSelect={(): void => selectAboutAction(item.id)}
+                />
+              </Fragment>
+            ))}
+          </Popup>
+
+          <SettingsMenu
+            {...settingsMenuProps}
+            open={!modalOpen && settingsOpen}
+            onOpenChange={setSettingsOpen}
+            onOpenAppearance={(): void => {
+              setSettingsOpen(false);
+              settingsMenuProps.onOpenAppearance(overflowTrigger);
+            }}
+            anchorRef={overflowTriggerRef}
+            anchorElement={overflowTrigger}
+            showTrigger={false}
+          />
+          {viewMenuProps === undefined ? null : (
+            <ViewMenu
+              {...viewMenuProps}
+              modal={false}
+              open={!modalOpen && viewOpen}
+              onOpenChange={(nextOpen): void => {
+                if (nextOpen) requestViewOpen(true);
+                else setViewOpen(false);
+              }}
+              onArrangementChange={(arrangement): void => {
+                viewMenuProps.onArrangementChange?.(arrangement);
+                requestViewOpen(false);
+              }}
+              onWorkspaceVisibilityChange={(visible): void => {
+                viewMenuProps.onWorkspaceVisibilityChange?.(visible);
+                requestViewOpen(false);
+              }}
+              anchorRef={overflowTriggerRef}
+              anchorElement={overflowTrigger}
+              showTrigger={false}
+            />
+          )}
+        </>
+      ) : (
+        <div className={styles.menu} data-shell-menu>
+          <PopupTrigger
+            ref={captureFileTrigger}
+            expanded={fileOpen}
+            onClick={(): void => {
+              setSettingsOpen(false);
+              setViewOpen(false);
+              setAboutOpen(false);
+              setFileOpen(!fileOpen);
+            }}
+            onOpen={(): void => {
+              setSettingsOpen(false);
+              setViewOpen(false);
+              setAboutOpen(false);
+              setFileOpen(true);
+            }}
+          >
+            {t('shell.file')}
+          </PopupTrigger>
+          <Popup
+            anchor={{ trigger: fileTrigger }}
+            aria-label={t('shell.file')}
+            data-viewport-popup="file-menu"
+            initialFocus="first"
+            open={!modalOpen && fileOpen}
+            returnFocusTo={fileTrigger}
+            role="menu"
+            size="menu"
+            onOpenChange={setFileOpen}
+          >
+            {fileActions.map((item) => (
+              <Fragment key={item.id}>
+                {menuDecoration(item.id)}
+                {item.id === 'open-recent' ? (
+                  noRecentFiles ? (
+                    recentEmptyMessage(styles.subItem)
+                  ) : (
+                    displayedRecentFiles.map((path) => (
+                      <MenuItem
+                        className={styles.subItem}
+                        icon={
+                          <Icon
+                            aria-hidden="true"
+                            className={styles.subItemIcon}
+                            name="file"
+                          />
+                        }
+                        key={'recent-' + path}
+                        label={
+                          <span className={styles.subItemLabel}>
+                            {safeRecentLabel(path)}
+                          </span>
+                        }
+                        onSelect={(): void => dispatchRecentFile(path)}
+                      />
+                    ))
+                  )
+                ) : item.id === 'reopen' ? (
+                  <MenuItem
+                    aria-label={t(item.labelKey)}
+                    className={styles.subItem}
+                    accelerator={shortcutForMenuItem(item.shortcut)}
+                    disabled={fileActionDisabled(item.id)}
+                    label={
+                      <span className={styles.subItemLabel}>
+                        {'↺ ' + fileActionLabel(item)}
+                      </span>
+                    }
+                    onSelect={(): void => dispatchFileAction(item.id)}
+                  />
+                ) : (
+                  <MenuItem
+                    aria-label={t(item.labelKey)}
+                    accelerator={shortcutForMenuItem(item.shortcut)}
+                    disabled={fileActionDisabled(item.id)}
+                    label={fileActionLabel(item)}
+                    onSelect={(): void => dispatchFileAction(item.id)}
+                  />
+                )}
+              </Fragment>
+            ))}
+          </Popup>
+
           <SettingsMenu
             {...settingsMenuProps}
             open={!modalOpen && settingsOpen}
             onOpenChange={setSettingsOpen}
             onTrigger={(): void => {
+              setFileOpen(false);
               setViewOpen(false);
+              setAboutOpen(false);
               setSettingsOpen(!settingsOpen);
             }}
             onOpenAppearance={(opener): void => {
@@ -803,76 +771,57 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               onOpenChange={requestViewOpen}
               onTrigger={(): void => {
                 setFileOpen(false);
+                setSettingsOpen(false);
                 setAboutOpen(false);
                 requestViewOpen(!viewOpen);
-              }}
-              onTriggerPointerDown={(trigger): void => {
-                pendingViewOpenerRef.current = trigger;
               }}
               triggerLabel={t(action('view').labelKey)}
             />
           )}
-          <DropdownMenu.Root
-            modal={false}
+          <PopupTrigger
+            ref={captureAboutTrigger}
+            expanded={aboutOpen}
+            onClick={(): void => {
+              setSettingsOpen(false);
+              setViewOpen(false);
+              setFileOpen(false);
+              setAboutOpen(!aboutOpen);
+            }}
+            onOpen={(): void => {
+              setSettingsOpen(false);
+              setViewOpen(false);
+              setFileOpen(false);
+              setAboutOpen(true);
+            }}
+          >
+            {t('shell.about')}
+          </PopupTrigger>
+          <Popup
+            anchor={{ trigger: aboutTrigger }}
+            aria-label={t(action('about').labelKey)}
+            data-viewport-popup="about-menu"
+            initialFocus="first"
             open={!modalOpen && aboutOpen}
+            returnFocusTo={aboutTrigger}
+            role="menu"
+            size="menu"
             onOpenChange={setAboutOpen}
           >
-            <DropdownMenu.Trigger asChild>
-              <MenuTrigger
-                expanded={aboutOpen}
-                onClick={(event): void => {
-                  event.preventDefault();
-                  menuOpenerRef.current = event.currentTarget;
-                  setSettingsOpen(false);
-                  setViewOpen(false);
-                  setFileOpen(false);
-                  setAboutOpen(true);
-                }}
-                onOpen={(trigger): void => {
-                  menuOpenerRef.current = trigger;
-                  setSettingsOpen(false);
-                  setViewOpen(false);
-                  setFileOpen(false);
-                  setAboutOpen(true);
-                }}
-              >
-                {t('shell.about')}
-              </MenuTrigger>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal container={applicationFrame()}>
-              <DropdownMenu.Content
-                aria-label={t(action('about').labelKey)}
-                collisionPadding={8}
-                className={`${styles.overflow} ${styles.radixOverflow} ${styles.aboutMenu}`}
-                data-viewport-popup="about-menu"
-              >
-                {aboutActions.map((item) => (
-                  <Fragment key={item.id}>
-                    {aboutMenuSeparators.has(item.id) ? (
-                      <DropdownMenu.Separator
-                        aria-hidden="true"
-                        className={styles.separator}
-                      />
-                    ) : null}
-                    <DropdownMenu.Item
-                      className={styles.item}
-                      data-shortcut={shortcutForMenuItem(item.shortcut)}
-                      disabled={item.availability.kind === 'deferred'}
-                      onSelect={(): void => selectAboutAction(item.id)}
-                    >
-                      {t(item.labelKey)}
-                    </DropdownMenu.Item>
-                  </Fragment>
-                ))}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
+            {aboutActions.map((item) => (
+              <Fragment key={item.id}>
+                {aboutMenuSeparators.has(item.id) ? <PopupSeparator /> : null}
+                <MenuItem
+                  accelerator={shortcutForMenuItem(item.shortcut)}
+                  disabled={item.availability.kind === 'deferred'}
+                  label={t(item.labelKey)}
+                  onSelect={(): void => selectAboutAction(item.id)}
+                />
+              </Fragment>
+            ))}
+          </Popup>
         </div>
       )}
 
-      {/* Binding source: mockup.html `.sp{flex:1}` (:231). One spacer, always
-          present, is what pushes the identity and the window controls to the
-          trailing edge — whether or not a document is open. */}
       <div aria-hidden="true" className={styles.spacer} />
 
       {activeDocument !== undefined ? (
@@ -903,136 +852,6 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
             <Icon name="assistant" size={15} />
           </button>
         </div>
-      ) : null}
-
-      {narrow ? (
-        <>
-          {fileOpen
-            ? createPortal(
-                <div
-                  ref={narrowPopupRef}
-                  aria-label={t('shell.file')}
-                  className={`${styles.overflow} ${styles.narrowOverflow}`}
-                  data-viewport-popup="file-menu"
-                  role="menu"
-                  style={narrowPopupAnchor}
-                >
-                  {fileActions.map((item) => (
-                    <Fragment key={item.id}>
-                      {menuDecoration(item.id)}
-                      {item.id === 'open-recent' ? (
-                        <div aria-label={t(item.labelKey)} role="group">
-                          <button
-                            aria-label={t(item.labelKey)}
-                            aria-haspopup="menu"
-                            className={styles.item}
-                            data-shortcut={shortcutForMenuItem(item.shortcut)}
-                            disabled={fileActionDisabled(item.id)}
-                            role="menuitem"
-                            type="button"
-                          >
-                            {fileActionLabel(item)}
-                          </button>
-                          <div
-                            aria-label={t('file.recent.label')}
-                            className={styles.submenu}
-                            role="menu"
-                          >
-                            {noRecentFiles
-                              ? recentEmptyMessage(styles.item)
-                              : displayedRecentFiles.map((path) => (
-                                  <button
-                                    className={styles.item}
-                                    key={path}
-                                    role="menuitem"
-                                    type="button"
-                                    onClick={(): void =>
-                                      dispatchRecentFile(path)
-                                    }
-                                  >
-                                    {safeRecentLabel(path)}
-                                  </button>
-                                ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          aria-label={t(item.labelKey)}
-                          className={styles.item}
-                          data-shortcut={shortcutForMenuItem(item.shortcut)}
-                          disabled={fileActionDisabled(item.id)}
-                          role="menuitem"
-                          type="button"
-                          onClick={(): void => dispatchFileAction(item.id)}
-                        >
-                          {fileActionLabel(item)}
-                        </button>
-                      )}
-                    </Fragment>
-                  ))}
-                </div>,
-                document.body,
-              )
-            : null}
-          {aboutOpen
-            ? createPortal(
-                <div
-                  ref={narrowPopupRef}
-                  aria-label={t(action('about').labelKey)}
-                  className={`${styles.overflow} ${styles.narrowOverflow}`}
-                  data-viewport-popup="about-menu"
-                  role="menu"
-                  style={narrowPopupAnchor}
-                >
-                  {aboutActions.map((item) => (
-                    <button
-                      className={styles.item}
-                      data-shortcut={shortcutForMenuItem(item.shortcut)}
-                      disabled={fileActionDisabled(item.id)}
-                      key={item.id}
-                      role="menuitem"
-                      type="button"
-                      onClick={(): void => selectAboutAction(item.id)}
-                    >
-                      {t(item.labelKey)}
-                    </button>
-                  ))}
-                </div>,
-                document.body,
-              )
-            : null}
-          <SettingsMenu
-            {...settingsMenuProps}
-            open={!modalOpen && settingsOpen}
-            onOpenChange={setSettingsOpen}
-            onOpenAppearance={(): void => {
-              setSettingsOpen(false);
-              settingsMenuProps.onOpenAppearance(overflowTriggerRef.current);
-            }}
-            anchorRef={overflowTriggerRef}
-            showTrigger={false}
-          />
-          {viewMenuProps === undefined ? null : (
-            <ViewMenu
-              {...viewMenuProps}
-              modal={false}
-              open={!modalOpen && viewOpen}
-              onOpenChange={(open): void => {
-                if (open) requestViewOpen(true);
-              }}
-              onArrangementChange={(arrangement): void => {
-                viewMenuProps.onArrangementChange?.(arrangement);
-                requestViewOpen(false);
-              }}
-              onWorkspaceVisibilityChange={(visible): void => {
-                viewMenuProps.onWorkspaceVisibilityChange?.(visible);
-                requestViewOpen(false);
-              }}
-              anchorStyle={narrowMenuAnchor}
-              showTrigger={false}
-            />
-          )}
-        </>
       ) : null}
     </nav>
   );

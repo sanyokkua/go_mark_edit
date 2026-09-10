@@ -7,7 +7,7 @@
 }
 
 .action,
-.overflow summary {
+.overflowTrigger {
   background: var(--surface-raised);
   border: var(--control-border-width) solid var(--border);
   color: var(--text);
@@ -97,7 +97,7 @@
 }
 
 .action:focus-visible,
-.overflow summary:focus-visible {
+.overflowTrigger:focus-visible {
   box-shadow: var(--focus-ring);
   outline: 0;
   outline-offset: 2px;
@@ -361,46 +361,27 @@
   flex: 0 0 auto;
 }
 
-.overflow summary {
+.overflowTrigger {
   align-items: center;
   border-radius: var(--arrangement-option-radius);
   cursor: pointer;
   display: inline-flex;
   height: var(--toolbar-action-height);
   justify-content: center;
-  list-style: none;
   min-width: var(--toolbar-action-min-width);
   padding: 0 var(--toolbar-action-padding-inline);
 }
 
-.overflow summary::-webkit-details-marker {
-  display: none;
-}
-
 .overflowContent {
-  backdrop-filter: var(--blur);
-  background: var(--surface-raised);
-  border: var(--control-border-width) solid var(--border);
-  border-radius: var(--popup-radius);
-  box-shadow: var(--win-shadow);
   display: grid;
   gap: var(--toolbar-group-gap);
   grid-template-columns: minmax(0, 1fr);
   inline-size: min(var(--popup-min-width), calc(100vw - 2 * var(--app-gap)));
-  min-inline-size: var(--popup-min-width);
-  padding: var(--popup-padding);
-  position: fixed;
-  z-index: var(--z-dropdown);
 }
 
 .narrowOverflowContent {
-  backdrop-filter: none;
-  border-radius: 11px;
   display: block;
   gap: 0;
-  inline-size: 212px;
-  min-inline-size: 212px;
-  padding: 6px;
 }
 
 .applicationOverflowItems {
@@ -408,37 +389,6 @@
   margin-block-start: 4px;
   padding-block-start: 0;
   height: 119px;
-}
-
-.applicationOverflowItem,
-.applicationOverflowItemFirst {
-  align-items: center;
-  appearance: none;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  box-sizing: border-box;
-  color: var(--text);
-  display: flex;
-  font: inherit;
-  font-size: 12px;
-  line-height: normal;
-  min-height: 29px;
-  padding: 7px 10px;
-  text-align: start;
-  width: 100%;
-  -webkit-appearance: none;
-}
-
-.applicationOverflowItemFirst {
-  border-block-start: var(--control-border-width) solid var(--stroke-soft);
-  min-height: 32px;
-  padding-block: 9px 7px;
-}
-
-.applicationOverflowItem:hover,
-.applicationOverflowItemFirst:hover {
-  background: var(--hover);
 }
 
 .overflowAt768,

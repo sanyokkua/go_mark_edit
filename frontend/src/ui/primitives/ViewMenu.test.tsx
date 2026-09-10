@@ -5,14 +5,17 @@ import { resolve } from 'node:path';
 import * as actionDispatcher from '../../logic/actions/actionDispatcher';
 import ViewMenu from './ViewMenu';
 
-it('T045 keeps the Radix view popup in the Popper positioning flow', (): void => {
+it('T045 keeps the shared Popup surface in the frame positioning flow', (): void => {
   const surfaceStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/primitives/MenuSurface.module.css'),
+    resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'),
     'utf8',
   );
 
-  // The surface is owned once, by MenuSurface, for every menu popup.
-  expect(surfaceStyles).toMatch(/\.surface\s*\{[^}]*position:\s*relative;/s);
+  // The surface is owned once, by Popup, for every menu popup.
+  expect(surfaceStyles).toMatch(/\.surface\s*\{[^}]*position:\s*absolute;/s);
+  expect(surfaceStyles).toContain(
+    'box-shadow: var(--win-shadow), var(--focus-ring)',
+  );
 });
 
 it('renders synchronized pane toggles without an unlisted view-cycle shortcut', (): void => {

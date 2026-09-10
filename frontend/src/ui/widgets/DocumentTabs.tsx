@@ -30,6 +30,7 @@ import {
 } from '../../logic/actions/shortcutRegistry';
 import { t } from '../../i18n';
 import LiveRegion from '../primitives/LiveRegion';
+import type { PopupAnchor } from '../components/Popup';
 import ExternalChangePrompt, {
   type ExternalChangeDecision,
 } from './ExternalChangePrompt';
@@ -189,6 +190,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   const [contextDocumentId, setContextDocumentId] = useState<string | null>(
     null,
   );
+  const [contextAnchor, setContextAnchor] = useState<PopupAnchor | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const [conflictPreview, setConflictPreview] =
     useState<ConflictPreview | null>(null);
@@ -1217,6 +1219,22 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                     onContextMenu={(event): void => {
                       event.preventDefault();
                       setContextDocumentId(document.documentId);
+                      setContextAnchor({
+                        point: { x: event.clientX, y: event.clientY },
+                      });
+                    }}
+                    onKeyDown={(event): void => {
+                      if (
+                        event.key !== 'ContextMenu' &&
+                        !(event.key === 'F10' && event.shiftKey)
+                      ) {
+                        return;
+                      }
+                      event.preventDefault();
+                      setContextDocumentId(document.documentId);
+                      setContextAnchor({
+                        bounds: event.currentTarget.getBoundingClientRect(),
+                      });
                     }}
                     onPointerDown={(event): void => {
                       if (event.button !== 0) return;
@@ -1319,11 +1337,13 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       {contextDocument !== undefined && contextIndex >= 0 ? (
         <TabContextMenu
           adapter={contextAdapter}
+          anchor={contextAnchor ?? { point: { x: 0, y: 0 } }}
           document={contextDocument}
           index={contextIndex}
           onAction={handleTabAction}
           onClose={(options?: TabContextCloseOptions): void => {
             setContextDocumentId(null);
+            setContextAnchor(null);
             const documentId = contextDocument.documentId;
             cancelPendingFocusRestore.current?.();
             cancelPendingFocusRestore.current = null;

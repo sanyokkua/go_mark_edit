@@ -36,7 +36,11 @@ it('T030 derives the exact context-menu order and surface-specific inventory', (
   });
 
   expect(
-    screen.getAllByRole('menuitem').map((item) => item.textContent),
+    screen
+      .getAllByRole('menuitem')
+      .map(
+        (item) => item.querySelector('span')?.textContent ?? item.textContent,
+      ),
   ).toEqual([
     'Cut',
     'Copy',
@@ -61,6 +65,24 @@ it('T030 derives the exact context-menu order and surface-specific inventory', (
   expect(
     screen.getByRole('menuitem', { name: 'Command palette' }),
   ).toBeDisabled();
+});
+
+// Proves: FR-034
+it('T022 opens the context Popup from the keyboard-focused editor', () => {
+  render(
+    <EditorContextMenu>
+      <textarea aria-label="Markdown source" />
+    </EditorContextMenu>,
+  );
+
+  const editor = screen.getByLabelText('Markdown source');
+  editor.focus();
+  fireEvent.keyDown(editor, { key: 'ContextMenu' });
+
+  expect(
+    screen.getByRole('menu', { name: 'Editor context menu' }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('menuitem', { name: 'Cut' })).toHaveFocus();
 });
 
 it('T071 clamps context-menu placement and uses the selection captured at opening', async () => {

@@ -1,25 +1,25 @@
 import {
-  useCallback,
+  Fragment,
   useContext,
-  useEffect,
-  useLayoutEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PropsWithChildren,
 } from 'react';
-import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
 import {
   actionsForSurface,
   getAction,
+  getActionAvailability,
   type ActionId,
   type ActionEntry,
 } from '../../logic/actions/actionRegistry';
-import { dispatchAction } from '../../logic/actions/actionDispatcher';
-import { getActionAvailability } from '../../logic/actions/actionRegistry';
+import {
+  dispatchAction,
+  type ActionResult,
+} from '../../logic/actions/actionDispatcher';
 import { useEditingProjection } from '../../logic/hooks/useEditingProjection';
-import type { ActionResult } from '../../logic/actions/actionDispatcher';
 import {
   currentPlatform,
   formatShortcut,
@@ -29,8 +29,10 @@ import {
   formatActionIds,
 } from '../../logic/format/formatting';
 import type { EditorSelection } from '../components/CodeEditor';
-import { DocumentCommandContext, EditorSessionContext } from './editorSession';
+import MenuItem from '../components/MenuItem';
+import Popup, { PopupSeparator } from '../components/Popup';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
+import { DocumentCommandContext, EditorSessionContext } from './editorSession';
 import styles from './EditorContextMenu.module.css';
 
 export interface EditorContextMenuProps extends PropsWithChildren {
@@ -47,8 +49,6 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 }: EditorContextMenuProps): React.JSX.Element => {
   const commands = useContext(DocumentCommandContext);
   const activeBuffer = useContext(EditorSessionContext);
-  // FR-FT-006 / T178: ask the registry whether each command is available for
-  // this document, rather than reading the static entry, which cannot see it.
   const editingProjection = useEditingProjection(activeBuffer?.documentId);
   const itemUnavailable = (item: {
     id: Parameters<typeof getActionAvailability>[0];
@@ -59,70 +59,39 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
       getActionAvailability(item.id, { projectedState: editingProjection })
         .kind === 'unavailable');
   const { markdownSettings } = useEditorSettings();
-  const menuRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const selectionSnapshotRef = useRef<EditorSelection | null>(null);
-  const pointerRef = useRef<{ left: number; top: number } | null>(null);
-  const [point, setPoint] = useState<{ left: number; top: number } | null>(
-    null,
-  );
+  const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
 
-  const positionMenu = useCallback((): void => {
-    const pointer = pointerRef.current;
-    if (pointer === null || menuRef.current === null) return;
+  const openFromTarget = (
+    target: EventTarget | null,
+    nextPoint: { x: number; y: number },
+  ): void => {
+    const selection = commands?.getSelection();
+    selectionSnapshotRef.current =
+      selection?.status === 'available' ? selection.value : null;
+    openerRef.current = target instanceof HTMLElement ? target : null;
+    setPoint(nextPoint);
+  };
 
-    const margin = 8;
-    const bounds = menuRef.current.getBoundingClientRect();
-    const left = Math.min(
-      Math.max(margin, pointer.left),
-      Math.max(margin, window.innerWidth - bounds.width - margin),
-    );
-    const below = pointer.top;
-    const above = pointer.top - bounds.height - margin;
-    const top =
-      below + bounds.height <= window.innerHeight - margin
-        ? below
-        : Math.max(margin, above);
-    setPoint((current): { left: number; top: number } | null =>
-      current?.left === left && current.top === top ? current : { left, top },
-    );
-  }, []);
-
-  useLayoutEffect((): (() => void) | undefined => {
-    if (point === null) return undefined;
-    positionMenu();
-    window.addEventListener('resize', positionMenu);
-    window.addEventListener('scroll', positionMenu, true);
-    return (): void => {
-      window.removeEventListener('resize', positionMenu);
-      window.removeEventListener('scroll', positionMenu, true);
-    };
-  }, [point, positionMenu]);
-
-  useEffect((): (() => void) => {
-    const dismiss = (event: PointerEvent): void => {
-      if (menuRef.current?.contains(event.target as Node)) return;
-      setPoint(null);
-      openerRef.current?.focus();
-    };
-    document.addEventListener('pointerdown', dismiss);
-    return (): void => document.removeEventListener('pointerdown', dismiss);
-  }, []);
-
-  useEffect((): void => {
-    if (point !== null) menuRef.current?.focus();
-  }, [point]);
-
-  useEffect((): (() => void) => {
-    const dismissOnEscape = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || point === null) return;
-      event.preventDefault();
-      setPoint(null);
-      openerRef.current?.focus();
-    };
-    document.addEventListener('keydown', dismissOnEscape);
-    return (): void => document.removeEventListener('keydown', dismissOnEscape);
-  }, [point]);
+  const openFromKeyboard = (
+    event: ReactKeyboardEvent<HTMLDivElement>,
+  ): void => {
+    if (
+      event.key !== 'ContextMenu' &&
+      !(event.key === 'F10' && event.shiftKey)
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const target =
+      event.target instanceof HTMLElement ? event.target : event.currentTarget;
+    const bounds = target.getBoundingClientRect();
+    openFromTarget(target, {
+      x: bounds.left + Math.min(bounds.width / 2, 16),
+      y: bounds.top + Math.min(bounds.height / 2, 16),
+    });
+  };
 
   const activate = (actionId: ActionId): void => {
     onAction?.(actionId);
@@ -207,7 +176,6 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
       onActionResult?.(result);
     });
     setPoint(null);
-    openerRef.current?.focus();
   };
 
   return (
@@ -215,70 +183,50 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
       className={styles.host}
       onContextMenu={(event): void => {
         event.preventDefault();
-        const selection = commands?.getSelection();
-        selectionSnapshotRef.current =
-          selection?.status === 'available' ? selection.value : null;
-        openerRef.current = event.target as HTMLElement;
-        pointerRef.current = { left: event.clientX, top: event.clientY };
-        setPoint(pointerRef.current);
+        openFromTarget(event.target, { x: event.clientX, y: event.clientY });
       }}
+      onKeyDown={openFromKeyboard}
     >
       {children}
-      {point === null
-        ? null
-        : createPortal(
-            <div
-              ref={menuRef}
-              aria-label={t('editor.contextMenu')}
-              className={styles.menu}
-              data-viewport-popup="context-menu"
-              role="menu"
-              style={{ left: point.left, top: point.top }}
-              tabIndex={-1}
-              onContextMenu={(event): void => event.preventDefault()}
-            >
-              {contextActions.map((item: ActionEntry) =>
-                item.separatorBefore?.includes('context') === true ? (
-                  <div key={`separator-before-${item.id}`}>
-                    <div aria-hidden="true" className={styles.separator} />
-                    <button
-                      aria-keyshortcuts={
-                        item.shortcut === undefined
-                          ? undefined
-                          : formatShortcut(item.shortcut, currentPlatform())
-                      }
-                      className={styles.item}
-                      data-action-id={item.id}
-                      disabled={itemUnavailable(item)}
-                      role="menuitem"
-                      type="button"
-                      onClick={(): void => activate(item.id)}
-                    >
-                      {t(item.surfaceLabelKeys?.context ?? item.labelKey)}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    aria-keyshortcuts={
-                      item.shortcut === undefined
-                        ? undefined
-                        : formatShortcut(item.shortcut, currentPlatform())
-                    }
-                    className={styles.item}
-                    data-action-id={item.id}
-                    disabled={itemUnavailable(item)}
-                    key={item.id}
-                    role="menuitem"
-                    type="button"
-                    onClick={(): void => activate(item.id)}
-                  >
-                    {t(item.surfaceLabelKeys?.context ?? item.labelKey)}
-                  </button>
-                ),
-              )}
-            </div>,
-            document.body,
-          )}
+      <Popup
+        anchor={{ point: point ?? { x: 0, y: 0 } }}
+        aria-label={t('editor.contextMenu')}
+        data-viewport-popup="context-menu"
+        initialFocus="first"
+        open={point !== null}
+        returnFocusTo={openerRef}
+        role="menu"
+        size="menu"
+        onContextMenu={(event): void => event.preventDefault()}
+        onOpenChange={(open): void => {
+          if (!open) setPoint(null);
+        }}
+      >
+        {contextActions.map((item: ActionEntry) => {
+          const accelerator =
+            item.shortcut === undefined
+              ? undefined
+              : formatShortcut(item.shortcut, currentPlatform());
+          const menuItem = (
+            <MenuItem
+              accelerator={accelerator}
+              aria-keyshortcuts={accelerator}
+              data-action-id={item.id}
+              disabled={itemUnavailable(item)}
+              label={t(item.surfaceLabelKeys?.context ?? item.labelKey)}
+              onSelect={(): void => activate(item.id)}
+            />
+          );
+          return item.separatorBefore?.includes('context') === true ? (
+            <Fragment key={'separator-before-' + item.id}>
+              <PopupSeparator />
+              {menuItem}
+            </Fragment>
+          ) : (
+            <Fragment key={item.id}>{menuItem}</Fragment>
+          );
+        })}
+      </Popup>
     </div>
   );
 };

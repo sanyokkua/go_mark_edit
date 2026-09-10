@@ -59,6 +59,15 @@ const identityDocument: DocumentMetadata = {
   },
 };
 
+function menuItemLabels(root: HTMLElement): string[] {
+  return within(root)
+    .getAllByRole('menuitem')
+    .map(
+      (item) =>
+        item.querySelector('span')?.textContent ?? item.textContent ?? '',
+    );
+}
+
 it('T033 keeps popup accelerators, group labels, separators, and viewport sizing tokenized', () => {
   const menuStyles = readFileSync(
     resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
@@ -68,13 +77,12 @@ it('T033 keeps popup accelerators, group labels, separators, and viewport sizing
     resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
     'utf8',
   );
-  /*
-   * The popup surface, rows, accelerators and separators are owned once by
-   * MenuSurface.module.css, so the shared assertions read that file. A rule that
-   * still lives in a per-menu stylesheet is menu-specific by definition.
-   */
-  const surfaceStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/primitives/MenuSurface.module.css'),
+  const popupStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'),
+    'utf8',
+  );
+  const menuItemStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/components/MenuItem/MenuItem.module.css'),
     'utf8',
   );
   const settingsStyles = readFileSync(
@@ -82,30 +90,21 @@ it('T033 keeps popup accelerators, group labels, separators, and viewport sizing
     'utf8',
   );
 
-  expect(menuStyles).toContain('min-width: var(--popup-min-width)');
-  expect(menuStyles).toContain('font-size: var(--popup-accelerator-font-size)');
-  expect(menuStyles).toContain('font-size: var(--popup-group-font-size)');
-  expect(menuStyles).toContain('content: attr(data-shortcut)');
+  expect(menuStyles).toContain('height: var(--menu-row-height)');
   expect(menuSource).toContain('menuDecoration(item.id)');
-  expect(menuSource).toContain('data-shortcut={shortcutForMenuItem');
+  expect(menuSource).toContain('accelerator={shortcutForMenuItem');
   expect(menuSource).toContain("'open-recent'");
-  expect(surfaceStyles).toContain('min-inline-size: var(--popup-min-width)');
-  expect(surfaceStyles).toContain('font-size: var(--popup-row-font-size)');
-  expect(surfaceStyles).toContain('content: attr(data-shortcut)');
-  expect(surfaceStyles).toContain('opacity: var(--disabled-opacity)');
-  /*
-   * The Settings popup now draws its surface from MenuSurface, so the radius and
-   * min-width are asserted against their single owner rather than against a copy
-   * in the per-menu file — the rule this test's own comment states.
-   */
-  expect(surfaceStyles).toContain('border-radius: var(--popup-radius)');
-  /*
-   * What is left in the Settings stylesheet is menu-specific by that same rule:
-   * the accelerator span the shared `::after` cannot express readably.
-   */
-  expect(settingsStyles).toContain(
+  expect(popupStyles).toContain('min-inline-size: var(--popup-min-width)');
+  expect(popupStyles).toContain('border-radius: var(--popup-radius)');
+  expect(popupStyles).toContain('box-shadow: var(--win-shadow)');
+  expect(popupStyles).toContain(
+    'box-shadow: var(--win-shadow), var(--focus-ring)',
+  );
+  expect(menuItemStyles).toContain(
     'font-size: var(--popup-accelerator-font-size)',
   );
+  expect(menuItemStyles).toContain('opacity: var(--disabled-opacity)');
+  expect(menuItemStyles).toContain('.item[data-highlighted]');
   expect(settingsStyles).not.toContain(
     'min-inline-size: var(--popup-min-width)',
   );
@@ -127,7 +126,7 @@ afterEach(() => {
  * an 8px radius against the binding's 7px, and Settings never opened on
  * ArrowDown.
  *
- * They now all render `MenuTrigger`. Asserted through the shared class name and
+ * They now all render `PopupTrigger`. Asserted through the shared class name and
  * the shared contract rather than through computed colour, because jsdom applies
  * no stylesheet — what is provable here is that one owner draws all of them.
  */
@@ -228,9 +227,7 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
     'data-viewport-popup',
     'file-menu',
   );
-  expect(
-    screen.getAllByRole('menuitem').map((item) => item.textContent),
-  ).toEqual([
+  expect(menuItemLabels(screen.getByRole('menu', { name: 'File' }))).toEqual([
     'New File',
     'New Window',
     'Open File…',
@@ -249,10 +246,9 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
   });
 
   fireEvent.click(within(menu).getByRole('button', { name: 'About' }));
-  expect(screen.getByRole('menu', { name: 'About' })).toHaveAttribute(
-    'data-viewport-popup',
-    'about-menu',
-  );
+  expect(
+    screen.getByRole('menu', { name: 'About GoMarkEdit' }),
+  ).toHaveAttribute('data-viewport-popup', 'about-menu');
   fireEvent.click(screen.getByRole('menuitem', { name: 'About GoMarkEdit' }));
   expect(onAbout).toHaveBeenCalledTimes(1);
 });
@@ -386,7 +382,7 @@ it('T018 moves the same ordered top-level actions into overflow at narrow width'
   const overflow = screen.getByRole('button', { name: 'More actions' });
   fireEvent.keyDown(overflow, { key: 'ArrowDown' });
   expect(
-    screen.getAllByRole('menuitem').map((item) => item.textContent),
+    menuItemLabels(screen.getByRole('menu', { name: 'Application actions' })),
   ).toEqual(['File', 'Settings', 'View', 'About']);
 
   fireEvent.click(screen.getByRole('menuitem', { name: 'Settings' }));
@@ -499,7 +495,7 @@ it('T091 places the functional sidebar and deferred Assistant controls at the me
 //   message when no recent files exist" clause; the six-entry cap, the
 //   functional New/Open actions and the no-session-restore clause are proven by
 //   Launcher.test.tsx and real-files-and-tabs.test.ts)
-it('T154 shows the defined empty message in the narrow Open Recent submenu', () => {
+it('T154 shows the defined empty message in the narrow Open Recent group', () => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
     value: 375,
@@ -519,17 +515,13 @@ it('T154 shows the defined empty message in the narrow Open Recent submenu', () 
   fireEvent.click(screen.getByRole('menuitem', { name: 'File' }));
 
   const fileMenu = screen.getByRole('menu', { name: 'File' });
-  const recent = within(fileMenu).getByRole('group', { name: 'Open Recent' });
-  expect(within(recent).getByText('No recent files yet.')).toBeVisible();
-  // The group's only remaining menuitem is its own `Open Recent` trigger,
-  // which the registry already marks unavailable when there is no history.
+  expect(within(fileMenu).getByText('Open Recent')).toBeVisible();
+  expect(within(fileMenu).getByText('No recent files yet.')).toBeVisible();
   expect(
-    within(recent)
-      .getAllByRole('menuitem')
-      .map((item) => item.textContent),
-  ).toEqual(['Open Recent']);
-  expect(within(recent).queryByText('release-notes.md')).toBeNull();
-  expect(within(recent).queryByText('spec-draft.md')).toBeNull();
+    within(fileMenu).queryByRole('menuitem', { name: 'Open Recent' }),
+  ).toBeNull();
+  expect(within(fileMenu).queryByText('release-notes.md')).toBeNull();
+  expect(within(fileMenu).queryByText('spec-draft.md')).toBeNull();
 });
 
 it('T085 repositions a narrow File popup from the overflow anchor after a resize', async () => {
@@ -566,66 +558,44 @@ it('T085 repositions a narrow File popup from the overflow anchor after a resize
   );
 });
 
-it('T045 keeps Radix shell popups in the Popper positioning flow', () => {
+it('T045 delegates shell popup lifecycle and sizing to Popup', () => {
   const shellSource = readFileSync(
     resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
     'utf8',
   );
-  const shellStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+  const popupStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'),
     'utf8',
   );
 
-  // The overflow, File and About popups keep the Radix content class; the
-  // recent-files submenu was replaced by the binding's inline recent rows.
-  expect(shellSource.match(/styles\.radixOverflow/g)).toHaveLength(3);
-  expect(shellStyles).toMatch(
-    /\.radixOverflow\s*\{[^}]*position:\s*relative;/s,
-  );
-  expect(shellStyles).toContain(
-    'var(--radix-dropdown-menu-content-available-height)',
-  );
+  expect(shellSource).toContain('<Popup');
+  expect(shellSource).toContain('onOpenChange={setFileOpen}');
+  expect(shellSource).toContain('onOpenChange={setAboutOpen}');
+  expect(shellSource).not.toContain('DropdownMenu');
+  expect(popupStyles).toContain('position: absolute');
+  expect(popupStyles).toContain('box-shadow: var(--win-shadow)');
 });
 
-it('T070 anchors the File popup at the binding dropdown coordinates', () => {
+it('T070 anchors the File popup through the shared trigger contract', () => {
   const shellSource = readFileSync(
     resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
     'utf8',
   );
-  const shellStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
-    'utf8',
-  );
-  const tokens = readFileSync(
-    resolve(process.cwd(), 'src/ui/styles/tokens.css'),
-    'utf8',
-  );
-
-  // Binding source: mockup.html `#m-file{left:96px}` with `.dropdown{top:42px}`.
-  expect(tokens).toContain('--file-menu-popup-left: 96px;');
-  expect(tokens).toContain('--file-menu-popup-top: 42px;');
-  expect(shellStyles).toMatch(
-    /\.fileMenu\s*\{[^}]*inset:\s*var\(--file-menu-popup-top\) auto auto var\(--file-menu-popup-left\);/s,
-  );
-  expect(shellStyles).toMatch(/\.fileMenu\s*\{[^}]*position:\s*absolute;/s);
-  expect(shellStyles).toMatch(/\.fileMenu\s*\{[^}]*width:\s*max-content;/s);
-  // The popup is portalled into the frame so those coordinates resolve against
-  // the same box the binding dropdown uses.
-  expect(shellSource).toContain(
-    '<DropdownMenu.Portal container={applicationFrame()}>',
-  );
+  expect(shellSource).toContain('ref={captureFileTrigger}');
+  expect(shellSource).toContain('anchor={{ trigger: fileTrigger }}');
+  expect(shellSource).toContain('data-viewport-popup="file-menu"');
+  expect(shellSource).not.toContain('DropdownMenu.Portal');
 });
 
-it('T045 keeps the narrow View anchor row-relative under glass blur', () => {
+it('T045 keeps the narrow View popup anchored to the shared overflow trigger', () => {
   const shellSource = readFileSync(
     resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
     'utf8',
   );
 
-  expect(shellSource).toMatch(
-    /const narrowMenuAnchor[\s\S]*?position:\s*'absolute'/s,
-  );
-  expect(shellSource).toContain('ref={menuRowRef}');
+  expect(shellSource).toContain('anchorRef={overflowTriggerRef}');
+  expect(shellSource).toContain('showTrigger={false}');
+  expect(shellSource).not.toContain('narrowMenuAnchor');
 });
 
 it('FR-WS-008 switches to the keyboard-reachable overflow only at the 375-pixel state', () => {
@@ -658,7 +628,7 @@ it('FR-WS-008 switches to the keyboard-reachable overflow only at the 375-pixel 
   expect(overflow).toHaveFocus();
   fireEvent.keyDown(overflow, { key: 'ArrowDown' });
   expect(
-    screen.getAllByRole('menuitem').map((item) => item.textContent),
+    menuItemLabels(screen.getByRole('menu', { name: 'Application actions' })),
   ).toEqual(['File', 'Settings', 'View', 'About']);
 });
 
@@ -679,19 +649,25 @@ it('T060 keeps a localized short About trigger separate from the long catalogue 
   expect(shellStyles).toMatch(/text-overflow:\s*ellipsis/);
 });
 
-it('T033 keeps menu and popup geometry on the binding metric tokens', () => {
+it('T033 keeps menu and popup geometry on the shared metric tokens', () => {
   const shellStyles = readFileSync(
     resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
     'utf8',
   );
+  const popupStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'),
+    'utf8',
+  );
+  const menuItemStyles = readFileSync(
+    resolve(process.cwd(), 'src/ui/components/MenuItem/MenuItem.module.css'),
+    'utf8',
+  );
 
   expect(shellStyles).toContain('height: var(--menu-row-height)');
-  expect(shellStyles).toContain('padding: var(--menu-trigger-padding)');
-  expect(shellStyles).toContain('border-radius: var(--menu-trigger-radius)');
-  expect(shellStyles).toContain('min-width: var(--popup-min-width)');
-  expect(shellStyles).toContain('padding: var(--popup-padding)');
-  expect(shellStyles).toContain('padding: var(--popup-row-padding)');
-  expect(shellStyles).toContain('font-size: var(--popup-row-font-size)');
+  expect(popupStyles).toContain('padding: var(--popup-padding)');
+  expect(popupStyles).toContain('border-radius: var(--popup-radius)');
+  expect(menuItemStyles).toContain('padding: var(--popup-row-padding)');
+  expect(menuItemStyles).toContain('font-size: var(--popup-row-font-size)');
 });
 
 it('T041 keeps the in-app row on the binding titlebar geometry without native chrome', () => {
@@ -739,13 +715,14 @@ it('T058 keeps the implemented desktop menubar grouped and keyboard-reachable', 
   ).toBe(true);
 });
 
-it('T089 registers each desktop menu label as a Radix popup anchor', () => {
+it('T089 registers each desktop menu label as a Popup trigger', () => {
   const shellSource = readFileSync(
     resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
     'utf8',
   );
 
-  expect(shellSource.match(/<DropdownMenu\.Trigger asChild>/g)).toHaveLength(3);
+  expect(shellSource.match(/<PopupTrigger/g)).toHaveLength(3);
+  expect(shellSource).not.toContain('DropdownMenu.Trigger');
 });
 
 it('T061 dispatches Settings Appearance and About actions through the canonical route', async () => {
@@ -1196,7 +1173,7 @@ it('T157 keeps every menubar action reachable and named in full under a much lon
 // geometry tests in this file use.
 it('T157 clips a long menubar label instead of growing the row', () => {
   const triggerStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/primitives/MenuSurface.module.css'),
+    resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'),
     'utf8',
   );
   const shellStyles = readFileSync(

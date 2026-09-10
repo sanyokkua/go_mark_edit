@@ -280,7 +280,11 @@ it('Move tab actions sit between close and path groups', () => {
 
   fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/ }));
   expect(
-    screen.getAllByRole('menuitem').map((item) => item.textContent),
+    screen
+      .getAllByRole('menuitem')
+      .map(
+        (item) => item.querySelector('span')?.textContent ?? item.textContent,
+      ),
   ).toEqual([
     'Close Tab',
     'Close Others',
@@ -307,6 +311,27 @@ it('Move tab is unavailable at each strip edge', () => {
   expect(
     screen.getByRole('menuitem', { name: 'Move tab right' }),
   ).toBeDisabled();
+});
+
+// Proves: FR-034
+it('T022 opens the tab Popup from the keyboard-focused tab bounds', () => {
+  const first = documentFor('one', '/repo/one.md');
+  const second = documentFor('two', '/repo/two.md');
+  hydrate([first, second]);
+  renderTabs();
+
+  const tab = screen.getByRole('tab', { name: /one\.md/u });
+  Object.defineProperty(tab, 'getBoundingClientRect', {
+    configurable: true,
+    value: (): DOMRect => new DOMRect(40, 20, 100, 30),
+  });
+  tab.focus();
+  fireEvent.keyDown(tab, { key: 'ContextMenu' });
+
+  const menu = screen.getByRole('menu', { name: 'Tab actions' });
+  expect(menu).toHaveAttribute('data-viewport-popup', 'tab-menu');
+  expect(menu).toHaveStyle({ left: '40px', top: '50px' });
+  expect(screen.getByRole('menuitem', { name: 'Close Tab' })).toHaveFocus();
 });
 
 it('Move tab waits for backend confirmation before projecting order', async () => {
