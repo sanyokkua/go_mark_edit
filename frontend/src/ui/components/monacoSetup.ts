@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import 'monaco-editor/esm/vs/editor/browser/coreCommands';
 import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 

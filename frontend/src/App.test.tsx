@@ -1249,6 +1249,55 @@ it('Save reports exactly one confirmation', async () => {
   act((): void => disposeAppModelProjection());
 });
 
+// Proves: FR-006
+it('keeps the working buffer when a committed Save rehydrates the projection', async () => {
+  act((): void => disposeAppModelProjection());
+  store.dispatch(resetProjection());
+  store.dispatch(resetNotifications());
+  mockedAppModelAdapter.getState.mockReset();
+  mockedAppModelAdapter.subscribeStatePatches.mockReset();
+  mockedAppModelAdapter.getState.mockResolvedValue(
+    bootstrapState('working copy before Save', 12),
+  );
+  mockedAppModelAdapter.subscribeStatePatches.mockReturnValue(jest.fn());
+  mockedAppModelAdapter.reconcileCommittedWrite
+    .mockReset()
+    .mockResolvedValue(bootstrapState('buffer returned by reconciliation', 13));
+  mockedDocumentWriteAdapter.save.mockReset().mockResolvedValue({
+    status: 'committed',
+    data: {
+      documentId: 'document-1',
+      writtenContentRevision: 2,
+      committedProjectionRevision: 13,
+      targetPath: '/documents/one.md',
+      targetPathAdopted: false,
+      lineEndingOutcome: 'preserved-lf',
+      bomOutcome: 'absent',
+      resyncRequired: false,
+    },
+  });
+
+  render(<App />);
+  const workingBuffer = await screen.findByLabelText('Active editor buffer');
+  expect(workingBuffer).toHaveTextContent('working copy before Save');
+
+  fireEvent.click(await screen.findByRole('button', { name: 'File' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Save' }));
+
+  await waitFor((): void => {
+    expect(screen.getByText('Saved one.md · UTF-8 · LF')).toBeVisible();
+  });
+  expect(workingBuffer).toHaveTextContent('working copy before Save');
+  expect(workingBuffer).not.toHaveTextContent(
+    'buffer returned by reconciliation',
+  );
+
+  act((): void => {
+    store.dispatch(resetNotifications());
+  });
+  act((): void => disposeAppModelProjection());
+});
+
 /*
  * T160 — FR-FT-023's recreate arm, which `beginWrite` vetoed outright.
  *

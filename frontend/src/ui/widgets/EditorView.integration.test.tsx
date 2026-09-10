@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { Provider } from 'react-redux';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IRange, ISelection } from 'monaco-editor';
@@ -405,6 +405,28 @@ function createRenderedEditorAdapter(): EditorViewAdapter {
   };
 }
 
+const CommittedWriteHarness: React.FC<{
+  adapter: EditorViewAdapter;
+}> = ({ adapter }): React.JSX.Element => {
+  const [content, setContent] = useState('# Before the committed write');
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(): void => setContent('# After the committed write')}
+      >
+        Apply committed-write patch
+      </button>
+      <EditorSessionProvider
+        activeBuffer={{ documentId: 'document-1', content }}
+      >
+        <EditorView adapter={adapter} />
+      </EditorSessionProvider>
+    </>
+  );
+};
+
 function appearanceSettings(
   theme: 'glass' | 'material' | 'minimal',
   mode: 'light' | 'dark',
@@ -510,6 +532,51 @@ it('FR-WS-017 ships a zero-duration reduced-motion override beside the rendered 
   expect(rootRule?.style.getPropertyValue('--dur-base')).toBe('0ms');
   expect(rootRule?.style.getPropertyValue('--dur-slow')).toBe('0ms');
   stylesheet.remove();
+});
+
+// Proves: FR-006
+it('keeps the editor activation token when a committed-write patch changes the buffer object', async () => {
+  const document = statusDocument({
+    view: {
+      arrangement: 'editor',
+      editorVisible: true,
+      previewVisible: false,
+      cursor: { line: 1, column: 1 },
+      selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+      },
+      scroll: { editor: 0, preview: 0 },
+    },
+  });
+  store.dispatch(
+    hydrateProjection({
+      revision: 1,
+      documents: { [document.documentId]: document },
+      activeDocumentId: document.documentId,
+      ui: {},
+    }),
+  );
+
+  render(
+    <Provider store={store}>
+      <CommittedWriteHarness adapter={createRenderedEditorAdapter()} />
+    </Provider>,
+  );
+  await screen.findByRole('textbox', { name: 'Markdown source' });
+  await waitFor((): void => {
+    expect(mockRuntime.props?.path).toEqual(expect.any(String));
+  });
+  const activationPath = mockRuntime.props?.path;
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Apply committed-write patch' }),
+  );
+
+  await waitFor((): void => {
+    expect(mockRuntime.props?.path).toBe(activationPath);
+  });
+  expect(mockRuntime.editor.dispose).not.toHaveBeenCalled();
 });
 
 it('STORY-023-AC-4 preserves replacement undo and UpdateBuffer routing', async () => {

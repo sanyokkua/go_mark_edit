@@ -1296,7 +1296,15 @@ const AppContents: React.FC = (): React.JSX.Element => {
           );
         } else {
           setRecoverySurface(null);
-          if (recovered.activeBuffer !== null) {
+          /*
+           * A normal committed write already came from this editor session.
+           * Reinstalling the hydrated buffer here replaces Monaco's working
+           * model after Save and loses its undo history, selection and focus.
+           * A projection-delivery failure is different: reconciliation is the
+           * recovery path that is allowed to replace the buffer with the
+           * backend's authoritative state.
+           */
+          if (result.data.resyncRequired && recovered.activeBuffer !== null) {
             replaceActiveBuffer(recovered.activeBuffer);
           }
         }

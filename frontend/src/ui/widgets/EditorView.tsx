@@ -525,7 +525,7 @@ const EditorView: React.FC<EditorViewProps> = ({
           </header>
           <EditorContextMenu>
             <ActiveEditor
-              key={`${activeBuffer.documentId}:${activeBuffer.content}`}
+              key={activeBuffer.documentId}
               ref={activeEditorRef}
               adapter={adapter}
               activeBuffer={activeBuffer}
