@@ -14,8 +14,8 @@ import {
   hydrateProjection,
   resetProjection,
 } from '../../src/logic/store/appModelProjectionActions';
-import DocumentTabs from '../../src/ui/widgets/DocumentTabs';
-import ExternalChangePrompt from '../../src/ui/widgets/ExternalChangePrompt';
+import DocumentTabs from '../../src/ui/widgets/DocumentTabs/DocumentTabs';
+import ExternalChangePrompt from '../../src/ui/widgets/dialogs/ExternalChangePrompt';
 import { onApplicationForeground } from '../../src/ui/widgets/foregroundFocus';
 
 function documentFor(documentId: string, path: string): DocumentMetadata {

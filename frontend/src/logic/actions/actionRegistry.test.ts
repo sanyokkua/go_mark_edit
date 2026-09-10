@@ -8,7 +8,7 @@ import {
 } from './actionRegistry';
 
 // Proves: FR-FT-047 (partial — registry and catalogue derivation; longer-text
-// tolerance is proved by the two T157 cases at the end of ShellMenuRow.test.tsx)
+// tolerance is proved by the two T157 cases at the end of Menubar.test.tsx)
 it('T002 exposes one localized registry entry for every Editor-stage identity', () => {
   const ids = actionRegistry.map((entry) => entry.id);
   expect(new Set(ids).size).toBe(ids.length);

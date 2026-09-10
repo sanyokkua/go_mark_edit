@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import StartupFailure from '../../src/ui/widgets/StartupFailure';
+import StartupFailure from '../../src/ui/widgets/StartupFailure/StartupFailure';
 
 it('names a failed settings step with its safe category and offers both actions', () => {
   const onRetry = jest.fn();

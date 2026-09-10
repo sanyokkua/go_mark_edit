@@ -6,52 +6,43 @@ import {
   useEffect,
 } from 'react';
 
-import { t } from '../../i18n';
-import { useEditingProjection } from '../../logic/hooks/useEditingProjection';
+import { t } from '../../../i18n';
+import { useEditingProjection } from '../../../logic/hooks/useEditingProjection';
 import {
   getAction,
   getActionAvailability,
   actionsForSurface,
   type ActionEntry,
   type ProjectedActionState,
-} from '../../logic/actions/actionRegistry';
-import { dispatchAction } from '../../logic/actions/actionDispatcher';
+} from '../../../logic/actions/actionRegistry';
+import { dispatchAction } from '../../../logic/actions/actionDispatcher';
 import {
   currentPlatform,
   formatShortcut,
   shortcutForKeyEvent,
-} from '../../logic/actions/shortcutRegistry';
+} from '../../../logic/actions/shortcutRegistry';
 import {
   formatMarkers,
   formatActionIds,
   runFormatAction,
-} from '../../logic/format/formatting';
-import { DocumentCommandContext, EditorSessionContext } from './editorSession';
-import type {
-  ConflictPreview,
-  ViewArrangement,
-} from '../../logic/store/appModelTypes';
-import { useEditorSettings } from '../../logic/settings/editorSettings';
-import type { IconName } from '../primitives/Icon';
-import Bar from '../components/Bar';
-import Island from '../components/Island';
-import MenuItem from '../components/MenuItem';
-import { PopupSeparator } from '../components/Popup';
-import Segmented, { type SegmentedOption } from '../primitives/Segmented';
-import ToolButton from '../primitives/ToolButton';
-import styles from './EditorChrome.module.css';
-import { useModalState } from './modalStateContext';
-import DocumentTabs, { type DocumentTabsProps } from './DocumentTabs';
-import { ApplicationMenuRequestContext } from './applicationMenuRequest';
+} from '../../../logic/format/formatting';
+import { DocumentCommandContext, EditorSessionContext } from '../editorSession';
+import type { ViewArrangement } from '../../../logic/store/appModelTypes';
+import { useEditorSettings } from '../../../logic/settings/editorSettings';
+import type { IconName } from '../../primitives/Icon';
+import Bar from '../../components/Bar';
+import Island from '../../components/Island';
+import MenuItem from '../../components/MenuItem';
+import { PopupSeparator } from '../../components/Popup';
+import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
+import ToolButton from '../../primitives/ToolButton';
+import styles from './FormattingToolbar.module.css';
+import { useModalState } from '../modalStateContext';
+import { ApplicationMenuRequestContext } from '../applicationMenuRequest';
 
-export interface EditorChromeProps {
+export interface FormattingToolbarProps {
   arrangement: ViewArrangement;
   onArrangementChange: (arrangement: ViewArrangement) => void;
-  tabAdapter?: DocumentTabsProps['adapter'];
-  onActivateDocument?: DocumentTabsProps['onActivateDocument'];
-  onCloseDocument?: DocumentTabsProps['onCloseDocument'];
-  onExternalConflict?: (preview: ConflictPreview) => void;
-  onNewDocument?: DocumentTabsProps['onNewDocument'];
 }
 
 const textActions = ['bold', 'italic', 'strike', 'inline-code'] as const;
@@ -171,15 +162,10 @@ function actionButtons(
   );
 }
 
-const EditorChrome: React.FC<EditorChromeProps> = ({
+const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
   arrangement,
   onArrangementChange,
-  tabAdapter,
-  onActivateDocument,
-  onCloseDocument,
-  onExternalConflict,
-  onNewDocument,
-}: EditorChromeProps): React.JSX.Element => {
+}: FormattingToolbarProps): React.JSX.Element => {
   const commands = useContext(DocumentCommandContext);
   const activeBuffer = useContext(EditorSessionContext);
   const toolbarProjection = useEditingProjection(activeBuffer?.documentId);
@@ -244,15 +230,6 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
 
   return (
     <ToolbarProjectionContext.Provider value={toolbarProjection}>
-      <DocumentTabs
-        adapter={tabAdapter}
-        modalOpen={modalOpen}
-        onActivateDocument={onActivateDocument}
-        onCloseDocument={onCloseDocument}
-        onExternalConflict={onExternalConflict}
-        onNewDocument={onNewDocument}
-      />
-
       <Bar
         ariaLabel={t('editor.toolbar')}
         className={styles.toolbar}
@@ -349,7 +326,7 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
  * shell's text menus there is no row to put an accelerator beside — the tooltip
  * is the surface that answers "what is this, and how do I reach it from the
  * keyboard". The binding comes from the action registry and is formatted for the
- * running platform, the same single source `ShellMenuRow`, `SettingsMenu` and
+ * running platform, the same single source `Menubar`, `SettingsMenu` and
  * `TabContextMenu` use.
  *
  * A control with no binding keeps its plain label rather than gaining an empty
@@ -363,4 +340,4 @@ function controlTooltip(entry: ActionEntry): string {
     : `${label} (${formatShortcut(binding, currentPlatform())})`;
 }
 
-export default EditorChrome;
+export default FormattingToolbar;

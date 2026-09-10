@@ -1,20 +1,20 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import catalogue from '../../i18n/locales/en.json';
+import catalogue from '../../../i18n/locales/en.json';
 import {
   currentPlatform,
   formatShortcut,
-} from '../../logic/actions/shortcutRegistry';
+} from '../../../logic/actions/shortcutRegistry';
 import {
   getAction,
   getActionAvailability,
   type ActionAvailability,
   type ActionId,
-} from '../../logic/actions/actionRegistry';
+} from '../../../logic/actions/actionRegistry';
 import SettingsMenu from './SettingsMenu';
 
-jest.mock('../../logic/actions/actionRegistry', () => {
-  const actual = jest.requireActual('../../logic/actions/actionRegistry');
+jest.mock('../../../logic/actions/actionRegistry', () => {
+  const actual = jest.requireActual('../../../logic/actions/actionRegistry');
   return {
     __esModule: true,
     ...actual,
@@ -31,13 +31,13 @@ const availabilityMock = getActionAvailability as jest.MockedFunction<
 beforeEach(() => {
   actionMock.mockReset();
   actionMock.mockImplementation(
-    jest.requireActual<typeof import('../../logic/actions/actionRegistry')>(
-      '../../logic/actions/actionRegistry',
+    jest.requireActual<typeof import('../../../logic/actions/actionRegistry')>(
+      '../../../logic/actions/actionRegistry',
     ).getAction,
   );
   availabilityMock.mockImplementation(
-    jest.requireActual<typeof import('../../logic/actions/actionRegistry')>(
-      '../../logic/actions/actionRegistry',
+    jest.requireActual<typeof import('../../../logic/actions/actionRegistry')>(
+      '../../../logic/actions/actionRegistry',
     ).getActionAvailability,
   );
 });
@@ -232,7 +232,7 @@ it('T069 opens All settings from the keyboard and closes the popup', () => {
  * (`settings.menu.allSettings.accelerator`, literally "Ctrl ,"), so it was
  * platform-blind and told a macOS user to press Ctrl when the key that works is
  * ⌘. Every other menu accelerator is derived from the action registry through
- * `formatShortcut` — see ShellMenuRow's `shortcutForMenuItem` — which is why
+ * `formatShortcut` — see Menubar's `shortcutForMenuItem` — which is why
  * the File menu renders ⌘N correctly on the same host.
  *
  * The assertion is written against the registry rather than a literal so it
@@ -277,8 +277,8 @@ function withRegistryAvailability(
   overrides: Partial<Record<ActionId, ActionAvailability>>,
 ): void {
   const real = jest.requireActual<
-    typeof import('../../logic/actions/actionRegistry')
-  >('../../logic/actions/actionRegistry').getAction;
+    typeof import('../../../logic/actions/actionRegistry')
+  >('../../../logic/actions/actionRegistry').getAction;
   actionMock.mockImplementation((id: ActionId) => {
     const entry = real(id);
     const availability = overrides[id];
@@ -288,9 +288,9 @@ function withRegistryAvailability(
     const availability = overrides[id];
     return availability === undefined
       ? jest
-          .requireActual<typeof import('../../logic/actions/actionRegistry')>(
-            '../../logic/actions/actionRegistry',
-          )
+          .requireActual<
+            typeof import('../../../logic/actions/actionRegistry')
+          >('../../../logic/actions/actionRegistry')
           .getActionAvailability(id)
       : availability?.kind === 'deferred'
         ? { kind: 'unavailable', reason: 'deferred' }

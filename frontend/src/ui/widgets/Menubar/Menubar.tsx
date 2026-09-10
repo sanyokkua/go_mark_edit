@@ -7,50 +7,50 @@ import {
   useState,
 } from 'react';
 
-import { t } from '../../i18n';
-import type { DocumentMetadata } from '../../logic/store/appModelTypes';
+import { t } from '../../../i18n';
+import type { DocumentMetadata } from '../../../logic/store/appModelTypes';
 import {
   actionsForSurface,
   getAction,
   getActionAvailability,
   type ActionId,
   type ProjectedActionState,
-} from '../../logic/actions/actionRegistry';
+} from '../../../logic/actions/actionRegistry';
 import {
   currentPlatform,
   formatShortcut,
-} from '../../logic/actions/shortcutRegistry';
+} from '../../../logic/actions/shortcutRegistry';
 import {
   dispatchAction,
   type ActionResult,
-} from '../../logic/actions/actionDispatcher';
+} from '../../../logic/actions/actionDispatcher';
 import {
   createShellActionCatalogue,
   dispatchShellAction,
   type ShellAction,
-} from '../../logic/actions/shellActions';
+} from '../../../logic/actions/shellActions';
 import {
   useShellShortcuts,
   type ShellShortcutAction,
   type ShortcutAction,
-} from '../../logic/actions/useShellShortcuts';
-import { windowAdapter } from '../../logic/adapter';
-import AppBrand from '../primitives/AppBrand';
-import ViewMenu, { type ViewMenuProps } from '../primitives/ViewMenu';
-import Icon from '../primitives/Icon';
-import MenuItem from '../components/MenuItem';
+} from '../../../logic/actions/useShellShortcuts';
+import { windowAdapter } from '../../../logic/adapter';
+import AppBrand from '../../primitives/AppBrand';
+import ViewMenu, { type ViewMenuProps } from './ViewMenu';
+import Icon from '../../primitives/Icon';
+import MenuItem from '../../components/MenuItem';
 import Popup, {
   PopupGroupLabel,
   PopupSeparator,
   PopupTrigger,
-} from '../components/Popup';
-import DocumentIdentity from './DocumentIdentity';
-import { safeRecentLabel } from './Launcher';
-import { isMinimumWindow } from './minimumWindow';
+} from '../../components/Popup';
+import DocumentIdentity from '../DocumentIdentity';
+import { safeRecentLabel } from '../Launcher';
+import { isMinimumWindow } from '../minimumWindow';
 import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
-import type { ApplicationMenuTarget } from './applicationMenuRequest';
-import Bar from '../components/Bar';
-import styles from './ShellMenuRow.module.css';
+import type { ApplicationMenuTarget } from '../applicationMenuRequest';
+import Bar from '../../components/Bar';
+import styles from './Menubar.module.css';
 
 /*
  * Keep the menu's accelerator and grouping presentation derived from the same
@@ -99,7 +99,7 @@ function menuDecoration(id: ActionId): React.JSX.Element | null {
   );
 }
 
-interface ShellMenuRowProps {
+export interface MenubarProps {
   modalOpen: boolean;
   onAbout: () => void;
   onNewDocument?: () => Promise<unknown> | unknown;
@@ -140,7 +140,7 @@ const isNarrowViewport = isMinimumWindow;
 
 type ActiveMenu = 'settings' | 'view' | 'file' | 'about' | null;
 
-const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
+const Menubar: React.FC<MenubarProps> = ({
   modalOpen,
   onAbout,
   onNewDocument,
@@ -164,7 +164,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   requestedMenu = null,
   onRequestedMenuHandled,
   onActionResult,
-}: ShellMenuRowProps): React.JSX.Element => {
+}: MenubarProps): React.JSX.Element => {
   const [activeMenu, setActiveMenu] = useState<ActiveMenu>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [narrow, setNarrow] = useState(isNarrowViewport);
@@ -925,4 +925,4 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
   );
 };
 
-export default ShellMenuRow;
+export default Menubar;

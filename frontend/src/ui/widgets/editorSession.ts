@@ -225,7 +225,7 @@ export function acceptsActivationAcknowledgement(
  * it to be applied "only while both values still match the confirmed active
  * projection". Before T128 that guard existed as
  * `acceptsActivationAcknowledgement` and nothing in production called it: all
- * five acknowledging handlers in `App.tsx` — New, Open, Open Recent, Reopen and
+ * five acknowledging handlers in `app/App.tsx` — New, Open, Open Recent, Reopen and
  * Activate — installed `result.data` / `result.activeBuffer` the moment it
  * arrived, so a switch that had already lost a race still overwrote the
  * winner's source. That is the cross-document text installation SC-FT-003

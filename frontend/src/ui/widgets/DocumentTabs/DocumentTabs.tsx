@@ -7,43 +7,43 @@ import {
   useState,
 } from 'react';
 
-import { appModelAdapter, type AppModelAdapter } from '../../logic/adapter';
+import { appModelAdapter, type AppModelAdapter } from '../../../logic/adapter';
 import type {
   ClosePlanKind,
   ConflictPreview,
   DocumentMetadata,
   DocumentTransitionResult,
   TabTransitionResult,
-} from '../../logic/store/appModelTypes';
-import { useAppDispatch, useAppSelector } from '../../logic/store';
-import { reportClassifiedError } from '../../logic/store/classifiedNotification';
+} from '../../../logic/store/appModelTypes';
+import { useAppDispatch, useAppSelector } from '../../../logic/store';
+import { reportClassifiedError } from '../../../logic/store/classifiedNotification';
 import {
   actionsForSurface,
   getActionAvailability,
   type ProjectedActionState,
-} from '../../logic/actions/actionRegistry';
+} from '../../../logic/actions/actionRegistry';
 import {
   currentPlatform,
   shortcutForKeyEvent,
-} from '../../logic/actions/shortcutRegistry';
-import { t } from '../../i18n';
-import LiveRegion from '../primitives/LiveRegion';
-import type { PopupAnchor } from '../components/Popup';
-import TabBar from '../components/TabBar';
+} from '../../../logic/actions/shortcutRegistry';
+import { t } from '../../../i18n';
+import LiveRegion from '../../primitives/LiveRegion';
+import type { PopupAnchor } from '../../components/Popup';
+import TabBar from '../../components/TabBar';
 import TabContextMenu, {
   type TabContextAction,
   type TabContextAdapter,
   type TabContextCloseOptions,
-} from './TabContextMenu';
-import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
-import { TabRemediationContext } from './tabRemediation';
-import { whenApplicationRegainsForegroundFocus } from './foregroundFocus';
-import { flushOutgoingDocument, outgoingFlushRefusal } from './outgoingFlush';
+} from '../TabContextMenu';
+import { EDITOR_TABPANEL_ID, tabElementId } from '../editorTabPanel';
+import { TabRemediationContext } from '../tabRemediation';
+import { whenApplicationRegainsForegroundFocus } from '../foregroundFocus';
+import { flushOutgoingDocument, outgoingFlushRefusal } from '../outgoingFlush';
 import {
   tabLabelsFor,
   truncatedTabLabelParts,
   type TabLabel,
-} from './tabLabel';
+} from '../tabLabel';
 
 export interface DocumentTabsProps {
   adapter?: Pick<

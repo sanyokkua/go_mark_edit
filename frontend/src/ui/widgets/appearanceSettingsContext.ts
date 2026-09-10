@@ -10,9 +10,12 @@ export interface AppearanceState {
 
 export interface AppearanceSettingsController {
   appearance: AppearanceState;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onModeChange: (mode: AppearanceChoice) => void;
   onOpenAppearance: (opener?: HTMLElement | null) => void;
   onReset: () => void;
+  returnFocusTo: HTMLElement | null;
   onThemeChange: (theme: Theme) => void;
 }
 

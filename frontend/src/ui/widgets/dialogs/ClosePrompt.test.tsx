@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import type { ClosePlanSummary } from '../../logic/store/appModelTypes';
+import type { ClosePlanSummary } from '../../../logic/store/appModelTypes';
 import ClosePrompt from './ClosePrompt';
 
 function plan(kind: ClosePlanSummary['kind'] = 'single'): ClosePlanSummary {

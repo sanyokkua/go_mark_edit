@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import type { ConflictPreview } from '../../logic/store/appModelTypes';
+import type { ConflictPreview } from '../../../logic/store/appModelTypes';
 import ExternalChangePrompt from './ExternalChangePrompt';
 
 function preview(overrides: Partial<ConflictPreview> = {}): ConflictPreview {

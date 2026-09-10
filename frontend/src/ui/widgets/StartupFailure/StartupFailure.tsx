@@ -1,8 +1,8 @@
-import type { StartupFailure as StartupFailureDetails } from '../../app/useBootstrap';
-import { nativeLifecycleAdapter } from '../../logic/adapter';
-import { t } from '../../i18n';
+import type { StartupFailure as StartupFailureDetails } from '../../../app/useBootstrap';
+import { nativeLifecycleAdapter } from '../../../logic/adapter';
+import { t } from '../../../i18n';
 
-import Button from '../primitives/Button';
+import Button from '../../primitives/Button';
 import styles from './StartupFailure.module.css';
 
 interface StartupFailureProps {

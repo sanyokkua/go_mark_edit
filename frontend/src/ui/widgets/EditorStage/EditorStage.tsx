@@ -8,39 +8,39 @@ import {
   useRef,
 } from 'react';
 
-import type { EditorPosition } from '../components/CodeEditor';
-import CodeEditor from '../components/CodeEditor';
-import Pane from '../components/Pane';
-import { appModelAdapter } from '../../logic/adapter';
+import type { EditorPosition } from '../../components/CodeEditor';
+import CodeEditor from '../../components/CodeEditor';
+import Pane from '../../components/Pane';
+import { appModelAdapter } from '../../../logic/adapter';
 import {
   type LivePreviewAdapter,
   type LivePreviewSnapshot,
   useLivePreviewSnapshot,
-} from '../../logic/hooks/useLivePreview';
-import { dispatchAction } from '../../logic/actions/actionDispatcher';
+} from '../../../logic/hooks/useLivePreview';
+import { dispatchAction } from '../../../logic/actions/actionDispatcher';
 import {
   type EditorSynchronizationAdapter,
   useSyncedBuffer,
-} from '../../logic/hooks/useSyncedBuffer';
+} from '../../../logic/hooks/useSyncedBuffer';
 import type {
   ActiveBuffer,
   DocumentMetadata,
   DocumentView,
-} from '../../logic/store/appModelTypes';
-import EditorContextMenu from './EditorContextMenu';
+} from '../../../logic/store/appModelTypes';
+import EditorContextMenu from '../EditorContextMenu';
 import {
   EditorSessionEpochContext,
   useEditorSessionAttachment,
-} from './editorSession';
+} from '../editorSession';
 import {
   PreviewPaneContent,
   PreviewPausedStatus,
   usePreviewPaneState,
-} from './PreviewPane';
-import { EDITOR_TABPANEL_ID } from './editorTabPanel';
+} from '../PreviewPane';
+import { EDITOR_TABPANEL_ID } from '../editorTabPanel';
 import styles from './EditorStage.module.css';
-import { t } from '../../i18n';
-import { useEditorSettings } from '../../logic/settings/editorSettings';
+import { t } from '../../../i18n';
+import { useEditorSettings } from '../../../logic/settings/editorSettings';
 
 export interface EditorStageAdapter
   extends EditorSynchronizationAdapter, LivePreviewAdapter {}
@@ -137,7 +137,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(
     }, [adapter, activeBuffer.documentId, activationToken, flushSession]);
 
     const synchronizeMountedEditorTheme = useCallback((): void => {
-      void import('../components/monacoSetup').then(
+      void import('../../components/monacoSetup').then(
         ({ applyMonacoThemeFromRoot }): void => {
           applyMonacoThemeFromRoot()();
         },

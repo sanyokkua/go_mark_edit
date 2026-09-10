@@ -13,7 +13,7 @@ import { store } from '../../logic/store';
 import { resetSettingsProjection } from '../../logic/store/settingsSlice';
 import AppearanceControls from './AppearanceControls';
 import { useAppearanceSettings } from './appearanceSettingsContext';
-import SettingsMenu from './SettingsMenu';
+import SettingsMenu from './Menubar/SettingsMenu';
 
 const render = (ui: Parameters<typeof rtlRender>[0]) =>
   rtlRender(<Provider store={store}>{ui}</Provider>);

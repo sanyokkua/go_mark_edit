@@ -538,8 +538,12 @@ it('FR-WS-008 uses exact responsive presentations without durable responsive wri
   expect(setUILayout).not.toHaveBeenCalled();
 
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-  const editorStyles = readSource('src/ui/widgets/EditorStage.module.css');
-  const toolbarStyles = readSource('src/ui/widgets/EditorChrome.module.css');
+  const editorStyles = readSource(
+    'src/ui/widgets/EditorStage/EditorStage.module.css',
+  );
+  const toolbarStyles = readSource(
+    'src/ui/widgets/FormattingToolbar/FormattingToolbar.module.css',
+  );
   const baseStyles = readSource('src/ui/styles/base.css');
   expect(shellStyles).toMatch(
     /@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px/,
@@ -564,7 +568,7 @@ it('FR-WS-008 uses exact responsive presentations without durable responsive wri
 it('FR-WS-017 and FR-WS-020 keep shell styles tokenized and production surfaces honest', () => {
   const shellSource = readSource('src/ui/widgets/WorkspaceLayout.tsx');
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-  const appSource = readSource('src/App.tsx');
+  const appSource = readSource('src/app/App.tsx');
   const actionSource = readSource('src/logic/actions/shellActions.ts');
 
   expect(shellSource).toContain("t('shell.workspace')");

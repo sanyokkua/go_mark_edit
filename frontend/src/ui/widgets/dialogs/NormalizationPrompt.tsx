@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 
-import { t } from '../../i18n';
-import ModalShell from '../components/ModalShell';
-import Button from '../primitives/Button';
+import { t } from '../../../i18n';
+import ModalShell from '../../components/ModalShell';
+import Button from '../../primitives/Button';
 import styles from './SettingsDialog.module.css';
 
 export interface NormalizationPromptProps {

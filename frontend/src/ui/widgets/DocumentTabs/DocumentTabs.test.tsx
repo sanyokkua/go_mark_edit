@@ -12,7 +12,7 @@ import {
 } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
-import type { DocumentConflictAdapter } from '../../logic/adapter';
+import type { DocumentConflictAdapter } from '../../../logic/adapter';
 import type {
   ClassifiedError,
   ConflictPreview,
@@ -21,29 +21,29 @@ import type {
   DocumentTransitionResult,
   PathCommandResult,
   TabTransitionResult,
-} from '../../logic/store/appModelTypes';
-import { store, useAppSelector } from '../../logic/store';
+} from '../../../logic/store/appModelTypes';
+import { store, useAppSelector } from '../../../logic/store';
 import {
   applyStatePatch,
   hydrateProjection,
   resetProjection,
-} from '../../logic/store/appModelProjectionActions';
+} from '../../../logic/store/appModelProjectionActions';
 import {
   resetNotifications,
   type NotificationRemediation,
-} from '../../logic/store/notificationsSlice';
-import { getActionAvailability } from '../../logic/actions/actionRegistry';
-import { onApplicationForeground } from './foregroundFocus';
+} from '../../../logic/store/notificationsSlice';
+import { getActionAvailability } from '../../../logic/actions/actionRegistry';
+import { onApplicationForeground } from '../foregroundFocus';
 import DocumentTabs from './DocumentTabs';
 import ExternalChangePrompt, {
   type ExternalChangeDecision,
-} from './ExternalChangePrompt';
+} from '../dialogs/ExternalChangePrompt';
 import {
   TabRemediationContext,
   type TabRemediationExecutor,
-} from './tabRemediation';
-import { EDITOR_TABPANEL_ID } from './editorTabPanel';
-import Launcher from './Launcher';
+} from '../tabRemediation';
+import { EDITOR_TABPANEL_ID } from '../editorTabPanel';
+import Launcher from '../Launcher';
 
 function documentFor(
   documentId: string,

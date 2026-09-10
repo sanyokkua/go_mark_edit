@@ -38,7 +38,7 @@ export type TabRemediationExecutor = (
  *
  * A ref rather than a callback prop because the direction is upward. App renders
  * the toast and receives the click; DocumentTabs is three levels below it
- * through AppShell and EditorChrome. Threading a registration callback down that
+ * through AppShell and FormattingToolbar. Threading a registration callback down that
  * chain would touch both intermediaries for something neither participates in.
  *
  * Null when no strip is mounted — the launcher's zero-document state, where no

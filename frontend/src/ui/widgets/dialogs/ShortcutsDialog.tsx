@@ -1,16 +1,16 @@
-import { t } from '../../i18n';
+import { t } from '../../../i18n';
 import {
   actionsForSurface,
   getActionAvailability,
   type ActionEntry,
-} from '../../logic/actions/actionRegistry';
+} from '../../../logic/actions/actionRegistry';
 import {
   currentPlatform,
   formatShortcut,
-} from '../../logic/actions/shortcutRegistry';
-import ModalShell from '../components/ModalShell';
-import Button from '../primitives/Button';
-import Icon from '../primitives/Icon';
+} from '../../../logic/actions/shortcutRegistry';
+import ModalShell from '../../components/ModalShell';
+import Button from '../../primitives/Button';
+import Icon from '../../primitives/Icon';
 import styles from './ShortcutsDialog.module.css';
 
 export interface ShortcutsDialogProps {

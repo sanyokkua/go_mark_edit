@@ -1,20 +1,20 @@
 import { useState, type CSSProperties, type RefObject } from 'react';
 
-import { t } from '../../i18n';
-import { dispatchAction } from '../../logic/actions/actionDispatcher';
+import { t } from '../../../i18n';
+import { dispatchAction } from '../../../logic/actions/actionDispatcher';
 import {
   getAction,
   getActionAvailability,
   type ActionId,
-} from '../../logic/actions/actionRegistry';
+} from '../../../logic/actions/actionRegistry';
 import {
   currentPlatform,
   formatShortcut,
-} from '../../logic/actions/shortcutRegistry';
-import type { ViewArrangement } from '../../logic/store/appModelTypes';
-import MenuItem from '../components/MenuItem';
-import Popup, { PopupSeparator, PopupTrigger } from '../components/Popup';
-import popupStyles from '../components/Popup/Popup.module.css';
+} from '../../../logic/actions/shortcutRegistry';
+import type { ViewArrangement } from '../../../logic/store/appModelTypes';
+import MenuItem from '../../components/MenuItem';
+import Popup, { PopupSeparator, PopupTrigger } from '../../components/Popup';
+import popupStyles from '../../components/Popup/Popup.module.css';
 
 export interface ViewMenuProps {
   editorVisible: boolean;

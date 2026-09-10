@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import ShellMenuRow from '../../src/ui/widgets/ShellMenuRow';
+import Menubar from '../../src/ui/widgets/Menubar/Menubar';
 
 const settingsMenuProps = {
   mode: 'auto' as const,
@@ -42,7 +42,7 @@ it.each([
   'keeps Arrow, Home, End, Escape, and type-ahead consistent in the %s family',
   async (triggerName, menuName, typeaheadKey, typeaheadLabel) => {
     render(
-      <ShellMenuRow
+      <Menubar
         modalOpen={false}
         onAbout={jest.fn()}
         onCloseDocument={jest.fn()}

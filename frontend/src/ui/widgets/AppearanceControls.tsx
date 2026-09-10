@@ -13,18 +13,18 @@ import {
   createSettingsCommandOwner,
   defaultAppearanceSettings,
 } from '../../logic/settings/settingsCommands';
-import SettingsDialog from './SettingsDialog';
+import SettingsDialog from './dialogs/SettingsDialog';
 import {
   AppearanceSettingsContext,
+  useAppearanceSettings,
   type AppearanceSettingsController,
   type AppearanceState,
 } from './appearanceSettingsContext';
 
-interface AppearanceControlsProps {
+export interface AppearanceSettingsProviderProps {
   children?: React.ReactNode;
   onSettingsOpenChange?: (open: boolean) => void;
   settingsOpen?: boolean;
-  visible?: boolean;
 }
 
 function systemPrefersDark(): boolean {
@@ -43,21 +43,25 @@ function apply(state: AppearanceState): void {
   );
 }
 
-const AppearanceControls: React.FC<AppearanceControlsProps> = ({
+export const AppearanceSettingsProvider: React.FC<
+  AppearanceSettingsProviderProps
+> = ({
   children,
   onSettingsOpenChange,
   settingsOpen,
-  visible = true,
-}: AppearanceControlsProps): React.JSX.Element | null => {
+}: AppearanceSettingsProviderProps): React.JSX.Element => {
   const [appearance, setAppearance] = useState<AppearanceState>({
     ...defaultAppearanceSettings,
   });
   const [internalOpen, setInternalOpen] = useState(false);
   const open = settingsOpen ?? internalOpen;
-  const setOpen = (next: boolean): void => {
-    setInternalOpen(next);
-    onSettingsOpenChange?.(next);
-  };
+  const setOpen = useCallback(
+    (next: boolean): void => {
+      setInternalOpen(next);
+      onSettingsOpenChange?.(next);
+    },
+    [onSettingsOpenChange],
+  );
   const desiredAppearance = useRef(appearance);
   const [settingsReturnFocus, setSettingsReturnFocus] =
     useState<HTMLElement | null>(null);
@@ -128,6 +132,7 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
     },
     [settingsCommands],
   );
+
   const reset = useCallback((): void => {
     void settingsCommands
       .resetAppearance((acknowledged): void => {
@@ -146,41 +151,84 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
       })
       .catch((): void => undefined);
   }, [settingsCommands]);
-  if (!visible) {
-    return null;
-  }
-  const onOpenAppearance = (opener?: HTMLElement | null): void => {
-    setSettingsReturnFocus(
-      opener ??
-        (document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null),
-    );
-    setOpen(true);
-  };
+
+  const onOpenAppearance = useCallback(
+    (opener?: HTMLElement | null): void => {
+      setSettingsReturnFocus(
+        opener ??
+          (document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null),
+      );
+      setOpen(true);
+    },
+    [setOpen],
+  );
+
   const controller: AppearanceSettingsController = {
     appearance,
     onModeChange: (mode): void => persist({ mode }),
     onOpenAppearance,
+    onOpenChange: setOpen,
     onReset: reset,
+    open,
+    returnFocusTo: settingsReturnFocus,
     onThemeChange: (theme): void => persist({ theme }),
   };
 
   return (
     <AppearanceSettingsContext.Provider value={controller}>
       {children}
-      <SettingsDialog
-        mode={appearance.mode}
-        open={open}
-        returnFocusTo={settingsReturnFocus}
-        theme={appearance.theme}
-        onModeChange={controller.onModeChange}
-        onReset={reset}
-        onOpenChange={setOpen}
-        onThemeChange={controller.onThemeChange}
-      />
     </AppearanceSettingsContext.Provider>
   );
 };
+
+export interface AppearanceControlsContentProps {
+  children?: React.ReactNode;
+  visible?: boolean;
+}
+
+export const AppearanceControlsContent: React.FC<
+  AppearanceControlsContentProps
+> = ({ children, visible = true }: AppearanceControlsContentProps) => {
+  const controller = useAppearanceSettings();
+  if (!visible) return null;
+  return (
+    <>
+      {children}
+      <SettingsDialog
+        mode={controller.appearance.mode}
+        open={controller.open}
+        returnFocusTo={controller.returnFocusTo}
+        theme={controller.appearance.theme}
+        onModeChange={controller.onModeChange}
+        onReset={controller.onReset}
+        onOpenChange={controller.onOpenChange}
+        onThemeChange={controller.onThemeChange}
+      />
+    </>
+  );
+};
+
+interface AppearanceControlsProps extends AppearanceSettingsProviderProps {
+  children?: React.ReactNode;
+  visible?: boolean;
+}
+
+const AppearanceControls: React.FC<AppearanceControlsProps> = ({
+  children,
+  onSettingsOpenChange,
+  settingsOpen,
+  visible = true,
+}: AppearanceControlsProps): React.JSX.Element => (
+  <AppearanceSettingsProvider
+    onSettingsOpenChange={onSettingsOpenChange}
+    settingsOpen={settingsOpen}
+  >
+    <AppearanceControlsContent visible={visible}>
+      {children}
+    </AppearanceControlsContent>
+  </AppearanceSettingsProvider>
+);
 
 export default AppearanceControls;

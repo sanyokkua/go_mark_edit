@@ -16,16 +16,18 @@ import type {
   ViewArrangement,
 } from '../../logic/store/appModelTypes';
 import { EditorSessionContext } from './editorSession';
-import type { DocumentTabsProps } from './DocumentTabs';
-import EditorChrome from './EditorChrome';
+import type { DocumentTabsProps } from './DocumentTabs/DocumentTabs';
+import DocumentTabs from './DocumentTabs/DocumentTabs';
+import FormattingToolbar from './FormattingToolbar/FormattingToolbar';
 import EditorStage, {
   type EditorStageAdapter,
   type EditorStageHandle,
-} from './EditorStage';
+} from './EditorStage/EditorStage';
 import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
 import { useMinimumWindow } from './minimumWindow';
 import styles from './EditorView.module.css';
 import { t } from '../../i18n';
+import { useModalState } from './modalStateContext';
 
 export type EditorViewAdapter = EditorStageAdapter;
 
@@ -108,6 +110,7 @@ const EditorView: React.FC<EditorViewProps> = ({
   const dispatch = useAppDispatch();
   const activeBuffer = useContext(EditorSessionContext);
   const minimumWindow = useMinimumWindow();
+  const modalOpen = useModalState();
   const stageRef = useRef<EditorStageHandle | null>(null);
   const activeDocument = useAppSelector((state) => {
     if (activeBuffer === null) {
@@ -181,14 +184,17 @@ const EditorView: React.FC<EditorViewProps> = ({
 
   return (
     <section aria-label={t('editor.view')} className={styles.editorView}>
-      <EditorChrome
-        arrangement={arrangement}
-        onArrangementChange={onArrangementChange}
-        tabAdapter={tabAdapter}
+      <DocumentTabs
+        adapter={tabAdapter}
+        modalOpen={modalOpen}
         onActivateDocument={onActivateDocument}
         onCloseDocument={onCloseDocument}
         onExternalConflict={onExternalConflict}
         onNewDocument={onNewDocument}
+      />
+      <FormattingToolbar
+        arrangement={arrangement}
+        onArrangementChange={onArrangementChange}
       />
       <EditorStage
         ref={stageRef}

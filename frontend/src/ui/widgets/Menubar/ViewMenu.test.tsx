@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import * as actionDispatcher from '../../logic/actions/actionDispatcher';
+import * as actionDispatcher from '../../../logic/actions/actionDispatcher';
 import ViewMenu from './ViewMenu';
 
 it('T045 keeps the shared Popup surface in the frame positioning flow', (): void => {

@@ -1,8 +1,8 @@
-import { t } from '../../i18n';
-import type { AppearanceChoice, Theme } from '../../logic/theme/theme';
-import ModalShell from '../components/ModalShell';
-import Button from '../primitives/Button';
-import Segmented, { type SegmentedOption } from '../primitives/Segmented';
+import { t } from '../../../i18n';
+import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
+import ModalShell from '../../components/ModalShell';
+import Button from '../../primitives/Button';
+import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
 import styles from './SettingsDialog.module.css';
 
 export interface SettingsDialogProps {

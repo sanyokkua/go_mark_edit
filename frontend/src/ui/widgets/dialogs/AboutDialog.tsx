@@ -1,7 +1,7 @@
-import { t } from '../../i18n';
-import ModalShell from '../components/ModalShell';
-import Button from '../primitives/Button';
-import styles from './AppearanceDialog.module.css';
+import { t } from '../../../i18n';
+import ModalShell from '../../components/ModalShell';
+import Button from '../../primitives/Button';
+import styles from './AboutDialog.module.css';
 
 export interface AboutDialogProps {
   open: boolean;

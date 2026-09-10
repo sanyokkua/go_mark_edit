@@ -12,11 +12,11 @@ import {
   DocumentCommandContext,
   EditorSessionContext,
 } from '../../src/ui/widgets/editorSession';
-import EditorChrome from '../../src/ui/widgets/EditorChrome';
+import FormattingToolbar from '../../src/ui/widgets/FormattingToolbar/FormattingToolbar';
 
 const renderToolbar = (
   ui: React.ReactNode = (
-    <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />
+    <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />
   ),
 ) => render(<Provider store={store}>{ui}</Provider>);
 
@@ -130,7 +130,10 @@ it('T023 routes a formatting activation through the editor command context', asy
       value={{ documentId: 'doc-1', content: 'word' }}
     >
       <DocumentCommandContext.Provider value={commands}>
-        <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
+        <FormattingToolbar
+          arrangement="editor"
+          onArrangementChange={jest.fn()}
+        />
       </DocumentCommandContext.Provider>
     </EditorSessionContext.Provider>,
   );

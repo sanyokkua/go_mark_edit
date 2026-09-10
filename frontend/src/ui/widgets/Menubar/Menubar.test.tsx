@@ -9,14 +9,14 @@ import {
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { t } from '../../i18n';
-import englishCatalog from '../../i18n/locales/en.json';
-import * as actionDispatcher from '../../logic/actions/actionDispatcher';
-import type { DocumentMetadata } from '../../logic/store/appModelTypes';
+import { t } from '../../../i18n';
+import englishCatalog from '../../../i18n/locales/en.json';
+import * as actionDispatcher from '../../../logic/actions/actionDispatcher';
+import type { DocumentMetadata } from '../../../logic/store/appModelTypes';
 import type { SettingsMenuProps } from './SettingsMenu';
-import ShellMenuRow from './ShellMenuRow';
+import Menubar from './Menubar';
 
-jest.mock('../../logic/adapter', () => ({
+jest.mock('../../../logic/adapter', () => ({
   windowAdapter: { toggleFullscreen: jest.fn(async () => true) },
 }));
 
@@ -70,11 +70,11 @@ function menuItemLabels(root: HTMLElement): string[] {
 
 it('T033 keeps popup accelerators, group labels, separators, and viewport sizing tokenized', () => {
   const menuStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.module.css'),
     'utf8',
   );
   const menuSource = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'),
     'utf8',
   );
   const popupStyles = readFileSync(
@@ -86,7 +86,7 @@ it('T033 keeps popup accelerators, group labels, separators, and viewport sizing
     'utf8',
   );
   const settingsStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/SettingsMenu.module.css'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/SettingsMenu.module.css'),
     'utf8',
   );
 
@@ -119,7 +119,7 @@ afterEach(() => {
 
 /*
  * File, Settings, View and About had three trigger implementations between them:
- * ShellMenuRow's own for File and About, and one each inside SettingsMenu and
+ * Menubar's own for File and About, and one each inside SettingsMenu and
  * ViewMenu that this file then patched through `[data-settings-opener]` and
  * `[data-view-trigger]`. Only the first declared a hover rule, so File and About
  * lit up under the pointer while Settings and View sat inert; View also carried
@@ -132,7 +132,7 @@ afterEach(() => {
  */
 it('T018 draws every menubar trigger from one owner', () => {
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -158,7 +158,7 @@ it.each(['File', 'Settings', 'View', 'About'])(
   'T018 opens the %s menu from ArrowDown like every other menubar trigger',
   (name) => {
     render(
-      <ShellMenuRow
+      <Menubar
         modalOpen={false}
         onAbout={jest.fn()}
         settingsMenuProps={settingsMenuProps}
@@ -182,7 +182,7 @@ it.each(['File', 'Settings', 'View', 'About'])(
 it('T018 renders File, Settings, View, About in binding order with exact deferred inventories', async () => {
   const onAbout = jest.fn();
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={onAbout}
       settingsMenuProps={settingsMenuProps}
@@ -255,7 +255,7 @@ it('T018 renders File, Settings, View, About in binding order with exact deferre
 
 it('T041 keeps document identity inside the top menu row without a vertical identity block', () => {
   render(
-    <ShellMenuRow
+    <Menubar
       activeDocument={identityDocument}
       modalOpen={false}
       onAbout={jest.fn()}
@@ -280,7 +280,7 @@ it('T009 routes the available File New/Open controls through the lifecycle dispa
   const onOpenDocument = jest.fn(async () => undefined);
 
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       onNewDocument={onNewDocument}
@@ -329,7 +329,7 @@ it('T015 routes writable Save and Save As through the document dispatcher', asyn
   const onSaveAs = jest.fn(async () => undefined);
 
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       onSave={onSave}
@@ -370,7 +370,7 @@ it('T018 moves the same ordered top-level actions into overflow at narrow width'
   });
   const onAbout = jest.fn();
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={onAbout}
       settingsMenuProps={settingsMenuProps}
@@ -407,7 +407,7 @@ it('T045 closes the narrow View menu after choosing an arrangement', async () =>
   });
   const onArrangementChange = jest.fn();
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -438,7 +438,7 @@ it('T091 places the functional sidebar and deferred Assistant controls at the me
   const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
   const onWorkspaceVisibilityChange = jest.fn();
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -501,7 +501,7 @@ it('T154 shows the defined empty message in the narrow Open Recent group', () =>
     value: 375,
   });
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -530,7 +530,7 @@ it('T085 repositions a narrow File popup from the overflow anchor after a resize
     value: 375,
   });
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -560,7 +560,7 @@ it('T085 repositions a narrow File popup from the overflow anchor after a resize
 
 it('T045 delegates shell popup lifecycle and sizing to Popup', () => {
   const shellSource = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'),
     'utf8',
   );
   const popupStyles = readFileSync(
@@ -578,7 +578,7 @@ it('T045 delegates shell popup lifecycle and sizing to Popup', () => {
 
 it('T070 anchors the File popup through the shared trigger contract', () => {
   const shellSource = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'),
     'utf8',
   );
   expect(shellSource).toContain('ref={captureFileTrigger}');
@@ -589,7 +589,7 @@ it('T070 anchors the File popup through the shared trigger contract', () => {
 
 it('T045 keeps the narrow View popup anchored to the shared overflow trigger', () => {
   const shellSource = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'),
     'utf8',
   );
 
@@ -600,7 +600,7 @@ it('T045 keeps the narrow View popup anchored to the shared overflow trigger', (
 
 it('FR-WS-008 switches to the keyboard-reachable overflow only at the 375-pixel state', () => {
   const { rerender } = render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -615,7 +615,7 @@ it('FR-WS-008 switches to the keyboard-reachable overflow only at the 375-pixel 
   });
   fireEvent(window, new Event('resize'));
   rerender(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -634,11 +634,11 @@ it('FR-WS-008 switches to the keyboard-reachable overflow only at the 375-pixel 
 
 it('T060 keeps a localized short About trigger separate from the long catalogue label', () => {
   const shellSource = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'),
     'utf8',
   );
   const shellStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.module.css'),
     'utf8',
   );
 
@@ -651,7 +651,7 @@ it('T060 keeps a localized short About trigger separate from the long catalogue 
 
 it('T033 keeps menu and popup geometry on the shared metric tokens', () => {
   const shellStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.module.css'),
     'utf8',
   );
   const popupStyles = readFileSync(
@@ -672,7 +672,7 @@ it('T033 keeps menu and popup geometry on the shared metric tokens', () => {
 
 it('T041 keeps the in-app row on the binding titlebar geometry without native chrome', () => {
   const shellStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.module.css'),
     'utf8',
   );
 
@@ -690,7 +690,7 @@ it('T041 keeps the in-app row on the binding titlebar geometry without native ch
 
 it('T058 keeps the implemented desktop menubar grouped and keyboard-reachable', () => {
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -717,7 +717,7 @@ it('T058 keeps the implemented desktop menubar grouped and keyboard-reachable', 
 
 it('T089 registers each desktop menu label as a Popup trigger', () => {
   const shellSource = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.tsx'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'),
     'utf8',
   );
 
@@ -730,7 +730,7 @@ it('T061 dispatches Settings Appearance and About actions through the canonical 
   const onAbout = jest.fn();
   const onOpenAppearance = jest.fn();
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={onAbout}
       settingsMenuProps={{
@@ -774,7 +774,7 @@ it('T061 dispatches Settings Appearance and About actions through the canonical 
 
 it('T081 gives View popup ownership after File yields to it', async () => {
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -803,7 +803,7 @@ it('T081 gives View popup ownership after File yields to it', async () => {
 
 it('T089 opens View from its menu-row pointer trigger and restores that trigger on Escape', async () => {
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -824,7 +824,7 @@ it('T089 opens View from its menu-row pointer trigger and restores that trigger 
 
 it('T093 makes the visible View control the Radix menu trigger', () => {
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={false}
       onAbout={jest.fn()}
       settingsMenuProps={settingsMenuProps}
@@ -842,7 +842,7 @@ it('T093 makes the visible View control the Radix menu trigger', () => {
  * and until this suite existed nothing asserted that pressing one did anything.
  * `actionRegistry.test.ts` proves the registry *declares* `Mod+N`, and
  * `useShellShortcuts.test.tsx` proves the hook dispatches actions handed to it
- * by a synthetic harness. Neither asks whether ShellMenuRow — the component
+ * by a synthetic harness. Neither asks whether Menubar — the component
  * that both renders the accelerator text and installs the only global keydown
  * listener — passes the file actions to that hook. It did not.
  *
@@ -930,7 +930,7 @@ function renderMenuRowWithFileActions(
     onSaveAs: jest.fn(async () => undefined),
   };
   render(
-    <ShellMenuRow
+    <Menubar
       modalOpen={shell.modalOpen ?? false}
       onAbout={jest.fn()}
       onCloseDocument={
@@ -1062,7 +1062,7 @@ it('T110 closes the active document when the File menu Close Tab row is clicked'
   /*
    * The row rendered enabled and its click was a silent no-op: dispatchFileAction
    * had no `close-tab` arm, so `invoke` was undefined and it returned early.
-   * ShellMenuRow had no close callback in its props at all — the same missing
+   * Menubar had no close callback in its props at all — the same missing
    * prop the Mod+W accelerator needs.
    */
   const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
@@ -1101,7 +1101,7 @@ const LONG_LABELS: Readonly<Record<string, string>> = {
 // Proves: FR-FT-047 (partial — "tolerate longer text". The registry/catalogue
 // derivation, roles and accessible names, focus visibility and modal focus
 // containment, reduced motion and centralized tokens are proved by the other
-// FR-FT-047 anchors across this file, EditorChrome.test.tsx, ClosePrompt.test.tsx
+// FR-FT-047 anchors across this file, FormattingToolbar.test.tsx, dialogs/ClosePrompt.test.tsx
 // and SettingsMenu.test.tsx.)
 //
 // The catalogue object the shim hands `createTranslator` is the one this test
@@ -1130,7 +1130,7 @@ it('T157 keeps every menubar action reachable and named in full under a much lon
     expect(t('shell.file')).toBe(LONG_LABELS['shell.file']);
 
     render(
-      <ShellMenuRow
+      <Menubar
         modalOpen={false}
         onAbout={jest.fn()}
         settingsMenuProps={settingsMenuProps}
@@ -1177,7 +1177,7 @@ it('T157 clips a long menubar label instead of growing the row', () => {
     'utf8',
   );
   const shellStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/ShellMenuRow.module.css'),
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.module.css'),
     'utf8',
   );
 

@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
-import type { EditorStageAdapter } from '../../src/ui/widgets/EditorStage';
-import EditorStage from '../../src/ui/widgets/EditorStage';
+import type { EditorStageAdapter } from '../../src/ui/widgets/EditorStage/EditorStage';
+import EditorStage from '../../src/ui/widgets/EditorStage/EditorStage';
 import {
   hydrateProjection,
   resetProjection,

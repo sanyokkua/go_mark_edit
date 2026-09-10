@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
 
-import { t } from '../../i18n';
-import type { ConflictPreview } from '../../logic/store/appModelTypes';
-import ModalShell from '../components/ModalShell';
-import Button from '../primitives/Button';
-import styles from '../components/ModalShell/ModalShell.module.css';
-import { safeBasenameOf } from './tabLabel';
+import { t } from '../../../i18n';
+import type { ConflictPreview } from '../../../logic/store/appModelTypes';
+import ModalShell from '../../components/ModalShell';
+import Button from '../../primitives/Button';
+import styles from '../../components/ModalShell/ModalShell.module.css';
+import { safeBasenameOf } from '../tabLabel';
 
 export type ExternalChangeDecision = 'reload' | 'keep-mine' | 'skip' | 'cancel';
 

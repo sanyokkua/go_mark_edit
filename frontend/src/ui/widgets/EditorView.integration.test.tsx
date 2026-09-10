@@ -220,7 +220,7 @@ import {
 import AppearanceControls from './AppearanceControls';
 import { useAppearanceSettings } from './appearanceSettingsContext';
 import EditorView, { type EditorViewAdapter } from './EditorView';
-import SettingsMenu from './SettingsMenu';
+import SettingsMenu from './Menubar/SettingsMenu';
 
 type VoidResult = { error?: WireError };
 

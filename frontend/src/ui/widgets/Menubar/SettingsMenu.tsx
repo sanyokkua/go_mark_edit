@@ -1,30 +1,30 @@
 import { useCallback, useState, type RefObject } from 'react';
 
-import { t } from '../../i18n';
-import { dispatchAction } from '../../logic/actions/actionDispatcher';
+import { t } from '../../../i18n';
+import { dispatchAction } from '../../../logic/actions/actionDispatcher';
 import {
   getAction,
   getActionAvailability,
   type ActionId,
-} from '../../logic/actions/actionRegistry';
+} from '../../../logic/actions/actionRegistry';
 import {
   currentPlatform,
   formatShortcut,
-} from '../../logic/actions/shortcutRegistry';
+} from '../../../logic/actions/shortcutRegistry';
 import type {
   EditorSettings,
   FileSettings,
   MarkdownSettings,
-} from '../../logic/adapter';
-import type { AppearanceChoice, Theme } from '../../logic/theme/theme';
-import MenuItem from '../components/MenuItem';
+} from '../../../logic/adapter';
+import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
+import MenuItem from '../../components/MenuItem';
 import Popup, {
   PopupGroupLabel,
   PopupSeparator,
   PopupTrigger,
-} from '../components/Popup';
-import popupStyles from '../components/Popup/Popup.module.css';
-import Segmented, { type SegmentedOption } from '../primitives/Segmented';
+} from '../../components/Popup';
+import popupStyles from '../../components/Popup/Popup.module.css';
+import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
 import styles from './SettingsMenu.module.css';
 
 export interface SettingsMenuProps {
@@ -50,7 +50,7 @@ export interface SettingsMenuProps {
 }
 
 /*
- * The same derivation `ShellMenuRow.shortcutForMenuItem` uses, so every menu in
+ * The same derivation `Menubar.shortcutForMenuItem` uses, so every menu in
  * the shell advertises the accelerator from one source — the action registry.
  */
 function settingsAccelerator(): string {

@@ -1,13 +1,13 @@
 import { useRef, useState } from 'react';
 
-import { t } from '../../i18n';
+import { t } from '../../../i18n';
 import type {
   CloseChoice,
   ClosePlanSummary,
-} from '../../logic/store/appModelTypes';
-import ModalShell from '../components/ModalShell';
-import Button from '../primitives/Button';
-import styles from '../components/ModalShell/ModalShell.module.css';
+} from '../../../logic/store/appModelTypes';
+import ModalShell from '../../components/ModalShell';
+import Button from '../../primitives/Button';
+import styles from '../../components/ModalShell/ModalShell.module.css';
 
 export interface ClosePromptProps {
   onChoice: (choice: CloseChoice) => Promise<void> | void;

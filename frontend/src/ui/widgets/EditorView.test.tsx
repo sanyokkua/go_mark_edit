@@ -456,7 +456,7 @@ it('STORY-015-AC-6 matches the split-view structure', () => {
  *
  * The measurement is in
  * `evidence/ft-vs-08/phase-18/shell-attribute-css-classification.md`, which also
- * records the opposite verdict for `EditorChrome.module.css`'s 34 rules — those
+ * records the opposite verdict for `FormattingToolbar.module.css`'s 34 rules — those
  * move an attributed residual from 181 to 184 pixels and stay.
  */
 /*

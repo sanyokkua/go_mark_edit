@@ -10,22 +10,22 @@ import {
 } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
-import * as actionDispatcher from '../../logic/actions/actionDispatcher';
-import * as shortcutRegistry from '../../logic/actions/shortcutRegistry';
-import { getAction } from '../../logic/actions/actionRegistry';
-import { store } from '../../logic/store';
+import * as actionDispatcher from '../../../logic/actions/actionDispatcher';
+import * as shortcutRegistry from '../../../logic/actions/shortcutRegistry';
+import { getAction } from '../../../logic/actions/actionRegistry';
+import { store } from '../../../logic/store';
 import {
   hydrateProjection,
   resetProjection,
-} from '../../logic/store/appModelProjectionActions';
-import { hydrateSettings } from '../../logic/store/settingsSlice';
-import { DocumentCommandContext } from './editorSession';
-import { EditorSessionContext } from './editorSession';
-import EditorChrome from './EditorChrome';
-import { ModalStateProvider } from './modalState';
+} from '../../../logic/store/appModelProjectionActions';
+import { hydrateSettings } from '../../../logic/store/settingsSlice';
+import { DocumentCommandContext } from '../editorSession';
+import { EditorSessionContext } from '../editorSession';
+import FormattingToolbar from './FormattingToolbar';
+import { ModalStateProvider } from '../modalState';
 
-jest.mock('../../logic/actions/shortcutRegistry', () => {
-  const actual = jest.requireActual('../../logic/actions/shortcutRegistry');
+jest.mock('../../../logic/actions/shortcutRegistry', () => {
+  const actual = jest.requireActual('../../../logic/actions/shortcutRegistry');
   return {
     __esModule: true,
     ...actual,
@@ -36,13 +36,12 @@ jest.mock('../../logic/actions/shortcutRegistry', () => {
 const render = (ui: Parameters<typeof rtlRender>[0]) =>
   rtlRender(<Provider store={store}>{ui}</Provider>);
 
-it('T018 renders the complete toolbar groups and a real tab surface', () => {
-  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+it('renders the complete formatting groups without owning the tab surface', () => {
+  render(
+    <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
+  );
 
-  expect(
-    screen.getByRole('tablist', { name: 'Document tabs' }),
-  ).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'New tab' })).toBeEnabled();
+  expect(screen.queryByRole('tablist', { name: 'Document tabs' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Heading 1' })).toBeInTheDocument();
   expect(
@@ -53,7 +52,9 @@ it('T018 renders the complete toolbar groups and a real tab surface', () => {
 });
 
 it('T033 holds the arrangement segment at the toolbar trailing edge', () => {
-  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+  render(
+    <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
+  );
 
   const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
   const segment = screen.getByRole('radiogroup', { name: 'View arrangement' });
@@ -68,7 +69,10 @@ it('T033 holds the arrangement segment at the toolbar trailing edge', () => {
   ).toBeNull();
 
   const chromeStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    resolve(
+      process.cwd(),
+      'src/ui/widgets/FormattingToolbar/FormattingToolbar.module.css',
+    ),
     'utf8',
   );
   expect(chromeStyles).toContain('gap: var(--toolbar-gap)');
@@ -89,7 +93,7 @@ it('T060 exposes real application-menu controls from the narrow toolbar overflow
 
   try {
     render(
-      <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+      <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
     );
 
     fireEvent.click(screen.getByLabelText('More actions'));
@@ -118,7 +122,10 @@ it('T060 exposes real application-menu controls from the narrow toolbar overflow
 
 it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', () => {
   const chromeStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
+    resolve(
+      process.cwd(),
+      'src/ui/widgets/FormattingToolbar/FormattingToolbar.module.css',
+    ),
     'utf8',
   );
   expect(chromeStyles).toContain('gap: var(--toolbar-gap)');
@@ -142,7 +149,7 @@ it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', (
     ),
   ).toContain('min-inline-size: var(--popup-min-width)');
   /*
-   * The tab strip is DocumentTabs' surface, not EditorChrome's — EditorChrome
+   * The tab strip is DocumentTabs' surface, not FormattingToolbar's — FormattingToolbar
    * never referenced the tab classes that used to sit in its stylesheet. The
    * assertion follows the component that actually owns the rule.
    */
@@ -155,7 +162,9 @@ it('T033 keeps toolbar, arrangement, and overflow geometry on binding tokens', (
 });
 
 it('T068 uses icon-first toolbar controls while retaining localized accessible names', () => {
-  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+  render(
+    <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
+  );
 
   const bold = screen.getByRole('button', { name: 'Bold' });
   expect(bold).toHaveAttribute('data-icon', 'bold');
@@ -166,7 +175,9 @@ it('T068 uses icon-first toolbar controls while retaining localized accessible n
 });
 
 it('T072 scopes overflow relocation to the documented 768 and 375 width groups', () => {
-  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+  render(
+    <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
+  );
   fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
   const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
   expect(toolbar).toHaveAttribute('data-bar-overflow', 'menu');
@@ -180,7 +191,9 @@ it('T072 scopes overflow relocation to the documented 768 and 375 width groups',
 });
 
 it('T084 assigns every toolbar group to the overflow bucket its width owns', () => {
-  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+  render(
+    <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
+  );
   const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
   const rowGroups = Array.from(
     toolbar.querySelectorAll<HTMLElement>(
@@ -237,7 +250,7 @@ it('T070 closes the toolbar overflow on Escape and outside pointer input', () =>
   render(
     <>
       <button type="button">Outside</button>
-      <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />
+      <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />
     </>,
   );
   const trigger = screen.getByRole('button', { name: 'More actions' });
@@ -261,7 +274,9 @@ it('T070 closes the toolbar overflow on Escape and outside pointer input', () =>
 });
 
 it('T094 renders toolbar overflow as a body-owned Popup viewport surface', () => {
-  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+  render(
+    <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
+  );
   const trigger = screen.getByRole('button', { name: 'More actions' });
 
   fireEvent.click(trigger);
@@ -293,7 +308,7 @@ it('T095 keeps the Editor-stage semantic action signature independent of palette
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.setAttribute('data-mode', mode);
     const rendered = render(
-      <EditorChrome arrangement="split" onArrangementChange={jest.fn()} />,
+      <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
     );
     const current = Array.from(
       rendered.container.querySelectorAll(
@@ -321,7 +336,9 @@ it('T095 keeps the Editor-stage semantic action signature independent of palette
 });
 
 it('T068 exposes active arrangement state and explicit icon metadata', () => {
-  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+  render(
+    <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
+  );
   expect(screen.getByRole('radio', { name: 'Split' })).toHaveAttribute(
     'aria-checked',
     'true',
@@ -332,23 +349,10 @@ it('T068 exposes active arrangement state and explicit icon metadata', () => {
   );
 });
 
-it('T018 keeps the Assistant deferred while exposing real tab controls', () => {
-  const invoke = jest.fn();
-  render(
-    <DocumentCommandContext.Provider value={null}>
-      <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
-    </DocumentCommandContext.Provider>,
-  );
-
-  expect(screen.getByRole('button', { name: 'New tab' })).toBeEnabled();
-  expect(invoke).not.toHaveBeenCalled();
-  expect(
-    screen.queryByRole('region', { name: 'Assistant' }),
-  ).not.toBeInTheDocument();
-});
-
 it('T091 renders the text-labelled arrangement island in the toolbar', () => {
-  render(<EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />);
+  render(
+    <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />,
+  );
 
   expect(screen.getByRole('radio', { name: 'Editor' })).toHaveTextContent(
     'Editor',
@@ -356,12 +360,6 @@ it('T091 renders the text-labelled arrangement island in the toolbar', () => {
   expect(screen.getByRole('radio', { name: 'Split' })).toHaveTextContent(
     'Split',
   );
-});
-
-it('T050 keeps the tab-strip New affordance available', () => {
-  render(<EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />);
-
-  expect(screen.getByRole('button', { name: 'New tab' })).toBeEnabled();
 });
 
 it('preserves the editor selection when a toolbar format button is pressed', () => {
@@ -389,7 +387,7 @@ it('preserves the editor selection when a toolbar format button is pressed', () 
 
   render(
     <DocumentCommandContext.Provider value={commands}>
-      <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
+      <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
     </DocumentCommandContext.Provider>,
   );
 
@@ -446,7 +444,10 @@ it('T044 passes acknowledged marker preferences into toolbar formatting', async 
         value={{ documentId: 'doc-1', content: 'word' }}
       >
         <DocumentCommandContext.Provider value={commands}>
-          <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
+          <FormattingToolbar
+            arrangement="editor"
+            onArrangementChange={jest.fn()}
+          />
         </DocumentCommandContext.Provider>
       </EditorSessionContext.Provider>
     </Provider>,
@@ -491,7 +492,10 @@ it('T043 routes deferred editor shortcuts through the typed dispatcher', () => {
     >
       <DocumentCommandContext.Provider value={commands}>
         <div data-editor-surface="true" tabIndex={0}>
-          <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
+          <FormattingToolbar
+            arrangement="editor"
+            onArrangementChange={jest.fn()}
+          />
         </div>
       </DocumentCommandContext.Provider>
     </EditorSessionContext.Provider>,
@@ -539,7 +543,7 @@ it('T058 suppresses editor shortcuts while the Shortcuts dialog modal state is a
       >
         <DocumentCommandContext.Provider value={commands}>
           <div data-editor-surface tabIndex={0}>
-            <EditorChrome
+            <FormattingToolbar
               arrangement="editor"
               onArrangementChange={jest.fn()}
             />
@@ -578,7 +582,7 @@ it('T058 suppresses editor shortcuts while the Shortcuts dialog modal state is a
  * T178 — the formatting toolbar on a document the backend will refuse to write.
  *
  * `ActionButton` computed `disabled` from `entry.availability.kind ===
- * 'deferred'` — the *static* registry entry — and `EditorChrome` passed no
+ * 'deferred'` — the *static* registry entry — and `FormattingToolbar` passed no
  * projection to `dispatchAction`, so neither the button's enabled state nor the
  * command it runs could see the document's capability. Making Monaco read-only
  * and gating the registry both leave this path open: the user cannot type, but
@@ -626,7 +630,7 @@ it('T178 disables the formatting toolbar for a non-writable document', () => {
     <EditorSessionContext.Provider
       value={{ documentId: 'doc-1', content: 'word' }}
     >
-      <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
+      <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
     </EditorSessionContext.Provider>,
   );
 
@@ -678,7 +682,7 @@ it('T178 leaves the formatting toolbar live for a writable document', () => {
     <EditorSessionContext.Provider
       value={{ documentId: 'doc-1', content: 'word' }}
     >
-      <EditorChrome arrangement="editor" onArrangementChange={jest.fn()} />
+      <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
     </EditorSessionContext.Provider>,
   );
 
@@ -702,7 +706,9 @@ it('T178 leaves the formatting toolbar live for a writable document', () => {
 // Proves: FR-FT-047 — the toolbar advertises its registry bindings on the
 // shipped surface, formatted for the running platform.
 it('T190 advertises toolbar accelerators from the registry in the tooltip', () => {
-  render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
+  render(
+    <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
+  );
 
   for (const actionId of ['bold', 'italic', 'link'] as const) {
     const control = document.querySelector(`[data-action-id="${actionId}"]`);

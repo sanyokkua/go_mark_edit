@@ -13,7 +13,7 @@ export type NotificationSeverity = 'error' | 'info' | 'success' | 'warning';
  * whose command nobody implemented is the defect this type exists to prevent:
  * the button used to render from a free-form string and call nothing, so a new
  * value could be added and silently do nothing. Both fields are now exhaustively
- * switched in `App.tsx`, so an unhandled one fails the build instead.
+ * switched in `app/App.tsx`, so an unhandled one fails the build instead.
  *
  * `intent` is what makes the button honest — `action` says what the label reads,
  * `intent` says which command re-runs. `reportClassifiedError` attaches a
@@ -226,7 +226,7 @@ function findDuplicate(
  * first had earned. That is not hypothetical: a refused Save was reported twice
  * — once by the write path with its intent, once by the menu's result arm
  * without one — and the Retry button vanished behind a `×2` that read like the
- * contract's dedup count working (`App.tsx:99-100`, `:289-291`). A repeat is the
+ * contract's dedup count working (`app/App.tsx`). A repeat is the
  * *same* failure, so a control it already offers stays offered; a control the
  * repeat brings and the notification does not have yet is added once.
  */

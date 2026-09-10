@@ -172,11 +172,11 @@ jest.mock('./logic/adapter', () => ({
   },
 }));
 
-jest.mock('./ui/widgets/StartupFailure', () => {
+jest.mock('./ui/widgets/StartupFailure/StartupFailure', () => {
   const React = jest.requireActual<typeof import('react')>('react');
   const ActualStartupFailure = jest.requireActual<
-    typeof import('./ui/widgets/StartupFailure')
-  >('./ui/widgets/StartupFailure').default;
+    typeof import('./ui/widgets/StartupFailure/StartupFailure')
+  >('./ui/widgets/StartupFailure/StartupFailure').default;
 
   const StartupFailure = (props: {
     isRetrying: boolean;
@@ -244,8 +244,8 @@ import type {
   PathCommandResult,
 } from './logic/store/appModelTypes';
 import AppShell from './ui/widgets/AppShell';
-import ShellMenuRow from './ui/widgets/ShellMenuRow';
-import type { SettingsMenuProps } from './ui/widgets/SettingsMenu';
+import Menubar from './ui/widgets/Menubar/Menubar';
+import type { SettingsMenuProps } from './ui/widgets/Menubar/SettingsMenu';
 
 const mockedAppModelAdapter = appModelAdapter as jest.Mocked<AppModelAdapter>;
 const mockedApplicationAdapter = applicationAdapter as jest.Mocked<
@@ -361,12 +361,19 @@ it('FR-ED-004 offers all four menus with no document open', async () => {
 });
 
 it('T058 includes the Shortcuts dialog in the shared modal suppression state', () => {
-  const source = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8');
+  const source = readFileSync(
+    resolve(process.cwd(), 'src/app/App.tsx'),
+    'utf8',
+  );
+  const menuSource = readFileSync(
+    resolve(process.cwd(), 'src/ui/widgets/Menubar/ApplicationMenubar.tsx'),
+    'utf8',
+  );
 
   expect(source).toContain('ModalStateProvider');
   expect(source).toContain('settingsOpen ||');
   expect(source).toContain('closePlan !== null');
-  expect(source).toContain('modalOpen={menuState.modalOpen}');
+  expect(menuSource).toContain('modalOpen={menuState.modalOpen}');
 });
 
 // Proves: STORY-007-AC-1
@@ -444,7 +451,7 @@ it('T018 keeps the feature shell ordered and future behavior explicitly bounded 
   const renderRealShell = (): ReturnType<typeof render> =>
     render(
       <Provider store={store}>
-        <ShellMenuRow
+        <Menubar
           modalOpen={false}
           onAbout={jest.fn()}
           settingsMenuProps={settingsMenuProps}
@@ -1458,7 +1465,7 @@ it('T160 recreates the document the toast names, not the active one', async () =
 });
 
 /*
- * T084 gap 7 — routing (ShellMenuRow.test.tsx:331), bridge shape
+ * T084 gap 7 — routing (Menubar.test.tsx:331), bridge shape
  * (logic/adapter/services.test.ts:57) and mock-model adoption
  * (dev/bridge-mock/appModel.test.ts:402) were each asserted, but nothing asserted the
  * UI *after* a committed Save As. The confirmation must name the adopted target rather
@@ -2254,11 +2261,14 @@ it('STORY-027-AC-4 renders an accessible localized token-only startup failure su
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 
   const failureSource = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/StartupFailure.tsx'),
+    resolve(process.cwd(), 'src/ui/widgets/StartupFailure/StartupFailure.tsx'),
     'utf8',
   );
   const failureStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/widgets/StartupFailure.module.css'),
+    resolve(
+      process.cwd(),
+      'src/ui/widgets/StartupFailure/StartupFailure.module.css',
+    ),
     'utf8',
   );
   expect(failureSource).toContain("t('startup.failure.message')");
@@ -2923,7 +2933,7 @@ it('T157 keeps an automatic save silent while an explicit one confirms', async (
 
 // Proves: FR-FT-042 (partial — "MUST never restore prior tabs automatically".
 // The launcher's own New/Open/six-recent contract and its first-run message are
-// proved by Launcher.test.tsx and ShellMenuRow.test.tsx; this file stubs
+// proved by Launcher.test.tsx and Menubar.test.tsx; this file stubs
 // AppShell, so it can assert the restoration rule and not the launcher's
 // rendering.)
 //

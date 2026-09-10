@@ -182,7 +182,7 @@ it('repeated failures update one notification with a count', () => {
 /*
  * T142. `refreshDuplicate` assigned the incoming remediation wholesale, so a
  * second report of the same failure that carried no controls erased the ones the
- * first had earned. `App.tsx:99-100` and `:289-291` both record the symptom: a
+ * first had earned. `app/App.tsx` records the symptom in the application command path:
  * refused Save reported twice, the second report intent-less, and the Retry
  * button silently disappeared behind a `×2` that looked like the contract's
  * dedup count doing its job. Widening one remediation to a set must not carry
