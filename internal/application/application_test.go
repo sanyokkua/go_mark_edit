@@ -186,7 +186,7 @@ func TestApplicationContextCloseWaitsForInFlightTimerLayoutFlush(t *testing.T) {
 		firstWriteStarted: make(chan appmodel.VersionedLayoutValue, 1),
 		releaseFirstWrite: make(chan error, 1),
 	}
-	service := appmodel.NewAppModelServiceWithLayoutRepository(discardingLifecycleEmitter{}, repository)
+	service := appmodel.NewAppModelService(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.WithLayoutRepository(repository))
 	width := 300
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &width}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
@@ -286,7 +286,7 @@ func TestNativeWindowRestoreFallsBackIndependentlyAndClampsUsableDisplay(t *test
 				values[appmodel.LayoutWindowMaximized] = appmodel.VersionedLayoutValue{Version: 1, Value: test.maximized, WriterID: "test", Sequence: 1}
 			}
 			repository := lifecycleLayoutRepository{values: values}
-			model := appmodel.NewAppModelServiceWithLayoutRepository(discardingLifecycleEmitter{}, repository)
+			model := appmodel.NewAppModelService(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.WithLayoutRepository(repository))
 			native := &lifecycleRecordingNativeWindow{usableWidth: test.usableWidth, usableHeight: test.usableHeight}
 			service := NewNativeWindowService(model, native)
 

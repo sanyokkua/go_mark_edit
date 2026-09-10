@@ -39,7 +39,7 @@ func (emitter *lockObservingEmitter) observed() (bool, int) {
 
 func TestStatePublicationOccursAfterModelLockRelease(t *testing.T) {
 	emitter := &lockObservingEmitter{}
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	emitter.service = service
 
 	if err := service.UpdateBuffer(context.Background(), service.state.activeDocumentID, "changed"); err != nil {
@@ -56,7 +56,7 @@ func TestStatePublicationOccursAfterModelLockRelease(t *testing.T) {
 
 func TestStalePublicationIsRejectedWithoutRollingBackNewerState(t *testing.T) {
 	emitter := &recordingEmitter{}
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	documentID := service.state.activeDocumentID
 	service.publicationMu.Lock()
 

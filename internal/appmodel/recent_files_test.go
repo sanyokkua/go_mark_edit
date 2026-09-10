@@ -186,8 +186,7 @@ func TestPromotionFailureEmitsPersistenceWarningWithoutRollback(t *testing.T) {
 		t.Fatalf("write fixture: %v", err)
 	}
 	emitter := &recordingEmitter{}
-	service := NewEmptyAppModelService(emitter)
-	service.SetRecentFilesRepository(failingRecentFilesRepository{err: errors.New("database is locked")})
+	service := NewEmptyAppModelService(WithEmitter(emitter), WithRecentFilesRepository(failingRecentFilesRepository{err: errors.New("database is locked")}))
 
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.Status != apperr.OpenStatusOpened || opened.ActiveBuffer == nil {
@@ -220,8 +219,7 @@ func TestPromotionFailureEmitsPersistenceWarningWithoutRollback(t *testing.T) {
 func TestAutosaveAndReloadDoNotChangeRecency(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	repository := &recordingRecentFilesRepository{paths: []string{"/workspace/seed.md"}}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
-	service.SetRecentFilesRepository(repository)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock), WithRecentFilesRepository(repository))
 
 	firstPath := filepath.Join(t.TempDir(), "first.md")
 	secondPath := filepath.Join(t.TempDir(), "second.md")
@@ -284,11 +282,12 @@ func TestAutosaveAndReloadDoNotChangeRecency(t *testing.T) {
 // recency event.
 func TestExplicitSaveAndSaveAsPromoteRecency(t *testing.T) {
 	repository := &recordingRecentFilesRepository{}
-	service := NewAppModelService(&recordingEmitter{})
-	service.SetAutosaveEnabled(false)
-	service.SetRecentFilesRepository(repository)
-
 	root := t.TempDir()
+	adopted := filepath.Join(root, "adopted.md")
+	dialog := &saveDialogFixture{path: adopted, confirm: true}
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog), WithRecentFilesRepository(repository))
+	service.SetAutosaveEnabled(false)
+
 	firstPath := filepath.Join(root, "first.md")
 	secondPath := filepath.Join(root, "second.md")
 	for _, path := range []string{firstPath, secondPath} {
@@ -328,8 +327,6 @@ func TestExplicitSaveAndSaveAsPromoteRecency(t *testing.T) {
 	}
 
 	// Save As promotes the *adopted* path, and the source path keeps its place.
-	adopted := filepath.Join(root, "adopted.md")
-	service.SetDocumentSaveDialog(&saveDialogFixture{path: adopted, confirm: true})
 	if err := service.UpdateBuffer(context.Background(), second.DocumentID, "edited too\n"); err != nil {
 		t.Fatalf("edit the second document: %v", err)
 	}
@@ -352,7 +349,7 @@ func TestExplicitSaveAndSaveAsPromoteRecency(t *testing.T) {
 // documents and source content MUST NOT be retained" is proved by
 // TestRecentlyClosedHistoryRetainsNoUntitledDocumentAndNoSourceContent)
 func TestRecentlyClosedHistory(t *testing.T) {
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	for index := 0; index < 41; index++ {
 		path := filepath.Join(t.TempDir(), "closed-"+string(rune('a'+index%26))+"-"+string(rune('0'+index/26))+".md")
 		if err := os.WriteFile(path, []byte("closed\n"), 0o600); err != nil {
@@ -396,7 +393,7 @@ func TestRecentlyClosedHistory(t *testing.T) {
 func TestRecentlyClosedHistoryRetainsNoUntitledDocumentAndNoSourceContent(t *testing.T) {
 	const marker = "SOURCE-CONTENT-MARKER-a1b2c3\n"
 
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	service.SetAutosaveEnabled(false)
 
 	// An untitled document, closed while empty so no close plan is needed.
@@ -494,7 +491,7 @@ func TestReopenLastFileLifecycle(t *testing.T) {
 	if err := os.WriteFile(path, []byte("original\n"), 0o600); err != nil {
 		t.Fatalf("write reopen fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.Error != nil {
 		t.Fatalf("open = %+v", opened.Error)
@@ -559,8 +556,7 @@ func TestFocusingAnOpenDocumentPromotesItToTheFrontOfRecents(t *testing.T) {
 		t.Fatalf("open database: %v", err)
 	}
 	defer func() { _ = database.Close() }()
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	service.SetRecentFilesRepository(NewSqliteRecentFilesRepository(database))
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRecentFilesRepository(NewSqliteRecentFilesRepository(database)))
 	paths := recentFixturePaths(t, "first.md", "second.md")
 
 	state, _ := service.GetState(context.Background())
@@ -603,8 +599,7 @@ nothing asserted that a commit made out of band reaches a projection snapshot.
 // Proves: SC-FT-008 (the display boundary observes the latest committed list)
 func TestGetStateObservesARecentsCommitMadeOutOfBand(t *testing.T) {
 	first, second := openTwoRecentFilesDatabases(t)
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	service.SetRecentFilesRepository(NewSqliteRecentFilesRepository(first))
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRecentFilesRepository(NewSqliteRecentFilesRepository(first)))
 	paths := recentFixturePaths(t, "seen.md", "outofband.md")
 
 	state, _ := service.GetState(context.Background())
@@ -652,8 +647,8 @@ T184 — SC-FT-008's "prune missing entries **without background polling**", for
 recents specifically.
 
 `TestNoWatcherOrPollingTimerIsRegistered` (`conflict_test.go:147`) counts
-disk-version conflict reads through `SetConflictReadersForTesting`. It says
-nothing about `RecentFilesRepository.List`, so the recents half of the clause
+disk-version conflict reads through the constructor's conflict-reader option.
+It says nothing about `RecentFilesRepository.List`, so the recents half of the clause
 rested entirely on a comment at `recent_files.go:9-10` — "performs validation
 only when state is requested, never from a watcher or timer" — which is the same
 shape as the guard T128 found unwired.
@@ -665,8 +660,7 @@ call count that stays put across a quiet interval and then moves on the next
 // Proves: SC-FT-008 (recents are pruned at the display boundary, not by polling)
 func TestRecentsAreListedOnlyAtDisplayAndChoice(t *testing.T) {
 	repository := &countingRecentFilesRepository{}
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	service.SetRecentFilesRepository(repository)
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRecentFilesRepository(repository))
 	paths := recentFixturePaths(t, "counted.md")
 
 	state, _ := service.GetState(context.Background())
@@ -722,8 +716,7 @@ only a hand-written string.
 func TestFailedPromotionRetainsAPopulatedCommittedOrder(t *testing.T) {
 	first, second := openTwoRecentFilesDatabases(t)
 	repository := NewSqliteRecentFilesRepository(first)
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	service.SetRecentFilesRepository(repository)
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRecentFilesRepository(repository))
 	paths := recentFixturePaths(t, "committed-a.md", "committed-b.md", "refused.md")
 
 	// A populated, committed order — the thing that must survive the failure.

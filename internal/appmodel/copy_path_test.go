@@ -19,18 +19,18 @@ func TestCopyPathResolvesCanonicalPathAndClassifiesClipboardFailure(t *testing.T
 	if err := os.WriteFile(path, []byte("notes\n"), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	want := errors.New("clipboard failed")
+	var copied string
+	clipboard := file.ClipboardWriterFunc(func(value string) error {
+		copied = value
+		return want
+	})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithClipboardWriter(clipboard))
 	state, _ := service.GetState(context.Background())
 	opened := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
 	if opened.Error != nil {
 		t.Fatalf("OpenPath = %+v", opened)
 	}
-	want := errors.New("clipboard failed")
-	var copied string
-	service.SetClipboardWriter(file.ClipboardWriterFunc(func(value string) error {
-		copied = value
-		return want
-	}))
 	result := service.CopyPath(context.Background(), opened.DocumentID)
 	if result.Error == nil || result.Error.Category != apperr.ClassifiedSystemCommandFailure || result.Error.DocumentID != opened.DocumentID {
 		t.Fatalf("CopyPath failure = %+v", result)
@@ -46,7 +46,9 @@ func TestCopyPathSucceedsForDetachedDocument(t *testing.T) {
 	if err := os.WriteFile(path, []byte("detached\n"), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	var copied string
+	clipboard := file.ClipboardWriterFunc(func(value string) error { copied = value; return nil })
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithClipboardWriter(clipboard))
 	state, _ := service.GetState(context.Background())
 	opened := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
 	if opened.Error != nil {
@@ -55,8 +57,6 @@ func TestCopyPathSucceedsForDetachedDocument(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatalf("remove fixture: %v", err)
 	}
-	var copied string
-	service.SetClipboardWriter(file.ClipboardWriterFunc(func(value string) error { copied = value; return nil }))
 	result := service.CopyPath(context.Background(), opened.DocumentID)
 	if result.Error != nil || result.Status != apperr.PathCommandCopied {
 		t.Fatalf("CopyPath detached = %+v", result)
@@ -72,14 +72,14 @@ func TestRevealInFileManagerRevalidatesExistenceAndClassifiesFailure(t *testing.
 	if err := os.WriteFile(path, []byte("reveal\n"), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	calls := 0
+	reveal := file.RevealPortFunc(func(string) error { calls++; return fs.ErrNotExist })
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRevealPort(reveal))
 	state, _ := service.GetState(context.Background())
 	opened := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
 	if opened.Error != nil {
 		t.Fatalf("OpenPath = %+v", opened)
 	}
-	calls := 0
-	service.SetRevealPort(file.RevealPortFunc(func(string) error { calls++; return fs.ErrNotExist }))
 	if err := os.Remove(path); err != nil {
 		t.Fatalf("remove known-missing fixture: %v", err)
 	}
@@ -104,10 +104,9 @@ func TestRevealInFileManagerRevalidatesExistenceAndClassifiesFailure(t *testing.
 		t.Fatalf("restore fixture: %v", err)
 	}
 	// A fresh document exercises the invocation-time disappearance race.
-	service = NewEmptyAppModelService(&recordingEmitter{})
+	service = NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRevealPort(file.RevealPortFunc(func(string) error { return fs.ErrNotExist })))
 	state, _ = service.GetState(context.Background())
 	opened = service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
-	service.SetRevealPort(file.RevealPortFunc(func(string) error { return fs.ErrNotExist }))
 	race := service.RevealInFileManager(context.Background(), opened.DocumentID)
 	wantPair := []apperr.ClassifiedRemediation{apperr.RemediationSaveToRecreate, apperr.RemediationCopyPath}
 	if race.Error == nil || race.Error.Category != apperr.ClassifiedNotFound || !slices.Equal(race.Error.Remediations, wantPair) {
@@ -138,15 +137,14 @@ func TestRevealDisappearanceAtInvocationReportsNotFoundOfferingBothActions(t *te
 	if err := os.WriteFile(path, []byte("here\n"), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	reveals := 0
+	reveal := file.RevealPortFunc(func(string) error { reveals++; return nil })
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithRevealPort(reveal))
 	state, _ := service.GetState(context.Background())
 	opened := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
 	if opened.Error != nil {
 		t.Fatalf("OpenPath = %+v", opened)
 	}
-	reveals := 0
-	service.SetRevealPort(file.RevealPortFunc(func(string) error { reveals++; return nil }))
-
 	// The file goes away after the document is open and before Reveal is invoked.
 	if err := os.Remove(path); err != nil {
 		t.Fatalf("remove fixture: %v", err)

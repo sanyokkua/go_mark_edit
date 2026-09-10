@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
@@ -56,18 +57,6 @@ func (service *AppModelService) SetAutosaveEnabled(enabled bool) {
 	for documentID := range service.state.documents {
 		service.cancelAutosaveLocked(documentID)
 	}
-}
-
-// NewAppModelServiceWithAutosaveTimer exposes the injected-clock constructor
-// used by lifecycle tests without changing the production composition root.
-func NewAppModelServiceWithAutosaveTimer(emitter StatePatchEmitter, timer AutosaveTimerFactory) *AppModelService {
-	service := NewAppModelService(emitter)
-	if timer != nil {
-		service.mu.Lock()
-		service.autosaveTimer = timer
-		service.mu.Unlock()
-	}
-	return service
 }
 
 func (service *AppModelService) scheduleAutosave(documentID string, revision uint64) {
@@ -223,6 +212,7 @@ func (service *AppModelService) runAutosave(documentID string, revision, generat
 
 	ctx := service.runtimeContextOr(context.Background())
 	if result := service.prepareWriteDisk(ctx, documentID, revision, ""); result.Status != "" {
+		service.finishAutosave(ctx, documentID, result)
 		return
 	}
 	service.mu.RLock()
@@ -243,7 +233,37 @@ func (service *AppModelService) runAutosave(documentID string, revision, generat
 		if result.DecisionToken != "" {
 			service.CancelNormalization(documentID, result.DecisionToken)
 		}
+		service.finishAutosave(ctx, documentID, result)
 		return
 	}
-	_ = service.executeWrite(ctx, snapshot, SaveOriginAutosave)
+	service.finishAutosave(ctx, documentID, service.executeWrite(ctx, snapshot, SaveOriginAutosave))
+}
+
+// finishAutosave closes or advances the per-document failure episode after an
+// autosave attempt. The state mutation happens before the emitter call so two
+// timer callbacks cannot both report the same category, while the emitter is
+// still reached after the model lock is released.
+func (service *AppModelService) finishAutosave(ctx context.Context, documentID string, result apperr.WriteResult) {
+	if result.Status == apperr.WriteStatusCommitted {
+		service.mu.Lock()
+		if document := service.state.documents[documentID]; document != nil {
+			document.autosaveFailureCategory = ""
+		}
+		service.mu.Unlock()
+		return
+	}
+	if result.Error == nil {
+		return
+	}
+
+	service.mu.Lock()
+	document := service.state.documents[documentID]
+	if document == nil || document.autosaveFailureCategory == string(result.Error.Category) {
+		service.mu.Unlock()
+		return
+	}
+	document.autosaveFailureCategory = string(result.Error.Category)
+	service.mu.Unlock()
+
+	service.emitAsyncError(ctx, apperr.ClassifiedToWire(result.Error), "autosave failure could not be surfaced")
 }

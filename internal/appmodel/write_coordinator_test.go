@@ -177,7 +177,10 @@ func TestNewerEditRemainsDirty(t *testing.T) {
 // Proves: FR-FT-019
 func TestExplicitSaveSerializesWithAutosave(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	var executor WriteExecutor
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		return executor(snapshot)
+	}))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	started := make(chan struct{})
 	release := make(chan struct{})
@@ -185,7 +188,7 @@ func TestExplicitSaveSerializesWithAutosave(t *testing.T) {
 	var active atomic.Int32
 	var maxActive atomic.Int32
 	var revisions atomic.Int32
-	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		calls.Add(1)
 		current := active.Add(1)
 		for {
@@ -201,10 +204,10 @@ func TestExplicitSaveSerializesWithAutosave(t *testing.T) {
 			<-release
 		}
 		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{
-			TargetPath: snapshot.TargetPath, Data: snapshot.encodedData, ExpectedVersion: snapshot.ExpectedDiskVersion,
+			TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion,
 		})
 		return replaced.Version, err
-	})
+	}
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "first\n"); err != nil {
 		t.Fatalf("first edit: %v", err)
@@ -248,22 +251,25 @@ func TestExplicitSaveSerializesWithAutosave(t *testing.T) {
 
 func TestExplicitSaveReusesMatchingAutosaveCommit(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	var executor WriteExecutor
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		return executor(snapshot)
+	}))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	started := make(chan struct{})
 	release := make(chan struct{})
 	var calls atomic.Int32
-	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		calls.Add(1)
 		if snapshot.ContentRevision == 1 {
 			close(started)
 			<-release
 		}
 		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{
-			TargetPath: snapshot.TargetPath, Data: snapshot.encodedData, ExpectedVersion: snapshot.ExpectedDiskVersion,
+			TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion,
 		})
 		return replaced.Version, err
-	})
+	}
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "same revision\n"); err != nil {
 		t.Fatalf("edit: %v", err)

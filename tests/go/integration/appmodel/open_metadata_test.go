@@ -15,7 +15,7 @@ func TestOpenPatchMetadataMatchesHydratedState(t *testing.T) {
 		t.Fatalf("write document: %v", err)
 	}
 	recorder := &statePatchRecorder{}
-	service := appmodel.NewAppModelService(recorder)
+	service := appmodel.NewAppModelService(appmodel.WithEmitter(recorder))
 
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.Status != appmodel.OpenStatusOpened {

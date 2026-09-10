@@ -21,6 +21,7 @@ type DocumentRecord struct {
 	autosave                *autosaveTimerEntry
 	autosaveInFlight        chan struct{}
 	autosaveGeneration      uint64
+	autosaveFailureCategory string
 	activationToken         string
 	saveReservation         *saveReservation
 	normalization           *normalizationAuthorization
@@ -61,6 +62,7 @@ func (service *AppModelService) dispose(documentID string) {
 		document.autosave = nil
 	}
 	document.autosaveInFlight = nil
+	document.autosaveFailureCategory = ""
 	document.writeQueue = nil
 	document.activationToken = ""
 	document.saveReservation = nil

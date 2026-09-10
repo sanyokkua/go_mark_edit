@@ -25,7 +25,7 @@ func TestAutosaveLatencyScenarioUsesSystemTimer(t *testing.T) {
 	if err := os.WriteFile(path, []byte("before"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	service := appmodel.NewAppModelService(autosaveLatencyTestEmitter{})
+	service := appmodel.NewAppModelService(appmodel.WithEmitter(autosaveLatencyTestEmitter{}))
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.ActiveBuffer == nil {
 		t.Fatalf("OpenPath returned no active buffer: %+v", opened)

@@ -7,7 +7,7 @@ import (
 
 func TestMoveTabOnePositionRequiresConfirmation(t *testing.T) {
 	emitter := &recordingEmitter{}
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	state, _ := service.GetState(context.Background())
 	for range 2 {
 		created := service.NewDocument(context.Background(), state.Snapshot.TabSetRevision)
@@ -32,7 +32,7 @@ func TestMoveTabOnePositionRequiresConfirmation(t *testing.T) {
 
 func TestMoveTabPastEdgeIsNoOpWithoutRevisionBump(t *testing.T) {
 	emitter := &recordingEmitter{}
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	state, _ := service.GetState(context.Background())
 	created := service.NewDocument(context.Background(), state.Snapshot.TabSetRevision)
 	if created.Error != nil {

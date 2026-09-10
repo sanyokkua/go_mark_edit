@@ -14,7 +14,7 @@ type WriteSnapshot struct {
 	CanonicalContent    string
 	TargetPath          string
 	ExpectedDiskVersion *file.DiskVersion
-	encodedData         []byte
+	EncodedData         []byte
 }
 
 // committedWriteError lets the coordinator preserve disk truth when the
@@ -70,8 +70,8 @@ func (coordinator *DocumentWriteCoordinator) Commit(snapshot WriteSnapshot) (Com
 		version := *snapshot.ExpectedDiskVersion
 		immutable.ExpectedDiskVersion = &version
 	}
-	if snapshot.encodedData != nil {
-		immutable.encodedData = append([]byte(nil), snapshot.encodedData...)
+	if snapshot.EncodedData != nil {
+		immutable.EncodedData = append([]byte(nil), snapshot.EncodedData...)
 	}
 	if coordinator.lastCommitted != nil && reusableCommit(*coordinator.lastCommitted, immutable) {
 		return cloneCommittedWriteResult(*coordinator.lastCommitted), nil
@@ -139,8 +139,8 @@ func cloneWriteSnapshot(snapshot WriteSnapshot) WriteSnapshot {
 		version := *snapshot.ExpectedDiskVersion
 		cloned.ExpectedDiskVersion = &version
 	}
-	if snapshot.encodedData != nil {
-		cloned.encodedData = append([]byte(nil), snapshot.encodedData...)
+	if snapshot.EncodedData != nil {
+		cloned.EncodedData = append([]byte(nil), snapshot.EncodedData...)
 	}
 	return cloned
 }

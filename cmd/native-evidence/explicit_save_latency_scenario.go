@@ -185,6 +185,7 @@ type explicitSaveLatencyScenario struct {
 	startedAt      time.Time
 	readyAt        time.Time
 	saveTarget     string
+	beforeSave     func(string)
 	chooseCalls    int
 	confirmCalls   int
 	ignoredCommits map[string]int
@@ -455,12 +456,16 @@ func (scenario *explicitSaveLatencyScenario) prepareFixtureB(ctx context.Context
 func (scenario *explicitSaveLatencyScenario) measure(ctx context.Context, model explicitSaveDriverModel, plan explicitSavePlan) explicitSaveFixtureRow {
 	scenario.mu.Lock()
 	scenario.saveTarget = plan.saveAsTarget
+	beforeSave := scenario.beforeSave
 	delete(scenario.commits, plan.documentID)
 	readyAt := scenario.readyAt
 	chooseCallsBefore := scenario.chooseCalls
 	confirmCallsBefore := scenario.confirmCalls
 	scenario.mu.Unlock()
 
+	if beforeSave != nil && plan.saveAsTarget != "" {
+		beforeSave(plan.saveAsTarget)
+	}
 	dispatchedAt := time.Now()
 	result := model.Save(ctx, plan.documentID, plan.contentRevision, "")
 	confirmedAt := time.Now()

@@ -27,9 +27,11 @@ func newExplicitSaveScenarioForTest(t *testing.T) (*explicitSaveLatencyScenario,
 	if err != nil {
 		t.Fatalf("new explicit save scenario: %v", err)
 	}
-	model := appmodel.NewAppModelService(explicitSaveTestEmitter{})
-	model.SetDocumentSaveDialog(scenario)
-	model.SetWriteCommitObserver(scenario.recordCommit)
+	model := appmodel.NewAppModelService(
+		appmodel.WithEmitter(explicitSaveTestEmitter{}),
+		appmodel.WithDialogs(nil, scenario),
+		appmodel.WithWriteCommitObserver(scenario.recordCommit),
+	)
 	scenario.attachModel(model)
 	return scenario, model
 }
@@ -330,15 +332,15 @@ func TestExplicitSaveDirectoryVerdictRejectsAnUnrelatedModification(t *testing.T
 
 func TestExplicitSaveWalkthroughFailsWhenAnArtifactSurvivesTheConfirmation(t *testing.T) {
 	t.Parallel()
-	scenario, model := newExplicitSaveScenarioForTest(t)
+	scenario, _ := newExplicitSaveScenarioForTest(t)
 	// A leftover dropped into the target directory during the Save As reaches
 	// the after-snapshot exactly as an uncleaned FR-FT-009 temporary file would.
-	model.SetBeforeSaveAsRecheck(func(candidate string) {
+	scenario.beforeSave = func(candidate string) {
 		leftover := filepath.Join(filepath.Dir(candidate), ".gomarkedit-leftover")
 		if err := os.WriteFile(leftover, []byte("stranded"), 0o600); err != nil {
 			t.Errorf("plant leftover: %v", err)
 		}
-	})
+	}
 
 	err := scenario.run(context.Background())
 	if err == nil {

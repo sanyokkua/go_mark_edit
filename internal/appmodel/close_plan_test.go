@@ -19,7 +19,7 @@ import (
 func TestClosePlanCompletenessAndCancel(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	emitter := &recordingEmitter{}
-	service := NewAppModelServiceWithAutosaveTimer(emitter, clock)
+	service := NewAppModelService(WithEmitter(emitter), WithAutosaveTimer(clock))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
 		t.Fatalf("edit: %v", err)
@@ -55,7 +55,10 @@ func TestClosePlanCompletenessAndCancel(t *testing.T) {
 // Proves: FR-FT-026 (partial — order and first-failure stop; "resolve external
 // conflicts before each affected save" is proved by the sibling below)
 func TestClosePlanSaveOrderAndFailure(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	var executor WriteExecutor
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		return executor(snapshot)
+	}))
 	firstPath, firstID := openAutosaveDocument(t, service, "first base\n")
 	secondPath, secondID := openAutosaveDocument(t, service, "second base\n")
 	if err := service.UpdateBuffer(context.Background(), firstID, "first edited\n"); err != nil {
@@ -67,16 +70,16 @@ func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 	service.SetAutosaveEnabled(false)
 	var order []string
 	var writes sync.Mutex
-	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		writes.Lock()
 		order = append(order, snapshot.DocumentID)
 		writes.Unlock()
 		if snapshot.DocumentID == secondID {
 			return file.DiskVersion{}, errors.New("second write failed")
 		}
-		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.encodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
 		return replaced.Version, err
-	})
+	}
 	state, _ := service.GetState(context.Background())
 	plan := service.PrepareClose(context.Background(), apperr.ClosePlanRight, []string{secondID, firstID}, state.Snapshot.TabSetRevision)
 	if plan.Error != nil || plan.Data == nil {
@@ -130,7 +133,10 @@ func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 // happened when it was reported", and then that the same batch completes once
 // the conflict is answered.
 func TestClosePlanResolvesEveryExternalConflictBeforeAnySaveRuns(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	var executor WriteExecutor
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		return executor(snapshot)
+	}))
 	service.SetAutosaveEnabled(false)
 	firstPath, firstID := openAutosaveDocument(t, service, "first base\n")
 	secondPath, secondID := openAutosaveDocument(t, service, "second base\n")
@@ -142,11 +148,11 @@ func TestClosePlanResolvesEveryExternalConflictBeforeAnySaveRuns(t *testing.T) {
 	}
 
 	var writes atomic.Int32
-	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		writes.Add(1)
-		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.encodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
 		return replaced.Version, err
-	})
+	}
 
 	// Only the second target is changed underneath, so a batch that inspected
 	// lazily would write the first file before ever noticing.
@@ -216,17 +222,19 @@ func TestClosePlanResolvesEveryExternalConflictBeforeAnySaveRuns(t *testing.T) {
 }
 
 func TestClosePlanSaveAsResolvesBeforeBatchWrite(t *testing.T) {
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	var executor WriteExecutor
 	target := filepath.Join(t.TempDir(), "planned-untitled")
 	dialog := &saveDialogFixture{path: target, confirm: true}
-	service.SetDocumentSaveDialog(dialog)
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		return executor(snapshot)
+	}))
 	documentID := newSaveDocument(t, service, "planned\n")
 	var writes atomic.Int32
-	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		writes.Add(1)
-		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.encodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
 		return replaced.Version, err
-	})
+	}
 	state, _ := service.GetState(context.Background())
 	plan := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{documentID}, state.Snapshot.TabSetRevision)
 	if plan.Error != nil || plan.Data == nil {
@@ -253,8 +261,8 @@ func TestClosePlanSaveAsResolvesBeforeBatchWrite(t *testing.T) {
 }
 
 func TestClosePlanSaveAsCancellationIsZeroEffect(t *testing.T) {
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	service.SetDocumentSaveDialog(&saveDialogFixture{path: "", confirm: true})
+	dialog := &saveDialogFixture{path: "", confirm: true}
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog))
 	documentID := newSaveDocument(t, service, "cancelled\n")
 	state, _ := service.GetState(context.Background())
 	plan := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{documentID}, state.Snapshot.TabSetRevision)
@@ -273,7 +281,7 @@ func TestClosePlanSaveAsCancellationIsZeroEffect(t *testing.T) {
 
 func TestCloseWaitsForFlushAndAutosave(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "latest\n"); err != nil {
 		t.Fatalf("edit: %v", err)
@@ -302,15 +310,18 @@ func TestCloseWaitsForFlushAndAutosave(t *testing.T) {
 
 func TestCloseReevaluatesRevisionAfterAutosaveDrain(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	var executor WriteExecutor
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		return executor(snapshot)
+	}))
 	_, documentID := openAutosaveDocument(t, service, "base\n")
 	started := make(chan struct{})
 	release := make(chan struct{})
-	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		close(started)
 		<-release
-		return file.DiskVersion{Exists: true, Size: int64(len(snapshot.encodedData))}, nil
-	})
+		return file.DiskVersion{Exists: true, Size: int64(len(snapshot.EncodedData))}, nil
+	}
 	if err := service.UpdateBuffer(context.Background(), documentID, "first\n"); err != nil {
 		t.Fatalf("first edit: %v", err)
 	}
@@ -339,7 +350,7 @@ func TestCloseReevaluatesRevisionAfterAutosaveDrain(t *testing.T) {
 }
 
 func TestQueuedNormalizationsResolveInTabOrder(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	firstPath, firstID := writeMixedDocument(t, service, "first\r\nsecond\n")
 	secondPath, secondID := writeMixedDocument(t, service, "third\n fourth\r\n")
 	if err := service.UpdateBuffer(context.Background(), firstID, "first changed\nsecond\n"); err != nil {
@@ -387,7 +398,7 @@ func TestQueuedNormalizationsResolveInTabOrder(t *testing.T) {
 }
 
 func TestCloseAdjacentAndFinalZeroState(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	state, _ := service.GetState(context.Background())
 	for range 2 {
 		created := service.NewDocument(context.Background(), state.Snapshot.TabSetRevision)
@@ -444,7 +455,7 @@ func writeMixedDocument(t *testing.T, service *AppModelService, content string) 
 // while Wails had already vetoed the close, leaving a window that could only be
 // killed. Quitting with every tab closed is the ordinary way to reach it.
 func TestPrepareCloseWithNoTargetsMarshalsAnEmptyTargetArray(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
@@ -495,7 +506,7 @@ func TestPrepareCloseWithNoTargetsMarshalsAnEmptyTargetArray(t *testing.T) {
 // close. The newest close request now supersedes a plan that is only waiting on
 // a human.
 func TestPrepareCloseSupersedesAnAbandonedPlan(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	_, firstID := openAutosaveDocument(t, service, "first base\n")
 	_, secondID := openAutosaveDocument(t, service, "second base\n")
 	if err := service.UpdateBuffer(context.Background(), firstID, "first edited\n"); err != nil {
@@ -547,7 +558,7 @@ func TestPrepareCloseSupersedesAnAbandonedPlan(t *testing.T) {
 // Superseding must not throw away choices the user already answered, so an
 // identical repeat of the same request returns the plan already collecting.
 func TestPrepareCloseRepeatedIdenticallyKeepsTheCollectingPlan(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	_, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
 		t.Fatalf("edit: %v", err)
@@ -571,7 +582,10 @@ func TestPrepareCloseRepeatedIdenticallyKeepsTheCollectingPlan(t *testing.T) {
 // ExecuteClosePlan runs its saves with the mutex released, so a plan that is
 // already writing is the one plan a newer request must not supersede.
 func TestPrepareCloseRefusesWhileAnotherPlanIsSaving(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	var executor WriteExecutor
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		return executor(snapshot)
+	}))
 	_, firstID := openAutosaveDocument(t, service, "first base\n")
 	_, secondID := openAutosaveDocument(t, service, "second base\n")
 	if err := service.UpdateBuffer(context.Background(), firstID, "first edited\n"); err != nil {
@@ -585,12 +599,12 @@ func TestPrepareCloseRefusesWhileAnotherPlanIsSaving(t *testing.T) {
 	writing := make(chan struct{})
 	release := make(chan struct{})
 	var once sync.Once
-	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		once.Do(func() { close(writing) })
 		<-release
-		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.encodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
 		return replaced.Version, err
-	})
+	}
 
 	state, _ := service.GetState(context.Background())
 	revision := state.Snapshot.TabSetRevision
@@ -629,7 +643,7 @@ func TestPrepareCloseRefusesWhileAnotherPlanIsSaving(t *testing.T) {
 // one is covered here.
 
 func TestPrepareCloseRefusesAStaleTabSetRevision(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	_, documentID := openAutosaveDocument(t, service, "base\n")
 	state, err := service.GetState(context.Background())
 	if err != nil {
@@ -662,15 +676,18 @@ func TestPrepareCloseRefusesAStaleTabSetRevision(t *testing.T) {
 
 func TestPrepareCloseRefusesARevisionThatMovedWhileAutosaveDrained(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	var executor WriteExecutor
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		return executor(snapshot)
+	}))
 	_, documentID := openAutosaveDocument(t, service, "base\n")
 	started := make(chan struct{})
 	release := make(chan struct{})
-	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		close(started)
 		<-release
-		return file.DiskVersion{Exists: true, Size: int64(len(snapshot.encodedData))}, nil
-	})
+		return file.DiskVersion{Exists: true, Size: int64(len(snapshot.EncodedData))}, nil
+	}
 
 	// Schedule an autosave but deliberately do NOT fire the clock. That leaves
 	// flushAutosaveForClose on its `entry != nil && done == nil` branch

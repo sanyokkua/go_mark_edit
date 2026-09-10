@@ -24,23 +24,19 @@ import (
 // Startup failure leaves the process and framed webview available for the
 // localized in-app Retry surface. It does not fall back to a native dialog.
 func TestStartupInitFailureRemainsRecoverableInWebview(t *testing.T) {
-	previousShowStartupRecoveryWindow := showStartupRecoveryWindow
-	t.Cleanup(func() {
-		showStartupRecoveryWindow = previousShowStartupRecoveryWindow
-	})
-
 	var (
 		recoveryContext context.Context
 		recoveryCalls   int
 	)
-	showStartupRecoveryWindow = func(ctx context.Context) {
-		recoveryContext = ctx
-		recoveryCalls++
-	}
 
 	paths := &failingStartupFileUtils{}
 	holder := application.NewApplicationContextHolder(paths, nil)
-	appOptions := newAppOptions(holder)
+	appOptions := newAppOptionsWithLogger(holder, nil, nativeRuntimePorts{
+		showStartupRecoveryWindow: func(ctx context.Context) {
+			recoveryContext = ctx
+			recoveryCalls++
+		},
+	})
 	startupContext := context.WithValue(context.Background(), startupContextKey{}, "failed startup")
 	appOptions.OnStartup(startupContext)
 
@@ -255,28 +251,23 @@ func TestWailsOptionsAllowIndependentNativeProcesses(t *testing.T) {
 // programmatic quit consumes exactly one permit before shutdown.
 func TestWailsAppInstallsCloseFlushLifecycleHook(t *testing.T) {
 	ctx := context.Background()
-	previousEmit := emitNativeCloseRequest
-	previousQuit := quitNativeApplication
-	t.Cleanup(func() {
-		emitNativeCloseRequest = previousEmit
-		quitNativeApplication = previousQuit
-	})
 	closeRequests := 0
 	quitCalls := 0
-	emitNativeCloseRequest = func(context.Context, string) { closeRequests++ }
-	quitNativeApplication = func(context.Context) { quitCalls++ }
 
-	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
-	appOptions := newAppOptions(holder)
+	repository := &recordingMainLayoutRepository{}
+	holder := application.NewApplicationContextHolderWithOptions(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, application.ApplicationContextOptions{
+		AppModelOptions: []appmodel.AppModelOption{
+			appmodel.WithEmitter(discardingMainStatePatchEmitter{}),
+			appmodel.WithLayoutRepository(repository),
+		},
+	})
+	appOptions := newAppOptionsWithLogger(holder, nil, nativeRuntimePorts{
+		emitNativeCloseRequest: func(context.Context, string) { closeRequests++ },
+		quitNativeApplication:  func(context.Context) { quitCalls++ },
+	})
 	if err := holder.Init(ctx); err != nil {
 		t.Fatalf("initialize application before close: %v", err)
 	}
-	repository := &recordingMainLayoutRepository{delegate: holder.AppModelService.LayoutRepository()}
-	holder.AppModelService = appmodel.NewAppModelServiceWithLayoutRepository(
-		discardingMainStatePatchEmitter{},
-		repository,
-	)
-
 	width := 1200
 	if err := holder.AppModelService.SetUILayout(ctx, apperr.UILayout{WindowWidth: &width}); err != nil {
 		t.Fatalf("queue native resize before close: %v", err)
@@ -325,26 +316,23 @@ func TestWailsAppInstallsCloseFlushLifecycleHook(t *testing.T) {
 // request remains available for an explicit retry.
 func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 	ctx := context.Background()
-	previousEmit := emitNativeCloseRequest
-	previousQuit := quitNativeApplication
-	t.Cleanup(func() {
-		emitNativeCloseRequest = previousEmit
-		quitNativeApplication = previousQuit
-	})
 	closeRequests := 0
 	quitCalls := 0
-	emitNativeCloseRequest = func(context.Context, string) { closeRequests++ }
-	quitNativeApplication = func(context.Context) { quitCalls++ }
 
-	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
-	appOptions := newAppOptions(holder)
+	repository := &recordingMainLayoutRepository{err: errors.New("simulated layout write failure")}
+	holder := application.NewApplicationContextHolderWithOptions(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, application.ApplicationContextOptions{
+		AppModelOptions: []appmodel.AppModelOption{
+			appmodel.WithEmitter(discardingMainStatePatchEmitter{}),
+			appmodel.WithLayoutRepository(repository),
+		},
+	})
+	appOptions := newAppOptionsWithLogger(holder, nil, nativeRuntimePorts{
+		emitNativeCloseRequest: func(context.Context, string) { closeRequests++ },
+		quitNativeApplication:  func(context.Context) { quitCalls++ },
+	})
 	if err := holder.Init(ctx); err != nil {
 		t.Fatalf("initialize application before close: %v", err)
 	}
-	repository := &recordingMainLayoutRepository{err: errors.New("simulated layout write failure")}
-	holder.AppModelService = appmodel.NewAppModelServiceWithLayoutRepository(
-		discardingMainStatePatchEmitter{}, repository,
-	)
 	t.Cleanup(func() {
 		if holder.DB == nil {
 			return
@@ -394,15 +382,16 @@ func TestWailsAppCloseFlushFailurePreventsNativeShutdown(t *testing.T) {
 // Shutdown releases SQLite only after the final layout drain has completed.
 func TestShutdownOrder(t *testing.T) {
 	ctx := context.Background()
-	holder := application.NewApplicationContextHolder(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
+	repository := &recordingMainLayoutRepository{}
+	holder := application.NewApplicationContextHolderWithOptions(testFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, application.ApplicationContextOptions{
+		AppModelOptions: []appmodel.AppModelOption{
+			appmodel.WithEmitter(discardingMainStatePatchEmitter{}),
+			appmodel.WithLayoutRepository(repository),
+		},
+	})
 	if err := holder.Init(ctx); err != nil {
 		t.Fatalf("initialize application before shutdown: %v", err)
 	}
-	repository := &recordingMainLayoutRepository{delegate: holder.AppModelService.LayoutRepository()}
-	holder.AppModelService = appmodel.NewAppModelServiceWithLayoutRepository(
-		discardingMainStatePatchEmitter{},
-		repository,
-	)
 	width := 1200
 	if err := holder.AppModelService.SetUILayout(ctx, apperr.UILayout{WindowWidth: &width}); err != nil {
 		t.Fatalf("queue shutdown layout: %v", err)

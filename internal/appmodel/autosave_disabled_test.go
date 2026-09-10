@@ -20,7 +20,7 @@ import (
 // and the bytes, size and modification time on disk are all untouched.
 func TestAutosaveDisabledWritesNothingToDisk(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 
 	before, err := os.Stat(path)
@@ -75,7 +75,7 @@ func TestAutosaveDisabledWritesNothingToDisk(t *testing.T) {
 // the document as saved while the edit exists only in the buffer.
 func TestAutosaveOffLeavesExistingDirtyDocumentsDirty(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 
 	_, dirtyID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), dirtyID, "pending when autosave goes off\n"); err != nil {
@@ -148,7 +148,7 @@ func TestAutosaveOffLeavesExistingDirtyDocumentsDirty(t *testing.T) {
 // cannot be "never autosave".
 func TestAutosaveReEnabledResumesWriting(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 
 	service.SetAutosaveEnabled(false)

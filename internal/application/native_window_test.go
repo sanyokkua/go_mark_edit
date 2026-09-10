@@ -31,7 +31,7 @@ func (window *recordingNativeWindow) Show(context.Context)     { window.showCall
 // Restore clamps only dimensions to the public usable display, keeps native
 // maximization independent, and makes visibility a one-shot readiness action.
 func TestNativeWindowRestoresHiddenThenShowsOnce(t *testing.T) {
-	model := appmodel.NewAppModelService(discardingEmitter{})
+	model := appmodel.NewAppModelService(appmodel.WithEmitter(discardingEmitter{}))
 	width, height := 2400, 1600
 	maximized := true
 	if err := model.SetUILayout(context.Background(), apperr.UILayout{

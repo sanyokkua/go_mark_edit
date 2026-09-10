@@ -169,7 +169,7 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 	}
 	defer service.releaseSaveTarget(reservationID)
 
-	expectedVersion, versionErr := file.CurrentDiskVersion(candidate.Path)
+	expectedVersion, versionErr := service.currentDiskVersion(candidate.Path)
 	if versionErr != nil {
 		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be inspected.", apperr.RemediationRetry)
 	}
@@ -182,11 +182,11 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		if !confirmed {
 			return apperr.WriteResult{Status: apperr.WriteStatusCancelled}
 		}
-		expectedVersion, versionErr = file.CurrentDiskVersion(candidate.Path)
+		expectedVersion, versionErr = service.currentDiskVersion(candidate.Path)
 		if versionErr != nil {
 			return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be inspected after confirmation.", apperr.RemediationRetry)
 		}
-		expectedHash, err = stableRawBytesHash(candidate.Path, expectedVersion)
+		expectedHash, err = service.stableRawBytesHash(candidate.Path, expectedVersion)
 		if err != nil {
 			if errors.Is(err, errTargetDiskChanged) {
 				return bridge.Conflict[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The Save As target changed after confirmation.", apperr.RemediationNone)
@@ -202,15 +202,7 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 	snapshot.identity = candidate.Identity
 	snapshot.expectedVersion = expectedVersion
 	snapshot.expectedRawHash = expectedHash
-	service.mu.RLock()
-	hook := service.beforeSaveAsRecheck
-	service.mu.RUnlock()
-	if hook != nil {
-		if hookErr := callSaveHook(hook, candidate.Path); hookErr != nil {
-			return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be prepared.", apperr.RemediationRetry)
-		}
-	}
-	currentVersion, versionErr := file.CurrentDiskVersion(candidate.Path)
+	currentVersion, versionErr := service.currentDiskVersion(candidate.Path)
 	if versionErr != nil || !currentVersion.Equal(expectedVersion) {
 		return bridge.Conflict[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The Save As target changed after confirmation.", apperr.RemediationNone)
 	}
@@ -347,7 +339,7 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	committed, replaceErr := coordinator.Commit(WriteSnapshot{
 		DocumentID: snapshot.documentID, ContentRevision: snapshot.contentRevision,
 		CanonicalContent: snapshot.content, TargetPath: snapshot.path,
-		ExpectedDiskVersion: &snapshot.expectedVersion, encodedData: encoded.data,
+		ExpectedDiskVersion: &snapshot.expectedVersion, EncodedData: encoded.data,
 	})
 	committedToDisk := committed.Snapshot.DocumentID != ""
 	if committedToDisk {
@@ -487,7 +479,7 @@ func (service *AppModelService) writeCoordinator(documentID string) *DocumentWri
 	if executor == nil {
 		executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 			replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{
-				TargetPath: snapshot.TargetPath, Data: snapshot.encodedData,
+				TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData,
 				ExpectedVersion: snapshot.ExpectedDiskVersion,
 			})
 			if replaced.Committed && err != nil {
@@ -652,7 +644,15 @@ func characteristicsForWrittenSnapshot(snapshot writeSnapshot, encoded encodedWr
 var errTargetDiskChanged = errors.New("target disk version changed while reading")
 
 func stableRawBytesHash(path string, expected file.DiskVersion) (string, error) {
-	before, err := file.CurrentDiskVersion(path)
+	return stableRawBytesHashWithReader(path, expected, file.CurrentDiskVersion)
+}
+
+func (service *AppModelService) stableRawBytesHash(path string, expected file.DiskVersion) (string, error) {
+	return stableRawBytesHashWithReader(path, expected, service.currentDiskVersion)
+}
+
+func stableRawBytesHashWithReader(path string, expected file.DiskVersion, readVersion func(string) (file.DiskVersion, error)) (string, error) {
+	before, err := readVersion(path)
 	if err != nil {
 		return "", err
 	}
@@ -663,7 +663,7 @@ func stableRawBytesHash(path string, expected file.DiskVersion) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	after, err := file.CurrentDiskVersion(path)
+	after, err := readVersion(path)
 	if err != nil {
 		return "", err
 	}
@@ -671,13 +671,6 @@ func stableRawBytesHash(path string, expected file.DiskVersion) (string, error) 
 		return "", errTargetDiskChanged
 	}
 	return hash, nil
-}
-
-func callSaveHook(hook func(string), path string) (err error) {
-	if bridge.Protect(func() { hook(path) }) {
-		return errors.New("save hook panicked")
-	}
-	return nil
 }
 
 /*

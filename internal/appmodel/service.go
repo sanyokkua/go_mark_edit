@@ -13,7 +13,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
-	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
 	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
@@ -44,7 +43,6 @@ type AppModelService struct {
 	writeCommitObserver            WriteCommitObserver
 	runtimeContext                 context.Context
 	conflictQueue                  *conflictQueue
-	beforeSaveAsRecheck            func(string)
 	shutdownDraining               bool
 	metadata                       FileMetadataRepository
 	recentFiles                    RecentFilesRepository
@@ -55,6 +53,8 @@ type AppModelService struct {
 	reveal                         file.RevealPort
 	stableRead                     func(string, int64) (file.StableClassifiedRead, error)
 	diskVersion                    func(string) (file.DiskVersion, error)
+	applicationVersion             string
+	logger                         zerolog.Logger
 	publicationMu                  sync.Mutex
 	publicationSequence            uint64
 	applicationPublicationCommitID uint64
@@ -79,72 +79,17 @@ type pendingLayout struct {
 }
 
 // NewAppModelService creates one clean, never-saved document for this process.
-// It leaves the host ports unset and is therefore a test and harness constructor:
-// a production host must use NewAppModelServiceForHost.
-func NewAppModelService(emitter StatePatchEmitter) *AppModelService {
-	return newAppModelService(emitter, nil, systemLayoutTimer{})
+func NewAppModelService(options ...AppModelOption) *AppModelService {
+	return newAppModelService(options...)
 }
 
-// NewAppModelServiceForHost is the production constructor. The host ports are
-// positional parameters rather than optional setters, so adding a port here
-// breaks every host at compile time instead of leaving it nil.
-//
-// That distinction is the whole point of this function. SetClipboardWriter and
-// SetRevealPort existed and worked, but nothing outside a test ever called them,
-// so Copy path and Reveal in file manager returned system-command-failure in
-// every shipped binary from the day they were written. An optional setter cannot
-// report that it was not called; a parameter list can.
-func NewAppModelServiceForHost(emitter StatePatchEmitter, clipboard file.ClipboardWriter, reveal file.RevealPort) *AppModelService {
-	service := newAppModelService(emitter, nil, systemLayoutTimer{})
-	service.clipboard = clipboard
-	service.reveal = reveal
-	return service
+// NewAppModelServiceForHost is the production constructor. Host ports and the
+// application version are supplied explicitly through constructor options.
+func NewAppModelServiceForHost(options ...AppModelOption) *AppModelService {
+	return newAppModelService(options...)
 }
 
-// NewAppModelServiceWithLayoutRepository constructs the production layout seam
-// used after startup has opened the local SQLite database.
-func NewAppModelServiceWithLayoutRepository(emitter StatePatchEmitter, layout LayoutRepositoryAPI) *AppModelService {
-	return newAppModelService(emitter, layout, systemLayoutTimer{})
-}
-
-// NewAppModelServiceWithLayoutRepositoryAndTimer is a test and harness
-// constructor. It leaves the host ports unset, so no production host may use it;
-// the evidence driver used to, which is how Copy path and Reveal reached a nil
-// port in the one binary built to measure real behaviour (T167).
-func NewAppModelServiceWithLayoutRepositoryAndTimer(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer LayoutTimer) *AppModelService {
-	return newAppModelService(emitter, layout, timer)
-}
-
-/*
- * SetLayoutTimer replaces the layout debounce clock on an already-constructed
- * service.
- *
- * This exists so a harness host can take the model the composition root built —
- * with its host ports and its settings joins intact — and change only the clock,
- * instead of constructing a second model and assigning it over the first. The
- * evidence driver did the latter, and it silently cost both host ports plus the
- * autosave and default-open-mode observers the root had already bound.
- *
- * It is deliberately not the pattern used for host ports. A missing clock is
- * benign — the constructor installs systemLayoutTimer and production never calls
- * this — whereas a missing port is a command that cannot work, which is why
- * those stay positional parameters on NewAppModelServiceForHost that break the
- * build when one is added. Read the comment there before turning either into the
- * other.
- *
- * Call before the model schedules anything. It swaps the clock for subsequent
- * scheduling only and does not reschedule work already pending on the old one.
- */
-func (service *AppModelService) SetLayoutTimer(timer LayoutTimer) {
-	if timer == nil {
-		return
-	}
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.timer = timer
-}
-
-func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer LayoutTimer) *AppModelService {
+func newAppModelService(options ...AppModelOption) *AppModelService {
 	documentID := mintDocumentID()
 	initialDocument := &openDocument{
 		metadata: apperr.DocumentMetadata{
@@ -167,13 +112,10 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 		},
 	}
 
-	if timer == nil {
-		timer = systemLayoutTimer{}
-	}
 	initialDocument.id = documentID
 	initialDocument.canonicalPath = ""
 	initialDocument.setBufferRevision(initialDocument.metadata.ContentRevision)
-	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), closePlans: make(map[string]*closePlan), conflictQueue: newConflictQueue(), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, state: applicationState{
+	service := &AppModelService{timer: systemLayoutTimer{}, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), closePlans: make(map[string]*closePlan), conflictQueue: newConflictQueue(), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, applicationVersion: "dev", logger: zerolog.Nop(), state: applicationState{
 		orderedDocumentIDs: []string{documentID},
 		documents:          map[string]*openDocument{documentID: initialDocument},
 		activeDocumentID:   documentID,
@@ -183,29 +125,21 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 			SidebarVisible: pointerTo(true),
 		},
 	}}
+	for _, option := range options {
+		if option != nil {
+			option(service)
+		}
+	}
 	service.commands = documentCommands{service: service}
 	service.content = documentContentAccessor{service: service}
 	return service
 }
 
-// SetConflictReadersForTesting injects deterministic version/read races without
-// changing the production foreground-only policy.
-func (service *AppModelService) SetConflictReadersForTesting(stableRead func(string, int64) (file.StableClassifiedRead, error), diskVersion func(string) (file.DiskVersion, error)) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	if stableRead != nil {
-		service.stableRead = stableRead
-	}
-	if diskVersion != nil {
-		service.diskVersion = diskVersion
-	}
-}
-
 // NewEmptyAppModelService constructs the same backend state with no open
 // documents. It is used by the zero-document launcher and keeps the optional
 // active identity explicit instead of manufacturing a placeholder.
-func NewEmptyAppModelService(emitter StatePatchEmitter) *AppModelService {
-	service := newAppModelService(emitter, nil, systemLayoutTimer{})
+func NewEmptyAppModelService(options ...AppModelOption) *AppModelService {
+	service := newAppModelService(options...)
 	service.mu.Lock()
 	service.state.documents = map[string]*openDocument{}
 	service.state.orderedDocumentIDs = nil
@@ -247,58 +181,6 @@ func (service *AppModelService) DefaultOpenMode() string {
 	service.mu.RLock()
 	defer service.mu.RUnlock()
 	return service.defaultOpenMode
-}
-
-// SetDocumentOpenDialog injects the composition-root native picker without importing Wails here.
-func (service *AppModelService) SetDocumentOpenDialog(dialog DocumentOpenDialog) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.openDialog = dialog
-}
-
-// SetDocumentSaveDialog injects the composition-root save chooser and native overwrite prompt.
-func (service *AppModelService) SetDocumentSaveDialog(dialog DocumentSaveDialog) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.saveDialog = dialog
-}
-
-// SetClipboardWriter injects the host clipboard without coupling appmodel to Wails.
-func (service *AppModelService) SetClipboardWriter(writer file.ClipboardWriter) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.clipboard = writer
-}
-
-// SetRevealPort injects the host file-manager reveal command.
-func (service *AppModelService) SetRevealPort(port file.RevealPort) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.reveal = port
-}
-
-// SetBeforeSaveAsRecheck is a narrow deterministic test seam for target drift between
-// confirmation and the final version/hash comparison.
-func (service *AppModelService) SetBeforeSaveAsRecheck(hook func(string)) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.beforeSaveAsRecheck = hook
-}
-
-// SetWriteExecutorForTesting injects a deterministic replacement seam before
-// the first write coordinator for a document is created.
-func (service *AppModelService) SetWriteExecutorForTesting(executor WriteExecutor) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.writeExecutor = executor
-}
-
-// SetWriteCommitObserver installs an optional read-only observation seam for
-// current-host evidence. It does not alter coordination, timing, or disk I/O.
-func (service *AppModelService) SetWriteCommitObserver(observer WriteCommitObserver) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.writeCommitObserver = observer
 }
 
 // SetRuntimeContext supplies the Wails lifecycle context used by timer-driven
@@ -446,7 +328,7 @@ func (service *AppModelService) GetState(ctx context.Context) (apperr.AppState, 
 		Snapshot: apperr.AppStateSnapshot{
 			Revision:           service.state.revision,
 			TabSetRevision:     service.state.tabSetRevision,
-			ApplicationVersion: bootstrap.Version(),
+			ApplicationVersion: service.applicationVersion,
 			Documents:          documents,
 			ActiveDocumentID:   service.state.activeDocumentID,
 			ActiveDocument:     activeDocumentID,
@@ -817,12 +699,32 @@ func (service *AppModelService) emitAsyncLayoutError(ctx context.Context, err er
 		return
 	}
 
-	emitter, ok := service.emitter.(AsyncErrorEmitter)
-	if !ok {
-		return
-	}
+	service.emitAsyncError(ctx, apperr.ToWire(zerolog.Nop(), err), "layout persistence failure could not be surfaced")
+}
 
-	_ = emitter.EmitAsyncError(ctx, apperr.ToWire(zerolog.Nop(), err))
+func (service *AppModelService) emitAsyncError(ctx context.Context, wire apperr.WireError, reason string) {
+	emitter, ok := service.emitter.(AsyncErrorEmitter)
+	if ok {
+		if err := emitter.EmitAsyncError(ctx, wire); err == nil {
+			return
+		} else {
+			service.logAsyncError(wire, reason, err)
+			return
+		}
+	}
+	service.logAsyncError(wire, reason, nil)
+}
+
+func (service *AppModelService) logAsyncError(wire apperr.WireError, reason string, deliveryErr error) {
+	event := service.logger.Error().
+		Str("code", string(wire.Code)).
+		Str("category", string(wire.Category)).
+		Str("subject", wire.SafeSubject).
+		Str("document_id", wire.DocumentID)
+	if deliveryErr != nil {
+		event = event.Err(deliveryErr)
+	}
+	event.Msg(reason)
 }
 
 func (service *AppModelService) completePendingLayoutFlush(pending *pendingLayout, flushDone chan struct{}) error {

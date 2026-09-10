@@ -312,7 +312,7 @@ func autosaveLatencyMetadata(fixturePaths []string) map[string]string {
 		"fixtureDirectory":   fixtureDir,
 		"buildTag":           "native_evidence",
 		"releaseBuildParity": "internal/appmodel and internal/file compile to identical Go package build IDs under the release tag set (desktop,wv2runtime.download,production, -ldflags '-w -s') and under 'native_evidence production'; neither package has a cgo file and neither has a native_evidence build constraint, so the measured write path is the same object code the release binary links",
-		"limitation":         "This is not the just build artifact. The release binary has no write-commit observer (SetWriteCommitObserver has no production caller) and its embedded frontend has no scripted input driver, so this protocol cannot be run against it without changing it. T121 reconciled the build mechanically instead; T181 owns the interactive host spot-check.",
+		"limitation":         "This is not the just build artifact. The release binary has no write-commit observer and its embedded frontend has no scripted input driver, so this protocol cannot be run against it without changing it. T121 reconciled the build mechanically instead; T181 owns the interactive host spot-check.",
 	}
 }
 

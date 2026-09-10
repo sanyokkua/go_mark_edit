@@ -18,7 +18,7 @@ import (
 // arrangement fallback. Document panes and Assistant state are never accepted
 // as global layout fields.
 func TestLayoutRejectsExcludedDocumentAndAssistantFields(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	visible := true
 	width := 240
 
@@ -138,8 +138,8 @@ func TestSqliteLayoutRepositoryKeepsCommittedWinnerAcrossReadThenWriteRace(t *te
 // writes differently, otherwise concurrent processes cannot arbitrate a tie
 // using the required writer-identity portion of the version tuple.
 func TestAppModelServicesUseDistinctLayoutWriterIdentities(t *testing.T) {
-	first := NewAppModelServiceWithLayoutRepository(&recordingEmitter{}, &recordingLayoutRepository{})
-	second := NewAppModelServiceWithLayoutRepository(&recordingEmitter{}, &recordingLayoutRepository{})
+	first := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(&recordingLayoutRepository{}))
+	second := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(&recordingLayoutRepository{}))
 	if first.writerID == "" || second.writerID == "" {
 		t.Fatalf("writer identities = %q, %q; want both populated", first.writerID, second.writerID)
 	}
@@ -228,7 +228,7 @@ func TestSqliteLayoutRepositoryPersistsApprovedFieldsOnly(t *testing.T) {
 func TestSetUILayoutRetainsAcknowledgedProjectionAfterWriteFailure(t *testing.T) {
 	repository := failingLayoutRepository{err: errors.New("write failed")}
 	emitter := &recordingEmitter{}
-	service := NewAppModelServiceWithLayoutRepository(emitter, repository)
+	service := NewAppModelService(WithEmitter(emitter), WithLayoutRepository(repository))
 	before, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before rejected write: %v", err)
@@ -251,9 +251,9 @@ func TestSetUILayoutRetainsAcknowledgedProjectionAfterWriteFailure(t *testing.T)
 // an optimistic projection of the losing local intent.
 func TestSetUILayoutProjectsStaleWinnerWithoutError(t *testing.T) {
 	storedVisible := true
-	service := NewAppModelServiceWithLayoutRepository(&recordingEmitter{}, staleLayoutRepository{
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(staleLayoutRepository{
 		result: LayoutWriteResult{Value: VersionedLayoutValue{Version: 1, Value: storedVisible, ChangedAtUnixNano: 2, WriterID: "other", Sequence: 1}},
-	})
+	}))
 	requestedVisible := false
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarVisible: &requestedVisible}); err != nil {
 		t.Fatalf("SetUILayout stale result: %v", err)
@@ -273,7 +273,7 @@ func TestSetUILayoutProjectsStaleWinnerWithoutError(t *testing.T) {
 func TestSetUILayoutPersistsDiscreteWorkspaceVisibilityBeforeProjection(t *testing.T) {
 	repository := &recordingLayoutRepository{}
 	emitter := &recordingEmitter{}
-	service := NewAppModelServiceWithLayoutRepository(emitter, repository)
+	service := NewAppModelService(WithEmitter(emitter), WithLayoutRepository(repository))
 	visible := false
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarVisible: &visible}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
@@ -293,7 +293,7 @@ func TestSetUILayoutDebouncesWorkspaceWidthUntilAcknowledged(t *testing.T) {
 	timer := &deterministicTimer{}
 	repository := &recordingLayoutRepository{}
 	emitter := &recordingEmitter{}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(emitter, repository, timer)
+	service := NewAppModelService(WithEmitter(emitter), WithLayoutRepository(repository), WithClock(timer))
 	width := 280
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &width}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
@@ -314,7 +314,7 @@ func TestDebouncedLayoutWriteFailureRetainsAcknowledgementAndEmitsOneSafeNotific
 	timer := &deterministicTimer{}
 	repository := failingLayoutRepository{err: errors.New("/private/user/settings.db")}
 	emitter := &recordingEmitter{}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(emitter, repository, timer)
+	service := NewAppModelService(WithEmitter(emitter), WithLayoutRepository(repository), WithClock(timer))
 	before, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before debounced failure: %v", err)
@@ -359,7 +359,7 @@ func TestDebouncedLayoutWriteFailureRetainsAcknowledgementAndEmitsOneSafeNotific
 func TestFlushPendingUILayoutPersistsDividerBeforeClose(t *testing.T) {
 	timer := &deterministicTimer{}
 	repository := &recordingLayoutRepository{}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(&recordingEmitter{}, repository, timer)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(repository), WithClock(timer))
 	width := 300
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &width}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
@@ -378,7 +378,7 @@ func TestFlushPendingUILayoutPersistsDividerBeforeClose(t *testing.T) {
 func TestSetUILayoutKeepsOnlyLatestPendingWorkspaceWidth(t *testing.T) {
 	timer := &deterministicTimer{}
 	repository := &recordingLayoutRepository{}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(&recordingEmitter{}, repository, timer)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(repository), WithClock(timer))
 	first, latest := 260, 320
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &first}); err != nil {
 		t.Fatalf("set first width: %v", err)
@@ -398,7 +398,7 @@ func TestSetUILayoutKeepsOnlyLatestPendingWorkspaceWidth(t *testing.T) {
 func TestPendingLayoutFlushRetainsOriginalWriteIdentity(t *testing.T) {
 	timer := &deterministicTimer{}
 	repository := &recordingLayoutRepository{}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(&recordingEmitter{}, repository, timer)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(repository), WithClock(timer))
 	width := 310
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &width}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
@@ -416,7 +416,7 @@ func TestPendingLayoutFlushRetainsOriginalWriteIdentity(t *testing.T) {
 func TestFlushPendingUILayoutRetainsPendingFieldAfterWriteFailure(t *testing.T) {
 	timer := &deterministicTimer{}
 	repository := &failThenRecordLayoutRepository{remainingFailures: 1}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(&recordingEmitter{}, repository, timer)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(repository), WithClock(timer))
 	width := 310
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &width}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
@@ -449,7 +449,7 @@ func TestFlushPendingUILayoutWaitsForInFlightTimerWriteBeforeClose(t *testing.T)
 		firstWriteStarted: make(chan recordedLayoutWrite, 1),
 		releaseFirstWrite: make(chan error, 1),
 	}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(&recordingEmitter{}, repository, timer)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(repository), WithClock(timer))
 	width := 300
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &width}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
@@ -500,7 +500,7 @@ func TestFailedOlderTimerFlushDoesNotRestoreOverNewerPendingResize(t *testing.T)
 		firstWriteStarted: make(chan recordedLayoutWrite, 1),
 		releaseFirstWrite: make(chan error, 1),
 	}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(&recordingEmitter{}, repository, timer)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(repository), WithClock(timer))
 
 	first := 280
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &first}); err != nil {
@@ -556,7 +556,7 @@ func TestFailedOlderTimerFlushDoesNotRestoreOverNewerPendingResize(t *testing.T)
 func TestSetUILayoutDebouncesNativeResizeButPersistsMaximizeImmediately(t *testing.T) {
 	timer := &deterministicTimer{}
 	repository := &recordingLayoutRepository{}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(&recordingEmitter{}, repository, timer)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(repository), WithClock(timer))
 	width := 1100
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err != nil {
 		t.Fatalf("set native width: %v", err)
@@ -583,7 +583,7 @@ func TestSetUILayoutDebouncesNativeResizeButPersistsMaximizeImmediately(t *testi
 func TestSetUILayoutPersistsNativeGeometry(t *testing.T) {
 	timer := &deterministicTimer{}
 	repository := &recordingLayoutRepository{}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(&recordingEmitter{}, repository, timer)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(repository), WithClock(timer))
 	width, height := 1024, 768
 	maximized := true
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width, WindowHeight: &height, WindowMaximized: &maximized}); err != nil {
@@ -602,7 +602,7 @@ func TestSetUILayoutPersistsNativeGeometry(t *testing.T) {
 // Native geometry is validated at the appmodel boundary even before startup
 // supplies the SQLite repository.
 func TestSetUILayoutRejectsInvalidNativeGeometryWithoutRepository(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	width := 374
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err == nil {
 		t.Fatal("native width below 375 succeeded without repository")
@@ -613,7 +613,7 @@ func TestSetUILayoutRejectsInvalidNativeGeometryWithoutRepository(t *testing.T) 
 // Changing the application fallback does not overwrite a document's saved
 // arrangement; document view remains the canonical owner once present.
 func TestApplicationArrangementFallbackDoesNotOverwriteSavedDocumentView(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	before, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before fallback: %v", err)
@@ -638,7 +638,7 @@ func TestApplicationArrangementFallbackDoesNotOverwriteSavedDocumentView(t *test
 // A fresh document without a saved view takes the application fallback until
 // the document itself receives a view command.
 func TestFreshDocumentUsesApplicationArrangementFallbackUntilItsViewIsSaved(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
@@ -752,7 +752,7 @@ func (*blockingLayoutRepository) Read(context.Context, string) (VersionedLayoutV
 // The backend projection does not leak document-owned panes or downstream
 // Assistant state as application layout on hydration.
 func TestInitialLayoutOmitsExcludedDocumentAndAssistantFields(t *testing.T) {
-	state, err := NewAppModelService(&recordingEmitter{}).GetState(context.Background())
+	state, err := NewAppModelService(WithEmitter(&recordingEmitter{})).GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
 	}
@@ -773,7 +773,7 @@ func TestSetUILayoutAppliesRestoredWorkspaceWidthWithItsVisibility(t *testing.T)
 	timer := &deterministicTimer{}
 	repository := &recordingLayoutRepository{}
 	emitter := &recordingEmitter{}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(emitter, repository, timer)
+	service := NewAppModelService(WithEmitter(emitter), WithLayoutRepository(repository), WithClock(timer))
 	visible := true
 	width := 216
 

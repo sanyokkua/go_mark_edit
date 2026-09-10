@@ -13,7 +13,7 @@ import (
 
 func TestTabSessionOrderRevision(t *testing.T) {
 	emitter := &recordingEmitter{}
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	before, _ := service.GetState(context.Background())
 
 	created := service.NewDocument(context.Background(), before.Snapshot.TabSetRevision)
@@ -39,7 +39,7 @@ func TestTabSessionOrderRevision(t *testing.T) {
 }
 
 func TestActivateDocumentAcknowledgement(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	before, _ := service.GetState(context.Background())
 	created := service.NewDocument(context.Background(), before.Snapshot.TabSetRevision)
 	state, _ := service.GetState(context.Background())
@@ -68,7 +68,7 @@ func TestActivateDocumentAcknowledgement(t *testing.T) {
 // Proves: FR-FT-033
 func TestStaleTabCommands(t *testing.T) {
 	emitter := &recordingEmitter{}
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	before, _ := service.GetState(context.Background())
 	created := service.NewDocument(context.Background(), before.Snapshot.TabSetRevision)
 	state, _ := service.GetState(context.Background())
@@ -95,7 +95,7 @@ func TestStaleTabCommands(t *testing.T) {
 
 func TestAdjacentAndFinalClose(t *testing.T) {
 	emitter := &recordingEmitter{}
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	state, _ := service.GetState(context.Background())
 	for range 2 {
 		created := service.NewDocument(context.Background(), state.Snapshot.TabSetRevision)
@@ -145,7 +145,7 @@ func autosaveTimerCount(service *AppModelService, documentID string) int {
 // write. PrepareClose has always flushed first for exactly this reason.
 func TestClosingATabFlushesItsPendingAutosaveInsteadOfPrompting(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
 		t.Fatalf("edit: %v", err)
@@ -179,7 +179,7 @@ func TestClosingATabFlushesItsPendingAutosaveInsteadOfPrompting(t *testing.T) {
 // invariant belongs to it rather than to either caller.
 func TestClosingDocumentsCancelsTheirAutosaveTimers(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	_, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
 		t.Fatalf("edit: %v", err)
@@ -208,7 +208,7 @@ func TestClosingDocumentsCancelsTheirAutosaveTimers(t *testing.T) {
 // document detaches, then close the window.
 func TestFlushingForCloseTerminatesWhenTheDocumentBecameIneligible(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	_, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
 		t.Fatalf("edit: %v", err)

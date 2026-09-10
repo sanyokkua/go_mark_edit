@@ -36,7 +36,7 @@ func drainBeforeCloseWithin(t *testing.T, service *AppModelService, limit time.D
 // and the layout half by TestDrainFailureCreatesNoPermit in internal/application.)
 func TestDrainBeforeCloseRunsAcceptedAutosaveWork(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "accepted before quit\n"); err != nil {
@@ -67,7 +67,10 @@ func TestDrainBeforeCloseRunsAcceptedAutosaveWork(t *testing.T) {
 // AtomicReplace has no safe interruption point.)
 func TestDrainBeforeCloseWaitsForAWriteInFlight(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	var executor WriteExecutor
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		return executor(snapshot)
+	}))
 	// Autosave off isolates the explicit-write wait from the debounce flush the
 	// previous test covers; with both armed a blocked executor would stall the
 	// autosave flush instead and the assertion would not say which wait held.
@@ -76,14 +79,14 @@ func TestDrainBeforeCloseWaitsForAWriteInFlight(t *testing.T) {
 	entered := make(chan struct{})
 	release := make(chan struct{})
 	var once sync.Once
-	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		once.Do(func() { close(entered) })
 		<-release
-		if err := os.WriteFile(snapshot.TargetPath, snapshot.encodedData, 0o640); err != nil {
+		if err := os.WriteFile(snapshot.TargetPath, snapshot.EncodedData, 0o640); err != nil {
 			return file.DiskVersion{}, err
 		}
 		return file.CurrentDiskVersion(snapshot.TargetPath)
-	})
+	}
 
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "committed by the blocked write\n"); err != nil {
@@ -149,7 +152,7 @@ func TestDrainBeforeCloseWaitsForAWriteInFlight(t *testing.T) {
 // returns, which is a window that cannot be closed rather than a completed drain.
 func TestDrainBeforeCloseCancelsWorkThatCanNoLongerRun(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "never reaches disk\n"); err != nil {
@@ -180,7 +183,7 @@ func TestDrainBeforeCloseCancelsWorkThatCanNoLongerRun(t *testing.T) {
 // by TestDrainFailureCreatesNoPermit in internal/application.)
 func TestDrainBeforeCloseClassifiesALayoutFailure(t *testing.T) {
 	repository := &failingDrainLayoutRepository{}
-	service := NewAppModelServiceWithLayoutRepositoryAndTimer(&recordingEmitter{}, repository, noopDrainLayoutTimer{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithLayoutRepository(repository), WithClock(noopDrainLayoutTimer{}))
 	width := 1200
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err != nil {
 		t.Fatalf("queue layout intent: %v", err)

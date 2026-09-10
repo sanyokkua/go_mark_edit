@@ -90,12 +90,8 @@ func TestStableRereadMetadataEqualResumesWrite(t *testing.T) {
 }
 
 func TestUnstableRereadWritesNothing(t *testing.T) {
-	service, path, documentID := openConflictDocument(t, "base\n")
-	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
-		t.Fatalf("edit: %v", err)
-	}
 	var checks atomic.Int32
-	service.SetConflictReadersForTesting(
+	service, path, documentID := openConflictDocumentWithOptions(t, "base\n", WithConflictReaders(
 		func(string, int64) (file.StableClassifiedRead, error) {
 			return file.StableClassifiedRead{Version: file.DiskVersion{Exists: true, Size: 9}, Stable: false}, file.ErrUnstableRead
 		},
@@ -103,7 +99,10 @@ func TestUnstableRereadWritesNothing(t *testing.T) {
 			checks.Add(1)
 			return file.DiskVersion{Exists: true, Size: 9}, nil
 		},
-	)
+	))
+	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
 
 	result := service.Save(context.Background(), documentID, 1, "")
 	if result.Status != apperr.WriteStatusConflict || result.Error == nil || result.Error.Category != apperr.ClassifiedConflict {
@@ -145,12 +144,11 @@ func TestForegroundChecksOnActivationFocusAndWrite(t *testing.T) {
 }
 
 func TestNoWatcherOrPollingTimerIsRegistered(t *testing.T) {
-	service, _, documentID := openConflictDocument(t, "base\n")
 	var checks atomic.Int32
-	service.SetConflictReadersForTesting(nil, func(path string) (file.DiskVersion, error) {
+	service, _, documentID := openConflictDocumentWithOptions(t, "base\n", WithConflictReaders(nil, func(path string) (file.DiskVersion, error) {
 		checks.Add(1)
 		return file.CurrentDiskVersion(path)
-	})
+	}))
 	time.Sleep(40 * time.Millisecond)
 	if checks.Load() != 0 {
 		t.Fatalf("background disk checks = %d", checks.Load())
@@ -234,9 +232,9 @@ func TestKeepMineAuthorizationInvalidation(t *testing.T) {
 // invalidated the document's authorizations". The second token is never
 // presented to anything; the requirement says the successful write must kill it
 // anyway.
-func conflictedDocumentWithTwoAuthorizations(t *testing.T) (service *AppModelService, path, documentID, used, spectator string) {
+func conflictedDocumentWithTwoAuthorizations(t *testing.T, options ...AppModelOption) (service *AppModelService, path, documentID, used, spectator string) {
 	t.Helper()
-	service, path, documentID = openConflictDocument(t, "base\n")
+	service, path, documentID = openConflictDocumentWithOptions(t, "base\n", options...)
 	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
 		t.Fatalf("edit: %v", err)
 	}
@@ -310,9 +308,9 @@ func TestKeepMineAuthorizationIsInvalidatedByEveryNamedEvent(t *testing.T) {
 	})
 
 	t.Run("successful Save As, and the path change it makes", func(t *testing.T) {
-		service, path, documentID, used, spectator := conflictedDocumentWithTwoAuthorizations(t)
 		target := filepath.Join(t.TempDir(), "adopted.md")
-		service.SetDocumentSaveDialog(&saveDialogFixture{path: target, confirm: true})
+		dialog := &saveDialogFixture{path: target, confirm: true}
+		service, path, documentID, used, spectator := conflictedDocumentWithTwoAuthorizations(t, WithDialogs(nil, dialog))
 
 		committed := service.SaveAs(context.Background(), documentID, 1, used)
 		if committed.Status != apperr.WriteStatusCommitted || committed.Data == nil || !committed.Data.TargetPathAdopted {
@@ -499,10 +497,15 @@ func TestReadOnlyConflictOffersReloadAndCancelOnly(t *testing.T) {
 }
 
 func openConflictDocument(t *testing.T, content string) (*AppModelService, string, string) {
+	return openConflictDocumentWithOptions(t, content)
+}
+
+func openConflictDocumentWithOptions(t *testing.T, content string, options ...AppModelOption) (*AppModelService, string, string) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "document.md")
 	writeConflictFile(t, path, content)
-	service := NewAppModelService(&recordingEmitter{})
+	allOptions := append([]AppModelOption{WithEmitter(&recordingEmitter{})}, options...)
+	service := NewAppModelService(allOptions...)
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.Error != nil || opened.DocumentID == "" {
 		t.Fatalf("open %q = %+v", path, opened)

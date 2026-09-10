@@ -27,13 +27,21 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-var (
-	showStartupRecoveryWindow = runtime.WindowShow
-	emitNativeCloseRequest    = func(ctx context.Context, id string) {
-		runtime.EventsEmit(ctx, application.NativeCloseRequestEvent, map[string]string{"id": id})
+type nativeRuntimePorts struct {
+	showStartupRecoveryWindow func(context.Context)
+	emitNativeCloseRequest    func(context.Context, string)
+	quitNativeApplication     func(context.Context)
+}
+
+func productionNativeRuntimePorts() nativeRuntimePorts {
+	return nativeRuntimePorts{
+		showStartupRecoveryWindow: runtime.WindowShow,
+		emitNativeCloseRequest: func(ctx context.Context, id string) {
+			runtime.EventsEmit(ctx, application.NativeCloseRequestEvent, map[string]string{"id": id})
+		},
+		quitNativeApplication: runtime.Quit,
 	}
-	quitNativeApplication = runtime.Quit
-)
+}
 
 func main() {
 	bootstrapLogger := bootstrap.NewLogger()
@@ -56,7 +64,6 @@ func main() {
 	}()
 
 	outcomes := bridge.NewOutcomeCache()
-	applicationContext := application.NewApplicationContextHolder(fileUtils, appLogger, outcomes)
 	dialogs := application.NewDocumentDialogs(func(ctx context.Context) (string, error) {
 		return runtime.OpenFileDialog(ctx, runtime.OpenDialogOptions{
 			Title:   "Open Markdown or text file",
@@ -82,7 +89,9 @@ func main() {
 		})
 		return result == "Overwrite", err
 	})
-	applicationContext.SetDocumentDialogs(dialogs)
+	applicationContext := application.NewApplicationContextHolderWithOptions(fileUtils, appLogger, application.ApplicationContextOptions{
+		AppModelOptions: []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)},
+	}, outcomes)
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
 		bootstrapLogger.Error().Err(err).Msg("run application")
 	}
@@ -156,11 +165,23 @@ func newAppOptions(applicationContext *application.ApplicationContextHolder) *op
 	return newAppOptionsWithLogger(applicationContext, nil)
 }
 
-func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger) *options.App {
+func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger, overrides ...nativeRuntimePorts) *options.App {
+	ports := productionNativeRuntimePorts()
+	if len(overrides) > 0 {
+		if overrides[0].showStartupRecoveryWindow != nil {
+			ports.showStartupRecoveryWindow = overrides[0].showStartupRecoveryWindow
+		}
+		if overrides[0].emitNativeCloseRequest != nil {
+			ports.emitNativeCloseRequest = overrides[0].emitNativeCloseRequest
+		}
+		if overrides[0].quitNativeApplication != nil {
+			ports.quitNativeApplication = overrides[0].quitNativeApplication
+		}
+	}
 	applicationContext.SetNativeWindow(wailsNativeWindow{})
 	applicationContext.ConfigureShutdown(
-		application.WithCloseRequestedEmitter(emitNativeCloseRequest),
-		application.WithNativeQuit(quitNativeApplication),
+		application.WithCloseRequestedEmitter(ports.emitNativeCloseRequest),
+		application.WithNativeQuit(ports.quitNativeApplication),
 		application.WithNativeConfirmation(func(ctx context.Context, documents []string) (bool, error) {
 			message := "There are unsaved changes."
 			if len(documents) > 0 {
@@ -198,14 +219,14 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 				if appLogger != nil {
 					appLogger.Error(err.Error())
 				}
-				showStartupRecoveryWindow(ctx)
+				ports.showStartupRecoveryWindow(ctx)
 				return
 			}
 			if err := applicationContext.RestoreNativeWindow(ctx); err != nil {
 				if appLogger != nil {
 					appLogger.Error(err.Error())
 				}
-				showStartupRecoveryWindow(ctx)
+				ports.showStartupRecoveryWindow(ctx)
 				return
 			}
 		},

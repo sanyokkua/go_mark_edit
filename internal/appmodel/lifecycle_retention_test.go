@@ -17,7 +17,7 @@ type retentionTimer struct{}
 func (retentionTimer) Stop() bool { return true }
 
 func TestDisposeReleasesDocumentOwnedResources(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	documentID := service.state.activeDocumentID
 	service.mu.Lock()
 	document := service.state.documents[documentID]
@@ -49,7 +49,7 @@ func TestDisposeReleasesDocumentOwnedResources(t *testing.T) {
 }
 
 func TestManyDocumentsCanBeSavedAndClosedWithoutRetainedRecords(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	ctx := context.Background()
 	const documentsToExercise = 40
 	ids := make([]string, 0, documentsToExercise)
@@ -111,7 +111,10 @@ func TestManyDocumentsCanBeSavedAndClosedWithoutRetainedRecords(t *testing.T) {
 }
 
 func TestClosingDocumentRejectsAWriteThatHasNotStarted(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	var executor WriteExecutor
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		return executor(snapshot)
+	}))
 	path := filepath.Join(t.TempDir(), "closing.md")
 	if err := os.WriteFile(path, []byte("disk\n"), 0o644); err != nil {
 		t.Fatalf("write document: %v", err)
@@ -122,10 +125,10 @@ func TestClosingDocumentRejectsAWriteThatHasNotStarted(t *testing.T) {
 	}
 
 	var executorCalls int
-	service.SetWriteExecutorForTesting(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		executorCalls++
-		return file.DiskVersion{Exists: true, Size: int64(len(snapshot.encodedData))}, nil
-	})
+		return file.DiskVersion{Exists: true, Size: int64(len(snapshot.EncodedData))}, nil
+	}
 
 	service.mu.Lock()
 	document := service.state.documents[opened.DocumentID]
@@ -151,7 +154,7 @@ func TestClosingDocumentRejectsAWriteThatHasNotStarted(t *testing.T) {
 }
 
 func TestCloseDocumentsSealsTheRecordBeforeWaitingForWrites(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	documentID := service.state.activeDocumentID
 	service.mu.Lock()
 	service.state.documents[documentID].writeInFlight = true

@@ -8,6 +8,7 @@ import (
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
+	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
 	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
@@ -36,7 +37,6 @@ type ApplicationContextHolder struct {
 	AppModelHandler     *appmodel.AppModelHandler
 	NativeWindowService *NativeWindowService
 	ApplicationHandler  *ApplicationHandler
-	DocumentDialogs     *DocumentDialogs
 	Shutdown            *ShutdownOwner
 }
 
@@ -46,6 +46,7 @@ type ApplicationContextHolder struct {
 // that models a failing or recovering settings store.
 type ApplicationContextOptions struct {
 	SettingsRepository settings.SettingsRepositoryAPI
+	AppModelOptions    []appmodel.AppModelOption
 }
 
 // NewApplicationContextHolder constructs the phase-one dependency graph with
@@ -63,18 +64,22 @@ func NewApplicationContextHolderWithOptions(fileService file.FileUtilsServiceAPI
 		outcomes = outcomeCaches[0]
 	}
 	settingsService := settings.NewSettingsService(nil)
-	// The host ports go in through the constructor, not through setters, and they
-	// are constructed here rather than handed in by main.go. Both choices are the
-	// fix for T161: SetClipboardWriter and SetRevealPort had no production caller
-	// at all, so Copy path and Reveal in file manager returned a
-	// system-command-failure in every build that ever shipped. Wiring them where
-	// the graph is built means no host can forget them, and a port added to
+	// The host ports go in through the constructor and are built here, where the
+	// composition root cannot forget them. A port added to
 	// NewAppModelServiceForHost later fails to compile here rather than going out
 	// nil.
+	modelOptions := []appmodel.AppModelOption{
+		appmodel.WithEmitter(RuntimeEmitter{}),
+		appmodel.WithClipboardWriter(file.NewPlatformClipboardWriter()),
+		appmodel.WithRevealPort(file.NewPlatformRevealPort()),
+		appmodel.WithVersion(bootstrap.Version()),
+	}
+	if appLogger != nil {
+		modelOptions = append(modelOptions, appmodel.WithLogger(appLogger.Zerolog()))
+	}
+	modelOptions = append(modelOptions, options.AppModelOptions...)
 	appModelService := appmodel.NewAppModelServiceForHost(
-		appmodel.RuntimeStatePatchEmitter{},
-		file.NewPlatformClipboardWriter(),
-		file.NewPlatformRevealPort(),
+		modelOptions...,
 	)
 	holder := &ApplicationContextHolder{
 		fileService:        fileService,
@@ -154,16 +159,6 @@ func (port applicationShutdownModel) ClearPendingClose(id string) {
 	}
 }
 
-// SetDocumentDialogs wires the composition-root native pickers into backend-owned file commands.
-func (holder *ApplicationContextHolder) SetDocumentDialogs(dialogs *DocumentDialogs) {
-	holder.mu.Lock()
-	holder.DocumentDialogs = dialogs
-	service := holder.AppModelService
-	holder.mu.Unlock()
-	service.SetDocumentOpenDialog(dialogs)
-	service.SetDocumentSaveDialog(dialogs)
-}
-
 // SetContext records the context Wails supplies during application startup.
 func (holder *ApplicationContextHolder) SetContext(ctx context.Context) {
 	holder.mu.Lock()
@@ -217,7 +212,9 @@ func (holder *ApplicationContextHolder) Init(ctx context.Context) error {
 		repository = holder.settingsRepository
 	}
 	holder.SettingsService.SetRepository(repository)
-	holder.AppModelService.SetLayoutRepository(appmodel.NewSqliteLayoutRepository(database))
+	if holder.AppModelService.LayoutRepository() == nil {
+		holder.AppModelService.SetLayoutRepository(appmodel.NewSqliteLayoutRepository(database))
+	}
 	holder.AppModelService.SetFileMetadataRepository(appmodel.NewSqliteFileMetadataRepository(database))
 	holder.AppModelService.SetRecentFilesRepository(appmodel.NewSqliteRecentFilesRepository(database))
 	holder.DB = database

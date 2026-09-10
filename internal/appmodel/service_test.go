@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -15,14 +12,13 @@ import (
 	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
-	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
 	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 // Proves: STORY-011-AC-1
 // The initial query exposes one clean backend-minted untitled document as metadata and its empty buffer separately.
 func TestInitialStateCreatesCleanUntitledDocument(t *testing.T) {
-	service := NewAppModelService(nil)
+	service := NewAppModelService()
 
 	state, err := service.GetState(context.Background())
 	if err != nil {
@@ -75,7 +71,7 @@ func TestInitialStateCreatesCleanUntitledDocument(t *testing.T) {
 }
 
 func TestGetStateRepresentsZeroDocuments(t *testing.T) {
-	service := NewEmptyAppModelService(nil)
+	service := NewEmptyAppModelService()
 
 	state, err := service.GetState(context.Background())
 	if err != nil {
@@ -93,7 +89,7 @@ func TestGetStateRepresentsZeroDocuments(t *testing.T) {
 }
 
 func TestAppStateOptionalActiveTuple(t *testing.T) {
-	activeService := NewAppModelService(nil)
+	activeService := NewAppModelService()
 	active, err := activeService.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState active: %v", err)
@@ -105,7 +101,7 @@ func TestAppStateOptionalActiveTuple(t *testing.T) {
 		t.Fatalf("active tuple ids differ: %q / %q", *active.Snapshot.ActiveDocument, active.ActiveBuffer.DocumentID)
 	}
 
-	zero, err := NewEmptyAppModelService(nil).GetState(context.Background())
+	zero, err := NewEmptyAppModelService().GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState zero: %v", err)
 	}
@@ -114,48 +110,15 @@ func TestAppStateOptionalActiveTuple(t *testing.T) {
 	}
 }
 
-// Proves: FR-WS-019
-func TestInitialStateProjectsTheSingleGoBuildIdentity(t *testing.T) {
-	state, err := NewAppModelService(nil).GetState(context.Background())
+// Proves: FR-055
+func TestConstructorVersionOptionReachesTheProjectedState(t *testing.T) {
+	const injected = "9.8.7-test+injected"
+	state, err := NewAppModelService(WithVersion(injected)).GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
 	}
-	if state.Snapshot.ApplicationVersion != bootstrap.Version() {
-		t.Fatalf("projected version = %q, want bootstrap identity %q", state.Snapshot.ApplicationVersion, bootstrap.Version())
-	}
-}
-
-// Proves: FR-WS-019
-func TestLinkTimeInjectedBuildIdentityFlowsThroughAppModel(t *testing.T) {
-	const injected = "9.8.7-test+injected"
-	if os.Getenv("GME_VERSION_INJECTION_HELPER") == "1" {
-		state, err := NewAppModelService(nil).GetState(context.Background())
-		if err != nil {
-			t.Fatalf("GetState: %v", err)
-		}
-		if state.Snapshot.ApplicationVersion != injected {
-			t.Fatalf("projected version = %q, want injected %q", state.Snapshot.ApplicationVersion, injected)
-		}
-		return
-	}
-
-	repositoryRoot, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repository root: %v", err)
-	}
-	command := exec.Command(
-		"go",
-		"test",
-		"./internal/appmodel",
-		"-run",
-		"^TestLinkTimeInjectedBuildIdentityFlowsThroughAppModel$",
-		"-count=1",
-		"-ldflags=-X github.com/sanyokkua/go_mark_edit/internal/bootstrap.version="+injected,
-	)
-	command.Dir = repositoryRoot
-	command.Env = append(os.Environ(), "GME_VERSION_INJECTION_HELPER=1")
-	if output, runErr := command.CombinedOutput(); runErr != nil {
-		t.Fatalf("run injected appmodel test: %v\n%s", runErr, output)
+	if state.Snapshot.ApplicationVersion != injected {
+		t.Fatalf("projected version = %q, want constructor-provided identity %q", state.Snapshot.ApplicationVersion, injected)
 	}
 }
 
@@ -163,7 +126,7 @@ func TestLinkTimeInjectedBuildIdentityFlowsThroughAppModel(t *testing.T) {
 // Every successful command, including a no-op, emits one monotonic content-free patch with explicit sections.
 func TestSuccessfulCommandsEmitOneRevisionedContentFreePatch(t *testing.T) {
 	emitter := &recordingEmitter{}
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	initial, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
@@ -317,7 +280,7 @@ func TestSetDocViewKeepsAtLeastOnePaneVisible(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			emitter := &recordingEmitter{}
-			service := NewAppModelService(emitter)
+			service := NewAppModelService(WithEmitter(emitter))
 			before, err := service.GetState(context.Background())
 			if err != nil {
 				t.Fatalf("GetState before invalid view: %v", err)
@@ -340,7 +303,7 @@ func TestSetDocViewKeepsAtLeastOnePaneVisible(t *testing.T) {
 		})
 	}
 
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
@@ -378,7 +341,7 @@ func validDocView(editorVisible, previewVisible bool) apperr.DocViewInput {
 // Proves: STORY-011-AC-5
 // Discrete layout changes remain in the process-owned model and retain explicit false without a persistence collaborator.
 func TestSetUILayoutUpdatesOnlyInMemoryLayout(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before layout update: %v", err)
@@ -418,7 +381,7 @@ func TestSetUILayoutUpdatesOnlyInMemoryLayout(t *testing.T) {
 // Proves: STORY-011-AC-2
 // Buffer changes use the document-command seam, update the stable content accessor, and derive dirty/token metadata.
 func TestUpdateBufferUsesDocumentCommandSeamAndContentAccessor(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
@@ -610,7 +573,7 @@ func savedDocumentFixture() (*AppModelService, DocumentSnapshot) {
 }
 
 func savedDocumentFixtureWithEmitter(emitter StatePatchEmitter) (*AppModelService, DocumentSnapshot) {
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	selection := apperr.SelectionRange{
 		Start: apperr.CursorPosition{Line: 2, Column: 3},
 		End:   apperr.CursorPosition{Line: 4, Column: 5},
@@ -655,7 +618,7 @@ func multipleDocumentFixture() (*AppModelService, DocumentSnapshot, DocumentSnap
 }
 
 func noActiveDocumentFixture(activeDocumentID string) *AppModelService {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	service.mu.Lock()
 	service.state.activeDocumentID = activeDocumentID
 	service.mu.Unlock()
@@ -675,7 +638,7 @@ func setActiveDocumentTupleLocked(service *AppModelService, snapshot DocumentSna
 // A blocked publication keeps later mutations out of the public event stream until the preceding revision is published.
 func TestMutationsPublishPatchesInRevisionOrder(t *testing.T) {
 	emitter := newBlockingEmitter()
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
@@ -758,7 +721,7 @@ func TestPublicationFailureRollsBackMutations(t *testing.T) {
 		for _, mutation := range mutations {
 			t.Run(failure.name+" "+mutation.name, func(t *testing.T) {
 				emitter := &failingEmitter{panic: failure.panic}
-				service := NewAppModelService(emitter)
+				service := NewAppModelService(WithEmitter(emitter))
 				before, err := service.GetState(context.Background())
 				if err != nil {
 					t.Fatalf("GetState before mutation: %v", err)
@@ -818,7 +781,7 @@ func TestPublicationFailureRollsBackMutations(t *testing.T) {
 		} {
 			t.Run("handler "+failure.name+" "+mutation.name, func(t *testing.T) {
 				emitter := &failingEmitter{panic: failure.panic}
-				service := NewAppModelService(emitter)
+				service := NewAppModelService(WithEmitter(emitter))
 				before, err := service.GetState(context.Background())
 				if err != nil {
 					t.Fatalf("GetState for handler: %v", err)
@@ -872,7 +835,7 @@ func TestNilEmitterRollsBackMutations(t *testing.T) {
 	}
 	for _, mutation := range mutations {
 		t.Run(mutation.name, func(t *testing.T) {
-			service := NewAppModelService(nil)
+			service := NewAppModelService()
 			before, err := service.GetState(context.Background())
 			if err != nil {
 				t.Fatalf("GetState before mutation: %v", err)
@@ -917,7 +880,7 @@ func TestNilEmitterRollsBackMutations(t *testing.T) {
 		},
 	} {
 		t.Run("handler "+mutation.name, func(t *testing.T) {
-			service := NewAppModelService(nil)
+			service := NewAppModelService()
 			before, err := service.GetState(context.Background())
 			if err != nil {
 				t.Fatalf("GetState for handler: %v", err)

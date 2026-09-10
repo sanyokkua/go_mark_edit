@@ -18,6 +18,8 @@ import (
 type saveDialogFixture struct {
 	path            string
 	confirm         bool
+	chooseErr       error
+	confirmErr      error
 	chooseCalls     int
 	confirmCalls    int
 	mutateOnConfirm func(string)
@@ -25,7 +27,7 @@ type saveDialogFixture struct {
 
 func (dialog *saveDialogFixture) ChooseSaveFile(_ context.Context, _ SaveDialogRequest) (string, error) {
 	dialog.chooseCalls++
-	return dialog.path, nil
+	return dialog.path, dialog.chooseErr
 }
 
 func (dialog *saveDialogFixture) ConfirmOverwrite(_ context.Context, subject string) (bool, error) {
@@ -33,7 +35,7 @@ func (dialog *saveDialogFixture) ConfirmOverwrite(_ context.Context, subject str
 	if dialog.mutateOnConfirm != nil {
 		dialog.mutateOnConfirm(subject)
 	}
-	return dialog.confirm, nil
+	return dialog.confirm, dialog.confirmErr
 }
 
 func newSaveDocument(t *testing.T, service *AppModelService, content string) string {
@@ -57,8 +59,7 @@ func newSaveDocument(t *testing.T, service *AppModelService, content string) str
 func TestSaveAndSaveAs(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "Untitled")
 	dialog := &saveDialogFixture{path: target, confirm: true}
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	service.SetDocumentSaveDialog(dialog)
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog))
 	documentID := newSaveDocument(t, service, "# saved\n")
 
 	result := service.Save(context.Background(), documentID, 1, "")
@@ -101,8 +102,7 @@ func TestSaveAsRefusesAnUnsupportedSuffixBeforeWriting(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			target := filepath.Join(root, name)
 			dialog := &saveDialogFixture{path: target, confirm: true}
-			service := NewEmptyAppModelService(&recordingEmitter{})
-			service.SetDocumentSaveDialog(dialog)
+			service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog))
 			documentID := newSaveDocument(t, service, "# rejected\n")
 
 			result := service.SaveAs(context.Background(), documentID, 1, "")
@@ -149,7 +149,7 @@ func TestMixedEndingAuthorization(t *testing.T) {
 	if err := os.WriteFile(path, []byte("one\ntwo\r\n"), 0o640); err != nil {
 		t.Fatalf("write mixed fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.ActiveBuffer == nil {
 		t.Fatalf("Open result = %+v", opened)
@@ -203,10 +203,10 @@ func TestSaveAsCollisionAndTargetDrift(t *testing.T) {
 	if err := os.WriteFile(targetPath, []byte("target"), 0o644); err != nil {
 		t.Fatalf("write target: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	opened := service.OpenPath(context.Background(), sourcePath, 0)
+	reader := &saveAsDiskVersionReader{}
 	dialog := &saveDialogFixture{path: targetPath, confirm: true}
-	service.SetDocumentSaveDialog(dialog)
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithConflictReaders(nil, reader.version), WithDialogs(nil, dialog))
+	opened := service.OpenPath(context.Background(), sourcePath, 0)
 	if result := service.SaveAs(context.Background(), opened.DocumentID, 0, ""); result.Status != apperr.WriteStatusCommitted {
 		t.Fatalf("Save As overwrite = %+v, want committed", result)
 	}
@@ -236,11 +236,7 @@ func TestSaveAsCollisionAndTargetDrift(t *testing.T) {
 	}
 	dialog.path = thirdTarget
 	dialog.mutateOnConfirm = nil
-	service.SetBeforeSaveAsRecheck(func(path string) {
-		// Preserve size and mode while changing bytes; the save recheck must use the raw hash.
-		_ = os.WriteFile(thirdTarget, []byte("hash-after!"), 0o644)
-		_ = path
-	})
+	reader.mutateAfterVersion(thirdTarget, 5, []byte("hash-after!"))
 	result = service.SaveAs(context.Background(), third, 1, "")
 	if result.Status != apperr.WriteStatusConflict || result.Error == nil || result.Error.Category != apperr.ClassifiedConflict {
 		t.Fatalf("raw-byte drift = %+v, want classified conflict", result)
@@ -260,13 +256,11 @@ func TestSaveAsRawByteHashRecheck(t *testing.T) {
 	if err := os.WriteFile(targetPath, []byte("123456"), 0o644); err != nil {
 		t.Fatalf("write target: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	opened := service.OpenPath(context.Background(), sourcePath, 0)
+	reader := &saveAsDiskVersionReader{}
 	dialog := &saveDialogFixture{path: targetPath, confirm: true}
-	service.SetDocumentSaveDialog(dialog)
-	service.SetBeforeSaveAsRecheck(func(path string) {
-		_ = os.WriteFile(path, []byte("654321"), 0o644)
-	})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithConflictReaders(nil, reader.version), WithDialogs(nil, dialog))
+	opened := service.OpenPath(context.Background(), sourcePath, 0)
+	reader.mutateAfterVersion(targetPath, 5, []byte("654321"))
 	result := service.SaveAs(context.Background(), opened.DocumentID, 0, "")
 	if result.Status != apperr.WriteStatusConflict || result.Error == nil || result.Error.Category != apperr.ClassifiedConflict {
 		t.Fatalf("raw hash recheck = %+v, want conflict", result)
@@ -283,29 +277,27 @@ func TestSaveAsTargetReservationReleasedOnEveryTerminalOutcome(t *testing.T) {
 	if err := os.WriteFile(sourcePath, []byte("source"), 0o644); err != nil {
 		t.Fatalf("write source: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	opened := service.OpenPath(context.Background(), sourcePath, 0)
 	dialog := &saveDialogFixture{path: filepath.Join(root, "cancel.md"), confirm: false}
 	if err := os.WriteFile(dialog.path, []byte("existing"), 0o644); err != nil {
 		t.Fatalf("write cancellation target: %v", err)
 	}
-	service.SetDocumentSaveDialog(dialog)
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog))
+	opened := service.OpenPath(context.Background(), sourcePath, 0)
 	if result := service.SaveAs(context.Background(), opened.DocumentID, 0, ""); result.Status != apperr.WriteStatusCancelled || saveReservationCount(service) != 0 {
 		t.Fatalf("cancel result/reservations = %+v/%d", result, saveReservationCount(service))
 	}
 	dialog.path = filepath.Join(root, "failure.md")
-	service.SetBeforeSaveAsRecheck(func(string) { panic("injected failure") })
+	dialog.chooseErr = errors.New("save picker failed")
 	if result := service.SaveAs(context.Background(), opened.DocumentID, 0, ""); result.Status != apperr.WriteStatusRefused || saveReservationCount(service) != 0 {
 		t.Fatalf("failure result/reservations = %+v/%d", result, saveReservationCount(service))
 	}
 }
 
 func TestSaveUsesStableDocumentIdentity(t *testing.T) {
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	documentID := newSaveDocument(t, service, "stable")
 	path := filepath.Join(t.TempDir(), "stable.md")
 	dialog := &saveDialogFixture{path: path, confirm: true}
-	service.SetDocumentSaveDialog(dialog)
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog))
+	documentID := newSaveDocument(t, service, "stable")
 	result := service.SaveAs(context.Background(), documentID, 1, "")
 	if result.Data == nil || result.Data.DocumentID != documentID {
 		t.Fatalf("Save As identity = %+v, want %q", result.Data, documentID)
@@ -333,7 +325,7 @@ func TestRefusedWriteNamesTheFileNotTheDocumentID(t *testing.T) {
 	 * the backend's own title survives, the synthetic id reaches the user.
 	 */
 	document := &openDocument{metadata: apperr.DocumentMetadata{DocumentID: mintDocumentID(), Path: "/repo/notes/release-notes.md", DisplayName: "release-notes.md", Capability: string(file.CapabilityUnsafeReadOnly)}, content: "content", baseline: "old"}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	service.state.documents[document.metadata.DocumentID] = document
 	service.state.orderedDocumentIDs = []string{document.metadata.DocumentID}
 	service.state.activeDocumentID = document.metadata.DocumentID
@@ -354,7 +346,7 @@ func TestRefusedWriteNamesTheFileNotTheDocumentID(t *testing.T) {
 func TestRefusedWriteFallsBackToUntitledForAPathlessDocument(t *testing.T) {
 	// An untitled document has no basename to show. It must still not show the id.
 	document := &openDocument{metadata: apperr.DocumentMetadata{DocumentID: mintDocumentID(), Title: "Untitled", Capability: string(file.CapabilityUnsafeReadOnly)}, content: "content", baseline: "old"}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	service.state.documents[document.metadata.DocumentID] = document
 	service.state.orderedDocumentIDs = []string{document.metadata.DocumentID}
 	service.state.activeDocumentID = document.metadata.DocumentID
@@ -370,7 +362,7 @@ func TestRefusedWriteFallsBackToUntitledForAPathlessDocument(t *testing.T) {
 
 func TestSaveValidationRefusesReadOnlyBeforeDiskAccess(t *testing.T) {
 	document := &openDocument{metadata: apperr.DocumentMetadata{DocumentID: "read-only", Path: "/missing/file.md", Capability: string(file.CapabilityUnsafeReadOnly)}, content: "content", baseline: "old"}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	service.state.documents[document.metadata.DocumentID] = document
 	service.state.orderedDocumentIDs = []string{document.metadata.DocumentID}
 	service.state.activeDocumentID = document.metadata.DocumentID
@@ -386,6 +378,40 @@ type countingDiskReaders struct {
 	mu              sync.Mutex
 	diskVersionHits int
 	stableReadHits  int
+}
+
+type saveAsDiskVersionReader struct {
+	mu             sync.Mutex
+	calls          map[string]int
+	mutateBase     string
+	mutateOnCall   int
+	mutatedContent []byte
+}
+
+func (reader *saveAsDiskVersionReader) version(path string) (file.DiskVersion, error) {
+	version, err := file.CurrentDiskVersion(path)
+	reader.mu.Lock()
+	if reader.calls == nil {
+		reader.calls = make(map[string]int)
+	}
+	reader.calls[path]++
+	mutate := filepath.Base(path) == reader.mutateBase && reader.calls[path] == reader.mutateOnCall
+	content := append([]byte(nil), reader.mutatedContent...)
+	reader.mu.Unlock()
+	if mutate {
+		if writeErr := os.WriteFile(path, content, 0o644); writeErr != nil {
+			return version, writeErr
+		}
+	}
+	return version, err
+}
+
+func (reader *saveAsDiskVersionReader) mutateAfterVersion(path string, call int, content []byte) {
+	reader.mu.Lock()
+	reader.mutateBase = filepath.Base(path)
+	reader.mutateOnCall = call
+	reader.mutatedContent = append([]byte(nil), content...)
+	reader.mu.Unlock()
 }
 
 func (readers *countingDiskReaders) version(path string) (file.DiskVersion, error) {
@@ -442,12 +468,10 @@ func saveReservationCount(service *AppModelService) int {
 // already gated first; this asserts Save does too, by counting the disk seams
 // rather than by inspecting the refusal, because the refusal was already correct.
 func TestSaveRefusesMixedEndingsBeforeTouchingTheDisk(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	readers := &countingDiskReaders{}
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithConflictReaders(readers.stable, readers.version))
 	service.SetAutosaveEnabled(false)
 	_, documentID := writeMixedDocument(t, service, "first\r\nsecond\nthird\n")
-
-	readers := &countingDiskReaders{}
-	service.SetConflictReadersForTesting(readers.stable, readers.version)
 
 	state, err := service.GetState(context.Background())
 	if err != nil {
@@ -476,7 +500,7 @@ func TestSaveRefusesMixedEndingsBeforeTouchingTheDisk(t *testing.T) {
 // the conflict and never mentioned the line endings, so the normalization the
 // requirement demands was never requested.
 func TestUnauthorizedSaveAsksForNormalizationEvenWhenTheFileAlsoChanged(t *testing.T) {
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	service.SetAutosaveEnabled(false)
 	path, documentID := writeMixedDocument(t, service, "first\r\nsecond\nthird\n")
 
@@ -519,7 +543,7 @@ func TestCancelNormalizationReleasesADismissedAuthorization(t *testing.T) {
 	if err := os.WriteFile(path, []byte("one\ntwo\r\n"), 0o640); err != nil {
 		t.Fatalf("write mixed fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.ActiveBuffer == nil {
 		t.Fatalf("Open result = %+v", opened)
@@ -576,7 +600,7 @@ the coercion already produced, so only these two changed what a user receives.
 */
 // Proves: the classified error contract's `system-command-failure` row
 func TestUnavailableHostDialogsOfferRetryRatherThanNothing(t *testing.T) {
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 
 	opened := service.OpenFromDialog(context.Background(), 0)
 	if opened.Error == nil || opened.Error.Category != apperr.ClassifiedSystemCommandFailure {
@@ -626,7 +650,7 @@ func TestSaveKeepsAUniformlyCRLFDocumentCRLFOnDisk(t *testing.T) {
 	if err := os.WriteFile(path, []byte("one\r\ntwo\r\n"), 0o644); err != nil {
 		t.Fatalf("write CRLF fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.ActiveBuffer == nil {
 		t.Fatalf("Open result = %+v", opened)
@@ -657,7 +681,7 @@ func TestSaveKeepsASingleUTF8BOMOnDisk(t *testing.T) {
 	if err := os.WriteFile(path, fixture, 0o644); err != nil {
 		t.Fatalf("write BOM fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.ActiveBuffer == nil {
 		t.Fatalf("Open result = %+v", opened)
@@ -694,7 +718,7 @@ func TestSavePreservesThePermissionModeAboveAtomicReplace(t *testing.T) {
 	if err := os.WriteFile(path, []byte("base\n"), 0o640); err != nil {
 		t.Fatalf("write mode fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.ActiveBuffer == nil {
 		t.Fatalf("Open result = %+v", opened)
@@ -736,7 +760,9 @@ func TestFailedExplicitSaveLeavesTheFileIntactAndTheDocumentDirty(t *testing.T) 
 	if err := os.WriteFile(path, []byte("original\n"), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithWriteExecutor(func(WriteSnapshot) (file.DiskVersion, error) {
+		return file.DiskVersion{}, errors.New("write failed")
+	}))
 	service.SetAutosaveEnabled(false)
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.ActiveBuffer == nil {
@@ -745,10 +771,6 @@ func TestFailedExplicitSaveLeavesTheFileIntactAndTheDocumentDirty(t *testing.T) 
 	if err := service.UpdateBuffer(context.Background(), opened.DocumentID, "edited\n"); err != nil {
 		t.Fatalf("UpdateBuffer: %v", err)
 	}
-	service.SetWriteExecutorForTesting(func(WriteSnapshot) (file.DiskVersion, error) {
-		return file.DiskVersion{}, errors.New("write failed")
-	})
-
 	result := service.Save(context.Background(), opened.DocumentID, 1, "")
 	if result.Error == nil || result.Error.Category != apperr.ClassifiedIOFailure {
 		t.Fatalf("failed Save = %+v, want a classified io-failure", result)

@@ -177,8 +177,8 @@ const requiredEvidence = {
   ],
   'explicit-save-latency': [
     'newExplicitSaveLatencyScenario',
-    'SetDocumentSaveDialog',
-    'SetWriteCommitObserver',
+    'WithDialogs',
+    'WithWriteCommitObserver',
   ],
 };
 

@@ -1003,6 +1003,12 @@ export namespace apperr {
 	    message: string;
 	    details?: Record<string, string>;
 	    retryable: boolean;
+	    category?: string;
+	    safeSubject?: string;
+	    remediation?: string;
+	    remediations?: string[];
+	    documentId?: string;
+	    dedupKey?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new WireError(source);
@@ -1015,6 +1021,12 @@ export namespace apperr {
 	        this.message = source["message"];
 	        this.details = source["details"];
 	        this.retryable = source["retryable"];
+	        this.category = source["category"];
+	        this.safeSubject = source["safeSubject"];
+	        this.remediation = source["remediation"];
+	        this.remediations = source["remediations"];
+	        this.documentId = source["documentId"];
+	        this.dedupKey = source["dedupKey"];
 	    }
 	}
 	export class SettingsResult {

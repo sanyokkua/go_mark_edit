@@ -14,7 +14,7 @@ import (
 func TestOpenPathLifecycle(t *testing.T) {
 	path := writeOpenFixture(t, "notes.md", "# Notes\nhello\n")
 	emitter := &recordingEmitter{}
-	service := NewEmptyAppModelService(emitter)
+	service := NewEmptyAppModelService(WithEmitter(emitter))
 	initial, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before Open: %v", err)
@@ -63,7 +63,7 @@ func TestOpenFocusesCanonicalDuplicate(t *testing.T) {
 	if err := os.Symlink(target, alias); err != nil {
 		t.Fatalf("create alias: %v", err)
 	}
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	firstState, _ := service.GetState(context.Background())
 	first := service.OpenPath(context.Background(), target, firstState.Snapshot.TabSetRevision)
 	state, _ := service.GetState(context.Background())
@@ -79,7 +79,7 @@ func TestOpenFocusesCanonicalDuplicate(t *testing.T) {
 
 func TestOpenReplacesOnlyEmptyUntitled(t *testing.T) {
 	path := writeOpenFixture(t, "replacement.md", "replacement\n")
-	service := NewAppModelService(&recordingEmitter{})
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}))
 	initial, _ := service.GetState(context.Background())
 	replaced := service.OpenPath(context.Background(), path, initial.Snapshot.TabSetRevision)
 	state, _ := service.GetState(context.Background())
@@ -87,7 +87,7 @@ func TestOpenReplacesOnlyEmptyUntitled(t *testing.T) {
 		t.Fatalf("empty placeholder replacement = %+v / %+v", replaced, state.Snapshot)
 	}
 
-	service = NewAppModelService(&recordingEmitter{})
+	service = NewAppModelService(WithEmitter(&recordingEmitter{}))
 	initial, _ = service.GetState(context.Background())
 	if err := service.UpdateBuffer(context.Background(), initial.Snapshot.ActiveDocumentID, "keep me"); err != nil {
 		t.Fatalf("make untitled document nonempty: %v", err)
@@ -103,7 +103,7 @@ func TestOpenReplacesOnlyEmptyUntitled(t *testing.T) {
 // Proves: FR-FT-038 (partial — the refusal with zero mutation; the duplicate-consumes-no-slot clauses are proven by the siblings below)
 func TestOpenRefusesFortyFirstWithoutMutation(t *testing.T) {
 	root := t.TempDir()
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	for count := 0; count < maxOpenDocuments; count++ {
 		path := filepath.Join(root, "doc-"+string(rune('a'+count))+".md")
 		if err := os.WriteFile(path, []byte("doc\n"), 0o644); err != nil {
@@ -154,7 +154,7 @@ func TestOpenStaleRecentEntryRefusesNotFoundWithoutMutation(t *testing.T) {
 	}
 
 	emitter := &recordingEmitter{}
-	service := NewAppModelService(emitter)
+	service := NewAppModelService(WithEmitter(emitter))
 	before, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before Open: %v", err)
@@ -204,8 +204,7 @@ func TestOpenInReadingModeOpensDirectlyIntoPreview(t *testing.T) {
 	}
 	repository.arrangements[canonical.Path] = ArrangementSplit
 
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	service.SetFileMetadataRepository(repository)
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithFileMetadataRepository(repository))
 	service.SetDefaultOpenMode(OpenModeViewer)
 
 	state, _ := service.GetState(context.Background())
@@ -231,8 +230,7 @@ func TestPersistedArrangementPrecedence(t *testing.T) {
 		t.Fatalf("canonicalize arrangement fixture: %v", err)
 	}
 	repository.arrangements[canonical.Path] = ArrangementPreview
-	service := NewEmptyAppModelService(&recordingEmitter{})
-	service.SetFileMetadataRepository(repository)
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}), WithFileMetadataRepository(repository))
 	service.SetDefaultOpenMode(OpenModeEditor)
 	state, _ := service.GetState(context.Background())
 	outcome := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
@@ -255,7 +253,7 @@ func TestPersistedArrangementPrecedence(t *testing.T) {
 // cancellation to assert here.
 func TestPreparedOpenReservesExactlyOneIdentity(t *testing.T) {
 	path := writeOpenFixture(t, "reserved.md", "reserved\n")
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	state, _ := service.GetState(context.Background())
 	preparation, classified := service.PrepareOpen(context.Background(), path, state.Snapshot.TabSetRevision)
 	if classified != nil || preparation.ReservationID == "" || len(service.reservations) != 1 {
@@ -265,7 +263,7 @@ func TestPreparedOpenReservesExactlyOneIdentity(t *testing.T) {
 
 func TestPendingReservationCountsTowardLimit(t *testing.T) {
 	root := t.TempDir()
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	for count := 0; count < maxOpenDocuments; count++ {
 		path := filepath.Join(root, "pending-"+string(rune('a'+count))+".md")
 		if err := os.WriteFile(path, []byte("pending\n"), 0o644); err != nil {
@@ -290,7 +288,7 @@ func TestPendingReservationCountsTowardLimit(t *testing.T) {
 
 func TestConcurrentSameIdentityRequestsJoinOneOutcome(t *testing.T) {
 	path := writeOpenFixture(t, "concurrent.md", "concurrent\n")
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	preparations := make([]OpenPreparation, 2)
 	errors := make([]*apperr.ClassifiedError, 2)
 	var wait sync.WaitGroup
@@ -312,7 +310,7 @@ func TestConcurrentSameIdentityRequestsJoinOneOutcome(t *testing.T) {
 
 func TestReservationReleasedOnEveryTerminalOutcome(t *testing.T) {
 	path := writeOpenFixture(t, "terminal.md", "terminal\n")
-	service := NewEmptyAppModelService(&recordingEmitter{})
+	service := NewEmptyAppModelService(WithEmitter(&recordingEmitter{}))
 	state, _ := service.GetState(context.Background())
 	preparation, classified := service.PrepareOpen(context.Background(), path, state.Snapshot.TabSetRevision)
 	if classified != nil {
@@ -327,7 +325,7 @@ func TestReservationReleasedOnEveryTerminalOutcome(t *testing.T) {
 func TestOpenSelectionPerformsNoMutationBeforeFlush(t *testing.T) {
 	path := writeOpenFixture(t, "two-phase.md", "two phase\n")
 	emitter := &recordingEmitter{}
-	service := NewEmptyAppModelService(emitter)
+	service := NewEmptyAppModelService(WithEmitter(emitter))
 	before, _ := service.GetState(context.Background())
 	preparation, classified := service.PrepareOpen(context.Background(), path, before.Snapshot.TabSetRevision)
 	if classified != nil {

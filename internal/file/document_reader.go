@@ -71,10 +71,6 @@ const (
 // must not retry the write against either half of this read.
 var ErrUnstableRead = errors.New("document changed while being read")
 
-// stableReadBeforeHashHook is nil in production. Tests use it to make a
-// growth race deterministic between classification and the bounded hash read.
-var stableReadBeforeHashHook func(string)
-
 // StableClassifiedRead is the complete, version-bound source snapshot used by
 // Open, Reload, and external-change decisions.
 type StableClassifiedRead struct {
@@ -126,6 +122,15 @@ func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, er
 	if err != nil {
 		return StableClassifiedRead{Read: read, Version: before}, err
 	}
+	return verifyStableClassifiedRead(path, before, read, maxBytes)
+}
+
+// verifyStableClassifiedRead completes a classified read that already captured
+// its starting disk version. Keeping this step explicit lets the in-package
+// bounded-read test exercise the otherwise unreachable change-between-read-and-
+// hash race without adding a production callback or test setter.
+func verifyStableClassifiedRead(path string, before DiskVersion, read ClassifiedRead, maxBytes int64) (StableClassifiedRead, error) {
+	maxBytes = normalizedReadLimit(maxBytes)
 	if read.Error != nil {
 		after, err := CurrentDiskVersion(path)
 		if err != nil {
@@ -140,9 +145,6 @@ func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, er
 			return result, ErrUnstableRead
 		}
 		return result, nil
-	}
-	if stableReadBeforeHashHook != nil {
-		stableReadBeforeHashHook(path)
 	}
 	raw, err := readRawBytesBounded(path, maxBytes)
 	if err != nil {

@@ -96,7 +96,7 @@ func (clock *fakeAutosaveClock) FireNextAsync() bool {
 // toast" is proved in the frontend by App.test.tsx, where the toast would be)
 func TestAutosaveDebounceAndEligibility(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "first\n"); err != nil {
@@ -170,7 +170,7 @@ func TestAutosaveDebounceAndEligibility(t *testing.T) {
 // TestAutosaveOffLeavesExistingDirtyDocumentsDirty in autosave_disabled_test.go)
 func TestAutosaveOffHasNoCatchUp(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "pending\n"); err != nil {
@@ -215,7 +215,7 @@ func TestAutosaveOffHasNoCatchUp(t *testing.T) {
 
 func TestAutosaveConflictAndDeletion(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
 		t.Fatalf("conflict edit: %v", err)
@@ -243,7 +243,7 @@ func TestAutosaveConflictAndDeletion(t *testing.T) {
 	}
 
 	deletionClock := &fakeAutosaveClock{}
-	deletionService := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, deletionClock)
+	deletionService := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(deletionClock))
 	deletedPath, deletedID := openAutosaveDocument(t, deletionService, "base deletion\n")
 	if err := deletionService.UpdateBuffer(context.Background(), deletedID, "mine deletion\n"); err != nil {
 		t.Fatalf("deletion edit: %v", err)
@@ -305,7 +305,7 @@ func setAutosaveDocumentFlags(service *AppModelService, documentID string, detac
 // and had no caller at all.
 func TestRefusedAutosaveLeavesNoNormalizationAuthorizationBehind(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	_, documentID := writeMixedDocument(t, service, "first\r\nsecond\nthird\n")
 
 	for attempt := 1; attempt <= 3; attempt++ {

@@ -12,7 +12,7 @@ import (
 // "regardless of the default open mode" clause is proved by the sibling below)
 func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 	emitter := &recordingEmitter{}
-	service := NewEmptyAppModelService(emitter)
+	service := NewEmptyAppModelService(WithEmitter(emitter))
 	before, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before New: %v", err)
@@ -72,7 +72,7 @@ func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 // preview pane over a blank buffer and hide the only editable surface.
 func TestNewDocumentIgnoresTheReadingDefaultOpenMode(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceWithAutosaveTimer(&recordingEmitter{}, clock)
+	service := NewAppModelService(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
 	service.SetDefaultOpenMode(OpenModeViewer)
 	if got := service.DefaultOpenMode(); got != OpenModeViewer {
 		t.Fatalf("DefaultOpenMode() = %q, want the Reading default in force for this case", got)
@@ -109,7 +109,7 @@ func TestNewDocumentIgnoresTheReadingDefaultOpenMode(t *testing.T) {
 
 func TestNewDocumentRefusesStaleOrFortyFirst(t *testing.T) {
 	staleEmitter := &recordingEmitter{}
-	staleService := NewEmptyAppModelService(staleEmitter)
+	staleService := NewEmptyAppModelService(WithEmitter(staleEmitter))
 	before, err := staleService.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before stale New: %v", err)
@@ -123,7 +123,7 @@ func TestNewDocumentRefusesStaleOrFortyFirst(t *testing.T) {
 	}
 
 	emitter := &recordingEmitter{}
-	service := NewEmptyAppModelService(emitter)
+	service := NewEmptyAppModelService(WithEmitter(emitter))
 	for count := 0; count < maxOpenDocuments; count++ {
 		state, stateErr := service.GetState(context.Background())
 		if stateErr != nil {

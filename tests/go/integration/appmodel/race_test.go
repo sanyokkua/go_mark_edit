@@ -17,7 +17,7 @@ func TestStaleSaveConcurrentWithNewDocumentNamesTheOriginalDocument(t *testing.T
 		if err := os.WriteFile(path, []byte("original\n"), 0o644); err != nil {
 			t.Fatalf("write document: %v", err)
 		}
-		service := appmodel.NewAppModelService(&statePatchRecorder{})
+		service := appmodel.NewAppModelService(appmodel.WithEmitter(&statePatchRecorder{}))
 		opened := service.OpenPath(context.Background(), path, 0)
 		if opened.Status != appmodel.OpenStatusOpened {
 			t.Fatalf("open status = %q, error = %+v", opened.Status, opened.Error)

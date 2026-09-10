@@ -180,9 +180,9 @@ func TestHandlerClassifiesRejectedLayoutWrite(t *testing.T) {
 // A real layout persistence failure becomes one safe classified file-operation
 // envelope with a stable layout subject and no raw failure data.
 func TestHandlerClassifiesLayoutPersistenceFailuresWithSafeSubject(t *testing.T) {
-	service := NewAppModelServiceWithLayoutRepository(
-		&recordingEmitter{},
-		failingLayoutRepository{err: errors.New("/private/user/settings.db")},
+	service := NewAppModelService(
+		WithEmitter(&recordingEmitter{}),
+		WithLayoutRepository(failingLayoutRepository{err: errors.New("/private/user/settings.db")}),
 	)
 	handler := NewAppModelHandler(service, nil, nil)
 	visible := false
@@ -244,8 +244,7 @@ func (service *fakeAppModelService) ReopenLastFile(_ context.Context, _ uint64) 
 // TestNativePickersFilterExactlyTheSupportedSuffixes in main_test.go.)
 func TestOpenCancellationHasNoMutation(t *testing.T) {
 	emitter := &recordingEmitter{}
-	service := NewEmptyAppModelService(emitter)
-	service.SetDocumentOpenDialog(cancellationDialog{})
+	service := NewEmptyAppModelService(WithEmitter(emitter), WithDialogs(cancellationDialog{}, nil))
 	before, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before cancellation: %v", err)

@@ -26,7 +26,31 @@ func TestSaveAsDuringAutosaveKeepsBothDiskCopiesAndLeavesTheDocumentClean(t *tes
 		t.Fatalf("write source: %v", err)
 	}
 	clock := &manualAutosaveFactory{}
-	service := appmodel.NewAppModelServiceWithAutosaveTimer(&statePatchRecorder{}, clock)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	firstSnapshot := make(chan string, 1)
+	var writesMu sync.Mutex
+	writes := 0
+	service := appmodel.NewAppModelService(
+		appmodel.WithEmitter(&statePatchRecorder{}),
+		appmodel.WithAutosaveTimer(clock),
+		appmodel.WithDialogs(nil, saveDialog{path: target}),
+		appmodel.WithWriteExecutor(func(snapshot appmodel.WriteSnapshot) (file.DiskVersion, error) {
+			writesMu.Lock()
+			writes++
+			first := writes == 1
+			writesMu.Unlock()
+			if first {
+				firstSnapshot <- snapshot.CanonicalContent
+				close(started)
+				<-release
+			}
+			if err := os.WriteFile(snapshot.TargetPath, []byte(snapshot.CanonicalContent), 0o644); err != nil {
+				return file.DiskVersion{}, err
+			}
+			return file.CurrentDiskVersion(snapshot.TargetPath)
+		}),
+	)
 	opened := service.OpenPath(context.Background(), source, 0)
 	if opened.Status != appmodel.OpenStatusOpened {
 		t.Fatalf("open status = %q, error = %+v", opened.Status, opened.Error)
@@ -34,28 +58,6 @@ func TestSaveAsDuringAutosaveKeepsBothDiskCopiesAndLeavesTheDocumentClean(t *tes
 	if err := service.UpdateBuffer(context.Background(), opened.DocumentID, "autosave\n"); err != nil {
 		t.Fatalf("first UpdateBuffer: %v", err)
 	}
-
-	started := make(chan struct{})
-	release := make(chan struct{})
-	firstSnapshot := make(chan string, 1)
-	var writesMu sync.Mutex
-	writes := 0
-	service.SetWriteExecutorForTesting(func(snapshot appmodel.WriteSnapshot) (file.DiskVersion, error) {
-		writesMu.Lock()
-		writes++
-		first := writes == 1
-		writesMu.Unlock()
-		if first {
-			firstSnapshot <- snapshot.CanonicalContent
-			close(started)
-			<-release
-		}
-		if err := os.WriteFile(snapshot.TargetPath, []byte(snapshot.CanonicalContent), 0o644); err != nil {
-			return file.DiskVersion{}, err
-		}
-		return file.CurrentDiskVersion(snapshot.TargetPath)
-	})
-	service.SetDocumentSaveDialog(saveDialog{path: target})
 
 	go clock.fireNext()
 	select {

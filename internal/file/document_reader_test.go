@@ -24,15 +24,18 @@ func TestReadClassifiedStableBoundsRawHashAndDetectsGrowth(t *testing.T) {
 		t.Fatalf("stable read = %+v, want stable bounded hash", stable)
 	}
 
-	previousHook := stableReadBeforeHashHook
-	stableReadBeforeHashHook = func(path string) {
-		if err := os.WriteFile(path, []byte("abcde"), 0o644); err != nil {
-			t.Fatalf("grow file during stable read: %v", err)
-		}
+	before, err := CurrentDiskVersion(path)
+	if err != nil {
+		t.Fatalf("version before direct stable verification: %v", err)
 	}
-	defer func() { stableReadBeforeHashHook = previousHook }()
-
-	unstable, err := ReadClassifiedStable(path, 4)
+	classified, err := ReadClassified(path, 4)
+	if err != nil {
+		t.Fatalf("classified read before direct stable verification: %v", err)
+	}
+	if err := os.WriteFile(path, []byte("abcde"), 0o644); err != nil {
+		t.Fatalf("grow file between stable-read steps: %v", err)
+	}
+	unstable, err := verifyStableClassifiedRead(path, before, classified, 4)
 	if !errors.Is(err, ErrUnstableRead) || unstable.Stable {
 		t.Fatalf("growth race = result=%+v err=%v, want ErrUnstableRead and unstable", unstable, err)
 	}

@@ -16,6 +16,7 @@ import (
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
+	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -45,8 +46,13 @@ func main() {
 		databaseDir: nativeEvidenceDatabaseDir,
 		scenario:    nativeEvidenceScenario,
 	}
-	holder := application.NewApplicationContextHolder(paths, nil)
-	configureNativeEvidenceDependencies(holder, nativeEvidenceScenario)
+	modelOptions := configureNativeEvidenceDependencies(nil, nativeEvidenceScenario)
+	holder := application.NewApplicationContextHolderWithOptions(paths, nil, application.ApplicationContextOptions{
+		AppModelOptions: modelOptions,
+	})
+	if nativeEvidenceExplicitSave != nil {
+		nativeEvidenceExplicitSave.attachModel(holder.AppModelService)
+	}
 
 	fmt.Printf("native-evidence scenario=%s instance=%s database=%s\n", nativeEvidenceScenario, nativeEvidenceInstance, paths.databasePath())
 	if err := wails.Run(nativeEvidenceOptions(holder, paths)); err != nil {
@@ -95,10 +101,10 @@ func validateNativeEvidenceConfiguration() error {
 	return nil
 }
 
-func configureNativeEvidenceDependencies(holder *application.ApplicationContextHolder, scenario string) {
+func configureNativeEvidenceDependencies(_ *application.ApplicationContextHolder, scenario string) []appmodel.AppModelOption {
 	nativeEvidenceAutosave = nil
 	nativeEvidenceExplicitSave = nil
-	var timer nativeEvidenceLayoutTimer = systemNativeEvidenceTimer{}
+	var timer appmodel.LayoutTimer = systemNativeEvidenceTimer{}
 	switch scenario {
 	case "pending-close", "stale-close-old":
 		timer = stalledNativeEvidenceTimer{}
@@ -118,31 +124,21 @@ func configureNativeEvidenceDependencies(holder *application.ApplicationContextH
 		nativeEvidenceExplicitSave = explicitScenario
 	}
 
-	// Take the model the composition root already built and change only the
-	// clock. This used to construct a second model and assign it over
-	// holder.AppModelService, which discarded the clipboard writer and the reveal
-	// port the root injects, and left the autosave and default-open-mode settings
-	// observers bound to an object nothing else referenced — in the binary whose
-	// whole purpose is to measure autosave. Nothing failed, because no scenario
-	// invokes Copy path or Reveal; that is what made it worth fixing rather than
-	// annotating. There is now exactly one wiring path, so a port added to
-	// NewAppModelServiceForHost reaches this host by construction.
-	model := holder.AppModelService
-	model.SetLayoutTimer(timer)
+	modelOptions := []appmodel.AppModelOption{appmodel.WithClock(timer)}
 	if nativeEvidenceAutosave != nil {
-		model.SetDocumentOpenDialog(nativeEvidenceAutosave)
-		model.SetWriteCommitObserver(nativeEvidenceAutosave.recordCommit)
+		modelOptions = append(modelOptions,
+			appmodel.WithDialogs(nativeEvidenceAutosave, nil),
+			appmodel.WithWriteCommitObserver(nativeEvidenceAutosave.recordCommit),
+		)
 	}
 	if nativeEvidenceExplicitSave != nil {
-		nativeEvidenceExplicitSave.attachModel(model)
-		model.SetDocumentSaveDialog(nativeEvidenceExplicitSave)
-		model.SetWriteCommitObserver(nativeEvidenceExplicitSave.recordCommit)
+		modelOptions = append(modelOptions,
+			appmodel.WithDialogs(nil, nativeEvidenceExplicitSave),
+			appmodel.WithWriteCommitObserver(nativeEvidenceExplicitSave.recordCommit),
+		)
 	}
-	// No handler rebuild. NewApplicationContextHolder already built
-	// AppModelHandler, NativeWindowService and ApplicationHandler against this
-	// same model with the same nil logger, so re-creating them produced identical
-	// objects; they existed only because the model underneath them had been
-	// swapped. Leaving them alone keeps the root the single wiring site.
+
+	return modelOptions
 }
 
 func nativeEvidenceOptions(holder *application.ApplicationContextHolder, paths *nativeEvidencePaths) *options.App {
@@ -254,10 +250,6 @@ func (paths *nativeEvidencePaths) GetAppDatabaseFilePath() (string, error) {
 
 func (paths *nativeEvidencePaths) databasePath() string {
 	return filepath.Join(paths.databaseDir, "settings.db")
-}
-
-type nativeEvidenceLayoutTimer interface {
-	AfterFunc(time.Duration, func())
 }
 
 type systemNativeEvidenceTimer struct{}
