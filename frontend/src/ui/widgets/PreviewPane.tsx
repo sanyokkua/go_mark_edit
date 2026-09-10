@@ -9,6 +9,7 @@ import type {
 import { classifyImageSource } from '../../logic/markdown/imagePolicy';
 import type { OpenResult } from '../../logic/store/appModelTypes';
 import MarkdownView from '../components/MarkdownView';
+import Button from '../primitives/Button';
 import styles from './PreviewPane.module.css';
 
 export const PREVIEW_BYTE_LIMIT = 2_097_152;
@@ -218,17 +219,17 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
               {t('preview.refreshFailed')}
             </p>
           )}
-          <button
+          <Button
             className={styles.refreshButton}
             aria-busy={isRefreshing}
             disabled={isRefreshing}
-            type="button"
+            variant="secondary"
             onClick={refresh}
           >
             {currentRefreshError === null
               ? t('preview.refresh')
               : t('preview.retry')}
-          </button>
+          </Button>
         </div>
       ) : (
         <MarkdownView

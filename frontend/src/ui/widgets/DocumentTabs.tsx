@@ -30,6 +30,7 @@ import {
 } from '../../logic/actions/shortcutRegistry';
 import { t } from '../../i18n';
 import LiveRegion from '../primitives/LiveRegion';
+import Bar from '../components/Bar';
 import type { PopupAnchor } from '../components/Popup';
 import ExternalChangePrompt, {
   type ExternalChangeDecision,
@@ -1112,228 +1113,237 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
 
   return (
     <>
-      <div
-        ref={stripRef}
-        aria-label={t('editor.tabs')}
-        data-tabs-overflowing={tabsOverflowing ? 'true' : undefined}
-        className={styles.tabStrip}
-        role="tablist"
-        onKeyDown={(event): void => {
-          if (event.key === 'Home' || event.key === 'End') {
-            event.preventDefault();
-            const target =
-              event.key === 'Home'
-                ? orderedDocuments[0]
-                : orderedDocuments.at(-1);
-            if (target !== undefined) focusDocument(target.documentId);
-            return;
-          }
-          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-          const current = orderedDocuments.findIndex(
-            (document) => document.documentId === activeDocumentId,
-          );
-          if (current < 0) return;
-          event.preventDefault();
-          const next =
-            event.key === 'ArrowLeft'
-              ? Math.max(0, current - 1)
-              : Math.min(orderedDocuments.length - 1, current + 1);
-          const target = orderedDocuments[next];
-          if (target === undefined) return;
-          /*
-           * Focus moves with the arrow, then selection follows it — the
-           * WAI-ARIA tabs pattern. Activating without moving focus left the
-           * caret on a tab that the roving `tabIndex` had just set to -1 while
-           * the newly selected tab became the only tab stop, so the next Tab
-           * press escaped from somewhere the user could not see. Focus is a
-           * pure UI concern and moves immediately; activation is a command the
-           * backend may still refuse, and a focused non-selected tab is a
-           * legitimate resting state if it does.
-           */
-          focusDocument(target.documentId);
-          void activateDocument(target.documentId);
-        }}
-      >
-        <>
-          {orderedDocuments.flatMap((document, index) => {
-            const label = labels.get(document.documentId) as TabLabel;
-            const visualLabel = truncatedTabLabelParts(label, 42);
-            const active = document.documentId === activeDocumentId;
-            const item =
-              (
-                /*
-                 * FR-FT-047 asks for correct roles, and `role="tab"` is only
-                 * correct when a `tablist` owns it. This wrapper pairs the tab
-                 * with its close control as one flex item, so it cannot be
-                 * removed without moving the strip's pixels; `presentation`
-                 * makes it transparent to the accessibility tree instead, which
-                 * is what restores the ownership the markup already claimed.
-                 */
-                <div
-                  className={styles.tabItem}
-                  data-tab-dragging={
-                    document.documentId === draggingDocumentId
-                      ? 'true'
-                      : undefined
-                  }
-                  data-tab-item=""
-                  key={document.documentId}
-                  role="presentation"
-                >
-                  <button
-                    aria-controls={EDITOR_TABPANEL_ID}
-                    aria-selected={active}
-                    aria-label={`${label.accessibleName}${document.conflictBlocked ? ` · ${t('conflict.blocked')}` : ''}`}
-                    className={styles.tab}
-                    data-document-id={document.documentId}
-                    id={tabElementId(document.documentId)}
-                    ref={(element): void => {
-                      if (element === null)
-                        tabRefs.current.delete(document.documentId);
-                      else tabRefs.current.set(document.documentId, element);
-                    }}
-                    role="tab"
-                    tabIndex={active ? 0 : -1}
-                    title={document.path || undefined}
-                    type="button"
-                    onAuxClick={(event): void => {
-                      if (event.button !== 1) return;
-                      event.preventDefault();
-                      closeTargetedTab(document.documentId);
-                    }}
-                    onClick={(): void => {
-                      /*
-                       * A completed drag ends in a `click` on the tab that was
-                       * dragged, because the pointer went down and up on it.
-                       * Activating there would switch documents every time the
-                       * user reordered one. The flag is set only once the grab
-                       * has passed the threshold, so an ordinary click — press,
-                       * no movement, release — still activates.
-                       */
-                      if (suppressActivationClick.current) {
-                        suppressActivationClick.current = false;
-                        return;
-                      }
-                      void activateDocument(document.documentId);
-                    }}
-                    onContextMenu={(event): void => {
-                      event.preventDefault();
-                      setContextDocumentId(document.documentId);
-                      setContextAnchor({
-                        point: { x: event.clientX, y: event.clientY },
-                      });
-                    }}
-                    onKeyDown={(event): void => {
-                      if (
-                        event.key !== 'ContextMenu' &&
-                        !(event.key === 'F10' && event.shiftKey)
-                      ) {
-                        return;
-                      }
-                      event.preventDefault();
-                      setContextDocumentId(document.documentId);
-                      setContextAnchor({
-                        bounds: event.currentTarget.getBoundingClientRect(),
-                      });
-                    }}
-                    onPointerDown={(event): void => {
-                      if (event.button !== 0) return;
-                      beginGrab(document.documentId, index, event.clientX);
-                    }}
-                  >
-                    <span
-                      aria-hidden={document.dirty ? undefined : true}
-                      aria-label={
-                        document.dirty ? t('editor.tab.modified') : undefined
-                      }
-                      className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
-                      data-write-in-flight={document.writeInFlight || undefined}
-                    />
-                    {document.conflictBlocked ? (
-                      <span
-                        aria-label={t('conflict.blocked')}
-                        className={styles.modifiedDot}
-                        data-conflict-blocked
-                      >
-                        {t('conflict.blocked')}
-                      </span>
-                    ) : null}
-                    <span aria-hidden="true" className={styles.tabLabel}>
-                      {visualLabel.suffix === '' ? (
-                        visualLabel.basename
-                      ) : (
-                        <>
-                          <span
-                            className={styles.tabLabelBasename}
-                            data-tab-label-basename
-                          >
-                            {visualLabel.basename}
-                          </span>
-                          <span
-                            className={styles.tabLabelSuffix}
-                            data-tab-label-suffix
-                          >
-                            {visualLabel.suffix}
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  </button>
-                  <button
-                    aria-label={t('editor.tab.close', {
-                      title: label.accessibleName,
-                    })}
-                    className={styles.tabClose}
-                    type="button"
-                    onClick={(): void => {
-                      closeTargetedTab(document.documentId);
-                    }}
-                  >
-                    <span aria-hidden="true" className={styles.tabCloseGlyph}>
-                      ×
-                    </span>
-                  </button>
-                </div>
-              );
-            return insertionSlot === index
-              ? [insertionIndicator(index), item]
-              : [item];
-          })}
-          {insertionSlot === orderedDocuments.length
-            ? insertionIndicator(orderedDocuments.length)
-            : null}
-          <button
-            aria-label={t('editor.tab.new')}
-            className={styles.tabAdd}
-            data-tab-new="true"
-            type="button"
-            /*
-             * The two branches are mutually exclusive, so each reports its own
-             * refusal and no path raises two toasts for one click. When the
-             * shell supplies `onNewDocument` it is the single funnel shared
-             * with the File menu and reports there; the adapter fallback is
-             * only reached when it does not, and reports here. Until now this
-             * handler discarded the result outright, so a `capacity-limit`
-             * refusal at 40 documents reached the user as silence.
-             */
-            onClick={(): void => {
-              if (onNewDocument) {
-                void onNewDocument(tabSetRevision);
+      <Bar
+        ariaLabel={t('editor.tabs')}
+        className={styles.tabBar}
+        main={
+          <div
+            ref={stripRef}
+            aria-label={t('editor.tabs')}
+            data-tabs-overflowing={tabsOverflowing ? 'true' : undefined}
+            className={styles.tabStrip}
+            role="tablist"
+            onKeyDown={(event): void => {
+              if (event.key === 'Home' || event.key === 'End') {
+                event.preventDefault();
+                const target =
+                  event.key === 'Home'
+                    ? orderedDocuments[0]
+                    : orderedDocuments.at(-1);
+                if (target !== undefined) focusDocument(target.documentId);
                 return;
               }
-              void adapter.newDocument?.(tabSetRevision).then((result) => {
-                reportClassifiedError(
-                  dispatch,
-                  result.error,
-                  t('editor.tab.new'),
-                );
-              });
+              if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')
+                return;
+              const current = orderedDocuments.findIndex(
+                (document) => document.documentId === activeDocumentId,
+              );
+              if (current < 0) return;
+              event.preventDefault();
+              const next =
+                event.key === 'ArrowLeft'
+                  ? Math.max(0, current - 1)
+                  : Math.min(orderedDocuments.length - 1, current + 1);
+              const target = orderedDocuments[next];
+              if (target === undefined) return;
+              /*
+               * Focus moves with the arrow, then selection follows it — the
+               * WAI-ARIA tabs pattern. Activating without moving focus left the
+               * caret on a tab that the roving `tabIndex` had just set to -1 while
+               * the newly selected tab became the only tab stop, so the next Tab
+               * press escaped from somewhere the user could not see. Focus is a
+               * pure UI concern and moves immediately; activation is a command the
+               * backend may still refuse, and a focused non-selected tab is a
+               * legitimate resting state if it does.
+               */
+              focusDocument(target.documentId);
+              void activateDocument(target.documentId);
             }}
           >
-            +
-          </button>
-        </>
-      </div>
+            {orderedDocuments.flatMap((document, index) => {
+              const label = labels.get(document.documentId) as TabLabel;
+              const visualLabel = truncatedTabLabelParts(label, 42);
+              const active = document.documentId === activeDocumentId;
+              const item =
+                (
+                  /*
+                   * FR-FT-047 asks for correct roles, and `role="tab"` is only
+                   * correct when a `tablist` owns it. This wrapper pairs the tab
+                   * with its close control as one flex item, so it cannot be
+                   * removed without moving the strip's pixels; `presentation`
+                   * makes it transparent to the accessibility tree instead, which
+                   * is what restores the ownership the markup already claimed.
+                   */
+                  <div
+                    className={styles.tabItem}
+                    data-tab-dragging={
+                      document.documentId === draggingDocumentId
+                        ? 'true'
+                        : undefined
+                    }
+                    data-tab-item=""
+                    key={document.documentId}
+                    role="presentation"
+                  >
+                    <button
+                      aria-controls={EDITOR_TABPANEL_ID}
+                      aria-selected={active}
+                      aria-label={`${label.accessibleName}${document.conflictBlocked ? ` · ${t('conflict.blocked')}` : ''}`}
+                      className={styles.tab}
+                      data-document-id={document.documentId}
+                      id={tabElementId(document.documentId)}
+                      ref={(element): void => {
+                        if (element === null)
+                          tabRefs.current.delete(document.documentId);
+                        else tabRefs.current.set(document.documentId, element);
+                      }}
+                      role="tab"
+                      tabIndex={active ? 0 : -1}
+                      title={document.path || undefined}
+                      type="button"
+                      onAuxClick={(event): void => {
+                        if (event.button !== 1) return;
+                        event.preventDefault();
+                        closeTargetedTab(document.documentId);
+                      }}
+                      onClick={(): void => {
+                        /*
+                         * A completed drag ends in a `click` on the tab that was
+                         * dragged, because the pointer went down and up on it.
+                         * Activating there would switch documents every time the
+                         * user reordered one. The flag is set only once the grab
+                         * has passed the threshold, so an ordinary click — press,
+                         * no movement, release — still activates.
+                         */
+                        if (suppressActivationClick.current) {
+                          suppressActivationClick.current = false;
+                          return;
+                        }
+                        void activateDocument(document.documentId);
+                      }}
+                      onContextMenu={(event): void => {
+                        event.preventDefault();
+                        setContextDocumentId(document.documentId);
+                        setContextAnchor({
+                          point: { x: event.clientX, y: event.clientY },
+                        });
+                      }}
+                      onKeyDown={(event): void => {
+                        if (
+                          event.key !== 'ContextMenu' &&
+                          !(event.key === 'F10' && event.shiftKey)
+                        ) {
+                          return;
+                        }
+                        event.preventDefault();
+                        setContextDocumentId(document.documentId);
+                        setContextAnchor({
+                          bounds: event.currentTarget.getBoundingClientRect(),
+                        });
+                      }}
+                      onPointerDown={(event): void => {
+                        if (event.button !== 0) return;
+                        beginGrab(document.documentId, index, event.clientX);
+                      }}
+                    >
+                      <span
+                        aria-hidden={document.dirty ? undefined : true}
+                        aria-label={
+                          document.dirty ? t('editor.tab.modified') : undefined
+                        }
+                        className={`${styles.modifiedDot} ${document.writeInFlight ? styles.modifiedDotMuted : ''}`}
+                        data-write-in-flight={
+                          document.writeInFlight || undefined
+                        }
+                      />
+                      {document.conflictBlocked ? (
+                        <span
+                          aria-label={t('conflict.blocked')}
+                          className={styles.modifiedDot}
+                          data-conflict-blocked
+                        >
+                          {t('conflict.blocked')}
+                        </span>
+                      ) : null}
+                      <span aria-hidden="true" className={styles.tabLabel}>
+                        {visualLabel.suffix === '' ? (
+                          visualLabel.basename
+                        ) : (
+                          <>
+                            <span
+                              className={styles.tabLabelBasename}
+                              data-tab-label-basename
+                            >
+                              {visualLabel.basename}
+                            </span>
+                            <span
+                              className={styles.tabLabelSuffix}
+                              data-tab-label-suffix
+                            >
+                              {visualLabel.suffix}
+                            </span>
+                          </>
+                        )}
+                      </span>
+                    </button>
+                    <button
+                      aria-label={t('editor.tab.close', {
+                        title: label.accessibleName,
+                      })}
+                      className={styles.tabClose}
+                      type="button"
+                      onClick={(): void => {
+                        closeTargetedTab(document.documentId);
+                      }}
+                    >
+                      <span aria-hidden="true" className={styles.tabCloseGlyph}>
+                        ×
+                      </span>
+                    </button>
+                  </div>
+                );
+              return insertionSlot === index
+                ? [insertionIndicator(index), item]
+                : [item];
+            })}
+            {insertionSlot === orderedDocuments.length
+              ? insertionIndicator(orderedDocuments.length)
+              : null}
+            <button
+              aria-label={t('editor.tab.new')}
+              className={styles.tabAdd}
+              data-tab-new="true"
+              type="button"
+              /*
+               * The two branches are mutually exclusive, so each reports its own
+               * refusal and no path raises two toasts for one click. When the
+               * shell supplies `onNewDocument` it is the single funnel shared
+               * with the File menu and reports there; the adapter fallback is
+               * only reached when it does not, and reports here. Until now this
+               * handler discarded the result outright, so a `capacity-limit`
+               * refusal at 40 documents reached the user as silence.
+               */
+              onClick={(): void => {
+                if (onNewDocument) {
+                  void onNewDocument(tabSetRevision);
+                  return;
+                }
+                void adapter.newDocument?.(tabSetRevision).then((result) => {
+                  reportClassifiedError(
+                    dispatch,
+                    result.error,
+                    t('editor.tab.new'),
+                  );
+                });
+              }}
+            >
+              +
+            </button>
+          </div>
+        }
+        overflow="scroll"
+        role="tablist-host"
+      />
       {contextDocument !== undefined && contextIndex >= 0 ? (
         <TabContextMenu
           adapter={contextAdapter}

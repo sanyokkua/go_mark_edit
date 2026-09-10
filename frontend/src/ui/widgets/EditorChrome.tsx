@@ -5,7 +5,6 @@ import {
   useContext,
   useEffect,
   useRef,
-  useState,
 } from 'react';
 
 import { t } from '../../i18n';
@@ -30,12 +29,14 @@ import {
 import { DocumentCommandContext, EditorSessionContext } from './editorSession';
 import type { ViewArrangement } from '../../logic/store/appModelTypes';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
-import Icon, { type IconName } from '../primitives/Icon';
+import type { IconName } from '../primitives/Icon';
+import Bar from '../components/Bar';
+import Island from '../components/Island';
 import MenuItem from '../components/MenuItem';
-import Popup, { PopupSeparator, PopupTrigger } from '../components/Popup';
+import { PopupSeparator } from '../components/Popup';
+import ToolButton from '../primitives/ToolButton';
 import styles from './EditorChrome.module.css';
 import { useModalState } from './modalStateContext';
-import { isMinimumWindow } from './minimumWindow';
 import DocumentTabs, { type DocumentTabsProps } from './DocumentTabs';
 import { ApplicationMenuRequestContext } from './applicationMenuRequest';
 
@@ -72,13 +73,6 @@ const applicationOverflowLabels = {
   settings: t('shell.settings'),
   view: t('action.view.label'),
 } as const;
-
-/*
- * Deliberately the static read, not `useMinimumWindow`: this drives where the
- * overflow popup is portalled and positioned, and it is already resynchronized
- * by the toolbar's own resize listener below.
- */
-const isNarrowToolbarViewport = isMinimumWindow;
 
 function action(id: ActionEntry['id']): ActionEntry {
   return getAction(id);
@@ -125,30 +119,21 @@ const ActionButton: React.FC<ActionButtonProps> = ({
       getActionAvailability(entry.id, { projectedState }).kind ===
         'unavailable');
   return (
-    <button
+    <ToolButton
       aria-label={t(entry.accessibilityKey)}
       className={styles.action}
       data-action-id={entry.id}
       data-icon={textualControlIds.has(entry.id) ? undefined : entry.id}
       disabled={unavailable}
+      icon={
+        textualControlIds.has(entry.id) ? undefined : (entry.id as IconName)
+      }
+      label={t(entry.accessibilityKey)}
       role={menuItem ? 'menuitem' : undefined}
       title={unavailable ? t('action.unavailable') : controlTooltip(entry)}
-      type="button"
-      onMouseDown={(event): void => {
-        if (!unavailable) event.preventDefault();
-      }}
-      onClick={(): void => onActivate(entry)}
-    >
-      {textualControlIds.has(entry.id) ? (
-        t(entry.labelKey)
-      ) : (
-        <Icon
-          className={styles.actionIcon}
-          name={entry.id as IconName}
-          size={15}
-        />
-      )}
-    </button>
+      variant={textualControlIds.has(entry.id) ? 'text' : 'icon'}
+      onActivate={(): void => onActivate(entry)}
+    />
   );
 };
 
@@ -157,9 +142,16 @@ function actionButtons(
   onActivate: (entry: ActionEntry) => void,
   className?: string,
   menuItem = false,
+  overflowPriority?: number,
+  neverOverflows = false,
 ): React.JSX.Element {
   return (
-    <div className={`${styles.group} ${className ?? ''}`}>
+    <Island
+      className={`${styles.group} ${className ?? ''}`}
+      data-bar-overflow={neverOverflows ? 'never' : undefined}
+      data-bar-overflow-priority={overflowPriority}
+      label={ids.map((id) => t(action(id).labelKey)).join(', ')}
+    >
       {ids.map((id) => (
         <ActionButton
           entry={action(id)}
@@ -168,7 +160,7 @@ function actionButtons(
           onActivate={onActivate}
         />
       ))}
-    </div>
+    </Island>
   );
 }
 
@@ -186,20 +178,8 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
   const modalOpen = useModalState();
   const requestApplicationMenu = useContext(ApplicationMenuRequestContext);
   const { markdownSettings } = useEditorSettings();
-  const [overflowOpen, setOverflowOpen] = useState(false);
-  const [overflowTrigger, setOverflowTrigger] =
-    useState<HTMLButtonElement | null>(null);
   const arrangementRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const pendingArrangement = useRef<ViewArrangement | undefined>(undefined);
-  const [narrowToolbarOverflow, setNarrowToolbarOverflow] = useState(
-    isNarrowToolbarViewport,
-  );
-  useEffect((): (() => void) => {
-    const onResize = (): void =>
-      setNarrowToolbarOverflow(isNarrowToolbarViewport());
-    window.addEventListener('resize', onResize);
-    return (): void => window.removeEventListener('resize', onResize);
-  }, []);
   const onActivate = useCallback(
     (entry: ActionEntry): void => {
       const formatActionId = formatActionIds[entry.id];
@@ -288,10 +268,6 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
     arrangementRefs.current[arrangementValues.indexOf(arrangement)]?.focus();
   }, [arrangement]);
 
-  const closeOverflow = (): void => {
-    setOverflowOpen(false);
-  };
-
   const requestArrangement = (next: ViewArrangement): void => {
     if (next !== arrangement) {
       pendingArrangement.current = next;
@@ -303,9 +279,9 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
     const entry = action(next);
     const index = arrangementValues.indexOf(next);
     return (
-      <button
-        aria-checked={arrangement === next}
+      <ToolButton
         aria-label={t(entry.accessibilityKey)}
+        checked={arrangement === next}
         className={styles.action}
         data-action-id={entry.id}
         data-icon={entry.id}
@@ -313,7 +289,9 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
           arrangementRefs.current[index] = element;
         }}
         role="radio"
-        type="button"
+        label={t(entry.accessibilityKey)}
+        preserveSelection={false}
+        variant="text"
         onKeyDown={(event): void => {
           const destination =
             event.key === 'Home'
@@ -330,10 +308,8 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
           event.preventDefault();
           requestArrangement(arrangementValues[destination]);
         }}
-        onClick={(): void => requestArrangement(next)}
-      >
-        {t(entry.labelKey)}
-      </button>
+        onActivate={(): void => requestArrangement(next)}
+      />
     );
   };
 
@@ -347,134 +323,90 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
         onNewDocument={onNewDocument}
       />
 
-      <div
-        aria-label={t('editor.toolbar')}
+      <Bar
+        ariaLabel={t('editor.toolbar')}
         className={styles.toolbar}
-        role="toolbar"
-      >
-        {actionButtons(
-          textActions.map((id) => action(id).id),
-          onActivate,
-          styles.relocateAt375,
-        )}
-        {actionButtons(
-          headingActions.map((id) => action(id).id),
-          onActivate,
-          styles.relocateAt375,
-        )}
-        {actionButtons(
-          listActions.map((id) => action(id).id),
-          onActivate,
-          styles.relocateAt768,
-        )}
-        {actionButtons(
-          insertActions.map((id) => action(id).id),
-          onActivate,
-          styles.relocateAt768,
-        )}
-        {actionButtons(
-          deferredActions.map((id) => action(id).id),
-          onActivate,
-        )}
-        <div className={styles.overflow}>
-          <PopupTrigger
-            aria-label={t('editor.moreActions')}
-            className={styles.overflowTrigger}
-            ref={setOverflowTrigger}
-            expanded={overflowOpen}
-            onClick={(): void => {
-              if (overflowOpen) closeOverflow();
-              else setOverflowOpen(true);
-            }}
-            onOpen={(): void => setOverflowOpen(true)}
-          >
-            <Icon name="more" size={15} />
-          </PopupTrigger>
-        </div>
-        {/* Binding source: mockup.html `.tsp` (:673). The arrangement segment
-            follows the spacer, and the overflow trigger precedes it, so the
-            segment sits against the toolbar's trailing edge. */}
-        <div aria-hidden="true" className={styles.spacer} />
-        <div
-          aria-label={t('editor.arrangement')}
-          className={`${styles.group} ${styles.arrangement} ${styles.relocateAt375}`}
-          role="radiogroup"
-        >
-          {arrangementButton('editor')}
-          {arrangementButton('split')}
-          {arrangementButton('preview')}
-        </div>
-      </div>
-      <Popup
-        anchor={{ trigger: overflowTrigger }}
-        aria-label={t('editor.moreActions')}
-        className={
-          styles.overflowContent +
-          (narrowToolbarOverflow ? ' ' + styles.narrowOverflowContent : '')
+        main={
+          <>
+            {actionButtons(
+              textActions.map((id) => action(id).id),
+              onActivate,
+              undefined,
+              false,
+              200,
+            )}
+            {actionButtons(
+              headingActions.map((id) => action(id).id),
+              onActivate,
+              undefined,
+              false,
+              200,
+            )}
+            {actionButtons(
+              listActions.map((id) => action(id).id),
+              onActivate,
+              undefined,
+              false,
+              400,
+            )}
+            {actionButtons(
+              insertActions.map((id) => action(id).id),
+              onActivate,
+              undefined,
+              false,
+              400,
+            )}
+            {actionButtons(
+              deferredActions.map((id) => action(id).id),
+              onActivate,
+              undefined,
+              false,
+              0,
+              true,
+            )}
+          </>
         }
-        data-viewport-popup="editor-overflow"
-        initialFocus="first"
-        open={overflowOpen}
-        returnFocusTo={overflowTrigger}
-        role="menu"
-        size="menu"
-        onOpenChange={setOverflowOpen}
-      >
-        <div className={styles.overflowAt768}>
-          {actionButtons(
-            listActions.map((id) => action(id).id),
-            onActivate,
-            undefined,
-            true,
-          )}
-          {actionButtons(
-            insertActions.map((id) => action(id).id),
-            onActivate,
-            undefined,
-            true,
-          )}
-        </div>
-        <div className={styles.overflowAt375}>
-          {actionButtons(
-            textActions.map((id) => action(id).id),
-            onActivate,
-            undefined,
-            true,
-          )}
-          {actionButtons(
-            headingActions.map((id) => action(id).id),
-            onActivate,
-            undefined,
-            true,
-          )}
-          <div
-            aria-label={t('editor.arrangement')}
-            className={styles.overflowArrangement + ' ' + styles.arrangement}
-            role="radiogroup"
+        overflow="menu"
+        overflowBreakpoint={768}
+        overflowLabel={t('editor.moreActions')}
+        overflowPopupLabel={t('editor.moreActions')}
+        overflowPopupClassName={styles.overflowContent}
+        overflowPopupProps={{ 'data-viewport-popup': 'editor-overflow' }}
+        overflowTriggerClassName={styles.overflowTrigger}
+        role="toolbar"
+        trailing={
+          <Island
+            className={`${styles.group} ${styles.arrangement}`}
+            label={t('editor.arrangement')}
           >
-            {arrangementButton('editor')}
-            {arrangementButton('split')}
-            {arrangementButton('preview')}
+            <div
+              aria-label={t('editor.arrangement')}
+              className={styles.overflowArrangement}
+              role="radiogroup"
+            >
+              {arrangementButton('editor')}
+              {arrangementButton('split')}
+              {arrangementButton('preview')}
+            </div>
+          </Island>
+        }
+        overflowContent={
+          <div className={styles.applicationOverflowItems}>
+            {(['file', 'settings', 'view', 'about'] as const).map(
+              (target, index) => (
+                <Fragment key={target}>
+                  {index === 0 ? <PopupSeparator /> : null}
+                  <MenuItem
+                    data-application-overflow-action={target}
+                    label={applicationOverflowLabels[target]}
+                    onSelect={(): void => requestApplicationMenu(target)}
+                  />
+                </Fragment>
+              ),
+            )}
           </div>
-        </div>
-        <div className={styles.applicationOverflowItems}>
-          {(['file', 'settings', 'view', 'about'] as const).map(
-            (target, index) => (
-              <Fragment key={target}>
-                {index === 0 ? <PopupSeparator /> : null}
-                <MenuItem
-                  data-application-overflow-action={target}
-                  label={applicationOverflowLabels[target]}
-                  onSelect={(): void => {
-                    requestApplicationMenu(target);
-                    closeOverflow();
-                  }}
-                />
-              </Fragment>
-            ),
-          )}
-        </div>
-      </Popup>
+        }
+      />
     </ToolbarProjectionContext.Provider>
   );
 };

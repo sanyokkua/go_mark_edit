@@ -880,11 +880,13 @@ it('T045 keeps the editor region in binding content order without an extra wrapp
 
   const editorRegion = screen.getByRole('region', { name: 'Editor view' });
   expect(editorRegion.querySelector(':scope > header')).toBeNull();
+  const tabBar = editorRegion.querySelector(
+    ':scope > [data-bar-role="tablist-host"]',
+  );
+  expect(tabBar).not.toBeNull();
+  expect(tabBar?.querySelector(':scope [role="tablist"]')).not.toBeNull();
   expect(
-    editorRegion.querySelector(':scope > [role="tablist"]'),
-  ).not.toBeNull();
-  expect(
-    editorRegion.querySelector(':scope > [role="toolbar"]'),
+    editorRegion.querySelector(':scope > [data-bar-role="toolbar"]'),
   ).not.toBeNull();
   expect(
     editorRegion.querySelector(':scope > [class*="panes"]'),

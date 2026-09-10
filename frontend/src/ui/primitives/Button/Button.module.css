@@ -1,0 +1,34 @@
+.button {
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius);
+  cursor: pointer;
+  font: inherit;
+  padding: var(--control-padding);
+}
+
+.button:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: var(--disabled-opacity);
+}
+
+.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-contrast);
+}
+
+.secondary {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+}

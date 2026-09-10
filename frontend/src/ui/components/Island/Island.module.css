@@ -1,0 +1,15 @@
+.island {
+  align-items: center;
+  background: var(--surface-2);
+  border-radius: var(--toolbar-group-radius);
+  display: flex;
+  flex: 0 1 auto;
+  gap: var(--toolbar-group-gap);
+  min-inline-size: 0;
+  padding: var(--toolbar-group-padding);
+}
+
+:global(:root[data-theme='minimal']) .island {
+  background: transparent;
+  padding: 0;
+}

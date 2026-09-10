@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import { t } from '../../i18n';
+import Button from '../primitives/Button';
 import styles from './AppearanceDialog.module.css';
 
 export interface AboutDialogProps {
@@ -71,13 +72,13 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
       >
         <h2>{t('about.title')}</h2>
         <p>{t('about.version', { version })}</p>
-        <button
+        <Button
           className={styles.close}
-          type="button"
+          variant="primary"
           onClick={(): void => onOpenChange(false)}
         >
           {t('appearance.close')}
-        </button>
+        </Button>
       </section>
     </>
   );

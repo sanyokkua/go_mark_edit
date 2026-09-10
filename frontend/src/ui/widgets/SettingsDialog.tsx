@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 
 import { t } from '../../i18n';
 import type { AppearanceChoice, Theme } from '../../logic/theme/theme';
+import Button from '../primitives/Button';
 import Segmented, { type SegmentedOption } from '../primitives/Segmented';
 import styles from './SettingsDialog.module.css';
 
@@ -155,16 +156,20 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
           </div>
         </section>
         <footer className={styles.actions}>
-          <button className={styles.secondary} type="button" onClick={onReset}>
+          <Button
+            className={styles.secondary}
+            variant="secondary"
+            onClick={onReset}
+          >
             {t('appearance.reset')}
-          </button>
-          <button
+          </Button>
+          <Button
             className={styles.primary}
-            type="button"
+            variant="primary"
             onClick={(): void => onOpenChange(false)}
           >
             {t('appearance.close')}
-          </button>
+          </Button>
         </footer>
       </section>
     </>,

@@ -24,6 +24,11 @@
   gap: 1px;
 }
 
+.barFrame {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /*
  * The menubar triggers — File, Settings, View, About and the narrow overflow —
  * are drawn by `PopupTrigger`, which owns their styling, ARIA and keyboard

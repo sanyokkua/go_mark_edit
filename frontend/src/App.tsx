@@ -57,6 +57,7 @@ import {
 import { parseError } from './logic/utils/parseError';
 import { useEditorSettings } from './logic/settings/editorSettings';
 import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
+import Button from './ui/primitives/Button';
 import NotificationBanner from './ui/primitives/Banner';
 import LiveRegion from './ui/primitives/LiveRegion';
 import AppShell from './ui/widgets/AppShell';
@@ -1980,9 +1981,12 @@ const AppContents: React.FC = (): React.JSX.Element => {
                       {recoverySurface !== null ? (
                         <section aria-label={t('recovery.title')} role="alert">
                           <p>{recoverySurface.message}</p>
-                          <button type="button" onClick={requestRecoveryQuit}>
+                          <Button
+                            variant="secondary"
+                            onClick={requestRecoveryQuit}
+                          >
                             {t('recovery.quit.action')}
-                          </button>
+                          </Button>
                         </section>
                       ) : null}
                       <AppShell
@@ -2098,16 +2102,16 @@ const AppContents: React.FC = (): React.JSX.Element => {
                     <p>{t('recovery.quit.documents.none')}</p>
                   )}
                   <div>
-                    <button
+                    <Button
                       ref={recoveryQuitCancelRef}
-                      type="button"
+                      variant="secondary"
                       onClick={onRecoveryQuitCancel}
                     >
                       {t('recovery.quit.cancel')}
-                    </button>
-                    <button type="button" onClick={onRecoveryQuitConfirm}>
+                    </Button>
+                    <Button variant="primary" onClick={onRecoveryQuitConfirm}>
                       {t('recovery.quit.confirm')}
-                    </button>
+                    </Button>
                   </div>
                 </ModalShell>
                 {bootstrapStatus === 'ready'

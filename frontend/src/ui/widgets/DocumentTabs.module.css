@@ -24,6 +24,14 @@
   scrollbar-width: none;
 }
 
+.tabBar {
+  min-inline-size: 0;
+}
+
+.tabBar [data-bar-slot='main'] {
+  min-inline-size: 0;
+}
+
 .tabStrip {
   align-items: center;
   block-size: var(--tabs-row-height);

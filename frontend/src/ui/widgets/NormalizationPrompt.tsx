@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { t } from '../../i18n';
+import Button from '../primitives/Button';
 import styles from './SettingsDialog.module.css';
 
 export interface NormalizationPromptProps {
@@ -69,23 +70,23 @@ const NormalizationPrompt: React.FC<NormalizationPromptProps> = ({
           </p>
         </header>
         <footer className={styles.actions}>
-          <button
+          <Button
             className={styles.primary}
             disabled={busy}
-            type="button"
+            variant="primary"
             onClick={confirm}
           >
             {t('normalization.confirm')}
-          </button>
-          <button
+          </Button>
+          <Button
             ref={cancelRef}
             className={styles.secondary}
             disabled={busy}
-            type="button"
+            variant="secondary"
             onClick={onCancel}
           >
             {t('normalization.cancel')}
-          </button>
+          </Button>
         </footer>
       </section>
     </>

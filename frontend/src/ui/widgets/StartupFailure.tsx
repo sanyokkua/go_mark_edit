@@ -2,6 +2,7 @@ import type { StartupFailure as StartupFailureDetails } from '../../app/useBoots
 import { nativeLifecycleAdapter } from '../../logic/adapter';
 import { t } from '../../i18n';
 
+import Button from '../primitives/Button';
 import styles from './StartupFailure.module.css';
 
 interface StartupFailureProps {
@@ -53,27 +54,27 @@ const StartupFailure: React.FC<StartupFailureProps> = ({
       </p>
       <div className={styles.actions}>
         {failure?.step !== 'bridge' ? (
-          <button
+          <Button
             className={styles.retry}
             disabled={isRetrying}
-            type="button"
+            variant="primary"
             onClick={onRetry}
           >
             {t('startup.retry')}
-          </button>
+          </Button>
         ) : failure === null ? (
-          <button
+          <Button
             className={styles.retry}
             disabled={isRetrying}
-            type="button"
+            variant="primary"
             onClick={onRetry}
           >
             {t('startup.retry')}
-          </button>
+          </Button>
         ) : null}
-        <button type="button" onClick={onQuit}>
+        <Button variant="secondary" onClick={onQuit}>
           {t('startup.quit')}
-        </button>
+        </Button>
       </div>
     </div>
   </section>

@@ -1,0 +1,50 @@
+.button {
+  align-items: center;
+  background: transparent;
+  border: var(--control-border-width) solid transparent;
+  border-radius: var(--arrangement-option-radius);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  justify-content: center;
+  min-block-size: var(--toolbar-action-height);
+  min-inline-size: var(--toolbar-action-min-width);
+  padding: 0 var(--toolbar-action-padding-inline);
+  white-space: nowrap;
+}
+
+.iconOnly {
+  aspect-ratio: 1;
+  padding: 0;
+}
+
+.icon {
+  gap: 0;
+}
+
+.text {
+  gap: var(--control-gap);
+  font-size: var(--toolbar-text-label-font-size);
+}
+
+.button:hover {
+  background: var(--hover);
+}
+
+.button:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: var(--disabled-opacity);
+}
+
+.button[aria-checked='true'],
+.button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}

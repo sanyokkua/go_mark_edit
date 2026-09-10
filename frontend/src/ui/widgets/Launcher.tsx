@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react';
 
 import { t } from '../../i18n';
+import Button from '../primitives/Button';
 import styles from './Launcher.module.css';
 
 export interface LauncherProps {
@@ -65,22 +66,22 @@ const Launcher: React.FC<LauncherProps> = ({
            * hold a ref to this button and finds it by attribute instead —
            * mirroring `data-tab-new` on the strip's own New control.
            */}
-          <button
+          <Button
             data-launcher-new="true"
-            type="button"
+            variant="primary"
             onClick={(event): void => invoke(event, onNewDocument)}
           >
             {t('action.new-file.label')}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="secondary"
             onClick={(event): void => invoke(event, onOpenDocument)}
           >
             {t('action.open-file.label')}
-          </button>
-          <button disabled title={t('action.unavailable')} type="button">
+          </Button>
+          <Button disabled title={t('action.unavailable')} variant="secondary">
             {t('action.open-folder.label')}
-          </button>
+          </Button>
         </div>
         <div aria-label={t('file.recent.label')} className={styles.recent}>
           <h2>{t('file.recent.label')}</h2>
@@ -90,16 +91,16 @@ const Launcher: React.FC<LauncherProps> = ({
             <ul>
               {recentFiles.slice(0, 6).map((path) => (
                 <li key={path}>
-                  <button
+                  <Button
                     title={safeRecentLabel(path)}
-                    type="button"
+                    variant="quiet"
                     onClick={(event): void => {
                       event.preventDefault();
                       void onOpenRecentFile?.(path);
                     }}
                   >
                     {safeRecentLabel(path)}
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>

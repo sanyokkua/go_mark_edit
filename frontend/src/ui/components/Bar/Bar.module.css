@@ -1,0 +1,71 @@
+.bar {
+  align-items: center;
+  display: flex;
+  gap: var(--control-gap);
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  white-space: nowrap;
+}
+
+.leading,
+.main,
+.trailing {
+  align-items: center;
+  display: flex;
+  gap: var(--control-gap);
+  min-inline-size: 0;
+}
+
+.leading,
+.trailing {
+  flex: 0 1 auto;
+}
+
+.main {
+  flex: 1 1 auto;
+  overflow: visible;
+}
+
+.main[data-bar-scrollable='true'] {
+  min-inline-size: max-content;
+}
+
+.bar[data-bar-overflow='scroll'][data-bar-overflowing='true'] .main {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.bar[data-bar-overflow='menu'][data-bar-overflowing='true'] .main {
+  overflow: hidden;
+}
+
+.itemSlot {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+}
+
+.itemSlot[hidden] {
+  display: none;
+}
+
+.overflowTrigger {
+  align-items: center;
+  display: inline-flex;
+  flex: none;
+  justify-content: center;
+  min-inline-size: var(--toolbar-action-min-width);
+}
+
+.bar[data-bar-overflow='menu']:not([data-bar-overflowing='true'])
+  .overflowTrigger {
+  display: none;
+}
+
+[data-bar-popup-items] {
+  display: grid;
+  gap: var(--control-gap);
+}

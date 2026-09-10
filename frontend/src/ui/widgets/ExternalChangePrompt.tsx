@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 
 import { t } from '../../i18n';
 import type { ConflictPreview } from '../../logic/store/appModelTypes';
+import Button from '../primitives/Button';
 import ModalShell from '../primitives/ModalShell';
 import styles from '../primitives/ModalShell.module.css';
 import { safeBasenameOf } from './tabLabel';
@@ -113,49 +114,49 @@ const ExternalChangePrompt: React.FC<ExternalChangePromptProps> = ({
           </section>
         ) : null}
         <div className={styles.actions}>
-          <button
+          <Button
             className={styles.primary}
             data-conflict-action="reload"
             disabled={busy}
-            type="button"
+            variant="primary"
             onClick={(): void => choose('reload')}
           >
             {t('conflict.reload')}
-          </button>
+          </Button>
           {!preview.readOnly ? (
-            <button
+            <Button
               className={styles.primary}
               data-conflict-action="keep-mine"
               disabled={busy || !valid}
-              type="button"
+              variant="primary"
               onClick={(): void => choose('keep-mine')}
             >
               {t('conflict.keepMine')}
-            </button>
+            </Button>
           ) : null}
           {!preview.readOnly ? (
-            <button
+            <Button
               ref={skipRef}
               className={styles.secondary}
               data-conflict-action="skip"
               disabled={busy}
-              type="button"
+              variant="secondary"
               onClick={(): void => choose('skip')}
             >
               {t('conflict.skip')}
-            </button>
+            </Button>
           ) : null}
           {preview.readOnly ? (
-            <button
+            <Button
               ref={cancelRef}
               className={styles.secondary}
               data-conflict-action="cancel"
               disabled={busy}
-              type="button"
+              variant="secondary"
               onClick={(): void => choose('cancel')}
             >
               {t('conflict.cancel')}
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>

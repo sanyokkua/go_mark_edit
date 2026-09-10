@@ -7,6 +7,7 @@ import type {
   NotificationRemediation,
   NotificationSeverity,
 } from '../../logic/store/notificationsSlice';
+import Button from './Button';
 import styles from './Toast.module.css';
 
 type ToastProviderProps = PropsWithChildren;
@@ -82,20 +83,22 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
        * unreachable however faithfully the backend sent it.
        */}
       {notification.remediations.map((remediation: NotificationRemediation) => (
-        <button
+        <Button
           className={styles.action}
           key={remediation.action}
-          type="button"
+          variant="primary"
           onClick={(): void => {
             onRemediate(remediation);
           }}
         >
           {t(remediation.labelKey)}
-        </button>
+        </Button>
       ))}
       {notification.severity === 'error' ? (
-        <RadixToast.Close className={styles.action}>
-          {t('notification.dismiss')}
+        <RadixToast.Close asChild>
+          <Button className={styles.action} variant="quiet">
+            {t('notification.dismiss')}
+          </Button>
         </RadixToast.Close>
       ) : null}
     </div>

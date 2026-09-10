@@ -52,37 +52,26 @@ it('T018 renders the complete toolbar groups and a real tab surface', () => {
   expect(screen.getByRole('button', { name: 'Format' })).toBeDisabled();
 });
 
-/*
- * The binding holds the arrangement segment against the toolbar's trailing edge
- * with an empty `.tsp{flex:1}` between the overflow group and the segment
- * (mockup.html:672–673). Production had no spacer and drew the segment
- * immediately after Format/Compact/Lint, so it sat mid-toolbar.
- *
- * Asserted as order rather than as computed layout, because jsdom does not lay
- * flexbox out: the segment must be the toolbar's last child, and the spacer must
- * sit between the overflow trigger and it.
- */
 it('T033 holds the arrangement segment at the toolbar trailing edge', () => {
   render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
 
   const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
-  const children = Array.from(toolbar.children);
   const segment = screen.getByRole('radiogroup', { name: 'View arrangement' });
-  const overflow = screen.getByRole('button', {
-    name: 'More actions',
-  }).parentElement;
-  const spacer = toolbar.querySelector(':scope > div[aria-hidden="true"]');
+  const trailing = toolbar.querySelector('[data-bar-slot="trailing"]');
 
-  expect(children.at(-1)).toBe(segment);
-  expect(spacer).not.toBeNull();
-  expect(children.indexOf(spacer as Element)).toBe(children.length - 2);
-  expect(children.indexOf(overflow as Element)).toBe(children.length - 3);
+  expect(trailing).not.toBeNull();
+  expect(trailing).toContainElement(segment);
+  expect(
+    toolbar.querySelector(
+      '[data-bar-slot="main"] [data-island-label="View arrangement"]',
+    ),
+  ).toBeNull();
 
   const chromeStyles = readFileSync(
     resolve(process.cwd(), 'src/ui/widgets/EditorChrome.module.css'),
     'utf8',
   );
-  expect(chromeStyles).toMatch(/\.spacer\s*\{[^}]*flex:\s*1;/);
+  expect(chromeStyles).toContain('gap: var(--toolbar-gap)');
 });
 
 it('T060 exposes real application-menu controls from the narrow toolbar overflow', () => {
@@ -211,92 +200,49 @@ it('T068 uses icon-first toolbar controls while retaining localized accessible n
 it('T072 scopes overflow relocation to the documented 768 and 375 width groups', () => {
   render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
   fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+  const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
+  expect(toolbar).toHaveAttribute('data-bar-overflow', 'menu');
+  expect(screen.getByRole('menu', { name: 'More actions' })).toHaveAttribute(
+    'data-viewport-popup',
+    'editor-overflow',
+  );
   expect(
-    document.body.querySelector('[class*="overflowAt768"]'),
-  ).not.toBeNull();
-  expect(
-    document.body.querySelector('[class*="overflowAt375"]'),
-  ).not.toBeNull();
-  expect(screen.getByRole('button', { name: 'Link' })).toBeInTheDocument();
-  expect(screen.getByRole('menuitem', { name: 'Link' })).toBeInTheDocument();
+    toolbar.querySelectorAll('[data-bar-overflow-priority]').length,
+  ).toBeGreaterThan(0);
 });
 
-/*
- * T072 above proves the two width buckets *exist*. It never proved which
- * toolbar groups land in each, and that is the hole Bold, Italic,
- * Strikethrough, Inline code and all three headings fell through:
- * `.relocateAt375 { display: none }` (`EditorChrome.module.css:556-559`) took
- * them out of the toolbar row at 375, while the parity-shaped overflow — which
- * carries no text group and no heading group — was what the shipped
- * application drew there. Present at 1280, absent at 375, with no other route
- * to them.
- *
- * Whole sets are compared rather than membership, so removing an action from a
- * bucket fails here instead of silently shrinking the narrow surface. jsdom
- * lays nothing out and applies no media query, so this pins the *assignment*;
- * `e2e/narrow-width.test.ts` pins what is actually reachable at each width.
- */
 it('T084 assigns every toolbar group to the overflow bucket its width owns', () => {
   render(<EditorChrome arrangement="split" onArrangementChange={jest.fn()} />);
-  fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-
-  const overflow = screen.getByRole('menu', { name: 'More actions' });
-  const idsIn = (selector: string): string[] =>
-    Array.from(
-      overflow.querySelectorAll<HTMLElement>(`${selector} [data-action-id]`),
-    ).map((element) => element.getAttribute('data-action-id') ?? '');
-
-  // Relocated first, at 768: the list group then the insert group.
-  expect(idsIn('.overflowAt768')).toEqual([
-    'bullet-list',
-    'numbered-list',
-    'task-list',
-    'quote',
-    'link',
-    'image',
-    'table',
-  ]);
-  // Relocated second, at 375: the text group, the heading group, and the
-  // arrangement segment, which the inline toolbar no longer shows at that width.
-  expect(idsIn('.overflowAt375')).toEqual([
-    'bold',
-    'italic',
-    'strike',
-    'inline-code',
-    'heading-1',
-    'heading-2',
-    'heading-3',
-    'editor',
-    'split',
-    'preview',
-  ]);
-
-  // And the row's own drop order is the other half of the same contract: each
-  // group carries exactly the relocation class for the width that drops it, and
-  // the deferred group carries none because it never leaves the row.
   const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
   const rowGroups = Array.from(
-    toolbar.querySelectorAll<HTMLElement>(':scope > div[class*="group"]'),
+    toolbar.querySelectorAll<HTMLElement>(
+      '[data-bar-slot="main"] > [data-bar-item]',
+    ),
   ).map((group) => ({
     ids: Array.from(group.querySelectorAll('[data-action-id]')).map((element) =>
       element.getAttribute('data-action-id'),
     ),
-    relocatesAt: group.className.includes('relocateAt375')
-      ? 375
-      : group.className.includes('relocateAt768')
-        ? 768
-        : null,
+    priority: group.getAttribute('data-bar-overflow-priority'),
+    never: group.getAttribute('data-bar-overflow') === 'never',
   }));
   expect(rowGroups).toEqual([
-    { ids: ['bold', 'italic', 'strike', 'inline-code'], relocatesAt: 375 },
-    { ids: ['heading-1', 'heading-2', 'heading-3'], relocatesAt: 375 },
+    {
+      ids: ['bold', 'italic', 'strike', 'inline-code'],
+      priority: '200',
+      never: false,
+    },
+    {
+      ids: ['heading-1', 'heading-2', 'heading-3'],
+      priority: '200',
+      never: false,
+    },
     {
       ids: ['bullet-list', 'numbered-list', 'task-list', 'quote'],
-      relocatesAt: 768,
+      priority: '400',
+      never: false,
     },
-    { ids: ['link', 'image', 'table'], relocatesAt: 768 },
-    { ids: ['format', 'compact', 'lint'], relocatesAt: null },
-    { ids: ['editor', 'split', 'preview'], relocatesAt: 375 },
+    { ids: ['link', 'image', 'table'], priority: '400', never: false },
+    { ids: ['format', 'compact', 'lint'], priority: '0', never: true },
   ]);
 
   /*
@@ -329,17 +275,21 @@ it('T070 closes the toolbar overflow on Escape and outside pointer input', () =>
   const trigger = screen.getByRole('button', { name: 'More actions' });
 
   fireEvent.click(trigger);
-  expect(screen.getByRole('button', { name: 'Link' })).toBeInTheDocument();
-  expect(screen.getByRole('menuitem', { name: 'Link' })).toBeInTheDocument();
+  expect(
+    within(screen.getByRole('menu', { name: 'More actions' })).getByRole(
+      'menuitem',
+      { name: 'Link' },
+    ),
+  ).toBeInTheDocument();
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(screen.getByRole('button', { name: 'Link' })).toBeInTheDocument();
-  expect(screen.queryByRole('menuitem', { name: 'Link' })).toBeNull();
+  expect(screen.queryByRole('menu', { name: 'More actions' })).toBeNull();
   expect(trigger).toHaveFocus();
 
   fireEvent.click(trigger);
   fireEvent.pointerDown(screen.getByRole('button', { name: 'Outside' }));
   expect(screen.getByRole('button', { name: 'Link' })).toBeInTheDocument();
-  expect(screen.queryByRole('menuitem', { name: 'Link' })).toBeNull();
+  expect(screen.queryByRole('menu', { name: 'More actions' })).toBeNull();
 });
 
 it('T094 renders toolbar overflow as a body-owned Popup viewport surface', () => {

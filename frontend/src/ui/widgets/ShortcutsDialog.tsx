@@ -9,6 +9,7 @@ import {
   currentPlatform,
   formatShortcut,
 } from '../../logic/actions/shortcutRegistry';
+import Button from '../primitives/Button';
 import styles from './ShortcutsDialog.module.css';
 import Icon from '../primitives/Icon';
 
@@ -88,14 +89,14 @@ const ShortcutsDialog: React.FC<ShortcutsDialogProps> = ({
       >
         <div className={styles.header}>
           <h2>{t('editor.shortcuts')}</h2>
-          <button
+          <Button
             aria-label={t('appearance.close')}
             className={styles.close}
-            type="button"
+            variant="quiet"
             onClick={(): void => onOpenChange(false)}
           >
             <Icon name="close" size={15} />
-          </button>
+          </Button>
         </div>
         <div className={styles.list}>
           {entries.map((entry: ActionEntry) => (

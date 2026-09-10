@@ -5,6 +5,7 @@ import type {
   CloseChoice,
   ClosePlanSummary,
 } from '../../logic/store/appModelTypes';
+import Button from '../primitives/Button';
 import ModalShell from '../primitives/ModalShell';
 import styles from '../primitives/ModalShell.module.css';
 
@@ -80,34 +81,34 @@ const ClosePrompt: React.FC<ClosePromptProps> = ({
           ))}
         </ul>
         <div className={styles.actions}>
-          <button
+          <Button
             ref={cancelRef}
             className={styles.secondary}
             data-close-choice="cancel"
             disabled={busy}
-            type="button"
+            variant="secondary"
             onClick={(): void => choose('cancel')}
           >
             {t('close.cancel')}
-          </button>
-          <button
+          </Button>
+          <Button
             className={styles.secondary}
             data-close-choice={isSingle ? 'discard' : 'discard-all'}
             disabled={busy}
-            type="button"
+            variant="secondary"
             onClick={(): void => choose(isSingle ? 'discard' : 'discard-all')}
           >
             {t(isSingle ? 'close.discard' : 'close.discardAll')}
-          </button>
-          <button
+          </Button>
+          <Button
             className={styles.primary}
             data-close-choice={isSingle ? 'save' : 'save-all'}
             disabled={busy}
-            type="button"
+            variant="primary"
             onClick={(): void => choose(isSingle ? 'save' : 'save-all')}
           >
             {t(isSingle ? 'close.save' : 'close.saveAll')}
-          </button>
+          </Button>
         </div>
       </div>
     </ModalShell>
