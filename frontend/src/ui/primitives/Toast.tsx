@@ -2,37 +2,47 @@ import * as RadixToast from '@radix-ui/react-toast';
 import { type PropsWithChildren } from 'react';
 
 import { formatNumber, t } from '../../i18n';
-import type {
-  Notification,
-  NotificationRemediation,
-  NotificationSeverity,
-} from '../../logic/store/notificationsSlice';
 import Button from './Button';
 import styles from './Toast.module.css';
+import type {
+  LegacyNotification,
+  LegacyNotificationRemediation,
+  NotificationNotice,
+  NotificationTone,
+} from './notificationTypes';
 
 type ToastProviderProps = PropsWithChildren;
 
 interface NotificationToastProps {
-  notification: Notification;
+  notification: NotificationNotice | LegacyNotification;
   onDismiss: (id: number) => void;
-  /**
-   * Required, not optional, and that is the point.
-   *
-   * While it was optional the remediation button rendered only when a caller
-   * happened to pass it, the one production render site did not, and the entire
-   * fixed remediation vocabulary was unreachable in the running application
-   * without a single test going red. An optional prop lets the next render site
-   * reintroduce exactly that defect; a required one cannot.
-   */
-  onRemediate: (remediation: NotificationRemediation) => void;
+  /** Used only for legacy callers; surface actions carry their own callbacks. */
+  onRemediate?: (remediation: LegacyNotificationRemediation) => void;
 }
 
-const durations: Record<NotificationSeverity, number> = {
+const durations: Record<NotificationTone, number> = {
   error: Number.POSITIVE_INFINITY,
   info: 6_000,
   success: 4_000,
   warning: 8_000,
 };
+
+function isSurfaceNotice(
+  notification: NotificationNotice | LegacyNotification,
+): notification is NotificationNotice {
+  return 'kind' in notification;
+}
+
+function toneFor(
+  notification: NotificationNotice | LegacyNotification,
+): NotificationTone {
+  if (isSurfaceNotice(notification)) {
+    return (
+      notification.tone ?? (notification.kind === 'error' ? 'error' : 'warning')
+    );
+  }
+  return notification.severity;
+}
 
 export const ToastProvider: React.FC<ToastProviderProps> = ({
   children,
@@ -47,60 +57,71 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
   notification,
   onDismiss,
   onRemediate,
-}): React.JSX.Element => (
-  <RadixToast.Root
-    className={styles.toast}
-    data-notification-code={notification.code}
-    data-severity={notification.severity}
-    duration={
-      notification.persistent
-        ? Number.POSITIVE_INFINITY
-        : durations[notification.severity]
-    }
-    open
-    onOpenChange={(open: boolean): void => {
-      if (!open) {
-        onDismiss(notification.id);
+}): React.JSX.Element => {
+  const surfaceNotice = isSurfaceNotice(notification);
+  const tone = toneFor(notification);
+  const actions = surfaceNotice
+    ? notification.actions
+    : notification.remediations.map((remediation) => ({
+        id: remediation.action,
+        label: t(remediation.labelKey),
+        onActivate: (): void => onRemediate?.(remediation),
+      }));
+  const count = notification.count ?? 1;
+  const persistent =
+    notification.persistent === true ||
+    (surfaceNotice && notification.kind === 'stuck');
+  const dismissible =
+    (surfaceNotice && notification.kind !== 'stuck') ||
+    (!surfaceNotice && notification.severity === 'error');
+
+  return (
+    <RadixToast.Root
+      className={styles.toast}
+      data-notification-code={
+        surfaceNotice
+          ? (notification.code ?? notification.id)
+          : notification.code
       }
-    }}
-  >
-    <RadixToast.Title className={styles.title}>
-      {notification.title}
-      {notification.count > 1
-        ? t('notification.count', {
-            count: formatNumber(notification.count),
-          })
-        : ''}
-    </RadixToast.Title>
-    <RadixToast.Description className={styles.description}>
-      {notification.message}
-    </RadixToast.Description>
-    <div className={styles.actions}>
-      {/*
-       * Every offered control, in contract order — not just the first. Two
-       * contract rows pair two actions ("Retry; a Reveal failure also offers
-       * Copy path"), and while this rendered one button the second was
-       * unreachable however faithfully the backend sent it.
-       */}
-      {notification.remediations.map((remediation: NotificationRemediation) => (
-        <Button
-          className={styles.action}
-          key={remediation.action}
-          variant="primary"
-          onClick={(): void => {
-            onRemediate(remediation);
-          }}
-        >
-          {t(remediation.labelKey)}
-        </Button>
-      ))}
-      {notification.severity === 'error' ? (
-        <RadixToast.Close asChild>
-          <Button className={styles.action} variant="quiet">
-            {t('notification.dismiss')}
+      data-severity={tone}
+      duration={persistent ? Number.POSITIVE_INFINITY : durations[tone]}
+      open
+      onOpenChange={(open: boolean): void => {
+        if (!open) {
+          onDismiss(notification.id);
+        }
+      }}
+    >
+      <RadixToast.Title className={styles.title}>
+        {notification.title}
+        {count > 1
+          ? t('notification.count', {
+              count: formatNumber(count),
+            })
+          : ''}
+      </RadixToast.Title>
+      <RadixToast.Description className={styles.description}>
+        {notification.message}
+      </RadixToast.Description>
+      <div className={styles.actions}>
+        {actions.map((action) => (
+          <Button
+            className={styles.action}
+            key={action.id}
+            variant="primary"
+            onClick={action.onActivate}
+          >
+            {action.label}
           </Button>
-        </RadixToast.Close>
-      ) : null}
-    </div>
-  </RadixToast.Root>
-);
+        ))}
+        {dismissible ? (
+          <RadixToast.Close asChild>
+            <Button className={styles.action} variant="quiet">
+              {t('notification.dismiss')}
+            </Button>
+          </RadixToast.Close>
+        ) : null}
+      </div>
+    </RadixToast.Root>
+  );
+};

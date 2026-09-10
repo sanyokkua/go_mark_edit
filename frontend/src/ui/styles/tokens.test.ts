@@ -18,7 +18,7 @@ const currentSurfaceStyles = [
   'src/ui/widgets/SettingsMenu.module.css',
   'src/ui/components/Pane/Pane.module.css',
   'src/ui/components/Sidebar/Sidebar.module.css',
-  'src/ui/components/StatusBar.module.css',
+  'src/ui/components/StatusBar/StatusBar.module.css',
 ].map(readSource);
 const colorLiteralPattern = /#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i;
 const shellTokenPattern = /var\((--shell-[\w-]+)\)/g;

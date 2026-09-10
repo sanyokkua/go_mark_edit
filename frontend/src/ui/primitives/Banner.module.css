@@ -15,3 +15,7 @@
 .banner[data-severity='success'] {
   border-color: var(--accent);
 }
+
+.banner[data-severity='stuck'] {
+  border-color: var(--warn);
+}

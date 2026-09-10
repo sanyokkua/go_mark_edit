@@ -34,6 +34,10 @@
   border-inline-start-color: var(--warn);
 }
 
+.toast[data-severity='stuck'] {
+  border-inline-start-color: var(--warn);
+}
+
 .title {
   display: block;
   margin-block-end: 1px;

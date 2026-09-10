@@ -8,7 +8,7 @@ import StatusBar from './StatusBar';
 
 it('T033 keeps the status surface at one exact 28px row with accessible details', () => {
   const statusStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/components/StatusBar.module.css'),
+    resolve(process.cwd(), 'src/ui/components/StatusBar/StatusBar.module.css'),
     'utf8',
   );
   const popupStyles = readFileSync(
@@ -301,7 +301,7 @@ it('T113 docks the details region beside the row, outside the row that clips it'
   // And the row must keep the clip that forced this arrangement: it is what
   // makes the row shed status items instead of wrapping (`narrow-width` T084).
   const statusStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/components/StatusBar.module.css'),
+    resolve(process.cwd(), 'src/ui/components/StatusBar/StatusBar.module.css'),
     'utf8',
   );
   expect(statusStyles).toMatch(/\.statusBar\s*\{[^}]*overflow:\s*hidden/s);

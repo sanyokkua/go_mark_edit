@@ -11,7 +11,7 @@ export default {
   ],
   moduleNameMapper: {
     '^.+\\.module\\.css$': '<rootDir>/src/test/styleMock.ts',
-    '^\\.\\./\\.\\./i18n$': '<rootDir>/src/test/i18nShim.ts',
+    '^\\.\\./\\.\\./(?:\\.\\./)?i18n$': '<rootDir>/src/test/i18nShim.ts',
     '^wailsjs/(.*)$': '<rootDir>/wailsjs/$1',
   },
   transformIgnorePatterns: [],

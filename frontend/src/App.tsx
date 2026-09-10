@@ -57,10 +57,11 @@ import {
 } from './logic/adapter';
 import { parseError } from './logic/utils/parseError';
 import { useEditorSettings } from './logic/settings/editorSettings';
-import { NotificationToast, ToastProvider } from './ui/primitives/Toast';
 import Button from './ui/primitives/Button';
-import NotificationBanner from './ui/primitives/Banner';
 import LiveRegion from './ui/primitives/LiveRegion';
+import Notifications, {
+  type NotificationNotice,
+} from './ui/components/Notifications';
 import AppShell from './ui/widgets/AppShell';
 import AboutDialog from './ui/widgets/AboutDialog';
 import AppearanceControls from './ui/widgets/AppearanceControls';
@@ -1837,6 +1838,49 @@ const AppContents: React.FC = (): React.JSX.Element => {
       retryEntryCommand,
     ],
   );
+  const surfaceNotices: readonly NotificationNotice[] = useMemo(
+    () =>
+      notifications.map((notification) => ({
+        id: notification.id,
+        code: notification.code,
+        count: notification.count,
+        kind:
+          notification.code === 'command-stuck'
+            ? ('stuck' as const)
+            : notification.severity === 'error'
+              ? ('error' as const)
+              : ('warning' as const),
+        message: notification.message,
+        persistent: notification.persistent,
+        tone: notification.severity,
+        title: notification.title,
+        actions: notification.remediations.map((remediation) => ({
+          id: `${remediation.action}:${remediation.intent}:${remediation.documentId ?? ''}`,
+          label: t(remediation.labelKey),
+          onActivate: (): void => {
+            void onRemediate(remediation, notification.id, notification.title);
+          },
+        })),
+      })),
+    [notifications, onRemediate],
+  );
+  const surfaceBanners: readonly NotificationNotice[] = useMemo(
+    () =>
+      banners.map((notification) => ({
+        id: notification.id,
+        code: notification.code,
+        count: notification.count,
+        kind:
+          notification.severity === 'error'
+            ? ('error' as const)
+            : ('warning' as const),
+        message: notification.message,
+        title: notification.title,
+        tone: notification.severity,
+        actions: [],
+      })),
+    [banners],
+  );
   const onQuit = useCallback((): void => {
     nativeLifecycleAdapter.requestQuit();
   }, []);
@@ -2051,215 +2095,192 @@ const AppContents: React.FC = (): React.JSX.Element => {
   }, [bootstrapStatus]);
 
   return (
-    <ToastProvider>
-      <ModalStateProvider modalOpen={modalOpen}>
-        <TabRemediationContext.Provider value={tabRemediationRef}>
-          <EditorSessionProvider
-            activeBuffer={activeBuffer}
-            externalEpoch={externalEpoch}
-            onExternalReload={installExternalReload}
+    <ModalStateProvider modalOpen={modalOpen}>
+      <TabRemediationContext.Provider value={tabRemediationRef}>
+        <EditorSessionProvider
+          activeBuffer={activeBuffer}
+          externalEpoch={externalEpoch}
+          onExternalReload={installExternalReload}
+        >
+          <ApplicationMenuRequestContext.Provider
+            value={setRequestedApplicationMenu}
           >
-            <ApplicationMenuRequestContext.Provider
-              value={setRequestedApplicationMenu}
-            >
-              <div className="application-frame">
-                <div className="application-menu">
-                  <ApplicationMenuContext.Provider value={applicationMenuState}>
-                    <AppearanceControls
-                      visible={bootstrapStatus === 'ready'}
-                      settingsOpen={settingsOpen}
-                      onSettingsOpenChange={setSettingsOpen}
-                      settingsMenuRenderer={ApplicationShellMenu}
-                    />
-                  </ApplicationMenuContext.Provider>
-                </div>
-                <div className="application-content">
-                  {bootstrapStatus === 'failed' ? (
-                    <StartupFailure
-                      failure={startupFailure}
-                      isRetrying={isRetrying}
-                      onQuit={nativeLifecycleAdapter.requestQuit}
-                      onRetry={retryBootstrap}
-                    />
-                  ) : bootstrapStatus === 'ready' ? (
-                    <>
-                      {banners.map((notification) => (
-                        <NotificationBanner
-                          key={`${notification.id}:${notification.refreshGeneration}`}
-                          notification={notification}
-                        />
-                      ))}
-                      {recoverySurface !== null ? (
-                        <section aria-label={t('recovery.title')} role="alert">
-                          <p>{recoverySurface.message}</p>
-                          <Button
-                            variant="secondary"
-                            onClick={requestRecoveryQuit}
-                          >
-                            {t('recovery.quit.action')}
-                          </Button>
-                        </section>
-                      ) : null}
-                      <AppShell
-                        onNewDocument={onNewDocument}
-                        onOpenDocument={onOpenDocument}
-                        onOpenRecentFile={(
-                          path,
-                          expectedTabSetRevision,
-                        ): Promise<unknown> =>
-                          onOpenRecentFile(path, expectedTabSetRevision)
-                        }
-                        onActivateDocument={onActivateDocument}
-                        onCloseDocument={onCloseDocument}
-                        onExternalConflict={setTabExternalConflict}
-                      />
-                    </>
-                  ) : null}
-                </div>
-                <AboutDialog
-                  open={bootstrapStatus === 'ready' && aboutOpen}
-                  onOpenChange={setAboutOpen}
-                  version={version}
-                />
-                <ShortcutsDialog
-                  open={bootstrapStatus === 'ready' && shortcutsOpen}
-                  onOpenChange={setShortcutsOpen}
-                />
-                <NormalizationPrompt
-                  filename={normalization?.filename ?? ''}
-                  onCancel={(): void => {
-                    /*
-                     * FR-FT-011: the confirmation is single-use and "cancellation
-                     * MUST resume nothing". Closing the prompt was resuming
-                     * nothing already; what it was not doing is releasing the
-                     * authorization it was raised with, so `service.normalizations`
-                     * kept an entry per dismissal for the process lifetime and the
-                     * next Save minted another. The token is handed back with the
-                     * document it was minted against, because the release is bound
-                     * to both. T168.
-                     */
-                    if (normalization !== null) {
-                      void documentWriteAdapter.cancelNormalization(
-                        normalization.documentId,
-                        normalization.decisionToken,
-                      );
-                    }
-                    setNormalization(null);
-                  }}
-                  onConfirm={onNormalizeConfirm}
-                  open={bootstrapStatus === 'ready' && normalization !== null}
-                  proposedEnding={normalization?.proposedEnding ?? 'lf'}
-                />
-                <ClosePrompt
-                  onChoice={onClosePlanChoice}
-                  open={
-                    bootstrapStatus === 'ready' &&
-                    closePlan !== null &&
-                    closeNormalization === null &&
-                    closeConflict === null &&
-                    closePlan.status === 'collecting'
-                  }
-                  plan={closePlan ?? undefined}
-                />
-                <NormalizationPrompt
-                  filename={closeNormalization?.filename ?? ''}
-                  onCancel={(): void => {
-                    void onCloseNormalizationDecision(false);
-                  }}
-                  onConfirm={(): void => {
-                    void onCloseNormalizationDecision(true);
-                  }}
-                  open={
-                    bootstrapStatus === 'ready' && closeNormalization !== null
-                  }
-                  proposedEnding={closeNormalization?.proposedEnding ?? 'lf'}
-                />
-                <ExternalChangePrompt
-                  onDecision={onExternalConflictDecision}
-                  open={
-                    bootstrapStatus === 'ready' && externalConflict !== null
-                  }
-                  preview={externalConflict?.preview}
-                  valid={externalConflictValid}
-                />
-                <ExternalChangePrompt
-                  onDecision={onTabExternalConflictDecision}
-                  open={
-                    bootstrapStatus === 'ready' && tabExternalConflict !== null
-                  }
-                  preview={tabExternalConflict ?? undefined}
-                  valid={tabExternalConflictValid}
-                />
-                <ExternalChangePrompt
-                  onDecision={onCloseConflictDecision}
-                  open={bootstrapStatus === 'ready' && closeConflict !== null}
-                  preview={closeConflict?.preview}
-                  valid={closeConflictValid}
-                />
-                <ModalShell
-                  dismiss="backdrop"
-                  initialFocus={recoveryQuitCancelRef}
-                  onRequestClose={onRecoveryQuitCancel}
-                  open={bootstrapStatus === 'ready' && recoveryQuitConfirmOpen}
-                  title={t('recovery.quit.title')}
-                >
-                  <p>{t('recovery.quit.message')}</p>
-                  {recoverySurface?.message !== undefined ? (
-                    <p>{recoverySurface.message}</p>
-                  ) : null}
-                  {recoveryDiscardNames.length > 0 ? (
-                    <ul aria-label={t('recovery.quit.documents')}>
-                      {recoveryDiscardNames.map((name) => (
-                        <li key={name}>{name}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    // Saying so is the honest answer, not silence: the user is
-                    // being asked to approve a discard, and "nothing will be
-                    // discarded" is information they are entitled to before
-                    // pressing it.
-                    <p>{t('recovery.quit.documents.none')}</p>
-                  )}
-                  <div>
-                    <Button
-                      ref={recoveryQuitCancelRef}
-                      variant="secondary"
-                      onClick={onRecoveryQuitCancel}
-                    >
-                      {t('recovery.quit.cancel')}
-                    </Button>
-                    <Button variant="primary" onClick={onRecoveryQuitConfirm}>
-                      {t('recovery.quit.confirm')}
-                    </Button>
-                  </div>
-                </ModalShell>
-                {bootstrapStatus === 'ready'
-                  ? notifications.map((notification) => (
-                      <NotificationToast
-                        key={`${notification.id}:${notification.refreshGeneration}`}
-                        notification={notification}
-                        onDismiss={(id: number): void => {
-                          dispatch(dismissNotification(id));
-                        }}
-                        onRemediate={(
-                          remediation: NotificationRemediation,
-                        ): void => {
-                          void onRemediate(
-                            remediation,
-                            notification.id,
-                            notification.title,
-                          );
-                        }}
-                      />
-                    ))
-                  : null}
-                <LiveRegion message={remediationAnnouncement} />
+            <div className="application-frame">
+              <div className="application-menu">
+                <ApplicationMenuContext.Provider value={applicationMenuState}>
+                  <AppearanceControls
+                    visible={bootstrapStatus === 'ready'}
+                    settingsOpen={settingsOpen}
+                    onSettingsOpenChange={setSettingsOpen}
+                    settingsMenuRenderer={ApplicationShellMenu}
+                  />
+                </ApplicationMenuContext.Provider>
               </div>
-            </ApplicationMenuRequestContext.Provider>
-          </EditorSessionProvider>
-        </TabRemediationContext.Provider>
-      </ModalStateProvider>
-    </ToastProvider>
+              <div className="application-content">
+                <Notifications
+                  banners={bootstrapStatus === 'ready' ? surfaceBanners : []}
+                  notices={bootstrapStatus === 'ready' ? surfaceNotices : []}
+                  onDismiss={(id: number): void => {
+                    dispatch(dismissNotification(id));
+                  }}
+                />
+                {bootstrapStatus === 'failed' ? (
+                  <StartupFailure
+                    failure={startupFailure}
+                    isRetrying={isRetrying}
+                    onQuit={nativeLifecycleAdapter.requestQuit}
+                    onRetry={retryBootstrap}
+                  />
+                ) : bootstrapStatus === 'ready' ? (
+                  <>
+                    {recoverySurface !== null ? (
+                      <section aria-label={t('recovery.title')} role="alert">
+                        <p>{recoverySurface.message}</p>
+                        <Button
+                          variant="secondary"
+                          onClick={requestRecoveryQuit}
+                        >
+                          {t('recovery.quit.action')}
+                        </Button>
+                      </section>
+                    ) : null}
+                    <AppShell
+                      onNewDocument={onNewDocument}
+                      onOpenDocument={onOpenDocument}
+                      onOpenRecentFile={(
+                        path,
+                        expectedTabSetRevision,
+                      ): Promise<unknown> =>
+                        onOpenRecentFile(path, expectedTabSetRevision)
+                      }
+                      onActivateDocument={onActivateDocument}
+                      onCloseDocument={onCloseDocument}
+                      onExternalConflict={setTabExternalConflict}
+                    />
+                  </>
+                ) : null}
+              </div>
+              <AboutDialog
+                open={bootstrapStatus === 'ready' && aboutOpen}
+                onOpenChange={setAboutOpen}
+                version={version}
+              />
+              <ShortcutsDialog
+                open={bootstrapStatus === 'ready' && shortcutsOpen}
+                onOpenChange={setShortcutsOpen}
+              />
+              <NormalizationPrompt
+                filename={normalization?.filename ?? ''}
+                onCancel={(): void => {
+                  /*
+                   * FR-FT-011: the confirmation is single-use and "cancellation
+                   * MUST resume nothing". Closing the prompt was resuming
+                   * nothing already; what it was not doing is releasing the
+                   * authorization it was raised with, so `service.normalizations`
+                   * kept an entry per dismissal for the process lifetime and the
+                   * next Save minted another. The token is handed back with the
+                   * document it was minted against, because the release is bound
+                   * to both. T168.
+                   */
+                  if (normalization !== null) {
+                    void documentWriteAdapter.cancelNormalization(
+                      normalization.documentId,
+                      normalization.decisionToken,
+                    );
+                  }
+                  setNormalization(null);
+                }}
+                onConfirm={onNormalizeConfirm}
+                open={bootstrapStatus === 'ready' && normalization !== null}
+                proposedEnding={normalization?.proposedEnding ?? 'lf'}
+              />
+              <ClosePrompt
+                onChoice={onClosePlanChoice}
+                open={
+                  bootstrapStatus === 'ready' &&
+                  closePlan !== null &&
+                  closeNormalization === null &&
+                  closeConflict === null &&
+                  closePlan.status === 'collecting'
+                }
+                plan={closePlan ?? undefined}
+              />
+              <NormalizationPrompt
+                filename={closeNormalization?.filename ?? ''}
+                onCancel={(): void => {
+                  void onCloseNormalizationDecision(false);
+                }}
+                onConfirm={(): void => {
+                  void onCloseNormalizationDecision(true);
+                }}
+                open={
+                  bootstrapStatus === 'ready' && closeNormalization !== null
+                }
+                proposedEnding={closeNormalization?.proposedEnding ?? 'lf'}
+              />
+              <ExternalChangePrompt
+                onDecision={onExternalConflictDecision}
+                open={bootstrapStatus === 'ready' && externalConflict !== null}
+                preview={externalConflict?.preview}
+                valid={externalConflictValid}
+              />
+              <ExternalChangePrompt
+                onDecision={onTabExternalConflictDecision}
+                open={
+                  bootstrapStatus === 'ready' && tabExternalConflict !== null
+                }
+                preview={tabExternalConflict ?? undefined}
+                valid={tabExternalConflictValid}
+              />
+              <ExternalChangePrompt
+                onDecision={onCloseConflictDecision}
+                open={bootstrapStatus === 'ready' && closeConflict !== null}
+                preview={closeConflict?.preview}
+                valid={closeConflictValid}
+              />
+              <ModalShell
+                dismiss="backdrop"
+                initialFocus={recoveryQuitCancelRef}
+                onRequestClose={onRecoveryQuitCancel}
+                open={bootstrapStatus === 'ready' && recoveryQuitConfirmOpen}
+                title={t('recovery.quit.title')}
+              >
+                <p>{t('recovery.quit.message')}</p>
+                {recoverySurface?.message !== undefined ? (
+                  <p>{recoverySurface.message}</p>
+                ) : null}
+                {recoveryDiscardNames.length > 0 ? (
+                  <ul aria-label={t('recovery.quit.documents')}>
+                    {recoveryDiscardNames.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  // Saying so is the honest answer, not silence: the user is
+                  // being asked to approve a discard, and "nothing will be
+                  // discarded" is information they are entitled to before
+                  // pressing it.
+                  <p>{t('recovery.quit.documents.none')}</p>
+                )}
+                <div>
+                  <Button
+                    ref={recoveryQuitCancelRef}
+                    variant="secondary"
+                    onClick={onRecoveryQuitCancel}
+                  >
+                    {t('recovery.quit.cancel')}
+                  </Button>
+                  <Button variant="primary" onClick={onRecoveryQuitConfirm}>
+                    {t('recovery.quit.confirm')}
+                  </Button>
+                </div>
+              </ModalShell>
+              <LiveRegion message={remediationAnnouncement} />
+            </div>
+          </ApplicationMenuRequestContext.Provider>
+        </EditorSessionProvider>
+      </TabRemediationContext.Provider>
+    </ModalStateProvider>
   );
 };
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { formatNumber, t } from '../../i18n';
 import { useAppSelector } from '../../logic/store';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import type {
@@ -8,7 +9,7 @@ import type {
   DocumentTransitionResult,
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
-import StatusBar from '../components/StatusBar';
+import StatusBar, { type StatusFact } from '../components/StatusBar';
 import EditorView from './EditorView';
 import Launcher from './Launcher';
 import WorkspaceLayout from './WorkspaceLayout';
@@ -76,6 +77,91 @@ const AppShell: React.FC<AppShellProps> = ({
   const tabSetRevision = useAppSelector(
     (state) => state.documents.tabSetRevision,
   );
+  const statusFacts: readonly StatusFact[] =
+    activeDocument === undefined
+      ? []
+      : [
+          {
+            id: 'standard-kind',
+            rowLabel: t('status.markdown', {
+              standard: t(
+                `status.markdownStandard.${markdownSettings.standard}`,
+              ),
+            }),
+            detailLabel: t('status.markdown', {
+              standard: t(
+                `status.markdownStandard.${markdownSettings.standard}`,
+              ),
+            }),
+            value: '',
+            dropPriority: 0,
+            marker: 'accent-dot',
+          },
+          {
+            id: 'cursor',
+            rowLabel: t('status.cursor', {
+              column: liveCursor.column,
+              line: liveCursor.lineNumber,
+            }),
+            detailLabel: t('status.cursor', {
+              column: liveCursor.column,
+              line: liveCursor.lineNumber,
+            }),
+            value: '',
+            dropPriority: 1,
+          },
+          {
+            id: 'count',
+            rowLabel: t('status.words', {
+              count: formatNumber(activeDocument.wordCount),
+            }),
+            detailLabel: t('status.words', {
+              count: formatNumber(activeDocument.wordCount),
+            }),
+            value: '',
+            dropPriority: 2,
+          },
+          {
+            id: 'encoding',
+            rowLabel: t(
+              `status.encoding.${activeDocument.encoding.toLowerCase()}`,
+            ),
+            detailLabel: t(
+              `status.encoding.${activeDocument.encoding.toLowerCase()}`,
+            ),
+            value: '',
+            dropPriority: 3,
+            placement: 'trailing',
+          },
+          {
+            id: 'line-ending',
+            rowLabel: t(
+              `status.lineEnding.${activeDocument.lineEnding.toLowerCase()}`,
+            ),
+            detailLabel: t(
+              `status.lineEnding.${activeDocument.lineEnding.toLowerCase()}`,
+            ),
+            value: '',
+            dropPriority: 4,
+            placement: 'trailing',
+          },
+          {
+            id: 'autosave',
+            rowLabel: t(
+              fileSettings.autosave
+                ? 'status.autosave.on'
+                : 'status.autosave.off',
+            ),
+            detailLabel: t(
+              fileSettings.autosave
+                ? 'status.autosave.on'
+                : 'status.autosave.off',
+            ),
+            value: '',
+            dropPriority: 5,
+            placement: 'trailing',
+          },
+        ];
 
   return (
     <WorkspaceLayout
@@ -113,15 +199,15 @@ const AppShell: React.FC<AppShellProps> = ({
       />
       {hasActiveDocument && activeDocument !== undefined ? (
         <StatusBar
-          cursor={liveCursor}
-          encoding={activeDocument.encoding}
-          lineEnding={activeDocument.lineEnding}
+          facts={statusFacts}
+          saveIdentity={t(
+            `status.saveStatus.${activeDocument.status ?? 'not-saved'}`,
+          )}
           status={activeDocument.status}
           capability={activeDocument.capability}
-          writeInFlight={activeDocument.writeInFlight}
-          wordCount={activeDocument.wordCount}
-          autosave={fileSettings.autosave}
-          markdownStandard={markdownSettings.standard}
+          transient={
+            activeDocument.writeInFlight ? t('status.writeInFlight') : undefined
+          }
         />
       ) : null}
     </WorkspaceLayout>

@@ -1,0 +1,86 @@
+/* The dock is the row's positioning context, allowing the details disclosure
+   to escape the row's clip while keeping the status row a single flex item. */
+.dock {
+  display: flex;
+  flex: 0 0 var(--status-bar-min-height);
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+
+.statusBar {
+  box-sizing: border-box;
+  background: var(--surface-raised);
+  color: var(--faint);
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--status-bar-gap);
+  height: var(--status-bar-min-height);
+  flex: 0 0 var(--status-bar-min-height);
+  min-height: var(--status-bar-min-height);
+  max-height: var(--status-bar-min-height);
+  padding-inline: var(--status-bar-padding-inline);
+  border-top: var(--status-bar-border-width) solid
+    var(--status-bar-border-color);
+  font-size: var(--status-bar-font-size);
+  position: relative;
+  overflow: hidden;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.responsiveItem {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: var(--status-bar-item-gap);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  background: var(--accent);
+  block-size: var(--status-bar-dot-size);
+  border-radius: 50%;
+  flex: none;
+  inline-size: var(--status-bar-dot-size);
+}
+
+.pill {
+  background: var(--surface-2);
+  border: var(--control-border-width) solid var(--stroke-soft);
+  border-radius: var(--status-bar-pill-radius);
+  padding: var(--status-bar-pill-padding);
+}
+
+:global(:root[data-theme='minimal']) .pill {
+  background: none;
+  border-color: transparent;
+}
+
+.detailsTrigger {
+  align-items: center;
+  color: inherit;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font: inherit;
+  white-space: nowrap;
+}
+
+@media (max-width: 376px) {
+  /* Priorities 0 and 1 remain in the row; the full inventory stays available
+     in the Details Popup. The data-driven fallback mirrors the measured
+     minimum-window drop order used by the native shell. */
+  .responsiveItem[data-status-drop-priority='2'],
+  .responsiveItem[data-status-drop-priority='3'],
+  .responsiveItem[data-status-drop-priority='4'],
+  .responsiveItem[data-status-drop-priority='5'],
+  .responsiveItem[data-status-drop-priority='6'] {
+    display: none;
+  }
+}
