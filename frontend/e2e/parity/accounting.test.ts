@@ -23,13 +23,14 @@ import { ADDITIONAL_STATE_ASSIGNMENTS } from './manifest';
  * cross-check here is on the config source text, and the runtime one carries
  * the weight.
  */
-it('repetition count matches the parity project declared in the config source', async () => {
+it('declares the real-backend Chromium project in the config source', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile('playwright.config.ts', 'utf8');
 
-  expect(source).toContain("name: 'parity'");
-  expect(source).toContain(`repeatEach: ${PARITY_REPETITION_COUNT}`);
-  expect(source).toContain("testMatch: 'e2e/targeted-parity.test.ts'");
+  expect(source).toContain("testDir: 'tests/e2e'");
+  expect(source).toContain("name: 'chromium'");
+  expect(source).toContain('retries: 0');
+  expect(source).toContain('workers: 1');
 });
 
 it('plans every key of the amended contract in every repetition', () => {
