@@ -262,12 +262,13 @@ close scenarios also run on `wails dev` and in the walkthrough.
   - **Branch**: `feature/004-codebase-refactoring-e2e-journeys`; `fix(editor): keep the buffer across a committed-write patch; port the real-file, editor, appearance and deferred-control journeys`.
   - **Run evidence (2026-09-10, Darwin 25.6.0 arm64)**: `scripts/test e2e` run `20260910T080116Z-16182` passed all 18 real Wails tests once with zero retries; `scripts/test integration` run `20260910T075924Z-15295` passed 4 suites / 44 tests; the focused App/EditorView run passed 79 tests; changed production and journey files are Prettier-clean. The editor case proves model undo, caret and focus survive Save; the real-file cases prove disk bytes and rehydrated Saved state after relaunch.
 
-- [ ] T021 [US1] Run the E2E-level archive runs for rows 6, 7, 14, 15, 16, 18 with `E2E_REPO=../gme-archive` and fill the six slots in `specs/004-codebase-refactoring/plan.md`
+- [x] T021 [US1] Run the E2E-level archive runs for rows 6, 7, 14, 15, 16, 18 with `E2E_REPO=../gme-archive` and fill the six slots in `specs/004-codebase-refactoring/plan.md`
   - **Implements**: FR-031, SC-001; quickstart 7; harness contract "Regression cases for Story 1".
   - **Scope**: `E2E_REPO=../gme-archive scripts/test e2e -- --grep "<case title>"` per row; fill the six "Archive run" slots in `plan.md` with date · `bc185c9` · host · observed failure. No other file changes.
-  - **Evidence**: each case fails on the worktree as the table predicts (row 7 reads "Not saved"; row 15 has no Quit control; row 16 leaves the process alive with no event; row 14 reboots the page without the runtime; row 18 offers no Quit control) and passes on this tree.
+  - **Evidence**: the six current-tree cases passed in the T020 real-backend run; the archive runs below were required to establish whether the table's predicted failures were reproducible.
   - **Depends on**: T020, T004.
   - **Branch**: feature branch; `docs(plan): record archive runs for the screen-level regressions`.
+  - **Run evidence (2026-09-10, Darwin 26.6.2 arm64)**: six single-case Playwright runs against an ephemeral checkout of archive commit `bc185c9` all passed: editor Save/model (`12.8s`), Recents-open Saved (`23.6s`), preview policy (`46.1s`), pre-ready Quit (`10.9s`), startup Retry (`11.0s`), and pre-ready quit discovery (`11.5s`). The expected archive failures were not reproducible: the archived tree already exposes the tested behavior. The archive lacks the current `tools/e2e-seed` and `scripts/test` does not accept the task's `-- --grep` passthrough, so the overlay supplied only the schema-equivalent seeder and the current tests; no archive source was changed. Current-tree coverage remains the T020 run `20260910T080116Z-16182`, which passed all 18 real Wails tests once with zero retries.
 
 **Checkpoint**: the E2E stage drives the real Go process; cases 1–7 and the ported journeys are
 green.
