@@ -31,47 +31,6 @@
   --shell-workspace-column: 0px;
 }
 
-.workspace {
-  background: var(--surface-2);
-  grid-area: workspace;
-  min-width: 0;
-  overflow: auto;
-}
-
-:global(:root[data-theme='minimal']) .workspace {
-  border-inline-end: var(--control-border-width) solid var(--border);
-}
-
-:global(:root[data-theme='minimal']) .divider::after {
-  background: transparent;
-}
-
-.divider {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  cursor: col-resize;
-  display: block;
-  inset-block: 0;
-  inset-inline-start: calc(
-    var(--shell-workspace-column) - var(--shell-divider-width) / 2
-  );
-  padding: 0;
-  position: absolute;
-  touch-action: none;
-  width: var(--shell-divider-width);
-  z-index: var(--z-resize);
-}
-
-.divider::after {
-  background: var(--border);
-  content: '';
-  inset: 0 auto 0 50%;
-  position: absolute;
-  transform: translateX(-50%);
-  width: var(--shell-divider-line-width);
-}
-
 .document {
   display: flex;
   flex-direction: column;
@@ -89,14 +48,6 @@
     --shell-workspace-column: 46px;
 
     grid-template-areas: 'workspace document assistant';
-  }
-
-  .workspace {
-    overflow: hidden;
-  }
-
-  .divider {
-    display: block;
   }
 }
 

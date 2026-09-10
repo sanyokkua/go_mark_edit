@@ -200,12 +200,13 @@ it('STORY-015-AC-1 applies the responsive split layout contract', () => {
   ).toBeEmptyDOMElement();
   expect(screen.queryByLabelText('Assistant')).not.toBeInTheDocument();
 
-  const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
+  const editorStyles = readSource('src/ui/widgets/EditorStage.module.css');
+  const paneStyles = readSource('src/ui/components/Pane/Pane.module.css');
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
   const tokens = readSource('src/ui/styles/tokens.css');
 
-  expect(editorStyles).toMatch(/\.panes\s*\{[^}]*display:\s*flex;/s);
-  expect(editorStyles).toMatch(/\.pane\s*\{[^}]*flex:\s*1 1 0;/s);
+  expect(editorStyles).toMatch(/\.stage\s*\{[^}]*display:\s*flex;/s);
+  expect(paneStyles).toMatch(/\.pane\s*\{[^}]*flex:\s*1 1 0;/s);
   expect(editorStyles).toContain('padding: 0;');
   expect(editorStyles).toContain('gap: var(--editor-view-gap);');
   expect(editorStyles).toContain('min-width: 0;');
@@ -314,9 +315,9 @@ it('T078 collapses Split to the editor at the minimum window and removes the pre
      * The surviving pane fills the region: it is the only child of the pane
      * row, and `.pane` is a fully flexible item.
      */
-    const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
-    expect(editorStyles).toMatch(/\.pane\s*\{[^}]*flex:\s*1 1 0;/s);
-    expect(editorStyles).toMatch(/\.paneHidden\s*\{[^}]*display:\s*none;/s);
+    const paneStyles = readSource('src/ui/components/Pane/Pane.module.css');
+    expect(paneStyles).toMatch(/\.pane\s*\{[^}]*flex:\s*1 1 0;/s);
+    expect(paneStyles).toMatch(/\.paneHidden\s*\{[^}]*display:\s*none;/s);
 
     /*
      * The recorded mode is still Split. The collapse is a presentation of the

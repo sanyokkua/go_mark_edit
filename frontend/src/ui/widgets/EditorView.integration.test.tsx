@@ -889,7 +889,7 @@ it('T045 keeps the editor region in binding content order without an extra wrapp
     editorRegion.querySelector(':scope > [data-bar-role="toolbar"]'),
   ).not.toBeNull();
   expect(
-    editorRegion.querySelector(':scope > [class*="panes"]'),
+    editorRegion.querySelector(':scope > [class*="stage"]'),
   ).not.toBeNull();
 });
 

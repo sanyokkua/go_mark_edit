@@ -1,17 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
+import { useState } from 'react';
 
-import { t } from '../../i18n';
-import { useAppDispatch, useAppSelector } from '../../logic/store';
-import {
-  WORKSPACE_BINDING_WIDTH,
-  setWorkspaceWidth,
-} from '../../logic/store/uiLayoutCommands';
+import { useAppSelector } from '../../logic/store';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import type {
   ClosePlanKind,
@@ -19,12 +8,10 @@ import type {
   DocumentTransitionResult,
   TabTransitionResult,
 } from '../../logic/store/appModelTypes';
-import styles from './AppShell.module.css';
-
-import EditorView from './EditorView';
-import { useMinimumWindow } from './minimumWindow';
 import StatusBar from '../components/StatusBar';
+import EditorView from './EditorView';
 import Launcher from './Launcher';
+import WorkspaceLayout from './WorkspaceLayout';
 
 export interface AppShellProps {
   onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
@@ -64,23 +51,7 @@ const AppShell: React.FC<AppShellProps> = ({
   const parityFamily = parityCase?.startsWith('primary:toolbar-overflow:')
     ? 'toolbar-overflow'
     : undefined;
-  const dispatch = useAppDispatch();
   const { fileSettings, markdownSettings } = useEditorSettings();
-  const workspaceVisible = useAppSelector(
-    (state) => state.ui.layout.sidebarVisible ?? true,
-  );
-  /*
-   * At the native minimum window there is no room for a workspace column, so
-   * the panel and its divider are not rendered at all. Two other shapes were
-   * tried and reverted: overriding `workspaceVisible` here splits the source of
-   * truth, because App.tsx hands the raw preference to the View menu's toggle
-   * and the two then disagree; dispatching a hide on mount writes a persisted
-   * preference, so one narrow launch would hide the workspace on every later
-   * wide one. Not rendering owns no second "is it open" state and writes
-   * nothing — `data-workspace-visible` below still reports the stored
-   * preference, which keeps governing the wide layout untouched.
-   */
-  const minimumWindow = useMinimumWindow();
   const hasActiveDocument = useAppSelector(
     (state) =>
       state.documents.activeDocumentId !== null &&
@@ -102,225 +73,58 @@ const AppShell: React.FC<AppShellProps> = ({
     onNewDocument !== undefined ||
     onOpenDocument !== undefined ||
     recentFiles.length > 0;
-
   const tabSetRevision = useAppSelector(
     (state) => state.documents.tabSetRevision,
   );
-  const acknowledgedWorkspaceWidth = useAppSelector(
-    (state) => state.ui.layout.sidebarWidth ?? WORKSPACE_BINDING_WIDTH,
-  );
-  const latestLayoutFailure = useAppSelector((state) => {
-    const layoutFailures = [
-      ...state.notifications.items,
-      ...state.notifications.queuedErrors,
-    ].filter(
-      (notification) =>
-        notification.error?.details?.operation === 'update layout',
-    );
-    const latest = layoutFailures.at(-1);
-    return latest === undefined
-      ? undefined
-      : `${latest.id}:${latest.refreshGeneration}`;
-  });
-  const [pendingWorkspaceWidth, setPendingWorkspaceWidth] = useState<
-    number | undefined
-  >(undefined);
-  const pendingWorkspaceWidthRef = useRef<number | undefined>(undefined);
-  const handledLayoutFailureRef = useRef<string | undefined>(undefined);
-  const workspaceWidth =
-    pendingWorkspaceWidth === acknowledgedWorkspaceWidth
-      ? acknowledgedWorkspaceWidth
-      : (pendingWorkspaceWidth ?? acknowledgedWorkspaceWidth);
-  const drag = useRef<{
-    pointerId: number;
-    startWidth: number;
-    startX: number;
-  } | null>(null);
-
-  const requestWorkspaceWidth = useCallback(
-    (width: number): void => {
-      const nextWidth = Math.max(0, Math.round(width));
-      pendingWorkspaceWidthRef.current = nextWidth;
-      setPendingWorkspaceWidth(nextWidth);
-      void dispatch(setWorkspaceWidth(nextWidth))
-        .unwrap()
-        .catch((): void => {
-          setPendingWorkspaceWidth((pending) =>
-            pending === nextWidth ? undefined : pending,
-          );
-          if (pendingWorkspaceWidthRef.current === nextWidth) {
-            pendingWorkspaceWidthRef.current = undefined;
-          }
-        });
-    },
-    [dispatch],
-  );
-
-  /*
-   * A hidden workspace has no in-flight width intent. Without this, the last
-   * optimistic value from the drag that collapsed it — 0, or whatever the
-   * pointer passed through on the way — outranks the acknowledged width when it
-   * is shown again, and the restored binding width would never render.
-   */
-  useEffect((): void => {
-    if (workspaceVisible) {
-      return;
-    }
-    /*
-     * The divider unmounts with the workspace, but the drag listens on the
-     * window: without releasing it here a pointer still held down after
-     * collapsing to zero keeps issuing the same hide command on every move.
-     */
-    drag.current = null;
-    if (pendingWorkspaceWidthRef.current === undefined) {
-      return;
-    }
-    pendingWorkspaceWidthRef.current = undefined;
-    setPendingWorkspaceWidth(undefined);
-  }, [workspaceVisible]);
-
-  useEffect((): void => {
-    if (
-      latestLayoutFailure === undefined ||
-      latestLayoutFailure === handledLayoutFailureRef.current
-    ) {
-      return;
-    }
-    handledLayoutFailureRef.current = latestLayoutFailure;
-    if (pendingWorkspaceWidthRef.current !== undefined) {
-      pendingWorkspaceWidthRef.current = undefined;
-      setPendingWorkspaceWidth(undefined);
-    }
-  }, [latestLayoutFailure]);
-
-  useEffect((): (() => void) => {
-    const onPointerMove = (event: PointerEvent): void => {
-      const activeDrag = drag.current;
-      if (
-        activeDrag === null ||
-        (event.pointerId !== 0 && event.pointerId !== activeDrag.pointerId)
-      ) {
-        return;
-      }
-      requestWorkspaceWidth(
-        activeDrag.startWidth + event.clientX - activeDrag.startX,
-      );
-    };
-    const onPointerUp = (event: PointerEvent): void => {
-      if (
-        drag.current !== null &&
-        (event.pointerId === 0 || event.pointerId === drag.current.pointerId)
-      ) {
-        drag.current = null;
-      }
-    };
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('pointercancel', onPointerUp);
-    return (): void => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('pointercancel', onPointerUp);
-    };
-  }, [requestWorkspaceWidth]);
-
-  const shellStyle = {
-    '--shell-left-width': `${workspaceWidth}px`,
-  } as CSSProperties;
 
   return (
-    <div
-      className={styles.shell}
-      data-testid="application-shell"
-      data-document-state={hasActiveDocument ? 'active' : 'empty'}
-      data-parity-family={parityFamily}
-      data-parity-shell={parityRoute ? 'true' : undefined}
-      data-workspace-visible={String(workspaceVisible)}
-      style={shellStyle}
+    <WorkspaceLayout
+      documentState={hasActiveDocument ? 'active' : 'empty'}
+      parityFamily={parityFamily}
+      parityShell={parityRoute}
     >
-      {minimumWindow ? null : (
-        <aside
-          aria-label={t('shell.workspace')}
-          className={styles.workspace}
-          hidden={!workspaceVisible}
-        />
-      )}
-      {workspaceVisible && !minimumWindow ? (
-        <div
-          aria-label={t('shell.workspace.resize')}
-          aria-orientation="vertical"
-          aria-valuemin={0}
-          aria-valuenow={workspaceWidth}
-          className={styles.divider}
-          role="separator"
-          tabIndex={0}
-          onKeyDown={(event): void => {
-            if (event.key === 'ArrowLeft') {
-              event.preventDefault();
-              requestWorkspaceWidth(
-                (pendingWorkspaceWidthRef.current ?? workspaceWidth) - 16,
-              );
-            } else if (event.key === 'ArrowRight') {
-              event.preventDefault();
-              requestWorkspaceWidth(
-                (pendingWorkspaceWidthRef.current ?? workspaceWidth) + 16,
-              );
-            }
-          }}
-          onPointerDown={(event): void => {
-            drag.current = {
-              pointerId: event.pointerId,
-              startWidth: workspaceWidth,
-              startX: event.clientX,
-            };
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-          }}
+      {!hasActiveDocument && showLauncher ? (
+        <Launcher
+          recentFiles={recentFiles}
+          onNewDocument={
+            onNewDocument === undefined
+              ? undefined
+              : (): Promise<unknown> => onNewDocument(tabSetRevision)
+          }
+          onOpenDocument={
+            onOpenDocument === undefined
+              ? undefined
+              : (): Promise<unknown> => onOpenDocument(tabSetRevision)
+          }
+          onOpenRecentFile={
+            onOpenRecentFile === undefined
+              ? undefined
+              : (path): Promise<unknown> =>
+                  onOpenRecentFile(path, tabSetRevision)
+          }
         />
       ) : null}
-      <main aria-label={t('shell.document')} className={styles.document}>
-        {!hasActiveDocument && showLauncher ? (
-          <Launcher
-            recentFiles={recentFiles}
-            onNewDocument={
-              onNewDocument === undefined
-                ? undefined
-                : (): Promise<unknown> => onNewDocument(tabSetRevision)
-            }
-            onOpenDocument={
-              onOpenDocument === undefined
-                ? undefined
-                : (): Promise<unknown> => onOpenDocument(tabSetRevision)
-            }
-            onOpenRecentFile={
-              onOpenRecentFile === undefined
-                ? undefined
-                : (path): Promise<unknown> =>
-                    onOpenRecentFile(path, tabSetRevision)
-            }
-          />
-        ) : null}
-        <EditorView
-          onNewDocument={onNewDocument}
-          onActivateDocument={onActivateDocument}
-          onCloseDocument={onCloseDocument}
-          onExternalConflict={onExternalConflict}
-          onLiveCursorChange={setLiveCursor}
+      <EditorView
+        onNewDocument={onNewDocument}
+        onActivateDocument={onActivateDocument}
+        onCloseDocument={onCloseDocument}
+        onExternalConflict={onExternalConflict}
+        onLiveCursorChange={setLiveCursor}
+      />
+      {hasActiveDocument && activeDocument !== undefined ? (
+        <StatusBar
+          cursor={liveCursor}
+          encoding={activeDocument.encoding}
+          lineEnding={activeDocument.lineEnding}
+          status={activeDocument.status}
+          capability={activeDocument.capability}
+          writeInFlight={activeDocument.writeInFlight}
+          wordCount={activeDocument.wordCount}
+          autosave={fileSettings.autosave}
+          markdownStandard={markdownSettings.standard}
         />
-        {hasActiveDocument && activeDocument !== undefined ? (
-          <StatusBar
-            cursor={liveCursor}
-            encoding={activeDocument.encoding}
-            lineEnding={activeDocument.lineEnding}
-            status={activeDocument.status}
-            capability={activeDocument.capability}
-            writeInFlight={activeDocument.writeInFlight}
-            wordCount={activeDocument.wordCount}
-            autosave={fileSettings.autosave}
-            markdownStandard={markdownSettings.standard}
-          />
-        ) : null}
-      </main>
-    </div>
+      ) : null}
+    </WorkspaceLayout>
   );
 };
 

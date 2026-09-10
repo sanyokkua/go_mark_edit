@@ -7,12 +7,17 @@ const readSource = (relativePath: string): string =>
 const tokensSource = readSource('src/ui/styles/tokens.css');
 const baseStylesSource = readSource('src/ui/styles/base.css');
 const shellStylesSource = readSource('src/ui/widgets/AppShell.module.css');
+const sidebarStylesSource = readSource(
+  'src/ui/components/Sidebar/Sidebar.module.css',
+);
 const currentSurfaceStyles = [
   'src/ui/widgets/AppShell.module.css',
   'src/ui/widgets/AppearanceControls.module.css',
   'src/ui/widgets/AppearanceDialog.module.css',
-  'src/ui/widgets/EditorView.module.css',
+  'src/ui/widgets/EditorStage.module.css',
   'src/ui/widgets/SettingsMenu.module.css',
+  'src/ui/components/Pane/Pane.module.css',
+  'src/ui/components/Sidebar/Sidebar.module.css',
   'src/ui/components/StatusBar.module.css',
 ].map(readSource);
 const colorLiteralPattern = /#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i;
@@ -43,8 +48,12 @@ it('STORY-007-AC-2 supplies the shell through tokens only', () => {
     ([, token]: RegExpMatchArray): string => token,
   );
   const consumedTokens = Array.from(
-    shellStylesSource.matchAll(shellTokenPattern),
-    ([, token]: RegExpMatchArray): string => token,
+    [shellStylesSource, sidebarStylesSource].flatMap((source) =>
+      Array.from(
+        source.matchAll(shellTokenPattern),
+        ([, token]: RegExpMatchArray): string => token,
+      ),
+    ),
   );
 
   /*
@@ -78,6 +87,7 @@ it('STORY-007-AC-2 supplies the shell through tokens only', () => {
     new Set([...definedTokens, '--shell-workspace-column']),
   );
   expect(shellStylesSource).not.toMatch(colorLiteralPattern);
+  expect(sidebarStylesSource).not.toMatch(colorLiteralPattern);
   expect(tokensSource).toContain('--accent');
 });
 
@@ -429,7 +439,7 @@ it('routes every current appearance surface through palette tokens', (): void =>
 });
 
 const tabStyles = readSource('src/ui/components/TabBar/TabBar.module.css');
-const editorViewStyles = readSource('src/ui/widgets/EditorView.module.css');
+const paneStyles = readSource('src/ui/components/Pane/Pane.module.css');
 
 // Proves: FR-FT-053 — the three named per-family structural claims: "Liquid
 // Glass MUST preserve the binding continuous internal canvas, translucent
@@ -478,7 +488,7 @@ it('T157 keeps each family the structure FR-FT-053 names for it', (): void => {
   // whole frame, with the blur applied over it rather than per panel.
   expect(baseStylesSource).toMatch(/background:\s*var\(--canvas\)/);
   expect(baseStylesSource).toMatch(/backdrop-filter:\s*var\(--blur\)/);
-  expect(editorViewStyles).toMatch(
+  expect(paneStyles).toMatch(
     /:global\(:root\[data-theme='glass'\]\)[\s\S]{0,400}?box-shadow:\s*inset 0 1px 0 var\(--glass-highlight\)/,
   );
 
@@ -517,9 +527,7 @@ it('T157 keeps each family the structure FR-FT-053 names for it', (): void => {
     /:global\(:root\[data-theme='minimal'\]\)[\s\S]{0,600}?border-bottom-color:\s*var\(--text\)/,
   );
   // Minimal panes are separators, not cards.
-  expect(editorViewStyles).toMatch(
-    /\.pane \+ \.pane\s*\{[^}]*border-inline-start:/,
-  );
+  expect(paneStyles).toMatch(/\.pane \+ \.pane\s*\{[^}]*border-inline-start:/);
 
   // And the three tab treatments are genuinely three, not one card restyled:
   // the pill radius and the underline structure cannot both describe the same

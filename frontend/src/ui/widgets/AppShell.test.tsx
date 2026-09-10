@@ -31,7 +31,6 @@ import type {
   UILayout,
 } from '../../logic/store/appModelTypes';
 import { store } from '../../logic/store';
-import { notifyError } from '../../logic/store/notificationsSlice';
 import { hydrateSettings } from '../../logic/store/settingsSlice';
 import AppShell from './AppShell';
 
@@ -120,12 +119,14 @@ it('T033 keeps the shell as a contained, tokenized surface across palettes', () 
 });
 
 it('T062 renders the Minimal workspace boundary inside the workspace track', () => {
-  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-
-  expect(shellStyles).toMatch(
-    /:global\(:root\[data-theme='minimal'\]\) \.workspace\s*\{[^}]*border-inline-end:\s*var\(--control-border-width\) solid var\(--border\);/s,
+  const sidebarStyles = readSource(
+    'src/ui/components/Sidebar/Sidebar.module.css',
   );
-  expect(shellStyles).toMatch(
+
+  expect(sidebarStyles).toMatch(
+    /:global\(:root\[data-theme='minimal'\]\) \.sidebar\s*\{[^}]*border-inline-end:\s*var\(--control-border-width\) solid var\(--border\);/s,
+  );
+  expect(sidebarStyles).toMatch(
     /:global\(:root\[data-theme='minimal'\]\) \.divider::after\s*\{[^}]*background:\s*transparent;/s,
   );
 });
@@ -153,20 +154,22 @@ it('FR-WS-007 preserves the zero-width Assistant track at the 375px breakpoint',
 });
 
 it('T040 keeps the empty workspace as a binding surface frame without enumeration', () => {
-  const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-  const workspaceRule = shellStyles.match(/\.workspace\s*\{([^}]*)\}/)?.[1];
+  const sidebarStyles = readSource(
+    'src/ui/components/Sidebar/Sidebar.module.css',
+  );
+  const workspaceRule = sidebarStyles.match(/\.sidebar\s*\{([^}]*)\}/)?.[1];
 
   expect(workspaceRule).toBeDefined();
   expect(workspaceRule).toMatch(/background:\s*var\(--surface-2\)/);
 });
 
 it('T045 keeps the parity shell route bounded to the binding window geometry', () => {
-  const shellSource = readSource('src/ui/widgets/AppShell.tsx');
+  const shellSource = readSource('src/ui/widgets/WorkspaceLayout.tsx');
   const baseStyles = readSource('src/ui/styles/base.css');
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
 
   expect(shellSource).toContain(
-    "data-parity-shell={parityRoute ? 'true' : undefined}",
+    "data-parity-shell={parityShell ? 'true' : undefined}",
   );
   expect(shellSource).toContain('data-parity-family={parityFamily}');
   expect(baseStyles).toMatch(
@@ -221,22 +224,11 @@ it('FR-WS-012 restores the last acknowledged divider width after its delayed lay
   const divider = screen.getByRole('separator', {
     name: 'Resize workspace',
   });
+  setUILayout.mockRejectedValueOnce(new Error('layout update failed'));
   fireEvent(divider, pointerEvent('pointerdown', 288, 7));
   fireEvent(window, pointerEvent('pointermove', 320, 7));
   fireEvent(window, pointerEvent('pointerup', 320, 7));
   expect(shell).toHaveStyle({ '--shell-left-width': '320px' });
-
-  act(() => {
-    store.dispatch(
-      notifyError({
-        code: 'io',
-        title: 'File operation failed',
-        message: 'The file operation could not be completed.',
-        details: { operation: 'update layout' },
-        retryable: true,
-      }),
-    );
-  });
 
   await waitFor(() => {
     expect(shell).toHaveStyle({ '--shell-left-width': '288px' });
@@ -329,6 +321,9 @@ it('T077 still reports a stored hidden workspace at the minimum window', () => {
 
 it('T040 overlays the resizable divider without adding a layout column at every parity width', () => {
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
+  const sidebarStyles = readSource(
+    'src/ui/components/Sidebar/Sidebar.module.css',
+  );
 
   /*
    * The grid track and the divider read the same variable, so the handle cannot
@@ -338,17 +333,20 @@ it('T040 overlays the resizable divider without adding a layout column at every 
   expect(shellStyles).toMatch(
     /grid-template-columns:\s*var\(--shell-workspace-column\)\s+minmax\(var\(--shell-center-min-width\),\s*1fr\)\s+var\(--shell-assistant-collapsed-width\)/,
   );
-  expect(shellStyles).toMatch(
+  expect(sidebarStyles).toMatch(
     /\.divider\s*\{[\s\S]*inset-inline-start:\s*calc\(\s*var\(--shell-workspace-column\)/,
   );
-  expect(shellStyles).not.toMatch(
+  expect(sidebarStyles).not.toMatch(
     /grid-template-columns:[^;]*var\(--shell-divider-width\)/,
   );
-  expect(shellStyles).toMatch(
+  expect(sidebarStyles).toMatch(
     /\.divider\s*\{[\s\S]*inset-block:\s*0;[\s\S]*position:\s*absolute;[\s\S]*z-index:\s*var\(--z-resize\)/,
   );
   expect(shellStyles).toMatch(
-    /@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/,
+    /@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px/,
+  );
+  expect(sidebarStyles).toMatch(
+    /@media \(max-width:\s*768px\)[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/,
   );
   /*
    * The 376px block used to declare `.divider { display: block }` as well. The
@@ -532,7 +530,10 @@ it('FR-WS-008 uses exact responsive presentations without durable responsive wri
   expect(setUILayout).not.toHaveBeenCalled();
 
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-  const editorStyles = readSource('src/ui/widgets/EditorView.module.css');
+  const editorStyles = readSource('src/ui/widgets/EditorStage.module.css');
+  const toolbarStyles = readSource(
+    'src/ui/widgets/EditorChrome.module.css',
+  );
   const baseStyles = readSource('src/ui/styles/base.css');
   expect(shellStyles).toMatch(
     /@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px/,
@@ -550,12 +551,12 @@ it('FR-WS-008 uses exact responsive presentations without durable responsive wri
   expect(editorStyles).toMatch(
     /@media \(max-width:\s*376px\)[\s\S]*flex-direction:\s*column/,
   );
-  expect(editorStyles).toMatch(/\.toolbar\s*\{[^}]*flex-wrap:\s*nowrap/s);
+  expect(toolbarStyles).toMatch(/\.toolbar\s*\{[^}]*flex-wrap:\s*nowrap/s);
   expect(baseStyles).toMatch(/overflow-x:\s*hidden/);
 });
 
 it('FR-WS-017 and FR-WS-020 keep shell styles tokenized and production surfaces honest', () => {
-  const shellSource = readSource('src/ui/widgets/AppShell.tsx');
+  const shellSource = readSource('src/ui/widgets/WorkspaceLayout.tsx');
   const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
   const appSource = readSource('src/App.tsx');
   const actionSource = readSource('src/logic/actions/shellActions.ts');

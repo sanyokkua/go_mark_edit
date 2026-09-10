@@ -41,6 +41,14 @@ export interface PreviewNotificationOwner {
   warn: (target: string, reason: string) => void;
 }
 
+export interface PreviewPaneState {
+  currentRefreshError: PreviewRefreshError | null;
+  isPaused: boolean;
+  isRefreshing: boolean;
+  refresh: () => void;
+  rendered: PreviewSnapshot | null;
+}
+
 function initialRenderedSnapshot(
   accepted: PreviewSnapshot,
 ): PreviewSnapshot | null {
@@ -70,15 +78,10 @@ function openResultRefusal(result: OpenResult): string | undefined {
     : undefined;
 }
 
-const PreviewPane: React.FC<PreviewPaneProps> = ({
-  accepted,
-  ariaLabel = t('editor.previewPane'),
-  documentId,
-  documentPath,
-  linkAdapter,
-  notificationOwner,
-  onRefresh,
-}: PreviewPaneProps): React.JSX.Element => {
+export function usePreviewPaneState(
+  accepted: PreviewSnapshot,
+  onRefresh: () => Promise<PreviewSnapshot>,
+): PreviewPaneState {
   const [manualSnapshot, setManualSnapshot] = useState<PreviewSnapshot | null>(
     () => initialRenderedSnapshot(accepted),
   );
@@ -103,6 +106,117 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
   const currentRefreshError =
     refreshError?.revision === accepted.revision ? refreshError.error : null;
 
+  const refresh = useCallback((): void => {
+    if (activeRefreshRef.current !== null) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    const operation = (async (): Promise<void> => {
+      try {
+        const refreshed = await onRefresh();
+        if (refreshed.revision !== acceptedRef.current.revision) {
+          setManualSnapshot(null);
+          setRefreshError(null);
+          return;
+        }
+
+        setManualSnapshot(refreshed);
+        setRefreshError(null);
+      } catch {
+        setManualSnapshot(null);
+        setRefreshError({
+          error: { code: 'io-failure' },
+          revision: acceptedRef.current.revision,
+        });
+      } finally {
+        activeRefreshRef.current = null;
+        setIsRefreshing(false);
+      }
+    })();
+
+    activeRefreshRef.current = operation;
+  }, [onRefresh]);
+
+  return {
+    currentRefreshError,
+    isPaused: rendered === null,
+    isRefreshing,
+    refresh,
+    rendered,
+  };
+}
+
+export interface PreviewPausedStatusProps {
+  currentRefreshError: PreviewRefreshError | null;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+}
+
+export const PreviewPausedStatus: React.FC<PreviewPausedStatusProps> = ({
+  currentRefreshError,
+  isRefreshing,
+  onRefresh,
+}: PreviewPausedStatusProps): React.JSX.Element => (
+  <div
+    className={styles.pausedStatus}
+    data-preview-paused-bar="true"
+    role="status"
+  >
+    <svg
+      aria-hidden="true"
+      className={styles.pausedIcon}
+      fill="none"
+      focusable="false"
+      viewBox="0 0 24 24"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6M8 13h8M8 17h5" />
+    </svg>
+    <p className={styles.pausedMessage}>{t('preview.paused')}</p>
+    {currentRefreshError === null ? null : (
+      <p
+        aria-live="assertive"
+        data-error-code={currentRefreshError.code}
+        role="alert"
+      >
+        {t('preview.refreshFailed')}
+      </p>
+    )}
+    <Button
+      className={styles.refreshButton}
+      aria-busy={isRefreshing}
+      disabled={isRefreshing}
+      variant="secondary"
+      onClick={onRefresh}
+    >
+      {currentRefreshError === null ? t('preview.refresh') : t('preview.retry')}
+    </Button>
+  </div>
+);
+
+export interface PreviewPaneContentProps {
+  ariaLabel?: string | null;
+  controller: PreviewPaneState;
+  documentId?: string;
+  documentPath?: string;
+  linkAdapter?: Pick<
+    LivePreviewAdapter,
+    'openPreviewLink' | 'openExternalLink' | 'resolvePreviewImage'
+  >;
+  notificationOwner?: PreviewNotificationOwner;
+  showPausedStatus?: boolean;
+}
+
+export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
+  ariaLabel = t('editor.previewPane'),
+  controller,
+  documentId,
+  documentPath,
+  linkAdapter,
+  notificationOwner,
+  showPausedStatus = true,
+}: PreviewPaneContentProps): React.JSX.Element => {
   const warn = (target: string, reason: string): void => {
     notificationOwner?.warn(target, reason);
   };
@@ -153,94 +267,53 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
     }
   };
 
-  const refresh = (): void => {
-    if (activeRefreshRef.current !== null) {
-      return;
-    }
-
-    setIsRefreshing(true);
-    const operation = (async (): Promise<void> => {
-      try {
-        const refreshed = await onRefresh();
-        if (refreshed.revision !== acceptedRef.current.revision) {
-          setManualSnapshot(null);
-          setRefreshError(null);
-          return;
-        }
-
-        setManualSnapshot(refreshed);
-        setRefreshError(null);
-      } catch {
-        setManualSnapshot(null);
-        setRefreshError({
-          error: { code: 'io-failure' },
-          revision: acceptedRef.current.revision,
-        });
-      } finally {
-        activeRefreshRef.current = null;
-        setIsRefreshing(false);
-      }
-    })();
-
-    activeRefreshRef.current = operation;
-  };
-
-  const isPaused = rendered === null;
-
   return (
     <section
       aria-label={ariaLabel ?? undefined}
-      data-preview-revision={rendered?.revision}
-      data-preview-state={isPaused ? 'paused' : 'rendered'}
+      data-preview-revision={controller.rendered?.revision}
+      data-preview-state={controller.isPaused ? 'paused' : 'rendered'}
     >
-      {isPaused ? (
-        <div
-          className={styles.pausedStatus}
-          data-preview-paused-bar="true"
-          role="status"
-        >
-          <svg
-            aria-hidden="true"
-            className={styles.pausedIcon}
-            fill="none"
-            focusable="false"
-            viewBox="0 0 24 24"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <path d="M14 2v6h6M8 13h8M8 17h5" />
-          </svg>
-          <p className={styles.pausedMessage}>{t('preview.paused')}</p>
-          {currentRefreshError === null ? null : (
-            <p
-              aria-live="assertive"
-              data-error-code={currentRefreshError.code}
-              role="alert"
-            >
-              {t('preview.refreshFailed')}
-            </p>
-          )}
-          <Button
-            className={styles.refreshButton}
-            aria-busy={isRefreshing}
-            disabled={isRefreshing}
-            variant="secondary"
-            onClick={refresh}
-          >
-            {currentRefreshError === null
-              ? t('preview.refresh')
-              : t('preview.retry')}
-          </Button>
-        </div>
+      {controller.isPaused ? (
+        showPausedStatus ? (
+          <PreviewPausedStatus
+            currentRefreshError={controller.currentRefreshError}
+            isRefreshing={controller.isRefreshing}
+            onRefresh={controller.refresh}
+          />
+        ) : null
       ) : (
         <MarkdownView
           documentId={documentId}
           documentPath={documentPath}
           imageSourceResolver={resolveImageSource}
           onActivateLink={activateLink}
-          source={rendered.content}
+          source={controller.rendered?.content ?? ''}
         />
       )}
     </section>
+  );
+};
+
+const PreviewPane: React.FC<PreviewPaneProps> = ({
+  accepted,
+  ariaLabel = t('editor.previewPane'),
+  documentId,
+  documentPath,
+  linkAdapter,
+  notificationOwner,
+  onRefresh,
+}: PreviewPaneProps): React.JSX.Element => {
+  const controller = usePreviewPaneState(accepted, onRefresh);
+
+  return (
+    <PreviewPaneContent
+      ariaLabel={ariaLabel}
+      controller={controller}
+      documentId={documentId}
+      documentPath={documentPath}
+      linkAdapter={linkAdapter}
+      notificationOwner={notificationOwner}
+    />
   );
 };
 
