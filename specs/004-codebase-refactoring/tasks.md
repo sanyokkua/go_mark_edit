@@ -357,12 +357,13 @@ close scenarios also run on `wails dev` and in the walkthrough.
   - **Branch**: `feature/004-codebase-refactoring-decompose`; `refactor(app): decompose App, DocumentTabs, ShellMenuRow and EditorChrome`.
   - **Run evidence (2026-09-10, Darwin 25.6.0 arm64)**: `scripts/test unit` run `20260910T202132Z-3594` passed 108 Jest suites / 712 tests plus Go unit tests; `scripts/test integration` run `20260910T202212Z-3863` passed 10 suites / 61 tests; `scripts/test e2e` run `20260910T201033Z-94879` passed all 23 real-backend cases with zero retries; the production `scripts/build` exited 0, production TypeScript typecheck, changed-source ESLint, targeted Prettier, frontend architecture checks and `git diff --check` passed. The lint comparison added no decomposition ESLint findings after cleanup; the stage remains red only for the known golangci context-loading failure and existing test Node-typing findings, with moved test paths changing their finding locations. The repository format wrapper still reports only the pre-existing `specs/004-codebase-refactoring/plan.md` warning.
 
-- [ ] T031 [US1] Run the archive runs for rows 9, 10, 11, 12, 13 and complete the SC-001 check in `plan.md`
+- [x] T031 [US1] Run the archive runs for rows 9, 10, 11, 12, 13 and complete the SC-001 check in `plan.md`
   - **Implements**: FR-031, SC-001; quickstart 7.
   - **Scope**: `E2E_REPO=../gme-archive` runs of the T022 and T023 cases; fill the last five "Archive run" slots in `plan.md`; every one of the 19 slots now holds a run or a host reason. No other file changes.
   - **Evidence**: each case fails on the worktree and passes on this tree; `grep -c '\*pending\*'` over the Story 1 table in `plan.md` prints `0`.
   - **Depends on**: T030, T004.
   - **Branch**: feature branch; `docs(plan): record archive runs for the menu regressions`.
+  - **Run evidence (2026-09-10, Darwin 25.6.0 arm64)**: archive UI run against a disposable `bc185c9` overlay (compatible old-backend seeder; archive worktree unchanged) covered the menus, narrow-width and shell-matrix cases. The archive failed on the historical tab Popup shadow, absent toolbar overflow contract, and narrow Settings overflow timeout. Focused archive probes also showed the historical second-click File Popup remained open and focused-tab Shift+F10 exposed no tab Popup/shortcut surface; Details at 375×480 was reachable, so row 13 is recorded as not reproducible. Current-tree run `20260910T201033Z-94879` passed all 23 real-backend cases; the completed archive rows plus these five leave zero pending slots.
 
 **Checkpoint**: every shared component exists with its consumers switched; the four god components
 are decomposed; all 19 Story 1 slots are filled.
