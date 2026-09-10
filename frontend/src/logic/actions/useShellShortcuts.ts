@@ -5,7 +5,7 @@ import {
   type ActionDispatchContext,
   type ActionResult,
 } from './actionDispatcher';
-import type { ActionId } from './actionRegistry';
+import { getActionAvailability, type ActionId } from './actionRegistry';
 import { dispatchShellAction, type ShellAction } from './shellActions';
 import { currentPlatform, shortcutForKeyEvent } from './shortcutRegistry';
 
@@ -47,6 +47,12 @@ export function useShellShortcuts(
                 candidate.shortcutAliases?.includes(eventBinding) === true))),
       );
       if (action === undefined || !action.isAvailable()) {
+        return;
+      }
+      const availability = isShellAction(action)
+        ? getActionAvailability(action.id)
+        : getActionAvailability(action.id, action.dispatchContext);
+      if (availability.kind !== 'available') {
         return;
       }
       event.preventDefault();

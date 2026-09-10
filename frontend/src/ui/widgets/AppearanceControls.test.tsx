@@ -8,9 +8,12 @@ import {
 import { Provider } from 'react-redux';
 
 import { settingsAdapter } from '../../logic/adapter';
+import { useEditorSettings } from '../../logic/settings/editorSettings';
 import { store } from '../../logic/store';
 import { resetSettingsProjection } from '../../logic/store/settingsSlice';
 import AppearanceControls from './AppearanceControls';
+import { useAppearanceSettings } from './appearanceSettingsContext';
+import SettingsMenu from './SettingsMenu';
 
 const render = (ui: Parameters<typeof rtlRender>[0]) =>
   rtlRender(<Provider store={store}>{ui}</Provider>);
@@ -53,9 +56,42 @@ const resetAppearance = settingsAdapter.resetAppearance as jest.MockedFunction<
   typeof settingsAdapter.resetAppearance
 >;
 
+function AppearanceMenu(): React.JSX.Element {
+  const { appearance, onModeChange, onOpenAppearance, onThemeChange } =
+    useAppearanceSettings();
+  const { fileSettings, markdownSettings, updateFile, updateMarkdown } =
+    useEditorSettings();
+  return (
+    <SettingsMenu
+      defaultOpenMode={appearance.defaultOpenMode as 'reading' | 'editor'}
+      fileSettings={fileSettings}
+      markdownSettings={markdownSettings}
+      mode={appearance.mode}
+      onFileSettingsChange={(patch): void => {
+        void updateFile(patch);
+      }}
+      onMarkdownSettingsChange={(patch): void => {
+        void updateMarkdown(patch);
+      }}
+      onModeChange={onModeChange}
+      onOpenAppearance={onOpenAppearance}
+      onThemeChange={onThemeChange}
+      theme={appearance.theme}
+    />
+  );
+}
+
+function AppearanceHarness(): React.JSX.Element {
+  return (
+    <AppearanceControls>
+      <AppearanceMenu />
+    </AppearanceControls>
+  );
+}
+
 // Proves: constraints#every-action-is-reachable-by-keyboard
 it('changes appearance from keyboard reachable controls after a successful write', async (): Promise<void> => {
-  render(<AppearanceControls />);
+  render(<AppearanceHarness />);
 
   const settings = await screen.findByRole('button', { name: 'Settings' });
   fireEvent.click(settings);
@@ -79,7 +115,7 @@ it('changes appearance from keyboard reachable controls after a successful write
 });
 
 it('T045 keeps Markdown Standard visible but unavailable without persistence', async () => {
-  render(<AppearanceControls />);
+  render(<AppearanceHarness />);
 
   fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
   // The converged popup follows the binding mockup, which lists the three
@@ -104,7 +140,7 @@ it('T045 keeps Markdown Standard visible but unavailable without persistence', a
 // Proves: all#end-to-end
 it('leaves both controls and the root palette unchanged when persistence rejects', async (): Promise<void> => {
   updateAppearance.mockRejectedValueOnce(new Error('write failed'));
-  render(<AppearanceControls />);
+  render(<AppearanceHarness />);
 
   const settings = await screen.findByRole('button', { name: 'Settings' });
   fireEvent.click(settings);
@@ -129,7 +165,7 @@ it('serializes rapid changes using the complete latest appearance choice', async
         }),
     )
     .mockResolvedValueOnce();
-  render(<AppearanceControls />);
+  render(<AppearanceHarness />);
 
   fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
   fireEvent.click(screen.getByRole('radio', { name: 'Liquid Glass' }));
@@ -173,7 +209,7 @@ it('normalizes invalid persisted values before exposing controls or root attribu
       standard: 'gfm',
     },
   });
-  render(<AppearanceControls />);
+  render(<AppearanceHarness />);
 
   await waitFor((): void => {
     expect(document.documentElement).toHaveAttribute('data-theme', 'material');
@@ -203,7 +239,7 @@ it('owns one Auto listener, ignores a later system change while pinned, and stay
     value: matchMedia,
   });
 
-  render(<AppearanceControls />);
+  render(<AppearanceHarness />);
   await screen.findByRole('button', { name: 'Settings' });
   expect(listeners.size).toBe(1);
 
@@ -248,7 +284,7 @@ it('updates synchronized quick and modal Appearance only after reset is acknowle
         acknowledgeReset = resolve;
       }),
   );
-  render(<AppearanceControls />);
+  render(<AppearanceHarness />);
 
   fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
   expect(screen.getByRole('radio', { name: 'Minimal' })).toBeChecked();
@@ -287,7 +323,7 @@ it('retains acknowledged Appearance when the transactional reset is rejected', a
     },
   });
   resetAppearance.mockRejectedValueOnce(new Error('private database path'));
-  render(<AppearanceControls />);
+  render(<AppearanceHarness />);
 
   fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
   fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
@@ -318,8 +354,8 @@ it('does not broadcast a reset into another mounted acknowledged Appearance proj
     },
   };
   getSettings.mockResolvedValueOnce(persisted).mockResolvedValueOnce(persisted);
-  const first = render(<AppearanceControls />);
-  const second = render(<AppearanceControls />);
+  const first = render(<AppearanceHarness />);
+  const second = render(<AppearanceHarness />);
 
   fireEvent.click(
     await within(first.container).findByRole('button', { name: 'Settings' }),

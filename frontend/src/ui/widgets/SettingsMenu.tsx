@@ -2,7 +2,11 @@ import { useCallback, useState, type RefObject } from 'react';
 
 import { t } from '../../i18n';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
-import { getAction, type ActionId } from '../../logic/actions/actionRegistry';
+import {
+  getAction,
+  getActionAvailability,
+  type ActionId,
+} from '../../logic/actions/actionRegistry';
 import {
   currentPlatform,
   formatShortcut,
@@ -135,7 +139,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
    * both rows shipped enabled while the registry said deferred.
    */
   const settingUnavailable = (id: ActionId): boolean =>
-    getAction(id).availability.kind === 'deferred';
+    getActionAvailability(id).kind !== 'available';
 
   /*
    * T155: two independent reasons a Settings row is not operable, and both must

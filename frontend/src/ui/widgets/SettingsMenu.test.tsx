@@ -7,6 +7,7 @@ import {
 } from '../../logic/actions/shortcutRegistry';
 import {
   getAction,
+  getActionAvailability,
   type ActionAvailability,
   type ActionId,
 } from '../../logic/actions/actionRegistry';
@@ -18,10 +19,14 @@ jest.mock('../../logic/actions/actionRegistry', () => {
     __esModule: true,
     ...actual,
     getAction: jest.fn(actual.getAction),
+    getActionAvailability: jest.fn(actual.getActionAvailability),
   };
 });
 
 const actionMock = getAction as jest.MockedFunction<typeof getAction>;
+const availabilityMock = getActionAvailability as jest.MockedFunction<
+  typeof getActionAvailability
+>;
 
 beforeEach(() => {
   actionMock.mockReset();
@@ -29,6 +34,11 @@ beforeEach(() => {
     jest.requireActual<typeof import('../../logic/actions/actionRegistry')>(
       '../../logic/actions/actionRegistry',
     ).getAction,
+  );
+  availabilityMock.mockImplementation(
+    jest.requireActual<typeof import('../../logic/actions/actionRegistry')>(
+      '../../logic/actions/actionRegistry',
+    ).getActionAvailability,
   );
 });
 
@@ -273,6 +283,18 @@ function withRegistryAvailability(
     const entry = real(id);
     const availability = overrides[id];
     return availability === undefined ? entry : { ...entry, availability };
+  });
+  availabilityMock.mockImplementation((id: ActionId) => {
+    const availability = overrides[id];
+    return availability === undefined
+      ? jest
+          .requireActual<typeof import('../../logic/actions/actionRegistry')>(
+            '../../logic/actions/actionRegistry',
+          )
+          .getActionAvailability(id)
+      : availability?.kind === 'deferred'
+        ? { kind: 'unavailable', reason: 'deferred' }
+        : { kind: 'available' };
   });
 }
 

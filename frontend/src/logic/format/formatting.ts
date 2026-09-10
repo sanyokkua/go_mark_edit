@@ -48,6 +48,21 @@ export interface MarkdownMarkerPreferences {
   headingStyle: 'atx' | 'setext';
 }
 
+export function formatMarkers(settings: {
+  bulletMarker: string;
+  emphasisMarker: string;
+  headingStyle: string;
+}): MarkdownMarkerPreferences {
+  return {
+    bulletMarker:
+      settings.bulletMarker === '*' || settings.bulletMarker === '+'
+        ? settings.bulletMarker
+        : '-',
+    emphasisMarker: settings.emphasisMarker === '_' ? '_' : '*',
+    headingStyle: settings.headingStyle === 'setext' ? 'setext' : 'atx',
+  };
+}
+
 export interface FormatRequest {
   actionId: FormatActionId;
   source: string;
@@ -59,6 +74,52 @@ export interface FormatEdit {
   range: EditorRange;
   text: string;
   selection?: EditorSelection;
+}
+
+export interface FormatRunnerRequest {
+  actionId: ActionId;
+  commands: DocumentCommandAPI | null;
+  markers: MarkdownMarkerPreferences;
+  selection?: EditorSelection | null;
+}
+
+const emptySelection: EditorSelection = {
+  start: { lineNumber: 1, column: 1 },
+  end: { lineNumber: 1, column: 1 },
+};
+
+/**
+ * The one entry point for a formatting command from a UI surface.
+ *
+ * Toolbar buttons and context-menu items may capture different selections, but
+ * they must not each resolve an action id or build a formatter request. The
+ * runner owns that translation and leaves the document-command session as the
+ * only mutation boundary.
+ */
+export function runFormatAction(
+  request: FormatRunnerRequest,
+): DocumentCommandResult<FormatEdit> {
+  const formatActionId = formatActionIds[request.actionId];
+  if (formatActionId === undefined || request.commands === null) {
+    return { status: 'unavailable' };
+  }
+
+  const commands =
+    request.selection === undefined
+      ? request.commands
+      : {
+          ...request.commands,
+          getSelection: (): DocumentCommandResult<EditorSelection | null> => ({
+            status: 'available',
+            value: request.selection ?? null,
+          }),
+        };
+  return applyFormatEdit(commands, {
+    actionId: formatActionId,
+    markers: request.markers,
+    selection: request.selection ?? emptySelection,
+    source: '',
+  });
 }
 
 export function applyFormatEdit(

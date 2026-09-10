@@ -65,6 +65,7 @@ import Notifications, {
 import AppShell from './ui/widgets/AppShell';
 import AboutDialog from './ui/widgets/AboutDialog';
 import AppearanceControls from './ui/widgets/AppearanceControls';
+import { useAppearanceSettings } from './ui/widgets/appearanceSettingsContext';
 import ShellMenuRow from './ui/widgets/ShellMenuRow';
 import {
   ApplicationMenuRequestContext,
@@ -195,9 +196,7 @@ interface EntryCommandOutcome {
 
 const ApplicationMenuContext = createContext<ApplicationMenuState | null>(null);
 
-const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
-  settingsMenuProps,
-): React.JSX.Element => {
+const ApplicationShellMenu: React.FC = (): React.JSX.Element => {
   const menuState = useContext(ApplicationMenuContext);
   if (menuState === null) {
     throw new Error('ApplicationShellMenu requires ApplicationMenuContext');
@@ -220,7 +219,29 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
   const canReopenLastFile = useAppSelector(
     (state) => state.documents.canReopenLastFile ?? false,
   );
+  const appearanceSettings = useAppearanceSettings();
   const editorSettings = useEditorSettings();
+  const settingsMenuProps: SettingsMenuProps = {
+    defaultOpenMode: appearanceSettings.appearance.defaultOpenMode as
+      'reading' | 'editor',
+    editorSettings: editorSettings.settings,
+    fileSettings: editorSettings.fileSettings,
+    markdownSettings: editorSettings.markdownSettings,
+    mode: appearanceSettings.appearance.mode,
+    onEditorSettingsChange: (patch): void => {
+      void editorSettings.update(patch).catch((): void => undefined);
+    },
+    onFileSettingsChange: (patch): void => {
+      void editorSettings.updateFile(patch).catch((): void => undefined);
+    },
+    onMarkdownSettingsChange: (patch): void => {
+      void editorSettings.updateMarkdown(patch).catch((): void => undefined);
+    },
+    onModeChange: appearanceSettings.onModeChange,
+    onOpenAppearance: appearanceSettings.onOpenAppearance,
+    onThemeChange: appearanceSettings.onThemeChange,
+    theme: appearanceSettings.appearance.theme,
+  };
 
   return (
     <ShellMenuRow
@@ -297,17 +318,7 @@ const ApplicationShellMenu: React.FC<SettingsMenuProps> = (
       onShortcuts={menuState.onShortcuts}
       requestedMenu={menuState.requestedMenu}
       onRequestedMenuHandled={menuState.onRequestedMenuHandled}
-      settingsMenuProps={{
-        ...settingsMenuProps,
-        editorSettings: editorSettings.settings,
-        onEditorSettingsChange: (patch): void => {
-          void editorSettings.update(patch).catch((): void => undefined);
-        },
-        fileSettings: editorSettings.fileSettings,
-        onFileSettingsChange: (patch): void => {
-          void editorSettings.updateFile(patch).catch((): void => undefined);
-        },
-      }}
+      settingsMenuProps={settingsMenuProps}
       /*
        * The View menu is always offered. With no document open its arrangement
        * rows are drawn unavailable — the values behind them come from the
@@ -2112,8 +2123,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
                     visible={bootstrapStatus === 'ready'}
                     settingsOpen={settingsOpen}
                     onSettingsOpenChange={setSettingsOpen}
-                    settingsMenuRenderer={ApplicationShellMenu}
-                  />
+                  >
+                    <ApplicationShellMenu />
+                  </AppearanceControls>
                 </ApplicationMenuContext.Provider>
               </div>
               <div className="application-content">

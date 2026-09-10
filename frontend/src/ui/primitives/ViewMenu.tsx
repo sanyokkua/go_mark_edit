@@ -2,7 +2,11 @@ import { useState, type CSSProperties, type RefObject } from 'react';
 
 import { t } from '../../i18n';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
-import { getAction, type ActionId } from '../../logic/actions/actionRegistry';
+import {
+  getAction,
+  getActionAvailability,
+  type ActionId,
+} from '../../logic/actions/actionRegistry';
 import {
   currentPlatform,
   formatShortcut,
@@ -97,6 +101,11 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
   const editorToggleDisabled = editorVisible && !previewVisible;
   const previewToggleDisabled = previewVisible && !editorVisible;
   const assistantAction = getAction('toggle-assistant');
+  const assistantAvailability = getActionAvailability(assistantAction.id, {
+    modalOpen,
+  });
+  const availabilityOf = (id: ActionId): boolean =>
+    getActionAvailability(id, { modalOpen }).kind === 'available';
 
   const acceleratorFor = (id: ActionId): string | undefined => {
     const { shortcut } = getAction(id);
@@ -189,12 +198,12 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
         )}
         <MenuItem
           data-action-id={assistantAction.id}
-          data-availability={assistantAction.availability.kind}
+          data-availability={assistantAvailability.kind}
           accelerator={acceleratorFor(assistantAction.id)}
-          disabled={assistantAction.availability.kind === 'deferred'}
+          disabled={assistantAvailability.kind !== 'available'}
           label={t(assistantAction.labelKey)}
           title={
-            assistantAction.availability.kind === 'deferred'
+            assistantAvailability.kind !== 'available'
               ? t('action.unavailable')
               : undefined
           }
@@ -274,7 +283,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
         <PopupSeparator />
         <MenuItem
           accelerator={acceleratorFor('distraction-free-reading')}
-          disabled
+          disabled={!availabilityOf('distraction-free-reading')}
           label={t(getAction('distraction-free-reading').labelKey)}
         />
         {onFullscreen === undefined ? null : (

@@ -1,6 +1,7 @@
 import { t } from '../../i18n';
 import {
   actionsForSurface,
+  getActionAvailability,
   type ActionEntry,
 } from '../../logic/actions/actionRegistry';
 import {
@@ -45,30 +46,33 @@ const ShortcutsDialog: React.FC<ShortcutsDialogProps> = ({
         </Button>
       </div>
       <div className={styles.list}>
-        {entries.map((entry: ActionEntry) => (
-          <div
-            aria-disabled={entry.availability.kind === 'deferred'}
-            className={styles.row}
-            data-action-id={entry.id}
-            data-availability={entry.availability.kind}
-            key={entry.id}
-          >
-            <span>{t(entry.labelKey)}</span>
-            <span className={styles.metadata}>
-              <span>{t(`action.scope.${entry.scope}`)}</span>
-              <span>
-                {entry.availability.kind === 'deferred'
-                  ? t('action.unavailable')
-                  : t('action.available')}
+        {entries.map((entry: ActionEntry) => {
+          const availability = getActionAvailability(entry.id);
+          return (
+            <div
+              aria-disabled={availability.kind !== 'available'}
+              className={styles.row}
+              data-action-id={entry.id}
+              data-availability={entry.availability.kind}
+              key={entry.id}
+            >
+              <span>{t(entry.labelKey)}</span>
+              <span className={styles.metadata}>
+                <span>{t(`action.scope.${entry.scope}`)}</span>
+                <span>
+                  {availability.kind !== 'available'
+                    ? t('action.unavailable')
+                    : t('action.available')}
+                </span>
               </span>
-            </span>
-            <kbd>
-              {entry.shortcut === undefined
-                ? '—'
-                : formatShortcut(entry.shortcut, platform)}
-            </kbd>
-          </div>
-        ))}
+              <kbd>
+                {entry.shortcut === undefined
+                  ? '—'
+                  : formatShortcut(entry.shortcut, platform)}
+              </kbd>
+            </div>
+          );
+        })}
       </div>
     </ModalShell>
   );

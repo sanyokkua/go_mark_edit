@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import {
   settingsAdapter,
@@ -7,11 +7,7 @@ import {
   type MarkdownSettings,
 } from '../adapter';
 import { useAppDispatch, useAppSelector } from '../store';
-import {
-  acknowledgeEditorSettingsUpdate,
-  acknowledgeFileSettingsUpdate,
-  acknowledgeMarkdownSettingsUpdate,
-} from './settingsCommands';
+import { createSettingsCommandOwner } from './settingsCommands';
 
 export interface EditorSettingsState {
   fileSettings: FileSettings;
@@ -27,36 +23,25 @@ export function useEditorSettings(): EditorSettingsState {
   const settings = useAppSelector((state) => state.settings.editor);
   const markdownSettings = useAppSelector((state) => state.settings.markdown);
   const fileSettings = useAppSelector((state) => state.settings.file);
+  const commands = useMemo(
+    () => createSettingsCommandOwner(settingsAdapter),
+    [],
+  );
 
   const update = useCallback(
     (patch: Partial<EditorSettings>): Promise<void> =>
-      acknowledgeEditorSettingsUpdate(
-        settingsAdapter,
-        settings,
-        patch,
-        dispatch,
-      ),
-    [dispatch, settings],
+      commands.updateEditor(settings, patch, dispatch),
+    [commands, dispatch, settings],
   );
   const updateMarkdown = useCallback(
     (patch: Partial<MarkdownSettings>): Promise<void> =>
-      acknowledgeMarkdownSettingsUpdate(
-        settingsAdapter,
-        markdownSettings,
-        patch,
-        dispatch,
-      ),
-    [dispatch, markdownSettings],
+      commands.updateMarkdown(markdownSettings, patch, dispatch),
+    [commands, dispatch, markdownSettings],
   );
   const updateFile = useCallback(
     (patch: Partial<FileSettings>): Promise<void> =>
-      acknowledgeFileSettingsUpdate(
-        settingsAdapter,
-        fileSettings,
-        patch,
-        dispatch,
-      ),
-    [dispatch, fileSettings],
+      commands.updateFile(fileSettings, patch, dispatch),
+    [commands, dispatch, fileSettings],
   );
 
   return {

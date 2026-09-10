@@ -12,7 +12,9 @@ import type { DocumentMetadata } from '../../logic/store/appModelTypes';
 import {
   actionsForSurface,
   getAction,
+  getActionAvailability,
   type ActionId,
+  type ProjectedActionState,
 } from '../../logic/actions/actionRegistry';
 import {
   currentPlatform,
@@ -285,7 +287,25 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       onSaveAs,
     ],
   );
-  const recentFileCount = recentFiles.length;
+  const projectedState = useMemo<ProjectedActionState>(
+    () => ({
+      activeDocumentId: documentId,
+      canReopenLastFile,
+      documents:
+        documentId === undefined
+          ? {}
+          : {
+              [documentId]: {
+                capability: activeDocument?.capability,
+                detached: activeDocument?.detached,
+                path: activeDocument?.path,
+              },
+            },
+      orderedDocumentIds: documentId === undefined ? [] : [documentId],
+      recentFiles,
+    }),
+    [activeDocument, canReopenLastFile, documentId, recentFiles],
+  );
   /*
    * T111: a row whose handler is absent must grey out, never render enabled and
    * do nothing. `App.tsx` passes `onCloseDocument` as undefined whenever there
@@ -304,13 +324,15 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
    */
   const fileActionDisabled = useCallback(
     (id: ActionId): boolean =>
-      (id !== 'exit' && getAction(id).availability.kind === 'deferred') ||
+      getActionAvailability(id, {
+        documentId,
+        modalOpen,
+        projectedState,
+        writable,
+      }).kind !== 'available' ||
       (FILE_ACTIONS_WITH_INVOKERS.has(id) &&
-        fileActionInvoker(id) === undefined) ||
-      (id === 'open-recent' && recentFileCount === 0) ||
-      (id === 'reopen' && !canReopenLastFile) ||
-      (['save', 'save-as'].includes(id) && writable !== true),
-    [canReopenLastFile, fileActionInvoker, recentFileCount, writable],
+        fileActionInvoker(id) === undefined),
+    [documentId, fileActionInvoker, modalOpen, projectedState, writable],
   );
 
   const actions = useMemo(
@@ -370,6 +392,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
               dispatchContext: {
                 applicationFocused: true,
                 documentId,
+                modalOpen,
+                projectedState,
                 sessionDocumentId,
                 writable,
               },
@@ -390,6 +414,7 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
       fileActionInvoker,
       modalOpen,
       onActionResult,
+      projectedState,
       sessionDocumentId,
       writable,
     ],
@@ -469,6 +494,8 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
     void dispatchAction('open-recent', {
       applicationFocused: true,
       invoke: async (): Promise<unknown> => onOpenRecentFile(path),
+      modalOpen: false,
+      projectedState,
     });
   };
   const requestViewOpen = (open: boolean): void => {
@@ -629,7 +656,12 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                       ) : null}
                       <MenuItem
                         accelerator={shortcutForMenuItem(item.shortcut)}
-                        disabled={item.availability.kind === 'deferred'}
+                        disabled={
+                          getActionAvailability(item.id, {
+                            modalOpen,
+                            projectedState,
+                          }).kind !== 'available'
+                        }
                         label={t(item.labelKey)}
                         onSelect={(): void => selectAboutAction(item.id)}
                       />
@@ -824,7 +856,12 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                       ) : null}
                       <MenuItem
                         accelerator={shortcutForMenuItem(item.shortcut)}
-                        disabled={item.availability.kind === 'deferred'}
+                        disabled={
+                          getActionAvailability(item.id, {
+                            modalOpen,
+                            projectedState,
+                          }).kind !== 'available'
+                        }
                         label={t(item.labelKey)}
                         onSelect={(): void => selectAboutAction(item.id)}
                       />
@@ -862,8 +899,18 @@ const ShellMenuRow: React.FC<ShellMenuRowProps> = ({
                   aria-label={t(assistantAction.accessibilityKey)}
                   className={styles.rowAction}
                   data-action-id={assistantAction.id}
-                  data-availability={assistantAction.availability.kind}
-                  disabled={assistantAction.availability.kind === 'deferred'}
+                  data-availability={
+                    getActionAvailability('toggle-assistant', {
+                      modalOpen,
+                      projectedState,
+                    }).kind
+                  }
+                  disabled={
+                    getActionAvailability('toggle-assistant', {
+                      modalOpen,
+                      projectedState,
+                    }).kind !== 'available'
+                  }
                   title={t('action.unavailable')}
                   type="button"
                 >

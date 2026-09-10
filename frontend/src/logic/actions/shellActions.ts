@@ -1,4 +1,4 @@
-import { getAction } from './actionRegistry';
+import { getAction, getActionAvailability } from './actionRegistry';
 import type { ActionScope } from './actionRegistry';
 import { dispatchAction } from './actionDispatcher';
 
@@ -44,6 +44,9 @@ export function createShellActionCatalogue(
   context: ShellActionContext,
 ): readonly ShellAction[] {
   const backgroundAvailable = (): boolean => !context.modalOpen;
+  const registryAvailable = (id: ShellActionId): boolean =>
+    getActionAvailability(id, { modalOpen: context.modalOpen }).kind ===
+    'available';
   const registryAction = (id: ShellActionId) => getAction(id);
   const catalogue: ShellAction[] = [
     {
@@ -52,7 +55,8 @@ export function createShellActionCatalogue(
       accessibilityKey: registryAction('settings').accessibilityKey,
       scope: shellScope(registryAction('settings').scope),
       shortcut: registryAction('settings').shortcut,
-      isAvailable: backgroundAvailable,
+      isAvailable: (): boolean =>
+        registryAvailable('settings') && backgroundAvailable(),
       invoke: context.openSettings,
     },
     {
@@ -61,7 +65,9 @@ export function createShellActionCatalogue(
       accessibilityKey: registryAction('view').accessibilityKey,
       scope: shellScope(registryAction('view').scope),
       isAvailable: (): boolean =>
-        backgroundAvailable() && context.viewAvailable,
+        registryAvailable('view') &&
+        backgroundAvailable() &&
+        context.viewAvailable,
       invoke: context.openView,
     },
     {
@@ -69,7 +75,8 @@ export function createShellActionCatalogue(
       labelKey: registryAction('about').labelKey,
       accessibilityKey: registryAction('about').accessibilityKey,
       scope: shellScope(registryAction('about').scope),
-      isAvailable: backgroundAvailable,
+      isAvailable: (): boolean =>
+        registryAvailable('about') && backgroundAvailable(),
       invoke: context.openAbout,
     },
     {
@@ -78,7 +85,8 @@ export function createShellActionCatalogue(
       accessibilityKey: registryAction('fullscreen').accessibilityKey,
       scope: shellScope(registryAction('fullscreen').scope),
       shortcut: registryAction('fullscreen').shortcut,
-      isAvailable: backgroundAvailable,
+      isAvailable: (): boolean =>
+        registryAvailable('fullscreen') && backgroundAvailable(),
       invoke: context.toggleFullscreen,
     },
   ];
@@ -90,7 +98,8 @@ export function createShellActionCatalogue(
       accessibilityKey: keyboardShortcuts.accessibilityKey,
       scope: shellScope(keyboardShortcuts.scope),
       shortcut: keyboardShortcuts.shortcut,
-      isAvailable: backgroundAvailable,
+      isAvailable: (): boolean =>
+        registryAvailable('keyboard-shortcuts') && backgroundAvailable(),
       invoke: context.openShortcuts,
     });
   }
@@ -102,7 +111,8 @@ export function createShellActionCatalogue(
       accessibilityKey: toggleSidebar.accessibilityKey,
       scope: shellScope(toggleSidebar.scope),
       shortcut: toggleSidebar.shortcut,
-      isAvailable: backgroundAvailable,
+      isAvailable: (): boolean =>
+        registryAvailable('toggle-sidebar') && backgroundAvailable(),
       invoke: context.toggleSidebar,
     });
   }

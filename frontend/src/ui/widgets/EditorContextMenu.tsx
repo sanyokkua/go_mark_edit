@@ -24,10 +24,7 @@ import {
   currentPlatform,
   formatShortcut,
 } from '../../logic/actions/shortcutRegistry';
-import {
-  applyFormatEdit,
-  formatActionIds,
-} from '../../logic/format/formatting';
+import { formatMarkers, runFormatAction } from '../../logic/format/formatting';
 import type { EditorSelection } from '../components/CodeEditor';
 import MenuItem from '../components/MenuItem';
 import Popup, { PopupSeparator } from '../components/Popup';
@@ -96,7 +93,6 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
   const activate = (actionId: ActionId): void => {
     onAction?.(actionId);
     const action = getAction(actionId);
-    const formatActionId = formatActionIds[actionId];
     const capturedCommands =
       commands === null || selectionSnapshotRef.current === null
         ? commands
@@ -145,26 +141,15 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               : { status: 'unavailable', reason: 'unsupported' };
           }
         : (): unknown =>
-            formatActionId === undefined || capturedCommands === null
-              ? undefined
-              : applyFormatEdit(capturedCommands, {
-                  actionId: formatActionId,
-                  source: '',
-                  selection: {
-                    start: { lineNumber: 1, column: 1 },
-                    end: { lineNumber: 1, column: 1 },
-                  },
-                  markers: {
-                    bulletMarker:
-                      markdownSettings.bulletMarker === '*' ||
-                      markdownSettings.bulletMarker === '+'
-                        ? markdownSettings.bulletMarker
-                        : '-',
-                    emphasisMarker:
-                      markdownSettings.emphasisMarker === '_' ? '_' : '*',
-                    headingStyle: 'atx',
-                  },
-                });
+            runFormatAction({
+              actionId,
+              commands: capturedCommands,
+              markers: formatMarkers(markdownSettings),
+              selection:
+                selectionSnapshotRef.current === null
+                  ? undefined
+                  : selectionSnapshotRef.current,
+            });
     void dispatchAction(actionId, {
       documentId: activeBuffer?.documentId,
       editorFocused: commands !== null && activeBuffer !== null,

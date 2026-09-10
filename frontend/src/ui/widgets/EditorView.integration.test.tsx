@@ -218,7 +218,9 @@ import {
   EditorSessionProvider,
 } from './editorSession';
 import AppearanceControls from './AppearanceControls';
+import { useAppearanceSettings } from './appearanceSettingsContext';
 import EditorView, { type EditorViewAdapter } from './EditorView';
+import SettingsMenu from './SettingsMenu';
 
 type VoidResult = { error?: WireError };
 
@@ -264,6 +266,20 @@ const SessionCommandControls: React.FC = (): React.JSX.Element => {
         Replace all through session
       </button>
     </>
+  );
+};
+
+const AppearanceSettingsMenu: React.FC = (): React.JSX.Element => {
+  const { appearance, onModeChange, onOpenAppearance, onThemeChange } =
+    useAppearanceSettings();
+  return (
+    <SettingsMenu
+      mode={appearance.mode}
+      onModeChange={onModeChange}
+      onOpenAppearance={onOpenAppearance}
+      onThemeChange={onThemeChange}
+      theme={appearance.theme}
+    />
   );
 };
 
@@ -488,7 +504,9 @@ it('FR-WS-017 applies every persisted palette to the rendered Settings control',
     mockGetSettings.mockResolvedValueOnce(appearanceSettings(theme, mode));
     const rendered = render(
       <Provider store={store}>
-        <AppearanceControls />
+        <AppearanceControls>
+          <AppearanceSettingsMenu />
+        </AppearanceControls>
       </Provider>,
     );
 

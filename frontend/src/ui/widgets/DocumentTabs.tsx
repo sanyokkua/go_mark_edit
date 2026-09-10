@@ -17,7 +17,11 @@ import type {
 } from '../../logic/store/appModelTypes';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { reportClassifiedError } from '../../logic/store/classifiedNotification';
-import { actionsForSurface } from '../../logic/actions/actionRegistry';
+import {
+  actionsForSurface,
+  getActionAvailability,
+  type ProjectedActionState,
+} from '../../logic/actions/actionRegistry';
 import {
   currentPlatform,
   shortcutForKeyEvent,
@@ -100,6 +104,25 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   );
   const tabSetRevision = useAppSelector(
     (state) => state.documents.tabSetRevision,
+  );
+  const actionProjection = useMemo<ProjectedActionState>(
+    () => ({
+      activeDocumentId,
+      documents: Object.fromEntries(
+        orderedDocuments.map((document) => [
+          document.documentId,
+          {
+            capability: document.capability,
+            detached: document.detached,
+            path: document.path,
+          },
+        ]),
+      ),
+      orderedDocumentIds: orderedDocuments.map(
+        (document) => document.documentId,
+      ),
+    }),
+    [activeDocumentId, orderedDocuments],
   );
   const [contextDocumentId, setContextDocumentId] = useState<string | null>(
     null,
@@ -602,7 +625,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         (document) => document.documentId === activeDocumentId,
       );
       if (current < 0) return;
-      event.preventDefault();
       if (moving) {
         const active = orderedDocuments[current];
         if (active === undefined) return;
@@ -616,10 +638,28 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
          * issuing nothing: no command, no revision, no announcement, and no
          * error either, because this is not a refusal.
          */
-        if (targetIndex < 0 || targetIndex >= orderedDocuments.length) return;
+        if (
+          getActionAvailability(action.id, {
+            documentId: activeDocumentId,
+            projectedState: actionProjection,
+            targetIndex,
+          }).kind !== 'available'
+        ) {
+          return;
+        }
+        event.preventDefault();
         void handleTabAction(action.id, active, targetIndex);
         return;
       }
+      if (
+        getActionAvailability(action.id, {
+          documentId: activeDocumentId,
+          projectedState: actionProjection,
+        }).kind !== 'available'
+      ) {
+        return;
+      }
+      event.preventDefault();
       const offset = action.id === 'next-tab' ? 1 : -1;
       const target =
         orderedDocuments[
@@ -633,6 +673,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   }, [
     activateDocument,
     activeDocumentId,
+    actionProjection,
     handleTabAction,
     modalOpen,
     orderedDocuments,

@@ -22,8 +22,9 @@ import {
   shortcutForKeyEvent,
 } from '../../logic/actions/shortcutRegistry';
 import {
-  applyFormatEdit,
+  formatMarkers,
   formatActionIds,
+  runFormatAction,
 } from '../../logic/format/formatting';
 import { DocumentCommandContext, EditorSessionContext } from './editorSession';
 import type {
@@ -123,10 +124,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
    * nothing else.
    */
   const unavailable =
-    entry.availability.kind === 'deferred' ||
-    (projectedState !== undefined &&
-      getActionAvailability(entry.id, { projectedState }).kind ===
-        'unavailable');
+    getActionAvailability(entry.id, { projectedState }).kind === 'unavailable';
   return (
     <ToolButton
       aria-label={t(entry.accessibilityKey)}
@@ -190,56 +188,21 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
   const { markdownSettings } = useEditorSettings();
   const onActivate = useCallback(
     (entry: ActionEntry): void => {
-      const formatActionId = formatActionIds[entry.id];
-      if (formatActionId === undefined) {
-        if (!deferredActions.some((actionId) => actionId === entry.id)) {
-          return;
-        }
-        void dispatchAction(entry.id, {
-          editorFocused: commands !== null && activeBuffer !== null,
-          documentId: activeBuffer?.documentId,
-          projectedState: toolbarProjection,
-          sessionDocumentId: activeBuffer?.documentId,
-          writable: activeBuffer !== null,
-        });
-        return;
-      }
       void dispatchAction(entry.id, {
         documentId: activeBuffer?.documentId,
         editorFocused: commands !== null && activeBuffer !== null,
         projectedState: toolbarProjection,
         invoke: (): unknown =>
-          commands === null
-            ? undefined
-            : applyFormatEdit(commands, {
-                actionId: formatActionId,
-                source: '',
-                selection: {
-                  start: { lineNumber: 1, column: 1 },
-                  end: { lineNumber: 1, column: 1 },
-                },
-                markers: {
-                  bulletMarker:
-                    markdownSettings.bulletMarker === '*' ||
-                    markdownSettings.bulletMarker === '+'
-                      ? markdownSettings.bulletMarker
-                      : '-',
-                  emphasisMarker:
-                    markdownSettings.emphasisMarker === '_' ? '_' : '*',
-                  headingStyle: 'atx',
-                },
-              }),
+          runFormatAction({
+            actionId: entry.id,
+            commands,
+            markers: formatMarkers(markdownSettings),
+          }),
         sessionDocumentId: activeBuffer?.documentId,
         writable: activeBuffer !== null,
       });
     },
-    [
-      activeBuffer,
-      commands,
-      markdownSettings.bulletMarker,
-      markdownSettings.emphasisMarker,
-      toolbarProjection,
-    ],
+    [activeBuffer, commands, markdownSettings, toolbarProjection],
   );
   const onKeyDown = useCallback(
     (event: KeyboardEvent): void => {
@@ -258,10 +221,20 @@ const EditorChrome: React.FC<EditorChromeProps> = ({
             deferredActions.some((actionId) => actionId === candidate.id)),
       );
       if (entry === undefined) return;
+      const availability = getActionAvailability(entry.id, {
+        modalOpen,
+        projectedState: toolbarProjection,
+      });
+      if (
+        availability.kind !== 'available' &&
+        availability.reason !== 'deferred'
+      ) {
+        return;
+      }
       event.preventDefault();
       onActivate(entry);
     },
-    [commands, modalOpen, onActivate],
+    [commands, modalOpen, onActivate, toolbarProjection],
   );
 
   useEffect((): (() => void) => {

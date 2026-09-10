@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { settingsAdapter } from '../../logic/adapter';
 import {
@@ -7,24 +7,22 @@ import {
   normalizeTheme,
   observeSystemAppearance,
   resolveAppearance,
-  type AppearanceChoice,
-  type Theme,
 } from '../../logic/theme/theme';
 import { writeStartupThemeMirror } from '../../logic/theme/startupThemeMirror';
-import { useEditorSettings } from '../../logic/settings/editorSettings';
+import {
+  createSettingsCommandOwner,
+  defaultAppearanceSettings,
+} from '../../logic/settings/settingsCommands';
 import SettingsDialog from './SettingsDialog';
-import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
-import styles from './AppearanceControls.module.css';
-
-interface AppearanceState {
-  defaultOpenMode: string;
-  mode: AppearanceChoice;
-  theme: Theme;
-}
+import {
+  AppearanceSettingsContext,
+  type AppearanceSettingsController,
+  type AppearanceState,
+} from './appearanceSettingsContext';
 
 interface AppearanceControlsProps {
+  children?: React.ReactNode;
   onSettingsOpenChange?: (open: boolean) => void;
-  settingsMenuRenderer?: React.ComponentType<SettingsMenuProps>;
   settingsOpen?: boolean;
   visible?: boolean;
 }
@@ -46,16 +44,13 @@ function apply(state: AppearanceState): void {
 }
 
 const AppearanceControls: React.FC<AppearanceControlsProps> = ({
+  children,
   onSettingsOpenChange,
-  settingsMenuRenderer: SettingsMenuRenderer,
   settingsOpen,
   visible = true,
 }: AppearanceControlsProps): React.JSX.Element | null => {
-  const { markdownSettings, updateMarkdown } = useEditorSettings();
   const [appearance, setAppearance] = useState<AppearanceState>({
-    defaultOpenMode: 'editor',
-    mode: 'auto',
-    theme: 'material',
+    ...defaultAppearanceSettings,
   });
   const [internalOpen, setInternalOpen] = useState(false);
   const open = settingsOpen ?? internalOpen;
@@ -66,7 +61,10 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
   const desiredAppearance = useRef(appearance);
   const [settingsReturnFocus, setSettingsReturnFocus] =
     useState<HTMLElement | null>(null);
-  const writeChain = useRef(Promise.resolve());
+  const settingsCommands = useMemo(
+    () => createSettingsCommandOwner(settingsAdapter),
+    [],
+  );
 
   useEffect((): void => {
     void settingsAdapter
@@ -112,100 +110,76 @@ const AppearanceControls: React.FC<AppearanceControlsProps> = ({
     (patch: Partial<Pick<AppearanceState, 'mode' | 'theme'>>): void => {
       const next = { ...desiredAppearance.current, ...patch };
       desiredAppearance.current = next;
-      writeChain.current = writeChain.current
-        .then(async (): Promise<void> =>
-          settingsAdapter.updateAppearance({
-            defaultOpenMode: next.defaultOpenMode,
-            mode: next.mode,
-            theme: next.theme,
-          }),
-        )
-        .then((): void => {
-          setAppearance(next);
-          apply(next);
+      void settingsCommands
+        .updateAppearance(next, {}, (acknowledged): void => {
+          const acknowledgedState: AppearanceState = {
+            defaultOpenMode: acknowledged.defaultOpenMode,
+            mode: normalizeAppearance(acknowledged.mode),
+            theme: normalizeTheme(acknowledged.theme),
+          };
+          setAppearance(acknowledgedState);
+          apply(acknowledgedState);
           writeStartupThemeMirror(localStorage, {
-            theme: next.theme,
-            mode: next.mode,
+            theme: acknowledgedState.theme,
+            mode: acknowledgedState.mode,
           });
         })
         .catch((): void => undefined);
     },
-    [],
+    [settingsCommands],
   );
   const reset = useCallback((): void => {
-    const next: AppearanceState = {
-      defaultOpenMode: 'editor',
-      mode: 'auto',
-      theme: 'material',
-    };
-    void settingsAdapter
-      .resetAppearance()
-      .then((): void => {
-        desiredAppearance.current = next;
-        setAppearance(next);
-        apply(next);
+    void settingsCommands
+      .resetAppearance((acknowledged): void => {
+        const acknowledgedState: AppearanceState = {
+          defaultOpenMode: acknowledged.defaultOpenMode,
+          mode: normalizeAppearance(acknowledged.mode),
+          theme: normalizeTheme(acknowledged.theme),
+        };
+        desiredAppearance.current = acknowledgedState;
+        setAppearance(acknowledgedState);
+        apply(acknowledgedState);
         writeStartupThemeMirror(localStorage, {
-          theme: next.theme,
-          mode: next.mode,
+          theme: acknowledgedState.theme,
+          mode: acknowledgedState.mode,
         });
       })
       .catch((): void => undefined);
-  }, []);
+  }, [settingsCommands]);
   if (!visible) {
     return null;
   }
-
-  const settingsMenuProps: SettingsMenuProps = {
-    defaultOpenMode: appearance.defaultOpenMode as 'reading' | 'editor',
-    mode: appearance.mode,
-    theme: appearance.theme,
-    onModeChange: (mode): void => {
-      persist({ mode });
-    },
-    onOpenAppearance: (opener): void => {
-      setSettingsReturnFocus(
-        opener ??
-          (document.activeElement instanceof HTMLElement
-            ? document.activeElement
-            : null),
-      );
-      setOpen(true);
-    },
-    onThemeChange: (theme): void => {
-      persist({ theme });
-    },
-    markdownSettings,
-    onMarkdownSettingsChange: (patch): void => {
-      void updateMarkdown(patch).catch((): void => undefined);
-    },
-  };
-  const menu =
-    SettingsMenuRenderer === undefined ? (
-      <div className={styles.controls}>
-        <SettingsMenu {...settingsMenuProps} />
-      </div>
-    ) : (
-      <SettingsMenuRenderer {...settingsMenuProps} />
+  const onOpenAppearance = (opener?: HTMLElement | null): void => {
+    setSettingsReturnFocus(
+      opener ??
+        (document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null),
     );
+    setOpen(true);
+  };
+  const controller: AppearanceSettingsController = {
+    appearance,
+    onModeChange: (mode): void => persist({ mode }),
+    onOpenAppearance,
+    onReset: reset,
+    onThemeChange: (theme): void => persist({ theme }),
+  };
 
   return (
-    <Fragment>
-      {menu}
+    <AppearanceSettingsContext.Provider value={controller}>
+      {children}
       <SettingsDialog
         mode={appearance.mode}
         open={open}
         returnFocusTo={settingsReturnFocus}
         theme={appearance.theme}
-        onModeChange={(mode): void => {
-          persist({ mode });
-        }}
+        onModeChange={controller.onModeChange}
         onReset={reset}
         onOpenChange={setOpen}
-        onThemeChange={(theme): void => {
-          persist({ theme });
-        }}
+        onThemeChange={controller.onThemeChange}
       />
-    </Fragment>
+    </AppearanceSettingsContext.Provider>
   );
 };
 
