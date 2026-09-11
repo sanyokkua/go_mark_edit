@@ -154,9 +154,7 @@ const AppShell: React.FC<AppShellProps> = ({
         ];
 
   return (
-    <WorkspaceLayout
-      documentState={hasActiveDocument ? 'active' : 'empty'}
-    >
+    <WorkspaceLayout documentState={hasActiveDocument ? 'active' : 'empty'}>
       {!hasActiveDocument && showLauncher ? (
         <Launcher
           recentFiles={recentFiles}

@@ -5,12 +5,7 @@
     "esModuleInterop": true,
     "module": "CommonJS",
     "outDir": "./node_modules/.cache/ts-jest",
-    "types": [
-      "jest",
-      "@testing-library/jest-dom",
-      "node",
-      "@playwright/test"
-    ]
+    "types": ["jest", "@testing-library/jest-dom", "node", "@playwright/test"]
   },
   "include": ["src/vite-env.d.ts", "tests/**/*.ts", "tests/**/*.tsx"]
 }

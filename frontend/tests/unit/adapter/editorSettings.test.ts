@@ -1,4 +1,7 @@
-import { createSettingsAdapter, type SettingsBindings } from '../../../src/logic/adapter/services';
+import {
+  createSettingsAdapter,
+  type SettingsBindings,
+} from '../../../src/logic/adapter/services';
 
 it('keeps EditorSettings DTO and binding arity parity', async () => {
   const updateEditor = jest.fn(

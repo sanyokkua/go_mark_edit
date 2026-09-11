@@ -1,4 +1,7 @@
-import { createTranslator, discoverLocaleResources } from '../../../src/i18n/catalog';
+import {
+  createTranslator,
+  discoverLocaleResources,
+} from '../../../src/i18n/catalog';
 
 it('interpolates status labels and formats word counts by active locale', () => {
   const translator = createTranslator(

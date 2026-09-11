@@ -97,9 +97,9 @@ it('shares each fenced-language value by appearance across themes', () => {
 });
 
 it('rejects a palette missing a required Monaco token', () => {
-  expect(
-    () => generate(palette.replace('--hl-punct: #5c5c69;', '')),
-  ).toThrow(/--hl-punct/);
+  expect(() => generate(palette.replace('--hl-punct: #5c5c69;', ''))).toThrow(
+    /--hl-punct/,
+  );
 });
 
 it('generates qualified Markdown and Go rules plus every required Monaco UI colour', () => {
@@ -147,26 +147,23 @@ it('generates qualified Markdown and Go rules plus every required Monaco UI colo
 });
 
 it('rejects duplicate, unresolved, and unsupported palette sources', () => {
-  expect(
-    () =>
-      generate(
-        palette.replace(
-          '--hl-punct: #5c5c69;',
-          '--hl-punct: #5c5c69; --hl-punct: #000000;',
-        ),
+  expect(() =>
+    generate(
+      palette.replace(
+        '--hl-punct: #5c5c69;',
+        '--hl-punct: #5c5c69; --hl-punct: #000000;',
       ),
+    ),
   ).toThrow(/Duplicate token --hl-punct/);
-  expect(
-    () =>
-      generate(
-        palette.replace('--hl-punct: #5c5c69;', '--hl-punct: var(--other);'),
-      ),
+  expect(() =>
+    generate(
+      palette.replace('--hl-punct: #5c5c69;', '--hl-punct: var(--other);'),
+    ),
   ).toThrow(/Unresolved token --hl-punct/);
-  expect(
-    () =>
-      generate(
-        `${palette}\n:root[data-theme='retro'][data-mode='light'] { --hl-punct: #000000; }`,
-      ),
+  expect(() =>
+    generate(
+      `${palette}\n:root[data-theme='retro'][data-mode='light'] { --hl-punct: #000000; }`,
+    ),
   ).toThrow(/Untraceable palette selector/);
 });
 

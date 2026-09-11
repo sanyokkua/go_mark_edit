@@ -1,6 +1,9 @@
 import { store } from '../../../src/logic/store';
 import { dismissNotification } from '../../../src/logic/store/notificationsSlice';
-import type { AppModelState, DocViewInput } from '../../../src/logic/store/appModelTypes';
+import type {
+  AppModelState,
+  DocViewInput,
+} from '../../../src/logic/store/appModelTypes';
 import type { WireError } from '../../../src/logic/utils/parseError';
 import {
   BUFFER_SYNC_MS,

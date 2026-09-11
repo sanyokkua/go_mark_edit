@@ -18,7 +18,10 @@ import {
 } from '../../../src/logic/store/appModelProjectionActions';
 import { hydrateSettings } from '../../../src/logic/store/settingsSlice';
 import EditorContextMenu from '../../../src/ui/widgets/EditorContextMenu';
-import { DocumentCommandContext, EditorSessionContext } from '../../../src/ui/widgets/editorSession';
+import {
+  DocumentCommandContext,
+  EditorSessionContext,
+} from '../../../src/ui/widgets/editorSession';
 
 const render = (ui: Parameters<typeof rtlRender>[0]) =>
   rtlRender(<Provider store={store}>{ui}</Provider>);

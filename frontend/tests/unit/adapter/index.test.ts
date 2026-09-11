@@ -3,7 +3,10 @@ import { dismissNotification } from '../../../src/logic/store/notificationsSlice
 import type { WireError } from '../../../src/logic/utils/parseError';
 import { guardArity } from '../../../src/logic/adapter/bridgeGuard';
 import { unwrap } from '../../../src/logic/adapter/envelope';
-import { createSettingsAdapter, type SettingsBindings } from '../../../src/logic/adapter/services';
+import {
+  createSettingsAdapter,
+  type SettingsBindings,
+} from '../../../src/logic/adapter/services';
 
 type SettingsResult = Awaited<ReturnType<SettingsBindings['getSettings']>>;
 type VoidResult = Awaited<ReturnType<SettingsBindings['updateAppearance']>>;

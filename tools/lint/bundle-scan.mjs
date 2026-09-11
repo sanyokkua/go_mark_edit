@@ -1,7 +1,9 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { extname, relative, resolve } from 'node:path';
 
-const bundleRoot = resolve(process.argv[2] ?? resolve(import.meta.dirname, '../../frontend/dist'));
+const bundleRoot = resolve(
+  process.argv[2] ?? resolve(import.meta.dirname, '../../frontend/dist'),
+);
 const testFile = /(?:^|[/.])(?:[^/]*\.(?:test|spec)|tests?)(?:[/.]|$)/i;
 const textExtensions = new Set([
   '.css',
@@ -15,11 +17,13 @@ const textExtensions = new Set([
   '.tsx',
 ]);
 
-const remoteUrl =
-  "(https?:\\/\\/[^\\s\\\"'`)<>{}]+|\\/\\/[^\\s\\\"'`)<>{}]+)";
+const remoteUrl = '(https?:\\/\\/[^\\s\\"\'`)<>{}]+|\\/\\/[^\\s\\"\'`)<>{}]+)';
 const resourcePatterns = {
   '.css': [
-    new RegExp(`(?:@import\\s+(?:url\\(\\s*)?|url\\(\\s*['"]?)${remoteUrl}`, 'gi'),
+    new RegExp(
+      `(?:@import\\s+(?:url\\(\\s*)?|url\\(\\s*['"]?)${remoteUrl}`,
+      'gi',
+    ),
   ],
   '.html': [
     new RegExp(`\\b(?:src|href|poster)\\s*=\\s*['"]\\s*${remoteUrl}`, 'gi'),
@@ -27,9 +31,15 @@ const resourcePatterns = {
   '.js': [
     new RegExp(`\\b(?:src|href)\\s*[:=]\\s*['"]\\s*${remoteUrl}`, 'gi'),
     new RegExp(`\\b(?:src|href)\\s*:\\s*['"]\\s*${remoteUrl}`, 'gi'),
-    new RegExp(`\\b(?:importScripts|fetch|import|Worker|SharedWorker)\\s*\\(\\s*['"]\\s*${remoteUrl}`, 'gi'),
+    new RegExp(
+      `\\b(?:importScripts|fetch|import|Worker|SharedWorker)\\s*\\(\\s*['"]\\s*${remoteUrl}`,
+      'gi',
+    ),
     new RegExp(`\\bnew\\s+URL\\s*\\(\\s*['"]\\s*${remoteUrl}`, 'gi'),
-    new RegExp(`\\.setAttribute\\s*\\(\\s*['"](?:src|href)['"]\\s*,\\s*['"]\\s*${remoteUrl}`, 'gi'),
+    new RegExp(
+      `\\.setAttribute\\s*\\(\\s*['"](?:src|href)['"]\\s*,\\s*['"]\\s*${remoteUrl}`,
+      'gi',
+    ),
   ],
   '.json': [],
   '.map': [],
@@ -86,7 +96,9 @@ try {
   }
 } catch (error) {
   if (error?.code === 'ENOENT') {
-    console.error(`bundle-scan L27: bundle directory does not exist: ${bundleRoot}`);
+    console.error(
+      `bundle-scan L27: bundle directory does not exist: ${bundleRoot}`,
+    );
   } else {
     throw error;
   }

@@ -87,10 +87,7 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           width={workspaceWidth}
         />
       )}
-      <main
-        aria-label={t('shell.document')}
-        className={styles.document}
-      >
+      <main aria-label={t('shell.document')} className={styles.document}>
         {children}
       </main>
     </div>

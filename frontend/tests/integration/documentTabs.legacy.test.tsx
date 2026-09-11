@@ -255,9 +255,7 @@ it('uses the binding context-menu shadow token', () => {
     'utf8',
   );
 
-  expect(tabStyles).toContain(
-    'box-shadow: var(--tab-context-menu-shadow)',
-  );
+  expect(tabStyles).toContain('box-shadow: var(--tab-context-menu-shadow)');
   expect(tokens).toContain(
     '--tab-context-menu-shadow: var(--context-menu-shadow);',
   );

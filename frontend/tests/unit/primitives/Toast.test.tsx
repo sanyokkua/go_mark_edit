@@ -3,7 +3,10 @@ import { resolve } from 'node:path';
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
-import { NotificationToast, ToastProvider } from '../../../src/ui/primitives/Toast';
+import {
+  NotificationToast,
+  ToastProvider,
+} from '../../../src/ui/primitives/Toast';
 
 afterEach((): void => {
   jest.useRealTimers();

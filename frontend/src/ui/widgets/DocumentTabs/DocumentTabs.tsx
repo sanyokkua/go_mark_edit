@@ -667,8 +667,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       if (target !== undefined) void activateDocument(target.documentId);
     };
     window.addEventListener('keydown', navigate);
-    return (): void =>
-      window.removeEventListener('keydown', navigate);
+    return (): void => window.removeEventListener('keydown', navigate);
   }, [
     activateDocument,
     activeDocumentId,

@@ -1,4 +1,7 @@
-import { parseError, type WireError } from '../../../src/logic/utils/parseError';
+import {
+  parseError,
+  type WireError,
+} from '../../../src/logic/utils/parseError';
 
 it('normalizes valid and malformed wire errors plus unknown failures', () => {
   const wireError: WireError = {

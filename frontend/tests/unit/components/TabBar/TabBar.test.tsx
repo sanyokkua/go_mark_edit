@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import TabBar, { type TabBarTab } from '../../../../src/ui/components/TabBar/TabBar';
+import TabBar, {
+  type TabBarTab,
+} from '../../../../src/ui/components/TabBar/TabBar';
 
 const tabs: readonly TabBarTab[] = [
   {

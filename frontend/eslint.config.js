@@ -183,8 +183,7 @@ export default tseslint.config(
           message: 'Only Popup may resolve the application frame.',
         },
         {
-          selector:
-            "JSXAttribute[name.name='role'] > Literal[value='dialog']",
+          selector: "JSXAttribute[name.name='role'] > Literal[value='dialog']",
           message: 'Only ModalShell may own dialog roles.',
         },
         {

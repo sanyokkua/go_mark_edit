@@ -1,7 +1,10 @@
 import { fireEvent, render } from '@testing-library/react';
 
 import { createShellActionCatalogue } from '../../../src/logic/actions/shellActions';
-import { useShellShortcuts, type ShortcutAction } from '../../../src/logic/actions/useShellShortcuts';
+import {
+  useShellShortcuts,
+  type ShortcutAction,
+} from '../../../src/logic/actions/useShellShortcuts';
 
 const toggleFullscreen = jest.fn(async (): Promise<boolean> => true);
 const toggleSidebar = jest.fn();

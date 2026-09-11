@@ -1,4 +1,7 @@
-import type { DocViewInput, DocumentMetadata } from '../../../src/logic/store/appModelTypes';
+import type {
+  DocViewInput,
+  DocumentMetadata,
+} from '../../../src/logic/store/appModelTypes';
 
 const mockFlushBuffer = jest.fn<Promise<void>, [string]>(
   async (): Promise<void> => undefined,
@@ -18,7 +21,10 @@ jest.mock('../../../src/logic/adapter', () => ({
   },
 }));
 
-import { setEditorPaneVisible, setViewArrangement } from '../../../src/logic/store/docViewCommands';
+import {
+  setEditorPaneVisible,
+  setViewArrangement,
+} from '../../../src/logic/store/docViewCommands';
 import {
   applyStatePatch,
   hydrateProjection,

@@ -1,6 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
 
-import { BUFFER_SYNC_MS, createAppModelAdapter } from '../../../src/logic/adapter';
+import {
+  BUFFER_SYNC_MS,
+  createAppModelAdapter,
+} from '../../../src/logic/adapter';
 import type { DocumentView } from '../../../src/logic/store/appModelTypes';
 import { useSyncedBuffer } from '../../../src/logic/hooks/useSyncedBuffer';
 

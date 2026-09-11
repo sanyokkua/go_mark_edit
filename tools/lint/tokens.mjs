@@ -2,11 +2,15 @@ import { readdir, readFile } from 'node:fs/promises';
 import { extname, relative, resolve } from 'node:path';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
-const tokenFile = resolve(
-  repositoryRoot,
-  'frontend/src/ui/styles/tokens.css',
-);
-const scannedExtensions = new Set(['.css', '.cjs', '.js', '.mjs', '.ts', '.tsx']);
+const tokenFile = resolve(repositoryRoot, 'frontend/src/ui/styles/tokens.css');
+const scannedExtensions = new Set([
+  '.css',
+  '.cjs',
+  '.js',
+  '.mjs',
+  '.ts',
+  '.tsx',
+]);
 
 async function* filesUnder(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -21,9 +25,7 @@ async function* filesUnder(directory) {
 }
 
 function withoutComments(source) {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '');
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 }
 
 function collectDeclared(source) {
@@ -44,13 +46,21 @@ function collectReferences(source) {
   return references;
 }
 
-const declared = collectDeclared(withoutComments(await readFile(tokenFile, 'utf8')));
+const declared = collectDeclared(
+  withoutComments(await readFile(tokenFile, 'utf8')),
+);
 const allDeclared = new Map(declared);
 const referenced = new Map();
 const files = [
-  ...(await Array.fromAsync(filesUnder(resolve(repositoryRoot, 'frontend/src')))),
-  ...(await Array.fromAsync(filesUnder(resolve(repositoryRoot, 'frontend/public')))),
-  ...(await Array.fromAsync(filesUnder(resolve(repositoryRoot, 'frontend/scripts')))),
+  ...(await Array.fromAsync(
+    filesUnder(resolve(repositoryRoot, 'frontend/src')),
+  )),
+  ...(await Array.fromAsync(
+    filesUnder(resolve(repositoryRoot, 'frontend/public')),
+  )),
+  ...(await Array.fromAsync(
+    filesUnder(resolve(repositoryRoot, 'frontend/scripts')),
+  )),
 ];
 
 for (const path of files) {
@@ -79,7 +89,9 @@ let failures = 0;
 for (const name of [...declared.keys()].sort()) {
   if (referenced.has(name)) continue;
   failures += 1;
-  console.log(`tokens L21 ${relative(repositoryRoot, tokenFile)}: ${name} is declared but never referenced`);
+  console.log(
+    `tokens L21 ${relative(repositoryRoot, tokenFile)}: ${name} is declared but never referenced`,
+  );
 }
 
 for (const [name, paths] of [...referenced.entries()].sort()) {

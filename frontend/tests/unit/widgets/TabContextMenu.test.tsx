@@ -20,7 +20,9 @@ import TabContextMenu from '../../../src/ui/widgets/TabContextMenu';
  * platform read is the seam the test controls.
  */
 jest.mock('../../../src/logic/actions/shortcutRegistry', () => {
-  const actual = jest.requireActual('../../../src/logic/actions/shortcutRegistry');
+  const actual = jest.requireActual(
+    '../../../src/logic/actions/shortcutRegistry',
+  );
   return {
     __esModule: true,
     ...actual,
@@ -39,7 +41,9 @@ const platformMock = currentPlatform as jest.MockedFunction<
  * registry answer something the old inline arithmetic never would.
  */
 jest.mock('../../../src/logic/actions/actionRegistry', () => {
-  const actual = jest.requireActual('../../../src/logic/actions/actionRegistry');
+  const actual = jest.requireActual(
+    '../../../src/logic/actions/actionRegistry',
+  );
   return {
     __esModule: true,
     ...actual,

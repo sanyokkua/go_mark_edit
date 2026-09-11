@@ -1,5 +1,8 @@
 import { store } from '../../../src/logic/store/index';
-import { dismissNotification, notifyError } from '../../../src/logic/store/notificationsSlice';
+import {
+  dismissNotification,
+  notifyError,
+} from '../../../src/logic/store/notificationsSlice';
 import type { WireError } from '../../../src/logic/utils/parseError';
 
 afterEach((): void => {

@@ -10,7 +10,10 @@ import {
   type ClosePlanBindings,
   type SettingsBindings,
 } from '../../../src/logic/adapter/services';
-import type { ClosePlanKind, ClosePlanResult } from '../../../src/logic/store/appModelTypes';
+import type {
+  ClosePlanKind,
+  ClosePlanResult,
+} from '../../../src/logic/store/appModelTypes';
 
 it('acknowledges ResetAppearance through one guarded zero-arity typed binding', async () => {
   const resetAppearance = jest.fn(async () => ({}));

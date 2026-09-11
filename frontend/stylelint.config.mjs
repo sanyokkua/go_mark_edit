@@ -1,6 +1,7 @@
 const colourLiteral =
   /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\s*\(|\b(?:white|black|red|green|blue|yellow|orange|purple|pink|brown|gray|grey|silver|navy|teal|maroon|olive|lime|aqua|cyan|magenta|fuchsia|gold|beige|ivory|coral|salmon|khaki|indigo|violet|crimson|tomato|orchid|plum|tan|wheat)\b/i;
-const themeSelector = /\[data-(?:theme|mode)(?:[\s~|^$*]?=|\])|\bdata-parity\b/i;
+const themeSelector =
+  /\[data-(?:theme|mode)(?:[\s~|^$*]?=|\])|\bdata-parity\b/i;
 const elevationShadow = /--(?:win-shadow|context-menu-shadow)\b/;
 
 const tokenRules = {

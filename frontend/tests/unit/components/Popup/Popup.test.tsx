@@ -1,7 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 
-import Popup, { PopupGroupLabel, PopupSeparator, PopupTrigger } from '../../../../src/ui/components/Popup/Popup';
+import Popup, {
+  PopupGroupLabel,
+  PopupSeparator,
+  PopupTrigger,
+} from '../../../../src/ui/components/Popup/Popup';
 import MenuItem from '../../../../src/ui/components/MenuItem/MenuItem';
 
 function PopupHarness(): React.JSX.Element {

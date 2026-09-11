@@ -22,7 +22,9 @@ import {
   DocumentCommandContext,
   EditorSessionProvider,
 } from '../../src/ui/widgets/editorSession';
-import EditorView, { type EditorViewAdapter } from '../../src/ui/widgets/EditorView';
+import EditorView, {
+  type EditorViewAdapter,
+} from '../../src/ui/widgets/EditorView';
 
 const mockEditorHandle: CodeEditorHandle = {
   getContent: jest.fn(() => '# Buffer'),

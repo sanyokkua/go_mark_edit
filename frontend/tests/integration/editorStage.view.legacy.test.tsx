@@ -25,7 +25,9 @@ const mockGetSettings = jest.fn();
 const mockResetAppearance = jest.fn(async (): Promise<void> => undefined);
 const mockUpdateAppearance = jest.fn(async (): Promise<void> => undefined);
 let mockStatePatchListener:
-  | ((patch: import('../../src/logic/store/appModelTypes').AppStatePatch) => void)
+  | ((
+      patch: import('../../src/logic/store/appModelTypes').AppStatePatch,
+    ) => void)
   | undefined;
 
 jest.mock('../../src/logic/adapter', () => ({
@@ -219,7 +221,9 @@ import {
 } from '../../src/ui/widgets/editorSession';
 import AppearanceControls from '../../src/ui/widgets/AppearanceControls';
 import { useAppearanceSettings } from '../../src/ui/widgets/appearanceSettingsContext';
-import EditorView, { type EditorViewAdapter } from '../../src/ui/widgets/EditorView';
+import EditorView, {
+  type EditorViewAdapter,
+} from '../../src/ui/widgets/EditorView';
 import SettingsMenu from '../../src/ui/widgets/Menubar/SettingsMenu';
 
 type VoidResult = { error?: WireError };

@@ -65,7 +65,11 @@ function createAdapter(
     flushBuffer: jest.fn<Promise<void>, [string]>(),
     subscribeAcceptedBuffers: jest.fn<
       () => void,
-      [(buffer: import('../../../src/logic/adapter/appModelAdapter').AcceptedBuffer) => void]
+      [
+        (
+          buffer: import('../../../src/logic/adapter/appModelAdapter').AcceptedBuffer,
+        ) => void,
+      ]
     >(),
     setDocView: jest.fn(),
     updateDocView: jest.fn(),

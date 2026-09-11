@@ -1,7 +1,4 @@
-import {
-  createTranslator,
-  type LocaleCatalog,
-} from './catalog';
+import { createTranslator, type LocaleCatalog } from './catalog';
 import englishCatalog from './locales/en.json';
 
 export type { InterpolationValues } from './catalog';
