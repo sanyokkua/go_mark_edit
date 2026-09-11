@@ -602,8 +602,8 @@ the image asset route is the one addition FR-049 allows.
 ## Close-out record (filled at G10)
 
 - **Baseline comparison**: 2026-09-11 · `457a40d` · `scripts/baseline --compare` run `20260911T012624Z-10809`: findings gone=42, new=0, remaining=0 across all six stages; no stage regressed.
-- **Walkthrough**: _pending_ — one sentence: date, commit, host, outcome, against the binary built by `scripts/build`.
-- **Networking-disabled cold start**: _pending_ — one sentence: date, commit, host, outcome (no outbound connection).
+- **Walkthrough**: 2026-09-11 · `aadea3b` · Darwin 26.6.2 arm64 · `build/bin/GoMarkEdit.app`: steps 2–11 and 13–15 were observed, including Saved open/relaunch, Save/Save As/undo, stable hard-link focus, preview sibling/refusal handling, local/web images, theme/menu coverage, tab context actions, dirty close/quit decisions and clean quit; step 1 was run with Wi-Fi enabled and the online `nettop` sample showed no GoMarkEdit connection.
+- **Networking-disabled cold start**: 2026-09-11 · `aadea3b` · Darwin 26.6.2 arm64 · not completed: Wi-Fi remained enabled and disabling the service required unavailable sudo credentials; the online one-second `nettop` sample contained no GoMarkEdit process/connection, so the offline cold-start criterion remains unverified.
 - **`scripts/verify` duration**: 2026-09-11 · `457a40d` · run `20260911T011321Z-95561` on the developer's Darwin arm64 host: 488,777 ms (8m 8.777s) wall-clock for lint, format, build, unit, integration and E2E; all six stages clean.
 - **Release dry run**: _pending_ — run id, version input, artifact name, About dialog reading.
 - **Archive worktree**: `git worktree add ../gme-archive archive/v1-linear-history-2026-09` (`bc185c9`), removed after the last archive run.
