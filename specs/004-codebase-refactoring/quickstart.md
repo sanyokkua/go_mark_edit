@@ -68,6 +68,10 @@ Expected: `.local_tmp_files/baseline/004-codebase-refactoring.json` validates ag
 (non-zero, naming the input); at close every recorded finding is gone and nothing new appears (one
 sentence in plan.md).
 
+Verification never reads or writes the baseline record. Its raw reports remain under the current
+`.local_tmp_files/runs/<run-id>/` directory. CI failure uploads retain the stage records, logs,
+reports and test-result JSON while excluding tool caches and TypeScript build-info files.
+
 ## 5. Build leaves the tree clean (FR-065, FR-068)
 
 ```bash

@@ -30,5 +30,17 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: verification-runs-${{ github.run_id }}
-          path: .local_tmp_files/runs/
+          path: |
+            .local_tmp_files/runs/**/summary.json
+            .local_tmp_files/runs/**/lint.json
+            .local_tmp_files/runs/**/format.json
+            .local_tmp_files/runs/**/build.json
+            .local_tmp_files/runs/**/unit.json
+            .local_tmp_files/runs/**/integration.json
+            .local_tmp_files/runs/**/e2e.json
+            .local_tmp_files/runs/**/reports/**
+            .local_tmp_files/runs/**/*.log
+            .local_tmp_files/runs/**/*.stderr
+            .local_tmp_files/runs/**/frontend-*.json
+          include-hidden-files: true
           if-no-files-found: ignore

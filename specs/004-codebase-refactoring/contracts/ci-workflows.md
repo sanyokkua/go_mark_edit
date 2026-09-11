@@ -16,7 +16,7 @@ steps:
   - actions/setup-node@v7    with node-version-file: .nvmrc, cache: npm, cache-dependency-path: frontend/package-lock.json
   - scripts/build setup
   - scripts/verify --skip e2e                                   # blocking; Build links the real Linux desktop artifact (tag webkit2_41)
-  - if failure: actions/upload-artifact@v7 name `verification-runs-${{ github.run_id }}`, path `.local_tmp_files/runs/`, if-no-files-found: ignore # preserve logs and stage records
+  - if failure: actions/upload-artifact@v7 name `verification-runs-${{ github.run_id }}`, path the diagnostic allowlist below, if-no-files-found: ignore # preserve reports, logs and stage records without caches
 ```
 
 ## `release.yml` — release and dry run
@@ -38,7 +38,7 @@ steps:
   - actions/setup-go@v7, actions/setup-node@v7 (as above)
   - scripts/build setup --with-browser
   - scripts/verify                                              # all six stages, including the wails dev suite
-  - if verification fails: actions/upload-artifact@v7 name `verification-runs-${{ github.run_id }}`, path `.local_tmp_files/runs/`, if-no-files-found: ignore
+  - if verification fails: actions/upload-artifact@v7 name `verification-runs-${{ github.run_id }}`, path the diagnostic allowlist below, if-no-files-found: ignore
   - scripts/build --version "$VERSION"
   - ditto -c -k --keepParent build/bin/GoMarkEdit.app "GoMarkEdit-$VERSION-macos-arm64.zip"
   - if tag push (ON_MASTER by the guard): gh release create "$GITHUB_REF_NAME" "GoMarkEdit-$VERSION-macos-arm64.zip" --title "GoMarkEdit $VERSION" --notes-from-tag (GITHUB_TOKEN only; pre-release when the tag carries a suffix)
@@ -61,6 +61,29 @@ architecture map's release steps state.
   stages.
 - The workflow makes no network assertion about the application (FR-028 is verified on the developer
   host).
+
+## Verification failure-artifact allowlist
+
+Both verification upload steps use `actions/upload-artifact@v7` with these multiple path patterns:
+
+```text
+.local_tmp_files/runs/**/summary.json
+.local_tmp_files/runs/**/lint.json
+.local_tmp_files/runs/**/format.json
+.local_tmp_files/runs/**/build.json
+.local_tmp_files/runs/**/unit.json
+.local_tmp_files/runs/**/integration.json
+.local_tmp_files/runs/**/e2e.json
+.local_tmp_files/runs/**/reports/**
+.local_tmp_files/runs/**/*.log
+.local_tmp_files/runs/**/*.stderr
+.local_tmp_files/runs/**/frontend-*.json
+```
+
+Because `.local_tmp_files` is hidden, both upload steps also set `include-hidden-files: true`. This
+retains stage logs and records, raw and normalized reports, and Jest/Playwright/Go test reports. It
+intentionally excludes compiler, linter, Jest, Playwright and TypeScript build-info caches;
+`if-no-files-found: ignore` preserves the existing failure-step behavior.
 
 ## Acceptance evidence (SC-006, SC-015)
 

@@ -15,7 +15,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
 type goSource struct {
@@ -51,7 +50,6 @@ func main() {
 
 	findings := make([]finding, 0)
 	findings = append(findings, checkBoundHandlers(root, sources)...)
-	findings = append(findings, checkMigrations(root)...)
 	findings = append(findings, checkCallerlessExports(root, sources)...)
 
 	sort.Slice(findings, func(i, j int) bool {
@@ -331,86 +329,6 @@ func isAddressOfIdentifier(arguments []ast.Expr, name string) bool {
 	}
 	address, ok := arguments[0].(*ast.UnaryExpr)
 	return ok && address.Op == token.AND && identifierName(address.X) == name
-}
-
-func checkMigrations(root string) []finding {
-	base, err := gitOutput(root, "merge-base", "HEAD", "app_version_1_codebase")
-	if err != nil {
-		return []finding{{rule: "L5", path: "internal/db/migrations", text: "cannot resolve merge base with app_version_1_codebase"}}
-	}
-	base = strings.TrimSpace(base)
-	basePaths, err := gitLines(root, "ls-tree", "-r", "--name-only", base, "--", "internal/db/migrations")
-	if err != nil {
-		return []finding{{rule: "L5", path: "internal/db/migrations", text: "cannot list migration files at the merge base"}}
-	}
-	currentPaths, err := gitLines(root, "ls-files", "--", "internal/db/migrations")
-	if err != nil {
-		return []finding{{rule: "L5", path: "internal/db/migrations", text: "cannot list tracked migration files"}}
-	}
-	current := make(map[string]bool, len(currentPaths))
-	for _, path := range currentPaths {
-		current[path] = true
-	}
-
-	findings := make([]finding, 0)
-	for _, path := range basePaths {
-		if !current[path] {
-			findings = append(findings, finding{rule: "L5", path: path, text: "migration was deleted"})
-			continue
-		}
-		baseContent, err := gitOutputBytes(root, "show", base+":"+path)
-		if err != nil {
-			findings = append(findings, finding{rule: "L5", path: path, text: "cannot read migration at the merge base"})
-			continue
-		}
-		currentContent, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
-		if err != nil {
-			findings = append(findings, finding{rule: "L5", path: path, text: "cannot read current migration"})
-			continue
-		}
-		if normalizeWhitespace(string(baseContent)) != normalizeWhitespace(string(currentContent)) {
-			findings = append(findings, finding{rule: "L5", path: path, text: "migration differs from app_version_1_codebase"})
-		}
-	}
-	return findings
-}
-
-func gitLines(root string, arguments ...string) ([]string, error) {
-	output, err := gitOutput(root, arguments...)
-	if err != nil {
-		return nil, err
-	}
-	lines := strings.Split(strings.TrimSpace(output), "\n")
-	if len(lines) == 1 && lines[0] == "" {
-		return nil, nil
-	}
-	return lines, nil
-}
-
-func gitOutput(root string, arguments ...string) (string, error) {
-	return stringMust(gitOutputBytes(root, arguments...))
-}
-
-func gitOutputBytes(root string, arguments ...string) ([]byte, error) {
-	command := exec.Command("git", arguments...)
-	command.Dir = root
-	return command.Output()
-}
-
-func stringMust(output []byte, err error) (string, error) {
-	if err != nil {
-		return "", err
-	}
-	return string(output), nil
-}
-
-func normalizeWhitespace(value string) string {
-	return strings.Map(func(character rune) rune {
-		if unicode.IsSpace(character) {
-			return -1
-		}
-		return character
-	}, value)
 }
 
 func checkCallerlessExports(root string, sources []goSource) []finding {

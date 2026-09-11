@@ -79,7 +79,7 @@
 - [x] CHK028 Are the Spec Kit-owned paths (`.specify/**`, `speckit-*` skills, extensions) excluded from every plan action, including formatting, deletion and instruction rewriting? [Boundary, Spec §FR-077, §Assumptions]
   - Finding (2026-09-09): Spec Kit paths excluded from formatting, deletion and rewriting; the extension output docs/superpowers/ and docs/reference/ now have a disposition (decision 7, Retained line).
 - [x] CHK029 Does the plan preserve the "what already works and must stay" list (backend authority, adapter-only bindings, handler shape, tokenised colours, CGO-free backend and SQLite, atomic writes, sanitisation, bounded inputs) without a design that would alter any of them? [Negative scope, Spec §Background]
-  - Finding (2026-09-09): Each "must stay" item has a preserving element: L8, L4, L18, L26, R11, L5, sanitisation unchanged, bounds.
+  - Finding (2026-09-09): Each "must stay" item has a preserving element: L8, L4, L18, L26, R11, the database integration coverage, sanitisation unchanged, bounds.
 - [x] CHK030 Are the retained artefacts of FR-082 (product icons under `build/`, the tab-icon SVG, the audit report, the 2026-07-28 archive) explicitly excluded from the plan's removal list? [Boundary, Spec §FR-082, Plan §Structure Decision]
   - Finding (2026-09-09): A Retained (FR-082) line now names the icons, the tab-icon SVG, the audit report, the 2026-07-28 archive, docs/reference and docs/superpowers.
 - [x] CHK031 Is the deletion order the spec's edge case demands (mock and parity stack only after the real-backend E2E passes; `docs/delivery` only after the map carries its decisions) stated as binding in the task-group order? [Sequencing, Spec §Edge Cases, §FR-032, Plan §G7, §G8]

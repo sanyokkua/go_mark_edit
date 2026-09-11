@@ -189,6 +189,9 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   `scripts/baseline`. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
   never zero; warning counts do not fail a stage. `specs/*/evidence/` is disposable generated
   output, ignored by Git and formatting checks, and is not recreated by verification.
+- CI failure uploads allowlist stage JSON records, logs, stderr captures, normalized and raw reports,
+  and Jest/Playwright/Go test reports from `.local_tmp_files/runs/`; compiler, linter, Jest,
+  Playwright and TypeScript build-info caches are not uploaded.
 
 The Lint stage's owners are `tools/archlint/`, `frontend/eslint.config.js`,
 `frontend/stylelint.config.mjs`, `tools/lint/tokens.mjs`, `tools/lint/repo-rules.mjs` and the declared
@@ -397,7 +400,7 @@ The owner decisions that shaped this refactor are recorded here so they are not 
 The seven planning decisions are part of the implementation record:
 
 1. The formatter covers tracked source and documents, including SQL and archived material; migration
-   comparison ignores whitespace so formatting does not look like a data migration.
+   application is owned by `internal/db` and is not compared against Git history by verification.
 2. The unused icon-processing helper is removed while the canonical source and generated icon assets
    remain.
 3. The late-completion test lever is a second process holding an exclusive transaction on the harness

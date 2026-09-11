@@ -69,7 +69,9 @@ error-code enum binding is unchanged.
 
 Rules: `Tx(func(tx) error)` wraps every group update (a settings group is one transaction); `Get`
 returns "absent" distinctly from a decode failure; unknown versions read as absent; rows the
-refactored build does not own are never rewritten (no migration, no compatibility test).
+refactored build does not own are never rewritten. Database startup applies the embedded
+`internal/db/migrations/0001_settings.sql`; no compatibility migration or archived-tree database
+test is required.
 
 ## BaselineRecord (`.local_tmp_files/baseline/<feature>.json`) — FR-064
 

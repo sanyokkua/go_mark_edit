@@ -782,3 +782,56 @@ void test('keeps baseline creation and comparison owned by scripts/baseline', ()
   );
   assert.match(baselineSource, /results\.mjs.*(?:baseline|compare)/s);
 });
+
+void test('does not require a migration baseline and allowlists CI diagnostics', () => {
+  const archlintSource = readFileSync(
+    join(repoRoot, 'tools/archlint/main.go'),
+    'utf8',
+  );
+  assert.doesNotMatch(archlintSource, /checkMigrations|app_version_1_codebase/);
+
+  const lintRules = readFileSync(
+    join(repoRoot, 'specs/004-codebase-refactoring/contracts/lint-rules.md'),
+    'utf8',
+  );
+  assert.doesNotMatch(lintRules, /^\|?\s*L5\s+\|/m);
+  assert.doesNotMatch(lintRules, /app_version_1_codebase/);
+
+  for (const workflowPath of [
+    '.github/workflows/push.yml',
+    '.github/workflows/release.yml',
+  ]) {
+    const workflow = readFileSync(join(repoRoot, workflowPath), 'utf8');
+    const artifactPath = workflow.match(
+      /name: verification-runs-[\s\S]*?path:\s*\|([\s\S]*?)if-no-files-found:/,
+    )?.[1];
+    assert.ok(
+      artifactPath,
+      `${workflowPath} must define an artifact allowlist`,
+    );
+    assert.match(workflow, /include-hidden-files:\s*true/);
+    for (const pattern of [
+      'summary.json',
+      'reports/',
+      '*.log',
+      '*.stderr',
+      'frontend-*.json',
+    ]) {
+      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      assert.match(artifactPath, new RegExp(escapedPattern, 'u'));
+    }
+    assert.doesNotMatch(artifactPath, /(?:cache|tsconfig\.node\.tsbuildinfo)/);
+  }
+
+  const ciContract = readFileSync(
+    join(repoRoot, 'specs/004-codebase-refactoring/contracts/ci-workflows.md'),
+    'utf8',
+  );
+  assert.doesNotMatch(ciContract, /app_version_1_codebase/);
+  assert.doesNotMatch(ciContract, /path [`']\.local_tmp_files\/runs\/[`']/);
+  assert.match(ciContract, /\.local_tmp_files\/runs\/\*\*\/reports\/\*\*/);
+  assert.match(
+    ciContract,
+    /compiler, linter, Jest, Playwright and TypeScript build-info/,
+  );
+});

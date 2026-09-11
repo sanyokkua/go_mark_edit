@@ -79,9 +79,9 @@ tracked text file. Prettier runs from the repository root with a root `.prettier
 `frontend/wailsjs/**` (generated bindings), `frontend/dist/**`, `build/bin/**` (build output),
 `**/node_modules/**`, the lockfiles `package-lock.json`, `go.sum`, and the `justfile` (planning
 decision 4: its only formatter would make `just` a stage dependency). `build/darwin/*.plist`,
-`build/windows/**` and `internal/db/migrations/*.sql` are formatted like any other source (the
-migration's text is source; its additive-only rule concerns the data it applies, so lint L5
-compares migrations by whitespace-normalised text). The first run is one reformat commit.
+`build/windows/**` and `internal/db/migrations/*.sql` are formatted like any other source because
+the migration text is source. Migration application is a runtime responsibility of `internal/db`,
+not a Git-history comparison in the Lint stage. The first run is one reformat commit.
 
 **Rationale**: `just fmt` formats less than half the repository today (424 Markdown files, 12 YAML,
 22 shell scripts, the `justfile` and all root JSON are untouched — _verified_), and the pre-commit
@@ -98,12 +98,11 @@ rejected (two configs drift); treating migrations as immutable — rejected by t
 
 - Go import direction is enforced by golangci-lint `depguard` in `.golangci.yml`, not by a bespoke
   scanner: the linter already parses imports and reports locations.
-- Bound-handler shape, migration immutability and callerless exports are one Go program,
-  `tools/archlint` (`go/ast`, `go/packages`). It derives the set of bound types from the `Bind:`
-  list in `main.go` instead of a type-name suffix, compares migrations against the merge base with
-  `app_version_1_codebase` by whitespace-normalised text (a clean `HEAD` diff is always empty; the
-  reformat of R4 is not a modification), and is the single owner of the callerless-export rule
-  (golangci-lint's `unused` does not report exported identifiers).
+- Bound-handler shape and callerless exports are one Go program, `tools/archlint` (`go/ast`). It
+  derives the set of bound types from the `Bind:` list in `main.go` instead of a type-name suffix
+  and is the single owner of the callerless-export rule (golangci-lint's `unused` does not report
+  exported identifiers). The embedded settings migration remains owned by `internal/db` and is
+  exercised by the database integration tests; archlint does not inspect Git migration history.
 - TypeScript linting becomes typed (`typescript-eslint` `recommendedTypeChecked` with
   `projectService`), each file owned by exactly one tsconfig (`tsconfig.json` for `src/`,
   `tsconfig.test.json` for `tests/`, `tsconfig.node.json` for configs and `tools/`), in the single
