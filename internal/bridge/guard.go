@@ -24,6 +24,11 @@ func Guard(result any) {
 	setLegacyEnvelope(result)
 }
 
+func runGuarded(result any, run func()) {
+	defer Guard(result)
+	run()
+}
+
 func setFailure(target any, failure apperr.Failure) bool {
 	value := reflect.ValueOf(target)
 	if !value.IsValid() || value.Kind() != reflect.Pointer || value.IsNil() {

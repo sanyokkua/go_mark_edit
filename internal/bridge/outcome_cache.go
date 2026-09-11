@@ -60,10 +60,8 @@ func Once[T any](cache *OutcomeCache, request Request, fn func() T) (outcome T) 
 		))
 	}
 	if cache == nil {
-		defer func() { outcome = withRequestID(outcome, request.ID) }()
-		defer Guard(&outcome)
-		outcome = fn()
-		return outcome
+		runGuarded(&outcome, func() { outcome = fn() })
+		return withRequestID(outcome, request.ID)
 	}
 
 	entry, owner := cache.begin(request.ID)
@@ -77,10 +75,9 @@ func Once[T any](cache *OutcomeCache, request Request, fn func() T) (outcome T) 
 		return outcome
 	}
 
-	defer func() { cache.complete(entry, outcome) }()
-	defer func() { outcome = withRequestID(outcome, request.ID) }()
-	defer Guard(&outcome)
-	outcome = withRequestID(fn(), request.ID)
+	runGuarded(&outcome, func() { outcome = fn() })
+	outcome = withRequestID(outcome, request.ID)
+	cache.complete(entry, outcome)
 	return outcome
 }
 

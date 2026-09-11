@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,6 +14,26 @@ import (
 
 type cacheOutcome struct {
 	Value int
+}
+
+func assertInternalPanicOutcome(t *testing.T, outcome apperr.VoidResult, requestID string) {
+	t.Helper()
+	want := apperr.Failure{
+		Category:    apperr.ClassifiedInternal,
+		Subject:     "bridge",
+		Message:     "The operation could not be completed.",
+		Remediation: apperr.RemediationNone,
+		ID:          requestID,
+	}
+	if outcome.Failure != want {
+		t.Fatal("panic outcome did not contain the expected request-identified internal failure")
+	}
+	if outcome.Error == nil {
+		t.Fatal("panic outcome did not contain the legacy wire error")
+	}
+	if outcome.Error.Code != apperr.CodeInternal || !outcome.Error.Retryable {
+		t.Fatal("panic outcome legacy wire error was not retryable and internal")
+	}
 }
 
 // A request carries its identity under the bridge's id field, and an empty
@@ -121,9 +142,67 @@ func TestOutcomeCacheStoresInternalFailureWhenCommandPanics(t *testing.T) {
 	if calls != 1 {
 		t.Fatalf("panicking request executed %d times, want 1", calls)
 	}
-	if !reflect.DeepEqual(first, second) || second.Category != apperr.ClassifiedInternal || second.ID != request.ID {
-		t.Fatalf("cached panic outcome first=%+v second=%+v, want one internal result with id %q", first, second, request.ID)
+	assertInternalPanicOutcome(t, first, request.ID)
+	assertInternalPanicOutcome(t, second, request.ID)
+}
+
+// A caller already waiting on a panicking command receives the finalized
+// internal failure and the cache does not execute the duplicate command.
+func TestOutcomeCacheCompletesInFlightWaiterWhenCommandPanics(t *testing.T) {
+	cache := bridge.NewOutcomeCache()
+	request := bridge.Request{ID: "in-flight-panic"}
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+
+	firstDone := make(chan apperr.VoidResult, 1)
+	go func() {
+		firstDone <- bridge.Once(cache, request, func() apperr.VoidResult {
+			calls.Add(1)
+			close(started)
+			<-release
+			panic("private implementation detail")
+		})
+	}()
+	<-started
+
+	secondDone := make(chan apperr.VoidResult, 1)
+	go func() {
+		secondDone <- bridge.Once(cache, request, func() apperr.VoidResult {
+			calls.Add(1)
+			return apperr.VoidResult{}
+		})
+	}()
+	select {
+	case <-secondDone:
+		t.Fatal("in-flight waiter returned before the panicking command completed")
+	case <-time.After(25 * time.Millisecond):
 	}
+
+	close(release)
+	first := <-firstDone
+	second := <-secondDone
+	if calls.Load() != 1 {
+		t.Fatalf("panicking in-flight request executed %d times, want 1", calls.Load())
+	}
+	assertInternalPanicOutcome(t, first, request.ID)
+	assertInternalPanicOutcome(t, second, request.ID)
+}
+
+// Disabling outcome retention does not disable panic conversion or request
+// identity on the returned failure.
+func TestOutcomeCacheWithoutCacheReturnsInternalFailureWhenCommandPanics(t *testing.T) {
+	request := bridge.Request{ID: "uncached-panic"}
+	calls := 0
+	result := bridge.Once(nil, request, func() apperr.VoidResult {
+		calls++
+		panic("private implementation detail")
+	})
+
+	if calls != 1 {
+		t.Fatalf("uncached panicking request executed %d times, want 1", calls)
+	}
+	assertInternalPanicOutcome(t, result, request.ID)
 }
 
 // A classified failure uses a safe subject and the request identity is added
