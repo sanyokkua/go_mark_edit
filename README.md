@@ -1,40 +1,45 @@
 # GoMarkEdit
 
-A native, offline, cross-platform Markdown editor and viewer. One binary: a Go backend (Wails v2)
-serving a React application in the operating system's own webview.
+GoMarkEdit is a native, offline-first Markdown editor and viewer. It is one Wails v2 binary: a Go
+backend owns application state, local files, persistence and native integration, while a React
+frontend renders the editor, preview and workspace controls.
 
-It works with the network off, it sends nothing anywhere, and it has no telemetry and no auto-update.
-The one exception, once the AI assistant exists, is a request you explicitly ask for, to the provider
-you configured — and the default provider is a local one.
+The product works without an internet connection. It makes no background network request, has no
+telemetry and has no automatic update path. A future provider may use the network only after an
+explicit user action and under that feature's policy.
 
-MIT licensed.
-
-## Running it
+## Run it
 
 ```bash
-just setup   # install Go and frontend dependencies, and the git hooks
-just dev     # run it, with hot reload and the real Go backend
-just check   # everything CI runs
+just setup
+just dev
+just verify
 ```
 
-`just --list` shows the rest.
+`just --list` shows the aliases. The underlying entry points are `scripts/build`, `scripts/test`,
+`scripts/verify`, `scripts/format` and `scripts/baseline`.
 
-## The specification
+## Read first
 
-Everything about what this software does, how it is built, and what to build next is in
-**[`docs/delivery/`](docs/delivery/)**. Start with
-[`docs/delivery/README.md`](docs/delivery/README.md).
+The active feature is selected by `.specify/feature.json`. Its current artifacts are in
+[`specs/004-codebase-refactoring/`](specs/004-codebase-refactoring/): read `spec.md`, `plan.md`,
+`tasks.md` and the relevant files under `contracts/` before changing behaviour.
 
-- **What it does** — [`spec/product/`](docs/delivery/spec/product/), one file per capability, in plain
-  prose. Each is complete on its own.
-- **What it looks like** — [`spec/surface/mockup.html`](docs/delivery/spec/surface/mockup.html), one
-  self-contained file showing all 44 screens in three themes across light and dark. Open it in a
-  browser.
-- **How it is built** — [`architecture/README.md`](docs/delivery/architecture/README.md), one page.
-- **What is next** — [`plan/roadmap.md`](docs/delivery/plan/roadmap.md).
+The repository-wide architecture authority is [`docs/architecture.md`](docs/architecture.md). It
+records owners, shared-component consumers, document lifecycle, persistence, shutdown, verification
+walkthrough steps and durable decisions.
 
-`docs/reference/` is descriptive background, not a specification.
+The former delivery tree is preserved as historical evidence in
+[`docs/_archive-2026-09-delivery/`](docs/_archive-2026-09-delivery/). It is not a competing
+specification; new work follows the active feature artifacts and the architecture map.
 
-## Working on it
+## Contributing
 
-[`AGENTS.md`](AGENTS.md) is the instruction file for anyone — or anything — writing code here.
+[`AGENTS.md`](AGENTS.md) contains the working instructions for contributors and coding agents.
+`CLAUDE.md` and `.github/copilot-instructions.md` are compatibility pointers to those instructions.
+
+Start each task by finding the existing owner and its consumers, then run the relevant verification
+stage. Before the first implementation edit, capture the baseline with `scripts/baseline`; at close,
+run the six-stage `scripts/verify` flow and `scripts/baseline --compare`.
+
+MIT licensed.

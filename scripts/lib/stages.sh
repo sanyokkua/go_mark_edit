@@ -19,7 +19,7 @@ run_lint_stage() {
   fi
   printf '\n'
   run_command 'tokens' node tools/lint/tokens.mjs || failed=1
-  run_command 'repo-rules' node tools/lint/repo-rules.mjs || failed=1
+  run_command 'repo-rules' node tools/lint/repo-rules.mjs --docs || failed=1
 
   return "$failed"
 }

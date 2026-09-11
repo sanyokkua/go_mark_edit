@@ -37,10 +37,11 @@ const referenceRoots = [
 
 function parseArguments(argumentsList) {
   let root = defaultRoot;
-  let includeDocs = process.env.REPO_RULES_INCLUDE_DOCS === '1';
+  let includeDocs = true;
   for (let index = 0; index < argumentsList.length; index += 1) {
     const argument = argumentsList[index];
-    if (argument === '--root') root = resolve(process.cwd(), argumentsList[++index]);
+    if (argument === '--root')
+      root = resolve(process.cwd(), argumentsList[++index]);
     if (argument === '--docs') includeDocs = true;
   }
   return { root, includeDocs };
@@ -140,8 +141,14 @@ function pathCandidate(candidate) {
   const cleaned = cleanCandidate(candidate);
   if (!cleaned || cleaned.includes('<') || cleaned.includes('*')) return null;
   if (/^(?:https?:)?\/\//i.test(cleaned)) return null;
-  if (referenceRoots.some((prefix) => cleaned.startsWith(prefix))) return cleaned;
-  if (/^(?:README|AGENTS|CLAUDE)\.md$|^\.golangci\.yml$|^go\.mod$|^justfile$|^package\.json$/.test(cleaned)) return cleaned;
+  if (referenceRoots.some((prefix) => cleaned.startsWith(prefix)))
+    return cleaned;
+  if (
+    /^(?:README|AGENTS|CLAUDE)\.md$|^\.golangci\.yml$|^go\.mod$|^justfile$|^package\.json$/.test(
+      cleaned,
+    )
+  )
+    return cleaned;
   return null;
 }
 
@@ -150,7 +157,8 @@ async function checkReferences(root, docs) {
   const candidates = new Map();
   const add = (candidate, path, line) => {
     const cleaned = pathCandidate(candidate);
-    if (cleaned && !candidates.has(cleaned)) candidates.set(cleaned, { path, line });
+    if (cleaned && !candidates.has(cleaned))
+      candidates.set(cleaned, { path, line });
   };
 
   for (const path of docs) {
@@ -197,12 +205,17 @@ async function checkReferences(root, docs) {
 const { root, includeDocs } = parseArguments(process.argv.slice(2));
 const findings = [];
 findings.push(
-  ...(await scanTextFiles(root, (path) => isSourceFile(path) || isTestFile(path), 'L22')),
+  ...(await scanTextFiles(
+    root,
+    (path) => isSourceFile(path) || isTestFile(path),
+    'L22',
+  )),
 );
 
 for await (const path of filesUnder(root)) {
   const relativeName = relativePath(root, path);
-  if (isExcluded(relativeName) || !isIllegalTestPlacement(relativeName)) continue;
+  if (isExcluded(relativeName) || !isIllegalTestPlacement(relativeName))
+    continue;
   findings.push({
     rule: 'L23',
     path: relativeName,
@@ -222,8 +235,15 @@ if (includeDocs) {
       // A missing architecture map is reported by the task that creates it.
     }
   }
-  findings.push(...(await scanTextFiles(root, (path) => existingDocs.includes(path), 'L22')));
-  if (existingDocs.length > 0) findings.push(...(await checkReferences(root, existingDocs)));
+  findings.push(
+    ...(await scanTextFiles(
+      root,
+      (path) => existingDocs.includes(path),
+      'L22',
+    )),
+  );
+  if (existingDocs.length > 0)
+    findings.push(...(await checkReferences(root, existingDocs)));
 }
 
 findings.sort((left, right) => {
@@ -232,7 +252,8 @@ findings.sort((left, right) => {
 });
 
 for (const finding of findings) {
-  const location = finding.line > 0 ? `${finding.path}:${finding.line}` : finding.path;
+  const location =
+    finding.line > 0 ? `${finding.path}:${finding.line}` : finding.path;
   console.log(`repo-rules ${finding.rule} ${location}: ${finding.text}`);
 }
 if (findings.length > 0) {
