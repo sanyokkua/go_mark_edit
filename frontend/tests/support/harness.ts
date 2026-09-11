@@ -80,6 +80,27 @@ async function processSnapshot(): Promise<ProcessSnapshot[]> {
   return parseProcessSnapshot(stdout);
 }
 
+function descendantProcessIDs(
+  rootPID: number,
+  processes: readonly ProcessSnapshot[],
+): number[] {
+  const descendants: number[] = [];
+  const parents = [rootPID];
+  for (const parentPID of parents) {
+    for (const process of processes) {
+      if (
+        process.parentPid !== parentPID ||
+        descendants.includes(process.pid)
+      ) {
+        continue;
+      }
+      descendants.push(process.pid);
+      parents.push(process.pid);
+    }
+  }
+  return descendants.reverse();
+}
+
 function isWailsInfrastructure(command: string): boolean {
   return /(?:^|[\s/])(?:wails|npm|node|vite|go|bash|zsh|sh)(?:$|[\s])/iu.test(
     command,
@@ -117,6 +138,14 @@ async function findAppChildPid(
 async function terminateProcessTree(child: WailsProcess | null): Promise<void> {
   if (child?.pid === undefined) return;
   const pid = child.pid;
+  const closed = new Promise<void>((resolvePromise) => {
+    const onClose = (): void => resolvePromise();
+    child.once('close', onClose);
+    if (child.exitCode !== null || child.signalCode !== null) {
+      child.off('close', onClose);
+      resolvePromise();
+    }
+  });
 
   if (process.platform === 'win32') {
     try {
@@ -125,6 +154,19 @@ async function terminateProcessTree(child: WailsProcess | null): Promise<void> {
       // The process may have exited between the liveness check and taskkill.
     }
   } else {
+    let descendantPIDs: number[] = [];
+    try {
+      descendantPIDs = descendantProcessIDs(pid, await processSnapshot());
+    } catch {
+      // Process-group termination remains available when inspection fails.
+    }
+    for (const descendantPID of descendantPIDs) {
+      try {
+        process.kill(descendantPID, 'SIGTERM');
+      } catch {
+        // The descendant may have exited with its parent.
+      }
+    }
     try {
       process.kill(-pid, 'SIGTERM');
     } catch {
@@ -137,10 +179,14 @@ async function terminateProcessTree(child: WailsProcess | null): Promise<void> {
     }
 
     const deadline = Date.now() + PROCESS_WAIT_TIMEOUT_MS;
-    while (processIsAlive(pid) && Date.now() < deadline) {
+    const processIDs = [pid, ...descendantPIDs];
+    while (
+      processIDs.some((processID) => processIsAlive(processID)) &&
+      Date.now() < deadline
+    ) {
       await sleep(100);
     }
-    if (processIsAlive(pid)) {
+    if (processIDs.some((processID) => processIsAlive(processID))) {
       try {
         process.kill(-pid, 'SIGKILL');
       } catch {
@@ -151,13 +197,22 @@ async function terminateProcessTree(child: WailsProcess | null): Promise<void> {
       } catch {
         // The process may have exited after the group kill.
       }
+      for (const descendantPID of descendantPIDs) {
+        try {
+          process.kill(descendantPID, 'SIGKILL');
+        } catch {
+          // The descendant may have exited after the group kill.
+        }
+      }
     }
   }
 
-  if (child.exitCode === null && child.signalCode === null) {
-    await new Promise<void>((resolvePromise) => {
-      child.once('close', () => resolvePromise());
-    });
+  const closedInTime = await Promise.race([
+    closed.then(() => true),
+    sleep(PROCESS_WAIT_TIMEOUT_MS).then(() => false),
+  ]);
+  if (!closedInTime) {
+    throw new Error(`wails dev process ${pid} did not close its streams`);
   }
 }
 

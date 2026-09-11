@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render as rtlRender,
   screen,
@@ -186,6 +187,48 @@ it('serializes rapid changes using the complete latest appearance choice', async
     expect(document.documentElement).toHaveAttribute('data-theme', 'glass');
     expect(document.documentElement).toHaveAttribute('data-mode', 'dark');
   });
+});
+
+it('keeps an acknowledged appearance when the startup read resolves stale', async (): Promise<void> => {
+  type Settings = Awaited<ReturnType<typeof settingsAdapter.getSettings>>;
+  let resolveSettings: ((settings: Settings) => void) | undefined;
+  const pendingSettings = new Promise<Settings>((resolve): void => {
+    resolveSettings = resolve;
+  });
+  getSettings.mockReturnValueOnce(pendingSettings);
+  render(<AppearanceHarness />);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
+  fireEvent.click(screen.getByRole('radio', { name: 'Dark' }));
+
+  await waitFor((): void => {
+    expect(document.documentElement).toHaveAttribute('data-mode', 'dark');
+    expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked();
+  });
+
+  await act(async (): Promise<void> => {
+    resolveSettings?.({
+      appearance: {
+        defaultOpenMode: 'editor',
+        mode: 'auto',
+        theme: 'material',
+      },
+      contentPrivacy: { remotePolicy: 'ask' },
+      markdown: {
+        bulletMarker: '-',
+        emphasisMarker: '*',
+        formatOnSave: false,
+        headingStyle: 'atx',
+        lintOnSave: false,
+        standard: 'gfm',
+      },
+    });
+    await pendingSettings;
+  });
+
+  expect(document.documentElement).toHaveAttribute('data-mode', 'dark');
+  expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked();
 });
 
 it('normalizes invalid persisted values before exposing controls or root attributes', async (): Promise<void> => {

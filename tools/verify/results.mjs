@@ -257,7 +257,7 @@ function commandTool(line) {
 
 function findingLocation(stage, line) {
   const match = line.match(
-    /((?:[^\s:]+\/)*[^\s:]+\.(?:go|ts|tsx|js|mjs|css|sh|md|json|yml|yaml))(?::\d+(?::\d+)?)?/,
+    /((?:[^\s:]+\/)*[^\s:]+\.(?:go|tsx|ts|js|mjs|css|sh|md|json|yml|yaml))(?::\d+(?::\d+)?)?/,
   );
   if (match) return match[1];
   return stage;
@@ -286,6 +286,8 @@ function parseFindings(stage, log) {
       )
     )
       continue;
+
+    if (/^(?:PASS|ok)\b/.test(line)) continue;
 
     if (line.startsWith('+ ')) {
       activeTool = commandTool(line);
@@ -665,6 +667,9 @@ function makeStage({
     return !report || report.status !== 'available';
   });
   const reportFindings = reports.flatMap((report) => report.findings || []);
+  const toolsWithReportFindings = new Set(
+    reportFindings.map((finding) => finding.tool),
+  );
   const effectiveExitCode =
     exitCode === 0 &&
     (unavailableGroups.length > 0 ||
@@ -676,7 +681,12 @@ function makeStage({
   const findings =
     effectiveExitCode === 0
       ? []
-      : [...parseFindings(name, log), ...reportFindings];
+      : [
+          ...parseFindings(name, log).filter(
+            (finding) => !toolsWithReportFindings.has(finding.tool),
+          ),
+          ...reportFindings,
+        ];
   for (const tool of unavailableReports) {
     findings.push({
       id: `report:${name}:${tool}:unavailable`,
@@ -711,10 +721,13 @@ function makeStage({
       message: `${group} test count includes ${count.failed} failed test${count.failed === 1 ? '' : 's'}`,
     });
   }
+  const uniqueFindings = [
+    ...new Map(findings.map((finding) => [finding.id, finding])).values(),
+  ];
   let verdict;
   if (effectiveExitCode === 0) verdict = 'clean';
   else if (['format', 'build'].includes(name)) verdict = 'failing';
-  else if (findings.length === 0) verdict = 'unreliable';
+  else if (uniqueFindings.length === 0) verdict = 'unreliable';
   else verdict = 'findings';
   return {
     name,
@@ -723,8 +736,8 @@ function makeStage({
     durationMs,
     verdict,
     ...(testCounts ? { testCounts } : {}),
-    collected: countCollected(log, findings, testCounts),
-    findings,
+    collected: countCollected(log, uniqueFindings, testCounts),
+    findings: uniqueFindings,
   };
 }
 

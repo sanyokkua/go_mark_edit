@@ -660,6 +660,159 @@ void test('parses Go JSON test events and prints only the useful failure summary
   }
 });
 
+void test('prefers structured failures without treating successful test names as findings', () => {
+  const runDirectory = fixtureDirectory();
+  try {
+    const reportsDirectory = join(runDirectory, 'reports');
+    mkdirSync(reportsDirectory, { recursive: true });
+    const normalizedGoReport = JSON.stringify({
+      tool: 'go-test',
+      status: 'unreliable',
+      exitCode: 1,
+      testCounts: {
+        total: 2,
+        passed: 0,
+        failed: 1,
+        skipped: 0,
+        todo: 0,
+        status: 'unreliable',
+      },
+      findings: [
+        {
+          id: 'go-test:example/unit/TestOutcome:TestOutcome',
+          tool: 'go-test',
+          location: 'example/unit/TestOutcome',
+          message: 'failed test TestOutcome',
+        },
+      ],
+    });
+    writeFileSync(
+      join(reportsDirectory, 'go-unit.jsonl.summary.json'),
+      normalizedGoReport,
+    );
+    writeFileSync(
+      join(reportsDirectory, 'go-unit-duplicate.summary.json'),
+      normalizedGoReport,
+    );
+    writeFileSync(
+      join(runDirectory, 'frontend-unit-jest.json'),
+      JSON.stringify({
+        numTotalTests: 2,
+        numPassedTests: 2,
+        numFailedTests: 0,
+        numPendingTests: 0,
+        numTodoTests: 0,
+      }),
+    );
+    writeFileSync(
+      join(runDirectory, 'unit.log'),
+      [
+        '+ Go backend unit tests',
+        'Go tests ........ UNRELIABLE',
+        '  example/unit/TestOutcome failed test TestOutcome',
+        '+ Jest frontend unit tests',
+        'PASS unit tests/unit/startupFailure.test.tsx',
+        'PASS unit tests/unit/utils/parseError.test.ts',
+      ].join('\n'),
+    );
+
+    const stage = runResults(
+      'stage',
+      '--name',
+      'unit',
+      '--command',
+      'scripts/test unit',
+      '--exit-code',
+      '1',
+      '--duration-ms',
+      '12',
+      '--log',
+      join(runDirectory, 'unit.log'),
+      '--reports-dir',
+      reportsDirectory,
+      '--output',
+      join(runDirectory, 'unit.json'),
+    );
+
+    assert.equal(stage.status, 1, stage.stderr);
+    const record = JSON.parse(
+      readFileSync(join(runDirectory, 'unit.json'), 'utf8'),
+    );
+    assert.deepEqual(
+      record.findings
+        .filter(
+          (finding) =>
+            !finding.id.startsWith('report:') &&
+            !finding.id.startsWith('test-count:'),
+        )
+        .map((finding) => finding.id),
+      ['go-test:example/unit/TestOutcome:TestOutcome'],
+    );
+    assert.equal(
+      record.findings.filter((finding) => finding.tool === 'jest').length,
+      0,
+    );
+    assert.ok(
+      record.findings.some(
+        (finding) => finding.id === 'report:unit:go-test:unavailable',
+      ),
+    );
+    assert.ok(
+      record.findings.some(
+        (finding) => finding.id === 'test-count:unit:backend:unavailable',
+      ),
+    );
+  } finally {
+    rmSync(runDirectory, { recursive: true, force: true });
+  }
+});
+
+void test('keeps raw failure fallback and the complete tsx location', () => {
+  const runDirectory = fixtureDirectory();
+  try {
+    writeFileSync(
+      join(runDirectory, 'build.log'),
+      [
+        '+ Jest frontend unit tests',
+        'PASS unit tests/unit/startupFailure.test.tsx',
+        'PASS unit tests/unit/utils/parseError.test.ts',
+        'FAIL unit tests/unit/renderFailure.test.tsx',
+      ].join('\n'),
+    );
+
+    const stage = runResults(
+      'stage',
+      '--name',
+      'build',
+      '--command',
+      'fake Jest command',
+      '--exit-code',
+      '1',
+      '--duration-ms',
+      '12',
+      '--log',
+      join(runDirectory, 'build.log'),
+      '--output',
+      join(runDirectory, 'build.json'),
+    );
+
+    assert.equal(stage.status, 1, stage.stderr);
+    const record = JSON.parse(
+      readFileSync(join(runDirectory, 'build.json'), 'utf8'),
+    );
+    assert.deepEqual(record.findings, [
+      {
+        id: 'jest:tests/unit/renderFailure.test.tsx:failure',
+        tool: 'jest',
+        location: 'tests/unit/renderFailure.test.tsx',
+        message: 'FAIL unit tests/unit/renderFailure.test.tsx',
+      },
+    ]);
+  } finally {
+    rmSync(runDirectory, { recursive: true, force: true });
+  }
+});
+
 void test('marks malformed reports unreliable instead of inventing zero counts', () => {
   const runDirectory = fixtureDirectory();
   try {

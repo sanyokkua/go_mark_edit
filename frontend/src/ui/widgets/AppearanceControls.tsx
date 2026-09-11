@@ -63,6 +63,8 @@ export const AppearanceSettingsProvider: React.FC<
     [onSettingsOpenChange],
   );
   const desiredAppearance = useRef(appearance);
+  const appearanceWriteStarted = useRef(false);
+  const appearanceWriteSucceeded = useRef(false);
   const [settingsReturnFocus, setSettingsReturnFocus] =
     useState<HTMLElement | null>(null);
   const settingsCommands = useMemo(
@@ -74,12 +76,18 @@ export const AppearanceSettingsProvider: React.FC<
     void settingsAdapter
       .getSettings()
       .then((settings): void => {
+        // GetSettings reads several persisted groups. A user write can finish
+        // while that startup read is still assembling its older snapshot.
+        if (appearanceWriteSucceeded.current) return;
+
         const next = {
           defaultOpenMode: settings.appearance.defaultOpenMode,
           mode: normalizeAppearance(settings.appearance.mode),
           theme: normalizeTheme(settings.appearance.theme),
         };
-        desiredAppearance.current = next;
+        if (!appearanceWriteStarted.current) {
+          desiredAppearance.current = next;
+        }
         setAppearance(next);
         apply(next);
         writeStartupThemeMirror(localStorage, {
@@ -112,10 +120,12 @@ export const AppearanceSettingsProvider: React.FC<
 
   const persist = useCallback(
     (patch: Partial<Pick<AppearanceState, 'mode' | 'theme'>>): void => {
+      appearanceWriteStarted.current = true;
       const next = { ...desiredAppearance.current, ...patch };
       desiredAppearance.current = next;
       void settingsCommands
         .updateAppearance(next, {}, (acknowledged): void => {
+          appearanceWriteSucceeded.current = true;
           const acknowledgedState: AppearanceState = {
             defaultOpenMode: acknowledged.defaultOpenMode,
             mode: normalizeAppearance(acknowledged.mode),
@@ -134,8 +144,10 @@ export const AppearanceSettingsProvider: React.FC<
   );
 
   const reset = useCallback((): void => {
+    appearanceWriteStarted.current = true;
     void settingsCommands
       .resetAppearance((acknowledged): void => {
+        appearanceWriteSucceeded.current = true;
         const acknowledgedState: AppearanceState = {
           defaultOpenMode: acknowledged.defaultOpenMode,
           mode: normalizeAppearance(acknowledged.mode),

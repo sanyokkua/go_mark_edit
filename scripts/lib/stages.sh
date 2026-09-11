@@ -47,6 +47,25 @@ run_integration_stage() {
   return "$failed"
 }
 
-run_e2e_stage() {
-  (cd "$REPO_ROOT/frontend" && run_command 'Playwright frontend E2E tests' env PLAYWRIGHT_OUTPUT_DIR="$RUN_DIR/frontend-e2e-results" PLAYWRIGHT_JSON_OUTPUT_NAME="$RUN_DIR/frontend-e2e-playwright.json" "$REPO_ROOT/frontend/node_modules/.bin/playwright" test --config playwright.config.ts --reporter=line,json)
-}
+run_e2e_stage() (
+  local state_dir dist_placeholder
+  state_dir="$(mktemp -d "${TMPDIR:-/tmp}/gomarkedit-e2e-state.XXXXXX")"
+  dist_placeholder="$REPO_ROOT/frontend/dist/.gitkeep"
+  if [[ -f "$dist_placeholder" ]]; then
+    cp "$dist_placeholder" "$state_dir/dist.gitkeep"
+  fi
+  cleanup_e2e_stage() {
+    if [[ -f "$state_dir/dist.gitkeep" ]]; then
+      mkdir -p "$(dirname "$dist_placeholder")"
+      cp "$state_dir/dist.gitkeep" "$dist_placeholder"
+    else
+      rm -f "$dist_placeholder"
+    fi
+    restore_tracked_modes
+    rm -rf "$state_dir"
+  }
+  trap cleanup_e2e_stage EXIT
+
+  cd "$REPO_ROOT/frontend"
+  run_command 'Playwright frontend E2E tests' env PLAYWRIGHT_OUTPUT_DIR="$RUN_DIR/frontend-e2e-results" PLAYWRIGHT_JSON_OUTPUT_NAME="$RUN_DIR/frontend-e2e-playwright.json" "$REPO_ROOT/frontend/node_modules/.bin/playwright" test --config playwright.config.ts --reporter=line,json
+)

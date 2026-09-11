@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import { render, screen } from '@testing-library/react';
 import { createElement } from 'react';
@@ -20,17 +21,15 @@ import MarkdownView from '../../../src/ui/components/MarkdownView';
 const readSource = (relativePath: string): string =>
   readFileSync(resolve(process.cwd(), relativePath), 'utf8');
 
-const emittedRuntimeAssets = (relativeDirectory: string): string[] => {
-  const directory = resolve(process.cwd(), relativeDirectory);
-
+const emittedRuntimeAssets = (directory: string): string[] => {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const relativePath = `${relativeDirectory}/${entry.name}`;
+    const assetPath = join(directory, entry.name);
 
     if (entry.isDirectory()) {
-      return emittedRuntimeAssets(relativePath);
+      return emittedRuntimeAssets(assetPath);
     }
 
-    return /\.(?:css|html|js)$/.test(entry.name) ? [relativePath] : [];
+    return /\.(?:css|html|js)$/.test(entry.name) ? [assetPath] : [];
   });
 };
 
@@ -89,41 +88,46 @@ it('keeps renderer dependencies and assets offline', () => {
   expect(productionSources).not.toMatch(remoteHTMLAssetSource);
   expect(productionSources).not.toMatch(remoteCSSAssetSource);
 
-  execFileSync(
-    process.platform === 'win32' ? 'npm.cmd' : 'npm',
-    ['run', 'build'],
-    {
-      cwd: process.cwd(),
-      env: { ...process.env, NODE_ENV: 'production' },
-      stdio: 'pipe',
-    },
-  );
+  const outputDirectory = mkdtempSync(join(tmpdir(), 'gomarkedit-assets-'));
+  try {
+    execFileSync(
+      process.platform === 'win32' ? 'npm.cmd' : 'npm',
+      ['run', 'build', '--', '--outDir', outputDirectory],
+      {
+        cwd: process.cwd(),
+        env: { ...process.env, NODE_ENV: 'production' },
+        stdio: 'pipe',
+      },
+    );
 
-  const runtimeAssets = emittedRuntimeAssets('dist');
-  expect(runtimeAssets).not.toHaveLength(0);
-  expect(runtimeAssets.some((asset) => asset.endsWith('.html'))).toBe(true);
-  expect(runtimeAssets.some((asset) => asset.endsWith('.css'))).toBe(true);
-  expect(runtimeAssets.some((asset) => asset.endsWith('.js'))).toBe(true);
+    const runtimeAssets = emittedRuntimeAssets(outputDirectory);
+    expect(runtimeAssets).not.toHaveLength(0);
+    expect(runtimeAssets.some((asset) => asset.endsWith('.html'))).toBe(true);
+    expect(runtimeAssets.some((asset) => asset.endsWith('.css'))).toBe(true);
+    expect(runtimeAssets.some((asset) => asset.endsWith('.js'))).toBe(true);
 
-  for (const asset of runtimeAssets) {
-    const contents = readSource(asset);
+    for (const asset of runtimeAssets) {
+      const contents = readFileSync(asset, 'utf8');
 
-    if (asset.endsWith('.html')) {
-      expect(contents).not.toMatch(remoteHTMLAssetSource);
-    }
-    if (asset.endsWith('.css')) {
-      expect(contents).not.toMatch(remoteCSSAssetSource);
-    }
-    if (asset.endsWith('.js')) {
-      expect(contents).not.toMatch(remoteImportSource);
-      expect(contents).not.toMatch(/\bXMLHttpRequest\s*\(/);
+      if (asset.endsWith('.html')) {
+        expect(contents).not.toMatch(remoteHTMLAssetSource);
+      }
+      if (asset.endsWith('.css')) {
+        expect(contents).not.toMatch(remoteCSSAssetSource);
+      }
+      if (asset.endsWith('.js')) {
+        expect(contents).not.toMatch(remoteImportSource);
+        expect(contents).not.toMatch(/\bXMLHttpRequest\s*\(/);
 
-      const fetchCalls = contents.match(/\bfetch\s*\(/g) ?? [];
-      if (fetchCalls.length > 0) {
-        expect(fetchCalls).toHaveLength(1);
-        expect(contents).toMatch(knownViteModulePreloadFetch);
+        const fetchCalls = contents.match(/\bfetch\s*\(/g) ?? [];
+        if (fetchCalls.length > 0) {
+          expect(fetchCalls).toHaveLength(1);
+          expect(contents).toMatch(knownViteModulePreloadFetch);
+        }
       }
     }
+  } finally {
+    rmSync(outputDirectory, { force: true, recursive: true });
   }
 });
 
