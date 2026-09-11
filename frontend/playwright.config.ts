@@ -7,7 +7,7 @@ export default defineConfig({
   retries: 0,
   timeout: 180_000,
   workers: 1,
-  outputDir: 'test-results',
+  outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR ?? 'test-results',
   use: {
     baseURL: 'http://localhost:34115',
     deviceScaleFactor: 1,

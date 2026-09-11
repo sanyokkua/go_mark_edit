@@ -10,12 +10,13 @@ on: push (all branches)
 runs-on: ubuntu-24.04
 timeout-minutes: 40
 steps:
-  - actions/checkout@v4
+  - actions/checkout@v7
   - sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev   # the Linux Wails toolchain
-  - actions/setup-go@v6      with go-version-file: go.mod
-  - actions/setup-node@v4    with node-version-file: .nvmrc, cache: npm, cache-dependency-path: frontend/package-lock.json
+  - actions/setup-go@v7      with go-version-file: go.mod
+  - actions/setup-node@v7    with node-version-file: .nvmrc, cache: npm, cache-dependency-path: frontend/package-lock.json
   - scripts/build setup
   - scripts/verify --skip e2e                                   # blocking; Build links the real Linux desktop artifact (tag webkit2_41)
+  - if failure: actions/upload-artifact@v7 name `verification-runs-${{ github.run_id }}`, path `.local_tmp_files/runs/`, if-no-files-found: ignore # preserve logs and stage records
 ```
 
 ## `release.yml` — release and dry run
@@ -28,19 +29,20 @@ runs-on: macos-latest        # arm64 today; the artifact name states the archite
 timeout-minutes: 60
 permissions: contents: write # gh release create with GITHUB_TOKEN
 steps:
-  - actions/checkout@v4 with fetch-depth: 0
+  - actions/checkout@v7 with fetch-depth: 0
   - derive VERSION: from the tag (vX.Y.Z → X.Y.Z) or the dispatch input; fail if it is not X.Y.Z
   - guard: ON_MASTER = git merge-base --is-ancestor "$GITHUB_SHA" origin/master; on a tag push that is
     not ON_MASTER the job ends here, successfully, with a notice naming the tag and the branch — no
     later step runs, nothing is built, nothing is published (FR-067, SC-015); every later step is
     conditioned on the guard's output
-  - actions/setup-go@v6, actions/setup-node@v4 (as above)
+  - actions/setup-go@v7, actions/setup-node@v7 (as above)
   - scripts/build setup --with-browser
   - scripts/verify                                              # all six stages, including the wails dev suite
+  - if verification fails: actions/upload-artifact@v7 name `verification-runs-${{ github.run_id }}`, path `.local_tmp_files/runs/`, if-no-files-found: ignore
   - scripts/build --version "$VERSION"
   - ditto -c -k --keepParent build/bin/GoMarkEdit.app "GoMarkEdit-$VERSION-macos-arm64.zip"
   - if tag push (ON_MASTER by the guard): gh release create "$GITHUB_REF_NAME" "GoMarkEdit-$VERSION-macos-arm64.zip" --title "GoMarkEdit $VERSION" --notes-from-tag (GITHUB_TOKEN only; pre-release when the tag carries a suffix)
-  - if dispatch: actions/upload-artifact@v4 with the zip (dry run)
+  - if dispatch: actions/upload-artifact@v7 with the zip (dry run)
 ```
 
 Release notes are the annotated tag's message; the owner writes the walkthrough sentence for the

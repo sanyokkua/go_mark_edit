@@ -7,6 +7,14 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const STAGES = ['lint', 'format', 'build', 'unit', 'integration', 'e2e'];
+const TEST_STAGES = new Set(['unit', 'integration', 'e2e']);
+const TEST_GROUPS = ['backend', 'frontend'];
+const REPORT_TOOLS = new Set([
+  'golangci-lint',
+  'eslint',
+  'stylelint',
+  'go-test',
+]);
 const FINDING_TOOLS = new Set([
   'golangci-lint',
   'archlint',
@@ -46,6 +54,170 @@ function parseArgs(argv) {
 
 function readText(file) {
   return fs.readFileSync(file, 'utf8');
+}
+
+function readJson(file) {
+  if (!fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(readText(file));
+  } catch {
+    return null;
+  }
+}
+
+function readFirstJsonLine(file) {
+  if (!fs.existsSync(file)) return null;
+  for (const rawLine of readText(file).split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    try {
+      return JSON.parse(line);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function readJsonLines(file) {
+  if (!fs.existsSync(file)) return { values: [], invalidLines: [] };
+  const values = [];
+  const invalidLines = [];
+  for (const [index, rawLine] of readText(file).split(/\r?\n/).entries()) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    try {
+      values.push(JSON.parse(line));
+    } catch {
+      invalidLines.push(index + 1);
+    }
+  }
+  return { values, invalidLines };
+}
+
+function reportFinding(tool, location, rule, message) {
+  return {
+    id: `${tool}:${location}:${rule || 'failure'}`,
+    tool,
+    location,
+    message: String(message || rule || 'failure').slice(0, 500),
+  };
+}
+
+function reportUnavailable(tool, exitCode, status = 'unavailable') {
+  return {
+    tool,
+    status,
+    exitCode,
+    counts: { files: null, errors: null, warnings: null },
+    findings: [],
+  };
+}
+
+function parseGolangciReport(report, exitCode) {
+  if (!report || !Array.isArray(report.Issues))
+    return reportUnavailable('golangci-lint', exitCode, 'unreliable');
+  const warnings = report.Issues.filter(
+    (issue) => String(issue?.Severity || '').toLowerCase() === 'warning',
+  ).length;
+  const findings = report.Issues.filter(
+    (issue) => String(issue?.Severity || '').toLowerCase() !== 'warning',
+  ).map((issue) => {
+    const position = issue?.Pos || {};
+    const file = position.Filename || 'golangci-lint';
+    const location = `${file}${position.Line ? `:${position.Line}` : ''}${position.Column ? `:${position.Column}` : ''}`;
+    return reportFinding(
+      'golangci-lint',
+      location,
+      issue.FromLinter,
+      issue.Text,
+    );
+  });
+  const files = new Set(
+    report.Issues.map((issue) => issue?.Pos?.Filename || 'golangci-lint'),
+  );
+  return {
+    tool: 'golangci-lint',
+    status: 'available',
+    exitCode,
+    counts: {
+      files: files.size,
+      errors: report.Issues.length - warnings,
+      warnings,
+    },
+    findings,
+  };
+}
+
+function parseEslintReport(report, exitCode) {
+  if (!Array.isArray(report))
+    return reportUnavailable('eslint', exitCode, 'unreliable');
+  const findings = [];
+  let errors = 0;
+  let warnings = 0;
+  for (const file of report) {
+    const messages = Array.isArray(file?.messages) ? file.messages : [];
+    errors += Number.isInteger(file?.errorCount)
+      ? file.errorCount
+      : messages.filter((message) => message?.severity >= 2 || message?.fatal)
+          .length;
+    warnings += Number.isInteger(file?.warningCount)
+      ? file.warningCount
+      : messages.filter((message) => message?.severity === 1).length;
+    for (const message of messages) {
+      if (message?.severity < 2 && !message?.fatal) continue;
+      const location = `${file.filePath || 'eslint'}${message.line ? `:${message.line}` : ''}${message.column ? `:${message.column}` : ''}`;
+      findings.push(
+        reportFinding('eslint', location, message.ruleId, message.message),
+      );
+    }
+  }
+  return {
+    tool: 'eslint',
+    status: 'available',
+    exitCode,
+    counts: { files: report.length, errors, warnings },
+    findings,
+  };
+}
+
+function parseStylelintReport(report, exitCode) {
+  if (!Array.isArray(report))
+    return reportUnavailable('stylelint', exitCode, 'unreliable');
+  const findings = [];
+  let errors = 0;
+  let warnings = 0;
+  for (const file of report) {
+    const parseErrors = Array.isArray(file?.parseErrors)
+      ? file.parseErrors
+      : [];
+    errors += parseErrors.length;
+    for (const parseError of parseErrors) {
+      const location = `${file.source || 'stylelint'}${parseError.line ? `:${parseError.line}` : ''}${parseError.column ? `:${parseError.column}` : ''}`;
+      findings.push(
+        reportFinding('stylelint', location, 'parse-error', parseError.text),
+      );
+    }
+    const fileWarnings = Array.isArray(file?.warnings) ? file.warnings : [];
+    for (const warning of fileWarnings) {
+      if (String(warning.severity || 'warning').toLowerCase() === 'error') {
+        errors += 1;
+        const location = `${file.source || 'stylelint'}${warning.line ? `:${warning.line}` : ''}${warning.column ? `:${warning.column}` : ''}`;
+        findings.push(
+          reportFinding('stylelint', location, warning.rule, warning.text),
+        );
+      } else {
+        warnings += 1;
+      }
+    }
+  }
+  return {
+    tool: 'stylelint',
+    status: 'available',
+    exitCode,
+    counts: { files: report.length, errors, warnings },
+    findings,
+  };
 }
 
 function findingTool(stage, line) {
@@ -107,6 +279,13 @@ function parseFindings(stage, log) {
   for (const rawLine of log.split('\n')) {
     const line = rawLine.trim();
     if (!line) continue;
+
+    if (
+      /^(?:golangci-lint|ESLint|Stylelint|Go tests)\s+\.+\s+(?:PASS|FAIL|SKIPPED|NOT RUN|UNAVAILABLE|UNRELIABLE)\b/.test(
+        line,
+      )
+    )
+      continue;
 
     if (line.startsWith('+ ')) {
       activeTool = commandTool(line);
@@ -170,9 +349,36 @@ function parseFindings(stage, log) {
   return [...unique.values()];
 }
 
-function goTestCollection(log) {
+function emptyTestCount(status = 'unavailable') {
+  return {
+    total: null,
+    passed: null,
+    failed: null,
+    skipped: null,
+    todo: null,
+    status,
+  };
+}
+
+function testCount({ total, passed, failed, skipped, todo = 0 }) {
+  const terminal = passed + failed + skipped + todo;
+  return {
+    total,
+    passed,
+    failed,
+    skipped,
+    todo,
+    status: total > 0 && terminal === total ? 'available' : 'unreliable',
+  };
+}
+
+function parseGoTestCounts(log) {
   let sawGoEvent = false;
-  let testRuns = 0;
+  let total = 0;
+  let passed = 0;
+  let failed = 0;
+  let skipped = 0;
+
   for (const rawLine of log.split('\n')) {
     const line = rawLine.trim();
     if (!line.startsWith('{')) continue;
@@ -186,20 +392,245 @@ function goTestCollection(log) {
       )
         continue;
       sawGoEvent = true;
-      if (event.Action === 'run' && typeof event.Test === 'string') {
-        testRuns += 1;
-      }
+      if (typeof event.Test !== 'string') continue;
+      if (event.Action === 'run') total += 1;
+      if (event.Action === 'pass') passed += 1;
+      if (event.Action === 'fail') failed += 1;
+      if (event.Action === 'skip') skipped += 1;
     } catch {
       // Non-JSON diagnostics can be interleaved with Go's JSON event stream.
     }
   }
-  return { sawGoEvent, testRuns };
+
+  if (!sawGoEvent) return null;
+  return testCount({ total, passed, failed, skipped });
 }
 
-function countCollected(stage, log, findings) {
-  if (stage === 'unit' || stage === 'integration') {
-    const go = goTestCollection(log);
-    if (go.sawGoEvent) return go.testRuns;
+function parseGoTestReport(input, exitCode) {
+  const { values, invalidLines } = readJsonLines(input);
+  if (values.length === 0 || invalidLines.length > 0)
+    return reportUnavailable('go-test', exitCode, 'unreliable');
+
+  const events = values.filter(
+    (event) =>
+      event &&
+      typeof event === 'object' &&
+      typeof event.Action === 'string' &&
+      typeof event.Package === 'string',
+  );
+  if (events.length !== values.length)
+    return reportUnavailable('go-test', exitCode, 'unreliable');
+
+  const testCounts = parseGoTestCounts(
+    events.map((event) => JSON.stringify(event)).join('\n'),
+  );
+  if (!testCounts) return reportUnavailable('go-test', exitCode, 'unreliable');
+
+  const findings = events
+    .filter(
+      (event) => event.Action === 'fail' && typeof event.Test === 'string',
+    )
+    .map((event) =>
+      reportFinding(
+        'go-test',
+        `${event.Package}/${event.Test}`,
+        event.Test,
+        `failed test ${event.Test}`,
+      ),
+    );
+  const packages = new Set(events.map((event) => event.Package));
+  return {
+    tool: 'go-test',
+    status: testCounts.status === 'available' ? 'available' : 'unreliable',
+    exitCode,
+    counts: { files: packages.size, errors: testCounts.failed, warnings: 0 },
+    testCounts,
+    findings,
+  };
+}
+
+function parseReport(tool, input, exitCode) {
+  if (!REPORT_TOOLS.has(tool)) fail(`unsupported report tool: ${tool}`);
+  if (!fs.existsSync(input)) return reportUnavailable(tool, exitCode);
+  if (tool === 'go-test') return parseGoTestReport(input, exitCode);
+  const report =
+    tool === 'golangci-lint'
+      ? readJson(input) || readFirstJsonLine(input)
+      : readJson(input);
+  if (tool === 'golangci-lint') return parseGolangciReport(report, exitCode);
+  if (tool === 'eslint') return parseEslintReport(report, exitCode);
+  return parseStylelintReport(report, exitCode);
+}
+
+function reportLabel(tool) {
+  if (tool === 'go-test') return 'Go tests';
+  if (tool === 'eslint') return 'ESLint';
+  if (tool === 'stylelint') return 'Stylelint';
+  return tool;
+}
+
+function pluralize(value, singular) {
+  return `${value} ${singular}${value === 1 ? '' : 's'}`;
+}
+
+function reportSummaryLine(report) {
+  if (report.status !== 'available')
+    return `${reportLabel(report.tool)} ........ ${report.status.toUpperCase()}`;
+  const result = report.exitCode === 0 ? 'PASS' : 'FAIL';
+  if (report.tool === 'go-test') {
+    const count = report.testCounts;
+    return `${reportLabel(report.tool)} ........ ${result} — ${count.total} total, ${count.passed} passed, ${count.failed} failed, ${count.skipped} skipped`;
+  }
+  const { files, errors, warnings } = report.counts;
+  if (report.tool === 'golangci-lint')
+    return `${reportLabel(report.tool)} ........ ${result} — ${pluralize(errors + warnings, 'issue')}, ${pluralize(errors, 'error')}, ${pluralize(warnings, 'warning')}`;
+  return `${reportLabel(report.tool)} ........ ${result} — ${pluralize(errors, 'error')}, ${pluralize(warnings, 'warning')}, ${pluralize(files, 'file')}`;
+}
+
+function formatReport(report) {
+  const lines = [reportSummaryLine(report)];
+  for (const finding of report.findings || [])
+    lines.push(`  ${finding.location} ${finding.message}`);
+  return `${lines.join('\n')}\n`;
+}
+
+function parseJestTestCounts(report) {
+  if (!report || typeof report !== 'object') return null;
+  const values = [
+    report.numTotalTests,
+    report.numPassedTests,
+    report.numFailedTests,
+    report.numPendingTests,
+    report.numTodoTests,
+  ];
+  if (values.every((value) => Number.isInteger(value))) {
+    const todo = report.numTodoTests;
+    const skipped = Math.max(0, report.numPendingTests - todo);
+    return testCount({
+      total: report.numTotalTests,
+      passed: report.numPassedTests,
+      failed: report.numFailedTests,
+      skipped,
+      todo,
+    });
+  }
+
+  const assertionResults = Array.isArray(report.testResults)
+    ? report.testResults.flatMap((suite) =>
+        Array.isArray(suite.assertionResults) ? suite.assertionResults : [],
+      )
+    : [];
+  if (assertionResults.length === 0) return null;
+  let passed = 0;
+  let failed = 0;
+  let skipped = 0;
+  let todo = 0;
+  for (const assertion of assertionResults) {
+    if (assertion.status === 'passed') passed += 1;
+    else if (assertion.status === 'failed') failed += 1;
+    else if (assertion.status === 'todo') todo += 1;
+    else skipped += 1;
+  }
+  return testCount({
+    total: assertionResults.length,
+    passed,
+    failed,
+    skipped,
+    todo,
+  });
+}
+
+function parsePlaywrightTestCounts(report) {
+  if (!report || typeof report !== 'object') return null;
+  const stats = report.stats;
+  if (stats && typeof stats === 'object') {
+    const expected = Number.isInteger(stats.expected) ? stats.expected : 0;
+    const unexpected = Number.isInteger(stats.unexpected)
+      ? stats.unexpected
+      : 0;
+    const flaky = Number.isInteger(stats.flaky) ? stats.flaky : 0;
+    const skipped = Number.isInteger(stats.skipped) ? stats.skipped : 0;
+    const total = expected + unexpected + flaky + skipped;
+    return testCount({
+      total,
+      passed: expected + flaky,
+      failed: unexpected,
+      skipped,
+    });
+  }
+
+  const counts = { total: 0, passed: 0, failed: 0, skipped: 0 };
+  function visit(suite) {
+    if (!suite || typeof suite !== 'object') return;
+    for (const spec of Array.isArray(suite.specs) ? suite.specs : []) {
+      for (const result of Array.isArray(spec.tests) ? spec.tests : []) {
+        counts.total += 1;
+        if (result.status === 'skipped') counts.skipped += 1;
+        else if (result.status === 'unexpected') counts.failed += 1;
+        else counts.passed += 1;
+      }
+    }
+    for (const child of Array.isArray(suite.suites) ? suite.suites : [])
+      visit(child);
+  }
+  for (const suite of Array.isArray(report.suites) ? report.suites : [])
+    visit(suite);
+  if (counts.total === 0) return null;
+  return testCount(counts);
+}
+
+function readNormalizedReports(reportsDir) {
+  if (!reportsDir || !fs.existsSync(reportsDir)) return [];
+  return fs
+    .readdirSync(reportsDir)
+    .filter((file) => file.endsWith('.summary.json'))
+    .map((file) => readJson(path.join(reportsDir, file)))
+    .filter((report) => report && REPORT_TOOLS.has(report.tool));
+}
+
+function collectTestCounts(stage, log, runDir, reports = []) {
+  if (!TEST_STAGES.has(stage)) return undefined;
+  if (stage === 'e2e') {
+    return {
+      frontend:
+        parsePlaywrightTestCounts(
+          readJson(path.join(runDir, 'frontend-e2e-playwright.json')),
+        ) || emptyTestCount(),
+    };
+  }
+  const backendReport = reports.find((report) => report.tool === 'go-test');
+  return {
+    backend:
+      backendReport?.testCounts || parseGoTestCounts(log) || emptyTestCount(),
+    frontend:
+      parseJestTestCounts(
+        readJson(path.join(runDir, `frontend-${stage}-jest.json`)),
+      ) || emptyTestCount(),
+  };
+}
+
+function countUnavailableGroups(testCounts) {
+  if (!testCounts) return [];
+  return Object.entries(testCounts)
+    .filter(
+      ([, count]) => count.status !== 'available' && count.status !== 'skipped',
+    )
+    .map(([group]) => group);
+}
+
+function failedTestGroups(testCounts) {
+  if (!testCounts) return [];
+  return Object.entries(testCounts).filter(
+    ([, count]) => count.status === 'available' && count.failed > 0,
+  );
+}
+
+function countCollected(log, findings, testCounts) {
+  if (testCounts) {
+    const totals = Object.values(testCounts)
+      .map((count) => count.total)
+      .filter((total) => Number.isInteger(total));
+    if (totals.length) return totals.reduce((total, value) => total + value, 0);
   }
   const markers = log.match(
     /(?:=== RUN|^ok |^PASS|^FAIL|Tests:|\bpassed\b|\bfailed\b|\btest\b)/gim,
@@ -209,20 +640,75 @@ function countCollected(stage, log, findings) {
   return log.trim() ? 1 : 0;
 }
 
-function makeStage({ name, command, exitCode, durationMs = 0, log = '' }) {
-  const go =
-    name === 'unit' || name === 'integration'
-      ? goTestCollection(log)
-      : { sawGoEvent: false, testRuns: 0 };
-  const zeroGoTests = exitCode === 0 && go.sawGoEvent && go.testRuns === 0;
-  const effectiveExitCode = zeroGoTests ? 1 : exitCode;
-  const findings = effectiveExitCode === 0 ? [] : parseFindings(name, log);
-  if (zeroGoTests) {
+function makeStage({
+  name,
+  command,
+  exitCode,
+  durationMs = 0,
+  log = '',
+  runDir = path.dirname(process.cwd()),
+  reportsDir,
+}) {
+  const reports = readNormalizedReports(reportsDir);
+  const testCounts = collectTestCounts(name, log, runDir, reports);
+  const unavailableGroups = countUnavailableGroups(testCounts);
+  const failedGroups = failedTestGroups(testCounts);
+  const requiredReports = !reportsDir
+    ? []
+    : name === 'lint'
+      ? ['golangci-lint', 'eslint', 'stylelint']
+      : name === 'unit' || name === 'integration'
+        ? ['go-test']
+        : [];
+  const unavailableReports = requiredReports.filter((tool) => {
+    const report = reports.find((entry) => entry.tool === tool);
+    return !report || report.status !== 'available';
+  });
+  const reportFindings = reports.flatMap((report) => report.findings || []);
+  const effectiveExitCode =
+    exitCode === 0 &&
+    (unavailableGroups.length > 0 ||
+      failedGroups.length > 0 ||
+      unavailableReports.length > 0 ||
+      reportFindings.length > 0)
+      ? 1
+      : exitCode;
+  const findings =
+    effectiveExitCode === 0
+      ? []
+      : [...parseFindings(name, log), ...reportFindings];
+  for (const tool of unavailableReports) {
     findings.push({
-      id: `go-test:${name}:zero-tests`,
-      tool: 'go-test',
-      location: name,
-      message: 'required Go package list collected zero tests',
+      id: `report:${name}:${tool}:unavailable`,
+      tool,
+      location: `${name}/${tool}`,
+      message: `${tool} report is unavailable or unreliable`,
+    });
+  }
+  for (const group of unavailableGroups) {
+    findings.push({
+      id: `test-count:${name}:${group}:unavailable`,
+      tool:
+        name === 'e2e'
+          ? 'playwright'
+          : group === 'backend'
+            ? 'go-test'
+            : 'jest',
+      location: `${name}/${group}`,
+      message: `${group} test count is ${testCounts[group].status}`,
+    });
+  }
+  for (const [group, count] of failedGroups) {
+    findings.push({
+      id: `test-count:${name}:${group}:failed`,
+      tool:
+        name === 'e2e'
+          ? 'playwright'
+          : group === 'backend'
+            ? 'go-test'
+            : 'jest',
+      location: `${name}/${group}`,
+      message: `${group} test count includes ${count.failed} failed test${count.failed === 1 ? '' : 's'}`,
     });
   }
   let verdict;
@@ -236,7 +722,8 @@ function makeStage({ name, command, exitCode, durationMs = 0, log = '' }) {
     exitCode: effectiveExitCode,
     durationMs,
     verdict,
-    collected: zeroGoTests ? 0 : countCollected(name, log, findings),
+    ...(testCounts ? { testCounts } : {}),
+    collected: countCollected(log, findings, testCounts),
     findings,
   };
 }
@@ -267,20 +754,44 @@ function stageCommand(args) {
     exitCode,
     durationMs,
     log: readText(logFile),
+    runDir: path.dirname(logFile),
+    reportsDir: args['reports-dir'],
   });
   writeJson(output, stage);
-  if (stage.exitCode !== exitCode) process.exit(stage.exitCode);
+  if (stage.exitCode !== 0) process.exit(stage.exitCode);
+}
+
+function reportCommand(args) {
+  const tool = args.tool;
+  const input = args.input;
+  const output = args.output;
+  const exitCode = Number(args['exit-code']);
+  if (
+    !REPORT_TOOLS.has(tool) ||
+    !input ||
+    !output ||
+    !Number.isInteger(exitCode)
+  )
+    fail('report requires --tool, --input, --output and --exit-code');
+  const report = parseReport(tool, input, exitCode);
+  writeJson(output, report);
+  process.stdout.write(formatReport(report));
+  if (report.status !== 'available' && exitCode === 0) process.exit(3);
+  if (exitCode !== 0) process.exit(exitCode);
 }
 
 function skippedCommand(args) {
   if (!STAGES.includes(args.name) || !args.output)
     fail('skipped requires --name and --output');
+  const testCounts =
+    args.name === 'e2e' ? { frontend: emptyTestCount('skipped') } : undefined;
   writeJson(args.output, {
     name: args.name,
     commands: [args.command || args.name],
     exitCode: 0,
     durationMs: 0,
     verdict: 'skipped',
+    ...(testCounts ? { testCounts } : {}),
     collected: 0,
     findings: [],
   });
@@ -288,19 +799,98 @@ function skippedCommand(args) {
 
 function stageFiles(runDir) {
   if (!fs.existsSync(runDir)) fail(`missing run directory: ${runDir}`);
-  const stages = new Map();
-  for (const file of fs.readdirSync(runDir)) {
-    if (!file.endsWith('.json') || file === 'summary.json') continue;
-    const value = JSON.parse(readText(path.join(runDir, file)));
-    if (STAGES.includes(value.name)) stages.set(value.name, value);
+  const stages = [];
+  for (const name of STAGES) {
+    const file = path.join(runDir, `${name}.json`);
+    if (!fs.existsSync(file)) continue;
+    let value;
+    try {
+      value = JSON.parse(readText(file));
+    } catch {
+      continue;
+    }
+    if (value.name === name) stages.push(value);
   }
-  return STAGES.filter((name) => stages.has(name)).map((name) =>
-    stages.get(name),
-  );
+  return stages;
+}
+
+function stageDisplayName(name) {
+  if (name === 'e2e') return 'E2E';
+  return name[0].toUpperCase() + name.slice(1);
+}
+
+function dottedLabel(label, width) {
+  const dots = Math.max(1, width - label.length - 1);
+  return `${label} ${'.'.repeat(dots)}`;
+}
+
+function formatTestCount(label, count) {
+  const prefix = `  ${dottedLabel(stageDisplayName(label), 18)} `;
+  if (!count) return `${prefix}UNAVAILABLE`;
+  if (count.status === 'skipped') return `${prefix}SKIPPED`;
+  if (count.status !== 'available')
+    return `${prefix}${count.status.toUpperCase()}`;
+  const todo = count.todo > 0 ? `, ${count.todo} todo` : '';
+  return `${prefix}${count.total} total, ${count.passed} passed, ${count.failed} failed, ${count.skipped} skipped${todo}`;
+}
+
+function formatSummary(summary, expectedStages = STAGES) {
+  const byName = new Map(summary.stages.map((stage) => [stage.name, stage]));
+  const lines = [`Run ${summary.runId}`];
+  let passed = 0;
+  let failed = 0;
+  let skipped = 0;
+  let notRun = 0;
+
+  for (const name of expectedStages) {
+    const stage = byName.get(name);
+    let status = 'NOT RUN';
+    if (stage) {
+      if (stage.verdict === 'skipped') {
+        status = stage.commands?.some((command) =>
+          command.includes('--skip e2e'),
+        )
+          ? 'SKIPPED (--skip e2e)'
+          : 'SKIPPED';
+        skipped += 1;
+      } else if (stage.exitCode === 0) {
+        status = 'PASS';
+        passed += 1;
+      } else {
+        status = 'FAIL';
+        failed += 1;
+      }
+    } else {
+      notRun += 1;
+    }
+    if (lines.length > 1) lines.push('');
+    lines.push(`${dottedLabel(stageDisplayName(name), 19)} ${status}`);
+    if (stage?.testCounts) {
+      for (const group of TEST_GROUPS) {
+        if (stage.testCounts[group])
+          lines.push(formatTestCount(group, stage.testCounts[group]));
+      }
+    }
+  }
+
+  const summaryParts = [
+    `${passed} passed`,
+    `${failed} failed`,
+    `${skipped} skipped`,
+  ];
+  if (notRun) summaryParts.push(`${notRun} not run`);
+  lines.push('');
+  lines.push(`Summary: ${summaryParts.join(', ')}`);
+  lines.push(`Duration: ${summary.durationMs} ms`);
+  return `${lines.join('\n')}\n`;
 }
 
 function summaryCommand(args) {
   const stages = stageFiles(args['run-dir']);
+  const expectedStages =
+    !args.expected || args.expected === 'all'
+      ? STAGES
+      : args.expected.split(',').filter((name) => STAGES.includes(name));
   const durationMs = stages.reduce(
     (total, stage) => total + stage.durationMs,
     0,
@@ -313,7 +903,7 @@ function summaryCommand(args) {
     stages,
   };
   if (args.output) writeJson(args.output, summary);
-  else process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+  process.stdout.write(formatSummary(summary, expectedStages));
   if (exitCode !== 0) process.exit(exitCode);
 }
 
@@ -336,9 +926,21 @@ function baselineCommand(args) {
   const stages = stageFiles(runDir);
   if (stages.length !== STAGES.length)
     fail('baseline requires all six stage records');
-  if (stages.some((stage) => stage.verdict === 'unreliable'))
+  const unreliableCount = stages.flatMap((stage) =>
+    Object.entries(stage.testCounts || {})
+      .filter(([, count]) => !['available', 'skipped'].includes(count.status))
+      .map(([group, count]) => `${stage.name}/${group} (${count.status})`),
+  );
+  if (
+    stages.some((stage) => stage.verdict === 'unreliable') ||
+    unreliableCount.length > 0
+  )
     fail(
-      'baseline is unreliable; a stage exited non-zero without parseable findings',
+      `baseline is unreliable; ${
+        unreliableCount.length > 0
+          ? `test counts unavailable or unreliable: ${unreliableCount.join(', ')}`
+          : 'a stage exited non-zero without parseable findings'
+      }`,
       3,
     );
   const diff = args['diff-file']
@@ -366,14 +968,12 @@ function baselineCommand(args) {
     golangciLint: commandOutput('golangci-lint', ['--version']),
     shfmt: commandOutput('shfmt', ['--version']),
     prettier: commandOutput(
-      'npx',
-      ['--no-install', 'prettier', '--version'],
-      frontendRoot,
+      path.join(frontendRoot, 'node_modules/.bin/prettier'),
+      ['--version'],
     ),
     playwright: commandOutput(
-      'npx',
-      ['--no-install', 'playwright', '--version'],
-      frontendRoot,
+      path.join(frontendRoot, 'node_modules/.bin/playwright'),
+      ['--version'],
     ),
   };
   const commit = spawnSync('git', ['rev-parse', 'HEAD'], {
@@ -447,6 +1047,9 @@ switch (command) {
   case 'stage':
     stageCommand(args);
     break;
+  case 'report':
+    reportCommand(args);
+    break;
   case 'skipped':
     skippedCommand(args);
     break;
@@ -460,5 +1063,7 @@ switch (command) {
     compareCommand(args);
     break;
   default:
-    fail('usage: results.mjs <stage|skipped|summary|baseline|compare> ...');
+    fail(
+      'usage: results.mjs <report|stage|skipped|summary|baseline|compare> ...',
+    );
 }

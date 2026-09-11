@@ -37,18 +37,70 @@ run_command() {
   if [[ -z "$command_name" ]]; then
     die "empty command for $label"
   fi
+  printf '+ %s\n' "$label"
   if ! command -v "$command_name" >/dev/null 2>&1; then
     printf 'missing tool: %s\n' "$command_name" >&2
     return 127
   fi
-  printf '+ %s\n' "$label"
   "$@"
 }
 
+run_reported_command() {
+  local label="$1"
+  local tool="$2"
+  local report_path="$3"
+  shift 3
+  local capture_stderr=false
+  if [[ "${1:-}" == '--capture-stderr' ]]; then
+    capture_stderr=true
+    shift
+  fi
+  local command_name="${1:-}"
+  local command_status=0
+  local parser_status=0
+  local stderr_path="${report_path}.stderr"
+
+  [[ -n "$command_name" ]] || die "empty command for $label"
+  mkdir -p "$(dirname "$report_path")"
+  printf '+ %s\n' "$label"
+  printf '[gomarkedit] raw report: %s\n' "$report_path"
+
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    printf 'missing tool: %s\n' "$command_name" >&2
+    : >"$report_path"
+    command_status=127
+  else
+    set +e
+    if [[ "$capture_stderr" == true ]]; then
+      "$@" >"$report_path" 2>"$stderr_path"
+    else
+      "$@" >"$report_path"
+    fi
+    command_status=$?
+    set -e
+  fi
+
+  if [[ "$capture_stderr" == true && ! -s "$report_path" && -s "$stderr_path" ]]; then
+    mv "$stderr_path" "$report_path"
+  fi
+
+  node "$REPO_ROOT/tools/verify/results.mjs" report \
+    --tool "$tool" \
+    --input "$report_path" \
+    --output "$report_path.summary.json" \
+    --exit-code "$command_status" || parser_status=$?
+
+  if [[ "$command_status" -ne 0 ]]; then
+    return "$command_status"
+  fi
+  return "$parser_status"
+}
+
 new_run_dir() {
-  local root="$REPO_ROOT/.specify/baseline/runs"
+  local kind="${1:-run}"
+  local root="$REPO_ROOT/.local_tmp_files/runs"
   local run_id
-  run_id="$(date -u '+%Y%m%dT%H%M%SZ')-$$"
+  run_id="${kind}-$(date -u '+%Y%m%dT%H%M%SZ')-$$"
   RUN_DIR="$root/$run_id"
   export RUN_DIR
   mkdir -p "$RUN_DIR"
@@ -66,12 +118,19 @@ capture_stage() {
   local finished_ms
   local duration_ms
 
+  mkdir -p "$RUN_DIR/reports"
   started_ms="$(node -e 'process.stdout.write(String(Date.now()))')"
 
-  if "$@" >"$log_path" 2>&1; then
-    exit_code=0
-  else
-    exit_code=$?
+  printf '\n=== %s ===\n' "$stage_name"
+  printf '[gomarkedit] %s\n' "$stage_command"
+
+  set +e
+  "$@" 2>&1 | tee "$log_path"
+  local -a pipeline_status=("${PIPESTATUS[@]}")
+  set -e
+  exit_code="${pipeline_status[0]}"
+  if [[ "$exit_code" -eq 0 && "${pipeline_status[1]:-0}" -ne 0 ]]; then
+    exit_code="${pipeline_status[1]}"
   fi
 
   finished_ms="$(node -e 'process.stdout.write(String(Date.now()))')"
@@ -84,6 +143,7 @@ capture_stage() {
     --exit-code "$exit_code" \
     --duration-ms "$duration_ms" \
     --log "$log_path" \
+    --reports-dir "$RUN_DIR/reports" \
     --output "$result_path" || record_status=$?
 
   if [[ "$record_status" -ne 0 && "$exit_code" -eq 0 ]]; then
@@ -94,6 +154,8 @@ capture_stage() {
 }
 
 write_skipped_stage() {
+  printf '\n=== %s (skipped) ===\n' "$1"
+  printf '[gomarkedit] %s\n' "$2"
   node "$REPO_ROOT/tools/verify/results.mjs" skipped \
     --name "$1" \
     --command "$2" \

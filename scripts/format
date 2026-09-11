@@ -25,8 +25,9 @@ done
 
 cd "$REPO_ROOT"
 require_command gofmt
-require_command npx
 require_command shfmt
+prettier_bin="$REPO_ROOT/frontend/node_modules/.bin/prettier"
+[[ -x "$prettier_bin" ]] || die "missing tool: $prettier_bin"
 
 go_files=()
 while IFS= read -r path; do
@@ -39,7 +40,7 @@ while IFS= read -r path; do
   [[ -z "$path" ]] && continue
   [[ -f "$REPO_ROOT/$path" && ! -L "$REPO_ROOT/$path" ]] || continue
   case "$path" in
-    .specify/* | .claude/skills/speckit-*/* | .agents/* | AGENTS.md | docs/delivery/spec/* | docs/delivery/architecture/* | docs/_archive-*/* | frontend/wailsjs/* | frontend/dist/* | build/bin/* | */node_modules/* | package-lock.json | go.sum | justfile) continue ;;
+    .specify/* | .claude/skills/speckit-*/* | .agents/* | AGENTS.md | docs/delivery/spec/* | docs/delivery/architecture/* | docs/_archive-*/* | frontend/wailsjs/* | frontend/dist/* | build/bin/* | */node_modules/* | specs/*/evidence/* | package-lock.json | go.sum | justfile) continue ;;
   esac
   case "$path" in
     *.md | *.yml | *.yaml | *.json | *.css | *.ts | *.tsx | *.js | *.mjs | *.cjs | *.html | *.sql) prettier_files+=("$path") ;;
@@ -56,7 +57,7 @@ while IFS= read -r path; do
   shell_files+=("$path")
 done < <(git ls-files --cached --others --exclude-standard '*.sh')
 
-prettier_command=(npx --no-install prettier)
+prettier_command=("$prettier_bin")
 run_prettier() {
   local args=()
   local argument

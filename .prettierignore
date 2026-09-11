@@ -8,3 +8,4 @@ build/bin/**
 package-lock.json
 go.sum
 justfile
+specs/*/evidence/**

@@ -29,14 +29,20 @@ in plan.md; the run makes no network call (verify with `nettop`/`lsof -i` while 
 time scripts/verify
 ```
 
-Expected: six lines Lint, Format, Build, Unit, Integration, E2E each `ok`; every tool appears once in
-`.specify/baseline/runs/<run-id>/summary.json`; the wall-clock time is recorded in plan.md at close.
+Expected: every stage header and human-readable runner summary is visible. Structured lint and Go
+test JSON is parsed into concise status, warning and actionable-error lines; the raw reports remain
+under `.local_tmp_files/runs/<run-id>/reports/`. The final table contains Lint, Format, Build, Unit,
+Integration and E2E with PASS/FAIL/SKIPPED/NOT RUN status; Unit and Integration also contain separate
+Backend and Frontend test-count lines. A missing or malformed required report is UNAVAILABLE or
+UNRELIABLE, never zero, and warning counts do not fail a stage. The complete report is written to
+`.local_tmp_files/runs/<run-id>/summary.json`; the wall-clock time is recorded in plan.md at close.
 
 ```bash
 scripts/verify lint; scripts/verify --skip e2e
 ```
 
-Expected: only the Lint stage runs; the second form runs five stages and prints `e2e: skipped`.
+Expected: only the Lint stage runs; the second form runs five stages and prints E2E as `SKIPPED`,
+never as PASS.
 
 ## 3. Format coverage (FR-063)
 
@@ -46,7 +52,9 @@ scripts/format --check
 
 Expected: exit 0 on a formatted tree; after touching the formatting of one file of each type
 (`.md`, `.yml`, `.json`, `.css`, `.ts`, `.go`, `.sh`, `.sql`) the check exits 1 naming that file;
-the ignore list is exactly the root `.prettierignore`.
+the ignore list is exactly the root `.prettierignore` plus the defense-in-depth
+`specs/*/evidence/` exclusion in `scripts/format`. Evidence directories are disposable and are not
+recreated by this command.
 
 ## 4. Baseline and comparison (FR-064)
 
@@ -55,7 +63,7 @@ scripts/baseline            # right after the scripts task, before any other edi
 scripts/baseline --compare  # at close
 ```
 
-Expected: `.specify/baseline/004-codebase-refactoring.json` validates against
+Expected: `.local_tmp_files/baseline/004-codebase-refactoring.json` validates against
 `contracts/baseline-record.schema.json`; a missing record or input makes `--compare` fail closed
 (non-zero, naming the input); at close every recorded finding is gone and nothing new appears (one
 sentence in plan.md).
@@ -123,7 +131,9 @@ git ls-files | grep -cE 'evidence/|surface/.*\.png$|^test-results/|^frontend/evi
 git ls-files -z | xargs -0 du -ch | tail -1
 ```
 
-Expected: `0`; the total is about 56 MB smaller than at `2b889cb` (65 MB → ≈ 9 MB).
+Expected: `0`; the total is about 56 MB smaller than at `2b889cb` (65 MB → ≈ 9 MB). A path such as
+`specs/003-real-files-and-tabs/evidence/generated.json` is ignored by Git and no
+`specs/*/evidence/` directory is created by verification.
 
 ## 11. Walkthrough and offline start (FR-027, FR-028, SC-003)
 

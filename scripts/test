@@ -21,7 +21,8 @@ case "${1:-}" in
 esac
 [[ $# -eq 1 ]] || usage_error 'scripts/test accepts exactly one tier'
 
-new_run_dir >/dev/null
+new_run_dir "test-$tier" >/dev/null
+printf '[gomarkedit] artifacts: %s\n' "$RUN_DIR"
 failed=0
 run_tier() {
   local name="$1"
@@ -40,5 +41,5 @@ else
   run_tier "$tier"
 fi
 
-node "$REPO_ROOT/tools/verify/results.mjs" summary --run-dir "$RUN_DIR" --output "$RUN_DIR/summary.json" || failed=1
+node "$REPO_ROOT/tools/verify/results.mjs" summary --run-dir "$RUN_DIR" --expected "$tier" --output "$RUN_DIR/summary.json" || failed=1
 [[ "$failed" -eq 0 ]] || exit 1

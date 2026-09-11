@@ -59,7 +59,7 @@ Unit / Integration / E2E = `scripts/test <tier>`. The frontend is built once, in
 `vite build` is not repeated by any other stage, and the `prebuild`/`pretest`/`postbuild` hooks are
 removed from `frontend/package.json`. No `go build` runs inside `go test` (the two build-tagged
 builds in `native_evidence_safeguards_test.go` go with that file). The stage result of every run is
-written by `tools/verify/results.mjs` to the ignored `.specify/baseline/runs/<run-id>/` directory
+written by `tools/verify/results.mjs` to the ignored `.local_tmp_files/runs/<run-id>/` directory
 as one JSON per stage (same schema as the baseline record) so `scripts/baseline` reuses the runner.
 
 **Rationale**: FR-060/062 and the audit's TL-1 table (`release-stack.sh` ran the Wails build six
@@ -288,7 +288,7 @@ is empty for the whole tree.
 ## R15 — Baseline record and comparison
 
 **Decision**: `scripts/baseline` runs the same stage runner as `scripts/verify` and writes one JSON
-file, `.specify/baseline/<feature>.json` (schema in
+file, `.local_tmp_files/baseline/<feature>.json` (schema in
 [contracts/baseline-record.schema.json](contracts/baseline-record.schema.json)), holding the commit,
 a SHA-256 of the dirty diff, tool versions, and per stage the exit code, duration, verdict and the
 machine-readable finding identities (from `go test -json`, Jest `--json`, the Playwright JSON
@@ -296,7 +296,7 @@ reporter, `golangci-lint --out-format json`, `eslint -f json`, `stylelint -f jso
 tools' own JSON). `scripts/baseline --compare` re-runs and fails closed on any missing input, marks a
 stage `unreliable` when it exited non-zero having reported no finding, and never reports green while
 any finding or failing stage remains; the record and the comparison are computed by
-`tools/verify/results.mjs`, the same script that writes every `scripts/verify` run. The root `.gitignore` gains `.specify/baseline/` (the
+`tools/verify/results.mjs`, the same script that writes every verification run. The root `.gitignore` gains `.local_tmp_files/` (the
 `.specify/.gitignore` is Spec Kit-owned and is not edited).
 
 **Rationale**: FR-064; the old verifier reported PASS with missing inputs (_verified_: `comm` errors

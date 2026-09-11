@@ -48,12 +48,15 @@ receive props or primitive context and do not reach into the store, adapter or a
 1. Orient from `.specify/feature.json`, then read the active feature's `spec.md`, `plan.md`,
    `tasks.md` and the contracts named by the task.
 2. Before the first implementation edit, run `scripts/baseline` and confirm that every stage ran.
-   A non-zero stage that collected nothing is unreliable, not clean; fix that runner before using
-   the record. `scripts/verify` refuses to build on an unreliable baseline.
+   A non-zero stage that collected nothing, or a required test count that is unavailable, is
+   unreliable, not clean; fix that runner before using the record. `scripts/baseline` refuses to
+   write an unreliable record; `scripts/verify` has no baseline dependency.
 3. Work on a task-sized branch, implement only the approved scope, and keep tests in `tests/go/` or
    `frontend/tests/` unless the task explicitly names a white-box test under its production package.
 4. Run the narrowest relevant checks while working, then run the full six-stage verification before
-   calling a task complete. Compare the result with `.specify/baseline/004-codebase-refactoring.json`.
+   calling a task complete. Compare the result with
+   `.local_tmp_files/baseline/004-codebase-refactoring.json` only through the explicit
+   `scripts/baseline --compare` command.
 5. Review the diff for ownership, public-surface documentation, generated-file drift and unrelated
    changes. Commit one task with a Conventional Commit message and squash-merge it into the feature
    parent; the feature parent is not merged into `master` by this workflow.
@@ -62,20 +65,24 @@ The six verification stages are Lint, Format, Build, Unit, Integration and E2E. 
 entry points are `scripts/build`, `scripts/test`, `scripts/verify`, `scripts/format` and
 `scripts/baseline`. They are the canonical interface for local work, hooks and CI.
 
-| Stage | What it establishes |
-| --- | --- |
-| Lint | Go and TypeScript checks, architecture boundaries, token rules, repository rules and referenced-path rules. |
-| Format | The repository's Go, Prettier and shell formatting policy. |
-| Build | Generated bindings, generated themes, production build, bundle policy and a clean tree. |
-| Unit | Fast Go and frontend unit behaviour. |
-| Integration | Go and frontend integration behaviour, including persistence and bridge seams. |
-| E2E | Real-backend browser behaviour and user journeys. |
+| Stage       | What it establishes                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
+| Lint        | Go and TypeScript checks, architecture boundaries, token rules, repository rules and referenced-path rules. |
+| Format      | The repository's Go, Prettier and shell formatting policy.                                                  |
+| Build       | Generated bindings, generated themes, production build, bundle policy and a clean tree.                     |
+| Unit        | Fast Go and frontend unit behaviour.                                                                        |
+| Integration | Go and frontend integration behaviour, including persistence and bridge seams.                              |
+| E2E         | Real-backend browser behaviour and user journeys.                                                           |
 
 Useful forms are `scripts/verify lint`, `scripts/verify --skip e2e`, `scripts/format --check`,
 `scripts/test unit`, `scripts/test integration`, `scripts/test e2e`, `scripts/build setup`,
 `scripts/build setup --with-browser`, `scripts/build dev`, and `scripts/baseline --compare`.
 The optional aliases in `justfile` are `just build`, `just test`, `just verify`, `just format`,
-`just baseline`, `just dev` and `just setup`; `just --list` shows them.
+`just baseline`, `just dev` and `just setup`; `just --list` shows them. Verification keeps
+human-readable runner output visible and parses structured lint/test reports into concise summaries;
+raw reports remain under `.local_tmp_files/runs/<run-id>/`. Unit and Integration report Backend and
+Frontend counts separately. All temporary verification files live under `.local_tmp_files/`, and
+`scripts/verify`/`scripts/test` never collect or compare a baseline.
 
 ## Branches and decisions
 
@@ -94,4 +101,5 @@ A task is complete only when its acceptance criteria have evidence, its named te
 verification stage is green against the baseline, and the implementation matches both authorities.
 Record public-surface changes in the active feature artifacts or `docs/architecture.md` as appropriate.
 Leave the worktree understandable: state the verified result, any pre-existing findings, and the
-next task or decision needed.
+next task or decision needed. `specs/*/evidence/` directories are disposable generated artifacts;
+they are ignored by Git and formatting checks and must not be recreated as part of verification.

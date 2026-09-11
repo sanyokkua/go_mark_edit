@@ -71,11 +71,15 @@ Rules: `Tx(func(tx) error)` wraps every group update (a settings group is one tr
 returns "absent" distinctly from a decode failure; unknown versions read as absent; rows the
 refactored build does not own are never rewritten (no migration, no compatibility test).
 
-## BaselineRecord (`.specify/baseline/<feature>.json`) — FR-064
+## BaselineRecord (`.local_tmp_files/baseline/<feature>.json`) — FR-064
 
 Schema: [contracts/baseline-record.schema.json](contracts/baseline-record.schema.json). Verdict per
 stage: `clean` (exit 0, no findings), `findings` (exit ≠ 0 with parsed findings), `failing` (exit ≠ 0
-for a pass/fail stage), `unreliable` (exit ≠ 0 and nothing parsed — refused as a baseline).
+for a pass/fail stage), `unreliable` (exit ≠ 0 and nothing parsed — refused as a baseline). A baseline
+is also refused when a required test-stage count is `unavailable` or `unreliable`.
+Test stages also carry optional `testCounts.backend` and `testCounts.frontend` groups with total,
+passed, failed, skipped, todo and a status of `available`, `unavailable`, `unreliable` or `skipped`;
+missing counts are never encoded as zero.
 
 ## SharedComponent (frontend) — FR-034 to FR-043
 

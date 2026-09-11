@@ -21,6 +21,8 @@ __pycache__/
 /frontend/playwright-report/
 /frontend/test-results/
 /test-results/
+/.local_tmp_files/
+specs/*/evidence/
 .specify/baseline/
 .specify/bridge-events.jsonl
 .specify/.cache/

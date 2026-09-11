@@ -36,7 +36,8 @@ done
 
 [[ "$selected" == e2e && "$skip_e2e" == true ]] && usage_error 'cannot select and skip e2e together'
 
-new_run_dir >/dev/null
+new_run_dir verify >/dev/null
+printf '[gomarkedit] artifacts: %s\n' "$RUN_DIR"
 failed=0
 run_named() {
   local name="$1"
@@ -60,11 +61,15 @@ else
   if [[ "$failed" -eq 0 ]]; then run_named integration || failed=1; fi
   if [[ "$skip_e2e" == true ]]; then
     write_skipped_stage e2e 'scripts/verify --skip e2e'
-    printf 'e2e: skipped\n'
   elif [[ "$failed" -eq 0 ]]; then
     run_named e2e || failed=1
   fi
 fi
 
-node "$REPO_ROOT/tools/verify/results.mjs" summary --run-dir "$RUN_DIR" --output "$RUN_DIR/summary.json" || true
+if [[ "$selected" == all ]]; then
+  expected_stages='all'
+else
+  expected_stages="$selected"
+fi
+node "$REPO_ROOT/tools/verify/results.mjs" summary --run-dir "$RUN_DIR" --expected "$expected_stages" --output "$RUN_DIR/summary.json" || true
 [[ "$failed" -eq 0 ]] || exit 1

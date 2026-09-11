@@ -178,10 +178,17 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   `scripts/test all` runs them in order.
 - `scripts/verify` runs Lint, Format check, Build, Unit, Integration and E2E in that order.
   `scripts/verify lint` and the other stage names run one stage; `scripts/verify --skip e2e` records
-  E2E as skipped rather than passed.
+  E2E as skipped rather than passed. Every stage prints its header and keeps human-readable runner
+  output visible; structured lint and Go test reports are captured, parsed and summarized without
+  dumping machine-readable JSON. Unit and Integration print separate Backend and Frontend counts,
+  and E2E prints the frontend/browser count. A failed run marks later stages as NOT RUN.
 - `scripts/format --check` checks the repository formatter set. `scripts/baseline` captures a full
   stage record, and `scripts/baseline --compare` fails closed when findings remain or a new finding
-  appears.
+  appears. Verification run artifacts live under `.local_tmp_files/runs/`; the explicit baseline
+  record lives under `.local_tmp_files/baseline/` and is created or compared only by
+  `scripts/baseline`. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
+  never zero; warning counts do not fail a stage. `specs/*/evidence/` is disposable generated
+  output, ignored by Git and formatting checks, and is not recreated by verification.
 
 The Lint stage's owners are `tools/archlint/`, `frontend/eslint.config.js`,
 `frontend/stylelint.config.mjs`, `tools/lint/tokens.mjs`, `tools/lint/repo-rules.mjs` and the declared

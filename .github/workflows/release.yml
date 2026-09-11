@@ -19,7 +19,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Derive version
@@ -44,11 +44,11 @@ jobs:
           else
             echo 'on_master=true' >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         if: steps.branch-guard.outputs.on_master == 'true'
         with:
           go-version-file: go.mod
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.branch-guard.outputs.on_master == 'true'
         with:
           node-version-file: .nvmrc
@@ -60,6 +60,13 @@ jobs:
       - name: Verify
         if: steps.branch-guard.outputs.on_master == 'true'
         run: scripts/verify
+      - name: Upload verification artifacts on failure
+        if: failure() && steps.branch-guard.outputs.on_master == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-runs-${{ github.run_id }}
+          path: .local_tmp_files/runs/
+          if-no-files-found: ignore
       - name: Build release
         if: steps.branch-guard.outputs.on_master == 'true'
         run: scripts/build --version "${{ steps.version.outputs.version }}"
@@ -73,7 +80,7 @@ jobs:
         run: gh release create "$GITHUB_REF_NAME" "GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64.zip" --title "GoMarkEdit ${{ steps.version.outputs.version }}" --notes-from-tag
       - name: Upload dry-run artifact
         if: steps.branch-guard.outputs.on_master == 'true' && github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64
           path: GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64.zip

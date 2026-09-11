@@ -25,8 +25,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 feature="$(feature_name)"
-baseline_path="$REPO_ROOT/.specify/baseline/$feature.json"
-new_run_dir >/dev/null
+baseline_path="$REPO_ROOT/.local_tmp_files/baseline/$feature.json"
+new_run_dir baseline >/dev/null
+printf '[gomarkedit] artifacts: %s\n' "$RUN_DIR"
 git diff --binary HEAD >"$RUN_DIR/initial.diff"
 git status --porcelain -z >"$RUN_DIR/initial.status"
 
@@ -47,7 +48,7 @@ for stage in lint format build unit integration e2e; do
   run_baseline_stage "$stage"
 done
 
-node "$REPO_ROOT/tools/verify/results.mjs" summary --run-dir "$RUN_DIR" --output "$RUN_DIR/summary.json" || true
+node "$REPO_ROOT/tools/verify/results.mjs" summary --run-dir "$RUN_DIR" --expected all --output "$RUN_DIR/summary.json" || true
 if [[ "$compare" == true ]]; then
   node "$REPO_ROOT/tools/verify/results.mjs" compare --baseline "$baseline_path" --run-dir "$RUN_DIR"
 else
