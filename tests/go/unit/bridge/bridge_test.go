@@ -121,8 +121,8 @@ func TestOutcomeCacheStoresInternalFailureWhenCommandPanics(t *testing.T) {
 	if calls != 1 {
 		t.Fatalf("panicking request executed %d times, want 1", calls)
 	}
-	if first != second || second.Category != apperr.ClassifiedInternal || second.ID != request.ID {
-		t.Fatalf("cached panic outcome = %+v, want one internal result with id %q", second, request.ID)
+	if !reflect.DeepEqual(first, second) || second.Category != apperr.ClassifiedInternal || second.ID != request.ID {
+		t.Fatalf("cached panic outcome first=%+v second=%+v, want one internal result with id %q", first, second, request.ID)
 	}
 }
 
