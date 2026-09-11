@@ -1,6 +1,0 @@
-#!/bin/sh
-case "$1" in
- test) printf "FAIL example\n--- FAIL: TestNewFailure (0.00s)\n"; exit 1;;
- lint) printf "internal/example.go:1:1: new bad code (example-rule)\n"; exit 1;;
- *) exit 0;;
-esac

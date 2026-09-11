@@ -1,7 +1,0 @@
-=== RUN   TestAuditOpenHardLinkDeduplicates
-    save_test.go:797: identity a=path:/private/var/folders/bk/dpmdprgs4mxdvbh4rc300s8w0000gn/T/TestAuditOpenHardLinkDeduplicates816784863/001/document.md b=path:/private/var/folders/bk/dpmdprgs4mxdvbh4rc300s8w0000gn/T/TestAuditOpenHardLinkDeduplicates816784863/001/alias.md; first=doc-0000000000000003 second=doc-0000000000000005 status=opened
-    save_test.go:798: same physical file opened as two tabs via hard links
---- FAIL: TestAuditOpenHardLinkDeduplicates (0.00s)
-FAIL
-FAIL	github.com/sanyokkua/go_mark_edit/internal/appmodel	0.418s
-FAIL

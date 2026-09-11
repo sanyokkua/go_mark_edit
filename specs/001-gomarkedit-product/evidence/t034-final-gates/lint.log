@@ -1,7 +1,0 @@
-just go-lint
-golangci-lint run ./...
-just frontend-lint
-npm --prefix frontend run lint
-0 issues.
-> frontend@0.0.0 lint
-> eslint .

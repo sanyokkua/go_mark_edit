@@ -1,3 +1,0 @@
-$ /tmp/GoMarkEdit-t032-native -scenario recents -assets /Users/ok/Development/GitHub/go_mark_edit/frontend/dist -database /tmp/gomarkedit-t032.opRXV7
-native-evidence scenario=recents instance=native-evidence database=/tmp/gomarkedit-t032.opRXV7/settings.db
-exit=0 after Ctrl+C shutdown

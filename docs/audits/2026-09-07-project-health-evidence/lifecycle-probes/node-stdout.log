@@ -1,7 +1,0 @@
-node=v24.19.0 typescript=5.9.3
-source_sha256=c590c769bdb29c172161d1248706b49a65cba15fdb93a199522d02364831ca40
-substituted_runtime_imports=["./index","./settingsSlice"]
-first read: rejected=true calls=1 dispatches=0
-adapter recovered, retry: rejected=true samePromise=true calls=1 dispatches=0
-dispose then retry: resolved=true samePromise=false calls=2 actionTypes=["settings/reset","settings/hydrate"]
-PASS: isolated cached-rejection consequence and disposer positive control

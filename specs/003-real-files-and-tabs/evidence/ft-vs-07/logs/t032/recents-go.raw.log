@@ -1,7 +1,0 @@
-$ GOCACHE=/tmp/gomarkedit-go-cache go test ./internal/appmodel -run 'TestRecentFilesMRUPersistenceAndLazyPrune|TestPromotionIsLatestValueTransaction|TestTwoInstancesInterleavedPromotionFollowsCommitOrder|TestStaleSnapshotPromotionIsRejected|TestPromotionFailureEmitsPersistenceWarningWithoutRollback|TestRecentlyClosedHistory|TestReopenLastFileLifecycle' -count=1
-ok  github.com/sanyokkua/go_mark_edit/internal/appmodel 3.665s
-exit=0
-
-$ GOCACHE=/tmp/gomarkedit-go-cache go test ./internal/appmodel -run 'TestRecentFilesMRUPersistenceAndLazyPrune|TestPromotionIsLatestValueTransaction|TestTwoInstancesInterleavedPromotionFollowsCommitOrder|TestStaleSnapshotPromotionIsRejected|TestPromotionFailureEmitsPersistenceWarningWithoutRollback|TestRecentlyClosedHistory|TestReopenLastFileLifecycle' -count=1 (post-fix)
-ok  github.com/sanyokkua/go_mark_edit/internal/appmodel 0.468s
-exit=0

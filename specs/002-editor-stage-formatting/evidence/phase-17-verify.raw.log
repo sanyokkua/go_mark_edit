@@ -1,5 +1,0 @@
-$ GOCACHE=/private/tmp/gomarkedit-gocache GOLANGCI_LINT_CACHE=/private/tmp/gomarkedit-lint-cache rtk just verify 002-editor-stage-formatting
-bash scripts/verify.sh 002-editor-stage-formatting
-
-Command completed successfully against the reliable feature baseline. This isolated-cache run did not produce
-the unreliable `context loading failed: no go files to analyze` outcome.

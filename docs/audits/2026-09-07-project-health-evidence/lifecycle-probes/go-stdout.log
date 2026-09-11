@@ -1,8 +1,0 @@
-=== RUN   TestLostCloseRequestRequiresExplicitReset
-    close_coordinator_probe_test.go:23: no responder: veto=true emissions=1 deliveries=0 quitCalls=0
-    close_coordinator_probe_test.go:30: receiver restored, repeat close: veto=true emissions=1 deliveries=0 quitCalls=0
-    close_coordinator_probe_test.go:37: Cancel then close: veto=true emissions=2 deliveries=1 quitCalls=0
-    close_coordinator_probe_test.go:43: Authorize: native callback veto=false emissions=2 deliveries=1 quitCalls=1
---- PASS: TestLostCloseRequestRequiresExplicitReset (0.00s)
-PASS
-ok  	example.invalid/gomark-close-probe	0.476s

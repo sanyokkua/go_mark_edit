@@ -1,2 +1,0 @@
-test=1=ok-with-findings=1
-lint=1=ok-with-findings=1
