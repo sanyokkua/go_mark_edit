@@ -104,7 +104,7 @@ func TestStartupLeavesAutosaveEnabledWhenTheStoreCannotBeRead(t *testing.T) {
 		SettingsRepository: failingAutosaveSettingsRepository{},
 		AppModelOptions: []appmodel.AppModelOption{
 			appmodel.WithEmitter(discardingLifecycleEmitter{}),
-			appmodel.WithAutosaveTimer(clock),
+			{AutosaveTimer: clock},
 		},
 	})
 	// No repository injected: Get fails. Startup must not silently disable
@@ -157,7 +157,7 @@ func newAutosaveWiringHolder(fileService file.FileUtilsServiceAPI, clock *wiring
 	return NewApplicationContextHolderWithOptions(fileService, nil, ApplicationContextOptions{
 		AppModelOptions: []appmodel.AppModelOption{
 			appmodel.WithEmitter(discardingLifecycleEmitter{}),
-			appmodel.WithAutosaveTimer(clock),
+			{AutosaveTimer: clock},
 		},
 	})
 }

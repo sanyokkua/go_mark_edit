@@ -15,7 +15,7 @@ func TestCloseBeforeFrontendReadyDrainsAndRequiresNativeConfirmation(t *testing.
 	clock := &shutdownClock{now: time.Unix(100, 0)}
 	confirmation := &confirmationPort{answer: false, answered: make(chan []string, 1)}
 	owner := application.NewShutdownOwner(model,
-		application.WithShutdownClock(clock),
+		application.ShutdownOption{Clock: clock},
 		application.WithNativeConfirmation(confirmation.confirm),
 	)
 
@@ -52,7 +52,7 @@ func TestCloseAfterReadyReemitsTheSameRequestAndDiscoversPendingState(t *testing
 	var events []string
 	var mu sync.Mutex
 	owner := application.NewShutdownOwner(model,
-		application.WithShutdownClock(clock),
+		application.ShutdownOption{Clock: clock},
 		application.WithCloseRequestedEmitter(func(_ context.Context, id string) {
 			mu.Lock()
 			events = append(events, id)
@@ -89,7 +89,7 @@ func TestCloseBeforeReadyIsDiscoveredIfTheFrontendBecomesReadyDuringStatusCheck(
 	clock := &shutdownClock{now: time.Unix(250, 0)}
 	events := make(chan string, 1)
 	owner := application.NewShutdownOwner(model,
-		application.WithShutdownClock(clock),
+		application.ShutdownOption{Clock: clock},
 		application.WithCloseRequestedEmitter(func(_ context.Context, id string) { events <- id }),
 	)
 
@@ -147,7 +147,7 @@ func TestCloseDeadlineDrainsPendingWriteBeforeConfirmationAndNeverDiscardsAlone(
 	confirmation := &confirmationPort{answer: false, answered: make(chan []string, 1)}
 	quitCalls := 0
 	owner := application.NewShutdownOwner(model,
-		application.WithShutdownClock(clock),
+		application.ShutdownOption{Clock: clock},
 		application.WithNativeConfirmation(confirmation.confirm),
 		application.WithNativeQuit(func(context.Context) { quitCalls++ }),
 	)

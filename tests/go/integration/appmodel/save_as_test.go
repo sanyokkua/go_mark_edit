@@ -33,9 +33,9 @@ func TestSaveAsDuringAutosaveKeepsBothDiskCopiesAndLeavesTheDocumentClean(t *tes
 	writes := 0
 	service := appmodel.NewAppModelServiceForHost(
 		appmodel.WithEmitter(&statePatchRecorder{}),
-		appmodel.WithAutosaveTimer(clock),
+		appmodel.AppModelOption{AutosaveTimer: clock},
 		appmodel.WithDialogs(nil, saveDialog{path: target}),
-		appmodel.WithWriteExecutor(func(snapshot appmodel.WriteSnapshot) (file.DiskVersion, error) {
+		appmodel.AppModelOption{WriteExecutor: func(snapshot appmodel.WriteSnapshot) (file.DiskVersion, error) {
 			writesMu.Lock()
 			writes++
 			first := writes == 1
@@ -49,7 +49,7 @@ func TestSaveAsDuringAutosaveKeepsBothDiskCopiesAndLeavesTheDocumentClean(t *tes
 				return file.DiskVersion{}, err
 			}
 			return file.CurrentDiskVersion(snapshot.TargetPath)
-		}),
+		}},
 	)
 	opened := service.OpenPath(context.Background(), source, 0)
 	if opened.Status != appmodel.OpenStatusOpened {

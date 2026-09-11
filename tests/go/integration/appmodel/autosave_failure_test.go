@@ -27,8 +27,8 @@ func TestAutosaveFailureEpisodeShowsNewCategoriesOnceAndClearsOnSuccess(t *testi
 	attempt := 0
 	service := appmodel.NewAppModelServiceForHost(
 		appmodel.WithEmitter(recorder),
-		appmodel.WithAutosaveTimer(clock),
-		appmodel.WithWriteExecutor(func(snapshot appmodel.WriteSnapshot) (file.DiskVersion, error) {
+		appmodel.AppModelOption{AutosaveTimer: clock},
+		appmodel.AppModelOption{WriteExecutor: func(snapshot appmodel.WriteSnapshot) (file.DiskVersion, error) {
 			attempt++
 			switch attempt {
 			case 1, 2:
@@ -46,7 +46,7 @@ func TestAutosaveFailureEpisodeShowsNewCategoriesOnceAndClearsOnSuccess(t *testi
 			default:
 				return file.DiskVersion{}, errors.New("unexpected autosave attempt")
 			}
-		}),
+		}},
 	)
 	opened := service.OpenPath(context.Background(), path, 0)
 	if opened.DocumentID == "" {
@@ -109,10 +109,10 @@ func TestAutosaveFailureReporterLogsWhenEventDeliveryIsUnavailableOrFails(t *tes
 			service := appmodel.NewAppModelServiceForHost(
 				appmodel.WithEmitter(emitter),
 				appmodel.WithLogger(zerolog.New(&logs)),
-				appmodel.WithAutosaveTimer(clock),
-				appmodel.WithWriteExecutor(func(snapshot appmodel.WriteSnapshot) (file.DiskVersion, error) {
+				appmodel.AppModelOption{AutosaveTimer: clock},
+				appmodel.AppModelOption{WriteExecutor: func(snapshot appmodel.WriteSnapshot) (file.DiskVersion, error) {
 					return file.DiskVersion{}, autosaveFailure(snapshot.TargetPath, apperr.ClassifiedPermissionDenied, apperr.RemediationNone)
-				}),
+				}},
 			)
 			opened := service.OpenPath(context.Background(), path, 0)
 			if opened.DocumentID == "" {

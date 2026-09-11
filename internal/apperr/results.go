@@ -197,7 +197,6 @@ type DocumentTransitionOutcome = DocumentTransitionResult
 type TabTransitionStatus string
 
 const (
-	TabTransitionActivated TabTransitionStatus = "activated"
 	TabTransitionReordered TabTransitionStatus = "reordered"
 	TabTransitionClosed    TabTransitionStatus = "closed"
 	TabTransitionNoop      TabTransitionStatus = "noop"

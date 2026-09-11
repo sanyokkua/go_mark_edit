@@ -1,67 +1,39 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
+# Build output and generated dependencies
+/build/bin/
+/frontend/dist/*
+!/frontend/dist/.gitkeep
+/frontend/node_modules/
+/frontend/package.json.md5
+
+# Run artefacts and local tool state
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
 *.test
-
-# Code coverage profiles and other test artifacts
 *.out
-coverage.*
 *.coverprofile
+coverage.*
 profile.cov
-
-# Captured baseline evidence keeps every gate's raw output, including the coverage gate.
-# The coverage.* rule above targets Go coverage profiles, not gate logs, and without this
-# negation a baseline would silently commit six of its seven gates.
-!**/baseline.logs/coverage.log
-!**/baseline.logs/coverage.code
-
-# Dependency directories (remove the comment below to include it)
-# vendor/
-frontend/node_modules/
-frontend/dist/*
-!frontend/dist/.gitkeep
-frontend/package.json.md5
-frontend/playwright-report/
-frontend/test-results/
-
-# Feature 003 parity runs retain full per-case evidence locally, but the generated
-# family/repetition image and raw-artifact tree is not source-controlled. Keep the
-# compact top-level reports available for review and commit when appropriate.
-/specs/003-real-files-and-tabs/evidence/ft-vs-08/parity/*/*
-
-# Go workspace file
-go.work
-go.work.sum
-
-# env file
-.env
-
-# Editor/IDE
-# .idea/
-# .vscode/
-
-# OS
-.DS_Store
-
-build/bin/*
-
-# Python bytecode from the specification checkers in scripts/
 __pycache__/
 *.pyc
-.idea
-
-# Spec Kit runtime artifacts and caches
-.specify/.cache/
-.specify/bridge-events.jsonl
+/frontend/playwright-report/
+/frontend/test-results/
+/test-results/
 .specify/baseline/
+.specify/bridge-events.jsonl
+.specify/.cache/
 .specify/extensions/.backup/
 .specify/extensions/.cache/
 .specify/extensions/ralph/ralph-config.yml
+
+# Local workspace and environment files
+go.work
+go.work.sum
+.env
+
+# IDE and operating-system files
+.idea/
+.vscode/
+.DS_Store

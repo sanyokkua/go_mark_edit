@@ -49,12 +49,6 @@ type ApplicationContextOptions struct {
 	AppModelOptions    []appmodel.AppModelOption
 }
 
-// NewApplicationContextHolder constructs the phase-one dependency graph with
-// nil persistence. Init injects its concrete SQLite repository after startup.
-func NewApplicationContextHolder(fileService file.FileUtilsServiceAPI, appLogger *logging.Logger, outcomeCaches ...*bridge.OutcomeCache) *ApplicationContextHolder {
-	return NewApplicationContextHolderWithOptions(fileService, appLogger, ApplicationContextOptions{}, outcomeCaches...)
-}
-
 // NewApplicationContextHolderWithOptions constructs the phase-one graph with
 // explicit persistence options for hosts that need to exercise startup
 // recovery without replacing a service after construction.
@@ -314,7 +308,7 @@ func (holder *ApplicationContextHolder) FlushBeforeClose() error {
 }
 
 // ConfigureShutdown installs the native ports owned by the composition root.
-func (holder *ApplicationContextHolder) ConfigureShutdown(options ...shutdownOption) {
+func (holder *ApplicationContextHolder) ConfigureShutdown(options ...ShutdownOption) {
 	holder.mu.Lock()
 	shutdown := holder.Shutdown
 	holder.mu.Unlock()

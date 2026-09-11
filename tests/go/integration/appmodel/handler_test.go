@@ -186,7 +186,7 @@ func TestHandlerClassifiesRejectedLayoutWrite(t *testing.T) {
 func TestHandlerClassifiesLayoutPersistenceFailuresWithSafeSubject(t *testing.T) {
 	service := NewAppModelServiceForHost(
 		WithEmitter(&recordingEmitter{}),
-		WithLayoutRepository(failingLayoutPersistenceRepository{}),
+		AppModelOption{LayoutRepository: failingLayoutPersistenceRepository{}},
 	)
 	handler := NewAppModelHandler(service, nil, nil)
 	visible := false

@@ -109,7 +109,7 @@ func TestApplicationContextInitializesSettingsInTwoPhases(t *testing.T) {
 // have also completed. Once both sides are ready, visibility happens once.
 func TestApplicationContextWaitsForBothStartupAndFrontendReadiness(t *testing.T) {
 	ctx := context.Background()
-	holder := NewApplicationContextHolder(&fakeFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
+	holder := NewApplicationContextHolderWithOptions(&fakeFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, ApplicationContextOptions{})
 	native := &lifecycleRecordingNativeWindow{usableWidth: 1920, usableHeight: 1080}
 	holder.SetNativeWindow(native)
 
@@ -147,7 +147,7 @@ func TestApplicationContextWaitsForBothStartupAndFrontendReadiness(t *testing.T)
 // window hidden until the frontend explicitly acknowledges hydration.
 func TestApplicationContextWaitsForFrontendReadinessAfterBackendRestore(t *testing.T) {
 	ctx := context.Background()
-	holder := NewApplicationContextHolder(&fakeFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil)
+	holder := NewApplicationContextHolderWithOptions(&fakeFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, ApplicationContextOptions{})
 	native := &lifecycleRecordingNativeWindow{usableWidth: 1920, usableHeight: 1080}
 	holder.SetNativeWindow(native)
 
@@ -187,7 +187,7 @@ func TestApplicationContextCloseWaitsForInFlightTimerLayoutFlush(t *testing.T) {
 		firstWriteStarted: make(chan appmodel.VersionedLayoutValue, 1),
 		releaseFirstWrite: make(chan error, 1),
 	}
-	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.WithLayoutRepository(repository))
+	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.AppModelOption{LayoutRepository: repository})
 	width := 300
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &width}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)
@@ -286,7 +286,7 @@ func TestNativeWindowRestoreFallsBackIndependentlyAndClampsUsableDisplay(t *test
 				values[appmodel.LayoutWindowMaximized] = appmodel.VersionedLayoutValue{Version: 1, Value: test.maximized, WriterID: "test", Sequence: 1}
 			}
 			repository := lifecycleLayoutRepository{values: values}
-			model := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.WithLayoutRepository(repository))
+			model := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.AppModelOption{LayoutRepository: repository})
 			native := &lifecycleRecordingNativeWindow{usableWidth: test.usableWidth, usableHeight: test.usableHeight}
 			service := NewNativeWindowService(model, native)
 

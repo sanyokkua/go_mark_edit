@@ -20,9 +20,9 @@ func TestLayoutPersistenceFailureIsEmittedAsClassifiedAsyncError(t *testing.T) {
 	timer := &manualLayoutTimer{}
 	emitter := &errorSurfaceEmitter{}
 	service := appmodel.NewAppModelServiceForHost(
-		appmodel.WithClock(timer),
+		appmodel.AppModelOption{Clock: timer},
 		appmodel.WithEmitter(emitter),
-		appmodel.WithLayoutRepository(failingLayoutPersistenceRepository{}),
+		appmodel.AppModelOption{LayoutRepository: failingLayoutPersistenceRepository{}},
 	)
 	width := 900
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err != nil {
@@ -47,7 +47,7 @@ func TestLayoutPersistenceFailureIsEmittedAsClassifiedAsyncError(t *testing.T) {
 func TestLayoutRestoreReadFailureReturnsAStatedOperation(t *testing.T) {
 	service := appmodel.NewAppModelServiceForHost(
 		appmodel.WithEmitter(&errorSurfaceEmitter{}),
-		appmodel.WithLayoutRepository(layoutReadFailureRepository{}),
+		appmodel.AppModelOption{LayoutRepository: layoutReadFailureRepository{}},
 	)
 	err := service.RestoreUILayout(context.Background())
 	if err == nil {

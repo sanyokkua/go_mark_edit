@@ -40,7 +40,7 @@ func TestActivatingAndReorderingTabsReturnsTheAuthoritativeAcknowledgement(t *te
 
 func TestClosingAFileWithPendingAutosaveFlushesItBeforeRemoval(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "flushed on close\n"); err != nil {
 		t.Fatalf("UpdateBuffer: %v", err)

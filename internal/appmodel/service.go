@@ -121,9 +121,7 @@ func newAppModelService(options ...AppModelOption) *AppModelService {
 		},
 	}}
 	for _, option := range options {
-		if option != nil {
-			option(service)
-		}
+		option.apply(service)
 	}
 	service.commands = documentCommands{service: service}
 	service.content = documentContentAccessor{service: service}

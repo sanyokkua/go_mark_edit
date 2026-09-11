@@ -11,7 +11,7 @@ import (
 )
 
 func TestExplicitSaveWritesTheCurrentBufferAndProjectsCleanState(t *testing.T) {
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(&fakeAutosaveClock{}))
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
 		t.Fatalf("UpdateBuffer: %v", err)
@@ -46,7 +46,7 @@ func TestSaveAsUsesTheDialogTargetAndAdoptsItsCanonicalPath(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "saved.md")
 	service := NewAppModelServiceForHost(
 		WithEmitter(&recordingEmitter{}),
-		WithAutosaveTimer(&fakeAutosaveClock{}),
+		AppModelOption{AutosaveTimer: &fakeAutosaveClock{}},
 		WithDialogs(nil, saveDialog{path: target}),
 	)
 	state, err := service.GetState(context.Background())
@@ -103,7 +103,7 @@ func TestSaveRefusesAnUnsupportedSaveAsSuffixBeforeCreatingTheTarget(t *testing.
 }
 
 func TestMixedLineEndingSaveRequiresAndConsumesOneNormalizationDecision(t *testing.T) {
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(&fakeAutosaveClock{}))
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
 	path, documentID := openAutosaveDocument(t, service, "first\r\nsecond\n")
 	state, err := service.GetState(context.Background())
 	if err != nil {
@@ -145,7 +145,7 @@ func TestMixedLineEndingSaveRequiresAndConsumesOneNormalizationDecision(t *testi
 }
 
 func TestSaveRejectsAStaleContentRevisionWithoutWriting(t *testing.T) {
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(&fakeAutosaveClock{}))
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
 		t.Fatalf("UpdateBuffer: %v", err)

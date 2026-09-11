@@ -55,7 +55,7 @@ func TestOpeningFilesProjectsDurableRecentOrderAfterEachCommit(t *testing.T) {
 	defer func() { _ = database.Close() }()
 	service := NewAppModelServiceForHost(
 		WithEmitter(&recordingEmitter{}),
-		WithRecentFilesRepository(NewSqliteRecentFilesRepository(database)),
+		AppModelOption{RecentFilesRepository: NewSqliteRecentFilesRepository(database)},
 	)
 	first, _ := openAutosaveDocument(t, service, "first\n")
 	second := filepath.Join(t.TempDir(), "second.md")

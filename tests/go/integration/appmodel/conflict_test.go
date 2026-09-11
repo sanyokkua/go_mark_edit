@@ -87,7 +87,7 @@ func TestMissingBackingFileBecomesADetachedDocument(t *testing.T) {
 }
 
 func TestKeepMineAuthorizationIsSingleUseAndSavesTheCurrentBuffer(t *testing.T) {
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(&fakeAutosaveClock{}))
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
 		t.Fatalf("edit: %v", err)

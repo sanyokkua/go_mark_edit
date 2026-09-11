@@ -5,106 +5,105 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
-// AppModelOption configures one AppModelService at construction time.
-//
-// Options keep deterministic test dependencies at the composition boundary
-// while leaving the appmodel package independent of Wails and bootstrap.
-type AppModelOption func(*AppModelService)
-
-// WithClock supplies the layout debounce clock.
-func WithClock(clock LayoutTimer) AppModelOption {
-	return func(service *AppModelService) {
-		if clock != nil {
-			service.timer = clock
-		}
-	}
+// AppModelOption configures one AppModelService at construction time. The
+// constructor is used by the composition root; its value fields also keep
+// deterministic test dependencies at that same boundary without exporting
+// one helper for every replaceable port.
+type AppModelOption struct {
+	Clock                  LayoutTimer
+	AutosaveTimer          AutosaveTimerFactory
+	WriteExecutor          WriteExecutor
+	StableRead             func(string, int64) (file.StableClassifiedRead, error)
+	DiskVersion            func(string) (file.DiskVersion, error)
+	OpenDialog             DocumentOpenDialog
+	SaveDialog             DocumentSaveDialog
+	Emitter                StatePatchEmitter
+	Version                *string
+	Logger                 *zerolog.Logger
+	LayoutRepository       LayoutRepositoryAPI
+	FileMetadataRepository FileMetadataRepository
+	RecentFilesRepository  RecentFilesRepository
+	ClipboardWriter        file.ClipboardWriter
+	RevealPort             file.RevealPort
+	WriteCommitObserver    WriteCommitObserver
 }
 
-// WithAutosaveTimer supplies the autosave debounce timer factory.
-func WithAutosaveTimer(timer AutosaveTimerFactory) AppModelOption {
-	return func(service *AppModelService) {
-		if timer != nil {
-			service.autosaveTimer = timer
-		}
+func (option AppModelOption) apply(service *AppModelService) {
+	if option.Clock != nil {
+		service.timer = option.Clock
 	}
-}
-
-// WithWriteExecutor supplies the document replacement executor.
-func WithWriteExecutor(executor WriteExecutor) AppModelOption {
-	return func(service *AppModelService) {
-		if executor != nil {
-			service.writeExecutor = executor
-		}
+	if option.AutosaveTimer != nil {
+		service.autosaveTimer = option.AutosaveTimer
 	}
-}
-
-// WithConflictReaders supplies disk-version and stable-read readers.
-func WithConflictReaders(stableRead func(string, int64) (file.StableClassifiedRead, error), diskVersion func(string) (file.DiskVersion, error)) AppModelOption {
-	return func(service *AppModelService) {
-		if stableRead != nil {
-			service.stableRead = stableRead
-		}
-		if diskVersion != nil {
-			service.diskVersion = diskVersion
-		}
+	if option.WriteExecutor != nil {
+		service.writeExecutor = option.WriteExecutor
+	}
+	if option.StableRead != nil {
+		service.stableRead = option.StableRead
+	}
+	if option.DiskVersion != nil {
+		service.diskVersion = option.DiskVersion
+	}
+	if option.OpenDialog != nil || option.SaveDialog != nil {
+		service.openDialog = option.OpenDialog
+		service.saveDialog = option.SaveDialog
+	}
+	if option.Emitter != nil {
+		service.emitter = option.Emitter
+	}
+	if option.Version != nil {
+		service.applicationVersion = *option.Version
+	}
+	if option.Logger != nil {
+		service.logger = *option.Logger
+	}
+	if option.LayoutRepository != nil {
+		service.layout = option.LayoutRepository
+	}
+	if option.FileMetadataRepository != nil {
+		service.metadata = option.FileMetadataRepository
+	}
+	if option.RecentFilesRepository != nil {
+		service.recentFiles = option.RecentFilesRepository
+	}
+	if option.ClipboardWriter != nil {
+		service.clipboard = option.ClipboardWriter
+	}
+	if option.RevealPort != nil {
+		service.reveal = option.RevealPort
+	}
+	if option.WriteCommitObserver != nil {
+		service.writeCommitObserver = option.WriteCommitObserver
 	}
 }
 
 // WithDialogs supplies the open and save dialog ports.
 func WithDialogs(open DocumentOpenDialog, save DocumentSaveDialog) AppModelOption {
-	return func(service *AppModelService) {
-		service.openDialog = open
-		service.saveDialog = save
-	}
+	return AppModelOption{OpenDialog: open, SaveDialog: save}
 }
 
 // WithEmitter supplies the state and asynchronous-error event port.
 func WithEmitter(emitter StatePatchEmitter) AppModelOption {
-	return func(service *AppModelService) { service.emitter = emitter }
+	return AppModelOption{Emitter: emitter}
 }
 
 // WithVersion supplies the application version projected by GetState.
 func WithVersion(version string) AppModelOption {
-	return func(service *AppModelService) { service.applicationVersion = version }
+	return AppModelOption{Version: &version}
 }
 
 // WithLogger supplies the local diagnostic logger used when an asynchronous
 // failure cannot be delivered to the event port.
 func WithLogger(logger zerolog.Logger) AppModelOption {
-	return func(service *AppModelService) { service.logger = logger }
-}
-
-// WithLayoutRepository supplies layout persistence before the first command.
-func WithLayoutRepository(repository LayoutRepositoryAPI) AppModelOption {
-	return func(service *AppModelService) { service.layout = repository }
-}
-
-// WithFileMetadataRepository supplies per-file view persistence.
-func WithFileMetadataRepository(repository FileMetadataRepository) AppModelOption {
-	return func(service *AppModelService) { service.metadata = repository }
-}
-
-// WithRecentFilesRepository supplies durable recent-file persistence.
-func WithRecentFilesRepository(repository RecentFilesRepository) AppModelOption {
-	return func(service *AppModelService) { service.recentFiles = repository }
+	return AppModelOption{Logger: &logger}
 }
 
 // WithClipboardWriter supplies the host clipboard port.
 func WithClipboardWriter(writer file.ClipboardWriter) AppModelOption {
-	return func(service *AppModelService) { service.clipboard = writer }
+	return AppModelOption{ClipboardWriter: writer}
 }
 
 // WithRevealPort supplies the host file-manager reveal port.
 func WithRevealPort(port file.RevealPort) AppModelOption {
-	return func(service *AppModelService) { service.reveal = port }
-}
-
-// WithWriteCommitObserver supplies an optional composition-root observer for
-// committed writes, such as the native-evidence measurement host.
-func WithWriteCommitObserver(observer WriteCommitObserver) AppModelOption {
-	return func(service *AppModelService) {
-		if observer != nil {
-			service.writeCommitObserver = observer
-		}
-	}
+	return AppModelOption{RevealPort: port}
 }

@@ -118,9 +118,9 @@ func TestManyDocumentsCanBeSavedAndClosedWithoutRetainedRecords(t *testing.T) {
 
 func TestClosingDocumentRejectsAWriteThatHasNotStarted(t *testing.T) {
 	var executor WriteExecutor
-	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), AppModelOption{WriteExecutor: func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		return executor(snapshot)
-	}))
+	}})
 	path := filepath.Join(t.TempDir(), "closing.md")
 	if err := os.WriteFile(path, []byte("disk\n"), 0o644); err != nil {
 		t.Fatalf("write document: %v", err)

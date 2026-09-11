@@ -19,7 +19,7 @@ import (
 func TestClosePlanCompletenessAndCancel(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	emitter := &recordingEmitter{}
-	service := NewAppModelServiceForHost(WithEmitter(emitter), WithAutosaveTimer(clock))
+	service := NewAppModelServiceForHost(WithEmitter(emitter), AppModelOption{AutosaveTimer: clock})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
 		t.Fatalf("edit: %v", err)
@@ -55,9 +55,9 @@ func TestClosePlanCompletenessAndCancel(t *testing.T) {
 // conflicts before each affected save" is proved by the sibling below)
 func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 	var executor WriteExecutor
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{WriteExecutor: func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		return executor(snapshot)
-	}))
+	}})
 	firstPath, firstID := openAutosaveDocument(t, service, "first base\n")
 	secondPath, secondID := openAutosaveDocument(t, service, "second base\n")
 	if err := service.UpdateBuffer(context.Background(), firstID, "first edited\n"); err != nil {
@@ -132,9 +132,9 @@ func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 // the conflict is answered.
 func TestClosePlanResolvesEveryExternalConflictBeforeAnySaveRuns(t *testing.T) {
 	var executor WriteExecutor
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{WriteExecutor: func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		return executor(snapshot)
-	}))
+	}})
 	service.SetAutosaveEnabled(false)
 	firstPath, firstID := openAutosaveDocument(t, service, "first base\n")
 	secondPath, secondID := openAutosaveDocument(t, service, "second base\n")
@@ -223,9 +223,9 @@ func TestClosePlanSaveAsResolvesBeforeBatchWrite(t *testing.T) {
 	var executor WriteExecutor
 	target := filepath.Join(t.TempDir(), "planned-untitled")
 	dialog := &saveDialogFixture{path: target, confirm: true}
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog), AppModelOption{WriteExecutor: func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		return executor(snapshot)
-	}))
+	}})
 	documentID := newSaveDocument(t, service, "planned\n")
 	var writes atomic.Int32
 	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
@@ -279,7 +279,7 @@ func TestClosePlanSaveAsCancellationIsZeroEffect(t *testing.T) {
 
 func TestCloseWaitsForFlushAndAutosave(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	if err := service.UpdateBuffer(context.Background(), documentID, "latest\n"); err != nil {
 		t.Fatalf("edit: %v", err)
@@ -309,9 +309,9 @@ func TestCloseWaitsForFlushAndAutosave(t *testing.T) {
 func TestCloseReevaluatesRevisionAfterAutosaveDrain(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	var executor WriteExecutor
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock}, AppModelOption{WriteExecutor: func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		return executor(snapshot)
-	}))
+	}})
 	_, documentID := openAutosaveDocument(t, service, "base\n")
 	started := make(chan struct{})
 	release := make(chan struct{})
@@ -580,9 +580,9 @@ func TestPrepareCloseRepeatedIdenticallyKeepsTheCollectingPlan(t *testing.T) {
 // already writing is the one plan a newer request must not supersede.
 func TestPrepareCloseRefusesWhileAnotherPlanIsSaving(t *testing.T) {
 	var executor WriteExecutor
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{WriteExecutor: func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		return executor(snapshot)
-	}))
+	}})
 	_, firstID := openAutosaveDocument(t, service, "first base\n")
 	_, secondID := openAutosaveDocument(t, service, "second base\n")
 	if err := service.UpdateBuffer(context.Background(), firstID, "first edited\n"); err != nil {
@@ -674,9 +674,9 @@ func TestPrepareCloseRefusesAStaleTabSetRevision(t *testing.T) {
 func TestPrepareCloseRefusesARevisionThatMovedWhileAutosaveDrained(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	var executor WriteExecutor
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock), WithWriteExecutor(func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock}, AppModelOption{WriteExecutor: func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		return executor(snapshot)
-	}))
+	}})
 	_, documentID := openAutosaveDocument(t, service, "base\n")
 	started := make(chan struct{})
 	release := make(chan struct{})

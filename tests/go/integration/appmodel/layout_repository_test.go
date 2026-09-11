@@ -51,7 +51,7 @@ func TestLayoutCommandsPersistContinuousFieldsAfterTheDebounce(t *testing.T) {
 	timer := &layoutManualTimer{}
 	repository := &layoutRecordingRepository{}
 	emitter := &recordingEmitter{}
-	service := NewAppModelServiceForHost(WithEmitter(emitter), WithClock(timer), WithLayoutRepository(repository))
+	service := NewAppModelServiceForHost(WithEmitter(emitter), AppModelOption{Clock: timer}, AppModelOption{LayoutRepository: repository})
 	width := 280
 	if err := service.SetUILayout(context.Background(), apperr.UILayout{SidebarWidth: &width}); err != nil {
 		t.Fatalf("SetUILayout: %v", err)

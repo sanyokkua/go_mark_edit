@@ -76,36 +76,54 @@ type ShutdownClock interface {
 	AfterFunc(time.Duration, func()) ShutdownTimer
 }
 
-type shutdownOption func(*ShutdownOwner)
+// ShutdownOption configures one ShutdownOwner. The constructor is used by the
+// composition root; value fields keep the protocol's replaceable ports in one
+// public configuration shape.
+type ShutdownOption struct {
+	CloseRequestedEmitter func(context.Context, string)
+	NativeQuit            func(context.Context)
+	NativeConfirmation    NativeConfirmation
+	Clock                 ShutdownClock
+	Logger                *logging.Logger
+}
+
+func (option ShutdownOption) apply(owner *ShutdownOwner) {
+	if option.CloseRequestedEmitter != nil {
+		owner.emitCloseRequested = option.CloseRequestedEmitter
+	}
+	if option.NativeQuit != nil {
+		owner.quit = option.NativeQuit
+	}
+	if option.NativeConfirmation != nil {
+		owner.confirm = option.NativeConfirmation
+	}
+	if option.Clock != nil {
+		owner.clock = option.Clock
+	}
+	if option.Logger != nil {
+		owner.logger = option.Logger
+	}
+}
 
 // WithCloseRequestedEmitter supplies the Wails event port.
-func WithCloseRequestedEmitter(emit func(context.Context, string)) shutdownOption {
-	return func(owner *ShutdownOwner) { owner.emitCloseRequested = emit }
+func WithCloseRequestedEmitter(emit func(context.Context, string)) ShutdownOption {
+	return ShutdownOption{CloseRequestedEmitter: emit}
 }
 
 // WithNativeQuit supplies the Wails quit port used after an asynchronous
 // request has been authorized.
-func WithNativeQuit(quit func(context.Context)) shutdownOption {
-	return func(owner *ShutdownOwner) { owner.quit = quit }
+func WithNativeQuit(quit func(context.Context)) ShutdownOption {
+	return ShutdownOption{NativeQuit: quit}
 }
 
 // WithNativeConfirmation supplies the native, non-webview discard prompt.
-func WithNativeConfirmation(confirm NativeConfirmation) shutdownOption {
-	return func(owner *ShutdownOwner) { owner.confirm = confirm }
-}
-
-// WithShutdownClock replaces the deadline clock for deterministic tests.
-func WithShutdownClock(clock ShutdownClock) shutdownOption {
-	return func(owner *ShutdownOwner) {
-		if clock != nil {
-			owner.clock = clock
-		}
-	}
+func WithNativeConfirmation(confirm NativeConfirmation) ShutdownOption {
+	return ShutdownOption{NativeConfirmation: confirm}
 }
 
 // WithShutdownLogger supplies the local transition logger.
-func WithShutdownLogger(logger *logging.Logger) shutdownOption {
-	return func(owner *ShutdownOwner) { owner.logger = logger }
+func WithShutdownLogger(logger *logging.Logger) ShutdownOption {
+	return ShutdownOption{Logger: logger}
 }
 
 // ShutdownOwner owns the complete backend half of the close protocol. It does
@@ -142,7 +160,7 @@ func (systemShutdownClock) AfterFunc(delay time.Duration, callback func()) Shutd
 // NewShutdownOwner creates the protocol owner. Ports can be supplied at
 // construction or later with ConfigureShutdown when Wails runtime callbacks
 // become available at the composition root.
-func NewShutdownOwner(model ShutdownModel, options ...shutdownOption) *ShutdownOwner {
+func NewShutdownOwner(model ShutdownModel, options ...ShutdownOption) *ShutdownOwner {
 	owner := &ShutdownOwner{
 		model: model,
 		clock: systemShutdownClock{},
@@ -155,21 +173,17 @@ func NewShutdownOwner(model ShutdownModel, options ...shutdownOption) *ShutdownO
 
 // ConfigureShutdown installs runtime ports without changing protocol state.
 // The composition root calls this once before Wails starts.
-func (owner *ShutdownOwner) ConfigureShutdown(options ...shutdownOption) {
+func (owner *ShutdownOwner) ConfigureShutdown(options ...ShutdownOption) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	for _, option := range options {
-		if option != nil {
-			option(owner)
-		}
+		option.apply(owner)
 	}
 }
 
-func (owner *ShutdownOwner) configure(options ...shutdownOption) {
+func (owner *ShutdownOwner) configure(options ...ShutdownOption) {
 	for _, option := range options {
-		if option != nil {
-			option(owner)
-		}
+		option.apply(owner)
 	}
 }
 

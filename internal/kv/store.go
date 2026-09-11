@@ -32,10 +32,6 @@ type KVEntry struct {
 	Type  string
 }
 
-// Entry is retained as a concise alias for callers that do not need the table
-// name in their local vocabulary.
-type Entry = KVEntry
-
 // Store provides reads, writes, and transactions over the settings table.
 type Store struct {
 	database *sql.DB

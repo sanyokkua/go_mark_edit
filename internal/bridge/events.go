@@ -6,8 +6,4 @@ const (
 	EventStatePatch                = "state:patch"
 	EventStateError                = "state:error"
 	EventApplicationCloseRequested = "application:close-requested"
-
-	StatePatchEvent                = EventStatePatch
-	StateErrorEvent                = EventStateError
-	ApplicationCloseRequestedEvent = EventApplicationCloseRequested
 )

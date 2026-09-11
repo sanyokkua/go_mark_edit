@@ -11,7 +11,7 @@ import (
 func TestAutosaveDebounceWritesTheLatestAcceptedBuffer(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	emitter := &recordingEmitter{}
-	service := NewAppModelServiceForHost(WithEmitter(emitter), WithAutosaveTimer(clock))
+	service := NewAppModelServiceForHost(WithEmitter(emitter), AppModelOption{AutosaveTimer: clock})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "first\n"); err != nil {
@@ -46,7 +46,7 @@ func TestAutosaveDebounceWritesTheLatestAcceptedBuffer(t *testing.T) {
 
 func TestAutosaveSkipsUntitledAndDetachesWhenTheBackingFileDisappears(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "edited\n"); err != nil {
@@ -81,7 +81,7 @@ func TestAutosaveSkipsUntitledAndDetachesWhenTheBackingFileDisappears(t *testing
 
 func TestAutosaveConflictLeavesExternalBytesUntouchedAndBlocksTheDocument(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
@@ -113,7 +113,7 @@ func TestAutosaveConflictLeavesExternalBytesUntouchedAndBlocksTheDocument(t *tes
 
 func TestDisablingAutosaveCancelsPendingWorkWithoutClearingDirtyState(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 
 	if err := service.UpdateBuffer(context.Background(), documentID, "while off\n"); err != nil {

@@ -71,7 +71,7 @@ func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 // preview pane over a blank buffer and hide the only editable surface.
 func TestNewDocumentIgnoresTheReadingDefaultOpenMode(t *testing.T) {
 	clock := &fakeAutosaveClock{}
-	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithAutosaveTimer(clock))
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})
 	service.SetDefaultOpenMode(OpenModeViewer)
 
 	before, err := service.GetState(context.Background())
