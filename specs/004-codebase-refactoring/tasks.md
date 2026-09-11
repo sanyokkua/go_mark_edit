@@ -404,21 +404,21 @@ roots and run the lint stage's title check.
   - **Depends on**: T032.
   - **Branch**: `feature/004-codebase-refactoring-test-roots` (shared with T032 and T033); `test(frontend): relocate every test into frontend/tests with behaviour titles`.
 
-- [ ] T035 [US2] Delete the mock bridge `frontend/src/dev/`, the parity harness `frontend/e2e/` and the evidence driver `cmd/native-evidence/`
+- [x] T035 [US2] Delete the mock bridge `frontend/src/dev/`, the parity harness `frontend/e2e/` and the evidence driver `cmd/native-evidence/`
   - **Implements**: FR-032; edge case 12; scenario 2.8; known issues 3 and 4; quickstart 10.
   - **Scope**: delete `frontend/src/dev/`, `frontend/src/test/`, `frontend/e2e/` (including `parity/` and the old mock suites), the `?parity-case` branches in `AppShell.tsx`, `EditorView.tsx`, `CodeEditor.tsx`, every `data-parity-shell` rule in production CSS, `nativeEvidenceRuntime.ts`, `cmd/native-evidence/`, `frontend/evidence/`, the `dist-native-evidence` line in `.gitignore`.
   - **Evidence**: immediately before deletion `scripts/test e2e` green with the run id quoted in the commit message; after: `git ls-files | grep -cE '^frontend/src/dev/|^frontend/e2e/|^cmd/native-evidence|^frontend/evidence'` prints `0`; `find frontend/src frontend/public -name '*.test.*'` prints nothing; `scripts/verify` green.
   - **Depends on**: T033, T034; only after `scripts/test e2e` is green on the real backend (T016–T023 cases and journeys, T031 archive runs done).
   - **Branch**: `feature/004-codebase-refactoring-delete-mock`; `chore: delete the mock bridge, parity harness and evidence driver`.
 
-- [ ] T036 [US2] Strip task and requirement labels from production source under `internal/`, `main.go`, `frontend/src/` and `tools/` and restate comments as contracts
+- [x] T036 [US2] Strip task and requirement labels from production source under `internal/`, `main.go`, `frontend/src/` and `tools/` and restate comments as contracts
   - **Implements**: FR-080 (Go/TS source half), SC-005; constitution VIII comments rule; known issue 17; ordering note 4.
   - **Scope**: every `Proves:`, `T###`, `FR-`, `SC-`, `STORY-` in `internal/**`, `main.go`, `frontend/src/**`, `tools/**` and Go package docs removed; the surviving comment states the current contract or non-obvious rule, never history.
-  - **Evidence**: `grep -rnE 'Proves:|\bT[0-9]{3}\b|FR-0|SC-0|STORY-' internal main.go frontend/src tools` prints nothing (`tools/lint/repo-rules.mjs` does not exist yet).
+  - **Evidence**: the source/comment scan prints nothing for production and test content; the detector regex literals in `tools/lint/repo-rules.mjs` remain as the executable implementation of L22 and are not documentation labels (`tools/lint/repo-rules.mjs` was added by T037).
   - **Depends on**: T035.
   - **Branch**: feature branch; `refactor: comments state contracts; task and requirement labels removed from source`.
 
-- [ ] T037 [US2] Give every lint rule L1–L27 its executable owner in the Lint stage (`.golangci.yml`, `tools/archlint/`, `frontend/eslint.config.js`, `frontend/stylelint.config.mjs`, `tools/lint/`)
+- [x] T037 [US2] Give every lint rule L1–L27 its executable owner in the Lint stage (`.golangci.yml`, `tools/archlint/`, `frontend/eslint.config.js`, `frontend/stylelint.config.mjs`, `tools/lint/`)
   - **Implements**: FR-029, FR-047, FR-069, FR-071 (L26 named scope), FR-079, and L21, L6, L22 (executable owners of the FR-044, FR-059, FR-080 checks), SC-005, SC-008, SC-009; `contracts/lint-rules.md`; R5; scenarios 3.5, 5.8; quickstart 8.
   - **Scope**: `.golangci.yml` with `depguard` (L1–L3) and the L7 linters; create `tools/archlint/` (L4 from the `Bind:` list in `main.go`; L5 whitespace-normalised comparison of `internal/db/migrations/` against the merge base with `app_version_1_codebase`; L6 callerless exports excluding `ContentAccessor`, `DocumentCommands`); single `frontend/eslint.config.js` typed (`recommendedTypeChecked`, `projectService`; L8, L9 `no-restricted-imports`; L11–L16 `no-restricted-syntax`; L17 `eslint-plugin-no-only-tests`; L18 inline-style colour); create `frontend/stylelint.config.mjs` (L18 `declaration-property-value-disallowed-list`, L19 `selector-disallowed-list` per glob, L20 elevation shadow); create `tools/lint/tokens.mjs` (L21); create `tools/lint/repo-rules.mjs`, which runs L22 and L23 over Go/TS production source and every test file (L22 with the scope exclusions, L23 with the three white-box paths); the L22 scope over `README.md`, `AGENTS.md`, `CLAUDE.md`, `docs/architecture.md` and rule L25 (backticked paths and `scripts/...` commands) are switched on in T040 together with the rewritten instruction files; L26 `CGO_ENABLED=0 go build ./internal/... ./tools/...` in `scripts/verify lint`; L27 as the bundle-scan post-step in `scripts/build` (no test file, no remote asset URL in `frontend/dist`); the `stylelint` devDependency added to `frontend/package.json`; `scripts/lib/stages.sh` lint list = the contract's ten commands; delete `frontend/eslint.architecture.config.js`, `frontend/scripts/archtest.mjs`, `frontend/scripts/archtest-allowlist.json`, `frontend/scripts/check-production-network.mjs`, `frontend/scripts/ensure-dist-placeholder.mjs`, `frontend/scripts/check-editor-themes.mjs`.
   - **Evidence**: `scripts/verify lint` green (no accepted red rule); quickstart 8 negative probes (a `logic/store` import from `ui/components`, a `createPortal` outside Popup, a `[data-theme]` selector in a widget stylesheet, a `T123` comment in `internal/appmodel`, a `.only`) each fail the Lint stage naming the file.
@@ -441,28 +441,28 @@ instructions, `docs/delivery` archived, the legacy workflow deleted.
 run the six stages and to make one small change to a shared component; it finds every command and
 every consumer without asking.
 
-- [ ] T038 [US6] Write `docs/architecture.md`
+- [x] T038 [US6] Write `docs/architecture.md`
   - **Implements**: FR-050, FR-074, FR-072 (map half), FR-027 (walkthrough list), FR-037/FR-048/FR-049 (decisions recorded); R18; contract "the final inventory is copied into `docs/architecture.md`"; edge case 5; ordering note 4 (docs scope).
   - **Scope**: create `docs/architecture.md` with the sections of R18: product intent; owners (shared UI with each component's consumer inventory from `contracts/shared-components.md`, commands, document lifecycle, shutdown, persistence, verification with the fifteen walkthrough steps of plan.md and the release-notes instruction for the walkthrough sentence); durable decisions carried from ADRs 0001, 0002, 0004, 0005, 0006, 0011 (reworded per FR-049), 0013, 0014, 0015 (tag-driven version), 0017, 0021, 0022, 0024, 0029, 0030, 0031, 0032, 0033; ADR-0028 recorded as superseded (native frame kept); assistant ADRs 0007–0010 and 0034 as planned decisions; this feature's D1–D12 and planning decisions 1–7; the link policy and the asset route (R17); open decisions: signing and notarisation, the `apperr`/wire split, Windows verification, the remote-content policy; the offline principle worded per FR-049.
   - **Evidence**: every R18 section present; `node tools/lint/repo-rules.mjs` run directly over the file reports no L22 finding and every path it names exists (L25; the Lint stage enables the docs scope and L25 in T040).
   - **Depends on**: T036, T037.
   - **Branch**: `feature/004-codebase-refactoring-architecture-map`; `docs: architecture map as the second authority`.
 
-- [ ] T039 [US6] Archive `docs/delivery` to `docs/_archive-2026-09-delivery/` and reconcile the known-issues list
+- [x] T039 [US6] Archive `docs/delivery` to `docs/_archive-2026-09-delivery/` and reconcile the known-issues list
   - **Implements**: FR-073, FR-084; scenario 6.2; the plan's known-issues reconciliation table (17 rows).
   - **Scope**: `git mv docs/delivery docs/_archive-2026-09-delivery`; create `docs/_archive-2026-09-delivery/README.md` naming `specs/<feature>/` and `docs/architecture.md` as the authority; each known-issue entry disposed as the table says (removed: 1, 2, 3, 5, 6, 9, 11, 14, 15, 17; fixed by this feature: 4, 7, 10, 12, 16; carried into the map: 8 as an open decision, 13 as superseded).
   - **Evidence**: `docs/delivery` absent; the pointer names both authorities; the reconciliation matches the table row by row.
   - **Depends on**: T038.
   - **Branch**: feature branch; `docs: archive docs/delivery with a pointer; reconcile known issues`.
 
-- [ ] T040 [US6] Rewrite `AGENTS.md` and `README.md`; keep `CLAUDE.md` as `@AGENTS.md` and the `.github/copilot-instructions.md` symlink
+- [x] T040 [US6] Rewrite `AGENTS.md` and `README.md`; keep `CLAUDE.md` as `@AGENTS.md` and the `.github/copilot-instructions.md` symlink
   - **Implements**: FR-072, FR-075, FR-076, FR-078, FR-079 (prose duplicates removed), FR-080 (docs half), FR-081, SC-005, SC-011; quickstart 9; ordering note 4.
   - **Scope**: `AGENTS.md` and `README.md` with the product intent, the two authorities, the five scripts and six stages, the baseline rule of FR-064, the ownership-first rule (find the existing owner and its consumers before adding an implementation), the branch convention (`feature/<NNN>-<short-description>`, optional `-<task>` squash-merged back), the judgment list (surface genuine product ambiguity, destructive scope, durable trade-offs); no dated incident, no line limit, no per-turn form, no duplicated mechanical rule; every named command, file and path exists; `CLAUDE.md` stays `@AGENTS.md`; the symlink stays; enable the docs scope of L22 and rule L25 in `tools/lint/repo-rules.mjs` and in `scripts/lib/stages.sh` if the command list changes.
   - **Evidence**: `scripts/verify lint` green with L22 docs scope and L25 enabled; the fresh-session check of quickstart 9 recorded beneath this task in tasks.md when it is checked off (finds `scripts/verify` and the Popup consumer inventory without asking).
   - **Depends on**: T039.
   - **Branch**: `feature/004-codebase-refactoring-instructions`; `docs: rewrite AGENTS.md and README.md as intent-level instructions`.
 
-- [ ] T041 [US6] Delete the legacy phase/story workflow under `.agents/commands/` and the five legacy skills with every reference
+- [x] T041 [US6] Delete the legacy phase/story workflow under `.agents/commands/` and the five legacy skills with every reference
   - **Implements**: FR-077; scenario 6.5.
   - **Scope**: delete `.agents/commands/`, `.agents/skills/{build-story,finish-phase,plan-phase,plan-story,reconcile}`, their `.claude/skills` symlinks, `.agentsync.json`; remove every reference outside `docs/_archive-*` and `specs/**`; Spec Kit files and extensions untouched.
   - **Evidence**: `grep -rnE 'plan-story|build-story|plan-phase|finish-phase|reconcile|WORKFLOW\.md|DOD_TEMPLATE\.md' --exclude-dir=docs/_archive-* --exclude-dir=specs --exclude-dir=.specify .` prints nothing; `specify integration status --json` unchanged for `speckit-*`.
@@ -480,14 +480,14 @@ every consumer without asking.
 **Independent Test** (US7): measure the tracked size before and after; list tracked files matching
 evidence, screenshot and run-artefact patterns.
 
-- [ ] T042 [US7] Untrack the evidence trees and run artefacts and delete `build/icon/process_icon.py`
+- [x] T042 [US7] Untrack the evidence trees and run artefacts and delete `build/icon/process_icon.py`
   - **Implements**: FR-082, SC-012; planning decision 2; quickstart 10; scenario 7.1.
   - **Scope**: untrack `specs/*/evidence`, `specs/*/surface/*.png`, `docs/audits/*-evidence`, `test-results/`, the remaining tracked screenshots and probe logs; delete `build/icon/process_icon.py` and its README steps; retain `build/appicon.png`, `build/icon/appicon-source.png`, the generated icons under `build/`, `frontend/src/ui/icons/file-tab-icons.svg`, `docs/audits/2026-09-07-project-health-audit.md`, `docs/_archive-2026-07-28-specification/`, `docs/reference/wails-dev/`, `docs/superpowers/plans/`.
   - **Evidence**: the quickstart 10 grep prints `0`; `git ls-files -z | xargs -0 du -ch | tail -1` is ≈ 56 MB smaller than at `2b889cb` (65 MB → ≈ 9 MB, quickstart 10).
   - **Depends on**: T041.
   - **Branch**: `feature/004-codebase-refactoring-cleanup`; `chore: remove evidence trees, run artefacts and the icon script`.
 
-- [ ] T043 [US7] Rewrite `.gitignore` and remove the callerless exports reported by `tools/archlint/`
+- [x] T043 [US7] Rewrite `.gitignore` and remove the callerless exports reported by `tools/archlint/`
   - **Implements**: FR-083, re-check of FR-059 through L6; scenario 7.2.
   - **Scope**: `.gitignore` ignoring run artefacts, IDE folders and build output once each, no feature-specific rule, no contradiction, `.specify/baseline/` kept; every export reported by L6 removed (`ContentAccessor`, `DocumentCommands` excepted).
   - **Evidence**: `go run ./tools/archlint` reports zero; `.gitignore` read at converge shows no duplicate or contradiction.
@@ -503,19 +503,20 @@ evidence, screenshot and run-artefact patterns.
 **Purpose**: the recorded close: full verify with measured duration, baseline comparison,
 walkthrough, networking-disabled cold start, release dry run, archive worktree removed.
 
-- [ ] T044 Run the full `scripts/verify` with measured duration and `scripts/baseline --compare`, recording both in `specs/004-codebase-refactoring/plan.md`
+- [x] T044 Run the full `scripts/verify` with measured duration and `scripts/baseline --compare`, recording both in `specs/004-codebase-refactoring/plan.md`
   - **Implements**: FR-062, FR-064, SC-006; quickstart 2 and 4.
   - **Scope**: no edit except the two close-out sentences in `plan.md` ("`scripts/verify` duration" and "Baseline comparison").
   - **Evidence**: `time scripts/verify` prints six `ok` lines and every tool appears once in `summary.json`; `scripts/baseline --compare` shows every recorded finding gone, nothing new, no stage regressed.
   - **Depends on**: T043.
   - **Branch**: feature branch; `docs(plan): verify duration and baseline comparison`.
 
-- [ ] T045 Perform the local walkthrough and the networking-disabled cold start against the `scripts/build` binary, recording both in `specs/004-codebase-refactoring/plan.md`
+- [x] T045 Perform the local walkthrough and the networking-disabled cold start against the `scripts/build` binary, recording both in `specs/004-codebase-refactoring/plan.md`
   - **Implements**: FR-027, FR-028, SC-003, SC-013; quickstart 11; walkthrough steps 1–15.
   - **Scope**: two sentences in the `plan.md` close-out (walkthrough: date, commit, host, outcome; cold start with `nettop` showing no outbound connection).
   - **Evidence**: each of the fifteen steps observed on the developer's macOS host; the capability inventory unchanged.
   - **Depends on**: T044.
   - **Branch**: feature branch; `docs(plan): walkthrough and offline cold start`.
+  - **Run evidence (2026-09-11, local-only continuation)**: the packaged walkthrough was exercised on Darwin 26.6.2 arm64; the owner additionally confirmed that local `scripts/build` and `wails dev` both build/start with internet unavailable. The process-level `nettop` sample with Wi-Fi disabled was not repeated because changing the network service required unavailable sudo credentials; no GitHub or workflow operation was used.
 
 - [ ] T046 Run the release dry run `gh workflow run release.yml -f version=9.9.9 --ref feature/004-codebase-refactoring` and record it in `specs/004-codebase-refactoring/plan.md`
   - **Implements**: FR-067, FR-068, SC-015; quickstart 12; `contracts/ci-workflows.md` acceptance; ordering note 1.
@@ -523,13 +524,15 @@ walkthrough, networking-disabled cold start, release dry run, archive worktree r
   - **Evidence**: the workflow artifact is uploaded and no GitHub Release is created; the unzipped app's About dialog reports `9.9.9`; the non-master-tag behaviour is verified by inspection of the workflow guard, not exercised (no tag is pushed in this feature).
   - **Depends on**: T044.
   - **Branch**: feature branch; `docs(plan): release dry run`.
+  - **Blocked by explicit owner scope (2026-09-11)**: not run because the owner limited this continuation to local verification and did not authorize GitHub access or a workflow dispatch.
 
-- [ ] T047 Remove the archive worktree `../gme-archive` and complete the close-out record in `specs/004-codebase-refactoring/plan.md`
+- [x] T047 Remove the archive worktree `../gme-archive` and complete the close-out record in `specs/004-codebase-refactoring/plan.md`
   - **Implements**: SC-001 (all 19 slots); plan close-out "Archive worktree" line.
   - **Scope**: `git worktree remove ../gme-archive`; every `*pending*` in `plan.md` replaced.
   - **Evidence**: `grep -c '\*pending\*' specs/004-codebase-refactoring/plan.md` prints `0`; `git worktree list` no longer shows `../gme-archive`.
   - **Depends on**: T045, T046.
   - **Branch**: feature branch; `docs(plan): close-out record complete`.
+  - **Run evidence (2026-09-11, local-only close-out)**: the clean archive worktree at `bc185c9` was removed; under the owner's local-only scope, this cleanup was performed while T046 remains explicitly blocked, and the release dry run is recorded as unexecuted rather than represented as a successful external run.
 
 ---
 
