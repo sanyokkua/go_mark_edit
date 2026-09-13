@@ -20,8 +20,6 @@ export interface UseShutdownOptions {
      */
     hydratedPendingCloseId?: string | null;
     hydratedState?: Pick<AppModelState, 'snapshot'>;
-    onRequest?: (closeID: string) => void | Promise<void>;
-    onPendingChange?: (closeID: string | null) => void;
     dependencies?: ShutdownDependencies;
 }
 
@@ -55,17 +53,15 @@ export function useShutdown(options: UseShutdownOptions): ShutdownController {
     const [pendingClose, setPendingClose] = useState<string | null>(null);
     const pendingCloseRef = useRef<string | null>(null);
     const bufferedCloseRef = useRef<string | undefined>(undefined);
+    // Completed IDs remain handled: a delayed event must not recreate a cancelled close.
     const handledCloseIDsRef = useRef(new Set<string>());
     const readyRef = useRef(options.bootstrapStatus === 'ready');
-    const onRequestRef = useRef(options.onRequest);
-    const onPendingChangeRef = useRef(options.onPendingChange);
     const acceptCloseRef = useRef<(closeID: string) => void>(() => undefined);
     const eventHandlerRef = useRef<(payload: unknown) => void>(() => undefined);
 
     const setPending = useCallback((closeID: string | null): void => {
         pendingCloseRef.current = closeID;
         setPendingClose(closeID);
-        onPendingChangeRef.current?.(closeID);
     }, []);
 
     const acceptClose = useCallback(
@@ -73,14 +69,11 @@ export function useShutdown(options: UseShutdownOptions): ShutdownController {
             if (handledCloseIDsRef.current.has(closeID)) return;
             handledCloseIDsRef.current.add(closeID);
             setPending(closeID);
-            void Promise.resolve(onRequestRef.current?.(closeID)).catch((): void => undefined);
         },
         [setPending],
     );
     useEffect((): void => {
         readyRef.current = options.bootstrapStatus === 'ready';
-        onRequestRef.current = options.onRequest;
-        onPendingChangeRef.current = options.onPendingChange;
         acceptCloseRef.current = acceptClose;
         eventHandlerRef.current = (payload: unknown): void => {
             const closeID = closeIDFromPayload(payload) ?? legacyCloseID;
@@ -90,12 +83,11 @@ export function useShutdown(options: UseShutdownOptions): ShutdownController {
             }
             acceptCloseRef.current(closeID);
         };
-    }, [acceptClose, options.bootstrapStatus, options.onPendingChange, options.onRequest]);
+    }, [acceptClose, options.bootstrapStatus]);
 
     /*
      * This effect is deliberately mount-only. It is scheduled before App's
-     * bootstrap effect, so a native close cannot fall between mounting the shell
-     * and hydrating the projection.
+     * hydration completion, so early close requests remain buffered until readiness.
      */
     useEffect((): (() => void) => {
         const dispose = native.onCloseRequested((closeID?: string): void => {
@@ -143,7 +135,6 @@ export function useShutdown(options: UseShutdownOptions): ShutdownController {
             if (closeID.length === 0) return;
             await native.cancelQuit(closeID);
             if (pendingCloseRef.current === closeID) {
-                handledCloseIDsRef.current.delete(closeID);
                 setPending(null);
             }
         },
@@ -161,7 +152,6 @@ export function useShutdown(options: UseShutdownOptions): ShutdownController {
     const clearPendingClose = useCallback(
         (closeID = pendingCloseRef.current ?? ''): void => {
             if (closeID.length === 0 || pendingCloseRef.current !== closeID) return;
-            handledCloseIDsRef.current.delete(closeID);
             setPending(null);
         },
         [setPending],

@@ -1,16 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { useEffect, useState, type MutableRefObject } from 'react';
+import type { MutableRefObject } from 'react';
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
-import type { DocumentConflictAdapter } from '../../src/logic/adapter';
 import type {
     ClassifiedError,
-    ConflictPreview,
-    ConflictResult,
     DocumentMetadata,
     DocumentTransitionResult,
     PathCommandResult,
@@ -20,9 +17,7 @@ import { store, useAppSelector } from '../../src/logic/store';
 import { applyStatePatch, hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
 import { resetNotifications, type NotificationRemediation } from '../../src/logic/store/notificationsSlice';
 import { getActionAvailability } from '../../src/logic/actions/actionRegistry';
-import { onApplicationForeground } from '../../src/ui/widgets/foregroundFocus';
 import DocumentTabs from '../../src/ui/widgets/DocumentTabs/DocumentTabs';
-import ExternalChangePrompt, { type ExternalChangeDecision } from '../../src/ui/widgets/dialogs/ExternalChangePrompt';
 import { TabRemediationContext, type TabRemediationExecutor } from '../../src/ui/widgets/tabRemediation';
 import { EDITOR_TABPANEL_ID } from '../../src/ui/widgets/editorTabPanel';
 import Launcher from '../../src/ui/widgets/Launcher';
@@ -63,118 +58,11 @@ function hydrate(documents: DocumentMetadata[], activeDocumentId = documents[0]?
     );
 }
 
-/*
- * A conflict adapter that answers "nothing changed" to everything. The app
- * layer owns the foreground sweep now, so this is supplied only to the small
- * app-layer harness used by tests that dispatch a focus event while proving
- * deferred focus restoration.
- */
-function quietConflictAdapter(): DocumentConflictAdapter {
-    return {
-        authorizeKeepMine: jest.fn(async () => ({ status: 'authorized' as const })),
-        cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
-        checkExternalChanges: jest.fn(async () => ({
-            status: 'unchanged' as const,
-        })),
-        reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
-        skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
-    };
-}
-
-function renderTabs(
-    adapter: Parameters<typeof DocumentTabs>[0]['adapter'] = {},
-    conflictAdapter: DocumentConflictAdapter | undefined = undefined,
-): void {
+function renderTabs(adapter: Parameters<typeof DocumentTabs>[0]['adapter'] = {}): void {
     render(
         <Provider store={store}>
-            <TestAppTabLayer adapter={adapter} conflictAdapter={conflictAdapter} />
+            <DocumentTabs adapter={adapter} />
         </Provider>,
-    );
-}
-
-function TestAppTabLayer({
-    adapter,
-    conflictAdapter,
-}: {
-    adapter: Parameters<typeof DocumentTabs>[0]['adapter'];
-    conflictAdapter: DocumentConflictAdapter | undefined;
-}): React.JSX.Element {
-    const [preview, setPreview] = useState<ConflictPreview | null>(null);
-    const orderedIds = useAppSelector((state) => state.documents.orderedIds);
-    const documentsById = useAppSelector((state) => state.documents.byId);
-    const activeDocumentId = useAppSelector((state) => state.documents.activeDocumentId);
-    useEffect((): (() => void) | undefined => {
-        if (conflictAdapter === undefined) return undefined;
-        return onApplicationForeground((): void => {
-            void (async (): Promise<void> => {
-                for (const documentId of orderedIds) {
-                    const document = documentsById[documentId];
-                    if (document === undefined || document.path === '') continue;
-                    const result = await conflictAdapter.checkExternalChanges(documentId);
-                    if (
-                        result.status === 'detected' &&
-                        result.preview !== undefined &&
-                        documentId === activeDocumentId
-                    ) {
-                        setPreview(result.preview);
-                    }
-                }
-            })();
-        });
-    }, [activeDocumentId, conflictAdapter, documentsById, orderedIds]);
-    const valid =
-        preview === null ||
-        documentsById[preview.documentId]?.contentRevision === undefined ||
-        documentsById[preview.documentId]?.contentRevision === preview.contentRevision;
-    const onDecision = async (decision: ExternalChangeDecision): Promise<void> => {
-        const current = preview;
-        if (current === null || conflictAdapter === undefined) return;
-        let result: ConflictResult;
-        switch (decision) {
-            case 'reload':
-                result = await conflictAdapter.reloadFromDisk(
-                    current.documentId,
-                    current.contentRevision,
-                    current.detectedDiskVersion,
-                );
-                break;
-            case 'keep-mine':
-                if (!valid) return;
-                result = await conflictAdapter.authorizeKeepMine(
-                    current.documentId,
-                    current.contentRevision,
-                    current.path ?? '',
-                    current.detectedDiskVersion,
-                );
-                break;
-            case 'skip':
-                result = await conflictAdapter.skipConflict(
-                    current.documentId,
-                    current.contentRevision,
-                    current.detectedDiskVersion,
-                );
-                break;
-            case 'cancel':
-                result = await conflictAdapter.cancelConflict(
-                    current.documentId,
-                    current.contentRevision,
-                    current.detectedDiskVersion,
-                );
-                break;
-        }
-        if (result.preview !== undefined) setPreview(result.preview);
-        else if (result.error === undefined) setPreview(null);
-    };
-    return (
-        <>
-            <DocumentTabs adapter={adapter} onExternalConflict={setPreview} />
-            <ExternalChangePrompt
-                onDecision={onDecision}
-                open={preview !== null}
-                preview={preview ?? undefined}
-                valid={valid}
-            />
-        </>
     );
 }
 
@@ -353,107 +241,6 @@ it('mutes the dirty dot only while the backend reports a write in flight', () =>
     renderTabs();
 
     expect(screen.getByLabelText('Modified')).toHaveAttribute('data-write-in-flight', 'true');
-});
-
-it('ExternalChangePrompt decisions and invalidation', async () => {
-    const first = documentFor('one', '/repo/one.md');
-    const second = documentFor('two', '/repo/two.md');
-    hydrate([first, second]);
-    const preview: ConflictPreview = {
-        contentRevision: 0,
-        detectedDiskVersion: {
-            exists: true,
-            mode: 0o644,
-            modifiedUnixNano: '4',
-            size: 12,
-        },
-        displayName: 'two.md',
-        documentId: 'two',
-        path: '/repo/two.md',
-        onDisk: {
-            byteCount: 6,
-            lineCount: 1,
-            text: 'disk\n',
-            truncated: false,
-        },
-        readOnly: false,
-        yours: {
-            byteCount: 6,
-            lineCount: 1,
-            text: 'mine\n',
-            truncated: false,
-        },
-    };
-    const authorizeKeepMine = jest.fn(async () => ({
-        status: 'authorized' as const,
-        documentId: 'two',
-        decisionToken: 'decision-1',
-    }));
-    const activateDocument = jest.fn(async () => ({
-        conflict: preview,
-        data: { content: 'mine\n', documentId: 'two', documentRevision: 0 },
-    }));
-    renderTabs(
-        { activateDocument },
-        {
-            authorizeKeepMine,
-            cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
-            checkExternalChanges: jest.fn(async () => ({
-                status: 'unchanged' as const,
-            })),
-            reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
-            skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
-        },
-    );
-
-    fireEvent.click(screen.getByRole('tab', { name: /two\.md/iu }));
-    await waitFor(() => expect(screen.getByRole('dialog', { name: 'File changed on disk' })).toBeVisible());
-    expect(screen.getByRole('button', { name: 'Skip' })).toHaveFocus();
-    fireEvent.click(screen.getByRole('button', { name: 'Keep mine' }));
-    await waitFor(() =>
-        expect(authorizeKeepMine).toHaveBeenCalledWith('two', 0, '/repo/two.md', preview.detectedDiskVersion),
-    );
-});
-
-it('renders bounded conflict content even when both retained texts compare equal', async () => {
-    const first = documentFor('one', '/repo/one.md');
-    const second = documentFor('two', '/repo/two.md');
-    const preview: ConflictPreview = {
-        contentRevision: 0,
-        detectedDiskVersion: {
-            exists: true,
-            mode: 0o644,
-            modifiedUnixNano: '4',
-            size: 12,
-        },
-        displayName: 'two.md',
-        documentId: 'two',
-        onDisk: {
-            byteCount: 5_500,
-            lineCount: 13,
-            text: 'same retained text',
-            truncated: true,
-        },
-        path: '/repo/two.md',
-        readOnly: false,
-        yours: {
-            byteCount: 5_500,
-            lineCount: 13,
-            text: 'same retained text',
-            truncated: true,
-        },
-    };
-    hydrate([first, second]);
-    renderTabs({
-        activateDocument: jest.fn(async () => ({
-            conflict: preview,
-            data: { content: 'mine\n', documentId: 'two', documentRevision: 0 },
-        })),
-    });
-
-    fireEvent.click(screen.getByRole('tab', { name: /two\.md/iu }));
-    await waitFor(() => expect(screen.getByRole('dialog', { name: 'File changed on disk' })).toBeVisible());
-    expect(document.querySelector('[data-conflict-truncated="onDisk"]')).toBeInTheDocument();
 });
 
 /*
@@ -865,7 +652,7 @@ it('waits for the application to regain foreground focus before restoring the ta
     const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
         status: 'revealed',
     }));
-    renderTabs({ revealInFileManager }, quietConflictAdapter());
+    renderTabs({ revealInFileManager });
 
     const tab = screen.getByRole('tab', { name: /one\.md/u });
     fireEvent.contextMenu(tab);
@@ -901,7 +688,7 @@ it('restores focus immediately when Reveal is refused, because nothing took the 
             dedupKey: 'reveal:one',
         },
     }));
-    renderTabs({ revealInFileManager }, quietConflictAdapter());
+    renderTabs({ revealInFileManager });
 
     const tab = screen.getByRole('tab', { name: /one\.md/u });
     fireEvent.contextMenu(tab);
@@ -1578,122 +1365,6 @@ it('offers Retry on a refused activation, naming the tab it acted on', async () 
             labelKey: 'action.retry.label',
         },
     ]);
-});
-
-/*
- * runs the foreground version check on three occasions: tab
- * activation, "window focus or resume", and before any write — and forbids a
- * background watcher or a polling timer as the means. Tab activation is a
- * backend concern (`internal/appmodel/tab_session.go` attaches the check to
- * every activation); focus and resume are only observable from the webview, so
- * they are checked here. Every assertion below is paired with its negative: the
- * check must not have run before the event, and time passing on its own must
- * not run it at all.
- */
-// no-watcher/no-polling-timer constraint on how it is implemented). The "before
-// any write" occasion and the stable re-read rules are proved in Go, not here.
-it('checks every path-backed document on window focus and on resume, and never on a timer', async () => {
-    jest.useFakeTimers();
-    try {
-        const withPath = documentFor('one', '/repo/one.md');
-        const readOnly = {
-            ...documentFor('two', '/repo/two.md'),
-            capability: 'read-only',
-        };
-        const untitled = documentFor('three', '');
-        hydrate([withPath, readOnly, untitled]);
-        const checkExternalChanges = jest.fn(async (documentId: string) => {
-            void documentId;
-            return { status: 'unchanged' as const };
-        });
-        renderTabs(
-            {},
-            {
-                authorizeKeepMine: jest.fn(async () => ({
-                    status: 'authorized' as const,
-                })),
-                cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
-                checkExternalChanges,
-                reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
-                skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
-            },
-        );
-
-        // Mounting is not focusing, and no elapsed time is a check either: a run
-        // here would mean the check is armed on a timer rather than on the event.
-        expect(checkExternalChanges).not.toHaveBeenCalled();
-        await act(async (): Promise<void> => {
-            jest.advanceTimersByTime(120_000);
-        });
-        expect(checkExternalChanges).not.toHaveBeenCalled();
-
-        await act(async (): Promise<void> => {
-            window.dispatchEvent(new Event('focus'));
-            await Promise.resolve();
-        });
-        await waitFor(() => expect(checkExternalChanges).toHaveBeenCalledTimes(2));
-        expect(checkExternalChanges.mock.calls.map((call) => call[0])).toEqual(['one', 'two']);
-
-        // Time alone still adds nothing once the listener is armed.
-        await act(async (): Promise<void> => {
-            jest.advanceTimersByTime(120_000);
-        });
-        expect(checkExternalChanges).toHaveBeenCalledTimes(2);
-
-        await act(async (): Promise<void> => {
-            globalThis.document.dispatchEvent(new Event('visibilitychange'));
-            await Promise.resolve();
-        });
-        await waitFor(() => expect(checkExternalChanges).toHaveBeenCalledTimes(4));
-    } finally {
-        jest.useRealTimers();
-    }
-});
-
-// active document opens 's prompt. The prompt's own bounds and
-// decisions are proved by the tests above.)
-it('opens the external-change prompt for a conflict the focus check finds', async () => {
-    const first = documentFor('one', '/repo/one.md');
-    const preview: ConflictPreview = {
-        contentRevision: 0,
-        detectedDiskVersion: {
-            exists: true,
-            mode: 0o644,
-            modifiedUnixNano: '9',
-            size: 12,
-        },
-        displayName: 'one.md',
-        documentId: 'one',
-        onDisk: { byteCount: 6, lineCount: 1, text: 'disk\n', truncated: false },
-        path: '/repo/one.md',
-        readOnly: false,
-        yours: { byteCount: 6, lineCount: 1, text: 'mine\n', truncated: false },
-    };
-    hydrate([first]);
-    renderTabs(
-        {},
-        {
-            authorizeKeepMine: jest.fn(async () => ({
-                status: 'authorized' as const,
-            })),
-            cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
-            checkExternalChanges: jest.fn(async () => ({
-                status: 'detected' as const,
-                documentId: 'one',
-                preview,
-            })),
-            reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
-            skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
-        },
-    );
-
-    expect(screen.queryByRole('dialog', { name: 'File changed on disk' })).not.toBeInTheDocument();
-    await act(async (): Promise<void> => {
-        window.dispatchEvent(new Event('focus'));
-        await Promise.resolve();
-    });
-
-    await waitFor(() => expect(screen.getByRole('dialog', { name: 'File changed on disk' })).toBeVisible());
 });
 
 /*

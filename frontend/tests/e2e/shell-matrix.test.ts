@@ -51,10 +51,17 @@ test('keeps the document stage and settings focus contract across the shell matr
                 width <= 376
                     ? navigation.getByRole('button', { name: 'More actions' })
                     : navigation.getByRole('button', { name: 'Settings', exact: true });
-            await menu.getByRole('radio', { name: themeLabel, exact: true }).press('Space');
-            await menu.getByRole('radio', { name: modeLabel, exact: true }).press('Space');
+            const themeControl = menu.getByRole('radio', { name: themeLabel, exact: true });
+            await themeControl.press('Space');
+            // Acknowledging a segmented choice restores its focus before the next keypress.
+            await expect(themeControl).toHaveAttribute('aria-checked', 'true');
             await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+            await expect(themeControl).toBeFocused();
+            const modeControl = menu.getByRole('radio', { name: modeLabel, exact: true });
+            await modeControl.press('Space');
+            await expect(modeControl).toHaveAttribute('aria-checked', 'true');
             await expect(page.locator('html')).toHaveAttribute('data-mode', mode);
+            await expect(modeControl).toBeFocused();
             await expect(stage).toBeVisible();
             await expect
                 .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))

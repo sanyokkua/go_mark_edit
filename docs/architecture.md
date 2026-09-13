@@ -48,24 +48,34 @@ receive commands through props and contexts.
 
 ### Frontend composition and command owners
 
-| Owner                                          | Responsibility                                                                 |
-| ---------------------------------------------- | ------------------------------------------------------------------------------ |
-| `frontend/src/app/App.tsx`                     | Composition of the shell, projection hydration and top-level providers.        |
-| `frontend/src/app/useBootstrap.ts`             | Startup steps and readiness/failure presentation.                              |
-| `frontend/src/app/useShutdown.ts`              | Frontend half of the native close protocol.                                    |
-| `frontend/src/app/useCommands.ts`              | Command orchestration, action dispatch and notification delivery.              |
-| `frontend/src/logic/adapter/`                  | The bridge boundary, request pacing, event subscriptions and service wrappers. |
-| `frontend/src/logic/store/`                    | A disposable Redux projection of backend state; it is not the source of truth. |
-| `frontend/src/logic/actions/actionRegistry.ts` | The action catalogue and availability decisions used by every command surface. |
-| `frontend/src/logic/format/formatting.ts`      | The single formatting runner used by toolbar and command paths.                |
-| `frontend/src/logic/markdown/linkPolicy.ts`    | Link classification before a preview action is dispatched.                     |
-| `frontend/src/ui/widgets/editorSession.ts`     | The document-identity-bound active editor command seam.                        |
-| `frontend/src/ui/widgets/Menubar/`             | File, Settings, View, About and narrow overflow menu composition.              |
-| `frontend/src/ui/widgets/DocumentTabs/`        | The DocumentTabs consumer of TabBar and tab-specific commands.                 |
-| `frontend/src/ui/widgets/FormattingToolbar/`   | Formatting groups, arrangement control and Bar overflow.                       |
-| `frontend/src/ui/widgets/EditorStage/`         | Editor/preview panes, arrangement and preview accessory state.                 |
-| `frontend/src/ui/widgets/dialogs/`             | Settings, About, Shortcuts, close, conflict and normalization dialogs.         |
-| `frontend/src/ui/widgets/StartupFailure/`      | Per-step startup failure, Retry and Quit.                                      |
+| Owner                                                | Responsibility                                                                                                    |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `frontend/src/app/App.tsx`                           | Provider, controller and shell composition; no adapter calls or workflow decisions.                               |
+| `frontend/src/app/AppFrame.tsx` and `AppDialogs.tsx` | Typed shell and dialog presentation, retaining the application-frame portal root and provider lifetimes.          |
+| `frontend/src/app/useBootstrap.ts`                   | Startup attempts, hydration, readiness, failure and fresh Retry.                                                  |
+| `frontend/src/app/useDocumentSession.ts`             | Installed active buffer and reload epoch, through guarded activation acknowledgements.                            |
+| `frontend/src/app/useCommands.ts`                    | New, Open, Recents, Reopen and activation commands.                                                               |
+| `frontend/src/app/useDocumentWrites.ts`              | Save/Save As intent, normalization, write conflicts, committed-write reconciliation and recovery.                 |
+| `frontend/src/app/useCloseWorkflow.ts`               | Original tab-close or native-close origin, close plans, prompts, continuations and recovery-discard confirmation. |
+| `frontend/src/app/useShutdown.ts`                    | Sole frontend native pending-close identity, subscriptions, duplicate delivery handling and acknowledgements.     |
+| `frontend/src/app/useExternalChanges.ts`             | Foreground checks, single-flight execution, pending comparisons and deferred rechecks.                            |
+| `frontend/src/app/useConflictCommands.ts`            | Shared conflict transport and guarded reload installation; callers retain their distinct continuations.           |
+| `frontend/src/app/useWorkflowPrompts.ts`             | Close → Save → foreground prompt priority and deferred write revalidation.                                        |
+| `frontend/src/app/useNotifications.ts`               | Notice/banner presentation, remediation routing, dismissal and polite Copy path announcements.                    |
+| `frontend/src/app/useWindowGeometry.ts`              | Readiness-gated native resize subscription and disposal.                                                          |
+| `frontend/src/app/useAppPresentation.ts`             | Local settings, menu, About and Shortcuts presentation state and existing command availability.                   |
+| `frontend/src/logic/adapter/`                        | The bridge boundary, request pacing, event subscriptions and service wrappers.                                    |
+| `frontend/src/logic/store/`                          | A disposable Redux projection of backend state; it is not the source of truth.                                    |
+| `frontend/src/logic/actions/actionRegistry.ts`       | The action catalogue and availability decisions used by every command surface.                                    |
+| `frontend/src/logic/format/formatting.ts`            | The single formatting runner used by toolbar and command paths.                                                   |
+| `frontend/src/logic/markdown/linkPolicy.ts`          | Link classification before a preview action is dispatched.                                                        |
+| `frontend/src/ui/widgets/editorSession.ts`           | The document-identity-bound active editor command seam.                                                           |
+| `frontend/src/ui/widgets/Menubar/`                   | File, Settings, View, About and narrow overflow menu composition.                                                 |
+| `frontend/src/ui/widgets/DocumentTabs/`              | The DocumentTabs consumer of TabBar and tab-specific commands.                                                    |
+| `frontend/src/ui/widgets/FormattingToolbar/`         | Formatting groups, arrangement control and Bar overflow.                                                          |
+| `frontend/src/ui/widgets/EditorStage/`               | Editor/preview panes, arrangement and preview accessory state.                                                    |
+| `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, close, conflict and normalization dialogs.                                            |
+| `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                         |
 
 ## Shared UI owners and consumer inventory
 
@@ -224,6 +234,12 @@ The Redux store under `frontend/src/logic/store/` hydrates once and applies cont
 The active Monaco buffer is the only frontend working copy and is not the backend source of truth.
 `frontend/src/ui/widgets/editorSession.ts` binds commands to the expected document identity and session;
 its results explicitly distinguish available, unavailable and document-mismatch outcomes.
+`useDocumentSession` owns the installed buffer and clears it when the projection has no active document
+(including the empty-string wire representation). An activation generation is captured before each
+activation or reload command. The guard waits for the matching document and projection revision,
+rejects superseded acknowledgements and installs each accepted generation once. Only an accepted
+reload advances the editor epoch; an ordinary Save retains the Monaco model, undo history, selection
+and focus. No separate reload context is needed.
 
 ### Editing, saves and conflicts
 
@@ -235,12 +251,32 @@ written.
 `internal/file/atomic_replace.go` owns atomic replacement. Before the replacement commits, failure
 leaves disk and the old baseline unchanged. After it commits, the model records the exact written
 baseline even if patch delivery fails; the adapter rehydrates before accepting further mutations and
-does not repeat the write.
+does not repeat the write. `useDocumentWrites` repairs the Redux projection from the recovered
+snapshot; it does not reinstall editor content or advance activation generations.
 
 External changes are classified before saving. Editable conflicts offer Reload or one exact-version
 Keep mine authorization. Read-only conflicts offer Reload only. Close plans gather all required choices
 and normalization authorizations before writing, save in authoritative tab order, stop at the first
 failure, and close tabs only after all requested saves succeed.
+
+The app workflows keep their own mutually exclusive states. A write retains its original Save or
+Save As intent and target through normalization and conflicts. A close retains its original tab kind
+and target IDs, or its native close ID, through preparation, decisions, execution and cancellation.
+Accepted normalization tokens are remembered by the close workflow so a backend plan retaining a
+confirmed token does not prompt twice. Classified retries request fresh revisions while preserving
+that original intent and target set; stuck-command retries reuse the existing bridge request identity.
+
+`AppDialogs` mounts one conflict prompt. `useWorkflowPrompts` applies Close → Save → foreground
+priority. Hidden requests retain their workflow identity: writes are revalidated before resuming,
+foreground comparisons are checked again before display, and requests for closed documents are
+removed. A failed write recheck keeps its intent hidden and offers a fresh validation Retry;
+dismissing that failure releases it, and saving another selected document never redirects to it.
+A failed foreground recheck remains hidden until a later focus/resume check succeeds. Cancelling a
+higher-priority prompt does not authorize or start a deferred write. Shared
+conflict commands only perform transport and guarded reload: write Keep mine continues the original
+write, foreground Keep mine authorizes without saving, and close decisions continue the close plan.
+Reload during a close cancels the old plan before preparing another with the original targets.
+Modal keyboard suppression and focus restoration remain with the existing UI owners.
 
 ### Links, files and images
 
@@ -262,7 +298,10 @@ undo journal to reconcile those destructive changes safely.
 
 `internal/application/shutdown.go` owns the native close and quit protocol; `frontend/src/app/useShutdown.ts`
 owns the frontend half. The request identity for a close is distinct from the identity of each bridge
-call.
+call. `useShutdown.pendingClose` is the sole frontend pending identity consumed by
+`useCloseWorkflow`; cancellation remains pending until its native acknowledgement arrives. Repeated
+early, hydrated or live delivery of the same close ID starts one workflow. Recovery-discard
+confirmation names only dirty documents.
 
 The sequence is normative:
 

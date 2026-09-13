@@ -41,10 +41,16 @@ test('changes all six palettes through keyboard-reachable controls without overf
         await openAppearance(page);
 
         for (const [themeLabel, modeLabel, theme, mode] of palettes) {
-            await page.getByRole('radio', { name: themeLabel, exact: true }).press('Space');
-            await page.getByRole('radio', { name: modeLabel, exact: true }).press('Space');
+            const themeControl = page.getByRole('radio', { name: themeLabel, exact: true });
+            await themeControl.press('Space');
+            await expect(themeControl).toHaveAttribute('aria-checked', 'true');
             await expect.poll(() => page.locator('html').getAttribute('data-theme')).toBe(theme);
+            await expect(themeControl).toBeFocused();
+            const modeControl = page.getByRole('radio', { name: modeLabel, exact: true });
+            await modeControl.press('Space');
+            await expect(modeControl).toHaveAttribute('aria-checked', 'true');
             await expect.poll(() => page.locator('html').getAttribute('data-mode')).toBe(mode);
+            await expect(modeControl).toBeFocused();
             await expect(page.locator('.monaco-editor')).toBeVisible();
             await expect
                 .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))

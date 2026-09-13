@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useShutdown } from '../../src/app/useShutdown';
 import type { NativeLifecycleAdapter } from '../../src/logic/adapter';
@@ -59,8 +60,10 @@ function Harness(props: {
         dependencies: { native: props.native },
         hydratedPendingCloseId: props.hydratedPendingCloseId,
         hydratedState: props.hydratedState,
-        onRequest: props.onRequest,
     });
+    useEffect(() => {
+        if (shutdown.pendingClose !== null) props.onRequest(shutdown.pendingClose);
+    }, [props.onRequest, shutdown.pendingClose]);
     return (
         <>
             <output aria-label="Pending close">{shutdown.pendingClose ?? ''}</output>
@@ -120,4 +123,10 @@ it('keeps the pending close visible until cancellation is acknowledged', async (
     act((): void => cancellation.resolve());
     await waitFor(() => expect(screen.getByRole('status', { name: 'Pending close' })).toHaveTextContent(''));
     expect(native.cancelQuit).toHaveBeenCalledWith('cancel-close');
+    act((): void => native.emit('cancel-close'));
+    expect(screen.getByRole('status', { name: 'Pending close' })).toHaveTextContent('');
+    expect(onRequest).toHaveBeenCalledTimes(1);
+    act((): void => native.emit('fresh-close'));
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Pending close' })).toHaveTextContent('fresh-close'));
+    expect(onRequest).toHaveBeenCalledTimes(2);
 });

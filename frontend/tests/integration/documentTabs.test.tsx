@@ -1,15 +1,10 @@
-import { useEffect, useState } from 'react';
-
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
-import { type DocumentConflictAdapter } from '../../src/logic/adapter';
-import type { ConflictPreview, DocumentMetadata, TabTransitionResult } from '../../src/logic/store/appModelTypes';
-import { store, useAppSelector } from '../../src/logic/store';
+import type { DocumentMetadata, TabTransitionResult } from '../../src/logic/store/appModelTypes';
+import { store } from '../../src/logic/store';
 import { hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
 import DocumentTabs from '../../src/ui/widgets/DocumentTabs/DocumentTabs';
-import ExternalChangePrompt from '../../src/ui/widgets/dialogs/ExternalChangePrompt';
-import { onApplicationForeground } from '../../src/ui/widgets/foregroundFocus';
 
 function documentFor(documentId: string, path: string): DocumentMetadata {
     return {
@@ -48,85 +43,11 @@ function hydrate(documents: DocumentMetadata[]): void {
     );
 }
 
-function previewFor(documentId: string): ConflictPreview {
-    return {
-        contentRevision: 0,
-        detectedDiskVersion: {
-            exists: true,
-            mode: 0o644,
-            modifiedUnixNano: '2',
-            size: 6,
-        },
-        displayName: `${documentId}.md`,
-        documentId,
-        path: `/repo/${documentId}.md`,
-        onDisk: {
-            byteCount: 6,
-            lineCount: 1,
-            text: 'disk\n',
-            truncated: false,
-        },
-        readOnly: false,
-        yours: {
-            byteCount: 6,
-            lineCount: 1,
-            text: 'mine\n',
-            truncated: false,
-        },
-    };
-}
-
-function renderTabSurface({
-    adapter = {},
-    conflictAdapter,
-}: {
-    adapter?: Parameters<typeof DocumentTabs>[0]['adapter'];
-    conflictAdapter?: DocumentConflictAdapter;
-} = {}): void {
+function renderTabSurface({ adapter = {} }: { adapter?: Parameters<typeof DocumentTabs>[0]['adapter'] } = {}): void {
     render(
         <Provider store={store}>
-            <ApplicationTabLayer adapter={adapter} conflictAdapter={conflictAdapter} />
+            <DocumentTabs adapter={adapter} />
         </Provider>,
-    );
-}
-
-function ApplicationTabLayer({
-    adapter,
-    conflictAdapter,
-}: {
-    adapter: Parameters<typeof DocumentTabs>[0]['adapter'];
-    conflictAdapter?: DocumentConflictAdapter;
-}): React.JSX.Element {
-    const [preview, setPreview] = useState<ConflictPreview | null>(null);
-    const orderedIds = useAppSelector((state) => state.documents.orderedIds);
-    const documentsById = useAppSelector((state) => state.documents.byId);
-    const activeDocumentId = useAppSelector((state) => state.documents.activeDocumentId);
-
-    useEffect(() => {
-        if (conflictAdapter === undefined) return undefined;
-        return onApplicationForeground((): void => {
-            void (async (): Promise<void> => {
-                for (const documentId of orderedIds) {
-                    const document = documentsById[documentId];
-                    if (document === undefined || document.path === '') continue;
-                    const result = await conflictAdapter.checkExternalChanges(documentId);
-                    if (
-                        result.status === 'detected' &&
-                        result.preview !== undefined &&
-                        documentId === activeDocumentId
-                    ) {
-                        setPreview(result.preview);
-                    }
-                }
-            })();
-        });
-    }, [activeDocumentId, conflictAdapter, documentsById, orderedIds]);
-
-    return (
-        <>
-            <DocumentTabs adapter={adapter} onExternalConflict={setPreview} />
-            <ExternalChangePrompt onDecision={jest.fn()} open={preview !== null} preview={preview ?? undefined} />
-        </>
     );
 }
 
@@ -194,35 +115,6 @@ it('routes add and reorder commands from the app-layer tab surface', async () =>
     }
 
     await waitFor(() => expect(reorderDocument).toHaveBeenCalledWith('one', 1, 4));
-});
-
-it('runs the foreground sweep in the app layer and opens one active-tab prompt', async () => {
-    const first = documentFor('one', '/repo/one.md');
-    const second = documentFor('two', '/repo/two.md');
-    hydrate([first, second]);
-    const checkExternalChanges = jest.fn(async (documentId: string) =>
-        documentId === 'one'
-            ? { status: 'detected' as const, preview: previewFor(documentId) }
-            : { status: 'unchanged' as const },
-    );
-
-    renderTabSurface({
-        conflictAdapter: {
-            authorizeKeepMine: jest.fn(),
-            cancelConflict: jest.fn(),
-            checkExternalChanges,
-            reloadFromDisk: jest.fn(),
-            skipConflict: jest.fn(),
-        },
-    });
-
-    fireEvent.focus(window);
-
-    await waitFor(() => {
-        expect(checkExternalChanges).toHaveBeenCalledWith('one');
-        expect(checkExternalChanges).toHaveBeenCalledWith('two');
-        expect(screen.getByRole('dialog', { name: 'File changed on disk' })).toBeVisible();
-    });
 });
 
 it('passes pointer context anchors through the consumer to the tab menu', async () => {

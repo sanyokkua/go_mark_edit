@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { store } from '../logic/store';
+import { resetNotifications } from '../logic/store/notificationsSlice';
 import type { AppModelAdapter } from '../logic/adapter/appModelAdapter';
 import { setBootstrapStatus as setCommandBootstrapStatus } from '../logic/adapter/command';
 import type { SettingsAdapter } from '../logic/adapter/services';
@@ -143,6 +145,7 @@ export function useBootstrap(options: UseBootstrapOptions = {}): BootstrapContro
     const run = useCallback(
         (isRetry: boolean): void => {
             if (flightRef.current) return;
+            if (isRetry) store.dispatch(resetNotifications());
             const previousFailure = isRetry ? failureRef.current : null;
             const retryStep = previousFailure?.step;
             const attemptID = attemptRef.current + 1;
