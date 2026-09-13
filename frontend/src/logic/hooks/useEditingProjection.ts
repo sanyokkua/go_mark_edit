@@ -10,22 +10,18 @@ import { useAppSelector } from '../store';
  * active document's capability is needed for editing commands; when no document
  * is open the hook returns `undefined` and the registry keeps its static rules.
  */
-export function useEditingProjection(
-  documentId: string | undefined,
-): ProjectedActionState | undefined {
-  const capability = useAppSelector((state) =>
-    documentId === undefined
-      ? undefined
-      : state.documents.byId[documentId]?.capability,
-  );
-  return useMemo(
-    () =>
-      documentId === undefined
-        ? undefined
-        : {
-            activeDocumentId: documentId,
-            documents: { [documentId]: { capability } },
-          },
-    [capability, documentId],
-  );
+export function useEditingProjection(documentId: string | undefined): ProjectedActionState | undefined {
+    const capability = useAppSelector((state) =>
+        documentId === undefined ? undefined : state.documents.byId[documentId]?.capability,
+    );
+    return useMemo(
+        () =>
+            documentId === undefined
+                ? undefined
+                : {
+                      activeDocumentId: documentId,
+                      documents: { [documentId]: { capability } },
+                  },
+        [capability, documentId],
+    );
 }

@@ -79,7 +79,7 @@ func (service *RecentService) List(ctx context.Context) ([]apperr.RecentEntry, e
 }
 ```
 
-Note the classification: the repository's raw error is wrapped in a typed `apperr` constructor *here*,
+Note the classification: the repository's raw error is wrapped in a typed `apperr` constructor _here_,
 in the service, so the handler has nothing to decide.
 
 ## 4 — The handler is boilerplate, and copying it exactly is the point
@@ -161,7 +161,7 @@ import { ListRecent } from '../../wailsjs/go/recent/RecentHandler';
 const listRecent = guardArity('ListRecent', ListRecent);
 
 export const recentAdapter = {
-  list: async (): Promise<RecentEntry[]> => unwrap(await listRecent()),
+    list: async (): Promise<RecentEntry[]> => unwrap(await listRecent()),
 };
 ```
 

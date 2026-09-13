@@ -69,9 +69,9 @@ migration** — only a new dotted key:
 
 ```sql
 CREATE TABLE settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  type TEXT NOT NULL -- 'string' | 'int' | 'float' | 'bool'
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    type TEXT NOT NULL -- 'string' | 'int' | 'float' | 'bool'
 );
 ```
 

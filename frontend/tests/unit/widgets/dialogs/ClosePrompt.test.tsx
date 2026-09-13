@@ -4,48 +4,48 @@ import type { ClosePlanSummary } from '../../../../src/logic/store/appModelTypes
 import ClosePrompt from '../../../../src/ui/widgets/dialogs/ClosePrompt';
 
 function plan(kind: ClosePlanSummary['kind'] = 'single'): ClosePlanSummary {
-  return {
-    id: 'close-plan-1',
-    kind,
-    tabSetRevision: 4,
-    status: 'collecting',
-    targets: [
-      {
-        documentId: 'doc-1',
-        title: 'notes.md',
-        displayName: 'notes.md',
-        contentRevision: 3,
-        dirty: true,
-      },
-      ...(kind === 'single'
-        ? []
-        : [
+    return {
+        id: 'close-plan-1',
+        kind,
+        tabSetRevision: 4,
+        status: 'collecting',
+        targets: [
             {
-              documentId: 'doc-2',
-              title: 'draft.md',
-              displayName: 'draft.md',
-              contentRevision: 2,
-              dirty: true,
+                documentId: 'doc-1',
+                title: 'notes.md',
+                displayName: 'notes.md',
+                contentRevision: 3,
+                dirty: true,
             },
-          ]),
-    ],
-  };
+            ...(kind === 'single'
+                ? []
+                : [
+                      {
+                          documentId: 'doc-2',
+                          title: 'draft.md',
+                          displayName: 'draft.md',
+                          contentRevision: 2,
+                          dirty: true,
+                      },
+                  ]),
+        ],
+    };
 }
 
 // choice is proved by the sibling below)
 it('ClosePrompt complete-plan focus and cancellation', async () => {
-  const onChoice = jest.fn(async (): Promise<void> => undefined);
-  render(<ClosePrompt onChoice={onChoice} open plan={plan()} />);
+    const onChoice = jest.fn(async (): Promise<void> => undefined);
+    render(<ClosePrompt onChoice={onChoice} open plan={plan()} />);
 
-  const dialog = screen.getByRole('dialog', {
-    name: 'Save changes before closing?',
-  });
-  expect(dialog).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
-  expect(screen.getByText('notes.md')).toBeVisible();
+    const dialog = screen.getByRole('dialog', {
+        name: 'Save changes before closing?',
+    });
+    expect(dialog).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(screen.getByText('notes.md')).toBeVisible();
 
-  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-  await waitFor(() => expect(onChoice).toHaveBeenCalledWith('save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onChoice).toHaveBeenCalledWith('save'));
 });
 
 // offer Save, Discard, and Cancel". Save and Cancel are proved by the sibling
@@ -58,34 +58,34 @@ it('ClosePrompt complete-plan focus and cancellation', async () => {
 // document in the window rather than this one. The multi-target sibling below
 // covers the other side of that ternary, so the pair pins the branch.
 it('answers a single modified document with the Discard choice', async () => {
-  const onChoice = jest.fn(async (): Promise<void> => undefined);
-  render(<ClosePrompt onChoice={onChoice} open plan={plan()} />);
+    const onChoice = jest.fn(async (): Promise<void> => undefined);
+    render(<ClosePrompt onChoice={onChoice} open plan={plan()} />);
 
-  const discard = screen.getByRole('button', { name: 'Discard' });
-  expect(discard).toBeVisible();
-  expect(discard).toHaveAttribute('data-close-choice', 'discard');
-  // The whole-window answer must not be on offer for a single document.
-  expect(screen.queryByRole('button', { name: 'Discard all' })).toBeNull();
+    const discard = screen.getByRole('button', { name: 'Discard' });
+    expect(discard).toBeVisible();
+    expect(discard).toHaveAttribute('data-close-choice', 'discard');
+    // The whole-window answer must not be on offer for a single document.
+    expect(screen.queryByRole('button', { name: 'Discard all' })).toBeNull();
 
-  fireEvent.click(discard);
+    fireEvent.click(discard);
 
-  await waitFor(() => expect(onChoice).toHaveBeenCalledWith('discard'));
-  expect(onChoice).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onChoice).toHaveBeenCalledWith('discard'));
+    expect(onChoice).toHaveBeenCalledTimes(1);
 });
 
 it('ClosePrompt gathers one multi-target choice and maps Escape to Cancel', async () => {
-  const onChoice = jest.fn(async (): Promise<void> => undefined);
-  render(<ClosePrompt onChoice={onChoice} open plan={plan('right')} />);
+    const onChoice = jest.fn(async (): Promise<void> => undefined);
+    render(<ClosePrompt onChoice={onChoice} open plan={plan('right')} />);
 
-  const dialog = screen.getByRole('dialog', {
-    name: 'Save changes before closing?',
-  });
-  expect(screen.getByRole('button', { name: 'Save all' })).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Discard all' })).toBeVisible();
-  expect(screen.getByText('draft.md')).toBeVisible();
+    const dialog = screen.getByRole('dialog', {
+        name: 'Save changes before closing?',
+    });
+    expect(screen.getByRole('button', { name: 'Save all' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Discard all' })).toBeVisible();
+    expect(screen.getByText('draft.md')).toBeVisible();
 
-  fireEvent.keyDown(dialog, { key: 'Escape' });
-  await waitFor(() => expect(onChoice).toHaveBeenCalledWith('cancel'));
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(onChoice).toHaveBeenCalledWith('cancel'));
 });
 
 /*
@@ -108,27 +108,25 @@ it('ClosePrompt gathers one multi-target choice and maps Escape to Cancel', asyn
 //   names", for the close prompt's dialog element; the catalogue,
 //   focus-containment, reduced-motion and token clauses are proven elsewhere)
 it('gives the close prompt one labelled dialog element', () => {
-  render(<ClosePrompt onChoice={jest.fn()} open plan={plan()} />);
+    render(<ClosePrompt onChoice={jest.fn()} open plan={plan()} />);
 
-  const dialogs = screen.getAllByRole('dialog');
-  const dialog = dialogs[0];
-  expect({
-    dialogCount: dialogs.length,
-    tag: dialog.tagName,
-    ariaModal: dialog.getAttribute('aria-modal'),
-    labelledBy: dialog.getAttribute('aria-labelledby'),
-    hasShellMarker: dialog.hasAttribute('data-modal-shell'),
-    parentIsBody: dialog.parentElement === document.body,
-    backdropIsSibling:
-      document.querySelector('[data-modal-backdrop]')?.parentElement ===
-      document.body,
-  }).toEqual({
-    dialogCount: 1,
-    tag: 'SECTION',
-    ariaModal: 'true',
-    labelledBy: 'modal-shell-title',
-    hasShellMarker: true,
-    parentIsBody: true,
-    backdropIsSibling: true,
-  });
+    const dialogs = screen.getAllByRole('dialog');
+    const dialog = dialogs[0];
+    expect({
+        dialogCount: dialogs.length,
+        tag: dialog.tagName,
+        ariaModal: dialog.getAttribute('aria-modal'),
+        labelledBy: dialog.getAttribute('aria-labelledby'),
+        hasShellMarker: dialog.hasAttribute('data-modal-shell'),
+        parentIsBody: dialog.parentElement === document.body,
+        backdropIsSibling: document.querySelector('[data-modal-backdrop]')?.parentElement === document.body,
+    }).toEqual({
+        dialogCount: 1,
+        tag: 'SECTION',
+        ariaModal: 'true',
+        labelledBy: 'modal-shell-title',
+        hasShellMarker: true,
+        parentIsBody: true,
+        backdropIsSibling: true,
+    });
 });

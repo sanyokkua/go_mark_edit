@@ -15,13 +15,13 @@ it('switches to the dark palette when the OS switches while Auto is selected', a
 
 ## Which kind of test
 
-| Proving | Write | Runs with |
-|---|---|---|
-| a Go service or handler behaviour | `internal/<pkg>/<file>_test.go` | `just go-test` (`go test -race`) |
-| an architecture invariant | `internal/<pkg>/architecture_test.go`, function name starting `TestArchitecture` | `just archtest` |
-| a component's rendered behaviour | `frontend/src/**/<Name>.test.tsx` | `just frontend-test` (Jest + Testing Library) |
-| a whole journey through the real UI | `frontend/tests/*.spec.ts` | `just e2e-test` (Playwright) |
-| anything needing real bytes, two processes, a real provider, or the packaged binary | a numbered row in `../../plan/testing/live-plan.md` | a person, and the result is a dated report |
+| Proving                                                                             | Write                                                                            | Runs with                                     |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------- |
+| a Go service or handler behaviour                                                   | `internal/<pkg>/<file>_test.go`                                                  | `just go-test` (`go test -race`)              |
+| an architecture invariant                                                           | `internal/<pkg>/architecture_test.go`, function name starting `TestArchitecture` | `just archtest`                               |
+| a component's rendered behaviour                                                    | `frontend/src/**/<Name>.test.tsx`                                                | `just frontend-test` (Jest + Testing Library) |
+| a whole journey through the real UI                                                 | `frontend/tests/*.spec.ts`                                                       | `just e2e-test` (Playwright)                  |
+| anything needing real bytes, two processes, a real provider, or the packaged binary | a numbered row in `../../plan/testing/live-plan.md`                              | a person, and the result is a dated report    |
 
 ## Go
 
@@ -68,9 +68,9 @@ Render the subject. Query the way a user finds things.
 ```tsx
 // Proves: writing-in-the-editor#status-bar-counts-words
 it('shows the word count for the active document', async () => {
-	renderWithStore(<StatusBar wordCount={128} lineEnding="LF" encoding="UTF-8" />);
+    renderWithStore(<StatusBar wordCount={128} lineEnding="LF" encoding="UTF-8" />);
 
-	expect(await screen.findByText('128 words')).toBeVisible();
+    expect(await screen.findByText('128 words')).toBeVisible();
 });
 ```
 

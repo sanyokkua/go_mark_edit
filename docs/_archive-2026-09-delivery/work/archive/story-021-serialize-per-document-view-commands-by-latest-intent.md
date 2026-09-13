@@ -3,30 +3,30 @@ id: STORY-021
 title: Serialize per-document view commands by latest intent
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+    - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
-  - PH01-R07
+    - PH01-R07
 modules:
-  - logic/adapter/
+    - logic/adapter/
 acceptance_criteria:
-  - STORY-021-AC-1
-  - STORY-021-AC-2
-  - STORY-021-AC-3
-  - STORY-021-AC-4
-  - STORY-021-AC-5
-  - STORY-021-AC-6
+    - STORY-021-AC-1
+    - STORY-021-AC-2
+    - STORY-021-AC-3
+    - STORY-021-AC-4
+    - STORY-021-AC-5
+    - STORY-021-AC-6
 edge_cases: []
 depends_on:
-  - STORY-019
-  - STORY-020
+    - STORY-019
+    - STORY-020
 adrs:
-  - ADR-0014
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: M

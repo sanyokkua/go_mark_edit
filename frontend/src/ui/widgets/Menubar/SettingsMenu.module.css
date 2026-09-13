@@ -13,55 +13,55 @@
  */
 
 .menu {
-  position: relative;
+    position: relative;
 }
 
 .settingsBody {
-  display: block;
-  width: 100%;
+    display: block;
+    width: 100%;
 }
 
 .swatches {
-  border: 0;
-  border-radius: 0;
-  display: flex;
-  gap: 8px;
-  padding: 6px 10px;
+    border: 0;
+    border-radius: 0;
+    display: flex;
+    gap: 8px;
+    padding: 6px 10px;
 }
 
 /* Binding source: mockup.html `.swatches i` (:247). */
 .swatch {
-  background: transparent;
-  border: var(--control-border-width) solid var(--stroke);
-  border-radius: 6px;
-  cursor: pointer;
-  height: 22px;
-  padding: 0;
-  width: 22px;
+    background: transparent;
+    border: var(--control-border-width) solid var(--stroke);
+    border-radius: 6px;
+    cursor: pointer;
+    height: 22px;
+    padding: 0;
+    width: 22px;
 }
 
 .swatch[data-segmented-value='glass'] {
-  background: var(--theme-glass-swatch);
+    background: var(--theme-glass-swatch);
 }
 
 .swatch[data-segmented-value='material'] {
-  background: var(--theme-material-swatch);
+    background: var(--theme-material-swatch);
 }
 
 .swatch[data-segmented-value='minimal'] {
-  background: var(--theme-minimal-swatch);
+    background: var(--theme-minimal-swatch);
 }
 
 .swatch[aria-checked='true'] {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .options {
-  border: 0;
-  border-radius: 0;
-  display: grid;
-  padding: 0;
+    border: 0;
+    border-radius: 0;
+    display: grid;
+    padding: 0;
 }
 
 /*
@@ -70,12 +70,12 @@
  * the flow rather than hidden, so it stays focusable and keyboard-operable.
  */
 .toggleInput {
-  height: 1px;
-  opacity: 0;
-  position: absolute;
-  width: 1px;
+    height: 1px;
+    opacity: 0;
+    position: absolute;
+    width: 1px;
 }
 
 .toggleInput:disabled {
-  cursor: default;
+    cursor: default;
 }

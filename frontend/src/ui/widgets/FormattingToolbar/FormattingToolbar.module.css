@@ -1,37 +1,37 @@
 .group,
 .overflowArrangement {
-  align-items: center;
-  display: flex;
-  gap: var(--toolbar-group-gap);
-  min-width: 0;
+    align-items: center;
+    display: flex;
+    gap: var(--toolbar-group-gap);
+    min-width: 0;
 }
 
 .action,
 .overflowTrigger {
-  background: var(--surface-raised);
-  border: var(--control-border-width) solid var(--border);
-  color: var(--text);
-  font: inherit;
+    background: var(--surface-raised);
+    border: var(--control-border-width) solid var(--border);
+    color: var(--text);
+    font: inherit;
 }
 
 .action {
-  cursor: pointer;
-  padding: var(--control-padding);
-  white-space: nowrap;
+    cursor: pointer;
+    padding: var(--control-padding);
+    white-space: nowrap;
 }
 
 .toolbar {
-  align-items: center;
-  backdrop-filter: var(--blur);
-  block-size: var(--toolbar-row-height);
-  border-bottom: var(--control-border-width) solid var(--stroke-soft);
-  box-shadow: var(--toolbar-shadow);
-  display: flex;
-  flex: 0 0 var(--toolbar-row-height);
-  flex-wrap: nowrap;
-  gap: var(--toolbar-gap);
-  overflow: hidden;
-  padding: var(--toolbar-row-padding);
+    align-items: center;
+    backdrop-filter: var(--blur);
+    block-size: var(--toolbar-row-height);
+    border-bottom: var(--control-border-width) solid var(--stroke-soft);
+    box-shadow: var(--toolbar-shadow);
+    display: flex;
+    flex: 0 0 var(--toolbar-row-height);
+    flex-wrap: nowrap;
+    gap: var(--toolbar-gap);
+    overflow: hidden;
+    padding: var(--toolbar-row-padding);
 }
 
 /* Binding source: mockup.html `.tsp{flex:1}` (:289), the empty element sitting
@@ -39,176 +39,176 @@
    holds the segment against the toolbar's trailing edge; without it the segment
    packs against the Format/Compact/Lint buttons. */
 .spacer {
-  flex: 1;
+    flex: 1;
 }
 
 @media (max-width: 376px) {
-  .spacer {
-    display: none;
-  }
+    .spacer {
+        display: none;
+    }
 }
 
 .group {
-  flex: 0 1 auto;
+    flex: 0 1 auto;
 }
 
 .action {
-  background: transparent;
-  border-color: transparent;
-  border-radius: var(--arrangement-option-radius);
-  block-size: var(--toolbar-action-height);
-  font-size: var(--toolbar-icon-label-font-size);
-  max-width: 100%;
-  min-inline-size: var(--toolbar-action-min-width);
-  overflow: hidden;
-  padding-inline: var(--toolbar-action-padding-inline);
-  text-overflow: ellipsis;
+    background: transparent;
+    border-color: transparent;
+    border-radius: var(--arrangement-option-radius);
+    block-size: var(--toolbar-action-height);
+    font-size: var(--toolbar-icon-label-font-size);
+    max-width: 100%;
+    min-inline-size: var(--toolbar-action-min-width);
+    overflow: hidden;
+    padding-inline: var(--toolbar-action-padding-inline);
+    text-overflow: ellipsis;
 }
 
 .action[data-action-id='format'],
 .action[data-action-id='compact'],
 .action[data-action-id='lint'] {
-  font-size: var(--toolbar-text-label-font-size);
+    font-size: var(--toolbar-text-label-font-size);
 }
 
 .action:disabled {
-  cursor: not-allowed;
-  opacity: var(--disabled-opacity);
+    cursor: not-allowed;
+    opacity: var(--disabled-opacity);
 }
 
 .action:focus-visible,
 .overflowTrigger:focus-visible {
-  box-shadow: var(--focus-ring);
-  outline: 0;
-  outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+    outline: 0;
+    outline-offset: 2px;
 }
 
 .action[aria-checked='true'],
 .action[aria-pressed='true'] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-contrast);
 }
 
 .group {
-  backdrop-filter: var(--toolbar-group-backdrop-filter);
-  background: var(--toolbar-group-background);
-  border: 0;
-  border-radius: var(--toolbar-group-radius);
-  padding: var(--toolbar-group-padding);
+    backdrop-filter: var(--toolbar-group-backdrop-filter);
+    background: var(--toolbar-group-background);
+    border: 0;
+    border-radius: var(--toolbar-group-radius);
+    padding: var(--toolbar-group-padding);
 }
 
 .group:not(.arrangement) {
-  padding: var(--toolbar-group-utility-padding);
+    padding: var(--toolbar-group-utility-padding);
 }
 
 .arrangement {
-  border: var(--control-border-width) solid var(--stroke-soft);
-  border-radius: var(--arrangement-radius);
+    border: var(--control-border-width) solid var(--stroke-soft);
+    border-radius: var(--arrangement-radius);
 }
 
 .arrangement .action {
-  block-size: auto;
-  border-radius: var(--arrangement-option-radius);
-  font-size: 11.5px;
-  padding: var(--arrangement-option-padding);
+    block-size: auto;
+    border-radius: var(--arrangement-option-radius);
+    font-size: 11.5px;
+    padding: var(--arrangement-option-padding);
 }
 
 .overflow {
-  display: none;
-  flex: 0 0 auto;
+    display: none;
+    flex: 0 0 auto;
 }
 
 .overflowTrigger {
-  align-items: center;
-  border-radius: var(--arrangement-option-radius);
-  cursor: pointer;
-  display: inline-flex;
-  height: var(--toolbar-action-height);
-  justify-content: center;
-  min-width: var(--toolbar-action-min-width);
-  padding: 0 var(--toolbar-action-padding-inline);
+    align-items: center;
+    border-radius: var(--arrangement-option-radius);
+    cursor: pointer;
+    display: inline-flex;
+    height: var(--toolbar-action-height);
+    justify-content: center;
+    min-width: var(--toolbar-action-min-width);
+    padding: 0 var(--toolbar-action-padding-inline);
 }
 
 .overflowContent {
-  display: grid;
-  gap: var(--toolbar-group-gap);
-  grid-template-columns: minmax(0, 1fr);
-  inline-size: min(var(--popup-min-width), calc(100vw - 2 * var(--app-gap)));
+    display: grid;
+    gap: var(--toolbar-group-gap);
+    grid-template-columns: minmax(0, 1fr);
+    inline-size: min(var(--popup-min-width), calc(100vw - 2 * var(--app-gap)));
 }
 
 .narrowOverflowContent {
-  display: block;
-  gap: 0;
+    display: block;
+    gap: 0;
 }
 
 .applicationOverflowItems {
-  display: none;
-  height: 119px;
-  margin-block-start: 4px;
-  padding-block-start: 0;
+    display: none;
+    height: 119px;
+    margin-block-start: 4px;
+    padding-block-start: 0;
 }
 
 .overflowAt768,
 .overflowAt375 {
-  display: contents;
+    display: contents;
 }
 
 @media (max-width: 376px) {
-  .applicationOverflowItems {
-    display: block;
-  }
+    .applicationOverflowItems {
+        display: block;
+    }
 }
 
 .overflowArrangement {
-  flex-wrap: wrap;
+    flex-wrap: wrap;
 }
 
 .overflowArrangement .action {
-  flex: 1 1 auto;
+    flex: 1 1 auto;
 }
 
 @media (max-width: 768px) {
-  .overflow {
-    display: block;
-  }
+    .overflow {
+        display: block;
+    }
 
-  .relocateAt768 {
-    display: none;
-  }
+    .relocateAt768 {
+        display: none;
+    }
 }
 
 @media (min-width: 769px) {
-  .overflow {
-    display: none;
-  }
+    .overflow {
+        display: none;
+    }
 }
 
 @media (max-width: 376px) {
-  .relocateAt375 {
-    display: none;
-  }
+    .relocateAt375 {
+        display: none;
+    }
 
-  .toolbar {
-    gap: var(--control-gap);
-  }
+    .toolbar {
+        gap: var(--control-gap);
+    }
 }
 
 @media (min-width: 377px) {
-  .overflowAt375 {
-    display: none;
-  }
+    .overflowAt375 {
+        display: none;
+    }
 }
 
 /* The arrangement options are a segmented control: only the selected option
    carries the accent foreground and semibold weight. */
 .arrangement .action {
-  border-width: 0;
-  color: var(--muted);
-  font-weight: 400;
+    border-width: 0;
+    color: var(--muted);
+    font-weight: 400;
 }
 
 .arrangement .action[aria-checked='true'] {
-  color: var(--accent-contrast);
-  font-weight: 600;
+    color: var(--accent-contrast);
+    font-weight: 600;
 }

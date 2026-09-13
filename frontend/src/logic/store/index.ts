@@ -7,12 +7,12 @@ import settingsReducer from './settingsSlice';
 import { uiReducer } from './uiSlice';
 
 export const store = configureStore({
-  reducer: {
-    documents: documentsReducer,
-    notifications: notificationsReducer,
-    settings: settingsReducer,
-    ui: uiReducer,
-  },
+    reducer: {
+        documents: documentsReducer,
+        notifications: notificationsReducer,
+        settings: settingsReducer,
+        ui: uiReducer,
+    },
 });
 
 export type RootState = ReturnType<typeof store.getState>;

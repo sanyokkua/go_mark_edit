@@ -17,19 +17,19 @@ they behave when they are empty, busy, or broken.
    the native Edit menu, so a text editor without one cannot copy and paste. Settled by ADR-0028; build
    it first because everything else sits inside the answer.
 
-   Going frameless means the app owns four things the platform would otherwise give it, and all four
-   land here:
-   - **The drag region.** The title bar is `--wails-draggable: drag` plus `-webkit-app-region: drag`,
-     and **every interactive child sets both to `no-drag`** or it cannot be clicked at all.
-   - **Double-click to maximise.** On the drag region only, via `WindowToggleMaximise`.
-   - **Eight resize zones.** A 6-pixel band on each edge and a 12-pixel corner square, with the matching
-     resize cursor, above the content and below every overlay, inert while maximised or full screen.
-   - **A minimum size** of 375 × 480, as `MinWidth`/`MinHeight`.
+    Going frameless means the app owns four things the platform would otherwise give it, and all four
+    land here:
+    - **The drag region.** The title bar is `--wails-draggable: drag` plus `-webkit-app-region: drag`,
+      and **every interactive child sets both to `no-drag`** or it cannot be clicked at all.
+    - **Double-click to maximise.** On the drag region only, via `WindowToggleMaximise`.
+    - **Eight resize zones.** A 6-pixel band on each edge and a 12-pixel corner square, with the matching
+      resize cursor, above the content and below every overlay, inert while maximised or full screen.
+    - **A minimum size** of 375 × 480, as `MinWidth`/`MinHeight`.
 
-   `../spec/product/the-app-window.md#the-window-has-its-own-resize-zones` and the three rules around it
-   specify all of it. **Every one of these has to be checked on all three platforms in Phase 08**, because
-   this is precisely the part Wails does not do for us — see `KNOWN_ISSUES.md` §13. A zone that works in
-   `wails dev` on macOS tells you nothing about Windows.
+    `../spec/product/the-app-window.md#the-window-has-its-own-resize-zones` and the three rules around it
+    specify all of it. **Every one of these has to be checked on all three platforms in Phase 08**, because
+    this is precisely the part Wails does not do for us — see `KNOWN_ISSUES.md` §13. A zone that works in
+    `wails dev` on macOS tells you nothing about Windows.
 
 2. **The chrome shells.** Title bar, menu bar, tab strip, sidebar slot, and the status bar — styled,
    empty, and correct at 375, 768 and 1280 pixels wide. They hold nothing yet; later phases fill them.

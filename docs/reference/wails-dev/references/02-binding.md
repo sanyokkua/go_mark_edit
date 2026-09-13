@@ -42,10 +42,7 @@ wails generate module
 
 ```typescript
 // Import bound methods
-import {
-  MyMethod,
-  AnotherMethod,
-} from '../../../wailsjs/go/mypackage/MyStruct';
+import { MyMethod, AnotherMethod } from '../../../wailsjs/go/mypackage/MyStruct';
 
 // Import shared models
 import { mypackage } from '../../../wailsjs/go/models';
@@ -182,8 +179,8 @@ pointer with `omitempty`.
 // Adapter layer (logic/adapter/) — wrap the generated binding with guardArity, then unwrap
 const res = await appModelAdapter.openDoc(req); // a command; always resolves
 if (res.error) {
-  dispatch(notifyError(res.error)); // typed WireError → toast
-  return;
+    dispatch(notifyError(res.error)); // typed WireError → toast
+    return;
 }
 // No local dispatch of model data: the backend mutated the authoritative model and the
 // resulting change arrives as a `state:patch` event that reconciles the Redux projection

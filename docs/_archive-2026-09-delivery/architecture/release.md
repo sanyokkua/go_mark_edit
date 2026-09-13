@@ -16,15 +16,15 @@ lands.
 
 ## Artifacts
 
-| Artifact | Platform | Built by | Output path | Built today |
-|---|---|---|---|---|
-| `GoMarkEdit.app` bundle | `darwin/arm64`, `darwin/amd64` | `just build` → `wails build` | `build/bin/GoMarkEdit.app` | **yes** |
-| `GoMarkEdit.exe` | `windows/amd64` | `wails build -platform windows/amd64` | `build/bin/GoMarkEdit.exe` | not verified on this machine |
-| `GoMarkEdit` ELF binary | `linux/amd64` (Ubuntu 24.04, `webkit2_41` tag) | `wails build -platform linux/amd64 -tags webkit2_41` | `build/bin/GoMarkEdit` | not verified on this machine |
-| macOS `.zip` of the `.app` | `darwin/*` | Phase 08 pipeline | release asset | no |
-| Windows NSIS installer | `windows/amd64` | Phase 08 pipeline | release asset | no |
-| Linux `.deb` and `.rpm` | `linux/amd64` | Phase 08 pipeline | release asset | no |
-| `SHA256SUMS.txt` | all | Phase 08 pipeline | release asset | no |
+| Artifact                   | Platform                                       | Built by                                             | Output path                | Built today                  |
+| -------------------------- | ---------------------------------------------- | ---------------------------------------------------- | -------------------------- | ---------------------------- |
+| `GoMarkEdit.app` bundle    | `darwin/arm64`, `darwin/amd64`                 | `just build` → `wails build`                         | `build/bin/GoMarkEdit.app` | **yes**                      |
+| `GoMarkEdit.exe`           | `windows/amd64`                                | `wails build -platform windows/amd64`                | `build/bin/GoMarkEdit.exe` | not verified on this machine |
+| `GoMarkEdit` ELF binary    | `linux/amd64` (Ubuntu 24.04, `webkit2_41` tag) | `wails build -platform linux/amd64 -tags webkit2_41` | `build/bin/GoMarkEdit`     | not verified on this machine |
+| macOS `.zip` of the `.app` | `darwin/*`                                     | Phase 08 pipeline                                    | release asset              | no                           |
+| Windows NSIS installer     | `windows/amd64`                                | Phase 08 pipeline                                    | release asset              | no                           |
+| Linux `.deb` and `.rpm`    | `linux/amd64`                                  | Phase 08 pipeline                                    | release asset              | no                           |
+| `SHA256SUMS.txt`           | all                                            | Phase 08 pipeline                                    | release asset              | no                           |
 
 `just build` produces a **runnable binary, not a distributable artifact**. The distinction is
 load-bearing: a Definition of Done that says "packaged" against `wails build` output certifies
@@ -56,12 +56,12 @@ Decided in `../adr/0015-cicd-versioning-icon.md`; built in Phase 08 step 1.
 
 ## Building
 
-| Step | Command | Produces | Notes |
-|---|---|---|---|
-| Frontend bundle | `just frontend-build` | `frontend/dist/` | `tsc --noEmit && vite build` |
-| Bindings | `just gen` | `frontend/wailsjs/` | `just gen-check` fails on drift |
-| Binary | `just build` | `build/bin/` | `wails build` |
-| Full local gate | `just check` | — | bindings, build, format, lint, types, frontend tests, vet, archtest, race tests |
+| Step            | Command               | Produces            | Notes                                                                           |
+| --------------- | --------------------- | ------------------- | ------------------------------------------------------------------------------- |
+| Frontend bundle | `just frontend-build` | `frontend/dist/`    | `tsc --noEmit && vite build`                                                    |
+| Bindings        | `just gen`            | `frontend/wailsjs/` | `just gen-check` fails on drift                                                 |
+| Binary          | `just build`          | `build/bin/`        | `wails build`                                                                   |
+| Full local gate | `just check`          | —                   | bindings, build, format, lint, types, frontend tests, vet, archtest, race tests |
 
 - **When** a build runs from a clean checkout, `just setup` must have run first: `go mod download`,
   `npm --prefix frontend ci`, `lefthook install`.
@@ -77,23 +77,23 @@ Decided in `../adr/0015-cicd-versioning-icon.md`; built in Phase 08 step 1.
 One source image generates every per-OS icon, deterministically, by script — never by hand in an image
 editor, because hand-forked variants drift and nobody notices which one is stale.
 
-| File | What it is |
-|---|---|
-| `build/icon/appicon-source.png` | The canonical 1.4 MB source artwork |
-| `build/icon/process_icon.py` | Crops the tile, removes the dark backdrop to transparency, emits 1024×1024 |
-| `build/appicon.png` | The generated input Wails derives from |
-| `build/windows/icon.ico` | Windows application icon |
-| `build/bin/GoMarkEdit.app/Contents/Resources/iconfile.icns` | Derived by Wails at build time |
+| File                                                        | What it is                                                                 |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `build/icon/appicon-source.png`                             | The canonical 1.4 MB source artwork                                        |
+| `build/icon/process_icon.py`                                | Crops the tile, removes the dark backdrop to transparency, emits 1024×1024 |
+| `build/appicon.png`                                         | The generated input Wails derives from                                     |
+| `build/windows/icon.ico`                                    | Windows application icon                                                   |
+| `build/bin/GoMarkEdit.app/Contents/Resources/iconfile.icns` | Derived by Wails at build time                                             |
 
 Document-type icons for the file associations Phase 08 registers derive from the same source.
 
 ## Packaging
 
-| Platform | Format | Installs to | Registers | Status |
-|---|---|---|---|---|
-| macOS | `.app` inside a `.zip` | `/Applications` | `.md`, `.markdown`, `.mdown`, `.txt` via `CFBundleDocumentTypes` | Phase 08 |
-| Windows | NSIS installer | `%ProgramFiles%\GoMarkEdit` | the same four extensions, via registry | Phase 08 |
-| Linux | `.deb` and `.rpm` | `/usr/bin` + `.desktop` entry | the same four extensions, via MIME | Phase 08 |
+| Platform | Format                 | Installs to                   | Registers                                                        | Status   |
+| -------- | ---------------------- | ----------------------------- | ---------------------------------------------------------------- | -------- |
+| macOS    | `.app` inside a `.zip` | `/Applications`               | `.md`, `.markdown`, `.mdown`, `.txt` via `CFBundleDocumentTypes` | Phase 08 |
+| Windows  | NSIS installer         | `%ProgramFiles%\GoMarkEdit`   | the same four extensions, via registry                           | Phase 08 |
+| Linux    | `.deb` and `.rpm`      | `/usr/bin` + `.desktop` entry | the same four extensions, via MIME                               | Phase 08 |
 
 The macOS `.app` is re-zipped with `zip -X` so the executable bit on
 `Contents/MacOS/GoMarkEdit` survives the round trip. A plain archive loses it and the installed app
@@ -108,10 +108,10 @@ Phase 08, not an omission here.
 
 - **v1 ships unsigned and un-notarised**, on every platform. Decided in
   `../adr/0015-cicd-versioning-icon.md`; the cost is accepted, not overlooked.
-- **What the user sees.** macOS Gatekeeper refuses the first launch with *"GoMarkEdit cannot be opened
-  because the developer cannot be verified"*; the user must right-click → Open, or clear the quarantine
-  attribute. Windows SmartScreen shows *"Windows protected your PC"* and requires *More info* → *Run
-  anyway*. **The release notes carry these instructions explicitly.** An unsigned artifact whose install
+- **What the user sees.** macOS Gatekeeper refuses the first launch with _"GoMarkEdit cannot be opened
+  because the developer cannot be verified"_; the user must right-click → Open, or clear the quarantine
+  attribute. Windows SmartScreen shows _"Windows protected your PC"_ and requires _More info_ → _Run
+  anyway_. **The release notes carry these instructions explicitly.** An unsigned artifact whose install
   caveats are undocumented reads to the user as a broken download.
 - **Artifacts are published as GitHub release assets**, with `SHA256SUMS.txt` beside them.
 - **There is no update check.** The application makes no background network call, ever
@@ -122,12 +122,12 @@ Phase 08, not an omission here.
 
 `.github/workflows/main.yml`.
 
-| Trigger | Runs | Blocking |
-|---|---|---|
-| pull request | **nothing — there is no `pull_request` trigger** | no |
-| push to a branch | **nothing — there is no branch `push` trigger** | no |
-| push to a tag `v*.*.*` | `test` (staged quality gate), then `release-skeleton` | yes |
-| `workflow_dispatch` | the same two jobs | yes |
+| Trigger                | Runs                                                  | Blocking |
+| ---------------------- | ----------------------------------------------------- | -------- |
+| pull request           | **nothing — there is no `pull_request` trigger**      | no       |
+| push to a branch       | **nothing — there is no branch `push` trigger**       | no       |
+| push to a tag `v*.*.*` | `test` (staged quality gate), then `release-skeleton` | yes      |
+| `workflow_dispatch`    | the same two jobs                                     | yes      |
 
 The `test` job, on `ubuntu-24.04`, runs: `just gen-check`, `just frontend-build`, `just fmt-check`,
 `just lint`, `just typecheck`, `just frontend-test`, `just go-vet`, `just go-test`.
@@ -142,7 +142,7 @@ The `test` job, on `ubuntu-24.04`, runs: `just gen-check`, `just frontend-build`
    the main branch is the developer running `just check`, plus the lefthook pre-push hook — which
    `--no-verify` skips, and which this project therefore prohibits (`../../../AGENTS.md`).
 
-Both changes alter *when work is blocked*, which is the user's call rather than a documentation
+Both changes alter _when work is blocked_, which is the user's call rather than a documentation
 change. Neither is made here.
 
 `release-skeleton` is a placeholder job that echoes one line. It produces no artifact.
@@ -151,27 +151,27 @@ change. Neither is made here.
 
 `lefthook.yml` — a local safety net, not the authoritative gate.
 
-| Hook | Runs |
-|---|---|
-| pre-commit | `gofmt -w` and `prettier --write` on staged files, re-staged |
-| pre-push | `scripts/hooks/pre-push-bindings.sh`, then `-frontend.sh`, then `-go.sh`, in that order |
+| Hook       | Runs                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------- |
+| pre-commit | `gofmt -w` and `prettier --write` on staged files, re-staged                            |
+| pre-push   | `scripts/hooks/pre-push-bindings.sh`, then `-frontend.sh`, then `-go.sh`, in that order |
 
 The pre-push ordering is load-bearing: bindings first, because a stale binding makes the frontend
 checks fail for the wrong reason.
 
 ## Reproducibility
 
-| Pinned | Where | Value |
-|---|---|---|
-| Go toolchain | `go.mod` | `1.25.7`, read by CI via `go-version-file` |
-| Wails CLI | `.github/workflows/main.yml:24` | `v2.12.0` |
-| golangci-lint | `.github/workflows/main.yml:28` | `v2.12.2` |
-| Node | `.github/workflows/main.yml:20` | `22` |
-| CI runner image | `.github/workflows/main.yml:12,51` | `ubuntu-24.04` |
-| Go dependencies | `go.sum` | exact hashes |
-| npm dependencies | `frontend/package-lock.json` | `npm ci`, never `npm install`, in CI |
-| Generated SQL | `sqlc.yaml` → `internal/db/store/` | `just sqlc-check` diffs it |
-| Generated bindings | `frontend/wailsjs/` | `just gen-check` diffs it |
+| Pinned             | Where                              | Value                                      |
+| ------------------ | ---------------------------------- | ------------------------------------------ |
+| Go toolchain       | `go.mod`                           | `1.25.7`, read by CI via `go-version-file` |
+| Wails CLI          | `.github/workflows/main.yml:24`    | `v2.12.0`                                  |
+| golangci-lint      | `.github/workflows/main.yml:28`    | `v2.12.2`                                  |
+| Node               | `.github/workflows/main.yml:20`    | `22`                                       |
+| CI runner image    | `.github/workflows/main.yml:12,51` | `ubuntu-24.04`                             |
+| Go dependencies    | `go.sum`                           | exact hashes                               |
+| npm dependencies   | `frontend/package-lock.json`       | `npm ci`, never `npm install`, in CI       |
+| Generated SQL      | `sqlc.yaml` → `internal/db/store/` | `just sqlc-check` diffs it                 |
+| Generated bindings | `frontend/wailsjs/`                | `just gen-check` diffs it                  |
 
 **Deliberately not pinned:** the macOS and Windows runner images, because those builds do not yet run
 in CI. When Phase 08 adds them, they get pinned in the same table.

@@ -1,40 +1,40 @@
 import type { ResultEnvelope } from './envelope';
 
 export interface AppearanceSettings {
-  theme: string;
-  mode: string;
-  defaultOpenMode: string;
+    theme: string;
+    mode: string;
+    defaultOpenMode: string;
 }
 
 export interface ContentPrivacySettings {
-  remotePolicy: string;
+    remotePolicy: string;
 }
 
 export interface MarkdownSettings {
-  standard: string;
-  formatOnSave: boolean;
-  lintOnSave: boolean;
-  bulletMarker: string;
-  emphasisMarker: string;
-  headingStyle: string;
+    standard: string;
+    formatOnSave: boolean;
+    lintOnSave: boolean;
+    bulletMarker: string;
+    emphasisMarker: string;
+    headingStyle: string;
 }
 
 export interface EditorSettings {
-  lineNumbers: boolean;
-  wordWrap: boolean;
-  fontSize: number;
+    lineNumbers: boolean;
+    wordWrap: boolean;
+    fontSize: number;
 }
 
 export interface FileSettings {
-  autosave: boolean;
+    autosave: boolean;
 }
 
 export interface Settings {
-  appearance: AppearanceSettings;
-  markdown: MarkdownSettings;
-  contentPrivacy: ContentPrivacySettings;
-  editor?: EditorSettings;
-  file?: FileSettings;
+    appearance: AppearanceSettings;
+    markdown: MarkdownSettings;
+    contentPrivacy: ContentPrivacySettings;
+    editor?: EditorSettings;
+    file?: FileSettings;
 }
 
 export type SettingsResult = ResultEnvelope<Settings>;

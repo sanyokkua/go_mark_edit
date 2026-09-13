@@ -243,10 +243,10 @@ type is rejected with a toast and opens nothing (EC-DND-5).
 
 - **No workspace open** → the folder opens in the **current window**.
 - **A workspace is already open** → the app **prompts** with two choices:
-  - **Open in this window** — replace the current workspace with the dropped folder (open tabs are
-    handled per the normal open-folder rules; unsaved buffers prompt to save, EC-DOCS-5).
-  - **Open in a new window** — launch a **new instance** on the dropped folder (multi-instance, DD-08 /
-    `08_FILE_ASSOCIATIONS.md#multi-instance-routing`), leaving the current window untouched.
+    - **Open in this window** — replace the current workspace with the dropped folder (open tabs are
+      handled per the normal open-folder rules; unsaved buffers prompt to save, EC-DOCS-5).
+    - **Open in a new window** — launch a **new instance** on the dropped folder (multi-instance, DD-08 /
+      `08_FILE_ASSOCIATIONS.md#multi-instance-routing`), leaving the current window untouched.
 
 **Mixed / multiple drops (DD-57).** Files and folders dropped together are resolved deterministically:
 every file opens as a tab; each folder runs the folder flow (prompting if a workspace is open). Dropping

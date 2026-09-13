@@ -9,9 +9,7 @@ by `frontend/src/ui/components/MarkdownView.tsx`. There is never a second parser
 // frontend/src/logic/markdown/renderer.ts
 export const baseGfmRemarkPlugins: PluggableList = [remarkGfm];
 
-export const baseGfmRehypePlugins: PluggableList = [
-  [rehypeSanitize, baseGfmSanitizeSchema],
-];
+export const baseGfmRehypePlugins: PluggableList = [[rehypeSanitize, baseGfmSanitizeSchema]];
 ```
 
 Two things about the current schema are deliberate and easy to break:
@@ -33,9 +31,9 @@ produced.
 const remarkPlugins: PluggableList = [remarkGfm, remarkMath];
 
 const rehypePlugins: PluggableList = [
-  rehypeKatex,       // produces maths markup
-  rehypeHighlight,   // produces hljs-* class names
-  [rehypeSanitize, schemaForLevel(level)],  // last, always
+    rehypeKatex, // produces maths markup
+    rehypeHighlight, // produces hljs-* class names
+    [rehypeSanitize, schemaForLevel(level)], // last, always
 ];
 ```
 
@@ -45,12 +43,12 @@ together:
 ```ts
 // permit exactly what the plugin emits — not everything
 const schema: Schema = {
-  ...baseGfmSanitizeSchema,
-  attributes: {
-    ...baseGfmSanitizeSchema.attributes,
-    code: [...(baseGfmSanitizeSchema.attributes?.code ?? []), ['className', /^hljs-/, 'language-']],
-    span: [...(baseGfmSanitizeSchema.attributes?.span ?? []), ['className', /^katex/]],
-  },
+    ...baseGfmSanitizeSchema,
+    attributes: {
+        ...baseGfmSanitizeSchema.attributes,
+        code: [...(baseGfmSanitizeSchema.attributes?.code ?? []), ['className', /^hljs-/, 'language-']],
+        span: [...(baseGfmSanitizeSchema.attributes?.span ?? []), ['className', /^katex/]],
+    },
 };
 ```
 
@@ -64,20 +62,20 @@ The Markdown standard setting picks which plugins run:
 
 ```ts
 export function pluginsFor(level: StandardLevel): {
-  remark: PluggableList;
-  rehype: PluggableList;
+    remark: PluggableList;
+    rehype: PluggableList;
 } {
-  switch (level) {
-    case 'minimal':
-      return { remark: [], rehype: [[rehypeSanitize, minimalSchema]] };
-    case 'gfm':
-      return { remark: [remarkGfm], rehype: [[rehypeSanitize, gfmSchema]] };
-    case 'full':
-      return {
-        remark: [remarkGfm, remarkMath, remarkDirective, remarkFrontmatter],
-        rehype: [rehypeKatex, rehypeHighlight, [rehypeSanitize, fullSchema]],
-      };
-  }
+    switch (level) {
+        case 'minimal':
+            return { remark: [], rehype: [[rehypeSanitize, minimalSchema]] };
+        case 'gfm':
+            return { remark: [remarkGfm], rehype: [[rehypeSanitize, gfmSchema]] };
+        case 'full':
+            return {
+                remark: [remarkGfm, remarkMath, remarkDirective, remarkFrontmatter],
+                rehype: [rehypeKatex, rehypeHighlight, [rehypeSanitize, fullSchema]],
+            };
+    }
 }
 ```
 
@@ -91,12 +89,12 @@ renders asynchronously:
 
 ```tsx
 export const markdownComponents: Components = {
-  code({ className, children }) {
-    if (className === 'language-mermaid') {
-      return createElement(MermaidBlock, { source: String(children) });
-    }
-    return createElement('code', { className }, children);
-  },
+    code({ className, children }) {
+        if (className === 'language-mermaid') {
+            return createElement(MermaidBlock, { source: String(children) });
+        }
+        return createElement('code', { className }, children);
+    },
 };
 ```
 
@@ -112,7 +110,7 @@ KaTeX's stylesheet and fonts, Mermaid, the highlight token styles and every UI f
 not a lazily-downloaded language pack. The app has to render a document with the network off.
 
 ```ts
-import 'katex/dist/katex.min.css';        // bundled
+import 'katex/dist/katex.min.css'; // bundled
 // <link href="https://cdn.jsdelivr.net/..."> — never
 ```
 

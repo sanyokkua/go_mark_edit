@@ -2,7 +2,7 @@
 
 ## What it's for
 
-A Markdown editor that you can only open files *from* is half an editor. People find a file in Finder,
+A Markdown editor that you can only open files _from_ is half an editor. People find a file in Finder,
 Explorer or a file manager and double-click it, and they expect their editor to appear with it loaded.
 Being in the "Open With" list, having a recognisable document icon, and being settable as the default
 are what make GoMarkEdit feel like it belongs to the operating system rather than being a program you
@@ -20,6 +20,7 @@ may offer to help, and it never takes the default without being asked.
 ## Rules
 
 ### Four extensions are declared {#declared-extensions}
+
 - The app declares handling for `.md`, `.markdown`, `.mdown` and `.txt`, and ships a document icon for
   them.
 - The same four extensions filter the open dialog and the workspace tree.
@@ -28,6 +29,7 @@ Examples: a `.mdx` file → not associated, and not shown in the tree · a `.txt
 lot of notes live in one.
 
 ### Each platform delivers the path its own way, and one place normalises it {#one-normalisation-point}
+
 - On **macOS** the path arrives through the platform's file-open callback.
 - On **Windows and Linux** it arrives as the **first command-line argument**.
 - Both are turned into an open request by one function, which is pure and unit-testable.
@@ -39,6 +41,7 @@ characters → parsed correctly · two parsing paths, one per platform → they 
 on the platform nobody develops on.
 
 ### A file opened before the app is ready is queued {#queue-opens-during-startup}
+
 - **If** the platform delivers an open before initialisation has finished — which happens on macOS cold
   start — **then** the event is queued and the file opens once the app is ready.
 
@@ -47,6 +50,7 @@ Examples: double-clicking a file with the app not running on macOS → the app l
 so the app launches empty and the user double-clicks again.
 
 ### An operating-system open uses the default open mode {#os-opens-use-the-default-mode}
+
 - A file opened from the operating system opens in the configured default open mode, Editor or Reading,
   which defaults to Editor. This is the same setting the workspace tree, the Open dialog and a drop use.
 
@@ -54,6 +58,7 @@ Examples: default Editor → double-clicking lands in the editor · default Read
 reader.
 
 ### An unsupported extension reaching the app is handled, not corrupted {#unsupported-extension-via-open-with}
+
 - The operating system routes only the four declared extensions automatically, so any other extension
   reaches the app only through an explicit "Open With" choice.
 - **If** such a file's content decodes as text, **then** it opens as a tolerantly-decoded text document,
@@ -66,6 +71,7 @@ with a toast · opening the `.png` as text and letting the user save → the ima
 that agreed to open it.
 
 ### An open while an instance is running starts a new window {#opens-start-a-new-window}
+
 - **When** a file is opened from the operating system while GoMarkEdit is already running, the open is
   handled by launching a **new window**, not by being forwarded into the existing one.
 - Several paths opened at once are each routed the same way.
@@ -76,6 +82,7 @@ that requires a single-instance lock, which this product does not have; see
 `the-app-window.md#multiple-windows`.
 
 ### The app never seizes the default {#never-seizes-the-default}
+
 - The app appears in "Open With" on all three platforms and is settable as the default there.
 - **If** the app detects it is not the default, **then** it may show a **non-blocking** prompt with the
   platform's instructions or action. The user decides.
@@ -88,11 +95,11 @@ decision.
 
 ### Each platform registers associations its own way {#per-platform-registration}
 
-| Platform | How | How the path arrives |
-|---|---|---|
-| macOS | `CFBundleDocumentTypes` in the app bundle's `Info.plist`, produced from `wails.json`, with imported and exported type declarations where needed | the platform file-open callback |
-| Windows | The installer declares a ProgID for GoMarkEdit, links each extension to it, and registers the icon | the first command-line argument |
-| Linux | A `.desktop` entry with `MimeType=` for the Markdown and text types, an installed icon, and registration through the freedesktop database | the first command-line argument |
+| Platform | How                                                                                                                                             | How the path arrives            |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| macOS    | `CFBundleDocumentTypes` in the app bundle's `Info.plist`, produced from `wails.json`, with imported and exported type declarations where needed | the platform file-open callback |
+| Windows  | The installer declares a ProgID for GoMarkEdit, links each extension to it, and registers the icon                                              | the first command-line argument |
+| Linux    | A `.desktop` entry with `MimeType=` for the Markdown and text types, an installed icon, and registration through the freedesktop database       | the first command-line argument |
 
 - The declaration lives in `wails.json` under `info.fileAssociations` and is materialised per platform by
   the packaging step.
@@ -101,6 +108,7 @@ Examples: `xdg-mime default gomarkedit.desktop text/markdown` on Linux makes it 
 running that command by itself → see `#never-seizes-the-default`.
 
 ### One source artwork produces every icon {#one-icon-source}
+
 - The application icon and the document icon derive from one source image,
   `build/icon/appicon-source.png`, processed by `build/icon/process_icon.py` into a 1024 × 1024
   transparent-background `build/appicon.png`.
@@ -118,36 +126,40 @@ toast surface — `../surface/mockup.html#material-light/toasts`.
 
 ## When things go wrong
 
-| Situation | What the user sees | What they can do |
-|---|---|---|
-| An "Open With" file is clearly binary | A toast saying the file cannot be opened; nothing opens | Open it in the application that owns that file type |
-| The file was deleted between double-click and launch | `Couldn't find that file` · `It may have been moved or deleted. Check the path and try again.` | Nothing — the file is gone |
-| The file cannot be read | `No permission to open that file` · `Check the file's permissions, or open a copy from somewhere you can write.` | Fix the permissions, or copy it somewhere readable |
-| GoMarkEdit is not the default handler | An optional, dismissible prompt with the platform's instructions | Follow them, or dismiss it |
+| Situation                                            | What the user sees                                                                                               | What they can do                                    |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| An "Open With" file is clearly binary                | A toast saying the file cannot be opened; nothing opens                                                          | Open it in the application that owns that file type |
+| The file was deleted between double-click and launch | `Couldn't find that file` · `It may have been moved or deleted. Check the path and try again.`                   | Nothing — the file is gone                          |
+| The file cannot be read                              | `No permission to open that file` · `Check the file's permissions, or open a copy from somewhere you can write.` | Fix the permissions, or copy it somewhere readable  |
+| GoMarkEdit is not the default handler                | An optional, dismissible prompt with the platform's instructions                                                 | Follow them, or dismiss it                          |
 
 ## Edge cases
 
 **Several files are opened at once from the file manager**
-- *Trigger:* five files selected and opened together.
-- *Expected:* each is routed by the same policy; none is silently discarded.
-- *Avoid:* handling the first argument and ignoring the rest, which is what a naive argv read does.
+
+- _Trigger:_ five files selected and opened together.
+- _Expected:_ each is routed by the same policy; none is silently discarded.
+- _Avoid:_ handling the first argument and ignoring the rest, which is what a naive argv read does.
 
 **A path containing spaces or non-ASCII characters**
-- *Trigger:* `/Users/ana/Мои заметки/todo.md`.
-- *Expected:* it opens.
-- *Avoid:* splitting the command line on whitespace, which turns one path into three arguments and finds
+
+- _Trigger:_ `/Users/ana/Мои заметки/todo.md`.
+- _Expected:_ it opens.
+- _Avoid:_ splitting the command line on whitespace, which turns one path into three arguments and finds
   none of them.
 
 **An open arrives during macOS cold start**
-- *Trigger:* double-clicking a file with the app not running.
-- *Expected:* the event is queued and the file opens once the model exists.
-- *Avoid:* dropping it, which makes double-click-to-open work only when the app is already running — and
+
+- _Trigger:_ double-clicking a file with the app not running.
+- _Expected:_ the event is queued and the file opens once the model exists.
+- _Avoid:_ dropping it, which makes double-click-to-open work only when the app is already running — and
   that is exactly the case a developer tests in.
 
 **The app is opened with a directory as its argument**
-- *Trigger:* `gomarkedit ~/notes` from a terminal.
-- *Expected:* the path is `stat`-ed, found to be a directory, and opened as the workspace.
-- *Avoid:* trying to read it as a file and reporting an unhelpful error.
+
+- _Trigger:_ `gomarkedit ~/notes` from a terminal.
+- _Expected:_ the path is `stat`-ed, found to be a directory, and opened as the workspace.
+- _Avoid:_ trying to read it as a file and reporting an unhelpful error.
 
 ## Not this
 
@@ -162,7 +174,7 @@ toast surface — `../surface/mockup.html#material-light/toasts`.
 
 ## Decisions
 
-- *2026-07-10* — Being the "default app" means appearing in Open With, being settable as default, and
+- _2026-07-10_ — Being the "default app" means appearing in Open With, being settable as default, and
   launching to open a file. It explicitly does not mean taking the default, which Windows and macOS
   policy prevent anyway.
 

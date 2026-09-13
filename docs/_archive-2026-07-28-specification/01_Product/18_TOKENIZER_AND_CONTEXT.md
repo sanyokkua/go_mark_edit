@@ -123,9 +123,9 @@ over-context strategy (DD-50; mockup **AI Context** → "If document exceeds con
   change arrives as a single proposal you review before applying. Building it would mean inventing the
   specification.
 
-  **Warn is therefore the only strategy in v1**, and the "If document exceeds context" control is not
-  shipped: a segmented control with one option is not a choice. It returns if chunking is ever
-  specified properly.
+    **Warn is therefore the only strategy in v1**, and the "If document exceeds context" control is not
+    shipped: a segmented control with one option is not a choice. It returns if chunking is ever
+    specified properly.
 
 **Reactive backstop.** If an estimate is wrong and the provider returns a **context-window** error, that
 error is the backstop: it is classified and surfaced through the standard error path, and the run does
@@ -166,8 +166,8 @@ history strategy", options **Sliding window** / **Summarize**):
   summarising call itself fails. It is an inference inside an inference, and it is unspecified at every
   one of those points.
 
-  **Sliding window is therefore the only strategy in v1**, and the "Chat history strategy" control is not
-  shipped for the same reason as above.
+    **Sliding window is therefore the only strategy in v1**, and the "Chat history strategy" control is not
+    shipped for the same reason as above.
 
 - **EC-LLM-21 — Over-budget history trimmed.** When accumulated chat history exceeds its budget
   allocation, it is trimmed by the **sliding window** (drop oldest turns first) before the request is

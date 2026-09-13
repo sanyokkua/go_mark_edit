@@ -53,8 +53,8 @@ preview and the authoritative buffer always agree — neither is ever fed on the
 
 ```ts
 const scheduleSync = useDebouncedCallback((tabId: string, markdown: string) => {
-  appModelAdapter.updateBuffer(tabId, markdown); // sync the authoritative model (DD-64)
-  dispatch(setPreviewSource(markdown)); // MarkdownView re-renders from the same snapshot
+    appModelAdapter.updateBuffer(tabId, markdown); // sync the authoritative model (DD-64)
+    dispatch(setPreviewSource(markdown)); // MarkdownView re-renders from the same snapshot
 }, DEBOUNCE_MS);
 ```
 
@@ -137,9 +137,7 @@ runtime.EventsEmit(ctx, "export:done", ExportProgress{Phase: "done", Percent: 10
 
 ```ts
 // logic/adapter subscribes and dispatches into the store:
-runtime.EventsOn('export:progress', (p: ExportProgress) =>
-  store.dispatch(setExportProgress(p)),
-);
+runtime.EventsOn('export:progress', (p: ExportProgress) => store.dispatch(setExportProgress(p)));
 ```
 
 The adapter is the only place that subscribes to Wails events (`03_FRONTEND_REACT.md`

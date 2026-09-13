@@ -135,20 +135,20 @@ always branch on a stable shape:
 
 ```ts
 export function parseError(e: unknown): WireError {
-  if (isWireError(e)) return e; // already an envelope error (thrown by unwrap)
-  if (e instanceof Error)
+    if (isWireError(e)) return e; // already an envelope error (thrown by unwrap)
+    if (e instanceof Error)
+        return {
+            code: 'internal',
+            title: 'Something went wrong',
+            message: e.message,
+            retryable: true,
+        };
     return {
-      code: 'internal',
-      title: 'Something went wrong',
-      message: e.message,
-      retryable: true,
+        code: 'internal',
+        title: 'Something went wrong',
+        message: String(e),
+        retryable: true,
     };
-  return {
-    code: 'internal',
-    title: 'Something went wrong',
-    message: String(e),
-    retryable: true,
-  };
 }
 ```
 
@@ -161,11 +161,11 @@ The adapter's `unwrap()` is the single choke point that turns an envelope error 
 
 ```ts
 export function unwrap<T>(res: { data?: T; error?: WireError }): T {
-  if (res.error) {
-    store.dispatch(notifyError(res.error)); // → notifications slice → Toast primitive
-    throw res.error;
-  }
-  return res.data as T;
+    if (res.error) {
+        store.dispatch(notifyError(res.error)); // → notifications slice → Toast primitive
+        throw res.error;
+    }
+    return res.data as T;
 }
 ```
 

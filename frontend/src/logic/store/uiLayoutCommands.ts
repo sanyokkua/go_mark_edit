@@ -26,35 +26,31 @@ export const WORKSPACE_BINDING_WIDTH = 216;
  * Both stay single backend commands. The width is the one the backend
  * acknowledges, not a value the shell renders over the top of it.
  */
-export const setWorkspaceVisible = createAsyncThunk<
-  void,
-  boolean,
-  { rejectValue: WireError; state: RootState }
->('ui/setWorkspaceVisible', async (sidebarVisible, thunkApi) => {
-  const acknowledgedWidth = thunkApi.getState().ui.layout.sidebarWidth;
-  try {
-    await appModelAdapter.setUILayout(
-      sidebarVisible && acknowledgedWidth === 0
-        ? { sidebarVisible, sidebarWidth: WORKSPACE_BINDING_WIDTH }
-        : { sidebarVisible },
-    );
-  } catch (error) {
-    return thunkApi.rejectWithValue(parseError(error));
-  }
-});
+export const setWorkspaceVisible = createAsyncThunk<void, boolean, { rejectValue: WireError; state: RootState }>(
+    'ui/setWorkspaceVisible',
+    async (sidebarVisible, thunkApi) => {
+        const acknowledgedWidth = thunkApi.getState().ui.layout.sidebarWidth;
+        try {
+            await appModelAdapter.setUILayout(
+                sidebarVisible && acknowledgedWidth === 0
+                    ? { sidebarVisible, sidebarWidth: WORKSPACE_BINDING_WIDTH }
+                    : { sidebarVisible },
+            );
+        } catch (error) {
+            return thunkApi.rejectWithValue(parseError(error));
+        }
+    },
+);
 
-export const setWorkspaceWidth = createAsyncThunk<
-  void,
-  number,
-  { rejectValue: WireError }
->('ui/setWorkspaceWidth', async (sidebarWidth, thunkApi) => {
-  try {
-    await appModelAdapter.setUILayout(
-      sidebarWidth === 0
-        ? { sidebarVisible: false, sidebarWidth }
-        : { sidebarWidth },
-    );
-  } catch (error) {
-    return thunkApi.rejectWithValue(parseError(error));
-  }
-});
+export const setWorkspaceWidth = createAsyncThunk<void, number, { rejectValue: WireError }>(
+    'ui/setWorkspaceWidth',
+    async (sidebarWidth, thunkApi) => {
+        try {
+            await appModelAdapter.setUILayout(
+                sidebarWidth === 0 ? { sidebarVisible: false, sidebarWidth } : { sidebarWidth },
+            );
+        } catch (error) {
+            return thunkApi.rejectWithValue(parseError(error));
+        }
+    },
+);

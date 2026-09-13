@@ -3,33 +3,33 @@ id: STORY-023
 title: Expose document commands through a stable editor-session boundary
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#components
-  - ../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#components
+    - ../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
-  - PH01-R09
-  - PH01-R10
+    - PH01-R09
+    - PH01-R10
 modules:
-  - logic/hooks/
-  - ui/components/
-  - ui/widgets/
+    - logic/hooks/
+    - ui/components/
+    - ui/widgets/
 acceptance_criteria:
-  - STORY-023-AC-1
-  - STORY-023-AC-2
-  - STORY-023-AC-3
-  - STORY-023-AC-4
-  - STORY-023-AC-5
+    - STORY-023-AC-1
+    - STORY-023-AC-2
+    - STORY-023-AC-3
+    - STORY-023-AC-4
+    - STORY-023-AC-5
 edge_cases: []
 depends_on:
-  - STORY-022
+    - STORY-022
 adrs:
-  - ADR-0002
-  - ADR-0010
-  - ADR-0014
+    - ADR-0002
+    - ADR-0010
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: M

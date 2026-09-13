@@ -1,7 +1,7 @@
 # The surface
 
-| Artifact | Fixes | Tier |
-|---|---|---|
+| Artifact      | Fixes                                                                    | Tier            |
+| ------------- | ------------------------------------------------------------------------ | --------------- |
 | `mockup.html` | Every screen and state, in three themes × two appearances × three widths | **A — binding** |
 
 `mockup.html` is one self-contained offline HTML file. Open it in any browser. There is no build step
@@ -10,7 +10,7 @@ and it fetches nothing.
 ## Tier A — binding, and why
 
 GoMarkEdit's interface renders in a webview. The mockup is HTML and CSS, and so is the application.
-The mockup is therefore not an impression of the target — it *is* the target, expressed in the same
+The mockup is therefore not an impression of the target — it _is_ the target, expressed in the same
 technology. A visible difference between the shipped app and this file is a defect in one of them, not
 an expected translation loss.
 
@@ -49,14 +49,14 @@ light — so each theme is first seen at its intended best. Appearance can then 
 A **Width** control sets the app frame to 375, 768 or 1280 pixels, so all three are demonstrable
 without resizing the browser.
 
-| | 1280 | 768 | 375 |
-|---|---|---|---|
-| Assistant region | shown | hidden | hidden |
-| Sidebar | full | 46 px icon rail | overlay, opened from the title bar |
-| Editor and preview | side by side | side by side | stacked |
-| Toolbar | all groups | list and link groups fold into the `»` overflow menu | plus the text buttons and the view control |
-| Menu bar | in the title bar | in the title bar | folded into the overflow menu |
-| Status bar | everything | drops the provider | drops provider, autosave, encoding, line ending, counts, caret |
+|                    | 1280             | 768                                                  | 375                                                            |
+| ------------------ | ---------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
+| Assistant region   | shown            | hidden                                               | hidden                                                         |
+| Sidebar            | full             | 46 px icon rail                                      | overlay, opened from the title bar                             |
+| Editor and preview | side by side     | side by side                                         | stacked                                                        |
+| Toolbar            | all groups       | list and link groups fold into the `»` overflow menu | plus the text buttons and the view control                     |
+| Menu bar           | in the title bar | in the title bar                                     | folded into the overflow menu                                  |
+| Status bar         | everything       | drops the provider                                   | drops provider, autosave, encoding, line ending, counts, caret |
 
 The status bar drops items in one fixed order, so an item is never in two different places at two
 widths. Problems and Reading are never dropped.
@@ -64,60 +64,60 @@ widths. Problems and Reading are never dropped.
 All 45 screens are verified to render in six palettes at three widths — **45 × 6 × 3 = 810
 combinations** — with no horizontal overflow.
 
-*(This paragraph read "44 screens … 264 combinations" until 2026-07-28. 264 was 44 × 6, with the three
-widths dropped; the screen count has since gained `startup-failure`.)*
+_(This paragraph read "44 screens … 264 combinations" until 2026-07-28. 264 was 44 × 6, with the three
+widths dropped; the screen count has since gained `startup-failure`.)_
 
 ## Screen map
 
 Every screen names the feature file that governs its behaviour.
 
-| Screen id | What it shows | Behaviour owned by |
-|---|---|---|
-| `editor-split` | Editor and preview side by side | `../product/writing-in-the-editor.md` |
-| `editor-only` | Editor filling the document area | `../product/writing-in-the-editor.md` |
-| `preview-only` | Preview filling the document area | `../product/reading-a-document.md` |
-| `reading` | Reading mode — all chrome hidden | `../product/reading-a-document.md` |
-| `empty` | The launcher: no document open. Every launch starts here | `../product/the-app-window.md` |
-| `no-sidebar` | Sidebar collapsed | `../product/the-app-window.md` |
-| `no-assistant` | Assistant region collapsed | `../product/the-app-window.md` |
-| `assistant-reserved` | The reserved but empty right region — what every phase before the assistant looks like | `../product/the-app-window.md` |
-| `startup-failure` | The whole window when the app cannot start: `GoMarkEdit could not start` · `GoMarkEdit could not initialize its local settings. Please try again.` · Retry. Not an overlay — there is no shell behind it | `../product/the-app-window.md` |
-| `focus` | The focus ring on each control type | `../constraints.md#every-action-is-reachable-by-keyboard` |
-| `tokens` | The design-token reference | `../product/themes-and-appearance.md` |
-| `menu-file` | The File menu | `../product/opening-and-saving-files.md` |
-| `menu-settings` | The Settings menu, including the theme swatches | `../product/themes-and-appearance.md` |
-| `menu-view` | The View menu | `../product/the-app-window.md` |
-| `menu-about` | The About menu | `../product/the-app-window.md` |
-| `context-menu` | The file-tree context menu | `../product/a-folder-of-notes.md` |
-| `tab-menu` | The tab context menu | `../product/working-in-tabs.md` |
-| `editor-menu` | The editor context menu | `../product/writing-in-the-editor.md` |
-| `toolbar-overflow` | The `»` overflow menu at narrow widths | `../product/formatting-text.md` |
-| `empty-tree` | A folder with no Markdown files in it | `../product/a-folder-of-notes.md` |
-| `filter-empty` | A tree filter that matched nothing | `../product/finding-things.md` |
-| `problems` | The lint findings list behind the status-bar count | `../product/tidying-markdown.md` |
-| `diff-view` | The before-and-after diff | `../product/tidying-markdown.md` |
-| `paused-preview` | Live preview paused for a large document, with manual refresh | `../product/reading-a-document.md` |
-| `busy` | A long operation with progress and an in-place Cancel | `../constraints.md#a-long-operation-is-visible-and-cancellable` |
-| `save-prompt` | Save / Discard / Cancel on closing a modified document | `../product/opening-and-saving-files.md` |
-| `quit-prompt` | Quitting with several modified documents, each listed | `../product/opening-and-saving-files.md` |
-| `reload-prompt` | The file changed on disk, with the difference shown | `../product/opening-and-saving-files.md` |
-| `drop-overlay` | "Drop to open" while dragging files over the window | `../product/dragging-files-in.md` |
-| `drop-prompt` | Dropping a folder while one is already open | `../product/dragging-files-in.md` |
-| `banner` | The remote-content banner in the preview | `../product/images-and-remote-content.md` |
-| `toasts` | Success, warning and error notifications | `../constraints.md#every-error-message-is-distinct-and-actionable` |
-| `shortcuts` | The keyboard shortcuts dialog | `../product/keyboard-shortcuts.md` |
-| `about` | The About dialog | `../product/the-app-window.md` |
-| `settings-appearance` | Settings → Appearance | `../product/themes-and-appearance.md` |
-| `settings-editor` | Settings → Editor | `../product/writing-in-the-editor.md` |
-| `settings-markdown` | Settings → Markdown | `../product/choosing-a-markdown-standard.md` |
-| `settings-privacy` | Settings → Content and privacy | `../product/images-and-remote-content.md` |
-| `settings-language` | Settings → Language | `../product/language-and-text.md` |
-| `settings-export` | Settings → Export | `../product/exporting-a-document.md` |
-| `settings-diagnostics` | Settings → Diagnostics | `../product/settings.md` |
-| `settings-ai-providers` | Settings → AI · Providers | `../product/connecting-an-ai-provider.md` |
-| `settings-ai-context` | Settings → AI · Context | `../product/how-much-fits-in-context.md` |
-| `assistant-chat` | Assistant chat with tool-call chips and an apply-diff card | `../product/chatting-about-a-document.md` |
-| `assistant-selection` | Assistant with a selection scope and the token-fit meter | `../product/how-much-fits-in-context.md` |
+| Screen id               | What it shows                                                                                                                                                                                            | Behaviour owned by                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `editor-split`          | Editor and preview side by side                                                                                                                                                                          | `../product/writing-in-the-editor.md`                              |
+| `editor-only`           | Editor filling the document area                                                                                                                                                                         | `../product/writing-in-the-editor.md`                              |
+| `preview-only`          | Preview filling the document area                                                                                                                                                                        | `../product/reading-a-document.md`                                 |
+| `reading`               | Reading mode — all chrome hidden                                                                                                                                                                         | `../product/reading-a-document.md`                                 |
+| `empty`                 | The launcher: no document open. Every launch starts here                                                                                                                                                 | `../product/the-app-window.md`                                     |
+| `no-sidebar`            | Sidebar collapsed                                                                                                                                                                                        | `../product/the-app-window.md`                                     |
+| `no-assistant`          | Assistant region collapsed                                                                                                                                                                               | `../product/the-app-window.md`                                     |
+| `assistant-reserved`    | The reserved but empty right region — what every phase before the assistant looks like                                                                                                                   | `../product/the-app-window.md`                                     |
+| `startup-failure`       | The whole window when the app cannot start: `GoMarkEdit could not start` · `GoMarkEdit could not initialize its local settings. Please try again.` · Retry. Not an overlay — there is no shell behind it | `../product/the-app-window.md`                                     |
+| `focus`                 | The focus ring on each control type                                                                                                                                                                      | `../constraints.md#every-action-is-reachable-by-keyboard`          |
+| `tokens`                | The design-token reference                                                                                                                                                                               | `../product/themes-and-appearance.md`                              |
+| `menu-file`             | The File menu                                                                                                                                                                                            | `../product/opening-and-saving-files.md`                           |
+| `menu-settings`         | The Settings menu, including the theme swatches                                                                                                                                                          | `../product/themes-and-appearance.md`                              |
+| `menu-view`             | The View menu                                                                                                                                                                                            | `../product/the-app-window.md`                                     |
+| `menu-about`            | The About menu                                                                                                                                                                                           | `../product/the-app-window.md`                                     |
+| `context-menu`          | The file-tree context menu                                                                                                                                                                               | `../product/a-folder-of-notes.md`                                  |
+| `tab-menu`              | The tab context menu                                                                                                                                                                                     | `../product/working-in-tabs.md`                                    |
+| `editor-menu`           | The editor context menu                                                                                                                                                                                  | `../product/writing-in-the-editor.md`                              |
+| `toolbar-overflow`      | The `»` overflow menu at narrow widths                                                                                                                                                                   | `../product/formatting-text.md`                                    |
+| `empty-tree`            | A folder with no Markdown files in it                                                                                                                                                                    | `../product/a-folder-of-notes.md`                                  |
+| `filter-empty`          | A tree filter that matched nothing                                                                                                                                                                       | `../product/finding-things.md`                                     |
+| `problems`              | The lint findings list behind the status-bar count                                                                                                                                                       | `../product/tidying-markdown.md`                                   |
+| `diff-view`             | The before-and-after diff                                                                                                                                                                                | `../product/tidying-markdown.md`                                   |
+| `paused-preview`        | Live preview paused for a large document, with manual refresh                                                                                                                                            | `../product/reading-a-document.md`                                 |
+| `busy`                  | A long operation with progress and an in-place Cancel                                                                                                                                                    | `../constraints.md#a-long-operation-is-visible-and-cancellable`    |
+| `save-prompt`           | Save / Discard / Cancel on closing a modified document                                                                                                                                                   | `../product/opening-and-saving-files.md`                           |
+| `quit-prompt`           | Quitting with several modified documents, each listed                                                                                                                                                    | `../product/opening-and-saving-files.md`                           |
+| `reload-prompt`         | The file changed on disk, with the difference shown                                                                                                                                                      | `../product/opening-and-saving-files.md`                           |
+| `drop-overlay`          | "Drop to open" while dragging files over the window                                                                                                                                                      | `../product/dragging-files-in.md`                                  |
+| `drop-prompt`           | Dropping a folder while one is already open                                                                                                                                                              | `../product/dragging-files-in.md`                                  |
+| `banner`                | The remote-content banner in the preview                                                                                                                                                                 | `../product/images-and-remote-content.md`                          |
+| `toasts`                | Success, warning and error notifications                                                                                                                                                                 | `../constraints.md#every-error-message-is-distinct-and-actionable` |
+| `shortcuts`             | The keyboard shortcuts dialog                                                                                                                                                                            | `../product/keyboard-shortcuts.md`                                 |
+| `about`                 | The About dialog                                                                                                                                                                                         | `../product/the-app-window.md`                                     |
+| `settings-appearance`   | Settings → Appearance                                                                                                                                                                                    | `../product/themes-and-appearance.md`                              |
+| `settings-editor`       | Settings → Editor                                                                                                                                                                                        | `../product/writing-in-the-editor.md`                              |
+| `settings-markdown`     | Settings → Markdown                                                                                                                                                                                      | `../product/choosing-a-markdown-standard.md`                       |
+| `settings-privacy`      | Settings → Content and privacy                                                                                                                                                                           | `../product/images-and-remote-content.md`                          |
+| `settings-language`     | Settings → Language                                                                                                                                                                                      | `../product/language-and-text.md`                                  |
+| `settings-export`       | Settings → Export                                                                                                                                                                                        | `../product/exporting-a-document.md`                               |
+| `settings-diagnostics`  | Settings → Diagnostics                                                                                                                                                                                   | `../product/settings.md`                                           |
+| `settings-ai-providers` | Settings → AI · Providers                                                                                                                                                                                | `../product/connecting-an-ai-provider.md`                          |
+| `settings-ai-context`   | Settings → AI · Context                                                                                                                                                                                  | `../product/how-much-fits-in-context.md`                           |
+| `assistant-chat`        | Assistant chat with tool-call chips and an apply-diff card                                                                                                                                               | `../product/chatting-about-a-document.md`                          |
+| `assistant-selection`   | Assistant with a selection scope and the token-fit meter                                                                                                                                                 | `../product/how-much-fits-in-context.md`                           |
 
 ## Two states this file deliberately does not draw
 
@@ -130,7 +130,7 @@ drag cancels it and the tab returns to its original position. `../product/workin
 
 **Loading placeholders.** Two momentary states: the editor area while Monaco is still initialising, and
 the file tree while a large folder is being enumerated. Both show the same skeleton treatment used for
-the Mermaid placeholder, which *is* drawn. `../constraints.md#every-list-has-an-empty-state` covers the
+the Mermaid placeholder, which _is_ drawn. `../constraints.md#every-list-has-an-empty-state` covers the
 requirement that they exist.
 
 ## Keeping it honest
@@ -210,7 +210,7 @@ what changes — but only when a story says so, and not all of these have one ye
   See `../../plan/KNOWN_ISSUES.md` items 6 and 14.
 - **The startup-failure copy.** `startup-failure` above, and
   `../product/the-app-window.md`, both give `GoMarkEdit could not start` and `GoMarkEdit could not
-  initialize its local settings. Please try again.` The shipped
+initialize its local settings. Please try again.` The shipped
   `frontend/src/i18n/locales/en.json` says `The application could not start. Try again.` The
   specification is normative, so the code is the defect — recorded as
   `../../plan/KNOWN_ISSUES.md` item 16 and resolved by Phase 03, which is where bootstrap and this

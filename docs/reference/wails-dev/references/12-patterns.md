@@ -77,10 +77,10 @@ On the frontend, a returned error becomes a rejected Promise:
 
 ```typescript
 try {
-  const result = await ProcessPrompt(req);
-  dispatch(setResult(result));
+    const result = await ProcessPrompt(req);
+    dispatch(setResult(result));
 } catch (err) {
-  dispatch(setError(String(err)));
+    dispatch(setError(String(err)));
 }
 ```
 
@@ -106,18 +106,18 @@ func (a *App) StartLongTask(input string) {
 
 ```typescript
 useEffect(() => {
-  const cancels = [
-    EventsOn('task:started', () => setStatus('running')),
-    EventsOn('task:complete', (r) => {
-      setResult(r);
-      setStatus('done');
-    }),
-    EventsOn('task:error', (e) => {
-      setError(e);
-      setStatus('error');
-    }),
-  ];
-  return () => cancels.forEach((c) => c());
+    const cancels = [
+        EventsOn('task:started', () => setStatus('running')),
+        EventsOn('task:complete', (r) => {
+            setResult(r);
+            setStatus('done');
+        }),
+        EventsOn('task:error', (e) => {
+            setError(e);
+            setStatus('error');
+        }),
+    ];
+    return () => cancels.forEach((c) => c());
 }, []);
 ```
 
@@ -153,7 +153,7 @@ await SetTaskPriority(priority);
 
 // Compare
 if (task.priority === mypackage.Priority.Low) {
-  // ...
+    // ...
 }
 ```
 
@@ -169,27 +169,24 @@ import { ProcessPrompt as _ProcessPrompt } from '../../../wailsjs/go/actions/Act
 import { IActionHandler } from './interfaces';
 
 export class ActionHandlerAdapter implements IActionHandler {
-  async processPrompt(req: PromptRequest): Promise<string> {
-    return _ProcessPrompt(req);
-  }
+    async processPrompt(req: PromptRequest): Promise<string> {
+        return _ProcessPrompt(req);
+    }
 }
 
 // In tests, inject a mock:
 const mockAdapter: IActionHandler = {
-  processPrompt: jest.fn().mockResolvedValue('test result'),
+    processPrompt: jest.fn().mockResolvedValue('test result'),
 };
 ```
 
 Redux thunks use the adapter via `thunkAPI.extra`:
 
 ```typescript
-export const runPrompt = createAsyncThunk(
-  'actions/runPrompt',
-  async (req, thunkAPI) => {
+export const runPrompt = createAsyncThunk('actions/runPrompt', async (req, thunkAPI) => {
     const { adapter } = thunkAPI.extra as { adapter: IActionHandler };
     return adapter.processPrompt(req);
-  },
-);
+});
 ```
 
 ---
@@ -202,15 +199,15 @@ export const runPrompt = createAsyncThunk(
 import { LogDebug, LogError } from '@wailsapp/runtime';
 
 async function loadSettings() {
-  LogDebug('Loading settings');
-  try {
-    const settings = await GetSettings();
-    LogDebug(`Settings loaded: ${settings.provider}`);
-    return settings;
-  } catch (err) {
-    LogError(`Failed to load settings: ${err}`);
-    throw err;
-  }
+    LogDebug('Loading settings');
+    try {
+        const settings = await GetSettings();
+        LogDebug(`Settings loaded: ${settings.provider}`);
+        return settings;
+    } catch (err) {
+        LogError(`Failed to load settings: ${err}`);
+        throw err;
+    }
 }
 ```
 

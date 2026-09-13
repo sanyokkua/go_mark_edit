@@ -3,37 +3,37 @@ id: STORY-030
 title: Complete the frontend document command seam
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - ../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
-  - 07_Phases/PHASE_05_FORMAT_LINT.md#cross-phase-contracts
-  - 07_Phases/PHASE_12_ACTIONS_PROOFREAD_REFORMAT.md#cross-phase-contracts
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-2-must-leave-open
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+    - ../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
+    - 07_Phases/PHASE_05_FORMAT_LINT.md#cross-phase-contracts
+    - 07_Phases/PHASE_12_ACTIONS_PROOFREAD_REFORMAT.md#cross-phase-contracts
 phase_requirements:
-  - PH01-R09
-  - PH01-R10
+    - PH01-R09
+    - PH01-R10
 modules:
-  - logic/hooks/
-  - ui/components/
-  - ui/widgets/
+    - logic/hooks/
+    - ui/components/
+    - ui/widgets/
 acceptance_criteria:
-  - STORY-030-AC-1
-  - STORY-030-AC-2
-  - STORY-030-AC-3
-  - STORY-030-AC-4
-  - STORY-030-AC-5
-  - STORY-030-AC-6
+    - STORY-030-AC-1
+    - STORY-030-AC-2
+    - STORY-030-AC-3
+    - STORY-030-AC-4
+    - STORY-030-AC-5
+    - STORY-030-AC-6
 edge_cases: []
 depends_on:
-  - STORY-023
-  - STORY-028
-  - STORY-029
+    - STORY-023
+    - STORY-028
+    - STORY-029
 adrs:
-  - ADR-0002
-  - ADR-0010
-  - ADR-0014
-  - ADR-0017
+    - ADR-0002
+    - ADR-0010
+    - ADR-0014
+    - ADR-0017
 phase: 01
 owner: coder
 estimate: M

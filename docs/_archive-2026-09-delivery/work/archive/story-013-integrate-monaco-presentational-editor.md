@@ -3,31 +3,31 @@ id: STORY-013
 title: Integrate Monaco as the presentational Markdown editor
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#components
-  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+    - ../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-editor
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#components
+    - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#4-markdown-behaviour
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
-  - PH01-R03
-  - PH01-R05
+    - PH01-R03
+    - PH01-R05
 modules:
-  - ui/components/
-  - ui/styles/
+    - ui/components/
+    - ui/styles/
 acceptance_criteria:
-  - STORY-013-AC-1
-  - STORY-013-AC-2
-  - STORY-013-AC-3
-  - STORY-013-AC-4
-  - STORY-013-AC-5
-  - STORY-013-AC-6
+    - STORY-013-AC-1
+    - STORY-013-AC-2
+    - STORY-013-AC-3
+    - STORY-013-AC-4
+    - STORY-013-AC-5
+    - STORY-013-AC-6
 edge_cases: []
 depends_on:
-  - STORY-012
+    - STORY-012
 adrs:
-  - ADR-0002
-  - ADR-0014
+    - ADR-0002
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: M

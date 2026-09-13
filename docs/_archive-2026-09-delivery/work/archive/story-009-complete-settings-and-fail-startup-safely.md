@@ -3,45 +3,45 @@ id: STORY-009
 title: Complete Stage-1 settings and fail startup safely
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#appearance-group
-  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#markdown-group
-  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#content-privacy-group
-  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence
-  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#defaults
-  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#edge-cases
-  - ../../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#no-custom-themes
-  - ../../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#edge-cases
-  - ../../../_archive-2026-07-28-specification/01_Product/04_MARKDOWN_STANDARDS.md#standard-setting
-  - ../../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md#on-save
-  - ../../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md#canonical-style
-  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
-  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#layering
-  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#error-envelope
-  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#di-two-phase
-  - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#lifecycle
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
+    - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#appearance-group
+    - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#markdown-group
+    - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#content-privacy-group
+    - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence
+    - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#defaults
+    - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#edge-cases
+    - ../../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#no-custom-themes
+    - ../../../_archive-2026-07-28-specification/01_Product/10_THEMING.md#edge-cases
+    - ../../../_archive-2026-07-28-specification/01_Product/04_MARKDOWN_STANDARDS.md#standard-setting
+    - ../../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md#on-save
+    - ../../../_archive-2026-07-28-specification/01_Product/06_FORMAT_AND_LINT.md#canonical-style
+    - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
+    - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#layering
+    - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#error-envelope
+    - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#di-two-phase
+    - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#lifecycle
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
 phase_requirements:
-  - PH00-R03
-  - PH00-R05
+    - PH00-R03
+    - PH00-R05
 modules:
-  - internal/settings/
-  - internal/apperr/
-  - internal/application/
+    - internal/settings/
+    - internal/apperr/
+    - internal/application/
 acceptance_criteria:
-  - STORY-009-AC-1
-  - STORY-009-AC-2
-  - STORY-009-AC-3
-  - STORY-009-AC-4
-  - STORY-009-AC-5
-  - STORY-009-AC-6
+    - STORY-009-AC-1
+    - STORY-009-AC-2
+    - STORY-009-AC-3
+    - STORY-009-AC-4
+    - STORY-009-AC-5
+    - STORY-009-AC-6
 edge_cases:
-  - EC-THEME-3
-  - EC-SET-2
+    - EC-THEME-3
+    - EC-SET-2
 depends_on:
-  - STORY-005
+    - STORY-005
 adrs:
-  - ADR-0004
-  - ADR-0006
+    - ADR-0004
+    - ADR-0006
 phase: 00
 owner: coder
 estimate: M

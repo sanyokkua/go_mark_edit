@@ -1,63 +1,63 @@
 .viewport {
-  display: grid;
-  gap: var(--toast-gap);
-  inset: auto 16px 40px auto;
-  margin: 0;
-  padding: 0;
-  position: fixed;
-  width: min(var(--toast-width), calc(100vw - 32px));
-  z-index: var(--z-toast);
+    display: grid;
+    gap: var(--toast-gap);
+    inset: auto 16px 40px auto;
+    margin: 0;
+    padding: 0;
+    position: fixed;
+    width: min(var(--toast-width), calc(100vw - 32px));
+    z-index: var(--z-toast);
 }
 
 .toast {
-  align-items: flex-start;
-  backdrop-filter: var(--blur);
-  background: var(--surface-raised);
-  border: var(--control-border-width) solid var(--border);
-  border-inline-start: 3px solid var(--err);
-  border-radius: var(--toast-radius);
-  box-shadow: var(--toast-shadow);
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
-  font-size: var(--toast-font-size);
-  gap: 9px;
-  padding: var(--toast-padding);
-  transition: opacity var(--dur-base) var(--ease-out);
+    align-items: flex-start;
+    backdrop-filter: var(--blur);
+    background: var(--surface-raised);
+    border: var(--control-border-width) solid var(--border);
+    border-inline-start: 3px solid var(--err);
+    border-radius: var(--toast-radius);
+    box-shadow: var(--toast-shadow);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    font-size: var(--toast-font-size);
+    gap: 9px;
+    padding: var(--toast-padding);
+    transition: opacity var(--dur-base) var(--ease-out);
 }
 
 .toast[data-severity='info'] {
-  border-inline-start-color: var(--accent);
+    border-inline-start-color: var(--accent);
 }
 
 .toast[data-severity='warning'] {
-  border-inline-start-color: var(--warn);
+    border-inline-start-color: var(--warn);
 }
 
 .toast[data-severity='stuck'] {
-  border-inline-start-color: var(--warn);
+    border-inline-start-color: var(--warn);
 }
 
 .title {
-  display: block;
-  margin-block-end: 1px;
+    display: block;
+    margin-block-end: 1px;
 }
 
 .description {
-  color: var(--text-muted);
+    color: var(--text-muted);
 }
 
 .actions {
-  display: flex;
-  gap: var(--control-gap);
-  margin-top: var(--control-gap);
+    display: flex;
+    gap: var(--control-gap);
+    margin-top: var(--control-gap);
 }
 
 .action {
-  background: var(--accent);
-  border: 0;
-  border-radius: var(--control-radius);
-  color: var(--accent-contrast);
-  font: inherit;
-  padding: var(--control-padding);
+    background: var(--accent);
+    border: 0;
+    border-radius: var(--control-radius);
+    color: var(--accent-contrast);
+    font: inherit;
+    padding: var(--control-padding);
 }

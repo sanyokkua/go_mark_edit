@@ -15,8 +15,8 @@ five.
 
 ```css
 :root {
-  --status-bar-min-height: 1.75rem;
-  --shell-assistant-collapsed-width: 0;
+    --status-bar-min-height: 1.75rem;
+    --shell-assistant-collapsed-width: 0;
 }
 ```
 
@@ -24,19 +24,19 @@ five.
 
 ```css
 :root[data-theme='material'][data-mode='light'] {
-  --accent: #4f6bed;
-  --app-bg: #faf8ff;
-  --surface: #ffffff;
-  --text: #1b1b22;
-  --stroke: #e3e1ee;
+    --accent: #4f6bed;
+    --app-bg: #faf8ff;
+    --surface: #ffffff;
+    --text: #1b1b22;
+    --stroke: #e3e1ee;
 }
 
 :root[data-theme='material'][data-mode='dark'] {
-  --accent: #4f6bed;   /* the accent hue does not change between appearances */
-  --app-bg: #14141a;
-  --surface: #1c1c24;
-  --text: #eceaf6;
-  --stroke: #2c2c38;
+    --accent: #4f6bed; /* the accent hue does not change between appearances */
+    --app-bg: #14141a;
+    --surface: #1c1c24;
+    --text: #eceaf6;
+    --stroke: #2c2c38;
 }
 ```
 
@@ -60,10 +60,10 @@ gain.
 ```css
 /* frontend/src/ui/widgets/EditorView.module.css */
 .pane {
-  background: var(--surface);
-  color: var(--text);
-  border: var(--editor-pane-border-width) solid var(--stroke);
-  border-radius: var(--win-radius);
+    background: var(--surface);
+    color: var(--text);
+    border: var(--editor-pane-border-width) solid var(--stroke);
+    border-radius: var(--win-radius);
 }
 ```
 
@@ -75,7 +75,7 @@ gain.
 This catches people out, so it is written down rather than discovered.
 
 **Monaco** takes literal colours through `monaco.editor.defineTheme()`. It cannot read `var(--text)`.
-The six editor themes are therefore *generated* from these token values at build time — no colour
+The six editor themes are therefore _generated_ from these token values at build time — no colour
 appears in a `defineTheme()` call that is not traceable to a token here.
 
 **Mermaid** bakes resolved colours into the SVG at render time from
@@ -85,16 +85,16 @@ nothing. So `themeVariables` is built by reading the resolved values off the roo
 ```ts
 const styles = getComputedStyle(document.documentElement);
 mermaid.initialize({
-  startOnLoad: false,
-  securityLevel: 'strict',
-  themeVariables: {
-    primaryColor: styles.getPropertyValue('--accent-soft'),
-    primaryBorderColor: styles.getPropertyValue('--accent'),
-    primaryTextColor: styles.getPropertyValue('--text'),
-    lineColor: styles.getPropertyValue('--muted'),
-    background: styles.getPropertyValue('--surface'),
-    fontFamily: styles.getPropertyValue('--font'),
-  },
+    startOnLoad: false,
+    securityLevel: 'strict',
+    themeVariables: {
+        primaryColor: styles.getPropertyValue('--accent-soft'),
+        primaryBorderColor: styles.getPropertyValue('--accent'),
+        primaryTextColor: styles.getPropertyValue('--text'),
+        lineColor: styles.getPropertyValue('--muted'),
+        background: styles.getPropertyValue('--surface'),
+        fontFamily: styles.getPropertyValue('--font'),
+    },
 });
 ```
 
@@ -108,13 +108,13 @@ every diagram in the old palette until someone edits its source.
 
 ```ts
 export function applyTheme(theme: ThemeName, mode: EffectiveMode): void {
-  const root = document.documentElement;
-  root.setAttribute('data-theme', theme);
-  root.setAttribute('data-mode', mode); // always 'light' or 'dark' — never 'auto'
+    const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
+    root.setAttribute('data-mode', mode); // always 'light' or 'dark' — never 'auto'
 }
 ```
 
-The user's *choice* (`auto` | `light` | `dark`) and the *resolved* value (`light` | `dark`) are two
+The user's _choice_ (`auto` | `light` | `dark`) and the _resolved_ value (`light` | `dark`) are two
 separate stored things. Collapsing them — storing the resolved value as though the user had picked it —
 destroys the Auto state on first run.
 

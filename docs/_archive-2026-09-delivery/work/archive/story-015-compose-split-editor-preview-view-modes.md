@@ -3,35 +3,35 @@ id: STORY-015
 title: Compose the split editor and preview with backend-owned view modes
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
-  - mockups/README.md#role-in-the-spec
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#view-mode-toggle
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#per-document-view-state
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+    - mockups/README.md#role-in-the-spec
 phase_requirements:
-  - PH01-R08
+    - PH01-R08
 modules:
-  - ui/primitives/
-  - ui/components/
-  - ui/widgets/
-  - logic/store/
-  - ui/styles/
+    - ui/primitives/
+    - ui/components/
+    - ui/widgets/
+    - logic/store/
+    - ui/styles/
 acceptance_criteria:
-  - STORY-015-AC-1
-  - STORY-015-AC-2
-  - STORY-015-AC-3
-  - STORY-015-AC-4
-  - STORY-015-AC-5
-  - STORY-015-AC-6
+    - STORY-015-AC-1
+    - STORY-015-AC-2
+    - STORY-015-AC-3
+    - STORY-015-AC-4
+    - STORY-015-AC-5
+    - STORY-015-AC-6
 edge_cases: []
 depends_on:
-  - STORY-014
-  - STORY-019
+    - STORY-014
+    - STORY-019
 adrs:
-  - ADR-0005
-  - ADR-0014
+    - ADR-0005
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: L

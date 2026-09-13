@@ -32,26 +32,26 @@ release-notes-driven constant. The mechanics:
   the linker can overwrite it.
 - **ldflags injection.** A release build stamps the real version at link time:
 
-  ```bash
-  wails build --platform <os>/<arch> -o "<output_name>" \
-    -ldflags "-X gomarkedit/internal/settings.AppVersion=$VERSION"
-  ```
+    ```bash
+    wails build --platform <os>/<arch> -o "<output_name>" \
+      -ldflags "-X gomarkedit/internal/settings.AppVersion=$VERSION"
+    ```
 
-  The `-X` path uses the full module path (`gomarkedit/internal/settings.AppVersion`); see
-  `01_BUILD_MATRIX.md#6-wails-build-flags`.
+    The `-X` path uses the full module path (`gomarkedit/internal/settings.AppVersion`); see
+    `01_BUILD_MATRIX.md#6-wails-build-flags`.
 
 - **The `wails.json` jq patch — and why it exists.** ldflags reach only the Go binary. The
   OS-level packaging metadata is generated from `wails.json` templates: the macOS `Info.plist` and
   the Windows version resource (`info.json`) both resolve a `{{.Info.ProductVersion}}` placeholder
   at build time. So **before** each `wails build`, CI patches both fields in place:
 
-  ```bash
-  jq --arg v "$VERSION" '.version = $v | .info.productVersion = $v' wails.json > tmp && mv tmp wails.json
-  ```
+    ```bash
+    jq --arg v "$VERSION" '.version = $v | .info.productVersion = $v' wails.json > tmp && mv tmp wails.json
+    ```
 
-  Without this patch the binary would report the right version while Finder/Explorer file
-  properties show a stale `dev` (EC-REL-6). On the Windows runner this step runs under
-  `shell: bash` explicitly, so `jq`/`mv` behave identically on all three runners.
+    Without this patch the binary would report the right version while Finder/Explorer file
+    properties show a stale `dev` (EC-REL-6). On the Windows runner this step runs under
+    `shell: bash` explicitly, so `jq`/`mv` behave identically on all three runners.
 
 - **Computed once, shared everywhere.** The version string is computed **once** in the
   `determine-version` job (§3) — from the pushed tag `v*.*.*` (leading `v` stripped) or the manual
@@ -72,21 +72,21 @@ derived from one processed master — **never hand-forked**.
   provided (square, rounded glass tile on a dark backdrop). It is never edited in place.
 - **Processing contract** (`specification/assets/icon/process_icon.py`, deterministic — same input
   → same output):
-  1. **Crop** the tile out of the dark backdrop to its bounds.
-  2. Make everything **outside the tile's rounded-rect silhouette transparent** (the dark backdrop
-     must not ship — it would render as a visible dark plate on macOS docks, the Windows taskbar,
-     and Linux launchers).
-  3. Export a **1024×1024 RGBA** PNG with the tile centered.
-  4. **Assert** the output contract: 1024×1024, RGBA, and **alpha == 0 at all four corner pixels**
-     (transparent corners). A violated assertion fails the run.
-     If `appicon-source.png` is missing, the script **fails fast** with a clear message (EC-REL-5).
+    1. **Crop** the tile out of the dark backdrop to its bounds.
+    2. Make everything **outside the tile's rounded-rect silhouette transparent** (the dark backdrop
+       must not ship — it would render as a visible dark plate on macOS docks, the Windows taskbar,
+       and Linux launchers).
+    3. Export a **1024×1024 RGBA** PNG with the tile centered.
+    4. **Assert** the output contract: 1024×1024, RGBA, and **alpha == 0 at all four corner pixels**
+       (transparent corners). A violated assertion fails the run.
+       If `appicon-source.png` is missing, the script **fails fast** with a clear message (EC-REL-5).
 - **Single derivation point.** The script's output is committed as **`build/appicon.png`**. This
   file — not the source artwork — is the one input every downstream icon derives from:
-  - **macOS** — Wails derives `build/darwin/*.icns` at build time.
-  - **Windows** — Wails derives `build/windows/icon.ico` at build time.
-  - **Linux** — the PNG set installed by the `.deb`/`.rpm` packages (hicolor icon theme).
-  - **Document/file-association icons** (`gomarkedit-doc`, DD-07) — seeded from the same processed
-    artwork per `02_PACKAGING_AND_ASSOCIATIONS.md#2-app-icon-requirements`.
+    - **macOS** — Wails derives `build/darwin/*.icns` at build time.
+    - **Windows** — Wails derives `build/windows/icon.ico` at build time.
+    - **Linux** — the PNG set installed by the `.deb`/`.rpm` packages (hicolor icon theme).
+    - **Document/file-association icons** (`gomarkedit-doc`, DD-07) — seeded from the same processed
+      artwork per `02_PACKAGING_AND_ASSOCIATIONS.md#2-app-icon-requirements`.
 - **Never-hand-fork rule.** No per-OS icon file may be edited or replaced independently. A visual
   change to the icon means: change the source artwork, re-run `process_icon.py`, re-commit
   `build/appicon.png`, and let the per-OS derivations regenerate. Any other path creates drift
@@ -104,10 +104,10 @@ Per **DD-67**, one workflow file (`.github/workflows/release.yml`) implements th
 - **Tag push `v*.*.*`** — the automatic release path.
 - **`workflow_dispatch`** — manual, with inputs:
 
-  | Input            | Type    | Default | Meaning                                                                                         |
-  | ---------------- | ------- | ------- | ----------------------------------------------------------------------------------------------- |
-  | `version`        | string  | —       | The version to build, **without** the leading `v` (e.g. `1.2.0`).                               |
-  | `create_release` | boolean | `true`  | `false` = **build-only mode**: run everything, upload artifacts, publish no release (EC-REL-2). |
+    | Input            | Type    | Default | Meaning                                                                                         |
+    | ---------------- | ------- | ------- | ----------------------------------------------------------------------------------------------- |
+    | `version`        | string  | —       | The version to build, **without** the leading `v` (e.g. `1.2.0`).                               |
+    | `create_release` | boolean | `true`  | `false` = **build-only mode**: run everything, upload artifacts, publish no release (EC-REL-2). |
 
 ### Job 1 — `determine-version`
 
@@ -180,24 +180,24 @@ A red `test` job blocks `create-release` — a tag push with a failing gate prod
 4. `sha256sum * > SHA256SUMS.txt` over the renamed assets.
 5. **`scripts/verify-release-artifacts.sh` — before publishing, not after.** §5 already promises two of
    these checks; this is where they become real. It fails the release on any of:
-   - a `.app.zip` whose `Contents/MacOS/GoMarkEdit` is **not executable** after unzipping (EC-REL-4 —
-     the exact failure the `-X` flag in step 2 exists to prevent, so this is the assertion that proves
-     step 2 worked rather than trusting it);
-   - a mismatch between the **binary's reported version** and `Info.plist`'s
-     `CFBundleShortVersionString` / the Windows `info.json`, or between either and the **tag**
-     (EC-REL-6 — the `wails.json` patch being skipped is silent otherwise);
-   - an asset missing from `SHA256SUMS.txt`, or a checksum that does not verify;
-   - an expected filename absent from the artifact set.
+    - a `.app.zip` whose `Contents/MacOS/GoMarkEdit` is **not executable** after unzipping (EC-REL-4 —
+      the exact failure the `-X` flag in step 2 exists to prevent, so this is the assertion that proves
+      step 2 worked rather than trusting it);
+    - a mismatch between the **binary's reported version** and `Info.plist`'s
+      `CFBundleShortVersionString` / the Windows `info.json`, or between either and the **tag**
+      (EC-REL-6 — the `wails.json` patch being skipped is silent otherwise);
+    - an asset missing from `SHA256SUMS.txt`, or a checksum that does not verify;
+    - an expected filename absent from the artifact set.
 
-   A release that has not been verified is not published. This costs one script and removes the entire
-   class of "the release is up and it does not launch".
+    A release that has not been verified is not published. This costs one script and removes the entire
+    class of "the release is up and it does not launch".
 
 6. Publish the GitHub Release via a release action with:
-   - `tag` from `determine-version`;
-   - **`prerelease: contains(version, '-')`** — auto-detected, no manual flag (EC-REL-3);
-   - generated release notes, **plus the unsigned-install caveats** (Gatekeeper right-click-Open,
-     SmartScreen, unsigned `.deb`/`.rpm`) per DD-34 /
-     `01_BUILD_MATRIX.md#8-signing-notarization-and-install-caveats`.
+    - `tag` from `determine-version`;
+    - **`prerelease: contains(version, '-')`** — auto-detected, no manual flag (EC-REL-3);
+    - generated release notes, **plus the unsigned-install caveats** (Gatekeeper right-click-Open,
+      SmartScreen, unsigned `.deb`/`.rpm`) per DD-34 /
+      `01_BUILD_MATRIX.md#8-signing-notarization-and-install-caveats`.
 
 ### Workflow skeleton
 
@@ -206,65 +206,55 @@ The structure (not the full file — the real YAML carries the complete step lis
 ```yaml
 name: release
 on:
-  push:
-    tags: ['v*.*.*']
-  workflow_dispatch:
-    inputs:
-      version:
-        {
-          description: 'Version without the leading v',
-          required: true,
-          type: string,
-        }
-      create_release:
-        {
-          description: 'Publish a GitHub release',
-          type: boolean,
-          default: true,
-        }
+    push:
+        tags: ['v*.*.*']
+    workflow_dispatch:
+        inputs:
+            version: { description: 'Version without the leading v', required: true, type: string }
+            create_release: { description: 'Publish a GitHub release', type: boolean, default: true }
 
 jobs:
-  determine-version:
-    runs-on: ubuntu-24.04
-    outputs:
-      version: ${{ steps.v.outputs.version }} # e.g. 1.2.0 / 1.2.0-rc.1
-      tag: ${{ steps.v.outputs.tag }} # v1.2.0
-    steps:
-      - id: v
-        run: | # tag push → strip leading v; dispatch → take the input verbatim
-          ...
+    determine-version:
+        runs-on: ubuntu-24.04
+        outputs:
+            version: ${{ steps.v.outputs.version }} # e.g. 1.2.0 / 1.2.0-rc.1
+            tag: ${{ steps.v.outputs.tag }} # v1.2.0
+        steps:
+            - id: v
+              run: | # tag push → strip leading v; dispatch → take the input verbatim
+                  ...
 
-  build:
-    needs: determine-version
-    strategy:
-      matrix:
-        include:
-          - { platform: linux/amd64, os: ubuntu-24.04, tags: webkit2_41 }
-          - { platform: windows/amd64, os: windows-latest }
-          - { platform: darwin/arm64, os: macos-latest }
-          - { platform: darwin/amd64, os: macos-13 }
-    runs-on: ${{ matrix.os }}
-    steps:
-      # checkout → setup-go (cache) → setup-node (npm cache: frontend/package-lock.json)
-      # → install wails CLI → npm ci → jq-patch wails.json (shell: bash)
-      # → wails build --platform ${{ matrix.platform }} -ldflags "-X gomarkedit/internal/settings.AppVersion=$VERSION"
-      # → chmod +x fixes → upload-artifact (retention-days: 7)
-      - ...
+    build:
+        needs: determine-version
+        strategy:
+            matrix:
+                include:
+                    - { platform: linux/amd64, os: ubuntu-24.04, tags: webkit2_41 }
+                    - { platform: windows/amd64, os: windows-latest }
+                    - { platform: darwin/arm64, os: macos-latest }
+                    - { platform: darwin/amd64, os: macos-13 }
+        runs-on: ${{ matrix.os }}
+        steps:
+            # checkout → setup-go (cache) → setup-node (npm cache: frontend/package-lock.json)
+            # → install wails CLI → npm ci → jq-patch wails.json (shell: bash)
+            # → wails build --platform ${{ matrix.platform }} -ldflags "-X gomarkedit/internal/settings.AppVersion=$VERSION"
+            # → chmod +x fixes → upload-artifact (retention-days: 7)
+            - ...
 
-  test:
-    runs-on: ubuntu-24.04
-    steps:
-      # wails generate module → npm run build → full §4 gate set (03_CI_AND_HOOKS.md)
-      - ...
+    test:
+        runs-on: ubuntu-24.04
+        steps:
+            # wails generate module → npm run build → full §4 gate set (03_CI_AND_HOOKS.md)
+            - ...
 
-  create-release:
-    needs: [determine-version, build, test]
-    if: github.event_name == 'push' || inputs.create_release
-    runs-on: ubuntu-24.04
-    steps:
-      # download artifacts → rebuild .app + chmod +x + zip -r -y -X → versioned renames
-      # → sha256sum * > SHA256SUMS.txt → release (prerelease: contains(version, '-'), generated notes + DD-34 caveats)
-      - ...
+    create-release:
+        needs: [determine-version, build, test]
+        if: github.event_name == 'push' || inputs.create_release
+        runs-on: ubuntu-24.04
+        steps:
+            # download artifacts → rebuild .app + chmod +x + zip -r -y -X → versioned renames
+            # → sha256sum * > SHA256SUMS.txt → release (prerelease: contains(version, '-'), generated notes + DD-34 caveats)
+            - ...
 ```
 
 **Publication is gated, and the gate cannot be routed around.** `create-release` runs only after both

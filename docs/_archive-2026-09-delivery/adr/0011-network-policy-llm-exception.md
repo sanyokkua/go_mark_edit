@@ -61,14 +61,14 @@ Precisely:
   configured**, and **only on user action** — never automatic, never background, never on a timer or
   launch, and never to any other host.
 
-  _Amended 2026-07-25._ This clause previously read "an LLM **inference**", which forbade the provider
-  settings tab from working: Test connection, Test models, Test inference and Test tools are all
-  user-invoked calls to the configured endpoint, and none of them is an inference in the narrow sense.
-  Model discovery is the same. The clause now names the category — **a user-invoked request to the
-  configured provider** — of which inference is one kind. Nothing else about the policy changes: the
-  host is still only the one the user configured, the trigger is still only a user action, and the
-  count of permitted destinations is still one. The amendment removes a contradiction; it does not open
-  a door.
+    _Amended 2026-07-25._ This clause previously read "an LLM **inference**", which forbade the provider
+    settings tab from working: Test connection, Test models, Test inference and Test tools are all
+    user-invoked calls to the configured endpoint, and none of them is an inference in the narrow sense.
+    Model discovery is the same. The clause now names the category — **a user-invoked request to the
+    configured provider** — of which inference is one kind. Nothing else about the policy changes: the
+    host is still only the one the user configured, the trigger is still only a user action, and the
+    count of permitted destinations is still one. The amendment removes a contradiction; it does not open
+    a door.
 
 - **The default provider is local** (on-device, e.g. a local model server), so a **default install stays
   fully on-device** — zero bytes leave the machine until the user opts into a remote provider and supplies

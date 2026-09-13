@@ -3,29 +3,29 @@ id: STORY-029
 title: Add an atomic backend document snapshot seam
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model
-  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
-  - ../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
-  - 07_Phases/PHASE_09_ASSETS_SECURITY.md#cross-phase-contracts
-  - 07_Phases/PHASE_12_ACTIONS_PROOFREAD_REFORMAT.md#cross-phase-contracts
+    - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model
+    - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#stage-1-must-leave-open
+    - ../../../_archive-2026-07-28-specification/02_Architecture/08_LLM_INTEGRATION.md#forward-compat-seams
+    - 07_Phases/PHASE_09_ASSETS_SECURITY.md#cross-phase-contracts
+    - 07_Phases/PHASE_12_ACTIONS_PROOFREAD_REFORMAT.md#cross-phase-contracts
 phase_requirements:
-  - PH01-R01
-  - PH01-R09
+    - PH01-R01
+    - PH01-R09
 modules:
-  - internal/appmodel/
+    - internal/appmodel/
 acceptance_criteria:
-  - STORY-029-AC-1
-  - STORY-029-AC-2
-  - STORY-029-AC-3
-  - STORY-029-AC-4
-  - STORY-029-AC-5
+    - STORY-029-AC-1
+    - STORY-029-AC-2
+    - STORY-029-AC-3
+    - STORY-029-AC-4
+    - STORY-029-AC-5
 edge_cases: []
 depends_on:
-  - STORY-011
+    - STORY-011
 adrs:
-  - ADR-0014
-  - ADR-0017
+    - ADR-0014
+    - ADR-0017
 phase: 01
 owner: coder
 estimate: M

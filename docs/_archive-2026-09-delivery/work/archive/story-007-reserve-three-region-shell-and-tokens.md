@@ -3,23 +3,23 @@ id: STORY-007
 title: Reserve the three-region app shell and token-only style skeleton
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#structure
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#structure
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#9-theming--ux
 phase_requirements:
-  - PH00-R07
+    - PH00-R07
 modules:
-  - ui/widgets/
-  - ui/styles/
+    - ui/widgets/
+    - ui/styles/
 acceptance_criteria:
-  - STORY-007-AC-1
-  - STORY-007-AC-2
-  - STORY-007-AC-3
+    - STORY-007-AC-1
+    - STORY-007-AC-2
+    - STORY-007-AC-3
 edge_cases: []
 depends_on:
-  - STORY-006
+    - STORY-006
 adrs:
-  - ADR-0005
+    - ADR-0005
 phase: 00
 owner: coder
 estimate: M

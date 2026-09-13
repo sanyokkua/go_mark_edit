@@ -168,34 +168,34 @@ opens (DD-07, DD-25, DD-26). Declared associations live in `wails.json` `info.fi
 
 ```json
 {
-  "info": {
-    "fileAssociations": [
-      {
-        "ext": "md",
-        "name": "Markdown Document",
-        "role": "Editor",
-        "iconName": "gomarkedit-doc"
-      },
-      {
-        "ext": "markdown",
-        "name": "Markdown Document",
-        "role": "Editor",
-        "iconName": "gomarkedit-doc"
-      },
-      {
-        "ext": "mdown",
-        "name": "Markdown Document",
-        "role": "Editor",
-        "iconName": "gomarkedit-doc"
-      },
-      {
-        "ext": "txt",
-        "name": "Text Document",
-        "role": "Editor",
-        "iconName": "gomarkedit-doc"
-      }
-    ]
-  }
+    "info": {
+        "fileAssociations": [
+            {
+                "ext": "md",
+                "name": "Markdown Document",
+                "role": "Editor",
+                "iconName": "gomarkedit-doc"
+            },
+            {
+                "ext": "markdown",
+                "name": "Markdown Document",
+                "role": "Editor",
+                "iconName": "gomarkedit-doc"
+            },
+            {
+                "ext": "mdown",
+                "name": "Markdown Document",
+                "role": "Editor",
+                "iconName": "gomarkedit-doc"
+            },
+            {
+                "ext": "txt",
+                "name": "Text Document",
+                "role": "Editor",
+                "iconName": "gomarkedit-doc"
+            }
+        ]
+    }
 }
 ```
 

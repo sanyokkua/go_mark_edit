@@ -89,7 +89,7 @@ Configure in `wails.json`:
 
 ```json
 {
-  "frontend:dev:serverUrl": "auto"
+    "frontend:dev:serverUrl": "auto"
 }
 ```
 
@@ -102,13 +102,13 @@ Configure in `wails.json`:
 
 ```json
 {
-  "name": "My App",
-  "outputfilename": "myapp",
-  "frontend:install": "npm install",
-  "frontend:build": "npm run build",
-  "frontend:dev:watcher": "npm run dev",
-  "frontend:dev:serverUrl": "auto",
-  "frontend:dev:args": ""
+    "name": "My App",
+    "outputfilename": "myapp",
+    "frontend:install": "npm install",
+    "frontend:build": "npm run build",
+    "frontend:dev:watcher": "npm run dev",
+    "frontend:dev:serverUrl": "auto",
+    "frontend:dev:args": ""
 }
 ```
 

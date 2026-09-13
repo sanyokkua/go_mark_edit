@@ -3,36 +3,36 @@ id: STORY-014
 title: Build the base GFM Markdown preview
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering
-  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline
-  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features
-  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline
-  - ../../../_archive-2026-07-28-specification/03_NonFunctional/04_OFFLINE.md#2-bundled-assets
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#out-of-scope
-  - 07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope
+    - ../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-rendering
+    - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#pipeline
+    - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features
+    - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline
+    - ../../../_archive-2026-07-28-specification/03_NonFunctional/04_OFFLINE.md#2-bundled-assets
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#out-of-scope
+    - 07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope
 phase_requirements:
-  - PH01-R11
+    - PH01-R11
 modules:
-  - logic/markdown/
-  - ui/components/
-  - ui/styles/
+    - logic/markdown/
+    - ui/components/
+    - ui/styles/
 acceptance_criteria:
-  - STORY-014-AC-1
-  - STORY-014-AC-2
-  - STORY-014-AC-3
-  - STORY-014-AC-4
-  - STORY-014-AC-5
-  - STORY-014-AC-6
+    - STORY-014-AC-1
+    - STORY-014-AC-2
+    - STORY-014-AC-3
+    - STORY-014-AC-4
+    - STORY-014-AC-5
+    - STORY-014-AC-6
 edge_cases:
-  - EC-RENDER-5
-  - EC-RENDER-6
-  - EC-RENDER-7
+    - EC-RENDER-5
+    - EC-RENDER-6
+    - EC-RENDER-7
 depends_on:
-  - STORY-010
+    - STORY-010
 adrs:
-  - ADR-0003
+    - ADR-0003
 phase: 01
 owner: coder
 estimate: M

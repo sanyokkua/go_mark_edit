@@ -21,6 +21,7 @@ allow or always block.
 ## Rules
 
 ### Local paths resolve relative to the document {#relative-to-the-document}
+
 - A local asset path resolves against the folder containing the **current document**.
 - An absolute local path is used as written, and is still subject to the allowlist.
 
@@ -30,6 +31,7 @@ right default · resolving against the workspace root instead → the link break
 the root.
 
 ### An unsaved document has no folder, so only the workspace root applies {#unsaved-documents-have-no-folder}
+
 - **While** a document has never been saved, it has no containing folder, so the only allowlisted root
   is the open workspace's root, if there is one.
 
@@ -37,6 +39,7 @@ Examples: a new document with `Notes/` open, `![](images/a.png)` → resolved un
 with no folder open → nothing is served, and the alt text is shown.
 
 ### A file is served only from inside the allowlist {#the-allowlist}
+
 - The allowlist is: the **current document's folder**, and the **workspace root** when a folder is open.
 - The requested path is canonicalised — symlinks resolved — and checked to be a descendant of an
   allowlisted root **before any file is read**.
@@ -47,10 +50,11 @@ root is allowlisted · the same link with only `docs/` open → refused · `/etc
 checking the path before canonicalising → a symlink inside the folder pointing outside it passes the
 check and then reads the target.
 
-*This is a security invariant, not a convenience.* It has its own tests, and they are not the same tests
+_This is a security invariant, not a convenience._ It has its own tests, and they are not the same tests
 as the rendering ones.
 
 ### Traversal is rejected before any read {#traversal-is-rejected}
+
 - Paths that attempt to escape the allowlist — `../../etc/passwd`, an absolute path outside the roots, a
   symlink pointing out — are rejected without opening the file.
 
@@ -58,6 +62,7 @@ Examples: `![](../../../../etc/passwd)` → refused, placeholder shown, nothing 
 and then deciding → the read already happened, and on some paths that is the whole exploit.
 
 ### A missing local file shows its alt text {#missing-images-show-alt-text}
+
 - **If** a referenced local file does not exist, **then** the image's alt text is shown as a placeholder
   and no error is raised.
 
@@ -65,6 +70,7 @@ Examples: a document with twelve broken image links → twelve placeholders and 
 broken image → a wall of notifications for one mistyped folder name.
 
 ### The remote-content policy has three values and defaults to Ask {#remote-content-policy}
+
 - **Ask** — remote content is blocked and the banner is shown. This is the default.
 - **Always allow** — remote content loads without prompting.
 - **Always block** — remote content is never requested, and no banner appears.
@@ -74,6 +80,7 @@ policy Always block → the image is absent, no banner, nothing requested · pol
 loads.
 
 ### The app never fetches remote content on its own {#app-never-fetches}
+
 - This policy governs **document-referenced** remote assets only. The app itself makes no network
   request of any kind for its own purposes.
 - The only other outbound traffic that ever exists is the assistant's user-invoked calls to a configured
@@ -83,6 +90,7 @@ Examples: opening a document with no remote references and policy Always allow �
 an update check → not present anywhere in the app; see `../constraints.md#nothing-leaves-the-device`.
 
 ### The banner's exact text and actions {#the-banner}
+
 - **While** the policy is Ask and the open document references remote images or stylesheets, an in-preview
   banner reads: `This document references external images / CSS. Load remote content?`
 - Its actions are **Load once**, **Always allow** and **Keep blocked**.
@@ -94,6 +102,7 @@ Examples: Load once, then switch tabs and back → the banner again, because not
 blocking the whole document until the user chooses → one remote image makes the document unreadable.
 
 ### A policy change is stored before anything is requested {#policy-persists-before-loading}
+
 - **If** persisting a policy change fails, **then** the previously acknowledged policy stays in force and
   the failure is reported.
 - Nothing is loaded speculatively on the assumption that a policy change will save.
@@ -103,6 +112,7 @@ nothing is fetched · fetching first → the user's content went out under a pol
 to record.
 
 ### A fixed content security policy backs all of this {#csp}
+
 - The webview enforces a content security policy: app assets come from the embedded bundle only,
   document scripts and styles are sanitised, and remote loading is constrained to what the policy
   permits.
@@ -120,43 +130,48 @@ and nothing is reported, which is why the three layers are invisible until somet
 
 ## When things go wrong
 
-| Situation | What the user sees | What they can do |
-|---|---|---|
-| A local image path is outside the allowlist | The image's alt text as a placeholder | Move the image beside the document, or open the folder that contains it |
-| A local image does not exist | The alt text as a placeholder | Fix the path |
-| A remote image is blocked by policy | Nothing where the image would be, and the banner if the policy is Ask | Load once, or change the policy |
-| A remote image is allowed and fails to load | The alt text as a placeholder | Check the network, or the URL |
-| A policy change cannot be saved | The failure is reported; the old policy stays in force | Retry, and check the configuration folder |
+| Situation                                   | What the user sees                                                    | What they can do                                                        |
+| ------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| A local image path is outside the allowlist | The image's alt text as a placeholder                                 | Move the image beside the document, or open the folder that contains it |
+| A local image does not exist                | The alt text as a placeholder                                         | Fix the path                                                            |
+| A remote image is blocked by policy         | Nothing where the image would be, and the banner if the policy is Ask | Load once, or change the policy                                         |
+| A remote image is allowed and fails to load | The alt text as a placeholder                                         | Check the network, or the URL                                           |
+| A policy change cannot be saved             | The failure is reported; the old policy stays in force                | Retry, and check the configuration folder                               |
 
 ## Edge cases
 
 **A symlink inside the document's folder points outside it**
-- *Trigger:* `assets/logo.png` is a symlink to `/etc/shadow`.
-- *Expected:* the path is canonicalised first, found to be outside the allowlist, and refused.
-- *Avoid:* checking the literal path, which is inside the folder, and then following the link.
+
+- _Trigger:_ `assets/logo.png` is a symlink to `/etc/shadow`.
+- _Expected:_ the path is canonicalised first, found to be outside the allowlist, and refused.
+- _Avoid:_ checking the literal path, which is inside the folder, and then following the link.
 
 **A document is saved for the first time while an image is displayed**
-- *Trigger:* an untitled document with `![](images/a.png)` is saved into a new folder.
-- *Expected:* the allowlist gains the new document folder and the image resolves from there.
-- *Avoid:* keeping the old allowlist, so the image stays broken until the tab is reopened.
+
+- _Trigger:_ an untitled document with `![](images/a.png)` is saved into a new folder.
+- _Expected:_ the allowlist gains the new document folder and the image resolves from there.
+- _Avoid:_ keeping the old allowlist, so the image stays broken until the tab is reopened.
 
 **The remote policy is Ask and the document has fifty remote images**
-- *Trigger:* a document that references many remote assets.
-- *Expected:* one banner for the document, not one per image. Nothing is requested until a choice is
+
+- _Trigger:_ a document that references many remote assets.
+- _Expected:_ one banner for the document, not one per image. Nothing is requested until a choice is
   made.
-- *Avoid:* fifty banners, or fifty requests fired to find out whether they exist.
+- _Avoid:_ fifty banners, or fifty requests fired to find out whether they exist.
 
 **Load once, then the document is edited**
-- *Trigger:* Load once is chosen, then the user types.
-- *Expected:* the loaded content stays loaded for this view. The banner does not reappear on every
+
+- _Trigger:_ Load once is chosen, then the user types.
+- _Expected:_ the loaded content stays loaded for this view. The banner does not reappear on every
   debounce tick.
-- *Avoid:* re-blocking on each render, which makes Load once last about 200 ms.
+- _Avoid:_ re-blocking on each render, which makes Load once last about 200 ms.
 
 **An export while remote content is blocked**
-- *Trigger:* Export to PDF with policy Always block and a document referencing remote images.
-- *Expected:* the blocked content is simply absent from the export, and the export does not stall waiting
+
+- _Trigger:_ Export to PDF with policy Always block and a document referencing remote images.
+- _Expected:_ the blocked content is simply absent from the export, and the export does not stall waiting
   for it.
-- *Avoid:* waiting for an image that will never load, which hangs the export indefinitely.
+- _Avoid:_ waiting for an image that will never load, which hangs the export indefinitely.
 
 ## Not this
 
@@ -172,9 +187,9 @@ and nothing is reported, which is why the three layers are invisible until somet
 
 ## Decisions
 
-- *2026-07-25* — Configurable allowlist roots were removed. They were referenced by three documents and
+- _2026-07-25_ — Configurable allowlist roots were removed. They were referenced by three documents and
   defined by none.
-- *2026-07-25* — The sanitising allowlist is derived from the active standard level and the content
+- _2026-07-25_ — The sanitising allowlist is derived from the active standard level and the content
   security policy is fixed. Recorded in `../../adr/0030-sanitization-allowlist-and-csp.md`.
 
 ## Open questions

@@ -3,22 +3,22 @@ id: STORY-002
 title: Implement the apperr envelope and Wails-bindable result contracts
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#error-codes
-  - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#wire
-  - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#result-envelopes
-  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#error-envelope
-  - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind
+    - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#error-codes
+    - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#wire
+    - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#result-envelopes
+    - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#error-envelope
+    - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind
 phase_requirements:
-  - PH00-R02
+    - PH00-R02
 modules:
-  - internal/apperr/
+    - internal/apperr/
 acceptance_criteria:
-  - STORY-002-AC-1
-  - STORY-002-AC-2
-  - STORY-002-AC-3
+    - STORY-002-AC-1
+    - STORY-002-AC-2
+    - STORY-002-AC-3
 edge_cases: []
 depends_on:
-  - STORY-001
+    - STORY-001
 adrs: []
 phase: 00
 owner: coder

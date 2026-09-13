@@ -3,38 +3,38 @@ id: STORY-019
 title: Synchronize the active buffer and establish the editable document-command seam
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
-  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
+    - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
-  - PH01-R03
-  - PH01-R05
-  - PH01-R13
+    - PH01-R03
+    - PH01-R05
+    - PH01-R13
 modules:
-  - logic/adapter/
-  - logic/hooks/
-  - logic/store/
-  - ui/components/
-  - ui/widgets/
+    - logic/adapter/
+    - logic/hooks/
+    - logic/store/
+    - ui/components/
+    - ui/widgets/
 acceptance_criteria:
-  - STORY-019-AC-1
-  - STORY-019-AC-2
-  - STORY-019-AC-3
-  - STORY-019-AC-4
-  - STORY-019-AC-5
-  - STORY-019-AC-6
+    - STORY-019-AC-1
+    - STORY-019-AC-2
+    - STORY-019-AC-3
+    - STORY-019-AC-4
+    - STORY-019-AC-5
+    - STORY-019-AC-6
 edge_cases:
-  - EC-DOCS-12
+    - EC-DOCS-12
 depends_on:
-  - STORY-012
-  - STORY-013
+    - STORY-012
+    - STORY-013
 adrs:
-  - ADR-0002
-  - ADR-0014
+    - ADR-0002
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: L

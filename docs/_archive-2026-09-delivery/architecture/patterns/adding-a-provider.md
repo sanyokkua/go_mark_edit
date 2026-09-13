@@ -1,7 +1,7 @@
 # Adding an AI provider kind
 
-*This pattern applies to the assistant phases (11–13). None of the code below exists yet; it is the
-shape it takes when it does.*
+_This pattern applies to the assistant phases (11–13). None of the code below exists yet; it is the
+shape it takes when it does._
 
 There is **one** HTTP client, `OpenAICompatibleProvider`. A provider kind is a row of configuration —
 a `ProviderProfile` — registered in the factory. Adding a kind never means adding a client class.
@@ -32,14 +32,14 @@ type OpenAICompatibleProvider struct {
 }
 ```
 
-| Kind | Default base URL | Auth | Models path | Discovery |
-|---|---|---|---|---|
-| `ollama` | `http://127.0.0.1:11434` (local) | none | `/api/tags` | Ollama tag list |
-| `lmstudio` | local OpenAI-compatible endpoint | none | `/v1/models` | OpenAI list |
-| `llamacpp` | local `server` endpoint | none | `/v1/models` | OpenAI list |
-| `openai` | `https://api.openai.com` | bearer, from an environment variable | `/v1/models` | OpenAI list |
-| `azure` | the user's endpoint plus a deployment | API-key header, from an environment variable | profile-specific | OpenAI list plus headers |
-| `compat` | the user's endpoint | none, bearer, or API-key header | `/v1/models` | OpenAI list |
+| Kind       | Default base URL                      | Auth                                         | Models path      | Discovery                |
+| ---------- | ------------------------------------- | -------------------------------------------- | ---------------- | ------------------------ |
+| `ollama`   | `http://127.0.0.1:11434` (local)      | none                                         | `/api/tags`      | Ollama tag list          |
+| `lmstudio` | local OpenAI-compatible endpoint      | none                                         | `/v1/models`     | OpenAI list              |
+| `llamacpp` | local `server` endpoint               | none                                         | `/v1/models`     | OpenAI list              |
+| `openai`   | `https://api.openai.com`              | bearer, from an environment variable         | `/v1/models`     | OpenAI list              |
+| `azure`    | the user's endpoint plus a deployment | API-key header, from an environment variable | profile-specific | OpenAI list plus headers |
+| `compat`   | the user's endpoint                   | none, bearer, or API-key header              | `/v1/models`     | OpenAI list              |
 
 ## Adding a kind, in full
 
@@ -54,7 +54,7 @@ type OpenAICompatibleProvider struct {
 That is the whole change. If you find yourself writing a second `Chat` implementation, the difference
 you are handling belongs in the profile.
 
-## Secrets are environment-variable *names*
+## Secrets are environment-variable _names_
 
 ```go
 type ProviderConfig struct {

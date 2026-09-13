@@ -11,21 +11,21 @@ import type { PluggableList } from 'unified';
  * PreviewPane has classified it as a bounded local asset route.
  */
 export const baseGfmSanitizeSchema: Schema = {
-  ...defaultSchema,
-  // remark-gfm already prefixes generated footnote IDs with `user-content-`.
-  // Re-prefixing them here breaks their matching internal href targets.
-  clobberPrefix: '',
-  attributes: {
-    ...defaultSchema.attributes,
-    img: ['alt', 'src'],
-  },
-  // `file:` is retained only so the preview link policy can refuse it with a
-  // visible reason. MarkdownView prevents the anchor's default action, while
-  // javascript/data remain stripped before they reach the renderer.
-  protocols: {
-    ...defaultSchema.protocols,
-    href: [...(defaultSchema.protocols?.href ?? []), 'file'],
-  },
+    ...defaultSchema,
+    // remark-gfm already prefixes generated footnote IDs with `user-content-`.
+    // Re-prefixing them here breaks their matching internal href targets.
+    clobberPrefix: '',
+    attributes: {
+        ...defaultSchema.attributes,
+        img: ['alt', 'src'],
+    },
+    // `file:` is retained only so the preview link policy can refuse it with a
+    // visible reason. MarkdownView prevents the anchor's default action, while
+    // javascript/data remain stripped before they reach the renderer.
+    protocols: {
+        ...defaultSchema.protocols,
+        href: [...(defaultSchema.protocols?.href ?? []), 'file'],
+    },
 };
 
 /**
@@ -35,36 +35,34 @@ export const baseGfmSanitizeSchema: Schema = {
  * default transform, including the javascript/data refusal.
  */
 export function previewUrlTransform(value: string): string {
-  return /^file:/iu.test(value) ? value : defaultUrlTransform(value);
+    return /^file:/iu.test(value) ? value : defaultUrlTransform(value);
 }
 
 /** Fixed Phase 01 GFM renderer configuration; sanitization must stay last. */
 export const baseGfmRemarkPlugins: PluggableList = [remarkGfm];
 
-export const baseGfmRehypePlugins: PluggableList = [
-  [rehypeSanitize, baseGfmSanitizeSchema],
-];
+export const baseGfmRehypePlugins: PluggableList = [[rehypeSanitize, baseGfmSanitizeSchema]];
 
 /**
  * Image sources are passed to MarkdownView only as sanitized data. Never
  * spread image props here: doing so could reintroduce a fetchable remote src.
  */
 export function renderImageFallback(alt?: string): React.JSX.Element {
-  const fallback = alt ?? 'Image unavailable';
+    const fallback = alt ?? 'Image unavailable';
 
-  return createElement(
-    'span',
-    {
-      'aria-label': fallback,
-      className: 'gme-preview-image-fallback',
-      role: 'img',
-    },
-    fallback,
-  );
+    return createElement(
+        'span',
+        {
+            'aria-label': fallback,
+            className: 'gme-preview-image-fallback',
+            role: 'img',
+        },
+        fallback,
+    );
 }
 
 export const markdownComponents: Components = {
-  img({ alt }): React.JSX.Element {
-    return renderImageFallback(alt);
-  },
+    img({ alt }): React.JSX.Element {
+        return renderImageFallback(alt);
+    },
 };

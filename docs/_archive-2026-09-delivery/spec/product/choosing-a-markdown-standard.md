@@ -16,6 +16,7 @@ status bar both show which level is active.
 ## Rules
 
 ### There are exactly three levels {#three-levels}
+
 - **Minimal** is strict CommonMark: headings, paragraphs, emphasis, links, images, blockquotes, lists,
   fenced and indented code, thematic breaks, and inline HTML subject to sanitising. No tables, no task
   lists, no strikethrough, no autolinks, no footnotes, no maths, no directives.
@@ -27,6 +28,7 @@ Examples: use Minimal to preview exactly what a CommonMark-only renderer would s
 technical notes with formulae and callouts.
 
 ### The standard is one global setting {#the-standard-is-one-global-setting}
+
 - The level applies to every open document's preview and reading mode. It is not per document.
 
 Examples: two documents open, level switched to Full → both re-render at Full · a per-document level →
@@ -34,6 +36,7 @@ a setting the user has to remember to set on each file, and a preview that means
 per tab.
 
 ### A feature above the level renders literally {#higher-features-render-literally}
+
 - **When** a document uses a feature the active level does not include, its syntax renders as plain
   text — not as an error.
 
@@ -42,6 +45,7 @@ Examples: a pipe table at Minimal → the pipe characters, as written · `$x^2$`
 document is broken when it is the setting that is narrow, which is the whole point of Minimal.
 
 ### Changing the level re-renders open documents at once {#level-change-rerenders}
+
 - **When** the level changes, the preview and reader of every open document re-render, and the standard
   badge updates.
 
@@ -49,6 +53,7 @@ Examples: switching from GFM to Full with a footnote-heavy document open → foo
 immediately · requiring a reopen → the setting looks broken.
 
 ### Front matter is recognised at GFM as well as Full {#frontmatter-at-gfm}
+
 - A YAML block at the top of a document is parsed and hidden from the rendered body at **both** GFM and
   Full.
 
@@ -56,11 +61,12 @@ Examples: a Hugo post opened at the default GFM → the front matter is hidden a
 recognising it at GFM → `---` parses as a thematic break plus a setext heading, so the reader sees a
 stray horizontal rule and mangled text and concludes the app is broken.
 
-*Why this matters beyond appearance:* Format round-trips the document through the syntax tree, so a
+_Why this matters beyond appearance:_ Format round-trips the document through the syntax tree, so a
 level that cannot parse front matter is a level whose Format destroys it. Almost every real `.md` file
 from Hugo, Jekyll, Astro or Obsidian opens with one.
 
 ### Highlighting and diagrams are independent of the level {#highlighting-and-mermaid-are-level-independent}
+
 - Fenced-code syntax highlighting runs at every level, because it is a rendering concern.
 - Mermaid fences render at every level, because they are handled by a component override rather than a
   Markdown plugin.
@@ -69,17 +75,17 @@ Examples: ` ```go ` at Minimal → highlighted · a Mermaid diagram at Minimal �
 
 ### The plugin set per level {#plugin-mapping}
 
-| Capability | Plugin | Minimal | GFM | Full |
-|---|---|:--:|:--:|:--:|
-| Core CommonMark parse | `react-markdown` core | yes | yes | yes |
-| Tables, task lists, strikethrough, autolinks | `remark-gfm` | no | yes | yes |
-| Footnotes | `remark-gfm` | no | yes | yes |
-| Maths, `$…$` and `$$…$$` | `remark-math` + `rehype-katex` | no | no | yes |
-| Directives and admonitions | `remark-directive` | no | no | yes |
-| Front matter, YAML | `remark-frontmatter` | no | **yes** | yes |
-| Code highlighting | `rehype-highlight` | yes | yes | yes |
-| Mermaid fences | component override | yes | yes | yes |
-| HTML sanitising | `rehype-sanitize` | yes | yes | yes |
+| Capability                                   | Plugin                         | Minimal |   GFM   | Full |
+| -------------------------------------------- | ------------------------------ | :-----: | :-----: | :--: |
+| Core CommonMark parse                        | `react-markdown` core          |   yes   |   yes   | yes  |
+| Tables, task lists, strikethrough, autolinks | `remark-gfm`                   |   no    |   yes   | yes  |
+| Footnotes                                    | `remark-gfm`                   |   no    |   yes   | yes  |
+| Maths, `$…$` and `$$…$$`                     | `remark-math` + `rehype-katex` |   no    |   no    | yes  |
+| Directives and admonitions                   | `remark-directive`             |   no    |   no    | yes  |
+| Front matter, YAML                           | `remark-frontmatter`           |   no    | **yes** | yes  |
+| Code highlighting                            | `rehype-highlight`             |   yes   |   yes   | yes  |
+| Mermaid fences                               | component override             |   yes   |   yes   | yes  |
+| HTML sanitising                              | `rehype-sanitize`              |   yes   |   yes   | yes  |
 
 - Footnotes are part of `remark-gfm`, not a Full-only addition.
 
@@ -87,6 +93,7 @@ Examples: a footnote at GFM → rendered with its back-reference · a footnote a
 `[^1]`.
 
 ### Format and lint always parse with the maximal set {#format-parses-maximally}
+
 - Format, Compact and Lint parse with `remark-gfm`, `remark-frontmatter`, `remark-math` **and**
   `remark-directive`, regardless of the selected level.
 - **The standard governs what is displayed. It never governs what is parsed for round-trip.**
@@ -96,10 +103,11 @@ recognised it · formatting at the display level instead → `---` is re-seriali
 break nor a heading, and the front matter is silently destroyed. The same class of failure applies to a
 table formatted at Minimal and to `$$…$$` formatted without the maths plugin.
 
-*This asymmetry is deliberate:* the format pipeline is always more capable than the render pipeline,
+_This asymmetry is deliberate:_ the format pipeline is always more capable than the render pipeline,
 because formatting a construct you cannot parse is how data is lost.
 
 ### The active level is visible {#level-is-visible}
+
 - The preview pane header shows a badge with the active level, for example `GFM`, and the status bar
   shows `Markdown · GFM`.
 
@@ -116,36 +124,40 @@ badge, because it is now the thing you check and it lies
 
 ## When things go wrong
 
-| Situation | What the user sees | What they can do |
-|---|---|---|
-| A stored level is not one of the three | GFM, silently | Nothing |
-| A document uses a Full-only feature at GFM | The syntax, literally | Switch to Full |
+| Situation                                               | What the user sees                                  | What they can do  |
+| ------------------------------------------------------- | --------------------------------------------------- | ----------------- |
+| A stored level is not one of the three                  | GFM, silently                                       | Nothing           |
+| A document uses a Full-only feature at GFM              | The syntax, literally                               | Switch to Full    |
 | A directive plugin fails to parse a malformed directive | The source text of that directive; the rest renders | Fix the directive |
 
 ## Edge cases
 
 **The level is switched while a large document's preview is paused**
-- *Trigger:* a 3 MB document with the preview paused, level changed from GFM to Full.
-- *Expected:* the preview stays paused; the next manual refresh renders at the new level. The badge
+
+- _Trigger:_ a 3 MB document with the preview paused, level changed from GFM to Full.
+- _Expected:_ the preview stays paused; the next manual refresh renders at the new level. The badge
   updates immediately.
-- *Avoid:* forcing a full re-render of a paused document, which is what pausing exists to prevent.
+- _Avoid:_ forcing a full re-render of a paused document, which is what pausing exists to prevent.
 
 **Front matter that is not valid YAML**
-- *Trigger:* a `---` block containing malformed YAML.
-- *Expected:* the block is still recognised as front matter and hidden, and the body renders.
-- *Avoid:* falling back to rendering it as body content, which puts unexpected text at the top of the
+
+- _Trigger:_ a `---` block containing malformed YAML.
+- _Expected:_ the block is still recognised as front matter and hidden, and the body renders.
+- _Avoid:_ falling back to rendering it as body content, which puts unexpected text at the top of the
   document.
 
 **A document beginning with a thematic break**
-- *Trigger:* a file whose first line is `---` with ordinary prose after it, no closing `---`.
-- *Expected:* it is a thematic break, not front matter, because front matter needs a closing delimiter.
-- *Avoid:* swallowing the rest of the document as front matter.
+
+- _Trigger:_ a file whose first line is `---` with ordinary prose after it, no closing `---`.
+- _Expected:_ it is a thematic break, not front matter, because front matter needs a closing delimiter.
+- _Avoid:_ swallowing the rest of the document as front matter.
 
 **The level is switched while a document is being formatted**
-- *Trigger:* Format is running and the level changes.
-- *Expected:* the format completes with the maximal parse set, unaffected — the level was never an input
+
+- _Trigger:_ Format is running and the level changes.
+- _Expected:_ the format completes with the maximal parse set, unaffected — the level was never an input
   to it.
-- *Avoid:* re-reading the level mid-format, which would change the serialiser's inputs halfway.
+- _Avoid:_ re-reading the level mid-format, which would change the serialiser's inputs halfway.
 
 ## Not this
 
@@ -159,9 +171,9 @@ badge, because it is now the thing you check and it lies
 
 ## Decisions
 
-- *2026-07-25* — Front matter is recognised at GFM as well as Full. Almost every real-world `.md` file
+- _2026-07-25_ — Front matter is recognised at GFM as well as Full. Almost every real-world `.md` file
   opens with a YAML block, and formatting one at a level that cannot parse it destroys it.
-- *2026-07-25* — Format and Lint always use the maximal plugin set. Recorded in
+- _2026-07-25_ — Format and Lint always use the maximal plugin set. Recorded in
   `../../adr/0031-format-via-remark-stringify.md`.
 
 ## Open questions

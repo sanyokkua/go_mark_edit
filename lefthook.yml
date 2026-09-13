@@ -1,8 +1,8 @@
 pre-commit:
-  commands:
-    format:
-      run: scripts/format --check
+    commands:
+        format:
+            run: scripts/format --check
 pre-push:
-  commands:
-    verify:
-      run: scripts/verify
+    commands:
+        verify:
+            run: scripts/verify

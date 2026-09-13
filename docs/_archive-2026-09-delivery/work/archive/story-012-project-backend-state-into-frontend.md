@@ -3,34 +3,34 @@ id: STORY-012
 title: Project backend application state into the frontend
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#store
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#store
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+    - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
-  - PH01-R02
-  - PH01-R05
+    - PH01-R02
+    - PH01-R05
 modules:
-  - logic/adapter/
-  - logic/store/
-  - dev/bridge-mock/
-  - ui/widgets/
+    - logic/adapter/
+    - logic/store/
+    - dev/bridge-mock/
+    - ui/widgets/
 acceptance_criteria:
-  - STORY-012-AC-1
-  - STORY-012-AC-2
-  - STORY-012-AC-3
-  - STORY-012-AC-4
-  - STORY-012-AC-5
-  - STORY-012-AC-6
-  - STORY-012-AC-7
-  - STORY-012-AC-8
+    - STORY-012-AC-1
+    - STORY-012-AC-2
+    - STORY-012-AC-3
+    - STORY-012-AC-4
+    - STORY-012-AC-5
+    - STORY-012-AC-6
+    - STORY-012-AC-7
+    - STORY-012-AC-8
 edge_cases: []
 depends_on:
-  - STORY-011
+    - STORY-011
 adrs:
-  - ADR-0014
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: L

@@ -27,6 +27,7 @@ table. Pasting a screenshot writes the image beside your document and links it.
 ## Rules
 
 ### Formatting acts on the selection or the current line {#formatting-scope}
+
 - **When** text is selected, a formatting action applies to the selection.
 - **When** nothing is selected, it applies to the current line.
 - The cost of a formatting action does not grow with the document, because it never touches text outside
@@ -37,6 +38,7 @@ press heading 1 → that line becomes a heading · a whole 2 MB document reflowe
 rejected.
 
 ### The canonical markers are `-`, `_` and `#` {#canonical-markers}
+
 - A bullet list uses `-`. Emphasis uses `_`. Headings use ATX `#`.
 - All three are overridable in Settings → Markdown — bullet `-`, `*` or `+`; emphasis `_ _` or `* *`;
   headings ATX or Setext — and they ship at the canonical values.
@@ -48,6 +50,7 @@ Examples: default settings, press bullet list → `- item` · bullet marker set 
 the editor fights the user.
 
 ### Emphasis buttons toggle {#emphasis-toggles}
+
 - **When** bold, italic, strikethrough or inline code is pressed and the selection is **not** already
   wrapped in that construct's markers, the markers are added around the selection.
 - **When** the selection **is** already wrapped — including when the markers sit just outside the
@@ -60,10 +63,11 @@ inside `**word**`, bold → `word`, because the markers just outside the selecti
 two spaces, bold → `**|**` with the caret between the pairs · pressing bold twice on the same selection
 → back to exactly the original text, byte for byte.
 
-*Why the just-outside case:* double-clicking a word inside `**word**` selects `word`, not the asterisks.
+_Why the just-outside case:_ double-clicking a word inside `**word**` selects `word`, not the asterisks.
 If that case adds a second pair, the most natural way to select bold text is also the way to break it.
 
 ### The heading buttons replace the level {#heading-replaces-level}
+
 - **When** a heading button is pressed on a line that is already a heading of a **different** level, the
   level is replaced.
 - **When** it is pressed on a line that is already a heading of the **same** level, the heading markers
@@ -75,6 +79,7 @@ heading 1 → `# Title` · `## Title` with heading 3 → `### Title` · prefixin
 `# ## Title`, which renders as a level-1 heading whose text is literally `## Title`.
 
 ### The list buttons convert between kinds {#list-buttons-convert}
+
 - **When** a list button is pressed on a line that is already a list item of a **different** kind, the
   marker is converted.
 - **When** it is pressed on a line that is already a list item of the **same** kind, the marker is
@@ -87,6 +92,7 @@ with a checkbox and the checkbox is the part being removed · prefixing instead 
 `1. - item`, which renders as a numbered item containing a literal dash.
 
 ### Formatting shortcuts only fire when the editor has focus {#formatting-is-editor-scoped}
+
 - Bold, italic, strikethrough, inline code, link, image, the heading bindings, the list bindings, quote
   and table are **editor-scoped**: they do nothing unless the Monaco editor is focused.
 - Format document, compact document and lint document are **document-scoped**: they need an open
@@ -96,6 +102,7 @@ Examples: `Ctrl/Cmd+B` while the file tree has focus → nothing · `Alt/Option+
 mode is active → the document is formatted.
 
 ### The table button inserts a skeleton {#table-inserts-a-skeleton}
+
 - `Ctrl/Cmd+Shift+T` and the table button insert an empty GFM table skeleton at the caret for the user
   to fill in.
 
@@ -103,6 +110,7 @@ Examples: press table → a header row, a separator row and one body row appear 
 data filled in → that is what pasting does, see `#pasting-tabular-text-makes-a-table`.
 
 ### Dropping or pasting an image inserts a link, and copies nothing {#image-insert-links-not-copies}
+
 - **When** an image file that already exists on disk is dropped or pasted into the editor, a Markdown
   image link is inserted at the caret using the path **relative to the document**, and no file is
   copied, moved or rewritten.
@@ -115,6 +123,7 @@ copying the file into the document's folder automatically → the app reorganisi
 without being asked.
 
 ### A clipboard bitmap is the only thing that writes a file {#bitmap-paste-writes-a-file}
+
 - **When** a bitmap with no file path is pasted — a screenshot from a capture tool — it is written beside
   the document as `<document-name>-<n>.png` and then linked like any other image.
 - **If** the document has never been saved, **then** the paste is refused with a message saying to save
@@ -125,6 +134,7 @@ Examples: paste a screenshot into `notes.md` → `notes-1.png` beside it and `![
 caret · paste a second → `notes-2.png` · paste into an untitled document → refused with the message.
 
 ### Pasting tabular text makes a table {#pasting-tabular-text-makes-a-table}
+
 - **When** clipboard text is unambiguously delimited rows and columns — tab-separated or comma-separated,
   with **at least two rows and a consistent column count** — it is inserted as a GFM table with a header
   row and aligned columns.
@@ -135,12 +145,13 @@ Examples: three rows of four tab-separated fields → a four-column table · two
 fields and one with four → plain text · a single line of comma-separated values → plain text, because
 one row is a sentence with commas as often as it is a table.
 
-*Why this and not a general converter:* tab-separated text with a consistent column count is what
+_Why this and not a general converter:_ tab-separated text with a consistent column count is what
 Excel, Google Sheets and most database clients put on the clipboard. The shape is unmistakable rather
 than guessed at, and pasting a range you already have is far more common than filling in an empty
 skeleton.
 
 ### Pasted HTML and rich text arrive as plain text, unchanged {#rich-paste-is-plain}
+
 - **When** HTML or rich text is pasted, its plain-text flavour is inserted verbatim. No conversion to
   Markdown is attempted.
 
@@ -148,12 +159,13 @@ Examples: copying a formatted paragraph from a browser → the words, without th
 table copied from a web page → the text, not a GFM table, because the test in
 `#pasting-tabular-text-makes-a-table` is about the clipboard's plain-text flavour.
 
-*Why:* converting HTML to Markdown means guessing the structure the user wanted, and a wrong guess is
+_Why:_ converting HTML to Markdown means guessing the structure the user wanted, and a wrong guess is
 harder to repair than plain text is to re-format.
 
 ### The context menu is a view of the shortcut registry {#context-menu-is-the-registry}
-- The editor context menu contains, in order: Cut · Copy · Paste · Paste as plain text · *(separator)* ·
-  Bold · Italic · Link · *(separator)* · Format document · Compact · *(separator)* · Command palette.
+
+- The editor context menu contains, in order: Cut · Copy · Paste · Paste as plain text · _(separator)_ ·
+  Bold · Italic · Link · _(separator)_ · Format document · Compact · _(separator)_ · Command palette.
 - Every entry dispatches through the shortcut registry and displays its accelerator.
 - On macOS the native Edit menu owns the clipboard accelerators; these entries invoke the same commands.
 
@@ -161,6 +173,7 @@ Examples: the menu shows `Bold ⌘B` on macOS and `Bold Ctrl+B` elsewhere · a c
 behaviour for bold → a second implementation of one command.
 
 ### Narrow windows fold the toolbar into an overflow menu {#toolbar-overflow}
+
 - At 768 px the list and link groups move into a `»` overflow menu.
 - At 375 px the text buttons and the view segmented control join them.
 - Nothing is removed, only relocated.
@@ -178,38 +191,42 @@ disappears entirely at a width → the user cannot reach the feature at all on a
 
 ## When things go wrong
 
-| Situation | What the user sees | What they can do |
-|---|---|---|
-| A bitmap is pasted into a never-saved document | A message saying to save the document first | Save it, then paste again |
-| An image is dropped that has no relative path to the document | The absolute path is inserted, plus a toast explaining why | Move the image beside the document and re-link |
-| The bitmap cannot be written beside the document | `Couldn't finish reading or writing` · `The disk may be full or the file may be in use. Try again.` | Free space, or save the document somewhere writable |
-| A formatting shortcut is pressed with no editor focus | Nothing | Click into the editor first |
+| Situation                                                     | What the user sees                                                                                  | What they can do                                    |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| A bitmap is pasted into a never-saved document                | A message saying to save the document first                                                         | Save it, then paste again                           |
+| An image is dropped that has no relative path to the document | The absolute path is inserted, plus a toast explaining why                                          | Move the image beside the document and re-link      |
+| The bitmap cannot be written beside the document              | `Couldn't finish reading or writing` · `The disk may be full or the file may be in use. Try again.` | Free space, or save the document somewhere writable |
+| A formatting shortcut is pressed with no editor focus         | Nothing                                                                                             | Click into the editor first                         |
 
 ## Edge cases
 
 **An image is dropped onto the file tree rather than the editor**
-- *Trigger:* the user drops `diagram.png` on the sidebar.
-- *Expected:* the drop is treated as an open attempt, and a `.png` is not an openable type, so a toast
+
+- _Trigger:_ the user drops `diagram.png` on the sidebar.
+- _Expected:_ the drop is treated as an open attempt, and a `.png` is not an openable type, so a toast
   says so and nothing is inserted.
-- *Avoid:* inserting a link into whichever document happens to be active, which puts content in a
+- _Avoid:_ inserting a link into whichever document happens to be active, which puts content in a
   document the user was not pointing at.
 
 **A bitmap is pasted twice into the same document**
-- *Trigger:* two screenshots pasted one after the other into `notes.md`.
-- *Expected:* `notes-1.png` and `notes-2.png`, two distinct links.
-- *Avoid:* overwriting `notes-1.png` with the second image, which silently changes the first link's
+
+- _Trigger:_ two screenshots pasted one after the other into `notes.md`.
+- _Expected:_ `notes-1.png` and `notes-2.png`, two distinct links.
+- _Avoid:_ overwriting `notes-1.png` with the second image, which silently changes the first link's
   content.
 
 **Tabular text pasted while a selection is active**
-- *Trigger:* a paragraph is selected and a spreadsheet range is pasted.
-- *Expected:* the selection is replaced by the table, and one undo restores the paragraph.
-- *Avoid:* two undo steps — one for the deletion and one for the conversion — which makes undo feel
+
+- _Trigger:_ a paragraph is selected and a spreadsheet range is pasted.
+- _Expected:_ the selection is replaced by the table, and one undo restores the paragraph.
+- _Avoid:_ two undo steps — one for the deletion and one for the conversion — which makes undo feel
   broken.
 
 **A formatting action on a multi-line selection**
-- *Trigger:* four lines selected, bullet list pressed.
-- *Expected:* all four become list items.
-- *Avoid:* wrapping the whole four-line block in one marker.
+
+- _Trigger:_ four lines selected, bullet list pressed.
+- _Expected:_ all four become list items.
+- _Avoid:_ wrapping the whole four-line block in one marker.
 
 ## Not this
 
@@ -223,10 +240,10 @@ disappears entirely at a width → the user cannot reach the feature at all on a
 
 ## Decisions
 
-- *2026-07-25* — Pasting unambiguously tabular text produces a GFM table, while pasted HTML does not.
+- _2026-07-25_ — Pasting unambiguously tabular text produces a GFM table, while pasted HTML does not.
   The two look similar and are not: the tab-separated case has a mechanical test with no guessing in it,
   and the HTML case does not.
-- *2026-07-28* — Every toolbar construct toggles rather than accumulating: emphasis removes its markers
+- _2026-07-28_ — Every toolbar construct toggles rather than accumulating: emphasis removes its markers
   when they are already there, a heading button replaces the level or clears it, and a list button
   converts the kind or clears it. The previous specification named the buttons and never said what a
   second press does, which meant three behaviours would have been decided by whoever implemented them.

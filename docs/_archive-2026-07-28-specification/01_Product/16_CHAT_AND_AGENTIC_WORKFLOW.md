@@ -146,10 +146,10 @@ The user decides what happens to a proposal (DD-42). The card's action row offer
   do not like _and_ for a proposal that has gone stale because you edited the document while it was
   running.
 
-  There is **no partial apply.** Accepting individual hunks was refused on 2026-07-25
-  (`00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons`): it needs conflict
-  handling between accepted and rejected hunks for a benefit nobody asked for, and the proposal is
-  already reviewable in full before anything is applied. The mockup's Partial button has been removed.
+    There is **no partial apply.** Accepting individual hunks was refused on 2026-07-25
+    (`00_Foundation/01_VISION_AND_SCOPE.md#refused-on-2026-07-25-with-reasons`): it needs conflict
+    handling between accepted and rejected hunks for a benefit nobody asked for, and the proposal is
+    already reviewable in full before anything is applied. The mockup's Partial button has been removed.
 
 - **Discard** — drops the proposal; the transcript keeps a record that it was discarded (DD-55).
 
@@ -201,10 +201,10 @@ Hard limits keep the agent bounded and the app responsive (DD-40, DD-47):
   (`17_PROVIDERS_MODELS_SETTINGS.md#ranges-and-defaults`); exceeding it cancels the loop like a user
   cancel and surfaces a timeout error (DD-48).
 
-  **This budget dominates.** The three bounds multiply: iterations × attempts × per-attempt timeout.
-  At the defaults that is 8 × 4 × 60 s ≈ **32 minutes** of one click holding the gate, if nothing
-  pre-empts it. The run budget is what pre-empts it, and every attempt's deadline is
-  `min(perAttemptTimeout, timeRemainingInRunBudget)` (ADR-0034).
+    **This budget dominates.** The three bounds multiply: iterations × attempts × per-attempt timeout.
+    At the defaults that is 8 × 4 × 60 s ≈ **32 minutes** of one click holding the gate, if nothing
+    pre-empts it. The run budget is what pre-empts it, and every attempt's deadline is
+    `min(perAttemptTimeout, timeRemainingInRunBudget)` (ADR-0034).
 
 - **No-progress detection** — the loop stops if the model requests the **same tool with the same
   arguments twice in a row**. An iteration cap alone does not help here: a small model that calls

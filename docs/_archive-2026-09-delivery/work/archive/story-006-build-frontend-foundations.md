@@ -3,30 +3,30 @@ id: STORY-006
 title: Build the frontend adapter projection-store toast and bridge mock foundations
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#structure
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#bridge-mock
-  - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow
-  - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries
-  - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#frontend-parseerror
-  - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#toasts
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#structure
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#adapter-layer
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#bridge-mock
+    - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#data-flow
+    - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries
+    - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#frontend-parseerror
+    - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#toasts
 phase_requirements:
-  - PH00-R06
-  - PH00-R08
+    - PH00-R06
+    - PH00-R08
 modules:
-  - logic/adapter/
-  - logic/store/
-  - logic/utils/
-  - dev/bridge-mock/
-  - ui/primitives/
+    - logic/adapter/
+    - logic/store/
+    - logic/utils/
+    - dev/bridge-mock/
+    - ui/primitives/
 acceptance_criteria:
-  - STORY-006-AC-1
-  - STORY-006-AC-2
-  - STORY-006-AC-3
-  - STORY-006-AC-4
+    - STORY-006-AC-1
+    - STORY-006-AC-2
+    - STORY-006-AC-3
+    - STORY-006-AC-4
 edge_cases: []
 depends_on:
-  - STORY-005
+    - STORY-005
 adrs: []
 phase: 00
 owner: coder

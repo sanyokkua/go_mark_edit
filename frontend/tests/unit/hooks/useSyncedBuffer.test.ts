@@ -1,137 +1,123 @@
 import { act, renderHook } from '@testing-library/react';
 
-import {
-  BUFFER_SYNC_MS,
-  createAppModelAdapter,
-} from '../../../src/logic/adapter';
+import { BUFFER_SYNC_MS, createAppModelAdapter } from '../../../src/logic/adapter';
 import type { DocumentView } from '../../../src/logic/store/appModelTypes';
 import { useSyncedBuffer } from '../../../src/logic/hooks/useSyncedBuffer';
 
 const view: DocumentView = {
-  arrangement: 'editor',
-  editorVisible: true,
-  previewVisible: false,
-  cursor: { line: 1, column: 1 },
-  selection: {
-    start: { line: 1, column: 1 },
-    end: { line: 1, column: 1 },
-  },
-  scroll: { editor: 0, preview: 0 },
+    arrangement: 'editor',
+    editorVisible: true,
+    previewVisible: false,
+    cursor: { line: 1, column: 1 },
+    selection: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 1 },
+    },
+    scroll: { editor: 0, preview: 0 },
 };
 
 it('separates live cursor display from restorable view synchronization', async () => {
-  jest.useFakeTimers();
-  const setDocView = jest.fn(
-    async (documentId: string, view: unknown): Promise<object> => {
-      void documentId;
-      void view;
-      return {};
-    },
-  );
-  const adapter = createAppModelAdapter(
-    {
-      getState: async () => ({
-        data: {
-          snapshot: {
-            revision: 1,
-            documents: {},
-            activeDocumentId: '',
-            ui: {},
-          },
-          activeBuffer: { documentId: '', content: '' },
-        },
-      }),
-      updateBuffer: async (
-        documentId: string,
-        content: string,
-      ): Promise<object> => {
+    jest.useFakeTimers();
+    const setDocView = jest.fn(async (documentId: string, view: unknown): Promise<object> => {
         void documentId;
-        void content;
+        void view;
         return {};
-      },
-      setDocView,
-      setUILayout: async (layout: unknown): Promise<object> => {
-        void layout;
-        return {};
-      },
-    },
-    { eventsOn: (): (() => void) => (): void => undefined },
-  );
-  const { result } = renderHook(() =>
-    useSyncedBuffer('document-1', view, adapter),
-  );
+    });
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({
+                data: {
+                    snapshot: {
+                        revision: 1,
+                        documents: {},
+                        activeDocumentId: '',
+                        ui: {},
+                    },
+                    activeBuffer: { documentId: '', content: '' },
+                },
+            }),
+            updateBuffer: async (documentId: string, content: string): Promise<object> => {
+                void documentId;
+                void content;
+                return {};
+            },
+            setDocView,
+            setUILayout: async (layout: unknown): Promise<object> => {
+                void layout;
+                return {};
+            },
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const { result } = renderHook(() => useSyncedBuffer('document-1', view, adapter));
 
-  act(() => {
-    result.current.onCursorPositionChange({ lineNumber: 4, column: 2 });
-  });
+    act(() => {
+        result.current.onCursorPositionChange({ lineNumber: 4, column: 2 });
+    });
 
-  expect(result.current.liveCursor).toEqual({ lineNumber: 4, column: 2 });
-  expect(setDocView).not.toHaveBeenCalled();
+    expect(result.current.liveCursor).toEqual({ lineNumber: 4, column: 2 });
+    expect(setDocView).not.toHaveBeenCalled();
 
-  await act(async (): Promise<void> => {
-    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
-  });
+    await act(async (): Promise<void> => {
+        await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+    });
 
-  expect(setDocView).toHaveBeenCalledWith('document-1', {
-    editorVisible: true,
-    previewVisible: false,
-    cursor: { line: 4, column: 2 },
-    selection: view.selection,
-    scroll: view.scroll,
-  });
+    expect(setDocView).toHaveBeenCalledWith('document-1', {
+        editorVisible: true,
+        previewVisible: false,
+        cursor: { line: 4, column: 2 },
+        selection: view.selection,
+        scroll: view.scroll,
+    });
 
-  act((): void => {
-    result.current.onBlur();
-  });
+    act((): void => {
+        result.current.onBlur();
+    });
 
-  await Promise.resolve();
-  expect(setDocView).toHaveBeenCalledTimes(1);
-  jest.useRealTimers();
+    await Promise.resolve();
+    expect(setDocView).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
 });
 
 it('does not publish a queued view update after the editor session unmounts', async () => {
-  jest.useFakeTimers();
-  const setDocView = jest.fn(
-    async (documentId: string, nextView: unknown): Promise<object> => {
-      void documentId;
-      void nextView;
-      return {};
-    },
-  );
-  const adapter = createAppModelAdapter(
-    {
-      getState: async () => ({
-        data: {
-          snapshot: {
-            revision: 1,
-            documents: {},
-            activeDocumentId: '',
-            ui: {},
-          },
-          activeBuffer: { documentId: '', content: '' },
+    jest.useFakeTimers();
+    const setDocView = jest.fn(async (documentId: string, nextView: unknown): Promise<object> => {
+        void documentId;
+        void nextView;
+        return {};
+    });
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({
+                data: {
+                    snapshot: {
+                        revision: 1,
+                        documents: {},
+                        activeDocumentId: '',
+                        ui: {},
+                    },
+                    activeBuffer: { documentId: '', content: '' },
+                },
+            }),
+            updateBuffer: async (): Promise<object> => ({}),
+            setDocView,
+            setUILayout: async (): Promise<object> => ({}),
         },
-      }),
-      updateBuffer: async (): Promise<object> => ({}),
-      setDocView,
-      setUILayout: async (): Promise<object> => ({}),
-    },
-    { eventsOn: (): (() => void) => (): void => undefined },
-  );
-  const { result, unmount } = renderHook(() =>
-    useSyncedBuffer('document-1', view, adapter),
-  );
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const { result, unmount } = renderHook(() => useSyncedBuffer('document-1', view, adapter));
 
-  act(() => {
-    result.current.onCursorPositionChange({ lineNumber: 4, column: 2 });
-  });
-  unmount();
+    act(() => {
+        result.current.onCursorPositionChange({ lineNumber: 4, column: 2 });
+    });
+    unmount();
 
-  await act(async (): Promise<void> => {
-    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
-  });
+    await act(async (): Promise<void> => {
+        await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+    });
 
-  expect(setDocView).not.toHaveBeenCalled();
-  jest.useRealTimers();
+    expect(setDocView).not.toHaveBeenCalled();
+    jest.useRealTimers();
 });
 
 /*
@@ -155,61 +141,61 @@ it('does not publish a queued view update after the editor session unmounts', as
  */
 // is installed, without restarting the session for ordinary edits.
 it('starts a new editor session for an external replacement only', () => {
-  const adapter = createAppModelAdapter(
-    {
-      getState: async () => ({
-        data: {
-          snapshot: {
-            revision: 1,
-            documents: {},
-            activeDocumentId: '',
-            ui: {},
-          },
-          activeBuffer: { documentId: '', content: '' },
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({
+                data: {
+                    snapshot: {
+                        revision: 1,
+                        documents: {},
+                        activeDocumentId: '',
+                        ui: {},
+                    },
+                    activeBuffer: { documentId: '', content: '' },
+                },
+            }),
+            updateBuffer: async (documentId: string, content: string) => {
+                void documentId;
+                void content;
+                return {};
+            },
+            setDocView: async (documentId: string, docView: unknown) => {
+                void documentId;
+                void docView;
+                return {};
+            },
+            setUILayout: async (layout: unknown) => {
+                void layout;
+                return {};
+            },
         },
-      }),
-      updateBuffer: async (documentId: string, content: string) => {
-        void documentId;
-        void content;
-        return {};
-      },
-      setDocView: async (documentId: string, docView: unknown) => {
-        void documentId;
-        void docView;
-        return {};
-      },
-      setUILayout: async (layout: unknown) => {
-        void layout;
-        return {};
-      },
-    },
-    { eventsOn: (): (() => void) => (): void => undefined },
-  );
-  const view: DocumentView = {
-    arrangement: 'split',
-    cursor: { line: 1, column: 1 },
-    editorVisible: true,
-    previewVisible: true,
-    scroll: { editor: 0, preview: 0 },
-    selection: {
-      end: { line: 1, column: 1 },
-      start: { line: 1, column: 1 },
-    },
-  };
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const view: DocumentView = {
+        arrangement: 'split',
+        cursor: { line: 1, column: 1 },
+        editorVisible: true,
+        previewVisible: true,
+        scroll: { editor: 0, preview: 0 },
+        selection: {
+            end: { line: 1, column: 1 },
+            start: { line: 1, column: 1 },
+        },
+    };
 
-  const { rerender, result } = renderHook(
-    ({ content, epoch }: { content: string; epoch: number }) =>
-      useSyncedBuffer('document-1', view, adapter, content, epoch),
-    { initialProps: { content: 'mine\n', epoch: 0 } },
-  );
-  const first = result.current.activationId;
+    const { rerender, result } = renderHook(
+        ({ content, epoch }: { content: string; epoch: number }) =>
+            useSyncedBuffer('document-1', view, adapter, content, epoch),
+        { initialProps: { content: 'mine\n', epoch: 0 } },
+    );
+    const first = result.current.activationId;
 
-  // An ordinary edit must not restart the session: remounting Monaco per
-  // keystroke would discard undo history and fight the user's cursor.
-  rerender({ content: 'mine edited\n', epoch: 0 });
-  expect(result.current.activationId).toBe(first);
+    // An ordinary edit must not restart the session: remounting Monaco per
+    // keystroke would discard undo history and fight the user's cursor.
+    rerender({ content: 'mine edited\n', epoch: 0 });
+    expect(result.current.activationId).toBe(first);
 
-  // A reload advances the epoch, which is the only thing that restarts it.
-  rerender({ content: 'theirs\n', epoch: 1 });
-  expect(result.current.activationId).not.toBe(first);
+    // A reload advances the epoch, which is the only thing that restarts it.
+    rerender({ content: 'theirs\n', epoch: 1 });
+    expect(result.current.activationId).not.toBe(first);
 });

@@ -8,21 +8,18 @@ import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { setViewArrangement } from '../../logic/store/docViewCommands';
 import { notifyToast } from '../../logic/store/notificationsSlice';
 import type {
-  ClosePlanKind,
-  ConflictPreview,
-  DocumentTransitionResult,
-  DocumentView,
-  TabTransitionResult,
-  ViewArrangement,
+    ClosePlanKind,
+    ConflictPreview,
+    DocumentTransitionResult,
+    DocumentView,
+    TabTransitionResult,
+    ViewArrangement,
 } from '../../logic/store/appModelTypes';
 import { EditorSessionContext } from './editorSession';
 import type { DocumentTabsProps } from './DocumentTabs/DocumentTabs';
 import DocumentTabs from './DocumentTabs/DocumentTabs';
 import FormattingToolbar from './FormattingToolbar/FormattingToolbar';
-import EditorStage, {
-  type EditorStageAdapter,
-  type EditorStageHandle,
-} from './EditorStage/EditorStage';
+import EditorStage, { type EditorStageAdapter, type EditorStageHandle } from './EditorStage/EditorStage';
 import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
 import { useMinimumWindow } from './minimumWindow';
 import styles from './EditorView.module.css';
@@ -32,159 +29,142 @@ import { useModalState } from './modalStateContext';
 export type EditorViewAdapter = EditorStageAdapter;
 
 function fallbackView(): DocumentView {
-  return {
-    arrangement: 'editor',
-    editorVisible: true,
-    previewVisible: false,
-    cursor: { line: 1, column: 1 },
-    selection: {
-      start: { line: 1, column: 1 },
-      end: { line: 1, column: 1 },
-    },
-    scroll: { editor: 0, preview: 0 },
-  };
+    return {
+        arrangement: 'editor',
+        editorVisible: true,
+        previewVisible: false,
+        cursor: { line: 1, column: 1 },
+        selection: {
+            start: { line: 1, column: 1 },
+            end: { line: 1, column: 1 },
+        },
+        scroll: { editor: 0, preview: 0 },
+    };
 }
 
 export interface EditorViewProps {
-  adapter?: EditorViewAdapter;
-  tabAdapter?: DocumentTabsProps['adapter'];
-  onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
-  onActivateDocument?: (
-    documentId: string,
-    expectedTabSetRevision: number,
-  ) => Promise<DocumentTransitionResult>;
-  onCloseDocument?: (
-    documentId: string,
-    expectedTabSetRevision: number,
-    kind?: ClosePlanKind,
-    targetDocumentIds?: string[],
-  ) => Promise<TabTransitionResult>;
-  onExternalConflict?: (preview: ConflictPreview) => void;
-  onLiveCursorChange?: (cursor: EditorPosition) => void;
+    adapter?: EditorViewAdapter;
+    tabAdapter?: DocumentTabsProps['adapter'];
+    onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
+    onActivateDocument?: (documentId: string, expectedTabSetRevision: number) => Promise<DocumentTransitionResult>;
+    onCloseDocument?: (
+        documentId: string,
+        expectedTabSetRevision: number,
+        kind?: ClosePlanKind,
+        targetDocumentIds?: string[],
+    ) => Promise<TabTransitionResult>;
+    onExternalConflict?: (preview: ConflictPreview) => void;
+    onLiveCursorChange?: (cursor: EditorPosition) => void;
 }
 
 function arrangementFor(view: DocumentView): ViewArrangement {
-  if (view.editorVisible && view.previewVisible) {
-    return 'split';
-  }
-  if (view.previewVisible) {
-    return 'preview';
-  }
-  return 'editor';
+    if (view.editorVisible && view.previewVisible) {
+        return 'split';
+    }
+    if (view.previewVisible) {
+        return 'preview';
+    }
+    return 'editor';
 }
 
 const EditorView: React.FC<EditorViewProps> = ({
-  adapter = appModelAdapter,
-  tabAdapter,
-  onNewDocument,
-  onActivateDocument,
-  onCloseDocument,
-  onExternalConflict,
-  onLiveCursorChange: onLiveCursorChangeProp,
+    adapter = appModelAdapter,
+    tabAdapter,
+    onNewDocument,
+    onActivateDocument,
+    onCloseDocument,
+    onExternalConflict,
+    onLiveCursorChange: onLiveCursorChangeProp,
 }: EditorViewProps): React.JSX.Element | null => {
-  const dispatch = useAppDispatch();
-  const activeBuffer = useContext(EditorSessionContext);
-  const minimumWindow = useMinimumWindow();
-  const modalOpen = useModalState();
-  const stageRef = useRef<EditorStageHandle | null>(null);
-  const activeDocument = useAppSelector((state) => {
-    if (activeBuffer === null) {
-      return undefined;
-    }
-    return state.documents.byId[activeBuffer.documentId];
-  });
-  const activeDocumentReadOnly =
-    activeDocument?.capability !== undefined &&
-    activeDocument.capability !== 'writable';
-  const onArrangementChange = useCallback(
-    (nextArrangement: ViewArrangement): void => {
-      if (nextArrangement === 'preview') {
-        stageRef.current?.captureViewState();
-      }
-      void dispatch(setViewArrangement(nextArrangement));
-    },
-    [dispatch],
-  );
-  const onLiveCursorChange = useCallback(
-    (cursor: EditorPosition): void => {
-      onLiveCursorChangeProp?.(cursor);
-    },
-    [onLiveCursorChangeProp],
-  );
-  const onPreviewWarning = useCallback(
-    (target: string, reason: string): void => {
-      dispatch(
-        notifyToast({
-          code: 'preview-link-refused',
-          message: t('preview.linkRefused.message', { reason, target }),
-          severity: 'warning',
-          subject: target,
-          title: t('preview.linkRefused.title'),
-        }),
-      );
-    },
-    [dispatch],
-  );
-  const onPreviewRefresh = useCallback(
-    async (accepted: LivePreviewSnapshot): Promise<LivePreviewSnapshot> => {
-      const result = await dispatchAction('refresh-preview', {
-        invoke: (): LivePreviewSnapshot => accepted,
-        windowFocused: true,
-      });
-      if (result.status !== 'mutated') {
-        throw new Error('Preview refresh is unavailable.');
-      }
-      return accepted;
-    },
-    [],
-  );
-
-  if (activeBuffer === null) {
-    return null;
-  }
-
-  const view = activeDocument?.view ?? fallbackView();
-  const previewVisible = minimumWindow
-    ? view.previewVisible && !view.editorVisible
-    : view.previewVisible;
-  const editorVisible = minimumWindow ? !previewVisible : view.editorVisible;
-  const arrangement = arrangementFor(view);
-
-  return (
-    <section aria-label={t('editor.view')} className={styles.editorView}>
-      <DocumentTabs
-        adapter={tabAdapter}
-        modalOpen={modalOpen}
-        onActivateDocument={onActivateDocument}
-        onCloseDocument={onCloseDocument}
-        onExternalConflict={onExternalConflict}
-        onNewDocument={onNewDocument}
-      />
-      <FormattingToolbar
-        arrangement={arrangement}
-        onArrangementChange={onArrangementChange}
-      />
-      <EditorStage
-        ref={stageRef}
-        activeBuffer={activeBuffer}
-        activeDocument={activeDocument}
-        adapter={adapter}
-        editorVisible={editorVisible}
-        labelledBy={
-          activeBuffer.documentId === ''
-            ? undefined
-            : tabElementId(activeBuffer.documentId)
+    const dispatch = useAppDispatch();
+    const activeBuffer = useContext(EditorSessionContext);
+    const minimumWindow = useMinimumWindow();
+    const modalOpen = useModalState();
+    const stageRef = useRef<EditorStageHandle | null>(null);
+    const activeDocument = useAppSelector((state) => {
+        if (activeBuffer === null) {
+            return undefined;
         }
-        onLiveCursorChange={onLiveCursorChange}
-        onPreviewRefresh={onPreviewRefresh}
-        onPreviewWarning={onPreviewWarning}
-        panelId={EDITOR_TABPANEL_ID}
-        previewVisible={previewVisible}
-        readOnly={activeDocumentReadOnly}
-        view={view}
-      />
-    </section>
-  );
+        return state.documents.byId[activeBuffer.documentId];
+    });
+    const activeDocumentReadOnly = activeDocument?.capability !== undefined && activeDocument.capability !== 'writable';
+    const onArrangementChange = useCallback(
+        (nextArrangement: ViewArrangement): void => {
+            if (nextArrangement === 'preview') {
+                stageRef.current?.captureViewState();
+            }
+            void dispatch(setViewArrangement(nextArrangement));
+        },
+        [dispatch],
+    );
+    const onLiveCursorChange = useCallback(
+        (cursor: EditorPosition): void => {
+            onLiveCursorChangeProp?.(cursor);
+        },
+        [onLiveCursorChangeProp],
+    );
+    const onPreviewWarning = useCallback(
+        (target: string, reason: string): void => {
+            dispatch(
+                notifyToast({
+                    code: 'preview-link-refused',
+                    message: t('preview.linkRefused.message', { reason, target }),
+                    severity: 'warning',
+                    subject: target,
+                    title: t('preview.linkRefused.title'),
+                }),
+            );
+        },
+        [dispatch],
+    );
+    const onPreviewRefresh = useCallback(async (accepted: LivePreviewSnapshot): Promise<LivePreviewSnapshot> => {
+        const result = await dispatchAction('refresh-preview', {
+            invoke: (): LivePreviewSnapshot => accepted,
+            windowFocused: true,
+        });
+        if (result.status !== 'mutated') {
+            throw new Error('Preview refresh is unavailable.');
+        }
+        return accepted;
+    }, []);
+
+    if (activeBuffer === null) {
+        return null;
+    }
+
+    const view = activeDocument?.view ?? fallbackView();
+    const previewVisible = minimumWindow ? view.previewVisible && !view.editorVisible : view.previewVisible;
+    const editorVisible = minimumWindow ? !previewVisible : view.editorVisible;
+    const arrangement = arrangementFor(view);
+
+    return (
+        <section aria-label={t('editor.view')} className={styles.editorView}>
+            <DocumentTabs
+                adapter={tabAdapter}
+                modalOpen={modalOpen}
+                onActivateDocument={onActivateDocument}
+                onCloseDocument={onCloseDocument}
+                onExternalConflict={onExternalConflict}
+                onNewDocument={onNewDocument}
+            />
+            <FormattingToolbar arrangement={arrangement} onArrangementChange={onArrangementChange} />
+            <EditorStage
+                ref={stageRef}
+                activeBuffer={activeBuffer}
+                activeDocument={activeDocument}
+                adapter={adapter}
+                editorVisible={editorVisible}
+                labelledBy={activeBuffer.documentId === '' ? undefined : tabElementId(activeBuffer.documentId)}
+                onLiveCursorChange={onLiveCursorChange}
+                onPreviewRefresh={onPreviewRefresh}
+                onPreviewWarning={onPreviewWarning}
+                panelId={EDITOR_TABPANEL_ID}
+                previewVisible={previewVisible}
+                readOnly={activeDocumentReadOnly}
+                view={view}
+            />
+        </section>
+    );
 };
 
 export default EditorView;

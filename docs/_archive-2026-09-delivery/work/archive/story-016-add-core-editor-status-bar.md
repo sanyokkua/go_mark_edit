@@ -3,41 +3,41 @@ id: STORY-016
 title: Add the core editor status bar
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
-  - ../../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings
-  - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#i18n-layer
-  - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#string-catalog
-  - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#adding-a-locale
-  - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#formatting
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
-  - 07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope
+    - ../../../_archive-2026-07-28-specification/01_Product/01_FUNCTIONAL_REQUIREMENTS.md#fr-i18n
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#editor-mode
+    - ../../../_archive-2026-07-28-specification/01_Product/03_FILES_TABS_WORKSPACE.md#encoding-and-line-endings
+    - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#i18n-layer
+    - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#string-catalog
+    - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#adding-a-locale
+    - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#formatting
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+    - 07_Phases/PHASE_04_RENDERING_EXTENSIONS.md#scope
 phase_requirements:
-  - PH01-R13
-  - PH01-R16
+    - PH01-R13
+    - PH01-R16
 modules:
-  - i18n/
-  - ui/components/
-  - ui/widgets/
-  - logic/store/
-  - ui/styles/
+    - i18n/
+    - ui/components/
+    - ui/widgets/
+    - logic/store/
+    - ui/styles/
 acceptance_criteria:
-  - STORY-016-AC-1
-  - STORY-016-AC-2
-  - STORY-016-AC-3
-  - STORY-016-AC-4
-  - STORY-016-AC-5
-  - STORY-016-AC-6
+    - STORY-016-AC-1
+    - STORY-016-AC-2
+    - STORY-016-AC-3
+    - STORY-016-AC-4
+    - STORY-016-AC-5
+    - STORY-016-AC-6
 edge_cases:
-  - EC-I18N-1
-  - EC-I18N-2
+    - EC-I18N-1
+    - EC-I18N-2
 depends_on:
-  - STORY-015
-  - STORY-019
+    - STORY-015
+    - STORY-019
 adrs:
-  - ADR-0014
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: L

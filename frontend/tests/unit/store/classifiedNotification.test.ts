@@ -5,29 +5,24 @@ import type { ClassifiedError } from '../../../src/logic/store/appModelTypes';
 import { reportClassifiedError } from '../../../src/logic/store/classifiedNotification';
 
 function storeWithNotifications(): ReturnType<typeof configureStore> {
-  return configureStore({ reducer: { notifications: notificationsReducer } });
+    return configureStore({ reducer: { notifications: notificationsReducer } });
 }
 
 function report(
-  error: ClassifiedError,
-  options?: Parameters<typeof reportClassifiedError>[3],
+    error: ClassifiedError,
+    options?: Parameters<typeof reportClassifiedError>[3],
 ): { action: string; intent: string }[] {
-  const store = storeWithNotifications();
-  reportClassifiedError(
-    store.dispatch as never,
-    error,
-    'File operation failed',
-    options,
-  );
-  const state = store.getState() as {
-    notifications: {
-      items: { remediations: { action: string; intent: string }[] }[];
+    const store = storeWithNotifications();
+    reportClassifiedError(store.dispatch as never, error, 'File operation failed', options);
+    const state = store.getState() as {
+        notifications: {
+            items: { remediations: { action: string; intent: string }[] }[];
+        };
     };
-  };
-  return state.notifications.items[0].remediations.map((offer) => ({
-    action: offer.action,
-    intent: offer.intent,
-  }));
+    return state.notifications.items[0].remediations.map((offer) => ({
+        action: offer.action,
+        intent: offer.intent,
+    }));
 }
 
 /*
@@ -39,22 +34,22 @@ function report(
  * kept was decided by a preference rule rather than by the contract.
  */
 it('offers both Retry and Copy path for a Reveal command failure', () => {
-  expect(
-    report(
-      {
-        category: 'system-command-failure',
-        safeSubject: 'one.md',
-        message: 'The file manager could not reveal the document.',
-        remediations: ['Retry', 'Copy path'],
-        documentId: 'one',
-        dedupKey: 'reveal:one',
-      },
-      { intent: 'reveal' },
-    ),
-  ).toEqual([
-    { action: 'retry', intent: 'reveal' },
-    { action: 'copy-path', intent: 'copy-path' },
-  ]);
+    expect(
+        report(
+            {
+                category: 'system-command-failure',
+                safeSubject: 'one.md',
+                message: 'The file manager could not reveal the document.',
+                remediations: ['Retry', 'Copy path'],
+                documentId: 'one',
+                dedupKey: 'reveal:one',
+            },
+            { intent: 'reveal' },
+        ),
+    ).toEqual([
+        { action: 'retry', intent: 'reveal' },
+        { action: 'copy-path', intent: 'copy-path' },
+    ]);
 });
 
 /*
@@ -66,18 +61,18 @@ it('offers both Retry and Copy path for a Reveal command failure', () => {
  */
 // the earlier single-member mapping could not express.
 it('never offers a Retry whose command belongs to a different action', () => {
-  const offers = report(
-    {
-      category: 'system-command-failure',
-      safeSubject: 'one.md',
-      message: 'The path could not be copied.',
-      remediations: ['Retry'],
-      documentId: 'one',
-      dedupKey: 'copy-path:one',
-    },
-    { intent: 'copy-path' },
-  );
-  expect(offers).toEqual([{ action: 'retry', intent: 'copy-path' }]);
+    const offers = report(
+        {
+            category: 'system-command-failure',
+            safeSubject: 'one.md',
+            message: 'The path could not be copied.',
+            remediations: ['Retry'],
+            documentId: 'one',
+            dedupKey: 'copy-path:one',
+        },
+        { intent: 'copy-path' },
+    );
+    expect(offers).toEqual([{ action: 'retry', intent: 'copy-path' }]);
 });
 
 /*
@@ -96,22 +91,22 @@ it('never offers a Retry whose command belongs to a different action', () => {
  */
 // insofar as the control that recreates the file is offered at all.
 it('offers both Save to recreate and Copy path for a detached not-found', () => {
-  expect(
-    report(
-      {
-        category: 'not-found',
-        safeSubject: 'one.md',
-        message: 'The document could not be found.',
-        remediations: ['Save to recreate', 'Copy path'],
-        documentId: 'one',
-        dedupKey: 'reveal:one',
-      },
-      { intent: 'reveal' },
-    ),
-  ).toEqual([
-    { action: 'save-to-recreate', intent: 'save' },
-    { action: 'copy-path', intent: 'copy-path' },
-  ]);
+    expect(
+        report(
+            {
+                category: 'not-found',
+                safeSubject: 'one.md',
+                message: 'The document could not be found.',
+                remediations: ['Save to recreate', 'Copy path'],
+                documentId: 'one',
+                dedupKey: 'reveal:one',
+            },
+            { intent: 'reveal' },
+        ),
+    ).toEqual([
+        { action: 'save-to-recreate', intent: 'save' },
+        { action: 'copy-path', intent: 'copy-path' },
+    ]);
 });
 
 /*
@@ -123,17 +118,17 @@ it('offers both Save to recreate and Copy path for a detached not-found', () => 
  */
 // executable command behind it is dropped rather than rendered.
 it('still drops a remediation whose command cannot run', () => {
-  expect(
-    report(
-      {
-        category: 'not-found',
-        safeSubject: 'one.md',
-        message: 'The recent entry no longer exists.',
-        remediations: ['Retry'],
-        documentId: '',
-        dedupKey: 'recent:one',
-      },
-      { intent: 'open-recent' },
-    ),
-  ).toEqual([]);
+    expect(
+        report(
+            {
+                category: 'not-found',
+                safeSubject: 'one.md',
+                message: 'The recent entry no longer exists.',
+                remediations: ['Retry'],
+                documentId: '',
+                dedupKey: 'recent:one',
+            },
+            { intent: 'open-recent' },
+        ),
+    ).toEqual([]);
 });

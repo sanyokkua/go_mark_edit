@@ -29,13 +29,13 @@ export const OUTGOING_FLUSH_DEDUP_KEY = 'activate:outgoing-flush';
  * not about a file.
  */
 export function outgoingFlushRefusal(): ClassifiedError {
-  return {
-    category: 'conflict',
-    message:
-      'The switch was not made: the outgoing document changed while its editor state was being saved. Try again.',
-    remediations: ['Retry'],
-    dedupKey: OUTGOING_FLUSH_DEDUP_KEY,
-  };
+    return {
+        category: 'conflict',
+        message:
+            'The switch was not made: the outgoing document changed while its editor state was being saved. Try again.',
+        remediations: ['Retry'],
+        dedupKey: OUTGOING_FLUSH_DEDUP_KEY,
+    };
 }
 
 /**
@@ -55,14 +55,14 @@ export function outgoingFlushRefusal(): ClassifiedError {
  * outgoing document to flush, which is not a failure.
  */
 export async function flushOutgoingDocument(
-  flush: ((documentId: string) => Promise<void>) | undefined,
-  outgoingDocumentId: string | undefined,
+    flush: ((documentId: string) => Promise<void>) | undefined,
+    outgoingDocumentId: string | undefined,
 ): Promise<ClassifiedError | undefined> {
-  if (outgoingDocumentId === undefined || flush === undefined) return undefined;
-  try {
-    await flush(outgoingDocumentId);
-    return undefined;
-  } catch {
-    return outgoingFlushRefusal();
-  }
+    if (outgoingDocumentId === undefined || flush === undefined) return undefined;
+    try {
+        await flush(outgoingDocumentId);
+        return undefined;
+    } catch {
+        return outgoingFlushRefusal();
+    }
 }

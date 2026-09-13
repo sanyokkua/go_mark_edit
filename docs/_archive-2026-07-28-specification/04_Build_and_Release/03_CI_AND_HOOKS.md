@@ -258,16 +258,16 @@ workflow's file name:
   Playwright Chromium, Wails CLI, sqlc, govulncheck).
 - **`build`** — matrix, one native runner per artifact (`01_BUILD_MATRIX.md` §2, §5):
 
-  | platform        | runner           | build tags   | artifact                          |
-  | --------------- | ---------------- | ------------ | --------------------------------- |
-  | `darwin/arm64`  | `macos-latest`   | —            | `GoMarkEdit.app` → `.app.zip`     |
-  | `darwin/amd64`  | `macos-13`       | —            | `GoMarkEdit.app` → `.app.zip`     |
-  | `windows/amd64` | `windows-latest` | —            | `GoMarkEdit.exe` + NSIS installer |
-  | `linux/amd64`   | `ubuntu-24.04`   | `webkit2_41` | binary + `.deb`/`.rpm` (nfpm)     |
+    | platform        | runner           | build tags   | artifact                          |
+    | --------------- | ---------------- | ------------ | --------------------------------- |
+    | `darwin/arm64`  | `macos-latest`   | —            | `GoMarkEdit.app` → `.app.zip`     |
+    | `darwin/amd64`  | `macos-13`       | —            | `GoMarkEdit.app` → `.app.zip`     |
+    | `windows/amd64` | `windows-latest` | —            | `GoMarkEdit.exe` + NSIS installer |
+    | `linux/amd64`   | `ubuntu-24.04`   | `webkit2_41` | binary + `.deb`/`.rpm` (nfpm)     |
 
-  Each build patches `wails.json` with the release version, runs `wails build --platform … -ldflags
+    Each build patches `wails.json` with the release version, runs `wails build --platform … -ldflags
 "-X gomarkedit/internal/settings.AppVersion=<v>"`, fixes executable permissions, and uploads the
-  artifact.
+    artifact.
 
 - **`create-release`** — needs `[determine-version, build, test]`; downloads all artifacts, renames
   them with the version, re-zips the macOS `.app` bundles with `-X` (preserve exec bit), generates
@@ -304,46 +304,46 @@ What replaced them:
 # tag-push/workflow_dispatch). Escape hatch: `git push --no-verify` / `LEFTHOOK=0 git push`.
 
 pre-commit:
-  parallel: true
-  commands:
-    # `glob` does not support brace expansion ("*.{ts,tsx}") — use a YAML array
-    # of single-pattern globs instead.
-    go-fmt:
-      glob: '*.go'
-      run: gofmt -l -w {staged_files}
-      stage_fixed: true
-    go-vet:
-      glob: '*.go'
-      run: go vet ./...
-    go-lint:
-      glob: '*.go'
-      run: golangci-lint run --new-from-rev=HEAD --fix ./...
-      stage_fixed: true
-    fe-prettier:
-      root: 'frontend/'
-      glob: ['*.ts', '*.tsx', '*.css']
-      run: npx prettier --write {staged_files}
-      stage_fixed: true
-    fe-eslint:
-      root: 'frontend/'
-      glob: ['*.ts', '*.tsx']
-      run: npx eslint --fix {staged_files}
-      stage_fixed: true
+    parallel: true
+    commands:
+        # `glob` does not support brace expansion ("*.{ts,tsx}") — use a YAML array
+        # of single-pattern globs instead.
+        go-fmt:
+            glob: '*.go'
+            run: gofmt -l -w {staged_files}
+            stage_fixed: true
+        go-vet:
+            glob: '*.go'
+            run: go vet ./...
+        go-lint:
+            glob: '*.go'
+            run: golangci-lint run --new-from-rev=HEAD --fix ./...
+            stage_fixed: true
+        fe-prettier:
+            root: 'frontend/'
+            glob: ['*.ts', '*.tsx', '*.css']
+            run: npx prettier --write {staged_files}
+            stage_fixed: true
+        fe-eslint:
+            root: 'frontend/'
+            glob: ['*.ts', '*.tsx']
+            run: npx eslint --fix {staged_files}
+            stage_fixed: true
 
 # Ordering is load-bearing: main.go embeds frontend/dist (go:embed all:frontend/dist)
 # and the frontend imports frontend/wailsjs/ — so bindings must be generated, then the
 # frontend built, before any Go step compiles/tests/vets. (See §3.)
 pre-push:
-  commands:
-    01-bindings:
-      priority: 1
-      run: sh scripts/hooks/pre-push-bindings-drift.sh # wails generate module
-    02-frontend:
-      priority: 2
-      run: sh scripts/hooks/pre-push-frontend.sh # npm build + format:check + lint + tsc + jest + verify:ui/smoke + audit
-    03-go:
-      priority: 3
-      run: sh scripts/hooks/pre-push-go.sh # gofmt -l + go vet + go test -race + govulncheck + wails doctor + sqlc diff
+    commands:
+        01-bindings:
+            priority: 1
+            run: sh scripts/hooks/pre-push-bindings-drift.sh # wails generate module
+        02-frontend:
+            priority: 2
+            run: sh scripts/hooks/pre-push-frontend.sh # npm build + format:check + lint + tsc + jest + verify:ui/smoke + audit
+        03-go:
+            priority: 3
+            run: sh scripts/hooks/pre-push-go.sh # gofmt -l + go vet + go test -race + govulncheck + wails doctor + sqlc diff
 ```
 
 ## 8. Example .golangci.yml
@@ -354,39 +354,39 @@ A small, low-noise linter set (`default: none` + explicit enable), scoped in
 ```yaml
 version: '2'
 linters:
-  default: none
-  enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - misspell
-    - staticcheck
-    - unconvert
-    - unused
-  exclusions:
-    generated: lax
-    presets:
-      - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
-    rules:
-      - linters: [errcheck]
-        path: _test\.go
-    paths:
-      - internal/db/store # sqlc-generated — never hand-edited
-      - third_party$
-      - builtin$
-      - examples$
+    default: none
+    enable:
+        - errcheck
+        - govet
+        - ineffassign
+        - misspell
+        - staticcheck
+        - unconvert
+        - unused
+    exclusions:
+        generated: lax
+        presets:
+            - comments
+            - common-false-positives
+            - legacy
+            - std-error-handling
+        rules:
+            - linters: [errcheck]
+              path: _test\.go
+        paths:
+            - internal/db/store # sqlc-generated — never hand-edited
+            - third_party$
+            - builtin$
+            - examples$
 formatters:
-  enable:
-    - gofmt
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+    enable:
+        - gofmt
+    exclusions:
+        generated: lax
+        paths:
+            - third_party$
+            - builtin$
+            - examples$
 ```
 
 ## 9. Example justfile

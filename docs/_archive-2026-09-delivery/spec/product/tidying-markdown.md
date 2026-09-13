@@ -24,6 +24,7 @@ Both can run automatically on save. Format-on-save is off by default; lint-on-sa
 ## Rules
 
 ### Format and Lint parse with the maximal plugin set {#format-parses-maximally}
+
 - Format, Compact and Lint always parse with `remark-gfm`, `remark-frontmatter`, `remark-math` and
   `remark-directive`, whatever the display standard is set to.
 - The standard governs what is **displayed**. It never governs what is parsed for round-trip.
@@ -34,6 +35,7 @@ the front matter is destroyed. The same happens to a GFM table formatted at Mini
 formatted without the maths plugin.
 
 ### Format is idempotent and meaning-preserving {#format-is-idempotent}
+
 - `format(format(x))` produces exactly `format(x)`.
 - `render(format(x))` produces exactly `render(x)`.
 - Both are table tests over the renderer's fixture corpus, not aspirations.
@@ -42,6 +44,7 @@ Examples: format twice → the second run changes nothing · format a document a
 the formatter altered meaning, which is the bug class that is otherwise only visible by eye.
 
 ### Prose line breaks are preserved, never reflowed {#no-reflowing}
+
 - Format normalises **trailing** whitespace and runs of blank lines. It does not re-wrap paragraphs.
 
 Examples: a paragraph written as one long line → still one long line · a paragraph split across four
@@ -50,24 +53,28 @@ an unreadable diff of any version-controlled document and is not idempotent betw
 different width preferences.
 
 ### Ordered lists keep their numbering style {#ordered-list-numbering-is-kept}
+
 - A list written `1.` `1.` `1.` stays that way. A list written `1.` `2.` `3.` stays that way.
 
 Examples: an all-`1.` list, which is a deliberate style that survives insertions → unchanged ·
 renumbering it → a change the user notices and did not ask for.
 
 ### Indented code blocks stay indented {#indented-code-stays-indented}
+
 - Format does not convert an indented code block into a fenced one.
 
 Examples: a four-space code block → still four-space · converted to ` ``` ` → a byte change to a document
 that asked for neither, and the serialiser's default does exactly this.
 
 ### Table padding uses display width {#table-padding-uses-display-width}
+
 - Column padding measures rendered width, not the number of string units.
 
 Examples: a table with CJK characters or emoji → columns line up · counting JavaScript string units →
 the padding is ragged for exactly the rows that needed it.
 
 ### Compact is conservative {#compact-is-conservative}
+
 - Compact collapses runs of blank lines and strips trailing whitespace.
 - It **never** alters whitespace inside a fenced or indented code block, and never changes what the
   document renders as.
@@ -79,13 +86,14 @@ a "minify" that strips it → the code sample is now wrong, and Markdown whitesp
   menu item.
 
 ### An edit is applied as one undo step {#edits-are-one-undo-step}
+
 - Format, Compact, an accepted diff and an applied assistant proposal all reach the buffer the same way,
   and it is the only way:
-  1. Capture the current selection.
-  2. Push an undo stop.
-  3. Replace the model's **full range** with the new text, as **one** edit.
-  4. Push another undo stop.
-  5. Restore the selection, clamped to the new document length.
+    1. Capture the current selection.
+    2. Push an undo stop.
+    3. Replace the model's **full range** with the new text, as **one** edit.
+    4. Push another undo stop.
+    5. Restore the selection, clamped to the new document length.
 - **Never use `setValue`.**
 
 Examples: format, then one `Ctrl/Cmd+Z` → back to exactly the original text · `setValue` → the undo
@@ -93,6 +101,7 @@ stack is cleared, the caret goes to line 1 column 1, and the scroll position res
 be undone at all. A shipped reference application formats exactly this way.
 
 ### The caret returns to the same line, not the same column {#caret-is-line-anchored}
+
 - After a full-range replacement, the caret returns to the same **line number**, clamped to the new line
   count, at the first non-whitespace character of that line.
 
@@ -100,6 +109,7 @@ Examples: caret on line 40 of 200, format → caret on line 40 · preserving the
 position map through the serialiser, and the honest guarantee is "you are still where you were reading".
 
 ### Format holds the gate and changes nothing when it cannot run {#format-is-gated}
+
 - Format acquires the single long-operation gate.
 - **If** the gate is already held, **then** Format reports that the app is busy and **changes nothing**.
   It does not queue silently.
@@ -113,12 +123,14 @@ cancelled format → the document is exactly as it was, and the report names wha
 index.
 
 ### An unparseable document is a no-op with a notice {#unparseable-is-a-noop}
+
 - **If** the content cannot be parsed, **then** Format does nothing and says so.
 
 Examples: a file that is not really Markdown → a notice, the document untouched · a partial format → a
 document damaged by the tool meant to tidy it.
 
 ### Lint reports and never changes anything {#lint-never-modifies}
+
 - Lint reports findings. It does not modify the document, and there is no fix-all action.
 
 Examples: 40 findings → 40 squiggles and a count of 40; the text is byte-identical afterwards. ·
@@ -126,18 +138,18 @@ exactly 0 findings → the empty state `No problems found.`, and still a byte-id
 
 ### The lint rule set {#lint-rules}
 
-| Rule | Enforces | Default |
-|---|---|---|
-| `unordered-list-marker-style` | Consistent bullet marker | `-` |
-| `emphasis-marker` | Consistent emphasis marker | `_` |
-| `strong-marker` | Consistent strong marker | `*`, that is `**bold**` |
-| `heading-style` | ATX rather than Setext | `atx` |
-| `list-item-indent` | Consistent list indentation | consistent |
-| `no-multiple-toplevel-headings` | One top-level heading per document | warning |
-| `no-trailing-spaces` | No trailing whitespace | error |
-| `no-consecutive-blank-lines` | Collapse runs of blank lines | warning |
-| `fenced-code-flag` | Code fences declare a language | warning |
-| `final-newline` | The file ends with a newline | error |
+| Rule                            | Enforces                           | Default                 |
+| ------------------------------- | ---------------------------------- | ----------------------- |
+| `unordered-list-marker-style`   | Consistent bullet marker           | `-`                     |
+| `emphasis-marker`               | Consistent emphasis marker         | `_`                     |
+| `strong-marker`                 | Consistent strong marker           | `*`, that is `**bold**` |
+| `heading-style`                 | ATX rather than Setext             | `atx`                   |
+| `list-item-indent`              | Consistent list indentation        | consistent              |
+| `no-multiple-toplevel-headings` | One top-level heading per document | warning                 |
+| `no-trailing-spaces`            | No trailing whitespace             | error                   |
+| `no-consecutive-blank-lines`    | Collapse runs of blank lines       | warning                 |
+| `fenced-code-flag`              | Code fences declare a language     | warning                 |
+| `final-newline`                 | The file ends with a newline       | error                   |
 
 - The bullet, emphasis and heading defaults follow the same three settings the toolbar and Format use,
   so they cannot disagree.
@@ -147,6 +159,7 @@ Examples: bullet marker changed to `*` in settings → the linter stops flagging
 producing it.
 
 ### A lint finding with no end position is widened {#lint-markers-are-widened}
+
 - Lint messages carry one-based line and column positions and frequently have **no end position**.
 - **When** a finding has no end, the marker is widened to the enclosing word, or to the end of the line
   when there is no word.
@@ -158,15 +171,17 @@ invisible, and it cannot be hovered, so the message never reaches the user · re
 owner → markers accumulate and the same finding appears four times.
 
 ### At most 1,000 markers are drawn, and the count stays true {#lint-marker-cap}
+
 - **If** a document has more than **1,000** findings, **then** only the first thousand get squiggles.
 - The status-bar count stays accurate, and the problems list shows all of them.
 
 Examples: 1,200 findings → `⚠ 1200`, 1,000 squiggles, 1,200 rows in the list · 999 → all decorated · a
 cap that also caps the count → the user is told there are fewer problems than there are.
 
-*Why a cap:* the editor's decoration rendering degrades in the low thousands.
+_Why a cap:_ the editor's decoration rendering degrades in the low thousands.
 
 ### The problems count opens a list {#problems-list}
+
 - The status bar shows a warning glyph and a count, for example `⚠ 1`.
 - **When** the count is clicked, a problems list opens showing every finding with its rule, message,
   line and column. Clicking a row moves the caret to it.
@@ -178,6 +193,7 @@ a finding jumps to it" has nothing to click, because a squiggle you must already
 to find anything.
 
 ### On-save runs on an explicit save only {#on-save-is-explicit-only}
+
 - Format-on-save and lint-on-save run on `Ctrl/Cmd+S`, on Save As, and on a save chosen from a close
   prompt.
 - **Autosave never formats and never lints.**
@@ -188,7 +204,7 @@ Examples: autosave on, format-on-save on, typing → the file is written unforma
 the caret never moves · running the formatter on each autosave → the document reflows under the user
 several times a minute, with lint-on-save compounding it.
 
-*The consequence stated plainly:* for an autosaved file, what lands on disk is the text you were shown
+_The consequence stated plainly:_ for an autosaved file, what lands on disk is the text you were shown
 but not necessarily in canonical format. Formatting happens the next time you save explicitly. Anyone
 who wants every write formatted turns autosave off.
 
@@ -202,42 +218,47 @@ who wants every write formatted turns autosave off.
 
 ## When things go wrong
 
-| Situation | What the user sees | What they can do |
-|---|---|---|
+| Situation                                      | What the user sees                                                                                                | What they can do                    |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
 | Format pressed while something else is running | `Something else is running` · `Wait for the current operation to finish, or cancel it.` The document is unchanged | Wait, or cancel the other operation |
-| The document cannot be parsed | A notice saying so; the document is unchanged | Fix the syntax |
-| Format is cancelled mid-run | An informational message naming what completed; the document is unchanged | Run it again |
-| More than 1,000 lint findings | An accurate count, 1,000 squiggles, and every finding in the list | Fix them, or narrow the rule set |
+| The document cannot be parsed                  | A notice saying so; the document is unchanged                                                                     | Fix the syntax                      |
+| Format is cancelled mid-run                    | An informational message naming what completed; the document is unchanged                                         | Run it again                        |
+| More than 1,000 lint findings                  | An accurate count, 1,000 squiggles, and every finding in the list                                                 | Fix them, or narrow the rule set    |
 
 ## Edge cases
 
 **Format is pressed while the buffer has unflushed edits**
-- *Trigger:* typing, then `Alt/Option+Shift+F` immediately.
-- *Expected:* the buffer is flushed first, so the format operates on the text the user can see.
-- *Avoid:* formatting the last-synced content, which silently reverts the characters typed since.
+
+- _Trigger:_ typing, then `Alt/Option+Shift+F` immediately.
+- _Expected:_ the buffer is flushed first, so the format operates on the text the user can see.
+- _Avoid:_ formatting the last-synced content, which silently reverts the characters typed since.
 
 **Format on a document with a selection**
-- *Trigger:* text selected, Format pressed.
-- *Expected:* the whole document is formatted; the caret returns to the same line. Format is a
+
+- _Trigger:_ text selected, Format pressed.
+- _Expected:_ the whole document is formatted; the caret returns to the same line. Format is a
   document-scoped action.
-- *Avoid:* formatting only the selection, which produces a document whose halves are formatted
+- _Avoid:_ formatting only the selection, which produces a document whose halves are formatted
   differently.
 
 **Lint runs while the document is being formatted**
-- *Trigger:* lint-on-save with format-on-save, on one explicit save.
-- *Expected:* Format completes, then Lint runs on the result.
-- *Avoid:* running both against the pre-format text, so every finding the formatter just fixed is still
+
+- _Trigger:_ lint-on-save with format-on-save, on one explicit save.
+- _Expected:_ Format completes, then Lint runs on the result.
+- _Avoid:_ running both against the pre-format text, so every finding the formatter just fixed is still
   reported.
 
 **A finding on the very last line of a file with no trailing newline**
-- *Trigger:* the `final-newline` rule on a one-line file.
-- *Expected:* a marker widened to the end of that line, hoverable.
-- *Avoid:* a marker positioned past the end of the document, which the editor discards silently.
+
+- _Trigger:_ the `final-newline` rule on a one-line file.
+- _Expected:_ a marker widened to the end of that line, hoverable.
+- _Avoid:_ a marker positioned past the end of the document, which the editor discards silently.
 
 **Format is run on an empty document**
-- *Trigger:* Format on a new, empty buffer.
-- *Expected:* nothing changes and the document does not become modified.
-- *Avoid:* writing a trailing newline into an empty document, which marks it modified for no reason and
+
+- _Trigger:_ Format on a new, empty buffer.
+- _Expected:_ nothing changes and the document does not become modified.
+- _Avoid:_ writing a trailing newline into an empty document, which marks it modified for no reason and
   makes an untitled document eligible for a save prompt.
 
 ## Not this
@@ -257,12 +278,12 @@ who wants every write formatted turns autosave off.
 
 ## Decisions
 
-- *2026-07-25* — Format uses `remark-stringify` rather than Prettier, so one serialiser drives both
+- _2026-07-25_ — Format uses `remark-stringify` rather than Prettier, so one serialiser drives both
   Format and Compact and idempotence is provable. Recorded in
   `../../adr/0031-format-via-remark-stringify.md`.
-- *2026-07-25* — Autosave never formats, and the consequence for autosaved files is stated rather than
+- _2026-07-25_ — Autosave never formats, and the consequence for autosaved files is stated rather than
   implied.
-- *2026-07-25* — Compact gained a toolbar button, a binding and a menu item. Three documents required it
+- _2026-07-25_ — Compact gained a toolbar button, a binding and a menu item. Three documents required it
   and none of them gave it a way to be invoked.
 
 ## Open questions

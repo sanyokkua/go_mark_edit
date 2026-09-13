@@ -95,13 +95,13 @@ Always return the cancel function from `useEffect`. Failing to do so leaks liste
 ```typescript
 // Correct — cleanup on unmount
 useEffect(() => {
-  const cancel = EventsOn('data:updated', handler);
-  return cancel;
+    const cancel = EventsOn('data:updated', handler);
+    return cancel;
 }, []);
 
 // Wrong — leaks on each mount
 useEffect(() => {
-  EventsOn('data:updated', handler); // no cleanup!
+    EventsOn('data:updated', handler); // no cleanup!
 }, []);
 ```
 
@@ -115,8 +115,8 @@ TypeScript side: receives `any`. Use type guards or `zod` to validate:
 
 ```typescript
 EventsOn('file:dropped', (path: unknown) => {
-  if (typeof path !== 'string') return;
-  handleFilePath(path);
+    if (typeof path !== 'string') return;
+    handleFilePath(path);
 });
 ```
 
@@ -131,12 +131,9 @@ runtime.EventsEmit(a.ctx, "task:result", map[string]interface{}{
 ```
 
 ```typescript
-EventsOn(
-  'task:result',
-  (payload: { id: string; status: string; output: string }) => {
+EventsOn('task:result', (payload: { id: string; status: string; output: string }) => {
     updateTask(payload);
-  },
-);
+});
 ```
 
 ---
@@ -215,46 +212,38 @@ runtime.EventsEmit(ctx, "agent:progress", progressPayload{
 ```typescript
 import { EventsOn } from '@wailsapp/runtime';
 import { store } from 'logic/store';
-import {
-  setProgress,
-  appendToken,
-  setDone,
-  setError,
-} from 'logic/store/assistant/run';
+import { setProgress, appendToken, setDone, setError } from 'logic/store/assistant/run';
 
 // Subscribed once inside logic/adapter/, tied to the active runId
 export function subscribeAgentEvents(runId: string): () => void {
-  const cancelProgress = EventsOn('agent:progress', (p) => {
-    if (p.runId === runId)
-      store.dispatch(
-        setProgress({ phase: p.phase, iteration: p.iteration, tool: p.tool }),
-      );
-  });
-  const cancelToken = EventsOn('agent:token', (p) => {
-    if (p.runId === runId) store.dispatch(appendToken(p.delta));
-  });
-  const cancelError = EventsOn('agent:error', (p) => {
-    if (p.runId === runId) store.dispatch(setError(p.error));
-  });
-  const cancelDone = EventsOn('agent:done', (p) => {
-    if (p.runId !== runId) return;
-    store.dispatch(
-      setDone({
-        stopReason: p.stopReason,
-        transcriptSummary: p.transcriptSummary,
-      }),
-    );
-    cancelProgress();
-    cancelToken();
-    cancelError();
-    cancelDone();
-  });
-  return () => {
-    cancelProgress();
-    cancelToken();
-    cancelError();
-    cancelDone();
-  };
+    const cancelProgress = EventsOn('agent:progress', (p) => {
+        if (p.runId === runId) store.dispatch(setProgress({ phase: p.phase, iteration: p.iteration, tool: p.tool }));
+    });
+    const cancelToken = EventsOn('agent:token', (p) => {
+        if (p.runId === runId) store.dispatch(appendToken(p.delta));
+    });
+    const cancelError = EventsOn('agent:error', (p) => {
+        if (p.runId === runId) store.dispatch(setError(p.error));
+    });
+    const cancelDone = EventsOn('agent:done', (p) => {
+        if (p.runId !== runId) return;
+        store.dispatch(
+            setDone({
+                stopReason: p.stopReason,
+                transcriptSummary: p.transcriptSummary,
+            }),
+        );
+        cancelProgress();
+        cancelToken();
+        cancelError();
+        cancelDone();
+    });
+    return () => {
+        cancelProgress();
+        cancelToken();
+        cancelError();
+        cancelDone();
+    };
 }
 ```
 

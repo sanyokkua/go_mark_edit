@@ -3,34 +3,34 @@ id: STORY-005
 title: Expose the typed settings registry and wire the two-phase application root
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#layering
-  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#di-two-phase
-  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
-  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence
-  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#appearance-group
-  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#markdown-group
-  - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#content-privacy-group
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+    - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#layering
+    - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#di-two-phase
+    - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
+    - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#persistence
+    - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#appearance-group
+    - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#markdown-group
+    - ../../../_archive-2026-07-28-specification/01_Product/11_SETTINGS.md#content-privacy-group
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
 phase_requirements:
-  - PH00-R02
-  - PH00-R03
-  - PH00-R05
+    - PH00-R02
+    - PH00-R03
+    - PH00-R05
 modules:
-  - internal/settings/
-  - internal/db/
-  - internal/apperr/
-  - internal/application/
+    - internal/settings/
+    - internal/db/
+    - internal/apperr/
+    - internal/application/
 acceptance_criteria:
-  - STORY-005-AC-1
-  - STORY-005-AC-2
-  - STORY-005-AC-3
-  - STORY-005-AC-4
+    - STORY-005-AC-1
+    - STORY-005-AC-2
+    - STORY-005-AC-3
+    - STORY-005-AC-4
 edge_cases: []
 depends_on:
-  - STORY-004
+    - STORY-004
 adrs:
-  - ADR-0004
-  - ADR-0006
+    - ADR-0004
+    - ADR-0006
 phase: 00
 owner: coder
 estimate: L

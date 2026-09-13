@@ -3,30 +3,30 @@ id: STORY-003
 title: Establish bootstrap logging paths and the generic single-flight gate
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#packages
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
+    - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#packages
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#10-non-functional--operations
 phase_requirements:
-  - PH00-R03
-  - PH00-R07
-  - PH00-R11
+    - PH00-R03
+    - PH00-R07
+    - PH00-R11
 modules:
-  - internal/bootstrap/
-  - internal/logging/
-  - internal/file/
-  - internal/gate/
-  - internal/application/
+    - internal/bootstrap/
+    - internal/logging/
+    - internal/file/
+    - internal/gate/
+    - internal/application/
 acceptance_criteria:
-  - STORY-003-AC-1
-  - STORY-003-AC-2
-  - STORY-003-AC-3
-  - STORY-003-AC-4
+    - STORY-003-AC-1
+    - STORY-003-AC-2
+    - STORY-003-AC-3
+    - STORY-003-AC-4
 edge_cases: []
 depends_on:
-  - STORY-002
+    - STORY-002
 adrs:
-  - ADR-0001
-  - ADR-0006
+    - ADR-0001
+    - ADR-0006
 phase: 00
 owner: coder
 estimate: L

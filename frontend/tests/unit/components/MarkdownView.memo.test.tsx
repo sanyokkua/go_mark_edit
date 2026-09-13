@@ -6,27 +6,27 @@ import MarkdownView from '../../../src/ui/components/MarkdownView';
 const mockRenderCount = { value: 0 };
 
 jest.mock('react-markdown', () => ({
-  __esModule: true,
-  default: ({ children }: { children: string }): React.JSX.Element => {
-    mockRenderCount.value += 1;
-    return <div data-testid="markdown">{children}</div>;
-  },
+    __esModule: true,
+    default: ({ children }: { children: string }): React.JSX.Element => {
+        mockRenderCount.value += 1;
+        return <div data-testid="markdown">{children}</div>;
+    },
 }));
 
 function Parent({ source }: { source: string }): React.JSX.Element {
-  const [, setTick] = useState(0);
-  return (
-    <div>
-      <button type="button" onClick={(): void => setTick((n) => n + 1)}>
-        re-render
-      </button>
-      <MarkdownView source={source} />
-    </div>
-  );
+    const [, setTick] = useState(0);
+    return (
+        <div>
+            <button type="button" onClick={(): void => setTick((n) => n + 1)}>
+                re-render
+            </button>
+            <MarkdownView source={source} />
+        </div>
+    );
 }
 
 beforeEach((): void => {
-  mockRenderCount.value = 0;
+    mockRenderCount.value = 0;
 });
 
 /*
@@ -54,28 +54,28 @@ beforeEach((): void => {
  */
 // pipeline when a parent re-renders without changing the document.)
 it('does not re-parse the document when a parent re-renders with the same source', () => {
-  const { getByText } = render(<Parent source={'# title\n\nbody\n'} />);
-  expect(mockRenderCount.value).toBe(1);
+    const { getByText } = render(<Parent source={'# title\n\nbody\n'} />);
+    expect(mockRenderCount.value).toBe(1);
 
-  /*
-   * fireEvent, not the DOM's own `.click()`: a bare click leaves the state
-   * update unflushed outside `act()`, so the parent never re-renders and this
-   * assertion passes without proving anything. The first draft did exactly that
-   * and passed against the unmemoized component. With fireEvent it failed
-   * `Expected: 1, Received: 3`.
-   */
-  fireEvent.click(getByText('re-render'));
-  fireEvent.click(getByText('re-render'));
+    /*
+     * fireEvent, not the DOM's own `.click()`: a bare click leaves the state
+     * update unflushed outside `act()`, so the parent never re-renders and this
+     * assertion passes without proving anything. The first draft did exactly that
+     * and passed against the unmemoized component. With fireEvent it failed
+     * `Expected: 1, Received: 3`.
+     */
+    fireEvent.click(getByText('re-render'));
+    fireEvent.click(getByText('re-render'));
 
-  expect(mockRenderCount.value).toBe(1);
+    expect(mockRenderCount.value).toBe(1);
 });
 
 it('re-parses when the source actually changes', () => {
-  const { rerender, getByTestId } = render(<MarkdownView source={'# one\n'} />);
-  expect(mockRenderCount.value).toBe(1);
+    const { rerender, getByTestId } = render(<MarkdownView source={'# one\n'} />);
+    expect(mockRenderCount.value).toBe(1);
 
-  rerender(<MarkdownView source={'# two\n'} />);
+    rerender(<MarkdownView source={'# two\n'} />);
 
-  expect(mockRenderCount.value).toBe(2);
-  expect(getByTestId('markdown')).toHaveTextContent('# two');
+    expect(mockRenderCount.value).toBe(2);
+    expect(getByTestId('markdown')).toHaveTextContent('# two');
 });

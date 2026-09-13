@@ -29,46 +29,46 @@ icon asset. Wails expands these into per-OS metadata at build time.
 
 ```jsonc
 {
-  "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "GoMarkEdit",
-  "outputfilename": "GoMarkEdit",
-  "info": {
-    "companyName": "Oleksandr Kostenko",
-    "productName": "GoMarkEdit",
-    "productVersion": "dev",
-    "copyright": "Copyright © Oleksandr Kostenko",
-    "comments": "Native offline Markdown editor & viewer",
-    "fileAssociations": [
-      {
-        "ext": "md",
-        "name": "Markdown Document",
-        "description": "Markdown Document",
-        "iconName": "gomarkedit-doc",
-        "role": "Editor",
-      },
-      {
-        "ext": "markdown",
-        "name": "Markdown Document",
-        "description": "Markdown Document",
-        "iconName": "gomarkedit-doc",
-        "role": "Editor",
-      },
-      {
-        "ext": "mdown",
-        "name": "Markdown Document",
-        "description": "Markdown Document",
-        "iconName": "gomarkedit-doc",
-        "role": "Editor",
-      },
-      {
-        "ext": "txt",
-        "name": "Plain Text Document",
-        "description": "Plain Text Document",
-        "iconName": "gomarkedit-doc",
-        "role": "Editor",
-      },
-    ],
-  },
+    "$schema": "https://wails.io/schemas/config.v2.json",
+    "name": "GoMarkEdit",
+    "outputfilename": "GoMarkEdit",
+    "info": {
+        "companyName": "Oleksandr Kostenko",
+        "productName": "GoMarkEdit",
+        "productVersion": "dev",
+        "copyright": "Copyright © Oleksandr Kostenko",
+        "comments": "Native offline Markdown editor & viewer",
+        "fileAssociations": [
+            {
+                "ext": "md",
+                "name": "Markdown Document",
+                "description": "Markdown Document",
+                "iconName": "gomarkedit-doc",
+                "role": "Editor",
+            },
+            {
+                "ext": "markdown",
+                "name": "Markdown Document",
+                "description": "Markdown Document",
+                "iconName": "gomarkedit-doc",
+                "role": "Editor",
+            },
+            {
+                "ext": "mdown",
+                "name": "Markdown Document",
+                "description": "Markdown Document",
+                "iconName": "gomarkedit-doc",
+                "role": "Editor",
+            },
+            {
+                "ext": "txt",
+                "name": "Plain Text Document",
+                "description": "Plain Text Document",
+                "iconName": "gomarkedit-doc",
+                "role": "Editor",
+            },
+        ],
+    },
 }
 ```
 

@@ -3,34 +3,34 @@ id: STORY-011
 title: Establish the backend-authoritative in-memory application model
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model
-  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model
-  - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind
-  - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#result-envelopes
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
-  - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
+    - ../../../_archive-2026-07-28-specification/02_Architecture/02_BACKEND_GO.md#application-model
+    - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#in-memory-application-model
+    - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#bind-enumbind
+    - ../../../_archive-2026-07-28-specification/02_Architecture/06_ERROR_HANDLING.md#result-envelopes
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+    - ../../../_archive-2026-07-28-specification/00_Foundation/06_IMPLEMENTATION_STAGES.md#3-forward-compatibility-constraints-per-stage
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#scope
 phase_requirements:
-  - PH01-R01
-  - PH01-R05
+    - PH01-R01
+    - PH01-R05
 modules:
-  - internal/appmodel/
-  - internal/apperr/
-  - internal/application/
+    - internal/appmodel/
+    - internal/apperr/
+    - internal/application/
 acceptance_criteria:
-  - STORY-011-AC-1
-  - STORY-011-AC-2
-  - STORY-011-AC-3
-  - STORY-011-AC-4
-  - STORY-011-AC-5
-  - STORY-011-AC-6
-  - STORY-011-AC-7
+    - STORY-011-AC-1
+    - STORY-011-AC-2
+    - STORY-011-AC-3
+    - STORY-011-AC-4
+    - STORY-011-AC-5
+    - STORY-011-AC-6
+    - STORY-011-AC-7
 edge_cases: []
 depends_on:
-  - STORY-010
+    - STORY-010
 adrs:
-  - ADR-0001
-  - ADR-0014
+    - ADR-0001
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: L

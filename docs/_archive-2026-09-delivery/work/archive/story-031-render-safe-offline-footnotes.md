@@ -3,27 +3,27 @@ id: STORY-031
 title: Render safe offline GFM footnotes
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features
-  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization
-  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline
-  - ../../../_archive-2026-07-28-specification/03_NonFunctional/04_OFFLINE.md#2-bundled-assets
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#requirement-ledger
+    - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#gfm-features
+    - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#sanitization
+    - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#edge-cases
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#markdown-pipeline
+    - ../../../_archive-2026-07-28-specification/03_NonFunctional/04_OFFLINE.md#2-bundled-assets
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#requirement-ledger
 phase_requirements:
-  - PH01-R11
+    - PH01-R11
 modules:
-  - logic/markdown/
+    - logic/markdown/
 acceptance_criteria:
-  - STORY-031-AC-1
-  - STORY-031-AC-2
-  - STORY-031-AC-3
+    - STORY-031-AC-1
+    - STORY-031-AC-2
+    - STORY-031-AC-3
 edge_cases:
-  - EC-RENDER-5
-  - EC-RENDER-6
+    - EC-RENDER-5
+    - EC-RENDER-6
 depends_on:
-  - STORY-014
+    - STORY-014
 adrs:
-  - ADR-0003
+    - ADR-0003
 phase: 01
 owner: coder
 estimate: S

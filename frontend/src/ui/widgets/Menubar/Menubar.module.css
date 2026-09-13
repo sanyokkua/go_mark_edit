@@ -1,17 +1,17 @@
 .row {
-  position: relative;
-  z-index: var(--z-sticky);
-  height: var(--menu-row-height);
-  min-height: revert;
-  display: flex;
-  align-items: center;
-  gap: var(--menu-row-gap);
-  padding: var(--menu-row-padding);
-  border-block-end: var(--control-border-width) solid var(--border);
-  background: transparent;
-  min-width: revert;
-  overflow: visible;
-  white-space: normal;
+    position: relative;
+    z-index: var(--z-sticky);
+    height: var(--menu-row-height);
+    min-height: revert;
+    display: flex;
+    align-items: center;
+    gap: var(--menu-row-gap);
+    padding: var(--menu-row-padding);
+    border-block-end: var(--control-border-width) solid var(--border);
+    background: transparent;
+    min-width: revert;
+    overflow: visible;
+    white-space: normal;
 }
 
 /* Binding source: mockup.html `.menu{display:flex;gap:1px}` (:228).
@@ -20,13 +20,13 @@
    are removed from the reference rather than reserved for here, so both pages
    derive the menu's position from the same layout. */
 .menu {
-  display: flex;
-  gap: 1px;
+    display: flex;
+    gap: 1px;
 }
 
 .barFrame {
-  flex: 1 1 auto;
-  min-width: 0;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 /*
@@ -36,24 +36,24 @@
  */
 
 .rowAction {
-  border: var(--control-border-width) solid transparent;
-  border-radius: var(--menu-trigger-radius);
-  cursor: pointer;
-  font-size: var(--menu-trigger-font-size);
-  height: var(--menu-trigger-height);
-  line-height: var(--menu-trigger-line-height);
-  max-width: 100%;
-  min-height: 0;
-  overflow: hidden;
-  padding: var(--menu-trigger-padding);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    border: var(--control-border-width) solid transparent;
+    border-radius: var(--menu-trigger-radius);
+    cursor: pointer;
+    font-size: var(--menu-trigger-font-size);
+    height: var(--menu-trigger-height);
+    line-height: var(--menu-trigger-line-height);
+    max-width: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--menu-trigger-padding);
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .rowAction:hover,
 .rowAction:focus-visible {
-  background: var(--surface);
-  box-shadow: var(--focus-ring);
+    background: var(--surface);
+    box-shadow: var(--focus-ring);
 }
 
 /* Binding source: mockup.html — a single `.sp{flex:1}` spacer (:231) sits
@@ -62,43 +62,43 @@
    would split the free space and leave the identity floating mid-row instead
    of adjacent to these buttons. */
 .menuRowActions {
-  align-items: center;
-  display: flex;
-  gap: var(--control-gap);
+    align-items: center;
+    display: flex;
+    gap: var(--control-gap);
 }
 
 /* Binding source: mockup.html `.sp{flex:1}` (:231). */
 .spacer {
-  flex: 1 1 auto;
-  min-width: 0;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .rowAction:disabled {
-  cursor: not-allowed;
-  opacity: var(--disabled-opacity);
+    cursor: not-allowed;
+    opacity: var(--disabled-opacity);
 }
 
 /* Binding source: mockup.html `.mi.sub`. The indented recent and reopen rows
    are muted, one step smaller, and push their trailing content to the row end
    through the same space-between flow the binding `.mi` uses. */
 .subItem {
-  color: var(--muted);
-  font-size: var(--popup-sub-row-font-size);
-  justify-content: space-between;
-  padding: var(--popup-sub-row-padding);
+    color: var(--muted);
+    font-size: var(--popup-sub-row-font-size);
+    justify-content: space-between;
+    padding: var(--popup-sub-row-padding);
 }
 
 .subItemIcon {
-  color: inherit;
+    color: inherit;
 }
 
 .subItemLabel {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .narrowOverflow {
-  max-inline-size: calc(100vw - 2 * var(--app-gap));
+    max-inline-size: calc(100vw - 2 * var(--app-gap));
 }

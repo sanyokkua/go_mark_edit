@@ -23,34 +23,32 @@ const FOREGROUND_HANDOVER_GRACE_MS = 1_000;
  * keeps a deferred restoration from leaking a `focus` handler per invocation.
  * The canceller is safe to call after the restoration has already run.
  */
-export function whenApplicationRegainsForegroundFocus(
-  restore: () => void,
-): () => void {
-  if (typeof window === 'undefined') {
-    restore();
-    return (): void => undefined;
-  }
+export function whenApplicationRegainsForegroundFocus(restore: () => void): () => void {
+    if (typeof window === 'undefined') {
+        restore();
+        return (): void => undefined;
+    }
 
-  // The abort signal is both the listener's own removal mechanism and the
-  // single "already settled" flag, so the two cannot disagree.
-  const controller = new AbortController();
-  let graceTimer: number | undefined;
-  const settle = (run: boolean): void => {
-    if (controller.signal.aborted) return;
-    controller.abort();
-    if (graceTimer !== undefined) window.clearTimeout(graceTimer);
-    if (run) restore();
-  };
+    // The abort signal is both the listener's own removal mechanism and the
+    // single "already settled" flag, so the two cannot disagree.
+    const controller = new AbortController();
+    let graceTimer: number | undefined;
+    const settle = (run: boolean): void => {
+        if (controller.signal.aborted) return;
+        controller.abort();
+        if (graceTimer !== undefined) window.clearTimeout(graceTimer);
+        if (run) restore();
+    };
 
-  window.addEventListener('focus', (): void => settle(true), {
-    signal: controller.signal,
-  });
-  graceTimer = window.setTimeout((): void => {
-    graceTimer = undefined;
-    if (globalThis.document.hasFocus()) settle(true);
-  }, FOREGROUND_HANDOVER_GRACE_MS);
+    window.addEventListener('focus', (): void => settle(true), {
+        signal: controller.signal,
+    });
+    graceTimer = window.setTimeout((): void => {
+        graceTimer = undefined;
+        if (globalThis.document.hasFocus()) settle(true);
+    }, FOREGROUND_HANDOVER_GRACE_MS);
 
-  return (): void => settle(false);
+    return (): void => settle(false);
 }
 
 /**
@@ -74,21 +72,21 @@ export function whenApplicationRegainsForegroundFocus(
  * the only party that knows whether its work is re-entrant.
  */
 export function onApplicationForeground(enter: () => void): () => void {
-  if (typeof window === 'undefined') {
-    return (): void => undefined;
-  }
+    if (typeof window === 'undefined') {
+        return (): void => undefined;
+    }
 
-  const controller = new AbortController();
-  window.addEventListener('focus', (): void => enter(), {
-    signal: controller.signal,
-  });
-  globalThis.document.addEventListener(
-    'visibilitychange',
-    (): void => {
-      if (globalThis.document.visibilityState === 'visible') enter();
-    },
-    { signal: controller.signal },
-  );
+    const controller = new AbortController();
+    window.addEventListener('focus', (): void => enter(), {
+        signal: controller.signal,
+    });
+    globalThis.document.addEventListener(
+        'visibilitychange',
+        (): void => {
+            if (globalThis.document.visibilityState === 'visible') enter();
+        },
+        { signal: controller.signal },
+    );
 
-  return (): void => controller.abort();
+    return (): void => controller.abort();
 }

@@ -3,91 +3,64 @@ import { resolve } from 'node:path';
 
 import { useEffect, useState, type MutableRefObject } from 'react';
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
 import type { DocumentConflictAdapter } from '../../src/logic/adapter';
 import type {
-  ClassifiedError,
-  ConflictPreview,
-  ConflictResult,
-  DocumentMetadata,
-  DocumentTransitionResult,
-  PathCommandResult,
-  TabTransitionResult,
+    ClassifiedError,
+    ConflictPreview,
+    ConflictResult,
+    DocumentMetadata,
+    DocumentTransitionResult,
+    PathCommandResult,
+    TabTransitionResult,
 } from '../../src/logic/store/appModelTypes';
 import { store, useAppSelector } from '../../src/logic/store';
-import {
-  applyStatePatch,
-  hydrateProjection,
-  resetProjection,
-} from '../../src/logic/store/appModelProjectionActions';
-import {
-  resetNotifications,
-  type NotificationRemediation,
-} from '../../src/logic/store/notificationsSlice';
+import { applyStatePatch, hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
+import { resetNotifications, type NotificationRemediation } from '../../src/logic/store/notificationsSlice';
 import { getActionAvailability } from '../../src/logic/actions/actionRegistry';
 import { onApplicationForeground } from '../../src/ui/widgets/foregroundFocus';
 import DocumentTabs from '../../src/ui/widgets/DocumentTabs/DocumentTabs';
-import ExternalChangePrompt, {
-  type ExternalChangeDecision,
-} from '../../src/ui/widgets/dialogs/ExternalChangePrompt';
-import {
-  TabRemediationContext,
-  type TabRemediationExecutor,
-} from '../../src/ui/widgets/tabRemediation';
+import ExternalChangePrompt, { type ExternalChangeDecision } from '../../src/ui/widgets/dialogs/ExternalChangePrompt';
+import { TabRemediationContext, type TabRemediationExecutor } from '../../src/ui/widgets/tabRemediation';
 import { EDITOR_TABPANEL_ID } from '../../src/ui/widgets/editorTabPanel';
 import Launcher from '../../src/ui/widgets/Launcher';
 
-function documentFor(
-  documentId: string,
-  path: string,
-  dirty = false,
-): DocumentMetadata {
-  return {
-    documentId,
-    title: path.split('/').at(-1) ?? 'Untitled',
-    path,
-    dirty,
-    encoding: 'utf-8',
-    lineEnding: 'lf',
-    wordCount: 0,
-    view: {
-      arrangement: 'editor',
-      editorVisible: true,
-      previewVisible: false,
-      cursor: { line: 1, column: 1 },
-      selection: {
-        start: { line: 1, column: 1 },
-        end: { line: 1, column: 1 },
-      },
-      scroll: { editor: 0, preview: 0 },
-    },
-  };
+function documentFor(documentId: string, path: string, dirty = false): DocumentMetadata {
+    return {
+        documentId,
+        title: path.split('/').at(-1) ?? 'Untitled',
+        path,
+        dirty,
+        encoding: 'utf-8',
+        lineEnding: 'lf',
+        wordCount: 0,
+        view: {
+            arrangement: 'editor',
+            editorVisible: true,
+            previewVisible: false,
+            cursor: { line: 1, column: 1 },
+            selection: {
+                start: { line: 1, column: 1 },
+                end: { line: 1, column: 1 },
+            },
+            scroll: { editor: 0, preview: 0 },
+        },
+    };
 }
 
-function hydrate(
-  documents: DocumentMetadata[],
-  activeDocumentId = documents[0]?.documentId ?? null,
-): void {
-  store.dispatch(
-    hydrateProjection({
-      revision: 1,
-      tabSetRevision: 4,
-      documents: Object.fromEntries(
-        documents.map((document) => [document.documentId, document]),
-      ),
-      orderedDocumentIds: documents.map((document) => document.documentId),
-      activeDocumentId,
-      ui: {},
-    }),
-  );
+function hydrate(documents: DocumentMetadata[], activeDocumentId = documents[0]?.documentId ?? null): void {
+    store.dispatch(
+        hydrateProjection({
+            revision: 1,
+            tabSetRevision: 4,
+            documents: Object.fromEntries(documents.map((document) => [document.documentId, document])),
+            orderedDocumentIds: documents.map((document) => document.documentId),
+            activeDocumentId,
+            ui: {},
+        }),
+    );
 }
 
 /*
@@ -97,449 +70,390 @@ function hydrate(
  * deferred focus restoration.
  */
 function quietConflictAdapter(): DocumentConflictAdapter {
-  return {
-    authorizeKeepMine: jest.fn(async () => ({ status: 'authorized' as const })),
-    cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
-    checkExternalChanges: jest.fn(async () => ({
-      status: 'unchanged' as const,
-    })),
-    reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
-    skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
-  };
+    return {
+        authorizeKeepMine: jest.fn(async () => ({ status: 'authorized' as const })),
+        cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
+        checkExternalChanges: jest.fn(async () => ({
+            status: 'unchanged' as const,
+        })),
+        reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
+        skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
+    };
 }
 
 function renderTabs(
-  adapter: Parameters<typeof DocumentTabs>[0]['adapter'] = {},
-  conflictAdapter: DocumentConflictAdapter | undefined = undefined,
+    adapter: Parameters<typeof DocumentTabs>[0]['adapter'] = {},
+    conflictAdapter: DocumentConflictAdapter | undefined = undefined,
 ): void {
-  render(
-    <Provider store={store}>
-      <TestAppTabLayer adapter={adapter} conflictAdapter={conflictAdapter} />
-    </Provider>,
-  );
+    render(
+        <Provider store={store}>
+            <TestAppTabLayer adapter={adapter} conflictAdapter={conflictAdapter} />
+        </Provider>,
+    );
 }
 
 function TestAppTabLayer({
-  adapter,
-  conflictAdapter,
+    adapter,
+    conflictAdapter,
 }: {
-  adapter: Parameters<typeof DocumentTabs>[0]['adapter'];
-  conflictAdapter: DocumentConflictAdapter | undefined;
+    adapter: Parameters<typeof DocumentTabs>[0]['adapter'];
+    conflictAdapter: DocumentConflictAdapter | undefined;
 }): React.JSX.Element {
-  const [preview, setPreview] = useState<ConflictPreview | null>(null);
-  const orderedIds = useAppSelector((state) => state.documents.orderedIds);
-  const documentsById = useAppSelector((state) => state.documents.byId);
-  const activeDocumentId = useAppSelector(
-    (state) => state.documents.activeDocumentId,
-  );
-  useEffect((): (() => void) | undefined => {
-    if (conflictAdapter === undefined) return undefined;
-    return onApplicationForeground((): void => {
-      void (async (): Promise<void> => {
-        for (const documentId of orderedIds) {
-          const document = documentsById[documentId];
-          if (document === undefined || document.path === '') continue;
-          const result = await conflictAdapter.checkExternalChanges(documentId);
-          if (
-            result.status === 'detected' &&
-            result.preview !== undefined &&
-            documentId === activeDocumentId
-          ) {
-            setPreview(result.preview);
-          }
+    const [preview, setPreview] = useState<ConflictPreview | null>(null);
+    const orderedIds = useAppSelector((state) => state.documents.orderedIds);
+    const documentsById = useAppSelector((state) => state.documents.byId);
+    const activeDocumentId = useAppSelector((state) => state.documents.activeDocumentId);
+    useEffect((): (() => void) | undefined => {
+        if (conflictAdapter === undefined) return undefined;
+        return onApplicationForeground((): void => {
+            void (async (): Promise<void> => {
+                for (const documentId of orderedIds) {
+                    const document = documentsById[documentId];
+                    if (document === undefined || document.path === '') continue;
+                    const result = await conflictAdapter.checkExternalChanges(documentId);
+                    if (
+                        result.status === 'detected' &&
+                        result.preview !== undefined &&
+                        documentId === activeDocumentId
+                    ) {
+                        setPreview(result.preview);
+                    }
+                }
+            })();
+        });
+    }, [activeDocumentId, conflictAdapter, documentsById, orderedIds]);
+    const valid =
+        preview === null ||
+        documentsById[preview.documentId]?.contentRevision === undefined ||
+        documentsById[preview.documentId]?.contentRevision === preview.contentRevision;
+    const onDecision = async (decision: ExternalChangeDecision): Promise<void> => {
+        const current = preview;
+        if (current === null || conflictAdapter === undefined) return;
+        let result: ConflictResult;
+        switch (decision) {
+            case 'reload':
+                result = await conflictAdapter.reloadFromDisk(
+                    current.documentId,
+                    current.contentRevision,
+                    current.detectedDiskVersion,
+                );
+                break;
+            case 'keep-mine':
+                if (!valid) return;
+                result = await conflictAdapter.authorizeKeepMine(
+                    current.documentId,
+                    current.contentRevision,
+                    current.path ?? '',
+                    current.detectedDiskVersion,
+                );
+                break;
+            case 'skip':
+                result = await conflictAdapter.skipConflict(
+                    current.documentId,
+                    current.contentRevision,
+                    current.detectedDiskVersion,
+                );
+                break;
+            case 'cancel':
+                result = await conflictAdapter.cancelConflict(
+                    current.documentId,
+                    current.contentRevision,
+                    current.detectedDiskVersion,
+                );
+                break;
         }
-      })();
-    });
-  }, [activeDocumentId, conflictAdapter, documentsById, orderedIds]);
-  const valid =
-    preview === null ||
-    documentsById[preview.documentId]?.contentRevision === undefined ||
-    documentsById[preview.documentId]?.contentRevision ===
-      preview.contentRevision;
-  const onDecision = async (
-    decision: ExternalChangeDecision,
-  ): Promise<void> => {
-    const current = preview;
-    if (current === null || conflictAdapter === undefined) return;
-    let result: ConflictResult;
-    switch (decision) {
-      case 'reload':
-        result = await conflictAdapter.reloadFromDisk(
-          current.documentId,
-          current.contentRevision,
-          current.detectedDiskVersion,
-        );
-        break;
-      case 'keep-mine':
-        if (!valid) return;
-        result = await conflictAdapter.authorizeKeepMine(
-          current.documentId,
-          current.contentRevision,
-          current.path ?? '',
-          current.detectedDiskVersion,
-        );
-        break;
-      case 'skip':
-        result = await conflictAdapter.skipConflict(
-          current.documentId,
-          current.contentRevision,
-          current.detectedDiskVersion,
-        );
-        break;
-      case 'cancel':
-        result = await conflictAdapter.cancelConflict(
-          current.documentId,
-          current.contentRevision,
-          current.detectedDiskVersion,
-        );
-        break;
-    }
-    if (result.preview !== undefined) setPreview(result.preview);
-    else if (result.error === undefined) setPreview(null);
-  };
-  return (
-    <>
-      <DocumentTabs adapter={adapter} onExternalConflict={setPreview} />
-      <ExternalChangePrompt
-        onDecision={onDecision}
-        open={preview !== null}
-        preview={preview ?? undefined}
-        valid={valid}
-      />
-    </>
-  );
+        if (result.preview !== undefined) setPreview(result.preview);
+        else if (result.error === undefined) setPreview(null);
+    };
+    return (
+        <>
+            <DocumentTabs adapter={adapter} onExternalConflict={setPreview} />
+            <ExternalChangePrompt
+                onDecision={onDecision}
+                open={preview !== null}
+                preview={preview ?? undefined}
+                valid={valid}
+            />
+        </>
+    );
 }
 
 beforeEach(() => {
-  store.dispatch(resetProjection());
+    store.dispatch(resetProjection());
 });
 
 it('applies the contained tab-strip metrics and fixed add-control size', () => {
-  const tabStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
-    'utf8',
-  );
+    const tabStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'), 'utf8');
 
-  expect(tabStyles).toContain('gap: var(--tabs-gap)');
-  expect(tabStyles).toContain('padding: var(--tabs-row-padding)');
-  expect(tabStyles).toContain('padding: var(--tab-padding)');
-  expect(tabStyles).toContain('font-size: var(--tab-label-font-size)');
-  expect(tabStyles).toMatch(
-    /\.tab\s*\{[^}]*align-items:\s*center;[^}]*display:\s*inline-flex;/s,
-  );
-  expect(tabStyles).toContain('block-size: var(--tabs-row-height)');
-  /*
-   * The binding's `.tab` bounds (`mockup.html:272`) are tokens like every other
-   * binding metric, so the label cap and the tab box are asserted through the
-   * token rather than as a literal repeated in the stylesheet. `tokens.css`
-   * owns the value.
-   */
-  expect(tabStyles).toContain('max-width: var(--tab-max-width)');
-  expect(tabStyles).toContain('border-radius: var(--tab-radius)');
-  expect(tabStyles).toContain('gap: var(--tab-gap)');
-  expect(tabStyles).toContain('block-size: var(--tab-add-size)');
-  expect(tabStyles).toContain('inline-size: var(--tab-add-size)');
-  expect(tabStyles).toMatch(/overflow-x:\s*auto/);
-  expect(tabStyles).toContain(":global(:root[data-theme='material'])");
-  expect(tabStyles).toContain(":global(:root[data-theme='minimal'])");
-  expect(tabStyles).toContain('border-bottom: 2px solid transparent');
+    expect(tabStyles).toContain('gap: var(--tabs-gap)');
+    expect(tabStyles).toContain('padding: var(--tabs-row-padding)');
+    expect(tabStyles).toContain('padding: var(--tab-padding)');
+    expect(tabStyles).toContain('font-size: var(--tab-label-font-size)');
+    expect(tabStyles).toMatch(/\.tab\s*\{[^}]*align-items:\s*center;[^}]*display:\s*inline-flex;/s);
+    expect(tabStyles).toContain('block-size: var(--tabs-row-height)');
+    /*
+     * The binding's `.tab` bounds (`mockup.html:272`) are tokens like every other
+     * binding metric, so the label cap and the tab box are asserted through the
+     * token rather than as a literal repeated in the stylesheet. `tokens.css`
+     * owns the value.
+     */
+    expect(tabStyles).toContain('max-width: var(--tab-max-width)');
+    expect(tabStyles).toContain('border-radius: var(--tab-radius)');
+    expect(tabStyles).toContain('gap: var(--tab-gap)');
+    expect(tabStyles).toContain('block-size: var(--tab-add-size)');
+    expect(tabStyles).toContain('inline-size: var(--tab-add-size)');
+    expect(tabStyles).toMatch(/overflow-x:\s*auto/);
+    expect(tabStyles).toContain(":global(:root[data-theme='material'])");
+    expect(tabStyles).toContain(":global(:root[data-theme='minimal'])");
+    expect(tabStyles).toContain('border-bottom: 2px solid transparent');
 });
 
 it('uses the binding context-menu shadow token', () => {
-  const tabStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
-    'utf8',
-  );
-  const tokens = readFileSync(
-    resolve(process.cwd(), 'src/ui/styles/tokens.css'),
-    'utf8',
-  );
+    const tabStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'), 'utf8');
+    const tokens = readFileSync(resolve(process.cwd(), 'src/ui/styles/tokens.css'), 'utf8');
 
-  expect(tabStyles).toContain('box-shadow: var(--tab-context-menu-shadow)');
-  expect(tokens).toContain(
-    '--tab-context-menu-shadow: var(--context-menu-shadow);',
-  );
-  expect(tokens).toContain('--context-menu-shadow:');
-  expect(tokens).toMatch(
-    /:root\[data-theme='material'\][\s\S]*?--context-menu-shadow:\s*0 1px 2px rgba\(30, 30, 60, 0\.1\),\s*0 1px 3px rgba\(30, 30, 60, 0\.08\);/s,
-  );
+    expect(tabStyles).toContain('box-shadow: var(--tab-context-menu-shadow)');
+    expect(tokens).toContain('--tab-context-menu-shadow: var(--context-menu-shadow);');
+    expect(tokens).toContain('--context-menu-shadow:');
+    expect(tokens).toMatch(
+        /:root\[data-theme='material'\][\s\S]*?--context-menu-shadow:\s*0 1px 2px rgba\(30, 30, 60, 0\.1\),\s*0 1px 3px rgba\(30, 30, 60, 0\.08\);/s,
+    );
 });
 
 it('renders the shared Icon primitive for the tab glyphs', () => {
-  hydrate([documentFor('one', '/repo/one.md', true)]);
-  renderTabs();
+    hydrate([documentFor('one', '/repo/one.md', true)]);
+    renderTabs();
 
-  const tab = screen.getByRole('tab', { name: /one\.md/u });
-  expect(tab.querySelector('[aria-label="Modified"] svg')).toBeNull();
-  expect(
-    screen
-      .getByRole('button', { name: 'New tab' })
-      .querySelector('[data-icon-name="add"]'),
-  ).not.toBeNull();
+    const tab = screen.getByRole('tab', { name: /one\.md/u });
+    expect(tab.querySelector('[aria-label="Modified"] svg')).toBeNull();
+    expect(screen.getByRole('button', { name: 'New tab' }).querySelector('[data-icon-name="add"]')).not.toBeNull();
 });
 
 it('makes the tablist the direct tab-and-add layout surface', () => {
-  hydrate([documentFor('one', '/repo/one.md', true)]);
-  renderTabs();
+    hydrate([documentFor('one', '/repo/one.md', true)]);
+    renderTabs();
 
-  const tablist = screen.getByRole('tablist');
-  expect(tablist).toContainElement(
-    screen.getByRole('tab', { name: /one\.md/u }),
-  );
-  expect(tablist).toContainElement(
-    screen.getByRole('button', { name: 'New tab' }),
-  );
-  expect(tablist.children).toHaveLength(2);
+    const tablist = screen.getByRole('tablist');
+    expect(tablist).toContainElement(screen.getByRole('tab', { name: /one\.md/u }));
+    expect(tablist).toContainElement(screen.getByRole('button', { name: 'New tab' }));
+    expect(tablist.children).toHaveLength(2);
 });
 
 it('keeps the minimal new-tab control as a block text control', () => {
-  const tabStyles = readFileSync(
-    resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'),
-    'utf8',
-  );
+    const tabStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'), 'utf8');
 
-  expect(tabStyles).toMatch(
-    /\.tabAdd\s*\{[^}]*display:\s*block;[^}]*text-align:\s*center;/s,
-  );
-  expect(tabStyles).toMatch(/\.tabAdd\s*\{[^}]*font-family:\s*Arial;/s);
-  expect(tabStyles).toMatch(/\.tabAdd\s*\{[^}]*white-space:\s*normal;/s);
-  expect(tabStyles).not.toMatch(/\.tabAdd\s*\{[^}]*min-inline-size:/s);
+    expect(tabStyles).toMatch(/\.tabAdd\s*\{[^}]*display:\s*block;[^}]*text-align:\s*center;/s);
+    expect(tabStyles).toMatch(/\.tabAdd\s*\{[^}]*font-family:\s*Arial;/s);
+    expect(tabStyles).toMatch(/\.tabAdd\s*\{[^}]*white-space:\s*normal;/s);
+    expect(tabStyles).not.toMatch(/\.tabAdd\s*\{[^}]*min-inline-size:/s);
 });
 
 // after a successful Reveal is proved by
 // 'waits for the application to regain foreground focus before restoring
 // the tab' below and by foregroundFocus.test.ts.)
 it('Move tab actions sit between close and path groups', () => {
-  const first = documentFor('one', '/repo/one.md');
-  const second = documentFor('two', '/repo/two.md');
-  hydrate([first, second]);
-  renderTabs({
-    reorderDocument: jest.fn(async (): Promise<TabTransitionResult> => ({
-      status: 'reordered',
-      orderedDocumentIds: ['two', 'one'],
-    })),
-  });
+    const first = documentFor('one', '/repo/one.md');
+    const second = documentFor('two', '/repo/two.md');
+    hydrate([first, second]);
+    renderTabs({
+        reorderDocument: jest.fn(async (): Promise<TabTransitionResult> => ({
+            status: 'reordered',
+            orderedDocumentIds: ['two', 'one'],
+        })),
+    });
 
-  fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/ }));
-  expect(
-    screen
-      .getAllByRole('menuitem')
-      .map(
-        (item) => item.querySelector('span')?.textContent ?? item.textContent,
-      ),
-  ).toEqual([
-    'Close Tab',
-    'Close Others',
-    'Close to the Right',
-    'Move tab left',
-    'Move tab right',
-    'Copy path',
-    'Reveal in file manager',
-  ]);
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/ }));
+    expect(
+        screen.getAllByRole('menuitem').map((item) => item.querySelector('span')?.textContent ?? item.textContent),
+    ).toEqual([
+        'Close Tab',
+        'Close Others',
+        'Close to the Right',
+        'Move tab left',
+        'Move tab right',
+        'Copy path',
+        'Reveal in file manager',
+    ]);
 });
 
 it('Move tab is unavailable at each strip edge', () => {
-  const first = documentFor('one', '/repo/one.md');
-  const second = documentFor('two', '/repo/two.md');
-  hydrate([first, second]);
-  renderTabs();
+    const first = documentFor('one', '/repo/one.md');
+    const second = documentFor('two', '/repo/two.md');
+    hydrate([first, second]);
+    renderTabs();
 
-  fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/ }));
-  expect(
-    screen.getByRole('menuitem', { name: 'Move tab left' }),
-  ).toBeDisabled();
-  fireEvent.keyDown(document, { key: 'Escape' });
-  fireEvent.contextMenu(screen.getByRole('tab', { name: /two\.md/ }));
-  expect(
-    screen.getByRole('menuitem', { name: 'Move tab right' }),
-  ).toBeDisabled();
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/ }));
+    expect(screen.getByRole('menuitem', { name: 'Move tab left' })).toBeDisabled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /two\.md/ }));
+    expect(screen.getByRole('menuitem', { name: 'Move tab right' })).toBeDisabled();
 });
 
 it('opens the tab Popup from the keyboard-focused tab bounds', () => {
-  const first = documentFor('one', '/repo/one.md');
-  const second = documentFor('two', '/repo/two.md');
-  hydrate([first, second]);
-  renderTabs();
+    const first = documentFor('one', '/repo/one.md');
+    const second = documentFor('two', '/repo/two.md');
+    hydrate([first, second]);
+    renderTabs();
 
-  const tab = screen.getByRole('tab', { name: /one\.md/u });
-  Object.defineProperty(tab, 'getBoundingClientRect', {
-    configurable: true,
-    value: (): DOMRect => new DOMRect(40, 20, 100, 30),
-  });
-  tab.focus();
-  fireEvent.keyDown(tab, { key: 'ContextMenu' });
+    const tab = screen.getByRole('tab', { name: /one\.md/u });
+    Object.defineProperty(tab, 'getBoundingClientRect', {
+        configurable: true,
+        value: (): DOMRect => new DOMRect(40, 20, 100, 30),
+    });
+    tab.focus();
+    fireEvent.keyDown(tab, { key: 'ContextMenu' });
 
-  const menu = screen.getByRole('menu', { name: 'Tab actions' });
-  expect(menu).toHaveAttribute('data-viewport-popup', 'tab-menu');
-  expect(menu).toHaveStyle({ left: '40px', top: '50px' });
-  expect(screen.getByRole('menuitem', { name: 'Close Tab' })).toHaveFocus();
+    const menu = screen.getByRole('menu', { name: 'Tab actions' });
+    expect(menu).toHaveAttribute('data-viewport-popup', 'tab-menu');
+    expect(menu).toHaveStyle({ left: '40px', top: '50px' });
+    expect(screen.getByRole('menuitem', { name: 'Close Tab' })).toHaveFocus();
 });
 
 it('Move tab waits for backend confirmation before projecting order', async () => {
-  const first = documentFor('one', '/repo/one.md');
-  const second = documentFor('two', '/repo/two.md');
-  hydrate([first, second]);
-  let resolveMove: (result: TabTransitionResult) => void = () => undefined;
-  const reorderDocument = jest.fn(
-    () =>
-      new Promise<TabTransitionResult>((resolve) => {
-        resolveMove = resolve;
-      }),
-  );
-  renderTabs({ reorderDocument });
+    const first = documentFor('one', '/repo/one.md');
+    const second = documentFor('two', '/repo/two.md');
+    hydrate([first, second]);
+    let resolveMove: (result: TabTransitionResult) => void = () => undefined;
+    const reorderDocument = jest.fn(
+        () =>
+            new Promise<TabTransitionResult>((resolve) => {
+                resolveMove = resolve;
+            }),
+    );
+    renderTabs({ reorderDocument });
 
-  fireEvent.contextMenu(screen.getByRole('tab', { name: /two\.md/ }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Move tab left' }));
-  expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
-  resolveMove({
-    status: 'reordered',
-    orderedDocumentIds: ['two', 'one'],
-    tabSetRevision: 5,
-  });
-  await waitFor(() =>
-    expect(reorderDocument).toHaveBeenCalledWith('two', 0, 4),
-  );
-  expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /two\.md/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Move tab left' }));
+    expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
+    resolveMove({
+        status: 'reordered',
+        orderedDocumentIds: ['two', 'one'],
+        tabSetRevision: 5,
+    });
+    await waitFor(() => expect(reorderDocument).toHaveBeenCalledWith('two', 0, 4));
+    expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
 });
 
 it('renders real dirty state and full canonical path tooltips', () => {
-  const document = documentFor('one', '/private/work/readme.md', true);
-  hydrate([document]);
-  renderTabs();
+    const document = documentFor('one', '/private/work/readme.md', true);
+    hydrate([document]);
+    renderTabs();
 
-  const tab = screen.getByRole('tab', { name: /readme\.md/ });
-  expect(tab).toHaveAttribute('title', '/private/work/readme.md');
-  expect(screen.getByLabelText('Modified')).toBeInTheDocument();
+    const tab = screen.getByRole('tab', { name: /readme\.md/ });
+    expect(tab).toHaveAttribute('title', '/private/work/readme.md');
+    expect(screen.getByLabelText('Modified')).toBeInTheDocument();
 });
 
 it('mutes the dirty dot only while the backend reports a write in flight', () => {
-  const document = {
-    ...documentFor('one', '/private/work/readme.md', true),
-    writeInFlight: true,
-  };
-  hydrate([document]);
-  renderTabs();
+    const document = {
+        ...documentFor('one', '/private/work/readme.md', true),
+        writeInFlight: true,
+    };
+    hydrate([document]);
+    renderTabs();
 
-  expect(screen.getByLabelText('Modified')).toHaveAttribute(
-    'data-write-in-flight',
-    'true',
-  );
+    expect(screen.getByLabelText('Modified')).toHaveAttribute('data-write-in-flight', 'true');
 });
 
 it('ExternalChangePrompt decisions and invalidation', async () => {
-  const first = documentFor('one', '/repo/one.md');
-  const second = documentFor('two', '/repo/two.md');
-  hydrate([first, second]);
-  const preview: ConflictPreview = {
-    contentRevision: 0,
-    detectedDiskVersion: {
-      exists: true,
-      mode: 0o644,
-      modifiedUnixNano: '4',
-      size: 12,
-    },
-    displayName: 'two.md',
-    documentId: 'two',
-    path: '/repo/two.md',
-    onDisk: {
-      byteCount: 6,
-      lineCount: 1,
-      text: 'disk\n',
-      truncated: false,
-    },
-    readOnly: false,
-    yours: {
-      byteCount: 6,
-      lineCount: 1,
-      text: 'mine\n',
-      truncated: false,
-    },
-  };
-  const authorizeKeepMine = jest.fn(async () => ({
-    status: 'authorized' as const,
-    documentId: 'two',
-    decisionToken: 'decision-1',
-  }));
-  const activateDocument = jest.fn(async () => ({
-    conflict: preview,
-    data: { content: 'mine\n', documentId: 'two', documentRevision: 0 },
-  }));
-  renderTabs(
-    { activateDocument },
-    {
-      authorizeKeepMine,
-      cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
-      checkExternalChanges: jest.fn(async () => ({
-        status: 'unchanged' as const,
-      })),
-      reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
-      skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
-    },
-  );
+    const first = documentFor('one', '/repo/one.md');
+    const second = documentFor('two', '/repo/two.md');
+    hydrate([first, second]);
+    const preview: ConflictPreview = {
+        contentRevision: 0,
+        detectedDiskVersion: {
+            exists: true,
+            mode: 0o644,
+            modifiedUnixNano: '4',
+            size: 12,
+        },
+        displayName: 'two.md',
+        documentId: 'two',
+        path: '/repo/two.md',
+        onDisk: {
+            byteCount: 6,
+            lineCount: 1,
+            text: 'disk\n',
+            truncated: false,
+        },
+        readOnly: false,
+        yours: {
+            byteCount: 6,
+            lineCount: 1,
+            text: 'mine\n',
+            truncated: false,
+        },
+    };
+    const authorizeKeepMine = jest.fn(async () => ({
+        status: 'authorized' as const,
+        documentId: 'two',
+        decisionToken: 'decision-1',
+    }));
+    const activateDocument = jest.fn(async () => ({
+        conflict: preview,
+        data: { content: 'mine\n', documentId: 'two', documentRevision: 0 },
+    }));
+    renderTabs(
+        { activateDocument },
+        {
+            authorizeKeepMine,
+            cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
+            checkExternalChanges: jest.fn(async () => ({
+                status: 'unchanged' as const,
+            })),
+            reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
+            skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
+        },
+    );
 
-  fireEvent.click(screen.getByRole('tab', { name: /two\.md/iu }));
-  await waitFor(() =>
-    expect(
-      screen.getByRole('dialog', { name: 'File changed on disk' }),
-    ).toBeVisible(),
-  );
-  expect(screen.getByRole('button', { name: 'Skip' })).toHaveFocus();
-  fireEvent.click(screen.getByRole('button', { name: 'Keep mine' }));
-  await waitFor(() =>
-    expect(authorizeKeepMine).toHaveBeenCalledWith(
-      'two',
-      0,
-      '/repo/two.md',
-      preview.detectedDiskVersion,
-    ),
-  );
+    fireEvent.click(screen.getByRole('tab', { name: /two\.md/iu }));
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'File changed on disk' })).toBeVisible());
+    expect(screen.getByRole('button', { name: 'Skip' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep mine' }));
+    await waitFor(() =>
+        expect(authorizeKeepMine).toHaveBeenCalledWith('two', 0, '/repo/two.md', preview.detectedDiskVersion),
+    );
 });
 
 it('renders bounded conflict content even when both retained texts compare equal', async () => {
-  const first = documentFor('one', '/repo/one.md');
-  const second = documentFor('two', '/repo/two.md');
-  const preview: ConflictPreview = {
-    contentRevision: 0,
-    detectedDiskVersion: {
-      exists: true,
-      mode: 0o644,
-      modifiedUnixNano: '4',
-      size: 12,
-    },
-    displayName: 'two.md',
-    documentId: 'two',
-    onDisk: {
-      byteCount: 5_500,
-      lineCount: 13,
-      text: 'same retained text',
-      truncated: true,
-    },
-    path: '/repo/two.md',
-    readOnly: false,
-    yours: {
-      byteCount: 5_500,
-      lineCount: 13,
-      text: 'same retained text',
-      truncated: true,
-    },
-  };
-  hydrate([first, second]);
-  renderTabs({
-    activateDocument: jest.fn(async () => ({
-      conflict: preview,
-      data: { content: 'mine\n', documentId: 'two', documentRevision: 0 },
-    })),
-  });
+    const first = documentFor('one', '/repo/one.md');
+    const second = documentFor('two', '/repo/two.md');
+    const preview: ConflictPreview = {
+        contentRevision: 0,
+        detectedDiskVersion: {
+            exists: true,
+            mode: 0o644,
+            modifiedUnixNano: '4',
+            size: 12,
+        },
+        displayName: 'two.md',
+        documentId: 'two',
+        onDisk: {
+            byteCount: 5_500,
+            lineCount: 13,
+            text: 'same retained text',
+            truncated: true,
+        },
+        path: '/repo/two.md',
+        readOnly: false,
+        yours: {
+            byteCount: 5_500,
+            lineCount: 13,
+            text: 'same retained text',
+            truncated: true,
+        },
+    };
+    hydrate([first, second]);
+    renderTabs({
+        activateDocument: jest.fn(async () => ({
+            conflict: preview,
+            data: { content: 'mine\n', documentId: 'two', documentRevision: 0 },
+        })),
+    });
 
-  fireEvent.click(screen.getByRole('tab', { name: /two\.md/iu }));
-  await waitFor(() =>
-    expect(
-      screen.getByRole('dialog', { name: 'File changed on disk' }),
-    ).toBeVisible(),
-  );
-  expect(
-    document.querySelector('[data-conflict-truncated="onDisk"]'),
-  ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /two\.md/iu }));
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'File changed on disk' })).toBeVisible());
+    expect(document.querySelector('[data-conflict-truncated="onDisk"]')).toBeInTheDocument();
 });
 
 /*
@@ -549,35 +463,28 @@ it('renders bounded conflict content even when both retained texts compare equal
  * strip (exactly one `0`) rather than as a property of the selected tab alone.
  */
 it('keeps exactly one tab in the roving tabindex and moves it with the selection', () => {
-  hydrate(
-    [
-      documentFor('one', '/repo/one.md'),
-      documentFor('two', '/repo/two.md'),
-      documentFor('three', '/repo/three.md'),
-    ],
-    'two',
-  );
-  renderTabs();
+    hydrate(
+        [
+            documentFor('one', '/repo/one.md'),
+            documentFor('two', '/repo/two.md'),
+            documentFor('three', '/repo/three.md'),
+        ],
+        'two',
+    );
+    renderTabs();
 
-  const tabIndexes = (): (string | null)[] =>
-    screen.getAllByRole('tab').map((tab) => tab.getAttribute('tabindex'));
+    const tabIndexes = (): (string | null)[] => screen.getAllByRole('tab').map((tab) => tab.getAttribute('tabindex'));
 
-  expect(tabIndexes()).toEqual(['-1', '0', '-1']);
-  expect(tabIndexes().filter((value) => value === '0')).toHaveLength(1);
-  expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+    expect(tabIndexes()).toEqual(['-1', '0', '-1']);
+    expect(tabIndexes().filter((value) => value === '0')).toHaveLength(1);
+    expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveAttribute('aria-selected', 'true');
 
-  act((): void => {
-    store.dispatch(applyStatePatch({ revision: 2, activeDocumentId: 'three' }));
-  });
+    act((): void => {
+        store.dispatch(applyStatePatch({ revision: 2, activeDocumentId: 'three' }));
+    });
 
-  expect(tabIndexes()).toEqual(['-1', '-1', '0']);
-  expect(screen.getByRole('tab', { name: /three\.md/u })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+    expect(tabIndexes()).toEqual(['-1', '-1', '0']);
+    expect(screen.getByRole('tab', { name: /three\.md/u })).toHaveAttribute('aria-selected', 'true');
 });
 
 /*
@@ -585,25 +492,25 @@ it('keeps exactly one tab in the roving tabindex and moves it with the selection
  * DOM focus only; they deliberately do not activate, so no backend command is issued.
  */
 it('moves tab-strip focus to the first and last tab with Home and End', () => {
-  hydrate(
-    [
-      documentFor('one', '/repo/one.md'),
-      documentFor('two', '/repo/two.md'),
-      documentFor('three', '/repo/three.md'),
-    ],
-    'two',
-  );
-  const activateDocument = jest.fn(async () => ({}));
-  renderTabs({ activateDocument });
+    hydrate(
+        [
+            documentFor('one', '/repo/one.md'),
+            documentFor('two', '/repo/two.md'),
+            documentFor('three', '/repo/three.md'),
+        ],
+        'two',
+    );
+    const activateDocument = jest.fn(async () => ({}));
+    renderTabs({ activateDocument });
 
-  const tablist = screen.getByRole('tablist');
-  fireEvent.keyDown(tablist, { key: 'End' });
-  expect(screen.getByRole('tab', { name: /three\.md/u })).toHaveFocus();
+    const tablist = screen.getByRole('tablist');
+    fireEvent.keyDown(tablist, { key: 'End' });
+    expect(screen.getByRole('tab', { name: /three\.md/u })).toHaveFocus();
 
-  fireEvent.keyDown(tablist, { key: 'Home' });
-  expect(screen.getByRole('tab', { name: /one\.md/u })).toHaveFocus();
+    fireEvent.keyDown(tablist, { key: 'Home' });
+    expect(screen.getByRole('tab', { name: /one\.md/u })).toHaveFocus();
 
-  expect(activateDocument).not.toHaveBeenCalled();
+    expect(activateDocument).not.toHaveBeenCalled();
 });
 
 /*
@@ -612,47 +519,41 @@ it('moves tab-strip focus to the first and last tab with Home and End', () => {
  * below, arrow navigation does not wrap.
  */
 it('activates the adjacent tab with ArrowRight and ArrowLeft and clamps at both edges', async () => {
-  hydrate(
-    [
-      documentFor('one', '/repo/one.md'),
-      documentFor('two', '/repo/two.md'),
-      documentFor('three', '/repo/three.md'),
-    ],
-    'one',
-  );
-  const activateDocument = jest.fn(async () => ({}));
-  renderTabs({ activateDocument });
+    hydrate(
+        [
+            documentFor('one', '/repo/one.md'),
+            documentFor('two', '/repo/two.md'),
+            documentFor('three', '/repo/three.md'),
+        ],
+        'one',
+    );
+    const activateDocument = jest.fn(async () => ({}));
+    renderTabs({ activateDocument });
 
-  const tablist = screen.getByRole('tablist');
-  fireEvent.keyDown(tablist, { key: 'ArrowRight' });
-  await waitFor(() => expect(activateDocument).toHaveBeenCalledWith('two', 4));
-  /*
-   * Focus moves with the arrow, not just selection — the WAI-ARIA tabs
-   * pattern. Activating alone left the caret on a tab the roving tabIndex had
-   * just set to -1, so the next Tab press escaped from an invisible place.
-   */
-  expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveFocus();
+    const tablist = screen.getByRole('tablist');
+    fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+    await waitFor(() => expect(activateDocument).toHaveBeenCalledWith('two', 4));
+    /*
+     * Focus moves with the arrow, not just selection — the WAI-ARIA tabs
+     * pattern. Activating alone left the caret on a tab the roving tabIndex had
+     * just set to -1, so the next Tab press escaped from an invisible place.
+     */
+    expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveFocus();
 
-  fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
-  await waitFor(() =>
-    expect(activateDocument).toHaveBeenNthCalledWith(2, 'one', 4),
-  );
-  expect(screen.getByRole('tab', { name: /one\.md/u })).toHaveFocus();
+    fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+    await waitFor(() => expect(activateDocument).toHaveBeenNthCalledWith(2, 'one', 4));
+    expect(screen.getByRole('tab', { name: /one\.md/u })).toHaveFocus();
 
-  // At the first tab ArrowLeft clamps onto the same document rather than
-  // wrapping round to the last one.
-  fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
-  await waitFor(() =>
-    expect(activateDocument).toHaveBeenNthCalledWith(3, 'one', 4),
-  );
+    // At the first tab ArrowLeft clamps onto the same document rather than
+    // wrapping round to the last one.
+    fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+    await waitFor(() => expect(activateDocument).toHaveBeenNthCalledWith(3, 'one', 4));
 
-  act((): void => {
-    store.dispatch(applyStatePatch({ revision: 2, activeDocumentId: 'three' }));
-  });
-  fireEvent.keyDown(tablist, { key: 'ArrowRight' });
-  await waitFor(() =>
-    expect(activateDocument).toHaveBeenNthCalledWith(4, 'three', 4),
-  );
+    act((): void => {
+        store.dispatch(applyStatePatch({ revision: 2, activeDocumentId: 'three' }));
+    });
+    fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+    await waitFor(() => expect(activateDocument).toHaveBeenNthCalledWith(4, 'three', 4));
 });
 
 /*
@@ -662,25 +563,23 @@ it('activates the adjacent tab with ArrowRight and ArrowLeft and clamps at both 
  * that distinguishes them from arrow navigation.
  */
 it('cycles the active tab with the next-tab and previous-tab shortcuts', async () => {
-  hydrate(
-    [
-      documentFor('one', '/repo/one.md'),
-      documentFor('two', '/repo/two.md'),
-      documentFor('three', '/repo/three.md'),
-    ],
-    'one',
-  );
-  const activateDocument = jest.fn(async () => ({}));
-  renderTabs({ activateDocument });
+    hydrate(
+        [
+            documentFor('one', '/repo/one.md'),
+            documentFor('two', '/repo/two.md'),
+            documentFor('three', '/repo/three.md'),
+        ],
+        'one',
+    );
+    const activateDocument = jest.fn(async () => ({}));
+    renderTabs({ activateDocument });
 
-  fireEvent.keyDown(document, { key: 'PageDown', ctrlKey: true });
-  await waitFor(() => expect(activateDocument).toHaveBeenCalledWith('two', 4));
+    fireEvent.keyDown(document, { key: 'PageDown', ctrlKey: true });
+    await waitFor(() => expect(activateDocument).toHaveBeenCalledWith('two', 4));
 
-  // previous-tab from the first tab wraps to the last.
-  fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true });
-  await waitFor(() =>
-    expect(activateDocument).toHaveBeenNthCalledWith(2, 'three', 4),
-  );
+    // previous-tab from the first tab wraps to the last.
+    fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true });
+    await waitFor(() => expect(activateDocument).toHaveBeenNthCalledWith(2, 'three', 4));
 });
 
 /*
@@ -689,32 +588,21 @@ it('cycles the active tab with the next-tab and previous-tab shortcuts', async (
  * only the safe label. The menu closes and focus returns to the originating tab.
  */
 it('copies the canonical path through the tab menu and announces the safe filename', async () => {
-  hydrate([
-    documentFor('one', '/repo/one.md'),
-    documentFor('two', '/repo/two.md'),
-  ]);
-  store.dispatch(resetNotifications());
-  const copyPath = jest.fn(async (): Promise<PathCommandResult> => ({
-    status: 'copied',
-  }));
-  renderTabs({ copyPath });
+    hydrate([documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')]);
+    store.dispatch(resetNotifications());
+    const copyPath = jest.fn(async (): Promise<PathCommandResult> => ({
+        status: 'copied',
+    }));
+    renderTabs({ copyPath });
 
-  fireEvent.contextMenu(screen.getByRole('tab', { name: /two\.md/u }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Copy path' }));
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /two\.md/u }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy path' }));
 
-  await waitFor(() => expect(copyPath).toHaveBeenCalledWith('two'));
-  await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Copied path for two.md',
-    ),
-  );
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('menu', { name: 'Tab actions' }),
-    ).not.toBeInTheDocument(),
-  );
-  expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveFocus();
-  expect(store.getState().notifications.items).toHaveLength(0);
+    await waitFor(() => expect(copyPath).toHaveBeenCalledWith('two'));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Copied path for two.md'));
+    await waitFor(() => expect(screen.queryByRole('menu', { name: 'Tab actions' })).not.toBeInTheDocument());
+    expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveFocus();
+    expect(store.getState().notifications.items).toHaveLength(0);
 });
 
 /*
@@ -722,44 +610,42 @@ it('copies the canonical path through the tab menu and announces the safe filena
  * `system-command-failure` naming only the safe basename and offering Retry.
  */
 it('reports a Copy path clipboard failure as system-command-failure with Retry', async () => {
-  hydrate([documentFor('one', '/repo/one.md')]);
-  store.dispatch(resetNotifications());
-  const copyPath = jest.fn(async (): Promise<PathCommandResult> => ({
-    status: 'refused',
-    error: {
-      category: 'system-command-failure',
-      safeSubject: 'one.md',
-      message: 'The path could not be copied.',
-      remediations: ['Retry'],
-      documentId: 'one',
-      dedupKey: 'copy-path:one',
-    },
-  }));
-  renderTabs({ copyPath });
-
-  fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/u }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Copy path' }));
-
-  await waitFor(() =>
-    expect(store.getState().notifications.items).toHaveLength(1),
-  );
-  expect(store.getState().notifications.items[0]).toEqual(
-    expect.objectContaining({
-      code: 'system-command-failure',
-      remediations: [
-        {
-          action: 'retry',
-          documentId: 'one',
-          intent: 'copy-path',
-          labelKey: 'action.retry.label',
+    hydrate([documentFor('one', '/repo/one.md')]);
+    store.dispatch(resetNotifications());
+    const copyPath = jest.fn(async (): Promise<PathCommandResult> => ({
+        status: 'refused',
+        error: {
+            category: 'system-command-failure',
+            safeSubject: 'one.md',
+            message: 'The path could not be copied.',
+            remediations: ['Retry'],
+            documentId: 'one',
+            dedupKey: 'copy-path:one',
         },
-      ],
-      severity: 'error',
-      subject: 'copy-path:one',
-      title: 'one.md',
-    }),
-  );
-  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    }));
+    renderTabs({ copyPath });
+
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/u }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy path' }));
+
+    await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
+    expect(store.getState().notifications.items[0]).toEqual(
+        expect.objectContaining({
+            code: 'system-command-failure',
+            remediations: [
+                {
+                    action: 'retry',
+                    documentId: 'one',
+                    intent: 'copy-path',
+                    labelKey: 'action.retry.label',
+                },
+            ],
+            severity: 'error',
+            subject: 'copy-path:one',
+            title: 'one.md',
+        }),
+    );
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 });
 
 /*
@@ -767,26 +653,20 @@ it('reports a Copy path clipboard failure as system-command-failure with Retry',
  * toast, and Reveal is not announced in the live region either.
  */
 it('invokes Reveal in file manager and reports nothing on OS acceptance', async () => {
-  hydrate([documentFor('one', '/repo/one.md')]);
-  store.dispatch(resetNotifications());
-  const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
-    status: 'revealed',
-  }));
-  renderTabs({ revealInFileManager });
+    hydrate([documentFor('one', '/repo/one.md')]);
+    store.dispatch(resetNotifications());
+    const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
+        status: 'revealed',
+    }));
+    renderTabs({ revealInFileManager });
 
-  fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/u }));
-  fireEvent.click(
-    screen.getByRole('menuitem', { name: 'Reveal in file manager' }),
-  );
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/u }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reveal in file manager' }));
 
-  await waitFor(() => expect(revealInFileManager).toHaveBeenCalledWith('one'));
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('menu', { name: 'Tab actions' }),
-    ).not.toBeInTheDocument(),
-  );
-  expect(store.getState().notifications.items).toHaveLength(0);
-  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    await waitFor(() => expect(revealInFileManager).toHaveBeenCalledWith('one'));
+    await waitFor(() => expect(screen.queryByRole('menu', { name: 'Tab actions' })).not.toBeInTheDocument());
+    expect(store.getState().notifications.items).toHaveLength(0);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 });
 
 /*
@@ -800,51 +680,47 @@ it('invokes Reveal in file manager and reports nothing on OS acceptance', async 
  */
 // surface reports it).
 it('offers both Retry and Copy path remediations when Reveal fails', async () => {
-  hydrate([documentFor('one', '/repo/one.md')]);
-  store.dispatch(resetNotifications());
-  const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
-    status: 'refused',
-    error: {
-      category: 'system-command-failure',
-      safeSubject: 'one.md',
-      message: 'The file manager could not reveal the document.',
-      remediations: ['Retry', 'Copy path'],
-      documentId: 'one',
-      dedupKey: 'reveal:one',
-    },
-  }));
-  renderTabs({ revealInFileManager });
-
-  fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/u }));
-  fireEvent.click(
-    screen.getByRole('menuitem', { name: 'Reveal in file manager' }),
-  );
-
-  await waitFor(() =>
-    expect(store.getState().notifications.items).toHaveLength(1),
-  );
-  expect(store.getState().notifications.items[0]).toEqual(
-    expect.objectContaining({
-      code: 'system-command-failure',
-      remediations: [
-        {
-          action: 'retry',
-          documentId: 'one',
-          intent: 'reveal',
-          labelKey: 'action.retry.label',
+    hydrate([documentFor('one', '/repo/one.md')]);
+    store.dispatch(resetNotifications());
+    const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
+        status: 'refused',
+        error: {
+            category: 'system-command-failure',
+            safeSubject: 'one.md',
+            message: 'The file manager could not reveal the document.',
+            remediations: ['Retry', 'Copy path'],
+            documentId: 'one',
+            dedupKey: 'reveal:one',
         },
-        {
-          action: 'copy-path',
-          documentId: 'one',
-          intent: 'copy-path',
-          labelKey: 'action.copy-path.label',
-        },
-      ],
-      severity: 'error',
-      subject: 'reveal:one',
-      title: 'one.md',
-    }),
-  );
+    }));
+    renderTabs({ revealInFileManager });
+
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/u }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reveal in file manager' }));
+
+    await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
+    expect(store.getState().notifications.items[0]).toEqual(
+        expect.objectContaining({
+            code: 'system-command-failure',
+            remediations: [
+                {
+                    action: 'retry',
+                    documentId: 'one',
+                    intent: 'reveal',
+                    labelKey: 'action.retry.label',
+                },
+                {
+                    action: 'copy-path',
+                    documentId: 'one',
+                    intent: 'copy-path',
+                    labelKey: 'action.copy-path.label',
+                },
+            ],
+            severity: 'error',
+            subject: 'reveal:one',
+            title: 'one.md',
+        }),
+    );
 });
 
 /*
@@ -855,44 +731,40 @@ it('offers both Retry and Copy path remediations when Reveal fails', async () =>
  * authority; the rendered menu is asserted to agree with it.
  */
 it('marks Reveal unavailable for a detached document while Copy path stays available', () => {
-  const detached = {
-    ...documentFor('one', '/repo/one.md'),
-    detached: true,
-  };
-  hydrate([detached, documentFor('two', '/repo/two.md')]);
-  const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
-    status: 'revealed',
-  }));
-  renderTabs({ revealInFileManager });
+    const detached = {
+        ...documentFor('one', '/repo/one.md'),
+        detached: true,
+    };
+    hydrate([detached, documentFor('two', '/repo/two.md')]);
+    const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
+        status: 'revealed',
+    }));
+    renderTabs({ revealInFileManager });
 
-  const projection = {
-    activeDocumentId: 'one',
-    documents: { one: { detached: true, path: '/repo/one.md' } },
-    orderedDocumentIds: ['one', 'two'],
-  };
-  expect(
-    getActionAvailability('reveal-in-file-manager', {
-      documentId: 'one',
-      projectedState: projection,
-    }).kind,
-  ).toBe('unavailable');
-  expect(
-    getActionAvailability('copy-path', {
-      documentId: 'one',
-      projectedState: projection,
-    }).kind,
-  ).toBe('available');
+    const projection = {
+        activeDocumentId: 'one',
+        documents: { one: { detached: true, path: '/repo/one.md' } },
+        orderedDocumentIds: ['one', 'two'],
+    };
+    expect(
+        getActionAvailability('reveal-in-file-manager', {
+            documentId: 'one',
+            projectedState: projection,
+        }).kind,
+    ).toBe('unavailable');
+    expect(
+        getActionAvailability('copy-path', {
+            documentId: 'one',
+            projectedState: projection,
+        }).kind,
+    ).toBe('available');
 
-  fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/u }));
-  expect(
-    screen.getByRole('menuitem', { name: 'Reveal in file manager' }),
-  ).toBeDisabled();
-  expect(screen.getByRole('menuitem', { name: 'Copy path' })).toBeEnabled();
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/u }));
+    expect(screen.getByRole('menuitem', { name: 'Reveal in file manager' })).toBeDisabled();
+    expect(screen.getByRole('menuitem', { name: 'Copy path' })).toBeEnabled();
 
-  fireEvent.click(
-    screen.getByRole('menuitem', { name: 'Reveal in file manager' }),
-  );
-  expect(revealInFileManager).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reveal in file manager' }));
+    expect(revealInFileManager).not.toHaveBeenCalled();
 });
 
 /*
@@ -901,55 +773,46 @@ it('marks Reveal unavailable for a detached document while Copy path stays avail
  * the tab must relabel from the patch alone.
  */
 it('relabels the tab from the adopted path after a committed Save As', () => {
-  hydrate([documentFor('one', '/repo/draft.md')]);
-  renderTabs();
+    hydrate([documentFor('one', '/repo/draft.md')]);
+    renderTabs();
 
-  expect(screen.getByRole('tab', { name: /draft\.md/u })).toHaveAttribute(
-    'title',
-    '/repo/draft.md',
-  );
+    expect(screen.getByRole('tab', { name: /draft\.md/u })).toHaveAttribute('title', '/repo/draft.md');
 
-  act((): void => {
-    store.dispatch(
-      applyStatePatch({
-        revision: 2,
-        documents: {
-          upsert: {
-            one: {
-              ...documentFor('one', '/repo/release-notes.md'),
-              status: 'saved',
-            },
-          },
-        },
-      }),
-    );
-  });
+    act((): void => {
+        store.dispatch(
+            applyStatePatch({
+                revision: 2,
+                documents: {
+                    upsert: {
+                        one: {
+                            ...documentFor('one', '/repo/release-notes.md'),
+                            status: 'saved',
+                        },
+                    },
+                },
+            }),
+        );
+    });
 
-  expect(
-    screen.getByRole('tab', { name: /release-notes\.md/u }),
-  ).toHaveAttribute('title', '/repo/release-notes.md');
-  expect(screen.queryByRole('tab', { name: /draft\.md/u })).toBeNull();
+    expect(screen.getByRole('tab', { name: /release-notes\.md/u })).toHaveAttribute('title', '/repo/release-notes.md');
+    expect(screen.queryByRole('tab', { name: /draft\.md/u })).toBeNull();
 });
 
 it('queued conflict tabs render blocked-by-conflict', () => {
-  const first = {
-    ...documentFor('one', '/repo/one.md'),
-    conflictBlocked: true,
-  };
-  const second = {
-    ...documentFor('two', '/repo/two.md'),
-    conflictBlocked: true,
-  };
-  hydrate([first, second]);
-  renderTabs();
+    const first = {
+        ...documentFor('one', '/repo/one.md'),
+        conflictBlocked: true,
+    };
+    const second = {
+        ...documentFor('two', '/repo/two.md'),
+        conflictBlocked: true,
+    };
+    hydrate([first, second]);
+    renderTabs();
 
-  expect(screen.getAllByText('Blocked by conflict')).toHaveLength(2);
-  expect(
-    screen.getByRole('tab', { name: /one\.md.*Blocked by conflict/iu }),
-  ).toBeVisible();
-  expect(
-    screen.getByRole('tab', { name: /two\.md.*Blocked by conflict/iu }),
-  ).toBeVisible();
+    expect(screen.getAllByText('Blocked by conflict')).toHaveLength(2);
+    expect(screen.getByRole('tab', { name: /one\.md.*Blocked by conflict/iu })).toBeVisible();
+    expect(screen.getByRole('tab', { name: /two\.md.*Blocked by conflict/iu })).toBeVisible();
 });
 
 /*
@@ -960,32 +823,30 @@ it('queued conflict tabs render blocked-by-conflict', () => {
  * user instead of discarding the result, which is what it did until now.
  */
 it('surfaces the 40-document refusal raised by the new-tab control', async () => {
-  hydrate([documentFor('one', '/repo/one.md')]);
-  store.dispatch(resetNotifications());
-  const newDocument = jest.fn(async (): Promise<DocumentTransitionResult> => ({
-    error: {
-      category: 'capacity-limit',
-      safeSubject: 'Untitled',
-      message: 'The window already contains 40 documents.',
-      remediations: ['Cancel'],
-      dedupKey: 'capacity-limit:new',
-    },
-  }));
-  renderTabs({ newDocument });
+    hydrate([documentFor('one', '/repo/one.md')]);
+    store.dispatch(resetNotifications());
+    const newDocument = jest.fn(async (): Promise<DocumentTransitionResult> => ({
+        error: {
+            category: 'capacity-limit',
+            safeSubject: 'Untitled',
+            message: 'The window already contains 40 documents.',
+            remediations: ['Cancel'],
+            dedupKey: 'capacity-limit:new',
+        },
+    }));
+    renderTabs({ newDocument });
 
-  fireEvent.click(screen.getByRole('button', { name: 'New tab' }));
+    fireEvent.click(screen.getByRole('button', { name: 'New tab' }));
 
-  await waitFor(() =>
-    expect(store.getState().notifications.items).toHaveLength(1),
-  );
-  expect(store.getState().notifications.items[0]).toEqual(
-    expect.objectContaining({
-      code: 'capacity-limit',
-      message: 'The window already contains 40 documents.',
-      severity: 'error',
-      subject: 'capacity-limit:new',
-    }),
-  );
+    await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
+    expect(store.getState().notifications.items[0]).toEqual(
+        expect.objectContaining({
+            code: 'capacity-limit',
+            message: 'The window already contains 40 documents.',
+            severity: 'error',
+            subject: 'capacity-limit:new',
+        }),
+    );
 });
 
 /*
@@ -999,32 +860,26 @@ it('surfaces the 40-document refusal raised by the new-tab control', async () =>
  */
 // contents, order and edge unavailability are proven elsewhere in this file).
 it('waits for the application to regain foreground focus before restoring the tab', async () => {
-  hydrate([documentFor('one', '/repo/one.md')]);
-  store.dispatch(resetNotifications());
-  const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
-    status: 'revealed',
-  }));
-  renderTabs({ revealInFileManager }, quietConflictAdapter());
+    hydrate([documentFor('one', '/repo/one.md')]);
+    store.dispatch(resetNotifications());
+    const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
+        status: 'revealed',
+    }));
+    renderTabs({ revealInFileManager }, quietConflictAdapter());
 
-  const tab = screen.getByRole('tab', { name: /one\.md/u });
-  fireEvent.contextMenu(tab);
-  fireEvent.click(
-    screen.getByRole('menuitem', { name: 'Reveal in file manager' }),
-  );
+    const tab = screen.getByRole('tab', { name: /one\.md/u });
+    fireEvent.contextMenu(tab);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reveal in file manager' }));
 
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('menu', { name: 'Tab actions' }),
-    ).not.toBeInTheDocument(),
-  );
-  // The file manager may own the foreground here. Grabbing focus back now is
-  // exactly what the clause forbids.
-  expect(tab).not.toHaveFocus();
+    await waitFor(() => expect(screen.queryByRole('menu', { name: 'Tab actions' })).not.toBeInTheDocument());
+    // The file manager may own the foreground here. Grabbing focus back now is
+    // exactly what the clause forbids.
+    expect(tab).not.toHaveFocus();
 
-  act((): void => {
-    window.dispatchEvent(new Event('focus'));
-  });
-  expect(tab).toHaveFocus();
+    act((): void => {
+        window.dispatchEvent(new Event('focus'));
+    });
+    expect(tab).toHaveFocus();
 });
 
 /*
@@ -1033,28 +888,26 @@ it('waits for the application to regain foreground focus before restoring the ta
  * focus on nothing until the user alt-tabbed away and back.
  */
 it('restores focus immediately when Reveal is refused, because nothing took the foreground', async () => {
-  hydrate([documentFor('one', '/repo/one.md')]);
-  store.dispatch(resetNotifications());
-  const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
-    status: 'refused',
-    error: {
-      category: 'system-command-failure',
-      safeSubject: 'one.md',
-      message: 'The file manager could not reveal the document.',
-      remediations: ['Retry', 'Copy path'],
-      documentId: 'one',
-      dedupKey: 'reveal:one',
-    },
-  }));
-  renderTabs({ revealInFileManager }, quietConflictAdapter());
+    hydrate([documentFor('one', '/repo/one.md')]);
+    store.dispatch(resetNotifications());
+    const revealInFileManager = jest.fn(async (): Promise<PathCommandResult> => ({
+        status: 'refused',
+        error: {
+            category: 'system-command-failure',
+            safeSubject: 'one.md',
+            message: 'The file manager could not reveal the document.',
+            remediations: ['Retry', 'Copy path'],
+            documentId: 'one',
+            dedupKey: 'reveal:one',
+        },
+    }));
+    renderTabs({ revealInFileManager }, quietConflictAdapter());
 
-  const tab = screen.getByRole('tab', { name: /one\.md/u });
-  fireEvent.contextMenu(tab);
-  fireEvent.click(
-    screen.getByRole('menuitem', { name: 'Reveal in file manager' }),
-  );
+    const tab = screen.getByRole('tab', { name: /one\.md/u });
+    fireEvent.contextMenu(tab);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reveal in file manager' }));
 
-  await waitFor(() => expect(tab).toHaveFocus());
+    await waitFor(() => expect(tab).toHaveFocus());
 });
 
 /*
@@ -1064,14 +917,11 @@ it('restores focus immediately when Reveal is refused, because nothing took the 
  * browser raises for any non-primary button.
  */
 function auxClick(element: HTMLElement, button: number): void {
-  fireEvent(
-    element,
-    new MouseEvent('auxclick', { bubbles: true, button, cancelable: true }),
-  );
+    fireEvent(element, new MouseEvent('auxclick', { bubbles: true, button, cancelable: true }));
 }
 
 function middleClick(element: HTMLElement): void {
-  auxClick(element, 1);
+    auxClick(element, 1);
 }
 
 /*
@@ -1083,56 +933,51 @@ function middleClick(element: HTMLElement): void {
  * dirty-close prompt the shell installs on `onCloseDocument`.
  */
 it('closes the targeted tab on middle-click, through the shell close path', async () => {
-  const first = documentFor('one', '/repo/one.md');
-  const second = documentFor('two', '/repo/two.md');
-  hydrate([first, second], 'two');
-  const onCloseDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
-    status: 'closed',
-    activeDocumentId: 'two',
-    orderedDocumentIds: ['two'],
-  }));
-  const adapterClose = jest.fn(async (): Promise<TabTransitionResult> => ({
-    status: 'closed',
-    activeDocumentId: 'two',
-    orderedDocumentIds: ['two'],
-  }));
-  render(
-    <Provider store={store}>
-      <DocumentTabs
-        adapter={{ closeDocument: adapterClose }}
-        onCloseDocument={onCloseDocument}
-      />
-    </Provider>,
-  );
+    const first = documentFor('one', '/repo/one.md');
+    const second = documentFor('two', '/repo/two.md');
+    hydrate([first, second], 'two');
+    const onCloseDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'closed',
+        activeDocumentId: 'two',
+        orderedDocumentIds: ['two'],
+    }));
+    const adapterClose = jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'closed',
+        activeDocumentId: 'two',
+        orderedDocumentIds: ['two'],
+    }));
+    render(
+        <Provider store={store}>
+            <DocumentTabs adapter={{ closeDocument: adapterClose }} onCloseDocument={onCloseDocument} />
+        </Provider>,
+    );
 
-  middleClick(screen.getByRole('tab', { name: /one\.md/ }));
+    middleClick(screen.getByRole('tab', { name: /one\.md/ }));
 
-  await waitFor(() =>
-    expect(onCloseDocument).toHaveBeenCalledWith('one', 4, 'single', ['one']),
-  );
-  // The shell funnel owns the prompt, so the adapter must not be reached
-  // behind its back.
-  expect(adapterClose).not.toHaveBeenCalled();
+    await waitFor(() => expect(onCloseDocument).toHaveBeenCalledWith('one', 4, 'single', ['one']));
+    // The shell funnel owns the prompt, so the adapter must not be reached
+    // behind its back.
+    expect(adapterClose).not.toHaveBeenCalled();
 });
 
 // auxiliary button closes a tab)
 it('leaves the tab open for a right-button auxiliary click', () => {
-  const first = documentFor('one', '/repo/one.md');
-  hydrate([first]);
-  const onCloseDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
-    status: 'closed',
-    activeDocumentId: undefined,
-    orderedDocumentIds: [],
-  }));
-  render(
-    <Provider store={store}>
-      <DocumentTabs adapter={{}} onCloseDocument={onCloseDocument} />
-    </Provider>,
-  );
+    const first = documentFor('one', '/repo/one.md');
+    hydrate([first]);
+    const onCloseDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'closed',
+        activeDocumentId: undefined,
+        orderedDocumentIds: [],
+    }));
+    render(
+        <Provider store={store}>
+            <DocumentTabs adapter={{}} onCloseDocument={onCloseDocument} />
+        </Provider>,
+    );
 
-  auxClick(screen.getByRole('tab', { name: /one\.md/ }), 2);
+    auxClick(screen.getByRole('tab', { name: /one\.md/ }), 2);
 
-  expect(onCloseDocument).not.toHaveBeenCalled();
+    expect(onCloseDocument).not.toHaveBeenCalled();
 });
 
 /*
@@ -1143,41 +988,41 @@ it('leaves the tab open for a right-button auxiliary click', () => {
  * transparent to the tree, which means `presentation` or its synonym `none`.
  */
 function ownedByTablist(tab: HTMLElement, tablist: HTMLElement): boolean {
-  let node: HTMLElement | null = tab.parentElement;
-  while (node !== null && node !== tablist) {
-    const role = node.getAttribute('role');
-    if (role !== 'presentation' && role !== 'none') return false;
-    node = node.parentElement;
-  }
-  return node === tablist;
+    let node: HTMLElement | null = tab.parentElement;
+    while (node !== null && node !== tablist) {
+        const role = node.getAttribute('role');
+        if (role !== 'presentation' && role !== 'none') return false;
+        node = node.parentElement;
+    }
+    return node === tablist;
 }
 
 // association only)
 it('owns every tab from the tablist and points it at the editor panel', () => {
-  hydrate(
-    [
-      documentFor('one', '/repo/one.md'),
-      documentFor('two', '/repo/two.md'),
-      documentFor('three', '/repo/three.md'),
-    ],
-    'two',
-  );
-  renderTabs();
+    hydrate(
+        [
+            documentFor('one', '/repo/one.md'),
+            documentFor('two', '/repo/two.md'),
+            documentFor('three', '/repo/three.md'),
+        ],
+        'two',
+    );
+    renderTabs();
 
-  const tablist = screen.getByRole('tablist');
-  const tabs = screen.getAllByRole('tab');
-  expect(tabs).toHaveLength(3);
-  expect(
-    tabs.map((tab) => ({
-      id: tab.getAttribute('id'),
-      owned: ownedByTablist(tab, tablist),
-      controls: tab.getAttribute('aria-controls'),
-    })),
-  ).toEqual([
-    { id: 'tab-one', owned: true, controls: EDITOR_TABPANEL_ID },
-    { id: 'tab-two', owned: true, controls: EDITOR_TABPANEL_ID },
-    { id: 'tab-three', owned: true, controls: EDITOR_TABPANEL_ID },
-  ]);
+    const tablist = screen.getByRole('tablist');
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs).toHaveLength(3);
+    expect(
+        tabs.map((tab) => ({
+            id: tab.getAttribute('id'),
+            owned: ownedByTablist(tab, tablist),
+            controls: tab.getAttribute('aria-controls'),
+        })),
+    ).toEqual([
+        { id: 'tab-one', owned: true, controls: EDITOR_TABPANEL_ID },
+        { id: 'tab-two', owned: true, controls: EDITOR_TABPANEL_ID },
+        { id: 'tab-three', owned: true, controls: EDITOR_TABPANEL_ID },
+    ]);
 });
 
 /*
@@ -1188,33 +1033,32 @@ it('owns every tab from the tablist and points it at the editor panel', () => {
  */
 // tabIndex and Home/End/Arrow keyboard model intact)
 it('keeps the roving tabIndex and Home/End/Arrow model after the ownership repair', () => {
-  hydrate(
-    [
-      documentFor('one', '/repo/one.md'),
-      documentFor('two', '/repo/two.md'),
-      documentFor('three', '/repo/three.md'),
-    ],
-    'two',
-  );
-  renderTabs();
+    hydrate(
+        [
+            documentFor('one', '/repo/one.md'),
+            documentFor('two', '/repo/two.md'),
+            documentFor('three', '/repo/three.md'),
+        ],
+        'two',
+    );
+    renderTabs();
 
-  const tablist = screen.getByRole('tablist');
-  const tabIndexes = (): (string | null)[] =>
-    screen.getAllByRole('tab').map((tab) => tab.getAttribute('tabindex'));
+    const tablist = screen.getByRole('tablist');
+    const tabIndexes = (): (string | null)[] => screen.getAllByRole('tab').map((tab) => tab.getAttribute('tabindex'));
 
-  expect(tabIndexes()).toEqual(['-1', '0', '-1']);
+    expect(tabIndexes()).toEqual(['-1', '0', '-1']);
 
-  fireEvent.keyDown(tablist, { key: 'Home' });
-  expect(screen.getByRole('tab', { name: /one\.md/ })).toHaveFocus();
+    fireEvent.keyDown(tablist, { key: 'Home' });
+    expect(screen.getByRole('tab', { name: /one\.md/ })).toHaveFocus();
 
-  fireEvent.keyDown(tablist, { key: 'End' });
-  expect(screen.getByRole('tab', { name: /three\.md/ })).toHaveFocus();
+    fireEvent.keyDown(tablist, { key: 'End' });
+    expect(screen.getByRole('tab', { name: /three\.md/ })).toHaveFocus();
 
-  fireEvent.keyDown(tablist, { key: 'ArrowRight' });
-  expect(screen.getByRole('tab', { name: /three\.md/ })).toHaveFocus();
+    fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: /three\.md/ })).toHaveFocus();
 
-  fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
-  expect(screen.getByRole('tab', { name: /one\.md/ })).toHaveFocus();
+    fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+    expect(screen.getByRole('tab', { name: /one\.md/ })).toHaveFocus();
 });
 
 /*
@@ -1225,50 +1069,40 @@ it('keeps the roving tabIndex and Home/End/Arrow model after the ownership repai
  * `EditorView`, and `DocumentTabs` with it, and renders `Launcher` instead. The
  * harness reproduces exactly that swap so the step under test is the real one.
  */
-function ShellSwap({
-  adapter,
-}: {
-  adapter: Parameters<typeof DocumentTabs>[0]['adapter'];
-}): React.JSX.Element {
-  const open = useAppSelector((state) => state.documents.orderedIds.length);
-  return open > 0 ? (
-    <DocumentTabs adapter={adapter} />
-  ) : (
-    <Launcher onNewDocument={jest.fn()} />
-  );
+function ShellSwap({ adapter }: { adapter: Parameters<typeof DocumentTabs>[0]['adapter'] }): React.JSX.Element {
+    const open = useAppSelector((state) => state.documents.orderedIds.length);
+    return open > 0 ? <DocumentTabs adapter={adapter} /> : <Launcher onNewDocument={jest.fn()} />;
 }
 
 it('falls back to the launcher New control once the strip is gone', async () => {
-  hydrate([documentFor('only', '/repo/only.md')]);
-  const closeDocument = jest.fn(async (): Promise<TabTransitionResult> => {
-    store.dispatch(
-      applyStatePatch({
-        revision: 2,
-        tabSetRevision: 5,
-        documents: {},
-        orderedDocumentIds: [],
-        activeDocumentId: null,
-      }),
+    hydrate([documentFor('only', '/repo/only.md')]);
+    const closeDocument = jest.fn(async (): Promise<TabTransitionResult> => {
+        store.dispatch(
+            applyStatePatch({
+                revision: 2,
+                tabSetRevision: 5,
+                documents: {},
+                orderedDocumentIds: [],
+                activeDocumentId: null,
+            }),
+        );
+        return {
+            status: 'closed',
+            activeDocumentId: undefined,
+            orderedDocumentIds: [],
+        };
+    });
+    render(
+        <Provider store={store}>
+            <ShellSwap adapter={{ closeDocument }} />
+        </Provider>,
     );
-    return {
-      status: 'closed',
-      activeDocumentId: undefined,
-      orderedDocumentIds: [],
-    };
-  });
-  render(
-    <Provider store={store}>
-      <ShellSwap adapter={{ closeDocument }} />
-    </Provider>,
-  );
 
-  fireEvent.contextMenu(screen.getByRole('tab', { name: /only\.md/ }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Close Tab' }));
+    fireEvent.contextMenu(screen.getByRole('tab', { name: /only\.md/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Close Tab' }));
 
-  await waitFor(() => expect(screen.queryByRole('tab')).toBeNull());
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'New File' })).toHaveFocus(),
-  );
+    await waitFor(() => expect(screen.queryByRole('tab')).toBeNull());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'New File' })).toHaveFocus());
 });
 
 /*
@@ -1281,39 +1115,31 @@ it('falls back to the launcher New control once the strip is gone', async () => 
  */
 // projection and announcement; the edge no-op is proved separately below)
 it('reorders the active tab with the Move tab accelerators and announces the move', async () => {
-  hydrate(
-    [
-      documentFor('one', '/repo/one.md'),
-      documentFor('two', '/repo/two.md'),
-      documentFor('three', '/repo/three.md'),
-    ],
-    'two',
-  );
-  store.dispatch(resetNotifications());
-  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
-    status: 'reordered',
-    orderedDocumentIds: ['one', 'three', 'two'],
-  }));
-  renderTabs({ reorderDocument });
+    hydrate(
+        [
+            documentFor('one', '/repo/one.md'),
+            documentFor('two', '/repo/two.md'),
+            documentFor('three', '/repo/three.md'),
+        ],
+        'two',
+    );
+    store.dispatch(resetNotifications());
+    const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'reordered',
+        orderedDocumentIds: ['one', 'three', 'two'],
+    }));
+    renderTabs({ reorderDocument });
 
-  fireEvent.keyDown(document, {
-    key: 'PageDown',
-    ctrlKey: true,
-    shiftKey: true,
-  });
-  await waitFor(() =>
-    expect(reorderDocument).toHaveBeenCalledWith('two', 2, 4),
-  );
-  await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Moved two.md to position 3 of 3',
-    ),
-  );
+    fireEvent.keyDown(document, {
+        key: 'PageDown',
+        ctrlKey: true,
+        shiftKey: true,
+    });
+    await waitFor(() => expect(reorderDocument).toHaveBeenCalledWith('two', 2, 4));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Moved two.md to position 3 of 3'));
 
-  fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true, shiftKey: true });
-  await waitFor(() =>
-    expect(reorderDocument).toHaveBeenNthCalledWith(2, 'two', 0, 4),
-  );
+    fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true, shiftKey: true });
+    await waitFor(() => expect(reorderDocument).toHaveBeenNthCalledWith(2, 'two', 0, 4));
 });
 
 /*
@@ -1337,79 +1163,73 @@ it('reorders the active tab with the Move tab accelerators and announces the mov
 // destination, and that re-issuing it against a fresh revision both moves the
 // tab and announces the move.)
 it('re-issues a refused move against a fresh revision and announces it', async () => {
-  hydrate(
-    [
-      documentFor('one', '/repo/one.md'),
-      documentFor('two', '/repo/two.md'),
-      documentFor('three', '/repo/three.md'),
-    ],
-    'two',
-  );
-  store.dispatch(resetNotifications());
-  const reorderDocument = jest
-    .fn()
-    .mockResolvedValueOnce({
-      status: 'refused',
-      orderedDocumentIds: ['one', 'two', 'three'],
-      error: {
-        category: 'conflict',
-        message: 'The tab set changed; reorder must be retried.',
-        remediations: ['Retry'],
-        dedupKey: 'stale-tab-set',
-        safeSubject: 'two.md',
-      },
-    })
-    .mockResolvedValueOnce({
-      status: 'reordered',
-      orderedDocumentIds: ['one', 'three', 'two'],
+    hydrate(
+        [
+            documentFor('one', '/repo/one.md'),
+            documentFor('two', '/repo/two.md'),
+            documentFor('three', '/repo/three.md'),
+        ],
+        'two',
+    );
+    store.dispatch(resetNotifications());
+    const reorderDocument = jest
+        .fn()
+        .mockResolvedValueOnce({
+            status: 'refused',
+            orderedDocumentIds: ['one', 'two', 'three'],
+            error: {
+                category: 'conflict',
+                message: 'The tab set changed; reorder must be retried.',
+                remediations: ['Retry'],
+                dedupKey: 'stale-tab-set',
+                safeSubject: 'two.md',
+            },
+        })
+        .mockResolvedValueOnce({
+            status: 'reordered',
+            orderedDocumentIds: ['one', 'three', 'two'],
+        });
+
+    const slot: MutableRefObject<TabRemediationExecutor | undefined> = {
+        current: undefined,
+    };
+    render(
+        <Provider store={store}>
+            <TabRemediationContext.Provider value={slot}>
+                <DocumentTabs adapter={{ reorderDocument }} />
+            </TabRemediationContext.Provider>
+        </Provider>,
+    );
+
+    fireEvent.keyDown(document, {
+        key: 'PageDown',
+        ctrlKey: true,
+        shiftKey: true,
+    });
+    await waitFor(() => expect(reorderDocument).toHaveBeenCalledWith('two', 2, 4));
+
+    // The refusal earns a control, and the control carries the destination —
+    // without it the retry would have no move to make.
+    const remediation = store.getState().notifications.items[0]?.remediations[0];
+    expect(remediation).toMatchObject({
+        action: 'retry',
+        intent: 'reorder-document',
+        reorder: { documentId: 'two', targetIndex: 2 },
+    });
+    // Nothing is announced for a refused move; only a completed one is.
+    expect(screen.getByRole('status')).toHaveTextContent('');
+
+    /*
+     * The tab set moved on while the toast stood, which is what the refusal said.
+     * App reads the fresh revision from the backend and hands it in; re-sending 4
+     * would refuse identically.
+     */
+    await act(async () => {
+        await slot.current?.(remediation as NotificationRemediation, 9);
     });
 
-  const slot: MutableRefObject<TabRemediationExecutor | undefined> = {
-    current: undefined,
-  };
-  render(
-    <Provider store={store}>
-      <TabRemediationContext.Provider value={slot}>
-        <DocumentTabs adapter={{ reorderDocument }} />
-      </TabRemediationContext.Provider>
-    </Provider>,
-  );
-
-  fireEvent.keyDown(document, {
-    key: 'PageDown',
-    ctrlKey: true,
-    shiftKey: true,
-  });
-  await waitFor(() =>
-    expect(reorderDocument).toHaveBeenCalledWith('two', 2, 4),
-  );
-
-  // The refusal earns a control, and the control carries the destination —
-  // without it the retry would have no move to make.
-  const remediation = store.getState().notifications.items[0]?.remediations[0];
-  expect(remediation).toMatchObject({
-    action: 'retry',
-    intent: 'reorder-document',
-    reorder: { documentId: 'two', targetIndex: 2 },
-  });
-  // Nothing is announced for a refused move; only a completed one is.
-  expect(screen.getByRole('status')).toHaveTextContent('');
-
-  /*
-   * The tab set moved on while the toast stood, which is what the refusal said.
-   * App reads the fresh revision from the backend and hands it in; re-sending 4
-   * would refuse identically.
-   */
-  await act(async () => {
-    await slot.current?.(remediation as NotificationRemediation, 9);
-  });
-
-  expect(reorderDocument).toHaveBeenNthCalledWith(2, 'two', 2, 9);
-  await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Moved two.md to position 3 of 3',
-    ),
-  );
+    expect(reorderDocument).toHaveBeenNthCalledWith(2, 'two', 2, 9);
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Moved two.md to position 3 of 3'));
 });
 
 /*
@@ -1420,86 +1240,78 @@ it('re-issues a refused move against a fresh revision and announces it', async (
  * The strongest way to prove no increment is that no command is issued at all.
  */
 it('treats a Move past either edge as a successful no-op that does not bump the tab-set revision', async () => {
-  hydrate(
-    [documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')],
-    'one',
-  );
-  store.dispatch(resetNotifications());
-  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
-    status: 'reordered',
-    orderedDocumentIds: ['two', 'one'],
-    tabSetRevision: 5,
-  }));
-  renderTabs({ reorderDocument });
+    hydrate([documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')], 'one');
+    store.dispatch(resetNotifications());
+    const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'reordered',
+        orderedDocumentIds: ['two', 'one'],
+        tabSetRevision: 5,
+    }));
+    renderTabs({ reorderDocument });
 
-  const revisionBefore = store.getState().documents.tabSetRevision;
-  fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true, shiftKey: true });
-  await Promise.resolve();
+    const revisionBefore = store.getState().documents.tabSetRevision;
+    fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true, shiftKey: true });
+    await Promise.resolve();
 
-  expect(reorderDocument).not.toHaveBeenCalled();
-  expect(store.getState().documents.tabSetRevision).toBe(revisionBefore);
-  expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
-  expect(store.getState().notifications.items).toHaveLength(0);
-  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(reorderDocument).not.toHaveBeenCalled();
+    expect(store.getState().documents.tabSetRevision).toBe(revisionBefore);
+    expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
+    expect(store.getState().notifications.items).toHaveLength(0);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 });
 
 it('treats a Move past the right-hand edge as the same successful no-op', async () => {
-  hydrate(
-    [documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')],
-    'two',
-  );
-  store.dispatch(resetNotifications());
-  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
-    status: 'reordered',
-    orderedDocumentIds: ['two', 'one'],
-    tabSetRevision: 5,
-  }));
-  renderTabs({ reorderDocument });
+    hydrate([documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')], 'two');
+    store.dispatch(resetNotifications());
+    const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'reordered',
+        orderedDocumentIds: ['two', 'one'],
+        tabSetRevision: 5,
+    }));
+    renderTabs({ reorderDocument });
 
-  const revisionBefore = store.getState().documents.tabSetRevision;
-  fireEvent.keyDown(document, {
-    key: 'PageDown',
-    ctrlKey: true,
-    shiftKey: true,
-  });
-  await Promise.resolve();
+    const revisionBefore = store.getState().documents.tabSetRevision;
+    fireEvent.keyDown(document, {
+        key: 'PageDown',
+        ctrlKey: true,
+        shiftKey: true,
+    });
+    await Promise.resolve();
 
-  expect(reorderDocument).not.toHaveBeenCalled();
-  expect(store.getState().documents.tabSetRevision).toBe(revisionBefore);
-  expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
-  expect(store.getState().notifications.items).toHaveLength(0);
-  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(reorderDocument).not.toHaveBeenCalled();
+    expect(store.getState().documents.tabSetRevision).toBe(revisionBefore);
+    expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
+    expect(store.getState().notifications.items).toHaveLength(0);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 });
 
 // document and the current focus)
 it('keeps the active document and the focused element across a keyboard Move', async () => {
-  hydrate(
-    [
-      documentFor('one', '/repo/one.md'),
-      documentFor('two', '/repo/two.md'),
-      documentFor('three', '/repo/three.md'),
-    ],
-    'two',
-  );
-  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
-    status: 'reordered',
-    orderedDocumentIds: ['two', 'one', 'three'],
-    tabSetRevision: 5,
-  }));
-  const activateDocument = jest.fn(async () => ({}));
-  renderTabs({ activateDocument, reorderDocument });
+    hydrate(
+        [
+            documentFor('one', '/repo/one.md'),
+            documentFor('two', '/repo/two.md'),
+            documentFor('three', '/repo/three.md'),
+        ],
+        'two',
+    );
+    const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'reordered',
+        orderedDocumentIds: ['two', 'one', 'three'],
+        tabSetRevision: 5,
+    }));
+    const activateDocument = jest.fn(async () => ({}));
+    renderTabs({ activateDocument, reorderDocument });
 
-  const activeTab = screen.getByRole('tab', { name: /two\.md/u });
-  activeTab.focus();
+    const activeTab = screen.getByRole('tab', { name: /two\.md/u });
+    activeTab.focus();
 
-  fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true, shiftKey: true });
-  await waitFor(() =>
-    expect(reorderDocument).toHaveBeenCalledWith('two', 0, 4),
-  );
+    fireEvent.keyDown(document, { key: 'PageUp', ctrlKey: true, shiftKey: true });
+    await waitFor(() => expect(reorderDocument).toHaveBeenCalledWith('two', 0, 4));
 
-  expect(activateDocument).not.toHaveBeenCalled();
-  expect(store.getState().documents.activeDocumentId).toBe('two');
-  expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveFocus();
+    expect(activateDocument).not.toHaveBeenCalled();
+    expect(store.getState().documents.activeDocumentId).toBe('two');
+    expect(screen.getByRole('tab', { name: /two\.md/u })).toHaveFocus();
 });
 
 /*
@@ -1520,20 +1332,20 @@ it('keeps the active document and the focused element across a keyboard Move', a
  * 100–200, tab 2 spans 200–300.
  */
 function layOutTabStrip(): void {
-  const items = document.querySelectorAll<HTMLElement>('[data-tab-item]');
-  for (const [index, item] of items.entries()) {
-    jest.spyOn(item, 'getBoundingClientRect').mockReturnValue({
-      bottom: 30,
-      height: 30,
-      left: index * 100,
-      right: index * 100 + 100,
-      toJSON: () => ({}),
-      top: 0,
-      width: 100,
-      x: index * 100,
-      y: 0,
-    } as DOMRect);
-  }
+    const items = document.querySelectorAll<HTMLElement>('[data-tab-item]');
+    for (const [index, item] of items.entries()) {
+        jest.spyOn(item, 'getBoundingClientRect').mockReturnValue({
+            bottom: 30,
+            height: 30,
+            left: index * 100,
+            right: index * 100 + 100,
+            toJSON: () => ({}),
+            top: 0,
+            width: 100,
+            x: index * 100,
+            y: 0,
+        } as DOMRect);
+    }
 }
 
 /*
@@ -1543,21 +1355,17 @@ function layOutTabStrip(): void {
  * `onPointerDown` from the native event's *type*, not from its constructor.
  */
 function tabPointerEvent(type: string, clientX: number): MouseEvent {
-  return new MouseEvent(type, {
-    bubbles: true,
-    button: 0,
-    cancelable: true,
-    clientX,
-    clientY: 15,
-  });
+    return new MouseEvent(type, {
+        bubbles: true,
+        button: 0,
+        cancelable: true,
+        clientX,
+        clientY: 15,
+    });
 }
 
 function insertionSlot(): string | null {
-  return (
-    document
-      .querySelector('[data-tab-insertion-slot]')
-      ?.getAttribute('data-tab-insertion-slot') ?? null
-  );
+    return document.querySelector('[data-tab-insertion-slot]')?.getAttribute('data-tab-insertion-slot') ?? null;
 }
 
 /*
@@ -1566,64 +1374,62 @@ function insertionSlot(): string | null {
  * what is under test here, not the isolation.
  */
 function tabOrderOnScreen(): string[] {
-  return screen
-    .getAllByRole('tab')
-    .map((tab) => (tab.textContent ?? '').replace(/[⁦-⁩]/gu, ''));
+    return screen.getAllByRole('tab').map((tab) => (tab.textContent ?? '').replace(/[⁦-⁩]/gu, ''));
 }
 
 function threeTabs(): DocumentMetadata[] {
-  return [
-    documentFor('one', '/repo/one.md'),
-    documentFor('two', '/repo/two.md'),
-    documentFor('three', '/repo/three.md'),
-  ];
+    return [
+        documentFor('one', '/repo/one.md'),
+        documentFor('two', '/repo/two.md'),
+        documentFor('three', '/repo/three.md'),
+    ];
 }
 
 // the threshold starts a drag, and one that does not stays an activating
 // click). The reduced-opacity dragged tab and the strip's edge auto-scroll are
 // deferred to and are proved by nothing, here or elsewhere.
 it('grabs a tab only once the pointer has travelled past the drag threshold', async () => {
-  hydrate(threeTabs(), 'one');
-  const activateDocument = jest.fn(async () => ({}));
-  renderTabs({ activateDocument });
-  layOutTabStrip();
-  const tab = screen.getByRole('tab', { name: /one\.md/u });
+    hydrate(threeTabs(), 'one');
+    const activateDocument = jest.fn(async () => ({}));
+    renderTabs({ activateDocument });
+    layOutTabStrip();
+    const tab = screen.getByRole('tab', { name: /one\.md/u });
 
-  // A hand trying to hold still: two pixels of travel is a click, not a grab.
-  fireEvent(tab, tabPointerEvent('pointerdown', 50));
-  fireEvent(document, tabPointerEvent('pointermove', 52));
-  expect(insertionSlot()).toBeNull();
-  fireEvent(document, tabPointerEvent('pointerup', 52));
-  fireEvent.click(tab);
-  await waitFor(() => expect(activateDocument).toHaveBeenCalledWith('one', 4));
+    // A hand trying to hold still: two pixels of travel is a click, not a grab.
+    fireEvent(tab, tabPointerEvent('pointerdown', 50));
+    fireEvent(document, tabPointerEvent('pointermove', 52));
+    expect(insertionSlot()).toBeNull();
+    fireEvent(document, tabPointerEvent('pointerup', 52));
+    fireEvent.click(tab);
+    await waitFor(() => expect(activateDocument).toHaveBeenCalledWith('one', 4));
 
-  // The same press taken past the threshold is a grab, and the strip says so.
-  fireEvent(tab, tabPointerEvent('pointerdown', 50));
-  fireEvent(document, tabPointerEvent('pointermove', 150));
-  expect(insertionSlot()).not.toBeNull();
+    // The same press taken past the threshold is a grab, and the strip says so.
+    fireEvent(tab, tabPointerEvent('pointerdown', 50));
+    fireEvent(document, tabPointerEvent('pointermove', 150));
+    expect(insertionSlot()).not.toBeNull();
 });
 
 // that the position it shows is the slot the pointer is over. That the
 // indicator is genuinely painted rather than clipped away is proved in
 // `real-files-and-tabs.test.ts`, which has a layout engine and `expectPainted`.)
 it('shows the insertion position the pointer is over, and moves it as the pointer moves', () => {
-  hydrate(threeTabs(), 'one');
-  renderTabs({});
-  layOutTabStrip();
-  const tab = screen.getByRole('tab', { name: /one\.md/u });
+    hydrate(threeTabs(), 'one');
+    renderTabs({});
+    layOutTabStrip();
+    const tab = screen.getByRole('tab', { name: /one\.md/u });
 
-  fireEvent(tab, tabPointerEvent('pointerdown', 50));
-  // Past tab 1's midpoint (150) but not tab 2's (250): the slot between them.
-  fireEvent(document, tabPointerEvent('pointermove', 180));
-  expect(insertionSlot()).toBe('2');
+    fireEvent(tab, tabPointerEvent('pointerdown', 50));
+    // Past tab 1's midpoint (150) but not tab 2's (250): the slot between them.
+    fireEvent(document, tabPointerEvent('pointermove', 180));
+    expect(insertionSlot()).toBe('2');
 
-  // Past every midpoint: the slot after the last tab.
-  fireEvent(document, tabPointerEvent('pointermove', 290));
-  expect(insertionSlot()).toBe('3');
+    // Past every midpoint: the slot after the last tab.
+    fireEvent(document, tabPointerEvent('pointermove', 290));
+    expect(insertionSlot()).toBe('3');
 
-  // Back before the first midpoint: the slot before the first tab.
-  fireEvent(document, tabPointerEvent('pointermove', 10));
-  expect(insertionSlot()).toBe('0');
+    // Back before the first midpoint: the slot before the first tab.
+    fireEvent(document, tabPointerEvent('pointermove', 10));
+    expect(insertionSlot()).toBe('0');
 });
 
 /*
@@ -1637,79 +1443,67 @@ it('shows the insertion position the pointer is over, and moves it as the pointe
 // issued; the refusal-without-partial-change half is proved by
 // `tab_session_test.go`, not here).
 it('drops a dragged tab through the backend reorder command and projects nothing itself', async () => {
-  hydrate(threeTabs(), 'one');
-  store.dispatch(resetNotifications());
-  let nextRevision = 4;
-  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => {
-    nextRevision += 1;
-    return {
-      status: 'reordered',
-      orderedDocumentIds: ['two', 'three', 'one'],
-      tabSetRevision: nextRevision,
-    };
-  });
-  renderTabs({ reorderDocument });
-  layOutTabStrip();
-  const tab = screen.getByRole('tab', { name: /one\.md/u });
+    hydrate(threeTabs(), 'one');
+    store.dispatch(resetNotifications());
+    let nextRevision = 4;
+    const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => {
+        nextRevision += 1;
+        return {
+            status: 'reordered',
+            orderedDocumentIds: ['two', 'three', 'one'],
+            tabSetRevision: nextRevision,
+        };
+    });
+    renderTabs({ reorderDocument });
+    layOutTabStrip();
+    const tab = screen.getByRole('tab', { name: /one\.md/u });
 
-  fireEvent(tab, tabPointerEvent('pointerdown', 50));
-  fireEvent(document, tabPointerEvent('pointermove', 290));
-  fireEvent(document, tabPointerEvent('pointerup', 290));
+    fireEvent(tab, tabPointerEvent('pointerdown', 50));
+    fireEvent(document, tabPointerEvent('pointermove', 290));
+    fireEvent(document, tabPointerEvent('pointerup', 290));
 
-  await waitFor(() => expect(reorderDocument).toHaveBeenCalledTimes(2));
-  expect(reorderDocument).toHaveBeenNthCalledWith(1, 'one', 1, 4);
-  expect(reorderDocument).toHaveBeenNthCalledWith(2, 'one', 2, 5);
-  await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Moved one.md to position 3 of 3',
-    ),
-  );
+    await waitFor(() => expect(reorderDocument).toHaveBeenCalledTimes(2));
+    expect(reorderDocument).toHaveBeenNthCalledWith(1, 'one', 1, 4);
+    expect(reorderDocument).toHaveBeenNthCalledWith(2, 'one', 2, 5);
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Moved one.md to position 3 of 3'));
 
-  /*
-   * The Redux store is a projection. No `state:patch` was applied here, so the
-   * strip must still show the order the backend last confirmed — an optimistic
-   * local reorder would have rewritten it the moment the pointer came up.
-   */
-  expect(store.getState().documents.orderedIds).toEqual([
-    'one',
-    'two',
-    'three',
-  ]);
-  expect(tabOrderOnScreen()).toEqual(['one.md', 'two.md', 'three.md']);
+    /*
+     * The Redux store is a projection. No `state:patch` was applied here, so the
+     * strip must still show the order the backend last confirmed — an optimistic
+     * local reorder would have rewritten it the moment the pointer came up.
+     */
+    expect(store.getState().documents.orderedIds).toEqual(['one', 'two', 'three']);
+    expect(tabOrderOnScreen()).toEqual(['one.md', 'two.md', 'three.md']);
 });
 
 it('abandons a drag on Escape without issuing a reorder or changing the order', async () => {
-  hydrate(threeTabs(), 'one');
-  store.dispatch(resetNotifications());
-  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
-    status: 'reordered',
-    orderedDocumentIds: ['two', 'three', 'one'],
-    tabSetRevision: 5,
-  }));
-  renderTabs({ reorderDocument });
-  layOutTabStrip();
-  const tab = screen.getByRole('tab', { name: /one\.md/u });
+    hydrate(threeTabs(), 'one');
+    store.dispatch(resetNotifications());
+    const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'reordered',
+        orderedDocumentIds: ['two', 'three', 'one'],
+        tabSetRevision: 5,
+    }));
+    renderTabs({ reorderDocument });
+    layOutTabStrip();
+    const tab = screen.getByRole('tab', { name: /one\.md/u });
 
-  fireEvent(tab, tabPointerEvent('pointerdown', 50));
-  fireEvent(document, tabPointerEvent('pointermove', 290));
-  expect(insertionSlot()).toBe('3');
+    fireEvent(tab, tabPointerEvent('pointerdown', 50));
+    fireEvent(document, tabPointerEvent('pointermove', 290));
+    expect(insertionSlot()).toBe('3');
 
-  fireEvent.keyDown(document, { key: 'Escape' });
-  expect(insertionSlot()).toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(insertionSlot()).toBeNull();
 
-  // The release that follows a cancelled drag must not become a late drop.
-  fireEvent(document, tabPointerEvent('pointerup', 290));
-  await Promise.resolve();
+    // The release that follows a cancelled drag must not become a late drop.
+    fireEvent(document, tabPointerEvent('pointerup', 290));
+    await Promise.resolve();
 
-  expect(reorderDocument).not.toHaveBeenCalled();
-  expect(store.getState().documents.tabSetRevision).toBe(4);
-  expect(store.getState().documents.orderedIds).toEqual([
-    'one',
-    'two',
-    'three',
-  ]);
-  expect(store.getState().notifications.items).toHaveLength(0);
-  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(reorderDocument).not.toHaveBeenCalled();
+    expect(store.getState().documents.tabSetRevision).toBe(4);
+    expect(store.getState().documents.orderedIds).toEqual(['one', 'two', 'three']);
+    expect(store.getState().notifications.items).toHaveLength(0);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 });
 
 /*
@@ -1721,34 +1515,30 @@ it('abandons a drag on Escape without issuing a reorder or changing the order', 
  * is the clause.
  */
 it('issues no reorder command at all when a drag is dropped where it started', async () => {
-  hydrate(threeTabs(), 'two');
-  store.dispatch(resetNotifications());
-  const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
-    status: 'reordered',
-    orderedDocumentIds: ['one', 'two', 'three'],
-    tabSetRevision: 5,
-  }));
-  renderTabs({ reorderDocument });
-  layOutTabStrip();
-  const tab = screen.getByRole('tab', { name: /two\.md/u });
+    hydrate(threeTabs(), 'two');
+    store.dispatch(resetNotifications());
+    const reorderDocument = jest.fn(async (): Promise<TabTransitionResult> => ({
+        status: 'reordered',
+        orderedDocumentIds: ['one', 'two', 'three'],
+        tabSetRevision: 5,
+    }));
+    renderTabs({ reorderDocument });
+    layOutTabStrip();
+    const tab = screen.getByRole('tab', { name: /two\.md/u });
 
-  // Grabbed at 150 and released at 190: past the 4px threshold, so this is a
-  // real drag, but still inside tab 1's own box and short of tab 2's midpoint.
-  fireEvent(tab, tabPointerEvent('pointerdown', 150));
-  fireEvent(document, tabPointerEvent('pointermove', 190));
-  expect(insertionSlot()).toBe('2');
-  fireEvent(document, tabPointerEvent('pointerup', 190));
-  await Promise.resolve();
+    // Grabbed at 150 and released at 190: past the 4px threshold, so this is a
+    // real drag, but still inside tab 1's own box and short of tab 2's midpoint.
+    fireEvent(tab, tabPointerEvent('pointerdown', 150));
+    fireEvent(document, tabPointerEvent('pointermove', 190));
+    expect(insertionSlot()).toBe('2');
+    fireEvent(document, tabPointerEvent('pointerup', 190));
+    await Promise.resolve();
 
-  expect(reorderDocument).not.toHaveBeenCalled();
-  expect(store.getState().documents.tabSetRevision).toBe(4);
-  expect(store.getState().documents.orderedIds).toEqual([
-    'one',
-    'two',
-    'three',
-  ]);
-  expect(store.getState().notifications.items).toHaveLength(0);
-  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(reorderDocument).not.toHaveBeenCalled();
+    expect(store.getState().documents.tabSetRevision).toBe(4);
+    expect(store.getState().documents.orderedIds).toEqual(['one', 'two', 'three']);
+    expect(store.getState().notifications.items).toHaveLength(0);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 });
 
 /*
@@ -1764,37 +1554,30 @@ it('issues no reorder command at all when a drag is dropped where it started', a
 // (partial — only that this caller declares an executable retry, naming the tab
 // it acted on. The re-issue is proved in App.test.tsx.)
 it('offers Retry on a refused activation, naming the tab it acted on', async () => {
-  hydrate([
-    documentFor('one', '/repo/one.md'),
-    documentFor('two', '/repo/two.md'),
-  ]);
-  store.dispatch(resetNotifications());
-  const activateDocument = jest.fn(
-    async (): Promise<DocumentTransitionResult> => ({
-      error: {
-        category: 'conflict',
-        safeSubject: 'two.md',
-        message: 'The tab set changed; the switch must be retried.',
-        remediations: ['Retry'],
-        dedupKey: 'activate:stale-tab-set',
-      } satisfies ClassifiedError,
-    }),
-  );
-  renderTabs({ activateDocument });
+    hydrate([documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')]);
+    store.dispatch(resetNotifications());
+    const activateDocument = jest.fn(async (): Promise<DocumentTransitionResult> => ({
+        error: {
+            category: 'conflict',
+            safeSubject: 'two.md',
+            message: 'The tab set changed; the switch must be retried.',
+            remediations: ['Retry'],
+            dedupKey: 'activate:stale-tab-set',
+        } satisfies ClassifiedError,
+    }));
+    renderTabs({ activateDocument });
 
-  fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
+    fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
 
-  await waitFor(() =>
-    expect(store.getState().notifications.items).toHaveLength(1),
-  );
-  expect(store.getState().notifications.items[0]?.remediations).toEqual([
-    {
-      action: 'retry',
-      documentId: 'two',
-      intent: 'activate-document',
-      labelKey: 'action.retry.label',
-    },
-  ]);
+    await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
+    expect(store.getState().notifications.items[0]?.remediations).toEqual([
+        {
+            action: 'retry',
+            documentId: 'two',
+            intent: 'activate-document',
+            labelKey: 'action.retry.label',
+        },
+    ]);
 });
 
 /*
@@ -1810,116 +1593,107 @@ it('offers Retry on a refused activation, naming the tab it acted on', async () 
 // no-watcher/no-polling-timer constraint on how it is implemented). The "before
 // any write" occasion and the stable re-read rules are proved in Go, not here.
 it('checks every path-backed document on window focus and on resume, and never on a timer', async () => {
-  jest.useFakeTimers();
-  try {
-    const withPath = documentFor('one', '/repo/one.md');
-    const readOnly = {
-      ...documentFor('two', '/repo/two.md'),
-      capability: 'read-only',
-    };
-    const untitled = documentFor('three', '');
-    hydrate([withPath, readOnly, untitled]);
-    const checkExternalChanges = jest.fn(async (documentId: string) => {
-      void documentId;
-      return { status: 'unchanged' as const };
-    });
-    renderTabs(
-      {},
-      {
-        authorizeKeepMine: jest.fn(async () => ({
-          status: 'authorized' as const,
-        })),
-        cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
-        checkExternalChanges,
-        reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
-        skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
-      },
-    );
+    jest.useFakeTimers();
+    try {
+        const withPath = documentFor('one', '/repo/one.md');
+        const readOnly = {
+            ...documentFor('two', '/repo/two.md'),
+            capability: 'read-only',
+        };
+        const untitled = documentFor('three', '');
+        hydrate([withPath, readOnly, untitled]);
+        const checkExternalChanges = jest.fn(async (documentId: string) => {
+            void documentId;
+            return { status: 'unchanged' as const };
+        });
+        renderTabs(
+            {},
+            {
+                authorizeKeepMine: jest.fn(async () => ({
+                    status: 'authorized' as const,
+                })),
+                cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
+                checkExternalChanges,
+                reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
+                skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
+            },
+        );
 
-    // Mounting is not focusing, and no elapsed time is a check either: a run
-    // here would mean the check is armed on a timer rather than on the event.
-    expect(checkExternalChanges).not.toHaveBeenCalled();
-    await act(async (): Promise<void> => {
-      jest.advanceTimersByTime(120_000);
-    });
-    expect(checkExternalChanges).not.toHaveBeenCalled();
+        // Mounting is not focusing, and no elapsed time is a check either: a run
+        // here would mean the check is armed on a timer rather than on the event.
+        expect(checkExternalChanges).not.toHaveBeenCalled();
+        await act(async (): Promise<void> => {
+            jest.advanceTimersByTime(120_000);
+        });
+        expect(checkExternalChanges).not.toHaveBeenCalled();
 
-    await act(async (): Promise<void> => {
-      window.dispatchEvent(new Event('focus'));
-      await Promise.resolve();
-    });
-    await waitFor(() => expect(checkExternalChanges).toHaveBeenCalledTimes(2));
-    expect(checkExternalChanges.mock.calls.map((call) => call[0])).toEqual([
-      'one',
-      'two',
-    ]);
+        await act(async (): Promise<void> => {
+            window.dispatchEvent(new Event('focus'));
+            await Promise.resolve();
+        });
+        await waitFor(() => expect(checkExternalChanges).toHaveBeenCalledTimes(2));
+        expect(checkExternalChanges.mock.calls.map((call) => call[0])).toEqual(['one', 'two']);
 
-    // Time alone still adds nothing once the listener is armed.
-    await act(async (): Promise<void> => {
-      jest.advanceTimersByTime(120_000);
-    });
-    expect(checkExternalChanges).toHaveBeenCalledTimes(2);
+        // Time alone still adds nothing once the listener is armed.
+        await act(async (): Promise<void> => {
+            jest.advanceTimersByTime(120_000);
+        });
+        expect(checkExternalChanges).toHaveBeenCalledTimes(2);
 
-    await act(async (): Promise<void> => {
-      globalThis.document.dispatchEvent(new Event('visibilitychange'));
-      await Promise.resolve();
-    });
-    await waitFor(() => expect(checkExternalChanges).toHaveBeenCalledTimes(4));
-  } finally {
-    jest.useRealTimers();
-  }
+        await act(async (): Promise<void> => {
+            globalThis.document.dispatchEvent(new Event('visibilitychange'));
+            await Promise.resolve();
+        });
+        await waitFor(() => expect(checkExternalChanges).toHaveBeenCalledTimes(4));
+    } finally {
+        jest.useRealTimers();
+    }
 });
 
 // active document opens 's prompt. The prompt's own bounds and
 // decisions are proved by the tests above.)
 it('opens the external-change prompt for a conflict the focus check finds', async () => {
-  const first = documentFor('one', '/repo/one.md');
-  const preview: ConflictPreview = {
-    contentRevision: 0,
-    detectedDiskVersion: {
-      exists: true,
-      mode: 0o644,
-      modifiedUnixNano: '9',
-      size: 12,
-    },
-    displayName: 'one.md',
-    documentId: 'one',
-    onDisk: { byteCount: 6, lineCount: 1, text: 'disk\n', truncated: false },
-    path: '/repo/one.md',
-    readOnly: false,
-    yours: { byteCount: 6, lineCount: 1, text: 'mine\n', truncated: false },
-  };
-  hydrate([first]);
-  renderTabs(
-    {},
-    {
-      authorizeKeepMine: jest.fn(async () => ({
-        status: 'authorized' as const,
-      })),
-      cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
-      checkExternalChanges: jest.fn(async () => ({
-        status: 'detected' as const,
+    const first = documentFor('one', '/repo/one.md');
+    const preview: ConflictPreview = {
+        contentRevision: 0,
+        detectedDiskVersion: {
+            exists: true,
+            mode: 0o644,
+            modifiedUnixNano: '9',
+            size: 12,
+        },
+        displayName: 'one.md',
         documentId: 'one',
-        preview,
-      })),
-      reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
-      skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
-    },
-  );
+        onDisk: { byteCount: 6, lineCount: 1, text: 'disk\n', truncated: false },
+        path: '/repo/one.md',
+        readOnly: false,
+        yours: { byteCount: 6, lineCount: 1, text: 'mine\n', truncated: false },
+    };
+    hydrate([first]);
+    renderTabs(
+        {},
+        {
+            authorizeKeepMine: jest.fn(async () => ({
+                status: 'authorized' as const,
+            })),
+            cancelConflict: jest.fn(async () => ({ status: 'cancelled' as const })),
+            checkExternalChanges: jest.fn(async () => ({
+                status: 'detected' as const,
+                documentId: 'one',
+                preview,
+            })),
+            reloadFromDisk: jest.fn(async () => ({ status: 'reloaded' as const })),
+            skipConflict: jest.fn(async () => ({ status: 'skipped' as const })),
+        },
+    );
 
-  expect(
-    screen.queryByRole('dialog', { name: 'File changed on disk' }),
-  ).not.toBeInTheDocument();
-  await act(async (): Promise<void> => {
-    window.dispatchEvent(new Event('focus'));
-    await Promise.resolve();
-  });
+    expect(screen.queryByRole('dialog', { name: 'File changed on disk' })).not.toBeInTheDocument();
+    await act(async (): Promise<void> => {
+        window.dispatchEvent(new Event('focus'));
+        await Promise.resolve();
+    });
 
-  await waitFor(() =>
-    expect(
-      screen.getByRole('dialog', { name: 'File changed on disk' }),
-    ).toBeVisible(),
-  );
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'File changed on disk' })).toBeVisible());
 });
 
 /*
@@ -1936,105 +1710,77 @@ it('opens the external-change prompt for a conflict the focus check finds', asyn
 // proved here as its precondition — the incoming acknowledgement is never even
 // requested — because the buffer itself is App state, not this component's.
 it('reports a failed switch and leaves the outgoing tab active', async () => {
-  hydrate([
-    documentFor('one', '/repo/one.md'),
-    documentFor('two', '/repo/two.md'),
-  ]);
-  store.dispatch(resetNotifications());
-  const activateDocument = jest.fn(
-    async (): Promise<DocumentTransitionResult> => ({}),
-  );
-  const onActivateDocument = jest.fn(
-    async (): Promise<DocumentTransitionResult> => {
-      throw new Error(
-        'The active editor activation changed while its lifecycle state was being flushed.',
-      );
-    },
-  );
-  render(
-    <Provider store={store}>
-      <DocumentTabs
-        adapter={{ activateDocument }}
-        onActivateDocument={onActivateDocument}
-      />
-    </Provider>,
-  );
+    hydrate([documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')]);
+    store.dispatch(resetNotifications());
+    const activateDocument = jest.fn(async (): Promise<DocumentTransitionResult> => ({}));
+    const onActivateDocument = jest.fn(async (): Promise<DocumentTransitionResult> => {
+        throw new Error('The active editor activation changed while its lifecycle state was being flushed.');
+    });
+    render(
+        <Provider store={store}>
+            <DocumentTabs adapter={{ activateDocument }} onActivateDocument={onActivateDocument} />
+        </Provider>,
+    );
 
-  fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
+    fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
 
-  await waitFor(() =>
-    expect(store.getState().notifications.items).toHaveLength(1),
-  );
-  expect(store.getState().notifications.items[0]).toEqual(
-    expect.objectContaining({ code: 'conflict', severity: 'error' }),
-  );
-  expect(store.getState().notifications.items[0]?.remediations).toEqual([
-    expect.objectContaining({
-      action: 'retry',
-      documentId: 'two',
-      intent: 'activate-document',
-    }),
-  ]);
-  // The two consequences the requirement names.
-  expect(store.getState().documents.activeDocumentId).toBe('one');
-  expect(activateDocument).not.toHaveBeenCalled();
+    await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
+    expect(store.getState().notifications.items[0]).toEqual(
+        expect.objectContaining({ code: 'conflict', severity: 'error' }),
+    );
+    expect(store.getState().notifications.items[0]?.remediations).toEqual([
+        expect.objectContaining({
+            action: 'retry',
+            documentId: 'two',
+            intent: 'activate-document',
+        }),
+    ]);
+    // The two consequences the requirement names.
+    expect(store.getState().documents.activeDocumentId).toBe('one');
+    expect(activateDocument).not.toHaveBeenCalled();
 });
 
 // shell's handler does not cover).
 it('flushes the outgoing document before the adapter fallback activates', async () => {
-  hydrate([
-    documentFor('one', '/repo/one.md'),
-    documentFor('two', '/repo/two.md'),
-  ]);
-  store.dispatch(resetNotifications());
-  const calls: string[] = [];
-  const flushActiveSession = jest.fn(async (documentId: string) => {
-    calls.push(`flush:${documentId}`);
-  });
-  const activateDocument = jest.fn(
-    async (): Promise<DocumentTransitionResult> => {
-      calls.push('activate');
-      return {};
-    },
-  );
-  render(
-    <Provider store={store}>
-      <DocumentTabs adapter={{ activateDocument, flushActiveSession }} />
-    </Provider>,
-  );
+    hydrate([documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')]);
+    store.dispatch(resetNotifications());
+    const calls: string[] = [];
+    const flushActiveSession = jest.fn(async (documentId: string) => {
+        calls.push(`flush:${documentId}`);
+    });
+    const activateDocument = jest.fn(async (): Promise<DocumentTransitionResult> => {
+        calls.push('activate');
+        return {};
+    });
+    render(
+        <Provider store={store}>
+            <DocumentTabs adapter={{ activateDocument, flushActiveSession }} />
+        </Provider>,
+    );
 
-  fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
+    fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
 
-  await waitFor(() => expect(activateDocument).toHaveBeenCalledTimes(1));
-  expect(calls).toEqual(['flush:one', 'activate']);
+    await waitFor(() => expect(activateDocument).toHaveBeenCalledTimes(1));
+    expect(calls).toEqual(['flush:one', 'activate']);
 });
 
 it('refuses the fallback switch when the outgoing flush rejects', async () => {
-  hydrate([
-    documentFor('one', '/repo/one.md'),
-    documentFor('two', '/repo/two.md'),
-  ]);
-  store.dispatch(resetNotifications());
-  const flushActiveSession = jest.fn(async (documentId: string) => {
-    void documentId;
-    throw new Error(
-      'The active editor activation changed while its lifecycle state was being flushed.',
+    hydrate([documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')]);
+    store.dispatch(resetNotifications());
+    const flushActiveSession = jest.fn(async (documentId: string) => {
+        void documentId;
+        throw new Error('The active editor activation changed while its lifecycle state was being flushed.');
+    });
+    const activateDocument = jest.fn(async (): Promise<DocumentTransitionResult> => ({}));
+    render(
+        <Provider store={store}>
+            <DocumentTabs adapter={{ activateDocument, flushActiveSession }} />
+        </Provider>,
     );
-  });
-  const activateDocument = jest.fn(
-    async (): Promise<DocumentTransitionResult> => ({}),
-  );
-  render(
-    <Provider store={store}>
-      <DocumentTabs adapter={{ activateDocument, flushActiveSession }} />
-    </Provider>,
-  );
 
-  fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
+    fireEvent.click(screen.getByRole('tab', { name: /two\.md/u }));
 
-  await waitFor(() =>
-    expect(store.getState().notifications.items).toHaveLength(1),
-  );
-  expect(store.getState().documents.activeDocumentId).toBe('one');
-  expect(activateDocument).not.toHaveBeenCalled();
+    await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
+    expect(store.getState().documents.activeDocumentId).toBe('one');
+    expect(activateDocument).not.toHaveBeenCalled();
 });

@@ -3,26 +3,26 @@ id: STORY-001
 title: Scaffold the Wails v2 app and embedded React frontend so a blank window boots
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#process-model
-  - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries
-  - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#embed
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework
-  - ../../../_archive-2026-07-28-specification/05_Dependencies/01_GO_DEPENDENCIES.md#1-runtime-dependencies
-  - ../../../_archive-2026-07-28-specification/05_Dependencies/01_GO_DEPENDENCIES.md#5-go-version
+    - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#process-model
+    - ../../../_archive-2026-07-28-specification/02_Architecture/01_SYSTEM_ARCHITECTURE.md#layer-boundaries
+    - ../../../_archive-2026-07-28-specification/02_Architecture/04_WAILS_INTEGRATION.md#embed
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#1-platform--framework
+    - ../../../_archive-2026-07-28-specification/05_Dependencies/01_GO_DEPENDENCIES.md#1-runtime-dependencies
+    - ../../../_archive-2026-07-28-specification/05_Dependencies/01_GO_DEPENDENCIES.md#5-go-version
 phase_requirements:
-  - PH00-R01
+    - PH00-R01
 modules:
-  - internal/application/
-  - ui/styles/
-  - ui/widgets/
+    - internal/application/
+    - ui/styles/
+    - ui/widgets/
 acceptance_criteria:
-  - STORY-001-AC-1
-  - STORY-001-AC-2
-  - STORY-001-AC-3
+    - STORY-001-AC-1
+    - STORY-001-AC-2
+    - STORY-001-AC-3
 edge_cases: []
 depends_on: []
 adrs:
-  - ADR-0001
+    - ADR-0001
 phase: 00
 owner: coder
 estimate: M

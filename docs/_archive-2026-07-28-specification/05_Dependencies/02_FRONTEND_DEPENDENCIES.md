@@ -132,16 +132,16 @@ CDN at runtime (DD-32). Bundling is a Vite concern (import the CSS/fonts so they
   editor pane**. It is not a theoretical risk: a shipped reference implementation has that URL in its
   production bundle and its offline service worker never caches it. The wiring is therefore normative:
 
-  ```ts
-  import * as monaco from 'monaco-editor';
-  import { loader } from '@monaco-editor/react';
-  loader.config({ monaco }); // before the first <Editor> mounts; bypasses the AMD loader
-  ```
+    ```ts
+    import * as monaco from 'monaco-editor';
+    import { loader } from '@monaco-editor/react';
+    loader.config({ monaco }); // before the first <Editor> mounts; bypasses the AMD loader
+    ```
 
-  Workers come from Vite's `?worker` suffix with an explicit `MonacoEnvironment`. GoMarkEdit edits
-  **Markdown only**, so it needs exactly one — `monaco-editor/esm/vs/editor/editor.worker?worker` — not
-  the five-worker TypeScript/JSON/CSS/HTML boilerplate. This requires `worker-src 'self' blob:` in the
-  CSP (`03_NonFunctional/03_SECURITY_AND_PRIVACY.md`).
+    Workers come from Vite's `?worker` suffix with an explicit `MonacoEnvironment`. GoMarkEdit edits
+    **Markdown only**, so it needs exactly one — `monaco-editor/esm/vs/editor/editor.worker?worker` — not
+    the five-worker TypeScript/JSON/CSS/HTML boilerplate. This requires `worker-src 'self' blob:` in the
+    CSP (`03_NonFunctional/03_SECURITY_AND_PRIVACY.md`).
 
 Any asset that cannot be bundled is a blocker for that feature under the offline rule.
 

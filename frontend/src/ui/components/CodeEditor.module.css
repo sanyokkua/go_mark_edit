@@ -1,13 +1,13 @@
 .editor {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  height: auto;
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .loading {
-  min-height: var(--editor-min-height);
+    min-height: var(--editor-min-height);
 }

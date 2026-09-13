@@ -6,25 +6,25 @@ import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import { observeRootTheme, registerGeneratedThemes } from './monacoThemes';
 
 self.MonacoEnvironment = {
-  getWorker(): Worker {
-    return new EditorWorker();
-  },
+    getWorker(): Worker {
+        return new EditorWorker();
+    },
 };
 
 export function applyMonacoThemeFromRoot(): () => void {
-  registerGeneratedThemes({
-    defineTheme(name, definition): void {
-      monaco.editor.defineTheme(name, {
-        ...definition,
-        colors: { ...definition.colors },
-        rules: definition.rules.map((rule) => ({ ...rule })),
-      });
-    },
-    setTheme(name): void {
-      monaco.editor.setTheme(name);
-    },
-  });
-  return observeRootTheme(document.documentElement, monaco.editor);
+    registerGeneratedThemes({
+        defineTheme(name, definition): void {
+            monaco.editor.defineTheme(name, {
+                ...definition,
+                colors: { ...definition.colors },
+                rules: definition.rules.map((rule) => ({ ...rule })),
+            });
+        },
+        setTheme(name): void {
+            monaco.editor.setTheme(name);
+        },
+    });
+    return observeRootTheme(document.documentElement, monaco.editor);
 }
 
 export { monaco };

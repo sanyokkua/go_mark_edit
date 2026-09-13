@@ -39,12 +39,12 @@ example that is actually coming.
 -- internal/db/migrations/0002_providers.sql
 -- +goose Up
 CREATE TABLE providers (
-    id          TEXT PRIMARY KEY,
-    kind        TEXT NOT NULL,
-    label       TEXT NOT NULL,
-    base_url    TEXT NOT NULL,
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    label TEXT NOT NULL,
+    base_url TEXT NOT NULL,
     api_key_env TEXT,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime ('now'))
 );
 
 CREATE INDEX providers_kind_idx ON providers (kind);
@@ -67,14 +67,30 @@ The file is picked up automatically — `internal/db` embeds `migrations/*.sql` 
 ```sql
 -- internal/db/queries/providers.sql
 -- name: ListProviders :many
-SELECT id, kind, label, base_url, api_key_env
-FROM providers
-ORDER BY label;
+SELECT
+    id,
+    kind,
+    label,
+    base_url,
+    api_key_env
+FROM
+    providers
+ORDER BY
+    label;
 
 -- name: UpsertProvider :exec
-INSERT INTO providers (id, kind, label, base_url, api_key_env)
-VALUES (sqlc.arg(id), sqlc.arg(kind), sqlc.arg(label), sqlc.arg(base_url), sqlc.arg(api_key_env))
-ON CONFLICT(id) DO UPDATE SET
+INSERT INTO
+    providers (id, kind, label, base_url, api_key_env)
+VALUES
+    (
+        sqlc.arg (id),
+        sqlc.arg (kind),
+        sqlc.arg (label),
+        sqlc.arg (base_url),
+        sqlc.arg (api_key_env)
+    ) ON CONFLICT (id) DO
+UPDATE
+SET
     kind = excluded.kind,
     label = excluded.label,
     base_url = excluded.base_url,

@@ -3,28 +3,28 @@ id: STORY-027
 title: Make failed frontend bootstrap retryable
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
-  - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#store
-  - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#i18n-layer
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#state-ownership
+    - ../../../_archive-2026-07-28-specification/02_Architecture/03_FRONTEND_REACT.md#store
+    - ../../../_archive-2026-07-28-specification/01_Product/13_I18N.md#i18n-layer
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#state-and-transition-model
 phase_requirements:
-  - PH01-R02
-  - PH01-R16
+    - PH01-R02
+    - PH01-R16
 modules:
-  - logic/store/
-  - ui/widgets/
-  - i18n/
+    - logic/store/
+    - ui/widgets/
+    - i18n/
 acceptance_criteria:
-  - STORY-027-AC-1
-  - STORY-027-AC-2
-  - STORY-027-AC-3
-  - STORY-027-AC-4
+    - STORY-027-AC-1
+    - STORY-027-AC-2
+    - STORY-027-AC-3
+    - STORY-027-AC-4
 edge_cases: []
 depends_on:
-  - STORY-012
-  - STORY-016
+    - STORY-012
+    - STORY-016
 adrs:
-  - ADR-0014
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: M

@@ -20,22 +20,18 @@ import { t } from '../../i18n';
  * no `Warning` field, so the distinction dies at the bridge. The copy is
  * therefore honest about the class rather than guessing which of the three.
  */
-export function readOnlyReasonKey(
-  capability: string | undefined,
-): string | undefined {
-  switch (capability) {
-    case 'large-read-only':
-      return 'status.readOnlyReason.large';
-    case 'unsafe-read-only':
-      return 'status.readOnlyReason.unsafe';
-    default:
-      return undefined;
-  }
+export function readOnlyReasonKey(capability: string | undefined): string | undefined {
+    switch (capability) {
+        case 'large-read-only':
+            return 'status.readOnlyReason.large';
+        case 'unsafe-read-only':
+            return 'status.readOnlyReason.unsafe';
+        default:
+            return undefined;
+    }
 }
 
-export function readOnlyReason(
-  capability: string | undefined,
-): string | undefined {
-  const key = readOnlyReasonKey(capability);
-  return key === undefined ? undefined : t(key);
+export function readOnlyReason(capability: string | undefined): string | undefined {
+    const key = readOnlyReasonKey(capability);
+    return key === undefined ? undefined : t(key);
 }

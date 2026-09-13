@@ -12,5 +12,5 @@
 export const EDITOR_TABPANEL_ID = 'editor-tabpanel';
 
 export function tabElementId(documentId: string): string {
-  return `tab-${documentId}`;
+    return `tab-${documentId}`;
 }

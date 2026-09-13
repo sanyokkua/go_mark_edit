@@ -26,13 +26,13 @@ Splitting them meant building the same machinery twice.
    callers in mind. Monaco's `DiffEditor` is already in the bundle and costs nothing
    extra.
 
-   **Format applies directly; it does not open a diff first.** `../spec/product/tidying-markdown.md` says
-   Format mutates the buffer as one undo step, and a modal on every save would destroy the cursor
-   preservation that a single undo step requires. Undo is the review mechanism, because Format is exactly one
-   undo step by construction.
+    **Format applies directly; it does not open a diff first.** `../spec/product/tidying-markdown.md` says
+    Format mutates the buffer as one undo step, and a modal on every save would destroy the cursor
+    preservation that a single undo step requires. Undo is the review mechanism, because Format is exactly one
+    undo step by construction.
 
-   The diff is reachable **on demand** — a _Preview changes_ item beside Format — for the case where a
-   user wants to look before committing to a large reformat. Never automatically, and never on save.
+    The diff is reachable **on demand** — a _Preview changes_ item beside Format — for the case where a
+    user wants to look before committing to a large reformat. Never automatically, and never on save.
 
 3. **Lint.** Run consistency rules over the document, show findings as squiggles at the right
    positions in the editor, and put a problems count in the status bar. Clicking a finding jumps to it.

@@ -8,43 +8,43 @@
  * query, so the two are deliberately separate variables.
  */
 .shell {
-  --shell-workspace-column: var(--shell-left-width);
+    --shell-workspace-column: var(--shell-left-width);
 
-  display: grid;
-  height: 100%;
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-  position: relative;
-  grid-template-areas: 'workspace document assistant';
-  grid-template-columns:
-    var(--shell-workspace-column)
-    minmax(var(--shell-center-min-width), 1fr)
-    var(--shell-assistant-collapsed-width);
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    position: relative;
+    grid-template-areas: 'workspace document assistant';
+    grid-template-columns:
+        var(--shell-workspace-column)
+        minmax(var(--shell-center-min-width), 1fr)
+        var(--shell-assistant-collapsed-width);
 }
 
 .shell[data-workspace-visible='false'] {
-  --shell-workspace-column: 0px;
+    --shell-workspace-column: 0px;
 }
 
 .document {
-  display: flex;
-  flex-direction: column;
-  grid-area: document;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    grid-area: document;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: contain;
 }
 
 /* Responsive presentation is visual only. It never issues a layout command,
    so the saved desktop divider width remains authoritative. */
 @media (max-width: 768px) {
-  .shell {
-    --shell-workspace-column: 46px;
+    .shell {
+        --shell-workspace-column: 46px;
 
-    grid-template-areas: 'workspace document assistant';
-  }
+        grid-template-areas: 'workspace document assistant';
+    }
 }
 
 /* The native 375 px minimum can expose a 376 px CSS viewport after frame
@@ -54,15 +54,15 @@
    block carries no presentation for either. The grid still declares a
    `workspace` area, so the column stays collapsed here. */
 @media (max-width: 376px) {
-  .shell {
-    --shell-workspace-column: 0px;
+    .shell {
+        --shell-workspace-column: 0px;
 
-    display: grid;
-    grid-template-areas: 'workspace document assistant';
-    position: relative;
-  }
+        display: grid;
+        grid-template-areas: 'workspace document assistant';
+        position: relative;
+    }
 
-  .document {
-    min-width: 0;
-  }
+    .document {
+        min-width: 0;
+    }
 }

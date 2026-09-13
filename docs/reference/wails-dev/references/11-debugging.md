@@ -85,6 +85,6 @@ if info.BuildType == "dev" {
 ```typescript
 const env = await Environment();
 if (env.buildType === 'dev') {
-  console.log('dev mode');
+    console.log('dev mode');
 }
 ```

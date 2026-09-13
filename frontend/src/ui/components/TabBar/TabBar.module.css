@@ -5,281 +5,281 @@
  * palette/mode combination on the same contract.
  */
 .tabStrip[data-tabs-overflowing='true'] {
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-inline: contain;
-  scrollbar-width: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
 }
 
 .tabBar {
-  min-inline-size: 0;
+    min-inline-size: 0;
 }
 
 .tabBar [data-bar-slot='main'] {
-  min-inline-size: 0;
+    min-inline-size: 0;
 }
 
 .tabStrip {
-  align-items: center;
-  block-size: var(--tabs-row-height);
-  border-bottom: var(--control-border-width) solid var(--tabs-border-color);
-  box-sizing: border-box;
-  display: flex;
-  gap: var(--tabs-gap);
-  max-width: 100%;
-  min-width: auto;
-  overflow: visible;
-  padding: var(--tabs-row-padding);
-  backdrop-filter: var(--tab-strip-backdrop);
+    align-items: center;
+    block-size: var(--tabs-row-height);
+    border-bottom: var(--control-border-width) solid var(--tabs-border-color);
+    box-sizing: border-box;
+    display: flex;
+    gap: var(--tabs-gap);
+    max-width: 100%;
+    min-width: auto;
+    overflow: visible;
+    padding: var(--tabs-row-padding);
+    backdrop-filter: var(--tab-strip-backdrop);
 }
 
 .tabInsertionIndicator {
-  align-self: stretch;
-  background: var(--accent);
-  border-radius: 1.5px;
-  flex: none;
-  inline-size: 3px;
+    align-self: stretch;
+    background: var(--accent);
+    border-radius: 1.5px;
+    flex: none;
+    inline-size: 3px;
 }
 
 .tabs {
-  align-items: center;
-  box-sizing: border-box;
-  display: flex;
-  gap: var(--tabs-gap);
-  min-inline-size: max-content;
-  padding: 0;
+    align-items: center;
+    box-sizing: border-box;
+    display: flex;
+    gap: var(--tabs-gap);
+    min-inline-size: max-content;
+    padding: 0;
 }
 
 .tabItem {
-  align-items: center;
-  background: transparent;
-  border: var(--tab-border);
-  border-bottom: var(--tab-underline);
-  border-radius: var(--tab-radius);
-  box-sizing: border-box;
-  display: flex;
-  font-size: var(--tab-label-font-size);
-  gap: var(--tab-gap);
-  flex: none;
-  max-width: var(--tab-max-width);
-  padding: var(--tab-padding);
+    align-items: center;
+    background: transparent;
+    border: var(--tab-border);
+    border-bottom: var(--tab-underline);
+    border-radius: var(--tab-radius);
+    box-sizing: border-box;
+    display: flex;
+    font-size: var(--tab-label-font-size);
+    gap: var(--tab-gap);
+    flex: none;
+    max-width: var(--tab-max-width);
+    padding: var(--tab-padding);
 }
 
 .tabItem:has(.tab[aria-selected='true']) {
-  background: var(--tab-active-background);
-  border-color: var(--tab-active-border-color);
-  border-bottom: var(--tab-active-underline);
-  font-weight: var(--tab-active-font-weight);
+    background: var(--tab-active-background);
+    border-color: var(--tab-active-border-color);
+    border-bottom: var(--tab-active-underline);
+    font-weight: var(--tab-active-font-weight);
 }
 
 .tab,
 .tabClose,
 .tabAdd,
 .contextMenuItem {
-  background: transparent;
-  border: 0;
-  color: var(--muted);
-  font: inherit;
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    font: inherit;
 }
 
 .tab,
 .tabClose,
 .tabAdd,
 .contextMenuItem {
-  cursor: pointer;
-  white-space: nowrap;
+    cursor: pointer;
+    white-space: nowrap;
 }
 
 .contextMenuItem {
-  padding: var(--tab-padding);
+    padding: var(--tab-padding);
 }
 
 .tab {
-  align-items: center;
-  border: 0;
-  display: inline-flex;
-  gap: var(--tab-gap);
-  min-width: 0;
-  overflow: hidden;
-  padding: 0;
-  text-align: start;
-  text-overflow: ellipsis;
+    align-items: center;
+    border: 0;
+    display: inline-flex;
+    gap: var(--tab-gap);
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+    text-align: start;
+    text-overflow: ellipsis;
 }
 
 .tabLabel {
-  display: inline-block;
-  max-width: var(--tab-max-width);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: bottom;
+    display: inline-block;
+    max-width: var(--tab-max-width);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
 }
 
 .tab[aria-selected='true'] {
-  color: var(--tab-active-color);
-  box-shadow: none;
+    color: var(--tab-active-color);
+    box-shadow: none;
 }
 
 .tabClose {
-  color: var(--faint);
+    color: var(--faint);
 }
 
 .tabAdd {
-  display: block;
-  font-family: Arial;
-  padding: 0;
-  text-align: center;
-  white-space: normal;
+    display: block;
+    font-family: Arial;
+    padding: 0;
+    text-align: center;
+    white-space: normal;
 }
 
 .tabClose {
-  align-items: center;
-  display: inline-flex;
-  justify-content: center;
-  min-inline-size: 0;
-  padding: 0;
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    min-inline-size: 0;
+    padding: 0;
 }
 
 .tabCloseGlyph {
-  display: block;
+    display: block;
 }
 
 .tabAdd {
-  block-size: var(--tab-add-size);
-  inline-size: var(--tab-add-size);
+    block-size: var(--tab-add-size);
+    inline-size: var(--tab-add-size);
 }
 
 .modifiedDot {
-  align-items: center;
-  background: transparent;
-  border-radius: 50%;
-  color: var(--accent);
-  display: inline-flex;
-  height: 6px;
-  justify-content: center;
-  width: 6px;
+    align-items: center;
+    background: transparent;
+    border-radius: 50%;
+    color: var(--accent);
+    display: inline-flex;
+    height: 6px;
+    justify-content: center;
+    width: 6px;
 }
 
 .modifiedDot:not([aria-hidden='true']) {
-  background: var(--accent);
+    background: var(--accent);
 }
 
 .modifiedDotMuted {
-  opacity: var(--disabled-opacity);
+    opacity: var(--disabled-opacity);
 }
 
 .modifiedDot[aria-hidden='true'] {
-  visibility: hidden;
+    visibility: hidden;
 }
 
 .tab:focus-visible,
 .tabClose:focus-visible,
 .tabAdd:focus-visible,
 .contextMenuItem:focus-visible {
-  box-shadow: var(--focus-ring);
-  outline: 0;
-  outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+    outline: 0;
+    outline-offset: 2px;
 }
 
 .tab:disabled,
 .tabClose:disabled,
 .tabAdd:disabled,
 .contextMenuItem:disabled {
-  cursor: not-allowed;
-  opacity: var(--disabled-opacity);
+    cursor: not-allowed;
+    opacity: var(--disabled-opacity);
 }
 
 .contextMenu {
-  background: var(--surface-raised);
-  border: var(--control-border-width) solid var(--border);
-  border-radius: var(--popup-radius);
-  box-shadow: var(--tab-context-menu-shadow);
-  display: grid;
-  gap: 0;
-  min-inline-size: var(--popup-min-width);
-  padding: var(--popup-padding);
-  position: absolute;
-  right: var(--app-gap);
-  top: 3rem;
-  z-index: var(--z-dropdown);
+    background: var(--surface-raised);
+    border: var(--control-border-width) solid var(--border);
+    border-radius: var(--popup-radius);
+    box-shadow: var(--tab-context-menu-shadow);
+    display: grid;
+    gap: 0;
+    min-inline-size: var(--popup-min-width);
+    padding: var(--popup-padding);
+    position: absolute;
+    right: var(--app-gap);
+    top: 3rem;
+    z-index: var(--z-dropdown);
 }
 
 .contextMenuItem {
-  text-align: start;
-  padding: var(--popup-row-padding);
-  font-size: var(--popup-row-font-size);
+    text-align: start;
+    padding: var(--popup-row-padding);
+    font-size: var(--popup-row-font-size);
 }
 
 :global(:root[data-theme='material']) .tabItem {
-  border-radius: 18px;
-  padding: 8px 15px;
+    border-radius: 18px;
+    padding: 8px 15px;
 }
 
 :global(:root[data-theme='material']) .tabItem:has(.tab[aria-selected='true']) {
-  background: var(--accent);
-  border-color: transparent;
+    background: var(--accent);
+    border-color: transparent;
 }
 
 :global(:root[data-theme='material']) .tab[aria-selected='true'] {
-  background: transparent;
-  box-shadow: none;
-  color: var(--accent-contrast);
+    background: transparent;
+    box-shadow: none;
+    color: var(--accent-contrast);
 }
 
 :global(:root[data-theme='minimal']) .tabItem {
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  padding: 8px 12px;
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 8px 12px;
 }
 
 :global(:root[data-theme='minimal']) .tabItem:has(.tab[aria-selected='true']) {
-  background: none;
-  border-bottom-color: var(--text);
-  font-weight: 500;
+    background: none;
+    border-bottom-color: var(--text);
+    font-weight: 500;
 }
 
 :global(:root[data-theme='minimal']) .tab[aria-selected='true'] {
-  box-shadow: none;
+    box-shadow: none;
 }
 
 :global(:root[data-theme='glass']) .tabItem,
 :global(:root[data-theme='glass']) .tab {
-  backdrop-filter: none;
+    backdrop-filter: none;
 }
 
 :global(:root[data-theme='glass']) .tabStrip {
-  backdrop-filter: var(--blur);
+    backdrop-filter: var(--blur);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tab,
-  .tabClose,
-  .tabAdd,
-  .contextMenuItem {
-    scroll-behavior: auto;
-    transition: none;
-  }
+    .tab,
+    .tabClose,
+    .tabAdd,
+    .contextMenuItem {
+        scroll-behavior: auto;
+        transition: none;
+    }
 }
 
 .tabLabel:has(> [data-tab-label-suffix]) {
-  display: inline-flex;
-  min-width: 0;
+    display: inline-flex;
+    min-width: 0;
 }
 
 .tabLabelBasename {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .tabLabelSuffix {
-  flex: 0 0 auto;
-  white-space: nowrap;
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .tabItem[data-tab-dragging='true'] {
-  opacity: var(--disabled-opacity);
+    opacity: var(--disabled-opacity);
 }

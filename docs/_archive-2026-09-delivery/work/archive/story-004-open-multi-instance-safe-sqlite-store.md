@@ -3,29 +3,29 @@ id: STORY-004
 title: Open the multi-instance-safe SQLite store and generated query layer
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
-  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations
-  - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state
+    - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#kv-schema
+    - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#migrations
+    - ../../../_archive-2026-07-28-specification/02_Architecture/05_STATE_AND_PERSISTENCE.md#multi-instance-db
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#3-persistence--state
 phase_requirements:
-  - PH00-R04
+    - PH00-R04
 modules:
-  - internal/db/
-  - internal/file/
+    - internal/db/
+    - internal/file/
 acceptance_criteria:
-  - STORY-004-AC-1
-  - STORY-004-AC-2
-  - STORY-004-AC-3
-  - STORY-004-AC-4
+    - STORY-004-AC-1
+    - STORY-004-AC-2
+    - STORY-004-AC-3
+    - STORY-004-AC-4
 edge_cases:
-  - EC-SET-1
-  - EC-SET-2
+    - EC-SET-1
+    - EC-SET-2
 depends_on:
-  - STORY-003
+    - STORY-003
 adrs:
-  - ADR-0001
-  - ADR-0004
-  - ADR-0006
+    - ADR-0001
+    - ADR-0004
+    - ADR-0006
 phase: 00
 owner: coder
 estimate: M

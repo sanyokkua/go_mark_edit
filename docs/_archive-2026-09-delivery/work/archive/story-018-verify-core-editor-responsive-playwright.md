@@ -3,36 +3,36 @@ id: STORY-018
 title: Verify the core editor responsively with Playwright
 status: done
 spec_clauses:
-  - 07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist
-  - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
-  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
-  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets
-  - ../../../_archive-2026-07-28-specification/03_NonFunctional/05_ACCESSIBILITY.md#2-keyboard-operability
-  - mockups/README.md#role-in-the-spec
+    - 07_Phases/PHASE_01_CORE_EDITOR.md#phase-exit-checklist
+    - ../../../_archive-2026-07-28-specification/01_Product/02_EDITOR_AND_VIEWER_MODES.md#split-view
+    - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#2-editor-responsiveness
+    - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets
+    - ../../../_archive-2026-07-28-specification/03_NonFunctional/05_ACCESSIBILITY.md#2-keyboard-operability
+    - mockups/README.md#role-in-the-spec
 phase_requirements:
-  - PH01-R03
-  - PH01-R08
-  - PH01-R11
-  - PH01-R12
-  - PH01-R13
+    - PH01-R03
+    - PH01-R08
+    - PH01-R11
+    - PH01-R12
+    - PH01-R13
 modules:
-  - ui/components/
-  - ui/primitives/
-  - ui/widgets/
-  - dev/bridge-mock/
+    - ui/components/
+    - ui/primitives/
+    - ui/widgets/
+    - dev/bridge-mock/
 acceptance_criteria:
-  - STORY-018-AC-1
-  - STORY-018-AC-2
-  - STORY-018-AC-3
-  - STORY-018-AC-4
+    - STORY-018-AC-1
+    - STORY-018-AC-2
+    - STORY-018-AC-3
+    - STORY-018-AC-4
 edge_cases: []
 depends_on:
-  - STORY-016
-  - STORY-017
+    - STORY-016
+    - STORY-017
 adrs:
-  - ADR-0002
-  - ADR-0003
-  - ADR-0014
+    - ADR-0002
+    - ADR-0003
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: M

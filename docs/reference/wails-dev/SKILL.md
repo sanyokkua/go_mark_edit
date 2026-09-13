@@ -1,16 +1,16 @@
 ---
 name: wails-dev
 description: >
-  Reference for Wails v2 Go desktop application development. Load when working with:
-  Wails, wails.json, wails dev, wails build, wails generate module, options.App,
-  OnStartup, OnDomReady, OnShutdown, OnBeforeClose, AssetServer, embed.FS,
-  Bind, EnumBind, wailsjs/, wailsjs/go/, runtime.EventsEmit, runtime.EventsOn,
-  EventsOn, EventsEmit, WindowSetTitle, WindowMaximise, ClipboardGetText,
-  BrowserOpenURL, menu.NewMenuFromItems, SingleInstanceLock, DragAndDrop,
-  AppModelHandler, state:patch, GetState/UpdateBuffer commands,
-  Go desktop app, Go + React desktop, Go frontend binding. Covers lifecycle hooks,
-  method binding, Go + TypeScript runtime APIs, event system, menus, platform
-  options, asset embedding, testing, and debugging.
+    Reference for Wails v2 Go desktop application development. Load when working with:
+    Wails, wails.json, wails dev, wails build, wails generate module, options.App,
+    OnStartup, OnDomReady, OnShutdown, OnBeforeClose, AssetServer, embed.FS,
+    Bind, EnumBind, wailsjs/, wailsjs/go/, runtime.EventsEmit, runtime.EventsOn,
+    EventsOn, EventsEmit, WindowSetTitle, WindowMaximise, ClipboardGetText,
+    BrowserOpenURL, menu.NewMenuFromItems, SingleInstanceLock, DragAndDrop,
+    AppModelHandler, state:patch, GetState/UpdateBuffer commands,
+    Go desktop app, Go + React desktop, Go frontend binding. Covers lifecycle hooks,
+    method binding, Go + TypeScript runtime APIs, event system, menus, platform
+    options, asset embedding, testing, and debugging.
 ---
 
 # Wails v2 Developer Reference

@@ -12,12 +12,12 @@ import styles from './AppBrand.module.css';
  * lands at the binding's coordinate by layout rather than by an offset.
  */
 const AppBrand: React.FC = (): React.JSX.Element => (
-  <div className={styles.brand} data-app-brand>
-    <span aria-hidden="true" className={styles.logo}>
-      {t('brand.mark')}
-    </span>
-    <span className={styles.name}>{t('brand.name')}</span>
-  </div>
+    <div className={styles.brand} data-app-brand>
+        <span aria-hidden="true" className={styles.logo}>
+            {t('brand.mark')}
+        </span>
+        <span className={styles.name}>{t('brand.name')}</span>
+    </div>
 );
 
 export default AppBrand;

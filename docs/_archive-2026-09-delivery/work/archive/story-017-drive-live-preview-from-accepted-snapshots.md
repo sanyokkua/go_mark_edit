@@ -3,36 +3,36 @@ id: STORY-017
 title: Drive live preview from backend-accepted debounced snapshots
 status: done
 spec_clauses:
-  - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce
-  - ../../../_archive-2026-07-28-specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#preview-debounce
-  - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets
-  - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
+    - ../../../_archive-2026-07-28-specification/01_Product/05_RENDERING_AND_EXTENSIONS.md#preview-debounce
+    - ../../../_archive-2026-07-28-specification/02_Architecture/07_LARGE_FILES_AND_CONCURRENCY.md#preview-debounce
+    - ../../../_archive-2026-07-28-specification/03_NonFunctional/02_PERFORMANCE.md#3-preview-debounce-targets
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#6-rendering--assets
+    - ../../../_archive-2026-07-28-specification/00_Foundation/04_DESIGN_DECISIONS.md#14-application-state-ownership
 phase_requirements:
-  - PH01-R02
-  - PH01-R03
-  - PH01-R12
+    - PH01-R02
+    - PH01-R03
+    - PH01-R12
 modules:
-  - logic/adapter/
-  - logic/hooks/
-  - ui/widgets/
+    - logic/adapter/
+    - logic/hooks/
+    - ui/widgets/
 acceptance_criteria:
-  - STORY-017-AC-1
-  - STORY-017-AC-2
-  - STORY-017-AC-3
-  - STORY-017-AC-4
-  - STORY-017-AC-5
-  - STORY-017-AC-6
+    - STORY-017-AC-1
+    - STORY-017-AC-2
+    - STORY-017-AC-3
+    - STORY-017-AC-4
+    - STORY-017-AC-5
+    - STORY-017-AC-6
 edge_cases:
-  - EC-RENDER-4
+    - EC-RENDER-4
 depends_on:
-  - STORY-014
-  - STORY-015
-  - STORY-019
+    - STORY-014
+    - STORY-015
+    - STORY-019
 adrs:
-  - ADR-0002
-  - ADR-0003
-  - ADR-0014
+    - ADR-0002
+    - ADR-0003
+    - ADR-0014
 phase: 01
 owner: coder
 estimate: M

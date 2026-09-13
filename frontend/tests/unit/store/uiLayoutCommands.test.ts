@@ -1,44 +1,39 @@
 import type { UILayout } from '../../../src/logic/store/appModelTypes';
 
-const mockSetUILayout = jest.fn<Promise<void>, [UILayout]>(
-  async (): Promise<void> => undefined,
-);
+const mockSetUILayout = jest.fn<Promise<void>, [UILayout]>(async (): Promise<void> => undefined);
 
 jest.mock('../../../src/logic/adapter', () => ({
-  appModelAdapter: {
-    setUILayout: mockSetUILayout,
-  },
+    appModelAdapter: {
+        setUILayout: mockSetUILayout,
+    },
 }));
 
 import {
-  WORKSPACE_BINDING_WIDTH,
-  setWorkspaceVisible,
-  setWorkspaceWidth,
+    WORKSPACE_BINDING_WIDTH,
+    setWorkspaceVisible,
+    setWorkspaceWidth,
 } from '../../../src/logic/store/uiLayoutCommands';
-import {
-  hydrateProjection,
-  resetProjection,
-} from '../../../src/logic/store/appModelProjectionActions';
+import { hydrateProjection, resetProjection } from '../../../src/logic/store/appModelProjectionActions';
 import { store } from '../../../src/logic/store/index';
 
 function hydrateLayout(layout: UILayout): void {
-  store.dispatch(
-    hydrateProjection({
-      revision: 1,
-      documents: {},
-      activeDocumentId: null,
-      ui: layout,
-    }),
-  );
+    store.dispatch(
+        hydrateProjection({
+            revision: 1,
+            documents: {},
+            activeDocumentId: null,
+            ui: layout,
+        }),
+    );
 }
 
 beforeEach((): void => {
-  store.dispatch(resetProjection());
-  mockSetUILayout.mockClear();
+    store.dispatch(resetProjection());
+    mockSetUILayout.mockClear();
 });
 
 afterEach((): void => {
-  store.dispatch(resetProjection());
+    store.dispatch(resetProjection());
 });
 
 /*
@@ -48,23 +43,23 @@ afterEach((): void => {
  * from the control being broken.
  */
 it('collapsing the divider to zero hides the workspace', async () => {
-  hydrateLayout({ sidebarVisible: true, sidebarWidth: 240 });
+    hydrateLayout({ sidebarVisible: true, sidebarWidth: 240 });
 
-  await store.dispatch(setWorkspaceWidth(0)).unwrap();
+    await store.dispatch(setWorkspaceWidth(0)).unwrap();
 
-  expect(mockSetUILayout).toHaveBeenCalledTimes(1);
-  expect(mockSetUILayout).toHaveBeenCalledWith({
-    sidebarVisible: false,
-    sidebarWidth: 0,
-  });
+    expect(mockSetUILayout).toHaveBeenCalledTimes(1);
+    expect(mockSetUILayout).toHaveBeenCalledWith({
+        sidebarVisible: false,
+        sidebarWidth: 0,
+    });
 });
 
 it('an ordinary drag width carries no visibility change', async () => {
-  hydrateLayout({ sidebarVisible: true, sidebarWidth: 240 });
+    hydrateLayout({ sidebarVisible: true, sidebarWidth: 240 });
 
-  await store.dispatch(setWorkspaceWidth(288)).unwrap();
+    await store.dispatch(setWorkspaceWidth(288)).unwrap();
 
-  expect(mockSetUILayout).toHaveBeenCalledWith({ sidebarWidth: 288 });
+    expect(mockSetUILayout).toHaveBeenCalledWith({ sidebarWidth: 288 });
 });
 
 /*
@@ -72,31 +67,31 @@ it('an ordinary drag width carries no visibility change', async () => {
  * at the binding's width, because "show it" has to produce something visible.
  */
 it('showing a zero-width workspace restores the binding width', async () => {
-  hydrateLayout({ sidebarVisible: false, sidebarWidth: 0 });
+    hydrateLayout({ sidebarVisible: false, sidebarWidth: 0 });
 
-  await store.dispatch(setWorkspaceVisible(true)).unwrap();
+    await store.dispatch(setWorkspaceVisible(true)).unwrap();
 
-  expect(mockSetUILayout).toHaveBeenCalledWith({
-    sidebarVisible: true,
-    sidebarWidth: WORKSPACE_BINDING_WIDTH,
-  });
-  expect(WORKSPACE_BINDING_WIDTH).toBe(216);
+    expect(mockSetUILayout).toHaveBeenCalledWith({
+        sidebarVisible: true,
+        sidebarWidth: WORKSPACE_BINDING_WIDTH,
+    });
+    expect(WORKSPACE_BINDING_WIDTH).toBe(216);
 });
 
 it('showing a workspace that already has a width leaves it alone', async () => {
-  hydrateLayout({ sidebarVisible: false, sidebarWidth: 255 });
+    hydrateLayout({ sidebarVisible: false, sidebarWidth: 255 });
 
-  await store.dispatch(setWorkspaceVisible(true)).unwrap();
+    await store.dispatch(setWorkspaceVisible(true)).unwrap();
 
-  expect(mockSetUILayout).toHaveBeenCalledWith({ sidebarVisible: true });
+    expect(mockSetUILayout).toHaveBeenCalledWith({ sidebarVisible: true });
 });
 
 it('hiding the workspace never rewrites its width', async () => {
-  hydrateLayout({ sidebarVisible: true, sidebarWidth: 255 });
+    hydrateLayout({ sidebarVisible: true, sidebarWidth: 255 });
 
-  await store.dispatch(setWorkspaceVisible(false)).unwrap();
+    await store.dispatch(setWorkspaceVisible(false)).unwrap();
 
-  expect(mockSetUILayout).toHaveBeenCalledWith({ sidebarVisible: false });
+    expect(mockSetUILayout).toHaveBeenCalledWith({ sidebarVisible: false });
 });
 
 /*
@@ -105,9 +100,9 @@ it('hiding the workspace never rewrites its width', async () => {
  * fallback, so the command must not manufacture a write for it.
  */
 it('showing a never-sized workspace issues no width', async () => {
-  hydrateLayout({ sidebarVisible: false });
+    hydrateLayout({ sidebarVisible: false });
 
-  await store.dispatch(setWorkspaceVisible(true)).unwrap();
+    await store.dispatch(setWorkspaceVisible(true)).unwrap();
 
-  expect(mockSetUILayout).toHaveBeenCalledWith({ sidebarVisible: true });
+    expect(mockSetUILayout).toHaveBeenCalledWith({ sidebarVisible: true });
 });

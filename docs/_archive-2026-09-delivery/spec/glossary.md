@@ -3,7 +3,7 @@
 Only terms that are genuinely ambiguous — words this project uses in a narrower sense than they are
 normally used, where guessing the wrong sense produces the wrong code.
 
-Process vocabulary is not here. Words like *phase*, *story* and *decision record* mean what they look
+Process vocabulary is not here. Words like _phase_, _story_ and _decision record_ mean what they look
 like, and are described where they are used.
 
 ---
@@ -15,13 +15,13 @@ preview, and which files the assistant's read tools can see.
 
 **Document** versus **buffer** — a **document** is the thing with an identity, a path, a modified flag
 and a place in the tab set; it lives in Go memory and survives a tab switch. A **buffer** is the
-editable text of the *visible* document, held in the editor widget in the webview. There is one buffer
+editable text of the _visible_ document, held in the editor widget in the webview. There is one buffer
 at a time; there may be forty documents. The buffer is a working copy pushed to the document on a
 debounce. When a rule says "the canonical content" it means the document's, never the buffer's.
 
 **Scope** — what an assistant action runs against: the whole document, or the current selection. It is
 resolved once when a run starts and does not change during the run. It is unrelated to a shortcut's
-*scope*, which is a different word for a different thing.
+_scope_, which is a different word for a different thing.
 
 **Scope**, for a keyboard shortcut — when the binding fires: **global** whenever the window has focus,
 **editor** only when the editor is focused, **document** whenever a document is open. Named the same as
