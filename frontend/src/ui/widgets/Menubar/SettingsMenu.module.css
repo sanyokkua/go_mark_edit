@@ -25,36 +25,62 @@
     border: 0;
     border-radius: 0;
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 2px;
     padding: 6px 10px;
+    width: 100%;
 }
 
-/* Binding source: mockup.html `.swatches i` (:247). */
 .swatch {
+    align-items: center;
     background: transparent;
+    border: 0;
+    border-radius: var(--control-radius);
+    box-sizing: border-box;
+    cursor: pointer;
+    display: flex;
+    gap: 12px;
+    min-block-size: var(--menu-item-height);
+    padding: var(--menu-item-padding);
+    text-align: start;
+    width: 100%;
+}
+
+.swatch::before {
+    background: var(--theme-glass-swatch);
     border: var(--control-border-width) solid var(--stroke);
     border-radius: 6px;
-    cursor: pointer;
+    content: '';
+    flex: none;
     height: 22px;
-    padding: 0;
     width: 22px;
 }
 
-.swatch[data-segmented-value='glass'] {
-    background: var(--theme-glass-swatch);
-}
-
-.swatch[data-segmented-value='material'] {
+.swatch[data-segmented-value='material']::before {
     background: var(--theme-material-swatch);
 }
 
-.swatch[data-segmented-value='minimal'] {
+.swatch[data-segmented-value='minimal']::before {
     background: var(--theme-minimal-swatch);
 }
 
 .swatch[aria-checked='true'] {
+    font-weight: var(--segmented-selected-font-weight);
+    outline: 0;
+}
+
+.swatch[aria-checked='true']::before {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+}
+
+.swatch:hover {
+    background: var(--hover);
+}
+
+.swatch:focus-visible {
+    box-shadow: inset 0 0 0 var(--segmented-focus-outline-width) var(--segmented-outline-color);
+    outline: 0;
 }
 
 .options {
