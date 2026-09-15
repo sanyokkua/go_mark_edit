@@ -44,6 +44,8 @@ import {
     WindowUnfullscreen,
     Quit,
     BrowserOpenURL,
+    ClipboardGetText,
+    ClipboardSetText,
 } from 'wailsjs/runtime';
 import { RetryStartup, WindowReady, AuthorizeQuit, CancelQuit } from 'wailsjs/go/application/ApplicationHandler';
 
@@ -56,6 +58,7 @@ import {
     type SettingsBindings,
 } from './services';
 import { createWindowAdapter } from './windowAdapter';
+import { createClipboardPort } from './clipboard';
 import type {
     ClassifiedError,
     ConflictPreview,
@@ -309,6 +312,11 @@ const generatedSettingsBindings: SettingsBindings = {
 };
 
 export const settingsAdapter = createSettingsAdapter(generatedSettingsBindings);
+
+export const clipboardPort = createClipboardPort({
+    getText: ClipboardGetText,
+    setText: ClipboardSetText,
+});
 
 const commandInvokerSave = command('AppModelHandler.Save', Save, {
     pacing: (documentId: string): 'bounded' | 'user-paced' =>
@@ -567,6 +575,7 @@ export {
     type SettingsBindings,
 } from './services';
 export { createWindowAdapter, type WindowAdapter, type WindowBindings } from './windowAdapter';
+export { createClipboardPort, type ClipboardBindings, type ClipboardPort } from './clipboard';
 export type {
     AppearanceSettings,
     ContentPrivacySettings,

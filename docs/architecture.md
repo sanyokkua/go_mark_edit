@@ -64,12 +64,14 @@ receive commands through props and contexts.
 | `frontend/src/app/useNotifications.ts`               | Notice/banner presentation, remediation routing, dismissal and polite Copy path announcements.                    |
 | `frontend/src/app/useWindowGeometry.ts`              | Readiness-gated native resize subscription and disposal.                                                          |
 | `frontend/src/app/useAppPresentation.ts`             | Local settings, menu, About and Shortcuts presentation state and existing command availability.                   |
-| `frontend/src/logic/adapter/`                        | The bridge boundary, request pacing, event subscriptions and service wrappers.                                    |
+| `frontend/src/logic/adapter/`                        | The bridge boundary, request pacing, event subscriptions, service wrappers and the native `ClipboardPort`.        |
 | `frontend/src/logic/store/`                          | A disposable Redux projection of backend state; it is not the source of truth.                                    |
 | `frontend/src/logic/actions/actionRegistry.ts`       | The action catalogue and availability decisions used by every command surface.                                    |
-| `frontend/src/logic/format/formatting.ts`            | The single formatting runner used by toolbar and command paths.                                                   |
+| `frontend/src/logic/actions/editorActionExecutor.ts` | The sole editor-action owner for dispatch, clipboard, formatting, selection snapshots and focus restoration.      |
+| `frontend/src/logic/format/formatting.ts`            | The inline wrapper-stack resolver and formatting runner called by the editor-action executor.                     |
 | `frontend/src/logic/markdown/linkPolicy.ts`          | Link classification before a preview action is dispatched.                                                        |
-| `frontend/src/ui/widgets/editorSession.ts`           | The document-identity-bound active editor command seam.                                                           |
+| `frontend/src/ui/widgets/editorSession.ts`           | The document-identity-bound active editor command seam, including Monaco focus restoration.                       |
+| `frontend/src/ui/widgets/useEditorActionExecutor.ts` | Binds the central editor-action executor to toolbar, popup and editor-shortcut UI surfaces.                       |
 | `frontend/src/ui/widgets/Menubar/`                   | File, Settings, View, About and narrow overflow menu composition.                                                 |
 | `frontend/src/ui/widgets/DocumentTabs/`              | The DocumentTabs consumer of TabBar and tab-specific commands.                                                    |
 | `frontend/src/ui/widgets/FormattingToolbar/`         | Formatting groups, arrangement control and Bar overflow.                                                          |

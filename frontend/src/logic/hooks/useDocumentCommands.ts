@@ -12,6 +12,7 @@ export interface DocumentCommandSession {
 }
 
 export interface DocumentCommandAPI {
+    focus: () => DocumentCommandResult<void>;
     getContent: () => DocumentCommandResult<string>;
     getSelection: () => DocumentCommandResult<EditorSelection | null>;
     replaceRange: (range: EditorRange, text: string, selection?: EditorSelection) => DocumentCommandResult<void>;
@@ -44,6 +45,14 @@ export function createDocumentCommands(
     sessionSource: EditorSessionSource,
 ): DocumentCommandAPI {
     return {
+        focus(): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') {
+                return session;
+            }
+
+            return session.value.focus() ? { status: 'available', value: undefined } : { status: 'unavailable' };
+        },
         getContent(): DocumentCommandResult<string> {
             const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
             if (session.status !== 'available') {

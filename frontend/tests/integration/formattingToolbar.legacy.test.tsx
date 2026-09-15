@@ -264,6 +264,7 @@ it('renders the text-labelled arrangement island in the toolbar', () => {
 
 it('preserves the editor selection when a toolbar format button is pressed', () => {
     const commands = {
+        focus: jest.fn(() => ({ status: 'available' as const, value: undefined })),
         getContent: jest.fn(() => ({
             status: 'available' as const,
             value: 'hello',
@@ -304,6 +305,7 @@ it('passes acknowledged marker preferences into toolbar formatting', async () =>
         value: undefined,
     }));
     const commands = {
+        focus: jest.fn(() => ({ status: 'available' as const, value: undefined })),
         getContent: jest.fn(() => ({
             status: 'available' as const,
             value: 'word',
@@ -360,6 +362,7 @@ it('routes deferred editor shortcuts through the typed dispatcher', () => {
         reason: 'deferred',
     });
     const commands = {
+        focus: jest.fn(() => ({ status: 'available' as const, value: undefined })),
         getContent: jest.fn(() => ({
             status: 'available' as const,
             value: 'word',
@@ -400,6 +403,7 @@ it('routes deferred editor shortcuts through the typed dispatcher', () => {
 
 it('suppresses editor shortcuts while the Shortcuts dialog modal state is active', () => {
     const commands = {
+        focus: jest.fn(() => ({ status: 'available' as const, value: undefined })),
         getContent: jest.fn(() => ({
             status: 'available' as const,
             value: 'word',

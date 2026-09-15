@@ -63,6 +63,83 @@ it('toggles marker pairs around a selection and restores the original bytes', ()
     expect(removed.range.end.column).toBe(10);
 });
 
+it('resolves a wrapped word stack at a collapsed caret without moving the logical caret', () => {
+    const wrapped = formatMarkdown(request('bold', 'Word', selection(1, 3)));
+    expect(wrapped).toMatchObject({
+        text: '**Word**',
+        selection: {
+            start: { lineNumber: 1, column: 5 },
+            end: { lineNumber: 1, column: 5 },
+        },
+    });
+
+    const unwrapped = formatMarkdown(request('bold', '**Word**', selection(1, 5)));
+    expect(unwrapped).toMatchObject({
+        text: 'Word',
+        selection: {
+            start: { lineNumber: 1, column: 3 },
+            end: { lineNumber: 1, column: 3 },
+        },
+    });
+
+    const replaced = formatMarkdown(request('italic', '**Word**', selection(1, 5)));
+    expect(replaced).toMatchObject({
+        text: '_Word_',
+        selection: {
+            start: { lineNumber: 1, column: 4 },
+            end: { lineNumber: 1, column: 4 },
+        },
+    });
+});
+
+it('adds or removes only the requested wrapper around a complete selected word stack', () => {
+    const added = formatMarkdown(request('strike', '**Word**', selection(1, 3, 1, 7)));
+    expect(added).toMatchObject({
+        range: {
+            start: { lineNumber: 1, column: 1 },
+            end: { lineNumber: 1, column: 9 },
+        },
+        text: '~~**Word**~~',
+        selection: {
+            start: { lineNumber: 1, column: 5 },
+            end: { lineNumber: 1, column: 9 },
+        },
+    });
+
+    const removed = formatMarkdown(request('bold', '~~**Word**~~', selection(1, 5, 1, 9)));
+    expect(removed).toMatchObject({
+        range: {
+            start: { lineNumber: 1, column: 1 },
+            end: { lineNumber: 1, column: 13 },
+        },
+        text: '~~Word~~',
+        selection: {
+            start: { lineNumber: 1, column: 3 },
+            end: { lineNumber: 1, column: 7 },
+        },
+    });
+});
+
+it('treats both italic markers as one semantic style and never duplicates an existing stack style', () => {
+    const alternateItalic = formatMarkdown(request('italic', '*Word*', selection(1, 3)));
+    expect(alternateItalic).toMatchObject({
+        text: 'Word',
+        selection: {
+            start: { lineNumber: 1, column: 2 },
+            end: { lineNumber: 1, column: 2 },
+        },
+    });
+
+    const multipleStyles = formatMarkdown(request('inline-code', '**~~Word~~**', selection(1, 7)));
+    expect(multipleStyles).toMatchObject({
+        text: '`**~~Word~~**`',
+        selection: {
+            start: { lineNumber: 1, column: 8 },
+            end: { lineNumber: 1, column: 8 },
+        },
+    });
+});
+
 it('inserts an empty pair with the caret between markers', () => {
     const result = formatMarkdown(request('italic', 'one  two', selection(1, 5)));
     expect(result.text).toBe('__');
@@ -91,11 +168,11 @@ it('cancels an empty pair and toggles an unambiguous span under the caret', () =
         end: { lineNumber: 1, column: 14 },
     });
     expect(existing.selection).toEqual({
-        start: { lineNumber: 1, column: 8 },
-        end: { lineNumber: 1, column: 8 },
+        start: { lineNumber: 1, column: 9 },
+        end: { lineNumber: 1, column: 9 },
     });
 
-    expect(formatMarkdown(request('bold', 'ordinary', selection(1, 4))).text).toBe('****');
+    expect(formatMarkdown(request('bold', 'ordinary', selection(1, 4))).text).toBe('**ordinary**');
 });
 
 it('keeps whitespace and list or quote prefixes outside inline markers', () => {
@@ -229,6 +306,7 @@ it('routes a bounded result through the existing document-command seam', () => {
         ]
     >(() => ({ status: 'available', value: undefined }));
     const commands: DocumentCommandAPI = {
+        focus: () => ({ status: 'available', value: undefined }),
         getContent: () => ({ status: 'available', value: 'hello' }),
         getSelection: () => ({
             status: 'available',
@@ -263,6 +341,7 @@ it('forwards the formatter selection intent through document commands', () => {
         ]
     >(() => ({ status: 'available', value: undefined }));
     const commands: DocumentCommandAPI = {
+        focus: () => ({ status: 'available', value: undefined }),
         getContent: () => ({ status: 'available', value: 'hello' }),
         getSelection: () => ({
             status: 'available',
@@ -291,6 +370,7 @@ it('forwards empty-pair caret intent as well as selected-range intent', () => {
         ]
     >(() => ({ status: 'available', value: undefined }));
     const commands: DocumentCommandAPI = {
+        focus: () => ({ status: 'available', value: undefined }),
         getContent: () => ({ status: 'available', value: '' }),
         getSelection: () => ({
             status: 'available',

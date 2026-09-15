@@ -2,6 +2,8 @@ import { createEvent, fireEvent, render, screen, waitFor, within } from '@testin
 import { Provider } from 'react-redux';
 
 import { store } from '../../src/logic/store';
+import { currentPlatform } from '../../src/logic/actions/shortcutRegistry';
+import EditorContextMenu from '../../src/ui/widgets/EditorContextMenu';
 import { DocumentCommandContext, EditorSessionContext } from '../../src/ui/widgets/editorSession';
 import FormattingToolbar from '../../src/ui/widgets/FormattingToolbar/FormattingToolbar';
 
@@ -95,11 +97,16 @@ it('moves measured groups into the shared overflow Popup below 768px', async () 
 });
 
 it('routes a formatting activation through the editor command context', async () => {
+    const focus = jest.fn(() => ({
+        status: 'available' as const,
+        value: undefined,
+    }));
     const replaceRange = jest.fn(() => ({
         status: 'available' as const,
         value: undefined,
     }));
     const commands = {
+        focus,
         getContent: jest.fn(() => ({
             status: 'available' as const,
             value: 'word',
@@ -126,6 +133,68 @@ it('routes a formatting activation through the editor command context', async ()
     fireEvent.click(screen.getByRole('button', { name: 'Italic' }));
 
     await waitFor(() => expect(replaceRange).toHaveBeenCalledWith(expect.anything(), '*word*', expect.anything()));
+    expect(focus).toHaveBeenCalledTimes(1);
+});
+
+it('uses one focused editor-action path for toolbar, popup, and shortcut formatting', async () => {
+    const focus = jest.fn(() => ({ status: 'available' as const, value: undefined }));
+    const replaceRange = jest.fn(() => ({ status: 'available' as const, value: undefined }));
+    const commands = {
+        focus,
+        getContent: () => ({ status: 'available' as const, value: 'word' }),
+        getSelection: () => ({
+            status: 'available' as const,
+            value: {
+                start: { lineNumber: 1, column: 1 },
+                end: { lineNumber: 1, column: 5 },
+            },
+        }),
+        replaceAll: jest.fn(),
+        replaceRange,
+    };
+
+    renderToolbar(
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <DocumentCommandContext.Provider value={commands}>
+                <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
+                <EditorContextMenu>
+                    <div data-editor-surface>
+                        <textarea aria-label="Markdown source" />
+                    </div>
+                </EditorContextMenu>
+            </DocumentCommandContext.Provider>
+        </EditorSessionContext.Provider>,
+    );
+
+    const expectBoldEdit = (): void => {
+        expect(replaceRange).toHaveBeenCalledWith(expect.anything(), '**word**', {
+            start: { lineNumber: 1, column: 3 },
+            end: { lineNumber: 1, column: 7 },
+        });
+        expect(focus).toHaveBeenCalledTimes(1);
+    };
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bold' }));
+    await waitFor(expectBoldEdit);
+
+    replaceRange.mockClear();
+    focus.mockClear();
+    fireEvent.contextMenu(screen.getByLabelText('Markdown source'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Bold' }));
+    await waitFor(expectBoldEdit);
+
+    replaceRange.mockClear();
+    focus.mockClear();
+    const editor = screen.getByLabelText('Markdown source');
+    editor.focus();
+    const platform = currentPlatform();
+    fireEvent.keyDown(window, {
+        code: 'KeyB',
+        ctrlKey: platform !== 'darwin',
+        key: 'b',
+        metaKey: platform === 'darwin',
+    });
+    await waitFor(expectBoldEdit);
 });
 
 it('keeps action identity stable across every theme and mode', () => {

@@ -15,6 +15,7 @@ import {
 import EditorView, { type EditorViewAdapter } from '../../src/ui/widgets/EditorView';
 
 const mockEditorHandle: CodeEditorHandle = {
+    focus: jest.fn(() => true),
     getContent: jest.fn(() => '# Buffer'),
     getSelection: jest.fn(() => ({
         start: { lineNumber: 2, column: 1 },

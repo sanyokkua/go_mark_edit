@@ -10,20 +10,18 @@ import {
 import { t } from '../../i18n';
 import {
     actionsForSurface,
-    getAction,
     getActionAvailability,
     type ActionId,
     type ActionEntry,
 } from '../../logic/actions/actionRegistry';
-import { dispatchAction, type ActionResult } from '../../logic/actions/actionDispatcher';
+import type { ActionResult } from '../../logic/actions/actionDispatcher';
+import type { EditorActionSnapshot } from '../../logic/actions/editorActionExecutor';
 import { useEditingProjection } from '../../logic/hooks/useEditingProjection';
 import { currentPlatform, formatShortcut } from '../../logic/actions/shortcutRegistry';
-import { formatMarkers, runFormatAction } from '../../logic/format/formatting';
-import type { EditorSelection } from '../components/CodeEditor';
 import MenuItem from '../components/MenuItem';
 import Popup, { PopupSeparator } from '../components/Popup';
-import { useEditorSettings } from '../../logic/settings/editorSettings';
-import { DocumentCommandContext, EditorSessionContext } from './editorSession';
+import { EditorSessionContext } from './editorSession';
+import { useEditorActionExecutor } from './useEditorActionExecutor';
 import styles from './EditorContextMenu.module.css';
 
 export interface EditorContextMenuProps extends PropsWithChildren {
@@ -33,14 +31,22 @@ export interface EditorContextMenuProps extends PropsWithChildren {
 
 const contextActions = actionsForSurface('context');
 
+function editorFocusTarget(target: EventTarget | null): HTMLElement | null {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active.closest('[data-editor-surface]') !== null) return active;
+    const element = target instanceof HTMLElement ? target : null;
+    const surface = element?.closest<HTMLElement>('[data-editor-surface]');
+    return surface?.querySelector<HTMLElement>('textarea, [contenteditable="true"]') ?? surface ?? element;
+}
+
 const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
     children,
     onAction,
     onActionResult,
 }: EditorContextMenuProps): React.JSX.Element => {
-    const commands = useContext(DocumentCommandContext);
     const activeBuffer = useContext(EditorSessionContext);
     const editingProjection = useEditingProjection(activeBuffer?.documentId);
+    const { capture, execute } = useEditorActionExecutor();
     const itemUnavailable = (item: {
         id: Parameters<typeof getActionAvailability>[0];
         availability: { kind: string };
@@ -48,15 +54,13 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         item.availability.kind === 'deferred' ||
         (editingProjection !== undefined &&
             getActionAvailability(item.id, { projectedState: editingProjection }).kind === 'unavailable');
-    const { markdownSettings } = useEditorSettings();
     const openerRef = useRef<HTMLElement | null>(null);
-    const selectionSnapshotRef = useRef<EditorSelection | null>(null);
+    const actionSnapshotRef = useRef<EditorActionSnapshot | null>(null);
     const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
 
     const openFromTarget = (target: EventTarget | null, nextPoint: { x: number; y: number }): void => {
-        const selection = commands?.getSelection();
-        selectionSnapshotRef.current = selection?.status === 'available' ? selection.value : null;
-        openerRef.current = target instanceof HTMLElement ? target : null;
+        actionSnapshotRef.current = capture();
+        openerRef.current = editorFocusTarget(target);
         setPoint(nextPoint);
     };
 
@@ -75,60 +79,7 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
     const activate = (actionId: ActionId): void => {
         onAction?.(actionId);
-        const action = getAction(actionId);
-        const capturedCommands =
-            commands === null || selectionSnapshotRef.current === null
-                ? commands
-                : {
-                      ...commands,
-                      getSelection: (): ReturnType<typeof commands.getSelection> => ({
-                          status: 'available',
-                          value: selectionSnapshotRef.current,
-                      }),
-                  };
-        const invoke =
-            action.nativeRole === 'clipboard'
-                ? async (): Promise<{ status: 'unavailable'; reason: 'unsupported' } | undefined> => {
-                      if (actionId === 'paste-plain') {
-                          if (capturedCommands === null || typeof navigator.clipboard?.readText !== 'function') {
-                              return { status: 'unavailable', reason: 'unsupported' };
-                          }
-                          const currentSelection = capturedCommands.getSelection();
-                          if (currentSelection.status !== 'available' || currentSelection.value === null) {
-                              return { status: 'unavailable', reason: 'unsupported' };
-                          }
-                          let text: string;
-                          try {
-                              text = await navigator.clipboard.readText();
-                          } catch {
-                              return { status: 'unavailable', reason: 'unsupported' };
-                          }
-                          return capturedCommands.replaceRange(currentSelection.value, text).status === 'available'
-                              ? undefined
-                              : { status: 'unavailable', reason: 'unsupported' };
-                      }
-                      if (typeof document.execCommand !== 'function') {
-                          return { status: 'unavailable', reason: 'unsupported' };
-                      }
-                      return document.execCommand(actionId)
-                          ? undefined
-                          : { status: 'unavailable', reason: 'unsupported' };
-                  }
-                : (): unknown =>
-                      runFormatAction({
-                          actionId,
-                          commands: capturedCommands,
-                          markers: formatMarkers(markdownSettings),
-                          selection: selectionSnapshotRef.current === null ? undefined : selectionSnapshotRef.current,
-                      });
-        void dispatchAction(actionId, {
-            documentId: activeBuffer?.documentId,
-            editorFocused: commands !== null && activeBuffer !== null,
-            projectedState: editingProjection,
-            invoke,
-            sessionDocumentId: activeBuffer?.documentId,
-            writable: activeBuffer !== null,
-        }).then((result): void => {
+        void execute(actionId, actionSnapshotRef.current ?? capture()).then((result): void => {
             onActionResult?.(result);
         });
         setPoint(null);

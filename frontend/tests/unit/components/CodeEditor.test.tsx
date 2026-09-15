@@ -60,6 +60,7 @@ function resetMockMonaco(): void {
     };
     mockRuntime.editor = {
         executeEdits: jest.fn(),
+        focus: jest.fn(),
         getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
         getScrollTop: jest.fn(() => mockRuntime.scrollTop),
         getSelection: jest.fn(() => mockRuntime.selection),
@@ -129,6 +130,16 @@ jest.mock('../../../src/ui/components/monacoSetup', () => ({
 
 beforeEach((): void => {
     resetMockMonaco();
+});
+
+it('exposes the Monaco focus operation through the editor command handle', async () => {
+    const ref = { current: null as CodeEditorHandle | null };
+    render(<CodeEditor ref={ref} documentId="document-1" initialValue="word" />);
+
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+
+    expect(ref.current?.focus()).toBe(true);
+    expect(mockRuntime.editor.focus).toHaveBeenCalledTimes(1);
 });
 
 const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');

@@ -9,6 +9,10 @@ const markers: MarkdownMarkerPreferences = {
 
 function commands(replaceRange: jest.MockedFunction<DocumentCommandAPI['replaceRange']>): DocumentCommandAPI {
     return {
+        focus: (): DocumentCommandResult<void> => ({
+            status: 'available',
+            value: undefined,
+        }),
         getContent: (): DocumentCommandResult<string> => ({
             status: 'available',
             value: 'hello',

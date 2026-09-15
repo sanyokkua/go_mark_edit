@@ -16,6 +16,7 @@ export interface EditorRange {
 export type EditorSelection = EditorRange;
 
 export interface CodeEditorHandle {
+    focus(): boolean;
     getContent(): string | null;
     getSelection(): EditorSelection | null;
     replaceRange(range: EditorRange, text: string, selection?: EditorSelection): boolean;
@@ -252,6 +253,11 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     useImperativeHandle(
         ref,
         (): CodeEditorHandle => ({
+            focus(): boolean {
+                if (editorRef.current === null) return false;
+                editorRef.current.focus();
+                return true;
+            },
             getContent(): string | null {
                 return editorRef.current?.getModel()?.getValue() ?? null;
             },

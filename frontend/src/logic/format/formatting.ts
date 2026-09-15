@@ -211,7 +211,181 @@ function pairFor(actionId: FormatActionId, emphasisMarker: '_' | '*'): string | 
     }
 }
 
-function pairEdit(request: FormatRequest, marker: string): FormatEdit {
+type InlineStyle = 'bold' | 'italic' | 'strike' | 'inline-code';
+
+interface InlineWrapper {
+    marker: string;
+    style: InlineStyle;
+}
+
+interface InlineWrapperStack {
+    baseEnd: number;
+    baseStart: number;
+    baseText: string;
+    end: number;
+    start: number;
+    wrappers: InlineWrapper[];
+}
+
+const MAX_INLINE_WRAPPER_DEPTH = 8;
+const INLINE_WRAPPER_CHARACTERS = new Set(['*', '_', '~', '`']);
+
+function inlineStyleFor(actionId: FormatActionId): InlineStyle | null {
+    switch (actionId) {
+        case 'bold':
+            return 'bold';
+        case 'italic':
+            return 'italic';
+        case 'strike':
+            return 'strike';
+        case 'inline-code':
+            return 'inline-code';
+        default:
+            return null;
+    }
+}
+
+function isInlineBaseCharacter(character: string): boolean {
+    return character.length > 0 && !/\s/.test(character) && !INLINE_WRAPPER_CHARACTERS.has(character);
+}
+
+function lineBoundsAtOffset(source: string, offset: number): { end: number; start: number } {
+    const start = (offset === 0 ? -1 : source.lastIndexOf('\n', offset - 1)) + 1;
+    const nextNewline = source.indexOf('\n', offset);
+    return { end: nextNewline === -1 ? source.length : nextNewline, start };
+}
+
+function baseTokenBounds(source: string, start: number, end: number): { end: number; start: number } | null {
+    const line = lineBoundsAtOffset(source, start);
+    let probe = -1;
+
+    if (start === end) {
+        if (start < line.end && isInlineBaseCharacter(source.charAt(start))) {
+            probe = start;
+        } else if (start > line.start && isInlineBaseCharacter(source.charAt(start - 1))) {
+            probe = start - 1;
+        }
+    } else {
+        for (let offset = start; offset < end; offset += 1) {
+            if (isInlineBaseCharacter(source.charAt(offset))) {
+                probe = offset;
+                break;
+            }
+        }
+    }
+
+    if (probe === -1) return null;
+
+    let tokenStart = probe;
+    while (tokenStart > line.start && isInlineBaseCharacter(source.charAt(tokenStart - 1))) {
+        tokenStart -= 1;
+    }
+    let tokenEnd = probe + 1;
+    while (tokenEnd < line.end && isInlineBaseCharacter(source.charAt(tokenEnd))) {
+        tokenEnd += 1;
+    }
+
+    return { end: tokenEnd, start: tokenStart };
+}
+
+function inlineCodeMarkerAt(source: string, left: number, right: number): string | null {
+    let leftLength = 0;
+    while (source.charAt(left - leftLength - 1) === '`') leftLength += 1;
+    let rightLength = 0;
+    while (source.charAt(right + rightLength) === '`') rightLength += 1;
+    return leftLength > 0 && leftLength === rightLength ? '`'.repeat(leftLength) : null;
+}
+
+function wrapperAt(source: string, left: number, right: number): InlineWrapper | null {
+    const codeMarker = inlineCodeMarkerAt(source, left, right);
+    if (codeMarker !== null) return { marker: codeMarker, style: 'inline-code' };
+
+    const candidates: readonly InlineWrapper[] = [
+        { marker: '**', style: 'bold' },
+        { marker: '__', style: 'bold' },
+        { marker: '~~', style: 'strike' },
+        { marker: '*', style: 'italic' },
+        { marker: '_', style: 'italic' },
+    ];
+    return (
+        candidates.find(
+            (candidate) =>
+                source.substring(left - candidate.marker.length, left) === candidate.marker &&
+                source.substring(right, right + candidate.marker.length) === candidate.marker,
+        ) ?? null
+    );
+}
+
+function resolveInlineWrapperStack(source: string, start: number, end: number): InlineWrapperStack | null {
+    const base = baseTokenBounds(source, start, end);
+    if (base === null) return null;
+
+    let stackStart = base.start;
+    let stackEnd = base.end;
+    const innerToOuter: InlineWrapper[] = [];
+    while (innerToOuter.length < MAX_INLINE_WRAPPER_DEPTH) {
+        const wrapper = wrapperAt(source, stackStart, stackEnd);
+        if (wrapper === null) break;
+        stackStart -= wrapper.marker.length;
+        stackEnd += wrapper.marker.length;
+        innerToOuter.push(wrapper);
+    }
+
+    const wholeBase = start === base.start && end === base.end;
+    const wholeStack = start === stackStart && end === stackEnd;
+    const collapsedOnBase = start === end && start >= base.start && start <= base.end;
+    if (!collapsedOnBase && !wholeBase && !wholeStack) return null;
+
+    return {
+        baseEnd: base.end,
+        baseStart: base.start,
+        baseText: source.substring(base.start, base.end),
+        end: stackEnd,
+        start: stackStart,
+        wrappers: innerToOuter.reverse(),
+    };
+}
+
+function renderInlineWrapperStack(wrappers: readonly InlineWrapper[], baseText: string): string {
+    return wrappers.reduceRight((text, wrapper) => wrapper.marker + text + wrapper.marker, baseText);
+}
+
+function wrapperPrefixLength(wrappers: readonly InlineWrapper[]): number {
+    return wrappers.reduce((length, wrapper) => length + wrapper.marker.length, 0);
+}
+
+function inlineStackEdit(
+    source: string,
+    stack: InlineWrapperStack,
+    style: InlineStyle,
+    marker: string,
+    start: number,
+    end: number,
+): FormatEdit {
+    const existingStyleIndex = stack.wrappers.findIndex((wrapper) => wrapper.style === style);
+    const collapsed = start === end;
+    const wrappers =
+        existingStyleIndex !== -1
+            ? stack.wrappers.filter((_, index) => index !== existingStyleIndex)
+            : collapsed && stack.wrappers.length === 1
+              ? stack.wrappers.map(() => ({ marker, style }))
+              : [{ marker, style }, ...stack.wrappers];
+    const text = renderInlineWrapperStack(wrappers, stack.baseText);
+    const prefixLength = wrapperPrefixLength(wrappers);
+    const nextSelection = collapsed
+        ? (() => {
+              const caret = positionAt(source, stack.start + prefixLength + start - stack.baseStart);
+              return { start: caret, end: caret };
+          })()
+        : {
+              start: positionAt(source, stack.start + prefixLength),
+              end: positionAt(source, stack.start + prefixLength + stack.baseText.length),
+          };
+
+    return editForOffsets(source, stack.start, stack.end, text, nextSelection);
+}
+
+function fallbackPairEdit(request: FormatRequest, marker: string): FormatEdit {
     const { start, end, text } = selectedText(request);
     const source = request.source;
     if (start === end) {
@@ -224,25 +398,6 @@ function pairEdit(request: FormatRequest, marker: string): FormatEdit {
                 start: caret,
                 end: caret,
             });
-        }
-
-        const lineStart = (start === 0 ? -1 : source.lastIndexOf('\n', start - 1)) + 1;
-        const lineEnd = source.indexOf('\n', start);
-        const beforeCaret = source.substring(lineStart, start);
-        const opening = beforeCaret.lastIndexOf(marker);
-        const closing = source.indexOf(marker, start);
-        const closingInLine = closing !== -1 && (lineEnd === -1 || closing < lineEnd);
-        if (opening !== -1 && closingInLine) {
-            const spanStart = lineStart + opening;
-            const contentStart = spanStart + marker.length;
-            const content = source.substring(contentStart, closing);
-            if (content.trim().length > 0) {
-                const caret = positionAt(source, spanStart);
-                return editForOffsets(source, spanStart, closing + marker.length, content, {
-                    start: caret,
-                    end: caret,
-                });
-            }
         }
 
         const caret = positionAt(source, start + marker.length);
@@ -272,6 +427,15 @@ function pairEdit(request: FormatRequest, marker: string): FormatEdit {
         end: positionAt(source, start + inlineText.length - lastLine.length + lastContent.end),
     };
     return editForOffsets(source, start, end, inlineText, nextSelection);
+}
+
+function pairEdit(request: FormatRequest, marker: string): FormatEdit {
+    const { start, end } = selectedText(request);
+    const style = inlineStyleFor(request.actionId);
+    const stack = style === null ? null : resolveInlineWrapperStack(request.source, start, end);
+    return stack === null || style === null
+        ? fallbackPairEdit(request, marker)
+        : inlineStackEdit(request.source, stack, style, marker, start, end);
 }
 
 function inlinePrefix(line: string): string {

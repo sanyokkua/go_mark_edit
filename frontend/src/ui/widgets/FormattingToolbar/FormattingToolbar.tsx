@@ -1,20 +1,16 @@
-import { createContext, Fragment, useCallback, useContext, useEffect } from 'react';
+import { createContext, Fragment, useCallback, useContext } from 'react';
 
 import { t } from '../../../i18n';
 import { useEditingProjection } from '../../../logic/hooks/useEditingProjection';
 import {
     getAction,
     getActionAvailability,
-    actionsForSurface,
     type ActionEntry,
     type ProjectedActionState,
 } from '../../../logic/actions/actionRegistry';
-import { dispatchAction } from '../../../logic/actions/actionDispatcher';
-import { currentPlatform, formatShortcut, shortcutForKeyEvent } from '../../../logic/actions/shortcutRegistry';
-import { formatMarkers, formatActionIds, runFormatAction } from '../../../logic/format/formatting';
-import { DocumentCommandContext, EditorSessionContext } from '../editorSession';
+import { currentPlatform, formatShortcut } from '../../../logic/actions/shortcutRegistry';
+import { EditorSessionContext } from '../editorSession';
 import type { ViewArrangement } from '../../../logic/store/appModelTypes';
-import { useEditorSettings } from '../../../logic/settings/editorSettings';
 import Icon, { type IconName } from '../../primitives/Icon';
 import Bar from '../../components/Bar';
 import Island from '../../components/Island';
@@ -24,8 +20,8 @@ import { OverflowMenuContext } from '../../primitives/overflowMenuContext';
 import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
 import ToolButton from '../../primitives/ToolButton';
 import styles from './FormattingToolbar.module.css';
-import { useModalState } from '../modalStateContext';
 import { ApplicationMenuRequestContext } from '../applicationMenuRequest';
+import { useEditorActionExecutor } from '../useEditorActionExecutor';
 
 export interface FormattingToolbarProps {
     arrangement: ViewArrangement;
@@ -175,62 +171,16 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
     arrangement,
     onArrangementChange,
 }: FormattingToolbarProps): React.JSX.Element => {
-    const commands = useContext(DocumentCommandContext);
     const activeBuffer = useContext(EditorSessionContext);
     const toolbarProjection = useEditingProjection(activeBuffer?.documentId);
-    const modalOpen = useModalState();
     const requestApplicationMenu = useContext(ApplicationMenuRequestContext);
-    const { markdownSettings } = useEditorSettings();
+    const { execute } = useEditorActionExecutor({ registerShortcuts: true });
     const onActivate = useCallback(
         (entry: ActionEntry): void => {
-            void dispatchAction(entry.id, {
-                documentId: activeBuffer?.documentId,
-                editorFocused: commands !== null && activeBuffer !== null,
-                projectedState: toolbarProjection,
-                invoke: (): unknown =>
-                    runFormatAction({
-                        actionId: entry.id,
-                        commands,
-                        markers: formatMarkers(markdownSettings),
-                    }),
-                sessionDocumentId: activeBuffer?.documentId,
-                writable: activeBuffer !== null,
-            });
+            void execute(entry.id);
         },
-        [activeBuffer, commands, markdownSettings, toolbarProjection],
+        [execute],
     );
-    const onKeyDown = useCallback(
-        (event: KeyboardEvent): void => {
-            if (modalOpen) return;
-            if (commands === null) return;
-            const editorElement = document.activeElement?.closest('[data-editor-surface]');
-            if (editorElement === null) return;
-            const binding = shortcutForKeyEvent(event, currentPlatform());
-            if (binding === undefined) return;
-            const entry = actionsForSurface('shortcuts').find(
-                (candidate) =>
-                    candidate.shortcut === binding &&
-                    (formatActionIds[candidate.id] !== undefined ||
-                        deferredActions.some((actionId) => actionId === candidate.id)),
-            );
-            if (entry === undefined) return;
-            const availability = getActionAvailability(entry.id, {
-                modalOpen,
-                projectedState: toolbarProjection,
-            });
-            if (availability.kind !== 'available' && availability.reason !== 'deferred') {
-                return;
-            }
-            event.preventDefault();
-            onActivate(entry);
-        },
-        [commands, modalOpen, onActivate, toolbarProjection],
-    );
-
-    useEffect((): (() => void) => {
-        window.addEventListener('keydown', onKeyDown);
-        return (): void => window.removeEventListener('keydown', onKeyDown);
-    }, [onKeyDown]);
 
     return (
         <ToolbarProjectionContext.Provider value={toolbarProjection}>

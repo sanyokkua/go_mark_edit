@@ -73,6 +73,47 @@ async function editorCaret(page: Page): Promise<{
     return { left: bounds.x, top: bounds.y };
 }
 
+async function setNativeClipboard(page: Page, text: string): Promise<void> {
+    await page.evaluate(async (value): Promise<void> => {
+        const runtime = (
+            globalThis as unknown as {
+                runtime?: { ClipboardSetText?: (nextText: string) => Promise<boolean> };
+            }
+        ).runtime;
+        if (runtime?.ClipboardSetText === undefined) {
+            throw new Error('the Wails native ClipboardSetText runtime is absent');
+        }
+        if (!(await runtime.ClipboardSetText(value))) {
+            throw new Error('the Wails native clipboard rejected the text write');
+        }
+    }, text);
+}
+
+async function nativeClipboardText(page: Page): Promise<string> {
+    return page.evaluate(async (): Promise<string> => {
+        const runtime = (
+            globalThis as unknown as {
+                runtime?: { ClipboardGetText?: () => Promise<string> };
+            }
+        ).runtime;
+        if (runtime?.ClipboardGetText === undefined) {
+            throw new Error('the Wails native ClipboardGetText runtime is absent');
+        }
+        return runtime.ClipboardGetText();
+    });
+}
+
+async function invokeEditorContextAction(page: Page, actionName: string): Promise<void> {
+    const editor = page.locator('[data-editor-surface] textarea').first();
+    await expect(editor).toBeFocused();
+    await editor.press('Shift+F10');
+    const menu = page.locator('[data-viewport-popup="context-menu"]');
+    await expect(menu).toBeVisible();
+    await menu.getByRole('menuitem', { name: actionName, exact: true }).click();
+    await expect(menu).toHaveCount(0);
+    await expect(editor).toBeFocused();
+}
+
 test('keeps the real editor model, undo history, caret, and focus across Save', async ({ app }) => {
     const original = '# Round trip\n\nA paragraph.';
     const edited = 'X';
@@ -144,4 +185,57 @@ test('keeps live Preview and Monaco focus while Save delivers metadata', async (
     await expect(page.getByRole('region', { name: 'Preview pane' })).toContainText('Live preview edit');
     await expect(editor).toBeFocused();
     expect(await editorCaret(page)).toEqual(caretBeforeSave);
+});
+
+test('uses the native clipboard for every editor popup action and keeps Monaco formatting focus stable', async ({
+    app,
+}) => {
+    const source = await app.writeDocument('editor-actions.md', 'Cut this');
+    await app.seedRecents([source]);
+    await app.launch();
+
+    const { page } = app;
+    await openRecent(page, 'editor-actions.md');
+    await disableAutosave(page);
+    const modifier = await editorModifier(page);
+    const editor = page.locator('[data-editor-surface] textarea').first();
+    await expect(editor).toBeVisible();
+    await editor.focus();
+
+    await editor.press(`${modifier}+A`);
+    await invokeEditorContextAction(page, 'Cut');
+    await expect.poll(() => activeBufferContent(page)).toBe('');
+    await expect.poll(() => nativeClipboardText(page)).toBe('Cut this');
+
+    await setNativeClipboard(page, 'Paste this');
+    await invokeEditorContextAction(page, 'Paste');
+    await expect.poll(() => activeBufferContent(page)).toBe('Paste this');
+
+    await editor.press(`${modifier}+A`);
+    await invokeEditorContextAction(page, 'Copy');
+    await expect.poll(() => nativeClipboardText(page)).toBe('Paste this');
+    await expect.poll(() => activeBufferContent(page)).toBe('Paste this');
+
+    await setNativeClipboard(page, 'Plain text');
+    await editor.press(`${modifier}+A`);
+    await invokeEditorContextAction(page, 'Paste as plain text');
+    await expect.poll(() => activeBufferContent(page)).toBe('Plain text');
+
+    await editor.press(`${modifier}+A`);
+    await page.keyboard.insertText('Word');
+    await expect.poll(() => activeBufferContent(page)).toBe('Word');
+    await page.getByRole('button', { name: 'Bold' }).click();
+    await expect.poll(() => activeBufferContent(page)).toBe('**Word**');
+    await expect(editor).toBeFocused();
+
+    // A selected word with another style would nest the next style. Collapse
+    // first to exercise the caret-specific replacement path: **Word** -> _Word_.
+    await editor.press('ArrowRight');
+    await invokeEditorContextAction(page, 'Italic');
+    await expect.poll(() => activeBufferContent(page)).toBe('_Word_');
+    await expect(editor).toBeFocused();
+
+    await editor.press(`${modifier}+I`);
+    await expect.poll(() => activeBufferContent(page)).toBe('Word');
+    await expect(editor).toBeFocused();
 });

@@ -7,6 +7,7 @@ import { createDocumentCommands, type DocumentCommandSession } from '../../../sr
 
 function createHandle(overrides: Partial<CodeEditorHandle> = {}): CodeEditorHandle {
     return {
+        focus: (): boolean => true,
         getContent: (): string | null => 'working copy',
         getSelection: (): EditorSelection | null => null,
         replaceAll: (): boolean => true,
@@ -14,6 +15,20 @@ function createHandle(overrides: Partial<CodeEditorHandle> = {}): CodeEditorHand
         ...overrides,
     };
 }
+
+it('routes focus through the same identity-bound document command seam', () => {
+    const focus = jest.fn<boolean, []>(() => true);
+    const original = createSession('document-1', createHandle({ focus }));
+    let liveSession: DocumentCommandSession | null = original;
+    const commands = createDocumentCommands(original.documentId, original.token, () => liveSession);
+
+    expect(commands.focus()).toEqual({ status: 'available', value: undefined });
+    expect(focus).toHaveBeenCalledTimes(1);
+
+    liveSession = createSession('document-1', createHandle());
+    expect(commands.focus()).toEqual({ status: 'document-mismatch' });
+    expect(focus).toHaveBeenCalledTimes(1);
+});
 
 function createSession(
     documentId: string,
@@ -280,6 +295,7 @@ it('keeps sibling consumers independent of Monaco', () => {
     const commandSource = sourceFile(resolve(sourceRoot, 'logic/hooks/useDocumentCommands.ts'));
     const activeBufferSource = sourceFile(resolve(sourceRoot, 'logic/store/appModelTypes.ts'));
     expect(interfaceMembers(commandSource, 'DocumentCommandAPI')).toEqual([
+        'focus',
         'getContent',
         'getSelection',
         'replaceRange',

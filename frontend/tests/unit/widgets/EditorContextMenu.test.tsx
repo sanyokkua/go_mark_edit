@@ -8,6 +8,8 @@ import { hydrateProjection, resetProjection } from '../../../src/logic/store/app
 import { hydrateSettings } from '../../../src/logic/store/settingsSlice';
 import EditorContextMenu from '../../../src/ui/widgets/EditorContextMenu';
 import { DocumentCommandContext, EditorSessionContext } from '../../../src/ui/widgets/editorSession';
+import { EditorClipboardPortContext } from '../../../src/ui/widgets/useEditorActionExecutor';
+import type { ClipboardPort } from '../../../src/logic/adapter';
 
 const render = (ui: Parameters<typeof rtlRender>[0]) => rtlRender(<Provider store={store}>{ui}</Provider>);
 
@@ -71,6 +73,10 @@ it('clamps context-menu placement and uses the selection captured at opening', a
         .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
         .mockReturnValue(new DOMRect(0, 0, 280, 200));
     const commands = {
+        focus: jest.fn(() => ({
+            status: 'available' as const,
+            value: undefined,
+        })),
         getContent: jest.fn(() => ({
             status: 'available' as const,
             value: 'word',
@@ -224,6 +230,10 @@ it('passes acknowledged marker preferences into context formatting', () => {
         value: undefined,
     }));
     const commands = {
+        focus: jest.fn(() => ({
+            status: 'available' as const,
+            value: undefined,
+        })),
         getContent: jest.fn(() => ({
             status: 'available' as const,
             value: 'word',
@@ -278,6 +288,10 @@ it('passes acknowledged marker preferences into context formatting', () => {
 
 function clipboardCommands() {
     return {
+        focus: jest.fn(() => ({
+            status: 'available' as const,
+            value: undefined,
+        })),
         getContent: jest.fn(() => ({
             status: 'available' as const,
             value: 'word',
@@ -297,28 +311,32 @@ function clipboardCommands() {
     };
 }
 
-function installExecCommand(result: boolean): jest.Mock<boolean, [string]> {
-    const execCommand = jest.fn<boolean, [string]>(() => result);
-    Object.defineProperty(document, 'execCommand', {
-        configurable: true,
-        value: execCommand,
-    });
-    return execCommand;
+function nativeClipboard(
+    readText: ClipboardPort['readText'] = async () => '',
+    writeText: ClipboardPort['writeText'] = async () => true,
+): ClipboardPort {
+    return { readText, writeText };
 }
 
 it('reports a rejected native clipboard command as unavailable', async () => {
-    const execCommand = installExecCommand(false);
     const onActionResult = jest.fn();
     const commands = clipboardCommands();
 
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
-            <DocumentCommandContext.Provider value={commands}>
-                <EditorContextMenu onActionResult={onActionResult}>
-                    <textarea aria-label="Markdown source" />
-                </EditorContextMenu>
-            </DocumentCommandContext.Provider>
-        </EditorSessionContext.Provider>,
+        <EditorClipboardPortContext.Provider
+            value={nativeClipboard(
+                async () => '',
+                async () => false,
+            )}
+        >
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+                <DocumentCommandContext.Provider value={commands}>
+                    <EditorContextMenu onActionResult={onActionResult}>
+                        <textarea aria-label="Markdown source" />
+                    </EditorContextMenu>
+                </DocumentCommandContext.Provider>
+            </EditorSessionContext.Provider>
+        </EditorClipboardPortContext.Provider>,
     );
 
     fireEvent.contextMenu(screen.getByLabelText('Markdown source'));
@@ -329,23 +347,33 @@ it('reports a rejected native clipboard command as unavailable', async () => {
             expect.objectContaining({ actionId: 'copy', status: 'unavailable' }),
         );
     });
-    expect(execCommand).toHaveBeenCalledWith('copy');
     expect(commands.replaceRange).not.toHaveBeenCalled();
+    expect(commands.focus).not.toHaveBeenCalled();
 });
 
-it('preserves native clipboard ownership and reports successful copy', async () => {
-    const execCommand = installExecCommand(true);
+it('copies the captured editor selection through the injected native clipboard port', async () => {
     const onActionResult = jest.fn();
     const commands = clipboardCommands();
+    let clipboardText = '';
 
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
-            <DocumentCommandContext.Provider value={commands}>
-                <EditorContextMenu onActionResult={onActionResult}>
-                    <textarea aria-label="Markdown source" />
-                </EditorContextMenu>
-            </DocumentCommandContext.Provider>
-        </EditorSessionContext.Provider>,
+        <EditorClipboardPortContext.Provider
+            value={nativeClipboard(
+                async () => clipboardText,
+                async (text) => {
+                    clipboardText = text;
+                    return true;
+                },
+            )}
+        >
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+                <DocumentCommandContext.Provider value={commands}>
+                    <EditorContextMenu onActionResult={onActionResult}>
+                        <textarea aria-label="Markdown source" />
+                    </EditorContextMenu>
+                </DocumentCommandContext.Provider>
+            </EditorSessionContext.Provider>
+        </EditorClipboardPortContext.Provider>,
     );
 
     fireEvent.contextMenu(screen.getByLabelText('Markdown source'));
@@ -354,27 +382,25 @@ it('preserves native clipboard ownership and reports successful copy', async () 
     await waitFor(() => {
         expect(onActionResult).toHaveBeenCalledWith(expect.objectContaining({ actionId: 'copy', status: 'mutated' }));
     });
-    expect(execCommand).toHaveBeenCalledWith('copy');
+    expect(clipboardText).toBe('word');
     expect(commands.replaceRange).not.toHaveBeenCalled();
+    expect(commands.focus).toHaveBeenCalledTimes(1);
 });
 
-it('uses navigator clipboard text for genuine paste-as-plain-text', async () => {
-    const clipboard = { readText: jest.fn(async () => 'plain text') };
-    Object.defineProperty(navigator, 'clipboard', {
-        configurable: true,
-        value: clipboard,
-    });
+it('uses native clipboard text for genuine paste-as-plain-text', async () => {
     const onActionResult = jest.fn();
     const commands = clipboardCommands();
 
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
-            <DocumentCommandContext.Provider value={commands}>
-                <EditorContextMenu onActionResult={onActionResult}>
-                    <textarea aria-label="Markdown source" />
-                </EditorContextMenu>
-            </DocumentCommandContext.Provider>
-        </EditorSessionContext.Provider>,
+        <EditorClipboardPortContext.Provider value={nativeClipboard(async () => 'plain text')}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+                <DocumentCommandContext.Provider value={commands}>
+                    <EditorContextMenu onActionResult={onActionResult}>
+                        <textarea aria-label="Markdown source" />
+                    </EditorContextMenu>
+                </DocumentCommandContext.Provider>
+            </EditorSessionContext.Provider>
+        </EditorClipboardPortContext.Provider>,
     );
 
     fireEvent.contextMenu(screen.getByLabelText('Markdown source'));
@@ -385,34 +411,34 @@ it('uses navigator clipboard text for genuine paste-as-plain-text', async () => 
             expect.objectContaining({ actionId: 'paste-plain', status: 'mutated' }),
         );
     });
-    expect(clipboard.readText).toHaveBeenCalledTimes(1);
     expect(commands.replaceRange).toHaveBeenCalledWith(
         {
             start: { lineNumber: 1, column: 1 },
             end: { lineNumber: 1, column: 5 },
         },
         'plain text',
+        {
+            start: { lineNumber: 1, column: 11 },
+            end: { lineNumber: 1, column: 11 },
+        },
     );
+    expect(commands.focus).toHaveBeenCalledTimes(1);
 });
 
 it('keeps failed plain-text reads from mutating the document', async () => {
-    Object.defineProperty(navigator, 'clipboard', {
-        configurable: true,
-        value: {
-            readText: jest.fn(async () => Promise.reject(new Error('denied'))),
-        },
-    });
     const onActionResult = jest.fn();
     const commands = clipboardCommands();
 
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
-            <DocumentCommandContext.Provider value={commands}>
-                <EditorContextMenu onActionResult={onActionResult}>
-                    <textarea aria-label="Markdown source" />
-                </EditorContextMenu>
-            </DocumentCommandContext.Provider>
-        </EditorSessionContext.Provider>,
+        <EditorClipboardPortContext.Provider value={nativeClipboard(async () => Promise.reject(new Error('denied')))}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+                <DocumentCommandContext.Provider value={commands}>
+                    <EditorContextMenu onActionResult={onActionResult}>
+                        <textarea aria-label="Markdown source" />
+                    </EditorContextMenu>
+                </DocumentCommandContext.Provider>
+            </EditorSessionContext.Provider>
+        </EditorClipboardPortContext.Provider>,
     );
 
     fireEvent.contextMenu(screen.getByLabelText('Markdown source'));
@@ -428,6 +454,7 @@ it('keeps failed plain-text reads from mutating the document', async () => {
         );
     });
     expect(commands.replaceRange).not.toHaveBeenCalled();
+    expect(commands.focus).not.toHaveBeenCalled();
 });
 
 /*
