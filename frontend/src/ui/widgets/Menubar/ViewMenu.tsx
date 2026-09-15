@@ -7,7 +7,7 @@ import { currentPlatform, formatShortcut } from '../../../logic/actions/shortcut
 import type { ViewArrangement } from '../../../logic/store/appModelTypes';
 import MenuItem from '../../components/MenuItem';
 import Popup, { PopupSeparator, PopupTrigger } from '../../components/Popup';
-import popupStyles from '../../components/Popup/Popup.module.css';
+import menuItemStyles from '../../components/MenuItem/MenuItem.module.css';
 
 export interface ViewMenuProps {
     editorVisible: boolean;
@@ -98,14 +98,8 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
         return shortcut === undefined ? undefined : formatShortcut(shortcut, currentPlatform());
     };
 
-    const tick = (selected: boolean): React.JSX.Element => (
-        <span aria-hidden="true" className={popupStyles.tick + (selected ? '' : ' ' + popupStyles.tickOff)}>
-            ✓
-        </span>
-    );
-
     const toggle = (checked: boolean): React.JSX.Element => (
-        <span aria-hidden="true" className={popupStyles.toggle} data-checked={checked} />
+        <span aria-hidden="true" className={menuItemStyles.toggle} data-checked={checked} />
     );
 
     const popupAnchor = {
@@ -184,7 +178,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                             checked={editorVisible}
                             disabled={editorToggleDisabled}
                             label={t('view.menu.showEditor')}
-                            trailing={tick(editorVisible)}
+
                             onSelect={(): void =>
                                 dispatchWindowAction('editor', () => onEditorVisibilityChange(!editorVisible))
                             }
@@ -193,7 +187,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                             checked={previewVisible}
                             disabled={previewToggleDisabled}
                             label={t('view.menu.showPreview')}
-                            trailing={tick(previewVisible)}
+
                             onSelect={(): void =>
                                 dispatchWindowAction('preview', () => onPreviewVisibilityChange(!previewVisible))
                             }
@@ -210,7 +204,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                                 label={t(getAction(value).labelKey)}
                                 radio
                                 title={documentOpen ? undefined : t('view.menu.noDocument')}
-                                trailing={tick(arrangement === value)}
+
                                 onSelect={(): void => {
                                     if (!documentOpen) return;
                                     dispatchWindowAction(value, () => onArrangementChange(value));

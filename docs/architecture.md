@@ -98,9 +98,21 @@ changes the bundled font metrics) preserves the user’s current control focus.
 
 ### MenuItem — `frontend/src/ui/components/MenuItem/`
 
-MenuItem owns the shared menu row, disabled/checked/radio presentation, accelerator placement and
-submenu grouping. Consumers are every Popup menu above; the Shortcuts dialog also reuses the shared
-accelerator formatting helper.
+MenuItem is the single owner of popup-row typography, minimum height, padding, alignment, hover,
+keyboard focus, disabled presentation, selection marks and accelerator placement. Shared defaults
+live in `frontend/src/ui/styles/tokens.css`; rows can grow for larger content. Popup owns the surface,
+section labels and separators, without a competing row style.
+
+Consumers are File (including indented recent/reopen rows), Settings (Theme and Appearance radios,
+value rows and switches), View, About, narrow menubar overflow, tab and editor context menus, and
+formatting-toolbar overflow. Recent/reopen rows retain their indentation with the same typography
+and vertical spacing. The Shortcuts dialog also reuses the shared accelerator formatting helper.
+
+MenuItem forwards its native button ref and accepts native button handlers. Checked rows display the
+shared Icon checkmark unless a custom trailing control is supplied. `MenuItemIndicator` also presents
+selection on value-only rows without changing their unavailable menu-item semantics. A custom
+Segmented renderer maps the provided `onClick` to `onSelect`; MenuItem respects prevented key events
+so radio activation occurs once.
 
 ### Bar and Island
 
@@ -114,6 +126,9 @@ key, so repeated measurements keep the same overflow decision until the availabl
 toolbar's text, heading, list, insertion, deferred-action and arrangement groups. The deferred-action
 group is unpainted; the arrangement Island provides only layout and labeling, with Segmented owning
 its single visible frame and selected-option treatment.
+In `OverflowMenuContext`, the FormattingToolbar renders relocated actions as MenuItems with visible
+labels, icons and registry-derived shortcuts. Its groups stack vertically without Island paint or
+padding; dispatch, availability and selection-preserving mousedown stay with the action widget.
 
 ### ToolButton and Button
 
@@ -157,12 +172,16 @@ and Recovery dialogs.
 
 ### Segmented and Icon
 
-`frontend/src/ui/primitives/Segmented/` owns roving focus and Arrow/Home/End navigation. Its consumers
-are the FormattingToolbar arrangement control, the Settings menu mode group and the radio groups in
-SettingsDialog.
+`frontend/src/ui/primitives/Segmented/` owns radio semantics, roving focus and Arrow/Home/End
+navigation. Its consumers are the FormattingToolbar arrangement control, the Settings menu Theme
+and Appearance groups and the radio groups in SettingsDialog. Optional `renderOption(option,
+buttonProps)` supplies custom presentation without the standalone segment styles. The renderer must
+forward the native button ref, radio state, tab index and handlers. Selection and focus move only when
+the controlled value acknowledges a request, including after theme changes. Without a renderer,
+Segmented retains its default presentation for toolbar and dialog consumers.
 
 `frontend/src/ui/primitives/Icon/` is the only glyph source. Its consumers are Menubar, FormattingToolbar,
-TabBar's close/add controls, the preview file glyph, StatusBar, dialogs and Launcher.
+TabBar's close/add controls, MenuItem selection marks, the preview file glyph, StatusBar, dialogs and Launcher.
 
 ### StatusBar and Notifications
 

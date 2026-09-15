@@ -6,9 +6,9 @@ import { getAction, getActionAvailability, type ActionId } from '../../../logic/
 import { currentPlatform, formatShortcut } from '../../../logic/actions/shortcutRegistry';
 import type { EditorSettings, FileSettings, MarkdownSettings } from '../../../logic/adapter';
 import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
-import MenuItem from '../../components/MenuItem';
+import MenuItem, { MenuItemIndicator } from '../../components/MenuItem';
+import menuItemStyles from '../../components/MenuItem/MenuItem.module.css';
 import Popup, { PopupGroupLabel, PopupSeparator, PopupTrigger } from '../../components/Popup';
-import popupStyles from '../../components/Popup/Popup.module.css';
 import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
 import styles from './SettingsMenu.module.css';
 
@@ -105,12 +105,6 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
     onThemeChange,
     theme,
 }: CompactSettingsContentProps): React.JSX.Element => {
-    const tick = (selected: boolean): React.JSX.Element => (
-        <span aria-hidden="true" className={`${popupStyles.tick} ${selected ? '' : popupStyles.tickOff}`}>
-            ✓
-        </span>
-    );
-
     /*
      * Availability comes from the canonical registry, not from whether a handler
      * happened to be wired. `format-on-save` and `lint-on-save` are `laterDeferred`
@@ -136,7 +130,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
      * genuinely have none: `AppearanceControls.persist` accepts only `mode` and
      * `theme` patches and passes `defaultOpenMode` through untouched, and nothing
      * anywhere writes `markdown.standard`. Those rows report a value chosen
-     * elsewhere, which is what the shared Popup `.stateRow` modifier draws.
+     * elsewhere and retain their unavailable menu-item semantics.
      */
     const rowUnavailable = (id: ActionId, writer?: unknown): boolean => settingUnavailable(id) || writer === undefined;
 
@@ -157,13 +151,12 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
     ): React.JSX.Element => (
         <MenuItem
             checked={checked}
-            className={popupStyles.row}
             data-availability={availabilityOf(actionId)}
             data-settings-row={label}
             disabled={disabled}
             label={label}
             trailing={
-                <label className={popupStyles.toggle} data-checked={checked} data-settings-toggle={label}>
+                <label className={menuItemStyles.toggle} data-checked={checked} data-settings-toggle={label}>
                     <input
                         aria-label={label}
                         checked={checked}
@@ -182,18 +175,31 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
             <PopupGroupLabel>{t('settings.menu.theme')}</PopupGroupLabel>
             <Segmented
                 ariaLabel={t('settings.menu.theme')}
-                className={styles.swatches}
                 onChange={onThemeChange}
-                optionClassName={styles.swatch}
+                renderOption={(option, { onClick, ...buttonProps }) => (
+                    <MenuItem
+                        {...buttonProps}
+                        checked={buttonProps['aria-checked']}
+                        icon={<span className={styles.swatch} data-menu-swatch={option.value} />}
+                        label={option.label}
+                        onSelect={onClick}
+                    />
+                )}
                 options={themeOptions}
                 value={theme}
             />
             <PopupGroupLabel>{t('appearance.mode.label')}</PopupGroupLabel>
             <Segmented
                 ariaLabel={t('appearance.mode.label')}
-                className={styles.options}
                 onChange={onModeChange}
-                optionClassName={popupStyles.row}
+                renderOption={(option, { onClick, ...buttonProps }) => (
+                    <MenuItem
+                        {...buttonProps}
+                        checked={buttonProps['aria-checked']}
+                        label={option.label}
+                        onSelect={onClick}
+                    />
+                )}
                 options={modeOptions}
                 value={mode}
             />
@@ -201,26 +207,24 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
             <PopupGroupLabel>{t('settings.openMode')}</PopupGroupLabel>
             {openModeOptions.map((option) => (
                 <MenuItem
-                    className={`${popupStyles.row} ${popupStyles.stateRow}`}
                     data-availability={availabilityOf('default-open-mode')}
                     data-settings-row={option.label}
                     disabled={rowUnavailable('default-open-mode')}
                     key={option.value}
                     label={option.label}
-                    trailing={tick(defaultOpenMode === option.value)}
+                    trailing={<MenuItemIndicator checked={defaultOpenMode === option.value} />}
                 />
             ))}
             <PopupSeparator />
             <PopupGroupLabel>{t('settings.menu.markdown')}</PopupGroupLabel>
             {markdownStandardOptions.map((option) => (
                 <MenuItem
-                    className={`${popupStyles.row} ${popupStyles.stateRow}`}
                     data-availability={availabilityOf('markdown-standard')}
                     data-settings-row={option.label}
                     disabled={rowUnavailable('markdown-standard')}
                     key={option.value}
                     label={option.label}
-                    trailing={tick((markdownSettings?.standard ?? 'gfm') === option.value)}
+                    trailing={<MenuItemIndicator checked={(markdownSettings?.standard ?? 'gfm') === option.value} />}
                 />
             ))}
             <PopupSeparator />

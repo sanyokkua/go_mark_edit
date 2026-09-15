@@ -15,11 +15,12 @@ import { formatMarkers, formatActionIds, runFormatAction } from '../../../logic/
 import { DocumentCommandContext, EditorSessionContext } from '../editorSession';
 import type { ViewArrangement } from '../../../logic/store/appModelTypes';
 import { useEditorSettings } from '../../../logic/settings/editorSettings';
-import type { IconName } from '../../primitives/Icon';
+import Icon, { type IconName } from '../../primitives/Icon';
 import Bar from '../../components/Bar';
 import Island from '../../components/Island';
 import MenuItem from '../../components/MenuItem';
 import { PopupSeparator } from '../../components/Popup';
+import { OverflowMenuContext } from '../../primitives/overflowMenuContext';
 import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
 import ToolButton from '../../primitives/ToolButton';
 import styles from './FormattingToolbar.module.css';
@@ -71,16 +72,12 @@ const ToolbarProjectionContext = createContext<ProjectedActionState | undefined>
 
 interface ActionButtonProps {
     entry: ActionEntry;
-    menuItem?: boolean;
     onActivate: (entry: ActionEntry) => void;
 }
 
-const ActionButton: React.FC<ActionButtonProps> = ({
-    entry,
-    menuItem = false,
-    onActivate,
-}: ActionButtonProps): React.JSX.Element => {
+const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: ActionButtonProps): React.JSX.Element => {
     const projectedState = useContext(ToolbarProjectionContext);
+    const overflowMenu = useContext(OverflowMenuContext);
     /*
      * The static check stays first and unchanged, so a deferred action is still
      * deferred when no projection has arrived. The registry call only ever *adds*
@@ -89,16 +86,33 @@ const ActionButton: React.FC<ActionButtonProps> = ({
      * nothing else.
      */
     const unavailable = getActionAvailability(entry.id, { projectedState }).kind === 'unavailable';
+    const icon = textualControlIds.has(entry.id) ? undefined : (entry.id as IconName);
+    if (overflowMenu) {
+        const binding = entry.shortcut;
+        return (
+            <MenuItem
+                accelerator={binding === undefined ? undefined : formatShortcut(binding, currentPlatform())}
+                data-action-id={entry.id}
+                data-icon={icon === undefined ? undefined : entry.id}
+                disabled={unavailable}
+                icon={icon === undefined ? undefined : <Icon name={icon} />}
+                label={t(entry.labelKey)}
+                onMouseDown={(event): void => {
+                    if (!unavailable) event.preventDefault();
+                }}
+                onSelect={(): void => onActivate(entry)}
+            />
+        );
+    }
     return (
         <ToolButton
             aria-label={t(entry.accessibilityKey)}
             className={styles.action}
             data-action-id={entry.id}
-            data-icon={textualControlIds.has(entry.id) ? undefined : entry.id}
+            data-icon={icon === undefined ? undefined : entry.id}
             disabled={unavailable}
-            icon={textualControlIds.has(entry.id) ? undefined : (entry.id as IconName)}
+            icon={icon}
             label={t(entry.accessibilityKey)}
-            role={menuItem ? 'menuitem' : undefined}
             title={unavailable ? t('action.unavailable') : controlTooltip(entry)}
             variant={textualControlIds.has(entry.id) ? 'text' : 'icon'}
             onActivate={(): void => onActivate(entry)}
@@ -110,23 +124,52 @@ function actionButtons(
     ids: readonly ActionEntry['id'][],
     onActivate: (entry: ActionEntry) => void,
     className?: string,
-    menuItem = false,
     overflowPriority?: number,
     neverOverflows = false,
 ): React.JSX.Element {
     return (
+        <ActionGroup
+            className={className}
+            ids={ids}
+            neverOverflows={neverOverflows}
+            overflowPriority={overflowPriority}
+            onActivate={onActivate}
+        />
+    );
+}
+
+interface ActionGroupProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'aria-label'> {
+    className?: string;
+    ids: readonly ActionEntry['id'][];
+    neverOverflows: boolean;
+    onActivate: (entry: ActionEntry) => void;
+    overflowPriority?: number;
+}
+
+const ActionGroup: React.FC<ActionGroupProps> = ({
+    className,
+    ids,
+    neverOverflows,
+    onActivate,
+    overflowPriority,
+    ...rest
+}: ActionGroupProps): React.JSX.Element => {
+    const overflowMenu = useContext(OverflowMenuContext);
+    return (
         <Island
-            className={`${styles.group} ${className ?? ''}`}
+            {...rest}
+            className={`${styles.group} ${overflowMenu ? styles.overflowGroup : ''} ${className ?? ''}`}
             data-bar-overflow={neverOverflows ? 'never' : undefined}
             data-bar-overflow-priority={overflowPriority}
+            data-toolbar-overflow-group={overflowMenu ? 'true' : undefined}
             label={ids.map((id) => t(action(id).labelKey)).join(', ')}
         >
             {ids.map((id) => (
-                <ActionButton entry={action(id)} key={id} menuItem={menuItem} onActivate={onActivate} />
+                <ActionButton entry={action(id)} key={id} onActivate={onActivate} />
             ))}
         </Island>
     );
-}
+};
 
 const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
     arrangement,
@@ -200,35 +243,30 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
                             textActions.map((id) => action(id).id),
                             onActivate,
                             undefined,
-                            false,
                             200,
                         )}
                         {actionButtons(
                             headingActions.map((id) => action(id).id),
                             onActivate,
                             undefined,
-                            false,
                             200,
                         )}
                         {actionButtons(
                             listActions.map((id) => action(id).id),
                             onActivate,
                             undefined,
-                            false,
                             400,
                         )}
                         {actionButtons(
                             insertActions.map((id) => action(id).id),
                             onActivate,
                             undefined,
-                            false,
                             400,
                         )}
                         {actionButtons(
                             deferredActions.map((id) => action(id).id),
                             onActivate,
                             styles.utilityGroup,
-                            false,
                             0,
                             true,
                         )}

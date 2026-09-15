@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../support/harness';
+import { expectCompactMenuRows } from '../support/menuRows';
 
 const palettes = [
     ['Liquid Glass', 'Light', 'glass', 'light'],
@@ -29,6 +30,7 @@ function popupLocator(page: Page, name: string): Locator {
 
 async function expectPopupContract(page: Page, popup: Locator, checkFocusRing: boolean): Promise<void> {
     await expect(popup).toBeVisible();
+    if ((await popup.getAttribute('role')) === 'menu') await expectCompactMenuRows(popup);
     const state = await popup.evaluate((element) => {
         const frame = element.closest<HTMLElement>('.application-frame');
         if (frame === null) throw new Error('popup is outside the application frame');
@@ -207,6 +209,8 @@ async function exerciseTabGeometry(page: Page): Promise<void> {
 }
 
 test('case 8 keeps every Popup family framed across palettes and input modes', async ({ app }) => {
+    const recent = await app.writeDocument('recent.md', '# Recent document');
+    await app.seedRecents([recent]);
     await app.launch();
     const { page } = app;
     await page.setViewportSize({ width: 1280, height: 720 });

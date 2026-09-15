@@ -1,17 +1,4 @@
-/*
- * The popup surface, rows, group labels, separators, ticks and switches all
- * come from the shared Popup and MenuItem styles, which are the single owners of
- * menu styling. Only what is specific to the Settings menu lives here: its menubar
- * styling. Only what is specific to the Settings menu lives here: its menubar
- * trigger, the theme swatches, and the two things the shared surface cannot
- * know about — where this popup is anchored, and its real checkbox input.
- *
- * The rows that report the open mode and the Markdown standard use the shared
- * `.stateRow` modifier: they carry `aria-disabled` because they cannot be
- * activated, but they are reporting a value rather than withholding an action,
- * so they must not be drawn at the deferred-action opacity.
- */
-
+/* MenuItem owns row presentation; this widget only adds theme swatches and its checkbox input. */
 .menu {
     position: relative;
 }
@@ -21,73 +8,21 @@
     width: 100%;
 }
 
-.swatches {
-    border: 0;
-    border-radius: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 6px 10px;
-    width: 100%;
-}
-
 .swatch {
-    align-items: center;
-    background: transparent;
-    border: 0;
-    border-radius: var(--control-radius);
-    box-sizing: border-box;
-    cursor: pointer;
-    display: flex;
-    gap: 12px;
-    min-block-size: var(--menu-item-height);
-    padding: var(--menu-item-padding);
-    text-align: start;
-    width: 100%;
-}
-
-.swatch::before {
     background: var(--theme-glass-swatch);
+    block-size: var(--icon-size);
     border: var(--control-border-width) solid var(--stroke);
-    border-radius: 6px;
-    content: '';
-    flex: none;
-    height: 22px;
-    width: 22px;
+    border-radius: var(--segmented-option-radius);
+    box-sizing: border-box;
+    inline-size: var(--icon-size);
 }
 
-.swatch[data-segmented-value='material']::before {
+.swatch[data-menu-swatch='material'] {
     background: var(--theme-material-swatch);
 }
 
-.swatch[data-segmented-value='minimal']::before {
+.swatch[data-menu-swatch='minimal'] {
     background: var(--theme-minimal-swatch);
-}
-
-.swatch[aria-checked='true'] {
-    font-weight: var(--segmented-selected-font-weight);
-    outline: 0;
-}
-
-.swatch[aria-checked='true']::before {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-}
-
-.swatch:hover {
-    background: var(--hover);
-}
-
-.swatch:focus-visible {
-    box-shadow: inset 0 0 0 var(--segmented-focus-outline-width) var(--segmented-outline-color);
-    outline: 0;
-}
-
-.options {
-    border: 0;
-    border-radius: 0;
-    display: grid;
-    padding: 0;
 }
 
 /*

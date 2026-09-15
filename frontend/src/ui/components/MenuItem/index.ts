@@ -1,2 +1,2 @@
-export { default } from './MenuItem';
+export { default, MenuItemIndicator } from './MenuItem';
 export type { MenuItemProps } from './MenuItem';

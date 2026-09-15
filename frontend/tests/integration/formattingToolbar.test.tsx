@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
 import { store } from '../../src/logic/store';
@@ -72,7 +72,16 @@ it('moves measured groups into the shared overflow Popup below 768px', async () 
         fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
         const popup = await screen.findByRole('menu', { name: 'More actions' });
         expect(popup).toHaveAttribute('data-viewport-popup', 'editor-overflow');
-        expect(within(popup).getByRole('menuitem', { name: 'Link' })).toBeVisible();
+        const link = within(popup).getByRole('menuitem', { name: 'Link' });
+        const linkShortcut = /Mac|iPhone|iPad/u.test(navigator.platform) ? '⌘K' : 'Ctrl+K';
+        expect(link).toBeVisible();
+        expect(link).toHaveTextContent('Link');
+        expect(link).toHaveTextContent(linkShortcut);
+        expect(link).toHaveAttribute('data-shortcut', linkShortcut);
+
+        const pointerDown = createEvent.mouseDown(link);
+        fireEvent(link, pointerDown);
+        expect(pointerDown.defaultPrevented).toBe(true);
         expect(
             toolbar.querySelector('[data-bar-slot="main"] [data-action-id="link"]')?.closest('[data-bar-item]'),
         ).toHaveAttribute('hidden');

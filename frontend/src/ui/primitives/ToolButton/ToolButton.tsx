@@ -1,7 +1,6 @@
-import { forwardRef, useContext, type ButtonHTMLAttributes, type ForwardedRef } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type ForwardedRef } from 'react';
 
 import Icon, { type IconName } from '../Icon';
-import { OverflowMenuContext } from '../overflowMenuContext';
 import styles from './ToolButton.module.css';
 
 export type ToolButtonVariant = 'icon' | 'text';
@@ -37,7 +36,6 @@ const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(function ToolB
     ref: ForwardedRef<HTMLButtonElement>,
 ): React.JSX.Element {
     const iconOnly = variant === 'icon' && icon !== undefined;
-    const overflowMenu = useContext(OverflowMenuContext);
     return (
         <button
             {...rest}
@@ -50,7 +48,7 @@ const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(function ToolB
             } ${iconOnly ? styles.iconOnly : ''} ${className ?? ''}`.trim()}
             data-tool-button-variant={variant}
             disabled={disabled}
-            role={role ?? (overflowMenu ? 'menuitem' : undefined)}
+            role={role}
             type="button"
             onClick={onActivate}
             onMouseDown={(event): void => {

@@ -89,14 +89,10 @@
     opacity: var(--disabled-opacity);
 }
 
-/* Binding source: mockup.html `.mi.sub`. The indented recent and reopen rows
-   are muted, one step smaller, and push their trailing content to the row end
-   through the same space-between flow the binding `.mi` uses. */
+/* Recent and reopen rows retain their indentation within the shared row metrics. */
 .subItem {
     color: var(--muted);
-    font-size: var(--popup-sub-row-font-size);
-    justify-content: space-between;
-    padding: var(--popup-sub-row-padding);
+    padding-inline-start: var(--popup-row-indent);
 }
 
 .subItemIcon {

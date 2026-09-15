@@ -96,13 +96,14 @@
     --popup-radius: 12px;
     --popup-padding: 6px;
     --menu-item-height: 30px;
-    --menu-item-padding: var(--popup-row-padding);
-    --popup-row-padding: 7px 10px;
+    --popup-row-padding: 4px 10px;
     --popup-row-font-size: 13px;
+    --popup-row-font-weight: 400;
+    --popup-row-line-height: 16px;
+    --popup-row-gap: 12px;
+    --popup-row-indent: 22px;
     --popup-accelerator-font-size: 11px;
     --popup-group-font-size: 10px;
-    --popup-sub-row-font-size: 12.5px;
-    --popup-sub-row-padding: 7px 10px 7px 22px;
     --tabs-row-padding: 7px 10px;
     --tabs-row-height: 48px;
     --tabs-border-color: var(--stroke-soft);

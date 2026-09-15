@@ -6,6 +6,7 @@ export type IconName =
     | 'add'
     | 'bold'
     | 'bullet-list'
+    | 'check'
     | 'close'
     | 'editor'
     | 'file'
@@ -45,6 +46,7 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
             <path d="M5.5 4h7M5.5 7.5h7M5.5 11h7" />
         </>
     ),
+    check: <path d="m3 7.5 3 3 6-6" />,
     close: <path d="m3.5 3.5 8 8m0-8-8 8" />,
     editor: <path d="M2.5 2.5h10v10h-10zm2.5 2.5h5m-5 2.5h5m-5 2.5h3" />,
     /*

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../support/harness';
+import { expectCompactMenuRows } from '../support/menuRows';
 
 const palettes = [
     ['Liquid Glass', 'Light', 'glass', 'light'],
@@ -40,6 +41,8 @@ test('changes all six palettes through keyboard-reachable controls without overf
         await page.setViewportSize({ width, height: 720 });
         await openAppearance(page);
 
+        await expectCompactMenuRows(page.getByRole('menu', { name: 'Settings menu' }));
+
         for (const [themeLabel, modeLabel, theme, mode] of palettes) {
             const themeControl = page.getByRole('radio', { name: themeLabel, exact: true });
             await themeControl.press('Space');
@@ -51,6 +54,7 @@ test('changes all six palettes through keyboard-reachable controls without overf
             await expect(modeControl).toHaveAttribute('aria-checked', 'true');
             await expect.poll(() => page.locator('html').getAttribute('data-mode')).toBe(mode);
             await expect(modeControl).toBeFocused();
+            await expectCompactMenuRows(page.getByRole('menu', { name: 'Settings menu' }));
             await expect(page.locator('.monaco-editor')).toBeVisible();
             await expect
                 .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
@@ -62,11 +66,25 @@ test('changes all six palettes through keyboard-reachable controls without overf
                 );
             }
         }
+        for (const [themeLabel, theme] of [
+            ['Liquid Glass', 'glass'],
+            ['Material', 'material'],
+            ['Minimal', 'minimal'],
+        ] as const) {
+            await page.getByRole('radio', { name: themeLabel, exact: true }).click();
+            await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+            await page.getByRole('radio', { name: 'Auto (system)', exact: true }).click();
+            for (const colorScheme of ['light', 'dark'] as const) {
+                await page.emulateMedia({ colorScheme });
+                await expect(page.locator('html')).toHaveAttribute('data-mode', colorScheme);
+                await expectCompactMenuRows(page.getByRole('menu', { name: 'Settings menu' }));
+            }
+        }
         await page.keyboard.press('Escape');
     }
 });
 
-test('keeps compact Settings theme rows labeled, stacked, and frame-bounded', async ({ app }) => {
+test('keeps compact Settings theme rows labeled, stacked, and frame-bounded', async ({ app }, testInfo) => {
     await app.launch();
 
     const { page } = app;
@@ -75,82 +93,61 @@ test('keeps compact Settings theme rows labeled, stacked, and frame-bounded', as
         await page.setViewportSize({ width, height: 720 });
         await openAppearance(page);
 
-        const rows = themeNames.map((name) => page.getByRole('radio', { name, exact: true }));
+        const popup = page.getByRole('menu', { name: 'Settings menu' });
+        await expectCompactMenuRows(popup);
         const group = page.getByRole('radiogroup', { name: 'Theme', exact: true });
-        const groupBounds = await group.boundingBox();
-        const groupMetrics = await group.evaluate((element) => {
-            const style = getComputedStyle(element);
-            return {
-                borderLeft: Number.parseFloat(style.borderLeftWidth),
-                paddingLeft: Number.parseFloat(style.paddingLeft),
-                paddingRight: Number.parseFloat(style.paddingRight),
-            };
-        });
-        const rowMetrics = await Promise.all(
-            rows.map((row) =>
-                row.evaluate((element) => {
-                    const rowStyle = getComputedStyle(element);
-                    const swatchStyle = getComputedStyle(element, '::before');
-                    const rowBounds = element.getBoundingClientRect();
-                    const range = document.createRange();
-                    range.selectNodeContents(element);
-                    const labelBounds = range.getBoundingClientRect();
-                    return {
-                        background:
-                            swatchStyle.backgroundImage === 'none'
-                                ? swatchStyle.backgroundColor
-                                : swatchStyle.backgroundImage,
-                        boxShadow: rowStyle.boxShadow,
-                        checked: element.getAttribute('aria-checked') === 'true',
-                        height: swatchStyle.height,
-                        labelLeft: labelBounds.left,
-                        labelRight: labelBounds.right,
-                        labelBottom: labelBounds.bottom,
-                        labelTop: labelBounds.top,
-                        labelWidth: labelBounds.width,
-                        outline: rowStyle.outlineStyle,
-                        paddingLeft: Number.parseFloat(rowStyle.paddingLeft),
-                        paddingRight: Number.parseFloat(rowStyle.paddingRight),
-                        rowBottom: rowBounds.bottom,
-                        rowLeft: rowBounds.left,
-                        rowRight: rowBounds.right,
-                        rowTop: rowBounds.top,
-                        rowWidth: rowBounds.width,
-                        swatchOutline: swatchStyle.outlineStyle,
-                        width: swatchStyle.width,
-                    };
-                }),
-            ),
+        const themeRows = group.getByRole('radio');
+        await expect(themeRows).toHaveText([...themeNames]);
+        const rowMetrics = await themeRows.evaluateAll((elements) =>
+            elements.map((element) => {
+                const swatch = element.querySelector<HTMLElement>('[data-menu-swatch]');
+                if (swatch === null) throw new Error('theme row has no swatch');
+                const label = swatch.parentElement?.nextElementSibling;
+                if (label === null || label === undefined) throw new Error('theme row has no label');
+                const group = element.parentElement;
+                if (group === null) throw new Error('theme row has no group');
+                const rowBounds = element.getBoundingClientRect();
+                const labelBounds = label.getBoundingClientRect();
+                const swatchBounds = swatch.getBoundingClientRect();
+                const swatchStyle = getComputedStyle(swatch);
+                return {
+                    rowTop: rowBounds.top,
+                    rowBottom: rowBounds.bottom,
+                    rowWidth: rowBounds.width,
+                    groupWidth: group.getBoundingClientRect().width,
+                    labelVisible: labelBounds.width > 0 && label.scrollWidth <= label.clientWidth,
+                    labelContained:
+                        labelBounds.left > swatchBounds.right &&
+                        labelBounds.right <= rowBounds.right &&
+                        labelBounds.top >= rowBounds.top &&
+                        labelBounds.bottom <= rowBounds.bottom,
+                    swatchContained: swatchBounds.top >= rowBounds.top && swatchBounds.bottom <= rowBounds.bottom,
+                    swatchWidth: swatchBounds.width,
+                    swatchHeight: swatchBounds.height,
+                    iconSize: Number.parseFloat(getComputedStyle(element).getPropertyValue('--icon-size')),
+                    swatchPainted:
+                        swatchStyle.backgroundImage !== 'none' || swatchStyle.backgroundColor !== 'rgba(0, 0, 0, 0)',
+                    swatchOutline: swatchStyle.outlineStyle,
+                };
+            }),
         );
-        const popup = await page.getByRole('menu', { name: 'Settings menu' }).boundingBox();
-
-        expect(groupBounds).not.toBeNull();
-        expect(popup).not.toBeNull();
         for (const [index, row] of rowMetrics.entries()) {
-            const groupContentWidth = (groupBounds?.width ?? 0) - groupMetrics.paddingLeft - groupMetrics.paddingRight;
-            const groupContentLeft = (groupBounds?.x ?? 0) + groupMetrics.borderLeft + groupMetrics.paddingLeft;
-            const inferredSwatchRight = row.rowLeft + row.paddingLeft + Number.parseFloat(row.width);
-
-            expect(row.rowWidth).toBeCloseTo(groupContentWidth, 0);
-            expect(row.rowLeft).toBeCloseTo(groupContentLeft, 0);
-            expect(row.rowLeft).toBeGreaterThanOrEqual(popup?.x ?? 0);
-            expect(row.rowRight).toBeLessThanOrEqual((popup?.x ?? 0) + (popup?.width ?? 0));
-            expect(row.labelWidth).toBeGreaterThan(0);
-            expect(row.labelLeft).toBeGreaterThan(inferredSwatchRight);
-            expect(row.labelRight).toBeLessThanOrEqual(row.rowRight);
-            expect(row.labelTop).toBeGreaterThanOrEqual(row.rowTop);
-            expect(row.labelBottom).toBeLessThanOrEqual(row.rowBottom);
-            if (index > 0) expect(row.rowTop).toBeGreaterThanOrEqual(rowMetrics[index - 1]?.rowBottom ?? 0);
+            expect(row.rowWidth).toBeCloseTo(row.groupWidth, 1);
+            expect(row.labelVisible).toBe(true);
+            expect(row.labelContained).toBe(true);
+            expect(row.swatchContained).toBe(true);
+            expect(row.swatchWidth).toBe(row.iconSize);
+            expect(row.swatchHeight).toBe(row.iconSize);
+            expect(row.swatchPainted).toBe(true);
+            expect(row.swatchOutline).toBe('none');
+            if (index > 0) expect(row.rowTop).toBeCloseTo(rowMetrics[index - 1].rowBottom, 1);
         }
-        for (const row of rowMetrics) {
-            expect(row.width).toBe('22px');
-            expect(row.height).toBe('22px');
-            expect(row.background).not.toBe('rgba(0, 0, 0, 0)');
+        for (const radioGroup of [group, page.getByRole('radiogroup', { name: 'Appearance', exact: true })]) {
+            await expect(radioGroup.locator('[data-icon-name="check"]')).toHaveCount(1);
+            await expect(radioGroup.locator('[aria-checked="true"] [data-icon-name="check"]')).toHaveCount(1);
+            await expect(radioGroup.locator('[role="radio"][aria-checked="true"]')).toHaveCSS('box-shadow', 'none');
         }
         const selectedRow = group.locator('[role="radio"][aria-checked="true"]');
-        const selectedMetrics = rowMetrics.find((row) => row.checked);
-        expect(selectedMetrics?.outline).toBe('none');
-        expect(selectedMetrics?.swatchOutline).toBe('solid');
         await selectedRow.focus();
         await page.keyboard.press('ArrowDown');
         const focusedRow = group.locator('[role="radio"]:focus');
@@ -166,6 +163,7 @@ test('keeps compact Settings theme rows labeled, stacked, and frame-bounded', as
         await expect
             .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
             .toBe(true);
+        if (width === 1280) await page.screenshot({ path: testInfo.outputPath('settings-menu-desktop.png') });
         await page.keyboard.press('Escape');
     }
 
@@ -185,10 +183,13 @@ test('keeps compact Settings theme rows labeled, stacked, and frame-bounded', as
             }),
         )
         .toBe(true);
+    await expectCompactMenuRows(popup);
+    await expect.poll(() => popup.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
     const allSettings = page.getByRole('menuitem', { name: 'All settings…', exact: true });
     await page.keyboard.press('End');
     await expect(allSettings).toBeFocused();
     await expect(allSettings).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('settings-menu-minimum.png') });
 });
 
 test('applies the pre-paint theme mirror before backend reconciliation and keeps Settings focused', async ({ app }) => {

@@ -110,6 +110,16 @@
     padding: 0;
 }
 
+.overflowGroup {
+    align-items: stretch;
+    backdrop-filter: none;
+    background: transparent;
+    flex-direction: column;
+    gap: 0;
+    inline-size: 100%;
+    padding: 0;
+}
+
 .arrangement .action {
     block-size: auto;
     border-radius: var(--arrangement-option-radius);
@@ -147,7 +157,6 @@
 
 .applicationOverflowItems {
     display: none;
-    height: 119px;
     margin-block-start: 4px;
     padding-block-start: 0;
 }

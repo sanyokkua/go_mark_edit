@@ -1,10 +1,18 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ComponentPropsWithRef } from 'react';
 
 import styles from './Segmented.module.css';
 
 export interface SegmentedOption<Value extends string> {
     readonly label: string;
     readonly value: Value;
+}
+
+export interface SegmentedOptionButtonProps extends ComponentPropsWithRef<'button'> {
+    readonly 'aria-checked': boolean;
+    readonly 'data-action-id': string;
+    readonly 'data-icon': string;
+    readonly 'data-segmented-value': string;
+    readonly role: 'radio';
 }
 
 export interface SegmentedProps<Value extends string> {
@@ -15,7 +23,28 @@ export interface SegmentedProps<Value extends string> {
     readonly optionClassName?: string;
     /** Keep the active editor selection when the segment is activated. */
     readonly preserveSelection?: boolean;
+    /** Supply presentation while retaining the native button props, ref and handlers. */
+    readonly renderOption?: (
+        option: SegmentedOption<Value>,
+        buttonProps: SegmentedOptionButtonProps,
+    ) => React.JSX.Element;
     readonly value: Value;
+}
+
+function OptionView<Value extends string>({
+    buttonProps,
+    option,
+    renderOption,
+}: {
+    readonly buttonProps: SegmentedOptionButtonProps;
+    readonly option: SegmentedOption<Value>;
+    readonly renderOption: SegmentedProps<Value>['renderOption'];
+}): React.JSX.Element {
+    return renderOption === undefined ? (
+        <button {...buttonProps}>{option.label}</button>
+    ) : (
+        renderOption(option, buttonProps)
+    );
 }
 
 function nextIndex(currentIndex: number, length: number, key: string): number | undefined {
@@ -37,6 +66,7 @@ const Segmented = <Value extends string>({
     options,
     optionClassName,
     preserveSelection = true,
+    renderOption,
     value,
 }: SegmentedProps<Value>): React.JSX.Element => {
     const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -56,45 +86,53 @@ const Segmented = <Value extends string>({
     }
 
     return (
-        <div aria-label={ariaLabel} className={`${styles.segmented} ${className ?? ''}`.trim()} role="radiogroup">
+        <div
+            aria-label={ariaLabel}
+            className={`${renderOption === undefined ? styles.segmented : ''} ${className ?? ''}`.trim()}
+            role="radiogroup"
+        >
             {options.map((option, index): React.JSX.Element => {
                 const selected = option.value === value;
+                const buttonProps: SegmentedOptionButtonProps = {
+                    ref: (element): void => {
+                        optionRefs.current[index] = element;
+                    },
+                    'aria-checked': selected,
+                    className:
+                        `${renderOption === undefined ? (selected ? styles.optionSelected : styles.option) : ''} ${optionClassName ?? ''}`.trim(),
+                    'data-action-id': option.value,
+                    'data-icon': option.value,
+                    'data-segmented-value': option.value,
+                    role: 'radio',
+                    tabIndex: selected ? 0 : -1,
+                    type: 'button',
+                    onClick: (): void => requestValue(option.value),
+                    onMouseDown: (event): void => {
+                        if (preserveSelection) event.preventDefault();
+                    },
+                    onKeyDown: (event): void => {
+                        if (event.key === ' ' || event.key === 'Enter') {
+                            event.preventDefault();
+                            requestValue(option.value);
+                            return;
+                        }
+
+                        const destination = nextIndex(index, options.length, event.key);
+                        if (destination === undefined) return;
+
+                        event.preventDefault();
+                        const nextOption = options[destination];
+                        if (nextOption !== undefined) requestValue(nextOption.value);
+                    },
+                };
 
                 return (
-                    <button
+                    <OptionView
                         key={option.value}
-                        ref={(element): void => {
-                            optionRefs.current[index] = element;
-                        }}
-                        aria-checked={selected}
-                        className={`${selected ? styles.optionSelected : styles.option} ${optionClassName ?? ''}`.trim()}
-                        data-action-id={option.value}
-                        data-icon={option.value}
-                        data-segmented-value={option.value}
-                        role="radio"
-                        tabIndex={selected ? 0 : -1}
-                        type="button"
-                        onClick={(): void => requestValue(option.value)}
-                        onMouseDown={(event): void => {
-                            if (preserveSelection) event.preventDefault();
-                        }}
-                        onKeyDown={(event): void => {
-                            if (event.key === ' ' || event.key === 'Enter') {
-                                event.preventDefault();
-                                requestValue(option.value);
-                                return;
-                            }
-
-                            const destination = nextIndex(index, options.length, event.key);
-                            if (destination === undefined) return;
-
-                            event.preventDefault();
-                            const nextOption = options[destination];
-                            if (nextOption !== undefined) requestValue(nextOption.value);
-                        }}
-                    >
-                        {option.label}
-                    </button>
+                        buttonProps={buttonProps}
+                        option={option}
+                        renderOption={renderOption}
+                    />
                 );
             })}
         </div>
