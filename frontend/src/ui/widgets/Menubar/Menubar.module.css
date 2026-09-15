@@ -36,18 +36,29 @@
  */
 
 .rowAction {
-    border: var(--control-border-width) solid transparent;
-    border-radius: var(--menu-trigger-radius);
+    background: var(--surface);
+    border: var(--control-border-width) solid var(--stroke);
+    color: var(--muted);
+    flex: none;
+    border-radius: var(--menu-action-radius);
     cursor: pointer;
     font-size: var(--menu-trigger-font-size);
-    height: var(--menu-trigger-height);
+    block-size: var(--menu-action-size);
+    inline-size: var(--menu-action-size);
+    min-inline-size: var(--menu-action-size);
     line-height: var(--menu-trigger-line-height);
     max-width: 100%;
     min-height: 0;
     overflow: hidden;
-    padding: var(--menu-trigger-padding);
+    padding: 0;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.rowAction[aria-pressed='true'] {
+    background: var(--accent-soft);
+    border-color: var(--stroke-soft);
+    color: var(--accent-ink);
 }
 
 .rowAction:hover,
@@ -64,7 +75,7 @@
 .menuRowActions {
     align-items: center;
     display: flex;
-    gap: var(--control-gap);
+    gap: var(--menu-row-gap);
 }
 
 /* Binding source: mockup.html `.sp{flex:1}` (:231). */

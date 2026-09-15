@@ -48,7 +48,8 @@
     min-inline-size: 0;
 }
 
-.itemSlot[hidden] {
+.itemSlot[hidden],
+.main > [data-bar-item][hidden] {
     display: none;
 }
 

@@ -235,7 +235,9 @@ const Popup = ({
     }, [open, place]);
 
     useLayoutEffect((): (() => void) | undefined => {
-        if (!open) return undefined;
+        // Placement changes (including a theme font change) must not reset the
+        // user's current menu focus. Focus once, after the popup is visible.
+        if (!open || placement === null || wasOpen.current) return undefined;
         wasOpen.current = true;
         if (popupRef.current !== null) {
             focusTarget(popupRef.current, initialFocus).focus({

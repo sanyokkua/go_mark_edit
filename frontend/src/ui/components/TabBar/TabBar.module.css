@@ -12,25 +12,31 @@
 }
 
 .tabBar {
+    backdrop-filter: var(--blur);
+    block-size: var(--tabs-row-height);
+    border-block-end: var(--control-border-width) solid var(--tabs-border-color);
+    flex: 0 0 var(--tabs-row-height);
+    gap: 0;
     min-inline-size: 0;
 }
 
 .tabBar [data-bar-slot='main'] {
+    block-size: 100%;
+    flex: 1 1 0;
     min-inline-size: 0;
 }
 
 .tabStrip {
     align-items: center;
-    block-size: var(--tabs-row-height);
-    border-bottom: var(--control-border-width) solid var(--tabs-border-color);
+    block-size: 100%;
+    flex: 1 1 0;
     box-sizing: border-box;
     display: flex;
     gap: var(--tabs-gap);
     max-width: 100%;
-    min-width: auto;
+    min-width: 0;
     overflow: visible;
     padding: var(--tabs-row-padding);
-    backdrop-filter: var(--tab-strip-backdrop);
 }
 
 .tabInsertionIndicator {
@@ -124,8 +130,14 @@
 }
 
 .tabAdd {
-    display: block;
-    font-family: Arial;
+    background: var(--surface);
+    border: var(--control-border-width) solid var(--stroke);
+    border-radius: var(--tab-add-radius);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
     padding: 0;
     text-align: center;
     white-space: normal;
@@ -207,49 +219,6 @@
     text-align: start;
     padding: var(--popup-row-padding);
     font-size: var(--popup-row-font-size);
-}
-
-:global(:root[data-theme='material']) .tabItem {
-    border-radius: 18px;
-    padding: 8px 15px;
-}
-
-:global(:root[data-theme='material']) .tabItem:has(.tab[aria-selected='true']) {
-    background: var(--accent);
-    border-color: transparent;
-}
-
-:global(:root[data-theme='material']) .tab[aria-selected='true'] {
-    background: transparent;
-    box-shadow: none;
-    color: var(--accent-contrast);
-}
-
-:global(:root[data-theme='minimal']) .tabItem {
-    background: none;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    padding: 8px 12px;
-}
-
-:global(:root[data-theme='minimal']) .tabItem:has(.tab[aria-selected='true']) {
-    background: none;
-    border-bottom-color: var(--text);
-    font-weight: 500;
-}
-
-:global(:root[data-theme='minimal']) .tab[aria-selected='true'] {
-    box-shadow: none;
-}
-
-:global(:root[data-theme='glass']) .tabItem,
-:global(:root[data-theme='glass']) .tab {
-    backdrop-filter: none;
-}
-
-:global(:root[data-theme='glass']) .tabStrip {
-    backdrop-filter: var(--blur);
 }
 
 @media (prefers-reduced-motion: reduce) {

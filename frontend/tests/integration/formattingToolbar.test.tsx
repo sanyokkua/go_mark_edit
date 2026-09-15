@@ -46,6 +46,7 @@ it('moves measured groups into the shared overflow Popup below 768px', async () 
     });
     HTMLElement.prototype.getBoundingClientRect = function getRect(): DOMRect {
         if (this.dataset.barItem !== undefined) {
+            if (this.hidden) return rect(0);
             const widths: Record<string, number> = {
                 '200': 120,
                 '400': 160,
@@ -61,6 +62,12 @@ it('moves measured groups into the shared overflow Popup below 768px', async () 
         renderToolbar();
         const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
         await waitFor(() => expect(toolbar).toHaveAttribute('data-bar-overflowing', 'true'));
+
+        for (let measurement = 0; measurement < 3; measurement += 1) {
+            fireEvent.resize(window);
+            expect(within(toolbar).queryByRole('button', { name: 'Quote' })).toBeNull();
+            expect(within(toolbar).queryByRole('button', { name: 'Link' })).toBeNull();
+        }
 
         fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
         const popup = await screen.findByRole('menu', { name: 'More actions' });

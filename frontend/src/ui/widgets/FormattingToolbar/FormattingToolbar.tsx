@@ -227,7 +227,7 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
                         {actionButtons(
                             deferredActions.map((id) => action(id).id),
                             onActivate,
-                            undefined,
+                            styles.utilityGroup,
                             false,
                             0,
                             true,

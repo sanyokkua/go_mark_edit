@@ -38,6 +38,7 @@ export interface BarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'aria-lab
 
 interface MeasuredItem {
     index: number;
+    key: string;
     never: boolean;
     priority: number;
     width: number;
@@ -126,12 +127,21 @@ const Bar: React.FC<BarProps> = ({
         if (bar === null || mainElement === null) return;
 
         const itemElements = Array.from(mainElement.querySelectorAll<HTMLElement>(':scope > [data-bar-item]'));
-        const measured = itemElements.map((element, index) => ({
-            index,
-            never: itemNeverOverflows(element),
-            priority: itemPriority(element),
-            width: element.getBoundingClientRect().width,
-        }));
+        const measured = itemElements.map((element, index) => {
+            const item = mainItems[index];
+            const key = isValidElement(item) ? String(item.key) : `bar-item-${index}`;
+            const width = element.getBoundingClientRect().width;
+            const previous = measuredItemsRef.current.find((candidate) => candidate.key === key);
+            return {
+                index,
+                key,
+                never: itemNeverOverflows(element),
+                priority: itemPriority(element),
+                // Hidden items have no layout box. Retain their measured width so
+                // repeated resizes do not bring overflowing groups back into view.
+                width: element.hidden && width === 0 ? (previous?.width ?? 0) : width,
+            };
+        });
         if (measured.some((item) => item.width > 0)) {
             measuredItemsRef.current = measured;
         }

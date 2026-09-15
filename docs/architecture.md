@@ -93,6 +93,9 @@ frame, uses an 8 px collision margin, and supports trigger, point and bounds anc
 Consumers: File menu, Settings menu, View menu, About menu, narrow menubar overflow, tab context menu,
 editor context menu, formatting-toolbar overflow and the StatusBar Document details disclosure.
 
+Popup establishes initial focus once after placement; moving an open popup (for example when a theme
+changes the bundled font metrics) preserves the user’s current control focus.
+
 ### MenuItem — `frontend/src/ui/components/MenuItem/`
 
 MenuItem owns the shared menu row, disabled/checked/radio presentation, accelerator placement and
@@ -104,16 +107,20 @@ accelerator formatting helper.
 `frontend/src/ui/components/Bar/` owns horizontal framing, slots, alignment and measured overflow.
 Its consumers are the Menubar, the TabBar and the FormattingToolbar. Menubar uses its scroll policy,
 TabBar keeps horizontal scrolling, and FormattingToolbar uses the menu policy below its accepted
-breakpoint.
+breakpoint. Bar removes overflowed groups from layout while retaining their measured widths by item
+key, so repeated measurements keep the same overflow decision until the available space changes.
 
 `frontend/src/ui/components/Island/` owns a labelled visual group. Its consumer is the formatting
-toolbar's text, heading, list, insertion, deferred-action and arrangement groups.
+toolbar's text, heading, list, insertion, deferred-action and arrangement groups. The deferred-action
+group is unpainted; the arrangement Island provides only layout and labeling, with Segmented owning
+its single visible frame and selected-option treatment.
 
 ### ToolButton and Button
 
 `frontend/src/ui/primitives/ToolButton/` owns icon/text variants, disabled, pressed and checked states,
 selection-preserving mousedown and the square icon-only shape. Its consumer is the FormattingToolbar;
-TabBar and Menubar controls belong to their owning Bar/TabBar surfaces.
+Menubar also uses ToolButton for its outlined sidebar and assistant controls. Their surrounding
+surface treatment belongs to the Menubar; TabBar owns its close/add controls.
 
 `frontend/src/ui/primitives/Button/` owns primary, secondary and quiet buttons. Its consumers are the
 dialogs, toasts and Launcher.
@@ -123,11 +130,17 @@ dialogs, toasts and Launcher.
 TabBar owns document tabs, horizontal scrolling, drag reorder, add and close controls, the context-menu
 anchor and the tablist keyboard model. Its consumer is DocumentTabs. Theme differences such as radius,
 padding and underline are tokens, not alternate tab implementations.
+The stationary full-width TabBar frame owns the divider and Glass backdrop. Its constrained inner
+tablist owns scrolling and never paints a second surface; only the selected tab and the compact
+outlined add control have intentional fills.
 
 ### Pane — `frontend/src/ui/components/Pane/`
 
 Pane owns the header, identity, body and accessory slots. Its consumers are the editor pane and preview
 pane; a paused or failed preview banner arrives through the explicit accessory slot.
+Pane paints each document surface once. Preview content and the generated Monaco editor, gutter and
+minimap backgrounds remain transparent. Material panes have small local elevation; Minimal panes stay
+flat. Monaco widget backgrounds retain their own surfaces and its focus color follows the theme accent.
 
 ### Sidebar — `frontend/src/ui/components/Sidebar/`
 
@@ -170,6 +183,10 @@ generator produces the editor and highlight output from the token families in
 All appearance values come from `frontend/src/ui/styles/tokens.css`. The three themes and light/dark
 values are selected on the document root. Widget stylesheets do not select themes and portalled
 surfaces inherit the root attributes.
+`frontend/src/ui/styles/base.css` paints the application tint and optional Glass highlight/backdrop
+on `.application-frame`, above the body canvas. Header and status rows show that continuous app
+surface; the status row adds only the theme backdrop. Surface opacity must not depend on tab count,
+scroll position, or a screenshot-only layout.
 
 ## Commands and verification
 

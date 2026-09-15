@@ -10,7 +10,8 @@
 
 .statusBar {
     box-sizing: border-box;
-    background: var(--surface-raised);
+    background: transparent;
+    backdrop-filter: var(--blur);
     color: var(--faint);
     display: flex;
     align-items: center;

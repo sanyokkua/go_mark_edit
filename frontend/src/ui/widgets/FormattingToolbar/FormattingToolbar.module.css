@@ -34,6 +34,10 @@
     padding: var(--toolbar-row-padding);
 }
 
+.toolbar [data-bar-slot='trailing'] {
+    flex: none;
+}
+
 /* Binding source: mockup.html `.tsp{flex:1}` (:289), the empty element sitting
    between the overflow group and the arrangement segment (:672–:673). It is what
    holds the segment against the toolbar's trailing edge; without it the segment
@@ -98,13 +102,12 @@
     padding: var(--toolbar-group-padding);
 }
 
-.group:not(.arrangement) {
-    padding: var(--toolbar-group-utility-padding);
-}
-
+.utilityGroup,
 .arrangement {
-    border: var(--control-border-width) solid var(--stroke-soft);
-    border-radius: var(--arrangement-radius);
+    backdrop-filter: none;
+    background: transparent;
+    border: 0;
+    padding: 0;
 }
 
 .arrangement .action {
@@ -161,7 +164,13 @@
 }
 
 .overflowArrangement {
-    flex-wrap: wrap;
+    --segmented-border-color: var(--stroke-soft);
+    --segmented-padding: var(--arrangement-padding);
+    --segmented-radius: var(--arrangement-radius);
+    --segmented-selected-outline-width: 0;
+
+    background: var(--surface-2);
+    flex-wrap: nowrap;
 }
 
 .overflowArrangement .action {
@@ -209,6 +218,13 @@
 }
 
 .arrangement .action[aria-checked='true'] {
+    background: var(--arrangement-selected-background);
+    box-shadow: var(--arrangement-selected-shadow);
     color: var(--accent-contrast);
     font-weight: 600;
+}
+
+.arrangement .action:focus-visible {
+    outline: var(--segmented-focus-outline-width) solid var(--segmented-outline-color);
+    outline-offset: var(--segmented-focus-outline-offset);
 }

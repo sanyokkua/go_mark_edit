@@ -15,6 +15,7 @@ function generate(css: string): GeneratedOutput {
 }
 
 const materialPalette = `
+:root { --editor-content-background: rgba(0,0,0,0); }
 :root[data-theme='material'][data-mode='light'] {
   --app-bg: #faf8ff; --surface: #ffffff; --stroke: #e3e1ee; --text: #1b1b22;
   --gutter: #c9ccd3; --accent: #4f6bed; --accent-soft: #dfe4ff;
@@ -54,7 +55,7 @@ it('generates six complete named Monaco themes from palette values', () => {
         'gme-minimal-light',
         'gme-minimal-dark',
     ]);
-    expect(generated.themes['gme-material-light'].colors['editor.background']).toBe('#faf8ff');
+    expect(generated.themes['gme-material-light'].colors['editor.background']).toBe('#00000000');
     expect(generated.themes['gme-material-dark'].rules.find((rule) => rule.token === 'keyword.go')?.foreground).toBe(
         '#c58bff',
     );
@@ -62,11 +63,36 @@ it('generates six complete named Monaco themes from palette values', () => {
 });
 
 it('converts CSS rgba palette values to Monaco-compatible hex', () => {
-    const translucentPalette = palette.replace(
-        ":root[data-theme='glass'][data-mode='light'] {\n  --app-bg: #faf8ff",
-        ":root[data-theme='glass'][data-mode='light'] {\n  --app-bg: rgba(255,255,255,.42)",
-    );
-    expect(generate(translucentPalette).themes['gme-glass-light'].colors['editor.background']).toBe('#ffffff6b');
+    const translucentPalette = palette.replace('--surface: #ffffff;', '--surface: rgba(255,255,255,.42);');
+    expect(generate(translucentPalette).themes['gme-glass-light'].colors['editorWidget.background']).toBe('#ffffff6b');
+});
+
+it('leaves the editor, gutter, and minimap transparent in every palette', () => {
+    for (const theme of Object.values(generate(palette).themes)) {
+        for (const surface of ['editor.background', 'editorGutter.background', 'minimap.background']) {
+            expect(theme.colors[surface]).toBe('#00000000');
+        }
+        expect(theme.colors['editorWidget.background']).not.toBe('#00000000');
+    }
+});
+
+it('maps focus and cursor colors to each theme accent', () => {
+    const accents = ['#123456', '#654321', '#abcdef'];
+    const distinctPalettes = ['glass', 'material', 'minimal']
+        .map((theme, index) =>
+            materialPalette
+                .replaceAll("data-theme='material'", `data-theme='${theme}'`)
+                .replaceAll('--accent: #4f6bed;', `--accent: ${accents[index]};`),
+        )
+        .join('\n');
+    const generated = generate(distinctPalettes);
+    for (const [index, family] of ['glass', 'material', 'minimal'].entries()) {
+        for (const mode of ['light', 'dark']) {
+            const colors = generated.themes[`gme-${family}-${mode}`].colors;
+            expect(colors.focusBorder).toBe(accents[index]);
+            expect(colors['editorCursor.foreground']).toBe(accents[index]);
+        }
+    }
 });
 
 it('shares each fenced-language value by appearance across themes', () => {
@@ -88,6 +114,7 @@ it('generates qualified Markdown and Go rules plus every required Monaco UI colo
         theme.rules.find((candidate) => candidate.token === token)?.foreground;
 
     for (const color of [
+        'focusBorder',
         'editor.background',
         'editor.foreground',
         'editorLineNumber.foreground',

@@ -4,7 +4,7 @@ const { resolve } = require('node:path');
 const themes = ['glass', 'material', 'minimal'];
 const modes = ['light', 'dark'];
 const required = [
-    '--app-bg',
+    '--editor-content-background',
     '--surface',
     '--stroke',
     '--text',
@@ -103,6 +103,7 @@ function resolvedTokens(css, theme, mode) {
     return values;
 }
 
+/** @returns {string} */
 function monacoColor(value) {
     const rgba = value.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
     if (!rgba) return value;
@@ -130,7 +131,8 @@ function generateEditorThemes(css) {
                 base: mode === 'dark' ? 'vs-dark' : 'vs',
                 inherit: true,
                 colors: {
-                    'editor.background': monacoColor(values['--app-bg']),
+                    focusBorder: monacoColor(values['--accent']),
+                    'editor.background': monacoColor(values['--editor-content-background']),
                     'editor.foreground': monacoColor(values['--text']),
                     'editorLineNumber.foreground': monacoColor(values['--gutter']),
                     'editorLineNumber.activeForeground': monacoColor(values['--text']),
@@ -138,13 +140,13 @@ function generateEditorThemes(css) {
                     'editor.selectionBackground': monacoColor(values['--selection-bg']),
                     'editor.selectionHighlightBackground': monacoColor(values['--selection-bg']),
                     'editor.lineHighlightBackground': monacoColor(values['--hover']),
-                    'editorGutter.background': monacoColor(values['--app-bg']),
+                    'editorGutter.background': monacoColor(values['--editor-content-background']),
                     'editorWidget.background': monacoColor(values['--surface']),
                     'editorWidget.border': monacoColor(values['--stroke']),
                     'editorSuggestWidget.background': monacoColor(values['--surface']),
                     'editorSuggestWidget.foreground': monacoColor(values['--text']),
                     'editorSuggestWidget.selectedBackground': monacoColor(values['--accent-soft']),
-                    'minimap.background': monacoColor(values['--app-bg']),
+                    'minimap.background': monacoColor(values['--editor-content-background']),
                     'scrollbarSlider.background': monacoColor(values['--scrollbar-thumb']),
                     'scrollbarSlider.hoverBackground': monacoColor(values['--scrollbar-thumb-hover']),
                     'editorError.foreground': monacoColor(values['--err']),

@@ -14,6 +14,8 @@
 :root {
     --app-gap: 0.75rem;
     --app-bg: #f7f8fc;
+    --app-highlight: none;
+    --editor-content-background: rgba(0, 0, 0, 0);
     --surface: #ffffff;
     --surface-raised: #ffffff;
     --text: #1b1b22;
@@ -86,6 +88,8 @@
     --menu-trigger-line-height: normal;
     --menu-trigger-padding: 6px 10px;
     --menu-trigger-radius: 7px;
+    --menu-action-size: 29px;
+    --menu-action-radius: 8px;
     --icon-size: 15px;
     --icon-stroke: 1.75;
     --popup-min-width: 250px;
@@ -113,10 +117,10 @@
     --tab-active-underline: var(--control-border-width) solid var(--stroke-soft);
     --tab-active-color: var(--text);
     --tab-active-font-weight: 400;
-    --tab-strip-backdrop: none;
     --tab-max-width: 190px;
     --tab-label-font-size: 12.5px;
     --tab-add-size: 28px;
+    --tab-add-radius: 7px;
     --toolbar-row-padding: 7px 10px;
     --toolbar-row-height: 51px;
     --toolbar-gap: 4px;
@@ -126,13 +130,15 @@
     --toolbar-group-radius: 11px;
     --toolbar-group-background: var(--surface-2);
     --toolbar-group-backdrop-filter: none;
-    --toolbar-group-utility-padding: var(--toolbar-group-padding);
     --toolbar-action-height: 30px;
     --toolbar-action-min-width: 30px;
     --toolbar-action-padding-inline: 8px;
     --toolbar-icon-label-font-size: 12.5px;
     --toolbar-text-label-font-size: 12px;
     --arrangement-radius: 10px;
+    --arrangement-padding: 3px;
+    --arrangement-selected-background: var(--accent);
+    --arrangement-selected-shadow: none;
     --arrangement-option-padding: 5px 12px;
     --arrangement-option-radius: 7px;
     --pane-body-padding-block: 8px;
@@ -146,8 +152,7 @@
     --preview-content-padding: 20px 26px;
     --editor-stage-gap: var(--editor-view-gap);
     --editor-stage-padding: var(--pane-body-padding-block) var(--pane-body-padding-inline);
-    --preview-content-background: var(--surface);
-    --preview-content-backdrop-filter: none;
+    --preview-content-background: var(--editor-content-background);
     --toast-width: 300px;
     --toast-gap: 8px;
     --toast-padding: 9px 11px;
@@ -220,7 +225,7 @@
     --accent-ink: #cdd8ff;
     --accent-soft: rgba(122, 162, 255, 0.16);
     --accent-contrast: #0b1024;
-    --font: -apple-system, 'SF Pro Display', 'Segoe UI', Inter, system-ui, sans-serif;
+    --font: -apple-system, 'SF Pro Display', 'Segoe UI', GME Inter, system-ui, sans-serif;
     --win-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
     --toast-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
     --pane-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
@@ -229,11 +234,15 @@
     --glass-highlight: rgba(255, 255, 255, 0.22);
     --toolbar-shadow: inset 0 1px 0 var(--glass-highlight);
     --toolbar-group-backdrop-filter: var(--blur);
-    --preview-content-backdrop-filter: var(--blur);
+    --app-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 16%);
+    --arrangement-selected-background: linear-gradient(135deg, var(--accent), var(--accent2));
+    --arrangement-selected-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 42%, transparent);
 }
 :root[data-theme='material'] {
     --context-menu-shadow: 0 1px 2px rgba(30, 30, 60, 0.1), 0 1px 3px rgba(30, 30, 60, 0.08);
-    --font: Roboto, 'Segoe UI', Inter, system-ui, sans-serif;
+    --font: GME Roboto, 'Segoe UI', GME Inter, system-ui, sans-serif;
+    --tab-radius: 18px;
+    --tab-padding: 8px 15px;
     --tab-context-menu-shadow: 0 1px 2px rgba(30, 30, 60, 0.1), 0 1px 3px rgba(30, 30, 60, 0.08);
 }
 :root[data-theme='minimal'] {
@@ -243,16 +252,22 @@
     --accent-soft: #ecfdf5;
     --accent-contrast: #ffffff;
     --win-radius: 12px;
-    --font: Inter, -apple-system, 'Segoe UI', system-ui, sans-serif;
+    --font: GME Inter, -apple-system, 'Segoe UI', system-ui, sans-serif;
+    --tab-border: 0;
+    --tab-underline: 2px solid transparent;
+    --tab-radius: 0;
+    --tab-padding: 8px 12px;
+    --tab-active-background: transparent;
+    --tab-active-underline: 2px solid var(--text);
+    --tab-active-font-weight: 500;
     --win-shadow: 0 8px 24px rgba(31, 35, 40, 0.1);
     --toast-shadow: 0 8px 24px rgba(31, 35, 40, 0.1);
     --pane-shadow: 0 8px 24px rgba(31, 35, 40, 0.1);
     --tab-context-menu-shadow: 0 8px 24px rgba(31, 35, 40, 0.1);
     --editor-stage-gap: 0;
     --editor-stage-padding: 0;
-    --preview-content-background: transparent;
     --toolbar-group-background: transparent;
-    --toolbar-group-utility-padding: 0;
+    --toolbar-group-padding: 0;
 }
 :root[data-mode='dark'] {
     --app-bg: #171820;
@@ -391,7 +406,7 @@
     --hover: #eceaf6;
     --win-shadow: 0 30px 70px rgba(30, 30, 60, 0.28);
     --toast-shadow: 0 30px 70px rgba(30, 30, 60, 0.28);
-    --pane-shadow: 0 30px 70px rgba(30, 30, 60, 0.28);
+    --pane-shadow: 0 1px 2px rgba(30, 30, 60, 0.1), 0 1px 3px rgba(30, 30, 60, 0.08);
     --tab-context-menu-shadow: 0 1px 2px rgba(30, 30, 60, 0.1), 0 1px 3px rgba(30, 30, 60, 0.08);
     --blur: none;
     --win-radius: 16px;
@@ -418,7 +433,7 @@
     --hover: #2a2a34;
     --win-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
     --toast-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
-    --pane-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+    --pane-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     --blur: none;
     --win-radius: 16px;
 }

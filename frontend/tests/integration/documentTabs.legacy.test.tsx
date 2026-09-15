@@ -91,9 +91,8 @@ it('applies the contained tab-strip metrics and fixed add-control size', () => {
     expect(tabStyles).toContain('block-size: var(--tab-add-size)');
     expect(tabStyles).toContain('inline-size: var(--tab-add-size)');
     expect(tabStyles).toMatch(/overflow-x:\s*auto/);
-    expect(tabStyles).toContain(":global(:root[data-theme='material'])");
-    expect(tabStyles).toContain(":global(:root[data-theme='minimal'])");
-    expect(tabStyles).toContain('border-bottom: 2px solid transparent');
+    // Theme-specific selection and add-control appearance are exercised with
+    // computed styles in theme-surfaces.test.ts, across all six palettes.
 });
 
 it('uses the binding context-menu shadow token', () => {
@@ -127,13 +126,22 @@ it('makes the tablist the direct tab-and-add layout surface', () => {
     expect(tablist.children).toHaveLength(2);
 });
 
-it('keeps the minimal new-tab control as a block text control', () => {
-    const tabStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'), 'utf8');
+it('keeps the new-tab control bound to the latest tab-set revision', async () => {
+    hydrate([documentFor('one', '/repo/one.md')]);
+    const pending = (): Promise<never> => new Promise<never>(() => undefined);
+    const newDocument = jest.fn(pending);
+    const activateDocument = jest.fn(pending);
+    renderTabs({ newDocument, activateDocument });
 
-    expect(tabStyles).toMatch(/\.tabAdd\s*\{[^}]*display:\s*block;[^}]*text-align:\s*center;/s);
-    expect(tabStyles).toMatch(/\.tabAdd\s*\{[^}]*font-family:\s*Arial;/s);
-    expect(tabStyles).toMatch(/\.tabAdd\s*\{[^}]*white-space:\s*normal;/s);
-    expect(tabStyles).not.toMatch(/\.tabAdd\s*\{[^}]*min-inline-size:/s);
+    act((): void => {
+        store.dispatch(applyStatePatch({ revision: 2, tabSetRevision: 5 }));
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'New tab' }));
+
+    await waitFor(() => expect(newDocument).toHaveBeenCalledWith(5));
+    expect(newDocument).toHaveBeenCalledTimes(1);
+    expect(activateDocument).not.toHaveBeenCalled();
+    expect(screen.getByRole('tab', { name: /one\.md/u })).toHaveAttribute('aria-selected', 'true');
 });
 
 // after a successful Reveal is proved by
